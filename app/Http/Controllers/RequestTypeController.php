@@ -102,6 +102,15 @@ class RequestTypeController extends Controller
     {
         $requestType = RequestType::findOrFail($id);
 
+        // withTrashed(): BudgetRequest memakai SoftDeletes, tapi FK
+        // budget_request.type_id ON DELETE CASCADE bekerja di level MySQL dan
+        // tidak mengenal soft delete. Tanpa withTrashed() baris yang "ada di
+        // recycle bin" tidak terlihat oleh penjaga ini, penghapusan lolos, dan
+        // MySQL menghapusnya permanen beserta seluruh log statusnya.
+        if (\App\Models\BudgetRequest::withTrashed()->where('type_id', $requestType->id)->exists()) {
+            return back()->with('error', 'Tipe pengajuan tidak bisa dihapus karena sudah dipakai pada Cost Request.');
+        }
+
         $requestType->delete();
 
         return redirect('/request-type')

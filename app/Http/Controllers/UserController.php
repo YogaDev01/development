@@ -51,6 +51,12 @@ class UserController extends Controller
         $accessGroups = AccessGroup::orderBy('name')
             ->get();
 
+        $summary = [
+            'total'    => $users->count(),
+            'active'   => $users->where('status', 'ACTIVE')->count(),
+            'inactive' => $users->where('status', 'INACTIVE')->count(),
+        ];
+
         /*
         |--------------------------------------------------------------------------
         | VIEW
@@ -61,7 +67,8 @@ class UserController extends Controller
 
             'users',
             'roles',
-            'accessGroups'
+            'accessGroups',
+            'summary'
 
         ));
     }
@@ -126,6 +133,8 @@ class UserController extends Controller
 
             'email' => 'required|email|unique:users,email',
 
+            'phone' => 'nullable|string|max:20',
+
             'password' => 'required|min:6',
 
             'role_id' => 'required|exists:roles,id',
@@ -149,6 +158,8 @@ class UserController extends Controller
             'username' => strtolower($request->username),
 
             'email' => strtolower($request->email),
+
+            'phone' => $request->phone,
 
             'password' => Hash::make($request->password),
 
@@ -273,6 +284,8 @@ class UserController extends Controller
 
             'email' => 'required|email|unique:users,email,' . $id,
 
+            'phone' => 'nullable|string|max:20',
+
             'role_id' => 'required|exists:roles,id',
 
             'access_group_id' => 'required|exists:access_groups,id',
@@ -302,6 +315,8 @@ class UserController extends Controller
             'username' => strtolower($request->username),
 
             'email' => strtolower($request->email),
+
+            'phone' => $request->phone,
 
             'role_id' => $request->role_id,
 
@@ -365,6 +380,27 @@ class UserController extends Controller
         */
 
         $user = User::findOrFail($id);
+
+        /*
+        |--------------------------------------------------------------------------
+        | PROTEKSI DELETE — user masih dipakai di data transaksi
+        |--------------------------------------------------------------------------
+        */
+
+        if (\App\Models\Project::where('manager_id', $user->id)->exists()) {
+            return redirect('/user')
+                ->with('error', 'User tidak dapat dihapus karena masih menjadi Project Manager pada PO. Nonaktifkan saja.');
+        }
+
+        // withTrashed(): BudgetRequest memakai SoftDeletes, tapi FK
+        // budget_request.applicant_id ON DELETE CASCADE bekerja di level MySQL dan
+        // tidak mengenal soft delete. Tanpa withTrashed() baris yang "ada di
+        // recycle bin" tidak terlihat oleh penjaga ini, penghapusan lolos, dan
+        // MySQL menghapusnya permanen beserta seluruh log statusnya.
+        if (\App\Models\BudgetRequest::withTrashed()->where('applicant_id', $user->id)->exists()) {
+            return redirect('/user')
+                ->with('error', 'User tidak dapat dihapus karena sudah memiliki Cost Request. Nonaktifkan saja.');
+        }
 
         /*
         |--------------------------------------------------------------------------

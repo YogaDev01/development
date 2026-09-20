@@ -2,73 +2,22 @@
 
 @section('content')
 
-<!-- CONTENT HEADER -->
-<div class="content-header">
-
-    <div class="container-fluid">
-
-        <div class="row mb-2">
-
-            <!-- TITLE -->
-            <div class="col-sm-6">
-
-                <h1 class="m-0">
-
-                    <a 
-                        href="{{ url('/budget-request/' . $budgetRequest->id) }}"
-                        class="text-dark mr-2"
-                        style="text-decoration: none;"
-                    >
-
-                        <i class="fas fa-arrow-left"></i>
-
-                    </a>
-
-                    Close Budget Request
-
-                </h1>
-
-            </div>
-
-            <!-- BREADCRUMB -->
-            <div class="col-sm-6">
-
-                <ol class="breadcrumb float-sm-right">
-
-                    <li class="breadcrumb-item">
-
-                        Operational Cost
-
-                    </li>
-
-                    <li class="breadcrumb-item">
-
-                        <a href="{{ url('/budget-request') }}">
-                            Budget Request
-                        </a>
-
-                    </li>
-
-                    <li class="breadcrumb-item active">
-
-                        Close
-
-                    </li>
-
-                </ol>
-
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-<!-- MAIN CONTENT -->
 <div class="content">
-
     <div class="container-fluid">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <div class="d-flex align-items-center">
+                <a href="{{ url('/budget-request/' . $budgetRequest->id) }}" class="btn btn-secondary btn-sm mr-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Close Budget Request</h1>
+            </div>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item">Operational Cost</li>
+                <li class="breadcrumb-item"><a href="{{ url('/budget-request') }}">Budget Request</a></li>
+                <li class="breadcrumb-item active">Close</li>
+            </ol>
+        </div>
 
         <div class="row">
 
@@ -166,11 +115,7 @@
 
                             <div>
 
-                                <span class="badge badge-warning px-3 py-2">
-
-                                    REALIZED
-
-                                </span>
+                                <x-status :status="$budgetRequest->status" context="budget-request" size="md" />
 
                             </div>
 
@@ -203,7 +148,7 @@
 
                                 <div class="timeline-item">
 
-                                    <span class="timeline-icon" style="background-color: #007bff;">
+                                    <span class="timeline-icon" style="background-color: var(--info);">
 
                                         <i class="fas fa-{{ 
                                             match($log->action_type) {
@@ -296,15 +241,15 @@
 
                                 <tr>
 
-                                    <th width="5%">No</th>
+                                    <th scope="col" width="5%">No</th>
 
-                                    <th>Description</th>
+                                    <th scope="col">Description</th>
 
-                                    <th width="10%">Qty</th>
+                                    <th scope="col" width="10%">Qty</th>
 
-                                    <th width="18%">Unit Price</th>
+                                    <th scope="col" width="18%">Unit Price</th>
 
-                                    <th width="18%">Total</th>
+                                    <th scope="col" width="18%">Total</th>
 
                                 </tr>
 
@@ -322,11 +267,11 @@
 
                                         <td>{{ number_format($detail->qty, 0, ',', '.') }}</td>
 
-                                        <td>Rp {{ number_format($detail->amount, 0, ',', '.') }}</td>
+                                        <td>{{ number_format($detail->amount, 0, ',', '.') }}</td>
 
                                         <td class="font-weight-bold text-primary">
 
-                                            Rp {{ number_format($detail->total, 0, ',', '.') }}
+                                            {{ number_format($detail->total, 0, ',', '.') }}
 
                                         </td>
 
@@ -572,9 +517,9 @@ $(function () {
 
             showCancelButton: true,
 
-            confirmButtonColor: '#dc3545',
+            confirmButtonColor: 'var(--danger)',
 
-            cancelButtonColor: '#6c757d',
+            cancelButtonColor: '#55595e',
 
             confirmButtonText: 'Ya, Close Request',
 
@@ -616,7 +561,7 @@ $(function () {
 
     position: relative;
 
-    border-left: 2px solid #dee2e6;
+    border-left: 2px solid var(--border);
 
     margin-left: 20px;
 
@@ -644,7 +589,7 @@ $(function () {
 
     border-radius: 50%;
 
-    background: #007bff;
+    background: var(--info);
 
     color: white;
 

@@ -2,88 +2,50 @@
 
 @section('content')
 
-<div class="content-header">
-    <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6 d-flex align-items-center">
-                <h1 class="m-0 font-weight-bold">Karyawan</h1>
-            </div>
-            <div class="col-sm-6">
-                <ol class="breadcrumb float-sm-right">
-                    <li class="breadcrumb-item"><a href="#">Master</a></li>
-                    <li class="breadcrumb-item active">Karyawan</li>
-                </ol>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="content">
     <div class="container-fluid">
 
-        <div class="row">
-            <div class="col-12 col-md-4">
-                <div class="small-box bg-info">
-                    <div class="inner">
-                        <h3>{{ $summary['total'] }}</h3>
-                        <p>Total Karyawan</p>
-                    </div>
-                    <div class="icon"><i class="fas fa-users"></i></div>
-                </div>
-            </div>
-            <div class="col-12 col-md-4">
-                <div class="small-box bg-success">
-                    <div class="inner">
-                        <h3>{{ $summary['active'] }}</h3>
-                        <p>Active</p>
-                    </div>
-                    <div class="icon"><i class="fas fa-user-check"></i></div>
-                </div>
-            </div>
-            <div class="col-12 col-md-4">
-                <div class="small-box bg-secondary">
-                    <div class="inner">
-                        <h3>{{ $summary['inactive'] }}</h3>
-                        <p>Inactive</p>
-                    </div>
-                    <div class="icon"><i class="fas fa-user-slash"></i></div>
-                </div>
-            </div>
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Karyawan</h1>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item"><a href="#">Master</a></li>
+                <li class="breadcrumb-item active">Karyawan</li>
+            </ol>
         </div>
+
+        <x-stat-cards :cards="[
+            ['Total Karyawan', $summary['total'], 'primary', 'fas fa-users'],
+            ['Active', $summary['active'], 'success', 'fas fa-user-check'],
+            ['Inactive', $summary['inactive'], 'secondary', 'fas fa-user-slash'],
+        ]" />
 
         <div class="card card-primary card-outline shadow-sm">
             <div class="card-header d-flex align-items-center">
-                <button id="refreshTable" class="btn btn-secondary btn-sm" type="button">
-                    <i class="fas fa-sync-alt mr-1"></i> Refresh
-                </button>
-                <a href="{{ url('/employee/create') }}" class="btn btn-success btn-sm ml-auto">
-                    <i class="fas fa-plus mr-1"></i> Tambah Karyawan
-                </a>
+                <h3 class="card-title"><i class="fas fa-users mr-1"></i> Daftar Karyawan</h3>
+                <div class="ml-auto d-flex" style="gap:8px;">
+                    <button id="refreshTable" class="btn btn-secondary btn-sm" type="button">
+                        <i class="fas fa-sync-alt mr-1"></i> Refresh
+                    </button>
+                </div>
             </div>
 
             <div class="card-body">
 
-                <div class="custom-toolbar mb-3">
-                    <div class="custom-toolbar-left">
+                <div class="custom-toolbar mb-3 d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
+                    <div class="custom-toolbar-left d-flex align-items-center flex-wrap" style="gap:8px;">
                         <div class="toolbar-row">
                             <span class="toolbar-label">Cari :</span>
                             <div class="toolbar-input" id="customSearch"></div>
                         </div>
-                        <div class="toolbar-row">
-                            <span class="toolbar-label">Filter :</span>
-                            <div class="toolbar-input">
-                                <select id="empFilter" multiple placeholder="Filter data...">
-                                    <optgroup label="Status">
-                                        <option value="STATUS:ACTIVE">Active</option>
-                                        <option value="STATUS:INACTIVE">Inactive</option>
-                                    </optgroup>
-                                    <optgroup label="Jenis Kelamin">
-                                        <option value="GENDER:L">Laki-laki</option>
-                                        <option value="GENDER:P">Perempuan</option>
-                                    </optgroup>
-                                </select>
-                            </div>
-                        </div>
+                        <button aria-label="Clear Filter" type="button" id="btnClearFilterEmp" class="btn btn-outline-secondary btn-sm" title="Clear Filter">
+                            <i class="fas fa-eraser"></i>
+                        </button>
+                        <div id="empRowFilters" class="d-flex flex-wrap" style="gap:8px;"></div>
+                    </div>
+                    <div class="custom-toolbar-right d-flex flex-wrap" style="gap:8px;">
+                        <a href="{{ url('/employee/create') }}" class="btn btn-success btn-sm">
+                            <i class="fas fa-plus mr-1"></i> Tambah Karyawan
+                        </a>
                     </div>
                 </div>
 
@@ -91,13 +53,13 @@
                     <table id="empTable" class="table table-bordered table-hover table-striped mb-0">
                         <thead class="bg-light">
                             <tr>
-                                <th class="text-nowrap" style="width:1%;">No</th>
-                                <th class="text-nowrap" style="width:1%;">No Induk</th>
-                                <th>Nama</th>
-                                <th class="text-nowrap" style="width:1%;">Bank / Rekening</th>
-                                <th class="text-nowrap" style="width:1%;">PTKP</th>
-                                <th class="text-nowrap" style="width:1%;">Status</th>
-                                <th class="text-center text-nowrap" style="width:1%;">Action</th>
+                                <th scope="col" class="text-nowrap" style="width:1%;">No</th>
+                                <th scope="col" class="text-nowrap" style="width:1%;">No Induk</th>
+                                <th scope="col">Nama</th>
+                                <th scope="col" class="text-nowrap" style="width:1%;">Bank / Rekening</th>
+                                <th scope="col" class="text-nowrap" style="width:1%;">PTKP</th>
+                                <th scope="col" class="text-nowrap" style="width:1%;">Status</th>
+                                <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -129,17 +91,37 @@
                                         {{ $emp->status }}
                                     </span>
                                 </td>
-                                <td class="text-center text-nowrap">
-                                    <button type="button" class="btn btn-info btn-sm btn-show" data-id="{{ $emp->id }}" title="Detail">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <a href="{{ url('/employee/' . $emp->id . '/edit') }}" class="btn btn-warning btn-sm" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <button type="button" class="btn btn-danger btn-sm btn-delete"
-                                            data-id="{{ $emp->id }}" data-name="{{ $emp->name }}" title="Hapus">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                <td class="text-center action-column">
+                                    <div class="action-buttons ts-actions">
+
+                                        <a href="{{ url('/employee/' . $emp->id . '/edit') }}"
+                                           class="ts-action-primary is-neutral"
+                                           title="Edit" aria-label="Edit {{ $emp->name }}">
+                                            <i class="fas fa-pen" aria-hidden="true"></i><span class="ts-al">Edit</span>
+                                        </a>
+
+                                        <button type="button" class="ts-action-more"
+                                                aria-haspopup="true" aria-expanded="false"
+                                                title="Aksi lain" aria-label="Aksi lain untuk {{ $emp->name }}">
+                                            <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
+                                        </button>
+
+                                        <div class="ts-action-menu dropdown-menu" hidden>
+
+                                            <button type="button" class="dropdown-item btn-show" data-id="{{ $emp->id }}">
+                                                <i class="fas fa-eye"></i>Detail
+                                            </button>
+
+                                            <div class="dropdown-divider"></div>
+
+                                            <button type="button" class="dropdown-item is-danger btn-delete"
+                                                    data-id="{{ $emp->id }}" data-name="{{ $emp->name }}">
+                                                <i class="fas fa-trash"></i>Hapus
+                                            </button>
+
+                                        </div>
+
+                                    </div>
                                 </td>
                             </tr>
                             @empty
@@ -160,10 +142,10 @@
 {{-- MODAL DETAIL --}}
 <div class="modal fade" id="modalShow" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content" style="border-radius:12px; overflow:hidden;">
-            <div class="modal-header" style="background:#0D1B2A; border-bottom:3px solid #F5A623;">
+        <div class="modal-content" style="border-radius:var(--radius-lg); overflow:hidden;">
+            <div class="modal-header" style="background:var(--charcoal); border-bottom:3px solid var(--accent);">
                 <h5 class="modal-title text-white">
-                    <i class="fas fa-user mr-2" style="color:#F5A623;"></i>
+                    <i class="fas fa-user mr-2" style="color:var(--accent);"></i>
                     <span id="showTitle"></span>
                 </h5>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
@@ -173,34 +155,34 @@
                     <div class="col-md-6">
                         <table class="table table-bordered mb-3" style="font-size:12px;">
                             <tbody>
-                                <tr><th style="background:#F9FAFB;color:#6B7280;width:40%;">No Induk</th><td id="sNo"></td></tr>
-                                <tr><th style="background:#F9FAFB;color:#6B7280;">NIK</th><td id="sNik"></td></tr>
-                                <tr><th style="background:#F9FAFB;color:#6B7280;">Jenis Kelamin</th><td id="sGender"></td></tr>
-                                <tr><th style="background:#F9FAFB;color:#6B7280;">Tempat Lahir</th><td id="sBirthPlace"></td></tr>
-                                <tr><th style="background:#F9FAFB;color:#6B7280;">Tanggal Lahir</th><td id="sBirthDate"></td></tr>
-                                <tr><th style="background:#F9FAFB;color:#6B7280;">No Telepon</th><td id="sPhone"></td></tr>
-                                <tr><th style="background:#F9FAFB;color:#6B7280;">Email</th><td id="sEmail"></td></tr>
+                                <tr><th style="background:var(--surface-2);color:var(--text-faint);width:40%;">No Induk</th><td id="sNo"></td></tr>
+                                <tr><th style="background:var(--surface-2);color:var(--text-faint);">NIK</th><td id="sNik"></td></tr>
+                                <tr><th style="background:var(--surface-2);color:var(--text-faint);">Jenis Kelamin</th><td id="sGender"></td></tr>
+                                <tr><th style="background:var(--surface-2);color:var(--text-faint);">Tempat Lahir</th><td id="sBirthPlace"></td></tr>
+                                <tr><th style="background:var(--surface-2);color:var(--text-faint);">Tanggal Lahir</th><td id="sBirthDate"></td></tr>
+                                <tr><th style="background:var(--surface-2);color:var(--text-faint);">No Telepon</th><td id="sPhone"></td></tr>
+                                <tr><th style="background:var(--surface-2);color:var(--text-faint);">Email</th><td id="sEmail"></td></tr>
                             </tbody>
                         </table>
                     </div>
                     <div class="col-md-6">
                         <table class="table table-bordered mb-3" style="font-size:12px;">
                             <tbody>
-                                <tr><th style="background:#F9FAFB;color:#6B7280;width:40%;">NPWP</th><td id="sNpwp"></td></tr>
-                                <tr><th style="background:#F9FAFB;color:#6B7280;">Status PTKP</th><td id="sPtkp"></td></tr>
-                                <tr><th style="background:#F9FAFB;color:#6B7280;">Bank</th><td id="sBank"></td></tr>
-                                <tr><th style="background:#F9FAFB;color:#6B7280;">Nama Rekening</th><td id="sAccName"></td></tr>
-                                <tr><th style="background:#F9FAFB;color:#6B7280;">No Rekening</th><td id="sAccNo"></td></tr>
-                                <tr><th style="background:#F9FAFB;color:#6B7280;">Gaji Default</th><td id="sSalary"></td></tr>
-                                <tr><th style="background:#F9FAFB;color:#6B7280;">Status</th><td id="sStatus"></td></tr>
+                                <tr><th style="background:var(--surface-2);color:var(--text-faint);width:40%;">NPWP</th><td id="sNpwp"></td></tr>
+                                <tr><th style="background:var(--surface-2);color:var(--text-faint);">Status PTKP</th><td id="sPtkp"></td></tr>
+                                <tr><th style="background:var(--surface-2);color:var(--text-faint);">Bank</th><td id="sBank"></td></tr>
+                                <tr><th style="background:var(--surface-2);color:var(--text-faint);">Nama Rekening</th><td id="sAccName"></td></tr>
+                                <tr><th style="background:var(--surface-2);color:var(--text-faint);">No Rekening</th><td id="sAccNo"></td></tr>
+                                <tr><th style="background:var(--surface-2);color:var(--text-faint);">Gaji Default</th><td id="sSalary"></td></tr>
+                                <tr><th style="background:var(--surface-2);color:var(--text-faint);">Status</th><td id="sStatus"></td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
                 <table class="table table-bordered mb-0" style="font-size:12px;">
                     <tbody>
-                        <tr><th style="background:#F9FAFB;color:#6B7280;width:20%;">Alamat</th><td id="sAddress" style="white-space:pre-line;"></td></tr>
-                        <tr><th style="background:#F9FAFB;color:#6B7280;">Domisili</th><td id="sDomicile" style="white-space:pre-line;"></td></tr>
+                        <tr><th style="background:var(--surface-2);color:var(--text-faint);width:20%;">Alamat</th><td id="sAddress" style="white-space:pre-line;"></td></tr>
+                        <tr><th style="background:var(--surface-2);color:var(--text-faint);">Domisili</th><td id="sDomicile" style="white-space:pre-line;"></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -222,19 +204,19 @@
 
 @push('styles')
 <style>
-.card-header .btn, .card-header .btn-sm { border-radius:6px; font-weight:600; }
+.card-header .btn, .card-header .btn-sm { border-radius:var(--radius-sm); font-weight:600; }
 .custom-toolbar      { display:flex; justify-content:space-between; align-items:flex-start; gap:15px; flex-wrap:wrap; }
 .custom-toolbar-left { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 .toolbar-row         { display:flex; align-items:center; gap:8px; }
-.toolbar-label       { min-width:50px; margin-bottom:0; white-space:nowrap; font-weight:600; color:#495057; }
+.toolbar-label       { min-width:50px; margin-bottom:0; white-space:nowrap; font-weight:600; color:var(--text-dim); }
 .toolbar-input       { min-width:180px; }
-#customSearch input  { width:180px; border-radius:6px; }
+#customSearch input  { width:180px; border-radius:var(--radius-sm); }
 
 .ts-dropdown .optgroup-header,
 .selectize-dropdown .optgroup-header {
     font-weight: 700 !important; font-size: 11px !important; text-transform: uppercase;
-    letter-spacing: .06em; color: #0D1B2A !important; background: #F1F3F5 !important;
-    padding: 8px 12px !important; border-top: 1px solid #e3e6ea; cursor: default;
+    letter-spacing: .06em; color: var(--text) !important; background: var(--surface-2) !important;
+    padding: 8px 12px !important; border-top: 1px solid var(--border); cursor: default;
 }
 .ts-dropdown .optgroup:first-child .optgroup-header,
 .selectize-dropdown .optgroup:first-child .optgroup-header { border-top: none; }
@@ -244,8 +226,15 @@
 @media (max-width: 767.98px) {
     .card-header         { flex-direction:column; gap:10px; align-items:stretch !important; }
     .card-header .btn, .card-header a.btn { width:100%; }
-    .custom-toolbar      { flex-direction:column; align-items:stretch; }
-    .custom-toolbar-left { flex-direction:column; align-items:stretch; }
+    .card-header .card-title { margin-bottom:0; }
+    .card-header .ml-auto { margin-left:0 !important; flex-wrap:wrap; }
+    .custom-toolbar      { flex-direction:column !important; align-items:stretch !important; }
+    .custom-toolbar-left { flex-direction:column !important; align-items:stretch !important; width:100%; }
+    .custom-toolbar-right { width:100%; }
+    .custom-toolbar-right .btn { width:100%; }
+    #btnClearFilterEmp   { width:100%; }
+    #empRowFilters       { width:100%; }
+    #empRowFilters .tcf-row-btn { width:100%; }
     .toolbar-row         { width:100%; }
     .toolbar-input       { flex:1; min-width:0; }
     #customSearch input  { width:100%; }
@@ -281,39 +270,18 @@ $(function () {
 
         $('#customSearch').html('<input type="text" class="form-control form-control-sm" placeholder="Cari data...">');
         $('#customSearch input').on('keyup', function () { table.search(this.value).draw(); });
+
+        TesysColumnFilter.initRowFilters('#empTable', '#empRowFilters', [
+            { key: 'status', label: 'Status' },
+            { key: 'gender', label: 'Jenis Kelamin', valueLabels: { 'L': 'Laki-laki', 'P': 'Perempuan' } },
+        ]);
     }
 
-    new TomSelect('#empFilter', {
-        plugins: ['remove_button'], persist: false, create: false,
-        lockOptgroupOrder: true, placeholder: 'Filter data...'
+    $('#btnClearFilterEmp').on('click', function () {
+        if (!table) return;
+        TesysColumnFilter.clearAll('#empTable');
     });
 
-    $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
-        if (settings.nTable.id !== 'empTable') return true;
-
-        var filters = $('#empFilter').val();
-        if (!filters || !filters.length) return true;
-
-        var row = settings.aoData[dataIndex].nTr;
-        if (!row) return true;
-
-        var rowStatus = row.getAttribute('data-status') || '';
-        var rowGender = row.getAttribute('data-gender') || '';
-
-        var selStatus = [], selGender = [];
-        filters.forEach(function (f) {
-            var i = f.indexOf(':'); if (i < 0) return;
-            var key = f.substring(0, i), val = f.substring(i + 1);
-            if (key === 'STATUS')      selStatus.push(val);
-            else if (key === 'GENDER') selGender.push(val);
-        });
-
-        if (selStatus.length && selStatus.indexOf(rowStatus) === -1) return false;
-        if (selGender.length && selGender.indexOf(rowGender) === -1) return false;
-        return true;
-    });
-
-    $('#empFilter').on('change', function () { if (table) table.draw(); });
     $('#refreshTable').on('click', function () { location.reload(); });
 
     // DETAIL
@@ -349,7 +317,7 @@ $(function () {
             title: 'Hapus Karyawan?',
             text: name + ' akan dihapus permanen.',
             icon: 'warning', showCancelButton: true,
-            confirmButtonColor: '#dc3545', cancelButtonColor: '#6c757d',
+            confirmButtonColor: 'var(--danger)', cancelButtonColor: '#55595e',
             confirmButtonText: 'Ya, Hapus', cancelButtonText: 'Batal'
         }).then(function (r) {
             if (r.isConfirmed) {

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 use App\Models\BudgetRequest;
@@ -18,12 +19,21 @@ use App\Models\Cluster;
 use App\Models\Beneficiary;
 use App\Models\Account;
 use App\Models\CostCenter;
+use App\Models\User;
+use App\Services\NotifyService;
+use App\Services\RoleDirectory;
+use App\Support\BudgetConsumption;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 
 class BudgetRequestController extends Controller
 {
+    use \App\Http\Controllers\Concerns\BuildsCrWorklist;
+    use \App\Http\Controllers\Concerns\TransitionsStatus;
+
     /*
     |--------------------------------------------------------------------------
     | KONFIGURASI SUMBER DANA
@@ -40,17 +50,16 @@ class BudgetRequestController extends Controller
         'PAYROLL'  => 'Fixed Cost',
     ];
 
-    /** Role yang boleh melihat / mengajukan CR OVERHEAD */
-    /*
-    | OVERHEAD:
-    |   - Role privileged  -> lihat SEMUA overhead
-    |   - Role lain        -> lihat overhead HANYA untuk cost center yang ada
-    |                          di access group user (ditentukan per-orang, seperti PO)
-    */
-    private const OVERHEAD_PRIVILEGED_ROLES = ['superadmin', 'approver'];
+    /** Nama Tipe Request (RequestType.name, case-insensitive) yang wajib punya lampiran. */
+    private const ATTACHMENT_REQUIRED_TYPE_NAMES = ['payment', 'pettycash', 'petty cash', 'purchase', 'reimbursement'];
 
-    /** PAYROLL tetap role-gated (rahasia, tidak lewat access group) */
-    private const PAYROLL_ROLES = ['superadmin', 'approver', 'hr', 'finance_manager'];
+    private function typeRequiresAttachment(?int $typeId): bool
+    {
+        if (! $typeId) return false;
+
+        $name = strtolower(trim(RequestType::find($typeId)->name ?? ''));
+        return in_array($name, self::ATTACHMENT_REQUIRED_TYPE_NAMES, true);
+    }
 
     /*
     |--------------------------------------------------------------------------
@@ -63,6 +72,42 @@ class BudgetRequestController extends Controller
         if ($value === null || trim($value) === '') return 0;
         $stripped = preg_replace('/\D/', '', $value);
         return $stripped === '' ? 0 : (int) $stripped;
+    }
+
+    /**
+     * Apakah user yang login berhak melihat detail satu Cost Request —
+     * cermin persis dari scopeByRole() (trait), termasuk cabang "CR milik
+     * sendiri bila user tidak punya access group". Dipakai showJson() yang
+     * route-nya dipanggil dari beberapa halaman (Cost Request, Treasury,
+     * Todo List) sehingga tidak bisa digerbang satu menu.
+     */
+    private function canViewCr(BudgetRequest $cr): bool
+    {
+        $query = BudgetRequest::whereKey($cr->getKey());
+        $this->scopeByRole($query);
+        return $query->exists();
+    }
+
+    /**
+     * Ambil CR + pastikan user berhak melihatnya, lalu kembalikan modelnya.
+     *
+     * Dulu hanya showJson() yang memanggil canViewCr(); semua aksi lain cukup
+     * findOrFail($id). Akibatnya daftar CR tersaring rapi per Access Group,
+     * tapi URL /budget-request/{id}/edit — dan setiap aksi workflow — tetap
+     * bisa dibuka dengan mengetik id milik proyek orang lain. Aturan yang
+     * dipakai sama persis dengan daftar (scopeByRole), jadi tidak ada versi
+     * kedua yang bisa menyimpang.
+     *
+     * Untuk role approval (Head/Finance/CEO/superadmin) scopeByRole() memang
+     * tidak membatasi apa pun, jadi pemeriksaan ini tidak mengubah alur mereka.
+     */
+    private function findVisibleCr($id, array $with = []): BudgetRequest
+    {
+        $cr = BudgetRequest::with($with)->findOrFail($id);
+
+        abort_unless($this->canViewCr($cr), 403, 'Anda tidak memiliki akses ke Cost Request ini.');
+
+        return $cr;
     }
 
     /**
@@ -83,11 +128,66 @@ class BudgetRequestController extends Controller
         return $ids->diff($validIds)->isEmpty();
     }
 
-    private function syncDetails(BudgetRequest $cr, Request $request): void
+    /**
+     * Upsert rincian CR. Baris yang membawa 'id' (existing) di-update di tempat —
+     * supaya lampiran per-item (request_detail_attachments, FK cascade) tidak
+     * ikut terhapus saat CR di-edit. Baris tanpa 'id' dibuat baru; baris lama
+     * yang tidak dikirim lagi dihapus (beserta file lampiran per-item-nya).
+     *
+     * @return array<int|string, \App\Models\RequestDetail>  map: key form -> detail
+     */
+    /**
+     * Apakah ada MINIMAL SATU lampiran — item ATAU tambahan/pendukung — pada
+     * request ini. Untuk edit ($cr diisi), lampiran existing yang tidak
+     * dicentang hapus ikut dihitung.
+     */
+    private function hasAnyAttachment(Request $request, ?BudgetRequest $cr = null): bool
     {
-        $cr->details()->delete();
+        // Lampiran tambahan (global) baru
+        $globalNew = collect($request->file('attachments', []))
+            ->contains(fn ($row) => ($row['file'] ?? $row) && ($row['file'] ?? $row)->isValid());
+        if ($globalNew) return true;
 
-        foreach ((array) $request->input('details', []) as $row) {
+        // Lampiran per item baru
+        foreach ((array) $request->file('details', []) as $row) {
+            foreach ((array) ($row['attachments'] ?? []) as $file) {
+                if ($file && $file->isValid()) return true;
+            }
+        }
+
+        if (!$cr) return false;
+
+        // Existing global yang tidak dihapus
+        $gDel = (array) $request->input('delete_attachments', []);
+        if ($cr->attachments()->whereNotIn('id', $gDel ?: [0])->exists()) return true;
+
+        // Existing per item yang tidak dihapus
+        $dDel = (array) $request->input('delete_detail_attachments', []);
+        $exists = \App\Models\RequestDetailAttachment::whereIn(
+            'request_detail_id', $cr->details()->pluck('id')
+        )->whereNotIn('id', $dDel ?: [0])->exists();
+
+        return $exists;
+    }
+
+    private function syncDetails(BudgetRequest $cr, Request $request): array
+    {
+        $rows = (array) $request->input('details', []);
+
+        // Kumpulkan id existing yang masih dikirim; sisanya dihapus.
+        $keepIds = collect($rows)->pluck('id')->filter()->map(fn ($i) => (int) $i)->all();
+        $stale   = $cr->details()->with('attachments')->whereNotIn('id', $keepIds ?: [0])->get();
+        foreach ($stale as $d) {
+            foreach ($d->attachments as $att) {
+                Storage::disk('secure')->delete($att->path);
+            }
+            $d->delete(); // cascade menghapus baris request_detail_attachments
+        }
+
+        $existing = $cr->details()->get()->keyBy('id');
+        $map = [];
+
+        foreach ($rows as $key => $row) {
             $amount = $this->normalizeMoney($row['amount'] ?? null);
             $qty    = (int) ($row['qty'] ?? 1);
             $total  = $amount * $qty;
@@ -99,37 +199,107 @@ class BudgetRequestController extends Controller
                 ? \App\Models\BudgetPlanDetail::with('account')->find($budgetDetailId)
                 : null;
 
-            // Tandai [NOB][selisih] di notes bila total baris melebihi sisa sub-item budget
-            // (safety net server-side — cermin dari logic yang sama di JS create/edit)
+            /*
+            | Pelampauan anggaran per baris disimpan sebagai kolom (is_nob +
+            | nob_amount), bukan sebagai awalan teks '[NOB][1.500.000]' di
+            | catatan. Catatan adalah milik pengguna; menaruh status keuangan
+            | di sana berarti status itu bisa terhapus saat catatannya diedit,
+            | dan setiap pembacanya harus mengurai teks berformat ribuan.
+            | Safety net sisi server ini tetap cermin dari logika di JS.
+            */
             $notes = $row['notes'] ?? null;
+            // Penanda lama dibersihkan bila masih terbawa dari form/impor.
             $notesClean = preg_replace('/^\[NOB\]\[[\d.,]+\]\s*/i', '', (string) $notes);
             $remaining = $budgetDetail?->remainingAmount() ?? 0;
             $isRowNob = $budgetDetail && $total > $remaining;
-            $notes = $isRowNob
-                ? trim('[NOB][' . number_format($total - $remaining, 0, ',', '.') . '] ' . $notesClean)
-                : ($notesClean !== '' ? $notesClean : null);
+            $notes = $notesClean !== '' ? $notesClean : null;
 
-            $cr->details()->create([
+            $payload = [
                 'budget_detail_id' => $budgetDetail->id ?? null,
                 'account_id'       => $budgetDetail->account_id ?? null,
                 'description'      => $budgetDetail
-                    ? trim(($budgetDetail->account->name ?? '-') . ($budgetDetail->deskripsi ? ' — ' . $budgetDetail->deskripsi : ''))
+                    ? trim(($budgetDetail->account?->name ?? '-') . ($budgetDetail->deskripsi ? ' — ' . $budgetDetail->deskripsi : ''))
                     : ($row['description'] ?? null),
                 'amount'           => $amount,
                 'qty'              => $qty,
                 'total'            => $total,
                 'notes'            => $notes,
-            ]);
+                'is_nob'           => $isRowNob,
+                'nob_amount'       => $isRowNob ? max(0, $total - $remaining) : 0,
+            ];
+
+            $rowId  = (int) ($row['id'] ?? 0);
+            $detail = $rowId && $existing->has($rowId) ? $existing->get($rowId) : null;
+
+            if ($detail) {
+                $detail->update($payload);
+            } else {
+                $detail = $cr->details()->create($payload);
+            }
+
+            $map[$key] = $detail;
         }
 
         $cr->recalculateAmount();
+
+        return $map;
+    }
+
+    /**
+     * Simpan lampiran per rincian CR.
+     *  - hapus lampiran per-item yang dicentang (delete_detail_attachments[])
+     *  - simpan file baru dari details[key][attachments][]
+     *
+     * @param  array<int|string, \App\Models\RequestDetail>  $detailMap  key form -> detail
+     */
+    private function storeDetailAttachments(BudgetRequest $cr, Request $request, array $detailMap): void
+    {
+        $deleteIds = (array) $request->input('delete_detail_attachments', []);
+        if (!empty($deleteIds)) {
+            $detailIds = $cr->details()->pluck('id');
+            $toDelete  = \App\Models\RequestDetailAttachment::whereIn('id', $deleteIds)
+                ->whereIn('request_detail_id', $detailIds)->get();
+            foreach ($toDelete as $att) {
+                Storage::disk('secure')->delete($att->path);
+                $att->delete();
+            }
+        }
+
+        $files = $request->file('details', []);
+        foreach ((array) $files as $key => $row) {
+            $rowFiles = $row['attachments'] ?? null;
+            if (blank($rowFiles) || !isset($detailMap[$key])) continue;
+
+            $detail = $detailMap[$key];
+            foreach ((array) $rowFiles as $file) {
+                if (!$file || !$file->isValid()) continue;
+                $path = $file->store('cost_request_detail_attachments', 'secure');
+                $detail->attachments()->create([
+                    'original_name' => $file->getClientOriginalName(),
+                    'stored_name'   => basename($path),
+                    'path'          => $path,
+                    'mime_type'     => $file->getClientMimeType(),
+                    'size'          => $file->getSize(),
+                    'uploaded_by'   => Auth::id(),
+                ]);
+            }
+        }
     }
 
     private function syncRealizations(BudgetRequest $cr, Request $request): void
     {
+        // Hapus dulu lampiran per-item baris realisasi lama (file fisik) sebelum
+        // baris-baris realisasi ikut terhapus cascade — realisasi hanya
+        // disubmit sekali per CR (bukan flow edit berkali-kali), jadi delete-
+        // then-recreate di sini aman (tidak ada lampiran yang perlu dipertahankan).
+        foreach ($cr->realizations as $old) {
+            foreach ($old->attachments as $att) {
+                Storage::disk('secure')->delete($att->path);
+            }
+        }
         $cr->realizations()->delete();
 
-        foreach ((array) $request->input('realizations', []) as $row) {
+        foreach ((array) $request->input('realizations', []) as $i => $row) {
             $amount   = $this->normalizeMoney($row['amount'] ?? null);
             $detailId = $row['request_detail_id'] ?? null;
 
@@ -137,7 +307,7 @@ class BudgetRequestController extends Controller
 
             $detail = $detailId ? RequestDetail::find($detailId) : null;
 
-            $cr->realizations()->create([
+            $realization = $cr->realizations()->create([
                 'request_detail_id' => $detail->id ?? null,
                 'description'       => $detail->description ?? null,
                 'account_id'        => $detail->account_id ?? null,
@@ -146,6 +316,20 @@ class BudgetRequestController extends Controller
                 'total'             => $amount,
                 'notes'             => $row['notes'] ?? null,
             ]);
+
+            $rowFiles = $request->file("realizations.$i.attachments", []);
+            foreach ((array) $rowFiles as $file) {
+                if (!$file || !$file->isValid()) continue;
+                $path = $file->store('cost_request_realization_details', 'secure');
+                $realization->attachments()->create([
+                    'original_name' => $file->getClientOriginalName(),
+                    'stored_name'   => basename($path),
+                    'path'          => $path,
+                    'mime_type'     => $file->getClientMimeType(),
+                    'size'          => $file->getSize(),
+                    'uploaded_by'   => Auth::id(),
+                ]);
+            }
         }
     }
 
@@ -161,7 +345,7 @@ class BudgetRequestController extends Controller
 
             if (!$file || !$file->isValid()) continue;
 
-            $path = $file->store('cost_request_attachments', 'public');
+            $path = $file->store('cost_request_attachments', 'secure');
             $cr->attachments()->create([
                 'original_name' => $file->getClientOriginalName(),
                 'stored_name'   => basename($path),
@@ -177,7 +361,7 @@ class BudgetRequestController extends Controller
     {
         foreach ($request->file('realization_attachments', []) as $file) {
             if (!$file || !$file->isValid()) continue;
-            $path = $file->store('cost_request_realizations', 'public');
+            $path = $file->store('cost_request_realizations', 'secure');
             $cr->realizationAttachments()->create([
                 'original_name' => $file->getClientOriginalName(),
                 'stored_name'   => basename($path),
@@ -189,17 +373,27 @@ class BudgetRequestController extends Controller
         }
     }
 
-    private function scopeByRole($query): void
+    /*
+    |--------------------------------------------------------------------------
+    | HAK AKSES SUMBER DANA INTERNAL
+    |--------------------------------------------------------------------------
+    | scopeByRole(), overheadPrivileged(), canSeeOverhead(),
+    | accessibleOverheadCostCenterIds(), canSeePayroll() dipindah ke trait
+    | BuildsCrWorklist (dipakai juga oleh TodoListController).
+    |--------------------------------------------------------------------------
+    */
+
+    /** Budget plan ACTIVE yang boleh dipakai user ini untuk mengajukan CR */
+    private function getAvailableBudgetPlans()
     {
-        $user = Auth::user();
-        $role = strtolower($user->role->name ?? '');
-
-        // Role istimewa melihat semuanya
-        if (in_array($role, ['superadmin', 'approver', 'admin'])) return;
-
-        $canOverhead = $this->canSeeOverhead();
-        $canPayroll  = $this->canSeePayroll();
-
+        /** @var User $user */
+        $user               = Auth::user();
+        $role               = strtolower($user->effectiveRole()?->name ?? '');
+        $projectPrivileged  = in_array($role, [
+            'superadmin', 'approver', 'admin', 'finance', 'finance_manager',
+            'cost_control', 'treasury', 'collection', 'accounting',
+        ]);
+        $canPayroll         = $this->canSeePayroll();
         $overheadPrivileged = $this->overheadPrivileged();
         $overheadCcIds      = $this->accessibleOverheadCostCenterIds();
 
@@ -207,99 +401,29 @@ class BudgetRequestController extends Controller
             ? $user->accessGroup->details->pluck('project_id')->filter()->values()
             : collect();
 
-        /*
-        | Tiga jalur visibilitas, digabung OR:
-        |   1) CR proyek   -> access group (atau CR milik sendiri bila tanpa group)
-        |   2) CR overhead -> privileged lihat semua; lainnya per access group cost center
-        |   3) CR payroll  -> berdasarkan role (rahasia)
-        | CR yang tidak masuk salah satu jalur TIDAK terlihat.
-        */
-        $query->where(function ($q) use (
-            $user, $projectIds, $canOverhead, $canPayroll, $overheadPrivileged, $overheadCcIds
-        ) {
-
-            // 1) CR yang bersumber dari budget PROYEK
-            $q->where(function ($qq) use ($user, $projectIds) {
-                if ($projectIds->isNotEmpty()) {
-                    $qq->whereHas('budgetPlan.project', fn ($p) => $p->whereIn('id', $projectIds));
-                } else {
-                    // Tanpa access group project: hanya CR miliknya sendiri
-                    $qq->where('applicant_id', $user->id)
-                       ->whereHas('budgetPlan', fn ($b) => $b->whereNotNull('project_id'));
-                }
-            });
-
-            // 2) CR OVERHEAD
-            if ($overheadPrivileged) {
-                // Privileged: semua overhead
-                $q->orWhereHas('budgetPlan.costCenter', fn ($c) => $c->where('type', 'OVERHEAD'));
-            } elseif ($overheadCcIds->isNotEmpty()) {
-                // Lainnya: hanya cost center overhead di access group
-                $q->orWhereHas('budgetPlan.costCenter', fn ($c) =>
-                    $c->where('type', 'OVERHEAD')->whereIn('id', $overheadCcIds)
-                );
-            }
-
-            // 3) CR PAYROLL
-            if ($canPayroll) {
-                $q->orWhereHas('budgetPlan.costCenter', fn ($c) => $c->where('type', 'PAYROLL'));
-            }
-        });
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | HAK AKSES SUMBER DANA INTERNAL
-    |--------------------------------------------------------------------------
-    */
-
-    /** Role yang lihat SEMUA overhead tanpa access group */
-    private function overheadPrivileged(): bool
-    {
-        return in_array(strtolower(Auth::user()->role->name ?? ''), self::OVERHEAD_PRIVILEGED_ROLES);
-    }
-
-    /** Apakah user boleh melihat overhead sama sekali (privileged ATAU punya cost center di access group) */
-    private function canSeeOverhead(): bool
-    {
-        if ($this->overheadPrivileged()) return true;
-
-        return $this->accessibleOverheadCostCenterIds()->isNotEmpty();
-    }
-
-    /** ID cost center overhead yang boleh diakses user (kosong = tak ada) */
-    private function accessibleOverheadCostCenterIds(): \Illuminate\Support\Collection
-    {
-        $user = Auth::user();
-        return $user->accessGroup ? $user->accessGroup->costCenterIds() : collect();
-    }
-
-    private function canSeePayroll(): bool
-    {
-        return in_array(strtolower(Auth::user()->role->name ?? ''), self::PAYROLL_ROLES);
-    }
-
-    /** Budget plan ACTIVE yang boleh dipakai user ini untuk mengajukan CR */
-    private function getAvailableBudgetPlans()
-    {
-        $canPayroll         = $this->canSeePayroll();
-        $overheadPrivileged = $this->overheadPrivileged();
-        $overheadCcIds      = $this->accessibleOverheadCostCenterIds();
-
         return BudgetPlan::where('status', 'ACTIVE')
-            ->where(function ($q) use ($canPayroll, $overheadPrivileged, $overheadCcIds) {
+            ->where(function ($q) use ($projectPrivileged, $projectIds, $canPayroll, $overheadPrivileged, $overheadCcIds) {
 
-                // Budget proyek: PO harus WAITING_PO / ACTIVE
-                $q->whereHas('project', fn ($p) => $p->whereIn('status', ['WAITING_PO', 'ACTIVE']));
+                // Budget proyek: PO boleh status apa saja KECUALI PAID/CLOSING/CLOSED
+                // (proyek yang sudah selesai dibayar/ditutup tidak lagi bisa dipakai
+                // mengajukan CR baru), DAN sesuai access group PO user.
+                if ($projectPrivileged) {
+                    $q->whereHas('project', fn ($p) => $p->whereNotIn('status', ['PAID', 'CLOSING', 'CLOSED']));
+                } elseif ($projectIds->isNotEmpty()) {
+                    $q->whereHas('project', fn ($p) =>
+                        $p->whereNotIn('status', ['PAID', 'CLOSING', 'CLOSED'])->whereIn('id', $projectIds)
+                    );
+                }
 
-                // Budget overhead: privileged lihat semua; lainnya per access group
+                // Budget overhead (dan tipe cost center non-payroll lain — Tax/Asset/
+                // Liability/Capital/Adjustment): privileged lihat semua; lainnya per access group
                 if ($overheadPrivileged) {
                     $q->orWhereHas('costCenter', fn ($c) =>
-                        $c->where('type', 'OVERHEAD')->where('status', 'ACTIVE')
+                        $c->whereIn('type', CostCenter::OVERHEAD_LIKE_TYPES)->where('status', 'ACTIVE')
                     );
                 } elseif ($overheadCcIds->isNotEmpty()) {
                     $q->orWhereHas('costCenter', fn ($c) =>
-                        $c->where('type', 'OVERHEAD')->where('status', 'ACTIVE')
+                        $c->whereIn('type', CostCenter::OVERHEAD_LIKE_TYPES)->where('status', 'ACTIVE')
                           ->whereIn('id', $overheadCcIds)
                     );
                 }
@@ -311,9 +435,10 @@ class BudgetRequestController extends Controller
                     );
                 }
             })
-            ->with(['project.details.cluster', 'costCenter'])
-            ->orderBy('code')
-            ->get();
+            ->with(['project.customer', 'project.details.cluster', 'costCenter'])
+            ->get()
+            ->sortBy(fn ($bp) => strtoupper(($bp->project?->customer?->name ?? $bp->costCenter?->name ?? '') . '|' . $bp->description))
+            ->values();
     }
 
     /** Account sesuai jenis sumber dana */
@@ -338,18 +463,35 @@ class BudgetRequestController extends Controller
 
     private function isNOB(BudgetPlan $bp, int $amount, ?int $excludeCrId = null): bool
     {
+        /*
+        | Daftar statusnya diambil dari BudgetConsumption::COMMITTED, bukan
+        | ditulis ulang di sini. Versi lama menuliskannya langsung dan lupa
+        | 'CHECKED' - CR yang sudah lolos Head tapi belum diverifikasi Finance
+        | tidak terhitung memakan anggaran, sehingga sisa budget yang dilaporkan
+        | selalu lebih besar dari kenyataan dan peringatan NOB terlambat muncul.
+        */
         $used = BudgetRequest::where('budget_plan_id', $bp->id)
-            ->whereIn('status', ['SUBMITTED','APPROVED','VERIFIED','QUEUED','PAID','REALIZED','CLOSED'])
+            ->whereIn('status', BudgetConsumption::COMMITTED)
             ->when($excludeCrId, fn($q) => $q->where('id', '!=', $excludeCrId))
             ->sum('amount');
 
         return ($used + $amount) > ($bp->amount ?? 0);
     }
 
-    private function applyNOBLabel(string $description, bool $isNob): string
+    /**
+     * Berapa rupiah pengajuan ini melampaui sisa anggaran (0 bila tidak).
+     *
+     * Disimpan sebagai angka, bukan disisipkan ke teks: angka bisa dijumlahkan
+     * pada laporan, teks tidak.
+     */
+    private function nobOverage(BudgetPlan $bp, int $amount, ?int $excludeCrId = null): int
     {
-        $clean = preg_replace('/^\[NOB\]\s*/i', '', $description);
-        return $isNob ? '[NOB] ' . $clean : $clean;
+        $used = BudgetRequest::where('budget_plan_id', $bp->id)
+            ->whereIn('status', BudgetConsumption::COMMITTED)
+            ->when($excludeCrId, fn ($q) => $q->where('id', '!=', $excludeCrId))
+            ->sum('amount');
+
+        return (int) max(0, ($used + $amount) - ($bp->amount ?? 0));
     }
 
     /*
@@ -358,50 +500,93 @@ class BudgetRequestController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function index()
+    public function index(Request $request)
     {
-        $user = Auth::user();
-        $role = $user->role->name ?? '';
+        // Default rentang tanggal: awal bulan berjalan s/d hari ini.
+        $dateFrom = $request->filled('date_from') ? $request->date_from : now()->startOfMonth()->format('Y-m-d');
+        $dateTo   = $request->filled('date_to')   ? $request->date_to   : now()->format('Y-m-d');
 
         $query = BudgetRequest::with([
-            'type', 'cluster', 'budgetPlan.project',
-            'applicant',
-        ]);
+            'type', 'cluster', 'budgetPlan.project.manager', 'budgetPlan.costCenter',
+            'applicant', 'details', 'beneficiary', 'realizations',
+        ])
+            /*
+            | Rentang tanggal memakai perbandingan langsung pada kolom, bukan
+            | whereDate(). whereDate() membungkus kolom dengan DATE(created_at),
+            | dan fungsi di sisi kolom membuat MySQL tidak bisa memakai indeks
+            | apa pun — jadi penyaringan tanggal selalu memindai seluruh tabel,
+            | tepat pada tabel yang paling cepat tumbuh.
+            */
+            ->where('created_at', '>=', $dateFrom . ' 00:00:00')
+            ->where('created_at', '<=', $dateTo . ' 23:59:59');
 
         $this->scopeByRole($query);
 
-        $budgetRequests = $query->latest()->get();
+        // Ringkasan per status dihitung lewat satu query agregat (bukan dari
+        // koleksi baris) supaya angka stepper tetap benar walau daftar baris
+        // dibatasi.
+        $statusCounts = (clone $query)
+            ->select('status', DB::raw('COUNT(*) as c'))
+            ->groupBy('status')
+            ->pluck('c', 'status');
+
+        $total = (int) $statusCounts->sum();
+
+        // Batas render baris: tabel Cost Request diproses DataTables di sisi
+        // browser (semua baris jadi node DOM). Rentang tanggal lebar / backdate
+        // bisa menghasilkan ribuan baris -> browser freeze, tombol filter &
+        // search gagal init. Dibatasi ke N terbaru; untuk data lengkap pakai
+        // Export Excel atau persempit rentang tanggal.
+        $maxRows   = 1000;
+        $truncated = $total > $maxRows;
+
+        $budgetRequests = $query->latest()->limit($maxRows)->get();
+
+        // Worklist approval per Budget Plan (dulu section "Review Cost Request"
+        // di halaman ini) sudah dipindah ke halaman Todo List Request —
+        // lihat TodoListController::index().
 
         $summary = [
-            'total'     => $budgetRequests->count(),
-            'draft'     => $budgetRequests->where('status', 'DRAFT')->count(),
-            'submitted' => $budgetRequests->where('status', 'SUBMITTED')->count(),
-            'approved'  => $budgetRequests->where('status', 'APPROVED')->count(),
-            'verified'  => $budgetRequests->where('status', 'VERIFIED')->count(),
-            'paid'      => $budgetRequests->where('status', 'PAID')->count(),
-            'realized'  => $budgetRequests->where('status', 'REALIZED')->count(),
-            'closed'    => $budgetRequests->where('status', 'CLOSED')->count(),
+            'total'     => $total,
+            'draft'     => (int) ($statusCounts['DRAFT'] ?? 0),
+            'submitted' => (int) ($statusCounts['SUBMITTED'] ?? 0),
+            'checked'   => (int) ($statusCounts['CHECKED'] ?? 0),
+            'verified'  => (int) ($statusCounts['VERIFIED'] ?? 0),
+            'approved'  => (int) ($statusCounts['APPROVED'] ?? 0),
+            'queued'    => (int) ($statusCounts['QUEUED'] ?? 0),
+            'paid'      => (int) ($statusCounts['PAID'] ?? 0),
+            'realized'  => (int) ($statusCounts['REALIZED'] ?? 0),
+            'settle_checked'  => (int) ($statusCounts['SETTLE_CHECKED'] ?? 0),
+            'settle_verified' => (int) ($statusCounts['SETTLE_VERIFIED'] ?? 0),
+            'closed'    => (int) ($statusCounts['CLOSED'] ?? 0),
+            'rejected'  => (int) ($statusCounts['REJECTED'] ?? 0),
+            'cancelled' => (int) ($statusCounts['CANCELLED'] ?? 0),
         ];
 
-        return view('budget-request.index', compact('budgetRequests', 'summary'));
+        return view('budget-request.index', compact(
+            'budgetRequests', 'summary', 'dateFrom', 'dateTo', 'truncated', 'maxRows', 'total'
+        ));
     }
 
     /*
     |--------------------------------------------------------------------------
     | CREATE
     |--------------------------------------------------------------------------
+    | budgetPlanLabel(), buildReviewCoaBreakdown(), buildCrNobMap() dipindah ke
+    | trait BuildsCrWorklist (dipakai juga oleh TodoListController).
+    |--------------------------------------------------------------------------
     */
 
     public function create()
     {
-        $types = RequestType::orderBy('name')->get();
+        $types = RequestType::whereNotNull('name')->where('name', '!=', '')->orderBy('name')->get();
 
         // Budget plan ACTIVE: budget proyek (PO WAITING_PO/ACTIVE) + budget
         // cost center sesuai hak role. Tidak dibatasi access group.
         $budgetPlans = $this->getAvailableBudgetPlans();
 
         $clusters      = Cluster::where('status', 'ACTIVE')->orderBy('name')->get();
-        $beneficiaries = Beneficiary::orderBy('complete_name')->get();
+        $beneficiaries = Beneficiary::where('status', 'ACTIVE')->orderBy('complete_name')->get();
 
         // Account dikelompokkan per jenis sumber; dropdown di-swap oleh JS
         $accountsBySource = [
@@ -436,13 +621,35 @@ class BudgetRequestController extends Controller
             'cluster_id'            => ($needCluster ? 'required' : 'nullable') . '|exists:clusters,id',
             'beneficiary_id'        => 'required|exists:beneficiaries,id',
             'description'           => 'required|string|max:500',
-            'email'                 => 'nullable|string|max:500',
+            'email'                 => ['nullable', 'string', 'max:500', function ($attribute, $value, $fail) {
+                if (!$value) {
+                    return;
+                }
+                if (preg_match('/\s/', $value)) {
+                    $fail('Email tidak boleh mengandung spasi. Gunakan format email@domain.com,email2@domain.com.');
+                    return;
+                }
+                foreach (explode(',', $value) as $address) {
+                    if (!filter_var($address, FILTER_VALIDATE_EMAIL)) {
+                        $fail('Format email tidak valid: "' . $address . '".');
+                        return;
+                    }
+                }
+            }],
             'notes'                 => 'nullable|string',
             'details'               => 'required|array|min:1',
             'details.*.budget_detail_id' => 'required|exists:budget_plan_details,id',
+            'details.*.notes'            => 'required|string',
             'details.*.amount'           => 'required',
             'details.*.qty'              => 'required|integer|min:1',
+            'details.*.attachments'      => 'nullable|array',
+            'details.*.attachments.*'    => 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
         ]);
+
+        if ($this->typeRequiresAttachment((int) $request->type_id) && ! $this->hasAnyAttachment($request)) {
+            return back()->withInput()
+                ->with('error', 'Tipe request ini wajib punya minimal 1 lampiran — di kolom "Lampiran Item" atau di Lampiran Tambahan.');
+        }
 
         $budgetPlan = BudgetPlan::with(['project', 'costCenter'])->findOrFail($request->budget_plan_id);
 
@@ -469,9 +676,6 @@ class BudgetRequestController extends Controller
             }
         }
 
-        // Cluster hanya ada pada CR budget proyek
-        $cluster = $request->cluster_id ? Cluster::find($request->cluster_id) : null;
-
         // Hitung total dari details
         $totalAmount = 0;
         foreach ((array) $request->input('details', []) as $row) {
@@ -479,34 +683,41 @@ class BudgetRequestController extends Controller
             $totalAmount += $amt * (int) ($row['qty'] ?? 1);
         }
 
-        $isNob = $this->isNOB($budgetPlan, $totalAmount);
-        $description = $this->applyNOBLabel(
-            strtoupper(trim($request->description)),
-            $isNob
-        );
+        /*
+        | Status NOB disimpan sebagai kolom (is_nob + nob_amount), bukan
+        | ditempelkan sebagai awalan '[NOB] ' pada deskripsi. Deskripsi adalah
+        | kalimat pengguna; menaruh status anggaran di dalamnya membuat status
+        | itu bisa diketik sendiri, terhapus saat diedit, dan harus diurai
+        | ulang di setiap tempat yang menampilkannya.
+        */
+        $isNob     = $this->isNOB($budgetPlan, $totalAmount);
+        $nobAmount = $this->nobOverage($budgetPlan, $totalAmount);
+        $description = strtoupper(trim($request->description));
 
         /*
-        | Kode CR: CR-{MM}{YY}{sumber(4)}{cluster(4)}{seq(4)}
-        |   - Budget proyek     -> slot sumber = kode PO,          cluster = kode cluster
-        |   - Budget cost center -> slot sumber = angka kode CC,   cluster = 0000
+        | Kode CR: CR-{MM}{YY}{sumber(4)}{seq(4)}
+        |   - Budget proyek      -> slot sumber = kode PO
+        |   - Budget cost center -> slot sumber = angka kode CC
+        | Slot cluster 4 digit sudah dihapus dari format (lihat
+        | BudgetRequest::generateCode()); cluster tetap tersimpan di kolomnya
+        | sendiri, hanya tidak lagi ikut menyusun nomor.
         | Keunikan tetap dijamin oleh counter + pengecekan exists di generateCode().
         */
         if ($budgetPlan->isCostCenterBudget()) {
-            $sourceCode = preg_replace('/\D/', '', $budgetPlan->costCenter->code ?? '');
+            $sourceCode = preg_replace('/\D/', '', $budgetPlan->costCenter?->code ?? '');
             $sourceCode = $sourceCode !== '' ? $sourceCode : '0000';
         } else {
-            $sourceCode = $budgetPlan->project->code ?? '0000';
+            $sourceCode = $budgetPlan->project?->code ?? '0000';
         }
 
-        $code = BudgetRequest::generateCode(
-            $sourceCode,
-            $cluster->code ?? '0000'
-        );
+        $code = BudgetRequest::generateCode($sourceCode);
 
-        DB::transaction(function () use ($request, $code, $description) {
+        DB::transaction(function () use ($request, $code, $description, $isNob, $nobAmount) {
             $cr = BudgetRequest::create([
                 'code'           => $code,
                 'description'    => $description,
+                'is_nob'         => $isNob,
+                'nob_amount'     => $nobAmount,
                 'amount'         => 0,
                 'notes'          => $request->notes,
                 'email'          => $request->email,
@@ -518,7 +729,8 @@ class BudgetRequestController extends Controller
                 'status'         => 'DRAFT',
             ]);
 
-            $this->syncDetails($cr, $request);
+            $detailMap = $this->syncDetails($cr, $request);
+            $this->storeDetailAttachments($cr, $request, $detailMap);
             $this->storeAttachments($cr, $request);
             $cr->addLog('DRAFT', 'DRAFT', 'created');
         });
@@ -533,17 +745,37 @@ class BudgetRequestController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function showJson($id)
+    public function showJson(Request $request, $id)
     {
+        /*
+         | Rincian Budget Plan (kunci 'budget') adalah bagian TERMAHAL di
+         | endpoint ini: per baris anggaran ia memanggil usedAmount(),
+         | remainingAmount(), plus satu query costRequestDetails() beserta
+         | eager-load-nya. Modal detail Cost Request tidak lagi punya tab
+         | Budget, jadi ongkos itu hanya dibayar oleh pemanggil yang benar-
+         | benar menampilkannya (daily-transaction/show) lewat ?with_budget=1.
+         |
+         | Penandaan NOB TIDAK bergantung pada blok ini — is_nob adalah kolom
+         | tersimpan (di header CR maupun tiap baris rincian), jadi badge NOB
+         | tetap muncul walau payload ini kosong.
+         */
+        $denganBudget = $request->boolean('with_budget');
+
         $cr = BudgetRequest::with([
-            'type', 'cluster', 'budgetPlan.project',
+            'type', 'cluster', 'budgetPlan.project.customer', 'budgetPlan.costCenter',
+            'budgetPlan.details.account',
             'applicant', 'beneficiary.bank',
-            'details.account',
+            'details.account', 'details.budgetDetail', 'details.attachments',
             'attachments',
-            'realizations.account', 'realizations.requestDetail',
+            'realizations.account', 'realizations.requestDetail', 'realizations.attachments',
             'realizationAttachments',
+            'secondPayments.dailyTransactionItems.dailyTransaction',
             'statusLogs',
         ])->findOrFail($id);
+
+        abort_unless($this->canViewCr($cr), 403);
+
+        $bp = $cr->budgetPlan;
 
         return response()->json([
             'id'               => $cr->id,
@@ -554,65 +786,150 @@ class BudgetRequestController extends Controller
             'notes'            => $cr->notes,
             'email'            => $cr->email,
             'status'           => $cr->status,
+            'status_label'     => $cr->status_label,
             'status_color'     => $cr->status_color,
-            'is_nob'           => str_starts_with($cr->description, '[NOB]'),
-            'type'             => $cr->type->name ?? '-',
-            'cluster'          => $cr->cluster->name ?? '-',
+            'is_cash_advance'  => $cr->isCashAdvance(),
+            // Apakah user yang login boleh takeout/restore item pada tahap CR ini.
+            'can_moderate_items' => $cr->canModerateItems(Auth::user()),
+            'is_nob'           => (bool) $cr->is_nob,
+            'type'             => $cr->type?->name ?? '-',
+            'cluster'          => $cr->cluster?->name ?? '-',
             'budget_plan'      => $cr->budgetPlan
                 ? '[' . $cr->budgetPlan->code . '] ' . $cr->budgetPlan->description
                 : '-',
-            'project'          => $cr->budgetPlan->project->name ?? '-',
-            'applicant'        => $cr->applicant->name ?? '-',
-            'beneficiary'      => $cr->beneficiary->complete_name ?? '-',
-            'bank'             => $cr->beneficiary->bank->name ?? '-',
-            'account_number'   => $cr->beneficiary->account_number ?? '-',
+            'budget_plan_id'   => $cr->budget_plan_id,
+            'code_reference'   => $bp
+                ? ($bp->isProjectBudget() ? ($bp->project?->code ?? '-') : ($bp->costCenter?->code ?? '-'))
+                : '-',
+            'project'          => $cr->budgetPlan?->project?->name ?? '-',
+            'applicant'        => $cr->applicant?->name ?? '-',
+            'beneficiary'      => $cr->beneficiary?->complete_name ?? '-',
+            'bank'             => $cr->beneficiary?->bank?->name ?? '-',
+            'account_number'   => $cr->beneficiary?->account_number ?? '-',
+            // P-01: refund hanya dihitung setelah settlement (lihat
+            // BudgetRequest::refundAmount()).
+            'refund'           => $cr->refundAmount(),
+            'refund_formatted' => $cr->refund_formatted,
+            /*
+             | Settlement bisa MELEBIHI pengajuan. Refund tidak pernah negatif
+             | (lihat BudgetRequest::refundAmount()), jadi kalau hanya refund
+             | yang dikirim, kelebihan itu tampil sebagai "Refund 0" — benar
+             | secara angka, tapi menyembunyikan bahwa perusahaan justru masih
+             | punya kewajiban bayar. Selisihnya dikirim terpisah supaya layar
+             | detail bisa menamainya dengan benar: Second Payment.
+             */
+            'settlement_overage'           => max(0, $cr->settlement_overage),
+            'settlement_overage_formatted' => number_format(max(0, $cr->settlement_overage), 0, ',', '.'),
+            'payment_notes'    => $cr->statusLogs->firstWhere('action_type', 'paid')?->notes ?? null,
             'created_at'       => $cr->created_at->format('d M Y H:i'),
             'submitted_at'     => $cr->submitted_at?->format('d M Y H:i'),
             'approved_at'      => $cr->approved_at?->format('d M Y H:i'),
             'paid_at'          => $cr->paid_at?->format('d M Y H:i'),
 
-            'details' => $cr->details->map(fn($d) => [
-                'id'               => $d->id,
-                'description'      => $d->description,
-                'account'          => $d->account->name ?? '-',
-                'amount'           => $d->amount,
-                'amount_formatted' => 'Rp ' . number_format($d->amount, 0, ',', '.'),
-                'qty'              => $d->qty,
-                'total'            => $d->total,
-                'total_formatted'  => 'Rp ' . number_format($d->total, 0, ',', '.'),
-                'notes'            => $d->notes,
-            ]),
+            'details' => $cr->details->map(function ($d) {
+                $bd        = $d->budgetDetail;
+                $budget    = $bd->total ?? 0;
+                $used      = $bd?->usedAmount() ?? 0;
+                $remaining = $bd?->remainingAmount() ?? 0;
+
+                return [
+                    'id'                  => $d->id,
+                    'budget_detail_id'    => $d->budget_detail_id,
+                    'description'         => $d->description,
+                    'account'             => $d->account?->name ?? '-',
+                    'amount'              => $d->amount,
+                    'amount_formatted'    => number_format($d->amount, 0, ',', '.'),
+                    'qty'                 => $d->qty,
+                    'total'               => $d->total,
+                    'total_formatted'     => number_format($d->total, 0, ',', '.'),
+                    'notes'               => $d->notes,
+                    // Status NOB per baris ikut dikirim sebagai data, supaya
+                    // JavaScript tidak perlu mengendus teks catatan.
+                    'is_nob'              => (bool) $d->is_nob,
+                    'nob_amount'          => (int) $d->nob_amount,
+                    'nob_amount_formatted' => number_format($d->nob_amount, 0, ',', '.'),
+                    'budget_formatted'    => number_format($budget, 0, ',', '.'),
+                    'used_formatted'      => number_format($used, 0, ',', '.'),
+                    'remaining_formatted' => number_format($remaining, 0, ',', '.'),
+                    'status'              => $d->status ?? 'INCLUDED',
+                    'is_takeout'          => $d->isTakenOut(),
+                    'takeout_by_name'     => $d->takeout_by_name,
+                    'takeout_stage'       => $d->takeout_stage,
+                    'takeout_stage_label' => $d->isTakenOut() ? $d->takeout_stage_label : null,
+                    'takeout_notes'       => $d->takeout_notes,
+                    'takeout_at'          => $d->takeout_at?->format('d M Y H:i'),
+                    'attachments'         => $d->attachments->map(fn ($a) => [
+                        'id'             => $a->id,
+                        'original_name'  => $a->original_name,
+                        'path'           => $a->path,
+                        'is_image'       => $a->isImage(),
+                        'is_pdf'         => $a->isPdf(),
+                        'size_formatted' => $a->size_formatted,
+                    ])->values(),
+                ];
+            }),
 
             'realizations' => $cr->realizations->map(fn($r) => [
                 'request_detail_id' => $r->request_detail_id,
-                'cr_item'           => $r->requestDetail->description ?? ($r->description ?? '-'),
-                'total_cr'          => $r->requestDetail->total ?? 0,
-                'total_cr_formatted'=> 'Rp ' . number_format($r->requestDetail->total ?? 0, 0, ',', '.'),
+                'cr_item'           => $r->requestDetail?->description ?? ($r->description ?? '-'),
+                'total_cr'          => $r->requestDetail?->total ?? 0,
+                'total_cr_formatted'=> number_format($r->requestDetail?->total ?? 0, 0, ',', '.'),
                 'actual'            => $r->amount,
-                'actual_formatted'  => 'Rp ' . number_format($r->amount, 0, ',', '.'),
+                'actual_formatted'  => number_format($r->amount, 0, ',', '.'),
                 'notes'             => $r->notes,
                 // Kolom lama dipertahankan agar kompatibel bila ada kode lain yang masih memakainya
                 'description'       => $r->description,
-                'account'           => $r->account->name ?? '-',
+                'account'           => $r->account?->name ?? '-',
                 'amount'            => $r->amount,
-                'amount_formatted'  => 'Rp ' . number_format($r->amount, 0, ',', '.'),
+                'amount_formatted'  => number_format($r->amount, 0, ',', '.'),
                 'qty'               => $r->qty,
                 'total'             => $r->total,
-                'total_formatted'   => 'Rp ' . number_format($r->total, 0, ',', '.'),
+                'total_formatted'   => number_format($r->total, 0, ',', '.'),
+                'attachments'       => $r->attachments->map(fn ($a) => [
+                    'id'             => $a->id,
+                    'original_name'  => $a->original_name,
+                    'path'           => $a->path,
+                    'is_image'       => $a->isImage(),
+                    'is_pdf'         => $a->isPdf(),
+                    'size_formatted' => $a->size_formatted,
+                ])->values(),
             ]),
             'total_realization'           => $cr->total_realization,
             'total_realization_formatted' => $cr->total_realization_formatted,
+
+            // batch_code: Second Payment dibayar lewat batch Treasury, jadi
+            // statusnya tidak cukup PENDING/PAID — pengguna perlu tahu apakah
+            // ia sudah diambil Treasury atau masih menunggu dimasukkan batch.
+            'second_payments' => $cr->secondPayments->map(function ($p) {
+                $activeItem = $p->dailyTransactionItems
+                    ->first(fn ($i) => $i->status === 'INCLUDED'
+                        && in_array($i->dailyTransaction?->status, ['PENDING_APPROVER', 'DONE', 'PAID']));
+
+                return [
+                    'id'              => $p->id,
+                    'amount'          => $p->amount,
+                    'amount_formatted'=> $p->amount_formatted,
+                    'status'          => $p->status,
+                    'paid_at'         => $p->paid_at?->format('d M Y H:i'),
+                    'batch_id'        => $activeItem?->dailyTransaction?->id,
+                    'batch_code'      => $activeItem?->dailyTransaction?->code,
+                ];
+            })->values(),
 
             'realization_attachments' => $cr->realizationAttachments->map(fn($a) => [
                 'original_name' => $a->original_name,
                 'path'          => $a->path,
                 'size_formatted'=> $a->size_formatted,
+                'is_image'      => $a->isImage(),
+                'is_pdf'        => $a->isPdf(),
             ]),
 
             'attachments_count' => $cr->attachments->count(),
             'attachments' => $cr->attachments->map(fn($a) => [
                 'original_name'  => $a->original_name,
                 'path'           => $a->path,
+                'is_image'       => $a->isImage(),
+                'is_pdf'         => $a->isPdf(),
                 'size_formatted' => $a->size_formatted ?? null,
             ])->values(),
 
@@ -621,11 +938,75 @@ class BudgetRequestController extends Controller
                 'action_color' => $l->action_color,
                 'status_from'  => $l->status_from,
                 'status_to'    => $l->status_to,
+                'status_from_label' => \App\Models\BudgetRequest::statusLabelFor($l->status_from),
+                'status_to_label'   => \App\Models\BudgetRequest::statusLabelFor($l->status_to),
                 'actor'        => $l->actor_name ?? 'System',
+                'user_id'      => $l->acted_by,
                 'role'         => $l->actor_role,
                 'notes'        => $l->notes,
                 'date'         => $l->created_at->format('d M Y H:i'),
             ]),
+
+            // Ringkasan Budget Plan yang terhubung — dipakai tab "Budget" pada modal detail CR,
+            // struktur mengikuti BudgetPlanController::showJson() supaya konsisten.
+            'budget' => ($bp && $denganBudget) ? [
+                'id'               => $bp->id,
+                'code'             => $bp->code,
+                'code_reference'   => $bp->isProjectBudget()
+                    ? ($bp->project?->code ?? '-')
+                    : ($bp->costCenter?->code ?? '-'),
+                'description'      => $bp->description,
+                'status'           => $bp->status,
+                'status_color'     => $bp->status_color,
+                'amount_formatted' => $bp->amount_formatted,
+                'used_amount'      => $bp->usedAmount(),
+                'used_amount_formatted' => number_format($bp->usedAmount(), 0, ',', '.'),
+                'usage_percentage' => $bp->amount > 0
+                    ? round(($bp->usedAmount() / $bp->amount) * 100, 1)
+                    : 0,
+                'details' => $bp->details->map(function ($d) {
+                    $used      = $d->usedAmount();
+                    $remaining = $d->remainingAmount();
+
+                    $crDetails = collect();
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('request_detail', 'budget_detail_id')) {
+                        $crDetails = $d->costRequestDetails()
+                            ->whereHas('budgetRequest', fn ($q) => $q->whereIn('status', ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED']))
+                            ->with(['budgetRequest:id,code,description,beneficiary_id,created_at', 'budgetRequest.beneficiary:id,nickname', 'realization'])
+                            ->get()
+                            ->map(function ($rd) {
+                                $amount = (int) ($rd->realization?->total ?? $rd->total);
+                                return [
+                                    'cr_id'                => $rd->budgetRequest?->id ?? null,
+                                    'cr_date_formatted'    => $rd->budgetRequest?->created_at?->format('d M Y') ?? '-',
+                                    'beneficiary'          => $rd->budgetRequest?->beneficiary?->nickname ?? '-',
+                                    'notes'                => $rd->notes ?: '-',
+                                    'unit_price_formatted' => number_format((int) $rd->amount, 0, ',', '.'),
+                                    'qty'                  => (float) $rd->qty,
+                                    'amount'               => $amount,
+                                    'amount_formatted'     => number_format($amount, 0, ',', '.'),
+                                ];
+                            })
+                            ->values();
+                    }
+
+                    return [
+                        'id'                  => $d->id,
+                        'account'             => $d->account?->name ?? '-',
+                        'deskripsi'           => $d->deskripsi,
+                        'amount_formatted'    => number_format($d->amount, 0, ',', '.'),
+                        'qty'                 => (float) $d->qty,
+                        'unit'                => $d->unit,
+                        'total'               => $d->total,
+                        'total_formatted'     => number_format($d->total, 0, ',', '.'),
+                        'used'                => $used,
+                        'used_formatted'      => number_format($used, 0, ',', '.'),
+                        'remaining'           => $remaining,
+                        'remaining_formatted' => number_format($remaining, 0, ',', '.'),
+                        'cr_details'          => $crDetails,
+                    ];
+                }),
+            ] : null,
         ]);
     }
 
@@ -637,18 +1018,17 @@ class BudgetRequestController extends Controller
 
     public function edit($id)
     {
-        $cr = BudgetRequest::with(['details.account', 'attachments', 'budgetPlan.costCenter'])
-            ->findOrFail($id);
+        $cr = $this->findVisibleCr($id, ['details.account', 'details.attachments', 'attachments', 'budgetPlan.costCenter']);
 
         if (!$cr->isEditable()) {
             return redirect('/budget-request')
                 ->with('error', 'Cost Request hanya dapat diedit saat berstatus DRAFT.');
         }
 
-        $types         = RequestType::orderBy('name')->get();
+        $types         = RequestType::whereNotNull('name')->where('name', '!=', '')->orderBy('name')->get();
         $budgetPlans   = $this->getAvailableBudgetPlans();
         $clusters      = Cluster::where('status', 'ACTIVE')->orderBy('name')->get();
-        $beneficiaries = Beneficiary::orderBy('complete_name')->get();
+        $beneficiaries = Beneficiary::where('status', 'ACTIVE')->orderBy('complete_name')->get();
 
         $accountsBySource = [
             'PROJECT'  => $this->getAccountsFor('PROJECT'),
@@ -657,7 +1037,7 @@ class BudgetRequestController extends Controller
         ];
 
         // Account mengikuti sumber dana budget plan CR ini
-        $accounts = $this->getAccountsFor($cr->budgetPlan->source_type ?? 'PROJECT');
+        $accounts = $this->getAccountsFor($cr->budgetPlan?->source_type ?? 'PROJECT');
 
         return view('budget-request.edit', compact(
             'cr', 'types', 'budgetPlans', 'clusters', 'beneficiaries', 'accounts', 'accountsBySource'
@@ -672,7 +1052,7 @@ class BudgetRequestController extends Controller
 
     public function update(Request $request, $id)
     {
-        $cr = BudgetRequest::findOrFail($id);
+        $cr = $this->findVisibleCr($id);
 
         if (!$cr->isEditable()) {
             return redirect('/budget-request')
@@ -689,14 +1069,38 @@ class BudgetRequestController extends Controller
             'cluster_id'            => ($needCluster ? 'required' : 'nullable') . '|exists:clusters,id',
             'beneficiary_id'        => 'required|exists:beneficiaries,id',
             'description'           => 'required|string|max:500',
-            'email'                 => 'nullable|string|max:500',
+            'email'                 => ['nullable', 'string', 'max:500', function ($attribute, $value, $fail) {
+                if (!$value) {
+                    return;
+                }
+                if (preg_match('/\s/', $value)) {
+                    $fail('Email tidak boleh mengandung spasi. Gunakan format email@domain.com,email2@domain.com.');
+                    return;
+                }
+                foreach (explode(',', $value) as $address) {
+                    if (!filter_var($address, FILTER_VALIDATE_EMAIL)) {
+                        $fail('Format email tidak valid: "' . $address . '".');
+                        return;
+                    }
+                }
+            }],
             'notes'                 => 'nullable|string',
             'details'               => 'required|array|min:1',
+            'details.*.id'               => 'nullable|integer',
             'details.*.budget_detail_id' => 'required|exists:budget_plan_details,id',
+            'details.*.notes'            => 'required|string',
             'details.*.amount'           => 'required',
             'details.*.qty'              => 'required|integer|min:1',
-            'delete_attachments'    => 'nullable|array',
+            'details.*.attachments'      => 'nullable|array',
+            'details.*.attachments.*'    => 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
+            'delete_attachments'        => 'nullable|array',
+            'delete_detail_attachments' => 'nullable|array',
         ]);
+
+        if ($this->typeRequiresAttachment((int) $request->type_id) && ! $this->hasAnyAttachment($request, $cr)) {
+            return back()->withInput()
+                ->with('error', 'Tipe request ini wajib punya minimal 1 lampiran — di kolom "Lampiran Item" atau di Lampiran Tambahan.');
+        }
 
         $budgetPlan = BudgetPlan::findOrFail($request->budget_plan_id);
 
@@ -711,15 +1115,15 @@ class BudgetRequestController extends Controller
             $totalAmount += $amt * (int) ($row['qty'] ?? 1);
         }
 
-        $isNob = $this->isNOB($budgetPlan, $totalAmount, $cr->id);
-        $description = $this->applyNOBLabel(
-            strtoupper(trim($request->description)),
-            $isNob
-        );
+        $isNob     = $this->isNOB($budgetPlan, $totalAmount, $cr->id);
+        $nobAmount = $this->nobOverage($budgetPlan, $totalAmount, $cr->id);
+        $description = strtoupper(trim($request->description));
 
-        DB::transaction(function () use ($request, $cr, $description) {
+        DB::transaction(function () use ($request, $cr, $description, $isNob, $nobAmount) {
             $cr->update([
                 'description'    => $description,
+                'is_nob'         => $isNob,
+                'nob_amount'     => $nobAmount,
                 'notes'          => $request->notes,
                 'email'          => $request->email,
                 'beneficiary_id' => $request->beneficiary_id,
@@ -728,14 +1132,15 @@ class BudgetRequestController extends Controller
                 'budget_plan_id' => $request->budget_plan_id,
             ]);
 
-            $this->syncDetails($cr, $request);
+            $detailMap = $this->syncDetails($cr, $request);
+            $this->storeDetailAttachments($cr, $request, $detailMap);
 
             $deleteIds = (array) $request->input('delete_attachments', []);
             if (!empty($deleteIds)) {
                 $toDelete = RequestAttachment::where('budget_request_id', $cr->id)
                     ->whereIn('id', $deleteIds)->get();
                 foreach ($toDelete as $att) {
-                    Storage::disk('public')->delete($att->path);
+                    Storage::disk('secure')->delete($att->path);
                     $att->delete();
                 }
             }
@@ -755,54 +1160,99 @@ class BudgetRequestController extends Controller
 
     public function submit($id)
     {
-        $cr = BudgetRequest::findOrFail($id);
+        $cr = $this->findVisibleCr($id, ['type']);
 
         if ($cr->status !== 'DRAFT') {
             return back()->with('error', 'Hanya CR berstatus DRAFT yang dapat disubmit.');
         }
 
+        // Tipe yang wajib lampiran: minimal 1 lampiran (item ATAU tambahan) harus ada.
+        if ($this->typeRequiresAttachment($cr->type_id)) {
+            $hasItemAtt = \App\Models\RequestDetailAttachment::whereIn(
+                'request_detail_id', $cr->details()->pluck('id')
+            )->exists();
+
+            if (!$hasItemAtt && $cr->attachments()->count() === 0) {
+                return back()->with('error', 'Tidak bisa submit: tipe request ini wajib punya minimal 1 lampiran (Lampiran Item atau Lampiran Tambahan).');
+            }
+        }
+
         $cr->update(['status' => 'SUBMITTED', 'submitted_at' => now()]);
         $cr->addLog('DRAFT', 'SUBMITTED', 'submitted');
 
-        return redirect('/budget-request')
+        NotifyService::send(
+            $this->headUsers(),
+            'Cost Request menunggu approval',
+            Auth::user()->name . ' mengajukan Cost Request "' . $cr->description . '" (' . $cr->code . ') untuk disetujui.',
+            route('budget-request.index'),
+            'workflow'
+        );
+
+        return back()
             ->with('success', 'Cost Request berhasil diajukan ke Head.');
+    }
+
+    /** Role Head — penerima notifikasi saat CR disubmit manager. */
+    private function headUsers()
+    {
+        // Satu sumber daftar peran: App\Services\RoleDirectory.
+        return app(RoleDirectory::class)->heads();
+    }
+
+    /** Role Finance — penerima notifikasi saat CR disetujui Head / diajukan realisasi. */
+    private function financeUsers()
+    {
+        return app(RoleDirectory::class)->finance(withCostControl: true);
+    }
+
+    private function approverUsers()
+    {
+        return app(RoleDirectory::class)->approvers();
     }
 
     /*
     |--------------------------------------------------------------------------
-    | HEAD APPROVE — SUBMITTED → APPROVED
+    | HEAD APPROVE — SUBMITTED → CHECKED
     |--------------------------------------------------------------------------
     */
 
     public function headApprove(Request $request, $id)
     {
-        $cr = BudgetRequest::findOrFail($id);
-        if ($cr->status !== 'SUBMITTED') return back()->with('error', 'Status tidak valid.');
+        /** @var User $user */
+        $user = Auth::user();
+        if (!$user->hasRole(['superadmin', 'head'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk approval tahap ini.');
+        }
 
-        $cr->update(['status' => 'APPROVED']);
-        $cr->addLog('SUBMITTED', 'APPROVED', 'head_approved', $request->notes);
+        $this->findVisibleCr($id);
 
-        return redirect('/budget-request')
+        // Transisi terkunci: lihat Concerns\TransitionsStatus.
+        $cr = $this->transitionStatus(BudgetRequest::class, $id, 'SUBMITTED', ['status' => 'CHECKED'], function ($cr) use ($request) {
+            $cr->addLog('SUBMITTED', 'CHECKED', 'head_approved', $request->notes);
+        });
+
+        if (! $cr) return back()->with('error', 'Status sudah berubah — muat ulang halaman.');
+
+        NotifyService::send(
+            $this->financeUsers(),
+            'Cost Request menunggu verifikasi Finance',
+            $user->name . ' (Head) menyetujui Cost Request "' . $cr->description . '" (' . $cr->code . ').',
+            route('budget-request.index'),
+            'workflow'
+        );
+
+        if ($cr->applicant) {
+            NotifyService::send(
+                [$cr->applicant],
+                'Cost Request disetujui Head',
+                'Cost Request "' . $cr->description . '" (' . $cr->code . ') disetujui Head dan diteruskan ke Finance.',
+                route('budget-request.index'),
+                'workflow'
+            );
+        }
+
+        return back()
             ->with('success', 'CR disetujui Head dan diteruskan ke Finance.');
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | HEAD REVISE — SUBMITTED → DRAFT
-    |--------------------------------------------------------------------------
-    */
-
-    public function headRevise(Request $request, $id)
-    {
-        $request->validate(['notes' => 'required|string|max:500']);
-        $cr = BudgetRequest::findOrFail($id);
-        if ($cr->status !== 'SUBMITTED') return back()->with('error', 'Status tidak valid.');
-
-        $cr->update(['status' => 'DRAFT']);
-        $cr->addLog('SUBMITTED', 'DRAFT', 'head_revised', $request->notes);
-
-        return redirect('/budget-request')
-            ->with('success', 'CR dikembalikan ke Manager untuk direvisi.');
     }
 
     /*
@@ -813,69 +1263,471 @@ class BudgetRequestController extends Controller
 
     public function headReject(Request $request, $id)
     {
+        /** @var User $user */
+        $user = Auth::user();
+        if (!$user->hasRole(['superadmin', 'head'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk approval tahap ini.');
+        }
+
         $request->validate(['notes' => 'required|string|max:500']);
-        $cr = BudgetRequest::findOrFail($id);
-        if ($cr->status !== 'SUBMITTED') return back()->with('error', 'Status tidak valid.');
+        $this->findVisibleCr($id);
 
-        $cr->update(['status' => 'REJECTED']);
-        $cr->addLog('SUBMITTED', 'REJECTED', 'head_rejected', $request->notes);
+        // Transisi terkunci: lihat Concerns\TransitionsStatus.
+        $cr = $this->transitionStatus(BudgetRequest::class, $id, 'SUBMITTED', ['status' => 'REJECTED'], function ($cr) use ($request) {
+            $cr->addLog('SUBMITTED', 'REJECTED', 'head_rejected', $request->notes);
+        });
 
-        return redirect('/budget-request')->with('success', 'CR ditolak.');
+        if (! $cr) return back()->with('error', 'Status sudah berubah — muat ulang halaman.');
+
+        if ($cr->applicant) {
+            NotifyService::send(
+                [$cr->applicant],
+                'Cost Request ditolak',
+                'Cost Request "' . $cr->description . '" (' . $cr->code . ') ditolak Head: ' . $request->notes,
+                route('budget-request.index'),
+                'workflow'
+            );
+        }
+
+        return back()->with('success', 'CR ditolak. Menunggu keputusan Manager (Revise/Cancel).');
     }
 
     /*
     |--------------------------------------------------------------------------
-    | FINANCE VERIFY — APPROVED → VERIFIED
+    | FINANCE VERIFY — CHECKED → VERIFIED
     |--------------------------------------------------------------------------
     */
 
     public function financeVerify(Request $request, $id)
     {
-        $cr = BudgetRequest::findOrFail($id);
-        if ($cr->status !== 'APPROVED') return back()->with('error', 'Status tidak valid.');
+        /** @var User $user */
+        $user = Auth::user();
+        if (!$user->hasRole(['superadmin', 'finance', 'finance_manager', 'cost_control'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk approval tahap ini.');
+        }
 
-        $cr->update(['status' => 'VERIFIED', 'approved_at' => now()]);
-        $cr->addLog('APPROVED', 'VERIFIED', 'finance_approved', $request->notes);
+        $this->findVisibleCr($id);
 
-        return redirect('/budget-request')
-            ->with('success', 'CR diverifikasi Finance dan siap masuk batch.');
+        // Transisi terkunci: lihat Concerns\TransitionsStatus.
+        $cr = $this->transitionStatus(BudgetRequest::class, $id, 'CHECKED', ['status' => 'VERIFIED', 'approved_at' => now()], function ($cr) use ($request) {
+            $cr->addLog('CHECKED', 'VERIFIED', 'finance_approved', $request->notes);
+        });
+
+        if (! $cr) return back()->with('error', 'Status sudah berubah — muat ulang halaman.');
+
+        if ($cr->applicant) {
+            NotifyService::send(
+                [$cr->applicant],
+                'Cost Request diverifikasi Finance',
+                'Cost Request "' . $cr->description . '" (' . $cr->code . ') diverifikasi Finance dan menunggu approval CEO.',
+                route('budget-request.index'),
+                'workflow'
+            );
+        }
+
+        return back()
+            ->with('success', 'CR diverifikasi Finance dan menunggu approval CEO.');
     }
 
     /*
     |--------------------------------------------------------------------------
-    | FINANCE REVISE — APPROVED → DRAFT
-    |--------------------------------------------------------------------------
-    */
-
-    public function financeRevise(Request $request, $id)
-    {
-        $request->validate(['notes' => 'required|string|max:500']);
-        $cr = BudgetRequest::findOrFail($id);
-        if ($cr->status !== 'APPROVED') return back()->with('error', 'Status tidak valid.');
-
-        $cr->update(['status' => 'DRAFT']);
-        $cr->addLog('APPROVED', 'DRAFT', 'finance_revised', $request->notes);
-
-        return redirect('/budget-request')
-            ->with('success', 'CR dikembalikan ke Manager untuk direvisi.');
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | FINANCE REJECT — APPROVED → REJECTED
+    | FINANCE REJECT — CHECKED → REJECTED
     |--------------------------------------------------------------------------
     */
 
     public function financeReject(Request $request, $id)
     {
+        /** @var User $user */
+        $user = Auth::user();
+        if (!$user->hasRole(['superadmin', 'finance', 'finance_manager', 'cost_control'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk approval tahap ini.');
+        }
+
         $request->validate(['notes' => 'required|string|max:500']);
-        $cr = BudgetRequest::findOrFail($id);
-        if ($cr->status !== 'APPROVED') return back()->with('error', 'Status tidak valid.');
+        $this->findVisibleCr($id);
+
+        // Transisi terkunci: lihat Concerns\TransitionsStatus.
+        $cr = $this->transitionStatus(BudgetRequest::class, $id, 'CHECKED', ['status' => 'REJECTED'], function ($cr) use ($request) {
+            $cr->addLog('CHECKED', 'REJECTED', 'finance_rejected', $request->notes);
+        });
+
+        if (! $cr) return back()->with('error', 'Status sudah berubah — muat ulang halaman.');
+
+        if ($cr->applicant) {
+            NotifyService::send(
+                [$cr->applicant],
+                'Cost Request ditolak',
+                'Cost Request "' . $cr->description . '" (' . $cr->code . ') ditolak Finance: ' . $request->notes,
+                route('budget-request.index'),
+                'workflow'
+            );
+        }
+
+        return back()->with('success', 'CR ditolak. Menunggu keputusan Manager (Revise/Cancel).');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | CEO/APPROVER — VERIFIED → APPROVED (individual, terpisah dari batching)
+    |--------------------------------------------------------------------------
+    */
+
+    public function ceoApprove(Request $request, $id)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        if (!$user->hasRole(['superadmin', 'approver'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk approval tahap ini.');
+        }
+
+        $this->findVisibleCr($id);
+
+        // Transisi terkunci: lihat Concerns\TransitionsStatus.
+        $cr = $this->transitionStatus(BudgetRequest::class, $id, 'VERIFIED', ['status' => 'APPROVED'], function ($cr) use ($request) {
+            $cr->addLog('VERIFIED', 'APPROVED', 'cr_approved', $request->notes);
+        });
+
+        if (! $cr) return back()->with('error', 'Status sudah berubah — muat ulang halaman.');
+
+        if ($cr->applicant) {
+            NotifyService::send(
+                [$cr->applicant],
+                'Cost Request disetujui CEO',
+                'Cost Request "' . $cr->description . '" (' . $cr->code . ') disetujui CEO dan siap masuk batch pembayaran.',
+                route('budget-request.index'),
+                'workflow'
+            );
+        }
+
+        return back()->with('success', 'CR disetujui CEO dan siap masuk batch pembayaran.');
+    }
+
+    public function ceoReject(Request $request, $id)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        if (!$user->hasRole(['superadmin', 'approver'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk approval tahap ini.');
+        }
+
+        $request->validate(['notes' => 'required|string|max:500']);
+        $this->findVisibleCr($id);
+
+        // Transisi terkunci: lihat Concerns\TransitionsStatus.
+        $cr = $this->transitionStatus(BudgetRequest::class, $id, 'VERIFIED', ['status' => 'REJECTED'], function ($cr) use ($request) {
+            $cr->addLog('VERIFIED', 'REJECTED', 'cr_rejected', $request->notes);
+        });
+
+        if (! $cr) return back()->with('error', 'Status sudah berubah — muat ulang halaman.');
+
+        if ($cr->applicant) {
+            NotifyService::send(
+                [$cr->applicant],
+                'Cost Request ditolak',
+                'Cost Request "' . $cr->description . '" (' . $cr->code . ') ditolak CEO: ' . $request->notes,
+                route('budget-request.index'),
+                'workflow'
+            );
+        }
+
+        return back()->with('success', 'CR ditolak. Menunggu keputusan Manager (Revise/Cancel).');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | MANAGER — keputusan setelah Reject: Revise (→ DRAFT) atau Cancel (→ CANCELLED)
+    |--------------------------------------------------------------------------
+    */
+
+    public function managerRevise(Request $request, $id)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        if (!$user->hasRole(['superadmin', 'manager', 'supervisor'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk merevisi CR ini.');
+        }
+
+        $request->validate(['notes' => 'required|string|max:500']);
+        $cr = $this->findVisibleCr($id);
+        if ($cr->status !== 'REJECTED') return back()->with('error', 'Status tidak valid.');
+
+        DB::transaction(function () use ($cr, $request) {
+            // Reset semua item yang sempat di-takeout approval — CR yang direvisi
+            // kembali utuh, Manager bebas mengedit lagi rinciannya.
+            $cr->details()->where('status', 'TAKEOUT')->update([
+                'status'          => 'INCLUDED',
+                'takeout_by'      => null,
+                'takeout_by_name' => null,
+                'takeout_role'    => null,
+                'takeout_stage'   => null,
+                'takeout_notes'   => null,
+                'takeout_at'      => null,
+            ]);
+
+            $cr->update(['status' => 'DRAFT']);
+            $cr->recalculateAmount();
+            $cr->addLog('REJECTED', 'DRAFT', 'revised', $request->notes);
+        });
+
+        return back()->with('success', 'CR dikembalikan ke Draft untuk direvisi.');
+    }
+
+    public function managerCancel(Request $request, $id)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        if (!$user->hasRole(['superadmin', 'manager'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk membatalkan CR ini.');
+        }
+
+        $request->validate(['notes' => 'required|string|max:500']);
+        $this->findVisibleCr($id);
+
+        // Transisi terkunci: lihat Concerns\TransitionsStatus.
+        $cr = $this->transitionStatus(BudgetRequest::class, $id, 'REJECTED', ['status' => 'CANCELLED'], function ($cr) use ($request) {
+            $cr->addLog('REJECTED', 'CANCELLED', 'cancelled', $request->notes);
+        });
+
+        if (! $cr) return back()->with('error', 'Status sudah berubah — muat ulang halaman.');
+
+        return back()->with('success', 'CR dibatalkan.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | BULK APPROVE/REJECT — dipakai section Review per Budget Plan, checkbox
+    | dulu baru satu tombol Approve/Reject untuk semua yang dicentang. Setiap
+    | CR ditransisikan sesuai status & role aktor saat ini (tidak asumsikan
+    | semua CR yang dicentang ada di stage yang sama).
+    |--------------------------------------------------------------------------
+    */
+
+    /** @return bool true jika CR berhasil ditransisikan (status+role cocok). */
+    private function applyReviewApprove(BudgetRequest $cr, User $user): bool
+    {
+        if ($cr->status === 'SUBMITTED' && $user->hasRole(['superadmin', 'head'])) {
+            $cr->update(['status' => 'CHECKED']);
+            $cr->addLog('SUBMITTED', 'CHECKED', 'head_approved', null);
+            NotifyService::send(
+                $this->financeUsers(),
+                'Cost Request menunggu verifikasi Finance',
+                $user->name . ' (Head) menyetujui Cost Request "' . $cr->description . '" (' . $cr->code . ').',
+                route('budget-request.index'),
+                'workflow'
+            );
+            return true;
+        }
+
+        if ($cr->status === 'CHECKED' && $user->hasRole(['superadmin', 'finance', 'finance_manager', 'cost_control'])) {
+            $cr->update(['status' => 'VERIFIED', 'approved_at' => now()]);
+            $cr->addLog('CHECKED', 'VERIFIED', 'finance_approved', null);
+            return true;
+        }
+
+        if ($cr->status === 'VERIFIED' && $user->hasRole(['superadmin', 'approver'])) {
+            $cr->update(['status' => 'APPROVED']);
+            $cr->addLog('VERIFIED', 'APPROVED', 'cr_approved', null);
+            return true;
+        }
+
+        return false;
+    }
+
+    /** @return bool true jika CR berhasil ditolak (status+role cocok). */
+    private function applyReviewReject(BudgetRequest $cr, User $user, string $notes): bool
+    {
+        $fromStatus = $cr->status;
+        $actionType = match ($fromStatus) {
+            'SUBMITTED' => $user->hasRole(['superadmin', 'head']) ? 'head_rejected' : null,
+            'CHECKED'   => $user->hasRole(['superadmin', 'finance', 'finance_manager', 'cost_control']) ? 'finance_rejected' : null,
+            'VERIFIED'  => $user->hasRole(['superadmin', 'approver']) ? 'cr_rejected' : null,
+            default     => null,
+        };
+
+        if (!$actionType) return false;
 
         $cr->update(['status' => 'REJECTED']);
-        $cr->addLog('APPROVED', 'REJECTED', 'finance_rejected', $request->notes);
+        $cr->addLog($fromStatus, 'REJECTED', $actionType, $notes);
 
-        return redirect('/budget-request')->with('success', 'CR ditolak.');
+        return true;
+    }
+
+    public function reviewBulkApprove(Request $request)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        $ids  = (array) $request->input('ids', []);
+
+        $count = 0;
+        foreach (BudgetRequest::whereIn('id', $ids)->get() as $cr) {
+            if ($this->applyReviewApprove($cr, $user)) $count++;
+        }
+
+        return back()->with('success', $count . ' CR berhasil di-approve.');
+    }
+
+    public function reviewBulkReject(Request $request)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        $request->validate(['notes' => 'required|string|max:500']);
+        $ids = (array) $request->input('ids', []);
+
+        $count = 0;
+        foreach (BudgetRequest::whereIn('id', $ids)->get() as $cr) {
+            if ($this->applyReviewReject($cr, $user, $request->notes)) $count++;
+        }
+
+        return back()->with('success', $count . ' CR berhasil ditolak. Menunggu keputusan Manager (Revise/Cancel).');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | TAKEOUT / RESTORE SUB-ITEM — Head/Finance/CEO mengeluarkan satu baris
+    | rincian dari pengajuan tanpa menolak seluruh CR. Nilai CR otomatis
+    | berkurang; item TAKEOUT tetap tampil di detail (dicoret). Bila SEMUA
+    | item ter-takeout, CR otomatis menjadi REJECTED.
+    |--------------------------------------------------------------------------
+    */
+
+    public function takeoutDetail(Request $request, $id, $detailId)
+    {
+        $request->validate(['notes' => 'required|string|max:500']);
+
+        /** @var User $user */
+        $user = Auth::user();
+        $cr   = $this->findVisibleCr($id, ['details', 'applicant']);
+
+        if (!$cr->canModerateItems($user)) {
+            abort(403, 'Anda tidak berwenang men-takeout item pada tahap approval ini.');
+        }
+
+        $detail = $cr->details->firstWhere('id', (int) $detailId);
+        if (!$detail) {
+            return back()->with('error', 'Item tidak ditemukan pada CR ini.');
+        }
+        if ($detail->isTakenOut()) {
+            return back()->with('error', 'Item ini sudah di-takeout.');
+        }
+
+        $stage      = $cr->status;
+        $stageLabel = \App\Models\RequestDetail::STAGE_LABELS[$stage] ?? $stage;
+
+        DB::transaction(function () use ($cr, $detail, $user, $stage, $stageLabel, $request) {
+            $detail->update([
+                'status'          => 'TAKEOUT',
+                'takeout_by'      => $user->id,
+                'takeout_by_name' => $user->name,
+                'takeout_role'    => $user->role->name ?? null,
+                'takeout_stage'   => $stage,
+                'takeout_notes'   => $request->notes,
+                'takeout_at'      => now(),
+            ]);
+
+            $cr->recalculateAmount();
+
+            $remaining = $cr->details()->where('status', '!=', 'TAKEOUT')->count();
+            $itemLabel = $detail->description ?: ($detail->notes ?: 'item');
+            $itemAmt   = number_format((int) $detail->total, 0, ',', '.');
+
+            if ($remaining === 0) {
+                $cr->update(['status' => 'REJECTED']);
+                $cr->addLog($stage, 'REJECTED', 'all_items_takeout',
+                    'Item terakhir "' . $itemLabel . '" (' . $itemAmt . ') ditakeout oleh ' . $stageLabel
+                    . '. Semua item ter-takeout — CR otomatis Rejected. Alasan: ' . $request->notes);
+            } else {
+                $cr->addLog($stage, $stage, 'item_takeout',
+                    'Item "' . $itemLabel . '" (' . $itemAmt . ') ditakeout oleh ' . $stageLabel
+                    . '. Alasan: ' . $request->notes);
+            }
+        });
+
+        $cr->refresh();
+
+        if ($cr->status === 'REJECTED' && $cr->applicant) {
+            NotifyService::send(
+                [$cr->applicant],
+                'Cost Request ditolak (semua item di-takeout)',
+                'Seluruh item pada Cost Request "' . $cr->description . '" (' . $cr->code . ') telah di-takeout oleh ' . $stageLabel . '. CR otomatis Rejected.',
+                route('budget-request.index'),
+                'workflow'
+            );
+
+            return back()->with('success', 'Item terakhir di-takeout — CR otomatis menjadi Rejected.');
+        }
+
+        return back()->with('success', 'Item berhasil di-takeout. Nilai CR sekarang ' . $cr->amount_formatted . '.');
+    }
+
+    public function restoreDetail(Request $request, $id, $detailId)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        $cr   = $this->findVisibleCr($id, ['details']);
+
+        if (!$cr->canModerateItems($user)) {
+            abort(403, 'Anda tidak berwenang mengembalikan item pada tahap approval ini.');
+        }
+
+        $detail = $cr->details->firstWhere('id', (int) $detailId);
+        if (!$detail) {
+            return back()->with('error', 'Item tidak ditemukan pada CR ini.');
+        }
+        if (!$detail->isTakenOut()) {
+            return back()->with('error', 'Item ini tidak dalam status takeout.');
+        }
+
+        $stage      = $cr->status;
+        $stageLabel = \App\Models\RequestDetail::STAGE_LABELS[$stage] ?? $stage;
+
+        DB::transaction(function () use ($cr, $detail, $stage, $stageLabel) {
+            $itemLabel = $detail->description ?: ($detail->notes ?: 'item');
+
+            $detail->update([
+                'status'          => 'INCLUDED',
+                'takeout_by'      => null,
+                'takeout_by_name' => null,
+                'takeout_role'    => null,
+                'takeout_stage'   => null,
+                'takeout_notes'   => null,
+                'takeout_at'      => null,
+            ]);
+
+            $cr->recalculateAmount();
+            $cr->addLog($stage, $stage, 'item_restore',
+                'Item "' . $itemLabel . '" dikembalikan (di-restore) oleh ' . $stageLabel . '.');
+        });
+
+        $cr->refresh();
+
+        return back()->with('success', 'Item dikembalikan. Nilai CR sekarang ' . $cr->amount_formatted . '.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | FORM REALISASI — GET, tampilkan form sebelum submitRealization()
+    |--------------------------------------------------------------------------
+    */
+
+    public function realizeForm($id)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        if (!$user->hasRole(['superadmin', 'manager', 'supervisor'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk mengajukan realisasi CR ini.');
+        }
+
+        // 'realizations' di-eager-load supaya kalau settlement ini pernah
+        // ditolak (REALIZED -> PAID) & disubmit ulang, kolom "Description
+        // Settle" & "Settle" ke-prefill dari input sebelumnya (bukan reset).
+        $budgetRequest = $this->findVisibleCr($id, ['details.account', 'realizations']);
+
+        if ($budgetRequest->status !== 'PAID') {
+            return redirect()->route('budget-request.index')
+                ->with('error', 'Hanya CR berstatus PAID yang dapat diajukan realisasi.');
+        }
+
+        return view('budget-request.realize', compact('budgetRequest'));
     }
 
     /*
@@ -886,21 +1738,29 @@ class BudgetRequestController extends Controller
 
     public function submitRealization(Request $request, $id)
     {
+        /** @var User $user */
+        $user = Auth::user();
+        if (!$user->hasRole(['superadmin', 'manager', 'supervisor'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk mengajukan realisasi CR ini.');
+        }
+
         $request->validate([
             'realizations'                     => 'required|array|min:1',
             'realizations.*.request_detail_id' => 'required|exists:request_detail,id',
             'realizations.*.amount'            => 'required',
+            'realizations.*.attachments'       => 'nullable|array',
+            'realizations.*.attachments.*'     => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
             'realization_attachments'          => 'nullable|array',
             'realization_attachments.*'        => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
         ]);
 
-        $cr = BudgetRequest::findOrFail($id);
+        $cr = $this->findVisibleCr($id);
 
         if ($cr->status !== 'PAID') {
             return back()->with('error', 'Hanya CR berstatus PAID yang dapat diajukan realisasi.');
         }
 
-        $validDetailIds = $cr->details()->pluck('id')->map(fn ($i) => (int) $i);
+        $validDetailIds = $cr->details()->where('status', '!=', 'TAKEOUT')->pluck('id')->map(fn ($i) => (int) $i);
         $submittedIds   = collect((array) $request->input('realizations', []))
             ->pluck('request_detail_id')->filter()->map(fn ($i) => (int) $i);
 
@@ -912,7 +1772,7 @@ class BudgetRequestController extends Controller
         DB::transaction(function () use ($request, $cr) {
             // Delete old realizations & attachments jika ada
             $cr->realizationAttachments()->each(function ($att) {
-                Storage::disk('public')->delete($att->path);
+                Storage::disk('secure')->delete($att->path);
                 $att->delete();
             });
 
@@ -925,56 +1785,217 @@ class BudgetRequestController extends Controller
             ]);
 
             $cr->addLog('PAID', 'REALIZED', 'realization_submitted',
-                'Total realisasi: Rp ' . number_format($cr->fresh()->total_realization, 0, ',', '.')
+                'Total realisasi: ' . number_format($cr->fresh()->total_realization, 0, ',', '.')
             );
         });
 
-        return redirect('/budget-request')
+        NotifyService::send(
+            $this->financeUsers(),
+            'Realisasi CR menunggu verifikasi',
+            Auth::user()->name . ' mengajukan realisasi Cost Request "' . $cr->description . '" (' . $cr->code . ').',
+            route('budget-request.index'),
+            'workflow'
+        );
+
+        // Redirect eksplisit ke daftar CR (bukan back()) — hindari bounce ke Referer
+        // yang bisa menunjuk ke URL POST submit-realization.
+        return redirect()->route('budget-request.index')
             ->with('success', 'Realisasi berhasil diajukan. Status CR menjadi REALIZED.');
     }
 
     /*
     |--------------------------------------------------------------------------
-    | VERIFY REALIZATION — REALIZED → CLOSED (finance)
+    | SETTLEMENT — Cash Advance: REALIZED (Settle) -> SETTLE_CHECKED (Head) ->
+    | SETTLE_VERIFIED (Finance) -> CLOSED (CEO). Reject di tiap tahap balik ke
+    | PAID (manager mengajukan ulang Settlement).
     |--------------------------------------------------------------------------
     */
 
-    public function verifyRealization(Request $request, $id)
+    public function headCheckSettlement(Request $request, $id)
     {
-        $cr = BudgetRequest::findOrFail($id);
+        /** @var User $user */
+        $user = Auth::user();
+        if (!$user->hasRole(['superadmin', 'head'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk approval tahap ini.');
+        }
 
-        if ($cr->status !== 'REALIZED') {
+        $this->findVisibleCr($id);
+
+        // Transisi terkunci: lihat Concerns\TransitionsStatus.
+        $cr = $this->transitionStatus(BudgetRequest::class, $id, 'REALIZED', ['status' => 'SETTLE_CHECKED'], function ($cr) use ($request) {
+            $cr->addLog('REALIZED', 'SETTLE_CHECKED', 'settlement_checked', $request->notes);
+        });
+
+        if (! $cr) {
+            return back()->with('error', 'Status sudah berubah — muat ulang halaman.');
+        }
+
+        NotifyService::send(
+            $this->financeUsers(),
+            'Settlement CR menunggu verifikasi',
+            $user->name . ' memeriksa Settlement Cost Request "' . $cr->description . '" (' . $cr->code . ').',
+            route('budget-request.index'),
+            'workflow'
+        );
+
+        return back()->with('success', 'Settlement di-check. Menunggu verifikasi Finance.');
+    }
+
+    public function headRejectSettlement(Request $request, $id)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        if (!$user->hasRole(['superadmin', 'head'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk approval tahap ini.');
+        }
+
+        $request->validate(['notes' => 'required|string|max:500']);
+        $this->findVisibleCr($id);
+
+        // Transisi terkunci: lihat Concerns\TransitionsStatus.
+        $cr = $this->transitionStatus(BudgetRequest::class, $id, 'REALIZED', ['status' => 'PAID'], function ($cr) use ($request) {
+            $cr->addLog('REALIZED', 'PAID', 'settlement_rejected', $request->notes);
+        });
+
+        if (! $cr) {
+            return back()->with('error', 'Status sudah berubah — muat ulang halaman.');
+        }
+
+        if ($cr->applicant) {
+            NotifyService::send(
+                [$cr->applicant],
+                'Settlement CR ditolak',
+                'Settlement Cost Request "' . $cr->description . '" (' . $cr->code . ') ditolak: ' . $request->notes,
+                route('budget-request.index'),
+                'workflow'
+            );
+        }
+
+        return back()->with('success', 'Settlement ditolak. CR dikembalikan ke status PAID.');
+    }
+
+    public function financeVerifySettlement(Request $request, $id)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        if (!$user->hasRole(['superadmin', 'finance', 'finance_manager', 'cost_control'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk approval tahap ini.');
+        }
+
+        $cr = $this->findVisibleCr($id);
+        if ($cr->status !== 'SETTLE_CHECKED') {
             return back()->with('error', 'Status tidak valid.');
         }
 
-        $cr->update(['status' => 'CLOSED', 'closed_at' => now()]);
-        $cr->addLog('REALIZED', 'CLOSED', 'realization_approved', $request->notes);
+        DB::transaction(function () use ($cr, $request) {
+            $cr->update(['status' => 'SETTLE_VERIFIED']);
+            $cr->addLog('SETTLE_CHECKED', 'SETTLE_VERIFIED', 'settlement_verified', $request->notes);
 
-        return redirect('/budget-request')
-            ->with('success', 'Realisasi diverifikasi. CR sekarang CLOSED.');
+            // Selisih = Settlement - Original Approved Amount. Kalau > 0, CR
+            // baru boleh Close setelah Second Payment ini PAID (lihat
+            // ceoCloseSettlement()/markSecondPaymentPaid()).
+            $overage = $cr->settlement_overage;
+            if ($overage > 0) {
+                $cr->secondPayments()->create([
+                    'amount' => $overage,
+                    'status' => 'PENDING',
+                ]);
+            }
+        });
+
+        NotifyService::send(
+            $this->approverUsers(),
+            'Settlement CR menunggu Close',
+            $user->name . ' memverifikasi Settlement Cost Request "' . $cr->description . '" (' . $cr->code . ').',
+            route('budget-request.index'),
+            'workflow'
+        );
+
+        return back()->with('success', 'Settlement diverifikasi. Menunggu Close CEO.');
+    }
+
+    public function financeRejectSettlement(Request $request, $id)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        if (!$user->hasRole(['superadmin', 'finance', 'finance_manager', 'cost_control'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk approval tahap ini.');
+        }
+
+        $request->validate(['notes' => 'required|string|max:500']);
+        $this->findVisibleCr($id);
+
+        // Transisi terkunci: lihat Concerns\TransitionsStatus.
+        $cr = $this->transitionStatus(BudgetRequest::class, $id, 'SETTLE_CHECKED', ['status' => 'PAID'], function ($cr) use ($request) {
+            $cr->addLog('SETTLE_CHECKED', 'PAID', 'settlement_rejected', $request->notes);
+        });
+
+        if (! $cr) {
+            return back()->with('error', 'Status sudah berubah — muat ulang halaman.');
+        }
+
+        if ($cr->applicant) {
+            NotifyService::send(
+                [$cr->applicant],
+                'Settlement CR ditolak',
+                'Settlement Cost Request "' . $cr->description . '" (' . $cr->code . ') ditolak: ' . $request->notes,
+                route('budget-request.index'),
+                'workflow'
+            );
+        }
+
+        return back()->with('success', 'Settlement ditolak. CR dikembalikan ke status PAID.');
+    }
+
+    public function ceoCloseSettlement(Request $request, $id)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        // Nama method/route tetap "ceoClose..." (historis), tapi actionnya
+        // sekarang dilakukan Finance Manager, BUKAN CEO/approver.
+        if (!$user->hasRole(['superadmin', 'finance_manager'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk approval tahap ini.');
+        }
+
+        $cr = $this->findVisibleCr($id);
+        if ($cr->status !== 'SETTLE_VERIFIED') {
+            return back()->with('error', 'Status tidak valid.');
+        }
+
+        if ($cr->pendingSecondPayment()) {
+            return back()->with('error', 'CR belum bisa di-Close — Second Payment masih PENDING.');
+        }
+
+        $cr->update(['status' => 'CLOSED', 'closed_at' => now()]);
+        $cr->addLog('SETTLE_VERIFIED', 'CLOSED', 'settlement_closed', $request->notes);
+
+        if ($cr->applicant) {
+            NotifyService::send(
+                [$cr->applicant],
+                'Settlement CR di-Close',
+                'Settlement Cost Request "' . $cr->description . '" (' . $cr->code . ') di-Close. CR sekarang CLOSED.',
+                route('budget-request.index'),
+                'workflow'
+            );
+        }
+
+        return back()->with('success', 'Settlement di-Close. CR sekarang CLOSED.');
     }
 
     /*
     |--------------------------------------------------------------------------
-    | REJECT REALIZATION — REALIZED → PAID (finance)
+    | SECOND PAYMENT — dibuat otomatis saat Settlement > nilai pengajuan.
+    |
+    | Pembayarannya TIDAK lagi ditandai dari sini/To-Do List. Sebelumnya cukup
+    | satu klik "Mark Paid" yang hanya mengubah kolom status — uangnya keluar
+    | tanpa baris Treasury, tanpa bukti transfer, dan tanpa jejak di riwayat CR.
+    | Sekarang Second Payment ikut batch Treasury seperti pengeluaran lain:
+    |   Treasury pilih ke batch  -> log 'second_payment_batched'
+    |   CEO approve batch        -> log 'second_payment_ceo_approved'
+    |   Treasury Mark Paid batch -> status PAID + log 'second_payment_paid'
+    | Lihat DailyTransactionController::storeCashOut()/approve()/markPaid().
     |--------------------------------------------------------------------------
     */
-
-    public function rejectRealization(Request $request, $id)
-    {
-        $request->validate(['notes' => 'required|string|max:500']);
-        $cr = BudgetRequest::findOrFail($id);
-
-        if ($cr->status !== 'REALIZED') {
-            return back()->with('error', 'Status tidak valid.');
-        }
-
-        $cr->update(['status' => 'PAID']);
-        $cr->addLog('REALIZED', 'PAID', 'realization_rejected', $request->notes);
-
-        return redirect('/budget-request')
-            ->with('success', 'Realisasi ditolak. CR dikembalikan ke status PAID.');
-    }
 
     /*
     |--------------------------------------------------------------------------
@@ -996,7 +2017,7 @@ class BudgetRequestController extends Controller
         return response()->json([
             'is_nob'            => $isNob,
             'remaining'         => $remaining,
-            'remaining_formatted' => 'Rp ' . number_format($remaining, 0, ',', '.'),
+            'remaining_formatted' => number_format($remaining, 0, ',', '.'),
             'budget_amount'     => $bp->amount,
         ]);
     }
@@ -1007,24 +2028,220 @@ class BudgetRequestController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function export()
+    /**
+     * API publik (token statis, bukan session) untuk konsumsi eksternal
+     * seperti Excel Power Query. Contoh:
+     *   GET /api/public/budget-request?token=...&date_from=2026-05-01&date_to=2026-08-03
+     * Token diverifikasi terhadap EXPORT_API_TOKEN di .env — siapapun yang
+     * pegang token ini otomatis dapat akses ke SEMUA Cost Request (tidak
+     * dibatasi access group/role, karena endpoint ini tidak punya sesi user).
+     */
+    private function checkExportApiToken(Request $request): bool
+    {
+        $expected = config('services.export_api.token');
+
+        if (blank($expected)) {
+            return false;
+        }
+
+        /*
+        | Token dibaca dari header lebih dulu (Authorization: Bearer <token>
+        | atau X-Export-Token). Query string dipertahankan sebagai jalur
+        | cadangan karena konsumen yang sudah berjalan (Excel Power Query)
+        | memakainya — tetapi dicatat sebagai peringatan, sebab token di URL
+        | ikut tersimpan di access log server, riwayat peramban, dan header
+        | Referer. Rencananya jalur itu dimatikan setelah konsumen dipindah.
+        */
+        $provided = $request->bearerToken()
+            ?: $request->header('X-Export-Token')
+            ?: $request->query('token');
+
+        if (blank($provided)) {
+            return false;
+        }
+
+        // hash_equals: perbandingan waktu-tetap. '===' pada string membocorkan
+        // posisi karakter pertama yang berbeda lewat selisih waktu eksekusi.
+        $valid = hash_equals((string) $expected, (string) $provided);
+
+        if ($valid && $request->query('token')) {
+            Log::warning('Export API dipanggil dengan token di query string (usang)', [
+                'ip'   => $request->ip(),
+                'path' => $request->path(),
+            ]);
+        }
+
+        if (! $valid) {
+            Log::warning('Export API ditolak: token tidak cocok', [
+                'ip'   => $request->ip(),
+                'path' => $request->path(),
+            ]);
+        }
+
+        return $valid;
+    }
+
+    /** Query dasar BudgetRequest untuk API publik, sudah difilter date_from/date_to. */
+    private function apiBaseQuery(Request $request, array $with)
+    {
+        $query = BudgetRequest::with($with);
+
+        // Perbandingan langsung (bukan whereDate) supaya indeks created_at terpakai.
+        if ($request->filled('date_from')) {
+            $query->where('created_at', '>=', $request->date_from . ' 00:00:00');
+        }
+        if ($request->filled('date_to')) {
+            $query->where('created_at', '<=', $request->date_to . ' 23:59:59');
+        }
+
+        return $query->latest();
+    }
+
+    public function apiExportData(Request $request)
+    {
+        if (! $this->checkExportApiToken($request)) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $budgetRequests = $this->apiBaseQuery($request, [
+            'type', 'cluster', 'budgetPlan.project', 'budgetPlan.costCenter',
+            'applicant', 'beneficiary', 'statusLogs', 'realizations',
+        ])->get();
+
+        $data = $budgetRequests->map(function ($cr) {
+            $isNob = (bool) $cr->is_nob;
+            $desc  = $isNob ? ltrim(preg_replace('/^\[NOB\]\s*/i', '', $cr->description)) : $cr->description;
+
+            $sumber = $cr->budgetPlan?->isProjectBudget()
+                ? ($cr->budgetPlan->project?->name ?? '-')
+                : ($cr->budgetPlan?->costCenter?->name ?? '-');
+
+            $realisasi = $cr->total_realization;
+            $paidLog   = $cr->statusLogs->firstWhere('action_type', 'paid');
+
+            return [
+                'kode'           => $cr->code,
+                'tanggal'        => $cr->created_at?->format('Y-m-d H:i:s'),
+                'deskripsi'      => $desc,
+                'tipe'           => $cr->type?->name ?? '-',
+                'sumber_dana'    => $sumber,
+                'beneficiary'    => $cr->beneficiary?->nickname ?? '-',
+                'pemohon'        => strtoupper($cr->applicant?->username ?? '-'),
+                'request'        => (int) $cr->amount,
+                'realisasi'      => $realisasi,
+                'refund'         => $cr->refundAmount(),
+                'status'         => $cr->status,
+                'nob'            => $isNob ? 'YA' : '-',
+                'transaction_id' => $paidLog?->notes ?? '-',
+            ];
+        });
+
+        return response()->json($data);
+    }
+
+    /**
+     * API publik — Detail rincian tiap Cost Request (mirror Sheet "Detail" di export Excel).
+     *   GET /api/public/budget-request/detail?token=...&date_from=...&date_to=...
+     */
+    public function apiExportDetailData(Request $request)
+    {
+        if (! $this->checkExportApiToken($request)) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $budgetRequests = $this->apiBaseQuery($request, ['details'])->get();
+
+        $data = collect();
+        foreach ($budgetRequests as $cr) {
+            foreach ($cr->details as $d) {
+                if ($d->status === 'TAKEOUT') continue;
+                $data->push([
+                    'kode'      => $cr->code,
+                    'deskripsi' => $d->description,
+                    'notes'     => $d->notes,
+                    'satuan'    => (int) $d->amount,
+                    'qty'       => $d->qty,
+                    'total'     => (int) $d->total,
+                ]);
+            }
+        }
+
+        return response()->json($data->values());
+    }
+
+    /**
+     * API publik — Detail realisasi tiap Cost Request (mirror Sheet "Detail Realisasi" di export Excel).
+     *   GET /api/public/budget-request/realisasi?token=...&date_from=...&date_to=...
+     */
+    public function apiExportRealizationData(Request $request)
+    {
+        if (! $this->checkExportApiToken($request)) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $budgetRequests = $this->apiBaseQuery($request, ['realizations'])->get();
+
+        $data = collect();
+        foreach ($budgetRequests as $cr) {
+            foreach ($cr->realizations as $r) {
+                $data->push([
+                    'kode'         => $cr->code,
+                    'deskripsi'    => $r->description,
+                    'notes'        => $r->notes,
+                    'actual_used'  => (int) $r->amount,
+                    'qty'          => $r->qty,
+                    'total'        => (int) $r->total,
+                ]);
+            }
+        }
+
+        return response()->json($data->values());
+    }
+
+    public function export(Request $request)
     {
         $query = BudgetRequest::with([
             'type', 'cluster', 'budgetPlan.project', 'budgetPlan.costCenter',
-            'applicant', 'beneficiary',
+            'applicant', 'beneficiary', 'details.account', 'statusLogs', 'realizations',
         ]);
 
         $this->scopeByRole($query);
 
+        // Export mengikuti hasil filter yang sedang aktif di tabel (search,
+        // dropdown PO/Tipe/Beneficiary/Manager/Status/NOB, klik stepper status)
+        // — browser mengirim ID baris yang lolos filter tersebut. Tanpa ids
+        // (mis. diakses langsung), fallback ke rentang tanggal seperti biasa.
+        $ids = collect((array) $request->input('ids', []))
+            ->filter(fn ($v) => is_numeric($v))
+            ->map(fn ($v) => (int) $v);
+
+        if ($ids->isNotEmpty()) {
+            $query->whereIn('id', $ids);
+        } else {
+            // Perbandingan langsung (bukan whereDate) supaya indeks terpakai.
+            if ($request->filled('date_from')) {
+                $query->where('created_at', '>=', $request->date_from . ' 00:00:00');
+            }
+            if ($request->filled('date_to')) {
+                $query->where('created_at', '<=', $request->date_to . ' 23:59:59');
+            }
+        }
+
         $budgetRequests = $query->latest()->get();
 
         $spreadsheet = new Spreadsheet();
+
+        /*
+        |----------------------------------------------------------------
+        | SHEET 1 — HEADER (satu baris per Cost Request)
+        |----------------------------------------------------------------
+        */
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Cost Request');
+        $sheet->setTitle('Header');
 
         $headers = [
-            'Kode', 'Tanggal', 'Deskripsi', 'Tipe', 'Sumber Dana', 'Beneficiary',
-            'Pemohon', 'Amount', 'Status', 'NOB',
+            'Kode', 'Tanggal', 'Tanggal Paid', 'Deskripsi', 'Tipe', 'Sumber Dana', 'Beneficiary',
+            'Pemohon', 'Request', 'Realisasi', 'Refund', 'Status', 'NOB', 'Transaction ID',
         ];
 
         foreach ($headers as $i => $label) {
@@ -1039,29 +2256,114 @@ class BudgetRequestController extends Controller
 
         $row = 2;
         foreach ($budgetRequests as $cr) {
-            $isNob = str_starts_with($cr->description, '[NOB]');
+            $isNob = (bool) $cr->is_nob;
             $desc  = $isNob ? ltrim(preg_replace('/^\[NOB\]\s*/i', '', $cr->description)) : $cr->description;
 
             $sumber = $cr->budgetPlan?->isProjectBudget()
-                ? ($cr->budgetPlan->project->name ?? '-')
-                : ($cr->budgetPlan?->costCenter->name ?? '-');
+                ? ($cr->budgetPlan->project?->name ?? '-')
+                : ($cr->budgetPlan?->costCenter?->name ?? '-');
+
+            $realisasi = $cr->total_realization;
+            $refund    = $cr->refundAmount(); // P-01
+
+            // Transaction ID: diambil dari catatan (notes) log status QUEUED -> PAID.
+            $paidLog = $cr->statusLogs->firstWhere('action_type', 'paid');
 
             $sheet->setCellValue('A' . $row, $cr->code);
             $sheet->setCellValue('B' . $row, $cr->created_at?->format('d-m-Y H:i'));
-            $sheet->setCellValue('C' . $row, $desc);
-            $sheet->setCellValue('D' . $row, $cr->type->name ?? '-');
-            $sheet->setCellValue('E' . $row, $sumber);
-            $sheet->setCellValue('F' . $row, $cr->beneficiary->complete_name ?? '-');
-            $sheet->setCellValue('G' . $row, strtoupper($cr->applicant->username ?? '-'));
-            $sheet->setCellValue('H' . $row, (int) $cr->amount);
-            $sheet->setCellValue('I' . $row, $cr->status);
-            $sheet->setCellValue('J' . $row, $isNob ? 'YA' : '-');
+            $sheet->setCellValue('C' . $row, $cr->paid_at?->format('d-m-Y H:i') ?? '-');
+            $sheet->setCellValue('D' . $row, $desc);
+            $sheet->setCellValue('E' . $row, $cr->type?->name ?? '-');
+            $sheet->setCellValue('F' . $row, $sumber);
+            $sheet->setCellValue('G' . $row, $cr->beneficiary?->nickname ?? '-');
+            $sheet->setCellValue('H' . $row, strtoupper($cr->applicant?->username ?? '-'));
+            $sheet->setCellValue('I' . $row, (int) $cr->amount);
+            $sheet->setCellValue('J' . $row, $realisasi);
+            $sheet->setCellValue('K' . $row, $refund);
+            $sheet->setCellValue('L' . $row, $cr->status);
+            $sheet->setCellValue('M' . $row, $isNob ? 'YA' : '-');
+            $sheet->setCellValue('N' . $row, $paidLog?->notes ?? '-');
             $row++;
         }
 
-        foreach (['A'=>16,'B'=>16,'C'=>40,'D'=>16,'E'=>28,'F'=>24,'G'=>16,'H'=>16,'I'=>12,'J'=>8] as $col => $width) {
+        foreach (['A'=>16,'B'=>16,'C'=>16,'D'=>40,'E'=>16,'F'=>28,'G'=>20,'H'=>16,'I'=>16,'J'=>16,'K'=>16,'L'=>12,'M'=>8,'N'=>22] as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
         }
+
+        /*
+        |----------------------------------------------------------------
+        | SHEET 2 — DETAIL (satu baris per item rincian CR)
+        |----------------------------------------------------------------
+        */
+        $detailSheet = $spreadsheet->createSheet();
+        $detailSheet->setTitle('Detail');
+
+        $detailHeaders = ['Kode', 'Deskripsi', 'Notes', 'Satuan', 'Qty', 'Total'];
+        foreach ($detailHeaders as $i => $label) {
+            $col = chr(65 + $i);
+            $detailSheet->setCellValue($col . '1', $label);
+            $detailSheet->getStyle($col . '1')->getFont()->setBold(true);
+            $detailSheet->getStyle($col . '1')->getFill()
+                ->setFillType(Fill::FILL_SOLID)
+                ->getStartColor()->setRGB('0D1B2A');
+            $detailSheet->getStyle($col . '1')->getFont()->getColor()->setRGB('FFFFFF');
+        }
+
+        $dRow = 2;
+        foreach ($budgetRequests as $cr) {
+            foreach ($cr->details as $d) {
+                if ($d->status === 'TAKEOUT') continue;
+                $detailSheet->setCellValue('A' . $dRow, $cr->code);
+                $detailSheet->setCellValue('B' . $dRow, $d->description);
+                $detailSheet->setCellValue('C' . $dRow, $d->notes);
+                $detailSheet->setCellValue('D' . $dRow, (int) $d->amount);
+                $detailSheet->setCellValue('E' . $dRow, $d->qty);
+                $detailSheet->setCellValue('F' . $dRow, (int) $d->total);
+                $dRow++;
+            }
+        }
+
+        foreach (['A'=>16,'B'=>40,'C'=>28,'D'=>16,'E'=>8,'F'=>16] as $col => $width) {
+            $detailSheet->getColumnDimension($col)->setWidth($width);
+        }
+
+        /*
+        |----------------------------------------------------------------
+        | SHEET 3 — DETAIL REALISASI (satu baris per item realisasi CR)
+        |----------------------------------------------------------------
+        */
+        $realSheet = $spreadsheet->createSheet();
+        $realSheet->setTitle('Detail Realisasi');
+
+        $realHeaders = ['Kode', 'Deskripsi', 'Notes', 'Actual Used', 'Qty', 'Total'];
+        foreach ($realHeaders as $i => $label) {
+            $col = chr(65 + $i);
+            $realSheet->setCellValue($col . '1', $label);
+            $realSheet->getStyle($col . '1')->getFont()->setBold(true);
+            $realSheet->getStyle($col . '1')->getFill()
+                ->setFillType(Fill::FILL_SOLID)
+                ->getStartColor()->setRGB('0D1B2A');
+            $realSheet->getStyle($col . '1')->getFont()->getColor()->setRGB('FFFFFF');
+        }
+
+        $rRow = 2;
+        foreach ($budgetRequests as $cr) {
+            foreach ($cr->realizations as $r) {
+                $realSheet->setCellValue('A' . $rRow, $cr->code);
+                $realSheet->setCellValue('B' . $rRow, $r->description);
+                $realSheet->setCellValue('C' . $rRow, $r->notes);
+                $realSheet->setCellValue('D' . $rRow, (int) $r->amount);
+                $realSheet->setCellValue('E' . $rRow, $r->qty);
+                $realSheet->setCellValue('F' . $rRow, (int) $r->total);
+                $rRow++;
+            }
+        }
+
+        foreach (['A'=>16,'B'=>40,'C'=>28,'D'=>16,'E'=>8,'F'=>16] as $col => $width) {
+            $realSheet->getColumnDimension($col)->setWidth($width);
+        }
+
+        $spreadsheet->setActiveSheetIndex(0);
 
         $filename = 'cost-request-' . now()->format('Ymd-His') . '.xlsx';
         $writer   = new Xlsx($spreadsheet);
@@ -1081,21 +2383,280 @@ class BudgetRequestController extends Controller
 
     public function destroy($id)
     {
-        $cr = BudgetRequest::with('attachments')->findOrFail($id);
+        $cr = $this->findVisibleCr($id, ['attachments', 'details.attachments']);
 
         if ($cr->status !== 'DRAFT') {
-            return redirect('/budget-request')
+            return back()
                 ->with('error', 'Hanya CR berstatus DRAFT yang dapat dihapus.');
         }
 
         DB::transaction(function () use ($cr) {
             foreach ($cr->attachments as $att) {
-                Storage::disk('public')->delete($att->path);
+                Storage::disk('secure')->delete($att->path);
+            }
+            foreach ($cr->details as $d) {
+                foreach ($d->attachments as $att) {
+                    Storage::disk('secure')->delete($att->path);
+                }
             }
             $cr->delete();
         });
 
-        return redirect('/budget-request')
+        return back()
             ->with('success', 'Cost Request berhasil dihapus.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | TEMPLATE & IMPORT EXCEL — Rincian Pengajuan (create/edit)
+    |--------------------------------------------------------------------------
+    | Sub item budget dicocokkan berdasarkan teks "{Account} - {Deskripsi}"
+    | (sama seperti yang tampil di dropdown Sub Item Budget), bukan ID —
+    | supaya template tetap gampang dibaca/diisi manual oleh user.
+    |--------------------------------------------------------------------------
+    */
+
+    /** Label Sub Item Budget yang dipakai untuk pencocokan template <-> data (stabil, tanpa nilai remaining yang berubah-ubah). */
+    private function subItemLabel(\App\Models\BudgetPlanDetail $bd): string
+    {
+        return trim(($bd->account?->name ?? '-') . ' - ' . ($bd->deskripsi ?? '-'));
+    }
+
+    public function downloadDetailTemplate(Request $request)
+    {
+        $request->validate(['budget_plan_id' => 'required|exists:budget_plans,id']);
+
+        $budgetPlan = BudgetPlan::with('project', 'costCenter')->findOrFail($request->budget_plan_id);
+        $subItems   = \App\Models\BudgetPlanDetail::where('budget_plan_id', $budgetPlan->id)
+            ->with('account')->orderBy('id')->get();
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Rincian Pengajuan');
+
+        $headers = ['Sub Item Budget', 'Deskripsi / Catatan', 'Harga Satuan', 'Qty'];
+        foreach ($headers as $i => $label) {
+            $col = chr(65 + $i);
+            $sheet->setCellValue($col . '1', $label);
+            $sheet->getStyle($col . '1')->getFont()->setBold(true);
+            $sheet->getStyle($col . '1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('0D1B2A');
+            $sheet->getStyle($col . '1')->getFont()->getColor()->setRGB('FFFFFF');
+        }
+
+        $first = $subItems->first();
+        $sheet->setCellValue('A2', $first ? $this->subItemLabel($first) : 'ACCOUNT - DESKRIPSI SUB ITEM');
+        $sheet->setCellValue('B2', 'Contoh catatan pengajuan');
+        $sheet->setCellValue('C2', 100000);
+        $sheet->setCellValue('D2', 1);
+
+        foreach (['A' => 45, 'B' => 35, 'C' => 16, 'D' => 8] as $col => $width) {
+            $sheet->getColumnDimension($col)->setWidth($width);
+        }
+
+        // Sheet referensi: daftar Sub Item Budget valid untuk dropdown kolom A.
+        $refSheet = $spreadsheet->createSheet();
+        $refSheet->setTitle('Referensi');
+        $refSheet->setCellValue('A1', 'Daftar Sub Item Budget Valid');
+        $refSheet->getStyle('A1')->getFont()->setBold(true);
+        foreach ($subItems->values() as $i => $bd) {
+            $refSheet->setCellValue('A' . ($i + 2), $this->subItemLabel($bd));
+        }
+        $refSheet->getColumnDimension('A')->setWidth(45);
+
+        $subItemCount = max($subItems->count(), 1);
+        for ($row = 2; $row <= 200; $row++) {
+            $validation = $sheet->getCell('A' . $row)->getDataValidation();
+            $validation->setType(DataValidation::TYPE_LIST);
+            $validation->setErrorStyle(DataValidation::STYLE_WARNING);
+            $validation->setAllowBlank(true);
+            $validation->setShowInputMessage(true);
+            $validation->setShowErrorMessage(true);
+            $validation->setShowDropDown(false);
+            $validation->setPromptTitle('Pilih Sub Item Budget');
+            $validation->setPrompt('Pilih dari daftar di sheet Referensi.');
+            $validation->setFormula1("Referensi!\$A\$2:\$A\$" . ($subItemCount + 1));
+        }
+
+        $spreadsheet->setActiveSheetIndex(0);
+
+        $filename = 'template-rincian-cr-' . $budgetPlan->code . '-' . now()->format('Ymd-His') . '.xlsx';
+        $writer   = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
+    }
+
+    /**
+     * POST /budget-request/import-preview
+     * Body: file (xlsx), budget_plan_id
+     * Tidak menyimpan apa pun — hanya parsing untuk diisi ulang oleh JS ke
+     * tabel Rincian Pengajuan di form create/edit.
+     */
+    public function importDetailPreview(Request $request)
+    {
+        $request->validate([
+            'file'            => 'required|file|mimes:xlsx,xls|max:5120',
+            'budget_plan_id'  => 'required|exists:budget_plans,id',
+        ]);
+
+        $subItems = \App\Models\BudgetPlanDetail::where('budget_plan_id', $request->budget_plan_id)
+            ->with('account')->get()
+            ->keyBy(fn ($bd) => strtoupper($this->subItemLabel($bd)));
+
+        try {
+            $spreadsheet = IOFactory::load($request->file('file')->getRealPath());
+            $sheet       = $spreadsheet->getSheetByName('Rincian Pengajuan') ?? $spreadsheet->getActiveSheet();
+            $rows        = $sheet->toArray(null, true, true, false);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'rows' => [], 'errors' => ['File tidak dapat dibaca: ' . $e->getMessage()],
+            ], 422);
+        }
+
+        $result = [];
+        $errors = [];
+
+        foreach ($rows as $i => $row) {
+            if ($i === 0) continue; // header
+
+            [$subItemLabel, $notes, $amount, $qty] = array_pad($row, 4, null);
+
+            if (blank($subItemLabel) && blank($notes) && blank($amount) && blank($qty)) continue;
+
+            $rowNum = $i + 1;
+            $key    = strtoupper(trim((string) $subItemLabel));
+            $bd     = $subItems->get($key);
+
+            if (!$bd) {
+                $errors[] = "Baris {$rowNum}: Sub Item Budget \"{$subItemLabel}\" tidak ditemukan di Budget Plan ini.";
+                continue;
+            }
+
+            $amountNum = is_numeric($amount) ? (int) round((float) $amount) : (int) $this->normalizeMoney((string) $amount);
+            $qtyNum    = is_numeric($qty) ? (int) $qty : 1;
+            if ($qtyNum <= 0) $qtyNum = 1;
+
+            $result[] = [
+                'row'              => $rowNum,
+                'budget_detail_id' => $bd->id,
+                'sub_item_label'   => $this->subItemLabel($bd),
+                'notes'            => $notes,
+                'amount'           => $amountNum,
+                'qty'              => $qtyNum,
+                'total'            => $amountNum * $qtyNum,
+            ];
+        }
+
+        if (empty($result) && empty($errors)) {
+            $errors[] = 'Tidak ada baris data yang terbaca dari file. Pastikan mengisi mulai baris ke-2.';
+        }
+
+        return response()->json(['rows' => $result, 'errors' => $errors]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | TEMPLATE & IMPORT EXCEL — Rincian Settlement (realize.blade)
+    |--------------------------------------------------------------------------
+    | Template berisi baris item CR apa adanya (tidak bisa tambah/kurang
+    | baris — settlement selalu 1 baris per item pengajuan). User cukup edit
+    | kolom "Actual Used", lalu import lagi; dicocokkan lewat Request Detail ID.
+    |--------------------------------------------------------------------------
+    */
+
+    public function downloadSettlementTemplate($id)
+    {
+        $cr = $this->findVisibleCr($id, ['details']);
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Rincian Settlement');
+
+        $headers = ['No', 'Request Detail ID', 'Description', 'Requested', 'Actual Used'];
+        foreach ($headers as $i => $label) {
+            $col = chr(65 + $i);
+            $sheet->setCellValue($col . '1', $label);
+            $sheet->getStyle($col . '1')->getFont()->setBold(true);
+            $sheet->getStyle($col . '1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('0D1B2A');
+            $sheet->getStyle($col . '1')->getFont()->getColor()->setRGB('FFFFFF');
+        }
+
+        $row = 2;
+        foreach ($cr->details->where('status', '!=', 'TAKEOUT')->values() as $i => $d) {
+            $sheet->setCellValue('A' . $row, $i + 1);
+            $sheet->setCellValueExplicit('B' . $row, $d->id, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $sheet->setCellValue('C' . $row, $d->description);
+            $sheet->setCellValue('D' . $row, (int) $d->total);
+            $sheet->setCellValue('E' . $row, (int) $d->total);
+            $row++;
+        }
+
+        // Kolom B ("Request Detail ID") jangan diubah manual — dipakai
+        // mencocokkan baris saat file ini di-import kembali.
+        $sheet->getComment('B1')->getText()
+            ->createTextRun('Jangan ubah kolom ini — dipakai mencocokkan baris saat import.');
+
+        foreach (['A' => 6, 'B' => 16, 'C' => 40, 'D' => 16, 'E' => 16] as $col => $width) {
+            $sheet->getColumnDimension($col)->setWidth($width);
+        }
+
+        $filename = 'template-settlement-' . $cr->code . '-' . now()->format('Ymd-His') . '.xlsx';
+        $writer   = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
+    }
+
+    public function importSettlementPreview(Request $request, $id)
+    {
+        $request->validate(['file' => 'required|file|mimes:xlsx,xls|max:5120']);
+
+        $cr = $this->findVisibleCr($id, ['details']);
+        $validIds = $cr->details->where('status', '!=', 'TAKEOUT')->pluck('id')->map(fn ($v) => (int) $v);
+
+        try {
+            $spreadsheet = IOFactory::load($request->file('file')->getRealPath());
+            $sheet       = $spreadsheet->getSheetByName('Rincian Settlement') ?? $spreadsheet->getActiveSheet();
+            $rows        = $sheet->toArray(null, true, true, false);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'rows' => [], 'errors' => ['File tidak dapat dibaca: ' . $e->getMessage()],
+            ], 422);
+        }
+
+        $result = [];
+        $errors = [];
+
+        foreach ($rows as $i => $row) {
+            if ($i === 0) continue; // header
+
+            [, $detailId, $desc, , $actualUsed] = array_pad($row, 5, null);
+            if (blank($detailId) && blank($actualUsed)) continue;
+
+            $rowNum    = $i + 1;
+            $detailId  = (int) $detailId;
+
+            if (!$validIds->contains($detailId)) {
+                $errors[] = "Baris {$rowNum}: Request Detail ID \"{$detailId}\" tidak sesuai dengan CR ini (jangan ubah kolom ini — hanya kolom Actual Used).";
+                continue;
+            }
+
+            $amountNum = is_numeric($actualUsed) ? (int) round((float) $actualUsed) : (int) $this->normalizeMoney((string) $actualUsed);
+
+            $result[] = [
+                'row'               => $rowNum,
+                'request_detail_id' => $detailId,
+                'description'       => $desc,
+                'amount'            => $amountNum,
+            ];
+        }
+
+        if (empty($result) && empty($errors)) {
+            $errors[] = 'Tidak ada baris data yang terbaca dari file. Pastikan tidak mengubah struktur kolom template.';
+        }
+
+        return response()->json(['rows' => $result, 'errors' => $errors]);
     }
 }

@@ -2,18 +2,31 @@
 
 namespace App\Models;
 
+use App\Support\DocumentSequence;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Auth;
 
 class BudgetRequest extends Model
 {
+    /*
+    | Penghapusan catatan keuangan ditandai, bukan dilenyapkan - lihat migrasi
+    | 2026_09_18_000002. Baris yang ditandai otomatis keluar dari semua query
+    | (termasuk penjumlahan pembayaran), tapi tetap ada untuk ditelusuri.
+    */
+    use SoftDeletes;
+
     protected $table = 'budget_request';
 
     protected $fillable = [
+        'deleted_by',
+        'delete_reason',
         'code',
         'description',
         'amount',
         'notes',
+        'is_nob',
+        'nob_amount',
         'applicant_id',
         'beneficiary_id',
         'type_id',
@@ -29,6 +42,8 @@ class BudgetRequest extends Model
     ];
 
     protected $casts = [
+        'is_nob'       => 'boolean',
+        'nob_amount'   => 'integer',
         'amount'       => 'integer',
         'submitted_at' => 'datetime',
         'approved_at'  => 'datetime',
@@ -40,13 +55,17 @@ class BudgetRequest extends Model
     public const STATUSES = [
         'DRAFT',
         'SUBMITTED',
-        'APPROVED',
+        'CHECKED',
         'VERIFIED',
+        'APPROVED',
         'QUEUED',
         'PAID',
         'REALIZED',
+        'SETTLE_CHECKED',
+        'SETTLE_VERIFIED',
         'CLOSED',
         'REJECTED',
+        'CANCELLED',
     ];
 
     /*
@@ -100,6 +119,14 @@ class BudgetRequest extends Model
         return $this->hasMany(RequestDetail::class, 'budget_request_id')->orderBy('id');
     }
 
+    /** Detail yang masih ikut proses (bukan TAKEOUT) — dasar nilai pengajuan. */
+    public function includedDetails()
+    {
+        return $this->hasMany(RequestDetail::class, 'budget_request_id')
+            ->where('status', '!=', 'TAKEOUT')
+            ->orderBy('id');
+    }
+
     public function statusLogs()
     {
         return $this->hasMany(RequestStatusLog::class, 'budget_request_id')
@@ -129,20 +156,16 @@ class BudgetRequest extends Model
 
     public function isDraft(): bool     { return $this->status === 'DRAFT'; }
     public function isSubmitted(): bool { return $this->status === 'SUBMITTED'; }
-    public function isApproved(): bool  { return $this->status === 'APPROVED'; }
+    public function isChecked(): bool   { return $this->status === 'CHECKED'; }
     public function isVerified(): bool  { return $this->status === 'VERIFIED'; }
+    public function isApproved(): bool  { return $this->status === 'APPROVED'; }
     public function isQueued(): bool    { return $this->status === 'QUEUED'; }
     public function isPaid(): bool      { return $this->status === 'PAID'; }
     public function isRealized(): bool  { return $this->status === 'REALIZED'; }
     public function isClosed(): bool    { return $this->status === 'CLOSED'; }
     public function isRejected(): bool  { return $this->status === 'REJECTED'; }
+    public function isCancelled(): bool { return $this->status === 'CANCELLED'; }
     public function isEditable(): bool  { return $this->status === 'DRAFT'; }
-
-    /** Status yang bisa direvise kembali ke DRAFT */
-    public function isRevisable(): bool
-    {
-        return in_array($this->status, ['SUBMITTED', 'APPROVED', 'VERIFIED']);
-    }
 
     /** Finance bisa kembalikan REALIZED → PAID */
     public function isRealizationRevisable(): bool
@@ -150,26 +173,198 @@ class BudgetRequest extends Model
         return $this->status === 'REALIZED';
     }
 
+    /**
+     * Cash Advance — satu-satunya tipe request yang menjalani alur lengkap
+     * Process (QUEUED) > Paid > Settle (REALIZED) > Closed. Tipe lain langsung
+     * Process (QUEUED) > (Treasury tandai Paid) > Closed, tanpa tahap realisasi.
+     * Deteksi berbasis nama RequestType (case-insensitive), pola sama seperti
+     * BudgetRequestController::typeRequiresAttachment().
+     */
+    public function isCashAdvance(): bool
+    {
+        $name = strtolower(trim($this->type?->name ?? ''));
+
+        return in_array($name, ['cash advance', 'cash-advance', 'cashadvance'], true);
+    }
+
+    /**
+     * Log status_to='REJECTED' paling baru — sumber reason/rejected by/at/from
+     * untuk panel Reject Handling (Manager pilih Revise/Cancel). statusLogs()
+     * sudah diurutkan created_at desc, jadi cukup first(). Pakai koleksi yang
+     * sudah di-eager-load kalau ada (hindari N+1), fallback ke query baru.
+     */
+    public function latestRejectionLog(): ?RequestStatusLog
+    {
+        if ($this->relationLoaded('statusLogs')) {
+            return $this->statusLogs->firstWhere('status_to', 'REJECTED');
+        }
+
+        return $this->statusLogs()->where('status_to', 'REJECTED')->first();
+    }
+
+    /**
+     * Log transisi TERAKHIR yang membawa CR ini ke status-nya SEKARANG —
+     * sumber timestamp "aging" Todo List (dihitung sejak CR masuk ke status
+     * saat ini, bukan sejak pertama kali dibuat). Fallback ke created_at
+     * kalau belum ada log sama sekali (mis. masih DRAFT).
+     */
+    public function latestStatusChangeLog(): ?RequestStatusLog
+    {
+        if ($this->relationLoaded('statusLogs')) {
+            return $this->statusLogs->firstWhere('status_to', $this->status);
+        }
+
+        return $this->statusLogs()->where('status_to', $this->status)->first();
+    }
+
+    /** Sejak kapan CR ini berada di status-nya sekarang — dasar hitungan aging. */
+    public function getAgingSinceAttribute(): \Illuminate\Support\Carbon
+    {
+        return $this->latestStatusChangeLog()?->created_at ?? $this->created_at ?? now();
+    }
+
+    /** Cache in-memory per instance — lihat catatan di getTotalRealizationAttribute(). */
+    private ?int $totalRealizationCache = null;
+
+    /**
+     * Dipanggil berulang per CR (mis. loop "Close Realisasi" di Todo List, atau
+     * refund/refund_formatted yang sama-sama memanggil ini di showJson()) —
+     * pakai koleksi realizations yang sudah di-eager-load kalau ada (nol query
+     * tambahan), fallback ke query baru (di-cache per instance) kalau belum.
+     */
     public function getTotalRealizationAttribute(): int
     {
-        return (int) $this->realizations()->sum('total');
+        if ($this->relationLoaded('realizations')) {
+            return (int) $this->realizations->sum('total');
+        }
+
+        if ($this->totalRealizationCache !== null) {
+            return $this->totalRealizationCache;
+        }
+
+        return $this->totalRealizationCache = (int) $this->realizations()->sum('total');
     }
 
     public function getTotalRealizationFormattedAttribute(): string
     {
-        return 'Rp ' . number_format($this->total_realization, 0, ',', '.');
+        return number_format($this->total_realization, 0, ',', '.');
+    }
+
+    public function secondPayments()
+    {
+        return $this->hasMany(BudgetRequestSecondPayment::class, 'budget_request_id')->orderBy('id');
+    }
+
+    /** Second Payment yang masih PENDING (kalau ada) — CR baru boleh Close
+     *  setelah baris ini PAID (lihat BudgetRequestController::ceoCloseSettlement()). */
+    public function pendingSecondPayment(): ?BudgetRequestSecondPayment
+    {
+        if ($this->relationLoaded('secondPayments')) {
+            return $this->secondPayments->firstWhere('status', 'PENDING');
+        }
+
+        return $this->secondPayments()->where('status', 'PENDING')->first();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | REFUND — SATU-SATUNYA SUMBER KEBENARAN (P-01)
+    |--------------------------------------------------------------------------
+    | Refund hanya nyata setelah Cost Request melewati settlement. Sebelum itu
+    | (REALIZED = baris realisasi baru diinput, belum disetujui Cost Control /
+    | Finance) selisih amount - realisasi masih bisa berubah, jadi TIDAK boleh
+    | dipakai sebagai angka refund di detail, summary, atau reporting.
+    |
+    | Aplikasi ini tidak punya status literal "SETTLE"; tahap settlement-nya
+    | adalah SETTLE_CHECKED -> SETTLE_VERIFIED -> CLOSED. Ketiganya yang
+    | dianggap "sudah settle" oleh rule P-01.
+    */
+
+    /** Status yang dianggap sudah melewati settlement. */
+    public const SETTLED_STATUSES = ['SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'];
+
+    public function isSettled(): bool
+    {
+        return in_array($this->status, self::SETTLED_STATUSES, true);
+    }
+
+    /**
+     * Refund final. 0 selama CR belum settle — berapa pun realisasi yang sudah
+     * terinput. Negatif tidak mungkin: kelebihan realisasi ditangani lewat
+     * Second Payment, bukan refund negatif.
+     */
+    public function refundAmount(): int
+    {
+        if (!$this->isSettled()) {
+            return 0;
+        }
+
+        return max(0, (int) $this->amount - $this->total_realization);
+    }
+
+    public function getRefundAttribute(): int
+    {
+        return $this->refundAmount();
+    }
+
+    public function getRefundFormattedAttribute(): string
+    {
+        return number_format($this->refundAmount(), 0, ',', '.');
+    }
+
+    /**
+     * Refund yang DIUSULKAN — dipakai HANYA di layar approval settlement
+     * (Todo List), tempat user justru perlu melihat selisih sebelum settle
+     * disetujui. Jangan dipakai untuk summary/report.
+     */
+    public function proposedRefundAmount(): int
+    {
+        return (int) ($this->amount ?? 0) - $this->total_realization;
+    }
+
+    /**
+     * Nilai biaya yang benar-benar terpakai. Selama belum settle, nilai
+     * pengajuan penuh yang dipakai (konsisten dengan refund = 0).
+     */
+    public function realizedCostValue(): int
+    {
+        return $this->isSettled() && $this->relationLoadedRealizationsNotEmpty()
+            ? (int) $this->total_realization
+            : (int) $this->amount;
+    }
+
+    private function relationLoadedRealizationsNotEmpty(): bool
+    {
+        return $this->relationLoaded('realizations')
+            ? $this->realizations->isNotEmpty()
+            : $this->realizations()->exists();
+    }
+
+    /** Selisih = Settlement (total realisasi) - Original Approved Amount. Dasar
+     *  nilai Second Payment saat Settlement > nilai pengajuan awal. */
+    public function getSettlementOverageAttribute(): int
+    {
+        return $this->total_realization - (int) $this->amount;
     }
 
     public function getAllowedNextStatuses(): array
     {
         return match($this->status) {
             'DRAFT'     => ['SUBMITTED'],
-            'SUBMITTED' => ['APPROVED', 'DRAFT', 'REJECTED'],   // Head
-            'APPROVED'  => ['VERIFIED', 'DRAFT', 'REJECTED'],   // Finance
-            'VERIFIED'  => ['QUEUED'],                           // via Daily Transaction batch
-            'QUEUED'    => ['PAID'],                             // via Daily Transaction approve
+            'SUBMITTED' => ['CHECKED', 'REJECTED'],    // Head: approve or reject only
+            'CHECKED'   => ['VERIFIED', 'REJECTED'],   // Finance: approve or reject only
+            'VERIFIED'  => ['APPROVED', 'REJECTED'],   // CEO/Approver: individual approval step
+            'APPROVED'  => ['QUEUED'],                 // via Daily Transaction batch (label: "Process")
+            // Treasury markPaid: Cash Advance -> PAID (lanjut realisasi),
+            // tipe lain -> langsung CLOSED (tidak ada tahap realisasi).
+            'QUEUED'    => $this->isCashAdvance() ? ['PAID'] : ['CLOSED'],
             'PAID'      => ['REALIZED'],
-            'REALIZED'  => ['CLOSED'],
+            // Settlement (Cash Advance only): Head check -> Finance verify -> CEO
+            // close. Reject di tiap tahap mengembalikan ke PAID untuk direvisi.
+            'REALIZED'         => ['SETTLE_CHECKED', 'PAID'],
+            'SETTLE_CHECKED'   => ['SETTLE_VERIFIED', 'PAID'],
+            'SETTLE_VERIFIED'  => ['CLOSED'],
+            'REJECTED'  => ['DRAFT', 'CANCELLED'],     // Manager decision: Revise or Cancel
             default     => [],
         };
     }
@@ -186,38 +381,95 @@ class BudgetRequest extends Model
     */
 
     /**
-     * Generate code: CR-{MM}{YY}{kodePO}{kodeCluster}{urutan4digit}
+     * Generate code: CR-{MM}{YY}{kodePO}{urutan4digit}
+     *
+     * Slot cluster 4 digit yang dulu berada di antara kode PO dan nomor urut
+     * dihapus, jadi kodenya 4 digit lebih pendek:
+     *   lama : CR-0926 0085 0018 0039   (bulan-tahun, PO, cluster, urut)
+     *   baru : CR-0926 0085 0039        (bulan-tahun, PO, urut)
+     *
+     * Kode lama DIBIARKAN apa adanya - tidak ada backfill. Keduanya tidak
+     * mungkin bentrok karena panjangnya berbeda (18 vs 14 karakter).
      */
-    public static function generateCode(string $poCode, string $clusterCode): string
+    public static function generateCode(string $poCode): string
     {
-        $month   = now()->format('m');
-        $year    = now()->format('y');
-        $po      = str_pad($poCode, 4, '0', STR_PAD_LEFT);
-        $cluster = str_pad($clusterCode, 4, '0', STR_PAD_LEFT);
-        $prefix  = 'CR-' . $month . $year . $po . $cluster;
+        $month  = now()->format('m');
+        $year   = now()->format('y');
+        $po     = str_pad($poCode, 4, '0', STR_PAD_LEFT);
+        $prefix = 'CR-' . $month . $year . $po;
 
-        $count = static::whereYear('created_at', now()->year)
-            ->whereMonth('created_at', now()->month)
-            ->where('code', 'like', $prefix . '%')
-            ->count();
+        /*
+        | Nomor diambil dari penghitung terkunci, bukan COUNT(*) + 1 dengan
+        | putaran coba-lagi. Putaran itu menutupi gejala (bentrok) tanpa
+        | menghilangkan sebabnya: dua permintaan tetap membaca hitungan yang
+        | sama, dan di bawah beban keduanya bisa berputar mengejar nomor yang
+        | sama berulang kali. Penghitung disemai dari data yang ada.
+        |
+        | Prefix baru lebih pendek, sehingga LIKE-nya ikut mencakup kode format
+        | lama pada PO & bulan yang sama (CR-09260085xxxx0039). Itu memang
+        | dikehendaki: penghitung jadi bersambung dari nomor terakhir yang
+        | sudah terbit, bukan mengulang dari 0001 di bulan berjalan.
+        */
+        $no = DocumentSequence::next(
+            'cr:' . $prefix,
+            fn () => static::whereYear('created_at', now()->year)
+                ->whereMonth('created_at', now()->month)
+                ->where('code', 'like', $prefix . '%')
+                ->count(),
+        );
 
-        $sequence  = str_pad($count + 1, 4, '0', STR_PAD_LEFT);
-        $candidate = $prefix . $sequence;
-
-        $attempts = 0;
-        while (static::where('code', $candidate)->exists() && $attempts < 100) {
-            $count++;
-            $sequence  = str_pad($count + 1, 4, '0', STR_PAD_LEFT);
-            $candidate = $prefix . $sequence;
-            $attempts++;
-        }
-
-        return $candidate;
+        return $prefix . str_pad((string) $no, 4, '0', STR_PAD_LEFT);
     }
 
     public function getAmountFormattedAttribute(): string
     {
-        return 'Rp ' . number_format($this->amount ?? 0, 0, ',', '.');
+        return number_format($this->amount ?? 0, 0, ',', '.');
+    }
+
+    /** Umur CR sejak diajukan, dalam hari bulat (dibulatkan ke bawah). Dipakai Todo List. */
+    /**
+     * Umur CR SEJAK MASUK KE STATUS SAAT INI (bukan sejak pertama diajukan) —
+     * dalam hari bulat (dibulatkan ke bawah). Dipakai Todo List.
+     */
+    public function getAgingDaysAttribute(): int
+    {
+        return (int) floor($this->aging_since->diffInDays(now()));
+    }
+
+    /**
+     * Label umur CR yang ramah dibaca — otomatis turun ke satuan jam/menit
+     * kalau belum sampai 1 hari, supaya CR yang baru saja masuk tidak selalu
+     * tampil "0 hari". Dihitung sejak transisi TERAKHIR ke status saat ini
+     * (aging_since), bukan sejak created_at. Dipakai Todo List.
+     */
+    public function getAgingLabelAttribute(): string
+    {
+        $since = $this->aging_since;
+
+        $days = $this->aging_days;
+        if ($days >= 1) return $days . ' hari';
+
+        $hours = (int) floor($since->diffInHours(now()));
+        if ($hours >= 1) return $hours . ' jam';
+
+        $minutes = (int) floor($since->diffInMinutes(now()));
+        return $minutes . ' menit';
+    }
+
+    /**
+     * PM Internal — diambil dari relasi Budget Plan > Project > manager (users).
+     * '-' jika Budget Plan bersumber dari Cost Center (tidak punya Project) atau
+     * PO belum diisi Manager-nya.
+     */
+    public function getPmInternalNameAttribute(): string
+    {
+        return $this->budgetPlan?->project?->pm_internal_name ?: '-';
+    }
+
+    /** Kode Purchase Order (Project::code) — null jika tidak bersumber dari Project. */
+    public function getPoCodeAttribute(): ?string
+    {
+        return $this->budgetPlan?->project?->code;
     }
 
     public function getStatusColorAttribute(): string
@@ -225,45 +477,62 @@ class BudgetRequest extends Model
         return match($this->status) {
             'DRAFT'     => 'secondary',
             'SUBMITTED' => 'warning',
-            'APPROVED'  => 'info',
+            'CHECKED'   => 'info',
             'VERIFIED'  => 'primary',
+            'APPROVED'  => 'success',
             'QUEUED'    => 'warning',
             'PAID'      => 'success',
             'REALIZED'  => 'primary',
             'CLOSED'    => 'dark',
             'REJECTED'  => 'danger',
+            'CANCELLED' => 'dark',
             default     => 'secondary',
         };
     }
 
     public function getStatusLabelAttribute(): string
     {
-        return match($this->status) {
+        return self::statusLabelFor($this->status);
+    }
+
+    /**
+     * Label tampilan untuk sebuah kode status (dipakai juga untuk menampilkan
+     * transisi status_from/status_to di riwayat log). "Process" = QUEUED,
+     * "Settle" = REALIZED — istilah internal tetap dipakai di DB & filter.
+     */
+    public static function statusLabelFor(?string $status): string
+    {
+        return match($status) {
             'DRAFT'     => 'Draft',
             'SUBMITTED' => 'Submitted',
-            'APPROVED'  => 'Approved',
+            'CHECKED'   => 'Checked',
             'VERIFIED'  => 'Verified',
-            'QUEUED'    => 'Queued',
+            'APPROVED'  => 'Approved',
+            'QUEUED'    => 'Process',
             'PAID'      => 'Paid',
-            'REALIZED'  => 'Realized',
+            'REALIZED'  => 'Settle',
+            'SETTLE_CHECKED'  => 'Checked',
+            'SETTLE_VERIFIED' => 'Verified',
             'CLOSED'    => 'Closed',
             'REJECTED'  => 'Rejected',
-            default     => $this->status,
+            'CANCELLED' => 'Cancelled',
+            default     => $status ?? '-',
         };
     }
 
     /** Role yang lihat SEMUA overhead tanpa access group */
-    public const OVERHEAD_PRIVILEGED_ROLES = ['superadmin', 'approver'];
+    public const OVERHEAD_PRIVILEGED_ROLES = ['superadmin', 'approver', 'finance_manager', 'guest'];
 
     /** Role yang boleh melihat CR PAYROLL (rahasia) */
-    public const PAYROLL_ROLES = ['superadmin', 'approver', 'hr', 'finance_manager'];
+    public const PAYROLL_ROLES = ['superadmin', 'approver', 'hr', 'finance_manager', 'guest'];
 
     public function isAccessibleBy(User $user): bool
     {
         $role = strtolower($user->role->name ?? '');
 
-        // Superadmin & approver (CEO) lihat semua
-        if (in_array($role, ['superadmin', 'approver'])) return true;
+        // Superadmin & approver (CEO) lihat semua — guest juga (view-only, akses
+        // sama luasnya dengan approver, tapi tidak boleh create/update/delete).
+        if (in_array($role, ['superadmin', 'approver', 'finance_manager', 'guest'])) return true;
 
         $plan = $this->budgetPlan;
 
@@ -300,8 +569,42 @@ class BudgetRequest extends Model
 
     public function recalculateAmount(): void
     {
-        $this->amount = $this->details()->sum('total');
+        // Hanya detail yang masih INCLUDED yang dihitung — item yang di-takeout
+        // salah satu approval tidak ikut nilai pengajuan yang diproses Treasury.
+        $this->amount = $this->details()->where('status', '!=', 'TAKEOUT')->sum('total');
         $this->save();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | TAKEOUT SUB-ITEM — tahap approval yang boleh mengeluarkan item pengajuan
+    |--------------------------------------------------------------------------
+    */
+
+    /** Status CR yang masih dalam proses approval (item bisa di-takeout/restore). */
+    public const APPROVAL_STAGES = ['SUBMITTED', 'CHECKED', 'VERIFIED'];
+
+    /** Role (selain superadmin) yang berwenang di tiap tahap approval. */
+    public const STAGE_ROLES = [
+        'SUBMITTED' => ['head'],
+        'CHECKED'   => ['finance', 'finance_manager', 'cost_control'],
+        'VERIFIED'  => ['approver'],
+    ];
+
+    public function isInApprovalStage(): bool
+    {
+        return in_array($this->status, self::APPROVAL_STAGES, true);
+    }
+
+    /** Apakah $user berwenang men-takeout/restore item pada tahap CR saat ini. */
+    public function canModerateItems(?User $user): bool
+    {
+        if (!$user || !$this->isInApprovalStage()) return false;
+
+        $role = strtolower($user->role->name ?? '');
+        if ($role === 'superadmin') return true;
+
+        return in_array($role, self::STAGE_ROLES[$this->status] ?? [], true);
     }
 
     public function addLog(

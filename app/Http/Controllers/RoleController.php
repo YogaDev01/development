@@ -21,7 +21,13 @@ class RoleController extends Controller
 
         $totalMenus = MenuItem::count();
 
-        return view('role.index', compact('roles', 'totalMenus'));
+        $summary = [
+            'total'    => $roles->count(),
+            'active'   => $roles->where('status', 'ACTIVE')->count(),
+            'inactive' => $roles->where('status', 'INACTIVE')->count(),
+        ];
+
+        return view('role.index', compact('roles', 'totalMenus', 'summary'));
     }
 
     /*

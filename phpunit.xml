@@ -23,8 +23,24 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
+        <!--
+            Uji memakai MySQL, bukan sqlite in-memory.
+
+            Sebagian migrasi memakai sintaks khusus MySQL (ALTER TABLE ...
+            MODIFY COLUMN ... ENUM) sehingga tidak bisa dijalankan di sqlite.
+            Menjalankan uji di mesin database yang sama dengan produksi juga
+            berarti perilaku enum, transaksi dan kunci baris yang diuji adalah
+            yang sebenarnya dipakai, bukan tiruannya.
+
+            Siapkan sekali:  CREATE DATABASE tesys_test;
+            Basis data ini dibuat ulang tiap kali suite dijalankan.
+        -->
+        <env name="DB_CONNECTION" value="mysql"/>
+        <env name="DB_DATABASE" value="tesys_test"/>
+        <env name="DB_HOST" value="127.0.0.1"/>
+        <env name="DB_PORT" value="3306"/>
+        <env name="DB_USERNAME" value="root"/>
+        <env name="DB_PASSWORD" value=""/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>

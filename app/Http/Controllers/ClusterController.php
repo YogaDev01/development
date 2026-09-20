@@ -64,7 +64,13 @@ class ClusterController extends Controller
 
         $groups = ClusterGroup::orderBy('name')->get();
 
-        return view('cluster.index', compact('clusters', 'groups'));
+        $summary = [
+            'total'    => $clusters->count(),
+            'active'   => $clusters->where('status', 'ACTIVE')->count(),
+            'inactive' => $clusters->where('status', 'INACTIVE')->count(),
+        ];
+
+        return view('cluster.index', compact('clusters', 'groups', 'summary'));
     }
 
     /**
@@ -207,6 +213,19 @@ class ClusterController extends Controller
     public function destroy($id)
     {
         $cluster = Cluster::findOrFail($id);
+
+        if ($cluster->details()->exists()) {
+            return back()->with('error', 'Cluster tidak bisa dihapus karena sudah memiliki milestone/project detail.');
+        }
+        // withTrashed(): BudgetRequest memakai SoftDeletes, tapi FK
+        // budget_request.cluster_id ON DELETE CASCADE bekerja di level MySQL dan
+        // tidak mengenal soft delete. Tanpa withTrashed() baris yang "ada di
+        // recycle bin" tidak terlihat oleh penjaga ini, penghapusan lolos, dan
+        // MySQL menghapusnya permanen beserta seluruh log statusnya.
+        if (\App\Models\BudgetRequest::withTrashed()->where('cluster_id', $cluster->id)->exists()) {
+            return back()->with('error', 'Cluster tidak bisa dihapus karena sudah dipakai pada Cost Request.');
+        }
+
         $cluster->delete();
 
         return redirect('/cluster')

@@ -4,16 +4,16 @@
 
 @section('content')
 
-<!-- CONTENT HEADER -->
-<div class="content-header">
+<div class="content">
     <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6 d-flex align-items-center">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <div class="d-flex align-items-center">
                 <a href="{{ url('/budget-request') }}" class="btn btn-secondary btn-sm mr-3">
                     <i class="fas fa-arrow-left"></i>
                 </a>
                 <div>
-                    <h1 class="m-0 font-weight-bold">Edit Cost Request</h1>
+                    <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Edit Cost Request</h1>
                     <small class="text-muted">
                         Kode: <strong>{{ $cr->code }}</strong>
                         &nbsp;·&nbsp;
@@ -21,19 +21,12 @@
                     </small>
                 </div>
             </div>
-            <div class="col-sm-6">
-                <ol class="breadcrumb float-sm-right mb-0">
-                    <li class="breadcrumb-item"><a href="#">Finance</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url('/budget-request') }}">Cost Request</a></li>
-                    <li class="breadcrumb-item active">Edit</li>
-                </ol>
-            </div>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item"><a href="#">Finance</a></li>
+                <li class="breadcrumb-item"><a href="{{ url('/budget-request') }}">Cost Request</a></li>
+                <li class="breadcrumb-item active">Edit</li>
+            </ol>
         </div>
-    </div>
-</div>
-
-<div class="content">
-    <div class="container-fluid">
 
         {{-- Catatan revisi dari manager/finance --}}
         @if($cr->statusLogs->first() && in_array($cr->statusLogs->first()->action_type, ['manager_revised','finance_revised']))
@@ -69,43 +62,29 @@
                 @endif
 
                 <div class="card-body">
-                    <div class="row">
+                    <div class="row po-two-col ratio-70-30 form-clean">
 
-                        <!-- TIPE -->
-                        <div class="col-md-3">
-                            <div class="form-group">
-                                <label class="font-weight-600">Tipe Request <span class="text-danger">*</span></label>
-                                <select name="type_id" class="form-control @error('type_id') is-invalid @enderror" required>
-                                    <option value="">— Pilih Tipe —</option>
-                                    @foreach($types as $type)
-                                        <option value="{{ $type->id }}"
-                                            {{ old('type_id', $cr->type_id) == $type->id ? 'selected' : '' }}>
-                                            {{ $type->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('type_id')<small class="text-danger d-block">{{ $message }}</small>@enderror
-                            </div>
-                        </div>
+                        <!-- KOLOM KIRI -->
+                        <div class="col-md-6 po-col-left">
 
-                        <!-- BUDGET PLAN -->
-                        <div class="col-md-5">
+                            <!-- BUDGET PLAN -->
                             <div class="form-group">
                                 <label class="font-weight-600">Budget Plan <span class="text-danger">*</span></label>
                                 <select name="budget_plan_id" id="selectBudgetPlan"
                                         class="form-control @error('budget_plan_id') is-invalid @enderror" required>
                                     <option value="">— Pilih Budget Plan —</option>
                                     @foreach($budgetPlans as $bp)
+                                        @php
+                                            $bpLabel = $bp->isProjectBudget()
+                                                ? ($bp->project?->customer?->initial ?? '-') . ' - [' . ($bp->project?->code ?? '-') . '] ' . $bp->description
+                                                : ($bp->costCenter?->name ?? '-') . ' - ' . $bp->description;
+                                        @endphp
                                         <option value="{{ $bp->id }}"
                                             data-remaining="{{ $bp->remainingAmount() }}"
                                             data-source="{{ $bp->source_type }}"
+                                            data-label="{{ $bpLabel }}"
                                             {{ old('budget_plan_id', $cr->budget_plan_id) == $bp->id ? 'selected' : '' }}>
-                                            [{{ $bp->code }}] {{ $bp->description }}
-                                            @if($bp->isProjectBudget())
-                                                — {{ $bp->project->name ?? '-' }}
-                                            @else
-                                                — {{ $bp->source_type }}: {{ $bp->costCenter->name ?? '-' }}
-                                            @endif
+                                            {{ $bpLabel }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -114,11 +93,67 @@
                                 </small>
                                 @error('budget_plan_id')<small class="text-danger d-block">{{ $message }}</small>@enderror
                             </div>
+
+                            <!-- TIPE + BENEFICIARY -->
+                            <div class="d-flex" style="gap:12px;">
+                                <div class="form-group" style="flex:0 0 34%;">
+                                    <label class="font-weight-600">Tipe Request <span class="text-danger">*</span></label>
+                                    <select name="type_id" id="selectType" class="form-control @error('type_id') is-invalid @enderror" required>
+                                        <option value="">— Pilih Tipe —</option>
+                                        @foreach($types as $type)
+                                            <option value="{{ $type->id }}" data-name="{{ strtolower($type->name) }}"
+                                                {{ old('type_id', $cr->type_id) == $type->id ? 'selected' : '' }}>
+                                                {{ $type->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @error('type_id')<small class="text-danger d-block">{{ $message }}</small>@enderror
+                                </div>
+                                <div class="form-group" style="flex:1 1 auto;min-width:0;">
+                                    <label class="font-weight-600">Penerima Dana <span class="text-danger">*</span></label>
+                                    <select name="beneficiary_id" id="selectBeneficiary"
+                                            class="form-control @error('beneficiary_id') is-invalid @enderror" required>
+                                        <option value="">— Pilih Beneficiary —</option>
+                                        @foreach($beneficiaries as $ben)
+                                            @php $benLabel = $ben->complete_name . ' — ' . ($ben->bank?->name ?? '-') . ' ' . ($ben->account_number ?? '-'); @endphp
+                                            <option value="{{ $ben->id }}"
+                                                data-bank="{{ $ben->bank?->name ?? '-' }}"
+                                                data-account="{{ $ben->account_number ?? '-' }}"
+                                                data-email="{{ $ben->contact ?? '' }}"
+                                                data-label="{{ $benLabel }}"
+                                                {{ old('beneficiary_id', $cr->beneficiary_id) == $ben->id ? 'selected' : '' }}>
+                                                {{ $benLabel }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <small class="text-muted" id="beneficiaryInfo">
+                                        @if($cr->beneficiary)
+                                            <i class="fas fa-university mr-1"></i>
+                                            {{ $cr->beneficiary->bank?->name ?? '-' }} — {{ $cr->beneficiary->account_number ?? '-' }}
+                                        @endif
+                                    </small>
+                                    @error('beneficiary_id')<small class="text-danger d-block">{{ $message }}</small>@enderror
+                                </div>
+                            </div>
+
+                            <!-- DESKRIPSI -->
+                            <div class="form-group mb-0">
+                                <label class="font-weight-600">Deskripsi / Keperluan <span class="text-danger">*</span></label>
+                                <input type="text" name="description"
+                                       class="form-control @error('description') is-invalid @enderror"
+                                       value="{{ old('description', $cr->description) }}"
+                                       placeholder="Jelaskan keperluan pengajuan dana..."
+                                       autocomplete="off" required>
+                                @error('description')<small class="text-danger d-block">{{ $message }}</small>@enderror
+                            </div>
+
                         </div>
 
-                        <!-- CLUSTER — hanya untuk budget yang bersumber dari PO -->
-                        <div class="col-md-4" id="clusterBox">
-                            <div class="form-group">
+                        <!-- KOLOM KANAN -->
+                        <div class="col-md-6 po-col-right">
+
+                            <!-- PROJECT — hanya untuk budget yang bersumber dari PO -->
+                            <div class="form-group" id="clusterBox">
                                 <label class="font-weight-600">Project <span class="text-danger">*</span></label>
                                 <select name="cluster_id" id="selectCluster"
                                         class="form-control @error('cluster_id') is-invalid @enderror" required>
@@ -132,76 +167,42 @@
                                 </select>
                                 @error('cluster_id')<small class="text-danger d-block">{{ $message }}</small>@enderror
                             </div>
-                        </div>
 
-                        <!-- BENEFICIARY -->
-                        <div class="col-md-5">
+                            <!-- EMAIL NOTIFIKASI -->
                             <div class="form-group">
-                                <label class="font-weight-600">Beneficiary (Tujuan Transfer) <span class="text-danger">*</span></label>
-                                <select name="beneficiary_id" id="selectBeneficiary"
-                                        class="form-control @error('beneficiary_id') is-invalid @enderror" required>
-                                    <option value="">— Pilih Beneficiary —</option>
-                                    @foreach($beneficiaries as $ben)
-                                        <option value="{{ $ben->id }}"
-                                            data-bank="{{ $ben->bank->name ?? '-' }}"
-                                            data-account="{{ $ben->account_number ?? '-' }}"
-                                            {{ old('beneficiary_id', $cr->beneficiary_id) == $ben->id ? 'selected' : '' }}>
-                                            {{ $ben->complete_name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <small class="text-muted" id="beneficiaryInfo">
-                                    @if($cr->beneficiary)
-                                        <i class="fas fa-university mr-1"></i>
-                                        {{ $cr->beneficiary->bank->name ?? '-' }} — {{ $cr->beneficiary->account_number ?? '-' }}
-                                    @endif
-                                </small>
-                                @error('beneficiary_id')<small class="text-danger d-block">{{ $message }}</small>@enderror
+                                <label class="font-weight-600">Email Notifikasi</label>
+                                <div id="emailTagsBox" class="form-control @error('email') is-invalid @enderror"
+                                     style="height:auto;min-height:38px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 8px;cursor:text;">
+                                    <input type="text" id="emailTagInput"
+                                           style="border:none;outline:none;flex:1 1 auto;min-width:140px;padding:2px 0;"
+                                           placeholder="Tambah email...">
+                                </div>
+                                <input type="hidden" name="email" id="emailHidden" value="{{ old('email', $cr->email) }}">
+                                <small class="text-muted">Tekan Enter atau koma (,) untuk menambahkan email.</small>
+                                @error('email')<small class="text-danger d-block">{{ $message }}</small>@enderror
                             </div>
-                        </div>
 
-                        <!-- DESKRIPSI -->
-                        <div class="col-md-7">
-                            <div class="form-group">
-                                <label class="font-weight-600">Deskripsi / Keperluan <span class="text-danger">*</span></label>
-                                <input type="text" name="description"
-                                       class="form-control @error('description') is-invalid @enderror"
-                                       value="{{ old('description', $cr->description) }}"
-                                       placeholder="Jelaskan keperluan pengajuan dana..."
-                                       autocomplete="off" required>
-                                @error('description')<small class="text-danger d-block">{{ $message }}</small>@enderror
+                            <!-- NOTES -->
+                            <div class="form-group mb-0">
+                                <label class="font-weight-600">Notes</label>
+                                <textarea name="notes" class="form-control" rows="2"
+                                          placeholder="Catatan tambahan...">{{ old('notes', $cr->notes) }}</textarea>
                             </div>
+
                         </div>
 
                         <!-- NOB WARNING -->
-                        <div class="col-md-12">
-                            <div id="nobWarning" class="alert alert-warning mb-2" style="display:none;font-size:13px;">
+                        <div class="col-12 mt-2">
+                            <div id="nobWarning" class="alert alert-warning mb-0" style="display:none;font-size:13px;">
                                 <i class="fas fa-exclamation-triangle mr-1"></i>
                                 <strong>Perhatian:</strong> Total pengajuan melebihi sisa budget.
                                 Deskripsi akan otomatis ditambahkan prefix <strong>[NOB]</strong>.
                             </div>
                         </div>
 
-                        <!-- EMAIL NOTIFIKASI -->
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="font-weight-600">Email Notifikasi</label>
-                                <input type="text" name="email"
-                                       class="form-control @error('email') is-invalid @enderror"
-                                       value="{{ old('email', $cr->email) }}"
-                                       placeholder="email1@domain.com, email2@domain.com"
-                                       autocomplete="off">
-                                <small class="text-muted">Pisahkan beberapa email dengan koma (,).</small>
-                            </div>
-                        </div>
-
-                        <!-- NOTES -->
-                        <div class="col-md-6">
-                            <div class="form-group mb-0">
-                                <label class="font-weight-600">Notes</label>
-                                <textarea name="notes" class="form-control" rows="2"
-                                          placeholder="Catatan tambahan...">{{ old('notes', $cr->notes) }}</textarea>
-                            </div>
+                        <!-- WORKFLOW INFO berdasarkan Tipe Request -->
+                        <div class="col-12 mt-2">
+                            <div id="workflowAlert" class="alert mb-0" style="display:none;font-size:13px;"></div>
                         </div>
 
                     </div>
@@ -213,7 +214,14 @@
                 <div class="card-header d-flex align-items-center">
                     <h3 class="card-title"><i class="fas fa-list-ul mr-1"></i> Rincian Pengajuan</h3>
                     <div class="ml-auto d-flex align-items-center" style="gap:8px;">
-                        <span id="totalLabel" class="badge badge-primary px-3 py-2" style="font-size:13px;">Total: Rp 0</span>
+                        <span id="totalLabel" class="badge badge-primary px-3 py-2" style="font-size:13px;">Total: 0</span>
+                        <a href="#" id="btnDownloadDetailTemplate" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-file-excel mr-1"></i> Download Template
+                        </a>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnImportDetailExcel">
+                            <i class="fas fa-file-import mr-1"></i> Import Excel
+                        </button>
+                        <input type="file" id="importDetailFileInput" accept=".xlsx,.xls" style="display:none;">
                         <button type="button" class="btn btn-sm btn-primary" id="btnAddDetail">
                             <i class="fas fa-plus mr-1"></i> Tambah Baris
                         </button>
@@ -224,14 +232,15 @@
                         <table class="table table-bordered mb-0">
                             <thead class="bg-light">
                                 <tr>
-                                    <th style="width:4%;" class="text-center">No</th>
-                                    <th style="width:32%;">Sub Item Budget</th>
-                                    <th style="width:12%;" class="text-right">Sisa Tersedia</th>
-                                    <th style="width:12%;" class="text-right">Harga Satuan</th>
-                                    <th style="width:6%;" class="text-center">Qty</th>
-                                    <th style="width:12%;" class="text-right">Total</th>
-                                    <th style="width:17%;">Notes</th>
-                                    <th style="width:5%;" class="text-center">Aksi</th>
+                                    <th scope="col" style="width:4%;" class="text-center">No</th>
+                                    <th scope="col" style="width:25%;">Sub Item Budget</th>
+                                    <th scope="col" style="width:20%;">Deskripsi</th>
+                                    <th scope="col" class="text-right col-remaining" style="display:none;">Sisa Tersedia</th>
+                                    <th scope="col" style="width:12%;" class="text-right">Harga Satuan</th>
+                                    <th scope="col" style="width:6%;" class="text-center">Qty</th>
+                                    <th scope="col" style="width:12%;" class="text-right">Total</th>
+                                    <th scope="col" style="width:10%;" class="text-center">Lampiran Item</th>
+                                    <th scope="col" style="width:5%;" class="text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="detailBody">
@@ -248,21 +257,21 @@
                 </div>
             </div>
 
-            <!-- SECTION 3: LAMPIRAN EXISTING -->
+            <!-- SECTION 3: LAMPIRAN EXISTING (global/pendukung) -->
             @if($cr->requestAttachments()->count() > 0)
             <div class="card card-warning card-outline shadow-sm">
                 <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-paperclip mr-1"></i> Lampiran Existing</h3>
+                    <h3 class="card-title"><i class="fas fa-paperclip mr-1"></i> Lampiran Tambahan / Pendukung (Existing)</h3>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-bordered mb-0">
                             <thead class="bg-light">
                                 <tr>
-                                    <th style="width:5%;" class="text-center">No</th>
-                                    <th style="width:65%;">Nama File</th>
-                                    <th style="width:15%;" class="text-center">Preview</th>
-                                    <th style="width:15%;" class="text-center">Hapus</th>
+                                    <th scope="col" style="width:5%;" class="text-center">No</th>
+                                    <th scope="col" style="width:65%;">Nama File</th>
+                                    <th scope="col" style="width:15%;" class="text-center">Preview</th>
+                                    <th scope="col" style="width:15%;" class="text-center">Hapus</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -282,7 +291,7 @@
                                     <td class="text-center align-middle">
                                         <input type="checkbox" name="delete_attachments[]"
                                                value="{{ $att->id }}"
-                                               style="width:18px;height:18px;accent-color:#dc3545;">
+                                               style="width:18px;height:18px;accent-color:var(--danger);">
                                     </td>
                                 </tr>
                                 @endforeach
@@ -302,29 +311,36 @@
             <!-- SECTION 4: LAMPIRAN BARU -->
             <div class="card card-warning card-outline shadow-sm">
                 <div class="card-header d-flex align-items-center">
-                    <h3 class="card-title"><i class="fas fa-upload mr-1"></i> Tambah Lampiran Baru</h3>
+                    <h3 class="card-title">
+                        <i class="fas fa-upload mr-1"></i> Tambah Lampiran Tambahan / Pendukung
+                        <span id="attRequiredBadge" class="badge badge-danger ml-1" style="display:none;">Wajib</span>
+                    </h3>
                     <button type="button" class="btn btn-sm btn-primary ml-auto" id="btnAddAttachment">
                         <i class="fas fa-plus mr-1"></i> Tambah Lampiran
                     </button>
                 </div>
                 <div class="card-body">
-                    <div id="dropZoneCR" class="att-dropzone mb-3">
+                    <div class="alert alert-light border mb-3" style="font-size:12px;">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Bukti <strong>global / pendukung</strong> (bukan khusus satu item), contoh: foto undangan meeting.
+                        Nota/bukti <strong>per item</strong> di-upload di kolom <strong>“Lampiran Item”</strong> pada tabel Rincian Pengajuan.
+                    </div>
+                    <div id="dropZoneCR" class="att-dropzone mb-3" tabindex="0">
                         <i class="fas fa-cloud-upload-alt fa-2x mb-2 d-block"></i>
                         <p class="mb-0">
-                            Drag &amp; drop file ke sini, atau
+                            Drag &amp; drop file ke sini, paste gambar (Ctrl+V), atau
                             <span class="text-primary" style="text-decoration:underline;cursor:pointer;" id="dropZoneBrowseCR">klik untuk pilih</span>
                         </p>
-                        <small class="text-muted">Bisa pilih/drop beberapa file sekaligus</small>
-                        <input type="file" id="dropZoneInputCR" multiple style="display:none;"
-                               accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
+                        <small class="text-muted">Bisa pilih/drop/paste beberapa file sekaligus</small>
+                        <input type="file" id="dropZoneInputCR" multiple style="display:none;">
                     </div>
                     <div class="table-responsive">
                         <table class="table table-bordered mb-0">
                             <thead class="bg-light">
                                 <tr>
-                                    <th style="width:5%;" class="text-center">No</th>
-                                    <th style="width:85%;">File</th>
-                                    <th style="width:10%;" class="text-center">Aksi</th>
+                                    <th scope="col" style="width:5%;" class="text-center">No</th>
+                                    <th scope="col" style="width:85%;">File</th>
+                                    <th scope="col" style="width:10%;" class="text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="attachmentBody"></tbody>
@@ -345,9 +361,10 @@
                     <a href="{{ url('/budget-request') }}" class="btn btn-secondary">
                         <i class="fas fa-arrow-left mr-1"></i> Kembali
                     </a>
-                    <button type="submit" class="btn btn-warning">
+                    <button type="submit" class="btn btn-warning" id="btnSaveCR">
                         <i class="fas fa-save mr-1"></i> Simpan Perubahan
                     </button>
+                    <small id="saveHint" class="text-danger align-self-center" style="display:none;"></small>
                 </div>
             </div>
 
@@ -380,10 +397,16 @@
 <textarea id="accountsHolder" style="display:none;">{{ json_encode($accounts->map(fn($a) => ['id' => $a->id, 'name' => $a->name])) }}</textarea>
 
 <textarea id="crDetailsHolder" style="display:none;">{{ json_encode($cr->details->map(fn($d) => [
+    'id'               => $d->id,
     'budget_detail_id' => $d->budget_detail_id,
     'amount'           => $d->amount,
     'qty'              => $d->qty,
     'notes'            => $d->notes,
+    'attachments'      => $d->attachments->map(fn($a) => [
+        'id'   => $a->id,
+        'name' => $a->original_name,
+        'url'  => asset('storage/' . $a->path),
+    ]),
 ])) }}</textarea>
 
 {{-- Account per jenis sumber dana (di-swap saat Budget Plan berubah) --}}
@@ -393,6 +416,8 @@
     'PAYROLL'  => $accountsBySource['PAYROLL']->map(fn($a) => ['id' => $a->id, 'name' => $a->name]),
 ]) }}</textarea>
 
+<textarea id="existingAttachmentCountHolder" style="display:none;">{{ $cr->requestAttachments()->count() }}</textarea>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
@@ -400,6 +425,13 @@ document.addEventListener('DOMContentLoaded', function () {
     var crDetails      = JSON.parse(document.getElementById('crDetailsHolder').value) || [];
     var budgetDetails = []; // sub-item Budget Plan yang sedang aktif (di-fetch via AJAX)
     var firstLoad      = true;
+
+    var ATTACHMENT_REQUIRED_TYPES = ['payment', 'pettycash', 'petty cash', 'purchase', 'reimbursement'];
+    var existingAttachmentCount = parseInt(document.getElementById('existingAttachmentCountHolder').value, 10) || 0;
+
+    // ── SEARCHABLE DROPDOWN: Budget Plan & Beneficiary ──────────────
+    TesysSearchableSelect.init('#selectBudgetPlan', { placeholder: '— Pilih Budget Plan —', searchPlaceholder: 'Cari Budget Plan...' });
+    TesysSearchableSelect.init('#selectBeneficiary', { placeholder: '— Pilih Beneficiary —', searchPlaceholder: 'Cari Beneficiary...' });
 
     function fmt(v) {
         v = (v || '').toString().replace(/\D/g, '');
@@ -440,7 +472,8 @@ document.addEventListener('DOMContentLoaded', function () {
             grand += calcRow(row);
         });
         document.getElementById('totalLabel').textContent =
-            'Total: Rp ' + grand.toLocaleString('id-ID');
+            'Total: ' + grand.toLocaleString('id-ID');
+        if (window.__updateSubmitState) window.__updateSubmitState();
     }
 
     document.addEventListener('input', function (e) {
@@ -466,12 +499,31 @@ document.addEventListener('DOMContentLoaded', function () {
         var html = '<option value="">— Pilih Sub Item —</option>';
         budgetDetails.forEach(function (bd) {
             var sel = (selectedId && String(selectedId) === String(bd.id)) ? ' selected' : '';
-            html += '<option value="' + bd.id + '"' + sel + '>' + bd.label + ' (' + (bd.unit || '-') + ')</option>';
+            var label = bd.account + ' - ' + (bd.deskripsi || '-') + ' (' + (bd.unit || '-') + ') - ' + bd.remaining_formatted;
+            html += '<option value="' + bd.id + '"' + sel + '>' + label + '</option>';
         });
         return html;
     }
 
-    function updateRemainingCell(row) {
+    // ── AKTIFKAN DROPDOWN SEARCHABLE UNTUK SELECT SUB ITEM DI TIAP BARIS ──
+    function initSubItemPicker(scope) {
+        (scope || document).querySelectorAll('select.select-budget-detail').forEach(function (sel) {
+            TesysSearchableSelect.initOne($(sel), {
+                placeholder: '— Pilih Sub Item —',
+                searchPlaceholder: 'Cari Sub Item...',
+                onChange: function (selectEl) {
+                    updateRemainingCell(selectEl.closest('tr'), true);
+                    recalc();
+                }
+            });
+        });
+    }
+
+    // force = true kalau dipanggil dari event "user eksplisit ganti Sub Item"
+    // (harga SELALU disegarkan ke default Sub Item yang baru). Tanpa force,
+    // hanya isi kalau field masih kosong/0 — dipakai saat render awal baris
+    // supaya nilai amount tersimpan dari database (CR yang diedit) tidak tertimpa.
+    function updateRemainingCell(row, force) {
         var sel  = row.querySelector('.select-budget-detail');
         var cell = row.querySelector('.cell-remaining');
         var bd   = budgetDetails.find(function (b) { return String(b.id) === String(sel.value); });
@@ -483,10 +535,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         cell.textContent = bd.remaining_formatted;
-        cell.style.color = bd.remaining > 0 ? '#28a745' : '#dc3545';
+        cell.style.color = bd.remaining > 0 ? 'var(--success)' : 'var(--danger)';
 
         var amountInput = row.querySelector('.inp-amount');
-        if (!amountInput.value || amountInput.value === '0') {
+        if (force || !amountInput.value || amountInput.value === '0') {
             amountInput.value = fmt(String(bd.amount));
             calcRow(row);
         }
@@ -494,12 +546,79 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.addEventListener('change', function (e) {
         if (e.target.classList.contains('select-budget-detail')) {
-            updateRemainingCell(e.target.closest('tr'));
+            updateRemainingCell(e.target.closest('tr'), true);
             recalc();
         }
     });
 
-    // Beneficiary info
+    // ── EMAIL NOTIFIKASI — tag/badge input ──────────────────────────
+    (function () {
+        var box    = document.getElementById('emailTagsBox');
+        var input  = document.getElementById('emailTagInput');
+        var hidden = document.getElementById('emailHidden');
+        var emails = (hidden.value || '').split(',').map(function (e) { return e.trim(); }).filter(Boolean);
+
+        function sync() {
+            hidden.value = emails.join(',');
+        }
+
+        function render() {
+            box.querySelectorAll('.email-tag').forEach(function (el) { el.remove(); });
+            emails.forEach(function (email) {
+                var tag = document.createElement('span');
+                tag.className = 'badge badge-light border email-tag';
+                tag.style.cssText = 'font-size:12px;font-weight:500;padding:5px 8px;display:inline-flex;align-items:center;gap:6px;';
+                tag.textContent = email;
+                var x = document.createElement('i');
+                x.className = 'fas fa-times';
+                x.style.cssText = 'cursor:pointer;opacity:.6;font-size:10px;';
+                x.addEventListener('click', function () {
+                    emails = emails.filter(function (e) { return e !== email; });
+                    sync();
+                    render();
+                });
+                tag.appendChild(x);
+                box.insertBefore(tag, input);
+            });
+            sync();
+        }
+
+        function addEmail(raw) {
+            raw.split(',').forEach(function (part) {
+                var email = part.trim();
+                if (email && emails.indexOf(email) === -1) {
+                    emails.push(email);
+                }
+            });
+            input.value = '';
+            render();
+        }
+
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                if (input.value.trim()) addEmail(input.value);
+            } else if (e.key === 'Backspace' && !input.value && emails.length) {
+                emails.pop();
+                sync();
+                render();
+            }
+        });
+        input.addEventListener('blur', function () {
+            if (input.value.trim()) addEmail(input.value);
+        });
+        box.addEventListener('click', function (e) {
+            if (e.target === box) input.focus();
+        });
+
+        // Render nilai existing (email CR) dulu, baru tambahkan email user yang login.
+        render();
+        addEmail('{{ Auth::user()->email }}');
+
+        window.__addNotifyEmail = addEmail;
+    })();
+
+    // Beneficiary info + auto-fill email
     document.getElementById('selectBeneficiary').addEventListener('change', function () {
         var opt  = this.options[this.selectedIndex];
         var info = document.getElementById('beneficiaryInfo');
@@ -508,6 +627,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 (opt.dataset.bank || '-') + ' — ' + (opt.dataset.account || '-');
         } else {
             info.textContent = '';
+        }
+
+        var email = opt.dataset.email || '';
+        if (this.value && email) {
+            window.__addNotifyEmail(email);
         }
     });
 
@@ -539,7 +663,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3">' +
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-3">' +
             '<i class="fas fa-spinner fa-spin mr-1"></i> Memuat sub item budget...</td></tr>';
 
         fetch('{{ url("/api/budget-plan") }}/' + bpId + '/details')
@@ -554,13 +678,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
 
                 renumber('detailBody');
-                document.querySelectorAll('#detailBody .select-budget-detail').forEach(function (sel) {
+                initSubItemPicker(tbody);
+                document.querySelectorAll('#detailBody select.select-budget-detail').forEach(function (sel) {
                     updateRemainingCell(sel.closest('tr'));
                 });
                 recalc();
             })
             .catch(function () {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger py-3">' +
+                tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger py-3">' +
                     'Gagal memuat sub item budget. Silakan coba lagi.</td></tr>';
             });
     }
@@ -571,8 +696,8 @@ document.addEventListener('DOMContentLoaded', function () {
         var el        = document.getElementById('remainingBudget');
 
         if (bpSelect.value) {
-            el.textContent = 'Rp ' + remaining.toLocaleString('id-ID');
-            el.style.color = remaining > 0 ? '#28a745' : '#dc3545';
+            el.textContent = remaining.toLocaleString('id-ID');
+            el.style.color = remaining > 0 ? 'var(--success)' : 'var(--danger)';
         } else {
             el.textContent = '—';
             el.style.color = '';
@@ -611,30 +736,245 @@ document.addEventListener('DOMContentLoaded', function () {
         var subOpts   = buildSubItemOptions(prefill.budget_detail_id || null);
         var amountVal = prefill.amount ? fmt(String(prefill.amount)) : '';
         var qtyVal    = prefill.qty || 1;
-        var notesVal  = prefill.notes || '';
+        var notesVal  = (prefill.notes || '').replace(/"/g, '&quot;');
+        var idField   = prefill.id ? '<input type="hidden" name="details[' + i + '][id]" value="' + prefill.id + '">' : '';
 
-        return '<tr class="detail-row">' +
+        var existAtt = (prefill.attachments || []).map(function (a) {
+            return '<label class="d-block text-muted mb-0" style="font-weight:400;cursor:pointer;">' +
+                '<input type="checkbox" name="delete_detail_attachments[]" value="' + a.id + '" class="del-detail-att"> ' +
+                '<a href="' + a.url + '" target="_blank" rel="noopener"><i class="fas fa-file mr-1"></i>' +
+                (a.name || 'file').replace(/</g, '&lt;') + '</a></label>';
+        }).join('');
+
+        return '<tr class="detail-row">' + idField +
             '<td class="text-center align-middle row-no"></td>' +
             '<td><select name="details[' + i + '][budget_detail_id]" class="form-control form-control-sm select-budget-detail" required>' + subOpts + '</select></td>' +
-            '<td class="text-right cell-remaining">—</td>' +
-            '<td><input type="text" name="details[' + i + '][amount]" class="form-control form-control-sm text-right inp-amount" value="' + amountVal + '" placeholder="0" required></td>' +
-            '<td><input type="number" name="details[' + i + '][qty]" class="form-control form-control-sm text-center inp-qty" value="' + qtyVal + '" min="1" required></td>' +
-            '<td><input type="text" name="details[' + i + '][total_display]" class="form-control form-control-sm text-right inp-total" value="0" readonly style="background:#f8f9fa;"></td>' +
             '<td>' +
                 '<span class="badge badge-danger nob-badge d-none mb-1"><i class="fas fa-exclamation-triangle mr-1"></i>NOB</span>' +
-                '<input type="text" name="details[' + i + '][notes]" class="form-control form-control-sm" value="' + notesVal + '" placeholder="Keterangan...">' +
+                '<input type="text" name="details[' + i + '][notes]" class="form-control form-control-sm" value="' + notesVal + '" placeholder="Deskripsi..." required>' +
+            '</td>' +
+            '<td class="text-right cell-remaining col-remaining" style="display:none;">—</td>' +
+            '<td><input type="text" name="details[' + i + '][amount]" class="form-control form-control-sm text-right inp-amount" value="' + amountVal + '" placeholder="0" required></td>' +
+            '<td><input type="number" name="details[' + i + '][qty]" class="form-control form-control-sm text-center inp-qty" value="' + qtyVal + '" min="1" required></td>' +
+            '<td><input type="text" name="details[' + i + '][total_display]" class="form-control form-control-sm text-right inp-total" value="0" readonly style="background:var(--surface-2);"></td>' +
+            '<td class="align-middle detail-att-cell" data-idx="' + i + '" tabindex="0">' +
+                '<input type="file" name="details[' + i + '][attachments][]" class="d-none detail-att-input" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">' +
+                '<button type="button" class="btn btn-outline-secondary btn-sm btn-detail-att" style="white-space:nowrap;padding:2px 8px;font-size:11px;">' +
+                    '<i class="fas fa-paperclip"></i> <span class="detail-att-label">Lampiran</span></button>' +
+                '<div class="detail-att-hint text-muted" style="font-size:9px;">drop / paste / klik</div>' +
+                (existAtt ? '<div class="mt-1" style="font-size:10px;line-height:1.5;">' + existAtt + '</div>' : '') +
+                '<div class="detail-att-list mt-1" style="font-size:10px;line-height:1.5;"></div>' +
             '</td>' +
             '<td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-detail"><i class="fas fa-trash"></i></button></td>' +
         '</tr>';
     }
 
+    // ── LAMPIRAN PER ITEM (drag & drop + paste + klik) ─────────────────────
+    function appendFilesToInput(input, fileList) {
+        if (!fileList || !fileList.length) return;
+        try {
+            var dt = new DataTransfer();
+            Array.from(input.files || []).forEach(function (f) { dt.items.add(f); });
+            Array.from(fileList).forEach(function (f) { dt.items.add(f); });
+            input.files = dt.files;
+        } catch (e) {
+            try { input.files = fileList; } catch (e2) {}
+        }
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function renderDetailAttList(cell) {
+        var input = cell.querySelector('.detail-att-input');
+        var list  = cell.querySelector('.detail-att-list');
+        var label = cell.querySelector('.detail-att-label');
+        var files = Array.from(input.files || []);
+        label.textContent = files.length ? (files.length + ' file baru') : 'Lampiran';
+        list.innerHTML = files.map(function (f, idx) {
+            return '<div class="text-muted"><i class="fas fa-file mr-1"></i>' +
+                f.name.replace(/</g, '&lt;') +
+                ' <i class="fas fa-times text-danger detail-att-del" data-i="' + idx + '" style="cursor:pointer;"></i></div>';
+        }).join('');
+    }
+
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest('.btn-detail-att');
+        if (!btn) return;
+        var real = btn.closest('.detail-att-cell').querySelector('.detail-att-input');
+        var tmp  = document.createElement('input');
+        tmp.type = 'file'; tmp.multiple = true; tmp.accept = real.accept;
+        tmp.addEventListener('change', function () { appendFilesToInput(real, tmp.files); });
+        tmp.click();
+    });
+
+    document.addEventListener('click', function (e) {
+        var x = e.target.closest('.detail-att-del');
+        if (!x) return;
+        var cell  = x.closest('.detail-att-cell');
+        var input = cell.querySelector('.detail-att-input');
+        var idx   = parseInt(x.dataset.i, 10);
+        try {
+            var dt = new DataTransfer();
+            Array.from(input.files).forEach(function (f, i) { if (i !== idx) dt.items.add(f); });
+            input.files = dt.files;
+        } catch (err) {}
+        renderDetailAttList(cell);
+        if (window.__updateSubmitState) window.__updateSubmitState();
+    });
+
+    document.addEventListener('change', function (e) {
+        if (e.target.classList.contains('del-detail-att')) {
+            var lbl = e.target.closest('label');
+            if (lbl) lbl.style.textDecoration = e.target.checked ? 'line-through' : '';
+            if (window.__updateSubmitState) window.__updateSubmitState();
+            return;
+        }
+        if (!e.target.classList.contains('detail-att-input')) return;
+        renderDetailAttList(e.target.closest('.detail-att-cell'));
+        if (window.__updateSubmitState) window.__updateSubmitState();
+    });
+
+    document.addEventListener('dragover', function (e) {
+        var cell = e.target.closest ? e.target.closest('.detail-att-cell') : null;
+        if (!cell) return;
+        e.preventDefault();
+        cell.style.background = 'var(--warning-bg)';
+    });
+    document.addEventListener('dragleave', function (e) {
+        var cell = e.target.closest ? e.target.closest('.detail-att-cell') : null;
+        if (cell) cell.style.background = '';
+    });
+    document.addEventListener('drop', function (e) {
+        var cell = e.target.closest ? e.target.closest('.detail-att-cell') : null;
+        if (!cell) return;
+        e.preventDefault();
+        cell.style.background = '';
+        var f = e.dataTransfer ? e.dataTransfer.files : null;
+        if (f && f.length) appendFilesToInput(cell.querySelector('.detail-att-input'), f);
+    });
+
+    document.addEventListener('paste', function (e) {
+        var cell = (document.activeElement && document.activeElement.closest)
+            ? document.activeElement.closest('.detail-att-cell') : null;
+        if (!cell) return;
+        var cd = e.clipboardData || window.clipboardData;
+        if (!cd || !cd.items) return;
+        var picked = [];
+        for (var i = 0; i < cd.items.length; i++) {
+            if (cd.items[i].kind === 'file') {
+                var f = cd.items[i].getAsFile();
+                if (f) {
+                    var ext = (f.type.split('/')[1] || 'png');
+                    picked.push(new File([f], 'pasted-' + Date.now() + '.' + ext, { type: f.type }));
+                }
+            }
+        }
+        if (picked.length) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            appendFilesToInput(cell.querySelector('.detail-att-input'), picked);
+        }
+    }, true);
+
     document.getElementById('btnAddDetail').addEventListener('click', function () {
         if (!document.getElementById('selectBudgetPlan').value) {
-            Swal.fire({ icon: 'warning', title: 'Pilih Budget Plan dulu', text: 'Sub Item Budget baru muncul setelah Budget Plan dipilih.', confirmButtonColor: '#F5A623' });
+            Swal.fire({ icon: 'warning', title: 'Pilih Budget Plan dulu', text: 'Sub Item Budget baru muncul setelah Budget Plan dipilih.', confirmButtonColor: '#92232b' });
             return;
         }
         document.getElementById('detailBody').insertAdjacentHTML('beforeend', makeDetailRow(detailIdx++, null));
         renumber('detailBody');
+        initSubItemPicker(document.getElementById('detailBody'));
+    });
+
+    // ── DOWNLOAD TEMPLATE & IMPORT EXCEL — Rincian Pengajuan ────────────────
+    // Catatan: import MENGGANTI seluruh baris yang sedang ada di form (sama
+    // seperti perilaku "Data lama akan diganti seluruhnya saat disimpan") —
+    // termasuk lampiran per item pada baris yang tergantikan.
+    document.getElementById('btnDownloadDetailTemplate').addEventListener('click', function (e) {
+        e.preventDefault();
+        var bpId = document.getElementById('selectBudgetPlan').value;
+        if (!bpId) {
+            Swal.fire({ icon: 'warning', title: 'Pilih Budget Plan dulu', text: 'Template dibuat sesuai Sub Item Budget dari Budget Plan yang dipilih.', confirmButtonColor: '#92232b' });
+            return;
+        }
+        window.location.href = '{{ url("/budget-request/import-template") }}?budget_plan_id=' + bpId;
+    });
+
+    document.getElementById('btnImportDetailExcel').addEventListener('click', function () {
+        if (!document.getElementById('selectBudgetPlan').value) {
+            Swal.fire({ icon: 'warning', title: 'Pilih Budget Plan dulu', confirmButtonColor: '#92232b' });
+            return;
+        }
+        document.getElementById('importDetailFileInput').value = '';
+        document.getElementById('importDetailFileInput').click();
+    });
+
+    document.getElementById('importDetailFileInput').addEventListener('change', function () {
+        var file = this.files[0];
+        if (!file) return;
+        var bpId = document.getElementById('selectBudgetPlan').value;
+
+        var formData = new FormData();
+        formData.append('file', file);
+        formData.append('budget_plan_id', bpId);
+        formData.append('_token', $('meta[name="csrf-token"]').attr('content') || '{{ csrf_token() }}');
+
+        Swal.fire({
+            title: 'Memproses file...', text: 'Mohon tunggu sebentar.',
+            allowOutsideClick: false, didOpen: function () { Swal.showLoading(); }
+        });
+
+        $.ajax({
+            url: '{{ url("/budget-request/import-preview") }}',
+            type: 'POST', data: formData, processData: false, contentType: false
+        }).done(function (res) {
+            Swal.close();
+
+            if (res.errors && res.errors.length) {
+                Swal.fire({
+                    icon: 'warning', title: 'Sebagian data bermasalah',
+                    html: '<div style="text-align:left;max-height:250px;overflow:auto;">' +
+                          res.errors.map(function (er) { return '<div>• ' + er + '</div>'; }).join('') +
+                          '</div>',
+                    confirmButtonColor: '#92232b'
+                });
+            }
+
+            if (res.rows && res.rows.length) {
+                document.getElementById('detailBody').innerHTML = '';
+                detailIdx = 0;
+
+                res.rows.forEach(function (r) {
+                    var i = detailIdx++;
+                    document.getElementById('detailBody').insertAdjacentHTML('beforeend', makeDetailRow(i, {
+                        budget_detail_id: r.budget_detail_id,
+                        amount: r.amount,
+                        qty: r.qty,
+                        notes: r.notes
+                    }));
+                });
+
+                renumber('detailBody');
+                initSubItemPicker(document.getElementById('detailBody'));
+                document.querySelectorAll('#detailBody select.select-budget-detail').forEach(function (sel) {
+                    updateRemainingCell(sel.closest('tr'));
+                });
+                recalc();
+
+                Swal.fire({
+                    icon: 'success', title: 'Import berhasil',
+                    text: res.rows.length + ' baris dimuat ke Rincian Pengajuan.',
+                    confirmButtonColor: 'var(--success)', timer: 2000, showConfirmButton: false
+                });
+            } else if (!res.errors || !res.errors.length) {
+                Swal.fire({ icon: 'error', title: 'Tidak ada data', text: 'File tidak berisi baris data yang valid.' });
+            }
+        }).fail(function (xhr) {
+            Swal.close();
+            var msg = xhr.responseJSON && xhr.responseJSON.message
+                ? xhr.responseJSON.message
+                : 'Gagal memproses file. Pastikan format Excel sesuai template.';
+            Swal.fire({ icon: 'error', title: 'Import Gagal', text: msg });
+        });
     });
 
     document.addEventListener('click', function (e) {
@@ -646,6 +986,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (e.target.closest('.btn-remove-att')) {
             e.target.closest('tr').remove();
             renumber('attachmentBody');
+            if (window.__updateSubmitState) window.__updateSubmitState();
         }
     });
 
@@ -673,6 +1014,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
         renumber('attachmentBody');
+        if (window.__updateSubmitState) window.__updateSubmitState();
     }
 
     document.getElementById('btnAddAttachment').addEventListener('click', function () {
@@ -715,6 +1057,33 @@ document.addEventListener('DOMContentLoaded', function () {
                 Array.from(files).forEach(function (f) { addAttachmentRow(f); });
             }
         });
+
+        // ── PASTE IMAGE FROM CLIPBOARD (Ctrl+V) — tidak perlu file fisik ──
+        function handlePaste(e) {
+            var items = (e.clipboardData || window.clipboardData) ? (e.clipboardData || window.clipboardData).items : null;
+            if (!items) return;
+            var found = false;
+            for (var i = 0; i < items.length; i++) {
+                if (items[i].kind === 'file') {
+                    var f = items[i].getAsFile();
+                    if (f) {
+                        var ext = (f.type.split('/')[1] || 'png');
+                        var renamed = new File([f], 'pasted-image-' + Date.now() + '.' + ext, { type: f.type });
+                        addAttachmentRow(renamed);
+                        found = true;
+                    }
+                }
+            }
+            if (found) e.preventDefault();
+        }
+        zone.addEventListener('paste', handlePaste);
+        document.addEventListener('paste', function (e) {
+            var tag = (document.activeElement && document.activeElement.tagName) || '';
+            if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+            if (document.activeElement && document.activeElement.closest &&
+                document.activeElement.closest('.detail-att-cell')) return;
+            handlePaste(e);
+        });
     })();
 
     // Submit
@@ -726,7 +1095,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     title: 'Submit Cost Request?',
                     text: 'CR akan dikirim ke Manager untuk direview. Setelah submit tidak dapat diedit.',
                     icon: 'question', showCancelButton: true,
-                    confirmButtonColor: '#007bff', cancelButtonColor: '#6c757d',
+                    confirmButtonColor: '#42627d', cancelButtonColor: '#55595e',
                     confirmButtonText: 'Ya, Submit', cancelButtonText: 'Batal'
                 }).then(function (r) { if (r.isConfirmed) document.getElementById('frmSubmit').submit(); });
             } else {
@@ -734,6 +1103,127 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
+
+    // ── LAMPIRAN WAJIB untuk tipe tertentu (Payment/Pettycash/Purchase/Reimbursement) ──
+    function typeRequiresAttachment() {
+        var sel = document.getElementById('selectType');
+        var opt = sel.options[sel.selectedIndex];
+        var name = opt ? (opt.dataset.name || '') : '';
+        return ATTACHMENT_REQUIRED_TYPES.indexOf(name) !== -1;
+    }
+
+    function refreshAttachmentRequiredUI() {
+        document.getElementById('attRequiredBadge').style.display = typeRequiresAttachment() ? 'inline-block' : 'none';
+    }
+
+    document.getElementById('selectType').addEventListener('change', refreshAttachmentRequiredUI);
+    refreshAttachmentRequiredUI();
+
+    // ── INFO WORKFLOW berdasarkan Tipe Request ─────────────────────────────
+    function refreshWorkflowAlert() {
+        var sel = document.getElementById('selectType');
+        var opt = sel.options[sel.selectedIndex];
+        var name = opt ? (opt.dataset.name || '') : '';
+        var box = document.getElementById('workflowAlert');
+        if (!sel.value) { box.style.display = 'none'; return; }
+
+        if (name === 'cash advance') {
+            box.className = 'alert alert-info mb-0';
+            box.innerHTML = '<i class="fas fa-route mr-1"></i> <strong>Cash Advance</strong> — workflow: ' +
+                '<strong>Process &rarr; Paid &rarr; Settle &rarr; Closed</strong>. ' +
+                'Ada tahap realisasi (settlement) setelah dana cair, jadi bukti final dilengkapi saat settle.';
+        } else {
+            box.className = 'alert alert-warning mb-0';
+            box.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i> Workflow: ' +
+                '<strong>Process &rarr; Paid &rarr; Closed</strong> (tanpa tahap realisasi). ' +
+                'Pastikan <strong>semua bukti/evidence lengkap &amp; jelas sebelum submit</strong> — ' +
+                'nota per item di kolom "Lampiran Item", bukti pendukung di Lampiran Tambahan.';
+        }
+        box.style.display = 'block';
+    }
+    document.getElementById('selectType').addEventListener('change', refreshWorkflowAlert);
+    refreshWorkflowAlert();
+
+    // ── HITUNG JUMLAH LAMPIRAN (item + tambahan, existing yang tidak dihapus + baru) ──
+    function totalAttachmentCount() {
+        var n = 0;
+        document.querySelectorAll('#attachmentBody input[type="file"]').forEach(function (i) {
+            if (i.files && i.files.length) n += i.files.length;
+        });
+        document.querySelectorAll('#detailBody .detail-att-input').forEach(function (i) {
+            if (i.files && i.files.length) n += i.files.length;
+        });
+        var gDel = document.querySelectorAll('input[name="delete_attachments[]"]:checked').length;
+        n += Math.max(0, existingAttachmentCount - gDel);
+
+        var dExist = crDetails.reduce(function (s, d) { return s + ((d.attachments || []).length); }, 0);
+        var dDel   = document.querySelectorAll('.del-detail-att:checked').length;
+        n += Math.max(0, dExist - dDel);
+        return n;
+    }
+
+    // ── ENABLE/DISABLE TOMBOL SIMPAN ─────────────────────────────────────
+    function updateSubmitState() {
+        var reasons = [];
+
+        if (!document.getElementById('selectBudgetPlan').value) reasons.push('Budget Plan');
+        if (!document.getElementById('selectType').value)       reasons.push('Tipe Request');
+        if (!document.getElementById('selectBeneficiary').value) reasons.push('Penerima Dana');
+        if (!document.querySelector('[name="description"]').value.trim()) reasons.push('Deskripsi');
+
+        var clusterSel = document.getElementById('selectCluster');
+        var clusterBox = document.getElementById('clusterBox');
+        if (clusterBox && clusterBox.style.display !== 'none' && clusterSel && clusterSel.required && !clusterSel.value) {
+            reasons.push('Project');
+        }
+
+        var rows = document.querySelectorAll('#detailBody .detail-row');
+        if (!rows.length) {
+            reasons.push('minimal 1 baris rincian');
+        } else {
+            rows.forEach(function (row) {
+                var sub  = row.querySelector('.select-budget-detail');
+                var note = row.querySelector('[name$="[notes]"]');
+                var amt  = row.querySelector('.inp-amount');
+                if ((sub && !sub.value) || (note && !note.value.trim()) || (amt && parse(amt.value) <= 0)) {
+                    if (reasons.indexOf('rincian belum lengkap') === -1) reasons.push('rincian belum lengkap');
+                }
+            });
+        }
+
+        if (typeRequiresAttachment() && totalAttachmentCount() < 1) {
+            reasons.push('minimal 1 lampiran (item atau tambahan)');
+        }
+
+        var btn  = document.getElementById('btnSaveCR');
+        var hint = document.getElementById('saveHint');
+        btn.disabled = reasons.length > 0;
+        if (reasons.length) {
+            hint.textContent = 'Lengkapi: ' + reasons.join(', ');
+            hint.style.display = 'inline';
+        } else {
+            hint.style.display = 'none';
+        }
+    }
+
+    document.getElementById('frmCR').addEventListener('input', updateSubmitState);
+    document.getElementById('frmCR').addEventListener('change', updateSubmitState);
+    window.__updateSubmitState = updateSubmitState;
+    setTimeout(updateSubmitState, 300);
+    updateSubmitState();
+
+    document.getElementById('frmCR').addEventListener('submit', function (e) {
+        updateSubmitState();
+        if (document.getElementById('btnSaveCR').disabled) {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'warning',
+                title: 'Form belum lengkap',
+                text: document.getElementById('saveHint').textContent || 'Lengkapi data yang wajib diisi.',
+                confirmButtonColor: '#92232b'
+            });
+        }
+    });
 
 });
 </script>
@@ -745,24 +1235,32 @@ document.addEventListener('DOMContentLoaded', function () {
 .font-weight-600 { font-weight:600; }
 table td { vertical-align:middle !important; }
 
+/* Dropdown searchable kustom (TesysSearchableSelect) di dalam sel tabel — sedikit lebih ramping. */
+td .tss-btn { padding:.25rem .5rem; font-size:13.5px; }
+
+.detail-att-cell { outline: none; transition: background .15s ease; }
+.detail-att-cell:focus-within { background: var(--warning-bg); }
+.detail-att-hint { opacity: .7; }
+.btn:disabled { cursor: not-allowed; }
+
 .att-dropzone {
-    border: 2px dashed #ced4da;
-    border-radius: 8px;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-md);
     padding: 28px 20px;
     text-align: center;
-    color: #6c757d;
+    color: var(--text-faint);
     cursor: pointer;
     transition: all .2s ease;
-    background: #fafbfc;
+    background: var(--surface-2);
 }
 .att-dropzone:hover {
-    border-color: #F5A623;
-    background: #FFFBF3;
+    border-color: var(--accent);
+    background: var(--warning-bg);
 }
 .att-dropzone.dragover {
-    border-color: #F5A623;
-    background: #FFF3DC;
-    color: #C97E0A;
+    border-color: var(--accent);
+    background: var(--warning-bg);
+    color: var(--accent-dark);
 }
 </style>
 @endpush

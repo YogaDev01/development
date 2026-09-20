@@ -4,81 +4,51 @@
 
 @section('content')
 
-<div class="content-header">
-    <div class="container-fluid">
-        <div class="row mb-3">
-            <div class="col-12 col-md-3">
-                <div class="small-box bg-info">
-                    <div class="inner"><h3>{{ $summary['total'] }}</h3><p>Total Account</p></div>
-                    <div class="icon"><i class="fas fa-list"></i></div>
-                </div>
-            </div>
-            <div class="col-12 col-md-3">
-                <div class="small-box bg-warning">
-                    <div class="inner"><h3>{{ $summary['variable_cost'] }}</h3><p>Variable Cost</p></div>
-                    <div class="icon"><i class="fas fa-chart-line"></i></div>
-                </div>
-            </div>
-            <div class="col-12 col-md-3">
-                <div class="small-box bg-danger">
-                    <div class="inner"><h3>{{ $summary['fixed_cost'] }}</h3><p>Fixed Cost</p></div>
-                    <div class="icon"><i class="fas fa-anchor"></i></div>
-                </div>
-            </div>
-            <div class="col-12 col-md-3">
-                <div class="small-box bg-secondary">
-                    <div class="inner"><h3>{{ $summary['overhead'] }}</h3><p>Overhead</p></div>
-                    <div class="icon"><i class="fas fa-layer-group"></i></div>
-                </div>
-            </div>
-        </div>
-        <div class="row mb-2">
-            <div class="col-sm-6">
-                <h1 class="m-0 font-weight-bold">Account Master</h1>
-            </div>
-            <div class="col-sm-6">
-                <ol class="breadcrumb float-sm-right">
-                    <li class="breadcrumb-item"><a href="#">Master</a></li>
-                    <li class="breadcrumb-item active">Account</li>
-                </ol>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="content">
     <div class="container-fluid">
 
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Account Master</h1>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item"><a href="#">Master</a></li>
+                <li class="breadcrumb-item active">Account</li>
+            </ol>
+        </div>
+
+        <x-stat-cards :cards="[
+            ['Total Account', $summary['total'], 'primary', 'fas fa-list'],
+            ['Variable Cost', $summary['variable_cost'], 'warning', 'fas fa-chart-line'],
+            ['Fixed Cost', $summary['fixed_cost'], 'danger', 'fas fa-anchor'],
+            ['Overhead', $summary['overhead'], 'secondary', 'fas fa-layer-group'],
+        ]" />
+
         <div class="card card-primary card-outline shadow-sm">
             <div class="card-header d-flex align-items-center">
-                <button id="btnRefresh" class="btn btn-secondary btn-sm">
-                    <i class="fas fa-sync-alt mr-1"></i> Refresh
-                </button>
-                <button type="button" class="btn btn-success btn-sm ml-auto" id="btnTambahAccount">
-                    <i class="fas fa-plus mr-1"></i> Tambah Account
-                </button>
+                <h3 class="card-title"><i class="fas fa-list mr-1"></i> Daftar Account</h3>
+                <div class="ml-auto d-flex" style="gap:8px;">
+                    <button id="btnRefresh" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-sync-alt mr-1"></i> Refresh
+                    </button>
+                </div>
             </div>
 
             <div class="card-body">
 
-                <div class="custom-toolbar mb-3">
-                    <div class="custom-toolbar-left">
+                <div class="custom-toolbar mb-3 d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
+                    <div class="custom-toolbar-left d-flex align-items-center flex-wrap" style="gap:8px;">
                         <div class="toolbar-row">
                             <span class="toolbar-label">Cari :</span>
                             <div class="toolbar-input" id="accountSearch"></div>
                         </div>
-                        <div class="toolbar-row">
-                            <span class="toolbar-label">Filter :</span>
-                            <div class="toolbar-input">
-                                <select id="accountFilter" multiple placeholder="Filter data...">
-                                    <option value="CAT:Variable Cost">Variable Cost</option>
-                                    <option value="CAT:Fixed Cost">Fixed Cost</option>
-                                    <option value="CAT:Overhead">Overhead</option>
-                                    <option value="STATUS:ACTIVE">Status : ACTIVE</option>
-                                    <option value="STATUS:INACTIVE">Status : INACTIVE</option>
-                                </select>
-                            </div>
-                        </div>
+                        <button aria-label="Clear Filter" type="button" id="btnClearFilterAcc" class="btn btn-outline-secondary btn-sm" title="Clear Filter">
+                            <i class="fas fa-eraser"></i>
+                        </button>
+                        <div id="accRowFilters" class="d-flex flex-wrap" style="gap:8px;"></div>
+                    </div>
+                    <div class="custom-toolbar-right d-flex flex-wrap" style="gap:8px;">
+                        <button type="button" class="btn btn-success btn-sm" id="btnTambahAccount">
+                            <i class="fas fa-plus mr-1"></i> Tambah Account
+                        </button>
                     </div>
                 </div>
 
@@ -86,16 +56,16 @@
                     <table id="tblAccount" class="table table-bordered table-hover table-striped mb-0">
                         <thead class="bg-light">
                             <tr>
-                                <th width="5%"  class="all">No</th>
-                                <th width="40%" class="all">Nama Account</th>
-                                <th width="25%">Kategori</th>
-                                <th width="15%">Status</th>
-                                <th width="15%" class="text-center all">Action</th>
+                                <th scope="col" width="5%"  class="all">No</th>
+                                <th scope="col" width="40%" class="all">Nama Account</th>
+                                <th scope="col" width="25%">Kategori</th>
+                                <th scope="col" width="15%">Status</th>
+                                <th scope="col" width="15%" class="text-center all">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($accounts as $account)
-                            <tr>
+                            <tr data-category="{{ $account->category }}" data-status="{{ $account->status }}">
                                 <td>{{ $loop->iteration }}</td>
                                 <td><strong>{{ $account->name }}</strong></td>
                                 <td>
@@ -111,30 +81,42 @@
                                         {{ $account->status }}
                                     </span>
                                 </td>
-                                <td class="text-center">
-                                    <div class="d-flex justify-content-center" style="gap:4px;">
+                                <td class="text-center action-column">
+                                    <div class="action-buttons ts-actions">
+
                                         <button type="button"
-                                                class="btn btn-warning btn-sm btn-edit-account"
+                                                class="ts-action-primary is-neutral btn-edit-account"
                                                 data-id="{{ $account->id }}"
-                                                title="Edit">
-                                            <i class="fas fa-pen"></i>
+                                                title="Edit" aria-label="Edit akun">
+                                            <i class="fas fa-pen" aria-hidden="true"></i><span class="ts-al">Edit</span>
                                         </button>
-                                        <form action="{{ url('/account/' . $account->id) }}"
-                                              method="POST" class="frmDeleteAccount" style="display:inline;">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-danger btn-sm">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </form>
+
+                                        <button type="button" class="ts-action-more"
+                                                aria-haspopup="true" aria-expanded="false"
+                                                title="Aksi lain" aria-label="Aksi lain untuk akun">
+                                            <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
+                                        </button>
+
+                                        <div class="ts-action-menu dropdown-menu" hidden>
+                                            <form action="{{ url('/account/' . $account->id) }}"
+                                                  method="POST" class="frmDeleteAccount">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="dropdown-item is-danger">
+                                                    <i class="fas fa-trash"></i>Hapus
+                                                </button>
+                                            </form>
+
+                                        </div>
+
                                     </div>
                                 </td>
+
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="5" class="text-center text-muted py-4">
-                                    <i class="fas fa-folder-open d-block mb-2"></i>
-                                    Belum ada data account
+                                <td colspan="5">
+                                    <x-empty title="Belum ada data account" icon="fas fa-folder-open" compact />
                                 </td>
                             </tr>
                             @endforelse
@@ -153,11 +135,11 @@
 {{-- ================================================================ --}}
 <div class="modal fade" id="mdlTambahAccount" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
-        <div class="modal-content" style="border-radius:12px;overflow:hidden;">
+        <div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
 
-            <div class="modal-header" style="background:#0D1B2A;border-bottom:3px solid #F5A623;">
+            <div class="modal-header" style="background:var(--charcoal);border-bottom:3px solid var(--accent);">
                 <h5 class="modal-title text-white">
-                    <i class="fas fa-list mr-2" style="color:#F5A623;"></i> Tambah Account
+                    <i class="fas fa-list mr-2" style="color:var(--accent);"></i> Tambah Account
                 </h5>
                 <button type="button" class="close text-white" data-dismiss="modal">
                     <span>&times;</span>
@@ -186,7 +168,7 @@
                     </div>
 
                 </div>
-                <div class="modal-footer" style="background:#f8f9fa;border-top:1px solid #e9ecef;">
+                <div class="modal-footer" style="background:var(--surface-2);border-top:1px solid var(--border);">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">
                         <i class="fas fa-times mr-1"></i> Batal
                     </button>
@@ -205,11 +187,11 @@
 {{-- ================================================================ --}}
 <div class="modal fade" id="mdlEditAccount" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
-        <div class="modal-content" style="border-radius:12px;overflow:hidden;">
+        <div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
 
-            <div class="modal-header" style="background:#0D1B2A;border-bottom:3px solid #F5A623;">
+            <div class="modal-header" style="background:var(--charcoal);border-bottom:3px solid var(--accent);">
                 <h5 class="modal-title text-white">
-                    <i class="fas fa-pen mr-2" style="color:#F5A623;"></i> Edit Account
+                    <i class="fas fa-pen mr-2" style="color:var(--accent);"></i> Edit Account
                 </h5>
                 <button type="button" class="close text-white" data-dismiss="modal">
                     <span>&times;</span>
@@ -255,7 +237,7 @@
                     </div>
 
                 </div>
-                <div class="modal-footer" style="background:#f8f9fa;border-top:1px solid #e9ecef;">
+                <div class="modal-footer" style="background:var(--surface-2);border-top:1px solid var(--border);">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">
                         <i class="fas fa-times mr-1"></i> Batal
                     </button>
@@ -276,39 +258,55 @@
 .custom-toolbar      { display:flex; align-items:flex-start; gap:15px; flex-wrap:wrap; }
 .custom-toolbar-left { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 .toolbar-row         { display:flex; align-items:center; gap:8px; }
-.toolbar-label       { min-width:50px; font-weight:600; color:#495057; white-space:nowrap; margin-bottom:0; }
+.toolbar-label       { min-width:50px; font-weight:600; color:var(--text-dim); white-space:nowrap; margin-bottom:0; }
 .toolbar-input       { min-width:180px; }
-#accountSearch input { width:180px; border-radius:6px; }
+#accountSearch input { width:180px; border-radius:var(--radius-sm); }
 .ts-wrapper  { min-width:240px; }
-.ts-control  { border-radius:6px !important; border:1px solid #ced4da !important; min-height:38px !important; padding:6px 10px !important; box-shadow:none !important; }
+.ts-control  { border-radius:var(--radius-sm) !important; border:1px solid var(--border) !important; min-height:38px !important; padding:6px 10px !important; box-shadow:none !important; }
 #tblAccount  { width:100% !important; }
 .table td, .table th { vertical-align:middle !important; }
 .dataTables_wrapper .row:last-child { margin-top:18px; align-items:center; }
-.dataTables_info { padding-top:0 !important; font-size:14px; color:#6c757d; }
+.dataTables_info { padding-top:0 !important; font-size:14px; color:var(--text-faint); }
 .dataTables_length { display:flex; align-items:center; margin-left:18px; }
-.dataTables_length label { display:flex; align-items:center; gap:10px; margin-bottom:0; font-size:14px; font-weight:600; color:#6c757d; }
+.dataTables_length label { display:flex; align-items:center; gap:10px; margin-bottom:0; font-size:14px; font-weight:600; color:var(--text-faint); }
 .dataTables_length select {
     appearance:none !important; -webkit-appearance:none !important;
-    background-color:#fff !important; color:#495057 !important;
-    border:1px solid #ced4da !important; border-radius:6px !important;
+    background-color:var(--surface) !important; color:var(--text-dim) !important;
+    border:1px solid var(--border) !important; border-radius:var(--radius-sm) !important;
     padding:4px 30px 4px 10px !important; height:36px !important; min-width:72px !important;
     font-size:14px !important; font-weight:600 !important; cursor:pointer; box-shadow:none !important;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%236c757d' viewBox='0 0 16 16'%3E%3Cpath d='M1.5 5.5l6 6 6-6'/%3E%3C/svg%3E") !important;
     background-repeat:no-repeat !important; background-position:right 10px center !important; background-size:12px !important;
 }
-.dataTables_paginate .paginate_button { border-radius:6px !important; margin:0 2px; }
+.dataTables_paginate .paginate_button { border-radius:var(--radius-sm) !important; margin:0 2px; }
 .dataTables_paginate .paginate_button.current,
 .dataTables_paginate .paginate_button.current:hover,
 .dataTables_wrapper .pagination .page-item.active .page-link {
-    background:#F5A623 !important; background-image:none !important;
-    border-color:#C97E0A !important; color:#0D1B2A !important; font-weight:700 !important;
+    background:var(--accent) !important; background-image:none !important;
+    border-color:var(--accent-dark) !important; color:#fff !important; font-weight:700 !important;
 }
-.dataTables_wrapper .pagination .page-link { color:#F5A623 !important; }
+.dataTables_wrapper .pagination .page-link { color:var(--accent) !important; }
 .dataTables_wrapper .pagination .page-item:not(.active) .page-link:hover {
-    background:#FFF3DC !important; border-color:#F5A623 !important; color:#C97E0A !important;
+    background:var(--warning-bg) !important; border-color:var(--accent) !important; color:var(--accent-dark) !important;
 }
 .dataTables_wrapper .pagination .page-link:focus {
-    box-shadow:0 0 0 3px rgba(245,166,35,0.30) !important; outline:none !important;
+    box-shadow:0 0 0 3px rgba(200,39,46,0.30) !important; outline:none !important;
+}
+@media (max-width: 767.98px) {
+    .card-header { flex-direction:column; gap:10px; align-items:stretch !important; }
+    .card-header .btn { width:100%; }
+    .card-header .card-title { margin-bottom:0; }
+    .card-header .ml-auto { margin-left:0 !important; flex-wrap:wrap; }
+    .custom-toolbar { flex-direction:column !important; align-items:stretch !important; }
+    .custom-toolbar-left { flex-direction:column !important; align-items:stretch !important; width:100%; }
+    .custom-toolbar-right { width:100%; }
+    .custom-toolbar-right .btn { width:100%; }
+    #btnClearFilterAcc { width:100%; }
+    #accRowFilters { width:100%; }
+    #accRowFilters .tcf-row-btn { width:100%; }
+    .toolbar-row { width:100%; }
+    .toolbar-input { flex:1; min-width:0; }
+    #accountSearch input { width:100%; }
 }
 </style>
 @endpush
@@ -365,29 +363,14 @@ $(function () {
     $('#accountSearch').html('<input type="search" id="accountSearchInput" class="form-control form-control-sm" placeholder="Cari data...">');
     $('#accountSearchInput').on('keyup', function() { table.search(this.value).draw(); });
 
-    // TomSelect filter
-    new TomSelect('#accountFilter', {
-        plugins: ['remove_button'], persist: false, create: false, placeholder: 'Filter data...'
-    });
+    TesysColumnFilter.initRowFilters('#tblAccount', '#accRowFilters', [
+        { key: 'category', label: 'Kategori' },
+        { key: 'status', label: 'Status' },
+    ]);
 
-    $.fn.dataTable.ext.search.push(function(settings, data) {
-        if (settings.nTable.id !== 'tblAccount') return true;
-        var filters = $('#accountFilter').val();
-        if (!filters || !filters.length) return true;
-        var cat    = data[2].replace(/<[^>]*>/g, '').trim();
-        var status = data[3].replace(/<[^>]*>/g, '').trim();
-        var selCats = [], selStatuses = [];
-        filters.forEach(function(f) {
-            var p = f.split(':'), k = p[0], v = p.slice(1).join(':');
-            if (k === 'CAT') selCats.push(v);
-            if (k === 'STATUS') selStatuses.push(v);
-        });
-        if (selCats.length && !selCats.includes(cat)) return false;
-        if (selStatuses.length && !selStatuses.includes(status)) return false;
-        return true;
+    $('#btnClearFilterAcc').on('click', function() {
+        TesysColumnFilter.clearAll('#tblAccount');
     });
-
-    $('#accountFilter').on('change', function() { table.draw(); });
 
     // Refresh
     $('#btnRefresh').on('click', function() { location.reload(); });
@@ -406,8 +389,8 @@ $(function () {
             text: 'Account yang masih digunakan tidak dapat dihapus.',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#6c757d',
+            confirmButtonColor: '#9a3030',
+            cancelButtonColor: '#55595e',
             confirmButtonText: 'Ya, Hapus',
             cancelButtonText: 'Batal'
         }).then(function(r) { if (r.isConfirmed) form.submit(); });

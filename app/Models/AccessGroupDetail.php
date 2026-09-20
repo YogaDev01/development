@@ -14,7 +14,8 @@ class AccessGroupDetail extends Model
 
         'access_group_id',
         'project_id',
-        'cost_center_id'
+        'cost_center_id',
+        'team_id'
 
     ];
 
@@ -53,5 +54,16 @@ class AccessGroupDetail extends Model
     public function costCenter()
     {
         return $this->belongsTo(\App\Models\CostCenter::class, 'cost_center_id');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | TEAM (akses PO lewat Team -> Access Group -> PO)
+    |--------------------------------------------------------------------------
+    */
+
+    public function team()
+    {
+        return $this->belongsTo(\App\Models\Team::class);
     }
 }

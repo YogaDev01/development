@@ -11,6 +11,8 @@ use App\Models\PayrollRunLine;
 use App\Models\Employee;
 use App\Models\BudgetPlan;
 use App\Models\Project;
+use App\Models\User;
+use App\Services\NotifyService;
 
 class PayrollRunController extends Controller
 {
@@ -22,7 +24,7 @@ class PayrollRunController extends Controller
     |   hr, finance_manager, approver (CEO), superadmin.
     | Privasi nilai gaji ditegakkan lebih lanjut di tahap 5c.
     */
-    private const PAYROLL_ROLES = ['superadmin', 'approver', 'hr', 'finance_manager'];
+    private const PAYROLL_ROLES = ['superadmin', 'approver', 'hr', 'finance_manager', 'guest'];
 
     /*
     | Hak per aksi workflow:
@@ -69,8 +71,12 @@ class PayrollRunController extends Controller
         $summary = [
             'total'     => $runs->count(),
             'draft'     => $runs->where('status', 'DRAFT')->count(),
-            'process'   => $runs->whereIn('status', ['SUBMITTED', 'VERIFIED', 'APPROVED'])->count(),
-            'paid'      => $runs->whereIn('status', ['PAID', 'CLOSED'])->count(),
+            'submitted' => $runs->where('status', 'SUBMITTED')->count(),
+            'verified'  => $runs->where('status', 'VERIFIED')->count(),
+            'approved'  => $runs->where('status', 'APPROVED')->count(),
+            'paid'      => $runs->where('status', 'PAID')->count(),
+            'closed'    => $runs->where('status', 'CLOSED')->count(),
+            'rejected'  => $runs->where('status', 'REJECTED')->count(),
         ];
 
         return view('payroll-run.index', compact('runs', 'summary'));
@@ -235,8 +241,25 @@ class PayrollRunController extends Controller
             'reject_notes' => null,
         ]);
 
+        NotifyService::send(
+            $this->usersWithRole('finance_manager'),
+            'Payroll Run menunggu verifikasi',
+            Auth::user()->name . ' mengajukan Payroll Run "' . $run->code . '" untuk diverifikasi.',
+            route('payroll-run.index'),
+            'workflow'
+        );
+
         return redirect('/payroll-run/' . $run->id)
             ->with('success', 'Payroll berhasil disubmit. Menunggu verifikasi Finance Manager.');
+    }
+
+    /** Role — penerima notifikasi tiap tahap workflow payroll run. */
+    private function usersWithRole(string ...$roles)
+    {
+        return User::whereHas('role', fn ($r) => $r->whereRaw(
+            'LOWER(name) IN (' . implode(',', array_fill(0, count($roles), '?')) . ')',
+            array_map('strtolower', $roles)
+        ))->where('status', 'ACTIVE')->get();
     }
 
     public function verify($id)
@@ -256,6 +279,14 @@ class PayrollRunController extends Controller
             'verified_by' => Auth::id(),
             'verified_at' => now(),
         ]);
+
+        NotifyService::send(
+            $this->usersWithRole('approver'),
+            'Payroll Run menunggu persetujuan',
+            Auth::user()->name . ' memverifikasi Payroll Run "' . $run->code . '" — menunggu persetujuan.',
+            route('payroll-run.index'),
+            'workflow'
+        );
 
         return redirect('/payroll-run/' . $run->id)
             ->with('success', 'Payroll terverifikasi. Menunggu persetujuan CEO.');
@@ -278,6 +309,16 @@ class PayrollRunController extends Controller
             'approved_by' => Auth::id(),
             'approved_at' => now(),
         ]);
+
+        if ($run->submittedBy) {
+            NotifyService::send(
+                [$run->submittedBy],
+                'Payroll Run disetujui',
+                'Payroll Run "' . $run->code . '" telah disetujui dan siap diproses pembayaran.',
+                route('payroll-run.index'),
+                'workflow'
+            );
+        }
 
         // Catatan: pembentukan batch Daily Transaction dikerjakan di tahap 5d.
         return redirect('/payroll-run/' . $run->id)
@@ -302,6 +343,16 @@ class PayrollRunController extends Controller
             'status'       => 'REJECTED',
             'reject_notes' => $request->reject_notes,
         ]);
+
+        if ($run->submittedBy) {
+            NotifyService::send(
+                [$run->submittedBy],
+                'Payroll Run ditolak',
+                'Payroll Run "' . $run->code . '" ditolak' . ($request->reject_notes ? ': ' . $request->reject_notes : '.'),
+                route('payroll-run.index'),
+                'workflow'
+            );
+        }
 
         return redirect('/payroll-run/' . $run->id)
             ->with('success', 'Payroll ditolak.');

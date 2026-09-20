@@ -15,6 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\CheckRole::class,
             'menu' => \App\Http\Middleware\CheckMenu::class,
         ]);
+
+        // Header keamanan dipasang ke seluruh respons web (lihat
+        // App\Http\Middleware\SecurityHeaders untuk alasan tiap header).
+        $middleware->web(append: [
+            \App\Http\Middleware\SecurityHeaders::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

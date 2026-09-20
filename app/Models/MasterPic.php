@@ -8,6 +8,10 @@ class MasterPic extends Model
 {
     protected $fillable = [
         'type',
+        // M-02 — penghubung ke orang yang sebenarnya, kalau PIC ini orang
+        // dalam. Nullable: PIC customer memang tidak punya akun/kepegawaian.
+        'user_id',
+        'employee_id',
         'pic',
         'position',
         'phone',
@@ -30,6 +34,36 @@ class MasterPic extends Model
     public function inputBy()
     {
         return $this->belongsTo(User::class, 'input_by');
+    }
+
+    /** Akun aplikasi milik PIC ini (M-02). */
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /** Data kepegawaian PIC ini (M-02). */
+    public function employee()
+    {
+        return $this->belongsTo(Employee::class, 'employee_id');
+    }
+
+    /** Beneficiary yang menunjuk PIC ini sebagai penanggung jawab (MN-02). */
+    public function beneficiaries()
+    {
+        return $this->hasMany(Beneficiary::class, 'pic_id');
+    }
+
+    /**
+     * Team yang diikuti PIC ini — lewat akun User-nya (M-02).
+     *
+     * Sengaja relasi TIDAK LANGSUNG: keanggotaan team melekat pada User, bukan
+     * pada baris Master PIC. Membuat relasi langsung Team<->MasterPic berarti
+     * satu orang bisa punya dua keanggotaan berbeda yang saling bertentangan.
+     */
+    public function teamMemberships()
+    {
+        return $this->hasMany(TeamMember::class, 'user_id', 'user_id');
     }
 
     /*

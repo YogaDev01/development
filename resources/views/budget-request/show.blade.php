@@ -2,72 +2,22 @@
 
 @section('content')
 
-<!-- CONTENT HEADER -->
-<div class="content-header">
-
-    <div class="container-fluid">
-
-        <div class="row mb-2 align-items-center">
-
-            <!-- TITLE -->
-            <div class="col-sm-6">
-
-                <h1 class="m-0 font-weight-bold d-flex align-items-center">
-
-                    <a 
-                        href="{{ url('/budget-request') }}"
-                        class="btn btn-secondary btn-sm mr-3"
-                    >
-
-                        <i class="fas fa-arrow-left"></i>
-
-                    </a>
-
-                    Detail Budget Request
-
-                </h1>
-
-            </div>
-
-            <!-- BREADCRUMB -->
-            <div class="col-sm-6">
-
-                <ol class="breadcrumb float-sm-right">
-
-                    <li class="breadcrumb-item">
-
-                        Operational Cost
-
-                    </li>
-
-                    <li class="breadcrumb-item">
-
-                        <a href="{{ url('/budget-request') }}">
-                            Budget Request
-                        </a>
-
-                    </li>
-
-                    <li class="breadcrumb-item active">
-
-                        Detail
-
-                    </li>
-
-                </ol>
-
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-<!-- MAIN CONTENT -->
 <div class="content">
-
     <div class="container-fluid">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <div class="d-flex align-items-center">
+                <a href="{{ url('/budget-request') }}" class="btn btn-secondary btn-sm mr-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Detail Budget Request</h1>
+            </div>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item">Operational Cost</li>
+                <li class="breadcrumb-item"><a href="{{ url('/budget-request') }}">Budget Request</a></li>
+                <li class="breadcrumb-item active">Detail</li>
+            </ol>
+        </div>
 
         <div class="row">
 
@@ -103,75 +53,17 @@
 
                         </h3>
 
-                        <!-- STATUS BADGE - UPDATED -->
+                        {{-- Status memakai komponen bersama. Rantai if/elseif
+                             sebelumnya hanya meliput 8 status dan masih menyebut
+                             PENDING_APPROVER/PENDING_FINANCE yang sudah tidak ada di
+                             BudgetRequest::STATUSES — akibatnya CR berstatus CHECKED,
+                             VERIFIED, QUEUED, SETTLE_*, dan CANCELLED tidak menampilkan
+                             badge apa pun. --}}
                         <div class="text-center mb-3">
-
-                            @if($budgetRequest->status == 'DRAFT')
-
-                                <span class="badge badge-secondary px-3 py-2">
-
-                                    <i class="fas fa-pen mr-1"></i>DRAFT
-
-                                </span>
-
-                            @elseif($budgetRequest->status == 'PENDING_APPROVER')
-
-                                <span class="badge badge-warning px-3 py-2">
-
-                                    <i class="fas fa-hourglass-half mr-1"></i>PENDING APPROVER
-
-                                </span>
-
-                            @elseif($budgetRequest->status == 'PENDING_FINANCE')
-
-                                <span class="badge badge-info px-3 py-2">
-
-                                    <i class="fas fa-hourglass-half mr-1"></i>PENDING FINANCE
-
-                                </span>
-
-                            @elseif($budgetRequest->status == 'APPROVED')
-
-                                <span class="badge badge-success px-3 py-2">
-
-                                    <i class="fas fa-check-circle mr-1"></i>APPROVED
-
-                                </span>
-
-                            @elseif($budgetRequest->status == 'PAID')
-
-                                <span class="badge badge-primary px-3 py-2">
-
-                                    <i class="fas fa-money-bill-wave mr-1"></i>PAID
-
-                                </span>
-
-                            @elseif($budgetRequest->status == 'REALIZED')
-
-                                <span class="badge badge-success px-3 py-2">
-
-                                    <i class="fas fa-check-double mr-1"></i>REALIZED
-
-                                </span>
-
-                            @elseif($budgetRequest->status == 'REJECTED')
-
-                                <span class="badge badge-danger px-3 py-2">
-
-                                    <i class="fas fa-times-circle mr-1"></i>REJECTED
-
-                                </span>
-
-                            @elseif($budgetRequest->status == 'CLOSED')
-
-                                <span class="badge badge-dark px-3 py-2">
-
-                                    <i class="fas fa-lock mr-1"></i>CLOSED
-
-                                </span>
-
-                            @endif
-
+                            <x-status :status="$budgetRequest->status"
+                                      context="budget-request"
+                                      size="md"
+                                      :description="true" />
                         </div>
 
                         <!-- INFO -->
@@ -195,7 +87,7 @@
 
                                 <span class="float-right">
 
-                                    {{ $budgetRequest->cluster->name ?? '-' }}
+                                    {{ $budgetRequest->cluster?->name ?? '-' }}
 
                                 </span>
 
@@ -207,7 +99,7 @@
 
                                 <span class="float-right">
 
-                                    {{ $budgetRequest->applicant->name ?? '-' }}
+                                    {{ $budgetRequest->applicant?->name ?? '-' }}
 
                                 </span>
 
@@ -221,7 +113,7 @@
 
                                     <strong class="d-block">
 
-                                        {{ $budgetRequest->beneficiary->complete_name ?? '-' }}
+                                        {{ $budgetRequest->beneficiary?->complete_name ?? '-' }}
 
                                     </strong>
 
@@ -229,7 +121,7 @@
 
                                         {{ $budgetRequest->beneficiary->bank?->name ?? '-' }}
                                         - 
-                                        {{ $budgetRequest->beneficiary->account_number ?? '-' }}
+                                        {{ $budgetRequest->beneficiary?->account_number ?? '-' }}
 
                                     </small>
 
@@ -243,7 +135,7 @@
 
                                 <span class="float-right text-primary font-weight-bold">
 
-                                    Rp {{ number_format($budgetRequest->amount, 0, ',', '.') }}
+                                    {{ number_format($budgetRequest->amount, 0, ',', '.') }}
 
                                 </span>
 
@@ -326,7 +218,7 @@
                             @endif
 
                             <!-- REVIEW (Pending Finance) -->
-                            @if($budgetRequest->status === 'PENDING_FINANCE' && in_array(Auth::user()->role->name, ['finance', 'superadmin', 'admin']))
+                            @if($budgetRequest->status === 'PENDING_FINANCE' && in_array(Auth::user()->role->name, ['finance', 'finance_manager', 'superadmin', 'admin']))
 
                                 <a 
                                     href="{{ route('budget-request.review', $budgetRequest->id) }}"
@@ -342,7 +234,7 @@
                             @endif
 
                             <!-- MARK AS PAID (Approved) -->
-                            @if($budgetRequest->status === 'APPROVED' && in_array(Auth::user()->role->name, ['finance', 'superadmin', 'admin']))
+                            @if($budgetRequest->status === 'APPROVED' && in_array(Auth::user()->role->name, ['finance', 'finance_manager', 'superadmin', 'admin']))
 
                                 <a 
                                     href="{{ route('budget-request.pay-form', $budgetRequest->id) }}"
@@ -358,7 +250,7 @@
                             @endif
 
                             <!-- SUBMIT REALIZATION (Paid) -->
-                            @if($budgetRequest->status === 'PAID' && in_array(Auth::user()->role->name, ['applicant', 'maker', 'superadmin', 'admin']))
+                            @if($budgetRequest->status === 'PAID' && Auth::user()->hasRole(['superadmin', 'manager', 'supervisor']))
 
                                 <a 
                                     href="{{ route('budget-request.realize-form', $budgetRequest->id) }}"
@@ -451,7 +343,7 @@
 
                                     <span class="badge badge-primary px-3 py-2">
 
-                                        {{ $budgetRequest->type->name ?? '-' }}
+                                        {{ $budgetRequest->type?->name ?? '-' }}
 
                                     </span>
 
@@ -469,7 +361,7 @@
 
                                 <td>
 
-                                    {{ $budgetRequest->budgetPlan->description ?? '-' }}
+                                    {{ $budgetRequest->budgetPlan?->description ?? '-' }}
 
                                 </td>
 
@@ -536,31 +428,31 @@
 
                                 <tr>
 
-                                    <th width="5%">
+                                    <th scope="col" width="5%">
 
                                         No
 
                                     </th>
 
-                                    <th>
+                                    <th scope="col">
 
                                         Description
 
                                     </th>
 
-                                    <th width="10%">
+                                    <th scope="col" width="10%">
 
                                         Qty
 
                                     </th>
 
-                                    <th width="18%">
+                                    <th scope="col" width="18%">
 
                                         Unit Price
 
                                     </th>
 
-                                    <th width="18%">
+                                    <th scope="col" width="18%">
 
                                         Total
 
@@ -596,13 +488,13 @@
 
                                         <td>
 
-                                            Rp {{ number_format($detail->amount, 0, ',', '.') }}
+                                            {{ number_format($detail->amount, 0, ',', '.') }}
 
                                         </td>
 
                                         <td class="font-weight-bold text-primary">
 
-                                            Rp {{ number_format($detail->total, 0, ',', '.') }}
+                                            {{ number_format($detail->total, 0, ',', '.') }}
 
                                         </td>
 
@@ -646,7 +538,7 @@
 
                                         <th class="text-primary">
 
-                                            Rp {{ number_format($budgetRequest->details->sum('total'), 0, ',', '.') }}
+                                            {{ number_format($budgetRequest->details->sum('total'), 0, ',', '.') }}
 
                                         </th>
 
@@ -685,31 +577,31 @@
 
                                 <tr>
 
-                                    <th width="5%">
+                                    <th scope="col" width="5%">
 
                                         No
 
                                     </th>
 
-                                    <th>
+                                    <th scope="col">
 
                                         File Name
 
                                     </th>
-                                    <th width="12%">
+                                    <th scope="col" width="12%">
 
                                         Type
 
                                     </th>
 
 
-                                    <th width="15%">
+                                    <th scope="col" width="15%">
 
                                         Size
 
                                     </th>
 
-                                    <th width="15%">
+                                    <th scope="col" width="15%">
 
                                         Action
 
@@ -851,11 +743,11 @@
 
                                         <small class="text-muted d-block mt-1">
 
-                                            <span class="badge badge-light border">{{ $log->status_from ?? '-' }}</span>
+                                            <span class="badge badge-light border">{{ \App\Models\BudgetRequest::statusLabelFor($log->status_from) }}</span>
 
                                             <i class="fas fa-arrow-right mx-1"></i>
 
-                                            <span class="badge badge-light border">{{ $log->status_to ?? '-' }}</span>
+                                            <span class="badge badge-light border">{{ \App\Models\BudgetRequest::statusLabelFor($log->status_to) }}</span>
 
                                         </small>
 
@@ -928,7 +820,7 @@
 
 .card {
 
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
 
     overflow: hidden;
 
@@ -982,7 +874,7 @@
 
     font-weight: 700;
 
-    background: #f8f9fa;
+    background: var(--surface-2);
 
     vertical-align: middle !important;
 
@@ -1004,7 +896,7 @@
 
     font-size: 12px;
 
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
 
 }
 
@@ -1016,7 +908,7 @@
 
 .btn {
 
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
 
     font-weight: 400;
 
@@ -1078,15 +970,15 @@
 | WORKFLOW TIMELINE
 */
 .timeline { position: relative; padding: 10px 0; }
-.timeline-item { padding-bottom: 20px; position: relative; border-left: 2px solid #dee2e6; margin-left: 20px; padding-left: 20px; }
+.timeline-item { padding-bottom: 20px; position: relative; border-left: 2px solid var(--border); margin-left: 20px; padding-left: 20px; }
 .timeline-item:last-child { border-left: none; padding-bottom: 0; }
-.timeline-icon { position: absolute; left: -16px; top: 0; width: 30px; height: 30px; border-radius: 50%; background: #007bff; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; border: 3px solid #fff; box-shadow: 0 0 0 2px #dee2e6; }
-.timeline-icon.wf-submit  { background: #6c757d; }
-.timeline-icon.wf-approve { background: #28a745; }
-.timeline-icon.wf-reject  { background: #dc3545; }
-.timeline-icon.wf-pay     { background: #007bff; }
-.timeline-icon.wf-realize { background: #17a2b8; }
-.timeline-icon.wf-close   { background: #343a40; }
+.timeline-icon { position: absolute; left: -16px; top: 0; width: 30px; height: 30px; border-radius: 50%; background: var(--info); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; border: 3px solid var(--border); box-shadow: 0 0 0 2px var(--border); }
+.timeline-icon.wf-submit  { background: var(--text-faint); }
+.timeline-icon.wf-approve { background: var(--success); }
+.timeline-icon.wf-reject  { background: var(--danger); }
+.timeline-icon.wf-pay     { background: var(--info); }
+.timeline-icon.wf-realize { background: var(--info); }
+.timeline-icon.wf-close   { background: var(--charcoal); }
 .timeline-body { padding: 2px 0 0 6px; }
 
 </style>
@@ -1119,9 +1011,9 @@ $(function () {
 
             showCancelButton: true,
 
-            confirmButtonColor: '#28a745',
+            confirmButtonColor: 'var(--success)',
 
-            cancelButtonColor: '#6c757d',
+            cancelButtonColor: '#55595e',
 
             confirmButtonText: 'Ya, Submit',
 

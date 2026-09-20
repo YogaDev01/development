@@ -52,7 +52,7 @@ class CustomerController extends Controller
                 continue;
             }
 
-            $path = $file->store('customer_attachments', 'public');
+            $path = $file->store('customer_attachments', 'secure');
 
             $customer->attachments()->create([
                 'title'     => $row['title'] ?? null,
@@ -73,9 +73,16 @@ class CustomerController extends Controller
 
         $types = CustomerType::all();
 
+        $summary = [
+            'total'    => $customers->count(),
+            'active'   => $customers->where('status', 'ACTIVE')->count(),
+            'inactive' => $customers->where('status', 'INACTIVE')->count(),
+        ];
+
         return view('customer.index', compact(
             'customers',
-            'types'
+            'types',
+            'summary'
         ));
     }
 
@@ -125,6 +132,19 @@ class CustomerController extends Controller
     /**
      * Display the specified resource.
      */
+    /**
+     * MN-01 — Detail Customer sebagai HALAMAN, bukan modal.
+     *
+     * Modal lama memuat seluruh isinya lewat satu endpoint JSON dan merangkai
+     * tabelnya di JavaScript. Akibatnya: tidak bisa di-bookmark, tidak bisa
+     * dibuka di tab baru, dan daftar PO yang panjang tidak punya pencarian
+     * maupun paging sama sekali.
+     *
+     * Versi halaman ini merender datanya dari server dan memakai DataTable
+     * bertingkat: Customer -> PO -> (No. PO, Invoice, Budget Plan). Seluruh
+     * informasi yang dulu ada di modal tetap ada, ditambah yang sebelumnya
+     * tidak muat di sana.
+     */
     public function show($id)
     {
         $customer = Customer::with([
@@ -133,27 +153,48 @@ class CustomerController extends Controller
             'attachments',
         ])->findOrFail($id);
 
+        /*
+        | Semua relasi anak PO di-eager-load sekali di sini. Tanpa ini, tabel
+        | bertingkat akan memicu query per baris saat dirender (N+1) — persis
+        | jenis masalah yang gampang lolos karena halamannya tetap "jalan".
+        */
         $projects = Project::with([
+            'manager:id,username,name',
+            'poNumbers',
             'budgetPlans',
+            'invoices.cashReceipts',
         ])
         ->where('customer_id', $customer->id)
         ->latest()
         ->get();
 
-        $budgetPlans = BudgetPlan::with([
-            'project',
-            'attachments',
-        ])
-        ->whereHas('project', function ($query) use ($customer) {
-            $query->where('customer_id', $customer->id);
-        })
-        ->latest()
-        ->get();
+        // Ringkasan dihitung dari himpunan project yang SAMA dengan yang
+        // ditampilkan, bukan dari query terpisah.
+        $invoices = $projects->flatMap->invoices;
+
+        $summary = [
+            'po_qty'         => $projects->count(),
+            'contract_value' => (int) $projects->sum('contract'),
+            'po_value'       => (int) $projects->sum('value'),
+            'po_number_qty'  => $projects->sum(fn ($p) => $p->poNumbers->count()),
+            'invoice_qty'    => $invoices->count(),
+            'invoice_value'  => (int) $invoices->sum('captured_total'),
+            'paid_value'     => (int) $invoices->sum(fn ($inv) =>
+                (int) $inv->cashReceipts->sum('amount') + (int) $inv->cashReceipts->sum('withholding_tax')),
+        ];
+
+        $summary['outstanding'] = max(0, $summary['invoice_value'] - $summary['paid_value']);
+
+        $budgetPlans = BudgetPlan::with(['project:id,code,name', 'attachments'])
+            ->whereHas('project', fn ($query) => $query->where('customer_id', $customer->id))
+            ->latest()
+            ->get();
 
         return view('customer.show', compact(
             'customer',
             'projects',
-            'budgetPlans'
+            'budgetPlans',
+            'summary'
         ));
     }
 
@@ -214,7 +255,7 @@ class CustomerController extends Controller
                     ->get();
 
                 foreach ($toDelete as $att) {
-                    Storage::disk('public')->delete($att->file_path);
+                    Storage::disk('secure')->delete($att->file_path);
                     $att->delete();
                 }
             }
@@ -247,9 +288,13 @@ class CustomerController extends Controller
     {
         $customer = Customer::with('attachments')->findOrFail($id);
 
+        if (\App\Models\Project::where('customer_id', $customer->id)->exists()) {
+            return back()->with('error', 'Customer tidak bisa dihapus karena sudah memiliki Purchase Order/Project.');
+        }
+
         // Bersihkan file lampiran dari storage sebelum hapus record.
         foreach ($customer->attachments as $att) {
-            Storage::disk('public')->delete($att->file_path);
+            Storage::disk('secure')->delete($att->file_path);
         }
 
         $customer->delete();
@@ -330,6 +375,7 @@ class CustomerController extends Controller
 
                 'id'            => $customer->id,
                 'name'          => $customer->name,
+                'initial'       => $customer->initial,
                 'address'       => $customer->address,
                 'npwp'          => $customer->npwp,
                 'status'        => $customer->status,

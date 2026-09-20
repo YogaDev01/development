@@ -11,6 +11,7 @@ class InvoiceDetail extends Model
         'description',
         'unit_price',
         'qty',
+        'unit',
         'deduction',
         'total',
     ];
@@ -22,6 +23,12 @@ class InvoiceDetail extends Model
         'total'      => 'integer',
     ];
 
+    /** "2 Lumpsum" — dipakai di lembar cetak, qty & satuan digabung. */
+    public function getQtyUnitLabelAttribute(): string
+    {
+        return trim($this->qty . ($this->unit ? ' ' . ucfirst($this->unit) : ''));
+    }
+
     public function invoice()
     {
         return $this->belongsTo(Invoice::class);
@@ -29,16 +36,16 @@ class InvoiceDetail extends Model
 
     public function getUnitPriceFormattedAttribute(): string
     {
-        return 'Rp ' . number_format($this->unit_price, 0, ',', '.');
+        return number_format($this->unit_price, 0, ',', '.');
     }
 
     public function getDeductionFormattedAttribute(): string
     {
-        return 'Rp ' . number_format($this->deduction, 0, ',', '.');
+        return number_format($this->deduction, 0, ',', '.');
     }
 
     public function getTotalFormattedAttribute(): string
     {
-        return 'Rp ' . number_format($this->total, 0, ',', '.');
+        return number_format($this->total, 0, ',', '.');
     }
 }

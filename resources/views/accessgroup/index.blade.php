@@ -2,52 +2,53 @@
 
 @section('content')
 
-<!-- CONTENT HEADER -->
-<div class="content-header">
-    <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6 d-flex align-items-center">
-                <a href="{{ url('/user') }}" class="btn btn-secondary btn-sm mr-3">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
-                <h1 class="m-0 font-weight-bold">Access Group Master</h1>
-            </div>
-            <div class="col-sm-6">
-                <ol class="breadcrumb float-sm-right">
-                    <li class="breadcrumb-item"><a href="#">Master</a></li>
-                    <li class="breadcrumb-item active">Access Group</li>
-                </ol>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- MAIN CONTENT -->
 <div class="content">
     <div class="container-fluid">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <div class="d-flex align-items-center">
+                <a href="{{ url('/user') }}" class="btn btn-secondary btn-sm mr-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Access Group Master</h1>
+            </div>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item"><a href="#">Master</a></li>
+                <li class="breadcrumb-item active">Access Group</li>
+            </ol>
+        </div>
+
+        <x-stat-cards :cards="[
+            ['Total Access Group', $summary['total'], 'primary', 'fas fa-users-cog'],
+            ['Total PO Assignment', $summary['total_po'], 'info', 'fas fa-project-diagram'],
+        ]" />
 
         <div class="card card-secondary card-outline shadow-sm">
 
             <!-- CARD HEADER -->
             <div class="card-header d-flex align-items-center">
-                <button id="refreshTable" class="btn btn-secondary btn-sm" type="button">
-                    <i class="fas fa-sync-alt mr-1"></i> Refresh
-                </button>
-                <a href="{{ url('/accessgroup/create') }}" class="btn btn-success btn-sm ml-auto">
-                    <i class="fas fa-plus mr-1"></i> Tambah Access Group
-                </a>
+                <h3 class="card-title"><i class="fas fa-users-cog mr-1"></i> Daftar Access Group</h3>
+                <div class="ml-auto d-flex" style="gap:8px;">
+                    <button id="refreshTable" class="btn btn-secondary btn-sm" type="button">
+                        <i class="fas fa-sync-alt mr-1"></i> Refresh
+                    </button>
+                </div>
             </div>
 
             <!-- CARD BODY -->
             <div class="card-body">
 
                 <!-- TOOLBAR -->
-                <div class="custom-toolbar mb-3">
-                    <div class="custom-toolbar-left">
+                <div class="custom-toolbar mb-3 d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
+                    <div class="custom-toolbar-left d-flex align-items-center flex-wrap" style="gap:8px;">
                         <div class="toolbar-row">
                             <span class="toolbar-label">Cari :</span>
                             <div class="toolbar-input" id="customSearch"></div>
                         </div>
+                        <button aria-label="Clear Filter" type="button" id="btnClearFilterAg" class="btn btn-outline-secondary btn-sm" title="Clear Filter">
+                            <i class="fas fa-eraser"></i>
+                        </button>
                         <div class="toolbar-row">
                             <span class="toolbar-label">Filter :</span>
                             <div class="toolbar-input">
@@ -63,6 +64,11 @@
                             </div>
                         </div>
                     </div>
+                    <div class="custom-toolbar-right d-flex flex-wrap" style="gap:8px;">
+                        <a href="{{ url('/accessgroup/create') }}" class="btn btn-success btn-sm">
+                            <i class="fas fa-plus mr-1"></i> Tambah Access Group
+                        </a>
+                    </div>
                 </div>
 
                 <!-- TABLE -->
@@ -70,11 +76,11 @@
                     <table id="accessGroupTable" class="table table-bordered table-hover table-striped mb-0">
                         <thead class="bg-light">
                             <tr>
-                                <th width="5%"  class="all">No</th>
-                                <th width="22%" class="all">Access Group</th>
-                                <th width="43%">PO Access</th>
-                                <th width="8%">Total PO</th>
-                                <th width="12%" class="text-center all action-column">Action</th>
+                                <th scope="col" width="5%"  class="all">No</th>
+                                <th scope="col" width="22%" class="all">Access Group</th>
+                                <th scope="col" width="43%">PO Access</th>
+                                <th scope="col" width="8%">Total PO</th>
+                                <th scope="col" width="12%" class="text-center all action-column">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -114,38 +120,46 @@
                                 </td>
 
                                 <td class="text-center action-column">
-                                    <div class="action-buttons">
-
-                                        <button type="button"
-                                                class="btn btn-info btn-sm btn-detail"
-                                                data-id="{{ $accessGroup->id }}"
-                                                title="Detail">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
+                                    <div class="action-buttons ts-actions">
 
                                         <a href="{{ url('/accessgroup/' . $accessGroup->id . '/edit') }}"
-                                           class="btn btn-warning btn-sm" title="Edit">
-                                            <i class="fas fa-pen"></i>
+                                           class="ts-action-primary is-neutral"
+                                           title="Edit" aria-label="Edit access group">
+                                            <i class="fas fa-pen" aria-hidden="true"></i><span class="ts-al">Edit</span>
                                         </a>
 
-                                        <form action="{{ url('/accessgroup/' . $accessGroup->id) }}"
-                                              method="POST" style="display:inline-block;"
-                                              class="delete-form">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-danger btn-sm">
-                                                <i class="fas fa-trash"></i>
+                                        <button type="button" class="ts-action-more"
+                                                aria-haspopup="true" aria-expanded="false"
+                                                title="Aksi lain" aria-label="Aksi lain">
+                                            <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
+                                        </button>
+
+                                        <div class="ts-action-menu dropdown-menu" hidden>
+
+                                            <button type="button" class="dropdown-item btn-detail" data-id="{{ $accessGroup->id }}">
+                                                <i class="fas fa-eye"></i>Detail
                                             </button>
-                                        </form>
+
+                                            <div class="dropdown-divider"></div>
+
+                                            <form action="{{ url('/accessgroup/' . $accessGroup->id) }}"
+                                                  method="POST" class="delete-form">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="dropdown-item is-danger">
+                                                    <i class="fas fa-trash"></i>Hapus
+                                                </button>
+                                            </form>
+
+                                        </div>
 
                                     </div>
                                 </td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="5" class="text-center text-muted py-4">
-                                    <i class="fas fa-folder-open d-block mb-2"></i>
-                                    Belum ada data access group
+                                <td colspan="5">
+                                    <x-empty title="Belum ada data access group" icon="fas fa-folder-open" compact />
                                 </td>
                             </tr>
                             @endforelse
@@ -164,17 +178,17 @@
 <!-- ================================================================ -->
 <div class="modal fade" id="modalDetail" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content" style="border-radius:12px; overflow:hidden;">
+        <div class="modal-content" style="border-radius:var(--radius-lg); overflow:hidden;">
 
             <!-- HEADER -->
-            <div class="modal-header" style="background:#0D1B2A; border-bottom:3px solid #F5A623; padding:16px 24px;">
+            <div class="modal-header" style="background:var(--charcoal); border-bottom:3px solid var(--accent); padding:16px 24px;">
                 <div class="d-flex align-items-center">
-                    <div style="width:36px;height:36px;background:#F5A623;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;">
-                        <i class="fas fa-users-cog" style="color:#0D1B2A;font-size:15px;"></i>
+                    <div style="width:36px;height:36px;background:var(--accent);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;">
+                        <i class="fas fa-users-cog" style="color:#fff;font-size:15px;"></i>
                     </div>
                     <div>
                         <h5 class="modal-title text-white mb-0" id="modalDetailTitle">Detail Access Group</h5>
-                        <small id="modalDetailSubtitle" style="color:#8A9BB0;font-size:11px;"></small>
+                        <small id="modalDetailSubtitle" style="color:var(--text-faint);font-size:11px;"></small>
                     </div>
                 </div>
                 <button type="button" class="close text-white" data-dismiss="modal" style="opacity:0.7;">
@@ -183,11 +197,11 @@
             </div>
 
             <!-- BODY -->
-            <div class="modal-body" style="padding:0; background:#F0F2F5;">
+            <div class="modal-body" style="padding:0; background:var(--surface-2);">
 
                 <!-- Loading -->
                 <div id="detailLoading" class="text-center py-5">
-                    <i class="fas fa-spinner fa-spin fa-2x" style="color:#F5A623;"></i>
+                    <i class="fas fa-spinner fa-spin fa-2x" style="color:var(--accent);"></i>
                     <p class="text-muted mt-3 mb-0">Memuat data...</p>
                 </div>
 
@@ -196,11 +210,11 @@
                     <div class="row no-gutters">
 
                         <!-- ── LEFT PANEL ── -->
-                        <div class="col-md-4" style="background:#0D1B2A; padding:28px 20px; min-height:420px;">
+                        <div class="col-md-4" style="background:var(--charcoal); padding:28px 20px; min-height:420px;">
 
                             <div class="text-center mb-3">
-                                <div style="width:72px;height:72px;background:#1D2D3F;border:3px solid #F5A623;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;">
-                                    <i class="fas fa-users-cog" style="color:#F5A623;font-size:28px;"></i>
+                                <div style="width:72px;height:72px;background:var(--charcoal-2);border:3px solid var(--accent);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;">
+                                    <i class="fas fa-users-cog" style="color:var(--accent);font-size:28px;"></i>
                                 </div>
                                 <h6 id="detailName" class="text-white mt-3 mb-0 font-weight-bold" style="font-size:14px;word-break:break-word;"></h6>
                             </div>
@@ -208,15 +222,15 @@
                             <hr style="border-color:rgba(255,255,255,0.08); margin:16px 0;">
 
                             <div class="detail-stat-item">
-                                <span style="color:#5A7080;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;font-weight:600;">Total PO Access</span>
-                                <div id="detailProjectCount" style="color:#F5A623;font-size:28px;font-weight:700;margin-top:4px;"></div>
+                                <span style="color:var(--text-faint);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;font-weight:600;">Total PO Access</span>
+                                <div id="detailProjectCount" style="color:var(--accent);font-size:28px;font-weight:700;margin-top:4px;"></div>
                             </div>
                             <div class="detail-stat-item mt-3">
-                                <span style="color:#5A7080;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;font-weight:600;">Total User</span>
+                                <span style="color:var(--text-faint);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;font-weight:600;">Total User</span>
                                 <div id="detailUserCount" class="text-white mt-1" style="font-size:22px;font-weight:700;"></div>
                             </div>
                             <div class="detail-stat-item mt-3">
-                                <span style="color:#5A7080;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;font-weight:600;">Dibuat</span>
+                                <span style="color:var(--text-faint);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;font-weight:600;">Dibuat</span>
                                 <div id="detailCreatedAt" class="text-white mt-1" style="font-size:12px;"></div>
                             </div>
 
@@ -224,7 +238,7 @@
 
                             <a id="detailEditBtn" href="#"
                                class="btn btn-block"
-                               style="background:#F5A623;color:#0D1B2A;font-weight:700;font-size:13px;border-radius:6px;">
+                               style="background:var(--accent);color:#fff;font-weight:700;font-size:13px;border-radius:var(--radius-sm);">
                                 <i class="fas fa-edit mr-1"></i> Edit Access Group
                             </a>
 
@@ -234,7 +248,7 @@
                         <div class="col-md-8" style="padding:24px;">
 
                             <ul class="nav nav-tabs mb-3" id="detailTabs"
-                                style="border-bottom:2px solid #E5E7EB;">
+                                style="border-bottom:2px solid var(--border);">
                                 <li class="nav-item">
                                     <a class="nav-link active" data-toggle="tab" href="#pane-projects"
                                        style="font-size:13px;font-weight:600;">
@@ -262,12 +276,12 @@
                                 <div class="tab-pane fade" id="pane-users">
                                     <div class="table-responsive">
                                         <table class="table table-bordered mb-0" style="font-size:13px;">
-                                            <thead style="background:#F9FAFB;">
+                                            <thead style="background:var(--surface-2);">
                                                 <tr>
-                                                    <th style="color:#6B7280;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;width:5%;">No</th>
-                                                    <th style="color:#6B7280;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;">Nama</th>
-                                                    <th style="color:#6B7280;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;">Email</th>
-                                                    <th style="color:#6B7280;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;width:18%;">Role</th>
+                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-transform:uppercase;letter-spacing:0.05em;width:5%;">No</th>
+                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-transform:uppercase;letter-spacing:0.05em;">Nama</th>
+                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-transform:uppercase;letter-spacing:0.05em;">Email</th>
+                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-transform:uppercase;letter-spacing:0.05em;width:18%;">Role</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="usersBody"></tbody>
@@ -285,7 +299,7 @@
             </div>
 
             <!-- FOOTER -->
-            <div class="modal-footer" style="background:#F8F9FA; border-top:1px solid #E9ECEF; padding:12px 24px;">
+            <div class="modal-footer" style="background:var(--surface-2); border-top:1px solid var(--border); padding:12px 24px;">
                 <small class="text-muted mr-auto">
                     <i class="fas fa-info-circle mr-1"></i> Read-only. Klik Edit untuk mengubah.
                 </small>
@@ -306,21 +320,21 @@
 @push('styles')
 <style>
 
-.card-header .btn  { border-radius:6px; font-weight:600; }
+.card-header .btn  { border-radius:var(--radius-sm); font-weight:600; }
 
 /* TOOLBAR */
 .custom-toolbar      { display:flex; justify-content:space-between; align-items:flex-start; gap:15px; flex-wrap:wrap; }
 .custom-toolbar-left { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 .toolbar-row         { display:flex; align-items:center; gap:8px; }
-.toolbar-label       { min-width:50px; margin-bottom:0; white-space:nowrap; font-weight:600; color:#495057; }
+.toolbar-label       { min-width:50px; margin-bottom:0; white-space:nowrap; font-weight:600; color:var(--text-dim); }
 .toolbar-input       { min-width:180px; }
 #customSearch        { width:100%; }
-#customSearch input  { width:180px; border-radius:6px; }
+#customSearch input  { width:180px; border-radius:var(--radius-sm); }
 
 /* TOMSELECT */
 .ts-wrapper  { min-width:260px; width:100%; }
-.ts-control  { border-radius:6px !important; border:1px solid #ced4da !important; min-height:38px !important; padding:6px 10px !important; box-shadow:none !important; }
-.ts-control.focus { border-color:#80bdff !important; box-shadow:0 0 0 0.15rem rgba(0,123,255,.15) !important; }
+.ts-control  { border-radius:var(--radius-sm) !important; border:1px solid var(--border) !important; min-height:38px !important; padding:6px 10px !important; box-shadow:none !important; }
+.ts-control.focus { border-color:var(--border-strong) !important; box-shadow:0 0 0 0.15rem rgba(0,123,255,.15) !important; }
 
 /* TABLE */
 #accessGroupTable   { width:100% !important; }
@@ -336,15 +350,15 @@ table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before {
 
 /* TABLE BOTTOM */
 .dataTables_wrapper .row:last-child { margin-top:18px; align-items:center; }
-.dataTables_info { padding-top:0 !important; font-size:14px; color:#6c757d; }
+.dataTables_info { padding-top:0 !important; font-size:14px; color:var(--text-faint); }
 
 /* PAGE SIZE */
 .dataTables_length { display:flex; align-items:center; margin-left:18px; }
-.dataTables_length label { display:flex; align-items:center; gap:10px; margin-bottom:0; font-size:14px; font-weight:600; color:#6c757d; }
+.dataTables_length label { display:flex; align-items:center; gap:10px; margin-bottom:0; font-size:14px; font-weight:600; color:var(--text-faint); }
 .dataTables_length select {
     appearance:none !important; -webkit-appearance:none !important;
-    background-color:#fff !important; color:#495057 !important;
-    border:1px solid #ced4da !important; border-radius:6px !important;
+    background-color:var(--surface) !important; color:var(--text-dim) !important;
+    border:1px solid var(--border) !important; border-radius:var(--radius-sm) !important;
     padding:4px 30px 4px 10px !important; height:36px !important; min-width:72px !important;
     font-size:14px !important; font-weight:600 !important; cursor:pointer; box-shadow:none !important;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%236c757d' viewBox='0 0 16 16'%3E%3Cpath d='M1.5 5.5l6 6 6-6'/%3E%3C/svg%3E") !important;
@@ -352,33 +366,33 @@ table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before {
 }
 
 /* PAGINATION — amber */
-.dataTables_paginate .paginate_button { border-radius:6px !important; margin:0 2px; transition:all .2s; }
+.dataTables_paginate .paginate_button { border-radius:var(--radius-sm) !important; margin:0 2px; transition:all .2s; }
 .dataTables_paginate .paginate_button.current,
 .dataTables_paginate .paginate_button.current:hover,
 .dataTables_wrapper .pagination .page-item.active .page-link {
-    background:#F5A623 !important; background-image:none !important;
-    border-color:#C97E0A !important; color:#0D1B2A !important; font-weight:700 !important;
+    background:var(--accent) !important; background-image:none !important;
+    border-color:var(--accent-dark) !important; color:#fff !important; font-weight:700 !important;
 }
-.dataTables_wrapper .pagination .page-link { color:#F5A623 !important; }
+.dataTables_wrapper .pagination .page-link { color:var(--accent) !important; }
 .dataTables_wrapper .pagination .page-item:not(.active) .page-link:hover {
-    background:#FFF3DC !important; border-color:#F5A623 !important; color:#C97E0A !important;
+    background:var(--warning-bg) !important; border-color:var(--accent) !important; color:var(--accent-dark) !important;
 }
 .dataTables_wrapper .pagination .page-link:focus {
-    box-shadow:0 0 0 3px rgba(245,166,35,0.30) !important; outline:none !important;
+    box-shadow:0 0 0 3px rgba(200,39,46,0.30) !important; outline:none !important;
 }
-.dataTables_wrapper .pagination .page-item.disabled .page-link { color:#C0C8D0 !important; }
+.dataTables_wrapper .pagination .page-item.disabled .page-link { color:var(--text-faint) !important; }
 
 /* MODAL TABS */
 #detailTabs .nav-link {
-    color:#6B7280; border:none;
+    color:var(--text-faint); border:none;
     border-bottom:2px solid transparent;
     border-radius:0; padding:8px 16px;
     transition:color .15s, border-color .15s;
 }
-#detailTabs .nav-link:hover { color:#F5A623; }
+#detailTabs .nav-link:hover { color:var(--accent); }
 #detailTabs .nav-link.active {
-    color:#F5A623 !important;
-    border-bottom-color:#F5A623 !important;
+    color:var(--accent) !important;
+    border-bottom-color:var(--accent) !important;
     background:transparent !important;
     font-weight:700;
 }
@@ -389,7 +403,13 @@ table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before {
     .breadcrumb { float:left !important; margin-top:10px; }
     .card-header { flex-direction:column; gap:10px; align-items:stretch !important; }
     .card-header .btn { width:100%; }
-    .custom-toolbar-left { flex-direction:column; align-items:stretch; width:100%; gap:10px; }
+    .card-header .card-title { margin-bottom:0; }
+    .card-header .ml-auto { margin-left:0 !important; flex-wrap:wrap; }
+    .custom-toolbar { flex-direction:column !important; align-items:stretch !important; }
+    .custom-toolbar-left { flex-direction:column !important; align-items:stretch !important; width:100%; gap:10px; }
+    .custom-toolbar-right { width:100%; }
+    .custom-toolbar-right .btn { width:100%; }
+    #btnClearFilterAg { width:100%; }
     .toolbar-row { width:100%; align-items:flex-start; }
     .toolbar-input { flex:1; width:100%; min-width:0; }
     #customSearch input { width:100% !important; }
@@ -462,6 +482,11 @@ $(function () {
 
     $('#advancedFilter').on('change', function () { table.draw(); });
 
+    $('#btnClearFilterAg').on('click', function () {
+        $('#advancedFilter')[0].tomselect.clear();
+        table.draw();
+    });
+
     $('#refreshTable').on('click', function () {
         $('#advancedFilter')[0].tomselect.clear();
         $('#globalSearch').val('');
@@ -476,7 +501,7 @@ $(function () {
             title: 'Hapus Access Group?',
             text: 'Semua user dalam group ini akan kehilangan akses.',
             icon: 'warning', showCancelButton: true,
-            confirmButtonColor: '#d33', cancelButtonColor: '#6c757d',
+            confirmButtonColor: '#9a3030', cancelButtonColor: '#55595e',
             confirmButtonText: 'Ya, Hapus', cancelButtonText: 'Batal'
         }).then(r => { if (r.isConfirmed) form.submit(); });
     });
@@ -518,9 +543,9 @@ $(function () {
                 d.projects.forEach(function(p) {
                     poHtml += `
                         <div class="d-flex align-items-center px-3 py-2 rounded"
-                             style="background:#EFF6FF;border:1px solid #BFDBFE;gap:8px;min-width:160px;">
-                            <i class="fas fa-file-contract" style="color:#2563EB;font-size:13px;flex-shrink:0;"></i>
-                            <span style="font-size:13px;font-weight:600;color:#1E40AF;">${p.name}</span>
+                             style="background:var(--info-bg);border:1px solid var(--border-strong);gap:8px;min-width:160px;">
+                            <i class="fas fa-file-contract" style="color:var(--info);font-size:13px;flex-shrink:0;"></i>
+                            <span style="font-size:13px;font-weight:600;color:#1e40af;">${p.name}</span>
                         </div>`;
                 });
                 poHtml += '</div>';

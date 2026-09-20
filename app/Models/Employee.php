@@ -99,6 +99,6 @@ class Employee extends Model
 
     public function getDefaultSalaryFormattedAttribute(): string
     {
-        return 'Rp ' . number_format($this->default_salary ?? 0, 0, ',', '.');
+        return number_format($this->default_salary ?? 0, 0, ',', '.');
     }
 }

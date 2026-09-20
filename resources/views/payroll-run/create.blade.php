@@ -2,24 +2,22 @@
 
 @section('content')
 
-<div class="content-header">
-    <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6 d-flex align-items-center">
-                <h1 class="m-0 font-weight-bold">Buat Payroll Run</h1>
-            </div>
-            <div class="col-sm-6">
-                <ol class="breadcrumb float-sm-right">
-                    <li class="breadcrumb-item"><a href="{{ url('/payroll-run') }}">Payroll</a></li>
-                    <li class="breadcrumb-item active">Buat</li>
-                </ol>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="content">
     <div class="container-fluid">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <div class="d-flex align-items-center">
+                <a href="{{ url('/payroll-run') }}" class="btn btn-secondary btn-sm mr-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Buat Payroll Run</h1>
+            </div>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item"><a href="{{ url('/payroll-run') }}">Payroll</a></li>
+                <li class="breadcrumb-item active">Buat</li>
+            </ol>
+        </div>
+
         <form action="{{ url('/payroll-run') }}" method="POST" id="formPayroll">
             @csrf
 
@@ -27,7 +25,7 @@
             <div class="card card-primary card-outline shadow-sm">
                 <div class="card-header">
                     <h3 class="card-title font-weight-bold text-dark">
-                        <i class="fas fa-file-invoice-dollar mr-2" style="color:#F5A623;"></i> Informasi Payroll
+                        <i class="fas fa-file-invoice-dollar mr-2" style="color:var(--accent);"></i> Informasi Payroll
                     </h3>
                 </div>
                 <div class="card-body">
@@ -70,11 +68,11 @@
             <div class="card card-primary card-outline shadow-sm">
                 <div class="card-header d-flex align-items-center">
                     <h3 class="card-title font-weight-bold text-dark mb-0">
-                        <i class="fas fa-users mr-2" style="color:#F5A623;"></i> Daftar Karyawan
+                        <i class="fas fa-users mr-2" style="color:var(--accent);"></i> Daftar Karyawan
                     </h3>
                     <div class="ml-auto d-flex align-items-center" style="gap:10px;">
                         <span class="badge badge-primary px-3 py-2" style="font-size:13px;">
-                            Total: <span id="grandTotal">Rp 0</span>
+                            Total: <span id="grandTotal">0</span>
                         </span>
                         <button type="button" class="btn btn-primary btn-sm" id="btnAddRow">
                             <i class="fas fa-plus mr-1"></i> Tambah Baris
@@ -86,12 +84,12 @@
                         <table class="table table-bordered mb-0" id="lineTable">
                             <thead class="bg-light">
                                 <tr>
-                                    <th class="text-nowrap" style="width:1%;">No</th>
-                                    <th style="min-width:200px;">Karyawan</th>
-                                    <th class="text-nowrap" style="width:160px;">Net (Rp)</th>
-                                    <th class="text-nowrap" style="width:150px;">Dibebankan</th>
-                                    <th style="min-width:180px;">Project (bila PROJECT)</th>
-                                    <th class="text-center text-nowrap" style="width:1%;">Aksi</th>
+                                    <th scope="col" class="text-nowrap" style="width:1%;">No</th>
+                                    <th scope="col" style="min-width:200px;">Karyawan</th>
+                                    <th scope="col" class="text-nowrap" style="width:160px;">Net (Rp)</th>
+                                    <th scope="col" class="text-nowrap" style="width:150px;">Dibebankan</th>
+                                    <th scope="col" style="min-width:180px;">Project (bila PROJECT)</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="lineBody"></tbody>
@@ -198,7 +196,7 @@ $(function () {
         document.querySelectorAll('.net-input').forEach(function (inp) {
             total += parseInt((inp.value || '0').replace(/\D/g, '')) || 0;
         });
-        document.getElementById('grandTotal').textContent = 'Rp ' + total.toLocaleString('id-ID');
+        document.getElementById('grandTotal').textContent = total.toLocaleString('id-ID');
     }
 
     // Pilih karyawan -> auto-isi net dari gaji default

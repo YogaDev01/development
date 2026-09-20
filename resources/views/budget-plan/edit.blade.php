@@ -4,15 +4,16 @@
 
 @section('content')
 
-<div class="content-header">
+<div class="content">
     <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6 d-flex align-items-center">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <div class="d-flex align-items-center">
                 <a href="{{ url('/budget-plan') }}" class="btn btn-secondary btn-sm mr-3">
                     <i class="fas fa-arrow-left"></i>
                 </a>
                 <div>
-                    <h1 class="m-0 font-weight-bold">Edit Budget</h1>
+                    <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Edit Budget</h1>
                     <small class="text-muted">
                         <span class="badge badge-dark">{{ $budgetPlan->code }}</span>
                         &nbsp;·&nbsp;
@@ -20,25 +21,18 @@
                     </small>
                 </div>
             </div>
-            <div class="col-sm-6">
-                <ol class="breadcrumb float-sm-right mb-0">
-                    <li class="breadcrumb-item"><a href="#">Finance</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url('/budget-plan') }}">Budgeting</a></li>
-                    <li class="breadcrumb-item active">Edit</li>
-                </ol>
-            </div>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item"><a href="#">Finance</a></li>
+                <li class="breadcrumb-item"><a href="{{ url('/budget-plan') }}">Budgeting</a></li>
+                <li class="breadcrumb-item active">Edit</li>
+            </ol>
         </div>
-    </div>
-</div>
-
-<div class="content">
-    <div class="container-fluid">
 
         {{-- Alert revisi --}}
         @if($budgetPlan->approver_notes)
         <div class="alert alert-warning mb-3">
             <i class="fas fa-exclamation-triangle mr-2"></i>
-            <strong>Catatan Finance:</strong> {{ $budgetPlan->approver_notes }}
+            <strong>Catatan Penolakan:</strong> {{ $budgetPlan->approver_notes }}
         </div>
         @endif
 
@@ -67,28 +61,27 @@
                 @endif
 
                 <div class="card-body">
-                    <div class="row">
+                    <div class="row po-two-col form-clean">
 
-                        @if($budgetPlan->isProjectBudget())
-                        <!-- PO (budget proyek — masih boleh ganti PO) -->
-                        <div class="col-md-6">
-                            <div class="form-group">
+                        <!-- KOLOM KIRI -->
+                        <div class="col-md-6 po-col-left">
+
+                            @if($budgetPlan->isProjectBudget())
+                            <!-- PO (budget proyek — masih boleh ganti PO) -->
+                            <div class="form-group mb-0">
                                 <label class="font-weight-600">PO (Project Order) <span class="text-danger">*</span></label>
-                                <select name="project_id" class="form-control @error('project_id') is-invalid @enderror" required>
+                                <select name="project_id" id="selProject" class="form-control @error('project_id') is-invalid @enderror" required>
                                     <option value="">— Pilih PO —</option>
                                     @foreach($projects as $project)
                                         <option value="{{ $project->id }}"
                                             {{ old('project_id', $budgetPlan->project_id) == $project->id ? 'selected' : '' }}>
-                                            [{{ $project->code ?? '-' }}] {{ $project->name }}
-                                            @if($project->customer) — {{ $project->customer->name }} @endif
-                                            ({{ $project->status }})
+                                            @if($project->customer){{ $project->customer->name }} - @endif[{{ $project->code ?? '-' }}] {{ $project->name }}
                                         </option>
                                     @endforeach
                                     {{-- Pastikan PO existing selalu ada di dropdown meski statusnya berubah --}}
                                     @if($budgetPlan->project && !$projects->contains('id', $budgetPlan->project_id))
                                         <option value="{{ $budgetPlan->project_id }}" selected>
-                                            [{{ $budgetPlan->project->code ?? '-' }}] {{ $budgetPlan->project->name }}
-                                            ({{ $budgetPlan->project->status }})
+                                            @if($budgetPlan->project->customer){{ $budgetPlan->project->customer->name }} - @endif[{{ $budgetPlan->project->code ?? '-' }}] {{ $budgetPlan->project->name }}
                                         </option>
                                     @endif
                                 </select>
@@ -96,11 +89,9 @@
                                     <small class="text-danger d-block">{{ $message }}</small>
                                 @enderror
                             </div>
-                        </div>
-                        @else
-                        <!-- COST CENTER (budget internal — sumber dana dikunci) -->
-                        <div class="col-md-6">
-                            <div class="form-group">
+                            @else
+                            <!-- COST CENTER (budget internal — sumber dana dikunci) -->
+                            <div class="form-group mb-0">
                                 <label class="font-weight-600">Cost Center</label>
                                 <input type="text" class="form-control" readonly
                                        value="[{{ $budgetPlan->costCenter->code ?? '-' }}] {{ $budgetPlan->costCenter->name ?? '-' }}">
@@ -108,11 +99,14 @@
                                     Sumber dana <strong>{{ $budgetPlan->source_type }}</strong> tidak dapat diubah setelah budget dibuat.
                                 </small>
                             </div>
-                        </div>
-                        @endif
+                            @endif
 
-                        <!-- DESKRIPSI -->
-                        <div class="col-md-6">
+                        </div>
+
+                        <!-- KOLOM KANAN -->
+                        <div class="col-md-6 po-col-right">
+
+                            <!-- DESKRIPSI -->
                             <div class="form-group">
                                 <label class="font-weight-600">Deskripsi <span class="text-danger">*</span></label>
                                 <input type="text" name="description"
@@ -125,15 +119,14 @@
                                     <small class="text-danger d-block">{{ $message }}</small>
                                 @enderror
                             </div>
-                        </div>
 
-                        <!-- NOTES -->
-                        <div class="col-md-12">
+                            <!-- NOTES -->
                             <div class="form-group mb-0">
                                 <label class="font-weight-600">Notes</label>
                                 <textarea name="notes" class="form-control" rows="2"
                                           placeholder="Catatan tambahan...">{{ old('notes', $budgetPlan->notes) }}</textarea>
                             </div>
+
                         </div>
 
                     </div>
@@ -168,15 +161,15 @@
                         <table class="table table-bordered mb-0">
                             <thead class="bg-light">
                                 <tr>
-                                    <th style="width:4%;" class="text-center">No</th>
-                                    <th style="width:18%;">Chart of Account</th>
-                                    <th style="width:17%;">Deskripsi</th>
-                                    <th style="width:12%;" class="text-right">Harga Satuan (Rp)</th>
-                                    <th style="width:7%;" class="text-center">Qty</th>
-                                    <th style="width:10%;">Unit</th>
-                                    <th style="width:12%;" class="text-right">Total (Rp)</th>
-                                    <th style="width:15%;">Notes</th>
-                                    <th style="width:5%;" class="text-center">Aksi</th>
+                                    <th scope="col" style="width:4%;" class="text-center">No</th>
+                                    <th scope="col" style="width:18%;">Chart of Account</th>
+                                    <th scope="col" style="width:17%;">Deskripsi</th>
+                                    <th scope="col" style="width:12%;" class="text-right">Harga Satuan (Rp)</th>
+                                    <th scope="col" style="width:7%;" class="text-center">Qty</th>
+                                    <th scope="col" style="width:10%;">Unit</th>
+                                    <th scope="col" style="width:12%;" class="text-right">Total (Rp)</th>
+                                    <th scope="col" class="col-notes">Notes</th>
+                                    <th scope="col" style="width:5%;" class="text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="detailBody">
@@ -185,7 +178,7 @@
                                     <td class="text-center align-middle row-no">{{ $i + 1 }}</td>
                                     <td>
                                         <select name="details[{{ $i }}][account_id]"
-                                                class="form-control form-control-sm select-account">
+                                                class="form-control form-control-sm select-account" required>
                                             <option value="">— Pilih Account —</option>
                                             @foreach($accounts as $acc)
                                                 <option value="{{ $acc->id }}"
@@ -216,7 +209,7 @@
                                                value="{{ rtrim(rtrim(number_format((float) $det->qty, 2, '.', ''), '0'), '.') ?: 1 }}">
                                     </td>
                                     <td>
-                                        <select name="details[{{ $i }}][unit]" class="form-control form-control-sm select-unit">
+                                        <select name="details[{{ $i }}][unit]" class="form-control form-control-sm select-unit" required>
                                             <option value="">—</option>
                                             @foreach(\App\Models\BudgetPlanDetail::UNITS as $u)
                                                 <option value="{{ $u }}" {{ $det->unit == $u ? 'selected' : '' }}>
@@ -231,7 +224,7 @@
                                                value="{{ number_format($det->total, 0, ',', '.') }}"
                                                readonly tabindex="-1">
                                     </td>
-                                    <td>
+                                    <td class="col-notes">
                                         <input type="text"
                                                name="details[{{ $i }}][notes]"
                                                class="form-control form-control-sm"
@@ -249,7 +242,7 @@
                                 <tr class="detail-row">
                                     <td class="text-center align-middle row-no">1</td>
                                     <td>
-                                        <select name="details[0][account_id]" class="form-control form-control-sm select-account">
+                                        <select name="details[0][account_id]" class="form-control form-control-sm select-account" required>
                                             <option value="">— Pilih Account —</option>
                                             @foreach($accounts as $acc)
                                                 <option value="{{ $acc->id }}">{{ $acc->name }}</option>
@@ -260,7 +253,7 @@
                                     <td><input type="text" name="details[0][amount]" class="form-control form-control-sm text-right money-detail" placeholder="0"></td>
                                     <td><input type="number" step="0.01" min="0.01" name="details[0][qty]" class="form-control form-control-sm text-center qty-detail" value="1"></td>
                                     <td>
-                                        <select name="details[0][unit]" class="form-control form-control-sm select-unit">
+                                        <select name="details[0][unit]" class="form-control form-control-sm select-unit" required>
                                             <option value="">—</option>
                                             @foreach(\App\Models\BudgetPlanDetail::UNITS as $u)
                                                 <option value="{{ $u }}">{{ ucfirst($u) }}</option>
@@ -268,7 +261,7 @@
                                         </select>
                                     </td>
                                     <td><input type="text" class="form-control form-control-sm text-right total-detail" value="0" readonly tabindex="-1"></td>
-                                    <td><input type="text" name="details[0][notes]" class="form-control form-control-sm" placeholder="Keterangan..."></td>
+                                    <td class="col-notes"><input type="text" name="details[0][notes]" class="form-control form-control-sm" placeholder="Keterangan..."></td>
                                     <td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-detail"><i class="fas fa-trash"></i></button></td>
                                 </tr>
                                 @endforelse
@@ -295,10 +288,10 @@
                         <table class="table table-bordered mb-0">
                             <thead class="bg-light">
                                 <tr>
-                                    <th style="width:5%;" class="text-center">No</th>
-                                    <th>Nama File</th>
-                                    <th style="width:12%;" class="text-center">Preview</th>
-                                    <th style="width:10%;" class="text-center">Hapus</th>
+                                    <th scope="col" style="width:5%;" class="text-center">No</th>
+                                    <th scope="col">Nama File</th>
+                                    <th scope="col" style="width:12%;" class="text-center">Preview</th>
+                                    <th scope="col" style="width:10%;" class="text-center">Hapus</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -315,7 +308,7 @@
                                     <td class="text-center">
                                         <input type="checkbox" name="delete_attachments[]"
                                                value="{{ $att->id }}"
-                                               style="width:18px;height:18px;accent-color:#dc3545;">
+                                               style="width:18px;height:18px;accent-color:var(--danger);">
                                     </td>
                                 </tr>
                                 @endforeach
@@ -341,10 +334,10 @@
                     <div id="dropZoneBP" class="att-dropzone mb-3">
                         <i class="fas fa-cloud-upload-alt fa-2x mb-2 d-block"></i>
                         <p class="mb-0">
-                            Drag &amp; drop file ke sini, atau
+                            Drag &amp; drop file ke sini, paste gambar (Ctrl+V), atau
                             <span class="text-primary" style="text-decoration:underline;cursor:pointer;" id="dropZoneBrowseBP">klik untuk pilih</span>
                         </p>
-                        <small class="text-muted">Bisa pilih/drop beberapa file sekaligus</small>
+                        <small class="text-muted">Bisa pilih/drop/paste beberapa file sekaligus</small>
                         <input type="file" id="dropZoneInputBP" multiple style="display:none;"
                                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
                     </div>
@@ -352,9 +345,9 @@
                         <table class="table table-bordered mb-0">
                             <thead class="bg-light">
                                 <tr>
-                                    <th style="width:5%;" class="text-center">No</th>
-                                    <th style="width:50%;">File</th>
-                                    <th style="width:10%;" class="text-center">Aksi</th>
+                                    <th scope="col" style="width:5%;" class="text-center">No</th>
+                                    <th scope="col" style="width:50%;">File</th>
+                                    <th scope="col" style="width:10%;" class="text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="attachmentBody"></tbody>
@@ -394,24 +387,28 @@
 .font-weight-600 { font-weight:600; }
 .table td, .table th { vertical-align:middle !important; }
 
+.col-notes { display:none; }
+
+td .tss-btn { padding:.25rem .5rem; font-size:13.5px; }
+
 .att-dropzone {
-    border: 2px dashed #ced4da;
-    border-radius: 8px;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-md);
     padding: 28px 20px;
     text-align: center;
-    color: #6c757d;
+    color: var(--text-faint);
     cursor: pointer;
     transition: all .2s ease;
-    background: #fafbfc;
+    background: var(--surface-2);
 }
 .att-dropzone:hover {
-    border-color: #F5A623;
-    background: #FFFBF3;
+    border-color: var(--accent);
+    background: var(--warning-bg);
 }
 .att-dropzone.dragover {
-    border-color: #F5A623;
-    background: #FFF3DC;
-    color: #C97E0A;
+    border-color: var(--accent);
+    background: var(--warning-bg);
+    color: var(--accent-dark);
 }
 </style>
 @endpush
@@ -424,6 +421,22 @@ $(function () {
     var units     = JSON.parse(document.getElementById('unitsHolder').value);
     var detailIdx = parseInt(document.getElementById('detailIdxHolder').value) || 1;
     var attIdx    = 0;
+
+    // ── SEARCHABLE DROPDOWN: PO ──────────────────────────────────────
+    if (document.getElementById('selProject')) {
+        TesysSearchableSelect.init('#selProject', { placeholder: '— Pilih PO —', searchPlaceholder: 'Cari PO...' });
+    }
+
+    // ── SEARCHABLE DROPDOWN: Chart of Account & Unit per baris ────────
+    function initDetailSelects(scope) {
+        (scope || document).querySelectorAll('select.select-account').forEach(function (sel) {
+            TesysSearchableSelect.initOne($(sel), { placeholder: '— Pilih Account —', searchPlaceholder: 'Cari Account...' });
+        });
+        (scope || document).querySelectorAll('select.select-unit').forEach(function (sel) {
+            TesysSearchableSelect.initOne($(sel), { placeholder: '—', searchPlaceholder: 'Cari Unit...' });
+        });
+    }
+    initDetailSelects(document.getElementById('detailBody'));
 
     function fmtRp(v) {
         v = (v || '').toString().replace(/[^\d]/g, '');
@@ -443,7 +456,7 @@ $(function () {
         $('.detail-row').each(function () {
             total += recalcRow($(this));
         });
-        $('#totalAmountLabel').text('Total: Rp ' + total.toLocaleString('id-ID'));
+        $('#totalAmountLabel').text('Total: ' + total.toLocaleString('id-ID'));
     }
 
     $(document).on('input', '.money-detail', function () {
@@ -476,7 +489,13 @@ $(function () {
         return html;
     }
 
-    var bpSourceType = '{{ $budgetPlan->source_type }}'; // PROJECT | OVERHEAD | PAYROLL — fixed, tidak berubah saat edit
+    // source_type asli budget plan ini bisa jadi tipe cost center apapun (OVERHEAD,
+    // PAYROLL, TAX, ASSET, dst) — tapi endpoint Import/Download Template Account cuma
+    // punya 3 kategori (Variable Cost/Fixed Cost/Overhead), jadi semua tipe non-project
+    // & non-payroll di-collapse ke bucket 'OVERHEAD' yang sama (pola sama seperti
+    // currentSourceKey() di create.blade.php).
+    var rawSourceType = '{{ $budgetPlan->source_type }}';
+    var bpSourceType  = (rawSourceType === 'PROJECT' || rawSourceType === 'PAYROLL') ? rawSourceType : 'OVERHEAD';
 
     // ── Download Template & Import Excel ────────────────────────────────
     $('#btnDownloadTemplate').on('click', function (e) {
@@ -515,7 +534,7 @@ $(function () {
                     html: '<div style="text-align:left;max-height:250px;overflow:auto;">' +
                           res.errors.map(function (e) { return '<div>• ' + e + '</div>'; }).join('') +
                           '</div>',
-                    confirmButtonColor: '#F5A623'
+                    confirmButtonColor: '#92232b'
                 });
             }
 
@@ -529,25 +548,26 @@ $(function () {
                     $('#detailBody').append(
                         '<tr class="detail-row">' +
                             '<td class="text-center align-middle row-no"></td>' +
-                            '<td><select name="details[' + i + '][account_id]" class="form-control form-control-sm select-account">' + accOptions + '</select></td>' +
+                            '<td><select name="details[' + i + '][account_id]" class="form-control form-control-sm select-account" required>' + accOptions + '</select></td>' +
                             '<td><input type="text" name="details[' + i + '][deskripsi]" class="form-control form-control-sm" value="' + (r.deskripsi || '') + '" placeholder="Deskripsi item..."></td>' +
                             '<td><input type="text" name="details[' + i + '][amount]" class="form-control form-control-sm text-right money-detail" value="' + fmtRp(String(r.amount || 0)) + '"></td>' +
                             '<td><input type="number" step="0.01" min="0.01" name="details[' + i + '][qty]" class="form-control form-control-sm text-center qty-detail" value="' + (r.qty || 1) + '"></td>' +
-                            '<td><select name="details[' + i + '][unit]" class="form-control form-control-sm select-unit">' + buildUnitOptions(r.unit || '') + '</select></td>' +
+                            '<td><select name="details[' + i + '][unit]" class="form-control form-control-sm select-unit" required>' + buildUnitOptions(r.unit || '') + '</select></td>' +
                             '<td><input type="text" class="form-control form-control-sm text-right total-detail" value="0" readonly tabindex="-1"></td>' +
-                            '<td><input type="text" name="details[' + i + '][notes]" class="form-control form-control-sm" value="' + (r.notes || '') + '" placeholder="Keterangan..."></td>' +
+                            '<td class="col-notes"><input type="text" name="details[' + i + '][notes]" class="form-control form-control-sm" value="' + (r.notes || '') + '" placeholder="Keterangan..."></td>' +
                             '<td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-detail"><i class="fas fa-trash"></i></button></td>' +
                         '</tr>'
                     );
                 });
 
+                initDetailSelects(document.getElementById('detailBody'));
                 renumber();
                 recalcTotal();
 
                 Swal.fire({
                     icon: 'success', title: 'Import berhasil',
                     text: res.rows.length + ' baris data dimuat ke Detail Budget.',
-                    confirmButtonColor: '#28a745', timer: 2000, showConfirmButton: false
+                    confirmButtonColor: 'var(--success)', timer: 2000, showConfirmButton: false
                 });
             } else if (!res.errors || !res.errors.length) {
                 Swal.fire({ icon: 'error', title: 'Tidak ada data', text: 'File tidak berisi baris data yang valid.' });
@@ -566,16 +586,17 @@ $(function () {
         $('#detailBody').append(
             '<tr class="detail-row">' +
                 '<td class="text-center align-middle row-no"></td>' +
-                '<td><select name="details[' + i + '][account_id]" class="form-control form-control-sm select-account">' + buildAccountOptions('') + '</select></td>' +
+                '<td><select name="details[' + i + '][account_id]" class="form-control form-control-sm select-account" required>' + buildAccountOptions('') + '</select></td>' +
                 '<td><input type="text" name="details[' + i + '][deskripsi]" class="form-control form-control-sm" placeholder="Deskripsi item..."></td>' +
                 '<td><input type="text" name="details[' + i + '][amount]" class="form-control form-control-sm text-right money-detail" placeholder="0"></td>' +
                 '<td><input type="number" step="0.01" min="0.01" name="details[' + i + '][qty]" class="form-control form-control-sm text-center qty-detail" value="1"></td>' +
-                '<td><select name="details[' + i + '][unit]" class="form-control form-control-sm select-unit">' + buildUnitOptions('') + '</select></td>' +
+                '<td><select name="details[' + i + '][unit]" class="form-control form-control-sm select-unit" required>' + buildUnitOptions('') + '</select></td>' +
                 '<td><input type="text" class="form-control form-control-sm text-right total-detail" value="0" readonly tabindex="-1"></td>' +
-                '<td><input type="text" name="details[' + i + '][notes]" class="form-control form-control-sm" placeholder="Keterangan..."></td>' +
+                '<td class="col-notes"><input type="text" name="details[' + i + '][notes]" class="form-control form-control-sm" placeholder="Keterangan..."></td>' +
                 '<td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-detail"><i class="fas fa-trash"></i></button></td>' +
             '</tr>'
         );
+        initDetailSelects(document.getElementById('detailBody'));
         renumber();
     });
 
@@ -585,7 +606,7 @@ $(function () {
             renumber();
             recalcTotal();
         } else {
-            Swal.fire({ icon:'warning', title:'Minimal 1 baris', confirmButtonColor:'#F5A623' });
+            Swal.fire({ icon:'warning', title:'Minimal 1 baris', confirmButtonColor:'#92232b' });
         }
     });
 
@@ -667,6 +688,32 @@ $(function () {
             if (files && files.length) {
                 Array.from(files).forEach(function (f) { addAttachmentRowBP(f); });
             }
+        });
+
+        // ── PASTE IMAGE FROM CLIPBOARD (Ctrl+V) — tidak perlu file fisik ──
+        function handlePasteBP(e) {
+            var items = (e.clipboardData || window.clipboardData) ? (e.clipboardData || window.clipboardData).items : null;
+            if (!items) return;
+            var found = false;
+            for (var i = 0; i < items.length; i++) {
+                if (items[i].kind === 'file') {
+                    var f = items[i].getAsFile();
+                    if (f) {
+                        var ext = (f.type.split('/')[1] || 'png');
+                        var renamed = new File([f], 'pasted-image-' + Date.now() + '.' + ext, { type: f.type });
+                        addAttachmentRowBP(renamed);
+                        found = true;
+                    }
+                }
+            }
+            if (found) e.preventDefault();
+        }
+        zone.addEventListener('paste', handlePasteBP);
+        document.addEventListener('paste', function (e) {
+            // Hanya tangkap paste global kalau fokus bukan di field teks lain
+            var tag = (document.activeElement && document.activeElement.tagName) || '';
+            if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+            handlePasteBP(e);
         });
     })();
 

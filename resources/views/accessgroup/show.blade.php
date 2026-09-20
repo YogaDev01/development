@@ -2,65 +2,17 @@
 
 @section('content')
 
-<!-- CONTENT HEADER -->
-<div class="content-header">
-
-    <div class="container-fluid">
-
-        <div class="row mb-2">
-
-            <!-- TITLE -->
-            <div class="col-sm-6">
-
-                <h1 class="m-0 font-weight-bold">
-
-                    Detail Access Group
-
-                </h1>
-
-            </div>
-
-            <!-- BREADCRUMB -->
-            <div class="col-sm-6">
-
-                <ol class="breadcrumb float-sm-right">
-
-                    <li class="breadcrumb-item">
-
-                        <a href="#">
-                            Master
-                        </a>
-
-                    </li>
-
-                    <li class="breadcrumb-item">
-
-                        <a href="{{ url('/accessgroup') }}">
-                            Access Group
-                        </a>
-
-                    </li>
-
-                    <li class="breadcrumb-item active">
-
-                        Detail
-
-                    </li>
-
-                </ol>
-
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-<!-- MAIN CONTENT -->
 <div class="content">
-
     <div class="container-fluid">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Detail Access Group</h1>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item"><a href="#">Master</a></li>
+                <li class="breadcrumb-item"><a href="{{ url('/accessgroup') }}">Access Group</a></li>
+                <li class="breadcrumb-item active">Detail</li>
+            </ol>
+        </div>
 
         <!-- ACCESS GROUP INFO -->
         <div class="card card-primary card-outline shadow-sm">
@@ -216,31 +168,31 @@
 
                         <tr>
 
-                            <th width="5%">
+                            <th scope="col" width="5%">
 
                                 No
 
                             </th>
 
-                            <th>
+                            <th scope="col">
 
                                 Name
 
                             </th>
 
-                            <th>
+                            <th scope="col">
 
                                 Email
 
                             </th>
 
-                            <th>
+                            <th scope="col">
 
                                 Role
 
                             </th>
 
-                            <th>
+                            <th scope="col">
 
                                 Created At
 

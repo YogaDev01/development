@@ -4,104 +4,56 @@
 
 @section('content')
 
-<!-- CONTENT HEADER -->
-<div class="content-header">
-    <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6 d-flex align-items-center">
-                <h1 class="m-0 font-weight-bold">Cost Center</h1>
-            </div>
-            <div class="col-sm-6">
-                <ol class="breadcrumb float-sm-right">
-                    <li class="breadcrumb-item"><a href="#">Master</a></li>
-                    <li class="breadcrumb-item active">Cost Center</li>
-                </ol>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- MAIN CONTENT -->
 <div class="content">
     <div class="container-fluid">
 
-        <!-- SUMMARY CARDS -->
-        <div class="row">
-            <div class="col-12 col-md-3">
-                <div class="small-box bg-info">
-                    <div class="inner">
-                        <h3>{{ $summary['total'] }}</h3>
-                        <p>Total Cost Center</p>
-                    </div>
-                    <div class="icon"><i class="fas fa-sitemap"></i></div>
-                </div>
-            </div>
-            <div class="col-12 col-md-3">
-                <div class="small-box bg-primary">
-                    <div class="inner">
-                        <h3>{{ $summary['overhead'] }}</h3>
-                        <p>Overhead</p>
-                    </div>
-                    <div class="icon"><i class="fas fa-building"></i></div>
-                </div>
-            </div>
-            <div class="col-12 col-md-3">
-                <div class="small-box bg-warning">
-                    <div class="inner">
-                        <h3>{{ $summary['payroll'] }}</h3>
-                        <p>Payroll</p>
-                    </div>
-                    <div class="icon"><i class="fas fa-users"></i></div>
-                </div>
-            </div>
-            <div class="col-12 col-md-3">
-                <div class="small-box bg-success">
-                    <div class="inner">
-                        <h3>{{ $summary['active'] }}</h3>
-                        <p>Active</p>
-                    </div>
-                    <div class="icon"><i class="fas fa-check-circle"></i></div>
-                </div>
-            </div>
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Cost Center</h1>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item"><a href="#">Master</a></li>
+                <li class="breadcrumb-item active">Cost Center</li>
+            </ol>
         </div>
+
+        <x-stat-cards :cards="[
+            ['Total Cost Center', $summary['total'], 'primary', 'fas fa-sitemap'],
+            ['Overhead', $summary['overhead'], 'info', 'fas fa-building'],
+            ['Payroll', $summary['payroll'], 'warning', 'fas fa-users'],
+            ['Active', $summary['active'], 'success', 'fas fa-check-circle'],
+        ]" />
 
         <div class="card card-primary card-outline shadow-sm">
 
             <!-- CARD HEADER -->
             <div class="card-header d-flex align-items-center">
-                <button id="refreshTable" class="btn btn-secondary btn-sm" type="button">
-                    <i class="fas fa-sync-alt mr-1"></i> Refresh
-                </button>
-                <button type="button" class="btn btn-success btn-sm ml-auto" id="btnTambah">
-                    <i class="fas fa-plus mr-1"></i> Tambah Cost Center
-                </button>
+                <h3 class="card-title"><i class="fas fa-sitemap mr-1"></i> Daftar Cost Center</h3>
+                <div class="ml-auto d-flex" style="gap:8px;">
+                    <button id="refreshTable" class="btn btn-secondary btn-sm" type="button">
+                        <i class="fas fa-sync-alt mr-1"></i> Refresh
+                    </button>
+                </div>
             </div>
 
             <!-- CARD BODY -->
             <div class="card-body">
 
                 <!-- TOOLBAR -->
-                <div class="custom-toolbar mb-3">
-                    <div class="custom-toolbar-left">
+                <div class="custom-toolbar mb-3 d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
+                    <div class="custom-toolbar-left d-flex align-items-center flex-wrap" style="gap:8px;">
                         <div class="toolbar-row">
                             <span class="toolbar-label">Cari :</span>
                             <div class="toolbar-input" id="customSearch"></div>
                         </div>
-                        <div class="toolbar-row">
-                            <span class="toolbar-label">Filter :</span>
-                            <div class="toolbar-input">
-                                <select id="ccFilter" multiple placeholder="Filter data...">
-                                    <optgroup label="Tipe">
-                                        <option value="TYPE:OVERHEAD">Overhead</option>
-                                        <option value="TYPE:PAYROLL">Payroll</option>
-                                    </optgroup>
-                                    <optgroup label="Status">
-                                        <option value="STATUS:ACTIVE">Active</option>
-                                        <option value="STATUS:INACTIVE">Inactive</option>
-                                    </optgroup>
-                                </select>
-                            </div>
-                        </div>
+                        <button aria-label="Clear Filter" type="button" id="btnClearFilterCC" class="btn btn-outline-secondary btn-sm" title="Clear Filter">
+                            <i class="fas fa-eraser"></i>
+                        </button>
+                        <div id="ccRowFilters" class="d-flex flex-wrap" style="gap:8px;"></div>
+                    </div>
+                    <div class="custom-toolbar-right d-flex flex-wrap" style="gap:8px;">
+                        <button type="button" class="btn btn-success btn-sm" id="btnTambah">
+                            <i class="fas fa-plus mr-1"></i> Tambah Cost Center
+                        </button>
                     </div>
                 </div>
 
@@ -110,13 +62,13 @@
                     <table id="ccTable" class="table table-bordered table-hover table-striped mb-0">
                         <thead class="bg-light">
                             <tr>
-                                <th class="text-nowrap" style="width:1%;">No</th>
-                                <th class="text-nowrap" style="width:1%;">Kode</th>
-                                <th>Nama</th>
-                                <th class="text-nowrap" style="width:1%;">Tipe</th>
-                                <th class="text-center text-nowrap" style="width:1%;">Budget Plan</th>
-                                <th class="text-nowrap" style="width:1%;">Status</th>
-                                <th class="text-center text-nowrap action-column" style="width:1%;">Action</th>
+                                <th scope="col" class="text-nowrap" style="width:1%;">No</th>
+                                <th scope="col" class="text-nowrap" style="width:1%;">Kode</th>
+                                <th scope="col">Nama</th>
+                                <th scope="col" class="text-nowrap" style="width:1%;">Tipe</th>
+                                <th scope="col" class="text-center text-nowrap" style="width:1%;">Budget Plan</th>
+                                <th scope="col" class="text-nowrap" style="width:1%;">Status</th>
+                                <th scope="col" class="text-center text-nowrap action-column" style="width:1%;">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -155,25 +107,40 @@
                                     </span>
                                 </td>
 
-                                <td class="text-center text-nowrap">
-                                    <button type="button" class="btn btn-info btn-sm btn-show"
-                                            data-id="{{ $cc->id }}" title="Detail">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-warning btn-sm btn-edit"
-                                            data-id="{{ $cc->id }}"
-                                            data-name="{{ $cc->name }}"
-                                            data-status="{{ $cc->status }}"
-                                            data-notes="{{ $cc->notes }}"
-                                            title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-danger btn-sm btn-delete"
-                                            data-id="{{ $cc->id }}"
-                                            data-name="{{ $cc->name }}"
-                                            title="Hapus">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                <td class="text-center action-column">
+                                    <div class="action-buttons ts-actions">
+
+                                        <button type="button" class="ts-action-primary is-neutral btn-edit"
+                                                data-id="{{ $cc->id }}"
+                                                data-name="{{ $cc->name }}"
+                                                data-status="{{ $cc->status }}"
+                                                data-notes="{{ $cc->notes }}"
+                                                title="Edit" aria-label="Edit {{ $cc->name }}">
+                                            <i class="fas fa-pen" aria-hidden="true"></i><span class="ts-al">Edit</span>
+                                        </button>
+
+                                        <button type="button" class="ts-action-more"
+                                                aria-haspopup="true" aria-expanded="false"
+                                                title="Aksi lain" aria-label="Aksi lain untuk {{ $cc->name }}">
+                                            <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
+                                        </button>
+
+                                        <div class="ts-action-menu dropdown-menu" hidden>
+
+                                            <button type="button" class="dropdown-item btn-show" data-id="{{ $cc->id }}">
+                                                <i class="fas fa-eye"></i>Detail
+                                            </button>
+
+                                            <div class="dropdown-divider"></div>
+
+                                            <button type="button" class="dropdown-item is-danger btn-delete"
+                                                    data-id="{{ $cc->id }}" data-name="{{ $cc->name }}">
+                                                <i class="fas fa-trash"></i>Hapus
+                                            </button>
+
+                                        </div>
+
+                                    </div>
                                 </td>
                             </tr>
                             @empty
@@ -196,11 +163,11 @@
 <!-- ================================================================ -->
 <div class="modal fade" id="modalTambah" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
-        <div class="modal-content" style="border-radius:12px; overflow:hidden;">
+        <div class="modal-content" style="border-radius:var(--radius-lg); overflow:hidden;">
 
-            <div class="modal-header" style="background:#0D1B2A; border-bottom:3px solid #F5A623;">
+            <div class="modal-header" style="background:var(--charcoal); border-bottom:3px solid var(--accent);">
                 <h5 class="modal-title text-white">
-                    <i class="fas fa-sitemap mr-2" style="color:#F5A623;"></i>
+                    <i class="fas fa-sitemap mr-2" style="color:var(--accent);"></i>
                     Tambah Cost Center
                 </h5>
                 <button type="button" class="close text-white" data-dismiss="modal">
@@ -221,6 +188,11 @@
                             <option value="">— Pilih Tipe —</option>
                             <option value="OVERHEAD">OVERHEAD — biaya kantor / operasional</option>
                             <option value="PAYROLL">PAYROLL — gaji karyawan</option>
+                            <option value="TAX">TAX — pajak</option>
+                            <option value="ASSET">ASSET — aset</option>
+                            <option value="LIABILITY">LIABILITY — liabilitas / utang</option>
+                            <option value="CAPITAL">CAPITAL — modal</option>
+                            <option value="ADJUSTMENT">ADJUSTMENT — penyesuaian</option>
                         </select>
                         <small class="text-muted mt-1 d-block">Tipe tidak dapat diubah setelah disimpan.</small>
                     </div>
@@ -265,11 +237,11 @@
 <!-- ================================================================ -->
 <div class="modal fade" id="modalEdit" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
-        <div class="modal-content" style="border-radius:12px; overflow:hidden;">
+        <div class="modal-content" style="border-radius:var(--radius-lg); overflow:hidden;">
 
-            <div class="modal-header" style="background:#0D1B2A; border-bottom:3px solid #F5A623;">
+            <div class="modal-header" style="background:var(--charcoal); border-bottom:3px solid var(--accent);">
                 <h5 class="modal-title text-white">
-                    <i class="fas fa-edit mr-2" style="color:#F5A623;"></i>
+                    <i class="fas fa-edit mr-2" style="color:var(--accent);"></i>
                     Edit Cost Center
                 </h5>
                 <button type="button" class="close text-white" data-dismiss="modal">
@@ -331,11 +303,11 @@
 <!-- ================================================================ -->
 <div class="modal fade" id="modalShow" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content" style="border-radius:12px; overflow:hidden;">
+        <div class="modal-content" style="border-radius:var(--radius-lg); overflow:hidden;">
 
-            <div class="modal-header" style="background:#0D1B2A; border-bottom:3px solid #F5A623;">
+            <div class="modal-header" style="background:var(--charcoal); border-bottom:3px solid var(--accent);">
                 <h5 class="modal-title text-white">
-                    <i class="fas fa-sitemap mr-2" style="color:#F5A623;"></i>
+                    <i class="fas fa-sitemap mr-2" style="color:var(--accent);"></i>
                     <span id="showTitle"></span>
                 </h5>
                 <button type="button" class="close text-white" data-dismiss="modal">
@@ -348,23 +320,23 @@
                 <table class="table table-bordered mb-4" style="font-size:13px;">
                     <tbody>
                         <tr>
-                            <th style="background:#F9FAFB;color:#6B7280;font-size:11px;text-transform:uppercase;width:30%;">Kode</th>
+                            <th style="background:var(--surface-2);color:var(--text-faint);font-size:11px;text-transform:uppercase;width:30%;">Kode</th>
                             <td id="showCode"></td>
                         </tr>
                         <tr>
-                            <th style="background:#F9FAFB;color:#6B7280;font-size:11px;text-transform:uppercase;">Tipe</th>
+                            <th style="background:var(--surface-2);color:var(--text-faint);font-size:11px;text-transform:uppercase;">Tipe</th>
                             <td id="showType"></td>
                         </tr>
                         <tr>
-                            <th style="background:#F9FAFB;color:#6B7280;font-size:11px;text-transform:uppercase;">Status</th>
+                            <th style="background:var(--surface-2);color:var(--text-faint);font-size:11px;text-transform:uppercase;">Status</th>
                             <td id="showStatus"></td>
                         </tr>
                         <tr>
-                            <th style="background:#F9FAFB;color:#6B7280;font-size:11px;text-transform:uppercase;">Catatan</th>
+                            <th style="background:var(--surface-2);color:var(--text-faint);font-size:11px;text-transform:uppercase;">Catatan</th>
                             <td id="showNotes" style="white-space:pre-line;"></td>
                         </tr>
                         <tr>
-                            <th style="background:#F9FAFB;color:#6B7280;font-size:11px;text-transform:uppercase;">Input By</th>
+                            <th style="background:var(--surface-2);color:var(--text-faint);font-size:11px;text-transform:uppercase;">Input By</th>
                             <td id="showInputBy"></td>
                         </tr>
                     </tbody>
@@ -376,13 +348,13 @@
 
                 <div class="table-responsive">
                     <table class="table table-bordered mb-0" style="font-size:12px;">
-                        <thead style="background:#F9FAFB;">
+                        <thead style="background:var(--surface-2);">
                             <tr>
-                                <th style="color:#6B7280;font-size:11px;width:5%;">No</th>
-                                <th style="color:#6B7280;font-size:11px;">Deskripsi</th>
-                                <th style="color:#6B7280;font-size:11px;">Status</th>
-                                <th style="color:#6B7280;font-size:11px;text-align:right;">Budget</th>
-                                <th style="color:#6B7280;font-size:11px;text-align:right;">Used</th>
+                                <th scope="col" style="color:var(--text-faint);font-size:11px;width:5%;">No</th>
+                                <th scope="col" style="color:var(--text-faint);font-size:11px;">Deskripsi</th>
+                                <th scope="col" style="color:var(--text-faint);font-size:11px;">Status</th>
+                                <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;">Budget</th>
+                                <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;">Used</th>
                             </tr>
                         </thead>
                         <tbody id="showBudgetBody"></tbody>
@@ -411,7 +383,7 @@
 @push('styles')
 <style>
 
-.card-header .btn  { border-radius:6px; font-weight:600; }
+.card-header .btn  { border-radius:var(--radius-sm); font-weight:600; }
 .font-weight-600   { font-weight:600; }
 .action-column     { white-space:nowrap !important; width:1% !important; }
 
@@ -419,10 +391,10 @@
 .custom-toolbar      { display:flex; justify-content:space-between; align-items:flex-start; gap:15px; flex-wrap:wrap; }
 .custom-toolbar-left { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 .toolbar-row         { display:flex; align-items:center; gap:8px; }
-.toolbar-label       { min-width:50px; margin-bottom:0; white-space:nowrap; font-weight:600; color:#495057; }
+.toolbar-label       { min-width:50px; margin-bottom:0; white-space:nowrap; font-weight:600; color:var(--text-dim); }
 .toolbar-input       { min-width:180px; }
 #customSearch        { width:100%; }
-#customSearch input  { width:180px; border-radius:6px; }
+#customSearch input  { width:180px; border-radius:var(--radius-sm); }
 
 /* FILTER DROPDOWN: bedakan header grup vs item */
 .ts-dropdown .optgroup-header,
@@ -431,10 +403,10 @@
     font-size: 11px !important;
     text-transform: uppercase;
     letter-spacing: .06em;
-    color: #0D1B2A !important;
-    background: #F1F3F5 !important;
+    color: var(--text) !important;
+    background: var(--surface-2) !important;
     padding: 8px 12px !important;
-    border-top: 1px solid #e3e6ea;
+    border-top: 1px solid var(--border);
     cursor: default;
 }
 .ts-dropdown .optgroup:first-child .optgroup-header,
@@ -445,8 +417,15 @@
 @media (max-width: 767.98px) {
     .card-header         { flex-direction:column; gap:10px; align-items:stretch !important; }
     .card-header .btn    { width:100%; }
-    .custom-toolbar      { flex-direction:column; align-items:stretch; }
-    .custom-toolbar-left { flex-direction:column; align-items:stretch; }
+    .card-header .card-title { margin-bottom:0; }
+    .card-header .ml-auto { margin-left:0 !important; flex-wrap:wrap; }
+    .custom-toolbar      { flex-direction:column !important; align-items:stretch !important; }
+    .custom-toolbar-left { flex-direction:column !important; align-items:stretch !important; width:100%; }
+    .custom-toolbar-right { width:100%; }
+    .custom-toolbar-right .btn { width:100%; }
+    #btnClearFilterCC    { width:100%; }
+    #ccRowFilters        { width:100%; }
+    #ccRowFilters .tcf-row-btn { width:100%; }
     .toolbar-row         { width:100%; }
     .toolbar-input       { flex:1; min-width:0; }
     #customSearch input  { width:100%; }
@@ -487,48 +466,16 @@ $(function () {
         $('#customSearch input').on('keyup', function () {
             table.search(this.value).draw();
         });
+
+        TesysColumnFilter.initRowFilters('#ccTable', '#ccRowFilters', [
+            { key: 'type', label: 'Tipe' },
+            { key: 'status', label: 'Status' },
+        ]);
     }
 
-    // Filter bergrup
-    new TomSelect('#ccFilter', {
-        plugins: ['remove_button'],
-        persist: false,
-        create: false,
-        lockOptgroupOrder: true,
-        placeholder: 'Filter data...'
-    });
-
-    $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
-        if (settings.nTable.id !== 'ccTable') return true;
-
-        var filters = $('#ccFilter').val();
-        if (!filters || !filters.length) return true;
-
-        var row = settings.aoData[dataIndex].nTr;
-        if (!row) return true;
-
-        var rowType   = row.getAttribute('data-type')   || '';
-        var rowStatus = row.getAttribute('data-status') || '';
-
-        var selType = [], selStatus = [];
-
-        filters.forEach(function (f) {
-            var i = f.indexOf(':');
-            if (i < 0) return;
-            var key = f.substring(0, i);
-            var val = f.substring(i + 1);
-            if (key === 'TYPE')        selType.push(val);
-            else if (key === 'STATUS') selStatus.push(val);
-        });
-
-        if (selType.length   && selType.indexOf(rowType)     === -1) return false;
-        if (selStatus.length && selStatus.indexOf(rowStatus) === -1) return false;
-
-        return true;
-    });
-
-    $('#ccFilter').on('change', function () {
-        if (table) table.draw();
+    $('#btnClearFilterCC').on('click', function () {
+        if (!table) return;
+        TesysColumnFilter.clearAll('#ccTable');
     });
 
     // Refresh
@@ -572,8 +519,8 @@ $(function () {
                     '<td><div style="font-weight:600;">' + bp.description + '</div>' +
                     '<small class="text-muted">' + (bp.code || '-') + '</small></td>' +
                     '<td><span class="badge badge-' + bp.status_color + ' px-2 py-1" style="font-size:9px;">' + bp.status + '</span></td>' +
-                    '<td class="text-right"><strong>Rp ' + amt.toLocaleString('id-ID') + '</strong></td>' +
-                    '<td class="text-right" style="color:#D97706;">Rp ' + used.toLocaleString('id-ID') + '</td></tr>';
+                    '<td class="text-right"><strong>' + amt.toLocaleString('id-ID') + '</strong></td>' +
+                    '<td class="text-right" style="color:var(--warning);">' + used.toLocaleString('id-ID') + '</td></tr>';
             });
             $('#showBudgetBody').html(html || '<tr><td colspan="5" class="text-center text-muted py-3">Belum ada budget plan.</td></tr>');
 
@@ -593,8 +540,8 @@ $(function () {
             text: name + ' akan dihapus permanen.',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#6c757d',
+            confirmButtonColor: 'var(--danger)',
+            cancelButtonColor: '#55595e',
             confirmButtonText: 'Ya, Hapus',
             cancelButtonText: 'Batal'
         }).then(function (r) {

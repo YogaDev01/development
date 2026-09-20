@@ -1,1365 +1,580 @@
+{{--
+    Tesys — layout utama (shell modern: sidebar terang + topbar).
+
+    Struktur mengikuti design system di public/css/tesys-ui.css:
+        .shell > .sidebar + .main > .topbar + .content
+
+    Markup halaman TIDAK perlu diubah: seluruh asset lama (AdminLTE, Bootstrap,
+    DataTables, TomSelect, flatpickr, SweetAlert) tetap dimuat, dan
+    tesys-ui-compat.css memetakan class Bootstrap/AdminLTE ke tampilan baru.
+
+    Versi sebelumnya (shell AdminLTE + re-skin) disimpan di
+    layout ini adalah satu-satunya layout aplikasi (versi lama app-adminlte
+    dan app-legacy sudah dihapus; riwayatnya ada di git).
+--}}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 
 <head>
 
     <meta charset="UTF-8">
-
-    <meta 
-        name="viewport" 
-        content="width=device-width, initial-scale=1"
-    >
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" href="{{ asset('dist/img/favicon16.ico') }}" type="image/x-icon">
 
-    <title>
-        @yield('title', 'Dashboard') | Tesys
-    </title>
+    {{-- Tema dipasang SEBELUM satu lembar gaya pun diminta.
 
-    <!-- GOOGLE FONTS: Inter -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+         Kalau pemasangannya ditunda sampai skrip di kaki halaman jalan,
+         seluruh aplikasi sempat tampil dengan tema terang lalu berkedip ke
+         gelap di setiap perpindahan halaman. Di aplikasi yang halamannya
+         dimuat ulang penuh seperti ini, kedipan itu terjadi puluhan kali
+         sehari.
 
-    <!-- FONT AWESOME -->
-    <link 
-        rel="stylesheet"
-        href="{{ asset('plugins/fontawesome-free/css/all.min.css') }}"
-    >
+         Kuncinya sama dengan halaman masuk (tesys-theme), jadi pilihan yang
+         dibuat di layar masuk langsung berlaku begitu orang masuk. --}}
+    <script>
+        (function () {
+            try {
+                var t = localStorage.getItem('tesys-theme');
+                document.documentElement.setAttribute(
+                    'data-theme', t === 'dark' ? 'dark' : 'light');
+            } catch (e) {
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
+
+    <title>@yield('title', 'Dashboard') | TESYS</title>
+
+    <!-- FONT AWESOME (ikon di dalam halaman masih memakainya) -->
+    <link rel="stylesheet" href="{{ asset('plugins/fontawesome-free/css/all.min.css') }}">
 
     <!-- DATATABLE -->
-    <link 
-        rel="stylesheet"
-        href="{{ asset('plugins/datatables-bs4/css/dataTables.bootstrap4.min.css') }}"
-    >
+    <link rel="stylesheet" href="{{ asset('plugins/datatables-bs4/css/dataTables.bootstrap4.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('plugins/datatables-responsive/css/responsive.bootstrap4.min.css') }}">
 
-    <link 
-        rel="stylesheet"
-        href="{{ asset('plugins/datatables-responsive/css/responsive.bootstrap4.min.css') }}"
-    >
+    {{-- BOOTSTRAP 4.6.1 — grid, utilities, dan komponen dasar.
 
-    <!-- ADMIN LTE -->
-    <link 
-        rel="stylesheet"
-        href="{{ asset('dist/css/adminlte.min.css') }}"
-    >
+         Dulu di sini dimuat dist/css/adminlte.min.css (1,4 MB), yang
+         sebetulnya adalah Bootstrap 4.6.1 disusul 1,2 MB lapisan tema
+         AdminLTE. Lapisan tema itu tidak dipakai sama sekali: seluruh
+         kelas strukturalnya — .main-sidebar, .content-wrapper,
+         .main-header, .small-box, .info-box — nol pemakaian, karena
+         Tesys punya shell sendiri. Kelas .card-* yang masih tersisa pun
+         justru dinetralkan lagi oleh tesys-ui-compat.css.
+
+         Berkas di bawah adalah separuh depan berkas itu, dipotong tepat
+         di batas akhir @media print milik Bootstrap. Byte-identik dengan
+         yang selama ini berjalan, jadi bukan "Bootstrap versi lain" —
+         termasuk nilai variabel SCSS yang sudah disesuaikan AdminLTE.
+
+         Hasilnya beban CSS halaman turun dari 1.780 KB ke 576 KB. --}}
+    <link rel="stylesheet" href="{{ asset('css/bootstrap-4.6.1.css') }}?v={{ filemtime(public_path('css/bootstrap-4.6.1.css')) }}">
 
     <!-- TOM SELECT -->
-    <link 
-        rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css"
-    >
+    {{-- Pustaka pihak ketiga dilayani dari server sendiri, bukan CDN.
+         Alasannya tiga: (1) tanpa SRI, skrip CDN yang tersusupi berjalan penuh
+         di halaman yang memegang data keuangan; (2) 'tom-select' tanpa versi
+         berarti pembaruan mayor bisa masuk diam-diam dan merusak halaman;
+         (3) aplikasi ini dipakai di jaringan kantor yang tidak selalu punya
+         akses keluar - kalau CDN tak terjangkau, dropdown-nya mati. --}}
+    <link rel="stylesheet" href="{{ asset('plugins/tom-select/tom-select.css') }}">
+    <link rel="stylesheet" href="{{ asset('plugins/bootstrap-select/bootstrap-select.min.css') }}">
 
-    <link 
-        rel="stylesheet"
-        href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/css/bootstrap-select.min.css"
-    >
-
-    <!-- Flatpickr CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-
-    <!-- Flatpickr JS -->
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-
-    <!-- OPTIONAL: Flatpickr Indonesia Locale -->
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
+    <!-- Flatpickr (self-hosted — sebagian jaringan kantor memblokir jsdelivr) -->
+    <link rel="stylesheet" href="{{ asset('plugins/flatpickr/dist/flatpickr.min.css') }}">
+    <script src="{{ asset('plugins/flatpickr/flatpickr.min.js') }}"></script>
+    <script src="{{ asset('plugins/flatpickr/dist/l10n/id.js') }}"></script>
 
     <!-- SWEET ALERT -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{{ asset('plugins/sweetalert2/sweetalert2.all.min.js') }}"></script>
 
-    <!-- ===================================================== -->
-    <!-- CUSTOM STYLE -->
-    <!-- ===================================================== -->
-
-    <style>
-
-        /*
-        |--------------------------------------------------------------------------
-        | DESIGN TOKENS
-        |--------------------------------------------------------------------------
-        */
-
-        :root {
-            --navy:        #0D1B2A;
-            --navy-mid:    #162030;
-            --navy-lt:     #1D2D3F;
-            --amber:       #F5A623;
-            --amber-dk:    #C97E0A;
-            --amber-tint:  rgba(245, 166, 35, 0.08);
-            --amber-border:rgba(245, 166, 35, 0.25);
-            --sidebar-w:   250px;
-            --text-muted:  #8A9BB0;
-            --border-soft: rgba(255,255,255,0.07);
-            --body-bg:     #F0F2F5;
-            --card-bg:     #FFFFFF;
-            --radius-sm:   6px;
-            --radius-md:   10px;
-            --radius-lg:   14px;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | GLOBAL
-        |--------------------------------------------------------------------------
-        */
-
-        *, *::before, *::after {
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
-            font-size: 13.5px !important;
-            color: #2D3748;
-            background: var(--body-bg) !important;
-        }
-
-        .content-wrapper {
-            background: var(--body-bg) !important;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | NAVBAR
-        |--------------------------------------------------------------------------
-        */
-
-        .main-header.navbar {
-            background: #FFFFFF !important;
-            border-bottom: 1px solid #E8ECF0 !important;
-            box-shadow: 0 1px 8px rgba(0,0,0,0.06) !important;
-            height: 56px;
-            min-height: 56px;
-            padding: 0 20px;
-        }
-
-        /* Hamburger icon */
-        .main-header .nav-link[data-widget="pushmenu"] {
-            color: #5A6A7E !important;
-            width: 40px;
-            height: 40px;
-            display: flex !important;
-            align-items: center;
-            justify-content: center;
-            border-radius: var(--radius-sm);
-            transition: background 0.15s;
-            padding: 0 !important;
-        }
-
-        .main-header .nav-link[data-widget="pushmenu"]:hover {
-            background: #F0F2F5 !important;
-            color: #1A1A2E !important;
-        }
-
-        /* User dropdown trigger */
-        .main-header .navbar-nav .nav-link {
-            color: #374151 !important;
-            font-size: 13px !important;
-            font-weight: 500;
-            padding: 6px 10px !important;
-            border-radius: var(--radius-sm);
-            transition: background 0.15s;
-            display: flex;
-            align-items: center;
-        }
-
-        .main-header .navbar-nav .nav-link:hover {
-            background: #F0F2F5 !important;
-        }
-
-        .main-header .navbar-nav .nav-link .fa-user {
-            color: var(--amber);
-            background: var(--amber-tint);
-            border: 1px solid var(--amber-border);
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 11px;
-            margin-right: 2px;
-        }
-
-        /* Dropdown */
-        .main-header .dropdown-menu {
-            border: 1px solid #E8ECF0;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-            border-radius: var(--radius-md);
-            padding: 6px;
-            margin-top: 6px !important;
-        }
-
-        .main-header .dropdown-header {
-            padding: 10px 12px 8px;
-            font-size: 13px;
-            font-weight: 600;
-            color: #1A202C;
-        }
-
-        .main-header .dropdown-header small {
-            font-size: 12px;
-            font-weight: 400;
-        }
-
-        .main-header .dropdown-divider {
-            margin: 4px 0;
-            border-color: #F0F2F5;
-        }
-
-        .main-header .px-3.py-2 {
-            padding: 6px 12px !important;
-        }
-
-        .main-header .dropdown-item {
-            border-radius: var(--radius-sm);
-            font-size: 13px;
-            padding: 8px 12px;
-            transition: background 0.15s;
-            color: #374151;
-        }
-
-        .main-header .dropdown-item:hover {
-            background: #FEF3F2;
-        }
-
-        .main-header .dropdown-item.text-danger {
-            color: #DC2626 !important;
-            font-weight: 500;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | SIDEBAR SHELL
-        |--------------------------------------------------------------------------
-        */
-
-        .main-sidebar {
-            background: var(--navy) !important;
-            box-shadow: 2px 0 20px rgba(0,0,0,0.18) !important;
-            /* Width NOT set here — AdminLTE controls it */
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | BRAND / LOGO
-        |--------------------------------------------------------------------------
-        */
-
-        .brand-link {
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            height: 56px !important;
-            background: var(--navy) !important;
-            border-bottom: 1px solid var(--border-soft) !important;
-            padding: 0 16px !important;
-            overflow: hidden;
-            white-space: nowrap;
-        }
-
-        .brand-logo-full {
-            width: 148px;
-            height: auto;
-            display: block;
-            flex-shrink: 0;
-        }
-
-        .brand-logo-mini {
-            width: 30px;
-            height: 30px;
-            display: none;
-            flex-shrink: 0;
-        }
-
-        .brand-link .brand-image {
-            float: none !important;
-            margin: 0 !important;
-            opacity: 1 !important;
-        }
-
-        /* Logo swap on collapse */
-        .sidebar-collapse .brand-logo-full { display: none !important; }
-        .sidebar-collapse .brand-logo-mini { display: block !important; }
-
-        /* Sidebar inner */
-        .sidebar {
-            padding-top: 4px;
-            padding-bottom: 16px;
-            overflow-x: hidden;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | FLAT NAV SYSTEM (tsys-*)
-        | No treeview / accordion. Section labels + flat links.
-        |--------------------------------------------------------------------------
-        */
-
-        .tsys-nav {
-            list-style: none;
-            padding: 0;
-            margin: 0 0 4px 0;
-        }
-
-        /* Section header label */
-        .tsys-section-label {
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.13em;
-            text-transform: uppercase;
-            color: #4A5E72;
-            padding: 18px 20px 6px;
-            white-space: nowrap;
-            overflow: hidden;
-            transition: opacity 0.15s;
-        }
-
-        /* Nav link */
-        .tsys-link {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 12px;
-            margin: 1px 8px;
-            border-radius: var(--radius-sm);
-            text-decoration: none !important;
-            color: #A0B0C2 !important;
-            font-size: 13px;
-            font-weight: 400;
-            white-space: nowrap;
-            transition: background 0.15s, color 0.15s;
-            position: relative;
-        }
-
-        .tsys-link:hover {
-            background: rgba(255,255,255,0.07);
-            color: #FFFFFF !important;
-        }
-
-        .tsys-link:hover .tsys-icon {
-            color: #FFFFFF;
-        }
-
-        /* Active state */
-        .tsys-link.tsys-active {
-            background: var(--amber-tint);
-            color: var(--amber) !important;
-            font-weight: 600;
-            border: 1px solid var(--amber-border);
-        }
-
-        .tsys-link.tsys-active .tsys-icon {
-            color: var(--amber);
-        }
-
-        /* Active left accent bar */
-        .tsys-link.tsys-active::before {
-            content: '';
-            position: absolute;
-            left: -8px;
-            top: 7px;
-            bottom: 7px;
-            width: 3px;
-            background: var(--amber);
-            border-radius: 0 3px 3px 0;
-        }
-
-        /* Icon */
-        .tsys-icon {
-            font-size: 14px;
-            width: 18px;
-            text-align: center;
-            flex-shrink: 0;
-            color: #5A7080;
-            transition: color 0.15s;
-        }
-
-        /* Label text */
-        .tsys-label {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            transition: opacity 0.15s, width 0.15s;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | COLLAPSED STATE
-        | Body gets .sidebar-collapse when hamburger pressed.
-        | Sidebar shrinks to 4.6rem (AdminLTE default for sidebar-mini).
-        |--------------------------------------------------------------------------
-        */
-
-        /* Hide section labels */
-        .sidebar-mini.sidebar-collapse .tsys-section-label {
-            opacity: 0;
-            height: 0;
-            padding: 0;
-            overflow: hidden;
-        }
-
-        /* Center icon, hide label */
-        .sidebar-mini.sidebar-collapse .tsys-link {
-            justify-content: center;
-            padding: 10px 0;
-            margin: 2px 6px;
-            gap: 0;
-        }
-
-        .sidebar-mini.sidebar-collapse .tsys-label {
-            display: none;
-        }
-
-        .sidebar-mini.sidebar-collapse .tsys-icon {
-            font-size: 16px;
-            width: 20px;
-        }
-
-        /* Hide active left-bar when collapsed */
-        .sidebar-mini.sidebar-collapse .tsys-link.tsys-active::before {
-            display: none;
-        }
-
-        /* Tooltip on hover — native browser title attr handles the label */
-        .sidebar-mini.sidebar-collapse .tsys-link:hover {
-            background: rgba(255,255,255,0.09);
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | CARD
-        |--------------------------------------------------------------------------
-        */
-
-        .card {
-            border: 0 !important;
-            border-radius: var(--radius-md) !important;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04) !important;
-            background: var(--card-bg);
-        }
-
-        .card-header {
-            border-top-left-radius: var(--radius-md) !important;
-            border-top-right-radius: var(--radius-md) !important;
-            border-bottom: 1px solid #F0F2F5 !important;
-            padding: 14px 20px !important;
-            background: var(--card-bg) !important;
-            font-weight: 600;
-            font-size: 14px;
-            color: #1A202C;
-        }
-
-        .card-header.with-border {
-            border-bottom: 1px solid #E8ECF0 !important;
-        }
-
-        .card-primary.card-outline {
-            border-top: 3px solid var(--amber) !important;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04) !important;
-        }
-
-        .card-body {
-            padding: 20px !important;
-        }
-
-        /* Small-box summary cards */
-        .small-box {
-            border-radius: var(--radius-md) !important;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.08) !important;
-            overflow: hidden;
-        }
-
-        .small-box > .inner {
-            padding: 16px 20px 12px;
-        }
-
-        .small-box h3 {
-            font-size: 28px !important;
-            font-weight: 700 !important;
-        }
-
-        .small-box p {
-            font-size: 13px !important;
-            font-weight: 500 !important;
-        }
-
-        .small-box .icon {
-            top: 12px !important;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | BUTTON
-        |--------------------------------------------------------------------------
-        */
-
-        .btn {
-            border-radius: var(--radius-sm) !important;
-            font-size: 13px !important;
-            font-weight: 500;
-            padding: 6px 14px !important;
-            transition: all 0.15s;
-        }
-
-        .btn-primary {
-            background: #2563EB !important;
-            border-color: #2563EB !important;
-        }
-
-        .btn-primary:hover {
-            background: #1D4ED8 !important;
-            border-color: #1D4ED8 !important;
-            box-shadow: 0 4px 12px rgba(37,99,235,0.3) !important;
-        }
-
-        .btn-sm {
-            padding: 4px 10px !important;
-            font-size: 12px !important;
-        }
-
-        .btn-warning {
-            background: var(--amber) !important;
-            border-color: var(--amber) !important;
-            color: #1A202C !important;
-        }
-
-        .btn-warning:hover {
-            background: var(--amber-dk) !important;
-            border-color: var(--amber-dk) !important;
-            color: #1A202C !important;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | TABLE
-        |--------------------------------------------------------------------------
-        */
-
-        table.dataTable tbody td {
-            vertical-align: middle;
-            font-size: 13px;
-            color: #374151;
-            border-color: #F3F4F6 !important;
-        }
-
-        .table th {
-            white-space: nowrap;
-            font-size: 11.5px !important;
-            font-weight: 600;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-            color: #6B7280 !important;
-            background: #F9FAFB !important;
-            border-bottom: 2px solid #E5E7EB !important;
-            padding: 10px 12px !important;
-        }
-
-        .table td {
-            padding: 10px 12px !important;
-        }
-
-        table.dataTable.no-footer {
-            border-bottom: 1px solid #E5E7EB !important;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | DATATABLE SEARCH
-        |--------------------------------------------------------------------------
-        */
-
-        .dataTables_filter {
-            width: 100%;
-            margin-bottom: 0 !important;
-        }
-
-        .dataTables_filter label {
-            width: 100%;
-            margin-bottom: 0 !important;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-weight: 400 !important;
-            font-size: 13px !important;
-            color: #6B7280;
-        }
-
-        .dataTables_filter input {
-            width: 180px !important;
-            height: 32px !important;
-            border-radius: var(--radius-sm) !important;
-            border: 1px solid #E5E7EB !important;
-            padding: 0 10px !important;
-            font-size: 13px !important;
-            transition: border-color 0.15s, box-shadow 0.15s;
-        }
-
-        .dataTables_filter input:focus {
-            border-color: #2563EB !important;
-            box-shadow: 0 0 0 3px rgba(37,99,235,0.1) !important;
-            outline: none !important;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | DATATABLE LENGTH
-        |--------------------------------------------------------------------------
-        */
-
-        .dataTables_length {
-            margin: 0 !important;
-        }
-
-        .dataTables_length label {
-            display: flex !important;
-            align-items: center;
-            gap: 6px;
-            margin: 0 !important;
-            font-weight: 400 !important;
-            font-size: 13px !important;
-            color: #6B7280;
-        }
-
-        .dataTables_length select {
-            width: 70px !important;
-            margin: 0 !important;
-            height: 32px !important;
-            border-radius: var(--radius-sm) !important;
-            border: 1px solid #E5E7EB !important;
-            font-size: 13px !important;
-        }
-
-        /* DataTable pagination */
-        .dataTables_paginate .paginate_button {
-            border-radius: var(--radius-sm) !important;
-            font-size: 13px !important;
-        }
-
-        /* ── Active page ── */
-        .dataTables_paginate .paginate_button.current,
-        .dataTables_paginate .paginate_button.current:hover,
-        .dataTables_wrapper .dataTables_paginate .paginate_button.current,
-        .dataTables_wrapper .dataTables_paginate .paginate_button.current:hover,
-        .dataTables_wrapper .pagination .page-item.active .page-link,
-        .dataTables_wrapper .page-item.active .page-link {
-            background-color: var(--amber) !important;
-            background-image: none !important;
-            border-color: var(--amber-dk) !important;
-            color: var(--navy) !important;
-            font-weight: 700 !important;
-            box-shadow: none !important;
-        }
-
-        /* ── Non-active page numbers, Previous, Next ── */
-        .dataTables_wrapper .pagination .page-link,
-        .dataTables_wrapper .page-link {
-            color: var(--amber) !important;
-            border-color: #dee2e6 !important;
-            transition: background 0.15s, color 0.15s, box-shadow 0.15s;
-        }
-
-        /* ── Hover (non-active) ── */
-        .dataTables_wrapper .pagination .page-item:not(.active) .page-link:hover,
-        .dataTables_wrapper .page-item:not(.active) .page-link:hover {
-            background-color: var(--amber-tint) !important;
-            border-color: var(--amber-border) !important;
-            color: var(--amber-dk) !important;
-        }
-
-        /* ── Focus / click glow — orange instead of blue ── */
-        .dataTables_wrapper .pagination .page-link:focus,
-        .dataTables_wrapper .page-link:focus {
-            box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.30) !important;
-            outline: none !important;
-        }
-
-        /* ── Disabled (Previous on page 1, Next on last page) ── */
-        .dataTables_wrapper .pagination .page-item.disabled .page-link {
-            color: #C0C8D0 !important;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | CUSTOM TOOLBAR
-        |--------------------------------------------------------------------------
-        */
-
-        .custom-toolbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 16px;
-            width: 100%;
-        }
-
-        .custom-toolbar-left {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .custom-toolbar-right {
-            margin-left: auto;
-            display: flex;
-            align-items: center;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | FORM CONTROLS
-        |--------------------------------------------------------------------------
-        */
-
-        .form-control {
-            border-radius: var(--radius-sm) !important;
-            border: 1px solid #E5E7EB !important;
-            font-size: 13px !important;
-            color: #1A202C;
-            transition: border-color 0.15s, box-shadow 0.15s;
-        }
-
-        .form-control:focus {
-            border-color: #2563EB !important;
-            box-shadow: 0 0 0 3px rgba(37,99,235,0.1) !important;
-        }
-
-        .form-group label {
-            font-size: 12.5px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 5px;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | BADGE
-        |--------------------------------------------------------------------------
-        */
-
-        .badge {
-            font-weight: 600 !important;
-            font-size: 11px !important;
-            padding: 4px 8px !important;
-            border-radius: 20px !important;
-            letter-spacing: 0.02em;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | TOM SELECT
-        |--------------------------------------------------------------------------
-        */
-
-        .ts-wrapper {
-            width: 380px !important;
-        }
-
-        .ts-wrapper.multi .ts-control {
-            min-height: 32px !important;
-            height: 32px !important;
-            overflow-x: auto;
-            overflow-y: hidden;
-            flex-wrap: nowrap;
-            padding: 2px 6px;
-            border-radius: var(--radius-sm) !important;
-            border: 1px solid #E5E7EB !important;
-        }
-
-        .ts-wrapper.multi .ts-control > div {
-            background: #2563EB !important;
-            color: #fff !important;
-            border-radius: 4px !important;
-            padding: 2px 6px !important;
-            font-size: 12px !important;
-            white-space: nowrap;
-            max-width: 140px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .ts-wrapper .ts-control input {
-            font-size: 13px !important;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | SWEET ALERT
-        |--------------------------------------------------------------------------
-        */
-
-        .swal2-popup {
-            border-radius: var(--radius-lg) !important;
-            font-family: 'Inter', sans-serif !important;
-            font-size: 14px !important;
-        }
-
-        .swal2-title {
-            font-size: 18px !important;
-            font-weight: 700 !important;
-        }
-
-        .swal2-confirm {
-            border-radius: var(--radius-sm) !important;
-        }
-
-        .swal2-cancel {
-            border-radius: var(--radius-sm) !important;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | PAGE HEADER
-        |--------------------------------------------------------------------------
-        */
-
-        .content-header {
-            padding: 16px 24px 8px !important;
-        }
-
-        .content-header h1 {
-            font-size: 20px !important;
-            font-weight: 700 !important;
-            color: #1A202C;
-        }
-
-        .breadcrumb {
-            background: transparent !important;
-            font-size: 12px !important;
-            padding: 0 !important;
-        }
-
-        .breadcrumb-item.active {
-            color: #9CA3AF !important;
-        }
-
-        .breadcrumb-item a {
-            color: #2563EB;
-            text-decoration: none;
-        }
-
-        /* Tooltip on hover when collapsed — positioned via JS (see bottom of file) */
-        #tsys-tooltip {
-            position: fixed;
-            left: calc(4.6rem + 6px);
-            background: var(--navy-mid);
-            color: #E8F0F8;
-            font-size: 12.5px;
-            font-weight: 500;
-            padding: 7px 14px;
-            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-            white-space: nowrap;
-            border-left: 2px solid var(--amber);
-            box-shadow: 4px 4px 16px rgba(0,0,0,0.35);
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.12s;
-            z-index: 9999;
-            transform: translateY(-50%);
-        }
-
-        #tsys-tooltip.visible { opacity: 1; }
-
-        /* Section divider — visible only in collapsed mode */
-        .tsys-divider {
-            display: none;
-        }
-
-        .sidebar-mini.sidebar-collapse .tsys-divider {
-            display: block;
-            height: 1px;
-            background: rgba(255,255,255,0.18);
-            margin: 10px 14px;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | BLOCK AdminLTE's built-in hover-expand on sidebar-mini
-        | Default: .sidebar-mini .main-sidebar:hover expands to full width.
-        | We override this — tooltip handles label visibility instead.
-        |--------------------------------------------------------------------------
-        */
-
-        .sidebar-mini.sidebar-collapse .main-sidebar,
-        .sidebar-mini.sidebar-collapse .main-sidebar:hover {
-            width: 4.6rem !important;
-            overflow: hidden !important;
-        }
-
-        .sidebar-mini.sidebar-collapse .main-sidebar:hover .brand-link {
-            width: 4.6rem !important;
-            padding: 0 !important;
-            justify-content: center !important;
-            overflow: hidden !important;
-        }
-
-        .sidebar-mini.sidebar-collapse .main-sidebar:hover .brand-logo-full { display: none !important; }
-        .sidebar-mini.sidebar-collapse .main-sidebar:hover .brand-logo-mini { display: block !important; }
-        .sidebar-mini.sidebar-collapse .main-sidebar:hover .tsys-label { display: none !important; }
-        .sidebar-mini.sidebar-collapse .main-sidebar:hover .tsys-section-label {
-            opacity: 0 !important;
-            height: 0 !important;
-            padding: 0 !important;
-            overflow: hidden !important;
-        }
-        .sidebar-mini.sidebar-collapse .main-sidebar:hover .tsys-link {
-            justify-content: center !important;
-            padding: 10px 0 !important;
-            gap: 0 !important;
-        }
-        .sidebar-mini.sidebar-collapse .main-sidebar:hover .tsys-divider {
-            display: block !important;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | SCROLLBAR (webkit)
-        |--------------------------------------------------------------------------
-        */
-
-        .sidebar::-webkit-scrollbar { width: 4px; }
-        .sidebar::-webkit-scrollbar-track { background: transparent; }
-        .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 4px; }
-        .sidebar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-
-    </style>
+    <!-- BASE STYLE (komponen app yang tidak ada di Bootstrap: tss-*, form-clean, dll) -->
+    <link rel="stylesheet" href="{{ asset('css/tesys-ui-base.css') }}?v={{ filemtime(public_path('css/tesys-ui-base.css')) }}">
 
     <!-- STACK STYLE -->
     @stack('styles')
+
+    {{--
+        ===== Tesys UI =====
+        Urutan wajib: shell -> tokens -> compat -> pages -> motion -> luxe.
+        tesys-ui.css membawa :root versi lama, jadi tokens.css harus SESUDAHNYA
+        supaya shadow/radius hasil revisi yang dipakai.
+    --}}
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="{{ asset('css/tesys-ui.css') }}?v={{ filemtime(public_path('css/tesys-ui.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/tesys-ui-tokens.css') }}?v={{ filemtime(public_path('css/tesys-ui-tokens.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/tesys-ui-components.css') }}?v={{ filemtime(public_path('css/tesys-ui-components.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/tesys-ui-compat.css') }}?v={{ filemtime(public_path('css/tesys-ui-compat.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/tesys-ui-pages.css') }}?v={{ filemtime(public_path('css/tesys-ui-pages.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/tesys-ui-shell.css') }}?v={{ filemtime(public_path('css/tesys-ui-shell.css')) }}">
+    <link rel="stylesheet" href="{{ asset('css/tesys-ui-motion.css') }}?v={{ filemtime(public_path('css/tesys-ui-motion.css')) }}">
+
+    {{-- Lapis luxe: chrome gelap (sidebar + topbar) di atas isi terang.
+         Dimuat paling akhir karena beberapa aturan sidebar di tesys-ui.css
+         menunjuk token permukaan, yang harus tetap terang. --}}
+    <link rel="stylesheet" href="{{ asset('css/tesys-ui-luxe.css') }}?v={{ filemtime(public_path('css/tesys-ui-luxe.css')) }}">
 </head>
 
-<body class="hold-transition sidebar-mini layout-fixed">
+<body class="tesys-ui {{ request()->is('/') ? 'dashboard-page' : '' }}">
 
-<div class="wrapper">
+@php
+    // effectiveRole() supaya sidebar konsisten dengan View As
+    // (superadmin mencoba UI sebagai role lain) — lihat User model.
+    $role = Auth::user()->effectiveRole();
+    $can  = fn (string $key): bool => $role && $role->hasMenu($key);
 
-    <!-- Sidebar tooltip (collapsed mode) -->
-    <div id="tsys-tooltip"></div>
+    // 'project*' sengaja dihindari — juga cocok dengan 'project-monitoring'
+    // (halaman berbeda, prefix kata sama), jadi harus persis 'project'/'project/...'.
+    $financeProjectActive = request()->is('project', 'project/*');
+    $fmActive             = request()->is('finance-summary*', 'reports*', 'invoice-cash-receipt*', 'delivery-note*', 'project', 'project/*')
+        || (request()->is('budget-plan*', 'budget-request*') && request('from') !== 'delivery');
 
-    <!-- ===================================================== -->
-    <!-- NAVBAR -->
-    <!-- ===================================================== -->
+    $userName = Auth::user()->name ?: Auth::user()->username;
+    $initials = collect(explode(' ', (string) $userName))
+        ->filter()->take(2)
+        ->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))
+        ->implode('');
 
-    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+    /*
+     | Aplikasi aktif menentukan isi sidebar.
+     |
+     | Urutan penentuannya: alamat /app/<key> yang sedang dibuka, lalu aplikasi
+     | terakhir yang dipilih (disimpan AppShellController & beranda Finance),
+     | baru bawaan config. Langkah kedua itu perlu karena beberapa modul
+     | dipakai bersama — membuka Customer dari Logistic tidak boleh melempar
+     | tampilan kembali ke Finance.
+     */
+    $apps       = config('apps.items');
+    $appTerakhir = session('tesys.app');
+    $currentApp = request()->is('app/*') && isset($apps[request()->segment(2)])
+        ? request()->segment(2)
+        : (isset($apps[$appTerakhir]) ? $appTerakhir : config('apps.default'));
+    $currentAppConfig = $apps[$currentApp];
+@endphp
 
-        <ul class="navbar-nav">
+<div class="shell">
 
-            <li class="nav-item">
+    {{-- ===================================================== --}}
+    {{-- SIDEBAR — menu modul aplikasi yang sedang dibuka       --}}
+    {{-- ===================================================== --}}
 
-                <a 
-                    class="nav-link"
-                    data-widget="pushmenu"
-                    href="#"
-                    role="button"
-                >
-                    <i class="fas fa-bars"></i>
+    <aside class="sidebar" id="tsSidebar">
+
+        {{-- Lambang perusahaan sekaligus tombol pindah aplikasi. Berkas
+             logonya berlatar hitam pekat (bukan transparan), jadi dipakai
+             blend "screen" agar latar itu melebur ke merah kotaknya dan hanya
+             garis putih lambangnya yang tersisa. --}}
+        <div class="brand">
+
+            <button type="button" class="brand-mark" id="appSwitchBtn"
+                    aria-haspopup="true" aria-expanded="false" aria-controls="appSwitch"
+                    title="Pindah aplikasi">
+                {{-- ts_icon.png, berkas yang SAMA dengan lambang di sudut kiri
+                     atas halaman login. Sebelumnya di sini dipakai
+                     ts_logo_dark.png (277px) yang dikecilkan ke 24px lalu
+                     dilebur ke latar merah dengan mix-blend-mode — dua hal
+                     yang sama-sama melunakkan tepinya. Berkas ini 702px dan
+                     sudah membawa kotak merahnya sendiri, jadi ia dipasang
+                     apa adanya, persis seperti di login. --}}
+                <img src="{{ asset('dist/img/ts_icon.png') }}" alt="Tesys">
+            </button>
+
+            {{-- Wordmark yang SAMA dengan halaman login (dist/img/tesys.png):
+                 satu berkas, satu bentuk huruf, satu swoosh. Sebelumnya di sini
+                 tertulis "Terex System" sebagai teks biasa, dan itu membuat
+                 merek terbaca berbeda antara layar masuk dan layar kerja.
+
+                 Nama aplikasi yang sedang dibuka turun ke baris bawah, bersama
+                 tombol perkecil/perbesar menu. --}}
+            <a href="{{ $currentAppConfig['home'] }}" class="brand-text" aria-label="Terex System">
+                <img class="brand-wordmark" src="{{ asset('dist/img/tesys.png') }}" alt="Terex System">
+            </a>
+
+            {{-- Enam tombol aplikasi. Muncul turun bertahap; jeda tiap tombol
+                 diatur lewat --i pada masing-masing elemen. --}}
+            <div class="app-switch" id="appSwitch" role="menu" aria-label="Pilih aplikasi">
+                @foreach($apps as $key => $item)
+                <a href="{{ $item['home'] }}" role="menuitem" @style(['--i:' . $loop->index])
+                   class="app-switch-item {{ $currentApp === $key ? 'active' : '' }}"
+                   @if($currentApp === $key) aria-current="true" @endif>
+                    <span class="asi-ic"><i class="{{ $item['icon'] }}"></i></span>
+                    <span class="asi-label">{{ $item['label'] }}</span>
                 </a>
+                @endforeach
+            </div>
 
-            </li>
+        </div>
 
-        </ul>
+        {{-- Baris aplikasi yang sedang dibuka, DI BAWAH garis emas.
 
-        <!-- Right navbar links -->
-        <ul class="navbar-nav ml-auto align-items-center">
+             Dipisahkan dari blok merek di atasnya karena keduanya menjawab
+             pertanyaan yang berbeda: blok merek menjawab "sistem apa ini",
+             baris ini menjawab "bagian mana yang sedang saya buka". Nama
+             bagian juga yang paling sering berganti, jadi ia duduk lebih
+             dekat ke daftar menu yang ikut berganti bersamanya. --}}
+        <div class="brand-app">
+            <span class="brand-sub">{{ $currentAppConfig['sub'] ?? $currentAppConfig['label'] }}</span>
+            <button type="button" class="brand-toggle" data-sidebar-toggle
+                    title="Perkecil / perbesar menu" aria-label="Perkecil atau perbesar menu">
+                <i class="fas fa-angle-double-left" aria-hidden="true"></i>
+            </button>
+        </div>
 
-            <!-- User Dropdown -->
-            <li class="nav-item dropdown">
-                
-                <a class="nav-link" data-toggle="dropdown" href="#">
-                    <i class="far fa-user"></i>
-                    <span class="ml-2" style="font-weight:600; font-size:13px;">{{ Auth::user()->name }}</span>
-                    <i class="fas fa-caret-down ml-2" style="font-size:11px; color:#9CA3AF;"></i>
-                </a>
+        {{-- Isi menu tiap aplikasi dibaca dari config/navigation.php oleh
+             satu partial yang sama — lihat layouts/partials/nav.blade.php. --}}
+        <nav class="nav">
+            @include('layouts.partials.nav')
+        </nav>
 
-                <div class="dropdown-menu dropdown-menu-right" style="min-width: 280px;">
-                    
-                    <!-- User Info -->
-                    <div class="dropdown-header">
-                        <strong>{{ Auth::user()->name }}</strong>
-                        <small class="d-block text-muted mt-1">{{ Auth::user()->email }}</small>
-                    </div>
-
-                    <div class="dropdown-divider"></div>
-
-                    <!-- Role Info -->
-                    <div class="px-3 py-2">
-                        <small class="text-muted d-block">
-                            <i class="fas fa-user-tag mr-1"></i>
-                            <strong>Role</strong>
-                        </small>
-                        <small class="d-block mt-1" style="font-weight:600; color:#1A202C;">
-                            {{ Str::upper(Auth::user()->role->name ?? '-') }}
-                        </small>
-                    </div>
-
-                    <!-- Access Group Info -->
-                    <div class="px-3 py-2">
-                        <small class="text-muted d-block">
-                            <i class="fas fa-users mr-1"></i>
-                            <strong>Access Group</strong>
-                        </small>
-                        <small class="d-block mt-1" style="font-weight:600; color:#1A202C;">
-                            {{ Auth::user()->accessGroup->name ?? '-' }}
-                        </small>
-                    </div>
-
-                    <div class="dropdown-divider"></div>
-
-                    <!-- Logout -->
-                    <form action="{{ route('logout') }}" method="POST" id="logout-form">
-                        @csrf
-                        <button type="button" class="dropdown-item text-danger" onclick="confirmLogout()">
-                            <i class="fas fa-sign-out-alt mr-2"></i>
-                            Logout
-                        </button>
-                    </form>
-
-                </div>
-
-            </li>
-
-        </ul>
-
-    </nav>
-
-    <!-- ===================================================== -->
-    <!-- SIDEBAR -->
-    <!-- ===================================================== -->
-
-    <aside class="main-sidebar elevation-0">
-
-        <!-- BRAND -->
-        <a href="{{ url('/') }}" class="brand-link">
-
-            <!-- Logo Full -->
-            <img
-                src="{{ asset('dist/img/TesysLogo.png') }}"
-                class="brand-logo-full"
-                alt="Terex System"
-            >
-
-            <!-- Logo Icon -->
-            <img
-                src="{{ asset('dist/img/ts_icon.png') }}"
-                class="brand-logo-mini"
-                alt="Terex System"
-            >
-
-        </a>
-
-        <!-- SIDEBAR -->
-        <div class="sidebar os-host os-theme-light os-host-overflow os-host-overflow-y os-host-resize-disabled os-host-scrollbar-horizontal-hidden os-host-transition">
-
-            <nav class="mt-2 pb-3">
-
-                @php
-                    $role = Auth::user()->role;
-                    $can  = fn(string $key): bool => $role && $role->hasMenu($key);
-
-                    $sdmActive            = request()->is('service-delivery-summary*', 'project-monitoring*')
-                        || (request()->is('budget-plan*', 'budget-request*') && request('from') === 'delivery');
-                    $financeProjectActive = request()->is('project*');
-                    $fmActive             = request()->is('finance-summary*', 'reports*', 'invoice-cash-receipt*', 'project*')
-                        || (request()->is('budget-plan*', 'budget-request*') && request('from') !== 'delivery');
-                @endphp
-
-                {{-- ── DASHBOARD ── --}}
-                @if($can('dashboard'))
-                <ul class="tsys-nav">
-                    <li class="tsys-section-label">Dashboard</li>
-                    <li>
-                        <a href="{{ url('/') }}" class="tsys-link {{ request()->is('/') ? 'tsys-active' : '' }}" title="Dashboard">
-                            <i class="fas fa-tachometer-alt tsys-icon"></i>
-                            <span class="tsys-label">Dashboard</span>
-                        </a>
-                    </li>
-                </ul>
-                @endif
-
-                {{-- ── MASTER ── --}}
-                @if($can('customer') || $can('project') || $can('milestone') || $can('beneficiaries') || $can('account') || $can('master-pic') || $can('source-fund') || $can('cost-center') || $can('employee') || $can('user-access'))
-                <li class="tsys-divider"></li>
-                <ul class="tsys-nav">
-                    <li class="tsys-section-label">Master Data</li>
-                    @if($can('customer'))
-                    <li>
-                        <a href="/customer" class="tsys-link {{ request()->is('customer*') ? 'tsys-active' : '' }}" title="Customer">
-                            <i class="fas fa-building tsys-icon"></i>
-                            <span class="tsys-label">Customer</span>
-                        </a>
-                    </li>
-                    @endif
-                    @if($can('project'))
-                    <li>
-                        <a href="/cluster" class="tsys-link {{ request()->is('cluster*') ? 'tsys-active' : '' }}" title="Project">
-                            <i class="fas fa-project-diagram tsys-icon"></i>
-                            <span class="tsys-label">Project</span>
-                        </a>
-                    </li>
-                    @endif
-                    @if($can('milestone'))
-                    <li>
-                        <a href="/stage" class="tsys-link {{ request()->is('stage*') ? 'tsys-active' : '' }}" title="Milestone">
-                            <i class="fas fa-stream tsys-icon"></i>
-                            <span class="tsys-label">Milestone</span>
-                        </a>
-                    </li>
-                    @endif
-                    @if($can('beneficiaries'))
-                    <li>
-                        <a href="/beneficiaries" class="tsys-link {{ request()->is('beneficiaries*') ? 'tsys-active' : '' }}" title="Beneficiaries">
-                            <i class="fas fa-user-friends tsys-icon"></i>
-                            <span class="tsys-label">Beneficiaries</span>
-                        </a>
-                    </li>
-                    @endif
-                    @if($can('account'))
-                    <li>
-                        <a href="/account" class="tsys-link {{ request()->is('account*') ? 'tsys-active' : '' }}" title="Account">
-                            <i class="fas fa-list tsys-icon"></i>
-                            <span class="tsys-label">Account</span>
-                        </a>
-                    </li>
-                    @endif
-                    @if($can('master-pic'))
-                    <li>
-                        <a href="/master-pic" class="tsys-link {{ request()->is('master-pic*') ? 'tsys-active' : '' }}" title="PIC">
-                            <i class="fas fa-id-badge tsys-icon"></i>
-                            <span class="tsys-label">PIC</span>
-                        </a>
-                    </li>
-                    @endif
-                    @if($can('source-fund'))
-                    <li>
-                        <a href="/source-fund" class="tsys-link {{ request()->is('source-fund*') ? 'tsys-active' : '' }}" title="Source Fund">
-                            <i class="fas fa-piggy-bank tsys-icon"></i>
-                            <span class="tsys-label">Source Fund</span>
-                        </a>
-                    </li>
-                    @endif
-                    @if($can('cost-center'))
-                    <li>
-                        <a href="/cost-center" class="tsys-link {{ request()->is('cost-center*') ? 'tsys-active' : '' }}" title="Cost Center">
-                            <i class="fas fa-sitemap tsys-icon"></i>
-                            <span class="tsys-label">Cost Center</span>
-                        </a>
-                    </li>
-                    @endif
-                    @if($can('employee'))
-                    <li>
-                        <a href="/employee" class="tsys-link {{ request()->is('employee*') ? 'tsys-active' : '' }}" title="Karyawan">
-                            <i class="fas fa-users tsys-icon"></i>
-                            <span class="tsys-label">Employee</span>
-                        </a>
-                    </li>
-                    @endif
-                    @if($can('user-access'))
-                    <li>
-                        <a href="/user" class="tsys-link {{ request()->segment(1) == 'user' || request()->segment(1) == 'accessgroup' || request()->segment(1) == 'role' ? 'tsys-active' : '' }}" title="User &amp; Access">
-                            <i class="fas fa-users tsys-icon"></i>
-                            <span class="tsys-label">User &amp; Access</span>
-                        </a>
-                    </li>
-                    @endif
-                </ul>
-                @endif
-
-                {{-- ── FINANCE MANAGEMENT ── --}}
-                @if($can('finance-summary') || $can('list-po') || $can('finance-budgeting') || $can('finance-cost-request') || $can('invoice-cash-receipt') || $can('reports'))
-                <li class="tsys-divider"></li>
-                <ul class="tsys-nav">
-                    <li class="tsys-section-label">Finance</li>
-                    @if($can('finance-summary'))
-                    <li>
-                        <a href="/finance-summary" class="tsys-link {{ request()->is('finance-summary*') ? 'tsys-active' : '' }}" title="Summary">
-                            <i class="fas fa-chart-pie tsys-icon"></i>
-                            <span class="tsys-label">Summary</span>
-                        </a>
-                    </li>
-                    @endif
-                    @if($can('list-po'))
-                    <li>
-                        <a href="/project" class="tsys-link {{ $financeProjectActive ? 'tsys-active' : '' }}" title="List PO">
-                            <i class="fas fa-file-contract tsys-icon"></i>
-                            <span class="tsys-label">Purchase Order</span>
-                        </a>
-                    </li>
-                    @endif
-                    @if($can('finance-budgeting'))
-                    <li>
-                        <a href="/budget-plan?from=finance" class="tsys-link {{ request()->is('budget-plan*') && $fmActive ? 'tsys-active' : '' }}" title="Budgeting">
-                            <i class="fas fa-money-check-alt tsys-icon"></i>
-                            <span class="tsys-label">Budgeting</span>
-                        </a>
-                    </li>
-                    @endif
-                    @if($can('finance-cost-request'))
-                    <li>
-                        <a href="/budget-request?from=finance" class="tsys-link {{ request()->is('budget-request*') && $fmActive ? 'tsys-active' : '' }}" title="Cost Request">
-                            <i class="fas fa-file-invoice-dollar tsys-icon"></i>
-                            <span class="tsys-label">Cost Request</span>
-                        </a>
-                    </li>
-                    @endif
-                    @if($can('finance-daily-transaction'))
-                    <li>
-                        <a href="/daily-transaction" class="tsys-link {{ request()->is('daily-transaction*') ? 'tsys-active' : '' }}" title="Daily Transaction">
-                            <i class="fas fa-layer-group tsys-icon"></i>
-                            <span class="tsys-label">Treasury</span>
-                        </a>
-                    </li>
-                    @endif
-                    @if($can('invoice-cash-receipt'))
-                    <li>
-                        <a href="/invoice-cash-receipt" class="tsys-link {{ request()->is('invoice-cash-receipt*') ? 'tsys-active' : '' }}" title="Invoice &amp; Cash Receipt">
-                            <i class="fas fa-receipt tsys-icon"></i>
-                            <span class="tsys-label">Invoice &amp; Cash Receipt</span>
-                        </a>
-                    </li>
-                    @endif
-                    @if($can('reports'))
-                    <li>
-                        <a href="/reports" class="tsys-link {{ request()->is('reports*') ? 'tsys-active' : '' }}" title="Reports">
-                            <i class="fas fa-chart-bar tsys-icon"></i>
-                            <span class="tsys-label">Reports</span>
-                        </a>
-                    </li>
-                    @endif
-                </ul>
-                @endif
-
-                {{-- ── PAYROLL MANAGEMENT ── --}}
-                @if($can('payroll-run'))
-                <li class="tsys-divider"></li>
-                <ul class="tsys-nav">
-                    <li class="tsys-section-label">Payroll</li>
-                    <li>
-                        <a href="/payroll-run" class="tsys-link {{ request()->is('payroll-run*') ? 'tsys-active' : '' }}" title="Payroll Run">
-                            <i class="fas fa-file-invoice-dollar tsys-icon"></i>
-                            <span class="tsys-label">Payroll Run</span>
-                        </a>
-                    </li>
-                </ul>
-                @endif
-
-                {{-- ── PROJECT MANAGEMENT ── --}}
-                @if($can('project-summary') || $can('project-budgeting') || $can('project-cost-request') || $can('project-monitoring'))
-                <li class="tsys-divider"></li>
-                <ul class="tsys-nav">
-                    <li class="tsys-section-label">Project</li>
-                    @if($can('project-summary'))
-                    <li>
-                        <a href="/service-delivery-summary" class="tsys-link {{ request()->is('service-delivery-summary*') ? 'tsys-active' : '' }}" title="Summary">
-                            <i class="fas fa-chart-pie tsys-icon"></i>
-                            <span class="tsys-label">Summary</span>
-                        </a>
-                    </li>
-                    @endif
-                    @if($can('project-monitoring'))
-                    <li>
-                        <a href="/project-monitoring" class="tsys-link {{ request()->is('project-monitoring*') ? 'tsys-active' : '' }}" title="Project Monitoring">
-                            <i class="fas fa-binoculars tsys-icon"></i>
-                            <span class="tsys-label">Project Monitoring</span>
-                        </a>
-                    </li>
-                    @endif
-                </ul>
-                @endif
-
-            </nav>
-
+        {{-- Jam WIB. Nilai awal dirender server supaya tidak ada "--:--"
+             yang sempat terlihat sebelum skrip jalan, dan data-epoch
+             dipakai tesys-clock.js untuk mengoreksi jam perangkat yang
+             meleset — lihat catatan di berkas itu. Zona ditulis tegas
+             Asia/Jakarta, bukan mengikuti zona laptop pengguna: satu
+             acuan waktu untuk seluruh perusahaan. --}}
+        <div class="sidebar-clock" data-epoch="{{ (int) round(microtime(true) * 1000) }}">
+            <span class="sc-row">
+                <span class="sc-time">{{ now('Asia/Jakarta')->format('H:i') }}</span>
+                <span class="sc-wib">WIB</span>
+            </span>
+            <span class="sc-date">{{ \Carbon\Carbon::now('Asia/Jakarta')->locale('id')->isoFormat('dddd, D MMM YYYY') }}</span>
         </div>
 
     </aside>
 
-    <!-- ===================================================== -->
-    <!-- CONTENT -->
-    <!-- ===================================================== -->
+    {{-- ===================================================== --}}
+    {{-- MAIN                                                   --}}
+    {{-- ===================================================== --}}
 
-    <div class="content-wrapper">
+    <div class="main">
 
-        <section class="content pt-3">
+        <div class="topbar">
 
-            <div class="container-fluid">
+            <div class="topbar-lead">
+                {{-- Tombol menu di topbar hanya untuk LAYAR SEMPIT. Di lebar itu
+                     sidebar berubah jadi laci tertutup, sehingga tombol yang ada
+                     di dalamnya tidak bisa dipakai membukanya kembali. Di layar
+                     lebar tombol ini disembunyikan lewat CSS; yang dipakai adalah
+                     tombol di dalam sidebar, di samping nama aplikasi. --}}
+                <button type="button" class="icon-btn sidebar-toggle" id="sidebarToggle" data-sidebar-toggle
+                        title="Buka / tutup menu" aria-label="Buka atau tutup menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+                {{-- Kelas topbar-titles hanya HOOK GAYA: .page-title memakai
+                     overflow:hidden untuk ellipsis judul panjang, jadi aturan
+                     emas di bawahnya akan terpotong kalau dipasang di sana. --}}
+                <div class="topbar-titles" style="min-width:0;">
+                    {{-- Diisi oleh tesys-ui.js dari judul & breadcrumb milik halaman;
+                         fallback-nya @yield('title') supaya tetap terisi tanpa JS. --}}
+                    <div class="crumb" id="tsCrumb"></div>
+                    <div class="page-title" id="tsTitle">@yield('title', 'Dashboard')</div>
+                </div>
+            </div>
 
-                @yield('content')
+            <div class="topbar-actions">
+
+                {{-- Command palette: pindah halaman & cari dokumen lintas modul.
+                     Selalu ada di semua halaman, berbeda dari pencarian dalam
+                     halaman di sebelahnya yang hanya menyaring tabel di layar. --}}
+                <button type="button" class="ts-cmd-trigger" data-cmd-open
+                        title="Cari halaman, dokumen, dan aksi (Ctrl+K)" aria-label="Cari di seluruh TESYS">
+                    <i class="fas fa-search" aria-hidden="true"></i>
+                    <span>Cari di TESYS…</span>
+                    <span class="ts-cmd-kbd" aria-hidden="true">Ctrl K</span>
+                </button>
+
+                {{-- Pencarian cepat: menyaring tabel di halaman yang sedang dibuka.
+                     Disembunyikan otomatis oleh tesys-shell.js bila halaman tidak
+                     punya tabel, supaya tidak ada kolom yang tampak tapi mati. --}}
+                <form class="search" id="tsQuickSearchWrap" onsubmit="return false;" hidden>
+                    <i class="fas fa-search" style="font-size:12px;"></i>
+                    <input type="search" id="tsQuickSearch" placeholder="Cari di halaman ini…" autocomplete="off"
+                           style="border:none;background:none;outline:none;font:inherit;color:inherit;width:100%;">
+                </form>
+
+                @yield('page-actions')
+
+                {{-- To Do Bell — ringkasan task dari TodoListController::fetchBell() --}}
+                <div class="dropdown" id="todoBellWrap">
+                    <button type="button" class="icon-btn" data-toggle="dropdown" data-display="static" id="todoBellToggle" title="Todo List">
+                        <i class="fas fa-tasks"></i>
+                        <span id="todoBadge" class="badge badge-warning" style="display:none;"></span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-right ts-pop" id="todoDropdown">
+                        <div class="ts-pop-head">
+                            <strong>Todo List</strong>
+                            <a href="{{ route('todo-list.index') }}">Lihat semua &rarr;</a>
+                        </div>
+                        <div id="todoList" class="ts-pop-body"></div>
+                        <div id="todoEmpty" class="ts-pop-empty" style="display:none;">
+                            <i class="fas fa-check-circle d-block mb-2"></i>
+                            Semua tugas sudah selesai.
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Notification Bell --}}
+                <div class="dropdown" id="notifBellWrap">
+                    <button type="button" class="icon-btn" data-toggle="dropdown" data-display="static" id="notifBellToggle" title="Notifikasi">
+                        <i class="far fa-bell"></i>
+                        <span id="notifBadge" class="badge badge-danger" style="display:none;"></span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-right ts-pop" id="notifDropdown">
+                        <div class="ts-pop-head">
+                            <strong>Notifikasi</strong>
+                            <a href="#" id="notifMarkAllRead">Tandai semua dibaca</a>
+                        </div>
+                        <div id="notifList" class="ts-pop-body"></div>
+                        <div id="notifEmpty" class="ts-pop-empty" style="display:none;">
+                            <i class="far fa-bell-slash d-block mb-2"></i>
+                            Belum ada notifikasi.
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Akun — avatar di pojok kanan atas, panelnya turun ke bawah.
+                     ID #userBtn/#userPop dipertahankan supaya buka/tutupnya tetap
+                     ditangani tesys-ui.js yang sudah ada. --}}
+                <div class="topbar-user">
+
+                    <button type="button" class="user-btn" id="userBtn" title="{{ $userName }}" aria-haspopup="true" aria-expanded="false">
+                        <span class="avatar">
+                            @if(Auth::user()->avatar_url)
+                                <img src="{{ Auth::user()->avatar_url }}" alt="">
+                            @else
+                                {{ $initials ?: 'U' }}
+                            @endif
+                        </span>
+                    </button>
+
+                    <div class="user-pop" id="userPop">
+                        {{-- Identitas dulu (siapa saya), baru peran (sebagai apa). --}}
+                        <div class="user-pop-head">
+                            <div class="n">{{ $userName }}</div>
+                            <div class="e">{{ Auth::user()->username }}</div>
+                            <span class="user-pop-role">{{ Str::upper($role->name ?? '—') }}{{ Auth::user()->accessGroup?->name ? ' · ' . Auth::user()->accessGroup->name : '' }}</span>
+                        </div>
+                        <div class="user-pop-sep"></div>
+
+                        <a href="{{ route('profile.show') }}" class="user-pop-item" style="text-decoration:none;">
+                            <i class="fas fa-id-badge"></i>Profile Saya
+                        </a>
+
+                        {{-- Panduan & General Feedback pindah ke sini dari seksi
+                             "General" tiap sidebar: keduanya bantuan akun yang berlaku
+                             di seluruh aplikasi, bukan navigasi modul — dan sebelumnya
+                             harus diulang di enam sidebar.
+
+                             Label, ikon, dan tujuannya tetap dibaca dari
+                             config/navigation.php (sumber yang sama dengan sidebar),
+                             termasuk penanganan 'route:' berikut penjagaan Route::has()
+                             — disalin dari layouts/partials/nav.blade.php supaya menu
+                             yang route-nya hilang tidak meledakkan seluruh layout. --}}
+                        @php
+                            $itemBantuan = collect(['panduan', 'feedback'])
+                                ->map(fn ($k) => config('navigation.items.' . $k))
+                                ->filter()
+                                ->map(function ($item) {
+                                    $url = $item['url'] ?? null;
+                                    if (is_string($url) && str_starts_with($url, 'route:')) {
+                                        $nama = substr($url, 6);
+                                        $item['href'] = \Route::has($nama) ? route($nama) : null;
+                                    } else {
+                                        $item['href'] = $url;
+                                    }
+                                    return $item;
+                                })
+                                ->filter(fn ($item) => $item['href'] !== null);
+                        @endphp
+                        @foreach($itemBantuan as $bantuan)
+                        <a href="{{ $bantuan['href'] }}" class="user-pop-item" style="text-decoration:none;">
+                            <i class="{{ $bantuan['icon'] }}"></i>{{ $bantuan['label'] }}
+                        </a>
+                        @endforeach
+
+                        {{-- Ganti tampilan role (superadmin saja). Rute, nama field, dan
+                             daftar role TIDAK berubah — hanya istilah & susunannya
+                             dibuat lebih mudah dipahami daripada "View As". --}}
+                        @if(Auth::user()->isRealSuperadmin())
+                        <div class="user-pop-sep"></div>
+                        <div class="user-pop-group">
+                            <div class="user-pop-group-label">Ganti Role</div>
+                            @if(Auth::user()->isViewingAs())
+                                <form action="{{ route('view-as.reset') }}" method="POST" class="mb-0">
+                                    @csrf
+                                    <button type="submit" class="btn btn-light btn-sm btn-block">Kembali ke Superadmin</button>
+                                </form>
+                            @else
+                                <form action="{{ route('view-as') }}" method="POST" class="mb-0">
+                                    @csrf
+                                    <select name="role_id" class="form-control form-control-sm" onchange="this.form.submit()" aria-label="Tampilkan sebagai role">
+                                        <option value="">Tampilkan sebagai…</option>
+                                        @foreach(\App\Models\Role::where('status', 'ACTIVE')->whereRaw('LOWER(name) != ?', ['superadmin'])->orderBy('name')->get() as $viewAsRole)
+                                        <option value="{{ $viewAsRole->id }}">{{ Str::upper($viewAsRole->name) }}</option>
+                                        @endforeach
+                                    </select>
+                                </form>
+                            @endif
+                        </div>
+                        @endif
+
+                        <div class="user-pop-sep"></div>
+
+                        {{-- Pengalih tema. Ditaruh tepat di atas Logout karena
+                             keduanya sama-sama setelan akun, bukan navigasi —
+                             dan karena di sinilah orang mencarinya. --}}
+                        <button type="button" class="user-pop-item" id="themeToggle"
+                                style="width:100%;" aria-pressed="false">
+                            <i class="fas fa-moon ic-to-dark" aria-hidden="true"></i>
+                            <i class="fas fa-sun ic-to-light" aria-hidden="true"></i>
+                            <span class="theme-label">Tema Gelap</span>
+                        </button>
+
+                        <div class="user-pop-sep"></div>
+
+                        <form action="{{ route('logout') }}" method="POST" id="logout-form" class="mb-0">
+                            @csrf
+                            <button type="button" class="user-pop-item danger" style="width:100%;" onclick="confirmLogout()">
+                                <i class="fas fa-sign-out-alt"></i>Logout
+                            </button>
+                        </form>
+
+                        <div class="user-pop-sep"></div>
+                        <div class="user-pop-foot">TESYS versi {{ config('changelog.current', '1.0.0') }}</div>
+                    </div>
+
+                </div>
 
             </div>
 
-        </section>
+        </div>
+
+        @if(Auth::user()->isViewingAs())
+        <div class="viewas-banner">
+            <i class="fas fa-user-secret"></i>
+            <span>Melihat sebagai <strong>{{ Str::upper($role->name) }}</strong> — ini hanya preview, bukan role sungguhan Anda.</span>
+            <form action="{{ route('view-as.reset') }}" method="POST" class="mb-0">
+                @csrf
+                <button type="submit" class="btn btn-dark btn-sm">Kembali ke Superadmin</button>
+            </form>
+        </div>
+        @endif
+
+        <div class="content">
+            @yield('content')
+        </div>
 
     </div>
 
 </div>
 
 <!-- ===================================================== -->
-<!-- JQUERY -->
+<!-- SCRIPT -->
 <!-- ===================================================== -->
 
 <script src="{{ asset('plugins/jquery/jquery.min.js') }}"></script>
-
-<!-- BOOTSTRAP -->
 <script src="{{ asset('plugins/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-
-<!-- DATATABLE -->
 <script src="{{ asset('plugins/datatables/jquery.dataTables.min.js') }}"></script>
-
 <script src="{{ asset('plugins/datatables-bs4/js/dataTables.bootstrap4.min.js') }}"></script>
-
 <script src="{{ asset('plugins/datatables-responsive/js/dataTables.responsive.min.js') }}"></script>
-
 <script src="{{ asset('plugins/datatables-responsive/js/responsive.bootstrap4.min.js') }}"></script>
 
-<!-- ADMIN LTE -->
-<script src="{{ asset('dist/js/adminlte.min.js') }}"></script>
+<!-- TESYS TABLE (kendali daftar: Page Size masuk ke bilah kendali) -->
+<script src="{{ asset('js/tesys-table.js') }}?v={{ filemtime(public_path('js/tesys-table.js')) }}"></script>
+
+<!-- TESYS COLUMN FILTER (filter header ala Excel untuk DataTables) -->
+<script src="{{ asset('js/tesys-column-filter.js') }}?v={{ filemtime(public_path('js/tesys-column-filter.js')) }}"></script>
+
+<!-- TESYS TIMELINE (riwayat workflow) -->
+<script src="{{ asset('js/tesys-timeline.js') }}?v={{ filemtime(public_path('js/tesys-timeline.js')) }}"></script>
+
+<!-- TESYS CHART (bakuan grafik + keadaan kosong; menunggu Chart.js halaman) -->
+<script src="{{ asset('js/tesys-chart.js') }}?v={{ filemtime(public_path('js/tesys-chart.js')) }}"></script>
+
+{{-- TESYS WORKFLOW — perjalanan dokumen (komponen x-workflow-flow) + drawer.
+     Ditulis sebagai komentar Blade, BUKAN komentar HTML: tag komponen di dalam
+     <!-- --> tetap dikompilasi Blade dan membuat komponen tak tertutup. --}}
+<script src="{{ asset('js/tesys-workflow.js') }}?v={{ filemtime(public_path('js/tesys-workflow.js')) }}"></script>
+
+<!-- TESYS DRAWER (panel tinjau dari kanan) -->
+<script src="{{ asset('js/tesys-drawer.js') }}?v={{ filemtime(public_path('js/tesys-drawer.js')) }}"></script>
+
+<!-- TESYS ROW ACTIONS (menu aksi pada kolom tabel) -->
+<script src="{{ asset('js/tesys-row-actions.js') }}?v={{ filemtime(public_path('js/tesys-row-actions.js')) }}"></script>
+
+<!-- TESYS SEARCHABLE SELECT (pengganti Tom Select) -->
+<script src="{{ asset('js/tesys-searchable-select.js') }}?v={{ filemtime(public_path('js/tesys-searchable-select.js')) }}"></script>
 
 <!-- TOM SELECT -->
-<script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
-
-<!-- ===================================================== -->
-<!-- SWEET ALERT SUCCESS -->
-<!-- ===================================================== -->
+<script src="{{ asset('plugins/tom-select/tom-select.complete.min.js') }}"></script>
+<script src="{{ asset('plugins/bootstrap-select/bootstrap-select.min.js') }}"></script>
 
 @if(session('success'))
+<script type="application/json" id="tesysFlashSuccess">@json(session('success'))</script>
 <script>
 Swal.fire({
-    toast: true,
-    position: 'top-end',
-    icon: 'success',
-    title: "{{ session('success') }}",
-    showConfirmButton: false,
-    timer: 3000,
-    timerProgressBar: true
+    toast: true, position: 'top-end', icon: 'success',
+    title: JSON.parse(document.getElementById('tesysFlashSuccess').textContent),
+    showConfirmButton: false, timer: 3000, timerProgressBar: true
 });
 </script>
 @endif
-
-<!-- ===================================================== -->
-<!-- SWEET ALERT ERROR -->
-<!-- ===================================================== -->
 
 @if(session('error'))
+<script type="application/json" id="tesysFlashError">@json(session('error'))</script>
 <script>
 Swal.fire({
-    toast: true,
-    position: 'top-end',
-    icon: 'error',
-    title: "{{ session('error') }}",
-    showConfirmButton: false,
-    timer: 3000,
-    timerProgressBar: true
+    toast: true, position: 'top-end', icon: 'error',
+    title: JSON.parse(document.getElementById('tesysFlashError').textContent),
+    showConfirmButton: false, timer: 3000, timerProgressBar: true
 });
 </script>
 @endif
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/js/bootstrap-select.min.js"></script>
 
 <!-- LOGOUT CONFIRMATION -->
 <script>
+/* =====================================================================
+   PENGALIH TEMA
+   ---------------------------------------------------------------------
+   Menukar atribut data-theme di <html> dan menyimpannya. Seluruh warna
+   aplikasi dibaca dari token yang menempel pada atribut itu, jadi
+   pergantiannya cukup satu baris — tidak ada kelas yang perlu disentuh
+   dan tidak ada halaman yang perlu dimuat ulang.
+   ===================================================================== */
+(function () {
+    'use strict';
+
+    var tombol = document.getElementById('themeToggle');
+    if (!tombol) return;
+
+    var akar  = document.documentElement;
+    var label = tombol.querySelector('.theme-label');
+
+    function terapkan(tema) {
+        akar.setAttribute('data-theme', tema);
+        tombol.setAttribute('aria-pressed', tema === 'dark' ? 'true' : 'false');
+        /* Labelnya menyebut tema yang akan DITUJU, sama seperti ikonnya —
+           itu yang menjawab "kalau saya klik ini, saya dapat apa?". */
+        if (label) label.textContent = tema === 'dark' ? 'Tema Terang' : 'Tema Gelap';
+        try { localStorage.setItem('tesys-theme', tema); } catch (e) {}
+    }
+
+    terapkan(akar.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
+
+    tombol.addEventListener('click', function (e) {
+        e.stopPropagation();   /* jangan ikut menutup popup */
+        terapkan(akar.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    });
+})();
+
 function confirmLogout() {
     Swal.fire({
         title: 'Logout?',
         text: 'Apakah Anda yakin ingin keluar?',
         icon: 'question',
         showCancelButton: true,
-        confirmButtonColor: '#DC2626',
+        confirmButtonColor: '#92232b',
         cancelButtonColor: '#6B7280',
         confirmButtonText: 'Ya, Logout',
         cancelButtonText: 'Batal'
@@ -1371,36 +586,248 @@ function confirmLogout() {
 }
 </script>
 
-<!-- SIDEBAR TOOLTIP (collapsed mode) -->
+@auth
+<!-- NOTIFICATION BELL (polling) -->
 <script>
-(function () {
-    var tooltip = document.getElementById('tsys-tooltip');
-    if (!tooltip) return;
+$.ajaxSetup({
+    headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
+});
 
-    function isCollapsed() {
-        return document.body.classList.contains('sidebar-collapse');
+$(function () {
+    var fetchUrl = "{{ route('notifications.fetch') }}";
+
+    /*
+       Jawaban bisa berbentuk lain saat sesi berakhir: permintaan AJAX tetap
+       dianggap berhasil tetapi isinya halaman login, bukan JSON yang
+       diharapkan. Tanpa penjagaan ini lonceng berhenti bekerja diam-diam
+       karena galat yang tidak tertangkap.
+    */
+    function renderNotifications(data) {
+        if (!data || !Array.isArray(data.notifications)) {
+            $('#notifBadge').hide();
+            $('#notifList').empty();
+            $('#notifEmpty').show();
+            return;
+        }
+        var $badge = $('#notifBadge');
+        if (data.unread_count > 0) {
+            $badge.text(data.unread_count > 99 ? '99+' : data.unread_count).show();
+        } else {
+            $badge.hide();
+        }
+
+        var $list = $('#notifList').empty();
+        if (!data.notifications.length) {
+            $('#notifEmpty').show();
+            return;
+        }
+        $('#notifEmpty').hide();
+
+        data.notifications.forEach(function (n) {
+            var $item = $('<a></a>')
+                .addClass('notif-row' + (n.is_read ? '' : ' unread'))
+                .attr('href', n.url || '#')
+                .attr('data-id', n.id);
+
+            $item.append($('<span class="notif-row-title"></span>').text(n.title));
+            $item.append($('<span class="notif-row-msg"></span>').text(n.message));
+            $item.append($('<span class="notif-row-time"></span>').text(n.created_at));
+
+            $item.on('click', function () {
+                if (!n.is_read) {
+                    $.post("{{ url('/notifications') }}/" + n.id + "/read");
+                }
+            });
+
+            $list.append($item);
+        });
     }
 
-    document.querySelectorAll('.tsys-link').forEach(function (link) {
-        link.addEventListener('mouseenter', function (e) {
-            if (!isCollapsed()) return;
-            var label = link.getAttribute('title');
-            if (!label) return;
-            tooltip.textContent = label;
-            var rect = link.getBoundingClientRect();
-            tooltip.style.top = (rect.top + rect.height / 2) + 'px';
-            tooltip.classList.add('visible');
-        });
+    function pollNotifications() {
+        $.get(fetchUrl, function (data) { renderNotifications(data); });
+    }
 
-        link.addEventListener('mouseleave', function () {
-            tooltip.classList.remove('visible');
-        });
+    $('#notifMarkAllRead').on('click', function (e) {
+        e.preventDefault();
+        $.post("{{ route('notifications.read-all') }}", function () { pollNotifications(); });
     });
-})();
+
+    pollNotifications();
+    setInterval(pollNotifications, 60000);
+});
 </script>
+
+<!-- TO DO BELL (ringkasan dari modul Todo List) -->
+<script>
+$(function () {
+    var todoCountUrl = "{{ route('todo-list.count') }}";
+    var todoFetchUrl = "{{ route('todo-list.fetch') }}";
+    var todoListUrl  = "{{ route('todo-list.index') }}";
+
+    function renderTodoBadge(count) {
+        var $badge = $('#todoBadge');
+        if (count > 0) {
+            $badge.text(count > 99 ? '99+' : count).show();
+        } else {
+            $badge.hide();
+        }
+    }
+
+    /* Penjagaan yang sama seperti renderNotifications di atas. */
+    function renderTodos(data) {
+        if (!data || !Array.isArray(data.items)) {
+            $('#todoList').empty();
+            $('#todoEmpty').show();
+            return;
+        }
+
+        renderTodoBadge(data.count);
+
+        var $list = $('#todoList').empty();
+        if (!data.items.length) {
+            $('#todoEmpty').show();
+            return;
+        }
+        $('#todoEmpty').hide();
+
+        data.items.forEach(function (t) {
+            // Semua item mengarah ke halaman Todo List penuh (bukan detail
+            // masing-masing modul) — popup ini hanya ringkasan sekilas.
+            var $item = $('<a></a>')
+                .addClass('notif-row')
+                .attr('href', todoListUrl);
+
+            $item.append($('<span class="notif-row-title"></span>').text(t.title));
+            $item.append(
+                $('<span class="notif-row-meta"></span>').append(
+                    $('<span class="badge badge-' + (t.status_color || 'secondary') + '"></span>').text(t.status_label),
+                    $('<span></span>').text(t.date)
+                )
+            );
+            $item.append($('<span class="notif-row-time text-' + (t.color || 'secondary') + '"></span>').text(t.aging_label));
+
+            $list.append($item);
+        });
+    }
+
+    /*
+      Polling hanya mengambil ANGKA-nya (todo-list/count), bukan seluruh isi
+      popup. Menyusun isi popup berarti membangun ulang seluruh worklist —
+      ribuan query — padahal yang berubah di layar cuma satu angka kecil, dan
+      sebagian besar polling terjadi saat dropdown-nya bahkan tidak dibuka.
+
+      Isi popup baru diambil saat dropdown benar-benar dibuka (todo-list/fetch),
+      lalu ditahan sebentar supaya membuka-tutup berulang tidak memanggil ulang.
+    */
+    function pollTodoCount() {
+        $.get(todoCountUrl, function (data) {
+            renderTodoBadge(data && data.count ? data.count : 0);
+        }).fail(function () {
+            // Diam-diam gagal — badge tetap seperti sebelumnya, tidak boleh
+            // mengganggu topbar/halaman lain.
+        });
+    }
+
+    var todoItemsUmur = 0;          // kapan isi popup terakhir diambil
+    var todoItemsTtl  = 30000;      // tahan 30 detik, sepadan dengan cache server
+    var todoItemsJalan = false;
+
+    function muatIsiTodo(paksa) {
+        if (todoItemsJalan) return;
+        if (!paksa && Date.now() - todoItemsUmur < todoItemsTtl) return;
+
+        todoItemsJalan = true;
+        $.get(todoFetchUrl, function (data) {
+            renderTodos(data);
+            todoItemsUmur = Date.now();
+        }).always(function () {
+            todoItemsJalan = false;
+        });
+    }
+
+    // Bootstrap 4 memancarkan show.bs.dropdown pada pembungkusnya.
+    $('#todoBellWrap').on('show.bs.dropdown', function () { muatIsiTodo(false); });
+
+    pollTodoCount();
+    setInterval(pollTodoCount, 60000);
+});
+</script>
+@endauth
 
 <!-- PAGE SCRIPT -->
 @stack('scripts')
+
+<div class="toast-stack" id="toastStack"></div>
+
+{{-- ================================================================ --}}
+{{-- COMMAND PALETTE (Ctrl+K)                                         --}}
+{{-- Daftar halaman dibaca dari tautan sidebar yang sudah dirender,   --}}
+{{-- jadi otomatis mengikuti hak akses. Dokumen diambil dari endpoint --}}
+{{-- global-search yang menggerbangi tiap modul di sisi server.       --}}
+{{-- ================================================================ --}}
+<div class="ts-cmd-root" id="tsCmd" hidden role="dialog" aria-modal="true" aria-label="Cari di seluruh Tesys">
+    <div class="ts-cmd-scrim"></div>
+    <div class="ts-cmd-panel">
+        <div class="ts-cmd-head">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <input type="search" id="tsCmdInput" autocomplete="off" role="combobox"
+                   aria-expanded="true" aria-controls="tsCmdList"
+                   placeholder="Cari Cost Request, PO, Invoice, atau halaman…">
+            <span class="ts-cmd-kbd" aria-hidden="true">Esc</span>
+        </div>
+
+        <div class="ts-cmd-body">
+            <div id="tsCmdList" role="listbox" aria-label="Hasil pencarian"></div>
+            <div id="tsCmdLoading" class="ts-cmd-loading" hidden>
+                <x-skeleton type="lines" :rows="3" />
+            </div>
+        </div>
+
+        <div class="ts-cmd-foot">
+            <span><kbd>↑</kbd><kbd>↓</kbd> pilih</span>
+            <span><kbd>Enter</kbd> buka</span>
+            <span><kbd>Esc</kbd> tutup</span>
+        </div>
+    </div>
+</div>
+
+@php
+    /*
+     | Aksi cepat untuk Command Center. Disaring di sini (bukan di browser)
+     | supaya palet hanya menawarkan yang benar-benar boleh dibuka user ini:
+     | route harus terdaftar, role harus cocok dengan middleware rutenya, dan
+     | menunya harus terlihat. Tidak ada logika bisnis baru — hanya membaca
+     | hak akses yang sudah ada.
+     */
+    $cmdActions = collect(config('command-actions', []))
+        ->filter(fn ($a) => Route::has($a['route'] ?? ''))
+        ->filter(fn ($a) => empty($a['roles']) || Auth::user()->hasRole($a['roles']))
+        ->filter(fn ($a) => empty($a['menu']) || $can($a['menu']))
+        ->map(fn ($a) => [
+            'title' => $a['label'],
+            'icon'  => $a['icon'] ?? 'fas fa-plus',
+            'url'   => route($a['route']),
+        ])
+        ->values();
+@endphp
+<script type="application/json" id="tesysCommandData">@json(['searchUrl' => route('global-search'), 'actions' => $cmdActions])</script>
+<script>
+    (function () {
+        var data = JSON.parse(document.getElementById('tesysCommandData').textContent);
+        window.TESYS_SEARCH_URL = data.searchUrl;
+        window.TESYS_ACTIONS    = data.actions;
+    })();
+</script>
+<script src="{{ asset('js/tesys-export-filtered.js') }}?v={{ filemtime(public_path('js/tesys-export-filtered.js')) }}"></script>
+<script src="{{ asset('js/tesys-command.js') }}?v={{ filemtime(public_path('js/tesys-command.js')) }}"></script>
+<script src="{{ asset('js/tesys-ui.js') }}?v={{ filemtime(public_path('js/tesys-ui.js')) }}"></script>
+<script src="{{ asset('js/tesys-shell.js') }}?v={{ filemtime(public_path('js/tesys-shell.js')) }}"></script>
+<script src="{{ asset('js/tesys-clock.js') }}?v={{ filemtime(public_path('js/tesys-clock.js')) }}"></script>
+
+{{-- Menandai tombol yang isinya HANYA ikon di dalam sel tabel, supaya
+     CSS bisa menyamakan ukurannya tanpa ikut memampatkan tombol yang
+     punya label. Lihat catatan di berkasnya. --}}
+<script src="{{ asset('js/tesys-icon-buttons.js') }}?v={{ filemtime(public_path('js/tesys-icon-buttons.js')) }}"></script>
 
 </body>
 </html>

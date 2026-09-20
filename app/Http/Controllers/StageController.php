@@ -80,7 +80,13 @@ class StageController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('stage.index', compact('stages'));
+        $summary = [
+            'total'    => $stages->count(),
+            'active'   => $stages->where('status', 'ACTIVE')->count(),
+            'inactive' => $stages->where('status', 'INACTIVE')->count(),
+        ];
+
+        return view('stage.index', compact('stages', 'summary'));
     }
 
     /**
@@ -165,6 +171,11 @@ class StageController extends Controller
     public function destroy($id)
     {
         $stage = Stage::findOrFail($id);
+
+        if (\App\Models\ProjectDetail::where('stage_id', $stage->id)->exists()) {
+            return back()->with('error', 'Stage tidak bisa dihapus karena sudah dipakai pada Project Detail.');
+        }
+
         $stage->delete();
 
         return redirect()

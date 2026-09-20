@@ -1,58 +1,140 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# TESYS — Terex System
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+ERP internal PT Terex. Satu aplikasi Laravel yang menangani rantai kerja
+keuangan proyek dari awal sampai tutup buku:
 
-## About Laravel
-
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
-
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```
+Purchase Order  ->  Budget Plan  ->  Cost Request  ->  Pembayaran (Daily Transaction)
+      |                                                       |
+      +--> Invoice & Cash Receipt --> Surat Jalan --> Project Monitoring
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Modul pendukung: Payroll Run, Finance Forecast, Cost Register, Todo List
+(agregasi approval lintas modul), Finance Summary, Reports, Global Search, dan
+master data (Customer, Beneficiary, Bank, Cluster, Cost Center, Source Fund,
+Request Type, Stage, PIC, Team, User/Role/Access Group).
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Ringkasan teknis
 
-## Code of Conduct
+| Lapis        | Isi                                                                 |
+|--------------|---------------------------------------------------------------------|
+| Runtime      | PHP 8.3, Laravel 13, MySQL 8                                        |
+| Frontend     | Blade + jQuery + AdminLTE 3/Bootstrap 4 di atas lapis `tesys-ui`    |
+| Tabel        | DataTables (sisi peramban), dibatasi 1.000 baris per halaman daftar |
+| Otorisasi    | Middleware `role:` dan `menu:`, Access Group per proyek/cost center |
+| Berkas       | Disk privat + route ber-otentikasi (`/storage/{path}`)              |
+| Antrean      | Driver `database` — notifikasi dikirim lewat worker                 |
+| Uji          | PHPUnit, basis data MySQL terpisah (`tesys_test`)                   |
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+---
 
-## Security Vulnerabilities
+## Menyiapkan lingkungan pengembangan
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+git clone <repo> tesys && cd tesys
+composer install
+cp .env.example .env
+php artisan key:generate
+```
 
-## License
+Isi `.env` seperlunya (lihat tabel di bawah), buat basis datanya, lalu:
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```bash
+php artisan migrate
+php artisan db:seed --class=RoleSeeder
+php artisan db:seed --class=MenuItemSeeder
+php artisan serve
+```
+
+**Jangan** menjalankan `php artisan storage:link`. Lampiran sengaja tidak
+dilayani langsung oleh web server — lihat [Berkas & lampiran](#berkas--lampiran).
+
+### Kunci `.env` yang perlu diperhatikan
+
+| Kunci                  | Keterangan                                                                    |
+|------------------------|-------------------------------------------------------------------------------|
+| `APP_DEBUG`            | **Wajib `false` di produksi.** Jejak galat memuat isi query dan konfigurasi.   |
+| `SESSION_SECURE_COOKIE`| **Wajib `true` di produksi** (HTTPS).                                          |
+| `LOG_CHANNEL`          | `daily` — berkas log tunggal tanpa rotasi pernah tumbuh sampai 9 MB.           |
+| `QUEUE_CONNECTION`     | `database`. Worker wajib jalan, jika tidak notifikasi tidak pernah terkirim.   |
+| `EXPORT_API_TOKEN`     | Token API ekspor Cost Request. Kosongkan untuk mematikan endpoint-nya.         |
+| `FONNTE_TOKEN`         | Notifikasi WhatsApp (opsional). Tanpa ini, notifikasi hanya masuk lonceng app. |
+
+---
+
+## Menjalankan uji
+
+Uji memakai MySQL (bukan sqlite) karena sebagian migrasi memakai sintaks khusus
+MySQL. Siapkan sekali:
+
+```sql
+CREATE DATABASE tesys_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+```bash
+php artisan test
+```
+
+Basis data uji dibangun ulang setiap kali dijalankan. Yang ditanggung suite ini:
+
+- akses berkas lampiran (`SecureFileAccessTest`)
+- pembatasan percobaan login (`LoginThrottleTest`)
+- pembatasan akses lintas Access Group (`CostRequestAccessTest`)
+- alur approval + anti approval ganda (`CostRequestWorkflowTest`)
+- perhitungan pemakaian anggaran / NOB (`BudgetConsumptionTest`)
+- penomoran dokumen (`DocumentNumberingTest`)
+- pembayaran & penghapusan Cash Receipt (`CashReceiptTest`)
+- daftar penerima notifikasi per peran (`RoleDirectoryTest`)
+
+Tambahkan uji untuk setiap perubahan yang menyentuh uang, status, atau hak
+akses.
+
+---
+
+## Berkas & lampiran
+
+Semua lampiran (invoice, BAST, bukti transfer, bukti settlement, dokumen
+pendukung) disimpan di `storage/app/private` dan hanya bisa diunduh lewat route
+`/storage/{path}` yang memeriksa sesi dan hak akses per modul
+(`App\Services\FileAccess`).
+
+Karena itu:
+
+- `filesystems.links` sengaja kosong dan `storage:link` **tidak boleh**
+  dijalankan — begitu `public/storage` ada, web server melayani berkasnya
+  langsung tanpa pemeriksaan apa pun;
+- `public/.htaccess` juga memaksa seluruh permintaan `/storage/...` masuk ke
+  `index.php` sebagai lapis pengaman kedua;
+- disk `local` memakai `'serve' => false`, karena bila `true` Laravel
+  mendaftarkan route penyaji berkas tanpa otentikasi yang menang atas route
+  aplikasi.
+
+Menambah folder unggahan baru berarti menambah aturannya di `FileAccess`.
+Folder tanpa aturan khusus jatuh ke aturan dasar: wajib login.
+
+---
+
+## Arsitektur yang perlu diketahui sebelum menyentuh kode
+
+- **Status & alur** — kamus status ada di `App\Support\WorkflowStatus`;
+  perpindahan status memakai `Concerns\TransitionsStatus` (transaksi + kunci
+  baris). Jangan menulis `$model->update(['status' => ...])` langsung setelah
+  memeriksa status: itu pola lama yang memungkinkan approval ganda.
+- **Anggaran** — arti "terpakai" ada tiga dan berbeda: `BudgetConsumption::COMMITTED`
+  (mengikat, dipakai pengecekan NOB), `DISBURSED` (sudah cair), `REPORTED`
+  (laporan). Jangan menulis daftar status baru di tempat lain.
+- **Nomor dokumen** — selalu lewat `App\Support\DocumentSequence`, tidak pernah
+  `count() + 1`.
+- **Keterlihatan data** — Cost Request memakai `Concerns\BuildsCrWorklist::scopeByRole()`,
+  Invoice `scopeVisibleTo()`, Budget Plan `canViewBudgetPlan()`. Setiap aksi
+  ber-`{id}` wajib memakai helper `findVisible*()` modulnya, bukan `findOrFail()`
+  polos.
+- **Notifikasi** — lewat `NotifyService`; daftar penerima per peran lewat
+  `App\Services\RoleDirectory`.
+- **Daftar besar** — `Concerns\CapsLargeLists` membatasi baris yang digambar;
+  angka ringkasan tetap dihitung agregat dari seluruh data.
+
+Dokumen operasional: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Riwayat rilis: [CHANGELOG.md](CHANGELOG.md).

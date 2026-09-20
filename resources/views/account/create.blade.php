@@ -149,7 +149,7 @@
                         <span id="totalAmountLabel"
                               class="badge badge-primary px-3 py-2"
                               style="font-size:13px;">
-                            Total: Rp 0
+                            Total: 0
                         </span>
                         <button type="button" class="btn btn-sm btn-primary" id="btnAddDetail">
                             <i class="fas fa-plus mr-1"></i> Tambah Baris
@@ -162,13 +162,13 @@
                         <table class="table table-bordered mb-0" id="tblDetail">
                             <thead class="bg-light">
                                 <tr>
-                                    <th style="width:5%;" class="text-center">No</th>
-                                    <th style="width:10%;">Tipe</th>
-                                    <th style="width:18%;">Kategori</th>
-                                    <th style="width:22%;">Account</th>
-                                    <th style="width:18%;" class="text-right">Amount (Rp)</th>
-                                    <th style="width:22%;">Notes</th>
-                                    <th style="width:5%;" class="text-center">Aksi</th>
+                                    <th scope="col" style="width:5%;" class="text-center">No</th>
+                                    <th scope="col" style="width:10%;">Tipe</th>
+                                    <th scope="col" style="width:18%;">Kategori</th>
+                                    <th scope="col" style="width:22%;">Account</th>
+                                    <th scope="col" style="width:18%;" class="text-right">Amount (Rp)</th>
+                                    <th scope="col" style="width:22%;">Notes</th>
+                                    <th scope="col" style="width:5%;" class="text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="detailBody">
@@ -264,10 +264,10 @@
                         <table class="table table-bordered mb-0" id="tblAttachment">
                             <thead class="bg-light">
                                 <tr>
-                                    <th style="width:5%;" class="text-center">No</th>
-                                    <th style="width:35%;">Judul</th>
-                                    <th style="width:50%;">File</th>
-                                    <th style="width:10%;" class="text-center">Aksi</th>
+                                    <th scope="col" style="width:5%;" class="text-center">No</th>
+                                    <th scope="col" style="width:35%;">Judul</th>
+                                    <th scope="col" style="width:50%;">File</th>
+                                    <th scope="col" style="width:10%;" class="text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="attachmentBody">
@@ -359,7 +359,7 @@ $(function () {
         $('.money-detail').each(function () {
             total += parseRupiah(this.value);
         });
-        $('#totalAmountLabel').text('Total: Rp ' + total.toLocaleString('id-ID'));
+        $('#totalAmountLabel').text('Total: ' + total.toLocaleString('id-ID'));
     }
 
     recalcTotal();

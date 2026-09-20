@@ -2,71 +2,22 @@
 
 @section('content')
 
-<!-- CONTENT HEADER -->
-<div class="content-header">
-
-    <div class="container-fluid">
-
-        <div class="row mb-2">
-
-            <!-- TITLE -->
-            <div class="col-sm-6 d-flex align-items-center">
-
-                <a href="{{ url('/accessgroup') }}"
-                class="btn btn-secondary btn-sm mr-3">
-
-                    <i class="fas fa-arrow-left"></i>
-
-                </a>
-
-                <h1 class="m-0 font-weight-bold">
-
-                    Edit Access Group
-
-                </h1>
-
-            </div>
-            <!-- BREADCRUMB -->
-            <div class="col-sm-6">
-
-                <ol class="breadcrumb float-sm-right">
-
-                    <li class="breadcrumb-item">
-
-                        <a href="#">
-                            Master
-                        </a>
-
-                    </li>
-
-                    <li class="breadcrumb-item">
-
-                        <a href="{{ url('/accessgroup') }}">
-                            Access Group
-                        </a>
-
-                    </li>
-
-                    <li class="breadcrumb-item active">
-
-                        Edit
-
-                    </li>
-
-                </ol>
-
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-<!-- MAIN CONTENT -->
 <div class="content">
-
     <div class="container-fluid">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <div class="d-flex align-items-center">
+                <a href="{{ url('/accessgroup') }}" class="btn btn-secondary btn-sm mr-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Edit Access Group</h1>
+            </div>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item"><a href="#">Master</a></li>
+                <li class="breadcrumb-item"><a href="{{ url('/accessgroup') }}">Access Group</a></li>
+                <li class="breadcrumb-item active">Edit</li>
+            </ol>
+        </div>
 
         <div class="card card-warning card-outline shadow-sm">
 
@@ -136,6 +87,22 @@
                         'cost_center_ids',
                         $accessGroup->details
                             ->pluck('cost_center_id')
+                            ->filter()
+                            ->toArray()
+                    )
+
+                )
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->toArray();
+
+                $selectedTeams = collect(
+
+                    old(
+                        'team_ids',
+                        $accessGroup->details
+                            ->pluck('team_id')
                             ->filter()
                             ->toArray()
                     )
@@ -239,7 +206,7 @@
                                             }}
                                         >
 
-                                            [{{ $project->code ?? '-' }}] [{{ $project->po_number ?? '-' }}] [{{ $project->done_by ?? '-' }}] {{ $project->name }}
+                                            [{{ $project->code ?? '-' }}] [{{ $project->po_number ?? '-' }}] [{{ $project->financing ?? '-' }}] {{ $project->name }}
 
                                         </option>
 
@@ -274,7 +241,7 @@
 
                                 <label>
 
-                                    Overhead (Cost Center) Access
+                                    Cost Center Access
 
                                 </label>
 
@@ -286,7 +253,7 @@
                                     data-live-search="true"
                                     data-actions-box="true"
                                     data-selected-text-format="count > 2"
-                                    title="Pilih overhead access..."
+                                    title="Pilih cost center access..."
                                 >
 
                                     @foreach($costCenters as $cc)
@@ -303,7 +270,7 @@
                                             }}
                                         >
 
-                                            [{{ $cc->code }}] {{ $cc->name }}
+                                            [{{ $cc->code }}] {{ $cc->name }} ({{ $cc->type }})
 
                                         </option>
 
@@ -313,11 +280,75 @@
 
                                 <small class="text-muted">
 
-                                    Pilih cost center overhead yang dapat diakses. Kosongkan bila group ini hanya untuk project.
+                                    Pilih cost center (Overhead/Tax/Asset/Liability/Capital/Adjustment) yang dapat diakses. Kosongkan bila group ini hanya untuk project.
 
                                 </small>
 
                                 @error('cost_center_ids')
+
+                                    <small class="text-danger d-block">
+
+                                        {{ $message }}
+
+                                    </small>
+
+                                @enderror
+
+                            </div>
+
+                        </div>
+
+                        <!-- TEAM ACCESS -->
+                        <div class="col-md-12">
+
+                            <div class="form-group">
+
+                                <label>
+
+                                    Team Access
+
+                                </label>
+
+                                <select
+                                    name="team_ids[]"
+                                    id="team_ids"
+                                    class="selectpicker form-control"
+                                    multiple
+                                    data-live-search="true"
+                                    data-actions-box="true"
+                                    data-selected-text-format="count > 2"
+                                    title="Pilih team access..."
+                                >
+
+                                    @foreach($teams as $team)
+
+                                        <option
+                                            value="{{ $team->id }}"
+                                            {{
+                                                in_array(
+                                                    (int) $team->id,
+                                                    $selectedTeams
+                                                )
+                                                ? 'selected'
+                                                : ''
+                                            }}
+                                        >
+
+                                            [{{ $team->code }}] {{ $team->name }}
+
+                                        </option>
+
+                                    @endforeach
+
+                                </select>
+
+                                <small class="text-muted">
+
+                                    Member Team ini otomatis mewarisi akses PO dari group ini (Team -> Access Group -> PO).
+
+                                </small>
+
+                                @error('team_ids')
 
                                     <small class="text-danger d-block">
 
@@ -377,10 +408,10 @@
 <!-- BOOTSTRAP SELECT -->
 <link 
     rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/css/bootstrap-select.min.css"
+    href="{{ asset('plugins/bootstrap-select/bootstrap-select.min.css') }}"
 >
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/js/bootstrap-select.min.js"></script>
+<script src="{{ asset('plugins/bootstrap-select/bootstrap-select.min.js') }}"></script>
 
 <script>
 
@@ -416,7 +447,21 @@ $(function () {
 
         selectAllText: 'Select All',
 
-        noneSelectedText: 'Pilih overhead access...',
+        noneSelectedText: 'Pilih cost center access...',
+
+    });
+
+    $('#team_ids').selectpicker({
+
+        liveSearch: true,
+
+        actionsBox: true,
+
+        deselectAllText: 'Clear',
+
+        selectAllText: 'Select All',
+
+        noneSelectedText: 'Pilih team access...',
 
     });
 

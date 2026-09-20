@@ -1,0 +1,1892 @@
+/* =====================================================================
+   Tesys UI — LUXE (chrome gelap di atas isi terang)
+   ---------------------------------------------------------------------
+   Isi halaman TETAP terang: kartu putih, tabel putih, form putih. Yang
+   digelapkan hanya BINGKAINYA — sidebar dan topbar — plus beberapa
+   bidang kecil yang memang berperan sebagai "kop": kepala modal, kepala
+   drawer, dan blok total di kaki tabel.
+
+   Kenapa begitu: bidang kerja padat angka butuh latar terang supaya
+   terbaca berjam-jam; yang memberi kesan mahal bukan gelapnya isi,
+   melainkan KONTRAS antara bingkai gelap dan kertas terang di dalamnya —
+   cara yang sama dipakai galeri: dinding gelap, lukisan terang.
+
+   Sidebar dan topbar HARUS gelap bersamaan. Versi sebelumnya pernah
+   memakai topbar arang di sebelah sidebar putih dan dilepas lagi:
+   keduanya bertemu di pojok kiri atas dan membentuk "L" dua warna yang
+   terbaca seperti dua potong chrome yang tidak sepakat (lihat catatan
+   di tesys-ui-shell.css bagian TOPBAR).
+
+   Nilai warna TIDAK didefinisikan di sini — semuanya var(--chrome*)
+   dari tesys-ui-tokens.css.
+
+   Urutan pemuatan di layouts/app.blade.php:
+     base -> tesys-ui -> tokens -> components -> compat
+          -> pages -> shell -> motion -> LUXE (berkas ini)
+   ===================================================================== */
+
+
+/* =====================================================================
+   1. SIDEBAR
+   Token --sidebar* sudah diarahkan ke palet chrome di tokens.css, jadi
+   latar, garis tepi, dan label seksi ikut gelap dengan sendirinya.
+   Yang tersisa di sini adalah aturan yang di tesys-ui.css menunjuk
+   token PERMUKAAN (hover/active/brand) — token itu milik isi halaman
+   dan harus tetap terang, jadi tidak boleh sekadar diubah nilainya.
+   ===================================================================== */
+body.tesys-ui .sidebar {
+    background: var(--chrome);
+    color: var(--chrome-text);
+    border-right: 1px solid var(--chrome-border);
+    box-shadow: var(--shadow-chrome);
+}
+
+body.tesys-ui .sidebar .brand {
+    border-bottom: 1px solid var(--chrome-border);
+    position: relative;
+}
+
+/* Satu garis emas di bawah blok merek. Ini satu-satunya emas di shell:
+   selebar blok, setebal 1px, dan memudar di kedua ujungnya supaya
+   terbaca sebagai pantulan cahaya, bukan sebagai garis pembatas kedua. */
+body.tesys-ui .sidebar .brand::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 1px;
+    background: var(--gold-line);
+    pointer-events: none;
+}
+
+/* tesys-ui-compat.css menyetel "body.tesys-ui a { color: var(--accent-text) }"
+   untuk SEMUA tautan. Di atas kertas putih itu merah gelap yang benar; di
+   dalam chrome gelap ia jatuh ke 2,5:1. Tautan di bingkai disebut satu per
+   satu, BUKAN disapu dengan ".sidebar a" — panel yang mengambang keluar
+   dari sidebar (daftar aplikasi) dan yang turun dari topbar (notifikasi,
+   todo, akun) berlatar putih, jadi tautan di dalamnya harus tetap merah. */
+body.tesys-ui .sidebar .brand .brand-text { color: var(--chrome-text); }
+
+/* Pemilihnya sengaja menyertakan .brand: tesys-ui-shell.css memakai
+   ".sidebar .brand .brand-name" (tiga kelas), jadi versi dua kelas di
+   sini akan kalah meski dimuat belakangan. */
+body.tesys-ui .sidebar .brand .brand-name { color: var(--chrome-text); }
+body.tesys-ui .sidebar .brand .brand-sub  { color: var(--chrome-dim); }
+body.tesys-ui .sidebar .brand .brand-name:hover { color: var(--accent-on-chrome); }
+
+/* Label seksi menempel (sticky) saat menu digulir, jadi latarnya harus
+   pekat — kalau tembus, teks menu lewat di belakangnya. */
+body.tesys-ui .sidebar .nav-label {
+    color: var(--chrome-dim);
+    background: var(--chrome);
+}
+body.tesys-ui .sidebar .nav-label::after {
+    background: linear-gradient(var(--chrome), transparent);
+}
+
+body.tesys-ui .sidebar .nav-item { color: var(--chrome-text); }
+body.tesys-ui .sidebar .nav-item .ic { color: var(--chrome-dim); }
+body.tesys-ui .sidebar .nav-item:hover,
+body.tesys-ui .sidebar .nav-item:hover .ic { color: #fff; }
+body.tesys-ui .sidebar .nav-item:hover  { background: var(--chrome-2); }
+body.tesys-ui .sidebar .nav-item:active { background: var(--chrome-3); }
+
+/* Garis pemisah antar kelompok menu. */
+body.tesys-ui .sidebar .nav-label ~ .nav-label { border-top-color: var(--chrome-border); }
+
+/* Menu aktif — tiga sinyal lemah, bukan satu sinyal kuat:
+     - latar burgundy sangat redup (--chrome-active),
+     - garis tipis 2px merah merek di tepi kiri,
+     - tulisan dan ikon dibuat lebih terang (putih), bukan merah.
+
+   Versi sebelumnya memakai teks merah muda. Itu dilepas karena dua hal:
+   merah merek di atas chrome hanya 3,5:1 sehingga harus dipucatkan dulu
+   agar terbaca, dan teks berwarna di daftar navigasi terbaca seperti
+   tautan yang menyala. Yang diminta "premium tapi tertahan" — jadi
+   merahnya disimpan untuk penanda kecil, dan kejelasan dikerjakan oleh
+   kecerahan tulisan. */
+body.tesys-ui .sidebar .nav-item.active,
+body.tesys-ui .sidebar .nav-item.active .ic { color: #ffffff; }
+body.tesys-ui .sidebar .nav-item.active {
+    background: var(--chrome-active);
+    box-shadow: inset 2px 0 0 var(--accent);
+    font-weight: 600;
+}
+/* Titik merah kecil di ujung kanan — penanda yang tetap terbaca kalau
+   latar burgundy-nya terlalu redup di layar dengan gamma tinggi. */
+body.tesys-ui .sidebar .nav-item.active::after {
+    content: "";
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    width: 5px;
+    height: 5px;
+    margin-top: -2.5px;
+    border-radius: 50%;
+    background: var(--accent);
+}
+body.tesys-ui .sidebar .nav-item.is-disabled { color: var(--chrome-dim); opacity: .6; }
+
+body.tesys-ui .sidebar-foot {
+    background: var(--chrome);
+    border-top: 1px solid var(--chrome-border);
+}
+body.tesys-ui .sidebar .who-name { color: var(--chrome-text); }
+body.tesys-ui .sidebar .who-role { color: var(--chrome-dim); }
+
+/* Bilah gulir di dalam sidebar: versi terang tidak terlihat di atas
+   chrome gelap. */
+body.tesys-ui .sidebar .nav { scrollbar-color: var(--chrome-3) transparent; }
+body.tesys-ui .sidebar .nav::-webkit-scrollbar-thumb { background-color: var(--chrome-3); }
+body.tesys-ui .sidebar .nav::-webkit-scrollbar-thumb:hover { background-color: #47303a; }
+
+/* Gradasi pudar di kaki sidebar rail harus menuju warna chrome. */
+body.tesys-ui.sidebar-rail .sidebar::after {
+    background: linear-gradient(to top, var(--chrome), rgba(27, 17, 20, 0));
+}
+
+
+/* =====================================================================
+   2. TOPBAR
+   Topbar sticky dan tembus pandang: isi yang tergulir lewat di baliknya
+   diburamkan. Nilai tembusnya dinaikkan dibanding versi terang (85%,
+   bukan 72%) karena teks gelap yang lewat di balik lapisan gelap jauh
+   lebih mudah terbaca sebagai noda daripada di balik lapisan putih.
+   ===================================================================== */
+body.tesys-ui .topbar {
+    background: var(--topbar);
+    background: color-mix(in srgb, var(--topbar) 88%, transparent);
+    color: var(--chrome-text);
+    border-bottom: 1px solid transparent;
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    body.tesys-ui .topbar { background: var(--topbar); }
+}
+body.tesys-ui.page-scrolled .topbar { border-bottom-color: rgba(0, 0, 0, .35); }
+
+/* Topbar lebih terang dari sidebar, jadi teks pudarnya tidak bisa
+   memakai nilai yang sama — #948c8e hanya 4,2:1 di sini. */
+body.tesys-ui .topbar .page-title { color: #fff; }
+body.tesys-ui .topbar .crumb { color: var(--topbar-dim); }
+body.tesys-ui .topbar .crumb a { color: var(--topbar-dim); }
+body.tesys-ui .topbar .crumb a:hover { color: var(--accent-on-chrome); }
+
+/* Tombol ikon (menu, todo, lonceng) dan kotak cari. */
+body.tesys-ui .topbar .icon-btn,
+body.tesys-ui .topbar .ts-cmd-trigger,
+body.tesys-ui .topbar .search {
+    background: var(--topbar-2);
+    border-color: var(--topbar-3);
+    color: var(--chrome-text);
+}
+body.tesys-ui .topbar .icon-btn:hover,
+body.tesys-ui .topbar .ts-cmd-trigger:hover {
+    background: var(--topbar-3);
+    border-color: #5a4f52;
+    color: #fff;
+}
+body.tesys-ui .topbar .search:focus-within {
+    background: var(--topbar-3);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-ring);
+}
+body.tesys-ui .topbar .search input { background: transparent; color: var(--chrome-text); }
+body.tesys-ui .topbar .search input::placeholder { color: var(--topbar-dim); }
+
+/* Tombol pintasan "Ctrl K" di dalam pemicu palet. */
+body.tesys-ui .topbar .ts-cmd-trigger kbd,
+body.tesys-ui .topbar .ts-cmd-trigger .ts-cmd-kbd {
+    background: var(--topbar-3);
+    border-color: #5a4f52;
+    color: var(--topbar-dim);
+}
+
+/* Badge angka menempel di sudut tombol; cincin pemisahnya harus sewarna
+   chrome, bukan sewarna kartu. */
+body.tesys-ui .topbar .icon-btn .badge { border-color: var(--topbar); }
+body.tesys-ui .topbar .notif-dot { border-color: var(--topbar); }
+
+body.tesys-ui .topbar-user { border-left: 1px solid var(--topbar-3); }
+body.tesys-ui .topbar-user .avatar { box-shadow: 0 0 0 1px var(--topbar-3); }
+
+/* Panel yang turun DARI topbar (notifikasi, todo, akun, palet perintah)
+   tetap terang: isinya daftar data, bukan navigasi. Membiarkannya putih
+   juga menegaskan batas antara bingkai dan isi. */
+body.tesys-ui .topbar .dropdown-menu,
+body.tesys-ui .topbar .user-pop {
+    color: var(--text);
+}
+
+/* Spanduk "melihat sebagai role lain" berada tepat di atas topbar, jadi
+   ia harus ikut gelap — kalau tidak, ada satu pita kuning terang yang
+   memotong bingkai. */
+body.tesys-ui .viewas-banner {
+    background: var(--topbar-2);
+    color: var(--warning-bg);
+    border-bottom: 1px solid var(--chrome-border);
+}
+
+
+/* =====================================================================
+   3. KOP GELAP DI DALAM ISI
+   Tiga tempat memakai bidang gelap yang sama dengan chrome, supaya
+   bingkai dan isi terbaca sebagai satu bahasa:
+
+     - kepala modal (sudah dipakai sebagian blade lewat var(--charcoal)),
+     - kepala drawer detail,
+     - baris total di kaki tabel.
+
+   Selain tiga ini, isi halaman dibiarkan terang.
+   ===================================================================== */
+body.tesys-ui .modal-header.modal-header-dark,
+body.tesys-ui .drawer-head-dark {
+    background: var(--chrome);
+    color: #fff;
+    border-bottom: 1px solid var(--chrome-border);
+}
+body.tesys-ui .modal-header.modal-header-dark .close,
+body.tesys-ui .drawer-head-dark .close { color: rgba(255, 255, 255, .7); text-shadow: none; opacity: 1; }
+body.tesys-ui .modal-header.modal-header-dark .close:hover { color: #fff; }
+
+/* Baris total: blade lama menyetelnya lewat var(--charcoal) inline.
+   --charcoal sengaja TIDAK disamakan dengan --chrome: total di dalam
+   tabel putih butuh nada yang sedikit lebih terang daripada sidebar,
+   supaya tidak terbaca seperti potongan sidebar yang nyasar. */
+body.tesys-ui .table tfoot .grand-total td,
+body.tesys-ui .table tfoot.grand-total td {
+    background: var(--charcoal);
+    color: #fff;
+    border-color: var(--charcoal-2);
+}
+
+
+/* =====================================================================
+   4. LAYAR SEMPIT
+   Di bawah 900px sidebar jadi laci melayang di atas isi. Lapisan peredam
+   di belakangnya dibuat lebih pekat daripada versi terang: laci gelap
+   di atas peredam tipis terbaca mengambang tanpa dasar.
+   ===================================================================== */
+@media (max-width: 900px) {
+    body.tesys-ui .sidebar { box-shadow: var(--shadow-lg); }
+    body.tesys-ui .sidebar-scrim,
+    body.tesys-ui .shell-scrim { background: rgba(24, 14, 17, .58); }
+}
+
+
+/* =====================================================================
+   5. CETAK
+   Chrome tidak ikut tercetak sama sekali (sidebar & topbar memang
+   disembunyikan saat mencetak), jadi tidak ada aturan warna yang perlu
+   dibatalkan di sini. Blok ini sengaja dibiarkan sebagai catatan supaya
+   tidak ada yang menambah latar gelap ke bidang yang ikut tercetak.
+   ===================================================================== */
+
+
+/* =====================================================================
+   6. NADA KORPORAT
+   ---------------------------------------------------------------------
+   Bagian ini menggantikan percobaan "nada mewah" sebelumnya, yang
+   memakai serif kontras tinggi, sudut 3px, dan garis emas di tiap kartu.
+   Spesifikasi menolak ketiganya secara eksplisit: "luxury-fashion
+   aesthetics" masuk daftar hindari, radius yang diminta 6-10px, dan emas
+   tidak boleh dipakai untuk setiap kartu atau judul.
+
+   Arah yang benar berbeda dari yang saya kira: bukan mewah, melainkan
+   MAPAN. Perangkat lunak yang sudah lama dipakai perusahaan besar tidak
+   berusaha menarik perhatian — ia terlihat mahal karena presisi, bukan
+   karena hiasan. Empat hal yang mengerjakannya:
+
+     1. HIERARKI, bukan dekorasi. Ukuran, bobot, dan jarak yang menyatakan
+        mana yang penting — bukan warna atau garis tambahan.
+     2. KEPADATAN YANG TERKENDALI. Tabel adalah elemen utama TESYS, jadi
+        barisnya dibuat rapat tapi masih terbaca; ruang kosong berlebih
+        justru membuat data terasa sedikit dan halaman terasa kosong.
+     3. GARIS, BUKAN BAYANGAN. Pemisahan antar blok dikerjakan garis tipis.
+        Antarmuka perusahaan tidak boleh terasa semuanya mengambang.
+     4. WARNA YANG DIJATAH. Sasarannya 70-80% netral, 15-20% merah korporat,
+        di bawah 5% aksen emas.
+   ===================================================================== */
+
+
+/* ----------------------------------------------------- 6a. TIPOGRAFI */
+/* Skala dari spesifikasi: judul halaman 24-28/600, judul seksi 16-18/600,
+   isi 13-14/400-500, tabel 12-14, metadata 11-12. Bobot judul diturunkan
+   dari 700/800 ke 600 — huruf tebal besar adalah tanda baca dasbor SaaS;
+   600 sudah cukup memimpin tanpa berteriak. */
+body.tesys-ui .page-title,
+body.tesys-ui .card-header .card-title,
+body.tesys-ui .modal-title,
+body.tesys-ui .modal-header .modal-title,
+body.tesys-ui .swal2-title,
+body.tesys-ui .content-header h1,
+body.tesys-ui .sidebar .brand .brand-name,
+body.tesys-ui #dashGreeting,
+body.tesys-ui .ts-drawer-title,
+body.tesys-ui .ts-release-title,
+body.tesys-ui .ts-soon-title,
+body.tesys-ui h1,
+body.tesys-ui h2 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -.01em;
+}
+
+body.tesys-ui .page-title { font-size: 24px; line-height: 1.2; }
+body.tesys-ui #dashGreeting { font-size: 24px; font-weight: 600; }
+body.tesys-ui .card-header .card-title { font-size: 16px; }
+body.tesys-ui .modal-title,
+body.tesys-ui .modal-header .modal-title { font-size: 16px; font-weight: 600; }
+
+/* Angka keuangan: hierarki dibangun dari ukuran dan lebar angka tetap,
+   bukan dari warna atau muka huruf khusus. Lebar tetap itu yang membuat
+   kolom rupiah bisa dibandingkan sekilas baris per baris. */
+body.tesys-ui .stat-val,
+body.tesys-ui .ts-kpi-value,
+body.tesys-ui .ts-queue-count,
+body.tesys-ui .ts-dw-amount-value,
+body.tesys-ui .col-kpi-value,
+body.tesys-ui .num,
+body.tesys-ui .table td.text-right,
+body.tesys-ui .table th.text-right {
+    font-variant-numeric: tabular-nums lining-nums;
+}
+body.tesys-ui .stat-val,
+body.tesys-ui .ts-kpi-value { font-size: 22px; font-weight: 600; letter-spacing: -.02em; }
+
+/* KPI — ukuran angka pada baris ringkasan (MN-10A).
+   22px dirancang untuk kartu lebar berisi angka pendek. Baris KPI kini memuat
+   sampai lima kartu berisi nominal rupiah penuh ("Rp 14.496.612.250"), dan di
+   ukuran itu angkanya tidak muat: sebelumnya ia terpotong diam-diam.
+
+   Diturunkan ke 18px dan mengecil mengikuti lebar layar. Angka tetap yang
+   paling besar di kartu, jadi hierarkinya tidak berubah — hanya berhenti
+   melebihi ruang yang tersedia. `.stat-val` sengaja TIDAK ikut diubah: itu
+   dipakai kartu lain yang isinya memang pendek. */
+body.tesys-ui .ts-kpi-value {
+    font-size: clamp(14px, 1.05vw + 7px, 18px);
+    letter-spacing: -.01em;
+}
+
+@media (max-width: 575.98px) {
+    /* Di ponsel kartu KPI berubah jadi baris (label kiri, angka kanan) —
+       strukturnya diatur di tesys-ui-components.css. Di sini ukurannya
+       dikecilkan supaya nominal terpanjang muat utuh dalam satu baris, tanpa
+       dipotong dan tanpa dipatah di tengah digit. */
+    body.tesys-ui .ts-kpi-value { font-size: 14px; letter-spacing: 0; }
+}
+
+
+/* --------------------------------------------- 6b. LABEL KAPITAL KECIL */
+/* Jarak huruf tipis (.06em), bukan lebar. Label data yang dilebarkan
+   seperti judul katalog justru menurunkan keterbacaannya pada 11px. */
+/* --text-faint (#8a8e92) hanya 3,4:1 di atas putih. Label kolom dan
+   label field adalah teks FUNGSIONAL, bukan hiasan, jadi keduanya
+   dialihkan ke --text-dim (5,6:1) walau spesifikasi menyebut "muted". */
+body.tesys-ui .table th,
+body.tesys-ui table.dataTable thead th {
+    text-transform: uppercase;
+    letter-spacing: var(--ls-micro);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim) !important;
+}
+body.tesys-ui .sidebar .nav-label,
+body.tesys-ui .stat-lbl,
+body.tesys-ui .user-pop-group-label,
+body.tesys-ui .ts-cmd-label {
+    text-transform: uppercase;
+    letter-spacing: var(--ls-micro);
+    font-size: 10.5px;
+    font-weight: 600;
+}
+
+
+/* ------------------------------------------------------- 6c. TABEL */
+/* Tabel adalah elemen kelas satu di TESYS. Rapat tapi terbaca: tinggi
+   baris dikembalikan ke ukuran kerja setelah sempat dilonggarkan untuk
+   "kesan lapang" — ruang kosong berlebih membuat halaman data terasa
+   kosong, bukan mahal. */
+body.tesys-ui .table th,
+body.tesys-ui table.dataTable thead th {
+    padding: 9px 12px !important;
+    background: var(--surface-2) !important;
+    border-bottom: 1px solid var(--border-strong) !important;
+}
+body.tesys-ui .table td { padding: 9px 12px !important; }
+
+/* Hover sebagai pemandu mata menyusuri satu baris — sangat tipis, tidak
+   berwarna. Baris zebra sengaja tidak dipakai: dua sinyal sekaligus
+   membuat tabel panjang terbaca ramai. */
+body.tesys-ui .table-hover tbody tr:hover,
+body.tesys-ui table.dataTable.hover tbody tr:hover,
+body.tesys-ui table.dataTable.display tbody tr:hover {
+    background-color: var(--surface-2);
+}
+
+/* Kepala tabel menempel saat digulir di daftar panjang. Latarnya harus
+   pekat — kalau tembus, baris data lewat di belakang judul kolom. */
+body.tesys-ui .table-sticky thead th,
+body.tesys-ui .dataTables_scrollHead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--surface-2) !important;
+}
+
+
+/* ------------------------------------------------ 6d. STATUS TERKENDALI */
+/* Kapsul berwarna penuh dan keping kapital berjarak lebar sama-sama
+   dilepas. Yang dipakai: latar tipis, warna teredam, satu titik penanda,
+   sudut 4px. Titiknya dipertahankan supaya status tetap terbaca oleh
+   pengguna yang tidak bisa membedakan warna. */
+body.tesys-ui .ts-status {
+    border-radius: 4px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 9px;
+    border-color: transparent;
+    box-shadow: none;
+}
+body.tesys-ui .ts-status-sm { padding: 3px 8px; font-size: 10.5px; }
+body.tesys-ui .ts-status-md { padding: 5px 11px; font-size: 11.5px; }
+body.tesys-ui .ts-status::before { width: 5px; height: 5px; }
+
+body.tesys-ui .badge {
+    border-radius: 4px !important;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 10.5px !important;
+    font-weight: 500 !important;
+    padding: 4px 9px !important;
+    border: none;
+}
+body.tesys-ui .badge-secondary,
+body.tesys-ui .badge-light { border: 1px solid var(--border); }
+
+
+/* ------------------------------------------------------- 6e. TOMBOL */
+/* Kontrol perangkat lunak bisnis: persegi panjang bersudut kecil, tanpa
+   bayangan warna, tanpa gerakan melompat. Perubahan keadaan dikerjakan
+   warna saja. */
+body.tesys-ui .btn,
+body.tesys-ui .ts-action-primary {
+    border-radius: var(--radius-sm);
+    letter-spacing: 0;
+    box-shadow: none;
+}
+body.tesys-ui .btn-primary,
+body.tesys-ui .btn-danger,
+body.tesys-ui .btn-success { box-shadow: none !important; }
+body.tesys-ui .ts-action-primary:hover,
+body.tesys-ui .btn:hover { transform: none; }
+
+/* Sekunder: putih bergaris, bukan abu berisi. Dua tombol berisi
+   bersebelahan membuat baris aksi berebut perhatian. */
+body.tesys-ui .btn-default,
+body.tesys-ui .btn-outline-secondary {
+    background: var(--surface);
+    border-color: var(--border-strong);
+    color: var(--text-dim);
+}
+body.tesys-ui .btn-default:hover,
+body.tesys-ui .btn-outline-secondary:hover {
+    background: var(--surface-2);
+    border-color: var(--text-faint);
+    color: var(--text);
+}
+
+
+/* -------------------------------------------------------- 6f. KARTU */
+/* Garis emas yang sempat dipasang di bawah setiap judul kartu dilepas:
+   spesifikasi melarang emas untuk setiap kartu atau judul, dan sesuatu
+   yang muncul di setiap blok berhenti terbaca sebagai aksen.
+
+   Emas kini hanya tersisa di satu tempat, yaitu garis di bawah blok
+   merek sidebar (bagian 1) — di bawah 5% dari permukaan, sesuai
+   keseimbangan warna yang diminta. */
+body.tesys-ui .card-header::after { content: none; }
+
+body.tesys-ui .card {
+    box-shadow: none !important;
+    border: 1px solid var(--border) !important;
+}
+body.tesys-ui .card-header { padding: 14px 18px !important; }
+body.tesys-ui .card-body { padding: 18px !important; }
+
+/* Kartu ringkasan tidak lagi terangkat saat disentuh — di antarmuka
+   perusahaan, elemen yang bergerak sendiri terbaca sebagai gangguan. */
+body.tesys-ui .stat-card:hover { transform: none; }
+
+
+/* ------------------------------------------------------- 6g. FORMULIR */
+/* Rapat tapi nyaman, dan dikelompokkan lewat judul seksi bergaris —
+   itu yang memberi rasa terstruktur pada formulir panjang. */
+body.tesys-ui .form-control,
+body.tesys-ui .custom-select { border-radius: var(--radius-sm) !important; }
+body.tesys-ui .form-group { margin-bottom: 14px; }
+body.tesys-ui .form-group label,
+body.tesys-ui .col-form-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-dim);
+    margin-bottom: 5px;
+}
+body.tesys-ui .form-text,
+body.tesys-ui small.form-text { font-size: 11px; color: var(--text-dim); }
+body.tesys-ui .form-section { color: var(--text-dim); }
+
+/* Judul seksi di dalam formulir panjang: kapital kecil + garis penuh.
+   Dipakai dengan <div class="form-section">JUDUL</div> di markup. */
+body.tesys-ui .form-section {
+    text-transform: uppercase;
+    letter-spacing: var(--ls-micro);
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--text-faint);
+    padding-bottom: 7px;
+    margin: 22px 0 14px;
+    border-bottom: 1px solid var(--border);
+}
+body.tesys-ui .form-section:first-child { margin-top: 0; }
+
+
+/* ------------------------------------------------------ 6h. BAYANGAN */
+/* Hanya yang benar-benar mengambang di atas halaman yang boleh punya
+   bayangan: modal, drawer, dropdown, popup. Sisanya dipisahkan garis. */
+body.tesys-ui .card,
+body.tesys-ui .small-box,
+body.tesys-ui .stat-card,
+body.tesys-ui .info-box { box-shadow: none !important; }
+
+
+/* ------------------------------------------------------ 6i. ANIMASI */
+/* 150-250ms, dan hanya untuk perpindahan keadaan. Gerakan yang
+   memindahkan posisi elemen (melompat, membesar) dilepas seluruhnya. */
+body.tesys-ui .sidebar .brand .brand-mark:hover { transform: none; }
+body.tesys-ui .stage-item:hover .stage-num { transform: none; }
+body.tesys-ui .app-switch-item:hover { transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+    body.tesys-ui * { animation-duration: .001s !important; transition-duration: .001s !important; }
+}
+
+
+/* ------------------------------------------- 6i2. PENGALIH TEMA */
+/* Hanya satu ikon yang tampil, ditentukan oleh tema yang sedang aktif.
+   Keduanya ditulis di markup supaya pergantiannya tidak perlu menyentuh
+   DOM — CSS yang memilih, JS cukup menukar satu atribut. */
+body.tesys-ui #themeToggle .ic-to-dark,
+body.tesys-ui #themeToggle .ic-to-light { display: none; }
+html[data-theme="light"] body.tesys-ui #themeToggle .ic-to-dark { display: inline-block; }
+html[data-theme="dark"] body.tesys-ui #themeToggle .ic-to-light { display: inline-block; }
+
+/* =====================================================================
+   6i3. PERMUKAAN PIHAK KETIGA YANG DICAT PUTIH
+   ---------------------------------------------------------------------
+   Sebagian besar aplikasi sudah membaca warnanya dari token, jadi tema
+   gelap berlaku otomatis. Tapi Bootstrap, AdminLTE, dan beberapa plugin
+   menanam #fff langsung pada permukaan mengambangnya — modal, dropdown,
+   popover, kalender, kotak pesan. Di tema terang itu tidak kelihatan
+   karena --surface memang putih; di tema gelap, permukaan-permukaan itu
+   tertinggal sebagai bercak putih di tengah halaman gelap.
+
+   Yang paling berbahaya .modal-content: teksnya SUDAH ikut token dan jadi
+   nyaris putih, sementara latarnya tetap putih — isinya hilang sama
+   sekali, bukan sekadar terlihat asing.
+
+   Diarahkan ke token, bukan ke warna gelap tertentu. Di tema terang
+   nilainya persis sama dengan sebelumnya (--surface = #FFFFFF), jadi
+   blok ini tidak mengubah apa pun sampai temanya diganti.
+   ===================================================================== */
+body.tesys-ui .modal-content,
+body.tesys-ui .dropdown-menu,
+body.tesys-ui .popover,
+body.tesys-ui .popover-body,
+body.tesys-ui .list-group-item,
+body.tesys-ui .page-link,
+body.tesys-ui .custom-select,
+body.tesys-ui .flatpickr-calendar,
+body.tesys-ui .ts-dropdown,
+body.tesys-ui .ts-control,
+body.tesys-ui .select2-dropdown,
+body.tesys-ui .select2-container--default .select2-selection--single,
+body.tesys-ui .swal2-popup {
+    background-color: var(--surface);
+    color: var(--text);
+}
+
+body.tesys-ui .dropdown-menu,
+body.tesys-ui .popover,
+body.tesys-ui .list-group-item,
+body.tesys-ui .page-link,
+body.tesys-ui .custom-select,
+body.tesys-ui .flatpickr-calendar,
+body.tesys-ui .ts-dropdown,
+body.tesys-ui .ts-control,
+body.tesys-ui .select2-dropdown {
+    border-color: var(--border);
+}
+
+/* Isi menu & daftar ikut nada teks tema. */
+body.tesys-ui .dropdown-item,
+body.tesys-ui .ts-dropdown .option,
+body.tesys-ui .select2-results__option { color: var(--text-dim); }
+body.tesys-ui .dropdown-item:hover,
+body.tesys-ui .dropdown-item:focus,
+body.tesys-ui .ts-dropdown .option.active,
+body.tesys-ui .select2-results__option--highlighted {
+    background: var(--surface-2);
+    color: var(--text);
+}
+body.tesys-ui .dropdown-divider { border-top-color: var(--border); }
+
+/* Kalender flatpickr menanam beberapa warna terang sendiri. */
+body.tesys-ui .flatpickr-months,
+body.tesys-ui .flatpickr-weekdays,
+body.tesys-ui .flatpickr-weekday { background: var(--surface) !important; color: var(--text-dim) !important; }
+body.tesys-ui .flatpickr-day { color: var(--text); }
+body.tesys-ui .flatpickr-day.flatpickr-disabled { color: var(--text-faint); }
+body.tesys-ui .flatpickr-current-month input.cur-year,
+body.tesys-ui .flatpickr-monthDropdown-months { color: var(--text); }
+
+/* Kotak pesan SweetAlert. */
+body.tesys-ui .swal2-html-container,
+body.tesys-ui .swal2-content { color: var(--text-dim); }
+
+/* ------------------------------------------- 6i4. BADGE GELAP */
+/* .badge-dark ditulis sebagai "latar --darkbadge + teks putih". Di tema
+   terang --darkbadge abu gelap, jadi putih di atasnya terbaca (7,4:1).
+   Di tema gelap nilainya harus terang supaya bisa jadi TEKS — dan putih
+   di atas abu terang tinggal 2,2:1.
+
+   Perannya dibalik khusus di tema gelap: latar memakai nada gelapnya,
+   teks memakai nada terangnya. Pola yang sama dengan badge semantik
+   lain, jadi seluruh keluarga badge jadi konsisten. */
+html[data-theme="dark"] body.tesys-ui .badge-dark,
+html[data-theme="dark"] body.tesys-ui .badge-secondary {
+    background: var(--darkbadge-bg) !important;
+    color: var(--darkbadge) !important;
+}
+
+/* ------------------------------------------- 6i5. ITEM POPUP AKUN */
+/* "Profile Saya" adalah <a>, jadi ia mewarisi warna tautan global
+   (burgundy). Di dalam menu akun itu salah: ia satu daftar dengan
+   "Tema Gelap" dan "Logout", dan hanya Logout yang boleh berwarna —
+   karena hanya Logout yang keluar dari aplikasi. */
+body.tesys-ui .user-pop a.user-pop-item,
+body.tesys-ui .user-pop a.user-pop-item:hover { color: var(--text); }
+body.tesys-ui .user-pop .user-pop-item.danger { color: var(--danger); }
+
+/* ------------------------------------------- 6i6. UTILITAS BOOTSTRAP
+   .text-dark, .bg-white, .bg-light dan kawan-kawan menulis warna LIGHT
+   MODE dengan !important. Selama hanya ada satu tema, itu tidak pernah
+   jadi masalah. Begitu ada tema kedua, ia jadi satu-satunya kelompok
+   aturan yang tidak bisa dikalahkan tema — dan ia tersebar di 150+ tempat
+   di dalam blade, jadi menyuntingnya satu per satu bukan pilihan.
+
+   Diarahkan ke token di sini. Di tema terang nilainya nyaris sama dengan
+   nilai Bootstrap (--surface = #FFFFFF, --surface-2 = #F0F1EF vs #F8F9FA),
+   jadi blok ini praktis tidak mengubah apa pun sampai temanya diganti.
+
+   .badge-light & .btn-light tidak ada di sini — keduanya sudah dipetakan
+   lebih dulu di tesys-ui-compat.css. */
+body.tesys-ui .text-dark  { color: var(--text) !important; }
+body.tesys-ui .text-black { color: var(--text) !important; }
+/* AdminLTE tidak hanya menyetel LATAR pada kedua kelas ini, tapi juga
+   TEKS-nya (#1F2D3D) — termasuk untuk anak <a> di dalamnya. Menimpa
+   latarnya saja menghasilkan tinta gelap di atas permukaan gelap: 1,1:1,
+   praktis tak terbaca. Keduanya harus ditimpa berpasangan. */
+body.tesys-ui .bg-white,
+body.tesys-ui .bg-white > a   { background-color: var(--surface) !important; color: var(--text) !important; }
+body.tesys-ui .bg-light,
+body.tesys-ui .bg-light > a   { background-color: var(--surface-2) !important; color: var(--text) !important; }
+
+/* .text-muted milik Bootstrap juga menulis #6c757d !important. */
+body.tesys-ui .text-muted { color: var(--text-faint) !important; }
+
+/* ------------------------------------------- 6j. SUDUT YANG TERTINGGAL */
+/* Komponen yang menyimpan radius sendiri di luar token, disamakan supaya
+   tidak ada satu pun sudut 10-12px tersisa di antara elemen 6-8px. */
+body.tesys-ui .stat-ic,
+body.tesys-ui .toast-ic,
+body.tesys-ui .app-switch-item,
+body.tesys-ui .app-switch-item .asi-ic,
+body.tesys-ui .dataTables_wrapper .pagination .page-link,
+body.tesys-ui .user-pop-item,
+body.tesys-ui .sidebar .nav-item { border-radius: var(--radius-sm) !important; }
+
+body.tesys-ui .user-pop-role { border-radius: 4px; letter-spacing: var(--ls-micro); }
+
+
+/* =====================================================================
+   7. JAM WIB DI KAKI SIDEBAR
+   Satu acuan waktu untuk seluruh perusahaan. Ditaruh paling bawah dan
+   dibuat flex:none supaya tetap menempel di kaki walau daftar menunya
+   panjang dan ikut tergulir.
+
+   Tampilannya sengaja pudar: ia informasi latar, bukan navigasi. Kalau
+   kontrasnya disamakan dengan menu, ia akan ikut diperebutkan mata tiap
+   kali orang mencari modul.
+   ===================================================================== */
+body.tesys-ui .sidebar-clock {
+    flex: none;
+    padding: 12px 18px 14px;
+    border-top: 1px solid var(--chrome-border);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    user-select: none;
+}
+body.tesys-ui .sidebar-clock .sc-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+body.tesys-ui .sidebar-clock .sc-time {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--chrome-text);
+    /* Lebar angka tetap: tanpa ini, "11:11" dan "20:48" punya lebar
+       berbeda dan jamnya terlihat bergeser tiap menit. */
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .01em;
+}
+body.tesys-ui .sidebar-clock .sc-wib {
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: var(--ls-micro);
+    color: var(--accent-on-chrome);
+}
+/* Tanggal. Satu anak tangga di bawah jam dan satu di atas zona: ia
+   informasi yang dibaca sekali saat membuka aplikasi, bukan angka yang
+   dipantau. Warnanya sengaja lebih terang dari zona supaya urutan
+   bacanya jam -> tanggal -> zona, bukan tiga baris yang sama beratnya. */
+body.tesys-ui .sidebar-clock .sc-date {
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: .01em;
+    color: var(--chrome-text);
+    opacity: .78;
+}
+body.tesys-ui .sidebar-clock .sc-zone {
+    font-size: 10px;
+    letter-spacing: .02em;
+    color: var(--chrome-dim);
+}
+
+/* Mode rail: sidebar menyempit jadi ikon saja, metadata zona dilepas. */
+body.tesys-ui.sidebar-rail .sidebar-clock { padding: 10px 0 12px; align-items: center; }
+body.tesys-ui.sidebar-rail .sidebar-clock .sc-zone,
+body.tesys-ui.sidebar-rail .sidebar-clock .sc-date,
+body.tesys-ui.sidebar-rail .sidebar-clock .sc-wib { display: none; }
+body.tesys-ui.sidebar-rail .sidebar-clock .sc-time { font-size: 13px; }
+
+
+/* =====================================================================
+   8. KOLOM AKSI TABEL
+   Satu aksi utama + satu tombol "lainnya", keduanya kotak berukuran
+   sama. Sebelumnya aksi utama memakai label teks, sehingga lebar kolom
+   Aksi ikut berubah mengikuti panjang kata: "Verify" dan "Tambah Cost
+   Register" menghasilkan kolom yang berbeda lebar di tiap halaman, dan
+   tombolnya tidak pernah segaris antar baris.
+
+   Ukuran 36x36 dipakai seragam — cukup besar untuk sasaran sentuh di
+   tablet, cukup rapat untuk tabel padat.
+   ===================================================================== */
+/* Kisi dua slot dengan lebar TETAP, bukan flex yang menyesuaikan isi.
+
+   Sebelumnya .ts-actions memakai inline-flex dan dirata-tengah oleh sel
+   tabelnya. Akibatnya baris yang punya dua tombol (aksi utama + titik
+   tiga) dan baris yang cuma punya satu tombol dirata-tengah pada lebar
+   yang berbeda — tombol utamanya jadi bergeser beberapa piksel dari baris
+   ke baris. Di daftar Purchase Order yang statusnya campur-campur, kolom
+   Action-nya terbaca seperti tombol yang ditabur, bukan satu kolom.
+
+   Dengan kisi 36px + 36px, slot pertama selalu aksi utama dan slot kedua
+   selalu titik tiga. Baris yang tidak punya aksi lain menyisakan slot
+   kedua kosong — dan justru karena dibiarkan kosong, semua tombol utama
+   berdiri di satu garis tegak lurus.
+
+   Menu .ts-action-menu tidak ikut jadi anak kisi: saat tertutup ia
+   hidden (display:none), dan saat terbuka ia dipindah ke <body> oleh
+   tesys-row-actions.js. */
+body.tesys-ui .ts-actions {
+    display: inline-grid;
+    grid-template-columns: 36px 36px;
+    /* Kalau suatu baris ternyata memunculkan lebih dari dua kendali,
+       slot tambahannya melebar ke KANAN, bukan turun ke baris kedua.
+       Tanpa ini satu baris istimewa akan menaikkan tinggi seluruh
+       barisnya dan merusak kepadatan tabel. */
+    grid-auto-flow: column;
+    grid-auto-columns: 36px;
+    gap: 6px;
+    align-items: center;
+    justify-items: center;
+}
+
+/* Form pembungkus (Submit, Approve, Hapus) bukan tombol — ia hanya
+   perantara. Supaya ia menempati slot dengan ukuran yang sama persis
+   seperti tombol telanjang, ukurannya disamakan di sini. */
+body.tesys-ui .ts-actions > form {
+    display: contents;
+}
+
+body.tesys-ui .ts-actions .ts-action-primary,
+body.tesys-ui .ts-actions .ts-action-more {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    padding: 0;
+    border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+}
+body.tesys-ui .ts-actions .ts-action-primary i,
+body.tesys-ui .ts-actions .ts-action-more i { font-size: 13px; line-height: 1; }
+
+/* Jaring pengaman. Slot aksi lebarnya 36px, tapi lebar kotak TIDAK
+   memotong isinya: tombol yang labelnya lupa dibungkus <span class="ts-al">
+   tetap 36px sementara tulisannya meluber keluar dan menabrak tombol
+   sebelahnya — persis yang terjadi pada tombol Submit BAST di daftar
+   Purchase Order.
+
+   Labelnya sendiri sudah dibungkus di markup; ini lapis kedua supaya
+   tombol baru yang lupa dibungkus cuma jadi ikon yang rapi, bukan
+   merusak seluruh kolom Aksi. */
+body.tesys-ui .ts-actions .ts-action-primary,
+body.tesys-ui .ts-actions .ts-action-more {
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+/* Label tetap ada di DOM untuk pembaca layar, hanya disembunyikan dari
+   mata. clip-path + ukuran 1px adalah pola "visually hidden" yang tidak
+   dilewati pembaca layar — berbeda dari display:none yang menghapusnya
+   dari pohon aksesibilitas sama sekali. */
+body.tesys-ui .ts-actions .ts-action-primary .ts-al {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Di luar kolom aksi tabel, label tampil seperti biasa. */
+body.tesys-ui .ts-action-primary .ts-al { margin-left: 0; }
+
+/* ---------------------------------------------------------------------
+   8b. TOMBOL IKON DI DALAM SEL TABEL (di luar kolom aksi utama)
+
+   Kolom aksi utama sudah seragam lewat .ts-actions, tapi di seluruh
+   aplikasi masih tersebar tombol ikon lepas di dalam sel tabel: tautan
+   lampiran, "lihat invoice", "buka budget", hapus baris rincian di form.
+   Tiap halaman menulisnya dengan ukuran sendiri — .btn-sm di satu tempat,
+   .btn-xs di tempat lain, sebagian ditambah .mb-1 — sehingga di layar
+   tombol yang artinya sama punya tinggi berbeda, dan dua tombol
+   bersebelahan menempel tanpa jarak.
+
+   Menyunting empat puluhan tempat itu satu per satu berarti masalah yang
+   sama akan lahir lagi di halaman berikutnya. Jadi yang diseragamkan
+   ATURANNYA, bukan markup-nya: setiap .btn di dalam sel tabel yang isinya
+   HANYA satu ikon dijadikan kotak berukuran tetap.
+
+   Ukurannya 30x30, bukan 36x36 seperti kolom aksi utama. Tabel rincian di
+   dalam modal dan daftar lampiran jauh lebih padat daripada tabel utama;
+   memaksakan 36 di sana membuat tinggi barisnya melar dan justru merusak
+   kepadatan yang jadi alasan tabel ini ada. Dua ukuran untuk dua tingkat
+   kepadatan — yang penting SATU ukuran di dalam tiap tingkat.
+
+   Penandanya dipasang oleh tesys-icon-buttons.js, bukan oleh selector
+   CSS. :has(> i:only-child) sempat dipakai dan SALAH: :only-child cuma
+   menghitung elemen, jadi tombol "[ikon] Detail" — yang teksnya telanjang
+   di sebelah ikon — ikut tertangkap dan labelnya terpotong jadi kotak
+   30px. Pemeriksaan "benar-benar tidak ada teks" hanya bisa dilakukan di
+   JavaScript. */
+body.tesys-ui .table td .btn.ts-icon-only {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    padding: 0;
+    border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    line-height: 1;
+    vertical-align: middle;
+}
+body.tesys-ui .table td .btn.ts-icon-only > i,
+body.tesys-ui .table td .btn.ts-icon-only > svg {
+    font-size: 12px;
+    margin: 0;
+}
+
+/* Jarak antar tombol yang bersebelahan di dalam sel. Sebelumnya tombol
+   hanya dipisahkan oleh spasi antar-tag di HTML, yang hilang begitu
+   markup-nya dirapikan — hasilnya tombol saling menempel dan terbaca
+   sebagai satu blok. Ditulis sebagai margin, bukan gap, karena sel-sel
+   ini bukan flex container dan menjadikannya flex akan mengubah
+   perataan isi sel di banyak halaman sekaligus. */
+body.tesys-ui .table td .btn + .btn,
+body.tesys-ui .table td .btn + form,
+body.tesys-ui .table td form + .btn,
+body.tesys-ui .table td form + form { margin-left: 6px; }
+
+/* Daftar lampiran memakai .mb-1 supaya tidak menempel saat membungkus
+   ke baris berikutnya; jaraknya diseragamkan dengan jarak mendatar. */
+body.tesys-ui .table td .btn.mb-1 { margin-bottom: 4px; }
+
+/* Sel kolom aksi: isinya dirapatkan ke tengah dengan jarak tetap, jadi
+   halaman yang belum memakai pembungkus .ts-actions pun tetap terbaca
+   sebagai satu kelompok kendali, bukan tombol-tombol yang mengambang. */
+body.tesys-ui .table td.action-column,
+body.tesys-ui .table td.text-center.text-nowrap { white-space: nowrap; }
+
+
+/* ---------------------------------------------------------------------
+   8c. KENDALI BUKA/TUTUP GRUP DI DALAM TABEL
+
+   "Expand CR" / "Collapse CR" bukan aksi baris — ia kendali pengungkap,
+   dan labelnya memang harus berupa kata: ikon panah sendirian tidak
+   menjelaskan APA yang dibentangkan. Jadi ia sengaja TIDAK diseragamkan
+   jadi kotak ikon 36px.
+
+   Yang diperbaiki ukurannya. Blade merakitnya di dalam string JavaScript
+   dengan font-size:9px — di bawah ambang 10,5px yang dipakai keterangan
+   terkecil di aplikasi ini, dan pada layar 1080p itu sudah masuk wilayah
+   "kelihatan tapi tidak terbaca". Diatur dari sini supaya tidak perlu
+   menyunting string JS di tiga berkas. */
+body.tesys-ui .bp-cr-expand-all,
+body.tesys-ui .bp-cr-collapse-all {
+    font-size: 10.5px !important;
+    padding: 2px 9px !important;
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    letter-spacing: .01em;
+}
+
+/* Tingkatan warna menurut bobot aksi, bukan semuanya merah:
+     - aksi alur kerja utama (Approve/Verify/Submit) -> burgundy merek
+     - aksi netral (Lihat/Revisi)                    -> bergaris
+     - aksi merusak                                  -> merah bahaya  */
+body.tesys-ui .ts-actions .ts-action-primary.is-neutral {
+    background: var(--surface);
+    border-color: var(--border-strong);
+    color: var(--text-dim);
+}
+body.tesys-ui .ts-actions .ts-action-primary.is-neutral:hover {
+    background: var(--surface-2);
+    border-color: var(--text-faint);
+    color: var(--text);
+}
+body.tesys-ui .ts-actions .ts-action-primary.is-danger {
+    background: var(--surface);
+    border-color: var(--danger);
+    color: var(--danger);
+}
+body.tesys-ui .ts-actions .ts-action-primary.is-danger:hover {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: #fff;
+}
+
+/* Tombol "lainnya" harus terbaca sekunder terhadap aksi utamanya. */
+body.tesys-ui .ts-actions .ts-action-more {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text-faint);
+}
+body.tesys-ui .ts-actions .ts-action-more:hover {
+    background: var(--surface-2);
+    border-color: var(--border-strong);
+    color: var(--text-dim);
+}
+
+/* Kolom Aksi tidak lagi perlu melebar mengikuti isi. */
+body.tesys-ui .table th:last-child,
+body.tesys-ui .table td:last-child { white-space: nowrap; }
+
+
+/* =====================================================================
+   9. UKURAN MODAL
+   Modal layar penuh membuat konteks halaman di belakangnya hilang sama
+   sekali; untuk detail satu dokumen itu berlebihan. Lebar dibatasi dan
+   modal tetap di tengah, sehingga tepi halaman masih terlihat dan orang
+   tahu ia sedang "membuka sesuatu di atas daftar", bukan berpindah
+   halaman.
+   ===================================================================== */
+body.tesys-ui .modal-dialog { max-width: 800px; }                 /* sedang    */
+body.tesys-ui .modal-dialog.modal-lg { max-width: 1150px; }       /* besar     */
+body.tesys-ui .modal-dialog.modal-xl { max-width: 1350px; }       /* sangat bs */
+body.tesys-ui .modal-dialog.modal-sm { max-width: 460px; }
+
+/* Kelas layar penuh yang masih dipakai markup lama dijinakkan jadi
+   "sangat besar" — tetap lapang, tapi tidak lagi menempel ke tepi. */
+body.tesys-ui .modal-dialog.modal-fullscreen,
+body.tesys-ui .modal-dialog.modal-full,
+body.tesys-ui .modal-dialog.modal-fullwidth {
+    max-width: min(1350px, calc(100vw - 48px)) !important;
+    width: auto !important;
+    height: auto !important;
+    margin: 1.75rem auto !important;
+}
+
+/* Modal detail "xxl" (Budget Plan, Cost Request, Daily Transaction) masih
+   memesan tinggi setinggi layar lewat <style> di halamannya masing-masing.
+   Lebarnya sudah terkunci 1350px oleh aturan .modal-xl di atas, tapi tinggi
+   penuh membuatnya tetap terbaca sebagai layar penuh: tidak ada satu pun
+   tepi halaman yang tersisa, jadi orang kehilangan rasa "ini terbuka DI ATAS
+   daftar".
+
+   Tingginya dipangkas ke 860px, dan tetap mengecil sendiri di layar pendek.
+   Angkanya masih memberi ruang untuk panel ringkas gelap beserta empat tab
+   di sebelahnya tanpa menggulir, yang memang alasan modal ini dibuat besar.
+
+   Ditulis sebagai TINGGI PASTI, bukan max-height: panel gelap di kiri
+   mewarisi tinggi lewat rantai height:100%, dan rantai itu putus kalau
+   induknya hanya punya batas atas. Dimuat paling akhir, jadi menang atas
+   .modal-dialog-xxl di halaman tanpa perlu !important. */
+body.tesys-ui .modal-dialog.modal-dialog-xxl {
+    width: auto;
+    height: min(860px, calc(100vh - 64px));
+    margin: 1.75rem auto;
+}
+body.tesys-ui .modal-dialog.modal-dialog-xxl .modal-content {
+    height: min(860px, calc(100vh - 64px));
+    max-height: min(860px, calc(100vh - 64px));
+}
+
+/* =====================================================================
+   9b. SATU PERMUKAAN MODAL
+   ---------------------------------------------------------------------
+   Sebelumnya hampir setiap modal di aplikasi ini dibangun bertingkat:
+   pita header GELAP dengan garis merah 3px di bawahnya, lalu isi terang,
+   lalu pita footer PUTIH dengan garis di atasnya. Tiga lapis itu membuat
+   satu dialog kecil — "Hapus Source Fund?" — terbaca seperti jendela
+   aplikasi tersendiri lengkap dengan kop surat dan kaki halaman.
+
+   Yang dituju sekarang: modal adalah SATU lembar. Judul duduk di atas
+   isinya, tombol duduk di bawah isinya, dan tidak ada satu pun garis
+   pemisah mendatar yang memotong lembar itu jadi beberapa pita.
+
+   Ditulis dengan !important karena warna pita itu ditanam sebagai atribut
+   style= langsung di puluhan blade (background:var(--charcoal);
+   border-bottom:3px solid var(--accent)). Menyunting semuanya satu per
+   satu berarti masalah yang sama lahir lagi di modal berikutnya; yang
+   diperbaiki aturannya, bukan tiap salinannya.
+
+   Panel ringkas gelap di modal DETAIL tidak ikut terpengaruh — itu kolom
+   di dalam isi (.dm-side / kolom kiri), bukan pita header.
+   ===================================================================== */
+body.tesys-ui .modal-content {
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, .12);
+    overflow: hidden;
+}
+
+body.tesys-ui .modal-header {
+    background: var(--surface) !important;
+    border-bottom: none !important;
+    padding: 20px 22px 6px !important;
+    align-items: flex-start;
+    position: relative;
+}
+
+/* Judul yang tadinya putih di atas pita gelap kini duduk di atas kertas
+   terang — warnanya harus ikut berbalik, termasuk yang memakai utilitas
+   .text-white dari Bootstrap. */
+body.tesys-ui .modal-header .modal-title,
+body.tesys-ui .modal-header .modal-title.text-white,
+body.tesys-ui .modal-header .text-white {
+    color: var(--text) !important;
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -.005em;
+}
+
+/* Keterangan kecil di bawah judul (mis. kode dokumen) ikut dibalik. */
+body.tesys-ui .modal-header small,
+body.tesys-ui .modal-header .modal-title + small { color: var(--text-dim) !important; }
+
+/* Tombol tutup: dijadikan tombol ikon 28px yang menempel di pojok kanan
+   atas LEMBARNYA, bukan penghuni sebuah pita header. Karena diposisikan
+   absolut, ia tidak lagi ikut menentukan tinggi baris judul — jadi modal
+   yang judulnya kosong pun tidak menyisakan pita setinggi tombol. */
+body.tesys-ui .modal-content > .modal-header .close,
+body.tesys-ui .modal-content > form > .modal-header .close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    margin: 0;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    font-size: 19px;
+    line-height: 1;
+    color: var(--text-faint) !important;
+    text-shadow: none;
+    /* !important karena modal detail menanam opacity:0.7 lewat style= —
+       nilai itu dipilih dulu supaya silang putih di atas pita gelap tidak
+       terlalu menyala. Pitanya sudah tidak ada, jadi peredupan itu kini
+       hanya membuat tombolnya terbaca setengah mati. */
+    opacity: 1 !important;
+    transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+body.tesys-ui .modal-content > .modal-header .close:hover,
+body.tesys-ui .modal-content > form > .modal-header .close:hover {
+    background: var(--surface-2);
+    color: var(--text) !important;
+}
+
+body.tesys-ui .modal-body:not(.dm-body) { padding: 14px 22px 18px !important; }
+
+/* Modal detail justru TIDAK boleh punya padding di body-nya: panel gelap
+   di kiri harus menyentuh tepi modal, atas sampai bawah. Blade-nya sudah
+   menulis padding:0 inline, tapi aturan !important di atas menang atas
+   atribut style= — jadi pengecualiannya harus dinyatakan di sini, bukan
+   diserahkan ke inline style. */
+body.tesys-ui .modal-body.dm-body { padding: 0 !important; }
+
+/* Panel gelap harus mencapai DASAR modal, bukan berhenti setinggi isinya.
+
+   Rantainya: modal-content punya tinggi pasti -> modal-body meregang
+   mengisi sisanya -> pembungkus isi meregang mengisi modal-body -> baris
+   dua kolom meregang mengisi pembungkus. Kalau satu mata rantai saja
+   hanya setinggi isi, panel gelapnya berhenti di tengah dan menyisakan
+   kertas putih di bawahnya — persis yang membuatnya terbaca sebagai kartu
+   mengambang, bukan sebagai kolom. */
+body.tesys-ui .modal-body.dm-body {
+    display: flex;
+    flex-direction: column;
+}
+body.tesys-ui .modal-body.dm-body > * {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+body.tesys-ui .modal-body.dm-body .cr-modal-flex,
+body.tesys-ui .modal-body.dm-body .bp-modal-flex,
+body.tesys-ui .modal-body.dm-body .prj-modal-flex,
+body.tesys-ui .modal-body.dm-body > .row,
+body.tesys-ui .modal-body.dm-body > div > .row {
+    /* height DAN min-height. min-height saja tidak cukup: kalau tinggi
+       kotak flex ditentukan oleh min-height sementara tingginya sendiri
+       masih auto, baris flex di dalamnya diukur dari isi — jadi item yang
+       di-stretch berhenti setinggi isi, bukan setinggi kotaknya. Itu yang
+       menyisakan celah putih di bawah panel gelap. */
+    height: 100%;
+    min-height: 100%;
+}
+
+/* Panel gelap mengisi tinggi barisnya apa pun isinya. */
+body.tesys-ui .modal-body.dm-body .cr-sidebar,
+body.tesys-ui .modal-body.dm-body .bp-sidebar,
+body.tesys-ui .modal-body.dm-body .prj-sidebar,
+body.tesys-ui .modal-body.dm-body .dm-side {
+    align-self: stretch;
+    height: auto;
+    min-height: 100%;
+}
+
+/* Sisi kanan yang menggulung sendiri, bukan seluruh modal — supaya kepala
+   dokumen di panel kiri tetap terlihat saat tabel panjang digulir. */
+body.tesys-ui .modal-body.dm-body .cr-main-panel,
+body.tesys-ui .modal-body.dm-body .bp-main-panel,
+body.tesys-ui .modal-body.dm-body .prj-main-panel {
+    overflow-y: auto;
+    max-height: 100%;
+}
+
+/* Kaki modal: tanpa garis, tanpa latar sendiri. Tombolnya tetap rata
+   kanan, tapi sekarang terbaca sebagai akhir dari isi — bukan sebagai
+   baki abu-abu yang ditempelkan di bawah. */
+body.tesys-ui .modal-footer {
+    background: transparent !important;
+    border-top: none !important;
+    padding: 4px 22px 20px !important;
+    gap: 8px;
+}
+body.tesys-ui .modal-footer > * { margin: 0 !important; }
+
+/* Ikon merek kecil di sebelah judul dibiarkan burgundy — satu tanda
+   sekecil itu tidak membuat merah mendominasi, dan ia yang memberi tahu
+   modal ini milik modul apa. */
+body.tesys-ui .modal-header .modal-title i { color: var(--accent) !important; }
+
+
+/* Selubung latar tidak perlu pekat: modal sudah punya tepi dan bayangan
+   sendiri, dan selubung gelap membuat halaman di belakangnya terasa
+   dimatikan, bukan ditunda. */
+body.tesys-ui .modal-backdrop.show { opacity: .38; }
+
+/* Bayangan modal kini ditetapkan sekali di bagian 9b (satu permukaan
+   modal) dengan nilai 0 12px 40px rgba(0,0,0,.12). Aturan lama di
+   baris ini memakai --shadow-lg dan, karena letaknya lebih bawah,
+   diam-diam membatalkan nilai itu. Dihapus, bukan ditimpa lagi. */
+
+
+/* =====================================================================
+   10. PANEL RINGKAS GELAP DI MODAL DETAIL
+   Pola rujukan: ringkasan gelap di kiri, informasi terang di kanan.
+   Kelas .dm-side sudah ada di tesys-ui.css; di sini hanya diselaraskan
+   dengan sistem yang baru (warna charcoal dari token, sudut mengikuti
+   modal, tab garis bawah alih-alih tombol berisi).
+   ===================================================================== */
+body.tesys-ui .dm-side {
+    background: var(--charcoal);
+    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+body.tesys-ui .dm-side .dm-code {
+    font-family: var(--font-display);
+    letter-spacing: .01em;
+}
+
+/* Label di dalam panel ringkas gelap. Blade menulisnya dengan
+   color:var(--text-faint) — nada yang dipilih untuk keterangan di atas
+   KERTAS PUTIH. Di atas charcoal #35353D nada itu cuma 2,6:1: terbaca
+   sebagai abu-abu yang hilang, bukan sebagai label.
+
+   Panel ini justru tempat angka terpenting dokumen berada (nilai kontrak,
+   total realisasi, sisa), jadi labelnya harus terbaca. Dinaikkan ke nada
+   terang dengan opacity, bukan diganti warna satu per satu di tiap blade:
+   satu aturan menutup keempat modal detail yang memakai pola ini. */
+body.tesys-ui .bp-sidebar [style*="--text-faint"],
+body.tesys-ui .cr-sidebar [style*="--text-faint"],
+body.tesys-ui .prj-sidebar [style*="--text-faint"],
+body.tesys-ui .dm-side [style*="--text-faint"],
+body.tesys-ui .modal-body [style*="var(--charcoal)"] [style*="--text-faint"] {
+    color: rgba(255, 255, 255, .62) !important;
+}
+
+/* Nada angka di panel gelap: KUNING LEMBUT.
+   Teksnya sendiri (judul, kode, tipe, nama penerima, pemohon) tetap
+   putih — itu keterangan, bukan nilai. Yang dikuningkan hanya NOMINAL,
+   supaya mata langsung menemukan angka di antara baris keterangan.
+
+   Caranya lewat token yang ditulis ulang di dalam lingkup panel, bukan
+   menimpa satu per satu style sebaris di tiap blade: nilai seperti
+   `color:var(--accent)` di Blade — yang hanya dipakai pada baris nominal —
+   otomatis ikut nada ini. */
+body.tesys-ui .bp-sidebar,
+body.tesys-ui .cr-sidebar,
+body.tesys-ui .prj-sidebar,
+body.tesys-ui .dm-side {
+    --accent: #F3DCA0;      /* nominal biasa (Total Request/Settlement) */
+    --success: #F3DCA0;     /* idem — hijau disimpan untuk surplus saja */
+    --dm-pos: #3DDC84;      /* surplus  */
+    --dm-neg: #FF5F5F;      /* minus / kurang bayar */
+}
+
+/* Nominal hasil hitungan (selisih, sisa, refund, kurang bayar). Hanya
+   baris inilah yang boleh merah/hijau: merah terang kalau minus, hijau
+   kalau surplus, dan kuning lembut kalau nol — supaya "0" tidak terbaca
+   sebagai peringatan. */
+body.tesys-ui .dm-side .dm-calc-neg { color: var(--dm-neg) !important; }
+body.tesys-ui .dm-side .dm-calc-pos { color: var(--dm-pos) !important; }
+body.tesys-ui .dm-side .dm-calc-zero { color: #F3DCA0 !important; }
+
+/* Garis pemisah di dalam panel gelap: setipis mungkin, hanya cukup untuk
+   memisah blok. */
+body.tesys-ui .bp-sidebar hr,
+body.tesys-ui .cr-sidebar hr,
+body.tesys-ui .prj-sidebar hr,
+body.tesys-ui .dm-side hr { border-color: rgba(255, 255, 255, .10) !important; }
+
+/* Lingkaran ikon di kepala panel ringkas: cincin merah 3px terbaca
+   sebagai hiasan, bukan sebagai penanda. Ditipiskan jadi garis rambut. */
+body.tesys-ui .bp-sidebar [style*="border-radius:50%"],
+body.tesys-ui .cr-sidebar [style*="border-radius:50%"],
+body.tesys-ui .prj-sidebar [style*="border-radius:50%"],
+body.tesys-ui .dm-side [style*="border-radius:50%"] {
+    border-width: 1px !important;
+    border-color: rgba(255, 255, 255, .18) !important;
+}
+
+/* ---------------------------------------------------------------------
+   10b. KEPALA PANEL RINGKAS (kode + judul + tutup)
+
+   Sebelumnya modal detail punya TIGA lapis mendatar: pita header gelap,
+   isi, lalu pita footer berisi satu tombol Close. Panel ringkas gelapnya
+   sendiri cuma kotak yang mengambang di tengah lapisan isi — tidak
+   menyentuh tepi atas maupun bawah modal.
+
+   Sekarang panel gelap itulah yang memegang identitas dokumen: kode,
+   judul, status, ringkasan angka, dan aksi utamanya. Ia membentang dari
+   tepi atas sampai tepi bawah modal, dan ruang kerja terang di kanannya
+   berisi tab beserta isinya. Dua kolom, bukan lima pita.
+   --------------------------------------------------------------------- */
+body.tesys-ui .dm-head {
+    position: relative;
+    padding-right: 34px;      /* ruang untuk tombol tutup */
+    margin-bottom: 20px;
+}
+
+/* Kode dokumen: kecil, huruf renggang, nada redup. Ia penanda, bukan
+   judul — jadi ia duduk DI ATAS judul dan lebih ringan. */
+body.tesys-ui .dm-head .dm-code {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    color: rgba(255, 255, 255, .5);
+    word-break: break-all;
+    margin-bottom: 5px;
+}
+
+body.tesys-ui .dm-head .dm-title {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: #fff;
+    margin: 0 0 10px;
+    letter-spacing: -.01em;
+}
+
+/* Kode juga ditulis JS ke simpul ini; disembunyikan supaya tidak tampil
+   dua kali, tapi simpulnya tetap ada agar skrip lama tidak putus. */
+body.tesys-ui .dm-sub-hidden { display: none; }
+
+body.tesys-ui .dm-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+body.tesys-ui .dm-badges:empty { display: none; }
+
+/* Tombol tutup menempel di pojok kanan atas PANEL GELAP — di modal ini
+   tidak ada pita header yang bisa menampungnya. */
+body.tesys-ui .dm-head .dm-close {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-sm);
+    font-size: 20px;
+    line-height: 1;
+    color: rgba(255, 255, 255, .55) !important;
+    text-shadow: none;
+    opacity: 1 !important;
+    transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+body.tesys-ui .dm-head .dm-close:hover {
+    background: rgba(255, 255, 255, .10);
+    color: #fff !important;
+}
+
+/* Aksi utama dokumen duduk di KAKI panel gelap, bukan di pita footer.
+   Ditumpuk ke bawah dan selebar panel supaya terbaca sebagai keputusan
+   atas dokumen ini — bukan sebagai tombol dialog. */
+body.tesys-ui .dm-actions {
+    margin-top: auto;
+    padding-top: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+body.tesys-ui .dm-actions .btn,
+body.tesys-ui .dm-actions .ts-action-primary {
+    width: 100%;
+    height: 38px;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+/* Panel gelap menyentuh tepi modal. modal-body milik modal detail sudah
+   padding:0, jadi yang perlu dipastikan hanya panelnya meregang penuh. */
+body.tesys-ui .cr-sidebar,
+body.tesys-ui .bp-sidebar,
+body.tesys-ui .prj-sidebar,
+body.tesys-ui .dm-side { align-self: stretch; }
+
+/* Tab di panel kanan: garis bawah burgundy, bukan tombol berisi. */
+body.tesys-ui .modal .nav-tabs { border-bottom: 1px solid var(--border); gap: 2px; }
+body.tesys-ui .modal .nav-tabs .nav-link {
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    padding: 9px 14px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-dim);
+    background: transparent;
+}
+body.tesys-ui .modal .nav-tabs .nav-link:hover { color: var(--text); border-bottom-color: var(--border-strong); }
+
+/* Modal detail menulis font-weight:600 dan padding-nya langsung di tiap
+   <a class="nav-link"> lewat style=. Akibatnya tab yang TIDAK aktif
+   tampil setebal yang aktif, dan satu-satunya pembeda tinggal warnanya —
+   terlalu tipis untuk menjawab "saya sedang di tab mana".
+
+   Bobot tab tidak aktif dikembalikan ke 500 supaya tab aktif kembali
+   menonjol lewat DUA isyarat sekaligus (bobot + garis bawah burgundy),
+   bukan cuma warna. Ditulis !important karena lawannya atribut style=. */
+body.tesys-ui .modal .nav-tabs .nav-link:not(.active) { font-weight: 500 !important; }
+body.tesys-ui .modal .nav-tabs .nav-link.active { font-weight: 600 !important; }
+
+/* Garis dasar deretan tab: 1px sudah cukup untuk menahan tab aktif.
+   Nilai 2px yang ditanam inline membuat garisnya setebal penanda tab
+   aktif itu sendiri, jadi penandanya tidak lagi terbaca sebagai penanda. */
+body.tesys-ui .modal .nav-tabs { border-bottom-width: 1px !important; }
+body.tesys-ui .modal .nav-tabs .nav-link.active {
+    color: var(--accent-text);
+    border-bottom-color: var(--accent);
+    background: transparent;
+    font-weight: 600;
+}
+
+/* Baris label/nilai di panel kanan. */
+body.tesys-ui .modal .kv-row { padding: 9px 0; font-size: 13px; }
+body.tesys-ui .modal .kv-row span:first-child { color: var(--text-dim); font-size: 12px; }
+body.tesys-ui .modal .kv-row span:last-child { color: var(--text); font-weight: 500; }
+
+
+/* =====================================================================
+   11. STATUS: KEMBALI KE BENTUK KAPSUL
+   Spesifikasi menyisakan bentuk kapsul khusus untuk badge status —
+   satu-satunya tempat sudut penuh masih dibenarkan. Warnanya sudah
+   diredam lewat token semantik, jadi kapsul di sini tidak lagi terbaca
+   seperti label SaaS berwarna menyala.
+   ===================================================================== */
+body.tesys-ui .ts-status { border-radius: var(--radius-pill); }
+body.tesys-ui .badge { border-radius: var(--radius-pill) !important; }
+
+
+
+/* =====================================================================
+   PENYELARASAN DENGAN HALAMAN LOGIN
+   ---------------------------------------------------------------------
+   Semuanya soal tampilan. Tidak ada alur kerja, rute, atau perilaku yang
+   berubah.
+
+   CATATAN: aturan emas di bawah judul halaman topbar sempat ada di sini
+   dan sudah DILEPAS atas permintaan. Emas kini tinggal satu tempat —
+   garis rambut di bawah blok merek sidebar — yang sekaligus memisahkan
+   "sistem apa ini" dari "bagian mana yang sedang dibuka".
+   ===================================================================== */
+
+
+/* ------------------------------------------------- 1. BLOK MEREK
+   Baris atas: lambang aplikasi + wordmark dist/img/tesys.png, berkas yang
+   SAMA dengan yang dipakai di tengah halaman login. Teks dan gambar tidak
+   akan pernah sama persis bentuknya; memakai satu berkas menutup selisih
+   itu sekaligus. */
+body.tesys-ui .sidebar .brand { align-items: center; }
+
+body.tesys-ui .sidebar .brand .brand-text {
+    display: block;
+    min-width: 0;
+    flex: 1;
+    line-height: 0;          /* buang jarak baris di bawah gambar */
+    text-decoration: none;
+}
+body.tesys-ui .sidebar .brand .brand-wordmark {
+    /* Tinggi yang dikunci, bukan lebar: berkasnya 2254x411, jadi lebar
+       yang dikunci membuat tingginya ikut rasio dan bisa melebihi ruang
+       blok merek. */
+    height: 18px;
+    width: auto;
+    max-width: 100%;
+    display: block;
+    object-fit: contain;
+    object-position: left center;
+}
+
+/* Baris nama aplikasi, di BAWAH garis emas .brand::after. */
+body.tesys-ui .sidebar .brand-app {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-2);
+    padding: 9px 16px 7px;
+    min-width: 0;
+}
+body.tesys-ui .sidebar .brand-app .brand-sub {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--chrome-dim);
+}
+
+/* Tombol perkecil/perbesar. Tanpa kotak dan tanpa garis tepi — bentuknya
+   baru muncul saat disentuh, sama seperti tombol di topbar. */
+body.tesys-ui .sidebar .brand-app .brand-toggle {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--chrome-dim);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background var(--dur-fast, .14s) var(--ease, ease),
+                color var(--dur-fast, .14s) var(--ease, ease);
+}
+body.tesys-ui .sidebar .brand-app .brand-toggle:hover {
+    background: rgba(255, 255, 255, .07);
+    color: var(--chrome-text);
+}
+body.tesys-ui .sidebar .brand-app .brand-toggle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-ring);
+}
+body.tesys-ui.sidebar-rail .sidebar .brand-app .brand-toggle i { transform: rotate(180deg); }
+
+/* Mode rail: nama aplikasi hilang, TOMBOLNYA TIDAK.
+
+   Versi sebelumnya menyembunyikan seluruh baris dan itu mengunci
+   pengguna — begitu menu menyempit, satu-satunya tombol untuk
+   melebarkannya kembali ikut hilang, sementara tombol topbar hanya ada di
+   layar sempit. Diuji di peramban dan memang terkunci. */
+body.tesys-ui.sidebar-rail .sidebar .brand-app { justify-content: center; padding: 8px 0; }
+body.tesys-ui.sidebar-rail .sidebar .brand-app .brand-sub { display: none; }
+
+/* Layar sempit memakai tombol di topbar, jadi yang di sidebar dilepas
+   supaya tidak ada dua tombol yang mengerjakan hal yang sama. */
+@media (max-width: 900px) {
+    body.tesys-ui .sidebar .brand-app .brand-toggle { display: none; }
+}
+
+
+/* --------------------------------------- 2. TOMBOL MENU DI TOPBAR
+   Kebalikannya: hanya muncul di layar sempit, tempat sidebar jadi laci
+   tertutup dan tombol di dalamnya tidak bisa diraih. */
+@media (min-width: 901px) {
+    body.tesys-ui .topbar .sidebar-toggle { display: none; }
+}
+
+
+/* ------------------------------- 3. KENDALI TOPBAR TANPA KOTAK
+   Sebelumnya pencarian, todo, dan notifikasi masing-masing duduk dalam
+   kotak berlatar --topbar-2 dengan garis tepi --topbar-3. Tiga kotak
+   berjajar di atas bidang gelap membuat topbar terbaca seperti deretan
+   tombol yang ditempelkan, bukan satu bidang.
+
+   Halaman login tidak punya satu pun kotak semacam itu: kolom isiannya
+   permukaan tembus pandang yang sangat tipis, dan bentuknya baru tegas
+   saat disentuh atau difokus. */
+body.tesys-ui .topbar .icon-btn,
+body.tesys-ui .topbar .ts-cmd-trigger,
+body.tesys-ui .topbar .search {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+}
+body.tesys-ui .topbar .icon-btn:hover,
+body.tesys-ui .topbar .ts-cmd-trigger:hover {
+    /* Putih beralfa rendah, bukan --topbar-3: nada yang sama dengan kolom
+       isian login, dan tetap benar kalau warna topbar digeser nanti. */
+    background: rgba(255, 255, 255, .07);
+    border-color: transparent;
+    color: #fff;
+}
+body.tesys-ui .topbar .search:focus-within,
+body.tesys-ui .topbar .ts-cmd-trigger:focus-visible {
+    background: rgba(255, 255, 255, .085);
+    border-color: transparent;
+    box-shadow: 0 0 0 3px var(--accent-ring);
+}
+body.tesys-ui .topbar .ts-cmd-trigger { color: var(--topbar-dim); }
+body.tesys-ui .topbar .ts-cmd-trigger:hover { color: var(--chrome-text); }
+body.tesys-ui .topbar .ts-cmd-trigger kbd,
+body.tesys-ui .topbar .ts-cmd-trigger .ts-cmd-kbd {
+    background: rgba(255, 255, 255, .06);
+    border-color: transparent;
+}
+
+
+/* ----------------- 4. PEMISAH AKUN DARI KELOMPOK LONCENG
+   Garisnya sudah ada, tapi memakai --topbar-3 (#48343a) di atas topbar
+   #2e2023 — selisihnya terlalu kecil untuk terbaca sebagai pemisah.
+   Dinaikkan ke putih beralfa, yang menyesuaikan diri terhadap nada
+   topbar berapa pun dan tetap terbaca di kedua tema. */
+body.tesys-ui .topbar-user { border-left-color: rgba(255, 255, 255, .16); }
+
+
+/* ---------------- 5. MENU AKTIF
+   Bentuk finalnya ada di bagian F di bawah, beserta catatan tiga
+   pendekatan yang sudah dicoba dan dibuang. Blok yang dulu ada di sini
+   sudah tidak berlaku seluruhnya dan dilepas supaya tidak ada dua sumber
+   untuk hal yang sama. */
+
+
+/* ------------------------- 6. TEPI SIDEBAR TANPA BAYANGAN
+   --shadow-chrome memuat dua lapis: garis 1px dan bayangan kabur 16px
+   yang jatuh ke area kerja. Bayangan itu masuk akal ketika latar halaman
+   masih #f6f6f4 — ia menegaskan bahwa sidebar berada di lapisan yang
+   berbeda. Sekarang latarnya putih murni, dan kabut gelap 16px di atas
+   putih terbaca jauh lebih berat daripada sebelumnya.
+
+   Lebih penting: halaman login tidak punya kedalaman sama sekali. Seluruh
+   permukaannya rata dan tembus pandang. Sidebar yang melayang di atas
+   halaman memakai bahasa yang berbeda dari itu.
+
+   Garis 1px-nya dipertahankan — pemisahnya tetap perlu ada, yang dilepas
+   hanya kesan melayangnya. Tokennya sendiri TIDAK diubah karena dipakai
+   juga oleh tema gelap, tempat kabut itu masih bekerja. */
+body.tesys-ui .sidebar { box-shadow: 1px 0 0 var(--chrome-border); }
+
+
+/* ============ PENYETELAN SIDEBAR — putaran lanjutan ============ */
+
+/* -------- A. LAMBANG APLIKASI: TAJAM, SEPERTI DI LOGIN
+   Penyebab buramnya ada dua, dan keduanya saling menumpuk:
+
+     1. Berkasnya ts_logo_dark.png (277px) dikecilkan ke 24px — sisa 38px
+        dikurangi padding 7px di keempat sisi. Penyusutan 11x membuat tepi
+        lurus jatuh di antara piksel.
+     2. mix-blend-mode: screen melebur piksel gelap berkas itu ke latar
+        merah tombol, sehingga tepi yang sudah lunak jadi berhalo.
+
+   Sekarang berkasnya ts_icon.png — 702px, dan sudah membawa kotak
+   merahnya sendiri, sama seperti yang dipakai login. Jadi tidak perlu
+   latar merah, tidak perlu padding, dan tidak perlu blend. Gambarnya
+   memenuhi tombol, sudut membulatnya dikerjakan oleh overflow tombol. */
+body.tesys-ui .sidebar .brand .brand-mark { background: transparent; }
+body.tesys-ui .sidebar .brand .brand-mark img {
+    padding: 0;
+    mix-blend-mode: normal;
+    object-fit: cover;
+}
+
+/* -------- B. WORDMARK SEBESAR RUANG YANG TERSEDIA
+   Tingginya tidak lagi dikunci ke angka tetap, melainkan dibiarkan
+   mengikuti lebar yang tersisa di baris merek.
+
+   Perlu dicatat: wordmark TIDAK BISA setinggi tombol 38px. Berkasnya
+   berbanding 2254x411, jadi pada tinggi 38px lebarnya jadi 208px —
+   sementara ruang yang tersisa di sidebar 240px hanya sekitar 159px
+   setelah dikurangi padding, tombol, dan jarak. Yang bisa dicapai adalah
+   memenuhi lebar itu, yang menghasilkan tinggi sekitar 29px. Itu batas
+   geometrinya, bukan pilihan gaya. */
+body.tesys-ui .sidebar .brand .brand-wordmark {
+    width: 100%;
+    height: auto;
+    max-height: 30px;
+}
+
+/* -------- D. BARIS MENU LEBIH TINGGI
+   Dari padding tegak 7px ke 10px: tinggi baris bertambah 6px, sasaran
+   kliknya naik dari sekitar 32px ke 38px. Angka 38px bukan kebetulan —
+   itu ukuran yang sama dengan tombol lambang dan avatar, sehingga
+   seluruh sasaran klik di bingkai jadi satu ukuran. */
+body.tesys-ui .sidebar .nav-item { padding-top: 10px; padding-bottom: 10px; }
+
+/* -------- E. HOVER YANG TERBACA
+   Sebelumnya --chrome-2 (#24171a) di atas sidebar #180d11: selisihnya
+   terlalu tipis untuk memberi umpan balik. Diganti putih beralfa, yang
+   naik cukup jauh untuk terasa, dan tulisannya ikut dicerahkan supaya
+   baris yang disentuh terbaca hidup, bukan sekadar berganti latar. */
+body.tesys-ui .sidebar .nav-item:hover {
+    background: rgba(255, 255, 255, .085);
+    color: var(--chrome-text);
+}
+body.tesys-ui .sidebar .nav-item:hover .ic { color: var(--chrome-text); }
+/* Keadaan hover baris AKTIF diatur di bagian F. */
+
+
+/* ============ PENYETELAN SIDEBAR — putaran lanjutan 2 ============ */
+
+/* -------- F. MENU AKTIF: KEMBALI KE BENTUK AWAL
+   Setelah tiga percobaan, yang benar ternyata yang paling awal:
+   --chrome-active (#401a20), burgundy redup, tulisan dan ikon putih,
+   plus titik merah kecil di ujung kanan.
+
+   Riwayat lengkapnya, supaya tidak ada yang mencoba ulang:
+
+     a. --chrome-active + teks putih + titik   <- INI, bentuk awal & final
+     b. Lapisan putih tembus pandang           -> merahnya hilang sama sekali
+     c. Batang merah + teks/ikon merah         -> merahnya di tempat salah
+     d. --accent penuh + teks putih            -> merahnya terlalu terang
+
+   Yang membuat (a) dulu terbaca "menyembul" BUKAN bidang burgundy-nya,
+   melainkan bayangan kabur 16px milik sidebar — dan itu sudah dilepas di
+   bagian 6. Jadi bentuk awal ini sekarang rata, tanpa kedalaman apa pun,
+   sementara warnanya tetap seperti yang diminta. */
+body.tesys-ui .sidebar .nav-item.active {
+    background: var(--chrome-active);
+    box-shadow: none;
+    font-weight: 600;
+}
+body.tesys-ui .sidebar .nav-item.active,
+body.tesys-ui .sidebar .nav-item.active .ic { color: #ffffff; }
+body.tesys-ui .sidebar .nav-item.active:hover { background: var(--chrome-3); }
+body.tesys-ui .sidebar .nav-item.active:hover,
+body.tesys-ui .sidebar .nav-item.active:hover .ic { color: #ffffff; }
+
+/* Titik merah di ujung kanan dikembalikan. Di atas burgundy seredup
+   --chrome-active, ia satu-satunya merah yang benar-benar terbaca
+   sebagai merah, dan itu sebabnya ia ada sejak awal. */
+body.tesys-ui .sidebar .nav-item.active::after {
+    content: "";
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    width: 5px;
+    height: 5px;
+    margin-top: -2.5px;
+    border-radius: 50%;
+    background: var(--accent);
+}
+
+
+/* -------- G. HOVER SERAGAM DI SELURUH BINGKAI
+   Sebagian elemen masih terangkat dan berbayang saat disentuh, sebagian
+   lagi rata. Yang tersisa ada dua, keduanya dari lapisan lama:
+
+     - .brand-mark  : translateY(-1px) + --shadow-accent
+     - .user-btn    : translateY(-1px)
+
+   Keduanya diratakan. Elemen yang bergerak sendiri saat dilewati kursor
+   adalah bahasa antarmuka konsumen; di layar kerja ia terbaca sebagai
+   gangguan, dan di sini ia juga membuat dua tombol berperilaku berbeda
+   dari semua tombol lain di bingkai yang sama.
+
+   Umpan baliknya diganti dengan yang dipakai di tempat lain: latar putih
+   beralfa rendah. */
+body.tesys-ui .sidebar .brand .brand-mark:hover {
+    transform: none;
+    box-shadow: none;
+    filter: brightness(1.08);
+}
+body.tesys-ui .topbar-user .user-btn:hover {
+    transform: none;
+    background: rgba(255, 255, 255, .07);
+}
+
+
+/* -------- H. GARIS EMAS DI ATAS JAM
+   Pasangan dari garis di bawah blok merek. Keduanya menutup sidebar:
+   satu di kepala, satu di kaki, dan di antaranya daftar menu.
+
+   Jam sudah punya border-top 1px --chrome-border. Emas dipasang sebagai
+   lapisan di atasnya lewat ::before, bukan menggantikannya — garis
+   strukturnya tetap perlu ada di bawah peluruhan emas, kalau tidak sisi
+   kanan kaki sidebar kehilangan pembatas sama sekali.
+
+   Arah peluruhannya dari kiri, sama seperti di kepala, supaya kedua
+   garis terbaca sebagai sepasang dan bukan dua kejadian terpisah. */
+body.tesys-ui .sidebar-clock { position: relative; }
+body.tesys-ui .sidebar-clock::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -1px;
+    height: 1px;
+    background: var(--gold-line);
+    pointer-events: none;
+}
+
+
+/* -------- I. TIDAK ADA BAYANGAN DI SIDEBAR, TITIK
+   Label seksi menempel (sticky) saat menu digulir, dan di bawahnya
+   dipasang peluruhan 8px supaya item yang lewat di belakangnya tidak
+   terpotong mendadak. Niatnya benar, hasilnya tidak: peluruhan itu
+   tergambar TERUS, bukan hanya saat digulir, sehingga item pertama di
+   bawah setiap label selalu tampak menerima bayangan dari atas. Pada
+   item aktif yang latarnya lebih terang, bedanya jadi paling kentara.
+
+   Ada kesalahan kedua di dalamnya. Perhentian akhirnya "transparent",
+   bukan warna chrome dengan alfa nol. Peramban menginterpolasi gradien
+   di ruang sRGB, jadi dari #180d11 menuju rgba(0,0,0,0) nilai RGB-nya
+   bergerak ke arah hitam sementara alfanya turun — muncul kabut gelap di
+   tengah peluruhan. Jadi ia bukan sekadar terlihat seperti bayangan, ia
+   memang menggambar smudge gelap. Berkas token ini sudah memperingatkan
+   pola yang sama persis di dua tempat lain (--main-glow dan
+   --sidebar-fade), tapi aturan ini luput.
+
+   Dilepas seluruhnya. Label sticky sudah punya latar pekat, jadi item
+   yang tergulir di belakangnya berhenti di tepi label — potongan tegas,
+   yang memang perilaku normal daftar menempel dan tidak butuh peluruhan
+   untuk dijelaskan. */
+body.tesys-ui .sidebar .nav-label::after { content: none; }
+
+
+/* ============ AUDIT: BEBAN RENDER ============ */
+
+/* -------- J. TOPBAR TANPA backdrop-filter
+   Topbar memakai backdrop-filter: blur(12px) saturate(1.06) — dan ia
+   elemen sticky selebar layar, jadi blur itu dihitung ulang GPU setiap
+   kali halaman digulir, di setiap halaman, seumur sesi.
+
+   Yang dibayar dengan ongkos itu nyaris tidak terlihat: latarnya sudah
+   88% pekat, jadi hanya 12% isi halaman yang menembus, dan sejak latar
+   kerja jadi putih murni yang menembus pun cuma putih. Blur atas bidang
+   putih rata tidak menghasilkan apa pun.
+
+   Jadi latarnya dibuat pekat penuh dan blurnya dilepas. Tampilannya
+   praktis sama, satu lapisan komposit hilang dari setiap gulir.
+
+   backdrop-filter yang TETAP ada: .ts-cmd-scrim (blur 2px, hanya selama
+   palet perintah terbuka). Itu transien dan murah, jadi dibiarkan. */
+body.tesys-ui .topbar {
+    background: var(--topbar);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+/* -------- K. BAR AKSI INVOICE TANPA backdrop-filter
+   Alasan yang sama, dan di sini lebih jelas lagi: latarnya
+   color-mix(--surface 88%) sementara halamannya sendiri sekarang putih.
+   Putih 88% di atas putih adalah putih. Blur 10px-nya menghitung
+   sesuatu yang secara definisi tidak bisa terlihat. */
+body.tesys-ui .inv-actionbar {
+    background: var(--surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+
+/* -------- L. SATU-SATUNYA HAL YANG HILANG BERSAMA ADMINLTE
+   Pergantian adminlte.min.css ke potongan Bootstrap-nya diuji dengan
+   membandingkan computed style 79 elemen di bawah kedua tumpukan CSS.
+   Yang berbeda hanya segelintir, dan setelah ditelusuri satu-satu hanya
+   ini yang benar-benar terlihat pengguna:
+
+   Bootstrap memberi .progress bayangan dalam (inset 0 .1rem .1rem), dan
+   AdminLTE dulu membuangnya. Tanpa AdminLTE, bayangan itu muncul lagi.
+   Dibuang di sini — bukan sekadar meniru keadaan lama, tapi karena
+   sesuai keputusan yang sudah berlaku di seluruh antarmuka ini: bayangan
+   hanya untuk elemen yang benar-benar mengambang.
+
+   Yang TIDAK perlu diporting, setelah diperiksa:
+     - .card-header position:relative — tidak ada anak absolut di dalamnya
+     - .timeline — dua halaman yang memakai kelas polos mendefinisikan
+       posisi dan marginnya sendiri; sisanya memakai kelas berprefiks
+       (inv-, dn-, cr-) atau .ts-timeline milik Tesys
+     - pre padding — tag <pre> tidak dipakai di satu blade pun
+     - .custom-control-label bobot 700 -> 500 — justru mengembalikan
+       nilai --fw-label design system yang selama ini ditimpa AdminLTE */
+body.tesys-ui .progress { box-shadow: none; }

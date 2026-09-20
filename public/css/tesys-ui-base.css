@@ -1,0 +1,1084 @@
+/* =====================================================================
+   Tesys UI — BASE (eks-<style> inline layouts/app.blade.php)
+   ---------------------------------------------------------------------
+   Dipindah ke file agar bisa di-cache browser dan dikompresi gzip;
+   sebelumnya ~36 KB ini ikut terkirim ulang di SETIAP halaman.
+   Isi tidak diubah — hanya berpindah tempat. Dimuat pada posisi yang
+   sama (sebelum tesys-ui-*.css) supaya urutan override tetap.
+   ===================================================================== */
+
+
+/*
+|--------------------------------------------------------------------------
+| DESIGN TOKENS
+|--------------------------------------------------------------------------
+*/
+
+:root {
+    --navy:        #0D1B2A;
+    --navy-mid:    #162030;
+    --navy-lt:     #1D2D3F;
+    --amber:       #F5A623;
+    --amber-dk:    #C97E0A;
+    --amber-tint:  rgba(245, 166, 35, 0.08);
+    --amber-border:rgba(245, 166, 35, 0.25);
+    --sidebar-w:   250px;
+    --text-muted:  #8A9BB0;
+    --border-soft: rgba(255,255,255,0.07);
+    --body-bg:     #F0F2F5;
+    --card-bg:     #FFFFFF;
+    --radius-sm:   6px;
+    --radius-md:   10px;
+    --radius-lg:   14px;
+}
+
+/*
+|--------------------------------------------------------------------------
+| GLOBAL
+|--------------------------------------------------------------------------
+*/
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    font-size: 13.5px !important;
+    color: var(--text);
+    background: var(--body-bg) !important;
+}
+
+.content-wrapper {
+    background: var(--body-bg) !important;
+}
+
+/*
+|--------------------------------------------------------------------------
+| NAVBAR
+|--------------------------------------------------------------------------
+*/
+
+.main-header.navbar {
+    background: #0D1B2A !important;
+    border-bottom: 1px solid #1D2D3F !important;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.18) !important;
+    height: 56px;
+    min-height: 56px;
+    padding: 0 20px;
+    z-index: 1035;
+}
+
+/* Judul halaman berjalan (mengisi ruang bekas tombol hamburger/Panduan) */
+.navbar-page-title {
+    color: var(--border);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: .2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 50vw;
+}
+
+@media (max-width: 575.98px) {
+    .navbar-page-title { max-width: 42vw; font-size: 13px; }
+}
+
+/*
+|--------------------------------------------------------------------------
+| SIDEBAR FLOATING TOGGLE
+| Menggantikan tombol hamburger + Panduan di topbar. Menempel di ujung
+| kanan sidebar, geser mengikuti lebar sidebar (expanded/collapsed).
+| data-widget="pushmenu" dipakai ulang supaya AdminLTE PushMenu.js yang
+| sudah ada otomatis menangani toggle-nya, tanpa JS tambahan.
+|--------------------------------------------------------------------------
+*/
+
+#tsys-sidebar-toggle {
+    position: fixed;
+    top: 72px;
+    left: var(--sidebar-w);
+    transform: translateX(-50%);
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-soft);
+    border-radius: 50%;
+    background: var(--navy-lt);
+    color: #E8F0F8;
+    font-size: 10.5px;
+    cursor: pointer;
+    z-index: 1040;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    transition: left 0.3s, background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+#tsys-sidebar-toggle:hover {
+    background: var(--amber);
+    border-color: var(--amber);
+    color: var(--text);
+}
+
+#tsys-sidebar-toggle:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(245,166,35,0.3);
+}
+
+.tsys-toggle-icon-collapsed { display: none; }
+
+body.sidebar-collapse #tsys-sidebar-toggle {
+    left: 4.6rem;
+}
+
+body.sidebar-collapse .tsys-toggle-icon-expanded { display: none; }
+body.sidebar-collapse .tsys-toggle-icon-collapsed { display: inline-block; }
+
+/* Mobile (<992px): sidebar AdminLTE jadi overlay off-canvas, bukan
+   menyusut ke rel ikon — jadi rumus left desktop (250px/4.6rem) tidak
+   menunjuk ke tepi yang benar-benar terlihat, tombol jadi "mengambang"
+   jauh dari sidebar. Saat tertutup, tombol nempel di tepi kiri layar;
+   saat sidebar dibuka (body.sidebar-open), baru nempel di tepi drawer. */
+@media (max-width: 991.98px) {
+    #tsys-sidebar-toggle,
+    body.sidebar-collapse #tsys-sidebar-toggle {
+        left: 14px;
+        transform: none;
+    }
+
+    body.sidebar-open #tsys-sidebar-toggle {
+        left: 250px;
+        transform: translateX(-50%);
+    }
+}
+
+/* User dropdown trigger */
+.main-header .navbar-nav .nav-link {
+    color: var(--border) !important;
+    font-size: 13px !important;
+    font-weight: 500;
+    padding: 6px 10px !important;
+    border-radius: var(--radius-sm);
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+}
+
+.main-header .navbar-nav .nav-link:hover {
+    background: rgba(255,255,255,0.08) !important;
+}
+
+.main-header .navbar-nav .nav-link .fa-user {
+    color: var(--amber);
+    background: var(--amber-tint);
+    border: 1px solid var(--amber-border);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    margin-right: 2px;
+}
+
+/* Dropdown */
+.main-header .dropdown-menu {
+    border: 1px solid #E8ECF0;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    border-radius: var(--radius-md);
+    padding: 6px;
+    margin-top: 6px !important;
+}
+
+.main-header .dropdown-header {
+    padding: 10px 12px 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.main-header .dropdown-header small {
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.main-header .dropdown-divider {
+    margin: 4px 0;
+    border-color: var(--border);
+}
+
+.main-header .px-3.py-2 {
+    padding: 6px 12px !important;
+}
+
+.main-header .dropdown-item {
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    padding: 8px 12px;
+    transition: background 0.15s;
+    color: var(--text-dim);
+}
+
+.main-header .dropdown-item:hover {
+    background: var(--danger-bg);
+}
+
+.main-header .dropdown-item.text-danger {
+    color: var(--danger) !important;
+    font-weight: 500;
+}
+
+/*
+|--------------------------------------------------------------------------
+| SIDEBAR SHELL
+|--------------------------------------------------------------------------
+*/
+
+.main-sidebar {
+    background: var(--navy-lt) !important;
+    box-shadow: 2px 0 20px rgba(0,0,0,0.18) !important;
+    /* Width NOT set here — AdminLTE controls it */
+}
+
+/*
+|--------------------------------------------------------------------------
+| BRAND / LOGO
+|--------------------------------------------------------------------------
+*/
+
+.brand-version {
+    text-align: center;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .5px;
+    color: var(--text-muted, #8A9BB0);
+    padding: 3px 0;
+    background: var(--navy-lt);
+    border-bottom: 1px solid var(--border-soft);
+}
+.sidebar-collapse .brand-version { display: none; }
+
+.brand-link {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    height: 56px !important;
+    background: var(--navy-lt) !important;
+    border-bottom: 1px solid var(--border-soft) !important;
+    padding: 0 16px !important;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.brand-logo-full {
+    width: 148px;
+    height: auto;
+    display: block;
+    flex-shrink: 0;
+}
+
+.brand-logo-mini {
+    width: 30px;
+    height: 30px;
+    display: none;
+    flex-shrink: 0;
+}
+
+.brand-link .brand-image {
+    float: none !important;
+    margin: 0 !important;
+    opacity: 1 !important;
+}
+
+/* Logo swap on collapse */
+.sidebar-collapse .brand-logo-full { display: none !important; }
+.sidebar-collapse .brand-logo-mini { display: block !important; }
+
+/* Sidebar inner */
+.sidebar {
+    padding-top: 4px;
+    padding-bottom: 16px;
+    overflow-x: hidden;
+}
+
+/*
+|--------------------------------------------------------------------------
+| FLAT NAV SYSTEM (tsys-*)
+| No treeview / accordion. Section labels + flat links.
+|--------------------------------------------------------------------------
+*/
+
+.tsys-nav {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 4px 0;
+}
+
+/* Section header label */
+.tsys-section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 18px 20px 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: opacity 0.15s;
+}
+
+/* Nav link */
+.tsys-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    margin: 1px 8px;
+    border-radius: var(--radius-sm);
+    text-decoration: none !important;
+    color: #A0B0C2 !important;
+    font-size: 13px;
+    font-weight: 400;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+    position: relative;
+}
+
+.tsys-link:hover {
+    background: rgba(255,255,255,0.07);
+    color: #FFFFFF !important;
+}
+
+.tsys-link:hover .tsys-icon {
+    color: #FFFFFF;
+}
+
+/* Active state */
+.tsys-link.tsys-active {
+    background: var(--amber-tint);
+    color: var(--amber) !important;
+    font-weight: 600;
+    border: 1px solid var(--amber-border);
+}
+
+.tsys-link.tsys-active .tsys-icon {
+    color: var(--amber);
+}
+
+/* Active left accent bar */
+.tsys-link.tsys-active::before {
+    content: '';
+    position: absolute;
+    left: -8px;
+    top: 7px;
+    bottom: 7px;
+    width: 3px;
+    background: var(--amber);
+    border-radius: 0 3px 3px 0;
+}
+
+/* Icon */
+.tsys-icon {
+    font-size: 14px;
+    width: 18px;
+    text-align: center;
+    flex-shrink: 0;
+    color: #5A7080;
+    transition: color 0.15s;
+}
+
+/* Label text */
+.tsys-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: opacity 0.15s, width 0.15s;
+}
+
+/* Submenu (dropdown under a tsys-link, e.g. Summary) */
+.tsys-link-toggle { cursor: pointer; }
+.tsys-caret {
+    font-size: 10px;
+    transition: transform 0.15s ease;
+    color: #5A7080;
+}
+.tsys-caret.rotated { transform: rotate(90deg); }
+.tsys-submenu {
+    list-style: none;
+    padding: 2px 0 2px 0;
+    margin: 0 8px 0 8px;
+}
+.tsys-sublink {
+    display: flex;
+    align-items: center;
+    padding: 7px 12px 7px 34px;
+    margin: 1px 0;
+    border-radius: var(--radius-sm);
+    text-decoration: none !important;
+    color: var(--text-faint) !important;
+    font-size: 12.5px;
+    font-weight: 400;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+}
+.tsys-sublink:hover {
+    background: rgba(255,255,255,0.07);
+    color: #FFFFFF !important;
+}
+.tsys-sublink.tsys-active {
+    background: var(--amber-tint);
+    color: var(--amber) !important;
+    font-weight: 600;
+}
+
+/* Flyout — submenu popup used only when sidebar is collapsed (icon-only) */
+.tsys-flyout {
+    display: none;
+    position: fixed;
+    left: calc(4.6rem + 4px);
+    min-width: 190px;
+    background: var(--navy-mid, #16232F);
+    border-radius: 0 8px 8px 0;
+    box-shadow: 4px 4px 16px rgba(0,0,0,0.35);
+    border-left: 2px solid var(--amber);
+    padding: 6px 0;
+    margin: 0;
+    list-style: none;
+    z-index: 9999;
+}
+.tsys-flyout .tsys-sublink { padding: 8px 16px; }
+
+/*
+|--------------------------------------------------------------------------
+| COLLAPSED STATE
+| Body gets .sidebar-collapse when the floating toggle (#tsys-sidebar-toggle) is pressed.
+| Sidebar shrinks to 4.6rem (AdminLTE default for sidebar-mini).
+|--------------------------------------------------------------------------
+*/
+
+/* Hide section labels */
+.sidebar-mini.sidebar-collapse .tsys-section-label {
+    opacity: 0;
+    height: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+/* Center icon, hide label */
+.sidebar-mini.sidebar-collapse .tsys-link {
+    justify-content: center;
+    padding: 10px 0;
+    margin: 2px 6px;
+    gap: 0;
+}
+
+.sidebar-mini.sidebar-collapse .tsys-label {
+    display: none;
+}
+
+.sidebar-mini.sidebar-collapse .tsys-icon {
+    font-size: 16px;
+    width: 20px;
+}
+
+/* Hide active left-bar when collapsed */
+.sidebar-mini.sidebar-collapse .tsys-link.tsys-active::before {
+    display: none;
+}
+
+/* Tooltip on hover — native browser title attr handles the label */
+.sidebar-mini.sidebar-collapse .tsys-link:hover {
+    background: rgba(255,255,255,0.09);
+}
+
+/*
+|--------------------------------------------------------------------------
+| CARD
+|--------------------------------------------------------------------------
+*/
+
+.card {
+    border: 0 !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04) !important;
+    background: var(--card-bg);
+}
+
+.card-header {
+    border-top-left-radius: var(--radius-md) !important;
+    border-top-right-radius: var(--radius-md) !important;
+    border-bottom: 1px solid #F0F2F5 !important;
+    padding: 14px 20px !important;
+    background: var(--card-bg) !important;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text);
+}
+
+.card-header.with-border {
+    border-bottom: 1px solid #E8ECF0 !important;
+}
+
+.card-primary.card-outline {
+    border-top: 3px solid var(--amber) !important;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.04) !important;
+}
+
+.card-body {
+    padding: 20px !important;
+}
+
+/* Small-box summary cards */
+.small-box {
+    border-radius: var(--radius-md) !important;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08) !important;
+    overflow: hidden;
+}
+
+.small-box > .inner {
+    padding: 16px 20px 12px;
+}
+
+.small-box h3 {
+    font-size: 28px !important;
+    font-weight: 700 !important;
+}
+
+.small-box p {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+}
+
+.small-box .icon {
+    top: 12px !important;
+}
+
+/*
+|--------------------------------------------------------------------------
+| BUTTON
+|--------------------------------------------------------------------------
+*/
+
+.btn {
+    border-radius: var(--radius-sm) !important;
+    font-size: 13px !important;
+    font-weight: 500;
+    padding: 6px 14px !important;
+    transition: all 0.15s;
+}
+
+.btn-primary {
+    background: var(--accent) !important;
+    border-color: var(--accent) !important;
+}
+
+.btn-primary:hover {
+    background: #1D4ED8 !important;
+    border-color: #1D4ED8 !important;
+    box-shadow: 0 4px 12px rgba(37,99,235,0.3) !important;
+}
+
+.btn-sm {
+    padding: 4px 10px !important;
+    font-size: 12px !important;
+}
+
+.btn-warning {
+    background: var(--amber) !important;
+    border-color: var(--amber) !important;
+    color: var(--text) !important;
+}
+
+.btn-warning:hover {
+    background: var(--amber-dk) !important;
+    border-color: var(--amber-dk) !important;
+    color: var(--text) !important;
+}
+
+/*
+|--------------------------------------------------------------------------
+| TABLE
+|--------------------------------------------------------------------------
+*/
+
+table.dataTable tbody td {
+    vertical-align: middle;
+    font-size: 13px;
+    color: var(--text);
+    border-color: var(--border) !important;
+}
+
+.table th {
+    white-space: nowrap;
+    font-size: 11.5px !important;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-dim) !important;
+    background: var(--surface-2) !important;
+    border-bottom: 2px solid #E5E7EB !important;
+    padding: 10px 12px !important;
+}
+
+.table td {
+    padding: 10px 12px !important;
+}
+
+table.dataTable.no-footer {
+    border-bottom: 1px solid #E5E7EB !important;
+}
+
+/*
+|--------------------------------------------------------------------------
+| DATATABLE SEARCH
+|--------------------------------------------------------------------------
+*/
+
+.dataTables_filter {
+    width: 100%;
+    margin-bottom: 0 !important;
+}
+
+.dataTables_filter label {
+    width: 100%;
+    margin-bottom: 0 !important;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 400 !important;
+    font-size: 13px !important;
+    color: var(--text-dim);
+}
+
+.dataTables_filter input {
+    width: 180px !important;
+    height: 32px !important;
+    border-radius: var(--radius-sm) !important;
+    border: 1px solid #E5E7EB !important;
+    padding: 0 10px !important;
+    font-size: 13px !important;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.dataTables_filter input:focus {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1) !important;
+    outline: none !important;
+}
+
+/*
+|--------------------------------------------------------------------------
+| DATATABLE LENGTH
+|--------------------------------------------------------------------------
+*/
+
+.dataTables_length {
+    margin: 0 !important;
+}
+
+.dataTables_length label {
+    display: flex !important;
+    align-items: center;
+    gap: 6px;
+    margin: 0 !important;
+    font-weight: 400 !important;
+    font-size: 13px !important;
+    color: var(--text-dim);
+}
+
+.dataTables_length select {
+    width: 70px !important;
+    margin: 0 !important;
+    height: 32px !important;
+    border-radius: var(--radius-sm) !important;
+    border: 1px solid #E5E7EB !important;
+    font-size: 13px !important;
+}
+
+/* DataTable pagination */
+.dataTables_paginate .paginate_button {
+    border-radius: var(--radius-sm) !important;
+    font-size: 13px !important;
+}
+
+/* ── Active page ── */
+.dataTables_paginate .paginate_button.current,
+.dataTables_paginate .paginate_button.current:hover,
+.dataTables_wrapper .dataTables_paginate .paginate_button.current,
+.dataTables_wrapper .dataTables_paginate .paginate_button.current:hover,
+.dataTables_wrapper .pagination .page-item.active .page-link,
+.dataTables_wrapper .page-item.active .page-link {
+    background-color: var(--amber) !important;
+    background-image: none !important;
+    border-color: var(--amber-dk) !important;
+    color: var(--navy) !important;
+    font-weight: 700 !important;
+    box-shadow: none !important;
+}
+
+/* ── Non-active page numbers, Previous, Next ── */
+.dataTables_wrapper .pagination .page-link,
+.dataTables_wrapper .page-link {
+    color: var(--amber) !important;
+    border-color: var(--border) !important;
+    transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+/* ── Hover (non-active) ── */
+.dataTables_wrapper .pagination .page-item:not(.active) .page-link:hover,
+.dataTables_wrapper .page-item:not(.active) .page-link:hover {
+    background-color: var(--amber-tint) !important;
+    border-color: var(--amber-border) !important;
+    color: var(--amber-dk) !important;
+}
+
+/* ── Focus / click glow — orange instead of blue ── */
+.dataTables_wrapper .pagination .page-link:focus,
+.dataTables_wrapper .page-link:focus {
+    box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.30) !important;
+    outline: none !important;
+}
+
+/* ── Disabled (Previous on page 1, Next on last page) ── */
+.dataTables_wrapper .pagination .page-item.disabled .page-link {
+    color: var(--text-faint) !important;
+}
+
+/*
+|--------------------------------------------------------------------------
+| CUSTOM TOOLBAR
+|--------------------------------------------------------------------------
+*/
+
+.custom-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    width: 100%;
+}
+
+.custom-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.custom-toolbar-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+}
+
+/*
+|--------------------------------------------------------------------------
+| FORM CONTROLS
+|--------------------------------------------------------------------------
+*/
+
+.form-control {
+    border-radius: var(--radius-sm) !important;
+    border: 1px solid #E5E7EB !important;
+    font-size: 13px !important;
+    color: var(--text);
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.form-control:focus {
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1) !important;
+}
+
+.form-group label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-bottom: 5px;
+}
+
+/*
+|--------------------------------------------------------------------------
+| BADGE
+|--------------------------------------------------------------------------
+*/
+
+.badge {
+    font-weight: 600 !important;
+    font-size: 11px !important;
+    padding: 4px 8px !important;
+    border-radius: 20px !important;
+    letter-spacing: 0.02em;
+}
+
+/*
+|--------------------------------------------------------------------------
+| TOM SELECT
+|--------------------------------------------------------------------------
+*/
+
+.ts-wrapper {
+    width: 380px !important;
+}
+
+.ts-wrapper.multi .ts-control {
+    min-height: 32px !important;
+    height: 32px !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm) !important;
+    border: 1px solid #E5E7EB !important;
+}
+
+.ts-wrapper.multi .ts-control > div {
+    background: var(--accent) !important;
+    color: #fff !important;
+    border-radius: 4px !important;
+    padding: 2px 6px !important;
+    font-size: 12px !important;
+    white-space: nowrap;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ts-wrapper .ts-control input {
+    font-size: 13px !important;
+}
+
+/*
+|--------------------------------------------------------------------------
+| TESYS SEARCHABLE SELECT (pengganti Tom Select — tombol + panel cari)
+|--------------------------------------------------------------------------
+*/
+
+.tss-btn { font-weight: 400; font-size: 13px; color: var(--text); background: var(--surface); }
+.tss-label { max-width: calc(100% - 20px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.tss-dropdown {
+    position: absolute; z-index: 3000; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.12); padding: 8px;
+    display: flex; flex-direction: column;
+    width: fit-content; min-width: 280px; max-width: min(1600px, 92vw); max-height: 380px;
+}
+.tss-dropdown .tss-list { overflow-y: auto; max-height: 300px; min-width: 100%; }
+.tss-item { padding: 8px 10px; border-radius: 4px; cursor: pointer; font-size: 12.5px; line-height: 1.4; white-space: normal; }
+.tss-item:hover { background: var(--surface-2); }
+.tss-item.active { background: var(--accent-tint); font-weight: 600; }
+
+/* Mode multi-select (chip + checklist) — pengganti Tom Select remove_button */
+.tss-multi-btn {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+    min-height: calc(1.5em + .5rem + 2px); width: 100%;
+    padding: .25rem .5rem; border: 1px solid #ced4da; border-radius: .25rem;
+    background: var(--surface); cursor: text;
+}
+.tss-multi-btn .tss-caret { margin-left: auto; }
+.tss-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; align-items: center; }
+.tss-placeholder { color: var(--text-faint); font-size: 13px; }
+.tss-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--accent-tint); color: var(--accent-text); border-radius: 4px;
+    padding: 2px 6px; font-size: 12px; line-height: 1.6;
+}
+.tss-chip-remove { cursor: pointer; font-weight: 700; opacity: .6; }
+.tss-chip-remove:hover { opacity: 1; }
+.tss-item-check { display: flex; align-items: center; gap: 8px; }
+.tss-check-icon { width: 14px; visibility: hidden; color: var(--warning); }
+.tss-item-check.active .tss-check-icon { visibility: visible; }
+
+/*
+|--------------------------------------------------------------------------
+| FORM CLEAN — caption label kecil, border halus, spacing rapat.
+| Dipakai lewat class="form-clean" pada elemen .row berisi .form-group.
+| (dipakai di form Informasi PO, Informasi Cost Request, dll)
+|--------------------------------------------------------------------------
+*/
+
+.form-clean .form-group { margin-bottom: .85rem; }
+.form-clean .form-group:last-child { margin-bottom: 0; }
+.form-clean label {
+    font-size: 11px; font-weight: 700; letter-spacing: .4px;
+    text-transform: uppercase; color: var(--text-faint); margin-bottom: 5px;
+}
+.form-clean label .text-danger { font-size: 11px; }
+.form-clean .form-control,
+.form-clean .tss-btn,
+.form-clean .tss-multi-btn { font-size: 13.5px; border-color: var(--border); }
+.form-clean .form-control::placeholder { color: var(--text-faint); }
+.form-clean .input-group-text { border-color: var(--border); background: var(--surface-2); color: var(--text-faint); }
+.form-clean small.text-muted { font-size: 11px; }
+
+/*
+|--------------------------------------------------------------------------
+| TWO-COLUMN FORM DENGAN SEPARATOR (mis. form Informasi PO)
+| Ditambahkan bersamaan dengan class="form-clean" pada .row yang sama.
+|--------------------------------------------------------------------------
+*/
+
+.po-two-col { margin-left: -8px; margin-right: -8px; }
+.po-two-col > .po-col-left,
+.po-two-col > .po-col-right { padding-left: 8px; padding-right: 8px; }
+.po-two-col .po-col-right { border-left: 1px solid #edeff2; padding-left: 18px; }
+
+/* Varian rasio 70/30 (mis. form Cost Request) — tambahkan bersama class po-two-col */
+@media (min-width: 768px) {
+    .po-two-col.ratio-70-30 > .po-col-left { flex: 0 0 70%; max-width: 70%; }
+    .po-two-col.ratio-70-30 > .po-col-right { flex: 0 0 30%; max-width: 30%; }
+}
+
+@media (max-width: 767.98px) {
+    .po-two-col { margin-left: 0; margin-right: 0; }
+    .po-two-col > .po-col-left,
+    .po-two-col > .po-col-right { padding-left: 15px; padding-right: 15px; }
+    .po-two-col .po-col-right {
+        border-left: none; border-top: 1px solid #edeff2;
+        padding-top: 14px; margin-top: 4px;
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| SWEET ALERT
+|--------------------------------------------------------------------------
+*/
+
+.swal2-popup {
+    border-radius: var(--radius-lg) !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 14px !important;
+}
+
+.swal2-title {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+}
+
+.swal2-confirm {
+    border-radius: var(--radius-sm) !important;
+}
+
+.swal2-cancel {
+    border-radius: var(--radius-sm) !important;
+}
+
+/*
+|--------------------------------------------------------------------------
+| PAGE HEADER
+|--------------------------------------------------------------------------
+*/
+
+.content-header {
+    padding: 16px 24px 8px !important;
+}
+
+.content-header h1 {
+    font-size: 20px !important;
+    font-weight: 700 !important;
+    color: var(--text);
+}
+
+.breadcrumb {
+    background: transparent !important;
+    font-size: 12px !important;
+    padding: 0 !important;
+}
+
+.breadcrumb-item.active {
+    color: var(--text-faint) !important;
+}
+
+.breadcrumb-item a {
+    color: var(--accent-text);
+    text-decoration: none;
+}
+
+/* Tooltip on hover when collapsed — positioned via JS (see bottom of file) */
+#tsys-tooltip {
+    position: fixed;
+    left: calc(4.6rem + 6px);
+    background: var(--navy-mid);
+    color: #E8F0F8;
+    font-size: 12.5px;
+    font-weight: 500;
+    padding: 7px 14px;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    white-space: nowrap;
+    border-left: 2px solid var(--amber);
+    box-shadow: 4px 4px 16px rgba(0,0,0,0.35);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.12s;
+    z-index: 9999;
+    transform: translateY(-50%);
+}
+
+#tsys-tooltip.visible { opacity: 1; }
+
+/* Section divider — visible only in collapsed mode */
+.tsys-divider {
+    display: none;
+}
+
+.sidebar-mini.sidebar-collapse .tsys-divider {
+    display: block;
+    height: 1px;
+    background: rgba(255,255,255,0.18);
+    margin: 10px 14px;
+}
+
+/*
+|--------------------------------------------------------------------------
+| BLOCK AdminLTE's built-in hover-expand on sidebar-mini
+| Default: .sidebar-mini .main-sidebar:hover expands to full width.
+| We override this — tooltip handles label visibility instead.
+|--------------------------------------------------------------------------
+*/
+
+.sidebar-mini.sidebar-collapse .main-sidebar,
+.sidebar-mini.sidebar-collapse .main-sidebar:hover {
+    width: 4.6rem !important;
+    overflow: hidden !important;
+}
+
+.sidebar-mini.sidebar-collapse .main-sidebar:hover .brand-link {
+    width: 4.6rem !important;
+    padding: 0 !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+}
+
+.sidebar-mini.sidebar-collapse .main-sidebar:hover .brand-logo-full { display: none !important; }
+.sidebar-mini.sidebar-collapse .main-sidebar:hover .brand-logo-mini { display: block !important; }
+.sidebar-mini.sidebar-collapse .main-sidebar:hover .tsys-label { display: none !important; }
+.sidebar-mini.sidebar-collapse .main-sidebar:hover .tsys-section-label {
+    opacity: 0 !important;
+    height: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+.sidebar-mini.sidebar-collapse .main-sidebar:hover .tsys-link {
+    justify-content: center !important;
+    padding: 10px 0 !important;
+    gap: 0 !important;
+}
+.sidebar-mini.sidebar-collapse .main-sidebar:hover .tsys-divider {
+    display: block !important;
+}
+
+/*
+|--------------------------------------------------------------------------
+| SCROLLBAR (webkit)
+|--------------------------------------------------------------------------
+*/
+
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 4px; }
+.sidebar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+

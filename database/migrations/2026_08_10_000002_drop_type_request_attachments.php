@@ -7,15 +7,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('request_attachments', function (Blueprint $table) {
-            $table->dropColumn('type');
-        });
+        //
     }
 
     public function down(): void
     {
-        Schema::table('request_attachments', function (Blueprint $table) {
-            $table->string('type')->default('request')->after('id');
-        });
+        //
     }
 };

@@ -11,7 +11,12 @@ class SourceFund extends Model
         'no_account',
         'bank_id',
         'status',
+        'is_main_account',
         'input_by',
+    ];
+
+    protected $casts = [
+        'is_main_account' => 'boolean',
     ];
 
     /*
@@ -28,6 +33,24 @@ class SourceFund extends Model
     public function inputBy()
     {
         return $this->belongsTo(User::class, 'input_by');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | SCOPES
+    |--------------------------------------------------------------------------
+    */
+
+    /** Rekening Main Account — asal dana untuk Top Up. */
+    public function scopeMainAccount($query)
+    {
+        return $query->where('is_main_account', true);
+    }
+
+    /** Rekening operasional (bukan Main Account) — dipakai Cash Out & tujuan Top Up. */
+    public function scopeOperational($query)
+    {
+        return $query->where('is_main_account', false);
     }
 
     /*

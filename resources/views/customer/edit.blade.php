@@ -9,35 +9,25 @@
     $newAttachments = old('attachments', [[]]);
 @endphp
 
-<!-- CONTENT HEADER -->
-<div class="content-header">
-    <div class="container-fluid">
-        <div class="row mb-2 align-items-center">
-            <div class="col-sm-6">
-                <div class="d-flex align-items-center">
-                    <a href="{{ url('/customer') }}" class="btn btn-secondary btn-sm mr-3">
-                        <i class="fas fa-arrow-left"></i>
-                    </a>
-                    <div>
-                        <h1 class="m-0 font-weight-bold">Edit Customer</h1>
-                        <small class="text-muted">Form perubahan data customer</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-sm-6">
-                <ol class="breadcrumb float-sm-right mb-0">
-                    <li class="breadcrumb-item"><a href="#">Master</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url('/customer') }}">Customer</a></li>
-                    <li class="breadcrumb-item active">Edit</li>
-                </ol>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- MAIN CONTENT -->
 <div class="content">
     <div class="container-fluid">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <div class="d-flex align-items-center">
+                <a href="{{ url('/customer') }}" class="btn btn-secondary btn-sm mr-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div>
+                    <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Edit Customer</h1>
+                    <small class="text-muted">Form perubahan data customer</small>
+                </div>
+            </div>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item"><a href="#">Master</a></li>
+                <li class="breadcrumb-item"><a href="{{ url('/customer') }}">Customer</a></li>
+                <li class="breadcrumb-item active">Edit</li>
+            </ol>
+        </div>
 
         <form action="{{ url('/customer/' . $customer->id) }}" method="POST" enctype="multipart/form-data">
             @csrf
@@ -163,10 +153,10 @@
                         <table class="table table-sm table-bordered mb-0">
                             <thead class="bg-light">
                                 <tr>
-                                    <th style="width:5%">No</th>
-                                    <th style="width:30%">Judul</th>
-                                    <th>File</th>
-                                    <th style="width:12%" class="text-center">Hapus</th>
+                                    <th scope="col" style="width:5%">No</th>
+                                    <th scope="col" style="width:30%">Judul</th>
+                                    <th scope="col">File</th>
+                                    <th scope="col" style="width:12%" class="text-center">Hapus</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -200,10 +190,10 @@
                         <table class="table table-bordered mb-0" id="attachmentTable">
                             <thead class="bg-light">
                                 <tr>
-                                    <th style="width:5%">No</th>
-                                    <th style="width:35%">Judul</th>
-                                    <th>File</th>
-                                    <th style="width:5%" class="text-center">Aksi</th>
+                                    <th scope="col" style="width:5%">No</th>
+                                    <th scope="col" style="width:35%">Judul</th>
+                                    <th scope="col">File</th>
+                                    <th scope="col" style="width:5%" class="text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="attachmentBody" data-next-index="{{ count($newAttachments) }}">

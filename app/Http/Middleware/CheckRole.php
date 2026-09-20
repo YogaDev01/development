@@ -40,6 +40,14 @@ class CheckRole
 
         // Check if user's role is in the allowed roles
         if (!$user->hasRole($roles)) {
+            // Sedang "View As" (preview role lain sbg superadmin)? Jangan abort
+            // ke halaman error polos (tanpa navbar/tombol reset) — redirect balik
+            // saja supaya superadmin selalu bisa klik "Kembali ke Superadmin".
+            if ($user->isViewingAs()) {
+                return redirect()->back()
+                    ->with('error', 'Role yang sedang di-preview ("' . $user->effectiveRole()?->name . '") tidak memiliki akses ke halaman ini.');
+            }
+
             abort(403, 'Unauthorized - Insufficient permissions');
         }
 

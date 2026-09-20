@@ -14,72 +14,22 @@
 
 @endphp
 
-<!-- CONTENT HEADER -->
-<div class="content-header">
-
-    <div class="container-fluid">
-
-        <div class="row mb-2">
-
-            <!-- TITLE -->
-            <div class="col-sm-6">
-
-                <h1 class="m-0 font-weight-bold d-flex align-items-center">
-
-                    <a 
-                        href="{{ url('/budget-plan') }}"
-                        class="btn btn-secondary btn-sm mr-3"
-                    >
-
-                        <i class="fas fa-arrow-left"></i>
-
-                    </a>
-
-                    Detail Budget Plan
-
-                </h1>
-
-            </div>
-
-            <!-- BREADCRUMB -->
-            <div class="col-sm-6">
-
-                <ol class="breadcrumb float-sm-right">
-
-                    <li class="breadcrumb-item">
-
-                        Operational Cost
-
-                    </li>
-
-                    <li class="breadcrumb-item">
-
-                        <a href="{{ url('/budget-plan') }}">
-                            Budget Plan
-                        </a>
-
-                    </li>
-
-                    <li class="breadcrumb-item active">
-
-                        Detail
-
-                    </li>
-
-                </ol>
-
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-<!-- MAIN CONTENT -->
 <div class="content">
-
     <div class="container-fluid">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <div class="d-flex align-items-center">
+                <a href="{{ url('/budget-plan') }}" class="btn btn-secondary btn-sm mr-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Detail Budget Plan</h1>
+            </div>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item">Operational Cost</li>
+                <li class="breadcrumb-item"><a href="{{ url('/budget-plan') }}">Budget Plan</a></li>
+                <li class="breadcrumb-item active">Detail</li>
+            </ol>
+        </div>
 
         <div class="row">
 
@@ -115,18 +65,20 @@
 
                         </h3>
 
-                        <!-- STATUS -->
+                        {{-- STATUS
+                             Dulu hanya tiga status yang punya badge (ACTIVE/
+                             INACTIVE/CLOSED), sehingga Budget Plan yang sedang
+                             Draft/Submitted/Checked/Verified/Closing tidak
+                             menampilkan apa pun. Sekarang memakai komponen
+                             bersama, jadi label, keterangan, dan warnanya sama
+                             dengan modul lain — dan tidak ada status yang
+                             terlewat. --}}
                         <div class="text-center mb-3">
-
-                            @if($budgetPlan->status == 'ACTIVE')
-                                <span class="badge badge-success px-3 py-2">ACTIVE</span>
-                            @elseif($budgetPlan->status == 'INACTIVE')
-                                <span class="badge badge-danger px-3 py-2">INACTIVE</span>
-                            @elseif($budgetPlan->status == 'CLOSED')
-                                <span class="badge badge-secondary px-3 py-2">CLOSED</span>
-                            @endif
-
+                            <x-status :status="$budgetPlan->status" context="budget-plan" size="md" :description="true" />
                         </div>
+
+                        {{-- Posisi dokumen di dalam alurnya. --}}
+                        <x-workflow-flow :status="$budgetPlan->status" context="budget-plan" class="mb-3" />
 
                         <!-- INFO -->
                         <ul class="list-group list-group-unbordered mb-3">
@@ -137,7 +89,7 @@
 
                                 <span class="float-right text-primary font-weight-bold">
 
-                                    Rp {{ number_format($budgetPlan->amount, 0, ',', '.') }}
+                                    {{ number_format($budgetPlan->amount, 0, ',', '.') }}
 
                                 </span>
 
@@ -149,7 +101,7 @@
 
                                 <span class="float-right text-info font-weight-bold">
 
-                                    Rp {{ number_format($totalRequestAmount, 0, ',', '.') }}
+                                    {{ number_format($totalRequestAmount, 0, ',', '.') }}
 
                                 </span>
 
@@ -173,7 +125,7 @@
 
                                 <span class="float-right {{ $remainingBudget < 0 ? 'text-danger' : 'text-success' }} font-weight-bold">
 
-                                    Rp {{ number_format($remainingBudget, 0, ',', '.') }}
+                                    {{ number_format($remainingBudget, 0, ',', '.') }}
 
                                 </span>
 
@@ -378,19 +330,19 @@
 
                                 <tr>
 
-                                    <th width="5%">
+                                    <th scope="col" width="5%">
 
                                         No
 
                                     </th>
 
-                                    <th>
+                                    <th scope="col">
 
                                         File Name
 
                                     </th>
 
-                                    <th width="15%">
+                                    <th scope="col" width="15%">
 
                                         Action
 
@@ -484,37 +436,37 @@
 
                                 <tr>
 
-                                    <th width="5%" class="all">
+                                    <th scope="col" width="5%" class="all">
 
                                         No
 
                                     </th>
 
-                                    <th width="15%" class="all">
+                                    <th scope="col" width="15%" class="all">
 
                                         Code
 
                                     </th>
 
-                                    <th>
+                                    <th scope="col">
 
                                         Description
 
                                     </th>
 
-                                    <th width="15%">
+                                    <th scope="col" width="15%">
 
                                         Amount
 
                                     </th>
 
-                                    <th width="12%">
+                                    <th scope="col" width="12%">
 
                                         Status
 
                                     </th>
 
-                                    <th width="10%" class="text-center all action-column">
+                                    <th scope="col" width="10%" class="text-center all action-column">
 
                                         Action
 
@@ -550,39 +502,19 @@
 
                                         <td class="font-weight-bold text-primary">
 
-                                            Rp {{ number_format($request->amount, 0, ',', '.') }}
+                                            {{ number_format($request->amount, 0, ',', '.') }}
 
                                         </td>
 
                                         <td>
 
-                                            @php
-                                                $stColor = match($request->status) {
-                                                    'DRAFT'            => 'secondary',
-                                                    'PENDING_APPROVER' => 'warning',
-                                                    'PENDING_FINANCE'  => 'info',
-                                                    'APPROVED'         => 'success',
-                                                    'PAID'             => 'primary',
-                                                    'REALIZED'         => 'success',
-                                                    'REJECTED'         => 'danger',
-                                                    'CLOSED'           => 'dark',
-                                                    default            => 'secondary',
-                                                };
-                                                $stIcon = match($request->status) {
-                                                    'DRAFT'                                => 'pen',
-                                                    'PENDING_APPROVER', 'PENDING_FINANCE'  => 'hourglass-half',
-                                                    'APPROVED'                             => 'check-circle',
-                                                    'PAID'                                 => 'money-bill-wave',
-                                                    'REALIZED'                             => 'check-double',
-                                                    'REJECTED'                             => 'times-circle',
-                                                    'CLOSED'                               => 'lock',
-                                                    default                                => 'circle',
-                                                };
-                                            @endphp
-
-                                            <span class="badge badge-{{ $stColor }}">
-                                                <i class="fas fa-{{ $stIcon }} mr-1"></i>{{ str_replace('_', ' ', $request->status) }}
-                                            </span>
+                                            {{-- Peta warna/ikon status yang ditulis khusus di halaman ini
+                                                 sudah ketinggalan: 'PENDING_APPROVER'/'PENDING_FINANCE'
+                                                 bukan lagi status Cost Request, sementara CHECKED,
+                                                 VERIFIED, QUEUED, dan seluruh tahap Settlement tidak
+                                                 punya warna sama sekali. Diganti komponen bersama yang
+                                                 membaca App\Support\WorkflowStatus. --}}
+                                            <x-status :status="$request->status" context="budget-request" />
 
                                         </td>
 
@@ -642,7 +574,7 @@
 
                                         <th class="text-primary font-weight-bold">
 
-                                            Rp {{ number_format($totalRequestAmount, 0, ',', '.') }}
+                                            {{ number_format($totalRequestAmount, 0, ',', '.') }}
 
                                         </th>
 
@@ -660,7 +592,7 @@
 
                                         <th class="{{ $remainingBudget < 0 ? 'text-danger' : 'text-success' }} font-weight-bold">
 
-                                            Rp {{ number_format($remainingBudget, 0, ',', '.') }}
+                                            {{ number_format($remainingBudget, 0, ',', '.') }}
 
                                         </th>
 
@@ -700,7 +632,7 @@
 
 .card {
 
-    border-radius: 10px;
+    border-radius: var(--radius-lg);
 
     overflow: hidden;
 

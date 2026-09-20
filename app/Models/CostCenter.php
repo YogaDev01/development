@@ -20,11 +20,38 @@ class CostCenter extends Model
     public const TYPES = [
         'OVERHEAD',
         'PAYROLL',
+        'TAX',
+        'ASSET',
+        'LIABILITY',
+        'CAPITAL',
+        'ADJUSTMENT',
+    ];
+
+    /** Prefix kode otomatis per tipe (OH-001, PR-001, TX-001, dst). */
+    public const CODE_PREFIXES = [
+        'OVERHEAD'   => 'OH',
+        'PAYROLL'    => 'PR',
+        'TAX'        => 'TX',
+        'ASSET'      => 'AS',
+        'LIABILITY'  => 'LB',
+        'CAPITAL'    => 'CP',
+        'ADJUSTMENT' => 'AJ',
     ];
 
     public const STATUSES = [
         'ACTIVE',
         'INACTIVE',
+    ];
+
+    /**
+     * Semua tipe cost center SELAIN Payroll — diperlakukan seragam di seluruh
+     * alur Budget Plan/Cost Request (visibility, akses group, kategori Account
+     * "Overhead") persis seperti Overhead selama ini. Payroll sengaja dikecualikan
+     * karena datanya rahasia (role/akses sendiri, lihat PAYROLL_ROLES di
+     * BudgetPlanController/BuildsCrWorklist).
+     */
+    public const OVERHEAD_LIKE_TYPES = [
+        'OVERHEAD', 'TAX', 'ASSET', 'LIABILITY', 'CAPITAL', 'ADJUSTMENT',
     ];
 
     /*
@@ -77,9 +104,14 @@ class CostCenter extends Model
     public function getTypeColorAttribute(): string
     {
         return match (strtoupper($this->type)) {
-            'OVERHEAD' => 'info',
-            'PAYROLL'  => 'warning',
-            default    => 'secondary',
+            'OVERHEAD'   => 'info',
+            'PAYROLL'    => 'warning',
+            'TAX'        => 'danger',
+            'ASSET'      => 'success',
+            'LIABILITY'  => 'dark',
+            'CAPITAL'    => 'primary',
+            'ADJUSTMENT' => 'secondary',
+            default      => 'secondary',
         };
     }
 
@@ -93,7 +125,7 @@ class CostCenter extends Model
      */
     public static function generateNextCode(string $type): string
     {
-        $prefix = strtoupper($type) === 'PAYROLL' ? 'PR' : 'OH';
+        $prefix = self::CODE_PREFIXES[strtoupper($type)] ?? 'OH';
 
         $last = static::where('type', strtoupper($type))
             ->where('code', 'like', $prefix . '-%')

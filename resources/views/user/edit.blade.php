@@ -2,64 +2,17 @@
 
 @section('content')
 
-<div class="content-header">
-
-    <div class="container-fluid">
-
-        <div class="row mb-2">
-
-            <!-- TITLE -->
-            <div class="col-sm-6">
-
-                <h1 class="m-0 font-weight-bold">
-
-                    Edit User
-
-                </h1>
-
-            </div>
-
-            <!-- BREADCRUMB -->
-            <div class="col-sm-6">
-
-                <ol class="breadcrumb float-sm-right">
-
-                    <li class="breadcrumb-item">
-
-                        <a href="#">
-                            Master
-                        </a>
-
-                    </li>
-
-                    <li class="breadcrumb-item">
-
-                        <a href="{{ url('/user') }}">
-                            User
-                        </a>
-
-                    </li>
-
-                    <li class="breadcrumb-item active">
-
-                        Edit User
-
-                    </li>
-
-                </ol>
-
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-<!-- MAIN CONTENT -->
 <div class="content">
-
     <div class="container-fluid">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Edit User</h1>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item"><a href="#">Master</a></li>
+                <li class="breadcrumb-item"><a href="{{ url('/user') }}">User</a></li>
+                <li class="breadcrumb-item active">Edit User</li>
+            </ol>
+        </div>
 
         <div class="card card-warning card-outline shadow-sm">
 
@@ -214,6 +167,42 @@
                                 >
 
                                 @error('email')
+
+                                    <small class="text-danger d-block">
+
+                                        {{ $message }}
+
+                                    </small>
+
+                                @enderror
+
+                            </div>
+
+                        </div>
+
+                        <!-- PHONE / WHATSAPP -->
+                        <div class="col-md-6">
+
+                            <div class="form-group">
+
+                                <label>
+
+                                    No. WhatsApp
+
+                                </label>
+
+                                <input
+                                    type="text"
+                                    name="phone"
+                                    class="form-control"
+                                    autocomplete="off"
+                                    value="{{ old('phone', $user->phone) }}"
+                                    placeholder="Contoh: 6281234567890"
+                                >
+
+                                <small class="text-muted d-block">Untuk notifikasi WhatsApp. Format 62xxxx, opsional.</small>
+
+                                @error('phone')
 
                                     <small class="text-danger d-block">
 

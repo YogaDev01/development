@@ -2,52 +2,60 @@
 
 @section('content')
 
-<!-- CONTENT HEADER -->
-<div class="content-header">
-    <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6 d-flex align-items-center">
-                <a href="{{ url('/beneficiaries') }}" class="btn btn-secondary btn-sm mr-3">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
-                <h1 class="m-0 font-weight-bold">Bank Master</h1>
-            </div>
-            <div class="col-sm-6">
-                <ol class="breadcrumb float-sm-right">
-                    <li class="breadcrumb-item"><a href="#">Master</a></li>
-                    <li class="breadcrumb-item active">Bank</li>
-                </ol>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- MAIN CONTENT -->
 <div class="content">
     <div class="container-fluid">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <div class="d-flex align-items-center">
+                <a href="{{ url('/beneficiaries') }}" class="btn btn-secondary btn-sm mr-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Bank Master</h1>
+            </div>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item"><a href="#">Master</a></li>
+                <li class="breadcrumb-item active">Bank</li>
+            </ol>
+        </div>
+
+        <x-stat-cards :cards="[
+            ['Total Bank', $summary['total'], 'primary', 'fas fa-university'],
+            ['Punya Default Method', $summary['with_method'], 'info', 'fas fa-wallet'],
+            ['Sudah Dipakai Beneficiary', $summary['in_use'], 'success', 'fas fa-link'],
+        ]" />
 
         <div class="card card-primary card-outline shadow-sm">
 
             <!-- CARD HEADER -->
             <div class="card-header d-flex align-items-center">
-                <button id="refreshTable" class="btn btn-secondary btn-sm" type="button">
-                    <i class="fas fa-sync-alt mr-1"></i> Refresh
-                </button>
-                <button type="button" class="btn btn-success btn-sm ml-auto" id="btnTambah">
-                    <i class="fas fa-plus mr-1"></i> Tambah Bank
-                </button>
+                <h3 class="card-title"><i class="fas fa-university mr-1"></i> Daftar Bank</h3>
+                <div class="ml-auto d-flex" style="gap:8px;">
+                    <button id="refreshTable" class="btn btn-secondary btn-sm" type="button">
+                        <i class="fas fa-sync-alt mr-1"></i> Refresh
+                    </button>
+                </div>
             </div>
 
             <!-- CARD BODY -->
             <div class="card-body">
 
                 <!-- FILTER BAR -->
-                <div class="custom-toolbar mb-3">
-                    <div class="custom-toolbar-left">
+                <div class="custom-toolbar mb-3 d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
+                    <div class="custom-toolbar-left d-flex align-items-center flex-wrap" style="gap:8px;">
                         <div class="toolbar-row">
                             <span class="toolbar-label">Cari :</span>
                             <div class="toolbar-input" id="customSearch"></div>
                         </div>
+                        <button aria-label="Clear Filter" type="button" id="btnClearFilterBank" class="btn btn-outline-secondary btn-sm" title="Clear Filter">
+                            <i class="fas fa-eraser"></i>
+                        </button>
+                        <div id="bankRowFilters" class="d-flex flex-wrap" style="gap:8px;"></div>
+                    </div>
+                    <div class="custom-toolbar-right d-flex flex-wrap" style="gap:8px;">
+                        <button type="button" class="btn btn-success btn-sm" id="btnTambah">
+                            <i class="fas fa-plus mr-1"></i> Tambah Bank
+                        </button>
                     </div>
                 </div>
 
@@ -56,16 +64,16 @@
                     <table id="bankTable" class="table table-bordered table-hover table-striped mb-0">
                         <thead class="bg-light">
                             <tr>
-                                <th width="6%"  class="all">No</th>
-                                <th width="20%" class="all">Kode</th>
-                                <th class="all">Nama Bank</th>
-                                <th width="18%" class="all">Default Method</th>
-                                <th width="1%" class="text-center all action-column" style="white-space:nowrap;">Action</th>
+                                <th scope="col" width="6%"  class="all">No</th>
+                                <th scope="col" width="20%" class="all">Kode</th>
+                                <th scope="col" class="all">Nama Bank</th>
+                                <th scope="col" width="18%" class="all">Default Method</th>
+                                <th scope="col" width="1%" class="text-center all action-column" style="white-space:nowrap;">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($banks as $bank)
-                            <tr>
+                            <tr data-defaultmethod="{{ $bank->default_method ?? '' }}">
                                 <td>{{ $loop->iteration }}</td>
                                 <td>{{ $bank->code ?? '-' }}</td>
                                 <td><strong>{{ $bank->name }}</strong></td>
@@ -77,41 +85,53 @@
                                     @endif
                                 </td>
                                 <td class="text-center action-column">
-                                    <div class="action-buttons">
+                                    <div class="action-buttons ts-actions">
 
-                                        <a href="{{ url('/bank/' . $bank->id) }}"
-                                           class="btn btn-info btn-sm" title="Detail">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-
+                                        {{-- AKSI UTAMA — Edit. Master data bukan alur kerja
+                                             persetujuan, jadi tombolnya netral: merah disimpan
+                                             untuk aksi yang benar-benar menentukan. --}}
                                         <button type="button"
-                                                class="btn btn-warning btn-sm btn-edit"
+                                                class="ts-action-primary is-neutral btn-edit"
                                                 data-id="{{ $bank->id }}"
                                                 data-name="{{ $bank->name }}"
                                                 data-code="{{ $bank->code }}"
                                                 data-method="{{ $bank->default_method }}"
-                                                title="Edit">
-                                            <i class="fas fa-pen"></i>
+                                                title="Edit" aria-label="Edit {{ $bank->name }}">
+                                            <i class="fas fa-pen" aria-hidden="true"></i><span class="ts-al">Edit</span>
                                         </button>
 
-                                        <form action="{{ url('/bank/' . $bank->id) }}"
-                                              method="POST" style="display:inline-block;"
-                                              class="delete-form">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-danger btn-sm">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </form>
+                                        <button type="button" class="ts-action-more"
+                                                aria-haspopup="true" aria-expanded="false"
+                                                title="Aksi lain" aria-label="Aksi lain untuk {{ $bank->name }}">
+                                            <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
+                                        </button>
+
+                                        <div class="ts-action-menu dropdown-menu" hidden>
+
+                                            <a href="{{ url('/bank/' . $bank->id) }}" class="dropdown-item">
+                                                <i class="fas fa-eye"></i>Detail
+                                            </a>
+
+                                            <div class="dropdown-divider"></div>
+
+                                            <form action="{{ url('/bank/' . $bank->id) }}"
+                                                  method="POST" class="delete-form">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="dropdown-item is-danger">
+                                                    <i class="fas fa-trash"></i>Hapus
+                                                </button>
+                                            </form>
+
+                                        </div>
 
                                     </div>
                                 </td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="5" class="text-center text-muted py-4">
-                                    <i class="fas fa-folder-open d-block mb-2"></i>
-                                    Belum ada data bank
+                                <td colspan="5">
+                                    <x-empty title="Belum ada data bank" icon="fas fa-folder-open" compact />
                                 </td>
                             </tr>
                             @endforelse
@@ -130,11 +150,11 @@
 <!-- ================================================================ -->
 <div class="modal fade" id="modalTambah" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
-        <div class="modal-content" style="border-radius:12px; overflow:hidden;">
+        <div class="modal-content" style="border-radius:var(--radius-lg); overflow:hidden;">
 
-            <div class="modal-header" style="background:#0D1B2A; border-bottom:3px solid #F5A623;">
+            <div class="modal-header" style="background:var(--charcoal); border-bottom:3px solid var(--accent);">
                 <h5 class="modal-title text-white">
-                    <i class="fas fa-university mr-2" style="color:#F5A623;"></i>
+                    <i class="fas fa-university mr-2" style="color:var(--accent);"></i>
                     Tambah Bank
                 </h5>
                 <button type="button" class="close text-white" data-dismiss="modal">
@@ -176,7 +196,7 @@
                     </div>
                 </div>
 
-                <div class="modal-footer" style="background:#f8f9fa; border-top:1px solid #e9ecef;">
+                <div class="modal-footer" style="background:var(--surface-2); border-top:1px solid var(--border);">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">
                         <i class="fas fa-times mr-1"></i> Batal
                     </button>
@@ -196,11 +216,11 @@
 <!-- ================================================================ -->
 <div class="modal fade" id="modalEdit" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
-        <div class="modal-content" style="border-radius:12px; overflow:hidden;">
+        <div class="modal-content" style="border-radius:var(--radius-lg); overflow:hidden;">
 
-            <div class="modal-header" style="background:#0D1B2A; border-bottom:3px solid #F5A623;">
+            <div class="modal-header" style="background:var(--charcoal); border-bottom:3px solid var(--accent);">
                 <h5 class="modal-title text-white">
-                    <i class="fas fa-pen mr-2" style="color:#F5A623;"></i>
+                    <i class="fas fa-pen mr-2" style="color:var(--accent);"></i>
                     Edit Bank
                 </h5>
                 <button type="button" class="close text-white" data-dismiss="modal">
@@ -241,7 +261,7 @@
                     </div>
                 </div>
 
-                <div class="modal-footer" style="background:#f8f9fa; border-top:1px solid #e9ecef;">
+                <div class="modal-footer" style="background:var(--surface-2); border-top:1px solid var(--border);">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">
                         <i class="fas fa-times mr-1"></i> Batal
                     </button>
@@ -261,17 +281,17 @@
 @push('styles')
 <style>
 
-.card-header .btn  { border-radius:6px; font-weight:600; }
+.card-header .btn  { border-radius:var(--radius-sm); font-weight:600; }
 .font-weight-600   { font-weight:600; }
 
 /* TOOLBAR */
 .custom-toolbar      { display:flex; justify-content:space-between; align-items:flex-start; gap:15px; flex-wrap:wrap; }
 .custom-toolbar-left { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 .toolbar-row         { display:flex; align-items:center; gap:8px; }
-.toolbar-label       { min-width:50px; margin-bottom:0; white-space:nowrap; font-weight:600; color:#495057; }
+.toolbar-label       { min-width:50px; margin-bottom:0; white-space:nowrap; font-weight:600; color:var(--text-dim); }
 .toolbar-input       { min-width:180px; }
 #customSearch        { width:100%; }
-#customSearch input  { width:180px; border-radius:6px; }
+#customSearch input  { width:180px; border-radius:var(--radius-sm); }
 
 /* TABLE */
 #bankTable          { width:100% !important; }
@@ -282,15 +302,15 @@
 
 /* TABLE BOTTOM */
 .dataTables_wrapper .row:last-child { margin-top:18px; align-items:center; }
-.dataTables_info { padding-top:0 !important; font-size:14px; color:#6c757d; }
+.dataTables_info { padding-top:0 !important; font-size:14px; color:var(--text-faint); }
 
 /* PAGE SIZE */
 .dataTables_length { display:flex; align-items:center; margin-left:18px; }
-.dataTables_length label { display:flex; align-items:center; gap:10px; margin-bottom:0; font-size:14px; font-weight:600; color:#6c757d; }
+.dataTables_length label { display:flex; align-items:center; gap:10px; margin-bottom:0; font-size:14px; font-weight:600; color:var(--text-faint); }
 .dataTables_length select {
     appearance:none !important; -webkit-appearance:none !important;
-    background-color:#fff !important; color:#495057 !important;
-    border:1px solid #ced4da !important; border-radius:6px !important;
+    background-color:var(--surface) !important; color:var(--text-dim) !important;
+    border:1px solid var(--border) !important; border-radius:var(--radius-sm) !important;
     padding:4px 30px 4px 10px !important; height:36px !important; min-width:72px !important;
     font-size:14px !important; font-weight:600 !important; cursor:pointer; box-shadow:none !important;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%236c757d' viewBox='0 0 16 16'%3E%3Cpath d='M1.5 5.5l6 6 6-6'/%3E%3C/svg%3E") !important;
@@ -298,21 +318,21 @@
 }
 
 /* PAGINATION — amber */
-.dataTables_paginate .paginate_button { border-radius:6px !important; margin:0 2px; transition:all .2s; }
+.dataTables_paginate .paginate_button { border-radius:var(--radius-sm) !important; margin:0 2px; transition:all .2s; }
 .dataTables_paginate .paginate_button.current,
 .dataTables_paginate .paginate_button.current:hover,
 .dataTables_wrapper .pagination .page-item.active .page-link {
-    background:#F5A623 !important; background-image:none !important;
-    border-color:#C97E0A !important; color:#0D1B2A !important; font-weight:700 !important;
+    background:var(--accent) !important; background-image:none !important;
+    border-color:var(--accent-dark) !important; color:#fff !important; font-weight:700 !important;
 }
-.dataTables_wrapper .pagination .page-link { color:#F5A623 !important; }
+.dataTables_wrapper .pagination .page-link { color:var(--accent) !important; }
 .dataTables_wrapper .pagination .page-item:not(.active) .page-link:hover {
-    background:#FFF3DC !important; border-color:#F5A623 !important; color:#C97E0A !important;
+    background:var(--warning-bg) !important; border-color:var(--accent) !important; color:var(--accent-dark) !important;
 }
 .dataTables_wrapper .pagination .page-link:focus {
-    box-shadow:0 0 0 3px rgba(245,166,35,0.30) !important; outline:none !important;
+    box-shadow:0 0 0 3px rgba(200,39,46,0.30) !important; outline:none !important;
 }
-.dataTables_wrapper .pagination .page-item.disabled .page-link { color:#C0C8D0 !important; }
+.dataTables_wrapper .pagination .page-item.disabled .page-link { color:var(--text-faint) !important; }
 
 /* MOBILE */
 @media (max-width: 768px) {
@@ -320,7 +340,15 @@
     .breadcrumb { float:left !important; margin-top:10px; }
     .card-header { flex-direction:column; gap:10px; align-items:stretch !important; }
     .card-header .btn { width:100%; }
-    .custom-toolbar-left { flex-direction:column; align-items:stretch; width:100%; gap:10px; }
+    .card-header .card-title { margin-bottom:0; }
+    .card-header .ml-auto { margin-left:0 !important; flex-wrap:wrap; }
+    .custom-toolbar { flex-direction:column !important; align-items:stretch !important; }
+    .custom-toolbar-left { flex-direction:column !important; align-items:stretch !important; width:100%; gap:10px; }
+    .custom-toolbar-right { width:100%; }
+    .custom-toolbar-right .btn { width:100%; }
+    #btnClearFilterBank { width:100%; }
+    #bankRowFilters { width:100%; }
+    #bankRowFilters .tcf-row-btn { width:100%; }
     .toolbar-row { width:100%; align-items:flex-start; }
     .toolbar-input { flex:1; width:100%; min-width:0; }
     #customSearch input { width:100% !important; }
@@ -365,6 +393,14 @@ $(function () {
         }
     });
 
+    TesysColumnFilter.initRowFilters('#bankTable', '#bankRowFilters', [
+        { key: 'defaultmethod', label: 'Default Method' },
+    ]);
+
+    $('#btnClearFilterBank').on('click', function () {
+        TesysColumnFilter.clearAll('#bankTable');
+    });
+
     $('#bankTable_filter').hide();
 
     $('#customSearch').html(`
@@ -386,8 +422,8 @@ $(function () {
             text: 'Pastikan bank ini tidak digunakan oleh beneficiary manapun.',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#6c757d',
+            confirmButtonColor: '#9a3030',
+            cancelButtonColor: '#55595e',
             confirmButtonText: 'Ya, Hapus',
             cancelButtonText: 'Batal'
         }).then(r => { if (r.isConfirmed) form.submit(); });

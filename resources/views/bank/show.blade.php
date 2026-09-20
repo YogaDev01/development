@@ -2,74 +2,22 @@
 
 @section('content')
 
-<!-- CONTENT HEADER -->
-<div class="content-header">
-
-    <div class="container-fluid">
-
-        <div class="row mb-2">
-
-            <!-- TITLE -->
-            <div class="col-sm-6">
-
-                <h1 class="m-0 font-weight-bold d-flex align-items-center">
-
-                    <a 
-                        href="{{ url('/bank') }}"
-                        class="btn btn-secondary btn-sm mr-3"
-                    >
-
-                        <i class="fas fa-arrow-left"></i>
-
-                    </a>
-
-                    Detail Bank
-
-                </h1>
-
-            </div>
-
-            <!-- BREADCRUMB -->
-            <div class="col-sm-6">
-
-                <ol class="breadcrumb float-sm-right">
-
-                    <li class="breadcrumb-item">
-
-                        <a href="#">
-                            Master
-                        </a>
-
-                    </li>
-
-                    <li class="breadcrumb-item">
-
-                        <a href="{{ url('/bank') }}">
-                            Bank
-                        </a>
-
-                    </li>
-
-                    <li class="breadcrumb-item active">
-
-                        Detail
-
-                    </li>
-
-                </ol>
-
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-<!-- MAIN CONTENT -->
 <div class="content">
-
     <div class="container-fluid">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <div class="d-flex align-items-center">
+                <a href="{{ url('/bank') }}" class="btn btn-secondary btn-sm mr-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Detail Bank</h1>
+            </div>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item"><a href="#">Master</a></li>
+                <li class="breadcrumb-item"><a href="{{ url('/bank') }}">Bank</a></li>
+                <li class="breadcrumb-item active">Detail</li>
+            </ol>
+        </div>
 
         <div class="row">
 
@@ -319,31 +267,31 @@
 
                                 <tr>
 
-                                    <th width="5%">
+                                    <th scope="col" width="5%">
 
                                         No
 
                                     </th>
 
-                                    <th width="25%">
+                                    <th scope="col" width="25%">
 
                                         Nickname
 
                                     </th>
 
-                                    <th>
+                                    <th scope="col">
 
                                         Complete Name
 
                                     </th>
 
-                                    <th width="25%">
+                                    <th scope="col" width="25%">
 
                                         Account Number
 
                                     </th>
 
-                                    <th width="15%">
+                                    <th scope="col" width="15%">
 
                                         Status
 

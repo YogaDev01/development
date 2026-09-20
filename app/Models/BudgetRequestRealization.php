@@ -41,8 +41,14 @@ class BudgetRequestRealization extends Model
         return $this->belongsTo(RequestDetail::class, 'request_detail_id');
     }
 
+    /** Lampiran KHUSUS baris realisasi ini (beda dengan lampiran global Settlement). */
+    public function attachments()
+    {
+        return $this->hasMany(RealizationDetailAttachment::class, 'realization_id')->orderBy('id');
+    }
+
     public function getTotalFormattedAttribute(): string
     {
-        return 'Rp ' . number_format($this->total ?? 0, 0, ',', '.');
+        return number_format($this->total ?? 0, 0, ',', '.');
     }
 }

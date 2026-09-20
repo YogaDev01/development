@@ -44,7 +44,7 @@ class CostCenterController extends Controller
     {
         $validated = $request->validate([
             'name'  => 'required|string|max:255',
-            'type'  => 'required|in:OVERHEAD,PAYROLL',
+            'type'  => 'required|in:' . implode(',', CostCenter::TYPES),
             'notes' => 'nullable|string',
         ]);
 

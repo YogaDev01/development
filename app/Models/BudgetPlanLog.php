@@ -22,15 +22,15 @@ class BudgetPlanLog extends Model
     ];
 
     public const ACTIONS = [
-        'created'          => 'Dibuat',
-        'submitted'        => 'Diajukan ke Finance',
-        'finance_verified' => 'Diverifikasi Finance (Active)',
-        'finance_revised'  => 'Direvisi oleh Finance',
-        'finance_rejected' => 'Ditolak Finance',
-        'closing_submitted'=> 'Pengajuan Closing oleh Manager',
-        'closing_approved' => 'Closing Diverifikasi (Closed)',
-        'closing_rejected' => 'Closing Ditolak (kembali Active)',
-        'auto_closed'      => 'Otomatis Ditutup',
+        'created'          => 'Created',
+        'submitted'        => 'Submitted to Finance',
+        'finance_verified' => 'Verified by Finance (Active)',
+        'finance_revised'  => 'Revised by Finance',
+        'finance_rejected' => 'Rejected by Finance',
+        'closing_submitted'=> 'Closing Submitted by Manager',
+        'closing_approved' => 'Closing Verified (Closed)',
+        'closing_rejected' => 'Closing Rejected (back to Active)',
+        'auto_closed'      => 'Auto Closed',
     ];
 
     /*

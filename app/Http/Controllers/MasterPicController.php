@@ -12,18 +12,53 @@ class MasterPicController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $pics = MasterPic::latest()->get();
+        // M-02 — filter & pencarian diproses di server supaya kartu ringkasan
+        // di atas tabel selalu menghitung himpunan yang sama dengan isi tabel.
+        $type   = $request->query('type');
+        $status = $request->query('status');
+        $search = trim((string) $request->query('q', ''));
+        // M-02 — saringan kerja: tampilkan hanya PIC internal yang belum punya
+        // akun User, supaya pemetaannya bisa dikerjakan sampai habis tanpa
+        // memilah-milah sendiri dari daftar penuh.
+        $unlinked = $request->boolean('unlinked');
+
+        $pics = MasterPic::with(['user:id,username,name', 'employee:id,name,employee_number'])
+            ->withCount('beneficiaries')
+            ->when(in_array($type, ['customer', 'internal'], true), fn ($q) => $q->where('type', $type))
+            ->when(in_array($status, ['ACTIVE', 'INACTIVE'], true), fn ($q) => $q->where('status', $status))
+            ->when($unlinked, fn ($q) => $q->where('type', 'internal')->whereNull('user_id'))
+            ->when($search !== '', function ($q) use ($search) {
+                $like = '%' . $search . '%';
+                $q->where(fn ($w) => $w->where('pic', 'like', $like)
+                    ->orWhere('position', 'like', $like)
+                    ->orWhere('phone', 'like', $like)
+                    ->orWhere('email', 'like', $like)
+                    ->orWhereHas('user', fn ($r) => $r->where('username', 'like', $like)->orWhere('name', 'like', $like)));
+            })
+            ->latest()
+            ->get();
 
         $summary = [
             'total'    => $pics->count(),
             'customer' => $pics->where('type', 'customer')->count(),
             'internal' => $pics->where('type', 'internal')->count(),
             'active'   => $pics->where('status', 'ACTIVE')->count(),
+            // Berapa PIC internal yang BELUM terhubung ke akun User. Sengaja
+            // dihitung dari SELURUH data, bukan dari hasil saringan: angka ini
+            // menandai sisa pekerjaan, jadi ia harus tetap turun saat dikerjakan
+            // dan tidak boleh ikut mengecil hanya karena daftarnya disaring.
+            'unlinked' => MasterPic::where('type', 'internal')->whereNull('user_id')->count(),
         ];
 
-        return view('master-pic.index', compact('pics', 'summary'));
+        $users = \App\Models\User::orderBy('username')->get(['id', 'username', 'name']);
+        $employees = \App\Models\Employee::where('status', 'ACTIVE')
+            ->orderBy('name')->get(['id', 'name', 'employee_number']);
+
+        $filters = ['type' => $type, 'status' => $status, 'q' => $search, 'unlinked' => $unlinked];
+
+        return view('master-pic.index', compact('pics', 'summary', 'users', 'employees', 'filters'));
     }
 
     /**
@@ -32,21 +67,26 @@ class MasterPicController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'type'     => 'required|in:customer,internal',
-            'pic'      => 'required|string|max:255',
-            'position' => 'nullable|string|max:255',
-            'phone'    => 'nullable|string|max:50',
-            'email'    => 'nullable|email|max:255',
-            'status'   => 'required|in:ACTIVE,INACTIVE',
+            'type'        => 'required|in:customer,internal',
+            'pic'         => 'required|string|max:255',
+            'position'    => 'nullable|string|max:255',
+            'phone'       => 'nullable|string|max:50',
+            'email'       => 'nullable|email|max:255',
+            'status'      => 'required|in:ACTIVE,INACTIVE',
+            // M-02 — penghubung ke orang sebenarnya (opsional).
+            'user_id'     => 'nullable|exists:users,id',
+            'employee_id' => 'nullable|exists:employees,id',
         ]);
 
         MasterPic::create([
-            'type'     => $request->type,
-            'pic'      => strtoupper($request->pic),
-            'position' => $request->position,
-            'phone'    => $request->phone,
-            'email'    => $request->email,
-            'status'   => $request->status,
+            'type'        => $request->type,
+            'pic'         => strtoupper($request->pic),
+            'position'    => $request->position,
+            'phone'       => $request->phone,
+            'email'       => $request->email,
+            'status'      => $request->status,
+            'user_id'     => $request->user_id ?: null,
+            'employee_id' => $request->employee_id ?: null,
             'input_by' => Auth::id(),
         ]);
 
@@ -70,8 +110,10 @@ class MasterPicController extends Controller
             'pic'      => $pic->pic,
             'position' => $pic->position,
             'phone'    => $pic->phone,
-            'email'    => $pic->email,
-            'status'   => $pic->status,
+            'email'       => $pic->email,
+            'status'      => $pic->status,
+            'user_id'     => $pic->user_id,
+            'employee_id' => $pic->employee_id,
         ]);
     }
 
@@ -81,23 +123,28 @@ class MasterPicController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'type'     => 'required|in:customer,internal',
-            'pic'      => 'required|string|max:255',
-            'position' => 'nullable|string|max:255',
-            'phone'    => 'nullable|string|max:50',
-            'email'    => 'nullable|email|max:255',
-            'status'   => 'required|in:ACTIVE,INACTIVE',
+            'type'        => 'required|in:customer,internal',
+            'pic'         => 'required|string|max:255',
+            'position'    => 'nullable|string|max:255',
+            'phone'       => 'nullable|string|max:50',
+            'email'       => 'nullable|email|max:255',
+            'status'      => 'required|in:ACTIVE,INACTIVE',
+            // M-02 — penghubung ke orang sebenarnya (opsional).
+            'user_id'     => 'nullable|exists:users,id',
+            'employee_id' => 'nullable|exists:employees,id',
         ]);
 
         $pic = MasterPic::findOrFail($id);
 
         $pic->update([
-            'type'     => $request->type,
-            'pic'      => strtoupper($request->pic),
-            'position' => $request->position,
-            'phone'    => $request->phone,
-            'email'    => $request->email,
-            'status'   => $request->status,
+            'type'        => $request->type,
+            'pic'         => strtoupper($request->pic),
+            'position'    => $request->position,
+            'phone'       => $request->phone,
+            'email'       => $request->email,
+            'status'      => $request->status,
+            'user_id'     => $request->user_id ?: null,
+            'employee_id' => $request->employee_id ?: null,
         ]);
 
         return redirect('/master-pic')
@@ -110,6 +157,14 @@ class MasterPicController extends Controller
     public function destroy($id)
     {
         $pic = MasterPic::findOrFail($id);
+
+        if (\Illuminate\Support\Facades\DB::table('customer_pic_links')->where('master_pic_id', $pic->id)->exists()) {
+            return back()->with('error', 'PIC tidak bisa dihapus karena sudah dipakai pada Customer.');
+        }
+        if (\Illuminate\Support\Facades\DB::table('project_pic_links')->where('master_pic_id', $pic->id)->exists()) {
+            return back()->with('error', 'PIC tidak bisa dihapus karena sudah dipakai pada Project.');
+        }
+
         $pic->delete();
 
         return redirect('/master-pic')

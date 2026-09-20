@@ -95,4 +95,15 @@ class AccessGroup extends Model
             ->unique()
             ->values();
     }
+
+    /** ID Team yang di-assign ke group ini (akses PO lewat Team -> Access Group -> PO) */
+    public function teamIds()
+    {
+        return $this->details
+            ->pluck('team_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+    }
 }

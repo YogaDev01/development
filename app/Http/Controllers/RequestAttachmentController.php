@@ -105,10 +105,10 @@ class RequestAttachmentController extends Controller
         */
 
         if (
-            Storage::disk('public')->exists($attachment->path)
+            Storage::disk('secure')->exists($attachment->path)
         ) {
 
-            Storage::disk('public')->delete(
+            Storage::disk('secure')->delete(
                 $attachment->path
             );
         }

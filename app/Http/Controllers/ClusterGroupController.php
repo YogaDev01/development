@@ -19,8 +19,14 @@ class ClusterGroupController extends Controller
             ->latest()
             ->get();
 
+        $summary = [
+            'total'    => $groups->count(),
+            'active'   => $groups->where('status', 'ACTIVE')->count(),
+            'inactive' => $groups->where('status', 'INACTIVE')->count(),
+        ];
+
         return view('groups.index', compact(
-            'groups'
+            'groups', 'summary'
         ));
     }
 
@@ -150,6 +156,10 @@ class ClusterGroupController extends Controller
     public function destroy($id)
     {
         $group = ClusterGroup::findOrFail($id);
+
+        if ($group->clusters()->exists()) {
+            return back()->with('error', 'Group tidak bisa dihapus karena sudah memiliki cluster.');
+        }
 
         $group->delete();
 

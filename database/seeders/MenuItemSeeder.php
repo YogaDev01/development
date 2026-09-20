@@ -87,6 +87,14 @@ class MenuItemSeeder extends Seeder
                 'sort_order' => 17,
             ],
             [
+                'key'        => 'team',
+                'label'      => 'Team',
+                'icon'       => 'fas fa-sitemap',
+                'route'      => '/team',
+                'section'    => 'master',
+                'sort_order' => 18,
+            ],
+            [
                 'key'        => 'user-access',
                 'label'      => 'User & Access',
                 'icon'       => 'fas fa-users',
@@ -141,6 +149,14 @@ class MenuItemSeeder extends Seeder
                 'sort_order' => 24,
             ],
             [
+                'key'        => 'cash-management',
+                'label'      => 'Cash Management',
+                'icon'       => 'fas fa-wallet',
+                'route'      => '/cash-management',
+                'section'    => 'finance',
+                'sort_order' => 25,
+            ],
+            [
                 'key'        => 'invoice-cash-receipt',
                 'label'      => 'Invoice & Cash Receipt',
                 'icon'       => 'fas fa-receipt',
@@ -155,6 +171,28 @@ class MenuItemSeeder extends Seeder
                 'route'      => '/reports',
                 'section'    => 'finance',
                 'sort_order' => 25,
+            ],
+            [
+                'key'        => 'forecast',
+                'label'      => 'Finance Forecast',
+                'icon'       => 'fas fa-binoculars',
+                'route'      => '/forecast',
+                'section'    => 'finance',
+                'sort_order' => 26,
+            ],
+
+            /*
+            |------------------------------------------------------------------
+            | GENERAL — modul lintas divisi, tidak digerbang per section finance/project
+            |------------------------------------------------------------------
+            */
+            [
+                'key'        => 'feedback-inbox',
+                'label'      => 'Feedback Inbox (CEO)',
+                'icon'       => 'fas fa-inbox',
+                'route'      => '/feedback-inbox',
+                'section'    => 'general',
+                'sort_order' => 40,
             ],
 
             /*

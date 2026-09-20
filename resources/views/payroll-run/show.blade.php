@@ -2,32 +2,30 @@
 
 @section('content')
 
-<div class="content-header">
-    <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6 d-flex align-items-center">
-                <h1 class="m-0 font-weight-bold">Detail Payroll Run</h1>
-            </div>
-            <div class="col-sm-6">
-                <ol class="breadcrumb float-sm-right">
-                    <li class="breadcrumb-item"><a href="{{ url('/payroll-run') }}">Payroll</a></li>
-                    <li class="breadcrumb-item active">{{ $run->code }}</li>
-                </ol>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="content">
     <div class="container-fluid">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <div class="d-flex align-items-center">
+                <a href="{{ url('/payroll-run') }}" class="btn btn-secondary btn-sm mr-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Detail Payroll Run</h1>
+            </div>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item"><a href="{{ url('/payroll-run') }}">Payroll</a></li>
+                <li class="breadcrumb-item active">{{ $run->code }}</li>
+            </ol>
+        </div>
+
         <div class="row">
 
             {{-- SIDEBAR --}}
             <div class="col-md-4">
-                <div class="card shadow-sm" style="background:#0D1B2A;">
+                <div class="card shadow-sm" style="background:var(--charcoal);">
                     <div class="card-body text-white">
                         <div class="text-center mb-3">
-                            <div style="width:64px;height:64px;border-radius:50%;background:#F5A623;display:inline-flex;align-items:center;justify-content:center;">
+                            <div style="width:64px;height:64px;border-radius:50%;background:var(--accent);display:inline-flex;align-items:center;justify-content:center;">
                                 <i class="fas fa-file-invoice-dollar fa-2x text-white"></i>
                             </div>
                             <h4 class="mt-2 mb-0 font-weight-bold">{{ $run->code }}</h4>
@@ -37,35 +35,35 @@
                         <hr style="border-color:rgba(255,255,255,0.08);">
 
                         <div class="mb-3">
-                            <span style="color:#5A7080;font-size:10px;text-transform:uppercase;font-weight:600;">Periode</span>
+                            <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Periode</span>
                             <div class="text-white mt-1" style="font-size:14px;font-weight:600;">{{ $run->period_label }}</div>
                         </div>
                         @if($run->description)
                         <div class="mb-3">
-                            <span style="color:#5A7080;font-size:10px;text-transform:uppercase;font-weight:600;">Deskripsi</span>
+                            <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Deskripsi</span>
                             <div class="text-white mt-1" style="font-size:13px;">{{ $run->description }}</div>
                         </div>
                         @endif
                         <div class="mb-3">
-                            <span style="color:#5A7080;font-size:10px;text-transform:uppercase;font-weight:600;">Budget Payroll</span>
+                            <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Budget Payroll</span>
                             <div class="text-white mt-1" style="font-size:12px;">
                                 @if($run->budgetPlan)
                                     [{{ $run->budgetPlan->code }}] {{ $run->budgetPlan->costCenter->name ?? '-' }}
                                 @else
-                                    <span style="color:#5A7080;">—</span>
+                                    <span style="color:var(--text-faint);">—</span>
                                 @endif
                             </div>
                         </div>
                         <div class="mb-3">
-                            <span style="color:#5A7080;font-size:10px;text-transform:uppercase;font-weight:600;">Jumlah Karyawan</span>
+                            <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Jumlah Karyawan</span>
                             <div class="text-white mt-1" style="font-size:14px;font-weight:600;">{{ $run->lines->count() }} orang</div>
                         </div>
 
                         <hr style="border-color:rgba(255,255,255,0.08);">
 
                         <div class="text-center">
-                            <span style="color:#5A7080;font-size:10px;text-transform:uppercase;font-weight:600;">Total Net</span>
-                            <div class="mt-1" style="font-size:22px;font-weight:700;color:#F5A623;">{{ $run->total_formatted }}</div>
+                            <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Total Net</span>
+                            <div class="mt-1" style="font-size:22px;font-weight:700;color:var(--accent);">{{ $run->total_formatted }}</div>
                         </div>
 
                         <hr style="border-color:rgba(255,255,255,0.08);">
@@ -163,13 +161,13 @@
                     <div class="card-body p-0">
                         <div class="table-responsive">
                             <table class="table table-bordered mb-0" style="font-size:12px;">
-                                <thead style="background:#F9FAFB;">
+                                <thead style="background:var(--surface-2);">
                                     <tr>
-                                        <th style="color:#6B7280;font-size:11px;width:5%;">No</th>
-                                        <th style="color:#6B7280;font-size:11px;">Karyawan</th>
-                                        <th style="color:#6B7280;font-size:11px;">Rekening</th>
-                                        <th style="color:#6B7280;font-size:11px;">Dibebankan</th>
-                                        <th style="color:#6B7280;font-size:11px;text-align:right;">Net</th>
+                                        <th scope="col" style="color:var(--text-faint);font-size:11px;width:5%;">No</th>
+                                        <th scope="col" style="color:var(--text-faint);font-size:11px;">Karyawan</th>
+                                        <th scope="col" style="color:var(--text-faint);font-size:11px;">Rekening</th>
+                                        <th scope="col" style="color:var(--text-faint);font-size:11px;">Dibebankan</th>
+                                        <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;">Net</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -201,10 +199,10 @@
                                     @endforelse
                                 </tbody>
                                 @if($run->lines->count())
-                                <tfoot style="background:#F9FAFB;">
+                                <tfoot style="background:var(--surface-2);">
                                     <tr>
                                         <th colspan="4" class="text-right" style="font-size:12px;">TOTAL</th>
-                                        <th class="text-right" style="font-size:13px;color:#2563EB;">{{ $run->total_formatted }}</th>
+                                        <th class="text-right" style="font-size:13px;color:var(--info);">{{ $run->total_formatted }}</th>
                                     </tr>
                                 </tfoot>
                                 @endif
@@ -223,7 +221,7 @@
                         <div class="card shadow-sm">
                             <div class="card-body text-center py-3">
                                 <span class="text-muted" style="font-size:11px;text-transform:uppercase;font-weight:600;">Beban Overhead</span>
-                                <div style="font-size:18px;font-weight:700;color:#6B7280;">Rp {{ number_format($overheadTotal, 0, ',', '.') }}</div>
+                                <div style="font-size:18px;font-weight:700;color:var(--text-faint);">{{ number_format($overheadTotal, 0, ',', '.') }}</div>
                             </div>
                         </div>
                     </div>
@@ -231,7 +229,7 @@
                         <div class="card shadow-sm">
                             <div class="card-body text-center py-3">
                                 <span class="text-muted" style="font-size:11px;text-transform:uppercase;font-weight:600;">Beban Project</span>
-                                <div style="font-size:18px;font-weight:700;color:#2563EB;">Rp {{ number_format($projectTotal, 0, ',', '.') }}</div>
+                                <div style="font-size:18px;font-weight:700;color:var(--info);">{{ number_format($projectTotal, 0, ',', '.') }}</div>
                             </div>
                         </div>
                     </div>
@@ -255,24 +253,24 @@
                     <div class="card-body">
                         <div class="row text-center">
                             <div class="col-3">
-                                <div style="font-size:11px;color:#6B7280;text-transform:uppercase;font-weight:600;">Dibuat</div>
+                                <div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;font-weight:600;">Dibuat</div>
                                 <div style="font-size:12px;font-weight:600;margin-top:4px;">{{ $run->inputBy->name ?? '-' }}</div>
-                                <div style="font-size:10px;color:#9CA3AF;">{{ $run->created_at?->format('d M Y H:i') ?? '-' }}</div>
+                                <div style="font-size:10px;color:var(--text-faint);">{{ $run->created_at?->format('d M Y H:i') ?? '-' }}</div>
                             </div>
                             <div class="col-3">
-                                <div style="font-size:11px;color:#6B7280;text-transform:uppercase;font-weight:600;">Submit (HR)</div>
+                                <div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;font-weight:600;">Submit (HR)</div>
                                 <div style="font-size:12px;font-weight:600;margin-top:4px;">{{ $run->submittedBy->name ?? '—' }}</div>
-                                <div style="font-size:10px;color:#9CA3AF;">{{ $run->submitted_at?->format('d M Y H:i') ?? '' }}</div>
+                                <div style="font-size:10px;color:var(--text-faint);">{{ $run->submitted_at?->format('d M Y H:i') ?? '' }}</div>
                             </div>
                             <div class="col-3">
-                                <div style="font-size:11px;color:#6B7280;text-transform:uppercase;font-weight:600;">Verifikasi (Fin.Mgr)</div>
+                                <div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;font-weight:600;">Verifikasi (Fin.Mgr)</div>
                                 <div style="font-size:12px;font-weight:600;margin-top:4px;">{{ $run->verifiedBy->name ?? '—' }}</div>
-                                <div style="font-size:10px;color:#9CA3AF;">{{ $run->verified_at?->format('d M Y H:i') ?? '' }}</div>
+                                <div style="font-size:10px;color:var(--text-faint);">{{ $run->verified_at?->format('d M Y H:i') ?? '' }}</div>
                             </div>
                             <div class="col-3">
-                                <div style="font-size:11px;color:#6B7280;text-transform:uppercase;font-weight:600;">Setuju (CEO)</div>
+                                <div style="font-size:11px;color:var(--text-faint);text-transform:uppercase;font-weight:600;">Setuju (CEO)</div>
                                 <div style="font-size:12px;font-weight:600;margin-top:4px;">{{ $run->approvedBy->name ?? '—' }}</div>
-                                <div style="font-size:10px;color:#9CA3AF;">{{ $run->approved_at?->format('d M Y H:i') ?? '' }}</div>
+                                <div style="font-size:10px;color:var(--text-faint);">{{ $run->approved_at?->format('d M Y H:i') ?? '' }}</div>
                             </div>
                         </div>
                     </div>
@@ -287,8 +285,8 @@
 @if($perms['can_reject'])
 <div class="modal fade" id="modalReject" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
-        <div class="modal-content" style="border-radius:12px; overflow:hidden;">
-            <div class="modal-header" style="background:#0D1B2A; border-bottom:3px solid #dc3545;">
+        <div class="modal-content" style="border-radius:var(--radius-lg); overflow:hidden;">
+            <div class="modal-header" style="background:var(--charcoal); border-bottom:3px solid var(--danger);">
                 <h5 class="modal-title text-white">
                     <i class="fas fa-times-circle mr-2 text-danger"></i> Tolak Payroll
                 </h5>
@@ -331,8 +329,8 @@ $(function () {
             text: msg,
             icon: 'question',
             showCancelButton: true,
-            confirmButtonColor: '#0D1B2A',
-            cancelButtonColor: '#6c757d',
+            confirmButtonColor: '#92232b',
+            cancelButtonColor: '#55595e',
             confirmButtonText: 'Ya, Lanjutkan',
             cancelButtonText: 'Batal'
         }).then(function (r) { if (r.isConfirmed) form.submit(); });

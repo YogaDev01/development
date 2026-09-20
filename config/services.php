@@ -35,4 +35,28 @@ return [
         ],
     ],
 
+    'fonnte' => [
+        'token' => env('FONNTE_TOKEN'),
+        'url'   => env('FONNTE_API_URL', 'https://api.fonnte.com/send'),
+    ],
+
+    'export_api' => [
+        'token' => env('EXPORT_API_TOKEN'),
+    ],
+
+    'openai' => [
+        'key'              => env('OPENAI_API_KEY'),
+        'model'            => env('OPENAI_MODEL', 'gpt-4o-mini'),
+        'reasoning_effort' => env('OPENAI_REASONING_EFFORT'),
+    ],
+
+    'gemini' => [
+        'key'   => env('GEMINI_API_KEY'),
+        'model' => env('GEMINI_MODEL', 'gemini-flash-lite-latest'),
+    ],
+
+    'tavily' => [
+        'key' => env('TAVILY_API_KEY'),
+    ],
+
 ];

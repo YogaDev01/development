@@ -4,15 +4,16 @@
 
 @section('content')
 
-<div class="content-header">
+<div class="content">
     <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6 d-flex align-items-center">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <div class="d-flex align-items-center">
                 <a href="{{ url('/project') }}" class="btn btn-secondary btn-sm mr-3">
                     <i class="fas fa-arrow-left"></i>
                 </a>
                 <div>
-                    <h1 class="m-0 font-weight-bold">Aktifkan PO</h1>
+                    <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Aktifkan PO</h1>
                     <small class="text-muted">
                         <span class="badge badge-dark">{{ $project->code }}</span>
                         &nbsp;·&nbsp;
@@ -20,23 +21,27 @@
                     </small>
                 </div>
             </div>
-            <div class="col-sm-6">
-                <ol class="breadcrumb float-sm-right mb-0">
-                    <li class="breadcrumb-item"><a href="#">Finance</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url('/project') }}">List PO</a></li>
-                    <li class="breadcrumb-item active">Aktifkan</li>
-                </ol>
-            </div>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item"><a href="#">Finance</a></li>
+                <li class="breadcrumb-item"><a href="{{ url('/project') }}">List PO</a></li>
+                <li class="breadcrumb-item active">Aktifkan</li>
+            </ol>
         </div>
-    </div>
-</div>
-
-<div class="content">
-    <div class="container-fluid">
 
         {{-- Alert revisi --}}
         @php
             $lastLog = $project->logs()->where('action', 'revised')->latest()->first();
+
+            /* Nilai Kontrak (yang ditandatangani) vs Total Nilai PO (jumlah nominal
+               No. PO yang dirilis customer). Keduanya boleh berbeda — tapi selisihnya
+               harus disadari sebelum PO diaktifkan, jadi dihitung di satu tempat dan
+               dipakai ulang oleh kartu Informasi PO, footer tabel No. PO, dan alert
+               konfirmasi di atas tombol Aktifkan. */
+            $nilaiKontrak = (int) ($project->contract ?? 0);
+            $totalNilaiPo = (int) $project->poNumbers->sum('nominal');
+            $selisihNilai = $nilaiKontrak - $totalNilaiPo;
+            $adaSelisih   = $selisihNilai !== 0;
+            $rp = fn ($v) => number_format((int) $v, 0, ',', '.');
         @endphp
         @if($lastLog)
         <div class="alert alert-warning mb-3">
@@ -50,273 +55,172 @@
             @csrf
             @method('PUT')
 
-            <div class="card card-warning card-outline shadow-sm">
+            <div class="alert alert-info mb-3">
+                <i class="fas fa-info-circle mr-2"></i>
+                Halaman ini murni <strong>konfirmasi</strong> — cukup periksa data di bawah sudah benar, tambah No. PO
+                kalau perlu, lalu Aktifkan. Scope of Work, Milestone, PIC, dan Lampiran tidak bisa diubah dari sini.
+            </div>
+
+            @if($errors->any())
+            <div class="alert alert-danger">
+                <strong>Terjadi kesalahan:</strong>
+                <ul class="mb-0 mt-2">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+            @endif
+
+            <div class="card card-secondary card-outline shadow-sm">
                 <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="fas fa-file-contract mr-1"></i> Informasi PO
-                    </h3>
+                    <h3 class="card-title"><i class="fas fa-file-contract mr-1"></i> Informasi PO</h3>
                 </div>
-
-                @if($errors->any())
-                <div class="alert alert-danger rounded-0 mb-0">
-                    <strong>Terjadi kesalahan:</strong>
-                    <ul class="mb-0 mt-2">
-                        @foreach($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-                @endif
-
                 <div class="card-body">
                     <div class="row">
-
-                        <!-- KODE (readonly) -->
-                        <div class="col-md-2">
-                            <div class="form-group">
-                                <label class="font-weight-600">Kode <span class="badge badge-secondary ml-1" style="font-size:10px;">Fixed</span></label>
-                                <input type="text" class="form-control"
-                                       value="{{ $project->code }}" readonly
-                                       style="background:#f4f6f9;cursor:not-allowed;font-weight:700;">
+                        <div class="col-md-2 form-group mb-2">
+                            <label class="font-weight-600 text-muted d-block" style="font-size:12px;">Kode</label>
+                            <div>{{ $project->code }}</div>
+                        </div>
+                        <div class="col-md-7 form-group mb-2">
+                            <label class="font-weight-600 text-muted d-block" style="font-size:12px;">Scope of Work</label>
+                            <div>{{ $project->name }}</div>
+                        </div>
+                        @if(!Auth::user()->hasRole(['head']))
+                        <div class="col-md-3 form-group mb-2">
+                            <label class="font-weight-600 text-muted d-block" style="font-size:12px;">Financing</label>
+                            <div>
+                                @if($project->financing)
+                                    <span class="badge badge-{{ $project->financing_color }}">{{ $project->financing }} - {{ $project->financing_label }}</span>
+                                @else
+                                    -
+                                @endif
                             </div>
                         </div>
-
-                        <!-- SCOPE OF WORK -->
-                        <div class="col-md-7">
-                            <div class="form-group">
-                                <label class="font-weight-600">Scope of Work <span class="text-danger">*</span></label>
-                                <input type="text" name="name"
-                                       class="form-control @error('name') is-invalid @enderror"
-                                       value="{{ old('name', $project->name) }}"
-                                       placeholder="Deskripsi lingkup pekerjaan..."
-                                       style="text-transform:uppercase;"
-                                       autocomplete="off" required>
-                                @error('name')<small class="text-danger d-block">{{ $message }}</small>@enderror
-                            </div>
+                        @endif
+                        <div class="col-md-6 form-group mb-2">
+                            <label class="font-weight-600 text-muted d-block" style="font-size:12px;">Customer</label>
+                            <div>{{ $project->customer->name ?? '-' }}</div>
                         </div>
-
-                        <!-- IMPLEMENT BY -->
-                        <div class="col-md-3">
-                            <div class="form-group">
-                                <label class="font-weight-600">Implement By</label>
-                                <select name="done_by" class="form-control @error('done_by') is-invalid @enderror">
-                                    <option value="">— Pilih —</option>
-                                    @foreach(['TEREX','HANASTA','SUBCON'] as $opt)
-                                        <option value="{{ $opt }}" {{ old('done_by', $project->done_by) === $opt ? 'selected' : '' }}>{{ $opt }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
+                        <div class="col-md-6 form-group mb-2">
+                            <label class="font-weight-600 text-muted d-block" style="font-size:12px;">Term of Payment</label>
+                            <div>{{ $project->term_of_payment ?? '-' }}</div>
                         </div>
-
-                        <!-- CUSTOMER -->
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="font-weight-600">Customer</label>
-                                <select name="customer_id" class="form-control @error('customer_id') is-invalid @enderror">
-                                    <option value="">— Pilih Customer —</option>
-                                    @foreach($customers as $customer)
-                                        <option value="{{ $customer->id }}"
-                                            {{ old('customer_id', $project->customer_id) == $customer->id ? 'selected' : '' }}>
-                                            {{ $customer->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
+                        <div class="col-md-4 form-group mb-2">
+                            <label class="font-weight-600 text-muted d-block" style="font-size:12px;">Nilai Kontrak</label>
+                            <div>{{ $rp($nilaiKontrak) }}</div>
                         </div>
-
-                        <!-- TERM OF PAYMENT -->
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="font-weight-600">Term of Payment</label>
-                                <input type="text" name="term_of_payment"
-                                       class="form-control"
-                                       value="{{ old('term_of_payment', $project->term_of_payment) }}"
-                                       list="topSuggestions"
-                                       placeholder="Contoh: Net 30, Monthly, Termin..."
-                                       autocomplete="off">
-                                <datalist id="topSuggestions">
-                                    <option value="Net 30">
-                                    <option value="Net 45">
-                                    <option value="Net 60">
-                                    <option value="Monthly">
-                                    <option value="50% DP - 50% Selesai">
-                                    <option value="Termin per Tahap">
-                                    <option value="Lunas di Muka">
-                                </datalist>
-                            </div>
+                        <div class="col-md-4 form-group mb-2">
+                            <label class="font-weight-600 text-muted d-block" style="font-size:12px;">Total Nilai PO</label>
+                            <div>{{ $rp($totalNilaiPo) }}</div>
+                            <small class="text-muted">Jumlah nominal {{ $project->poNumbers->count() }} No. PO.</small>
                         </div>
-
-                        <!-- NO PO (wajib untuk aktivasi) -->
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="font-weight-600">
-                                    No PO <span class="text-danger">*</span>
-                                </label>
-                                <input type="text" name="po_number"
-                                       class="form-control @error('po_number') is-invalid @enderror"
-                                       value="{{ old('po_number', $project->po_number) }}"
-                                       placeholder="Nomor PO dari customer..."
-                                       required>
-                                <small class="text-muted">Wajib diisi untuk mengaktifkan PO.</small>
-                                @error('po_number')
-                                    <span class="invalid-feedback">{{ $message }}</span>
-                                @enderror
+                        <div class="col-md-4 form-group mb-2">
+                            <label class="font-weight-600 text-muted d-block" style="font-size:12px;">Selisih</label>
+                            <div class="{{ $adaSelisih ? 'text-warning font-weight-bold' : 'text-success' }}">
+                                {{ $selisihNilai < 0 ? '-' : '' }}{{ $rp(abs($selisihNilai)) }}
                             </div>
+                            <small class="text-muted">Nilai Kontrak &minus; Total Nilai PO.</small>
                         </div>
-
-                        <!-- NILAI KONTRAK -->
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="font-weight-600">Nilai Kontrak</label>
-                                <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text">Rp</span>
-                                    </div>
-                                    <input type="text" name="value"
-                                           class="form-control text-right inp-money"
-                                           value="{{ old('value', number_format($project->value, 0, ',', '.')) }}"
-                                           placeholder="0" autocomplete="off">
-                                </div>
-                            </div>
+                        <div class="col-md-12 form-group mb-0">
+                            <label class="font-weight-600 text-muted d-block" style="font-size:12px;">Notes</label>
+                            <div>{{ $project->notes ?? '-' }}</div>
                         </div>
-
-                        <!-- NOTES -->
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="font-weight-600">Notes</label>
-                                <textarea name="notes" class="form-control" rows="2"
-                                          placeholder="Catatan tambahan...">{{ old('notes', $project->notes) }}</textarea>
-                            </div>
-                        </div>
-
                     </div>
                 </div>
             </div>
 
-            <!-- SECTION PROJECT DETAIL -->
-            <div class="card card-warning card-outline shadow-sm">
-                <div class="card-header d-flex align-items-center">
+            <!-- SECTION PROJECT DETAIL (read-only) -->
+            <div class="card card-secondary card-outline shadow-sm">
+                <div class="card-header">
                     <h3 class="card-title"><i class="fas fa-project-diagram mr-1"></i> Project & Milestone</h3>
-                    <button type="button" class="btn btn-sm btn-primary ml-auto" id="btnAddDetail">
-                        <i class="fas fa-plus mr-1"></i> Tambah Detail
-                    </button>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-bordered mb-0">
                             <thead class="bg-light">
                                 <tr>
-                                    <th style="width:4%;" class="text-center">No</th>
-                                    <th style="width:20%;">Project</th>
-                                    <th style="width:15%;">Milestone</th>
-                                    <th style="width:13%;">Plan Start</th>
-                                    <th style="width:13%;">Plan Finish</th>
-                                    <th style="width:13%;">Actual Start</th>
-                                    <th style="width:13%;">Actual Finish</th>
-                                    <th style="width:5%;" class="text-center">Aksi</th>
+                                    <th scope="col" style="width:4%;" class="text-center">No</th>
+                                    <th scope="col" style="width:25%;">Project</th>
+                                    <th scope="col" style="width:18%;">Milestone</th>
+                                    <th scope="col" style="width:16%;">Plan Start</th>
+                                    <th scope="col" style="width:16%;">Plan Finish</th>
+                                    <th scope="col" style="width:16%;">Actual Start</th>
+                                    <th scope="col">Actual Finish</th>
                                 </tr>
                             </thead>
-                            <tbody id="detailBody">
+                            <tbody>
                                 @forelse($project->details as $i => $det)
                                 <tr>
-                                    <td class="text-center align-middle row-no-detail">{{ $i + 1 }}</td>
-                                    <td>
-                                        <select name="details[{{ $i }}][cluster_id]" class="form-control form-control-sm">
-                                            <option value="">— Pilih Cluster —</option>
-                                            @foreach($clusters as $cluster)
-                                                <option value="{{ $cluster->id }}" {{ $det->cluster_id == $cluster->id ? 'selected' : '' }}>
-                                                    {{ $cluster->name }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <select name="details[{{ $i }}][stage_id]" class="form-control form-control-sm">
-                                            <option value="">— Pilih Stage —</option>
-                                            @foreach($stages as $stage)
-                                                <option value="{{ $stage->id }}" {{ $det->stage_id == $stage->id ? 'selected' : '' }}>
-                                                    {{ $stage->name }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </td>
-                                    <td><input type="date" name="details[{{ $i }}][plan_start]" class="form-control form-control-sm" value="{{ $det->plan_start?->format('Y-m-d') }}"></td>
-                                    <td><input type="date" name="details[{{ $i }}][plan_end]" class="form-control form-control-sm" value="{{ $det->plan_end?->format('Y-m-d') }}"></td>
-                                    <td><input type="date" name="details[{{ $i }}][actual_start]" class="form-control form-control-sm" value="{{ $det->actual_start?->format('Y-m-d') }}"></td>
-                                    <td><input type="date" name="details[{{ $i }}][actual_end]" class="form-control form-control-sm" value="{{ $det->actual_end?->format('Y-m-d') }}"></td>
-                                    <td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-detail"><i class="fas fa-trash"></i></button></td>
+                                    <td class="text-center align-middle">{{ $i + 1 }}</td>
+                                    <td>{{ $det->cluster->name ?? '-' }}</td>
+                                    <td>{{ $det->stage->name ?? '-' }}</td>
+                                    <td>{{ $det->plan_start?->format('d M Y') ?? '-' }}</td>
+                                    <td>{{ $det->plan_end?->format('d M Y') ?? '-' }}</td>
+                                    <td>{{ $det->actual_start?->format('d M Y') ?? '-' }}</td>
+                                    <td>{{ $det->actual_end?->format('d M Y') ?? '-' }}</td>
                                 </tr>
                                 @empty
+                                <tr><td colspan="7" class="text-center text-muted py-3">Belum ada Milestone.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
                     </div>
                 </div>
-                <div class="card-footer">
-                    <small class="text-muted">Data detail lama akan diganti seluruhnya saat disimpan.</small>
-                </div>
             </div>
 
-            <!-- SECTION PIC -->
-            <div class="card card-warning card-outline shadow-sm">
-                <div class="card-header d-flex align-items-center">
-                    <h3 class="card-title"><i class="fas fa-users mr-1"></i> PIC Internal</h3>
-                    <button type="button" class="btn btn-sm btn-primary ml-auto" id="btnAddPic">
-                        <i class="fas fa-plus mr-1"></i> Tambah PIC
-                    </button>
+            <!-- SECTION PIC (read-only) -->
+            <div class="card card-secondary card-outline shadow-sm">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-users mr-1"></i> PIC</h3>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-bordered mb-0">
                             <thead class="bg-light">
                                 <tr>
-                                    <th style="width:4%;" class="text-center">No</th>
-                                    <th style="width:25%;">Nama PIC</th>
-                                    <th style="width:20%;">Jabatan / Posisi</th>
-                                    <th style="width:22%;">Whatsapp</th>
-                                    <th style="width:24%;">Email</th>
-                                    <th style="width:5%;" class="text-center">Aksi</th>
+                                    <th scope="col" style="width:4%;" class="text-center">No</th>
+                                    <th scope="col" style="width:20%;">Tipe</th>
+                                    <th scope="col" style="width:25%;">Nama PIC</th>
+                                    <th scope="col" style="width:20%;">Jabatan / Posisi</th>
+                                    <th scope="col" style="width:16%;">Whatsapp</th>
+                                    <th scope="col">Email</th>
                                 </tr>
                             </thead>
-                            <tbody id="picBody">
+                            <tbody>
                                 @forelse($project->pics as $i => $pic)
                                 <tr>
-                                    <td class="text-center align-middle row-no">{{ $i + 1 }}</td>
-                                    <td><input type="text" name="pics[{{ $i }}][pic]" class="form-control form-control-sm" value="{{ $pic->pic }}" placeholder="Nama PIC..."></td>
-                                    <td><input type="text" name="pics[{{ $i }}][position]" class="form-control form-control-sm" value="{{ $pic->position }}" placeholder="Jabatan..."></td>
-                                    <td><input type="text" name="pics[{{ $i }}][contact]" class="form-control form-control-sm" value="{{ $pic->contact }}" placeholder="Whatsapp..."></td>
-                                    <td><input type="text" name="pics[{{ $i }}][remark]" class="form-control form-control-sm" value="{{ $pic->remark }}" placeholder="Email..."></td>
-                                    <td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-pic"><i class="fas fa-trash"></i></button></td>
+                                    <td class="text-center align-middle">{{ $i + 1 }}</td>
+                                    <td><span class="badge badge-{{ $pic->type === 'internal' ? 'secondary' : 'primary' }}">{{ ucfirst($pic->type) }}</span></td>
+                                    <td>{{ $pic->pic }}</td>
+                                    <td>{{ $pic->position ?? '-' }}</td>
+                                    <td>{{ $pic->phone ?? '-' }}</td>
+                                    <td>{{ $pic->email ?? '-' }}</td>
                                 </tr>
                                 @empty
+                                <tr><td colspan="6" class="text-center text-muted py-3">Belum ada PIC.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
                     </div>
                 </div>
-                <div class="card-footer">
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle mr-1"></i> Data PIC lama akan diganti seluruhnya saat disimpan.
-                    </small>
-                </div>
             </div>
 
-            <!-- LAMPIRAN EXISTING -->
+            <!-- LAMPIRAN (read-only) -->
             @php $generalAtts = $project->attachments->where('type', 'general'); @endphp
             @if($generalAtts->count() > 0)
-            <div class="card card-warning card-outline shadow-sm">
+            <div class="card card-secondary card-outline shadow-sm">
                 <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-paperclip mr-1"></i> Lampiran Existing</h3>
+                    <h3 class="card-title"><i class="fas fa-paperclip mr-1"></i> Lampiran</h3>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-bordered mb-0">
                             <thead class="bg-light">
                                 <tr>
-                                    <th style="width:5%;" class="text-center">No</th>
-                                    <th style="width:65%;">Nama File</th>
-                                    <th style="width:15%;" class="text-center">Preview</th>
-                                    <th style="width:15%;" class="text-center">Hapus</th>
+                                    <th scope="col" style="width:5%;" class="text-center">No</th>
+                                    <th scope="col" style="width:80%;">Nama File</th>
+                                    <th scope="col" style="width:15%;" class="text-center">Preview</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -330,47 +234,76 @@
                                             <i class="fas fa-eye"></i>
                                         </a>
                                     </td>
-                                    <td class="text-center align-middle">
-                                        <input type="checkbox" name="delete_attachments[]"
-                                               value="{{ $att->id }}"
-                                               style="width:18px;height:18px;accent-color:#dc3545;">
-                                    </td>
                                 </tr>
                                 @endforeach
                             </tbody>
                         </table>
                     </div>
                 </div>
-                <div class="card-footer">
-                    <small class="text-danger"><i class="fas fa-exclamation-triangle mr-1"></i> Centang file yang ingin dihapus.</small>
-                </div>
             </div>
             @endif
 
-            <!-- LAMPIRAN BARU -->
-            <div class="card card-warning card-outline shadow-sm">
-                <div class="card-header d-flex align-items-center">
-                    <h3 class="card-title"><i class="fas fa-upload mr-1"></i> Tambah Lampiran Baru</h3>
-                    <button type="button" class="btn btn-sm btn-primary ml-auto" id="btnAddAtt">
-                        <i class="fas fa-plus mr-1"></i> Tambah
-                    </button>
+            <!-- DETAIL NO. PO -->
+            <div class="card card-primary card-outline shadow-sm">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-file-invoice mr-1"></i> Detail No. PO</h3>
                 </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
+                <div class="card-body">
+                    @if($project->poNumbers->isNotEmpty())
+                    <div class="table-responsive mb-3">
                         <table class="table table-bordered mb-0">
                             <thead class="bg-light">
                                 <tr>
-                                    <th style="width:5%;" class="text-center">No</th>
-                                    <th style="width:85%;">File</th>
-                                    <th style="width:10%;" class="text-center">Aksi</th>
+                                    <th scope="col" style="width:5%;" class="text-center">No</th>
+                                    <th scope="col" style="width:20%;">No. PO</th>
+                                    <th scope="col" style="width:20%;">Nominal PO</th>
+                                    <th scope="col" style="width:15%;">Tanggal Rilis</th>
+                                    <th scope="col" style="width:15%;">Status</th>
+                                    <th scope="col" style="width:25%;">Lampiran</th>
                                 </tr>
                             </thead>
-                            <tbody id="attBody"></tbody>
+                            <tbody>
+                                @foreach($project->poNumbers as $i => $p)
+                                <tr>
+                                    <td class="text-center">{{ $i + 1 }}</td>
+                                    <td>{{ $p->po_number }}</td>
+                                    <td>{{ $p->nominal_formatted }}</td>
+                                    <td>{{ $p->release_date?->format('d M Y') ?? '-' }}</td>
+                                    <td><span class="badge badge-{{ $p->status_color }}">{{ $p->status_label }}</span></td>
+                                    <td>
+                                        @forelse($p->attachments as $att)
+                                            <a href="{{ asset('storage/' . $att->file_path) }}" target="_blank" class="d-block">
+                                                <i class="fas fa-paperclip mr-1"></i>{{ $att->title ?? $att->file_name }}
+                                            </a>
+                                        @empty
+                                            <span class="text-muted">-</span>
+                                        @endforelse
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                            <tfoot class="bg-light">
+                                <tr>
+                                    <th colspan="2" class="text-right">Subtotal</th>
+                                    <th>{{ $rp($totalNilaiPo) }}</th>
+                                    <th colspan="3"></th>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
-                </div>
-                <div class="card-footer">
-                    <small class="text-muted">Format: pdf, jpg, png, doc(x), xls(x). Maks 10 MB per file.</small>
+                    @endif
+
+                    @if($project->poNumbers->isEmpty())
+                    <div class="alert alert-warning py-2 px-3 mb-0" style="font-size:13px;">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                        Belum ada No. PO — PO ini tidak bisa diaktifkan. Tambahkan minimal 1 No. PO dulu lewat halaman Edit.
+                    </div>
+                    @else
+                    <small class="text-muted d-block mb-0">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Halaman ini murni konfirmasi — kalau ada No. PO yang kurang/salah, tambah/perbaiki dulu lewat halaman Edit sebelum aktivasi.
+                    </small>
+                    @endif
                 </div>
             </div>
 
@@ -392,15 +325,26 @@
 
                     <div class="alert alert-info py-2 px-3 mb-3" style="font-size:13px;">
                         <i class="fas fa-info-circle mr-1"></i>
-                        Menyimpan form ini akan memperbarui data PO <strong>dan</strong> mengubah statusnya
-                        dari <strong>WAITING PO</strong> menjadi <strong>ACTIVE</strong>.
+                        Konfirmasi ini akan mengubah status PO dari <strong>WAITING PO</strong> menjadi <strong>ACTIVE</strong>.
+                        Tidak ada data yang ditambah/diubah dari halaman ini.
                     </div>
+
+                    @if($adaSelisih && $project->poNumbers->isNotEmpty())
+                    <div class="alert alert-warning py-2 px-3 mb-3" style="font-size:13px;">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                        <strong>Nilai Kontrak dan Total Nilai PO berbeda.</strong>
+                        Kontrak {{ $rp($nilaiKontrak) }} vs Total PO {{ $rp($totalNilaiPo) }} &mdash;
+                        selisih {{ $selisihNilai < 0 ? '-' : '' }}{{ $rp(abs($selisihNilai)) }}.
+                        Pastikan ini memang disengaja (mis. PO bertahap); kalau bukan, perbaiki dulu lewat
+                        halaman Edit sebelum diaktifkan.
+                    </div>
+                    @endif
 
                     <div class="d-flex flex-wrap" style="gap:8px;">
                         <a href="{{ url('/project') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left mr-1"></i> Kembali
                         </a>
-                        <button type="submit" class="btn btn-success" id="btnActivate">
+                        <button type="submit" class="btn btn-success" id="btnActivate" {{ $project->poNumbers->isEmpty() ? 'disabled' : '' }}>
                             <i class="fas fa-play mr-1"></i> Simpan &amp; Aktifkan
                         </button>
                     </div>
@@ -431,113 +375,11 @@ document.addEventListener('DOMContentLoaded', function () {
         el.value = fmt(el.value);
     });
 
-    var attIdx = 0;
-    var detailIdx = document.querySelectorAll('#detailBody tr').length;
-    var clusterOptions = '';
-    var stageOptions = '';
-
-    $.get('/cluster/options-json', function(clusters) {
-        clusters.forEach(function(c) { clusterOptions += '<option value="' + c.id + '">' + c.name + '</option>'; });
-    });
-    $.get('/stage/options-json', function(stages) {
-        stages.forEach(function(s) { stageOptions += '<option value="' + s.id + '">' + s.name + '</option>'; });
-    });
-
-    var btnAddDetail = document.getElementById('btnAddDetail');
-    if (btnAddDetail) {
-        btnAddDetail.addEventListener('click', function () {
-            var i = detailIdx++;
-            document.getElementById('detailBody').insertAdjacentHTML('beforeend',
-                '<tr>' +
-                    '<td class="text-center align-middle row-no-detail"></td>' +
-                    '<td><select name="details[' + i + '][cluster_id]" class="form-control form-control-sm"><option value="">— Pilih Cluster —</option>' + clusterOptions + '</select></td>' +
-                    '<td><select name="details[' + i + '][stage_id]" class="form-control form-control-sm"><option value="">— Pilih Stage —</option>' + stageOptions + '</select></td>' +
-                    '<td><input type="date" name="details[' + i + '][plan_start]" class="form-control form-control-sm"></td>' +
-                    '<td><input type="date" name="details[' + i + '][plan_end]" class="form-control form-control-sm"></td>' +
-                    '<td><input type="date" name="details[' + i + '][actual_start]" class="form-control form-control-sm"></td>' +
-                    '<td><input type="date" name="details[' + i + '][actual_end]" class="form-control form-control-sm"></td>' +
-                    '<td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-detail"><i class="fas fa-trash"></i></button></td>' +
-                '</tr>'
-            );
-            renumberDetail();
-        });
-    }
-
-    document.addEventListener('click', function (e) {
-        if (e.target.closest('.btn-remove-detail')) {
-            e.target.closest('tr').remove();
-            renumberDetail();
-        }
-    });
-
-    function renumberDetail() {
-        document.querySelectorAll('#detailBody .row-no-detail').forEach(function(el, i) { el.textContent = i+1; });
-    }
-
-    var picIdx = document.querySelectorAll('#picBody tr').length;
-    var btnAddPic = document.getElementById('btnAddPic');
-    if (btnAddPic) {
-        btnAddPic.addEventListener('click', function () {
-            var i = picIdx++;
-            document.getElementById('picBody').insertAdjacentHTML('beforeend',
-                '<tr>' +
-                    '<td class="text-center align-middle row-no"></td>' +
-                    '<td><input type="text" name="pics[' + i + '][pic]" class="form-control form-control-sm" placeholder="Nama PIC..."></td>' +
-                    '<td><input type="text" name="pics[' + i + '][position]" class="form-control form-control-sm" placeholder="Jabatan..."></td>' +
-                    '<td><input type="text" name="pics[' + i + '][contact]" class="form-control form-control-sm" placeholder="Kontak..."></td>' +
-                    '<td><input type="text" name="pics[' + i + '][remark]" class="form-control form-control-sm" placeholder="Keterangan..."></td>' +
-                    '<td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-pic"><i class="fas fa-trash"></i></button></td>' +
-                '</tr>'
-            );
-            renumber('picBody');
-        });
-    }
-
-    document.addEventListener('click', function (e) {
-        if (e.target.closest('.btn-remove-pic')) {
-            e.target.closest('tr').remove();
-            renumber('picBody');
-        }
-    });
-
-    var btnAddAtt = document.getElementById('btnAddAtt');
-    if (btnAddAtt) {
-        btnAddAtt.addEventListener('click', function () {
-            var i = attIdx++;
-            document.getElementById('attBody').insertAdjacentHTML('beforeend',
-                '<tr>' +
-                    '<td class="text-center align-middle row-no"></td>' +
-                    '<td><input type="file" name="attachments[' + i + ']" class="form-control-file"></td>' +
-                    '<td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-att"><i class="fas fa-trash"></i></button></td>' +
-                '</tr>'
-            );
-            renumber('attBody');
-        });
-    }
-
-    document.addEventListener('click', function (e) {
-        if (e.target.closest('.btn-remove-att')) {
-            e.target.closest('tr').remove();
-            renumber('attBody');
-        }
-    });
-
-    function renumber(tbodyId) {
-        document.querySelectorAll('#' + tbodyId + ' .row-no').forEach(function (el, i) {
-            el.textContent = i + 1;
-        });
-    }
-
     // Konfirmasi aktivasi
     var btnActivate = document.getElementById('btnActivate');
     if (btnActivate && typeof Swal !== 'undefined') {
         btnActivate.addEventListener('click', function (e) {
             var form = btnActivate.closest('form');
-            var poInput = form.querySelector('input[name="po_number"]');
-
-            if (!poInput || !poInput.value.trim()) {
-                return; // biarkan validasi HTML5 "required" yang menangani
-            }
 
             e.preventDefault();
 
@@ -545,7 +387,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 title: 'Simpan & Aktifkan PO?',
                 text: 'Perubahan akan disimpan dan status PO berubah menjadi ACTIVE.',
                 icon: 'question', showCancelButton: true,
-                confirmButtonColor: '#28a745', cancelButtonColor: '#6c757d',
+                confirmButtonColor: 'var(--success)', cancelButtonColor: '#55595e',
                 confirmButtonText: 'Ya, Aktifkan', cancelButtonText: 'Batal'
             }).then(function (r) {
                 if (r.isConfirmed) form.submit();

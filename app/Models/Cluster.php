@@ -54,4 +54,14 @@ class Cluster extends Model
             'user_groups'
         );
     }
+
+    public function details()
+    {
+        return $this->hasMany(ProjectDetail::class)->orderBy('id');
+    }
+
+    public function monitoringLogs()
+    {
+        return $this->hasMany(ProjectMonitoringLog::class)->orderBy('created_at');
+    }
 }

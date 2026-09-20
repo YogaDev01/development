@@ -79,6 +79,6 @@ class Customer extends Model
      */
     public function attachments()
     {
-        return $this->hasMany(Customerattachment::class);
+        return $this->hasMany(CustomerAttachment::class);
     }
 }

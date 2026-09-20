@@ -1,567 +1,580 @@
 @extends('layouts.app')
 
+@section('title', 'Submit Settlement')
+
 @section('content')
 
-<!-- CONTENT HEADER -->
-<div class="content-header">
-
-    <div class="container-fluid">
-
-        <div class="row mb-2">
-
-            <!-- TITLE -->
-            <div class="col-sm-6">
-
-                <h1 class="m-0">
-
-                    <a 
-                        href="{{ url('/budget-request/' . $budgetRequest->id) }}"
-                        class="text-dark mr-2"
-                        style="text-decoration: none;"
-                    >
-
-                        <i class="fas fa-arrow-left"></i>
-
-                    </a>
-
-                    Submit Realization
-
-                </h1>
-
-            </div>
-
-            <!-- BREADCRUMB -->
-            <div class="col-sm-6">
-
-                <ol class="breadcrumb float-sm-right">
-
-                    <li class="breadcrumb-item">
-
-                        Operational Cost
-
-                    </li>
-
-                    <li class="breadcrumb-item">
-
-                        <a href="{{ url('/budget-request') }}">
-                            Budget Request
-                        </a>
-
-                    </li>
-
-                    <li class="breadcrumb-item active">
-
-                        Realization
-
-                    </li>
-
-                </ol>
-
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-<!-- MAIN CONTENT -->
 <div class="content">
-
     <div class="container-fluid">
 
-        <div class="row">
-
-            <!-- LEFT - SUMMARY -->
-            <div class="col-lg-4">
-
-                <!-- REQUEST SUMMARY -->
-                <div class="card card-primary card-outline shadow-sm">
-
-                    <div class="card-header">
-
-                        <h3 class="card-title">
-
-                            <i class="fas fa-file-invoice-dollar mr-1"></i>
-
-                            Request Summary
-
-                        </h3>
-
-                    </div>
-
-                    <div class="card-body">
-
-                        <!-- CODE -->
-                        <div class="form-group mb-3">
-
-                            <label class="font-weight-bold">
-
-                                Request Code
-
-                            </label>
-
-                            <input 
-                                type="text"
-                                class="form-control"
-                                value="{{ $budgetRequest->code ?? '-' }}"
-                                readonly
-                            >
-
-                        </div>
-
-                        <!-- DESCRIPTION -->
-                        <div class="form-group mb-3">
-
-                            <label class="font-weight-bold">
-
-                                Description
-
-                            </label>
-
-                            <textarea 
-                                class="form-control"
-                                rows="3"
-                                readonly
-                            >{{ $budgetRequest->description }}</textarea>
-
-                        </div>
-
-                        <!-- AMOUNT -->
-                        <div class="form-group mb-3">
-
-                            <label class="font-weight-bold">
-
-                                Total Amount
-
-                            </label>
-
-                            <div class="input-group">
-
-                                <div class="input-group-prepend">
-
-                                    <span class="input-group-text">Rp</span>
-
-                                </div>
-
-                                <input 
-                                    type="text"
-                                    class="form-control font-weight-bold text-primary"
-                                    value="{{ number_format($budgetRequest->amount, 0, ',', '.') }}"
-                                    readonly
-                                >
-
-                            </div>
-
-                        </div>
-
-                        <!-- STATUS -->
-                        <div class="form-group">
-
-                            <label class="font-weight-bold">
-
-                                Current Status
-
-                            </label>
-
-                            <div>
-
-                                <span class="badge badge-info px-3 py-2">
-
-                                    PAID
-
-                                </span>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <div class="d-flex align-items-center">
+                <a href="{{ url('/budget-request?open=' . $budgetRequest->id) }}" class="btn btn-secondary btn-sm mr-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Submit Settlement</h1>
             </div>
-
-            <!-- RIGHT - FORM -->
-            <div class="col-lg-8">
-
-                <!-- DETAIL TABLE -->
-                <div class="card shadow-sm mb-3">
-
-                    <div class="card-header">
-
-                        <h3 class="card-title">
-
-                            <i class="fas fa-list mr-1"></i>
-
-                            Request Detail
-
-                        </h3>
-
-                    </div>
-
-                    <div class="card-body table-responsive p-0">
-
-                        <table class="table table-hover table-bordered mb-0">
-
-                            <thead class="bg-light">
-
-                                <tr>
-
-                                    <th width="5%">No</th>
-
-                                    <th>Description</th>
-
-                                    <th width="10%">Qty</th>
-
-                                    <th width="18%">Unit Price</th>
-
-                                    <th width="18%">Total</th>
-
-                                </tr>
-
-                            </thead>
-
-                            <tbody>
-
-                                @forelse($budgetRequest->details as $detail)
-
-                                    <tr>
-
-                                        <td>{{ $loop->iteration }}</td>
-
-                                        <td>{{ $detail->description }}</td>
-
-                                        <td>{{ number_format($detail->qty, 0, ',', '.') }}</td>
-
-                                        <td>Rp {{ number_format($detail->amount, 0, ',', '.') }}</td>
-
-                                        <td class="font-weight-bold text-primary">
-
-                                            Rp {{ number_format($detail->total, 0, ',', '.') }}
-
-                                        </td>
-
-                                    </tr>
-
-                                @empty
-
-                                    <tr>
-
-                                        <td colspan="5" class="text-center text-muted py-4">
-
-                                            Tidak ada detail
-
-                                        </td>
-
-                                    </tr>
-
-                                @endforelse
-
-                            </tbody>
-
-                        </table>
-
-                    </div>
-
-                </div>
-
-                <!-- REALIZATION FORM -->
-                <div class="card card-info card-outline shadow-sm">
-
-                    <div class="card-header">
-
-                        <h3 class="card-title">
-
-                            <i class="fas fa-check-double mr-1"></i>
-
-                            Submit Realization Evidence
-
-                        </h3>
-
-                    </div>
-
-                    <form 
-                        id="realizeForm"
-                        action="{{ url('/budget-request/' . $budgetRequest->id . '/realize') }}"
-                        method="POST"
-                        enctype="multipart/form-data"
-                    >
-
-                        @csrf
-
-                        <div class="card-body">
-
-                            <!-- COMPLETION DATE -->
-                            <div class="form-group">
-
-                                <label class="font-weight-bold">
-
-                                    <i class="fas fa-calendar-check mr-1"></i>
-
-                                    Completion Date
-
-                                </label>
-
-                                <input 
-                                    type="date"
-                                    name="completion_date"
-                                    id="completionDate"
-                                    class="form-control"
-                                    value="{{ now()->format('Y-m-d') }}"
-                                    required
-                                >
-
-                                <small class="text-muted d-block mt-2">
-
-                                    Tanggal pekerjaan/kegiatan selesai
-
-                                </small>
-
-                            </div>
-
-                            <!-- REALIZATION DOCUMENTS -->
-                            <div class="form-group">
-
-                                <label class="font-weight-bold">
-
-                                    <i class="fas fa-file-upload mr-1"></i>
-
-                                    Upload Realization Documents
-
-                                </label>
-
-                                <div class="custom-file">
-
-                                    <input 
-                                        type="file"
-                                        name="realization"
-                                        id="realization"
-                                        class="custom-file-input"
-                                        accept="application/pdf,image/*"
-                                    >
-
-                                    <label 
-                                        class="custom-file-label"
-                                        for="realization"
-                                    >
-
-                                        Pilih file bukti realisasi
-
-                                    </label>
-
-                                </div>
-
-                                <small class="text-muted d-block mt-2">
-
-                                    Format: PDF, JPG, PNG (Max 10MB). Foto pekerjaan, laporan, atau dokumen lainnya
-
-                                </small>
-
-                            </div>
-
-                            <!-- NOTES -->
-                            <div class="form-group">
-
-                                <label class="font-weight-bold">
-
-                                    <i class="fas fa-sticky-note mr-1"></i>
-
-                                    Additional Notes
-
-                                </label>
-
-                                <textarea 
-                                    name="notes"
-                                    id="notes"
-                                    class="form-control"
-                                    rows="3"
-                                    placeholder="Catatan tambahan tentang realisasi..."
-                                ></textarea>
-
-                                <small class="text-muted d-block mt-2">
-
-                                    Catatan tambahan jika diperlukan
-
-                                </small>
-
-                            </div>
-
-                        </div>
-
-                        <!-- FOOTER -->
-                        <div class="card-footer">
-
-                            <button 
-                                type="submit"
-                                id="submitBtn"
-                                class="btn btn-info"
-                            >
-
-                                <i class="fas fa-paper-plane mr-1"></i>
-
-                                Submit Realization
-
-                            </button>
-
-                            <a 
-                                href="{{ url('/budget-request/' . $budgetRequest->id) }}"
-                                class="btn btn-secondary"
-                            >
-
-                                <i class="fas fa-times mr-1"></i>
-
-                                Cancel
-
-                            </a>
-
-                        </div>
-
-                    </form>
-
-                </div>
-
-            </div>
-
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item">Finance</li>
+                <li class="breadcrumb-item"><a href="{{ url('/budget-request') }}">Cost Request</a></li>
+                <li class="breadcrumb-item active">Settlement</li>
+            </ol>
         </div>
 
-    </div>
+        @php
+            $existingByDetail = $budgetRequest->realizations->keyBy('request_detail_id');
+        @endphp
 
+        <!-- REQUEST SUMMARY — strip horizontal, lebar sama dengan card di bawahnya -->
+        <div class="card card-primary card-outline shadow-sm mb-3">
+            <div class="card-body py-3">
+                <div class="row align-items-center">
+                    <div class="col-lg-5 mb-2 mb-lg-0">
+                        <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+                            <span class="badge badge-dark px-2 py-1" style="font-size:12px;">{{ $budgetRequest->code }}</span>
+                            <x-status :status="$budgetRequest->status" context="budget-request" />
+                        </div>
+                        <div class="mt-2" style="font-size:13px;color:var(--text);">{{ $budgetRequest->description }}</div>
+                    </div>
+                    <div class="col-lg-7">
+                        <div class="d-flex flex-wrap summary-stat-row">
+                            <div class="summary-stat">
+                                <div class="summary-stat-label">Total Request</div>
+                                <div class="summary-stat-value text-primary">{{ number_format($budgetRequest->amount, 0, ',', '.') }}</div>
+                            </div>
+                            <div class="summary-stat">
+                                <div class="summary-stat-label">Total Settle</div>
+                                <div class="summary-stat-value text-info" id="statTotalSettle">0</div>
+                            </div>
+                            <div class="summary-stat">
+                                <div class="summary-stat-label">Variance</div>
+                                <div class="summary-stat-value" id="statVariance">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <form id="realizeForm"
+              action="{{ route('budget-request.submit-realization', $budgetRequest->id) }}"
+              method="POST" enctype="multipart/form-data">
+            @csrf
+
+            <!-- DETAIL / SETTLEMENT PER ITEM -->
+            <div class="card shadow-sm mb-3">
+                <div class="card-header d-flex align-items-center flex-wrap" style="gap:8px;">
+                    <h3 class="card-title mb-0"><i class="fas fa-list mr-1"></i> Settlement per Item</h3>
+                    <div class="ml-auto d-flex align-items-center" style="gap:8px;">
+                        <a href="{{ url('/budget-request/' . $budgetRequest->id . '/settlement-template') }}" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-file-excel mr-1"></i> Download Template
+                        </a>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnImportSettlementExcel">
+                            <i class="fas fa-file-import mr-1"></i> Import Excel
+                        </button>
+                        <input type="file" id="importSettlementFileInput" accept=".xlsx,.xls" style="display:none;">
+                    </div>
+                </div>
+                <div class="card-body table-responsive p-0">
+                    <table class="table table-hover table-bordered mb-0" id="tblSettlement" style="font-size:12px;">
+                        <thead class="bg-light">
+                            <tr>
+                                <th scope="col" style="width:22%;">Description Request</th>
+                                <th scope="col" style="width:26%;">Description Settle</th>
+                                <th scope="col" class="text-center text-nowrap" style="width:1%;">Qty</th>
+                                <th scope="col" class="text-right text-nowrap" style="width:1%;">Request</th>
+                                <th scope="col" class="text-right text-nowrap" style="width:1%;">Settle</th>
+                                <th scope="col" class="text-right text-nowrap" style="width:1%;">Variance</th>
+                                <th scope="col" class="text-center text-nowrap" style="width:1%;">Lampiran Item</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($budgetRequest->details->where('status', '!=', 'TAKEOUT')->values() as $i => $detail)
+                            @php $existing = $existingByDetail->get($detail->id); @endphp
+                            <tr data-detail-id="{{ $detail->id }}">
+                                <td class="align-middle realize-desc-request-cell">
+                                    {{ $detail->account?->name ?? '-' }} - {{ $detail->notes ?: '-' }}
+                                    <input type="hidden" name="realizations[{{ $i }}][request_detail_id]" value="{{ $detail->id }}">
+                                </td>
+                                <td>
+                                    <input type="text" name="realizations[{{ $i }}][notes]"
+                                           class="form-control form-control-sm realize-notes-input"
+                                           value="{{ $existing->notes ?? '' }}" placeholder="Catatan settle...">
+                                </td>
+                                <td class="text-center text-nowrap align-middle">{{ rtrim(rtrim(number_format($detail->qty, 2, ',', '.'), '0'), ',') }}</td>
+                                <td class="text-right text-nowrap align-middle font-weight-bold text-primary realize-request-cell" data-raw="{{ (int) $detail->total }}">
+                                    {{ number_format($detail->total, 0, ',', '.') }}
+                                </td>
+                                <td class="text-nowrap">
+                                    <input type="text" inputmode="numeric"
+                                           name="realizations[{{ $i }}][amount]"
+                                           class="form-control form-control-sm text-right realize-amount-input"
+                                           value="{{ (int) ($existing->amount ?? $detail->total) }}" placeholder="0" required>
+                                </td>
+                                <td class="text-right text-nowrap align-middle font-weight-bold realize-variance-cell">0</td>
+                                <td class="text-nowrap detail-att-cell" data-idx="{{ $i }}" tabindex="0">
+                                    <input type="file" name="realizations[{{ $i }}][attachments][]" class="d-none detail-att-input" multiple
+                                           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm btn-detail-att" style="white-space:nowrap;padding:2px 8px;font-size:11px;">
+                                        <i class="fas fa-paperclip"></i> <span class="detail-att-label">Lampiran</span>
+                                    </button>
+                                    <div class="detail-att-hint text-muted" style="font-size:9px;">drop / paste / klik</div>
+                                    <div class="detail-att-list mt-1" style="font-size:10px;line-height:1.5;"></div>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">Tidak ada detail</td>
+                            </tr>
+                            @endforelse
+                        </tbody>
+                        <tfoot>
+                            <tr style="background:var(--surface-2);">
+                                <th colspan="3" class="text-right">Subtotal</th>
+                                <th class="text-right" id="footRequestTotal">0</th>
+                                <th class="text-right" id="footSettleTotal">0</th>
+                                <th class="text-right" id="footVarianceTotal">0</th>
+                                <th></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- BUKTI SETTLEMENT (GLOBAL) -->
+            <div class="card card-info card-outline shadow-sm mb-3">
+                <div class="card-header d-flex align-items-center">
+                    <h3 class="card-title mb-0"><i class="fas fa-check-double mr-1"></i> Bukti Settlement (Global)</h3>
+                </div>
+                <div class="card-body">
+                    <div id="dropZoneReal" class="att-dropzone mb-3" tabindex="0">
+                        <i class="fas fa-cloud-upload-alt fa-2x mb-2 d-block"></i>
+                        <p class="mb-0">
+                            Drag &amp; drop file ke sini, paste gambar (Ctrl+V), atau
+                            <span class="text-primary" style="text-decoration:underline;cursor:pointer;" id="dropZoneBrowseReal">klik untuk pilih</span>
+                        </p>
+                        <small class="text-muted">Bisa pilih/drop/paste beberapa file sekaligus</small>
+                        <input type="file" id="dropZoneInputReal" multiple style="display:none;">
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-bordered mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th scope="col" style="width:5%;" class="text-center">No</th>
+                                    <th scope="col">File</th>
+                                    <th scope="col" style="width:10%;" class="text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="realAttachmentBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Format: PDF, JPG, PNG, DOC, XLS. Maks 10 MB per file. Foto pekerjaan, laporan, atau dokumen pendukung lainnya.
+                    </small>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-body d-flex align-items-center" style="gap:8px;">
+                    <button type="submit" id="submitBtn" class="btn btn-info">
+                        <i class="fas fa-paper-plane mr-1"></i> Submit Settlement
+                    </button>
+                    <a href="{{ url('/budget-request?open=' . $budgetRequest->id) }}" class="btn btn-secondary">
+                        <i class="fas fa-times mr-1"></i> Cancel
+                    </a>
+                </div>
+            </div>
+        </form>
+
+    </div>
 </div>
 
 @endsection
 
 @push('scripts')
-
 <script>
-
 $(function () {
-
     let form = $('#realizeForm');
 
+    function esc(s) { return $('<div>').text(s == null ? '' : String(s)).html(); }
+    function escAttr(s) { return esc(s).replace(/"/g, '&quot;'); }
+    function moneyFmt(v) {
+        var sign = v < 0 ? '-' : '';
+        return sign + Math.abs(Math.round(v)).toLocaleString('id-ID');
+    }
+    // Format input Settle sambil diketik ("4000000" -> "4.000.000"), tanpa prefix Rp di dalam kotaknya.
+    function fmtRp(v) {
+        v = (v || '').toString().replace(/\D/g, '');
+        return v.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+    function parseRp(v) {
+        return parseInt((v || '').toString().replace(/\D/g, '')) || 0;
+    }
 
+    // Inisialisasi nilai awal (server-rendered, masih polos) jadi berformat titik.
+    $('.realize-amount-input').each(function () { this.value = fmtRp(this.value); });
 
-
-    let realizationInput = $('#realization');
-
-    /*
-    |--------------------------------------------------------------------------
-    | FILE INPUT LABEL
-    |--------------------------------------------------------------------------
-    */
-
-    realizationInput.on('change', function () {
-
-        let fileName = this.files.length > 0 ? this.files[0].name : 'Pilih file bukti realisasi';
-
-        $(this).next('.custom-file-label').text(fileName);
-
+    $(document).on('input', '.realize-amount-input', function () {
+        this.value = fmtRp(this.value);
     });
 
-    /*
-    |--------------------------------------------------------------------------
-    | VALIDATE FILE SIZE
-    |--------------------------------------------------------------------------
-    */
+    /* ── TOTAL / VARIANCE OTOMATIS (per baris + subtotal + ringkasan) ── */
+    function recalcTotalRealized() {
+        var totalRequest = 0, totalSettle = 0;
 
-    realizationInput.on('change', function () {
+        $('#tblSettlement tbody tr[data-detail-id]').each(function () {
+            var $row = $(this);
+            var req  = parseFloat($row.find('.realize-request-cell').data('raw')) || 0;
+            var set  = parseRp($row.find('.realize-amount-input').val());
+            var vr   = req - set;
 
-        let file = this.files[0];
+            totalRequest += req;
+            totalSettle  += set;
 
-        if (file) {
-
-            let maxSize = 10 * 1024 * 1024; // 10MB
-
-            if (file.size > maxSize) {
-
-                Swal.fire({
-
-                    title: 'File Terlalu Besar',
-
-                    text: 'Ukuran file tidak boleh lebih dari 10MB',
-
-                    icon: 'error',
-
-                    confirmButtonText: 'OK'
-
-                });
-
-                realizationInput.val('');
-
-                $(this).next('.custom-file-label').text('Pilih file bukti realisasi');
-
-                return;
-
-            }
-
-        }
-
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | FORM SUBMIT
-    |--------------------------------------------------------------------------
-    */
-
-    form.on('submit', function (e) {
-
-        e.preventDefault();
-
-        Swal.fire({
-
-            title: 'Submit Realisasi?',
-
-            text: 'Konfirmasi pengajuan realisasi untuk request ini',
-
-            icon: 'question',
-
-            showCancelButton: true,
-
-            confirmButtonColor: '#17a2b8',
-
-            cancelButtonColor: '#6c757d',
-
-            confirmButtonText: 'Ya, Submit',
-
-            cancelButtonText: 'Batal'
-
-        }).then((result) => {
-
-            if (result.isConfirmed) {
-
-                form.unbind('submit').submit();
-
-            }
-
+            $row.find('.realize-variance-cell')
+                .text(moneyFmt(vr))
+                .toggleClass('text-var-pos', vr >= 0)
+                .toggleClass('text-var-neg', vr < 0);
         });
 
+        var totalVariance = totalRequest - totalSettle;
+
+        $('#statTotalSettle').text(moneyFmt(totalSettle));
+        $('#statVariance').text(moneyFmt(totalVariance)).toggleClass('text-success', totalVariance >= 0).toggleClass('text-danger', totalVariance < 0);
+        $('#footRequestTotal').text(moneyFmt(totalRequest));
+        $('#footSettleTotal').text(moneyFmt(totalSettle));
+        $('#footVarianceTotal').text(moneyFmt(totalVariance)).toggleClass('text-var-pos', totalVariance >= 0).toggleClass('text-var-neg', totalVariance < 0);
+    }
+    $(document).on('input', '.realize-amount-input', recalcTotalRealized);
+    recalcTotalRealized();
+
+    /* ── LAMPIRAN ITEM PER BARIS (drag & drop + paste + klik) ───────────────
+       Pola sama seperti kolom "Lampiran Item" di form Cost Request. ── */
+    function appendFilesToInput(input, fileList) {
+        if (!fileList || !fileList.length) return;
+        try {
+            var dt = new DataTransfer();
+            Array.from(input.files || []).forEach(function (f) { dt.items.add(f); });
+            Array.from(fileList).forEach(function (f) { dt.items.add(f); });
+            input.files = dt.files;
+        } catch (e) {
+            try { input.files = fileList; } catch (e2) {}
+        }
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function renderDetailAttList(cell) {
+        var input = cell.querySelector('.detail-att-input');
+        var list  = cell.querySelector('.detail-att-list');
+        var label = cell.querySelector('.detail-att-label');
+        var files = Array.from(input.files || []);
+        label.textContent = files.length ? (files.length + ' file') : 'Lampiran';
+        list.innerHTML = files.map(function (f, idx) {
+            return '<div class="text-muted"><i class="fas fa-file mr-1"></i>' +
+                f.name.replace(/</g, '&lt;') +
+                ' <i class="fas fa-times text-danger detail-att-del" data-i="' + idx + '" style="cursor:pointer;"></i></div>';
+        }).join('');
+    }
+
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest('.btn-detail-att');
+        if (!btn) return;
+        var real = btn.closest('.detail-att-cell').querySelector('.detail-att-input');
+        var tmp  = document.createElement('input');
+        tmp.type = 'file'; tmp.multiple = true; tmp.accept = real.accept;
+        tmp.addEventListener('change', function () { appendFilesToInput(real, tmp.files); });
+        tmp.click();
     });
 
+    document.addEventListener('click', function (e) {
+        var x = e.target.closest('.detail-att-del');
+        if (!x) return;
+        var cell  = x.closest('.detail-att-cell');
+        var input = cell.querySelector('.detail-att-input');
+        var idx   = parseInt(x.dataset.i, 10);
+        try {
+            var dt = new DataTransfer();
+            Array.from(input.files).forEach(function (f, i) { if (i !== idx) dt.items.add(f); });
+            input.files = dt.files;
+        } catch (err) {}
+        renderDetailAttList(cell);
+    });
+
+    document.addEventListener('change', function (e) {
+        if (!e.target.classList.contains('detail-att-input')) return;
+        renderDetailAttList(e.target.closest('.detail-att-cell'));
+    });
+
+    document.addEventListener('dragover', function (e) {
+        var cell = e.target.closest ? e.target.closest('.detail-att-cell') : null;
+        if (!cell) return;
+        e.preventDefault();
+        cell.style.background = 'var(--warning-bg)';
+    });
+    document.addEventListener('dragleave', function (e) {
+        var cell = e.target.closest ? e.target.closest('.detail-att-cell') : null;
+        if (cell) cell.style.background = '';
+    });
+    document.addEventListener('drop', function (e) {
+        var cell = e.target.closest ? e.target.closest('.detail-att-cell') : null;
+        if (!cell) return;
+        e.preventDefault();
+        cell.style.background = '';
+        var f = e.dataTransfer ? e.dataTransfer.files : null;
+        if (f && f.length) appendFilesToInput(cell.querySelector('.detail-att-input'), f);
+    });
+
+    document.addEventListener('paste', function (e) {
+        var cell = (document.activeElement && document.activeElement.closest)
+            ? document.activeElement.closest('.detail-att-cell') : null;
+        if (!cell) return;
+        var cd = e.clipboardData || window.clipboardData;
+        if (!cd || !cd.items) return;
+        var picked = [];
+        for (var i = 0; i < cd.items.length; i++) {
+            if (cd.items[i].kind === 'file') {
+                var f = cd.items[i].getAsFile();
+                if (f) {
+                    var ext = (f.type.split('/')[1] || 'png');
+                    picked.push(new File([f], 'pasted-' + Date.now() + '.' + ext, { type: f.type }));
+                }
+            }
+        }
+        if (picked.length) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            appendFilesToInput(cell.querySelector('.detail-att-input'), picked);
+        }
+    }, true);
+
+    /* ── BUKTI SETTLEMENT (GLOBAL) — drag & drop + paste, multi-file ────────
+       Pola sama seperti "Lampiran Tambahan / Pendukung" di form Cost Request. ── */
+    var attIdx = 0;
+
+    function addAttachmentRow(file) {
+        var i     = attIdx++;
+        var tbody = document.getElementById('realAttachmentBody');
+        var tr    = document.createElement('tr');
+        tr.innerHTML =
+            '<td class="text-center align-middle row-no"></td>' +
+            '<td><input type="file" name="realization_attachments[' + i + ']" class="form-control-file"></td>' +
+            '<td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-real-att"><i class="fas fa-trash"></i></button></td>';
+        tbody.appendChild(tr);
+
+        if (file) {
+            var input = tr.querySelector('input[type="file"]');
+            try {
+                var dt = new DataTransfer();
+                dt.items.add(file);
+                input.files = dt.files;
+            } catch (err) {}
+        }
+        renumberAttachments();
+    }
+
+    function renumberAttachments() {
+        document.querySelectorAll('#realAttachmentBody .row-no').forEach(function (el, i) { el.textContent = i + 1; });
+    }
+
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('.btn-remove-real-att')) {
+            e.target.closest('tr').remove();
+            renumberAttachments();
+        }
+    });
+
+    (function () {
+        var zone   = document.getElementById('dropZoneReal');
+        var input  = document.getElementById('dropZoneInputReal');
+        var browse = document.getElementById('dropZoneBrowseReal');
+
+        zone.addEventListener('click', function () { input.click(); });
+        browse.addEventListener('click', function (e) { e.stopPropagation(); input.click(); });
+
+        input.addEventListener('change', function () {
+            Array.from(this.files).forEach(function (f) { addAttachmentRow(f); });
+            this.value = '';
+        });
+
+        ['dragenter', 'dragover'].forEach(function (evt) {
+            zone.addEventListener(evt, function (e) { e.preventDefault(); e.stopPropagation(); zone.classList.add('dragover'); });
+        });
+        ['dragleave', 'drop'].forEach(function (evt) {
+            zone.addEventListener(evt, function (e) { e.preventDefault(); e.stopPropagation(); zone.classList.remove('dragover'); });
+        });
+        zone.addEventListener('drop', function (e) {
+            var files = e.dataTransfer ? e.dataTransfer.files : null;
+            if (files && files.length) Array.from(files).forEach(function (f) { addAttachmentRow(f); });
+        });
+
+        function handlePasteReal(e) {
+            var items = (e.clipboardData || window.clipboardData) ? (e.clipboardData || window.clipboardData).items : null;
+            if (!items) return;
+            var found = false;
+            for (var i = 0; i < items.length; i++) {
+                if (items[i].kind === 'file') {
+                    var f = items[i].getAsFile();
+                    if (f) {
+                        var ext = (f.type.split('/')[1] || 'png');
+                        addAttachmentRow(new File([f], 'pasted-image-' + Date.now() + '.' + ext, { type: f.type }));
+                        found = true;
+                    }
+                }
+            }
+            if (found) e.preventDefault();
+        }
+        zone.addEventListener('paste', handlePasteReal);
+        document.addEventListener('paste', function (e) {
+            var tag = (document.activeElement && document.activeElement.tagName) || '';
+            if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+            if (document.activeElement && document.activeElement.closest && document.activeElement.closest('.detail-att-cell')) return;
+            handlePasteReal(e);
+        });
+    })();
+
+    /* ── DOWNLOAD TEMPLATE & IMPORT EXCEL — Settlement per Item ─────────────
+       Baris tabel ini tetap (tidak bisa tambah/kurang) — import hanya
+       mengisi ulang kolom "Settle" per item, dicocokkan lewat
+       Request Detail ID (jangan diubah di file template). ── */
+    $('#btnImportSettlementExcel').on('click', function () {
+        $('#importSettlementFileInput').val('').trigger('click');
+    });
+
+    $('#importSettlementFileInput').on('change', function () {
+        var file = this.files[0];
+        if (!file) return;
+
+        var formData = new FormData();
+        formData.append('file', file);
+        formData.append('_token', $('meta[name="csrf-token"]').attr('content') || '{{ csrf_token() }}');
+
+        Swal.fire({
+            title: 'Memproses file...', text: 'Mohon tunggu sebentar.',
+            allowOutsideClick: false, didOpen: function () { Swal.showLoading(); }
+        });
+
+        $.ajax({
+            url: '{{ url("/budget-request/" . $budgetRequest->id . "/settlement-import-preview") }}',
+            type: 'POST', data: formData, processData: false, contentType: false
+        }).done(function (res) {
+            Swal.close();
+
+            if (res.errors && res.errors.length) {
+                Swal.fire({
+                    icon: 'warning', title: 'Sebagian data bermasalah',
+                    html: '<div style="text-align:left;max-height:250px;overflow:auto;">' +
+                          res.errors.map(function (er) { return '<div>• ' + er + '</div>'; }).join('') +
+                          '</div>',
+                    confirmButtonColor: '#92232b'
+                });
+            }
+
+            if (res.rows && res.rows.length) {
+                var applied = 0;
+                res.rows.forEach(function (r) {
+                    var $row = $('tr[data-detail-id="' + r.request_detail_id + '"]');
+                    if (!$row.length) return;
+                    $row.find('.realize-amount-input').val(fmtRp(String(r.amount)));
+                    applied++;
+                });
+                recalcTotalRealized();
+
+                if (applied > 0) {
+                    Swal.fire({
+                        icon: 'success', title: 'Import berhasil',
+                        text: applied + ' baris Settle diperbarui dari file.',
+                        confirmButtonColor: 'var(--success)', timer: 2000, showConfirmButton: false
+                    });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Tidak ada baris yang cocok', text: 'Pastikan file berasal dari Download Template CR ini.' });
+                }
+            } else if (!res.errors || !res.errors.length) {
+                Swal.fire({ icon: 'error', title: 'Tidak ada data', text: 'File tidak berisi baris data yang valid.' });
+            }
+        }).fail(function (xhr) {
+            Swal.close();
+            var msg = xhr.responseJSON && xhr.responseJSON.message
+                ? xhr.responseJSON.message
+                : 'Gagal memproses file. Pastikan format Excel sesuai template.';
+            Swal.fire({ icon: 'error', title: 'Import Gagal', text: msg });
+        });
+    });
+
+    /* SUBMIT */
+    form.on('submit', function (e) {
+        e.preventDefault();
+        Swal.fire({
+            title: 'Submit Settlement?',
+            text: 'Konfirmasi pengajuan settlement untuk Cost Request ini.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#42627d',
+            cancelButtonColor: '#55595e',
+            confirmButtonText: 'Ya, Submit',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) form.unbind('submit').submit();
+        });
+    });
 });
-
 </script>
-
 @endpush
 
 @push('styles')
-
 <style>
+.card-header .card-title { margin-bottom: 0; font-size: 1.1rem; }
 
-.form-group label {
-
-    margin-bottom: 0.8rem;
-
+/* ── Request Summary — strip horizontal ── */
+.summary-stat-row { gap: 0; }
+.summary-stat {
+    flex: 1 1 0;
+    min-width: 140px;
+    padding: 0 16px;
+    border-left: 1px solid var(--border);
 }
+.summary-stat:first-child { border-left: none; padding-left: 0; }
+.summary-stat-label { font-size: 11px; color: var(--text-faint); text-transform: uppercase; font-weight: 600; letter-spacing: .02em; }
+.summary-stat-value { font-size: 17px; font-weight: 700; margin-top: 2px; }
 
-.card-header .card-title {
+.text-var-pos { color: var(--success); }
+.text-var-neg { color: var(--danger); }
 
-    margin-bottom: 0;
-
-    font-size: 1.1rem;
-
+/* ── Tabel Settlement per Item — tampilan lebih clean & ringkas ── */
+#tblSettlement th {
+    color: var(--text-faint); font-size: 10.5px; text-transform: uppercase; letter-spacing: .02em;
+    font-weight: 700; border-bottom-width: 1px; vertical-align: middle;
 }
+#tblSettlement td { vertical-align: middle; padding: 6px 10px; }
+#tblSettlement tbody tr:hover { background: var(--surface-2); }
+#tblSettlement .form-control-sm { font-size: 12px; }
+#tblSettlement .realize-amount-input { min-width: 92px; font-weight: 600; }
+#tblSettlement .realize-notes-input { min-width: 180px; width: 100%; }
+#tblSettlement .realize-desc-request-cell {
+    max-width: 260px; white-space: normal; word-break: break-word;
+    color: var(--text-dim); font-size: 11.5px; line-height: 1.4;
+}
+#tblSettlement tfoot th { font-size: 11px; color: var(--text); border-top: 2px solid var(--border); }
 
+/* ── Lampiran Item per baris (dropzone mini) ── */
+.detail-att-cell { outline: none; transition: background .15s ease; padding: 6px 8px; }
+.detail-att-cell:focus-within { background: var(--warning-bg); }
+.detail-att-hint { opacity: .6; }
+.detail-att-cell .btn-detail-att { border-radius: var(--radius-sm); }
+
+/* ── Bukti Settlement (Global) dropzone ── */
+.att-dropzone {
+    border: 2px dashed var(--border); border-radius: var(--radius-md); padding: 28px 20px; text-align: center;
+    color: var(--text-faint); cursor: pointer; transition: all .2s ease; background: var(--surface-2);
+}
+.att-dropzone:hover { border-color: var(--accent); background: var(--warning-bg); }
+.att-dropzone.dragover { border-color: var(--accent); background: var(--warning-bg); color: var(--accent-dark); }
+
+@media (max-width: 991.98px) {
+    .summary-stat { border-left: none; border-top: 1px solid var(--border); padding: 8px 0 0; margin-top: 8px; }
+    .summary-stat:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+}
 </style>
-
 @endpush

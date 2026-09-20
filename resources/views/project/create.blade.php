@@ -4,31 +4,25 @@
 
 @section('content')
 
-<div class="content-header">
+<div class="content">
     <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6 d-flex align-items-center">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <div class="d-flex align-items-center">
                 <a href="{{ url('/project') }}" class="btn btn-secondary btn-sm mr-3">
                     <i class="fas fa-arrow-left"></i>
                 </a>
                 <div>
-                    <h1 class="m-0 font-weight-bold">Tambah PO</h1>
+                    <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Tambah PO</h1>
                     <small class="text-muted">Form penambahan PO baru</small>
                 </div>
             </div>
-            <div class="col-sm-6">
-                <ol class="breadcrumb float-sm-right mb-0">
-                    <li class="breadcrumb-item"><a href="#">Finance</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url('/project') }}">Purchase Order</a></li>
-                    <li class="breadcrumb-item active">Tambah</li>
-                </ol>
-            </div>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item"><a href="#">Finance</a></li>
+                <li class="breadcrumb-item"><a href="{{ url('/project') }}">Purchase Order</a></li>
+                <li class="breadcrumb-item active">Tambah</li>
+            </ol>
         </div>
-    </div>
-</div>
-
-<div class="content">
-    <div class="container-fluid">
 
         <form action="{{ url('/project') }}" method="POST" enctype="multipart/form-data" id="frmProject">
             @csrf
@@ -52,10 +46,12 @@
                 @endif
 
                 <div class="card-body">
-                    <div class="row">
+                    <div class="row po-two-col form-clean">
 
-                        <!-- SCOPE OF WORK / NAMA PO -->
-                        <div class="col-md-8">
+                        <!-- KOLOM KIRI -->
+                        <div class="col-md-6 po-col-left">
+
+                            <!-- SCOPE OF WORK / NAMA PO -->
                             <div class="form-group">
                                 <label class="font-weight-600">Scope of Work <span class="text-danger">*</span></label>
                                 <input type="text" name="name"
@@ -66,27 +62,11 @@
                                        autocomplete="off" required>
                                 @error('name')<small class="text-danger d-block">{{ $message }}</small>@enderror
                             </div>
-                        </div>
 
-                        <!-- IMPLEMENT BY (DONE BY) -->
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label class="font-weight-600">Implement By</label>
-                                <select name="done_by" class="form-control @error('done_by') is-invalid @enderror">
-                                    <option value="">— Pilih —</option>
-                                    <option value="TEREX" {{ old('done_by') === 'TEREX' ? 'selected' : '' }}>TEREX</option>
-                                    <option value="HANASTA" {{ old('done_by') === 'HANASTA' ? 'selected' : '' }}>HANASTA</option>
-                                    <option value="SUBCON" {{ old('done_by') === 'SUBCON' ? 'selected' : '' }}>SUBCON</option>
-                                </select>
-                                @error('done_by')<small class="text-danger d-block">{{ $message }}</small>@enderror
-                            </div>
-                        </div>
-
-                        <!-- CUSTOMER -->
-                        <div class="col-md-6">
+                            <!-- CUSTOMER -->
                             <div class="form-group">
                                 <label class="font-weight-600">Customer</label>
-                                <select name="customer_id" class="form-control @error('customer_id') is-invalid @enderror">
+                                <select name="customer_id" id="selectCustomer" class="form-control @error('customer_id') is-invalid @enderror">
                                     <option value="">— Pilih Customer —</option>
                                     @foreach($customers as $customer)
                                         <option value="{{ $customer->id }}" {{ old('customer_id') == $customer->id ? 'selected' : '' }}>
@@ -96,10 +76,69 @@
                                 </select>
                                 @error('customer_id')<small class="text-danger d-block">{{ $message }}</small>@enderror
                             </div>
+
+                            <!-- MANAGER (PM Internal) -->
+                            <div class="form-group">
+                                <label class="font-weight-600">Manager</label>
+                                <select name="manager_id" id="selectManager" class="form-control @error('manager_id') is-invalid @enderror">
+                                    <option value="">— Pilih Manager —</option>
+                                    @foreach($managers as $m)
+                                        <option value="{{ $m->id }}" {{ old('manager_id') == $m->id ? 'selected' : '' }}>{{ $m->name }}</option>
+                                    @endforeach
+                                </select>
+                                @error('manager_id')<small class="text-danger d-block">{{ $message }}</small>@enderror
+                            </div>
+
+                            <!-- NILAI PO — dihitung otomatis dari total nominal No. PO, tidak diinput manual -->
+                            <div class="form-group">
+                                <label class="font-weight-600">Nilai PO</label>
+                                <input type="text" class="form-control text-right" value="0" readonly disabled>
+                                <small class="text-muted d-block mt-1">Otomatis = total nominal semua No. PO yang dientri di bawah.</small>
+                            </div>
+
+                            <!-- TIPE PEKERJAAN -->
+                            <div class="form-group">
+                                <label class="font-weight-600">Tipe</label>
+                                <select name="type" class="form-control @error('type') is-invalid @enderror">
+                                    <option value="">— Pilih Tipe —</option>
+                                    @foreach(\App\Models\Project::TYPES as $tKey => $tLabel)
+                                        <option value="{{ $tKey }}" {{ old('type') === $tKey ? 'selected' : '' }}>{{ $tLabel }}</option>
+                                    @endforeach
+                                </select>
+                                @error('type')<small class="text-danger d-block">{{ $message }}</small>@enderror
+                            </div>
+                            <!-- PO QUANTITY -->
+                            <div class="form-group">
+                                <label class="font-weight-600">PO Quantity</label>
+                                <input type="number" min="0" step="1" name="po_quantity"
+                                       class="form-control text-right @error('po_quantity') is-invalid @enderror"
+                                       value="{{ old('po_quantity') }}"
+                                       placeholder="Jumlah No. PO yang diharapkan" autocomplete="off">
+                                @error('po_quantity')<small class="text-danger d-block">{{ $message }}</small>@enderror
+                            </div>
+
+                            <!-- NILAI KONTRAK -->
+                            <div class="form-group mb-0">
+                                <label class="font-weight-600">Nilai Kontrak</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text">Rp</span>
+                                    </div>
+                                    <input type="text" name="contract"
+                                           class="form-control text-right inp-money @error('contract') is-invalid @enderror"
+                                           value="{{ old('contract') }}"
+                                           placeholder="0" autocomplete="off">
+                                </div>
+                                <small class="text-muted">Nilai kontrak yang ditandatangani (bisa berbeda dari Nilai PO).</small>
+                                @error('contract')<small class="text-danger d-block">{{ $message }}</small>@enderror
+                            </div>
+
                         </div>
 
-                        <!-- TERM OF PAYMENT -->
-                        <div class="col-md-6">
+                        <!-- KOLOM KANAN -->
+                        <div class="col-md-6 po-col-right">
+
+                            <!-- TERM OF PAYMENT -->
                             <div class="form-group">
                                 <label class="font-weight-600">Term of Payment</label>
                                 <input type="text" name="term_of_payment"
@@ -119,32 +158,62 @@
                                 </datalist>
                                 @error('term_of_payment')<small class="text-danger d-block">{{ $message }}</small>@enderror
                             </div>
-                        </div>
 
-                        <!-- NILAI KONTRAK -->
-                        <div class="col-md-6">
+                            <!-- ACCESS GROUP -->
                             <div class="form-group">
-                                <label class="font-weight-600">Nilai PO</label>
+                                <label class="font-weight-600">Access Group</label>
+                                <select name="access_group_ids[]" id="selAccessGroups" multiple>
+                                    @foreach($accessGroups as $ag)
+                                        @php
+                                            $agManagers = $ag->users->pluck('name')->implode(', ');
+                                            $agLabel = $ag->name . ($agManagers ? ' (' . $agManagers . ')' : '');
+                                        @endphp
+                                        <option value="{{ $ag->id }}" data-label="{{ $agLabel }}"
+                                            {{ collect(old('access_group_ids'))->contains($ag->id) ? 'selected' : '' }}>
+                                            {{ $agLabel }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <!-- <small class="text-muted">Menentukan user/tim mana yang bisa lihat PO ini (filter operasional).</small> -->
+                            </div>
+
+                            <!-- FINANCING (hanya finance & superadmin, default Non Loan) -->
+                            @if(!Auth::user()->hasRole(['head']))
+                            <div class="form-group">
+                                <label class="font-weight-600">Financing</label>
+                                <select name="financing" class="form-control @error('financing') is-invalid @enderror">
+                                    <option value="PL" {{ old('financing') === 'PL' ? 'selected' : '' }}>PL - PO Loan</option>
+                                    <option value="IL" {{ old('financing') === 'IL' ? 'selected' : '' }}>IL - Invoice Loan</option>
+                                    <option value="NL" {{ old('financing', 'NL') === 'NL' ? 'selected' : '' }}>NL - Non Loan</option>
+                                </select>
+                                @error('financing')<small class="text-danger d-block">{{ $message }}</small>@enderror
+                            </div>
+                            @endif
+
+                            <!-- BIAYA TAMBAHAN: Overhead & Fixed Cost (manual, terpisah dari Cost Register) -->
+                            <div class="form-group">
+                                <label class="font-weight-600">Overhead</label>
                                 <div class="input-group">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text">Rp</span>
-                                    </div>
-                                    <input type="text" name="value"
-                                           class="form-control text-right inp-money @error('value') is-invalid @enderror"
-                                           value="{{ old('value') }}"
-                                           placeholder="0" autocomplete="off">
+                                    <div class="input-group-prepend"><span class="input-group-text">Rp</span></div>
+                                    <input type="text" name="overhead"
+                                           class="form-control text-right inp-money @error('overhead') is-invalid @enderror"
+                                           value="{{ old('overhead') }}" placeholder="0" autocomplete="off">
                                 </div>
-                                @error('value')<small class="text-danger d-block">{{ $message }}</small>@enderror
+                                @error('overhead')<small class="text-danger d-block">{{ $message }}</small>@enderror
                             </div>
-                        </div>
 
-                        <!-- NOTES -->
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="font-weight-600">Notes</label>
-                                <textarea name="notes" class="form-control" rows="2"
-                                          placeholder="Catatan tambahan...">{{ old('notes') }}</textarea>
+                            <div class="form-group mb-0">
+                                <label class="font-weight-600">Fixed Cost</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend"><span class="input-group-text">Rp</span></div>
+                                    <input type="text" name="fixed_cost"
+                                           class="form-control text-right inp-money @error('fixed_cost') is-invalid @enderror"
+                                           value="{{ old('fixed_cost') }}" placeholder="0" autocomplete="off">
+                                </div>
+                                <small class="text-muted">Nominal manual, terpisah dari modul Cost Register.</small>
+                                @error('fixed_cost')<small class="text-danger d-block">{{ $message }}</small>@enderror
                             </div>
+
                         </div>
 
                     </div>
@@ -173,12 +242,12 @@
                         <table class="table table-bordered mb-0">
                             <thead class="bg-light">
                                 <tr>
-                                    <th style="width:5%;" class="text-center">No</th>
-                                    <th style="width:25%;">Project</th>
-                                    <th style="width:20%;">Milestone</th>
-                                    <th style="width:20%;">Plan Start</th>
-                                    <th style="width:20%;">Plan Finish</th>
-                                    <th style="width:10%;" class="text-center">Aksi</th>
+                                    <th scope="col" style="width:5%;" class="text-center">No</th>
+                                    <th scope="col" style="width:25%;">Project</th>
+                                    <th scope="col" style="width:20%;">Milestone</th>
+                                    <th scope="col" style="width:20%;">Plan Start</th>
+                                    <th scope="col" style="width:20%;">Plan Finish</th>
+                                    <th scope="col" style="width:10%;" class="text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="detailBody"></tbody>
@@ -197,11 +266,10 @@
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label class="font-weight-600">PIC Internal</label>
-                                <select name="pics_internal[]" id="selPicsInternal" multiple placeholder="Pilih PIC Internal...">
+                                <select name="pics_internal[]" id="selPicsInternal" multiple>
                                     @foreach($picsInternal as $p)
-                                        <option value="{{ $p->id }}">
-                                            {{ $p->pic }}@if($p->position) — {{ $p->position }}@endif
-                                        </option>
+                                        @php $picLabel = $p->pic . ($p->position ? ' — ' . $p->position : ''); @endphp
+                                        <option value="{{ $p->id }}" data-label="{{ $picLabel }}">{{ $picLabel }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -209,11 +277,10 @@
                         <div class="col-md-6">
                             <div class="form-group mb-0">
                                 <label class="font-weight-600">PIC Customer</label>
-                                <select name="pics_customer[]" id="selPicsCustomer" multiple placeholder="Pilih PIC Customer...">
+                                <select name="pics_customer[]" id="selPicsCustomer" multiple>
                                     @foreach($picsCustomer as $p)
-                                        <option value="{{ $p->id }}">
-                                            {{ $p->pic }}@if($p->position) — {{ $p->position }}@endif
-                                        </option>
+                                        @php $picLabel = $p->pic . ($p->position ? ' — ' . $p->position : ''); @endphp
+                                        <option value="{{ $p->id }}" data-label="{{ $picLabel }}">{{ $picLabel }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -252,10 +319,10 @@
                         <table class="table table-bordered mb-0">
                             <thead class="bg-light">
                                 <tr>
-                                    <th style="width:5%;" class="text-center">No</th>
-                                    <th style="width:30%;">Judul</th>
-                                    <th style="width:55%;">File</th>
-                                    <th style="width:10%;" class="text-center">Aksi</th>
+                                    <th scope="col" style="width:5%;" class="text-center">No</th>
+                                    <th scope="col" style="width:30%;">Judul</th>
+                                    <th scope="col" style="width:55%;">File</th>
+                                    <th scope="col" style="width:10%;" class="text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="attBody"></tbody>
@@ -267,6 +334,53 @@
                         <i class="fas fa-info-circle mr-1"></i>
                         Format: pdf, jpg, png, doc(x), xls(x). Maks 10 MB per file.
                     </small>
+                </div>
+            </div>
+
+            <!-- DETAIL NO. PO -->
+            <div class="card card-primary card-outline shadow-sm">
+                <div class="card-header d-flex align-items-center">
+                    <h3 class="card-title"><i class="fas fa-file-invoice mr-1"></i> Detail No. PO</h3>
+                    <button type="button" class="btn btn-sm btn-primary ml-auto" id="btnAddPoNumber">
+                        <i class="fas fa-plus mr-1"></i> Tambah No. PO
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th scope="col" style="width:5%;" class="text-center">No</th>
+                                    <th scope="col" style="width:20%;">No. PO</th>
+                                    <th scope="col" style="width:20%;">Nominal PO</th>
+                                    <th scope="col" style="width:18%;">Tanggal Rilis</th>
+                                    <th scope="col" style="width:27%;">Lampiran</th>
+                                    <th scope="col" style="width:10%;" class="text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="poNumberBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Satu item scope of work bisa berisi beberapa No. PO yang rilis tidak dalam satu waktu.
+                        Bisa ditambah lagi belakangan lewat halaman Edit selama statusnya masih memungkinkan.
+                    </small>
+                </div>
+            </div>
+
+            <!-- NOTES -->
+            <div class="card card-primary card-outline shadow-sm">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-sticky-note mr-1"></i> Notes</h3>
+                </div>
+                <div class="card-body">
+                    <div class="form-group mb-0">
+                        <textarea name="notes" class="form-control" rows="2"
+                                  placeholder="Catatan tambahan...">{{ old('notes') }}</textarea>
+                    </div>
                 </div>
             </div>
 
@@ -336,17 +450,31 @@ document.addEventListener('DOMContentLoaded', function () {
 
         return '<tr>' +
                 '<td class="text-center align-middle row-no-detail"></td>' +
-                '<td><select name="details[' + i + '][cluster_id]" class="form-control form-control-sm"><option value="">— Pilih Project —</option>' + clusterSel + '</select></td>' +
-                '<td><select name="details[' + i + '][stage_id]" class="form-control form-control-sm"><option value="">— Pilih Milestone —</option>' + stageSel + '</select></td>' +
+                '<td><select name="details[' + i + '][cluster_id]" class="form-control form-control-sm select-cluster"><option value="">— Pilih Project —</option>' + clusterSel + '</select></td>' +
+                '<td><select name="details[' + i + '][stage_id]" class="form-control form-control-sm select-stage"><option value="">— Pilih Milestone —</option>' + stageSel + '</select></td>' +
                 '<td><input type="date" name="details[' + i + '][plan_start]" class="form-control form-control-sm" value="' + (prefill.plan_start || '') + '"></td>' +
                 '<td><input type="date" name="details[' + i + '][plan_end]" class="form-control form-control-sm" value="' + (prefill.plan_end || '') + '"></td>' +
                 '<td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-detail"><i class="fas fa-trash"></i></button></td>' +
             '</tr>';
     }
 
+    // ── SEARCHABLE DROPDOWN: Customer & tiap baris Project/Milestone ────
+    TesysSearchableSelect.init('#selectCustomer', { placeholder: '— Pilih Customer —', searchPlaceholder: 'Cari Customer...' });
+    TesysSearchableSelect.init('#selectManager', { placeholder: '— Pilih Manager —', searchPlaceholder: 'Cari Manager...' });
+
+    function initDetailPickers(scope) {
+        (scope || document).querySelectorAll('select.select-cluster').forEach(function (sel) {
+            TesysSearchableSelect.initOne($(sel), { placeholder: '— Pilih Project —', searchPlaceholder: 'Cari Project...' });
+        });
+        (scope || document).querySelectorAll('select.select-stage').forEach(function (sel) {
+            TesysSearchableSelect.initOne($(sel), { placeholder: '— Pilih Milestone —', searchPlaceholder: 'Cari Milestone...' });
+        });
+    }
+
     document.getElementById('btnAddDetail').addEventListener('click', function () {
         var i = detailIdx++;
         document.getElementById('detailBody').insertAdjacentHTML('beforeend', makeDetailRowHTML(i, null));
+        initDetailPickers(document.getElementById('detailBody'));
         renumberAll();
     });
 
@@ -386,7 +514,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     html: '<div style="text-align:left;max-height:250px;overflow:auto;">' +
                           res.errors.map(function (e) { return '<div>• ' + e + '</div>'; }).join('') +
                           '</div>',
-                    confirmButtonColor: '#F5A623'
+                    confirmButtonColor: '#92232b'
                 });
             }
 
@@ -404,12 +532,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     }));
                 });
 
+                initDetailPickers(document.getElementById('detailBody'));
                 renumberAll();
 
                 Swal.fire({
                     icon: 'success', title: 'Import berhasil',
                     text: res.rows.length + ' baris data dimuat ke Project & Milestone.',
-                    confirmButtonColor: '#28a745', timer: 2000, showConfirmButton: false
+                    confirmButtonColor: 'var(--success)', timer: 2000, showConfirmButton: false
                 });
             } else if (!res.errors || !res.errors.length) {
                 Swal.fire({ icon: 'error', title: 'Tidak ada data', text: 'File tidak berisi baris data yang valid.' });
@@ -433,11 +562,42 @@ document.addEventListener('DOMContentLoaded', function () {
     function renumberAll() {
         document.querySelectorAll('#detailBody .row-no-detail').forEach(function(el, i) { el.textContent = i+1; });
         document.querySelectorAll('#attBody .row-no').forEach(function(el, i) { el.textContent = i+1; });
+        document.querySelectorAll('#poNumberBody .row-no-ponum').forEach(function(el, i) { el.textContent = i+1; });
     }
 
-    // PIC — multi-select dari Master PIC
-    new TomSelect('#selPicsInternal', { plugins: ['remove_button'], persist: false, create: false, placeholder: 'Pilih PIC Internal...' });
-    new TomSelect('#selPicsCustomer', { plugins: ['remove_button'], persist: false, create: false, placeholder: 'Pilih PIC Customer...' });
+    // Detail No. PO rows
+    var poNumIdx = 0;
+
+    function addPoNumberRow() {
+        var i = poNumIdx++;
+        var html =
+            '<tr>' +
+                '<td class="text-center align-middle row-no-ponum"></td>' +
+                '<td><input type="text" name="po_numbers[' + i + '][po_number]" class="form-control form-control-sm" style="text-transform:uppercase;" placeholder="No. PO..." required></td>' +
+                '<td><div class="input-group input-group-sm"><div class="input-group-prepend"><span class="input-group-text">Rp</span></div>' +
+                    '<input type="text" name="po_numbers[' + i + '][nominal]" class="form-control inp-money" placeholder="0"></div></td>' +
+                '<td><input type="date" name="po_numbers[' + i + '][release_date]" class="form-control form-control-sm"></td>' +
+                '<td><input type="file" name="po_numbers[' + i + '][file]" class="form-control-file"></td>' +
+                '<td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-ponum"><i class="fas fa-trash"></i></button></td>' +
+            '</tr>';
+        document.getElementById('poNumberBody').insertAdjacentHTML('beforeend', html);
+        renumberAll();
+    }
+
+    document.getElementById('btnAddPoNumber').addEventListener('click', addPoNumberRow);
+    addPoNumberRow();
+
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('.btn-remove-ponum')) {
+            e.target.closest('tr').remove();
+            renumberAll();
+        }
+    });
+
+    // PIC — multi-select dari Master PIC & Access Group
+    TesysSearchableSelect.init('#selPicsInternal', { placeholder: 'Pilih PIC Internal...', searchPlaceholder: 'Cari PIC Internal...' });
+    TesysSearchableSelect.init('#selPicsCustomer', { placeholder: 'Pilih PIC Customer...', searchPlaceholder: 'Cari PIC Customer...' });
+    TesysSearchableSelect.init('#selAccessGroups', { placeholder: 'Pilih Access Group...', searchPlaceholder: 'Cari Access Group...' });
 
     // Attachment rows (+ drag & drop multi-file)
     var attIdx = 0;
@@ -535,26 +695,26 @@ document.addEventListener('DOMContentLoaded', function () {
 table td { vertical-align:middle !important; }
 
 .ts-wrapper { min-width:0; }
-.ts-control { border-radius:6px !important; border:1px solid #ced4da !important; min-height:38px !important; padding:6px 10px !important; box-shadow:none !important; }
+.ts-control { border-radius:var(--radius-sm) !important; border:1px solid var(--border) !important; min-height:38px !important; padding:6px 10px !important; box-shadow:none !important; }
 
 .att-dropzone {
-    border: 2px dashed #ced4da;
-    border-radius: 8px;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-md);
     padding: 28px 20px;
     text-align: center;
-    color: #6c757d;
+    color: var(--text-faint);
     cursor: pointer;
     transition: all .2s ease;
-    background: #fafbfc;
+    background: var(--surface-2);
 }
 .att-dropzone:hover {
-    border-color: #F5A623;
-    background: #FFFBF3;
+    border-color: var(--accent);
+    background: var(--warning-bg);
 }
 .att-dropzone.dragover {
-    border-color: #F5A623;
-    background: #FFF3DC;
-    color: #C97E0A;
+    border-color: var(--accent);
+    background: var(--warning-bg);
+    color: var(--accent-dark);
 }
 
 @media (max-width: 576px) {

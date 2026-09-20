@@ -4,102 +4,80 @@
 
 @section('content')
 
-<div class="content-header">
-    <div class="container-fluid">
-
-        <!-- SUMMARY CARDS -->
-        <div class="row mb-3">
-            <div class="col-6 col-md-3">
-                <div class="small-box bg-info">
-                    <div class="inner"><h3>{{ $summary['total'] }}</h3><p>Total Batch</p></div>
-                    <div class="icon"><i class="fas fa-layer-group"></i></div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="small-box bg-warning">
-                    <div class="inner"><h3>{{ $summary['pending_approver'] }}</h3><p>Submitted</p></div>
-                    <div class="icon"><i class="fas fa-hourglass-half"></i></div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="small-box bg-primary">
-                    <div class="inner"><h3>{{ $summary['approved'] }}</h3><p>Approved</p></div>
-                    <div class="icon"><i class="fas fa-check-circle"></i></div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="small-box bg-success">
-                    <div class="inner"><h3>{{ $summary['paid'] }}</h3><p>Paid</p></div>
-                    <div class="icon"><i class="fas fa-money-bill-wave"></i></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row mb-2">
-            <div class="col-sm-6">
-                <h1 class="m-0 font-weight-bold">Treasury</h1>
-            </div>
-            <div class="col-sm-6">
-                <ol class="breadcrumb float-sm-right">
-                    <li class="breadcrumb-item"><a href="#">Finance</a></li>
-                    <li class="breadcrumb-item active">Treasury</li>
-                </ol>
-            </div>
-        </div>
-
-    </div>
-</div>
-
 <div class="content">
     <div class="container-fluid">
-        <div class="row">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Treasury</h1>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item"><a href="#">Finance</a></li>
+                <li class="breadcrumb-item active">Treasury</li>
+            </ol>
+        </div>
+
+        <!-- SUMMARY WORKFLOW (clickable, filter tabel Daftar Batch) -->
+        @php
+            $batchSteps = [
+                ['Submitted', $summary['pending_approver'], 'warning', 'PENDING_APPROVER'],
+                ['Done',      $summary['done'],             'primary', 'DONE'],
+                ['Paid',      $summary['paid'],              'success', 'PAID'],
+                ['Rejected',  $summary['rejected'] ?? 0,     'danger',  'REJECTED'],
+            ];
+        @endphp
+        <x-workflow-stepper :steps="$batchSteps" :compact="true" table="tblBatch" field="status" />
+
+        <div class="row mt-3">
 
             <!-- LIST BATCH -->
             <div class="col-md-12">
                 <div class="card card-primary card-outline shadow-sm">
-                    <div class="card-header d-flex align-items-center">
+                    <div class="card-header d-flex align-items-center flex-wrap" style="gap:8px;">
                         <h3 class="card-title"><i class="fas fa-layer-group mr-1"></i> Daftar Batch</h3>
-                        <div class="ml-auto d-flex" style="gap:8px;">
+                        <div class="ml-auto d-flex align-items-center flex-wrap" style="gap:8px;">
+                            <div class="d-flex align-items-center batch-date-range" style="gap:4px;">
+                                <input type="text" id="batchDateFrom" class="form-control form-control-sm" value="{{ $dateFrom }}" readonly>
+                                <span class="text-muted" style="font-size:12px;">s/d</span>
+                                <input type="text" id="batchDateTo" class="form-control form-control-sm" value="{{ $dateTo }}" readonly>
+                            </div>
                             <button id="btnRefresh" class="btn btn-secondary btn-sm">
                                 <i class="fas fa-sync-alt mr-1"></i> Refresh
                             </button>
-                            @if(Auth::user()->hasRole(['superadmin','finance']))
-                            <a href="{{ url('/daily-transaction/create') }}" class="btn btn-success btn-sm">
-                                <i class="fas fa-plus-circle mr-1"></i> Buat Batch Baru
-                            </a>
-                            @endif
                         </div>
                     </div>
                     <div class="card-body">
 
+                        {{-- Daftar dibatasi 1.000 baris terbaru (Concerns\CapsLargeLists);
+                             angka pada kartu ringkasan tetap dihitung dari seluruh data. --}}
+                        @if(!empty($truncated))
+                        <div class="alert alert-warning py-2 px-3 mb-3" style="font-size:12.5px;">
+                            <i class="fas fa-exclamation-triangle mr-1"></i>
+                            Menampilkan <strong>{{ number_format($maxRows, 0, ',', '.') }}</strong> batch terbaru dari total
+                            <strong>{{ number_format($total, 0, ',', '.') }}</strong>.
+                            Persempit rentang tanggal untuk melihat sisanya.
+                        </div>
+                        @endif
+
                         <!-- FILTER -->
-                        <div class="custom-toolbar mb-3">
-                            <div class="custom-toolbar-left">
+                        <div class="custom-toolbar mb-3 d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
+                            <div class="custom-toolbar-left d-flex align-items-center flex-wrap" style="gap:8px;">
                                 <div class="toolbar-row">
                                     <span class="toolbar-label">Cari :</span>
                                     <div class="toolbar-input" id="batchSearchBox"></div>
                                 </div>
-                                <div class="toolbar-row">
-                                    <span class="toolbar-label">Filter :</span>
-                                    <div class="toolbar-input">
-                                        @php
-                                            $filterCategories = $transactions->pluck('sourceFund.name')->filter()->unique()->sort()->values();
-                                        @endphp
-                                        <select id="batchFilter" multiple placeholder="Filter data...">
-                                            <optgroup label="Status">
-                                                <option value="STATUS:PENDING_APPROVER">Submitted</option>
-                                                <option value="STATUS:APPROVED">Approved</option>
-                                                <option value="STATUS:PAID">Paid</option>
-                                                <option value="STATUS:REJECTED">Rejected</option>
-                                            </optgroup>
-                                            <optgroup label="Kategori">
-                                                @foreach($filterCategories as $cat)
-                                                    <option value="CATEGORY:{{ $cat }}">{{ $cat }}</option>
-                                                @endforeach
-                                            </optgroup>
-                                        </select>
-                                    </div>
-                                </div>
+                                <button aria-label="Clear Filter" type="button" id="btnClearFilterBatch" class="btn btn-outline-secondary btn-sm" title="Clear Filter">
+                                    <i class="fas fa-eraser"></i>
+                                </button>
+                                <div id="batchRowFilters" class="d-flex flex-wrap" style="gap:8px;"></div>
+                            </div>
+                            <div class="custom-toolbar-right d-flex flex-wrap" style="gap:8px;">
+                                <a href="{{ url('/daily-transaction/export') }}" id="btnExportBatch" class="btn btn-info btn-sm">
+                                    <i class="fas fa-file-excel mr-1"></i> Export Excel
+                                </a>
+                                @if(Auth::user()->hasRole(['superadmin','finance','finance_manager','treasury']))
+                                <a href="{{ url('/daily-transaction/create') }}" class="btn btn-success btn-sm">
+                                    <i class="fas fa-plus-circle mr-1"></i> Buat Batch Baru
+                                </a>
+                                @endif
                             </div>
                         </div>
 
@@ -107,40 +85,44 @@
                             <table id="tblBatch" class="table table-bordered table-hover table-striped mb-0">
                                 <thead class="bg-light">
                                     <tr>
-                                        <th style="width:1%;" class="text-nowrap">No</th>
-                                        <th style="width:1%;" class="text-nowrap">Kode Batch</th>
-                                        <th>Deskripsi</th>
-                                        <th style="width:1%;" class="text-nowrap">Kategori</th>
-                                        <th style="width:1%;" class="text-nowrap text-right">Total</th>
-                                        <th style="width:1%;" class="text-nowrap">Status</th>
-                                        <th style="width:1%;" class="text-nowrap text-center">Action</th>
+                                        <th scope="col" style="width:1%;" class="text-nowrap">No</th>
+                                        <th scope="col" style="width:1%;" class="text-nowrap">Kode Batch</th>
+                                        <th scope="col">Deskripsi</th>
+                                        <th scope="col" style="width:1%;" class="text-nowrap">Type</th>
+                                        <th scope="col" style="width:1%;" class="text-nowrap">Kategori</th>
+                                        <th scope="col" style="width:1%;" class="text-nowrap text-right">Total</th>
+                                        <th scope="col" style="width:1%;" class="text-nowrap">Status</th>
+                                        <th scope="col" style="width:1%;" class="text-nowrap text-center">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @forelse($transactions as $trx)
                                     @php
-                                        $sc = [
-                                            'PENDING_APPROVER' => 'warning',
-                                            'APPROVED'         => 'primary',
-                                            'PAID'             => 'success',
-                                            'REJECTED'         => 'danger',
-                                        ][$trx->status] ?? 'secondary';
                                         $crCount = $trx->includedItems()->count();
                                     @endphp
-                                    <tr data-status="{{ $trx->status }}" data-category="{{ $trx->sourceFund->name ?? '' }}">
+                                    <tr data-id="{{ $trx->id }}" data-status="{{ $trx->status }}" data-category="{{ $trx->sourceFund->name ?? '' }}" data-type="{{ $trx->type_label }}">
                                         <td class="text-nowrap">{{ $loop->iteration }}</td>
                                         <td class="text-nowrap">
                                             <span class="badge badge-dark px-2 py-1" style="font-size:10px;">
                                                 {{ $trx->code }}
                                             </span>
-                                            <div style="font-size:11px;color:#6B7280;margin-top:3px;">
+                                            <div style="font-size:11px;color:var(--text-faint);margin-top:3px;">
                                                 {{ $trx->createdBy->name ?? '-' }}
                                                 · {{ $trx->date->format('d M Y') }}
                                             </div>
                                         </td>
                                         <td style="font-size:12px;font-weight:600;">
                                             {{ $trx->description ?? '-' }}
-                                            <small class="d-block text-muted" style="font-size:11px;font-weight:400;">{{ $crCount }} Request</small>
+                                            @if($trx->isTopUp())
+                                                <small class="d-block text-muted" style="font-size:11px;font-weight:400;">{{ $trx->sourceFund->name ?? '-' }} → {{ $trx->toSourceFund->name ?? '-' }}</small>
+                                            @else
+                                                <small class="d-block text-muted" style="font-size:11px;font-weight:400;">{{ $crCount }} Request</small>
+                                            @endif
+                                        </td>
+                                        <td class="text-nowrap">
+                                            <span class="badge badge-{{ $trx->type_color }} px-2 py-1" style="font-size:10px;">
+                                                {{ $trx->type_label }}
+                                            </span>
                                         </td>
                                         <td class="text-nowrap">
                                             @if($trx->sourceFund)
@@ -155,48 +137,55 @@
                                             <strong style="font-size:12px;">{{ $trx->grand_total_formatted }}</strong>
                                         </td>
                                         <td class="text-nowrap">
-                                            <span class="badge badge-{{ $sc }} px-2 py-1" style="font-size:10px;">
-                                                {{ $trx->status_label }}
-                                            </span>
+                                            <x-status :status="$trx->status" context="daily-transaction" />
                                         </td>
                                         <td class="text-center text-nowrap">
-                                            <div class="d-flex justify-content-center" style="gap:4px;">
-                                                <a href="{{ url('/daily-transaction/' . $trx->id) }}"
-                                                   class="btn btn-info btn-sm" title="Detail">
-                                                    <i class="fas fa-eye"></i>
-                                                </a>
-                                                @if($trx->status === 'PENDING_APPROVER' && Auth::user()->hasRole(['superadmin','approver']))
-                                                <button type="button"
-                                                        class="btn btn-success btn-sm btn-approve-batch"
-                                                        data-id="{{ $trx->id }}"
-                                                        data-code="{{ $trx->code }}"
+                                            @php
+                                                // Gerbang peran disalin apa adanya; yang berubah hanya susunannya.
+                                                $bolehPutus = $trx->status === 'PENDING_APPROVER' && Auth::user()->hasRole(['superadmin','approver']);
+                                            @endphp
+                                            <div class="ts-actions">
+                                                @if($bolehPutus)
+                                                <button type="button" class="ts-action-primary btn-approve-batch"
+                                                        data-id="{{ $trx->id }}" data-code="{{ $trx->code }}"
                                                         title="Approve Batch">
-                                                    <i class="fas fa-check"></i>
-                                                </button>
-                                                <button type="button"
-                                                        class="btn btn-danger btn-sm btn-reject-batch"
-                                                        data-id="{{ $trx->id }}"
-                                                        data-code="{{ $trx->code }}"
-                                                        title="Reject Batch">
-                                                    <i class="fas fa-times"></i>
+                                                    <i class="fas fa-check"></i><span class="ts-al">Approve</span>
                                                 </button>
                                                 @endif
+
+                                                <button type="button" class="ts-action-more"
+                                                        aria-haspopup="true" aria-expanded="false"
+                                                        title="Aksi lain" aria-label="Aksi lain untuk batch {{ $trx->code }}">
+                                                    <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
+                                                </button>
+
+                                                <div class="ts-action-menu dropdown-menu" hidden>
+                                                    <a href="{{ url('/daily-transaction/' . $trx->id) }}" class="dropdown-item">
+                                                        <i class="fas fa-eye"></i>Detail
+                                                    </a>
+
+                                                    @if($bolehPutus)
+                                                    <div class="dropdown-divider"></div>
+                                                    <button type="button" class="dropdown-item is-danger btn-reject-batch"
+                                                            data-id="{{ $trx->id }}" data-code="{{ $trx->code }}">
+                                                        <i class="fas fa-times"></i>Reject
+                                                    </button>
+                                                    @endif
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>
                                     @empty
-                                    <tr>
-                                        <td colspan="7" class="text-center text-muted py-4">
-                                            <i class="fas fa-folder-open d-block mb-2"></i>
-                                            Belum ada batch
-                                        </td>
-                                    </tr>
+                                    {{-- Sengaja tidak ada baris di sini. Tabel ini dikelola DataTables, dan
+                                         baris kosong buatan sendiri akan dianggap baris data lalu selnya
+                                         dikosongkan. Keadaan kosongnya diisi language.emptyTable, sedangkan
+                                         language.zeroRecords untuk hasil pencarian yang tidak cocok. --}}
                                     @endforelse
                                 </tbody>
                                 <tfoot>
-                                    <tr style="background:#F9FAFB;">
-                                        <th colspan="4" class="text-right" style="font-size:12px;">Total (data tampil)</th>
-                                        <th class="text-right text-nowrap" id="batchFooterTotal" style="font-size:12px;color:#2563EB;"></th>
+                                    <tr style="background:var(--surface-2);">
+                                        <th colspan="5" class="text-right" style="font-size:12px;">Total (data tampil)</th>
+                                        <th class="text-right text-nowrap" id="batchFooterTotal" style="font-size:12px;color:var(--info);"></th>
                                         <th colspan="2"></th>
                                     </tr>
                                 </tfoot>
@@ -214,9 +203,9 @@
 <!-- MODAL APPROVE BATCH -->
 <div class="modal fade" id="mdlApproveBatch" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
-        <div class="modal-content" style="border-radius:12px;overflow:hidden;">
-            <div class="modal-header" style="background:#0D1B2A;border-bottom:3px solid #F5A623;">
-                <h5 class="modal-title text-white"><i class="fas fa-check mr-2" style="color:#F5A623;"></i> Approve Batch</h5>
+        <div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
+            <div class="modal-header" style="background:var(--charcoal);border-bottom:3px solid var(--accent);">
+                <h5 class="modal-title text-white"><i class="fas fa-check mr-2" style="color:var(--accent);"></i> Approve Batch</h5>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <form id="frmApproveBatch" method="POST">
@@ -228,7 +217,7 @@
                         <textarea name="notes" class="form-control" rows="3" placeholder="Catatan approval..."></textarea>
                     </div>
                 </div>
-                <div class="modal-footer" style="background:#f8f9fa;">
+                <div class="modal-footer" style="background:var(--surface-2);">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-success"><i class="fas fa-check mr-1"></i> Ya, Approve</button>
                 </div>
@@ -240,9 +229,9 @@
 <!-- MODAL REJECT BATCH -->
 <div class="modal fade" id="mdlRejectBatch" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
-        <div class="modal-content" style="border-radius:12px;overflow:hidden;">
-            <div class="modal-header" style="background:#0D1B2A;border-bottom:3px solid #F5A623;">
-                <h5 class="modal-title text-white"><i class="fas fa-times mr-2" style="color:#F5A623;"></i> Tolak Seluruh Batch</h5>
+        <div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
+            <div class="modal-header" style="background:var(--charcoal);border-bottom:3px solid var(--accent);">
+                <h5 class="modal-title text-white"><i class="fas fa-times mr-2" style="color:var(--accent);"></i> Tolak Seluruh Batch</h5>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <form id="frmRejectBatch" method="POST">
@@ -254,7 +243,7 @@
                         <textarea name="notes" class="form-control" rows="3" placeholder="Tuliskan alasan penolakan..." required></textarea>
                     </div>
                 </div>
-                <div class="modal-footer" style="background:#f8f9fa;">
+                <div class="modal-footer" style="background:var(--surface-2);">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-danger"><i class="fas fa-times mr-1"></i> Tolak Batch</button>
                 </div>
@@ -270,19 +259,20 @@
 <style>
 .font-weight-600 { font-weight:600; }
 .table td,.table th { vertical-align:middle !important; }
-.cr-check-item:hover { background:#f8f9fa; }
-.cr-check-item.selected { background:#EFF6FF; }
-.btn-xs { padding:2px 8px; font-size:11px; border-radius:4px; }
+.cr-check-item:hover { background:var(--surface-2); }
+.cr-check-item.selected { background:var(--info-bg); }
+.btn-xs { padding:2px 8px; font-size:11px; border-radius:var(--radius-sm); }
 #tblBatch { width:100% !important; }
 
+.batch-date-range input.form-control { width:100px !important; padding:2px 6px !important; font-size:12px !important; }
 .custom-toolbar      { display:flex; align-items:flex-start; gap:15px; flex-wrap:wrap; }
-.custom-toolbar-left { display:flex; flex-direction:row; align-items:center; gap:12px; flex-wrap:wrap; width:100%; }
+.custom-toolbar-left { display:flex; flex-direction:row; align-items:center; gap:12px; flex-wrap:wrap; }
 .toolbar-row         { display:flex; align-items:center; gap:8px; }
-.toolbar-label       { min-width:50px; font-weight:600; color:#495057; white-space:nowrap; flex-shrink:0; }
+.toolbar-label       { min-width:50px; font-weight:600; color:var(--text-dim); white-space:nowrap; flex-shrink:0; }
 .toolbar-input       { min-width:180px; }
-#batchSearchBox input { width:180px; border-radius:6px; }
+#batchSearchBox input { width:180px; border-radius:var(--radius-sm); }
 .ts-wrapper          { min-width:260px; }
-.ts-control          { border-radius:6px !important; border:1px solid #ced4da !important; min-height:38px !important; padding:6px 10px !important; box-shadow:none !important; }
+.ts-control          { border-radius:var(--radius-sm) !important; border:1px solid var(--border) !important; min-height:38px !important; padding:6px 10px !important; box-shadow:none !important; }
 .ts-control .item {
     max-width: 240px;
     display: flex;
@@ -298,18 +288,28 @@
 .ts-control .item .remove { flex-shrink: 0; }
 
 .dataTables_wrapper .row:last-child { margin-top:18px; align-items:center; }
-.dataTables_info { padding-top:0 !important; font-size:14px; color:#6c757d; }
+.dataTables_info { padding-top:0 !important; font-size:14px; color:var(--text-faint); }
 .dataTables_length { display:flex; align-items:center; margin-left:18px; }
-.dataTables_length label { display:flex; align-items:center; gap:10px; margin-bottom:0; font-size:14px; font-weight:600; color:#6c757d; }
-.dataTables_length select { appearance:none !important; background-color:#fff !important; color:#495057 !important; border:1px solid #ced4da !important; border-radius:6px !important; padding:4px 30px 4px 10px !important; height:36px !important; min-width:72px !important; font-size:14px !important; font-weight:600 !important; cursor:pointer; box-shadow:none !important; }
-.dataTables_paginate .paginate_button { border-radius:6px !important; margin:0 2px; }
-.dataTables_paginate .paginate_button.current { background:#F5A623 !important; background-image:none !important; border-color:#C97E0A !important; color:#0D1B2A !important; font-weight:700 !important; }
+.dataTables_length label { display:flex; align-items:center; gap:10px; margin-bottom:0; font-size:14px; font-weight:600; color:var(--text-faint); }
+.dataTables_length select { appearance:none !important; background-color:var(--surface) !important; color:var(--text-dim) !important; border:1px solid var(--border) !important; border-radius:var(--radius-sm) !important; padding:4px 30px 4px 10px !important; height:36px !important; min-width:72px !important; font-size:14px !important; font-weight:600 !important; cursor:pointer; box-shadow:none !important; }
+.dataTables_paginate .paginate_button { border-radius:var(--radius-sm) !important; margin:0 2px; }
+.dataTables_paginate .paginate_button.current { background:var(--accent) !important; background-image:none !important; border-color:var(--accent-dark) !important; color:#fff !important; font-weight:700 !important; }
 @media (max-width: 576px) {
-    .custom-toolbar-left { flex-direction:column; align-items:stretch; }
+    .custom-toolbar { flex-direction:column !important; align-items:stretch !important; }
+    .custom-toolbar-left { flex-direction:column !important; align-items:stretch !important; width:100%; }
+    .custom-toolbar-right { width:100%; }
+    .custom-toolbar-right .btn { width:100%; }
     .toolbar-row { width:100%; }
     .toolbar-input { flex:1; min-width:0; }
     #batchSearchBox input { width:100%; }
+    #btnClearFilterBatch { width:100%; }
+    #batchRowFilters { width:100%; }
+    #batchRowFilters .tcf-row-btn { width:100%; }
     .ts-wrapper { width:100% !important; min-width:0 !important; }
+    .card-header { flex-direction:column; align-items:stretch !important; gap:10px; }
+    .card-header .card-title { margin-bottom:0; }
+    .card-header .ml-auto { margin-left:0 !important; flex-wrap:wrap; }
+    .card-header .ml-auto .btn { flex:1 1 auto; }
 }
 /* --- Filter dropdown: bedakan header grup vs item --- */
 .ts-dropdown .optgroup-header,
@@ -318,10 +318,10 @@
     font-size: 11px !important;
     text-transform: uppercase;
     letter-spacing: .06em;
-    color: #0D1B2A !important;
-    background: #F1F3F5 !important;
+    color: var(--text) !important;
+    background: var(--surface-2) !important;
     padding: 8px 12px !important;
-    border-top: 1px solid #e3e6ea;
+    border-top: 1px solid var(--border);
     cursor: default;
 }
 .ts-dropdown .optgroup:first-child .optgroup-header,
@@ -339,10 +339,65 @@
 <script>
 $(function () {
 
+    /* ── FILTER TANGGAL (flatpickr) — diinisialisasi PALING AWAL & dibungkus
+       try/catch supaya error di bagian script manapun (DataTable, dsb. — mis.
+       saat data kosong) tidak pernah bisa membuat date-picker ini gagal
+       terpasang. Kalau library flatpickr sendiri gagal termuat, lepas readonly
+       supaya user tetap bisa mengetik tanggal manual (format YYYY-MM-DD). */
+    function reloadWithDateRangeBatch(from, to) {
+        var url = new URL(window.location.href);
+        url.searchParams.set('date_from', from);
+        url.searchParams.set('date_to', to);
+        window.location.href = url.toString();
+    }
+    try {
+        if (typeof flatpickr === 'function') {
+            flatpickr('#batchDateFrom', {
+                dateFormat: 'Y-m-d', altInput: true, altFormat: 'd/m/Y',
+                defaultDate: '{{ $dateFrom }}',
+                onChange: function (selectedDates, dateStr) { reloadWithDateRangeBatch(dateStr, $('#batchDateTo').val()); }
+            });
+            flatpickr('#batchDateTo', {
+                dateFormat: 'Y-m-d', altInput: true, altFormat: 'd/m/Y',
+                defaultDate: '{{ $dateTo }}',
+                onChange: function (selectedDates, dateStr) { reloadWithDateRangeBatch($('#batchDateFrom').val(), dateStr); }
+            });
+        } else {
+            throw new Error('flatpickr is not a function');
+        }
+    } catch (err) {
+        console.warn('Flatpickr gagal diinisialisasi — filter tanggal beralih ke mode input manual.', err);
+        $('#batchDateFrom, #batchDateTo').removeAttr('readonly').attr('placeholder', 'YYYY-MM-DD');
+        $('#batchDateFrom, #batchDateTo').on('change', function () {
+            reloadWithDateRangeBatch($('#batchDateFrom').val(), $('#batchDateTo').val());
+        });
+    }
+
+    /*
+      Warna tombol konfirmasi dan keadaan sibuk — pola yang sama dengan Cost
+      Request. Aksi batch adalah POST biasa yang memuat ulang halaman, jadi
+      tanda sibuk memang berguna di sini.
+    */
+    function tokenWarna(nama, cadangan) {
+        var v = getComputedStyle(document.documentElement).getPropertyValue(nama).trim();
+        return v || cadangan;
+    }
+    var WARNA_UTAMA  = tokenWarna('--accent', '#92232b');
+    var WARNA_BAHAYA = tokenWarna('--danger', '#9a3030');
+    var WARNA_BATAL  = tokenWarna('--text-muted', '#6a6e72');
+
+    function sibukkan(form) {
+        if (form.target && form.target !== '_self') return;
+        var tombol = form.querySelector('button[type="submit"]');
+        if (tombol && window.TesysUI && TesysUI.busy) TesysUI.busy(tombol, true);
+    }
+
+    $(document).on('submit', '#frmApproveBatch, #frmRejectBatch', function () { sibukkan(this); });
+
     // ── Approve/Reject dibind duluan (defensif, konsisten dgn page lain) ──
     $(document).on('click', '.btn-approve-batch', function () {
         var id = $(this).data('id'), code = $(this).data('code');
-        $('#approveBatchText').text('Approve batch ' + code + '? Semua CR akan berstatus QUEUED.');
+        $('#approveBatchText').text('Approve batch ' + code + '? Batch siap diproses untuk pembayaran.');
         $('#frmApproveBatch').attr('action', '/daily-transaction/' + id + '/approve');
         $('#frmApproveBatch textarea[name="notes"]').val('');
         $('#mdlApproveBatch').modal('show');
@@ -350,7 +405,7 @@ $(function () {
 
     $(document).on('click', '.btn-reject-batch', function () {
         var id = $(this).data('id'), code = $(this).data('code');
-        $('#rejectBatchText').text('Tolak batch ' + code + '? Semua CR dikembalikan ke VERIFIED.');
+        $('#rejectBatchText').text('Tolak batch ' + code + '? Semua CR dikembalikan ke APPROVED.');
         $('#frmRejectBatch').attr('action', '/daily-transaction/' + id + '/reject-batch');
         $('#frmRejectBatch textarea[name="notes"]').val('');
         $('#mdlRejectBatch').modal('show');
@@ -358,81 +413,58 @@ $(function () {
 
     $('#btnRefresh').on('click', function () { location.reload(); });
 
+    (function updateExportBatchLink() {
+        var url = '{{ url("/daily-transaction/export") }}?date_from=' + encodeURIComponent('{{ $dateFrom }}') + '&date_to=' + encodeURIComponent('{{ $dateTo }}');
+        $('#btnExportBatch').attr('href', url);
+    })();
+
+    $('#btnClearFilterBatch').on('click', function () {
+        TesysColumnFilter.clearAll('#tblBatch');
+        TesysWorkflowStepper.clear('tblBatch');
+    });
+
     try {
 
     var table = $('#tblBatch').DataTable({
         responsive: { details: { type: 'inline' } }, autoWidth: false, pageLength: 10,
+        order: [], // pertahankan urutan asli dari server (input terbaru di atas)
         columnDefs: [
+            { targets: [0], visible: false, orderable: false },
             { responsivePriority: 1,   targets: [0, 1, 2, -1] },
-            { responsivePriority: 2,   targets: [5] },
-            { responsivePriority: 100, targets: [3, 4] }
+            { responsivePriority: 2,   targets: [6] },
+            { responsivePriority: 3,   targets: [3] },
+            { responsivePriority: 100, targets: [4, 5] }
         ],
         dom: 'rt<"row mt-3 align-items-center"<"col-md-6 col-12 mb-2 mb-md-0"i><"col-md-6 col-12 d-flex flex-wrap justify-content-between justify-content-md-end align-items-center gap-2"lp>>',
         language: {
-            search: '', lengthMenu: 'Page Size _MENU_', zeroRecords: 'Tidak ada data',
+            search: '', lengthMenu: 'Page Size _MENU_',
+            emptyTable: '<div class="ts-empty ts-empty-compact">'
+                + '<span class="ts-empty-ic" aria-hidden="true"><i class="fas fa-folder-open"></i></span>'
+                + '<p class="ts-empty-title">Belum ada batch pembayaran</p>'
+                + '<p class="ts-empty-msg">Belum ada batch pada rentang tanggal yang dipilih.</p></div>',
+            zeroRecords: '<div class="ts-empty ts-empty-compact">'
+                + '<span class="ts-empty-ic" aria-hidden="true"><i class="fas fa-search"></i></span>'
+                + '<p class="ts-empty-title">Tidak ada yang cocok</p>'
+                + '<p class="ts-empty-msg">Tidak ada batch yang cocok dengan pencarian atau filter yang sedang aktif.</p></div>',
             info: 'Menampilkan _START_-_END_ dari _TOTAL_ data',
             infoEmpty: 'Tidak ada data', paginate: { previous: 'Previous', next: 'Next' }
         }
     });
 
+    TesysColumnFilter.initRowFilters('#tblBatch', '#batchRowFilters', [
+        { key: 'type', label: 'Type' },
+        { key: 'category', label: 'Kategori' },
+    ]);
+
     $('#tblBatch_filter').hide();
     $('#batchSearchBox').html('<input type="search" id="batchSearchInput" class="form-control form-control-sm" placeholder="Cari data...">');
     $('#batchSearchInput').on('keyup', function () { table.search(this.value).draw(); });
-
-    new TomSelect('#batchFilter', {
-        plugins: ['remove_button'],
-        persist: false,
-        create: false,
-        lockOptgroupOrder: true,
-        placeholder: 'Filter data...',
-        render: {
-            item: function (data, escape) {
-                var label = data.text || '';
-                var truncated = label.length > 28 ? label.substring(0, 28) + '…' : label;
-                return '<div title="' + escape(label) + '">' + escape(truncated) + '</div>';
-            }
-        }
-    });
-
-    /*
-    | Filter membaca nilai MENTAH dari atribut data-* pada <tr>.
-    | Aturan: OR di dalam satu grup, AND antar grup.
-    */
-    $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
-        if (settings.nTable.id !== 'tblBatch') return true;
-
-        var filters = $('#batchFilter').val();
-        if (!filters || !filters.length) return true;
-
-        var row = settings.aoData[dataIndex].nTr;
-        if (!row) return true;
-
-        var rowStatus   = row.getAttribute('data-status')   || '';
-        var rowCategory = row.getAttribute('data-category') || '';
-
-        var selStatus = [], selCategory = [];
-        filters.forEach(function (f) {
-            var i = f.indexOf(':');
-            if (i < 0) return;
-            var key = f.substring(0, i);
-            var val = f.substring(i + 1);
-            if (key === 'STATUS')   selStatus.push(val);
-            if (key === 'CATEGORY') selCategory.push(val);
-        });
-
-        if (selStatus.length   && selStatus.indexOf(rowStatus)     === -1) return false;
-        if (selCategory.length && selCategory.indexOf(rowCategory) === -1) return false;
-
-        return true;
-    });
-
-    $('#batchFilter').on('change', function () { table.draw(); });
 
     /*
     | FOOTER KALKULASI — total dari SEMUA baris yang lolos filter/search saat ini.
     */
     function moneyFmtBatch(v) {
-        return 'Rp ' + Math.round(v).toLocaleString('id-ID');
+        return Math.round(v).toLocaleString('id-ID');
     }
 
     function recalcFooterBatch() {
@@ -442,6 +474,13 @@ $(function () {
             total += parseFloat(node.querySelector('.col-raw-total')?.dataset.raw) || 0;
         });
         $('#batchFooterTotal').text(moneyFmtBatch(total));
+    }
+
+    /* Export Excel mengikuti filter yang SEDANG aktif di tabel — lihat
+       public/js/tesys-export-filtered.js. Tanpa filter tambahan, tautannya
+       tetap GET dengan rentang tanggal yang sudah dipasang di atas. */
+    if (window.TesysExportFiltered) {
+        TesysExportFiltered.wire('#btnExportBatch', table, '{{ url("/daily-transaction/export") }}');
     }
 
     table.on('draw', recalcFooterBatch);

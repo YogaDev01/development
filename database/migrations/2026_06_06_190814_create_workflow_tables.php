@@ -98,15 +98,25 @@ return new class extends Migration
 
         // 3. ALTER request_attachments - tambah kolom type
         Schema::table('request_attachments', function (Blueprint $table) {
-            if (!Schema::hasColumn('request_attachments', 'type')) {
-                $table->enum('type', [
-                    'Request',
-                    'Receipt',
-                    'Realization'
-                ])->default('Request')->after('budget_request_id');
-                
-                $table->index(['budget_request_id', 'type']);
+
+            if (Schema::hasColumn('request_attachments', 'type')) {
+
+                // Lepas FK dulu
+                $table->dropForeign(['budget_request_id']);
+
+                // Baru hapus index
+                $table->dropIndex('request_attachments_budget_request_id_type_index');
+
+                // Hapus kolom
+                $table->dropColumn('type');
+
+                // Pasang kembali FK
+                $table->foreign('budget_request_id')
+                    ->references('id')
+                    ->on('budget_request')
+                    ->cascadeOnDelete();
             }
+
         });
     }
 

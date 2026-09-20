@@ -30,14 +30,45 @@ return [
 
     'disks' => [
 
+        /*
+        | 'serve' => false — PENTING.
+        |
+        | Bila true, Laravel mendaftarkan sendiri route GET /storage/{path}
+        | (nama: storage.local) yang menyajikan isi disk ini TANPA otentikasi,
+        | dan route itu menang atas route aplikasi. Artinya seluruh berkas yang
+        | baru saja dipindahkan ke disk privat tetap bisa diunduh siapa saja.
+        | Penyajian berkas ditangani SecureFileController.
+        */
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],
 
+        /*
+        | Disk "secure" — SEMUA lampiran aplikasi tersimpan di sini.
+        |
+        | Rootnya storage/app/private, di luar document root, jadi web server
+        | tidak bisa melayaninya langsung. Satu-satunya jalan keluar berkas
+        | adalah SecureFileController, yang memeriksa sesi dan hak akses lebih
+        | dulu (lihat App\Services\FileAccess). Dulu semuanya di disk "public"
+        | dan bisa diunduh siapa saja yang memegang URL-nya.
+        */
+        'secure' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private'),
+            'throw' => false,
+            'report' => false,
+        ],
+
+        /*
+        | Disk "public" dipertahankan hanya supaya konfigurasi bawaan Laravel
+        | tetap utuh. JANGAN dipakai untuk lampiran: apa pun yang ditulis ke
+        | sini akan terlayani tanpa pemeriksaan hak akses begitu storage:link
+        | dijalankan.
+        */
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
@@ -73,8 +104,13 @@ return [
     |
     */
 
-    'links' => [
-        public_path('storage') => storage_path('app/public'),
-    ],
+    /*
+    | Tautan simbolik sengaja dikosongkan: "php artisan storage:link" akan
+    | membuat public/storage menunjuk ke storage/app/public, dan begitu itu ada,
+    | web server melayani berkas di sana tanpa melewati Laravel — hak akses
+    | apa pun yang dipasang di aplikasi jadi tidak berlaku. Berkas dilayani
+    | lewat route /storage/{path} (SecureFileController).
+    */
+    'links' => [],
 
 ];

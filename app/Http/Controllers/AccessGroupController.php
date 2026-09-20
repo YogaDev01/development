@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\AccessGroup;
 use App\Models\Project;
 use App\Models\CostCenter;
+use App\Models\Team;
 
 class AccessGroupController extends Controller
 {
@@ -27,9 +28,15 @@ class AccessGroupController extends Controller
         ->latest()
         ->get();
 
+        $summary = [
+            'total'    => $accessGroups->count(),
+            'total_po' => $accessGroups->sum(fn ($ag) => $ag->details->count()),
+        ];
+
         return view('accessgroup.index', compact(
 
-            'accessGroups'
+            'accessGroups',
+            'summary'
 
         ));
     }
@@ -44,22 +51,26 @@ class AccessGroupController extends Controller
     {
         $projects = Project::query()
 
-            ->select('id', 'name', 'code', 'po_number', 'done_by')
+            ->select('id', 'name', 'code', 'po_number', 'financing')
 
             ->orderBy('name')
 
             ->get();
 
-        // Hanya cost center OVERHEAD yang boleh ditugaskan lewat access group.
+        // Hanya cost center tipe overhead-like (Overhead/Tax/Asset/Liability/
+        // Capital/Adjustment) yang boleh ditugaskan lewat access group.
         // (Payroll bersifat rahasia & di-scope terpisah lewat role.)
-        $costCenters = CostCenter::where('type', 'OVERHEAD')
+        $costCenters = CostCenter::whereIn('type', CostCenter::OVERHEAD_LIKE_TYPES)
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
+
+        $teams = Team::where('status', 'ACTIVE')->orderBy('name')->get(['id', 'name', 'code']);
 
         return view('accessgroup.create', compact(
 
             'projects',
-            'costCenters'
+            'costCenters',
+            'teams'
 
         ));
     }
@@ -114,20 +125,36 @@ class AccessGroupController extends Controller
                 'distinct',
                 'exists:cost_centers,id'
 
+            ],
+
+            'team_ids' => [
+
+                'nullable',
+                'array'
+
+            ],
+
+            'team_ids.*' => [
+
+                'distinct',
+                'exists:teams,id'
+
             ]
 
         ], [], [
             'project_ids'     => 'project access',
             'cost_center_ids' => 'cost center access',
+            'team_ids'        => 'team access',
         ]);
 
         // Minimal salah satu sumber akses harus dipilih
         $hasProject    = !empty($validated['project_ids']);
         $hasCostCenter = !empty($validated['cost_center_ids']);
+        $hasTeam       = !empty($validated['team_ids']);
 
-        if (!$hasProject && !$hasCostCenter) {
+        if (!$hasProject && !$hasCostCenter && !$hasTeam) {
             return back()->withInput()->withErrors([
-                'project_ids' => 'Pilih minimal satu project atau cost center.',
+                'project_ids' => 'Pilih minimal satu project, cost center, atau team.',
             ]);
         }
 
@@ -165,6 +192,7 @@ class AccessGroupController extends Controller
                 $details[] = [
                     'project_id'     => (int) $projectId,
                     'cost_center_id' => null,
+                    'team_id'        => null,
                     'created_at'     => now(),
                     'updated_at'     => now(),
                 ];
@@ -174,6 +202,17 @@ class AccessGroupController extends Controller
                 $details[] = [
                     'project_id'     => null,
                     'cost_center_id' => (int) $ccId,
+                    'team_id'        => null,
+                    'created_at'     => now(),
+                    'updated_at'     => now(),
+                ];
+            }
+
+            foreach (collect($validated['team_ids'] ?? [])->unique() as $teamId) {
+                $details[] = [
+                    'project_id'     => null,
+                    'cost_center_id' => null,
+                    'team_id'        => (int) $teamId,
                     'created_at'     => now(),
                     'updated_at'     => now(),
                 ];
@@ -255,15 +294,17 @@ class AccessGroupController extends Controller
 
         $projects = Project::query()
 
-            ->select('id', 'name', 'code', 'po_number', 'done_by')
+            ->select('id', 'name', 'code', 'po_number', 'financing')
 
             ->orderBy('name')
 
             ->get();
 
-        $costCenters = CostCenter::where('type', 'OVERHEAD')
+        $costCenters = CostCenter::whereIn('type', CostCenter::OVERHEAD_LIKE_TYPES)
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
+
+        $teams = Team::where('status', 'ACTIVE')->orderBy('name')->get(['id', 'name', 'code']);
 
         /*
         |--------------------------------------------------------------------------
@@ -299,6 +340,14 @@ class AccessGroupController extends Controller
 
             ->toArray();
 
+        $selectedTeams = $accessGroup->details
+            ->pluck('team_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->toArray();
+
         /*
         |--------------------------------------------------------------------------
         | VIEW
@@ -310,8 +359,10 @@ class AccessGroupController extends Controller
             'accessGroup',
             'projects',
             'costCenters',
+            'teams',
             'selectedProjects',
-            'selectedCostCenters'
+            'selectedCostCenters',
+            'selectedTeams'
 
         ));
     }
@@ -377,14 +428,28 @@ class AccessGroupController extends Controller
                 'distinct',
                 'exists:cost_centers,id'
 
+            ],
+
+            'team_ids' => [
+
+                'nullable',
+                'array'
+
+            ],
+
+            'team_ids.*' => [
+
+                'distinct',
+                'exists:teams,id'
+
             ]
 
         ]);
 
         // Minimal salah satu sumber akses
-        if (empty($validated['project_ids']) && empty($validated['cost_center_ids'])) {
+        if (empty($validated['project_ids']) && empty($validated['cost_center_ids']) && empty($validated['team_ids'])) {
             return back()->withInput()->withErrors([
-                'project_ids' => 'Pilih minimal satu project atau cost center.',
+                'project_ids' => 'Pilih minimal satu project, cost center, atau team.',
             ]);
         }
 
@@ -436,6 +501,7 @@ class AccessGroupController extends Controller
                 $details[] = [
                     'project_id'     => (int) $projectId,
                     'cost_center_id' => null,
+                    'team_id'        => null,
                     'created_at'     => now(),
                     'updated_at'     => now(),
                 ];
@@ -445,6 +511,17 @@ class AccessGroupController extends Controller
                 $details[] = [
                     'project_id'     => null,
                     'cost_center_id' => (int) $ccId,
+                    'team_id'        => null,
+                    'created_at'     => now(),
+                    'updated_at'     => now(),
+                ];
+            }
+
+            foreach (collect($validated['team_ids'] ?? [])->unique() as $teamId) {
+                $details[] = [
+                    'project_id'     => null,
+                    'cost_center_id' => null,
+                    'team_id'        => (int) $teamId,
                     'created_at'     => now(),
                     'updated_at'     => now(),
                 ];
@@ -491,6 +568,10 @@ class AccessGroupController extends Controller
         */
 
         $accessGroup = AccessGroup::findOrFail($id);
+
+        if (\App\Models\User::where('access_group_id', $accessGroup->id)->exists()) {
+            return back()->with('error', 'Access Group tidak bisa dihapus karena masih dipakai oleh user.');
+        }
 
         /*
         |--------------------------------------------------------------------------

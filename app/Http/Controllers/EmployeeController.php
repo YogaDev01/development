@@ -207,7 +207,7 @@ class EmployeeController extends Controller
         ]);
     }
 
-    /** Ubah "Rp 5.000.000" / "5000000" menjadi integer */
+    /** Ubah "5.000.000" / "5000000" menjadi integer */
     private function normalizeMoney($value): int
     {
         if ($value === null || $value === '') return 0;

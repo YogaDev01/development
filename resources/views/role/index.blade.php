@@ -4,29 +4,28 @@
 
 @section('content')
 
-<!-- CONTENT HEADER -->
-<div class="content-header">
-    <div class="container-fluid">
-        <div class="row mb-2">
-            <div class="col-sm-6 d-flex align-items-center">
-                <a href="{{ url('/user') }}" class="btn btn-secondary btn-sm mr-3">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
-                <h1 class="m-0 font-weight-bold">Role & Menu Master</h1>
-            </div>
-            <div class="col-sm-6">
-                <ol class="breadcrumb float-sm-right">
-                    <li class="breadcrumb-item"><a href="#">Master</a></li>
-                    <li class="breadcrumb-item active">Role</li>
-                </ol>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- MAIN CONTENT -->
 <div class="content">
     <div class="container-fluid">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <div class="d-flex align-items-center">
+                <a href="{{ url('/user') }}" class="btn btn-secondary btn-sm mr-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Role & Menu Master</h1>
+            </div>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item"><a href="#">Master</a></li>
+                <li class="breadcrumb-item active">Role</li>
+            </ol>
+        </div>
+
+        <x-stat-cards :cards="[
+            ['Total Role', $summary['total'], 'primary', 'fas fa-user-tag'],
+            ['Active', $summary['active'], 'success', 'fas fa-check-circle'],
+            ['Inactive', $summary['inactive'], 'secondary', 'fas fa-pause-circle'],
+        ]" />
 
         <!-- INFO ALERT -->
         <div class="alert alert-warning alert-dismissible mb-3">
@@ -38,25 +37,39 @@
 
             <!-- CARD HEADER -->
             <div class="card-header d-flex align-items-center">
-                <button id="refreshTable" class="btn btn-secondary btn-sm" type="button">
-                    <i class="fas fa-sync-alt mr-1"></i> Refresh
-                </button>
+                <h3 class="card-title"><i class="fas fa-user-tag mr-1"></i> Daftar Role</h3>
+                <div class="ml-auto d-flex" style="gap:8px;">
+                    <button id="refreshTable" class="btn btn-secondary btn-sm" type="button">
+                        <i class="fas fa-sync-alt mr-1"></i> Refresh
+                    </button>
+                </div>
             </div>
 
             <!-- CARD BODY -->
             <div class="card-body">
 
+                <div class="custom-toolbar mb-3 d-flex align-items-center flex-wrap" style="gap:8px;">
+                    <div class="toolbar-row">
+                        <span class="toolbar-label">Cari :</span>
+                        <div class="toolbar-input" id="customSearch"></div>
+                    </div>
+                    <button aria-label="Clear Filter" type="button" id="btnClearFilterRole" class="btn btn-outline-secondary btn-sm" title="Clear Filter">
+                        <i class="fas fa-eraser"></i>
+                    </button>
+                    <div id="roleRowFilters" class="d-flex flex-wrap" style="gap:8px;"></div>
+                </div>
+
                 <div class="table-responsive">
                     <table id="roleTable" class="table table-bordered table-hover table-striped mb-0">
                         <thead class="bg-light">
                             <tr>
-                                <th width="5%"  class="all">No</th>
-                                <th width="20%" class="all">Role</th>
-                                <th width="10%">Status</th>
-                                <th width="8%">Total User</th>
-                                <th width="8%">Menu Access</th>
-                                <th width="37%">Menu Yang Dapat Diakses</th>
-                                <th width="12%" class="text-center all action-column">Action</th>
+                                <th scope="col" width="5%"  class="all">No</th>
+                                <th scope="col" width="20%" class="all">Role</th>
+                                <th scope="col" width="10%">Status</th>
+                                <th scope="col" width="8%">Total User</th>
+                                <th scope="col" width="8%">Menu Access</th>
+                                <th scope="col" width="37%">Menu Yang Dapat Diakses</th>
+                                <th scope="col" width="12%" class="text-center all action-column">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -65,7 +78,7 @@
                                 $isSuper   = strtolower($role->name) === 'superadmin';
                                 $menuCount = $isSuper ? $totalMenus : $role->menuItems->count();
                             @endphp
-                            <tr>
+                            <tr data-status="{{ $role->status }}">
                                 <td>{{ $loop->iteration }}</td>
 
                                 <td>
@@ -136,25 +149,30 @@
                                 </td>
 
                                 <td class="text-center action-column">
-                                    @if($isSuper)
-                                        <button class="btn btn-secondary btn-sm" disabled title="Full Access">
-                                            <i class="fas fa-lock"></i>
+                                    <div class="action-buttons ts-actions">
+                                        @if($isSuper)
+                                        {{-- Superadmin tidak bisa diatur; tombolnya tetap dirender
+                                             supaya tinggi dan perataan barisnya sama dengan baris
+                                             lain, hanya dimatikan. --}}
+                                        <button aria-label="Full Access" class="ts-action-primary is-neutral"
+                                                disabled title="Full Access">
+                                            <i class="fas fa-lock" aria-hidden="true"></i><span class="ts-al">Full Access</span>
                                         </button>
-                                    @else
+                                        @else
                                         <button type="button"
-                                                class="btn btn-primary btn-sm btn-configure"
+                                                class="ts-action-primary btn-configure"
                                                 data-id="{{ $role->id }}"
                                                 title="Atur Menu Access">
-                                            <i class="fas fa-sliders-h"></i>
+                                            <i class="fas fa-sliders-h" aria-hidden="true"></i><span class="ts-al">Atur Menu Access</span>
                                         </button>
-                                    @endif
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="7" class="text-center text-muted py-4">
-                                    <i class="fas fa-user-tag d-block mb-2"></i>
-                                    Belum ada data role
+                                <td colspan="7">
+                                    <x-empty title="Belum ada data role" icon="fas fa-user-tag" compact />
                                 </td>
                             </tr>
                             @endforelse
@@ -173,11 +191,11 @@
 <!-- ================================================================ -->
 <div class="modal fade" id="modalConfigure" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content" style="border-radius:12px; overflow:hidden;">
+        <div class="modal-content" style="border-radius:var(--radius-lg); overflow:hidden;">
 
-            <div class="modal-header" style="background:#0D1B2A; border-bottom:3px solid #F5A623;">
+            <div class="modal-header" style="background:var(--charcoal); border-bottom:3px solid var(--accent);">
                 <h5 class="modal-title text-white">
-                    <i class="fas fa-sliders-h mr-2" style="color:#F5A623;"></i>
+                    <i class="fas fa-sliders-h mr-2" style="color:var(--accent);"></i>
                     <span id="modalTitle">Atur Menu Access</span>
                 </h5>
                 <button type="button" class="close text-white" data-dismiss="modal">
@@ -202,7 +220,7 @@
 
                         <!-- Select All bar -->
                         <div class="d-flex align-items-center justify-content-between px-4 py-3"
-                             style="background:#f8f9fa; border-bottom:1px solid #e9ecef;">
+                             style="background:var(--surface-2); border-bottom:1px solid var(--border);">
                             <div class="d-flex align-items-center" style="gap:8px;">
                                 <input type="checkbox" id="selectAll">
                                 <label for="selectAll" class="mb-0 font-weight-600" style="font-size:13px; cursor:pointer;">
@@ -219,7 +237,7 @@
 
                 </div>
 
-                <div class="modal-footer" style="background:#f8f9fa; border-top:1px solid #e9ecef;">
+                <div class="modal-footer" style="background:var(--surface-2); border-top:1px solid var(--border);">
                     <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">
                         <i class="fas fa-times mr-1"></i> Batal
                     </button>
@@ -239,8 +257,16 @@
 @push('styles')
 <style>
 
-.card-header .btn  { border-radius:6px; font-weight:600; }
+.card-header .btn  { border-radius:var(--radius-sm); font-weight:600; }
 .font-weight-600   { font-weight:600; }
+
+/* TOOLBAR */
+.custom-toolbar      { display:flex; align-items:flex-start; justify-content:flex-start; gap:15px; flex-wrap:wrap; }
+.custom-toolbar-left { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.toolbar-row         { display:flex; align-items:center; gap:8px; }
+.toolbar-label       { min-width:50px; margin-bottom:0; white-space:nowrap; font-weight:600; color:var(--text-dim); }
+.toolbar-input       { min-width:180px; }
+#customSearch input  { width:180px; border-radius:var(--radius-sm); }
 
 /* TABLE */
 #roleTable          { width:100% !important; }
@@ -250,15 +276,15 @@
 
 /* TABLE BOTTOM */
 .dataTables_wrapper .row:last-child { margin-top:18px; align-items:center; }
-.dataTables_info { padding-top:0 !important; font-size:14px; color:#6c757d; }
+.dataTables_info { padding-top:0 !important; font-size:14px; color:var(--text-faint); }
 
 /* PAGE SIZE */
 .dataTables_length { display:flex; align-items:center; margin-left:18px; }
-.dataTables_length label { display:flex; align-items:center; gap:10px; margin-bottom:0; font-size:14px; font-weight:600; color:#6c757d; }
+.dataTables_length label { display:flex; align-items:center; gap:10px; margin-bottom:0; font-size:14px; font-weight:600; color:var(--text-faint); }
 .dataTables_length select {
     appearance:none !important; -webkit-appearance:none !important;
-    background-color:#fff !important; color:#495057 !important;
-    border:1px solid #ced4da !important; border-radius:6px !important;
+    background-color:var(--surface) !important; color:var(--text-dim) !important;
+    border:1px solid var(--border) !important; border-radius:var(--radius-sm) !important;
     padding:4px 30px 4px 10px !important; height:36px !important; min-width:72px !important;
     font-size:14px !important; font-weight:600 !important; cursor:pointer; box-shadow:none !important;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%236c757d' viewBox='0 0 16 16'%3E%3Cpath d='M1.5 5.5l6 6 6-6'/%3E%3C/svg%3E") !important;
@@ -266,21 +292,21 @@
 }
 
 /* PAGINATION — amber */
-.dataTables_paginate .paginate_button { border-radius:6px !important; margin:0 2px; transition:all .2s; }
+.dataTables_paginate .paginate_button { border-radius:var(--radius-sm) !important; margin:0 2px; transition:all .2s; }
 .dataTables_paginate .paginate_button.current,
 .dataTables_paginate .paginate_button.current:hover,
 .dataTables_wrapper .pagination .page-item.active .page-link {
-    background:#F5A623 !important; background-image:none !important;
-    border-color:#C97E0A !important; color:#0D1B2A !important; font-weight:700 !important;
+    background:var(--accent) !important; background-image:none !important;
+    border-color:var(--accent-dark) !important; color:#fff !important; font-weight:700 !important;
 }
-.dataTables_wrapper .pagination .page-link { color:#F5A623 !important; }
+.dataTables_wrapper .pagination .page-link { color:var(--accent) !important; }
 .dataTables_wrapper .pagination .page-item:not(.active) .page-link:hover {
-    background:#FFF3DC !important; border-color:#F5A623 !important; color:#C97E0A !important;
+    background:var(--warning-bg) !important; border-color:var(--accent) !important; color:var(--accent-dark) !important;
 }
 .dataTables_wrapper .pagination .page-link:focus {
-    box-shadow:0 0 0 3px rgba(245,166,35,0.30) !important; outline:none !important;
+    box-shadow:0 0 0 3px rgba(200,39,46,0.30) !important; outline:none !important;
 }
-.dataTables_wrapper .pagination .page-item.disabled .page-link { color:#C0C8D0 !important; }
+.dataTables_wrapper .pagination .page-item.disabled .page-link { color:var(--text-faint) !important; }
 
 /* MODAL MENU ITEMS */
 .menu-section-label {
@@ -288,9 +314,9 @@
     font-weight:700;
     letter-spacing:0.12em;
     text-transform:uppercase;
-    color:#9CA3AF;
+    color:var(--text-faint);
     padding:12px 0 8px;
-    border-bottom:1px solid #F3F4F6;
+    border-bottom:1px solid var(--border);
     margin-bottom:10px;
 }
 
@@ -301,31 +327,31 @@
     align-items:center;
     gap:10px;
     padding:8px 10px;
-    border-radius:6px;
+    border-radius:var(--radius-sm);
     cursor:pointer;
     transition:background 0.12s;
     margin-bottom:4px;
 }
 
-.menu-check-item:hover { background:#F0F2F5; }
+.menu-check-item:hover { background:var(--surface-2); }
 
 .menu-check-item input[type="checkbox"] {
     width:16px; height:16px;
-    accent-color:#2563EB;
+    accent-color:var(--info);
     flex-shrink:0; cursor:pointer;
 }
 
 .menu-check-item label {
     font-size:13px; font-weight:500;
-    color:#374151; margin:0; cursor:pointer; flex:1;
+    color:var(--text); margin:0; cursor:pointer; flex:1;
 }
 
 .menu-check-item.is-checked {
-    background:#EFF6FF;
-    border:1px solid #BFDBFE;
+    background:var(--info-bg);
+    border:1px solid var(--border-strong);
 }
 
-.menu-check-item.is-checked label { color:#1E40AF; }
+.menu-check-item.is-checked label { color:#1e40af; }
 
 /* MOBILE */
 @media (max-width: 768px) {
@@ -333,6 +359,15 @@
     .breadcrumb { float:left !important; margin-top:10px; }
     .card-header { flex-direction:column; gap:10px; align-items:stretch !important; }
     .card-header .btn { width:100%; }
+    .card-header .card-title { margin-bottom:0; }
+    .card-header .ml-auto { margin-left:0 !important; flex-wrap:wrap; }
+    .custom-toolbar { flex-direction:column !important; align-items:stretch !important; }
+    #btnClearFilterRole { width:100%; }
+    #roleRowFilters { width:100%; }
+    #roleRowFilters .tcf-row-btn { width:100%; }
+    .toolbar-row { width:100%; }
+    .toolbar-input { flex:1; min-width:0; }
+    #customSearch input { width:100%; }
     .dataTables_wrapper .row:last-child { display:flex; flex-direction:column; align-items:flex-start !important; gap:12px; }
     .dataTables_wrapper .row:last-child .col-md-6 { width:100%; max-width:100%; display:flex; justify-content:flex-start !important; }
     .dataTables_paginate { width:100%; overflow-x:auto; }
@@ -377,6 +412,18 @@ $(function () {
         }
     });
 
+    $('#roleTable_filter').hide();
+    $('#customSearch').html('<input type="search" id="globalSearch" class="form-control form-control-sm" placeholder="Cari data...">');
+    $('#globalSearch').on('keyup', function () { table.search(this.value).draw(); });
+
+    TesysColumnFilter.initRowFilters('#roleTable', '#roleRowFilters', [
+        { key: 'status', label: 'Status' },
+    ]);
+
+    $('#btnClearFilterRole').on('click', function () {
+        TesysColumnFilter.clearAll('#roleTable');
+    });
+
     $('#refreshTable').on('click', function () { location.reload(); });
 
     /*
@@ -389,6 +436,7 @@ $(function () {
         'dashboard': { label: 'Dashboard',          icon: 'fas fa-tachometer-alt' },
         'master':    { label: 'Master Data',         icon: 'fas fa-database'       },
         'finance':   { label: 'Finance Management',  icon: 'fas fa-money-bill-wave'},
+        'general':   { label: 'General',             icon: 'fas fa-comment-dots'   },
         'project':   { label: 'Project Management',  icon: 'fas fa-concierge-bell' },
     };
 
@@ -415,7 +463,7 @@ $(function () {
             $('#modalTitle').text('Atur Menu Access — ' + d.role.name);
             $('#formConfigure').attr('action', '{{ url("/role") }}/' + d.role.id);
 
-            const sectionOrder = ['dashboard', 'master', 'finance', 'project'];
+            const sectionOrder = ['dashboard', 'master', 'finance', 'general', 'project'];
             let html = '';
 
             sectionOrder.forEach(function (section) {
@@ -469,7 +517,7 @@ $(function () {
             },
             error: function (xhr) {
                 Swal.fire({ icon: 'error', title: 'Gagal menyimpan',
-                    text: xhr.responseJSON?.message ?? 'Terjadi kesalahan.', confirmButtonColor: '#d33' });
+                    text: xhr.responseJSON?.message ?? 'Terjadi kesalahan.', confirmButtonColor: '#9a3030' });
             },
             complete: function () {
                 btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Simpan Menu Access');

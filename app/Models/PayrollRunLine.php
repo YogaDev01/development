@@ -68,7 +68,7 @@ class PayrollRunLine extends Model
 
     public function getNetFormattedAttribute(): string
     {
-        return 'Rp ' . number_format($this->net_amount ?? 0, 0, ',', '.');
+        return number_format($this->net_amount ?? 0, 0, ',', '.');
     }
 
     public function getChargeColorAttribute(): string

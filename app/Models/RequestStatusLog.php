@@ -45,6 +45,21 @@ class RequestStatusLog extends Model
         'realization_rejected'     => 'Realisasi Ditolak → kembali Paid',
         'realized'                 => 'Direalisasi',
         'closed'                   => 'Ditutup',
+        'cr_approved'              => 'Disetujui CEO (Individual)',
+        'cr_rejected'              => 'Ditolak CEO (Individual)',
+        'revised'                  => 'Direvisi Manager (dari Rejected)',
+        'cancelled'                => 'Dibatalkan Manager',
+        'item_takeout'             => 'Item Di-takeout',
+        'item_restore'             => 'Item Dikembalikan',
+        'all_items_takeout'        => 'Semua Item Di-takeout → Rejected',
+
+        // Second Payment — kekurangan bayar hasil Settlement. Dibayar lewat
+        // batch Treasury, jadi jejaknya mengikuti siklus batch.
+        'second_payment_batched'      => 'Second Payment Masuk Batch',
+        'second_payment_ceo_approved' => 'Second Payment Disetujui CEO',
+        'second_payment_paid'         => 'Second Payment Telah Dibayar',
+        'second_payment_takeout'      => 'Second Payment Di-takeout dari Batch',
+        'second_payment_batch_rejected' => 'Batch Second Payment Ditolak',
     ];
 
     /*
@@ -80,13 +95,20 @@ class RequestStatusLog extends Model
             'created'                                       => 'secondary',
             'submitted'                                     => 'info',
             'head_approved', 'finance_approved'             => 'primary',
-            'ceo_approved', 'paid', 'realized',
+            'ceo_approved', 'cr_approved', 'paid', 'realized',
             'realization_approved', 'closed'                => 'success',
             'head_rejected', 'finance_rejected',
-            'ceo_rejected', 'realization_rejected'          => 'danger',
-            'head_revised', 'finance_revised',
-            'realization_submitted'                         => 'warning',
-            'batched'                                       => 'dark',
+            'ceo_rejected', 'cr_rejected',
+            'realization_rejected', 'cancelled',
+            'all_items_takeout'                             => 'danger',
+            'head_revised', 'finance_revised', 'revised',
+            'realization_submitted',
+            'item_takeout', 'item_restore'                  => 'warning',
+            'second_payment_paid'                           => 'success',
+            'second_payment_takeout',
+            'second_payment_batch_rejected'                 => 'danger',
+            'second_payment_ceo_approved'                   => 'primary',
+            'batched', 'second_payment_batched'             => 'dark',
             default                                         => 'secondary',
         };
     }

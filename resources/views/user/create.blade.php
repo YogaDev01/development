@@ -2,71 +2,22 @@
 
 @section('content')
 
-<div class="content-header">
-
-    <div class="container-fluid">
-
-        <div class="row mb-2">
-
-            <!-- TITLE -->
-            <div class="col-sm-6 d-flex align-items-center">
-
-                <a href="{{ url('/user') }}"
-                class="btn btn-secondary btn-sm mr-3">
-
-                    <i class="fas fa-arrow-left"></i>
-
-                </a>
-
-                <h1 class="m-0 font-weight-bold">
-
-                    Tambah User
-
-                </h1>
-
-            </div>
-
-            <!-- BREADCRUMB -->
-            <div class="col-sm-6">
-
-                <ol class="breadcrumb float-sm-right">
-
-                    <li class="breadcrumb-item">
-
-                        <a href="#">
-                            Master
-                        </a>
-
-                    </li>
-
-                    <li class="breadcrumb-item">
-
-                        <a href="{{ url('/user') }}">
-                            User
-                        </a>
-
-                    </li>
-
-                    <li class="breadcrumb-item active">
-
-                        Tambah User
-
-                    </li>
-
-                </ol>
-
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-<!-- MAIN CONTENT -->
 <div class="content">
-
     <div class="container-fluid">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <div class="d-flex align-items-center">
+                <a href="{{ url('/user') }}" class="btn btn-secondary btn-sm mr-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Tambah User</h1>
+            </div>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item"><a href="#">Master</a></li>
+                <li class="breadcrumb-item"><a href="{{ url('/user') }}">User</a></li>
+                <li class="breadcrumb-item active">Tambah User</li>
+            </ol>
+        </div>
 
         <div class="card card-primary card-outline shadow-sm">
 
@@ -220,6 +171,42 @@
                                 >
 
                                 @error('email')
+
+                                    <small class="text-danger d-block">
+
+                                        {{ $message }}
+
+                                    </small>
+
+                                @enderror
+
+                            </div>
+
+                        </div>
+
+                        <!-- PHONE / WHATSAPP -->
+                        <div class="col-md-6">
+
+                            <div class="form-group">
+
+                                <label>
+
+                                    No. WhatsApp
+
+                                </label>
+
+                                <input
+                                    type="text"
+                                    name="phone"
+                                    class="form-control"
+                                    autocomplete="off"
+                                    value="{{ old('phone') }}"
+                                    placeholder="Contoh: 6281234567890"
+                                >
+
+                                <small class="text-muted d-block">Untuk notifikasi WhatsApp. Format 62xxxx, opsional.</small>
+
+                                @error('phone')
 
                                     <small class="text-danger d-block">
 
@@ -497,14 +484,14 @@
 
 <link 
     rel="stylesheet" 
-    href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
+    href="{{ asset('plugins/select2/css/select2.min.css') }}"
 />
 
 <style>
 
 .select2-container .select2-selection--multiple {
     min-height: 38px;
-    border: 1px solid #ced4da;
+    border: 1px solid var(--border);
 }
 
 </style>
@@ -513,7 +500,7 @@
 
 @push('scripts')
 
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="{{ asset('plugins/select2/js/select2.min.js') }}"></script>
 
 <script>
 

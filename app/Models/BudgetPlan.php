@@ -30,6 +30,8 @@ class BudgetPlan extends Model
     public const STATUSES = [
         'DRAFT',
         'SUBMITTED',
+        'CHECKED',
+        'VERIFIED',
         'ACTIVE',
         'CLOSING',
         'CLOSED',
@@ -100,15 +102,17 @@ class BudgetPlan extends Model
         return !is_null($this->cost_center_id);
     }
 
-    /** Nama sumber dana, apa pun jenisnya */
+    /** Nama sumber dana, apa pun jenisnya — pakai null-safe (?->) karena
+     *  project_id/cost_center_id bisa saja menunjuk baris yang sudah terhapus
+     *  (data yatim), bukan cuma null id-nya. */
     public function getSourceNameAttribute(): string
     {
         if ($this->isProjectBudget()) {
-            return $this->project->name ?? '-';
+            return $this->project?->name ?? '-';
         }
 
         if ($this->isCostCenterBudget()) {
-            return $this->costCenter->name ?? '-';
+            return $this->costCenter?->name ?? '-';
         }
 
         return '-';
@@ -122,7 +126,7 @@ class BudgetPlan extends Model
         }
 
         if ($this->isCostCenterBudget()) {
-            return strtoupper($this->costCenter->type ?? 'OVERHEAD');
+            return strtoupper($this->costCenter?->type ?? 'OVERHEAD');
         }
 
         return '-';
@@ -178,6 +182,8 @@ class BudgetPlan extends Model
 
     public function isDraft(): bool      { return $this->status === 'DRAFT'; }
     public function isSubmitted(): bool  { return $this->status === 'SUBMITTED'; }
+    public function isChecked(): bool    { return $this->status === 'CHECKED'; }
+    public function isVerified(): bool   { return $this->status === 'VERIFIED'; }
     public function isActive(): bool     { return $this->status === 'ACTIVE'; }
     public function isClosing(): bool    { return $this->status === 'CLOSING'; }
     public function isClosed(): bool     { return $this->status === 'CLOSED'; }
@@ -193,7 +199,7 @@ class BudgetPlan extends Model
 
     public function getAmountFormattedAttribute(): string
     {
-        return 'Rp ' . number_format($this->amount ?? 0, 0, ',', '.');
+        return number_format($this->amount ?? 0, 0, ',', '.');
     }
 
     public function getStatusColorAttribute(): string
@@ -201,6 +207,8 @@ class BudgetPlan extends Model
         return match($this->status) {
             'DRAFT'     => 'secondary',
             'SUBMITTED' => 'warning',
+            'CHECKED'   => 'info',
+            'VERIFIED'  => 'primary',
             'ACTIVE'    => 'success',
             'CLOSING'   => 'info',
             'CLOSED'    => 'dark',
@@ -212,24 +220,13 @@ class BudgetPlan extends Model
     public function usedAmount(): int
     {
         return $this->costRequests()
-            ->whereIn('status', ['PAID', 'REALIZED', 'CLOSED'])
+            ->whereIn('status', \App\Support\BudgetConsumption::DISBURSED)
             ->sum('amount');
     }
 
     public function remainingAmount(): int
     {
         return max(0, ($this->amount ?? 0) - $this->usedAmount());
-    }
-
-    public function checkAndAutoClose(): void
-    {
-        if (!$this->isActive()) return;
-
-        $used = $this->usedAmount();
-        if ($used >= ($this->amount ?? 0)) {
-            $this->update(['status' => 'CLOSED']);
-            $this->addLog('ACTIVE', 'CLOSED', 'auto_closed');
-        }
     }
 
     public function recalculateAmount(): void

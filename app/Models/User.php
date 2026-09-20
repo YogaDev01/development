@@ -11,6 +11,8 @@ use App\Models\Cluster;
 
 /**
  * @method bool hasRole(array|string $roles)
+ * @method \Illuminate\Database\Eloquent\Relations\MorphMany notifications()
+ * @method \Illuminate\Database\Eloquent\Relations\MorphMany unreadNotifications()
  */
 class User extends Authenticatable
 {
@@ -20,11 +22,27 @@ class User extends Authenticatable
         'name',
         'username',
         'email',
+        'phone',
+        'avatar',
         'password',
         'role_id',
         'access_group_id',
         'status',
+        'dismissed_changelog_version',
     ];
+
+    /**
+     * Nomor tujuan notifikasi WhatsApp (dipakai channel Fonnte).
+     */
+    public function routeNotificationForFonnte(): ?string
+    {
+        return $this->phone;
+    }
+
+    public function getAvatarUrlAttribute(): ?string
+    {
+        return $this->avatar ? asset('storage/' . $this->avatar) : null;
+    }
 
     protected $hidden = [
         'password',
@@ -50,7 +68,12 @@ class User extends Authenticatable
     /**
      * Check if user has one of the given roles
      * Support both uppercase and lowercase matching
-     * 
+     *
+     * Dihitung dari effectiveRole() (bukan langsung $this->role) supaya
+     * fitur "View As" (superadmin mencoba UI sebagai role lain) otomatis
+     * konsisten di setiap tempat yang memakai hasRole() — termasuk middleware
+     * role:..., seluruh gate di controller, dan kondisi @if di Blade.
+     *
      * @param array|string $roles
      * @return bool
      */
@@ -61,18 +84,14 @@ class User extends Authenticatable
             $roles = [$roles];
         }
 
-        // Ensure role is loaded
-        if (!$this->relationLoaded('role')) {
-            $this->load('role');
-        }
+        $effectiveRole = $this->effectiveRole();
 
-        // Check if user has a role assigned
-        if (!$this->role) {
+        if (!$effectiveRole) {
             return false;
         }
 
-        // Get user role name and normalize to lowercase
-        $userRoleName = strtolower(trim($this->role->name));
+        // Get effective role name and normalize to lowercase
+        $userRoleName = strtolower(trim($effectiveRole->name));
 
         // Check if any of the provided roles match (case-insensitive)
         foreach ($roles as $role) {
@@ -85,12 +104,92 @@ class User extends Authenticatable
         return false;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | VIEW AS — superadmin mencoba UI/menu sebagai role lain (preview saja,
+    | tidak mengubah role_id sungguhan). Disimpan di session, per-tab browser
+    | tidak ikut (session server-side), reset otomatis saat logout.
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Role SUNGGUHAN user ini (mengabaikan View As) — dipakai untuk
+     * menentukan apakah tombol "View As"/"Kembali ke Superadmin" boleh
+     * ditampilkan, supaya superadmin tidak pernah terkunci dari kontrol itu
+     * sendiri walau sedang meng-impersonate role lain.
+     */
+    public function isRealSuperadmin(): bool
+    {
+        if (!$this->relationLoaded('role')) {
+            $this->load('role');
+        }
+
+        return $this->role && strtolower(trim($this->role->name)) === 'superadmin';
+    }
+
+    /** Sedang aktif "View As" role lain? */
+    public function isViewingAs(): bool
+    {
+        return $this->isRealSuperadmin() && session()->has('view_as_role_id');
+    }
+
+    /**
+     * Role EFEKTIF yang dipakai hasRole()/menu sidebar: role target "View As"
+     * kalau sedang aktif (dan hanya untuk superadmin sungguhan), selain itu
+     * role asli user.
+     */
+    public function effectiveRole(): ?Role
+    {
+        if ($this->isRealSuperadmin() && session()->has('view_as_role_id')) {
+            $viewAsRole = Role::find(session('view_as_role_id'));
+            if ($viewAsRole) {
+                return $viewAsRole;
+            }
+        }
+
+        if (!$this->relationLoaded('role')) {
+            $this->load('role');
+        }
+
+        return $this->role;
+    }
+
     /**
      * Get the access group that belongs to the user
      */
     public function accessGroup()
     {
         return $this->belongsTo(AccessGroup::class);
+    }
+
+    public function teamMemberships()
+    {
+        return $this->hasMany(TeamMember::class, 'user_id');
+    }
+
+    /**
+     * Semua project id (PO) yang bisa diakses user ini: langsung dari access
+     * group-nya sendiri (project_id di access_group_details), DITAMBAH
+     * project id yang bisa diakses lewat access group manapun yang di-assign
+     * ke Team tempat user ini jadi member ACTIVE (team_id di
+     * access_group_details) — lihat dokumen Major A "Team -> Access Group ->
+     * PO". Union, BUKAN pengganti — assignment access group langsung tetap
+     * berlaku seperti sekarang, ini cuma menambah jalur baru.
+     */
+    public function accessibleProjectIds(): \Illuminate\Support\Collection
+    {
+        $direct = $this->accessGroup ? $this->accessGroup->projectIds() : collect();
+
+        $teamIds = $this->teamMemberships()->where('status', 'ACTIVE')->pluck('team_id');
+        if ($teamIds->isEmpty()) {
+            return $direct;
+        }
+
+        $viaTeams = AccessGroup::whereHas('details', fn ($q) => $q->whereIn('team_id', $teamIds))
+            ->get()
+            ->flatMap(fn ($ag) => $ag->projectIds());
+
+        return $direct->concat($viaTeams)->unique()->values();
     }
 
     /**
@@ -103,4 +202,5 @@ class User extends Authenticatable
             'user_groups'
         );
     }
+
 }

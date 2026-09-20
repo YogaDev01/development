@@ -8,75 +8,22 @@
 
 @endphp
 
-<!-- CONTENT HEADER -->
-<div class="content-header">
-
-    <div class="container-fluid">
-
-
-<div class="row mb-2">
-
-            <!-- TITLE -->
-            <div class="col-sm-6">
-
-                <h1 class="m-0 font-weight-bold d-flex align-items-center">
-
-                    <a
-                        href="{{ url('/project') }}"
-                        class="btn btn-secondary btn-sm mr-3"
-                    >
-
-                        <i class="fas fa-arrow-left"></i>
-
-                    </a>
-
-                    PO Workspace
-
-                </h1>
-
-            </div>
-
-            <!-- BREADCRUMB -->
-            <div class="col-sm-6">
-
-                <ol class="breadcrumb float-sm-right">
-
-                    <li class="breadcrumb-item">
-
-                        <a href="#">
-                            Master
-                        </a>
-
-                    </li>
-
-                    <li class="breadcrumb-item">
-
-                        <a href="{{ url('/project') }}">
-                            PO
-                        </a>
-
-                    </li>
-
-                    <li class="breadcrumb-item active">
-
-                        Detail
-
-                    </li>
-
-                </ol>
-
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-<!-- MAIN CONTENT -->
 <div class="content">
-
     <div class="container-fluid">
+
+        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
+            <div class="d-flex align-items-center">
+                <a href="{{ url('/project') }}" class="btn btn-secondary btn-sm mr-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">PO Workspace</h1>
+            </div>
+            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+                <li class="breadcrumb-item"><a href="#">Master</a></li>
+                <li class="breadcrumb-item"><a href="{{ url('/project') }}">PO</a></li>
+                <li class="breadcrumb-item active">Detail</li>
+            </ol>
+        </div>
 
         <div class="row">
 
@@ -151,7 +98,7 @@
 
                                 <span class="float-right text-primary font-weight-bold">
 
-                                    Rp {{ number_format($totalAmount, 0, ',', '.') }}
+                                    {{ number_format($totalAmount, 0, ',', '.') }}
 
                                 </span>
 
@@ -408,23 +355,23 @@
 
                                     <tr>
 
-                                        <th width="5%" class="all">
+                                        <th scope="col" width="5%" class="all">
                                             No
                                         </th>
 
-                                        <th class="all">
+                                        <th scope="col" class="all">
                                             Description
                                         </th>
 
-                                        <th width="20%">
+                                        <th scope="col" width="20%">
                                             Amount
                                         </th>
 
-                                        <th width="15%">
+                                        <th scope="col" width="15%">
                                             Attachment
                                         </th>
 
-                                        <th width="15%" class="all text-center action-column">
+                                        <th scope="col" width="15%" class="all text-center action-column">
                                             Action
                                         </th>
 
@@ -455,7 +402,7 @@
                                             <!-- AMOUNT -->
                                             <td>
 
-                                                Rp {{ number_format($budget->amount, 0, ',', '.') }}
+                                                {{ number_format($budget->amount, 0, ',', '.') }}
 
                                             </td>
 
@@ -559,27 +506,27 @@
 
                                     <tr>
 
-                                        <th width="5%" class="all">
+                                        <th scope="col" width="5%" class="all">
                                             No
                                         </th>
 
-                                        <th width="15%">
+                                        <th scope="col" width="15%">
                                             Code
                                         </th>
 
-                                        <th class="all">
+                                        <th scope="col" class="all">
                                             Nama Project
                                         </th>
 
-                                        <th width="20%">
+                                        <th scope="col" width="20%">
                                             Current Stage
                                         </th>
 
-                                        <th width="15%">
+                                        <th scope="col" width="15%">
                                             Progress
                                         </th>
 
-                                        <th width="10%">
+                                        <th scope="col" width="10%">
                                             Action
                                         </th>
 

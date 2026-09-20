@@ -83,7 +83,7 @@ class PayrollRun extends Model
 
     public function getTotalFormattedAttribute(): string
     {
-        return 'Rp ' . number_format($this->total ?? 0, 0, ',', '.');
+        return number_format($this->total ?? 0, 0, ',', '.');
     }
 
     public function getPeriodLabelAttribute(): string

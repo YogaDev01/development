@@ -13,10 +13,16 @@ class BankController extends Controller
      */
     public function index()
     {
-        $banks = Bank::latest()->get();
+        $banks = Bank::withCount('beneficiaries')->latest()->get();
+
+        $summary = [
+            'total'      => $banks->count(),
+            'with_method' => $banks->whereNotNull('default_method')->count(),
+            'in_use'     => $banks->where('beneficiaries_count', '>', 0)->count(),
+        ];
 
         return view('bank.index', compact(
-            'banks'
+            'banks', 'summary'
         ));
     }
 
@@ -98,6 +104,19 @@ class BankController extends Controller
     public function destroy($id)
     {
         $bank = Bank::findOrFail($id);
+
+        if ($bank->beneficiaries()->exists()) {
+            return back()->with('error', 'Bank tidak bisa dihapus karena sudah dipakai pada Beneficiary.');
+        }
+        if (\App\Models\SourceFund::where('bank_id', $bank->id)->exists()) {
+            return back()->with('error', 'Bank tidak bisa dihapus karena sudah dipakai pada Source Fund.');
+        }
+        if (\App\Models\Employee::where('bank_id', $bank->id)->exists()) {
+            return back()->with('error', 'Bank tidak bisa dihapus karena sudah dipakai pada data Employee.');
+        }
+        if (\App\Models\PayrollRunLine::where('bank_id', $bank->id)->exists()) {
+            return back()->with('error', 'Bank tidak bisa dihapus karena sudah dipakai pada Payroll.');
+        }
 
         $bank->delete();
 
