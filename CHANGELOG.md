@@ -24,6 +24,7 @@ dan proyek ini memakai [Semantic Versioning](https://semver.org/lang/id/).
 - Modal detail Cost Request menampilkan status Second Payment beserta batch Treasury-nya, bukan sekadar "Pending".
 
 ### Perbaikan
+- Kelebihan Settlement yang dibayar lewat Second Payment kini ikut mengurangi sisa Budget Plan dan ikut dihitung saat pengecekan NOB — sebelumnya uangnya keluar tapi sisa anggaran tidak berkurang.
 - Second Payment tidak bisa lagi masuk ke dua batch sekaligus.
 - Batch yang memuat Second Payment tidak lagi menghitung ganda rincian Chart of Account maupun nilai Summary Export.
 

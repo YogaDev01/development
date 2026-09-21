@@ -67,4 +67,49 @@ final class BudgetConsumption
 
     /** Tidak pernah memakai budget. */
     public const NONE = ['DRAFT', 'REJECTED', 'CANCELLED'];
+
+    /*
+    |--------------------------------------------------------------------------
+    | BERAPA RUPIAH yang terpakai oleh satu Cost Request
+    |--------------------------------------------------------------------------
+    | Daftar status di atas menjawab "CR mana yang memakai anggaran". Bagian ini
+    | menjawab pertanyaan yang berbeda dan sama pentingnya: BERAPA nilainya.
+    |
+    | Aturannya:
+    |     Request + Second Payment   (bila Settlement melebihi pengajuan)
+    |     Request - Refund           (bila Settlement di bawah pengajuan)
+    |
+    | Keduanya bermuara pada angka yang sama — nilai Settlement — sehingga satu
+    | rumus cukup: pakai total realisasi bila CR sudah settle, pakai nilai
+    | pengajuan bila belum. Nilai pengajuan sendiri (kolom `amount`) tidak
+    | pernah berubah setelah Settlement, jadi menjumlahkannya langsung akan
+    | melewatkan Second Payment maupun Refund.
+    |
+    | Versi PHP-nya ada di BudgetRequest::realizedCostValue(). Yang di bawah ini
+    | versi SQL-nya, untuk query agregat yang tidak menghidrasi model.
+    */
+
+    /** Status yang settlement-nya sudah final (cermin BudgetRequest::SETTLED_STATUSES). */
+    public const SETTLED = ['SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'];
+
+    /**
+     * Ekspresi SQL nilai terpakai per baris Cost Request.
+     *
+     * Mengandaikan query-nya sudah di-LEFT JOIN dengan subquery realisasi yang
+     * dihasilkan realizationJoinSql(), memakai alias yang sama.
+     */
+    public static function usedValueSql(string $crTable = 'budget_request', string $realizationAlias = 'r'): string
+    {
+        $settled = "'" . implode("','", self::SETTLED) . "'";
+
+        return "CASE WHEN {$crTable}.status IN ({$settled}) AND COALESCE({$realizationAlias}.total, 0) > 0"
+             . " THEN {$realizationAlias}.total ELSE {$crTable}.amount END";
+    }
+
+    /** Subquery total realisasi per Cost Request, untuk di-LEFT JOIN. */
+    public static function realizationSubquerySql(): string
+    {
+        return '(SELECT budget_request_id, SUM(total) AS total'
+             . ' FROM budget_request_realizations GROUP BY budget_request_id)';
+    }
 }

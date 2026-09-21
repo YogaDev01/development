@@ -228,11 +228,34 @@ class FinanceSummaryController extends Controller
         $scopedCRs  = $costRequests->whereIn('budget_plan_id', $targetPlanIds);
         $usedCRs    = $scopedCRs->whereIn('status', self::USED_STATUSES);
         $usedCrIds  = $usedCRs->pluck('id');
-        $usedAmount = (int) $usedCRs->sum('amount');
 
-        $realizedAmount = $usedCrIds->isEmpty()
-            ? 0
-            : (int) BudgetRequestRealization::whereIn('budget_request_id', $usedCrIds)->sum('total');
+        /*
+        | Dana terpakai = Request + Second Payment (bila Settlement melebihi
+        | pengajuan) atau Request - Refund (bila di bawahnya). Dulu di sini
+        | SUM(amount) alias nilai pengajuan saja, sehingga Second Payment yang
+        | sudah ditransfer tidak pernah muncul sebagai serapan dan "Sisa Budget"
+        | selalu terlihat lebih besar dari kenyataan.
+        |
+        | $realizedAmount di bawah tetap apa adanya: ia memang mengukur hal lain
+        | (total baris realisasi yang masuk, termasuk yang belum settle) dan
+        | ditampilkan berdampingan sebagai metrik tersendiri.
+        */
+        $realizationPerCr = $usedCrIds->isEmpty()
+            ? collect()
+            : BudgetRequestRealization::whereIn('budget_request_id', $usedCrIds)
+                ->selectRaw('budget_request_id, SUM(total) as total')
+                ->groupBy('budget_request_id')
+                ->pluck('total', 'budget_request_id');
+
+        $usedAmount = (int) $usedCRs->sum(function ($cr) use ($realizationPerCr) {
+            $realized = (int) ($realizationPerCr[$cr->id] ?? 0);
+
+            return in_array($cr->status, \App\Support\BudgetConsumption::SETTLED, true) && $realized > 0
+                ? $realized
+                : (int) $cr->amount;
+        });
+
+        $realizedAmount = (int) $realizationPerCr->sum();
 
         $remainingBudget = max(0, $totalBudget - $usedAmount);
 
@@ -1288,14 +1311,30 @@ class FinanceSummaryController extends Controller
     /**
      * [project_id => rupiah] — versi massal dari Project::costRealizationTotal()
      * (2 query untuk semua project, bukan 1 query per project). Aturannya sama
-     * persis: Cost Request berstatus PAID/CLOSED atas Budget Plan milik PO itu.
+     * persis: Cost Request atas Budget Plan milik PO itu yang dananya sudah
+     * keluar, dihitung sebesar Request + Second Payment / Request - Refund.
+     *
+     * Nilainya TIDAK boleh SUM(amount): kolom `amount` adalah nilai pengajuan
+     * dan tidak pernah berubah setelah Settlement, sehingga Second Payment
+     * maupun Refund hilang dari angka PO. Rumusnya dipinjam dari
+     * BudgetConsumption supaya versi massal ini dan versi per-PO tidak bisa
+     * diam-diam berbeda.
      */
     private function costRealizationByProject(): array
     {
-        $totalPerPlan = \App\Models\BudgetRequest::selectRaw('budget_plan_id, SUM(amount) as total')
-            ->whereIn('status', ['PAID', 'CLOSED'])
-            ->whereNotNull('budget_plan_id')
-            ->groupBy('budget_plan_id')
+        $realizationSub = \App\Support\BudgetConsumption::realizationSubquerySql();
+        $usedValue      = \App\Support\BudgetConsumption::usedValueSql();
+
+        $totalPerPlan = \App\Models\BudgetRequest::selectRaw(
+                "budget_request.budget_plan_id, SUM({$usedValue}) as total"
+            )
+            ->leftJoin(
+                \Illuminate\Support\Facades\DB::raw($realizationSub . ' as r'),
+                'r.budget_request_id', '=', 'budget_request.id'
+            )
+            ->whereIn('budget_request.status', \App\Support\BudgetConsumption::DISBURSED)
+            ->whereNotNull('budget_request.budget_plan_id')
+            ->groupBy('budget_request.budget_plan_id')
             ->pluck('total', 'budget_plan_id');
 
         $projectPerPlan = \App\Models\BudgetPlan::whereNotNull('project_id')

@@ -115,4 +115,120 @@ class BudgetConsumptionTest extends TestCase
                 ->sum('amount'),
         );
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Kelebihan Settlement (Second Payment) ikut memakan anggaran
+    |--------------------------------------------------------------------------
+    | Selisih Settlement di atas nilai pengajuan dibayar lewat Second Payment,
+    | jadi uangnya benar-benar keluar dari budget ini. Dulu "Used" menjumlahkan
+    | kolom `amount` (nilai pengajuan) saja, sehingga kelebihan itu tidak pernah
+    | terlihat: uang keluar, sisa budget tidak berkurang.
+    */
+
+    public function test_kelebihan_settlement_ikut_mengurangi_budget(): void
+    {
+        $plan = $this->makeBudgetPlan(null, ['amount' => 10_000_000]);
+
+        $cr = $this->makeCostRequest([
+            'budget_plan' => $plan,
+            'amount'      => 2_000_000,
+            'status'      => 'SETTLE_VERIFIED',
+        ]);
+
+        // Settlement 3 juta atas pengajuan 2 juta -> Second Payment 1 juta.
+        $cr->realizations()->create([
+            'description' => 'Realisasi uji',
+            'amount'      => 3_000_000,
+            'qty'         => 1,
+            'total'       => 3_000_000,
+        ]);
+
+        $this->assertSame(
+            3_000_000,
+            $plan->fresh()->usedAmount(),
+            'Used harus mengikuti nilai Settlement, bukan nilai pengajuan.'
+        );
+
+        $this->assertSame(7_000_000, $plan->fresh()->remainingAmount());
+    }
+
+    public function test_pengecekan_nob_memperhitungkan_kelebihan_settlement(): void
+    {
+        $plan = $this->makeBudgetPlan(null, ['amount' => 10_000_000]);
+
+        $cr = $this->makeCostRequest([
+            'budget_plan' => $plan,
+            'amount'      => 8_000_000,
+            'status'      => 'SETTLE_VERIFIED',
+        ]);
+
+        // Settle di 9,5 juta -> selisih 1,5 juta dibayar lewat Second Payment.
+        $cr->realizations()->create([
+            'description' => 'Realisasi uji',
+            'amount'      => 9_500_000,
+            'qty'         => 1,
+            'total'       => 9_500_000,
+        ]);
+
+        // Sisa anggaran sesungguhnya tinggal 500 ribu, jadi pengajuan 1 juta
+        // berikutnya harus tertahan sebagai NOB. Dengan perhitungan lama
+        // (pakai nilai pengajuan 8 juta) sisanya terbaca 2 juta dan pengajuan
+        // ini lolos tanpa peringatan.
+        $response = $this->actingAs($this->userWithRole('superadmin'))
+            ->postJson('/budget-request/check-nob', [
+                'budget_plan_id' => $plan->id,
+                'amount'         => 1_000_000,
+            ]);
+
+        $response->assertOk();
+        $this->assertTrue(
+            (bool) $response->json('is_nob'),
+            'Kelebihan Settlement harus ikut dihitung saat pengecekan NOB.'
+        );
+    }
+
+    public function test_refund_settlement_tidak_dihitung_terpakai(): void
+    {
+        // Sisi sebaliknya dari kasus di atas: CR yang settle DI BAWAH pengajuan
+        // hanya memakai sebesar realisasinya, sisanya kembali jadi anggaran.
+        $plan = $this->makeBudgetPlan(null, ['amount' => 10_000_000]);
+
+        $cr = $this->makeCostRequest([
+            'budget_plan' => $plan,
+            'amount'      => 5_000_000,
+            'status'      => 'CLOSED',
+        ]);
+
+        $cr->realizations()->create([
+            'description' => 'Realisasi uji',
+            'amount'      => 3_000_000,
+            'qty'         => 1,
+            'total'       => 3_000_000,
+        ]);
+
+        $this->assertSame(3_000_000, $plan->fresh()->usedAmount());
+    }
+
+    public function test_cr_belum_settle_tetap_dihitung_penuh(): void
+    {
+        // Selama belum settle, nilai pengajuan penuh yang mengikat anggaran —
+        // realisasi yang masih diajukan belum boleh mengurangi apa pun.
+        $plan = $this->makeBudgetPlan(null, ['amount' => 10_000_000]);
+
+        $cr = $this->makeCostRequest([
+            'budget_plan' => $plan,
+            'amount'      => 5_000_000,
+            'status'      => 'REALIZED',
+        ]);
+
+        $cr->realizations()->create([
+            'description' => 'Realisasi uji',
+            'amount'      => 1_000_000,
+            'qty'         => 1,
+            'total'       => 1_000_000,
+        ]);
+
+        $this->assertSame(5_000_000, $plan->fresh()->usedAmount());
+    }
 }

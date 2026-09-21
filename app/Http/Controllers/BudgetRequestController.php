@@ -461,21 +461,34 @@ class BudgetRequestController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    private function isNOB(BudgetPlan $bp, int $amount, ?int $excludeCrId = null): bool
+    /**
+     * Anggaran yang sudah terikat pada satu Budget Plan.
+     *
+     * Daftar statusnya diambil dari BudgetConsumption::COMMITTED, bukan
+     * ditulis ulang di sini. Versi lama menuliskannya langsung dan lupa
+     * 'CHECKED' - CR yang sudah lolos Head tapi belum diverifikasi Finance
+     * tidak terhitung memakan anggaran, sehingga sisa budget yang dilaporkan
+     * selalu lebih besar dari kenyataan dan peringatan NOB terlambat muncul.
+     *
+     * Nilainya per CR memakai realizedCostValue(), bukan kolom `amount`: CR
+     * yang sudah settle di atas pengajuan (selisihnya dibayar lewat Second
+     * Payment) harus terhitung sebesar realisasinya. Kalau tidak, uang yang
+     * sudah keluar tidak pernah muncul sebagai anggaran terpakai dan
+     * pengajuan berikutnya lolos pemeriksaan NOB yang seharusnya menahannya.
+     */
+    private function committedUsed(BudgetPlan $bp, ?int $excludeCrId = null): int
     {
-        /*
-        | Daftar statusnya diambil dari BudgetConsumption::COMMITTED, bukan
-        | ditulis ulang di sini. Versi lama menuliskannya langsung dan lupa
-        | 'CHECKED' - CR yang sudah lolos Head tapi belum diverifikasi Finance
-        | tidak terhitung memakan anggaran, sehingga sisa budget yang dilaporkan
-        | selalu lebih besar dari kenyataan dan peringatan NOB terlambat muncul.
-        */
-        $used = BudgetRequest::where('budget_plan_id', $bp->id)
+        return (int) BudgetRequest::where('budget_plan_id', $bp->id)
             ->whereIn('status', BudgetConsumption::COMMITTED)
             ->when($excludeCrId, fn($q) => $q->where('id', '!=', $excludeCrId))
-            ->sum('amount');
+            ->withSum('realizations', 'total')
+            ->get(['id', 'status', 'amount'])
+            ->sum(fn ($cr) => $cr->realizedCostValue());
+    }
 
-        return ($used + $amount) > ($bp->amount ?? 0);
+    private function isNOB(BudgetPlan $bp, int $amount, ?int $excludeCrId = null): bool
+    {
+        return ($this->committedUsed($bp, $excludeCrId) + $amount) > ($bp->amount ?? 0);
     }
 
     /**
@@ -486,12 +499,7 @@ class BudgetRequestController extends Controller
      */
     private function nobOverage(BudgetPlan $bp, int $amount, ?int $excludeCrId = null): int
     {
-        $used = BudgetRequest::where('budget_plan_id', $bp->id)
-            ->whereIn('status', BudgetConsumption::COMMITTED)
-            ->when($excludeCrId, fn ($q) => $q->where('id', '!=', $excludeCrId))
-            ->sum('amount');
-
-        return (int) max(0, ($used + $amount) - ($bp->amount ?? 0));
+        return (int) max(0, ($this->committedUsed($bp, $excludeCrId) + $amount) - ($bp->amount ?? 0));
     }
 
     /*

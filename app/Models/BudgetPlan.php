@@ -217,11 +217,26 @@ class BudgetPlan extends Model
         };
     }
 
+    /**
+     * Nilai yang benar-benar keluar dari budget ini.
+     *
+     * Dulu ini menjumlahkan kolom `amount` (nilai PENGAJUAN) saja. Akibatnya
+     * kelebihan Settlement — yang dibayar lewat Second Payment — tidak pernah
+     * terlihat memakan anggaran: uangnya keluar, sisa budget tidak berkurang.
+     * Kebalikannya juga salah: CR yang settle di bawah pengajuan (ada refund)
+     * tetap dihitung penuh.
+     *
+     * Sekarang memakai realizedCostValue() per CR — nilai realisasi bila sudah
+     * settle, nilai pengajuan bila belum — sehingga konsisten dengan
+     * BudgetPlanDetail::usedAmount() yang memang sudah berbasis realisasi.
+     */
     public function usedAmount(): int
     {
-        return $this->costRequests()
+        return (int) $this->costRequests()
             ->whereIn('status', \App\Support\BudgetConsumption::DISBURSED)
-            ->sum('amount');
+            ->withSum('realizations', 'total')
+            ->get(['id', 'status', 'amount', 'budget_plan_id'])
+            ->sum(fn ($cr) => $cr->realizedCostValue());
     }
 
     public function remainingAmount(): int

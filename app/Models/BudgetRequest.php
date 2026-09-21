@@ -238,6 +238,13 @@ class BudgetRequest extends Model
             return (int) $this->realizations->sum('total');
         }
 
+        // withSum('realizations', 'total') menaruh hasilnya di atribut ini.
+        // Dipakai BudgetPlan::usedAmount() supaya satu Budget Plan cukup satu
+        // query agregat, bukan menghidrasi seluruh realisasi tiap CR-nya.
+        if ($this->realizations_sum_total !== null) {
+            return (int) $this->realizations_sum_total;
+        }
+
         if ($this->totalRealizationCache !== null) {
             return $this->totalRealizationCache;
         }
@@ -281,7 +288,7 @@ class BudgetRequest extends Model
     */
 
     /** Status yang dianggap sudah melewati settlement. */
-    public const SETTLED_STATUSES = ['SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'];
+    public const SETTLED_STATUSES = \App\Support\BudgetConsumption::SETTLED;
 
     public function isSettled(): bool
     {
@@ -335,9 +342,17 @@ class BudgetRequest extends Model
 
     private function relationLoadedRealizationsNotEmpty(): bool
     {
-        return $this->relationLoaded('realizations')
-            ? $this->realizations->isNotEmpty()
-            : $this->realizations()->exists();
+        if ($this->relationLoaded('realizations')) {
+            return $this->realizations->isNotEmpty();
+        }
+
+        // Hasil withSum() sudah cukup menjawab "ada realisasinya atau tidak",
+        // jadi tidak perlu query exists() tambahan per CR.
+        if ($this->realizations_sum_total !== null) {
+            return (int) $this->realizations_sum_total > 0;
+        }
+
+        return $this->realizations()->exists();
     }
 
     /** Selisih = Settlement (total realisasi) - Original Approved Amount. Dasar

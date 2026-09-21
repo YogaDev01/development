@@ -55,6 +55,7 @@ return [
                     'type'  => 'fixed',
                     'label' => 'Perbaikan',
                     'items' => [
+                        'Kelebihan Settlement yang dibayar lewat Second Payment kini ikut mengurangi sisa Budget Plan dan ikut dihitung saat pengecekan NOB — sebelumnya uangnya keluar tapi sisa anggaran tidak berkurang.',
                         'Second Payment tidak bisa lagi masuk ke dua batch sekaligus.',
                         'Batch yang memuat Second Payment tidak lagi menghitung ganda rincian Chart of Account maupun nilai Summary Export.',
                     ],

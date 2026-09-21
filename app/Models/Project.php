@@ -511,47 +511,69 @@ class Project extends Model
     }
 
     /**
-     * Total nilai Cost Request yang sudah benar-benar terpakai (PAID/REALIZED/CLOSED),
-     * dipakai untuk hitung Actual Gross Margin.
+     * Total dana yang sudah benar-benar terpakai, dipakai untuk hitung Actual
+     * Gross Margin.
+     *
+     * Nilainya per CR mengikuti aturan tunggal di BudgetConsumption:
+     *   Request + Second Payment  (Settlement melebihi pengajuan), atau
+     *   Request - Refund          (Settlement di bawah pengajuan).
+     * Dulu ini menjumlahkan kolom `amount` (nilai pengajuan) sehingga kelebihan
+     * maupun kekurangan Settlement tidak pernah terlihat.
      */
     public function actualUsedTotal(): int
     {
-        return (int) BudgetRequest::whereIn('budget_plan_id', $this->budgetPlans->pluck('id'))
-            ->whereIn('status', ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'])
-            ->sum('amount');
+        return $this->usedFundsTotal(\App\Support\BudgetConsumption::DISBURSED);
     }
 
     /**
-     * Kolom "Cost" pada index PO: total Cost Request yang sudah PAID atau CLOSED
+     * Kolom "Cost" pada index PO: dana yang sudah benar-benar keluar
      * (realisasi nyata, bukan sekadar diajukan).
+     *
+     * Dua hal yang dulu keliru di sini:
+     *   1. Nilainya dari kolom `amount`, sehingga Second Payment & Refund hilang.
+     *   2. Statusnya hanya PAID & CLOSED, sehingga CR yang sedang settle
+     *      (REALIZED/SETTLE_CHECKED/SETTLE_VERIFIED) menghilang sama sekali
+     *      dari kolom Cost padahal dananya sudah ditransfer.
+     * Keduanya kini mengikuti BudgetConsumption::DISBURSED.
      */
     public function costRealizationTotal(): int
     {
-        return (int) BudgetRequest::whereIn('budget_plan_id', $this->budgetPlans->pluck('id'))
-            ->whereIn('status', ['PAID', 'CLOSED'])
-            ->sum('amount');
+        return $this->usedFundsTotal(\App\Support\BudgetConsumption::DISBURSED);
     }
 
     /**
-     * Variable Cost atas Cost Request yang sudah jadi biaya nyata
-     * (PAID/REALIZED/CLOSED). Per pengajuan:
-     *   - kalau sudah ada realisasinya (REALIZED/CLOSED + punya baris realisasi) →
-     *     pakai nilai realisasi;
-     *   - kalau belum ada realisasinya → pakai nilai pengajuannya.
-     * Dipakai kolom "Variable Cost" index & tab Cost modal.
+     * Variable Cost atas Cost Request yang sudah jadi biaya nyata. Dipakai
+     * kolom "Variable Cost" index & tab Cost modal.
+     *
+     * Dulu punya aturan sendiri yang menganggap CR berstatus REALIZED sudah
+     * memakai nilai realisasi. Itu mendahului keputusan: pada REALIZED,
+     * Settlement baru diajukan dan belum diverifikasi Finance, jadi Second
+     * Payment/Refund-nya belum tentu sebesar itu. Sekarang ikut aturan tunggal
+     * BudgetConsumption - realisasi dipakai hanya setelah settle final.
      */
     public function variableCostTotal(): int
     {
-        return (int) BudgetRequest::whereIn('budget_plan_id', $this->budgetPlans->pluck('id'))
-            ->whereIn('status', ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'])
-            ->with('realizations')
-            ->get()
-            ->sum(function ($c) {
-                $hasRealization = in_array($c->status, ['REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'])
-                    && $c->realizations->isNotEmpty();
+        return $this->usedFundsTotal(\App\Support\BudgetConsumption::DISBURSED);
+    }
 
-                return $hasRealization ? (int) $c->total_realization : (int) $c->amount;
-            });
+    /**
+     * Penjumlahan dana terpakai atas Budget Plan milik PO ini, dengan aturan
+     * nilai tunggal dari BudgetConsumption. Ketiga metrik di atas hanya berbeda
+     * pada nama & pemakaiannya, jadi rumusnya cukup ditulis sekali di sini.
+     */
+    private function usedFundsTotal(array $statuses): int
+    {
+        $planIds = $this->budgetPlans->pluck('id');
+
+        if ($planIds->isEmpty()) {
+            return 0;
+        }
+
+        return (int) BudgetRequest::whereIn('budget_plan_id', $planIds)
+            ->whereIn('status', $statuses)
+            ->withSum('realizations', 'total')
+            ->get()
+            ->sum(fn ($cr) => $cr->realizedCostValue());
     }
 
     /**
