@@ -1,0 +1,222 @@
+/*
+ * Tesys UI — interaksi dasar layout baru.
+ * Vanilla JS, tidak butuh jQuery. Aman berdampingan dengan jQuery/AdminLTE lama.
+ */
+(function () {
+    'use strict';
+
+    var csrf = document.querySelector('meta[name="csrf-token"]');
+    var CSRF = csrf ? csrf.getAttribute('content') : '';
+
+    /* ---------------- Dropdown akun (Profile / Logout) ---------------- */
+    var userBtn = document.getElementById('userBtn');
+    var userPop = document.getElementById('userPop');
+    if (userBtn && userPop) {
+        userBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            userPop.classList.toggle('open');
+            userBtn.classList.toggle('open');
+        });
+        document.addEventListener('click', function (e) {
+            if (!userPop.contains(e.target) && !userBtn.contains(e.target)) {
+                userPop.classList.remove('open');
+                userBtn.classList.remove('open');
+            }
+        });
+    }
+
+    var menuLogout = document.getElementById('menuLogout');
+    var logoutOverlay = document.getElementById('logoutOverlay');
+    if (menuLogout && logoutOverlay) {
+        menuLogout.addEventListener('click', function () {
+            if (userPop) userPop.classList.remove('open');
+            if (userBtn) userBtn.classList.remove('open');
+            logoutOverlay.classList.add('open');
+        });
+    }
+
+    /* ---------------- Overlay / modal generik ---------------- */
+    function closeOverlay(el) { if (el) el.classList.remove('open'); }
+
+    document.addEventListener('click', function (e) {
+        var closer = e.target.closest('.js-close-modal');
+        if (closer) closeOverlay(closer.closest('.overlay'));
+    });
+    document.querySelectorAll('.overlay').forEach(function (ov) {
+        ov.addEventListener('click', function (e) { if (e.target === ov) closeOverlay(ov); });
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') document.querySelectorAll('.overlay.open').forEach(closeOverlay);
+    });
+
+    window.TesysUI = window.TesysUI || {};
+    window.TesysUI.openModal = function (id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.add('open');
+    };
+    window.TesysUI.closeModal = function (id) { closeOverlay(document.getElementById(id)); };
+
+    /* ---------------- Toast ---------------- */
+    window.TesysUI.toast = function (type, title, msg) {
+        var stack = document.getElementById('toastStack');
+        if (!stack) return;
+        var el = document.createElement('div');
+        el.className = 'toast toast-' + (type || 'info');
+        var icon = type === 'success' ? '✓' : ((type === 'error' || type === 'warning') ? '!' : 'i');
+        el.innerHTML = '<div class="toast-ic">' + icon + '</div><div><div class="toast-title"></div>'
+            + '<div class="toast-msg"></div></div>';
+        el.querySelector('.toast-title').textContent = title || '';
+        el.querySelector('.toast-msg').textContent = msg || '';
+        stack.appendChild(el);
+        requestAnimationFrame(function () { el.classList.add('show'); });
+        setTimeout(function () {
+            el.classList.remove('show');
+            setTimeout(function () { el.remove(); }, 250);
+        }, 4200);
+    };
+
+    /*
+      Keadaan sibuk pada tombol aksi. Dipakai saat form dikirim dan halaman
+      akan dimuat ulang — tanpa ini, menekan Approve tidak memberi tanda apa
+      pun sampai halaman berganti.
+
+      Label tidak dihapus, hanya disembunyikan, supaya lebar tombol tetap.
+    */
+    window.TesysUI.busy = function (el, aktif) {
+        var node = typeof el === 'string' ? document.querySelector(el) : el;
+        if (!node) return;
+
+        if (aktif === false) {
+            node.classList.remove('is-busy');
+            node.removeAttribute('aria-busy');
+            node.style.width = '';
+            node.style.height = '';
+            node.style.removeProperty('--ts-busy-color');
+            return;
+        }
+
+        var kotak = node.getBoundingClientRect();
+        node.style.setProperty('--ts-busy-color', window.getComputedStyle(node).color);
+        if (kotak.width) {
+            node.style.width = kotak.width + 'px';
+            node.style.height = kotak.height + 'px';
+        }
+        node.classList.add('is-busy');
+        node.setAttribute('aria-busy', 'true');
+    };
+
+    /*
+      API toast yang dipakai halaman: toast.success('Tersimpan', 'Perubahan
+      sudah disimpan.'). Membungkus TesysUI.toast yang sudah ada — sengaja
+      tidak membuat implementasi kedua.
+
+      SweetAlert tetap dipakai untuk konfirmasi dan aksi merusak; toast hanya
+      untuk memberi tahu hasil sebuah aksi.
+    */
+    window.toast = {
+        success: function (title, msg) { window.TesysUI.toast('success', title, msg); },
+        error:   function (title, msg) { window.TesysUI.toast('error',   title, msg); },
+        warning: function (title, msg) { window.TesysUI.toast('warning', title, msg); },
+        info:    function (title, msg) { window.TesysUI.toast('info',    title, msg); }
+    };
+
+    /* ---------------- Notifikasi (bell) ---------------- */
+    var notifBtn = document.getElementById('notifBtn');
+    var notifPop = document.getElementById('notifPop');
+    var notifList = document.getElementById('notifList');
+    var notifDot = document.getElementById('notifDot');
+    var notifLoaded = false;
+
+    function renderNotif(items) {
+        if (!items || !items.length) {
+            notifList.innerHTML = '<div class="empty-state" style="padding:26px 16px;">'
+                + '<div class="et">Tidak ada notifikasi</div>'
+                + '<div class="ed">Notifikasi baru akan muncul di sini.</div></div>';
+            return;
+        }
+        var colors = {
+            success: ['var(--success-bg)', 'var(--success)', '✓'],
+            danger: ['var(--danger-bg)', 'var(--danger)', '!'],
+            warning: ['var(--warning-bg)', 'var(--warning)', '!'],
+            info: ['var(--info-bg)', 'var(--info)', 'i']
+        };
+        notifList.innerHTML = items.slice(0, 8).map(function (n) {
+            var c = colors[n.color || n.type] || colors.info;
+            var href = n.url || '#';
+            return '<a href="' + href + '" class="notif-item" style="text-decoration:none;color:inherit;">'
+                + '<div class="notif-ic" style="background:' + c[0] + ';color:' + c[1] + ';">' + c[2] + '</div>'
+                + '<div><div class="tname" style="font-size:12px;">' + (n.title || n.message || '') + '</div>'
+                + '<div class="tsub">' + (n.time || n.created_at_human || '') + '</div></div></a>';
+        }).join('');
+    }
+
+    function loadNotif() {
+        if (notifLoaded || !notifList || !window.TESYS_NOTIF_URL) return;
+        notifLoaded = true;
+        fetch(window.TESYS_NOTIF_URL, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var items = data.items || data.data || data.notifications || [];
+                renderNotif(items);
+                if (notifDot && (data.unread || items.length)) notifDot.hidden = false;
+            })
+            .catch(function () {
+                notifList.innerHTML = '<div class="empty-state" style="padding:26px 16px;">'
+                    + '<div class="et">Gagal memuat notifikasi</div>'
+                    + '<div class="ed">Periksa koneksi lalu coba lagi.</div></div>';
+                notifLoaded = false;
+            });
+    }
+
+    if (notifBtn && notifPop) {
+        notifBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            notifPop.classList.toggle('open');
+            if (notifPop.classList.contains('open')) loadNotif();
+        });
+        document.addEventListener('click', function (e) {
+            if (!notifPop.contains(e.target) && !notifBtn.contains(e.target)) notifPop.classList.remove('open');
+        });
+    }
+
+    var notifReadAll = document.getElementById('notifReadAll');
+    if (notifReadAll && window.TESYS_NOTIF_READ_ALL_URL) {
+        notifReadAll.addEventListener('click', function () {
+            fetch(window.TESYS_NOTIF_READ_ALL_URL, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': CSRF, 'X-Requested-With': 'XMLHttpRequest' }
+            }).then(function () {
+                if (notifDot) notifDot.hidden = true;
+                window.TesysUI.toast('success', 'Notifikasi dibaca', 'Semua notifikasi ditandai sudah dibaca.');
+            });
+        });
+    }
+
+    /* ---------------- Tabs (data-tab / data-tab-panel) ---------------- */
+    document.querySelectorAll('[data-tab-group]').forEach(function (group) {
+        group.querySelectorAll('[data-tab]').forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                var key = tab.getAttribute('data-tab');
+                group.querySelectorAll('[data-tab]').forEach(function (t) { t.classList.remove('active'); });
+                tab.classList.add('active');
+                document.querySelectorAll('[data-tab-panel][data-tab-owner="' + group.getAttribute('data-tab-group') + '"]')
+                    .forEach(function (p) {
+                        p.style.display = (p.getAttribute('data-tab-panel') === key) ? '' : 'none';
+                    });
+            });
+        });
+    });
+
+    /* ---------------- Konfirmasi hapus (data-confirm) ---------------- */
+    document.addEventListener('submit', function (e) {
+        var form = e.target;
+        if (!form.hasAttribute('data-confirm')) return;
+        if (form.dataset.confirmed === '1') return;
+        e.preventDefault();
+        var msg = form.getAttribute('data-confirm') || 'Yakin ingin melanjutkan?';
+        if (window.confirm(msg)) {
+            form.dataset.confirmed = '1';
+            form.submit();
+        }
+    });
+})();

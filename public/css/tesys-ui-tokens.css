@@ -1,0 +1,556 @@
+/* =====================================================================
+   Tesys UI — TOKENS + komponen tambahan
+   ---------------------------------------------------------------------
+   File ini AMAN ditempel ke layout lama (layouts/app.blade.php).
+   Isinya hanya variabel warna/radius/shadow + komponen baru yang TIDAK
+   bertabrakan dengan class AdminLTE/Bootstrap (.shell/.sidebar/.content
+   milik mockup sengaja TIDAK disertakan di sini).
+
+   Ini SATU-SATUNYA tempat nilai warna/radius/jarak/bayangan didefinisikan.
+   Lapisan sesudahnya (components, compat, pages, shell) hanya memakai
+   var(--…), jadi mengubah satu nilai di sini berlaku ke seluruh modul.
+
+   Urutan pemuatan di layouts/app.blade.php:
+     base -> tesys-ui -> TOKENS (file ini) -> components -> compat
+          -> pages -> shell -> motion
+   ===================================================================== */
+
+:root {
+
+    /* =================================================================
+       1. PERMUKAAN & TEKS  —  RUANG KERJA TERANG
+       Nilai diambil langsung dari spesifikasi: latar #F7F7F5, kartu putih
+       murni, teks #1D2125, teks sekunder #6B7075, garis #E4E5E3.
+
+       Netral ini nyaris tanpa arah warna — sedikit sekali ke hijau-abu,
+       bukan ke biru seperti abu SaaS pada umumnya dan bukan ke kuning
+       seperti percobaan "putih kertas" sebelumnya. Netral yang benar-benar
+       netral adalah yang paling tidak menarik perhatian, dan di layar yang
+       isinya angka keuangan seharian, itu justru yang diinginkan.
+
+       Kontras teks utama 15.9:1 di atas kartu.
+
+       Empat nilai turunan (--surface-2/3, --border-strong, --text-dim)
+       disisipkan di antara angka spesifikasi supaya skalanya tetap punya
+       anak tangga untuk isian lembut, keadaan tekan, dan teks sekunder.
+       ================================================================= */
+    /* LATAR PUTIH MURNI, NETRAL TANPA ARAH WARNA.
+
+       Nilai sebelumnya (#f6f6f4 dan seluruh keluarganya) punya biru satu
+       sampai dua tingkat di bawah merah dan hijau. Selisih sekecil itu
+       tidak terlihat kalau sewarnanya berdiri sendiri, tapi sebidang
+       penuh layar membuatnya terbaca kekuningan — dan di sebelah kartu
+       putih murni, perbedaannya jadi jelas.
+
+       Sekarang latar halaman sama putihnya dengan kartu. Kartu tetap
+       terbaca karena ia memang tidak pernah mengandalkan beda warna:
+       bentuknya dibuat oleh garis tepi 1px, sesuai keputusan di bagian
+       BAYANGAN ("kartu biasa memakai garis tepi, bukan bayangan").
+
+       Netral sisanya dibuat benar-benar netral — R, G, dan B berdekatan
+       tanpa condong ke mana pun. Konsekuensinya header tabel, chip, dan
+       keadaan hover kini jadi satu-satunya pembeda permukaan, sehingga
+       nilainya sengaja tidak ikut diputihkan. */
+    --bg:            #ffffff;
+    --surface:       #ffffff;
+    --surface-2:     #f4f4f5;   /* isian lembut: header tabel, chip, hover */
+    --surface-3:     #e9e9eb;   /* isian tekan / pembatas blok             */
+    --border:        #e4e4e7;
+    --border-strong: #d0d0d5;
+
+    --text:       #202326;      /* judul & angka                          */
+    --text-dim:   #55595e;      /* teks sekunder                          */
+
+    /* CATATAN KONTRAS — DIPERBAIKI.
+
+       Nilai sebelumnya (#8A8E92) diambil apa adanya dari spesifikasi dan
+       hanya 3,3:1 di atas kartu putih — di bawah ambang AA 4,5:1 untuk
+       huruf kecil. Audit tema gelap menunjukkan ada 10 komponen yang
+       bergantung padanya: teks pudar, header tabel, teks bantuan form,
+       label tab tidak aktif, pesan keadaan kosong, kaki popup, label stat
+       card, pesan toast, dan tombol tutup modal. Semuanya teks kecil, dan
+       semuanya gagal.
+
+       Dinaikkan ke #6A6E72 (5,1:1 di kartu, 4,5:1 di permukaan paling
+       redup). --text-dim ikut digelapkan ke #55595E supaya jarak antar
+       tingkat tidak runtuh — kalau hanya faint yang dinaikkan, ia praktis
+       menyamai dim dan hierarki tiga tingkatnya hilang.
+
+       Hasilnya: 15,8 / 7,1 / 5,1 — tiga anak tangga yang jelas, ketiganya
+       lolos AA di seluruh permukaan terang. */
+    --text-faint: #6a6e72;      /* keterangan/metadata                    */
+
+    /* =================================================================
+       1b. CHROME GELAP — sidebar & topbar
+       Isi halaman tetap terang; yang digelapkan hanya bingkainya.
+       Token di bawah ini BUKAN kebalikan dari token permukaan di atas:
+       ia palet tersendiri untuk navigasi, supaya mengubah warna kartu
+       tidak ikut mengubah warna sidebar dan sebaliknya.
+
+       Sidebar dan topbar kini BERBEDA, tidak lagi satu warna. Sidebar
+       burgundy nyaris hitam (#180D11), topbar charcoal yang jelas lebih
+       terang (#30292B).
+
+       Dulu keduanya disamakan karena versi lama pernah memakai topbar
+       arang di sebelah sidebar PUTIH, dan itu membentuk "L" dua warna.
+       Masalahnya bukan bedanya, melainkan bedanya terlalu jauh. Dua nada
+       gelap yang berdekatan justru memberi kedalaman: navigasi paling
+       dalam, topbar satu lapis di atasnya, isi halaman paling depan.
+
+       Nada teks dihangatkan. Abu kebiruan di atas latar kemerahan terbaca
+       kehijauan. #d2ccce = 11,9:1 di sidebar dan 8,6:1 di topbar.
+       Teks pudar punya dua nilai karena topbar lebih terang: #948c8e
+       (5,8:1 di sidebar) tidak cukup di topbar, jadi topbar memakai
+       #a39a9c (5,1:1).
+       ================================================================= */
+    --chrome:        #180d11;   /* sidebar                                */
+    --chrome-2:      #24171a;   /* hover item navigasi                    */
+    --chrome-3:      #2e1e22;   /* item tekan / pembatas di dalam chrome  */
+    --chrome-border: #241519;   /* garis pemisah chrome dengan isi        */
+    --chrome-text:   #d2ccce;
+    --chrome-dim:    #948c8e;
+
+    /* Topbar: satu lapis di atas sidebar, dan SEKELUARGA dengannya.
+
+       #30292B sebelumnya nyaris arang netral. Berdiri sendiri ia baik-baik
+       saja, tapi ia bertemu sidebar burgundy-hitam di pojok kiri atas, dan
+       di pertemuan itu abu netral terbaca agak kotor — seperti dua potong
+       chrome dari dua aplikasi berbeda. Nadanya digeser ke keluarga
+       burgundy yang sama: masih jelas satu langkah lebih terang daripada
+       sidebar, tapi kini keduanya terbaca sebagai satu bingkai.
+
+       Yang TIDAK dilakukan: menjadikannya burgundy jenuh (#92232B).
+       Sebidang merah selebar layar di puncak halaman akan memakan jatah
+       merah yang sudah ditetapkan 20%, dan begitu merah ada di mana-mana
+       ia berhenti berarti "ini aksinya". Merah harus tetap mahal.
+
+       Kontras di atas #2E2023: putih 15,6:1, --topbar-dim 5,7:1. */
+    --topbar:      #2e2023;
+    --topbar-2:    #3b2a2e;     /* hover tombol ikon di topbar            */
+    --topbar-3:    #48343a;     /* garis tepi tombol di topbar            */
+    --topbar-dim:  #a59a9d;     /* remah jejak & placeholder cari         */
+
+    /* Keadaan aktif. Waktu chrome-nya abu netral, burgundy redup sudah
+       cukup menonjol. Sekarang seluruh sidebar burgundy, jadi nilai lama
+       (#2b151a) nyaris tak terbaca beda dari latarnya — aktifnya dinaikkan
+       ke kejenuhan yang jelas lebih tinggi, bukan sekadar lebih terang. */
+    --chrome-active: #401a20;
+
+    /* tesys-ui.css mendefinisikan sidebar putih lewat token --sidebar*.
+       Berkas ini dimuat sesudahnya, jadi mengarahkan token itu ke palet
+       chrome sudah cukup untuk menggelapkan latar sidebar, garis tepinya,
+       dan latar label seksi yang menempel saat digulir — tanpa menyentuh
+       satu pun token permukaan yang dipakai isi halaman. */
+    --sidebar:        var(--chrome);
+    --sidebar-text:   var(--chrome-text);
+    --sidebar-border: var(--chrome-border);
+    --sidebar-active: var(--accent-chrome-bg);
+    --sidebar-text-dim: #8b93a3;   /* label seksi 9,5px — 5,3:1 di chrome */
+
+    /* Charcoal identitas TESYS — avatar, lambang, badge gelap. */
+    /* Charcoal dipakai untuk avatar, badge gelap, dan PANEL RINGKAS di
+       sisi kiri modal detail. Nilainya dari spesifikasi (#35353D): netral
+       dalam, sengaja BUKAN burgundy. Panel ringkas berdiri di dalam area
+       kerja terang, bukan di bingkai — memberinya warna navigasi akan
+       membuatnya terbaca seperti potongan sidebar yang nyasar. */
+    --charcoal:   #35353d;
+    --charcoal-2: #4a4a54;
+
+    /* =================================================================
+       2. MERAH TESYS
+       Satu-satunya warna bermuatan "aksi". Tidak dipakai sebagai hiasan.
+       #d71920 pada putih = 5.2:1; putih di atasnya juga 5.2:1, jadi aman
+       dipakai dua arah (teks merah maupun tombol merah).
+       ================================================================= */
+    --accent:      #92232b;
+    --accent-dark: #7e1c24;
+    --accent-soft: #c58a8f;     /* garis tepi / keadaan hover ringan      */
+    --accent-tint:   #f4e7e8;   /* latar chip & menu aktif                */
+    --accent-tint-2: #ead2d4;   /* garis tepi di atas latar tint          */
+    --accent-text: #92232b;     /* 7,4:1 di atas putih, 6,4:1 di atas tint*/
+    --accent-ring: rgba(146, 35, 43, .20);
+
+    /* Merah di ATAS chrome gelap. #d71920 di atas #17191c hanya 3,5:1 —
+       cukup untuk bidang berisi (batang penanda, titik), tidak cukup untuk
+       teks. Karena itu menu aktif TIDAK lagi memakai teks merah: penandanya
+       batang tipis dan titik merah, sedangkan tulisannya justru dibuat
+       lebih terang. Nada di bawah hanya untuk tautan sesekali di chrome. */
+    --accent-on-chrome: #d98a90;
+
+    /* CATATAN: --accent-chrome-bar (#c8323c) dan --accent-chrome-text
+       (#ec6a72) sempat ada di sini untuk menandai menu aktif dengan batang
+       dan tulisan merah. Keduanya DILEPAS ketika bentuk finalnya berubah
+       jadi bidang merah penuh dengan tulisan putih — --accent sudah cukup
+       untuk bidang, dan putih sudah cukup untuk tulisan di atasnya. Tidak
+       ada token yang tersisa tanpa pemakai. */
+    --accent-chrome-bg: var(--chrome-active);
+
+    /* =================================================================
+       2b. EMAS — satu-satunya penanda "mewah"
+       Dipakai SANGAT hemat dan HANYA di dalam chrome gelap: garis rambut
+       di bawah blok merek dan di kaki topbar. Emas hanya terbaca mahal
+       kalau ia langka; begitu dipakai untuk tombol atau status, ia turun
+       jadi sekadar warna kuning kedua yang bersaing dengan --warning.
+       ================================================================= */
+    --gold:      #a88b5a;
+    --gold-dim:  rgba(168, 139, 90, .22);
+    --gold-line: linear-gradient(90deg, rgba(168,139,90,0), rgba(168,139,90,.55), rgba(168,139,90,0));
+
+    /* =================================================================
+       3. WARNA SEMANTIK
+       Enam arti, bukan sebelas warna. Setiap pasangan teks/latar sudah
+       dicek >= 4.5:1 sehingga badge kecil tetap terbaca.
+
+         merah  = kritis / ditolak        kuning = menunggu
+         hijau  = selesai / disetujui     biru   = informasi
+         abu    = draft / nonaktif        ungu   = analitis / khusus
+       ================================================================= */
+    --success: #47705a;  --success-bg: #e8efea;
+    /* #8a6d32 diganti #7f6328 setelah audit kontras. Nilai lama hanya
+       4,20:1 di atas --warning-bg, di bawah ambang AA 4,5 untuk huruf
+       kecil — dan badge "Pending" adalah salah satu status yang paling
+       sering muncul di aplikasi ini, jadi kegagalannya tidak sesekali.
+       Nilai baru 4,88:1, masih di keluarga amber yang sama. Lima badge
+       semantik lain sudah lolos dan tidak disentuh. */
+    --warning: #7f6328;  --warning-bg: #f3eee1;
+    --orange:  #8a5a32;  --orange-bg:  #f3eae1;
+    --danger:  #9a3030;  --danger-bg:  #f4e6e6;
+    --info:    #42627d;  --info-bg:    #e6ecf1;
+    --purple:  #5b4a73;  --purple-bg:  #ece8f1;
+
+    /* --primary dipakai .badge-primary: biru = informasi, disamakan
+       dengan --info supaya tidak ada dua nada biru yang bersaing. */
+    --primary: #42627d;  --primary-bg: #e6ecf1;
+
+    /* Abu = draft / nonaktif. */
+    --darkbadge: #5a5f63; --darkbadge-bg: #ecedeb;
+
+    /* =================================================================
+       4. RADIUS
+       Tombol & input 3 - kartu 4 - drawer & modal 6 - avatar bulat.
+
+       Rentang dari spesifikasi: tombol & input 6-8, kartu & tabel 8-10,
+       modal 8-12. Diambil nilai terendah tiap rentang.
+
+       Percobaan sebelumnya memakai 3/4/6 dan itu terlalu jauh: sudut
+       nyaris tegas membuat antarmuka terbaca keras dan teknis, bukan
+       mapan. Yang dicari presisi, bukan kekakuan — 6/8/10 sudah cukup
+       menjauh dari 8/12/16 yang terasa seperti aplikasi konsumen.
+
+       --radius-pill tersisa untuk yang memang bundar: avatar dan titik
+       penanda status.
+       ================================================================= */
+    --radius-sm:   6px;    /* tombol, input, chip, menu item */
+    --radius-md:   8px;    /* kartu, panel, tabel, dropdown  */
+    --radius-lg:   10px;   /* drawer, modal, command palette */
+    --radius-pill: 999px;
+
+    /* =================================================================
+       5. BAYANGAN
+       Hanya untuk elemen yang benar-benar mengambang (modal, drawer,
+       dropdown, popup). Kartu biasa memakai garis tepi, bukan bayangan —
+       halaman jadi tenang dan hierarki tetap terbaca.
+       ================================================================= */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, .03);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, .04);
+    --shadow-md: 0 4px 14px rgba(0, 0, 0, .06);
+    --shadow-lg: 0 10px 30px rgba(0, 0, 0, .10);
+    --shadow-accent: 0 1px 2px rgba(146, 35, 43, .14);
+
+    /* Sidebar gelap berdiri di atas halaman terang, jadi tepinya butuh
+       bayangan yang lebih dalam daripada bayangan kartu — tanpa itu
+       perpindahan gelap-ke-terang terbaca sebagai potongan, bukan lapis. */
+    --shadow-chrome: 1px 0 0 var(--chrome-border), 4px 0 16px rgba(0, 0, 0, .10);
+
+    /* Kurva & durasi animasi — satu sumber supaya gerakan terasa seragam. */
+    --ease: cubic-bezier(.4, 0, .2, 1);
+    --ease-out: cubic-bezier(.16, 1, .3, 1);
+    --dur-fast: .14s;
+    --dur: .22s;
+    --dur-slow: .25s;   /* batas atas dari spesifikasi: 150-250ms */
+
+    /* =================================================================
+       6. SKALA JARAK — kelipatan 4px
+       4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 / 48. Dipakai untuk padding
+       komponen dan jarak antar blok supaya ritmenya sama di semua modul.
+       ================================================================= */
+    --sp-1: 4px;   --sp-2: 8px;   --sp-3: 12px;  --sp-4: 16px;
+    --sp-5: 20px;  --sp-6: 24px;  --sp-8: 32px;  --sp-10: 40px;
+    --sp-12: 48px;
+
+    /* =================================================================
+       7. TIPOGRAFI
+       Ukuran dipilih per PERAN, bukan per halaman; bobot mengikuti
+       tingkatannya: judul 700, seksi 600, label 500, isi 400.
+       ================================================================= */
+    --fs-page:    19px;    /* judul halaman di topbar        */
+    --fs-section: 13.5px;  /* judul kartu / seksi            */
+    --fs-body:    13px;    /* teks isi                       */
+    --fs-label:   11.5px;  /* label field, header tabel      */
+    --fs-caption: 10.5px;  /* keterangan, meta, status kecil */
+    --fs-data:    12.5px;  /* angka di tabel                 */
+
+    --fw-heading: 700;
+    --fw-section: 600;
+    --fw-label:   500;
+    --fw-body:    400;
+
+    /* =================================================================
+       7b. MUKA HURUF
+       Serif kontras tinggi sempat dicoba dan dilepas: itu bahasa mode dan
+       hotel, bukan bahasa perangkat lunak perusahaan. Spesifikasi menutup
+       pintunya secara tegas — "luxury-fashion aesthetics" masuk daftar
+       hindari, dan daftar muka huruf yang disarankan seluruhnya sans.
+
+       Jadi tetap dua yang sudah ada di proyek: Plus Jakarta Sans untuk
+       judul, Inter untuk isi. Kesan mapan dikerjakan oleh hierarki,
+       proporsi, dan jarak — bukan oleh muka huruf yang menarik perhatian.
+       ================================================================= */
+    --font-display: "Plus Jakarta Sans", -apple-system, "Segoe UI", sans-serif;
+    --font-body: "Inter", -apple-system, "Segoe UI", sans-serif;
+
+    /* Jarak huruf untuk label kapital kecil (header tabel, label seksi).
+       Sengaja tipis: spesifikasi meminta "slight letter spacing". Nilai
+       lebar (.14em) terbaca sebagai judul katalog, bukan label data. */
+    --ls-micro: .06em;
+
+    /* =================================================================
+       8. JEMBATAN TOKEN LAMA (navy + amber)
+       tesys-ui-base.css masih mendefinisikan --navy/--amber, dan puluhan
+       blade memakainya lewat var(). Karena file ini dimuat SESUDAHNYA,
+       definisi di sini menang — semua pemakaian lama ikut palet baru
+       tanpa perlu menyunting blade satu per satu.
+       ================================================================= */
+    --navy:         #35353d;
+    --navy-mid:     #4a4a54;
+    --navy-lt:      #ffffff;
+    --amber:        #92232b;
+    --amber-dk:     #7e1c24;
+    --amber-tint:   #f4e7e8;
+    --amber-border: #ead2d4;
+    --text-muted:   #8a8e92;
+    --border-soft:  #e4e4e7;
+    --body-bg:      #ffffff;
+    --card-bg:      #ffffff;
+
+    /* Cahaya tipis di puncak area kerja (lihat tesys-ui-motion.css).
+       Ditulis BERPASANGAN — nada berisi dan nada yang sama dengan alfa nol.
+
+       Perhentian kedua tidak boleh "transparent" atau warna lain beralfa
+       nol: peramban menginterpolasi gradien di ruang sRGB, jadi dari putih
+       menuju rgba(0,0,0,0) nilai RGB-nya bergerak ke arah hitam sementara
+       alfanya turun — muncul kabut abu di tengah peluruhan. Warna yang sama
+       dengan alfa nol meluruh bersih. */
+    --main-glow:   rgba(255, 255, 255, .70);
+    --main-glow-0: rgba(255, 255, 255, 0);
+
+    /* Pasangan alfa-nol untuk --sidebar (peluruhan di kaki menu rail). */
+    --sidebar-fade: rgba(24, 13, 17, 0);
+}
+
+/* =====================================================================
+   TEMA GELAP
+   ---------------------------------------------------------------------
+   Seluruh aplikasi membaca warnanya dari token di atas, jadi tema kedua
+   cukup menukar NILAI token yang sama — tidak ada satu pun aturan di
+   berkas lain yang perlu disentuh, dan tidak ada kelas tambahan yang
+   perlu dipasang di markup.
+
+   Tiga hal yang sengaja TIDAK ikut berubah:
+
+   1. --accent (#92232B). Merah merek harus sama di kedua tema; kalau ia
+      ikut bergeser, identitasnya jadi bergantung pada preferensi
+      tampilan.
+   2. Arti warna semantik. Hijau tetap "selesai", kuning tetap
+      "menunggu". Yang berubah hanya TERANGNYA: di tema terang, warna
+      semantik adalah tinta gelap di atas kertas; di tema gelap ia harus
+      jadi tinta terang, kalau tidak badge-nya berubah jadi bercak hitam.
+   3. Prinsip "navigasi gelap". Sidebar memang sudah gelap sejak awal —
+      di tema gelap ia dibuat SATU LANGKAH lebih dalam lagi supaya tetap
+      terbaca sebagai bingkai, bukan melebur dengan isi halaman yang kini
+      ikut gelap. Ini bagian yang paling mudah salah: kalau chrome dan isi
+      halaman sama gelapnya, seluruh struktur aplikasi hilang.
+
+   Permukaannya dinaikkan bertingkat (#121215 -> #1A1A1E -> #212126)
+   supaya kartu di atas halaman, dan menu di atas kartu, tetap punya
+   urutan kedalaman yang sama seperti di tema terang.
+   ===================================================================== */
+html[data-theme="dark"] {
+
+    /* --------------------------------------------- permukaan & teks */
+    --bg:            #121215;
+    --surface:       #1a1a1e;
+    --surface-2:     #212126;
+    --surface-3:     #2a2a30;
+    --border:        #2e2e35;
+    --border-strong: #3d3d45;
+
+    /* Kontras di atas --surface: teks utama 12,1:1, sekunder 6,4:1,
+       pudar 4,6:1. Ketiganya lolos AA. */
+    --text:       #e8e8ea;
+    --text-dim:   #a8a8b0;
+    --text-faint: #86868f;
+
+    /* ------------------------------------------------ navigasi gelap */
+    --chrome:        #0e090b;
+    --chrome-2:      #1a1114;
+    --chrome-3:      #241619;
+    --chrome-border: #1d1316;
+    --chrome-text:   #d6d0d2;
+    --chrome-dim:    #968e90;
+    --chrome-active: #461d24;
+
+    --topbar:      #1b1518;
+    --topbar-2:    #292023;
+    --topbar-3:    #362b2f;
+    --topbar-dim:  #a29a9c;
+
+    --sidebar-text-dim: #8d8d99;
+
+    /* Charcoal untuk panel ringkas modal detail — dinaikkan sedikit
+       supaya tetap terbaca terangkat di atas permukaan yang kini gelap. */
+    --charcoal:   #26262d;
+    --charcoal-2: #35353e;
+
+    /* ------------------------------------------------------- merek */
+    /* --accent & --accent-dark sengaja tidak diubah. Yang diubah hanya
+       turunannya yang berperan sebagai LATAR atau TEKS di atas latar
+       gelap: #92232B sebagai teks di atas #33191D hanya 1,5:1. */
+    --accent-soft:   #a8424a;
+    --accent-tint:   #33191d;
+    --accent-tint-2: #4a2228;
+    --accent-text:   #e2949a;
+    --accent-ring:   rgba(146, 35, 43, .38);
+    --accent-on-chrome: #e09aa0;
+
+    /* -------------------------------------------------- semantik */
+    --success: #7fb096;  --success-bg: #1b2a22;
+    --warning: #c9a65e;  --warning-bg: #2b2418;
+    --orange:  #c98d5e;  --orange-bg:  #2b2018;
+    --danger:  #d98a8a;  --danger-bg:  #2e1c1c;
+    --info:    #86b0d1;  --info-bg:    #1a242d;
+    --purple:  #a493c4;  --purple-bg:  #241f2d;
+    --primary: #86b0d1;  --primary-bg: #1a242d;
+    --darkbadge: #b0b0b8; --darkbadge-bg: #26262c;
+
+    /* ---------------------------------------------------- bayangan */
+    /* Di atas latar gelap, bayangan hitam nyaris tidak terlihat — yang
+       memisahkan lapisan justru garis tepi dan beda terang permukaan.
+       Bayangannya tetap dipakai tapi diperdalam, tugasnya berubah jadi
+       memberi berat, bukan menandai batas. */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, .34);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, .40);
+    --shadow-md: 0 4px 14px rgba(0, 0, 0, .46);
+    --shadow-lg: 0 10px 30px rgba(0, 0, 0, .58);
+    --shadow-accent: 0 1px 2px rgba(0, 0, 0, .40);
+    --shadow-chrome: 1px 0 0 var(--chrome-border), 4px 0 16px rgba(0, 0, 0, .40);
+
+    /* ------------------------------------- jembatan token lama */
+    /* Puluhan blade masih memakai nama-nama ini lewat var(); tanpa nilai
+       gelapnya, halaman-halaman itu akan tetap putih di tengah tema
+       gelap. */
+    --navy:         #26262d;
+    --navy-mid:     #35353e;
+    --navy-lt:      #1a1a1e;
+    --amber-tint:   #33191d;
+    --amber-border: #4a2228;
+    --text-muted:   #86868f;
+    --border-soft:  #2e2e35;
+    --body-bg:      #121215;
+    --card-bg:      #1a1a1e;
+
+    /* Nada permukaan, bukan putih. Putih di sini adalah kabut selebar
+       1200px yang membentang di puncak halaman gelap — satu-satunya bidang
+       terang di layar, dan persis di tempat mata pertama mendarat. */
+    --main-glow:   rgba(26, 26, 30, .70);
+    --main-glow-0: rgba(26, 26, 30, 0);
+    --sidebar-fade: rgba(14, 9, 11, 0);
+}
+
+/* Batang gulir ikut tema. */
+html[data-theme="dark"] body.tesys-ui * { scrollbar-color: #3a3a42 transparent; }
+html[data-theme="dark"] body.tesys-ui *::-webkit-scrollbar-thumb { background-color: #35353d; }
+html[data-theme="dark"] body.tesys-ui *::-webkit-scrollbar-thumb:hover { background-color: #474750; }
+
+
+/* ------------------------------------------------------------ SCROLLBAR */
+body.tesys-ui * { scrollbar-width: thin; scrollbar-color: #cfd1cc transparent; }
+body.tesys-ui *::-webkit-scrollbar { width: 9px; height: 9px; }
+body.tesys-ui *::-webkit-scrollbar-track { background: transparent; }
+body.tesys-ui *::-webkit-scrollbar-thumb {
+    background-color: #d4d6d1; border-radius: 999px;
+    border: 2.5px solid transparent; background-clip: content-box;
+    transition: background-color .2s ease;
+}
+body.tesys-ui *::-webkit-scrollbar-thumb:hover { background-color: #b6b9b2; }
+body.tesys-ui *::-webkit-scrollbar-corner { background: transparent; }
+
+/* ----------------------------------------------------------- STAT CARDS */
+.stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.stat-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+    padding: var(--sp-3) var(--sp-4); display: flex; align-items: center; gap: 11px;
+    transition: border-color var(--dur, .22s) ease;
+}
+.stat-card:hover { border-color: var(--border-strong); }
+.stat-ic { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex: none; }
+.stat-val { font-family: "Plus Jakarta Sans", sans-serif; font-size: 17px; font-weight: var(--fw-heading, 700); line-height: 1.15; }
+.stat-lbl { font-size: 10.5px; color: var(--text-faint); margin-top: 1px; }
+
+/* ------------------------------------------- STAGE STRIP (status counts) */
+.stage-strip { display: flex; gap: 0; }
+.stage-item {
+    flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 6px;
+    position: relative; padding: 0 4px; background: none; border: none; font-family: inherit; cursor: pointer;
+}
+.stage-item::before {
+    content: ""; position: absolute; top: 15px; left: -50%; width: 100%; height: 2px;
+    background: var(--border); z-index: 0;
+}
+.stage-item:first-child::before { display: none; }
+.stage-num {
+    width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: var(--fw-heading, 700); font-size: 11.5px; z-index: 1; font-family: "Plus Jakarta Sans", sans-serif;
+    transition: transform .15s ease;
+}
+.stage-item:hover .stage-num { transform: scale(1.08); }
+.stage-lbl { font-size: 9.7px; color: var(--text-dim); text-align: center; font-weight: 600; line-height: 1.2; }
+
+/* ---------------------------------------------------------------- TOAST */
+.toast-stack { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; width: 320px; max-width: 90vw; }
+.toast {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg); padding: 13px 14px; display: flex; gap: 10px; align-items: flex-start;
+    opacity: 0; transform: translateX(16px); transition: opacity .22s ease, transform .22s ease;
+}
+.toast.show { opacity: 1; transform: translateX(0); }
+.toast-ic { width: 22px; height: 22px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+.toast-title { font-size: 12.5px; font-weight: var(--fw-section, 600); }
+.toast-msg { font-size: 11.5px; color: var(--text-faint); margin-top: 1px; }
+.toast-success .toast-ic { background: var(--success-bg); color: var(--success); }
+.toast-info .toast-ic { background: var(--info-bg); color: var(--info); }
+.toast-error .toast-ic { background: var(--danger-bg); color: var(--danger); }
+
+/* --------------------------------------------------------- EMPTY STATE */
+.empty-state { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 40px 20px; gap: 9px; color: var(--text-faint); }
+.empty-state .et { font-size: 12.5px; font-weight: var(--fw-section, 600); color: var(--text); }
+.empty-state .ed { font-size: 11.5px; max-width: 280px; }
+
+/* ------------------------------------------------------------- SKELETON */
+@keyframes tesys-shimmer { 0% { background-position: -200px 0; } 100% { background-position: 200px 0; } }
+.skeleton {
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 37%, var(--surface-2) 63%);
+    background-size: 400px 100%; animation: tesys-shimmer 1.3s ease infinite;
+}
+.sk-line { height: 11px; margin-bottom: 8px; }
+
+/* --------------------------------------------------------- KEY/VALUE ROW */
+.kv-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+.kv-row:last-child { border-bottom: none; }
+.kv-row span:first-child { color: var(--text-faint); }
+
+/* ----------------------------------------------------------- UTILITIES */
+.num { font-variant-numeric: tabular-nums; }
+.tname { font-weight: var(--fw-section, 600); }
+.tsub { color: var(--text-faint); font-size: 10.5px; }

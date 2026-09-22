@@ -1,0 +1,1149 @@
+/* =====================================================================
+   Tesys UI — COMPONENTS
+   ---------------------------------------------------------------------
+   Lapisan komponen design system. Semua gaya di sini dipakai lewat
+   komponen Blade (<x-status>, <x-empty>, <x-skeleton>) atau pola markup
+   yang sudah disepakati (.ts-actions), sehingga satu perubahan berlaku
+   di seluruh modul.
+
+   Aturan: berkas ini TIDAK memakai !important kecuali untuk menimpa
+   aturan lama yang sudah memakainya. Kalau sebuah komponen butuh
+   !important di sini, itu pertanda gaya lamanya perlu dibersihkan.
+
+   Urutan muat: tokens -> tesys-ui -> COMPONENTS -> compat -> pages ->
+   shell -> motion.
+   ===================================================================== */
+
+/* =====================================================================
+   STATUS  —  <x-status>
+   Enam nada, bukan sebelas warna Bootstrap. Nada dipilih berdasarkan arti
+   bagi pengguna: sedang menunggu saya, sedang berjalan, sudah selesai.
+   ===================================================================== */
+.ts-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 999px;
+    font-weight: 600;
+    letter-spacing: .01em;
+    line-height: 1;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+.ts-status-sm { padding: 4px 9px; font-size: 10.5px; }
+.ts-status-md { padding: 6px 12px; font-size: 12px; }
+
+/* Titik penanda di depan label — membedakan status tanpa mengandalkan
+   warna saja (penting untuk pengguna dengan buta warna). */
+.ts-status::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    flex: none;
+}
+
+.ts-status-neutral   { background: var(--surface-2);  color: var(--text-dim);   border-color: var(--border); }
+.ts-status-attention { background: var(--warning-bg); color: var(--warning); }
+.ts-status-progress  { background: var(--info-bg);    color: var(--info); }
+.ts-status-positive  { background: var(--success-bg); color: var(--success); }
+.ts-status-done      { background: var(--darkbadge-bg); color: var(--darkbadge); }
+.ts-status-danger    { background: var(--danger-bg);  color: var(--danger); }
+
+/* Varian dua baris: label + keterangan "menunggu siapa". */
+.ts-status-block { display: inline-flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+.ts-status-desc { font-size: 10.5px; color: var(--text-faint); line-height: 1.3; }
+
+/* Dipakai sebagai pemicu (mis. membuka log) — beri tanda bisa diklik. */
+a.ts-status, button.ts-status, .ts-status[role="button"], .ts-status[data-toggle] {
+    cursor: pointer;
+    transition: filter var(--dur-fast, .14s) ease;
+}
+a.ts-status:hover, button.ts-status:hover, .ts-status[data-toggle]:hover { filter: brightness(.96); }
+
+/* =====================================================================
+   AKSI BARIS  —  .ts-actions
+   Satu aksi utama bernama, sisanya di menu. Aksi bersifat merusak atau
+   mundur (Reject, Hapus, Cancel) tidak pernah jadi tombol utama.
+   ===================================================================== */
+.ts-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    justify-content: flex-end;
+    white-space: nowrap;
+}
+
+/* Tombol utama. Labelnya tetap ditulis di markup — pembaca layar
+   membacanya — tetapi di dalam kolom aksi tabel label itu disembunyikan
+   dari mata dan tombolnya jadi kotak ikon 36x36 (lihat tesys-ui-luxe.css
+   bagian 8). Di luar tabel, label tetap tampil. */
+.ts-action-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 11px;
+    border-radius: 8px;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    /* Sebagian aksi utama adalah <a> (Edit, Detail) — tanpa ini garis bawah
+       tautan muncul di dalam tombol. */
+    text-decoration: none;
+    transition: background var(--dur-fast, .14s) ease,
+                border-color var(--dur-fast, .14s) ease,
+                box-shadow var(--dur, .22s) ease,
+                transform var(--dur-fast, .14s) ease;
+}
+.ts-action-primary:hover {
+    background: var(--accent-dark);
+    border-color: var(--accent-dark);
+    color: #fff;
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+.ts-action-primary:active { transform: none; }
+.ts-action-primary:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.ts-action-primary i { font-size: 10.5px; }
+
+/* Aksi yang ada tapi tidak tersedia (mis. role superadmin yang memang
+   tidak bisa diatur). Tombolnya tetap dirender supaya tinggi baris dan
+   perataan kolom aksi sama di semua baris — yang hilang hanya
+   keterkliknya, bukan tempatnya. */
+.ts-action-primary:disabled,
+.ts-action-primary.disabled {
+    opacity: .45;
+    cursor: default;
+    pointer-events: none;
+}
+
+/* Varian netral untuk aksi utama yang bukan persetujuan (mis. Edit). */
+.ts-action-primary.is-neutral {
+    background: var(--surface);
+    border-color: var(--border-strong);
+    color: var(--text);
+}
+.ts-action-primary.is-neutral:hover {
+    background: var(--surface-2);
+    border-color: var(--text-faint);
+    color: var(--text);
+}
+
+/* Tombol menu "lainnya". */
+.ts-action-more {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: background var(--dur-fast, .14s) ease,
+                border-color var(--dur-fast, .14s) ease,
+                color var(--dur-fast, .14s) ease;
+}
+.ts-action-more:hover { background: var(--surface-2); border-color: var(--border-strong); color: var(--text); }
+.ts-action-more:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-ring); }
+
+/* Isi menu. Memakai dropdown Bootstrap yang sudah ada agar tidak menambah
+   ketergantungan; hanya tampilannya yang diseragamkan. */
+.ts-action-menu {
+    min-width: 186px;
+    padding: 5px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md, 14px);
+    box-shadow: var(--shadow-md);
+}
+.ts-action-menu .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+}
+.ts-action-menu .dropdown-item i { width: 14px; text-align: center; font-size: 11.5px; opacity: .8; }
+.ts-action-menu .dropdown-item:hover { background: var(--surface-2); color: var(--text); }
+.ts-action-menu .dropdown-item.is-danger { color: var(--danger); }
+.ts-action-menu .dropdown-item.is-danger:hover { background: var(--danger-bg); color: var(--danger); }
+.ts-action-menu .dropdown-divider { margin: 4px 2px; border-color: var(--border); }
+/* Form di dalam menu tidak boleh merusak tata letak item. */
+.ts-action-menu form { margin: 0; }
+.ts-action-menu form .dropdown-item { width: 100%; border: none; background: none; text-align: left; font-family: inherit; }
+
+/* Baris tanpa aksi apa pun — beri tanda, jangan biarkan kosong melompong. */
+.ts-actions-none {
+    display: inline-block;
+    font-size: 11px;
+    color: var(--text-faint);
+    padding: 0 6px;
+}
+
+/* =====================================================================
+   KEADAAN KOSONG  —  <x-empty>
+   ===================================================================== */
+.ts-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 7px;
+    padding: 46px 22px;
+    color: var(--text-dim);
+}
+.ts-empty-compact { padding: 26px 16px; }
+.ts-empty-ic {
+    width: 44px;
+    height: 44px;
+    border-radius: 13px;
+    background: var(--surface-2);
+    color: var(--text-faint);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    margin-bottom: 3px;
+}
+.ts-empty-title {
+    margin: 0;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text);
+}
+.ts-empty-msg {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--text-faint);
+    max-width: 40ch;
+    line-height: 1.55;
+}
+.ts-empty-action { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+
+/* =====================================================================
+   SKELETON  —  <x-skeleton>
+   ===================================================================== */
+@keyframes ts-sk-pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: .55; }
+}
+.ts-skeleton { display: flex; flex-direction: column; gap: 9px; padding: 4px 0; }
+.ts-sk-line,
+.ts-sk-cell {
+    display: block;
+    height: 11px;
+    border-radius: 5px;
+    /* Sedikit lebih gelap dari --surface-2 supaya kerangka tetap terbaca saat
+       diletakkan di atas panel redam, bukan hanya di atas kartu. --surface-3
+       memegang peran itu di kedua tema; #E4E4EA yang lama adalah abu terang
+       yang menyala sebagai batang putih saat memuat di tema gelap. */
+    background: var(--surface-3);
+    animation: ts-sk-pulse 1.4s ease-in-out infinite;
+}
+.ts-sk-row { display: flex; gap: 12px; align-items: center; }
+.ts-sk-row .ts-sk-cell { flex: 1; }
+.ts-sk-row .ts-sk-cell:first-child { flex: 0 0 15%; }
+.ts-sk-row .ts-sk-cell:last-child { flex: 0 0 9%; }
+.ts-sk-card { display: flex; flex-direction: column; gap: 9px; padding: 14px 0; }
+/* Baris berikutnya sedikit tertinggal supaya gerakannya tidak serempak. */
+.ts-sk-row:nth-child(2n) .ts-sk-cell { animation-delay: .12s; }
+.ts-sk-row:nth-child(3n) .ts-sk-cell { animation-delay: .24s; }
+
+.sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ts-sk-line, .ts-sk-cell { animation: none; }
+    .ts-action-primary:hover { transform: none; }
+}
+
+/* =====================================================================
+   DRAWER  —  <x-drawer>
+   Panel tinjau dari kanan. Daftar di belakangnya tetap terlihat, sehingga
+   memeriksa banyak record berturut-turut tidak memutus konteks.
+   ===================================================================== */
+.ts-drawer-root { position: fixed; inset: 0; z-index: 1070; }
+.ts-drawer-root[hidden] { display: none; }
+
+.ts-drawer-scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(20, 20, 30, .42);
+    opacity: 0;
+    transition: opacity var(--dur, .22s) ease;
+}
+.ts-drawer-root.is-open .ts-drawer-scrim { opacity: 1; }
+
+.ts-drawer-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: min(var(--drawer-w, 560px), calc(100vw - 32px));
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+    transform: translateX(100%);
+    transition: transform var(--dur-slow, .36s) var(--ease-out, cubic-bezier(.16, 1, .3, 1));
+    outline: none;
+}
+.ts-drawer-root.is-open .ts-drawer-panel { transform: none; }
+
+/* Mengunci gulir halaman di belakang panel. */
+body.ts-drawer-lock { overflow: hidden; }
+
+.ts-drawer-head {
+    flex: none;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 18px 20px 15px;
+    border-bottom: 1px solid var(--border);
+}
+.ts-drawer-heading { flex: 1; min-width: 0; }
+.ts-drawer-eyebrow {
+    margin: 0 0 3px;
+    font-size: 10.5px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+}
+.ts-drawer-eyebrow:empty { display: none; }
+.ts-drawer-title {
+    margin: 0;
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -.01em;
+    line-height: 1.3;
+    color: var(--text);
+}
+.ts-drawer-close {
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    border: 1px solid transparent;
+    background: none;
+    color: var(--text-faint);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background var(--dur-fast, .14s) ease, color var(--dur-fast, .14s) ease;
+}
+.ts-drawer-close:hover { background: var(--surface-2); color: var(--text); }
+.ts-drawer-close:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-ring); }
+
+.ts-drawer-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 18px 20px 24px;
+}
+
+.ts-drawer-foot {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 13px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+}
+.ts-drawer-foot:empty { display: none; }
+
+/* ---------------------------------------------- ISI DRAWER (pola umum) */
+.ts-dw-section + .ts-dw-section { margin-top: 20px; }
+.ts-dw-section-title {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin: 0 0 9px;
+}
+
+/* Kepala status drawer didefinisikan satu kali di bagian PERJALANAN
+   DOKUMEN pada berkas ini — di sana ia sekalian mengatur posisi batang
+   alurnya. Sisa aturannya hanya ini: */
+.ts-dw-status-text { min-width: 0; }
+.ts-dw-status-text b { display: block; font-size: 13px; color: var(--text); }
+
+/* Pasangan label/nilai */
+.ts-dw-kv { display: grid; grid-template-columns: 34% 1fr; gap: 7px 12px; font-size: 12.5px; }
+.ts-dw-kv dt { color: var(--text-faint); font-weight: 400; }
+.ts-dw-kv dd { margin: 0; color: var(--text); font-weight: 500; overflow-wrap: anywhere; }
+.ts-dw-kv dd.is-amount { font-variant-numeric: tabular-nums; font-weight: var(--fw-section, 600); }
+
+/* Timeline approval — dipakai drawer dan modul lain lewat TesysTimeline */
+.ts-timeline { list-style: none; margin: 0; padding: 0; }
+.ts-tl-item {
+    position: relative;
+    padding: 0 0 16px 24px;
+    border-left: 2px solid var(--border);
+    margin-left: 5px;
+}
+.ts-tl-item:last-child { padding-bottom: 0; border-left-color: transparent; }
+.ts-tl-item::before {
+    content: "";
+    position: absolute;
+    left: -6px;
+    top: 3px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 2px solid var(--border-strong);
+}
+.ts-tl-item.is-latest::before { border-color: var(--accent); background: var(--accent); }
+.ts-tl-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ts-tl-action { font-size: 12.5px; font-weight: 600; color: var(--text); }
+.ts-tl-time { font-size: 10.5px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.ts-tl-actor { font-size: 11.5px; color: var(--text-dim); margin-top: 2px; }
+.ts-tl-note {
+    margin-top: 6px;
+    padding: 8px 10px;
+    border-radius: 9px;
+    background: var(--surface-2);
+    font-size: 11.5px;
+    color: var(--text-dim);
+    line-height: 1.5;
+}
+
+/* Lampiran */
+.ts-dw-files { display: flex; flex-direction: column; gap: 6px; }
+.ts-dw-file {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 11px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 12px;
+    color: var(--text-dim);
+    text-decoration: none;
+    transition: border-color var(--dur-fast, .14s) ease, background var(--dur-fast, .14s) ease;
+}
+.ts-dw-file:hover { border-color: var(--accent-soft); background: var(--accent-tint); color: var(--text); text-decoration: none; }
+.ts-dw-file i { flex: none; color: var(--text-faint); }
+.ts-dw-file span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ts-dw-file small { flex: none; color: var(--text-faint); font-size: 10.5px; }
+
+@media (max-width: 600px) {
+    .ts-drawer-panel { width: 100vw; border-left: none; }
+    .ts-dw-kv { grid-template-columns: 1fr; gap: 2px 0; }
+    .ts-dw-kv dt { margin-top: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ts-drawer-panel, .ts-drawer-scrim { transition: none; }
+}
+
+/* =====================================================================
+   KEADAAN SIBUK — tombol yang sedang mengirim
+   Dipakai lewat TesysUI.busy(el, true/false). Label disembunyikan alih-alih
+   dihapus supaya lebar tombol tidak berubah dan tata letak tidak melompat.
+   ===================================================================== */
+.ts-action-primary.is-busy,
+.btn.is-busy {
+    position: relative;
+    pointer-events: none;
+    opacity: .82;
+}
+
+/* Label ikut hilang meski berupa text node lepas seperti "<i/> Approve".
+   Ditulis dengan spesifisitas di atas aturan kompatibilitas AdminLTE
+   (body.tesys-ui .btn-secondary) yang juga memakai !important dan dimuat
+   setelah berkas ini. */
+body.tesys-ui .ts-action-primary.is-busy,
+body.tesys-ui .btn.is-busy { color: transparent !important; }
+.ts-action-primary.is-busy > *,
+.btn.is-busy > * { visibility: hidden; }
+
+.ts-action-primary.is-busy::after,
+.btn.is-busy::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 15px;
+    height: 15px;
+    margin: -7.5px 0 0 -7.5px;
+    /* Warna asli teks direkam oleh TesysUI.busy sebelum tombol dibuat
+       transparan, sehingga lingkaran tetap terlihat. */
+    /* currentColor tidak bisa dipakai sebagai cadangan: tombol sibuk justru
+       dibuat transparan, jadi lingkarannya akan ikut hilang. */
+    border: 2px solid var(--ts-busy-color, var(--text, #1b1b22));
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: ts-spin .7s linear infinite;
+}
+@keyframes ts-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .ts-action-primary.is-busy::after,
+    .btn.is-busy::after { animation-duration: 2s; }
+}
+
+/* =====================================================================
+   DAFTAR KETERANGAN  —  satu informasi satu baris
+
+   Dipakai di panel detail & modal ringkasan. Menggantikan pola lama yang
+   membungkus tiap informasi dalam kotaknya sendiri lalu menyusunnya jadi
+   grid: kotak-kotak itu menambah garis tepi, sudut, dan jarak untuk
+   setiap potong informasi, sehingga yang paling menonjol di layar justru
+   wadahnya — bukan isinya. Mata juga harus melompat ke kanan-bawah
+   mengikuti grid, bukan menuruni satu kolom.
+
+   Di sini tiap informasi jadi satu baris: labelnya di kiri, nilainya rata
+   kanan, dipisah satu garis tipis. Membandingkan nilai tinggal menyusuri
+   satu kolom, dan menambah informasi baru tidak mengubah tata letak apa
+   pun.
+   ===================================================================== */
+.ts-deflist { display: flex; flex-direction: column; }
+
+.ts-deflist-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--sp-4, 16px);
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+}
+.ts-deflist-row:last-child { border-bottom: 0; }
+
+.ts-deflist-label {
+    flex: 0 1 auto;
+    font-size: 12px;
+    color: var(--text-dim);
+}
+.ts-deflist-value {
+    flex: 0 1 auto;
+    min-width: 0;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    /* Nilai panjang (alamat, catatan) membungkus, tidak dipotong. */
+    overflow-wrap: anywhere;
+}
+
+/* Baris penutup sebuah kelompok, mis. Total Cost atau Net Profit. */
+.ts-deflist-row.is-total {
+    border-bottom: 0;
+    border-top: 1px solid var(--border-strong, var(--border));
+    margin-top: 2px;
+}
+.ts-deflist-row.is-total .ts-deflist-label,
+.ts-deflist-row.is-total .ts-deflist-value { font-weight: 700; color: var(--text); }
+
+/* Keterangan kecil di bawah sebuah baris (mis. rentang tanggal). */
+.ts-deflist-sub {
+    font-size: 11px;
+    color: var(--text-faint);
+    padding: 0 0 9px;
+    margin-top: -6px;
+    border-bottom: 1px solid var(--border);
+}
+
+/* Judul kelompok di dalam daftar. */
+.ts-deflist-head {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    font-weight: 700;
+    color: var(--text-faint);
+    padding: 16px 0 4px;
+}
+.ts-deflist-head:first-child { padding-top: 0; }
+
+/* Dua kolom di layar lebar — daftar panjang tidak perlu jadi satu kolom
+   memanjang yang memaksa menggulir. Tiap kolom tetap satu informasi satu
+   baris; yang berubah hanya jumlah kolomnya. */
+.ts-deflist-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--sp-5, 24px); }
+@media (max-width: 767.98px) {
+    .ts-deflist-2col { grid-template-columns: 1fr; }
+}
+
+/* =====================================================================
+   COMMAND PALETTE  —  Ctrl+K
+   Panel melayang di atas halaman. Memakai ts-drawer-lock yang sama dengan
+   drawer supaya latar belakang tidak ikut menggulir.
+   ===================================================================== */
+.ts-cmd-root {
+    position: fixed;
+    inset: 0;
+    z-index: 1090;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 12vh 16px 16px;
+}
+.ts-cmd-root[hidden] { display: none; }
+
+.ts-cmd-scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(16, 16, 22, .42);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    transition: opacity var(--dur, .2s) var(--ease, ease);
+}
+.ts-cmd-root.is-open .ts-cmd-scrim { opacity: 1; }
+
+.ts-cmd-panel {
+    position: relative;
+    width: 100%;
+    max-width: 620px;
+    max-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface, #fff);
+    border: 1px solid var(--border, #e4e4e9);
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg, 0 24px 60px rgba(16,16,22,.22));
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(-8px) scale(.985);
+    transition: opacity var(--dur, .2s) var(--ease, ease),
+                transform var(--dur, .2s) var(--ease, ease);
+}
+.ts-cmd-root.is-open .ts-cmd-panel { opacity: 1; transform: none; }
+
+.ts-cmd-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border, #e4e4e9);
+}
+.ts-cmd-head > i { color: var(--text-faint, #6f6f7b); font-size: 13px; }
+.ts-cmd-head input {
+    flex: 1;
+    border: none;
+    background: none;
+    outline: none;
+    font: inherit;
+    font-size: 14px;
+    color: var(--text, #1b1b22);
+}
+.ts-cmd-kbd {
+    flex: none;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    color: var(--text-faint, #6f6f7b);
+    background: var(--surface-2, #f1f1f4);
+    border: 1px solid var(--border, #e4e4e9);
+    border-radius: 6px;
+    padding: 2px 6px;
+}
+
+.ts-cmd-body { overflow-y: auto; padding: 6px; }
+
+.ts-cmd-grup + .ts-cmd-grup { margin-top: 4px; }
+.ts-cmd-label {
+    margin: 8px 10px 4px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--text-faint, #6f6f7b);
+}
+
+.ts-cmd-item {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 9px 10px;
+    border-radius: 10px;
+    text-decoration: none;
+    color: inherit;
+}
+.ts-cmd-item:hover,
+.ts-cmd-item.is-aktif { background: var(--surface-2, #f1f1f4); text-decoration: none; color: inherit; }
+.ts-cmd-item.is-aktif { box-shadow: inset 0 0 0 1px var(--border-strong, #d2d2db); }
+
+.ts-cmd-ic { flex: none; width: 16px; text-align: center; font-size: 12px; color: var(--text-faint, #6f6f7b); }
+.ts-cmd-teks { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ts-cmd-judul {
+    font-size: 13px; font-weight: 600; color: var(--text, #1b1b22);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ts-cmd-sub {
+    font-size: 11.5px; color: var(--text-faint, #6f6f7b);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.ts-cmd-loading { padding: 4px 10px 10px; }
+
+.ts-cmd-foot {
+    display: flex;
+    gap: 14px;
+    padding: 9px 16px;
+    border-top: 1px solid var(--border, #e4e4e9);
+    font-size: 11px;
+    color: var(--text-faint, #6f6f7b);
+}
+.ts-cmd-foot kbd {
+    font: inherit;
+    font-weight: 700;
+    /* Bootstrap memberi kbd teks putih di atas latar gelap; di sini latarnya
+       terang, jadi warnanya harus dikembalikan. */
+    color: var(--text, #1b1b22);
+    background: var(--surface-2, #f1f1f4);
+    border: 1px solid var(--border, #e4e4e9);
+    border-radius: 5px;
+    padding: 1px 5px;
+    margin-right: 3px;
+}
+
+/* Tombol pemicu di topbar */
+.ts-cmd-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--border, #e4e4e9);
+    border-radius: 9px;
+    background: var(--surface-2, #f1f1f4);
+    color: var(--text-faint, #6f6f7b);
+    font-size: 12px;
+    cursor: pointer;
+}
+.ts-cmd-trigger:hover { background: var(--surface, #fff); color: var(--text, #1b1b22); }
+.ts-cmd-trigger .ts-cmd-kbd { margin-left: 4px; }
+
+@media (max-width: 767.98px) {
+    .ts-cmd-root { padding-top: 8vh; }
+    .ts-cmd-trigger span:not(.ts-cmd-kbd) { display: none; }
+    .ts-cmd-trigger .ts-cmd-kbd { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ts-cmd-scrim, .ts-cmd-panel { transition: none; }
+}
+
+/* =====================================================================
+   KPI  —  <x-stat-cards>
+   Angka ringkas yang dibaca sekilas: label kecil di atas, angka besar,
+   keterangan opsional di bawah. Tanpa bayangan dan tanpa ikon berwarna
+   penuh — di halaman yang sudah padat, hiasan itu justru menutupi angka.
+
+   Dipakai 20+ halaman index; satu perubahan di sini berlaku ke semuanya.
+   ===================================================================== */
+.ts-kpi-row {
+    display: grid;
+    /* MN-10A: kolom minimum diturunkan dari 168px ke 150px supaya satu baris
+       memuat lebih banyak kartu sebelum membungkus. Halaman seperti Finance
+       Summary yang punya 5 KPI jadi tetap satu baris di layar biasa, bukan
+       pecah jadi dua baris dengan satu kartu menggantung sendirian. */
+    /* 190px, bukan 165px: di lebar tablet (768px) ambang 165px memuat empat
+       kolom, dan nominal seperti "Rp 14.496.612.250" tidak muat di lebar
+       segitu. Dengan 190px, tablet turun ke tiga kolom — sementara di layar
+       lebar jumlah kartunya tidak berubah. */
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: var(--sp-2, 8px);
+    margin-bottom: var(--sp-3, 12px);
+}
+.ts-kpi {
+    display: flex;
+    /* Ikon disejajarkan ke tengah, bukan ke atas: saat kartu tidak punya baris
+       keterangan, ikon yang menempel ke atas membuat kartu terasa kosong di
+       bawah dan tingginya jadi terbuang. */
+    align-items: center;
+    gap: 10px;
+    padding: 10px var(--sp-3, 12px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md, 12px);
+    min-width: 0;
+}
+/* Kartu yang PUNYA keterangan kembali disejajarkan ke atas, supaya ikon tidak
+   melayang di tengah dua baris teks. */
+.ts-kpi:has(.ts-kpi-sub) { align-items: flex-start; }
+.ts-kpi:has(.ts-kpi-sub) .ts-kpi-ic { margin-top: 2px; }
+.ts-kpi-ic {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm, 8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex: none;
+}
+/* Anak-anaknya <span> supaya <x-stat-cards> bisa dipakai di dalam elemen
+   inline mana pun; karena itu perlu dijadikan blok di sini. */
+.ts-kpi-text { min-width: 0; display: block; }
+.ts-kpi-label,
+.ts-kpi-value,
+.ts-kpi-sub { display: block; }
+.ts-kpi-label {
+    font-size: 9.5px;
+    font-weight: var(--fw-section, 600);
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    line-height: 1.25;
+    /* Label panjang dipotong satu baris: membiarkannya membungkus membuat
+       tinggi kartu dalam satu baris jadi tidak seragam. */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ts-kpi-value {
+    font-family: "Plus Jakarta Sans", sans-serif;
+    /* UKURAN HURUF TIDAK DIATUR DI SINI.
+       tesys-ui-luxe.css memuat setelah berkas ini dan memakai selektor
+       `body.tesys-ui .ts-kpi-value`, yang mengalahkan `.ts-kpi-value` polos —
+       termasuk yang ditulis di dalam media query. Menaruh font-size di sini
+       hanya menghasilkan aturan mati yang menyesatkan pembaca berikutnya.
+       Ukuran & perilaku responsifnya ada di luxe.css, di bagian "KPI". */
+    font-weight: var(--fw-heading, 700);
+    line-height: 1.2;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    /* Boleh membungkus, TAPI hanya di spasi — mis. "Rp" turun ke baris
+       berikutnya. Angkanya sendiri tidak pernah dipatah di tengah digit:
+       "14.496.61 / 2.250" terbaca seperti dua angka berbeda, dan salah baca
+       nominal lebih mahal daripada kartu yang sedikit lebih tinggi. */
+    overflow-wrap: normal;
+    word-break: keep-all;
+    margin-top: 2px;
+}
+.ts-kpi-sub {
+    font-size: 10.5px;
+    color: var(--text-faint);
+    line-height: 1.3;
+    margin-top: 1px;
+}
+
+/* Di layar sempit tetap DUA kolom, bukan satu. Satu kolom membuat deretan KPI
+   memanjang ke bawah dan mendorong tabel — isi utama halaman — keluar layar. */
+@media (max-width: 575.98px) {
+    /* SATU kolom, tapi kartunya jadi BARIS: label di kiri, angka di kanan.
+       Dua kolom di lebar 375px hanya menyisakan ~110px untuk teks — nominal
+       seperti "Rp 14.496.612.250" tidak akan pernah muat di situ pada ukuran
+       huruf yang masih terbaca, dan pilihannya tinggal dipotong atau dipatah
+       di tengah digit. Keduanya bisa membuat orang salah baca nominal.
+
+       Dengan tata letak baris, angkanya dapat lebar penuh dan tetap utuh,
+       sementara tinggi per kartu justru lebih pendek daripada versi dua kolom
+       yang teksnya membungkus tiga baris. */
+    .ts-kpi-row { grid-template-columns: 1fr; gap: 6px; }
+    .ts-kpi { padding: 8px 12px; gap: 10px; align-items: center; }
+    .ts-kpi:has(.ts-kpi-sub) { align-items: center; }
+    .ts-kpi-ic { width: 26px; height: 26px; margin-top: 0; }
+
+    .ts-kpi-text {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 2px 10px;
+        width: 100%;
+    }
+    /* min-width:0 — tanpa ini, label menolak menyusut di bawah lebar teksnya,
+       lalu nilai-lah yang terdorong turun. Akibatnya kartu bersebelahan punya
+       tinggi berbeda-beda tergantung panjang labelnya. Dengan ini, label yang
+       kepanjangan memendek (sudah ber-elipsis), dan nilai tetap di baris yang
+       sama — yang dipendekkan keterangannya, bukan angkanya. */
+    .ts-kpi-label { flex: 1 1 auto; min-width: 0; }
+    .ts-kpi-value { flex: 0 0 auto; margin-top: 0; text-align: right; }
+    .ts-kpi-sub   { flex: 1 0 100%; }
+}
+/* Nada KPI — sama artinya dengan status: merah butuh tindakan, hijau aman. */
+.ts-tone-neutral  { background: var(--surface-2);  color: var(--text-dim); }
+.ts-tone-accent   { background: var(--accent-tint); color: var(--accent-text); }
+.ts-tone-attention{ background: var(--warning-bg); color: var(--warning); }
+.ts-tone-progress { background: var(--info-bg);    color: var(--info); }
+.ts-tone-positive { background: var(--success-bg); color: var(--success); }
+.ts-tone-danger   { background: var(--danger-bg);  color: var(--danger); }
+.ts-tone-purple   { background: var(--purple-bg);  color: var(--purple); }
+
+/* =====================================================================
+   ANTREAN KERJA  —  daftar "Perlu Tindakan"
+   Satu baris = satu antrean: apa, berapa, sudah menunggu berapa lama, dan
+   satu jalan masuk. Jumlahnya ditulis besar karena itu yang dipindai mata
+   lebih dulu saat membuka aplikasi.
+   ===================================================================== */
+.ts-queue { display: flex; flex-direction: column; }
+.ts-queue-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3, 12px);
+    padding: 10px var(--sp-2, 8px);
+    border-radius: var(--radius-sm, 8px);
+    color: inherit;
+    text-decoration: none;
+    transition: background var(--dur-fast, .14s) ease;
+}
+.ts-queue-row + .ts-queue-row { border-top: 1px solid var(--border); border-radius: 0; }
+a.ts-queue-row:hover { background: var(--surface-2); text-decoration: none; color: inherit; }
+.ts-queue-ic {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm, 8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex: none;
+}
+.ts-queue-main { flex: 1 1 auto; min-width: 0; }
+.ts-queue-label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: var(--fw-section, 600);
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ts-queue-meta { display: block; font-size: 11px; color: var(--text-faint); margin-top: 1px; }
+.ts-queue-count {
+    flex: none;
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-size: 16px;
+    font-weight: var(--fw-heading, 700);
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    min-width: 28px;
+    text-align: right;
+}
+.ts-queue-cta {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    font-weight: var(--fw-section, 600);
+    color: var(--accent-text);
+    opacity: .85;
+}
+.ts-queue-cta i { font-size: 9.5px; }
+a.ts-queue-row:hover .ts-queue-cta { opacity: 1; }
+/* Baris tanpa akses Todo List tetap tampil, tetapi jujur: tidak bisa diklik. */
+.ts-queue-row:not([href]) { cursor: default; }
+.ts-queue-row:not([href]) .ts-queue-cta { display: none; }
+
+/* Ringkasan di kaki daftar antrean. */
+.ts-queue-foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px var(--sp-5, 20px);
+    font-size: 11.5px;
+    color: var(--text-faint);
+}
+.ts-queue-foot strong { color: var(--text); font-weight: var(--fw-section, 600); }
+
+/* =====================================================================
+   LINIMASA AKTIVITAS  —  daftar kejadian terakhir
+   ===================================================================== */
+.ts-feed-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3, 12px);
+    padding: 8px var(--sp-2, 8px);
+    border-radius: var(--radius-sm, 8px);
+    color: inherit;
+    text-decoration: none;
+    transition: background var(--dur-fast, .14s) ease;
+}
+a.ts-feed-row:hover { background: var(--surface-2); text-decoration: none; color: inherit; }
+.ts-feed-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: currentColor; }
+.ts-feed-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ts-feed-time { flex: none; font-size: 11px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+
+/* =====================================================================
+   CATATAN RILIS  —  ringkasan "What's New"
+   Ringkasan saja: judul, satu paragraf, beberapa butir teratas. Daftar
+   lengkapnya tetap ada, tetapi di modal — bukan di halaman kerja.
+   ===================================================================== */
+.ts-release-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-2, 8px); }
+.ts-release-title {
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-size: 13px;
+    font-weight: var(--fw-section, 600);
+    color: var(--text);
+}
+.ts-release-date { font-size: 11px; color: var(--text-faint); }
+.ts-release-summary {
+    font-size: 12.5px;
+    color: var(--text-dim);
+    line-height: 1.55;
+    margin: var(--sp-2, 8px) 0 var(--sp-3, 12px);
+}
+.ts-release-list { margin: 0; padding: 0; list-style: none; }
+.ts-release-list li {
+    position: relative;
+    padding-left: 16px;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.5;
+    margin-bottom: 5px;
+}
+.ts-release-list li::before {
+    content: "";
+    position: absolute;
+    left: 3px;
+    top: 7px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--border-strong);
+}
+.ts-release-more { font-size: 11.5px; color: var(--text-faint); }
+.ts-release-foot { display: flex; flex-wrap: wrap; gap: var(--sp-2, 8px); margin-top: var(--sp-3, 12px); }
+
+.ts-version-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: var(--radius-pill, 999px);
+    background: var(--accent-tint);
+    color: var(--accent-text);
+    font-size: 10.5px;
+    font-weight: var(--fw-section, 600);
+    letter-spacing: .02em;
+}
+
+/* =====================================================================
+   PERJALANAN DOKUMEN  —  <x-workflow-flow> / TesysWorkflow
+   Batang beruas: satu ruas = satu tahap. Yang sudah dilewati gelap, yang
+   sedang berjalan merah, sisanya abu. Dipilih ketimbang deretan titik
+   berlabel karena alur terpanjang (Cost Request) punya 11 tahap — deretan
+   label sepanjang itu tidak terbaca di dalam drawer selebar 580px.
+
+   Nama tahap tetap terjangkau: tiap ruas punya title, dan keterangannya
+   menyebut tahap sekarang serta tahap berikutnya.
+   ===================================================================== */
+.ts-flow { display: flex; flex-direction: column; gap: 7px; }
+.ts-flow-track { display: flex; gap: 3px; }
+.ts-flow-seg {
+    flex: 1 1 0;
+    height: 5px;
+    border-radius: var(--radius-pill, 999px);
+    background: var(--surface-3);
+    transition: background var(--dur, .22s) var(--ease, ease);
+}
+.ts-flow-seg.is-done { background: var(--charcoal-2); }
+.ts-flow-seg.is-current { background: var(--accent); }
+/* Tahap sekarang sedikit lebih tinggi — posisinya harus ketemu dalam sekali
+   lihat, tanpa harus membandingkan warna. */
+.ts-flow-seg.is-current { height: 7px; margin-top: -1px; }
+.ts-flow-seg.is-stopped { background: var(--danger-bg); }
+
+.ts-flow-legend {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--sp-3, 12px);
+    font-size: 11px;
+    color: var(--text-faint);
+}
+.ts-flow-legend strong { color: var(--text); font-weight: var(--fw-section, 600); }
+.ts-flow-stop { color: var(--danger); font-weight: var(--fw-label, 500); }
+
+/* Wadah kosong sebelum diisi renderer: jangan menyisakan celah. */
+.ts-flow-slot:empty { display: none; }
+
+/* -------------------------------------------------- DRAWER: KEPALA STATUS
+   Status, keterangan "menunggu siapa", dan perjalanan dokumen dijadikan satu
+   blok supaya terbaca sebagai satu jawaban: dokumen ini ada di mana dan
+   sedang menunggu apa. */
+.ts-dw-status {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-2, 8px);
+    padding: var(--sp-3, 12px);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md, 12px);
+}
+.ts-dw-status .ts-flow { width: 100%; }
+.ts-dw-status-text span { font-size: 12px; color: var(--text-dim); }
+
+/* ------------------------------------------------------ DRAWER: NILAI
+   Nominal pengajuan adalah angka yang paling sering dicari di panel ini,
+   jadi ia berdiri sendiri — bukan salah satu baris di daftar key/value. */
+.ts-dw-amount {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--sp-1, 4px) var(--sp-4, 16px);
+    padding: var(--sp-3, 12px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md, 12px);
+}
+.ts-dw-amount-main { flex: 1 1 100%; }
+.ts-dw-amount-label {
+    display: block;
+    font-size: 10px;
+    font-weight: var(--fw-section, 600);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+}
+.ts-dw-amount-value {
+    display: block;
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-size: 21px;
+    font-weight: var(--fw-heading, 700);
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+    margin-top: 2px;
+}
+.ts-dw-amount-side {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    font-size: 12px;
+}
+.ts-dw-amount-side span:first-child { font-size: 10.5px; color: var(--text-faint); }
+.ts-dw-amount-side strong { font-weight: var(--fw-section, 600); font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------- LINIMASA: NADA PER KEJADIAN
+   Titik linimasa ikut nada status: penolakan merah, langkah terakhir merah
+   penuh (posisi sekarang), sisanya netral. */
+.ts-tl-item.is-danger::before { border-color: var(--danger); background: var(--danger); }
+.ts-tl-item.is-danger .ts-tl-action { color: var(--danger); }
+.ts-tl-item.is-warning::before { border-color: var(--warning); background: var(--warning); }
+.ts-tl-item.is-warning .ts-tl-action { color: var(--warning); }

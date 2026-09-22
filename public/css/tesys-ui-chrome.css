@@ -1,0 +1,151 @@
+/* =====================================================================
+   Tesys UI — CHROME (sidebar + navbar AdminLTE)
+   ---------------------------------------------------------------------
+   Meng-override tampilan sidebar navy + navbar lama menjadi terang
+   (putih + aksen merah), TANPA mengubah satu baris pun HTML sidebar
+   di layouts/app.blade.php.
+
+   Semua aturan pakai !important karena CSS lama ditulis inline di
+   dalam <style> layout dan sebagian sudah memakai !important.
+   ===================================================================== */
+
+/* ------------------------------------------------------------- CANVAS */
+body.tesys-ui { background: var(--bg) !important; }
+body.tesys-ui .content-wrapper { background: var(--bg) !important; }
+
+/* ------------------------------------------------------------- NAVBAR */
+body.tesys-ui .main-header.navbar {
+    background: var(--surface) !important;
+    border-bottom: 1px solid var(--border) !important;
+    box-shadow: none !important;
+}
+body.tesys-ui .main-header .navbar-nav .nav-link {
+    color: var(--text-dim) !important;
+    border-radius: var(--radius-sm);
+    transition: background .16s ease, color .16s ease;
+}
+body.tesys-ui .main-header .navbar-nav .nav-link:hover {
+    background: var(--surface-2) !important;
+    color: var(--text) !important;
+}
+body.tesys-ui .main-header .navbar-nav .nav-link .fa-user,
+body.tesys-ui .main-header .navbar-nav .nav-link i { color: inherit !important; }
+
+/* Dropdown di navbar (profil, notifikasi, todo) */
+body.tesys-ui .main-header .dropdown-menu {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-lg) !important;
+    padding: 6px !important;
+    color: var(--text) !important;
+}
+body.tesys-ui .main-header .dropdown-header {
+    color: var(--text) !important;
+    background: transparent !important;
+    font-size: 12.5px !important; font-weight: 700 !important;
+    padding: 8px 10px !important;
+}
+body.tesys-ui .main-header .dropdown-header small { color: var(--text-faint) !important; }
+body.tesys-ui .main-header .dropdown-divider { border-color: var(--border) !important; }
+body.tesys-ui .main-header .dropdown-item {
+    color: var(--text-dim) !important;
+    border-radius: 7px !important;
+    font-size: 12.2px !important;
+    padding: 8px 10px !important;
+}
+body.tesys-ui .main-header .dropdown-item:hover {
+    background: var(--surface-2) !important;
+    color: var(--text) !important;
+}
+body.tesys-ui .main-header .dropdown-item.text-danger { color: var(--danger) !important; }
+body.tesys-ui .main-header .dropdown-item.text-danger:hover { background: var(--danger-bg) !important; }
+body.tesys-ui .main-header .px-3.py-2 { color: var(--text-dim) !important; }
+
+/* ------------------------------------------------------------ SIDEBAR */
+body.tesys-ui .main-sidebar {
+    background: var(--surface) !important;
+    border-right: 1px solid var(--border) !important;
+    box-shadow: none !important;
+}
+/* Area logo dibiarkan gelap seperti "brand badge" supaya logo TEREX
+   (putih + merah) tetap terbaca tanpa perlu file logo versi terang. */
+body.tesys-ui .brand-link {
+    background: var(--charcoal) !important;
+    border-bottom: 1px solid var(--charcoal) !important;
+}
+body.tesys-ui .brand-link,
+body.tesys-ui .brand-link span,
+body.tesys-ui .brand-link .brand-text {
+    color: #fff !important;
+    font-family: "Plus Jakarta Sans", sans-serif;
+}
+body.tesys-ui .brand-version {
+    background: var(--surface) !important;
+    color: var(--text-faint) !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+/* Logo dibiarkan apa adanya — latar brand-link sudah gelap di atas. */
+
+/* Label seksi */
+body.tesys-ui .tsys-section-label {
+    color: var(--text-faint) !important;
+    font-size: 9.5px !important;
+    letter-spacing: .09em !important;
+    padding: 14px 20px 5px !important;
+}
+
+/* Item menu */
+body.tesys-ui .tsys-link {
+    color: var(--text-dim) !important;
+    font-size: 12.2px !important;
+    border: 1px solid transparent !important;
+    border-radius: 8px !important;
+    padding: 7px 11px !important;
+}
+body.tesys-ui .tsys-link:hover {
+    background: var(--surface-2) !important;
+    color: var(--text) !important;
+}
+body.tesys-ui .tsys-link:hover .tsys-icon { color: var(--text) !important; }
+body.tesys-ui .tsys-icon { color: var(--text-faint) !important; opacity: .85; }
+
+/* Item aktif — merah brand */
+body.tesys-ui .tsys-link.tsys-active {
+    background: var(--accent-tint) !important;
+    color: var(--accent-text) !important;
+    border-color: transparent !important;
+    font-weight: 600 !important;
+}
+body.tesys-ui .tsys-link.tsys-active .tsys-icon { color: var(--accent) !important; }
+body.tesys-ui .tsys-link.tsys-active::before { background: var(--accent) !important; }
+
+/* Divider & submenu */
+body.tesys-ui .tsys-divider { background: var(--border) !important; border-color: var(--border) !important; }
+body.tesys-ui .tsys-submenu .tsys-link { color: var(--text-faint) !important; }
+body.tesys-ui .tsys-submenu .tsys-link:hover { color: var(--text) !important; }
+
+/* Mode sidebar collapse */
+body.tesys-ui.sidebar-collapse .main-sidebar,
+body.tesys-ui.sidebar-collapse .main-sidebar:hover { background: var(--surface) !important; }
+
+/* Scroll sidebar — cegah scrollbar horizontal */
+body.tesys-ui .sidebar,
+body.tesys-ui .main-sidebar { overflow-x: hidden !important; }
+
+/* Tombol collapse sidebar milik app */
+body.tesys-ui #tsys-sidebar-toggle {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text-dim) !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+body.tesys-ui #tsys-sidebar-toggle:hover {
+    background: var(--accent-tint) !important;
+    border-color: var(--accent-soft) !important;
+    color: var(--accent-text) !important;
+}
+
+/* Footer user di sidebar (jika ada) */
+body.tesys-ui .sidebar .user-panel { border-color: var(--border) !important; }
+body.tesys-ui .sidebar .user-panel .info a { color: var(--text) !important; }

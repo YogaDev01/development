@@ -1,0 +1,59 @@
+# Kompresi teks — adminlte.min.css saja 1,3 MB mentah, turun ke ~150 KB
+# setelah gzip. Dibungkus IfModule supaya server tanpa modul ini tetap jalan.
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css
+    AddOutputFilterByType DEFLATE application/javascript application/x-javascript
+    AddOutputFilterByType DEFLATE application/json application/xml
+    AddOutputFilterByType DEFLATE image/svg+xml application/vnd.ms-fontobject
+    AddOutputFilterByType DEFLATE font/ttf font/otf
+</IfModule>
+
+# Cache aset statis. Semua <link>/<script> milik Tesys memakai ?v=filemtime,
+# jadi perubahan file tetap langsung terbaca browser meski cache panjang.
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css                 "access plus 1 year"
+    ExpiresByType application/javascript   "access plus 1 year"
+    ExpiresByType image/png                "access plus 1 year"
+    ExpiresByType image/jpeg               "access plus 1 year"
+    ExpiresByType image/svg+xml            "access plus 1 year"
+    ExpiresByType image/x-icon             "access plus 1 year"
+    ExpiresByType font/woff2               "access plus 1 year"
+    ExpiresDefault                         "access plus 1 day"
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # Lampiran TIDAK boleh dilayani langsung oleh web server.
+    #
+    # Berkas keuangan sekarang tinggal di storage/app/private dan keluar hanya
+    # lewat route /storage/{path} yang memeriksa sesi + hak akses. Baris di
+    # bawah memaksa SEMUA permintaan /storage/... masuk ke index.php, sehingga
+    # kalaupun suatu saat ada yang menjalankan "php artisan storage:link" dan
+    # membuat public/storage berisi berkas sungguhan, berkas itu tetap tidak
+    # terlayani tanpa pemeriksaan.
+    RewriteRule ^storage/ index.php [L]
+
+    # Handle Authorization Header
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Handle X-XSRF-Token Header
+    RewriteCond %{HTTP:x-xsrf-token} .
+    RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
+
+    # Redirect Trailing Slashes If Not A Folder...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # Send Requests To Front Controller...
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>

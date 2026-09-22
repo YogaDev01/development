@@ -1,0 +1,214 @@
+/* =====================================================================
+   Tesys UI — MOTION & POLISH
+   ---------------------------------------------------------------------
+   Lapisan terakhir: micro-interaction, soft shadow, dan sudut membulat.
+   Murni CSS (tanpa library) supaya halaman tetap ringan; semua animasi
+   hanya menyentuh transform/opacity/box-shadow agar tidak memicu
+   reflow — aman dipakai di tabel dengan ratusan baris.
+
+   Urutan pemuatan: tokens -> compat -> chrome -> pages -> motion (file ini).
+   ===================================================================== */
+
+/* ------------------------------------------------------- DASAR & CANVAS */
+body.tesys-ui {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Cahaya sangat tipis di puncak area kerja, supaya kartu tidak menempel
+   rata di bidang polos.
+
+   Dulu putih keras (#ffffff). Di tema terang itu tidak terlihat — putih
+   tipis di atas #F6F6F4 memang nyaris tanpa beda, dan itulah yang dimaksud
+   "sangat tipis". Di tema gelap ia jadi kabut putih selebar 1200px yang
+   membentang di puncak halaman: satu-satunya bidang terang di layar yang
+   seluruhnya gelap, dan persis di tempat mata pertama mendarat.
+
+   Kedua perhentiannya kini token berpasangan (--main-glow dan nada yang
+   sama dengan alfa nol) — lihat catatannya di tesys-ui-tokens.css. */
+body.tesys-ui .main {
+    background:
+        radial-gradient(1200px 520px at 78% -8%,
+            var(--main-glow) 0%, var(--main-glow-0) 62%),
+        var(--bg);
+}
+
+/* --------------------------------------------------- MASUKNYA KONTEN */
+@keyframes tesys-rise {
+    from { opacity: 0; transform: translate3d(0, 8px, 0); }
+    to   { opacity: 1; transform: none; }
+}
+
+@keyframes tesys-fade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* PENTING: pembungkus konten HANYA boleh menganimasikan opacity.
+   Elemen dengan nilai transform apa pun — termasuk hasil animasi yang
+   di-fill — menjadi containing block bagi keturunan position:fixed,
+   sehingga modal Bootstrap di dalamnya ikut terjepit di area konten
+   dan tidak lagi menutupi layar. */
+/* fill-mode sengaja "backwards", BUKAN "both": animasi yang di-fill ke depan
+   tetap dianggap aktif oleh browser, sehingga elemennya terus menjadi
+   stacking context. Kalau itu terjadi di pembungkus konten, modal Bootstrap
+   di dalamnya tidak bisa naik melewati backdrop-nya sendiri dan tampak pudar
+   tertutup lapisan gelap. "backwards" hanya menutup jeda sebelum animasi
+   mulai, lalu lepas sepenuhnya begitu selesai. */
+body.tesys-ui .main > .content {
+    animation: tesys-fade var(--dur-slow) var(--ease-out) .04s backwards;
+}
+
+/* ---------------------------------------------------------------- CARD
+   Kartu diam: tidak berbayang dan tidak terangkat. Yang berubah saat
+   disentuh hanya garis tepinya. Halaman ERP berisi belasan kartu sekaligus;
+   kalau semuanya mengambang, tidak ada lagi yang terlihat penting. */
+body.tesys-ui .card {
+    border-radius: var(--radius-md);
+    box-shadow: none !important;
+    transition: border-color var(--dur) var(--ease);
+}
+body.tesys-ui .card:hover { border-color: var(--border); }
+
+/* Kartu yang memang bisa diklik seluruh badannya — di sini bayangan berguna
+   karena menandakan "benda ini bisa diangkat", bukan sekadar hiasan. */
+body.tesys-ui .card.card-clickable,
+body.tesys-ui a > .card {
+    transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+body.tesys-ui .card.card-clickable:hover,
+body.tesys-ui a > .card:hover {
+    transform: translate3d(0, -2px, 0);
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-sm) !important;
+}
+
+/* Kartu statistik ringkas (.stat-card / .small-box / .ts-kpi) — angka harus
+   tenang: tidak ada bayangan, tidak ada gerakan naik-turun. */
+body.tesys-ui .stat-card,
+body.tesys-ui .small-box,
+body.tesys-ui .ts-kpi {
+    border-radius: var(--radius-md) !important;
+    box-shadow: none !important;
+    transition: border-color var(--dur) var(--ease);
+}
+body.tesys-ui .stat-card:hover,
+body.tesys-ui .small-box:hover,
+body.tesys-ui .ts-kpi:hover { border-color: var(--border-strong); }
+
+/* -------------------------------------------------------------- BUTTON */
+body.tesys-ui .btn {
+    border-radius: var(--radius-sm);
+    transition:
+        background var(--dur-fast) var(--ease),
+        border-color var(--dur-fast) var(--ease),
+        color var(--dur-fast) var(--ease),
+        box-shadow var(--dur) var(--ease),
+        transform var(--dur-fast) var(--ease);
+}
+body.tesys-ui .btn:hover { transform: translate3d(0, -1px, 0); }
+body.tesys-ui .btn:active { transform: translate3d(0, 0, 0) scale(.985); }
+body.tesys-ui .btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-ring);
+}
+body.tesys-ui .btn-primary,
+body.tesys-ui .btn-success { box-shadow: var(--shadow-accent); }
+body.tesys-ui .btn-primary:hover,
+body.tesys-ui .btn-success:hover {
+    box-shadow: 0 4px 10px rgba(200,39,46,.22), 0 12px 26px rgba(200,39,46,.22);
+}
+/* Tombol dalam sel tabel tidak perlu terangkat — barisnya jadi ramai. */
+body.tesys-ui .table td .btn:hover { transform: none; }
+
+/* --------------------------------------------------------------- TABLE */
+body.tesys-ui .table tbody tr {
+    transition: background var(--dur-fast) var(--ease);
+}
+body.tesys-ui .table-hover tbody tr:hover {
+    background: var(--surface-2);
+    box-shadow: inset 2px 0 0 var(--accent);
+}
+/* Kartu pembungkus tabel: sudut membulat ikut terpotong rapi. */
+body.tesys-ui .card > .card-body > .table-responsive { border-radius: var(--radius-sm); }
+
+/* ---------------------------------------------------------------- FORM */
+body.tesys-ui .form-control,
+body.tesys-ui .custom-select,
+body.tesys-ui .ts-control,
+body.tesys-ui .tss-btn,
+body.tesys-ui .tss-multi-btn {
+    border-radius: var(--radius-sm) !important;
+    transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur) var(--ease);
+}
+body.tesys-ui .form-control:hover:not(:focus):not([readonly]):not(:disabled) {
+    border-color: var(--border-strong);
+}
+
+/* --------------------------------------------------------------- MODAL */
+body.tesys-ui .modal-content {
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+}
+body.tesys-ui .modal.fade .modal-dialog {
+    transform: translate3d(0, 14px, 0) scale(.985);
+    transition: transform var(--dur-slow) var(--ease-out), opacity var(--dur-slow) var(--ease-out);
+    opacity: 0;
+}
+body.tesys-ui .modal.show .modal-dialog {
+    transform: none;
+    opacity: 1;
+}
+body.tesys-ui .modal-backdrop.fade { transition: opacity var(--dur) var(--ease); }
+
+/* Dropdown navbar & lainnya */
+body.tesys-ui .dropdown-menu {
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    animation: tesys-rise var(--dur) var(--ease-out) backwards;
+}
+
+/* ------------------------------------------------------------- SIDEBAR */
+body.tesys-ui .tsys-link {
+    transition:
+        background var(--dur-fast) var(--ease),
+        color var(--dur-fast) var(--ease),
+        transform var(--dur-fast) var(--ease);
+}
+body.tesys-ui .tsys-link:hover { transform: translate3d(2px, 0, 0); }
+body.tesys-ui .tsys-link.tsys-active::before {
+    transition: transform var(--dur) var(--ease-out);
+}
+body.tesys-ui .main-sidebar { transition: width var(--dur-slow) var(--ease); }
+
+/* ----------------------------------------------------------- NAV TABS */
+body.tesys-ui .nav-tabs .nav-link {
+    transition: color var(--dur-fast) var(--ease), border-color var(--dur) var(--ease);
+}
+
+/* --------------------------------------------------------------- BADGE */
+body.tesys-ui .badge { border-radius: var(--radius-pill); }
+
+/* ------------------------------------------------------------- SKELETON
+   Placeholder saat data tabel/panel masih dimuat lewat AJAX. */
+body.tesys-ui .skeleton { animation-duration: 1.2s; }
+
+/* --------------------------------------------------- HORMATI PREFERENSI
+   Pengguna yang mematikan animasi di OS tetap dapat UI yang sama, tanpa
+   gerakan. Wajib: sebagian pengguna pusing oleh animasi (vestibular). */
+@media (prefers-reduced-motion: reduce) {
+    body.tesys-ui *,
+    body.tesys-ui *::before,
+    body.tesys-ui *::after {
+        animation-duration: .001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important;
+        scroll-behavior: auto !important;
+    }
+    body.tesys-ui .btn:hover,
+    body.tesys-ui .card:hover,
+    body.tesys-ui .card.card-clickable:hover,
+    body.tesys-ui a > .card:hover,
+    body.tesys-ui .stat-card:hover,
+    body.tesys-ui .tsys-link:hover { transform: none; }
+}

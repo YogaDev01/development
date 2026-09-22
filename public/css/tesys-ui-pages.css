@@ -1,0 +1,427 @@
+/* =====================================================================
+   Tesys UI — PAGES
+   Gaya khusus per halaman yang tidak masuk akal ditaruh di lapisan
+   komponen. Dimuat setelah @stack('styles') sehingga menang atas <style>
+   sisa di blade.
+   ===================================================================== */
+
+/* =====================  DASHBOARD  =====================
+   Dashboard dulu memakai tema gelap sendiri (panel navy di atas charcoal)
+   yang lalu ditimpa lagi di sini dengan belasan !important. Dua lapisan itu
+   sudah dilepas: markup-nya kini memakai .card + komponen design system yang
+   sama dengan halaman lain, jadi yang tersisa hanya tata letaknya.        */
+
+body.tesys-ui .ts-dash {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-4);
+    padding-bottom: var(--sp-6);
+}
+
+body.tesys-ui .ts-dash-head { margin-bottom: 2px; }
+body.tesys-ui #dashGreeting {
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-size: 20px;
+    font-weight: var(--fw-heading, 700);
+    color: var(--text);
+    margin: 0 0 2px;
+}
+body.tesys-ui #dashSub {
+    color: var(--text-faint);
+    font-size: 12.5px;
+    margin: 0;
+}
+
+/* KPI dashboard sudah punya jarak dari .ts-dash; hilangkan margin gandanya. */
+body.tesys-ui .ts-dash > .ts-kpi-row { margin-bottom: 0; }
+body.tesys-ui .ts-dash > .card { margin-bottom: 0; }
+
+/* Aktivitas + What's New berdampingan; keduanya turun sendiri di layar kecil. */
+body.tesys-ui .ts-dash-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    gap: var(--sp-4);
+    align-items: start;
+}
+body.tesys-ui .ts-dash-grid > .card { margin-bottom: 0; }
+
+@media (max-width: 991.98px) {
+    body.tesys-ui .ts-dash-grid { grid-template-columns: 1fr; }
+}
+
+/* Daftar antrean memanjang: beri batas tinggi supaya blok di bawahnya tetap
+   terlihat tanpa menggulir seluruh halaman. */
+body.tesys-ui #dashAction .card-body { max-height: 420px; overflow-y: auto; }
+
+/* Ringkasan di kanan judul kartu Perlu Tindakan. */
+body.tesys-ui #dashAction .card-tools { font-size: 11.5px; }
+
+/* ---------------------------------------------------- CATATAN RILIS
+   Dipakai kartu ringkasan di dashboard dan dua modal changelog. */
+body.tesys-ui .ts-release + .ts-release {
+    border-top: 1px solid var(--border);
+    margin-top: var(--sp-4);
+    padding-top: var(--sp-4);
+}
+body.tesys-ui .ts-release-section { margin-bottom: var(--sp-3); }
+body.tesys-ui .ts-release-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: var(--fw-section, 600);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 6px;
+}
+body.tesys-ui .ts-release-tag-added   { background: var(--success-bg); color: var(--success); }
+body.tesys-ui .ts-release-tag-changed { background: var(--info-bg);    color: var(--info); }
+body.tesys-ui .ts-release-tag-fixed   { background: var(--warning-bg); color: var(--warning); }
+
+/* Di dalam modal, butir rilis boleh membungkus beberapa baris. */
+body.tesys-ui .modal .ts-release-list li { font-size: 12.5px; }
+
+/* =====================================================================
+   FINANCE SUMMARY
+   Halaman ini menyimpan gayanya sendiri di dalam <style> pada blade-nya,
+   lengkap dengan palet biru/hijau/jingga/ungu yang dipilih sebelum ada
+   design system. Yang dilakukan di sini: mengembalikan warna ke arti.
+
+   Angka KPI kembali berwarna teks biasa — yang membedakannya cukup ukuran
+   dan posisinya. Warna disisakan untuk satu hal: KPI yang menuntut
+   tindakan (overdue) tetap merah.
+   ===================================================================== */
+body.tesys-ui .col-kpi-value {
+    color: var(--text) !important;
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--fw-heading, 700);
+}
+body.tesys-ui .col-kpi-accent-bad .col-kpi-value { color: var(--danger) !important; }
+
+body.tesys-ui .col-kpi-label {
+    font-size: 10px;
+    font-weight: var(--fw-section, 600);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+}
+
+/* Enam nada ikon KPI dipetakan ke token, bukan warna sendiri-sendiri. */
+body.tesys-ui .col-kpi-icon-blue   { background: var(--info-bg);    color: var(--info); }
+body.tesys-ui .col-kpi-icon-green  { background: var(--success-bg); color: var(--success); }
+body.tesys-ui .col-kpi-icon-warn   { background: var(--warning-bg); color: var(--warning); }
+body.tesys-ui .col-kpi-icon-bad    { background: var(--danger-bg);  color: var(--danger); }
+body.tesys-ui .col-kpi-icon-good   { background: var(--success-bg); color: var(--success); }
+body.tesys-ui .col-kpi-icon-purple { background: var(--purple-bg);  color: var(--purple); }
+
+/* Garis aksen di tepi kiri kartu KPI: tipis, dan hanya sebagai penanda
+   kelompok — bukan blok warna. */
+body.tesys-ui .col-kpi-card { border-left-width: 3px; }
+body.tesys-ui .col-kpi-accent-blue   { border-left-color: var(--info); }
+body.tesys-ui .col-kpi-accent-green  { border-left-color: var(--success); }
+body.tesys-ui .col-kpi-accent-warn   { border-left-color: var(--warning); }
+body.tesys-ui .col-kpi-accent-bad    { border-left-color: var(--danger); }
+body.tesys-ui .col-kpi-accent-good   { border-left-color: var(--success); }
+body.tesys-ui .col-kpi-accent-purple { border-left-color: var(--purple); }
+
+/* Filter multi-pilih: warna aktif & sorotan daftar mengikuti merek. */
+body.tesys-ui .col-mf-btn.col-mf-active,
+body.tesys-ui .col-mf-btn.col-mf-active:hover {
+    background: var(--accent) !important;
+    border-color: var(--accent) !important;
+    color: #fff !important;
+}
+body.tesys-ui .col-mf-badge { background: var(--accent); color: #fff; }
+body.tesys-ui .col-mf-btn.col-mf-active .col-mf-badge { background: rgba(255, 255, 255, .28); }
+body.tesys-ui .col-mf-item:hover { background: var(--surface-2); }
+body.tesys-ui .col-mf-menu {
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-md);
+}
+
+/* Legenda grafik & tabel rollup: teks meta memakai warna teks redup. */
+body.tesys-ui .exec-legend { border-top-color: var(--border); }
+body.tesys-ui .exec-legend-item { color: var(--text-faint); }
+
+/* =====================================================================
+   APLIKASI YANG BELUM TERSEDIA  —  pola "segera hadir"
+   Satu pola untuk semua aplikasi (HR, R&D, Logistic, Operation, Project):
+   lambang, satu kalimat keadaan, daftar bagian yang sedang disiapkan, dan
+   satu jalan kembali. Tanpa animasi — halaman ini tidak perlu meminta
+   perhatian, ia hanya perlu menjelaskan.
+   ===================================================================== */
+body.tesys-ui .ts-soon {
+    max-width: 480px;
+    margin: 8vh auto 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--sp-3);
+}
+body.tesys-ui .ts-soon-mark {
+    width: 52px;
+    height: 52px;
+    border-radius: var(--radius-md);
+    background: var(--accent-tint);
+    color: var(--accent-text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+body.tesys-ui .ts-soon-title {
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-size: 19px;
+    font-weight: var(--fw-heading, 700);
+    color: var(--text);
+    margin: var(--sp-1) 0 0;
+}
+body.tesys-ui .ts-soon-desc {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+}
+body.tesys-ui .ts-soon-plan {
+    width: 100%;
+    padding: var(--sp-4);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+body.tesys-ui .ts-soon-plan-label {
+    font-size: 10px;
+    font-weight: var(--fw-section, 600);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin: 0 0 10px;
+}
+body.tesys-ui .ts-soon-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    justify-content: center;
+}
+body.tesys-ui .ts-soon-chip {
+    padding: 5px 11px;
+    border-radius: var(--radius-pill);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    font-size: 11.5px;
+    font-weight: var(--fw-label, 500);
+    color: var(--text-dim);
+}
+body.tesys-ui .ts-soon-note {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-faint);
+    line-height: 1.6;
+}
+
+/* =====================================================================
+   INVOICE — FORM & DETAIL MENURUN
+   Halaman tambah/ubah/lihat invoice dulu memakai dua kolom kiri–kanan:
+   identitas di kolom sempit kiri, rincian dan lampiran di kanan. Isian
+   jadi berdesakan di kolom 4/12 sementara tabel rincian kehilangan lebar,
+   dan urutan kerjanya terbaca melompat. Sekarang menurun: satu bagian
+   penuh selebar halaman, satu per satu.
+   ===================================================================== */
+
+/* Ringkasan PO terpilih — label di atas, nilai di bawah, berjajar. */
+body.tesys-ui .inv-po-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: var(--sp-3) var(--sp-4);
+    margin-bottom: var(--sp-4);
+    padding: 12px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+body.tesys-ui .inv-po-item { min-width: 0; }
+/* Scope of Work jauh lebih panjang dari yang lain — diberi dua kolom
+   supaya tidak memaksa seluruh baris ikut melebar. */
+body.tesys-ui .inv-po-wide { grid-column: span 2; }
+body.tesys-ui .inv-po-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 2px;
+}
+body.tesys-ui .inv-po-value {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text);
+    word-break: break-word;
+}
+
+/* Penghitungan di kaki tabel rincian: catatan di kiri, angka di kanan. */
+body.tesys-ui .inv-sum-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--sp-4);
+}
+body.tesys-ui .inv-sum-note {
+    flex: 1 1 240px;
+    min-width: 0;
+    font-size: 11.5px;
+    color: var(--text-faint);
+    line-height: 1.6;
+}
+body.tesys-ui .inv-sum {
+    flex: 0 0 auto;
+    min-width: 260px;
+    margin-left: auto;
+}
+body.tesys-ui .inv-sum-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    padding: 3px 0;
+}
+body.tesys-ui .inv-sum-row strong { font-size: 13px; }
+body.tesys-ui .inv-sum-total {
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+}
+body.tesys-ui .inv-sum-total strong { font-size: 16px; }
+body.tesys-ui .inv-sum-warning { flex: 1 1 100%; font-size: 11px; }
+
+/* Lampiran bawaan PO/No. PO/BAST — tiga kolom sejajar, bergaris pemisah
+   di layar lebar dan bertumpuk rapi di layar sempit. */
+body.tesys-ui .att-group-col + .att-group-col { border-left: 1px solid var(--border); }
+body.tesys-ui .att-group-body { font-size: 12px; }
+@media (max-width: 767.98px) {
+    body.tesys-ui .att-group-col + .att-group-col {
+        border-left: none;
+        border-top: 1px solid var(--border);
+        margin-top: var(--sp-3);
+        padding-top: var(--sp-3);
+    }
+}
+
+/* Bilah aksi menempel di dasar layar. Halaman menurun itu panjang, dan
+   tombol simpan tidak boleh ikut hanyut ke bawah lipatan. */
+body.tesys-ui .inv-actionbar {
+    position: sticky;
+    bottom: 0;
+    z-index: 15;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    margin-top: var(--sp-4);
+    padding: 12px 16px;
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 -2px 12px rgba(16, 24, 40, .06);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    body.tesys-ui .inv-actionbar { background: var(--surface); }
+}
+
+/* Halaman lihat invoice — fakta invoice sebagai kisi label/nilai, bukan
+   tabel dua kolom di dalam kolom sempit. */
+body.tesys-ui .inv-facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: var(--sp-3) var(--sp-4);
+}
+body.tesys-ui .inv-fact { min-width: 0; }
+body.tesys-ui .inv-fact-wide { grid-column: span 2; }
+@media (max-width: 640px) {
+    body.tesys-ui .inv-fact-wide { grid-column: span 1; }
+}
+body.tesys-ui .inv-fact-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 2px;
+}
+body.tesys-ui .inv-fact-value {
+    display: block;
+    font-size: 13px;
+    color: var(--text);
+    word-break: break-word;
+}
+
+/* Ringkasan keuangan: komponen penyusun di kiri, hasil akhir dipisah ke
+   kanan — yang dibaca berulang kali hanya dua angka terakhir. */
+body.tesys-ui .inv-money {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-4) var(--sp-6);
+    align-items: flex-start;
+}
+body.tesys-ui .inv-money-parts {
+    flex: 1 1 380px;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--sp-3) var(--sp-4);
+}
+body.tesys-ui .inv-money-num {
+    display: block;
+    font-size: 13.5px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+body.tesys-ui .inv-money-totals {
+    flex: 0 1 260px;
+    min-width: 220px;
+    padding-left: var(--sp-4);
+    border-left: 1px solid var(--border);
+}
+@media (max-width: 767.98px) {
+    body.tesys-ui .inv-money-totals {
+        border-left: none;
+        border-top: 1px solid var(--border);
+        padding-left: 0;
+        padding-top: var(--sp-3);
+        flex-basis: 100%;
+    }
+}
+body.tesys-ui .inv-money-total { margin-bottom: var(--sp-3); }
+body.tesys-ui .inv-money-total strong {
+    display: block;
+    font-size: 17px;
+    font-variant-numeric: tabular-nums;
+}
+body.tesys-ui .inv-account {
+    padding-top: var(--sp-3);
+    border-top: 1px solid var(--border);
+}
+
+/* =====================================================================
+   ANGKA UANG — SEJAJAR PER DIGIT
+   Tabel keuangan dibaca dengan cara dibandingkan ke atas-bawah, bukan
+   dibaca satu per satu. Dengan angka proporsional, "1.111.111" lebih
+   pendek dari "8.888.888" meski jumlah digitnya sama, sehingga kolom
+   terlihat bergerigi dan selisih besaran jadi sulit ditangkap sekilas.
+   tabular-nums membuat setiap digit selebar sama.
+   ===================================================================== */
+body.tesys-ui table td.text-right,
+body.tesys-ui table th.text-right,
+body.tesys-ui .inv-money-num,
+body.tesys-ui .inv-sum-row strong,
+body.tesys-ui .ts-stat-value {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+}

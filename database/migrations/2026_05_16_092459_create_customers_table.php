@@ -1,0 +1,60 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('customers', function (Blueprint $table) {
+
+            $table->id();
+
+            $table->string('name');
+
+            $table->text('address')
+                ->nullable();
+
+            /*
+            |--------------------------------------------------------------------------
+            | RELATION
+            |--------------------------------------------------------------------------
+            */
+
+            $table->foreignId('customer_type_id')
+                ->nullable()
+                ->constrained('customer_types')
+                ->nullOnDelete();
+
+            $table->foreignId('input_by')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
+
+            /*
+            |--------------------------------------------------------------------------
+            | STATUS
+            |--------------------------------------------------------------------------
+            */
+
+            $table->string('status')
+                ->default('ACTIVE');
+
+            $table->timestamps();
+
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('customers');
+    }
+};
