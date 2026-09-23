@@ -4,6 +4,15 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [2.3.2] - 2026-09-23 — Lampiran Lama Bisa Dibuka Kembali
+
+Lampiran yang diunggah sebelum sistem penyimpanan berkas diperketat (mis.
+dokumen Purchase Order lama) sempat tidak bisa dibuka (404). Sekarang bisa
+dibuka kembali dengan pemeriksaan hak akses yang sama.
+
+### Perbaikan
+- Lampiran lama (Purchase Order, Invoice, Cost Request, dan lainnya) yang sebelumnya tampil "404 Not Found" kini bisa dibuka kembali.
+
 ## [2.3.1] - 2026-09-23 — Stabilitas & Kecepatan Aplikasi
 
 Rilis perbaikan yang berfokus pada error 500 yang sempat muncul berulang di

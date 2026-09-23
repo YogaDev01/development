@@ -26,10 +26,28 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '2.3.1',
+    'current' => '2.3.2',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '2.3.2',
+            'date'    => '2026-09-23',
+            'title'   => 'Lampiran Lama Bisa Dibuka Kembali',
+            'summary' => 'Lampiran yang diunggah sebelum sistem penyimpanan berkas diperketat '
+                       . '(mis. dokumen Purchase Order lama) sempat tidak bisa dibuka (404). '
+                       . 'Sekarang bisa dibuka kembali dengan pemeriksaan hak akses yang sama.',
+            'sections' => [
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Lampiran lama (Purchase Order, Invoice, Cost Request, dan lainnya) yang sebelumnya tampil "404 Not Found" kini bisa dibuka kembali.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '2.3.1',
