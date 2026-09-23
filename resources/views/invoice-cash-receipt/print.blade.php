@@ -225,7 +225,7 @@
         <div class="box">
             {{ $company['name'] }}
             <div class="space"></div>
-            <div class="name">Muhammad Hasan</div>
+            <div class="name">Aye Assagaf</div>
         </div>
     </div>
 
