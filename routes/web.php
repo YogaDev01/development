@@ -571,6 +571,10 @@ Route::middleware('auth')->group(function () {
     Route::post('budget-request/{id}/finance-verify-settlement',  [BudgetRequestController::class, 'financeVerifySettlement'])->name('budget-request.finance-verify-settlement');
     Route::post('budget-request/{id}/finance-reject-settlement', [BudgetRequestController::class, 'financeRejectSettlement'])->name('budget-request.finance-reject-settlement');
     Route::post('budget-request/{id}/ceo-close-settlement',       [BudgetRequestController::class, 'ceoCloseSettlement'])->name('budget-request.ceo-close-settlement');
+    Route::post('budget-request/{id}/manager-reject-settlement',  [BudgetRequestController::class, 'managerRejectSettlement'])->name('budget-request.manager-reject-settlement');
+    // Bulk Close/Reject dari To-Do List (multi-select baris tahap Finance Manager Close)
+    Route::post('budget-request/settlement-bulk-close',  [BudgetRequestController::class, 'settlementBulkClose'])->name('budget-request.settlement-bulk-close');
+    Route::post('budget-request/settlement-bulk-reject', [BudgetRequestController::class, 'settlementBulkReject'])->name('budget-request.settlement-bulk-reject');
     
     // CRUD
     Route::middleware('role:superadmin,manager,supervisor')->group(function () {

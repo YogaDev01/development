@@ -1953,21 +1953,44 @@ class BudgetRequestController extends Controller
         $user = Auth::user();
         // Nama method/route tetap "ceoClose..." (historis), tapi actionnya
         // sekarang dilakukan Finance Manager, BUKAN CEO/approver.
+        $this->authorizeSettlementClose($user);
+
+        $cr = $this->findVisibleCr($id);
+
+        if ($error = $this->applySettlementClose($cr, $request->notes)) {
+            return back()->with('error', $error);
+        }
+
+        return back()->with('success', 'Settlement di-Close. CR sekarang CLOSED.');
+    }
+
+    /**
+     * Tahap penutupan Settlement dipegang Finance Manager (bukan CEO) — lihat
+     * catatan di ceoCloseSettlement().
+     */
+    private function authorizeSettlementClose(User $user): void
+    {
         if (!$user->hasRole(['superadmin', 'finance_manager'])) {
             abort(403, 'Anda tidak memiliki wewenang untuk approval tahap ini.');
         }
+    }
 
-        $cr = $this->findVisibleCr($id);
+    /**
+     * Inti Close satu CR. Mengembalikan pesan error kalau ditolak, atau null
+     * kalau berhasil — supaya jalur satuan dan bulk memakai aturan yang sama.
+     */
+    private function applySettlementClose(BudgetRequest $cr, ?string $notes): ?string
+    {
         if ($cr->status !== 'SETTLE_VERIFIED') {
-            return back()->with('error', 'Status tidak valid.');
+            return 'CR ' . $cr->code . ': status tidak valid.';
         }
 
         if ($cr->pendingSecondPayment()) {
-            return back()->with('error', 'CR belum bisa di-Close — Second Payment masih PENDING.');
+            return 'CR ' . $cr->code . ' belum bisa di-Close — Second Payment masih PENDING.';
         }
 
         $cr->update(['status' => 'CLOSED', 'closed_at' => now()]);
-        $cr->addLog('SETTLE_VERIFIED', 'CLOSED', 'settlement_closed', $request->notes);
+        $cr->addLog('SETTLE_VERIFIED', 'CLOSED', 'settlement_closed', $notes);
 
         if ($cr->applicant) {
             NotifyService::send(
@@ -1979,7 +2002,135 @@ class BudgetRequestController extends Controller
             );
         }
 
-        return back()->with('success', 'Settlement di-Close. CR sekarang CLOSED.');
+        return null;
+    }
+
+    /**
+     * Inti Reject tahap Close: SETTLE_VERIFIED -> PAID, sama seperti reject
+     * Head/Finance pada tahap sebelumnya. Second Payment PENDING yang lahir
+     * saat verify ikut dihapus — selisihnya belum tentu sama lagi setelah
+     * settlement diperbaiki. Kalau baris itu sudah masuk batch Treasury
+     * (apalagi sudah PAID), reject ditolak: uangnya sudah bergerak.
+     */
+    private function applySettlementRejectClose(BudgetRequest $cr, string $notes): ?string
+    {
+        if ($cr->status !== 'SETTLE_VERIFIED') {
+            return 'CR ' . $cr->code . ': status tidak valid.';
+        }
+
+        $secondPayments = $cr->secondPayments()->with('dailyTransactionItems')->get();
+
+        foreach ($secondPayments as $sp) {
+            if ($sp->status === 'PAID') {
+                return 'CR ' . $cr->code . ' tidak bisa ditolak — Second Payment sudah dibayar.';
+            }
+            if ($sp->dailyTransactionItems->where('status', 'INCLUDED')->isNotEmpty()) {
+                return 'CR ' . $cr->code . ' tidak bisa ditolak — Second Payment sudah masuk batch Treasury.';
+            }
+        }
+
+        DB::transaction(function () use ($cr, $secondPayments, $notes) {
+            foreach ($secondPayments as $sp) {
+                $sp->delete();
+            }
+            $cr->update(['status' => 'PAID']);
+            $cr->addLog('SETTLE_VERIFIED', 'PAID', 'settlement_rejected', $notes);
+        });
+
+        if ($cr->applicant) {
+            NotifyService::send(
+                [$cr->applicant],
+                'Settlement CR ditolak',
+                'Settlement Cost Request "' . $cr->description . '" (' . $cr->code . ') ditolak: ' . $notes,
+                route('budget-request.index'),
+                'workflow'
+            );
+        }
+
+        return null;
+    }
+
+    /** Reject satuan pada tahap Finance Manager Close. */
+    public function managerRejectSettlement(Request $request, $id)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        $this->authorizeSettlementClose($user);
+        $request->validate(['notes' => 'required|string|max:500']);
+
+        $cr = $this->findVisibleCr($id);
+
+        if ($error = $this->applySettlementRejectClose($cr, $request->notes)) {
+            return back()->with('error', $error);
+        }
+
+        return back()->with('success', 'Settlement ditolak. CR dikembalikan ke status PAID.');
+    }
+
+    /** CR terpilih yang benar-benar boleh diakses user ini (bulk). */
+    private function visibleCrs(array $ids)
+    {
+        return BudgetRequest::whereIn('id', $ids)->get()
+            ->filter(fn (BudgetRequest $cr) => $this->canViewCr($cr));
+    }
+
+    /** Bulk Close dari To-Do List (multi-select baris). */
+    public function settlementBulkClose(Request $request)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        $this->authorizeSettlementClose($user);
+
+        $ids    = (array) $request->input('ids', []);
+        $ok     = 0;
+        $errors = [];
+
+        foreach ($this->visibleCrs($ids) as $cr) {
+            $error = $this->applySettlementClose($cr, $request->notes);
+            if ($error) { $errors[] = $error; } else { $ok++; }
+        }
+
+        return $this->settlementBulkResponse($ok, $errors, 'di-Close');
+    }
+
+    /** Bulk Reject dari To-Do List (multi-select baris). */
+    public function settlementBulkReject(Request $request)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        $this->authorizeSettlementClose($user);
+        $request->validate(['notes' => 'required|string|max:500']);
+
+        $ids    = (array) $request->input('ids', []);
+        $ok     = 0;
+        $errors = [];
+
+        foreach ($this->visibleCrs($ids) as $cr) {
+            $error = $this->applySettlementRejectClose($cr, $request->notes);
+            if ($error) { $errors[] = $error; } else { $ok++; }
+        }
+
+        return $this->settlementBulkResponse($ok, $errors, 'ditolak');
+    }
+
+    /**
+     * Satu baris berhasil dan satu baris gagal harus dua-duanya sampai ke user
+     * — kalau hanya jumlah sukses yang ditampilkan, CR yang tertinggal
+     * diam-diam dianggap beres.
+     */
+    private function settlementBulkResponse(int $ok, array $errors, string $verb)
+    {
+        $redirect = back();
+
+        if ($ok) {
+            $redirect->with('success', $ok . ' Settlement berhasil ' . $verb . '.');
+        }
+        if ($errors) {
+            $redirect->with('error', count($errors) . ' CR dilewati: ' . implode(' ', array_slice($errors, 0, 5))
+                . (count($errors) > 5 ? ' ...' : ''));
+        }
+
+        return $redirect;
     }
 
     /*

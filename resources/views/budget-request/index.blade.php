@@ -1522,8 +1522,9 @@ $(function () {
         }
 
         function openViewer(groupImages, startIndex) {
-            images = groupImages;
-            idx = startIndex;
+            images = (groupImages || []).filter(function (it) { return it && it.full; });
+            if (!images.length) return; // jangan buka overlay kosong
+            idx = Math.min(Math.max(startIndex || 0, 0), images.length - 1);
             renderViewer();
             overlay.classList.add('show');
             $('body').css('overflow', 'hidden');
@@ -1539,11 +1540,17 @@ $(function () {
 
         // Trigger: klik thumbnail gambar pada grid Attachment (Request maupun Realization)
         $(document).on('click', '.cr-att-thumb', function () {
+            // Grup carousel = .cr-att-grid terdekat. Kalau thumbnail dirender
+            // tanpa wrapper (mis. langsung di sel tabel Settlement), pakai
+            // parent terdekat supaya daftar gambar tidak pernah kosong.
             var $group = $(this).closest('.cr-att-grid');
-            var groupImages = $group.find('.cr-att-thumb').map(function () {
+            if (!$group.length) $group = $(this).closest('td').length ? $(this).closest('td') : $(this).parent();
+            var $thumbs = $group.find('.cr-att-thumb');
+            if (!$thumbs.length) $thumbs = $(this);
+            var groupImages = $thumbs.map(function () {
                 return { full: $(this).data('full'), name: $(this).data('name') };
             }).get();
-            var startIndex = $group.find('.cr-att-thumb').index(this);
+            var startIndex = $thumbs.index(this);
             openViewer(groupImages, startIndex < 0 ? 0 : startIndex);
         });
 
@@ -1775,7 +1782,7 @@ $(function () {
                 d.realizations.forEach(function(r, i) {
                     rGrand += r.total;
                     var itemAtts = r.attachments || [];
-                    rHtml += '<tr><td class="text-center">' + (i+1) + '</td><td>' + r.cr_item + '</td><td class="text-right">' + r.total_cr_formatted + '</td><td class="text-right"><strong>' + r.actual_formatted + '</strong></td><td>' + (r.notes || '-') + '</td><td>' + (itemAtts.length ? renderAttGrid(itemAtts) : '<span class="text-muted" style="font-size:11px;">-</span>') + '</td></tr>';
+                    rHtml += '<tr><td class="text-center">' + (i+1) + '</td><td>' + r.cr_item + '</td><td class="text-right">' + r.total_cr_formatted + '</td><td class="text-right"><strong>' + r.actual_formatted + '</strong></td><td>' + (r.notes || '-') + '</td><td>' + (itemAtts.length ? '<div class="cr-att-grid">' + renderAttGrid(itemAtts) + '</div>' : '<span class="text-muted" style="font-size:11px;">-</span>') + '</td></tr>';
                 });
                 $('#crRealizationBody').html(rHtml);
                 $('#crRealizationTotal').text(rGrand.toLocaleString('id-ID'));
