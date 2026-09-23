@@ -59,103 +59,6 @@ class TodoListController extends Controller
     }
 
     /**
-     * GET /todo-list/fetch — payload ringkas untuk bell "Todo" di navbar
-     * (dropdown popup + badge count), reuse logika yang sama persis dengan
-     * index() supaya angkanya selalu konsisten dengan halaman Todo List
-     * penuh. Item diambil dari union $allTasks (task approval nyata) +
-     * $milestoneOverdue (reminder), diurutkan dari yang paling lama
-     * menunggu, dibatasi 15 item teratas — badge count tetap dari total
-     * asli (bukan dibatasi 15) supaya tidak menyesatkan.
-     */
-    /**
-     * Angka badge lonceng — SATU-SATUNYA yang dipanggil berulang oleh polling.
-     *
-     * Kenapa tidak menulis query COUNT sendiri: jumlah ini harus SELALU sama
-     * dengan isi halaman Todo List. Definisi tiap antrean (gerbang role, scope
-     * Access Group, status mana yang dihitung) ada di buildWorklistData().
-     * Menyalinnya ke sini sebagai belasan COUNT terpisah berarti dua definisi
-     * untuk satu angka, dan cepat atau lambat keduanya berbeda — badge bilang
-     * 12, halamannya menampilkan 9.
-     *
-     * Yang dilakukan justru dua hal lain:
-     *
-     *   1. Rincian anggaran per CoA dilewati (denganCoa: false). Itu bagian
-     *      termahal dan tidak dipakai untuk menghitung apa pun.
-     *   2. Hasilnya disimpan sebentar per user. Polling datang dari SETIAP tab
-     *      yang terbuka; tanpa ini, enam tab berarti enam kali kerja yang sama
-     *      dalam hitungan detik. Umurnya sengaja pendek — badge yang telat
-     *      setengah menit tidak merugikan siapa pun, badge yang salah iya.
-     */
-    public const BELL_CACHE_TTL = 30; // detik
-
-    public function countBell()
-    {
-        /** @var User $user */
-        $user = Auth::user();
-
-        $kunci = 'todo-bell-count:' . $user->id;
-
-        try {
-            $jumlah = \Illuminate\Support\Facades\Cache::remember(
-                $kunci,
-                self::BELL_CACHE_TTL,
-                function () use ($user) {
-                    $data = $this->buildWorklistData($user, denganCoa: false);
-
-                    return $data['allTasks']->count() + $data['milestoneOverdue']->count();
-                }
-            );
-
-            return response()->json(['count' => $jumlah]);
-        } catch (\Throwable $e) {
-            // Sama seperti fetchBell(): badge yang gagal tidak boleh merusak
-            // topbar di seluruh halaman.
-            \Illuminate\Support\Facades\Log::error('TodoListController::countBell gagal', [
-                'user_id' => $user->id, 'error' => $e->getMessage(),
-            ]);
-
-            return response()->json(['count' => 0]);
-        }
-    }
-
-    /**
-     * Isi popup lonceng. Dipanggil saat dropdown DIBUKA, bukan tiap polling —
-     * badge-nya memakai countBell() yang jauh lebih murah.
-     */
-    public function fetchBell()
-    {
-        /** @var User $user */
-        $user = Auth::user();
-
-        try {
-            // Popup hanya menampilkan judul/status/aging per baris; rincian
-            // anggaran per CoA tidak dipakai sama sekali di sini.
-            $data = $this->buildWorklistData($user, denganCoa: false);
-
-            $items = $data['allTasks']
-                ->map(fn ($item) => $this->bellItemPayload($item))
-                ->concat($data['milestoneOverdue']->map(fn ($item) => $this->bellItemPayload($item)))
-                ->sortByDesc(fn ($i) => $i['aging_minutes'])
-                ->values();
-
-            return response()->json([
-                'count' => $items->count(),
-                'items' => $items->take(15)->map(fn ($i) => collect($i)->except('aging_minutes'))->values(),
-            ]);
-        } catch (\Throwable $e) {
-            // Sama seperti index() — satu baris cacat tidak boleh membuat
-            // bell di navbar rusak di SEMUA halaman lain. Diam-diam kosong,
-            // tapi tetap dicatat di log untuk ditelusuri.
-            \Illuminate\Support\Facades\Log::error('TodoListController::fetchBell gagal', [
-                'user_id' => $user->id, 'error' => $e->getMessage(),
-            ]);
-
-            return response()->json(['count' => 0, 'items' => []]);
-        }
-    }
-
-
-    /**
      * Antrean "Perlu Tindakan" untuk blok ringkas di Dashboard.
      *
      * Sengaja memanggil buildWorklistData() yang sama dengan halaman Todo List
@@ -174,7 +77,7 @@ class TodoListController extends Controller
             // antrean — bukan rincian anggaran per CoA.
             $data = $this->buildWorklistData($user, denganCoa: false);
         } catch (\Throwable $e) {
-            // Sama seperti index()/fetchBell(): satu baris data cacat tidak
+            // Sama seperti index(): satu baris data cacat tidak
             // boleh membuat dashboard gagal render seluruhnya.
             \Illuminate\Support\Facades\Log::error('TodoListController::actionQueues gagal', [
                 'user_id' => $user->id, 'error' => $e->getMessage(),
@@ -300,142 +203,12 @@ class TodoListController extends Controller
     }
 
     /**
-     * Bangun judul/url/ikon/warna/aging siap-tampil untuk satu item worklist,
-     * dipakai bell dropdown — instanceof karena $allTasks/$milestoneOverdue
-     * berisi campuran beberapa jenis model (BudgetRequest, BudgetPlan,
-     * DailyTransaction, Invoice, ProjectDetail).
-     */
-    private function bellItemPayload($item): array
-    {
-        if ($item instanceof BudgetRequest) {
-            return [
-                'title'         => $item->code . ' — ' . \Illuminate\Support\Str::limit($item->description, 60),
-                'status_label'  => $item->status,
-                'status_color'  => $this->statusBadgeColor($item->status),
-                'date'          => $item->aging_since->format('d M Y H:i'),
-                'aging_label'   => $item->aging_label,
-                'aging_minutes' => now()->diffInMinutes($item->aging_since, true),
-                'icon'          => 'fa-file-invoice-dollar',
-                'color'         => 'warning',
-            ];
-        }
-
-        if ($item instanceof BudgetPlan) {
-            return [
-                'title'         => $item->code . ' — ' . \Illuminate\Support\Str::limit($item->description, 60),
-                'status_label'  => $item->status,
-                'status_color'  => $this->statusBadgeColor($item->status),
-                'date'          => $item->aging_since->format('d M Y H:i'),
-                'aging_label'   => $item->aging_label,
-                'aging_minutes' => now()->diffInMinutes($item->aging_since, true),
-                'icon'          => 'fa-coins',
-                'color'         => 'info',
-            ];
-        }
-
-        if ($item instanceof DailyTransaction) {
-            return [
-                'title'         => 'Batch ' . $item->code,
-                'status_label'  => $item->status_label,
-                'status_color'  => $this->statusBadgeColor($item->status),
-                'date'          => $item->aging_since->format('d M Y H:i'),
-                'aging_label'   => $item->aging_label,
-                'aging_minutes' => now()->diffInMinutes($item->aging_since, true),
-                'icon'          => 'fa-money-check-alt',
-                'color'         => 'secondary',
-            ];
-        }
-
-        if ($item instanceof Invoice) {
-            return [
-                'title'         => $item->code . ' — ' . ($item->po?->name ?? '-'),
-                'status_label'  => $item->status,
-                'status_color'  => $this->statusBadgeColor($item->status),
-                'date'          => $item->aging_since->format('d M Y H:i'),
-                'aging_label'   => $item->aging_label,
-                'aging_minutes' => now()->diffInMinutes($item->aging_since, true),
-                'icon'          => 'fa-file-invoice',
-                'color'         => 'primary',
-            ];
-        }
-
-        if ($item instanceof Project) {
-            return [
-                'title'         => $item->code . ' — ' . \Illuminate\Support\Str::limit($item->name, 60),
-                'status_label'  => $item->status,
-                'status_color'  => $this->statusBadgeColor($item->status),
-                'date'          => $item->aging_since->format('d M Y H:i'),
-                'aging_label'   => $item->aging_label,
-                'aging_minutes' => now()->diffInMinutes($item->aging_since, true),
-                'icon'          => 'fa-file-signature',
-                'color'         => 'warning',
-            ];
-        }
-
-        if ($item instanceof ProjectPoNumber) {
-            return [
-                'title'         => $item->po_number . ' — ' . ($item->project?->name ?? '-'),
-                'status_label'  => $item->status_label,
-                'status_color'  => $this->statusBadgeColor($item->status),
-                'date'          => $item->aging_since->format('d M Y H:i'),
-                'aging_label'   => $item->aging_label,
-                'aging_minutes' => now()->diffInMinutes($item->aging_since, true),
-                'icon'          => 'fa-file-invoice-dollar',
-                'color'         => 'purple',
-            ];
-        }
-
-        // ProjectDetail (reminder Milestone) — pakai overdue_label, bukan aging_label;
-        // "date"-nya target selesai (plan_end), bukan sejak kapan berstatus.
-        return [
-            'title'         => ($item->project?->name ?? '-') . ' — ' . ($item->stage?->name ?? '-'),
-            'status_label'  => str_replace('_', ' ', $item->status),
-            'status_color'  => $this->statusBadgeColor($item->status),
-            'date'          => 'Target ' . $item->plan_end->format('d M Y'),
-            'aging_label'   => $item->overdue_label,
-            'aging_minutes' => $item->overdue_days * 1440,
-            'icon'          => 'fa-bell',
-            'color'         => 'danger',
-        ];
-    }
-
-    /** Warna badge Bootstrap untuk satu kode status — dipakai bell dropdown, satu
-     *  map dipakai bersama lintas modul (CR/Budget Plan/Treasury/Invoice/Milestone)
-     *  karena kosakata status-nya sebagian besar sama & warnanya konsisten dengan
-     *  yang sudah dipakai di masing-masing halaman index-nya. */
-    private function statusBadgeColor(string $status): string
-    {
-        return [
-            'DRAFT'            => 'secondary',
-            'SUBMITTED'        => 'warning',
-            'CHECKED'          => 'info',
-            'VERIFIED'         => 'primary',
-            'APPROVED'         => 'success',
-            'ACTIVE'           => 'success',
-            'QUEUED'           => 'warning',
-            'PENDING_APPROVER' => 'warning',
-            'DONE'             => 'info',
-            'PAID'             => 'success',
-            'REALIZED'         => 'primary',
-            'SETTLE_CHECKED'   => 'info',
-            'SETTLE_VERIFIED'  => 'primary',
-            'CLOSED'           => 'dark',
-            'REJECTED'         => 'danger',
-            'CANCELLED'        => 'dark',
-            'NOT_STARTED'      => 'secondary',
-            'ON_GOING'         => 'warning',
-        ][$status] ?? 'secondary';
-    }
-
-    /**
-     * Semua data yang dibutuhkan halaman Todo List (index) maupun bell
-     * dropdown (fetchBell) — dipisah ke sini supaya keduanya selalu
-     * konsisten, satu sumber logika.
-     */
-    /**
+     * Semua data yang dibutuhkan halaman Todo List (index) — satu sumber
+     * logika worklist. (Bell "Todo" di navbar dihapus 23 Sep 2026.)
+     *
      * @param bool $denganCoa  Sertakan rincian anggaran per Chart of Account.
      *                         Halaman Todo List butuh (modal View Budget);
-     *                         lonceng navbar & Dashboard tidak — lihat catatan
+     *                         actionQueues() tidak — lihat catatan
      *                         di buildStatusGroups().
      */
     private function buildWorklistData(User $user, bool $denganCoa = true): array
@@ -572,6 +345,7 @@ class TodoListController extends Controller
         if ($user->hasRole(['superadmin', 'treasury', 'finance', 'finance_manager'])) {
             $secondPaymentPending = BudgetRequest::with([
                     'beneficiary',
+                    'statusLogs',
                     'secondPayments.dailyTransactionItems.dailyTransaction',
                 ])
                 ->whereHas('secondPayments', fn ($q) => $q->where('status', 'PENDING'))
@@ -672,7 +446,7 @@ class TodoListController extends Controller
         // konsisten dengan CR yang benar-benar muncul di form pembuatan batch.
         $treasuryBatchCreate = collect();
         if ($user->hasRole(['superadmin', 'treasury', 'finance', 'finance_manager'])) {
-            $batchCreateQuery = BudgetRequest::with(['type', 'beneficiary', 'budgetPlan.project.customer', 'budgetPlan.project.manager', 'budgetPlan.costCenter'])
+            $batchCreateQuery = BudgetRequest::with(['type', 'beneficiary', 'statusLogs', 'budgetPlan.project.customer', 'budgetPlan.project.manager', 'budgetPlan.costCenter'])
                 ->where('status', 'APPROVED')
                 ->whereDoesntHave('dailyTransactionItems', fn ($q) =>
                     $q->where('status', 'INCLUDED')
@@ -1186,7 +960,15 @@ class TodoListController extends Controller
         ])->where('status', $status);
         $this->scopeByRole($query);
 
-        return $query->get()
+        $crs = $query->get();
+
+        // Baris CR per sub-item untuk SEMUA Budget Plan di antrean ini dimuat
+        // sekaligus, bukan per plan di dalam buildReviewCoaBreakdown().
+        if ($denganCoa) {
+            $this->preloadCoaRows($crs->pluck('budgetPlan'));
+        }
+
+        return $crs
             ->groupBy(fn ($cr) => $cr->budget_plan_id ?? 0)
             ->map(function ($items) use ($status, $denganCoa) {
                 // Aging tertua di atas — baik urutan CR di dalam grup maupun

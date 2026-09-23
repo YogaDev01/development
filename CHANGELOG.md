@@ -4,6 +4,30 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [2.3.1] - 2026-09-23 — Stabilitas & Kecepatan Aplikasi
+
+Rilis perbaikan yang berfokus pada error 500 yang sempat muncul berulang di
+Dashboard dan Treasury. Beban server dikurangi di beberapa titik, halaman
+Todo List / Purchase Order / Budgeting jadi jauh lebih cepat, dan antrean
+notifikasi yang sempat macet dijalankan kembali.
+
+### Baru
+- Settlement: Close dan Reject sekaligus untuk beberapa Cost Request (multi-select) di tahap Finance Manager, serta Reject satuan langsung dari Todo List.
+
+### Berubah
+- Dashboard untuk sementara hanya menampilkan sapaan dan What's New; antrean pekerjaan tetap lengkap di halaman Todo List.
+- Tombol Todo di top bar dihapus — daftar tugas dibuka dari menu Todo List di sidebar.
+- Notifikasi WhatsApp dinonaktifkan sementara; notifikasi lonceng di aplikasi tetap berjalan.
+- Notifikasi yang tertunda lebih dari 6 jam masuk ke riwayat lonceng sebagai sudah dibaca dan tidak dikirim ke WhatsApp, supaya tidak ada banjir pesan lama.
+- Nama penanda tangan pada cetak Invoice diperbarui menjadi Aye Assagaf.
+
+### Perbaikan
+- Dashboard dan Treasury tidak lagi terkena error 500 berulang yang hanya hilang setelah menghapus cache browser.
+- Halaman Project Monitoring tidak lagi memuat semua foto lampiran sekaligus (penyebab lonjakan beban server); foto dimuat saat terlihat di layar dan disimpan di browser.
+- Notifikasi lonceng yang sejak 21 September tertahan di antrean kini terkirim kembali.
+- Todo List hingga 4× lebih cepat, Purchase Order 3×, dan Budgeting 2× — angka yang ditampilkan tidak berubah.
+- Pembaruan lonceng notifikasi dan chat monitoring berhenti di tab yang sedang tidak dibuka, mengurangi beban server.
+
 ## [2.3.0] - 2026-09-22 — Perombakan Beneficiary Master & Detail Forecast
 
 Beneficiary Master kini menampilkan dan mengelola PIC penanggung jawab secara

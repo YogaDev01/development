@@ -5,17 +5,12 @@
 @section('content')
 
 {{--
-    Dashboard TESYS — menjawab satu pertanyaan: "apa yang harus saya kerjakan
-    sekarang?"
+    Dashboard TESYS — sementara dipangkas hanya berisi sapaan dan info versi.
 
-    Urutannya sengaja: sapaan → angka yang bisa ditindaklanjuti → antrean kerja
-    → aktivitas → catatan rilis. Catatan rilis ditaruh paling akhir dan hanya
-    ringkasannya; daftar lengkapnya ada di modal, supaya kabar fitur tidak
-    mengalahkan pekerjaan yang menunggu.
-
-    Sumber data TIDAK berubah: $actionRequired berasal dari
-    TodoListController::actionQueues() (sama persis dengan halaman Todo List &
-    bell), $activity dari DashboardService::activityFeed().
+    Blok "Perlu Tindakan" (TodoListController::actionQueues) dan "Aktivitas
+    Terbaru" dicabut 23 Sep 2026: membangun ulang seluruh worklist setiap kali
+    beranda dibuka ikut menyumbang lonjakan CPU di hosting. Antrean kerja
+    tetap lengkap di halaman Todo List dan badge lonceng navbar.
 --}}
 
 @php
@@ -24,17 +19,8 @@
     $clLatest   = $clReleases[0] ?? null;
 
     // Popup "What's New" otomatis tampil tiap dashboard dibuka SELAMA user
-    // belum mencentang "jangan tampilkan lagi" untuk versi saat ini — begitu
-    // ada rilis baru, dismissed_changelog_version lama tidak match lagi
-    // dengan $clCurrent, jadi otomatis muncul lagi.
+    // belum mencentang "jangan tampilkan lagi" untuk versi saat ini.
     $showChangelogPopup = $clLatest && Auth::user()->dismissed_changelog_version !== $clCurrent;
-
-    $gagal   = $actionRequired['gagal'];
-    $total   = $actionRequired['total'];
-    $queues  = $actionRequired['queues'];
-
-    // Nada KPI mengikuti keadaan, bukan selera: ada yang menunggu = merah.
-    $toneTotal = $total > 0 ? 'danger' : 'success';
 
     // Butir teratas rilis terakhir — ringkasan, bukan seluruh catatan rilis.
     $clItems = collect($clLatest['sections'] ?? [])->flatMap(fn ($s) => $s['items'] ?? []);
@@ -49,107 +35,8 @@
         <p id="dashSub">{{ now()->translatedFormat('l, d F Y') }}</p>
     </div>
 
-    {{-- ---------------------------------------------------------------
-         1. Angka yang bisa ditindaklanjuti.
-         Semuanya berasal dari antrean yang sama dengan daftar di bawah —
-         tidak ada perhitungan baru, hanya ringkasannya.
-         --------------------------------------------------------------- --}}
-    <x-stat-cards :cards="[
-        ['Perlu tindakan Anda', $gagal ? '—' : $total, $toneTotal, 'fas fa-bolt',
-            $gagal ? 'Antrean gagal dimuat' : ($total > 0 ? 'Dokumen menunggu Anda' : 'Semua sudah ditangani')],
-        ['Menunggu terlama', $gagal ? '—' : $actionRequired['maxAging'], $total > 0 ? 'warning' : 'secondary', 'fas fa-hourglass-half',
-            $total > 0 ? 'Sejak dokumen masuk antrean' : 'Tidak ada yang tertahan'],
-        ['Selesai hari ini', $gagal ? '—' : $actionRequired['completedToday'], 'success', 'fas fa-check',
-            'Ditindaklanjuti oleh Anda'],
-        ['Jenis antrean', $gagal ? '—' : count($queues), 'secondary', 'fas fa-layer-group',
-            'Tahap kerja yang sedang aktif'],
-    ]" />
-
-    {{-- ---------------------------------------------------------------
-         2. Perlu Tindakan — komponen utama halaman ini.
-         --------------------------------------------------------------- --}}
-    <div class="card" id="dashAction">
-        <div class="card-header">
-            <h3 class="card-title">Perlu Tindakan</h3>
-            @if(!$gagal && $total > 0)
-                <span class="ts-status ts-status-danger ts-status-sm">{{ $total }} menunggu</span>
-            @endif
-            @if(!$gagal && $total > 0)
-                <div class="card-tools ts-queue-foot">
-                    <span>Menunggu terlama <strong>{{ $actionRequired['maxAging'] }}</strong></span>
-                    <span>Selesai hari ini <strong>{{ $actionRequired['completedToday'] }}</strong></span>
-                </div>
-            @endif
-        </div>
-
-        <div class="card-body">
-            @if($gagal)
-                <x-empty icon="fas fa-exclamation-triangle"
-                         title="Antrean tugas gagal dimuat"
-                         message="Muat ulang halaman ini, atau buka Todo List langsung untuk melihat daftar lengkapnya.">
-                    @if(Route::has('todo-list.index'))
-                        <x-slot:action>
-                            <a href="{{ route('todo-list.index') }}" class="btn btn-light btn-sm">Buka Todo List</a>
-                        </x-slot:action>
-                    @endif
-                </x-empty>
-            @else
-                <div class="ts-queue">
-                    @forelse($queues as $q)
-                        @php
-                            $tone = ['attention' => 'attention', 'progress' => 'progress', 'danger' => 'danger'][$q['tone']] ?? 'progress';
-                            // Tanpa akses menu Todo List barisnya tetap tampil tetapi
-                            // tidak bisa diklik — lebih jujur daripada tautan yang 403.
-                            $tautan = $q['url'] ? 'href="' . e($q['url']) . '"' : '';
-                        @endphp
-                        <a {!! $tautan !!} class="ts-queue-row">
-                            <span class="ts-queue-ic ts-tone-{{ $tone }}"><i class="{{ $q['icon'] }}"></i></span>
-                            <span class="ts-queue-main">
-                                <span class="ts-queue-label">{{ $q['label'] }}</span>
-                                <span class="ts-queue-meta">Menunggu {{ $q['aging'] }}</span>
-                            </span>
-                            <span class="ts-queue-count">{{ $q['count'] }}</span>
-                            <span class="ts-queue-cta">Tinjau <i class="fas fa-arrow-right"></i></span>
-                        </a>
-                    @empty
-                        <x-empty icon="fas fa-check-circle"
-                                 title="Tidak ada yang menunggu tindakan Anda"
-                                 message="Semua dokumen di tahap Anda sudah ditindaklanjuti." />
-                    @endforelse
-                </div>
-            @endif
-        </div>
-    </div>
-
-    <div class="ts-dash-grid">
-
-        {{-- ------------------------------------------------------------
-             3. Aktivitas terbaru.
-             ------------------------------------------------------------ --}}
-        <div class="card">
-            <div class="card-header"><h3 class="card-title">Aktivitas Terbaru</h3></div>
-            <div class="card-body">
-                @forelse($activity as $item)
-                    @php
-                        $toneFeed = $item['category'] === 'mention' ? 'purple'
-                            : ($item['category'] === 'milestone' ? 'attention' : 'progress');
-                    @endphp
-                    <a href="{{ $item['url'] ?? '#' }}" class="ts-feed-row">
-                        <span class="ts-feed-dot ts-tone-{{ $toneFeed }}" style="background:currentColor;"></span>
-                        <span class="ts-feed-text">{{ $item['message'] }}</span>
-                        <span class="ts-feed-time">{{ $item['created_at'] }}</span>
-                    </a>
-                @empty
-                    <x-empty compact icon="fas fa-inbox"
-                             title="Belum ada aktivitas"
-                             message="Perubahan dokumen yang menyangkut Anda akan muncul di sini." />
-                @endforelse
-            </div>
-        </div>
-
-        {{-- ------------------------------------------------------------
-             4. What's New — ringkasan saja. Daftar lengkap ada di modal.
-             ------------------------------------------------------------ --}}
+    <div style="max-width:720px;">
+        {{-- What's New — ringkasan saja. Daftar lengkap ada di modal. --}}
         @if($clLatest)
         <div class="card">
             <div class="card-header">
@@ -190,7 +77,6 @@
             </div>
         </div>
         @endif
-
     </div>
 </div>
 
@@ -235,7 +121,8 @@
 {{-- WHAT'S NEW — popup otomatis tiap dashboard dibuka (kecuali sudah
      dicentang "jangan tampilkan lagi"), sekaligus dipakai tombol
      "Lihat detail perubahan" di kartu ringkasan. --}}
-<div class="modal fade" id="changelogWhatsNewModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static">
+<div class="modal fade" id="changelogWhatsNewModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static"
+     data-autoshow="{{ $showChangelogPopup ? 1 : 0 }}">
     <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
         <div class="modal-content">
             <div class="modal-header">
@@ -283,9 +170,12 @@
 @push('scripts')
 <script>
 $(function () {
-    @if($showChangelogPopup)
-    $('#changelogWhatsNewModal').modal('show');
-    @endif
+    // Nilainya dari atribut data-autoshow (diisi Blade), supaya script ini
+    // tetap JavaScript murni.
+    var $popup = $('#changelogWhatsNewModal');
+    if ($popup.data('autoshow') === 1) {
+        $popup.modal('show');
+    }
 
     $('#btnClPopupOk').on('click', function () {
         if ($('#clDontShowAgain').is(':checked')) {

@@ -26,7 +26,9 @@ class FonnteChannel
 
     public function send($notifiable, Notification $notification): void
     {
-        if (! method_exists($notification, 'toFonnte')) {
+        // Dicek lagi di sini (bukan hanya di via()) supaya job WhatsApp yang
+        // SUDAH terlanjur antre sebelum saklar dimatikan juga tidak terkirim.
+        if (! config('services.fonnte.enabled') || ! method_exists($notification, 'toFonnte')) {
             return;
         }
 

@@ -98,7 +98,8 @@
                                 <tbody>
                                     @forelse($transactions as $trx)
                                     @php
-                                        $crCount = $trx->includedItems()->count();
+                                        // Relasi sudah di-eager load di controller; ()->count() memicu satu query per baris.
+                                        $crCount = $trx->includedItems->count();
                                     @endphp
                                     <tr data-id="{{ $trx->id }}" data-status="{{ $trx->status }}" data-category="{{ $trx->sourceFund->name ?? '' }}" data-type="{{ $trx->type_label }}">
                                         <td class="text-nowrap">{{ $loop->iteration }}</td>

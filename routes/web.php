@@ -87,14 +87,6 @@ Route::middleware('auth')->group(function () {
         Route::post('/read-all', [NotificationController::class, 'markAllRead'])->name('read-all');
     });
 
-    // Bell "Todo" di navbar — payload ringkas untuk dropdown popup, tanpa
-    // gerbang menu:todo-list (sama seperti bell lama) supaya tetap tampil untuk
-    // semua role yang punya task, terlepas dari akses menu halaman penuhnya.
-    // Badge lonceng — dipanggil berulang oleh polling, jadi sengaja murah.
-    Route::get('todo-list/count', [TodoListController::class, 'countBell'])->name('todo-list.count');
-    // Isi popup — hanya dipanggil saat dropdown dibuka.
-    Route::get('todo-list/fetch', [TodoListController::class, 'fetchBell'])->name('todo-list.fetch');
-
     // Command palette (Ctrl+K). Tanpa gerbang menu di sini: tiap modul
     // digerbangi sendiri di dalam controller memakai kunci menu yang sama
     // dengan route index-nya, lalu di-scope memakai aturan modul itu sendiri.
@@ -118,21 +110,13 @@ Route::middleware('auth')->group(function () {
 
     // Dashboard
     Route::get('/', function () {
-        $user = \Illuminate\Support\Facades\Auth::user();
-
         // Beranda Finance sekaligus menandai Finance sebagai aplikasi aktif —
         // pasangan dari AppShellController yang menyimpan aplikasi lain.
         session(['tesys.app' => 'finance']);
 
-        $activity = \App\Services\DashboardService::activityFeed($user);
-
-        // Blok "Perlu Tindakan" memakai antrean yang sama persis dengan halaman
-        // Todo List dan bell navbar. Controller-nya dipanggil langsung supaya
-        // gerbang role dan scope Access Group tidak perlu ditulis ulang di sini
-        // — menduplikasinya berarti mengubah aturan bisnis.
-        $actionRequired = app(TodoListController::class)->actionQueues($user);
-
-        return view('dashboard.index', compact('activity', 'actionRequired'));
+        // Sementara hanya sapaan + info versi (lihat dashboard/index.blade.php).
+        // actionQueues() & activityFeed() sengaja tidak dipanggil lagi di sini.
+        return view('dashboard.index');
     });
 
     // Muka aplikasi selain Finance (HR, Logistic, Operation, Project).

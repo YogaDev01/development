@@ -70,8 +70,12 @@ class SecureFileController extends Controller
         return $disk->response($path, basename($path), [
             'Content-Type'           => $mime,
             'X-Content-Type-Options' => 'nosniff',
-            // Berkas keuangan tidak boleh mengendap di cache bersama (proxy).
-            'Cache-Control'          => 'private, max-age=0, must-revalidate',
+            // "private": tidak boleh mengendap di cache bersama (proxy/CDN).
+            // max-age: nama berkas acak dari Storage::store() dan isinya tak
+            // pernah ditimpa, jadi aman disimpan di peramban pemilik sesi.
+            // Dulu max-age=0 membuat setiap buka halaman mengunduh ulang semua
+            // gambar lewat PHP+MySQL — pemicu lonjakan CPU 100% di Hostinger.
+            'Cache-Control'          => 'private, max-age=604800',
         ], $disposition);
     }
 }

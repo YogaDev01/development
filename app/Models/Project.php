@@ -498,6 +498,47 @@ class Project extends Model
         return $value > 0 ? round(($this->grossProfit() / $value) * 100, 1) : 0.0;
     }
 
+    /*
+    | Cache angka keuangan untuk halaman DAFTAR PO. Tanpa ini setiap baris
+    | menembak 4-5 query (CR + realisasi + cash receipt + invoice), jadi 70 PO
+    | = ±290 query per buka halaman. Diisi oleh preloadFinancials(); kalau
+    | kosong (mis. halaman detail satu PO), method di bawah tetap query sendiri
+    | seperti dulu. Isinya disaring dengan kondisi yang SAMA persis dengan
+    | query aslinya, jadi angkanya identik.
+    */
+    private ?\Illuminate\Support\Collection $crCache = null;
+    private ?\Illuminate\Support\Collection $receivedByInvoiceCache = null;
+
+    /**
+     * Muat CR (+ realisasinya) dan total Cash Receipt per invoice untuk banyak
+     * PO sekaligus — 2 query untuk seluruh daftar. Relasi budgetPlans dan
+     * invoices harus sudah di-eager-load.
+     */
+    public static function preloadFinancials(\Illuminate\Support\Collection $projects): void
+    {
+        if ($projects->isEmpty()) {
+            return;
+        }
+
+        $crByPlan = BudgetRequest::whereIn('budget_plan_id', $projects->flatMap(fn ($p) => $p->budgetPlans->pluck('id'))->unique()->values())
+            ->whereNotIn('status', ['DRAFT', 'REJECTED'])
+            ->with('realizations')
+            ->get()
+            ->groupBy('budget_plan_id');
+
+        $received = CashReceipt::whereIn('invoice_id', $projects->flatMap(fn ($p) => $p->invoices->pluck('id'))->unique()->values())
+            ->selectRaw('invoice_id, SUM(amount) as total')
+            ->groupBy('invoice_id')
+            ->pluck('total', 'invoice_id');
+
+        foreach ($projects as $p) {
+            $p->crCache = $p->budgetPlans->pluck('id')
+                ->flatMap(fn ($id) => $crByPlan->get($id, collect()))
+                ->values();
+            $p->receivedByInvoiceCache = $received;
+        }
+    }
+
     /**
      * Total nilai Cost Request yang sudah di-commit terhadap Budget Plan PO ini
      * (semua status kecuali DRAFT/REJECTED — CR yang masih draft/ditolak belum
@@ -505,6 +546,10 @@ class Project extends Model
      */
     public function costRequestTotal(): int
     {
+        if ($this->crCache !== null) {
+            return (int) $this->crCache->whereNotIn('status', ['DRAFT', 'REJECTED'])->sum('amount');
+        }
+
         return (int) BudgetRequest::whereIn('budget_plan_id', $this->budgetPlans->pluck('id'))
             ->whereNotIn('status', ['DRAFT', 'REJECTED'])
             ->sum('amount');
@@ -516,6 +561,10 @@ class Project extends Model
      */
     public function actualUsedTotal(): int
     {
+        if ($this->crCache !== null) {
+            return (int) $this->crCache->whereIn('status', ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'])->sum('amount');
+        }
+
         return (int) BudgetRequest::whereIn('budget_plan_id', $this->budgetPlans->pluck('id'))
             ->whereIn('status', ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'])
             ->sum('amount');
@@ -527,6 +576,10 @@ class Project extends Model
      */
     public function costRealizationTotal(): int
     {
+        if ($this->crCache !== null) {
+            return (int) $this->crCache->whereIn('status', ['PAID', 'CLOSED'])->sum('amount');
+        }
+
         return (int) BudgetRequest::whereIn('budget_plan_id', $this->budgetPlans->pluck('id'))
             ->whereIn('status', ['PAID', 'CLOSED'])
             ->sum('amount');
@@ -542,16 +595,19 @@ class Project extends Model
      */
     public function variableCostTotal(): int
     {
-        return (int) BudgetRequest::whereIn('budget_plan_id', $this->budgetPlans->pluck('id'))
-            ->whereIn('status', ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'])
-            ->with('realizations')
-            ->get()
-            ->sum(function ($c) {
-                $hasRealization = in_array($c->status, ['REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'])
-                    && $c->realizations->isNotEmpty();
+        $crs = $this->crCache !== null
+            ? $this->crCache->whereIn('status', ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'])
+            : BudgetRequest::whereIn('budget_plan_id', $this->budgetPlans->pluck('id'))
+                ->whereIn('status', ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'])
+                ->with('realizations')
+                ->get();
 
-                return $hasRealization ? (int) $c->total_realization : (int) $c->amount;
-            });
+        return (int) $crs->sum(function ($c) {
+            $hasRealization = in_array($c->status, ['REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'])
+                && $c->realizations->isNotEmpty();
+
+            return $hasRealization ? (int) $c->total_realization : (int) $c->amount;
+        });
     }
 
     /**
@@ -577,14 +633,19 @@ class Project extends Model
      */
     public function paymentTotal(): int
     {
-        $receivedByInvoice = CashReceipt::whereHas('invoice', fn ($q) => $q->where('po_id', $this->id))
-            ->selectRaw('invoice_id, SUM(amount) as total')
-            ->groupBy('invoice_id')
-            ->pluck('total', 'invoice_id');
+        $receivedByInvoice = $this->receivedByInvoiceCache
+            ?? CashReceipt::whereHas('invoice', fn ($q) => $q->where('po_id', $this->id))
+                ->selectRaw('invoice_id, SUM(amount) as total')
+                ->groupBy('invoice_id')
+                ->pluck('total', 'invoice_id');
+
+        $invoices = $this->receivedByInvoiceCache !== null
+            ? $this->invoices
+            : $this->invoices()->select('id', 'status', 'billed_amount', 'captured_total')->get();
 
         $total = 0;
 
-        foreach ($this->invoices()->select('id', 'status', 'billed_amount', 'captured_total')->get() as $invoice) {
+        foreach ($invoices as $invoice) {
             $received = (int) ($receivedByInvoice[$invoice->id] ?? 0);
 
             if ($invoice->status === 'PAID') {

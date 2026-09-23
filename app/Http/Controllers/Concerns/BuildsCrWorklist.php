@@ -208,6 +208,92 @@ trait BuildsCrWorklist
             ->values();
     }
 
+    /*
+     | Cache baris CR per sub-item budget untuk satu request. Todo List membangun
+     | breakdown untuk puluhan Budget Plan; tanpa cache, tiap plan = 2 query +
+     | eager load (±10 query/plan). preloadCoaRows() memuat semuanya sekaligus,
+     | coaRowsFor() lalu cukup mengambil dari sini.
+     */
+    private array $coaCoveredDetailIds = [];
+    private ?\Illuminate\Support\Collection $coaPipelineCache = null;
+    private ?\Illuminate\Support\Collection $coaDisbursedCache = null;
+
+    /** Muat baris CR untuk semua Budget Plan di $bps dalam satu putaran. */
+    private function preloadCoaRows($bps): void
+    {
+        $bps = new \Illuminate\Database\Eloquent\Collection(collect($bps)->filter()->unique('id')->values()->all());
+        if ($bps->isEmpty()) {
+            return;
+        }
+
+        $bps->loadMissing('details.account');
+
+        $detailIds = $bps->flatMap(fn ($bp) => $bp->details->pluck('id'))
+            ->filter()
+            ->reject(fn ($id) => isset($this->coaCoveredDetailIds[$id]))
+            ->unique()->values();
+        if ($detailIds->isEmpty()) {
+            return;
+        }
+
+        [$pipeline, $disbursed] = $this->queryCoaRows($detailIds);
+
+        // Dikelompokkan per budget_detail_id, dan id detail unik lintas plan,
+        // jadi cache dari beberapa putaran aman digabung.
+        $this->coaPipelineCache  = ($this->coaPipelineCache ?? collect())->union($pipeline);
+        $this->coaDisbursedCache = ($this->coaDisbursedCache ?? collect())->union($disbursed);
+        foreach ($detailIds as $id) {
+            $this->coaCoveredDetailIds[$id] = true;
+        }
+    }
+
+    /** [pipelineByDetailId, disbursedByDetailId] — dari cache bila sudah dimuat. */
+    private function coaRowsFor(\Illuminate\Support\Collection $detailIds): array
+    {
+        $tercakup = $detailIds->every(fn ($id) => isset($this->coaCoveredDetailIds[$id]));
+
+        if ($tercakup && $this->coaPipelineCache !== null) {
+            return [$this->coaPipelineCache, $this->coaDisbursedCache];
+        }
+
+        return $this->queryCoaRows($detailIds);
+    }
+
+    private function queryCoaRows(\Illuminate\Support\Collection $detailIds): array
+    {
+        /*
+         | Baris TAKEOUT ikut diambil (dulu dibuang di query) supaya modal
+         | "View Budget" bisa menampilkannya tercoret + tombol Restore, sama
+         | seperti drawer detail CR. Yang TIDAK boleh berubah: baris takeout
+         | tidak pernah ikut penjumlahan Request/Approved — itu dijaga lewat
+         | $activeRows di bawah, bukan lewat query, karena query yang sama
+         | juga dipakai untuk menentukan baris mana yang sudah "di pipeline"
+         | (dan karenanya tidak boleh dihitung dua kali sebagai history).
+         */
+        $pipeline = \App\Models\RequestDetail::whereIn('budget_detail_id', $detailIds)
+            ->whereHas('budgetRequest', fn ($q) => $q->whereIn('status', ['SUBMITTED', 'CHECKED', 'VERIFIED', 'APPROVED', 'QUEUED']))
+            ->with('budgetRequest.beneficiary')
+            ->get()
+            ->groupBy('budget_detail_id');
+
+        /*
+         | CR yang uangnya sudah keluar (DISBURSED) per sub-item — sumber "Used"
+         | SEKALIGUS daftar riwayat di modal. Dulu keduanya di-query per baris
+         | budget (usedAmount() + costRequestDetails() di dalam loop), sehingga
+         | Todo List menembak ±2.000 query per buka halaman. Sekarang satu query
+         | per Budget Plan; hasil hitungannya identik (filter TAKEOUT & status
+         | sama dengan BudgetPlanDetail::usedAmount()).
+         */
+        $disbursed = \App\Models\RequestDetail::whereIn('budget_detail_id', $detailIds)
+            ->where('request_detail.status', '!=', 'TAKEOUT')
+            ->whereHas('budgetRequest', fn ($q) => $q->whereIn('status', \App\Support\BudgetConsumption::DISBURSED))
+            ->with(['budgetRequest.beneficiary', 'realization'])
+            ->get()
+            ->groupBy('budget_detail_id');
+
+        return [$pipeline, $disbursed];
+    }
+
     /**
      * Breakdown Chart of Account (Budget/Used/Request/Approved/Variance) untuk
      * satu Budget Plan — dipakai untuk modal "View Budget" di worklist Todo List,
@@ -233,20 +319,7 @@ trait BuildsCrWorklist
 
         $detailIds = $bp->details->pluck('id')->filter()->values();
 
-        /*
-         | Baris TAKEOUT ikut diambil (dulu dibuang di query) supaya modal
-         | "View Budget" bisa menampilkannya tercoret + tombol Restore, sama
-         | seperti drawer detail CR. Yang TIDAK boleh berubah: baris takeout
-         | tidak pernah ikut penjumlahan Request/Approved — itu dijaga lewat
-         | $activeRows di bawah, bukan lewat query, karena query yang sama
-         | juga dipakai untuk menentukan baris mana yang sudah "di pipeline"
-         | (dan karenanya tidak boleh dihitung dua kali sebagai history).
-         */
-        $pipelineByDetailId = \App\Models\RequestDetail::whereIn('budget_detail_id', $detailIds)
-            ->whereHas('budgetRequest', fn ($q) => $q->whereIn('status', ['SUBMITTED', 'CHECKED', 'VERIFIED', 'APPROVED', 'QUEUED']))
-            ->with('budgetRequest.beneficiary')
-            ->get()
-            ->groupBy('budget_detail_id');
+        [$pipelineByDetailId, $disbursedByDetailId] = $this->coaRowsFor($detailIds);
 
         $requestStatuses = in_array($requestStatus, ['SUBMITTED', 'CHECKED', 'VERIFIED'], true)
             ? [$requestStatus]
@@ -275,9 +348,10 @@ trait BuildsCrWorklist
 
         return $bp->details
             ->groupBy(fn ($d) => $d->account?->name ?? '-')
-            ->map(function ($details, $accName) use ($pipelineByDetailId, $toCrItem, $requestStatuses) {
-                $subItems = $details->map(function ($d) use ($pipelineByDetailId, $toCrItem, $requestStatuses) {
-                    $used = $d->usedAmount();
+            ->map(function ($details, $accName) use ($pipelineByDetailId, $disbursedByDetailId, $toCrItem, $requestStatuses) {
+                $subItems = $details->map(function ($d) use ($pipelineByDetailId, $disbursedByDetailId, $toCrItem, $requestStatuses) {
+                    $disbursedRows = $disbursedByDetailId->get($d->id, collect());
+                    $used = (int) $disbursedRows->sum(fn ($r) => $r->realization->total ?? $r->total);
 
                     $pipelineRows = $pipelineByDetailId->get($d->id, collect());
 
@@ -295,11 +369,8 @@ trait BuildsCrWorklist
                     // Riwayat CR yang sudah PAID/REALIZED/CLOSED untuk sub-item ini
                     // (di luar CR yang lagi jalan di pipeline), supaya list CR di
                     // modal juga menunjukkan dari mana nilai "Used" berasal.
-                    $historyItems = $d->costRequestDetails()
-                        ->whereNotIn('id', $pipelineRows->pluck('id')->all() ?: [0])
-                        ->whereHas('budgetRequest', fn ($q) => $q->whereIn('status', ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED']))
-                        ->with(['budgetRequest.beneficiary', 'realization'])
-                        ->get()
+                    $historyItems = $disbursedRows
+                        ->whereNotIn('id', $pipelineRows->pluck('id')->all())
                         ->map(function ($od) {
                             $cr     = $od->budgetRequest;
                             $amount = (int) ($od->realization?->total ?? $od->total);
