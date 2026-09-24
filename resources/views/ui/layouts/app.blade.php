@@ -60,7 +60,7 @@
 
 @include('ui.partials.logout-modal')
 
-<div class="toast-stack" id="toastStack"></div>
+<div class="ts-toast-stack" id="toastStack"></div>
 
 {{-- ===== Script lama (urutan dipertahankan persis seperti layouts/app.blade.php) ===== --}}
 <script src="{{ asset('plugins/jquery/jquery.min.js') }}"></script>

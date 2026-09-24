@@ -420,6 +420,22 @@
                     </div>
                 </div>
 
+                @php
+                    /*
+                    | Penampil kolom Aging. Diberi warna, bukan cuma angka:
+                    | tabel ini dibaca untuk mencari CA yang perlu dikejar, dan
+                    | 60 hari harus terlihat berbeda dari 3 hari tanpa dibaca
+                    | satu per satu. Ambangnya lokal di sini - tidak ada aturan
+                    | SLA settlement resmi di aplikasi yang bisa dirujuk.
+                    */
+                    $acaAging = function (?int $hari) {
+                        if ($hari === null) return '<span class="text-muted">-</span>';
+                        $warna = $hari >= 60 ? 'var(--danger)' : ($hari >= 30 ? 'var(--warning)' : 'var(--muted, #6c757d)');
+                        $tebal = $hari >= 30 ? '700' : '400';
+                        return '<span style="color:' . $warna . ';font-weight:' . $tebal . ';">' . $hari . ' hari</span>';
+                    };
+                @endphp
+
                 {{-- ACTIVE CASH ADVANCE (Minor 1.2) — grouped per Manager, expand/collapse per
                      Beneficiary. Datanya dihitung controller untuk SEMUA role (lihat index()),
                      jadi card ini tidak digerbang role apa pun. --}}
@@ -427,7 +443,7 @@
                     <div class="card-header d-flex align-items-center">
                         <h3 class="card-title" style="font-size:13px;font-weight:700;"><i class="fas fa-money-check-alt mr-2" style="color:var(--purple);"></i>Active Cash Advance</h3>
                         <span class="badge badge-secondary ml-2">{{ $activeCaGrandQty }}</span>
-                        <span class="text-muted ml-2" style="font-size:10px;">Manager &rsaquo; Beneficiary &rsaquo; Cost Request &mdash; Paid / Settle Checked / Settle Verified</span>
+                        <span class="text-muted ml-2" style="font-size:10px;">Manager &rsaquo; PIC &rsaquo; Cost Request &mdash; Paid / Settle Checked / Settle Verified</span>
 
                         <button type="button" class="btn btn-outline-secondary btn-sm ml-auto" id="acaExpandAll" style="font-size:11px;">
                             <i class="fas fa-angle-double-down mr-1"></i>Buka Semua
@@ -435,11 +451,28 @@
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
-                            <table class="table table-bordered mb-0" id="tblAca" style="font-size:12.5px;">
+                            {{-- col-pic-table = sistem gaya tabel matriks halaman ini (dipakai Summary
+                                 Progress, PO Summary, Collection Performance): header pita
+                                 berwarna per grup ukuran, sub-header Qty/Value, dan sel data
+                                 bertint senada. Dipakai ulang, bukan disalin, supaya satu
+                                 perubahan gaya berlaku untuk semua tabel itu. --}}
+                            <table class="table table-sm mb-0 col-pic-table aca-fixed" id="tblAca">
+                                {{-- Lebar kolom ditetapkan di colgroup, bukan di <th>.
+                                     table-layout:fixed hanya membaca lebar dari BARIS PERTAMA
+                                     header — sejak QTY & Value turun ke baris kedua, lebarnya
+                                     tidak akan terbaca lagi dan dua kolom itu kembali melar
+                                     mengikuti isi. colgroup berlaku untuk kolomnya, bukan
+                                     barisnya, jadi susunan header bebas berubah. --}}
+                                <colgroup>
+                                    <col>                      {{-- Manager / PIC / Cost Request --}}
+                                    <col style="width:90px;">  {{-- Aging --}}
+                                    <col style="width:120px;"> {{-- Tanggal --}}
+                                    <col style="width:140px;"> {{-- Action --}}
+                                    <col style="width:90px;">  {{-- QTY --}}
+                                    <col style="width:160px;"> {{-- Value --}}
+                                </colgroup>
                                 <thead class="bg-light">
                                     <tr>
-                                        <th scope="col">Manager</th>
-
                                         {{-- KOLOM YANG BISA DIURUTKAN.
                                              Tombol, bukan tautan: mengurutkan tidak memuat ulang
                                              halaman. Kalau memuat ulang, manager yang sedang
@@ -456,20 +489,49 @@
                                              Klik pertama memberi urutan yang paling sering dicari
                                              lebih dulu (nama A→Z, nilai terbesar), klik berikutnya
                                              membalik. --}}
-                                        <th scope="col">
+                                        <th scope="col" rowspan="2" class="text-left aca-head-plain">
                                             <button type="button" class="aca-sort" data-aca-sort="name"
-                                                    title="Urutkan menurut nama penerima dana">
-                                                Beneficiary / Cost Request
+                                                    title="Urutkan menurut nama PIC">
+                                                Manager / PIC / Cost Request
                                                 <i class="fas fa-sort aca-sort-ic" aria-hidden="true"></i>
                                             </button>
                                         </th>
 
-                                        <th scope="col" class="text-center" style="width:1%;">Quantity CA</th>
+                                        {{-- AGING & TANGGAL.
+                                             "Tanggal" = kapan CA dibayar (paid_at), "Aging" =
+                                             sudah berapa hari sejak itu dan belum tuntas.
+                                             Keduanya TIDAK bisa diurutkan lewat header: penyortir
+                                             di bawah cuma mengenal satu pasang data-sort-*, dan
+                                             urutan umur sudah terwakili - aging berbanding lurus
+                                             dengan tanggal bayar. --}}
+                                        <th scope="col" rowspan="2" class="text-center col-grp-head col-grp-bad aca-head-rule-bad">Aging</th>
+                                        <th scope="col" rowspan="2" class="text-center aca-head-plain">Tanggal</th>
 
-                                        <th scope="col" class="text-right" style="width:1%;">
+                                        {{-- ACTION = posisi dokumen di alur Cost Request
+                                             (Paid -> Settle Checked -> Settle Verified), sama
+                                             dengan stepper di modul Cost Request. Hanya diisi di
+                                             lapis CR: manager & PIC adalah kumpulan dokumen yang
+                                             tahapnya bisa berbeda-beda, jadi satu badge di sana
+                                             akan mengaku mewakili sesuatu yang tidak tunggal. --}}
+                                        <th scope="col" rowspan="2" class="text-center col-grp-head col-grp-good aca-head-rule-good">Action</th>
+
+                                        {{-- Jumlah DOKUMEN CR: per PIC di lapis 2, dan totalnya
+                                             di lapis manager. Lapis CR sendiri dikosongkan -
+                                             satu baris CR selalu satu dokumen, jadi menulis "1"
+                                             di tiap baris tidak menjawab apa pun. --}}
+                                        {{-- Header dua baris, mengikuti pola Summary Progress:
+                                             satu payung untuk ukurannya, lalu QTY & VALUE sebagai
+                                             satuan di bawahnya. Bentuk yang sama dipakai dua tabel
+                                             berarti pembacanya tidak perlu belajar dua kali. --}}
+                                        <th scope="col" colspan="2" class="text-center col-grp-head col-grp-blue">Cash Advance</th>
+                                    </tr>
+                                    <tr>
+                                        <th scope="col" class="text-center aca-head-plain">Qty</th>
+
+                                        <th scope="col" class="text-right col-subhead-blue">
                                             <button type="button" class="aca-sort" data-aca-sort="value"
                                                     title="Urutkan menurut nilai CA">
-                                                CA Value
+                                                Value
                                                 <i class="fas fa-sort aca-sort-ic" aria-hidden="true"></i>
                                             </button>
                                         </th>
@@ -485,12 +547,20 @@
                                     <tr class="aca-group-row" data-target="aca-grp-{{ $gi }}"
                                         data-sort-name="{{ $g['manager'] }}" data-sort-value="{{ $g['value'] }}"
                                         style="cursor:pointer;background:var(--surface-2);">
-                                        <td colspan="2" class="aca-lv1">
-                                            <i class="fas fa-chevron-right aca-caret mr-2"></i>
+                                        <td class="aca-lv1">
+                                            <i class="fas fa-caret-right aca-caret mr-2"></i>
                                             {{ $g['manager'] }}
                                         </td>
+                                        {{-- Aging & Action sengaja kosong di lapis grup: umur dan
+                                             tahap melekat pada satu dokumen. Satu angka aging untuk
+                                             sekumpulan CR yang dibayar pada hari berbeda-beda hanya
+                                             mewakili yang paling tua, dan itu terbaca seolah berlaku
+                                             untuk semuanya. --}}
+                                        <td class="text-center aca-drill col-cell-bad"><i class="fas fa-chevron-down" aria-hidden="true"></i><span class="sr-only">Lihat per Cost Request</span></td>
+                                        <td class="text-center aca-drill"><i class="fas fa-chevron-down" aria-hidden="true"></i><span class="sr-only">Lihat per Cost Request</span></td>
+                                        <td class="text-center aca-drill col-cell-good"><i class="fas fa-chevron-down" aria-hidden="true"></i><span class="sr-only">Lihat per Cost Request</span></td>
                                         <td class="text-center" style="font-weight:700;">{{ $g['qty'] }}</td>
-                                        <td class="text-right" style="font-weight:700;">{{ $fmtRpFull($g['value']) }}</td>
+                                        <td class="text-right col-cell-blue" style="font-weight:700;">{{ $fmtRpFull($g['value']) }}</td>
                                     </tr>
 
                                     @foreach($g['beneficiaries'] as $bi => $b)
@@ -498,14 +568,15 @@
                                     <tr class="aca-ben-row aca-grp-{{ $gi }}" style="display:none;cursor:pointer;"
                                         data-target="aca-cr-{{ $gi }}-{{ $bi }}"
                                         data-sort-name="{{ $b['beneficiary'] }}" data-sort-value="{{ $b['value'] }}">
-                                        <td></td>
                                         <td class="aca-lv2">
-                                            <i class="fas fa-chevron-right aca-caret mr-2"></i>
+                                            <i class="fas fa-caret-right aca-caret mr-2"></i>
                                             {{ $b['beneficiary'] }}
-                                            <span class="badge badge-secondary ml-1" style="font-size:9px;">{{ $b['qty'] }} CR</span>
                                         </td>
+                                        <td class="text-center aca-drill col-cell-bad"><i class="fas fa-chevron-down" aria-hidden="true"></i><span class="sr-only">Lihat per Cost Request</span></td>
+                                        <td class="text-center aca-drill"><i class="fas fa-chevron-down" aria-hidden="true"></i><span class="sr-only">Lihat per Cost Request</span></td>
+                                        <td class="text-center aca-drill col-cell-good"><i class="fas fa-chevron-down" aria-hidden="true"></i><span class="sr-only">Lihat per Cost Request</span></td>
                                         <td class="text-center">{{ $b['qty'] }}</td>
-                                        <td class="text-right">{{ $fmtRpFull($b['value']) }}</td>
+                                        <td class="text-right col-cell-blue">{{ $fmtRpFull($b['value']) }}</td>
                                     </tr>
 
                                     {{-- LAPIS 3 — COST REQUEST. Kelas aca-allcr-{{ $gi }} ikut
@@ -518,7 +589,6 @@
                                     @foreach($b['items'] as $caItem)
                                     <tr class="aca-cr-{{ $gi }}-{{ $bi }} aca-allcr-{{ $gi }}" style="display:none;"
                                         data-sort-name="{{ $caItem['code'] }}" data-sort-value="{{ $caItem['amount'] }}">
-                                        <td></td>
                                         <td class="aca-lv3">
                                             {{-- Kode CR membuka detail pengajuannya sebagai modal
                                                  DI HALAMAN INI — tidak pindah ke menu Cost
@@ -530,25 +600,32 @@
                                             <a href="#" class="aca-cr-code aca-cr-link btn-detail-cr"
                                                data-id="{{ $caItem['id'] }}"
                                                title="Lihat detail {{ $caItem['code'] }}">{{ $caItem['code'] }}</a>
-                                            <span class="aca-cr-desc">{{ $caItem['description'] }}</span>
+                                            <span class="aca-cr-desc" title="{{ $caItem['description'] }}">{{ $caItem['description'] }}</span>
                                         </td>
-                                        <td class="text-center text-nowrap">
+                                        <td class="text-center text-nowrap col-cell-bad">{!! $acaAging($caItem['aging']) !!}</td>
+                                        <td class="text-center text-nowrap">{{ $caItem['paid_date'] ?? '-' }}</td>
+                                        <td class="text-center text-nowrap col-cell-good">
                                             <span class="badge badge-{{ $caItem['status_color'] }}" style="font-size:9px;">{{ $caItem['status_label'] }}</span>
                                         </td>
-                                        <td class="text-right text-nowrap">{{ $fmtRpFull($caItem['amount']) }}</td>
+                                        {{-- Selalu "1 CR": satu baris di lapis ini memang satu
+                                             dokumen. Ditulis samar karena bukan angka yang
+                                             dijumlahkan - Grand Total menjumlahkan lapis manager,
+                                             jadi baris ini tidak ikut terhitung dua kali. --}}
+                                        <td class="text-center text-muted" style="font-size:11px;">1</td>
+                                        <td class="text-right text-nowrap col-cell-blue">{{ $fmtRpFull($caItem['amount']) }}</td>
                                     </tr>
                                     @endforeach
                                     @endforeach
                                     @empty
-                                    <tr><td colspan="4" class="text-center text-muted py-3">Tidak ada Cash Advance aktif.</td></tr>
+                                    <tr><td colspan="6" class="text-center text-muted py-3">Tidak ada Cash Advance aktif.</td></tr>
                                     @endforelse
                                 </tbody>
                                 @if($activeCashAdvance->isNotEmpty())
                                 <tfoot>
                                     <tr style="background:var(--surface-2);">
-                                        <th colspan="2" class="text-right">Grand Total</th>
+                                        <th colspan="4" class="text-left">Grand Total</th>
                                         <th class="text-center">{{ $activeCaGrandQty }}</th>
-                                        <th class="text-right">{{ $fmtRpFull($activeCaGrandValue) }}</th>
+                                        <th class="text-right col-cell-blue">{{ $fmtRpFull($activeCaGrandValue) }}</th>
                                     </tr>
                                 </tfoot>
                                 @endif
@@ -890,8 +967,15 @@
                                         <input type="checkbox" id="cpShowRate100">Show Rate 100%
                                     </label>
                                     <div id="cpRowFilters" class="d-flex flex-wrap" style="gap:6px;"></div>
+                                    {{-- Kembali ke data awal. Bentuk & ikonnya sama dengan
+                                         tombol Clear Filter di tab Executive, jadi fungsinya
+                                         dikenali tanpa dibaca. --}}
+                                    <button type="button" id="btnClearCp" class="btn btn-outline-secondary btn-sm"
+                                            title="Bersihkan filter" aria-label="Bersihkan filter">
+                                        <i class="fas fa-eraser"></i>
+                                    </button>
                                     <div class="dropdown" data-colvis="tblCollectionPerformance">
-                                        <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-display="static">
                                             <i class="fas fa-columns mr-1"></i>Kolom
                                         </button>
                                         <div class="dropdown-menu dropdown-menu-right js-colvis-menu p-2" style="font-size:12px;min-width:200px;max-height:360px;overflow-y:auto;">
@@ -1052,8 +1136,15 @@
                                         <input type="checkbox" id="poShowRate100">Show Rate 100%
                                     </label>
                                     <div id="poRowFilters" class="d-flex flex-wrap" style="gap:6px;"></div>
+                                    {{-- Kembali ke data awal. Bentuk & ikonnya sama dengan
+                                         tombol Clear Filter di tab Executive, jadi fungsinya
+                                         dikenali tanpa dibaca. --}}
+                                    <button type="button" id="btnClearPo" class="btn btn-outline-secondary btn-sm"
+                                            title="Bersihkan filter" aria-label="Bersihkan filter">
+                                        <i class="fas fa-eraser"></i>
+                                    </button>
                                     <div class="dropdown" data-colvis="tblPoSummary">
-                                        <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-display="static">
                                             <i class="fas fa-columns mr-1"></i>Kolom
                                         </button>
                                         <div class="dropdown-menu dropdown-menu-right js-colvis-menu p-2" style="font-size:12px;min-width:200px;max-height:360px;overflow-y:auto;">
@@ -1235,21 +1326,39 @@
                                     @if($progManagers->isNotEmpty())
                                     <div class="dropdown" id="progMgrFilter">
                                         <button type="button" class="btn btn-sm btn-outline-secondary col-mf-btn" id="progMgrBtn"
-                                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                            <span id="progMgrLabel">Semua Manager</span>
+                                                data-toggle="dropdown" data-display="static"
+                                                aria-haspopup="true" aria-expanded="false">
+                                            <span id="progMgrLabel">Manager</span>
                                             <i class="fas fa-caret-down ml-1"></i>
                                         </button>
-                                        <div class="dropdown-menu p-0" style="font-size:12px;min-width:200px;max-height:320px;overflow-y:auto;">
-                                            <button type="button" class="dropdown-item prog-mgr-opt active" data-value="">Semua Manager</button>
-                                            <div class="dropdown-divider m-0"></div>
-                                            @foreach($progManagers as $mgr)
-                                            <button type="button" class="dropdown-item prog-mgr-opt" data-value="{{ $mgr }}">{{ $mgr }}</button>
-                                            @endforeach
+                                        {{-- Multi-pilih + kotak cari, menyamai filter Manager di
+                                             Summary PO. Di sana filternya dibangun
+                                             TesysColumnFilter.initRowFilters(), yang bersandar
+                                             pada DataTable — tabel ini pohon tiga tingkat dan
+                                             bukan DataTable, jadi yang disamakan perilakunya,
+                                             bukan kodenya. --}}
+                                        <div class="dropdown-menu p-2 prog-mgr-menu" style="font-size:12px;min-width:200px;max-height:320px;overflow-y:auto;">
+                                            <input type="text" class="form-control form-control-sm mb-2" id="progMgrSearch"
+                                                   placeholder="Cari..." autocomplete="off" style="font-size:12px;">
+                                            <div id="progMgrList">
+                                                @foreach($progManagers as $mgr)
+                                                <label class="dropdown-item m-0 p-1" style="cursor:pointer;">
+                                                    <input type="checkbox" class="prog-mgr-check mr-1" value="{{ $mgr }}">{{ $mgr }}
+                                                </label>
+                                                @endforeach
+                                            </div>
                                         </div>
                                     </div>
                                     @endif
+                                    {{-- Kembali ke data awal. Bentuk & ikonnya sama dengan
+                                         tombol Clear Filter di tab Executive, jadi fungsinya
+                                         dikenali tanpa dibaca. --}}
+                                    <button type="button" id="btnClearProg" class="btn btn-outline-secondary btn-sm"
+                                            title="Bersihkan filter" aria-label="Bersihkan filter">
+                                        <i class="fas fa-eraser"></i>
+                                    </button>
                                     <div class="dropdown" id="progColvis">
-                                        <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-display="static">
                                             <i class="fas fa-columns mr-1"></i>Kolom
                                         </button>
                                         <div class="dropdown-menu dropdown-menu-right js-colvis-menu p-2" style="font-size:12px;min-width:200px;max-height:360px;overflow-y:auto;">
@@ -1466,15 +1575,72 @@
 <style>
 /* ── Active Cash Advance: tiga tingkat Manager > Beneficiary > Cost Request ── */
 .aca-caret { font-size:10px; transition:transform .15s; display:inline-block; }
-.aca-lv1 { font-weight:700; }
-.aca-lv2 { padding-left:22px !important; font-weight:600; }
-.aca-lv3 { padding-left:44px !important; color:var(--text-dim); }
+/* Tiga tingkat kini berbagi SATU kolom - kolom Manager tersendiri dicabut
+   karena isinya cuma terisi di satu dari tiga jenis baris, sehingga dua
+   pertiga tabel berupa sel kosong. Hierarkinya sekarang dinyatakan indentasi
+   dan garis panduan vertikal, pola yang sama dengan Summary Progress.
+   !important dipakai karena tesys-ui-luxe.css memasang padding-left:12px pada
+   semua sel tabel; tanpa ini ketiga tingkat tampil rata kiri. */
+#tblAca td.aca-lv1 { padding-left:10px !important; font-weight:700; position:relative; }
+#tblAca td.aca-lv2 { padding-left:34px !important; font-weight:600; position:relative; }
+#tblAca td.aca-lv3 { padding-left:62px !important; color:var(--text-dim); position:relative; }
+
+/* Garis panduan vertikal: baris anak tetap terbaca milik induknya walau
+   barisnya panjang dan kolom kirinya tidak lagi mengulang nama manager. */
+#tblAca td.aca-lv2::before,
+#tblAca td.aca-lv3::before {
+    content:''; position:absolute; left:18px; top:0; bottom:0;
+    border-left:1px solid var(--border);
+}
+#tblAca td.aca-lv3::after {
+    content:''; position:absolute; left:42px; top:0; bottom:0;
+    border-left:1px solid var(--border);
+}
 .aca-cr-code {
     font-family:monospace; font-size:10.5px; color:var(--text-faint);
     background:var(--surface-2); border:1px solid var(--border);
     border-radius:var(--radius-sm); padding:1px 5px; margin-right:6px;
 }
 .aca-cr-desc { font-size:11.5px; }
+
+/* Sel Aging/Tanggal/Action di lapis grup.
+   Ketiganya melekat pada satu dokumen, jadi grup tidak punya nilai tunggal
+   untuk ditulis di sana. Dikosongkan begitu saja, deretan sel kosong terbaca
+   seperti data yang gagal dimuat — panah ke bawah menyatakan "nilainya ada di
+   baris-baris di bawah ini", bukan "tidak ada datanya". */
+.aca-drill { color:var(--text-faint); font-size:10px; opacity:.55; }
+
+/* col-pic-table memasang width:auto supaya tabel matriksnya boleh melebar
+   melampaui kartu dan digulung mendatar. Tabel ini tidak begitu: lebarnya
+   dikunci colgroup justru supaya kolomnya tidak bergeser saat grup dibuka. */
+#tblAca.col-pic-table { width:100% !important; font-size:12.5px; }
+
+/* Kolom kiri & Tanggal/Action tidak mewakili satu ukuran berwarna, jadi
+   headernya dibiarkan polos - memberi pita warna pada kolom yang bukan
+   metrik membuat warnanya berhenti berarti. Garis tegas bawahnya tetap
+   dipasang supaya batas blok header lurus satu garis. */
+#tblAca thead th.aca-head-plain { border-bottom:2px solid var(--border) !important; }
+#tblAca thead th.aca-head-rule-bad { border-bottom:2px solid var(--danger) !important; vertical-align:middle; }
+#tblAca thead th.aca-head-rule-good { border-bottom:2px solid var(--success) !important; vertical-align:middle; }
+
+/* Baris data lebih rapat dari bawaan col-pic-table: pohon ini bisa panjang
+   (satu baris per CR), dan tinggi baris tabel matriks membuatnya perlu
+   digulung jauh hanya untuk melihat dua manager. */
+#tblAca.col-pic-table td { padding:7px 12px; }
+#tblAca.col-pic-table thead th { padding:6px 12px; }
+
+/* Lebar kolom dikunci.
+   Tanpa table-layout:fixed, lebar tiap kolom dihitung ulang dari ISI baris yang
+   sedang terlihat — membuka satu PIC memunculkan baris CR dengan deskripsi
+   panjang dan badge Action, sehingga seluruh kolom bergeser dan angka yang
+   sedang dibandingkan pembacanya pindah tempat. Dengan lebar tetap, melipat
+   dan membuka grup tidak lagi menggeser apa pun. */
+table.aca-fixed { table-layout:fixed; width:100%; }
+
+/* Konsekuensi table-layout:fixed: teks panjang tidak lagi melebarkan kolomnya,
+   jadi deskripsi CR dipotong dengan elipsis (judul lengkapnya tetap terbaca
+   lewat tooltip baris) alih-alih membungkus dan meninggikan baris. */
+table.aca-fixed td.aca-lv3 { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
 /* Kode CR yang bisa diklik. Bentuknya sengaja tetap "chip" seperti kode yang
    tidak bisa diklik — yang membedakan hanya warna teks dan kursor, supaya
@@ -1657,6 +1823,19 @@ td.exec-indent { padding-left:28px !important; }
 /* border-collapse:separate + border-spacing:0 — WAJIB supaya position:sticky
    di <th>/<td> jalan konsisten lintas browser (border-collapse:collapse
    bawaan Bootstrap .table membuat sticky column/header gagal nempel). */
+/* Dropdown toolbar kartu (Kolom / Manager).
+   Semuanya memakai data-display="static" supaya Bootstrap TIDAK memposisikan
+   ulang menunya lewat Popper: di dalam card-header yang ikut bergulung, Popper
+   menghitung ulang posisi tiap kali dibuka dan sempat membalik ke atas/ke kiri,
+   sehingga menunya seperti berpindah-pindah tiap klik. Dengan static, letaknya
+   ditentukan CSS relatif terhadap tombolnya dan selalu sama.
+
+   z-index dinaikkan karena tabel di bawahnya membuat konteks penumpukan
+   sendiri (position:sticky pada kolom beku) — tanpa ini menu yang tidak lagi
+   dipindah ke body akan tertimbun baris tabel. */
+.card-header .dropdown-menu { z-index:1080; }
+.card-header .dropdown-menu.dropdown-menu-right { right:0; left:auto; }
+
 .col-pic-table { font-size:12px; width:auto !important; border-collapse:separate !important; border-spacing:0; }
 .col-pic-table thead th { text-align:center; vertical-align:middle; }
 .col-pic-table thead th { font-size:10px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:var(--text-faint); border-top:none; padding:8px 12px; white-space:nowrap; }
@@ -2560,8 +2739,24 @@ $(function () {
 
     $('#execSearchInput').on('keyup', refreshExecTable);
 
-    function openExecFilterDropdown($btn, options, selectedSet) {
+    function closeExecFilterDropdowns() {
         $('.tcf-dropdown').remove();
+        $(document).off('click.tcf-outside-exec');
+    }
+
+    /* Satu tombol = buka DAN tutup: pemicu panel dicatat di elemen panelnya,
+       jadi klik kedua pada tombol yang sama menutup, bukan menggambar ulang. */
+    function isExecDropdownOpenFor($btn) {
+        var el = $btn.get(0), open = false;
+        $('.tcf-dropdown').each(function () {
+            if ($(this).data('tcfOwner') === el) open = true;
+        });
+        return open;
+    }
+
+    function openExecFilterDropdown($btn, options, selectedSet) {
+        if (isExecDropdownOpenFor($btn)) { closeExecFilterDropdowns(); return; }
+        closeExecFilterDropdowns();
 
         var $dd = $('<div class="tcf-dropdown"></div>').css({
             position: 'absolute', zIndex: 3000, background: '#fff', border: '1px solid #d0d5dd',
@@ -2581,6 +2776,7 @@ $(function () {
         });
 
         $dd.append($list);
+        $dd.data('tcfOwner', $btn.get(0));
         $('body').append($dd);
 
         var offset = $btn.offset();
@@ -2597,7 +2793,7 @@ $(function () {
 
         $(document).one('click.tcf-outside-exec', function handler(e) {
             if ($(e.target).closest('.tcf-dropdown, .tcf-row-btn').length === 0) {
-                $('.tcf-dropdown').remove();
+                closeExecFilterDropdowns();
             } else {
                 $(document).one('click.tcf-outside-exec', handler);
             }
@@ -3200,7 +3396,10 @@ $(function () {
         });
     }
 
-    function applyProgManager(mgr) {
+    /* mgrSet = Set nama manager yang dicentang; kosong berarti "semua".
+       Dulu parameternya satu nama karena filternya pilihan tunggal. */
+    function applyProgManager(mgrSet) {
+        var adaFilter = mgrSet && mgrSet.size > 0;
         var $tbl = $('#tblProgressSummary');
         var grand = {};
         PROG_GROUPS.forEach(function (g) { grand[g + 'Qty'] = 0; grand[g + 'Value'] = 0; });
@@ -3215,7 +3414,7 @@ $(function () {
 
             $tbl.find('tr.prog-row-project[data-parent="' + custKey + '"]').each(function () {
                 var $proj = $(this);
-                var lolos = !mgr || String($proj.data('manager')) === mgr;
+                var lolos = !adaFilter || mgrSet.has(String($proj.data('manager')));
 
                 $proj.toggleClass('prog-hidden-mgr', !lolos);
                 // Baris No. PO ikut nasib induknya.
@@ -3259,16 +3458,70 @@ $(function () {
         if ($foot.length) progSetAngka($foot, grand);
         $('#progGrandCount').html(totalCustomer + ' customer &middot; ' + totalPo + ' PO &middot; ' + totalPoNumber + ' No. PO');
 
-        $('#progMgrLabel').text(mgr || 'Semua Manager');
-        $('#progMgrBtn').toggleClass('col-mf-active', !!mgr);
+        /* Label tombol: satu pilihan ditulis apa adanya, lebih dari satu
+           diringkas jadi jumlahnya — menderetkan semua nama membuat tombolnya
+           melebar dan mendorong kontrol di sebelahnya. */
+        var terpilih = [];
+        mgrSet && mgrSet.forEach(function (m) { terpilih.push(m); });
+        $('#progMgrLabel').text(
+            terpilih.length === 0 ? 'Manager'
+                : (terpilih.length === 1 ? terpilih[0] : terpilih.length + ' Manager')
+        );
+        $('#progMgrBtn').toggleClass('col-mf-active', adaFilter);
 
         recalcProgVar();
     }
 
-    $('#progMgrFilter').on('click', '.prog-mgr-opt', function () {
-        $('#progMgrFilter .prog-mgr-opt').removeClass('active');
-        $(this).addClass('active');
-        applyProgManager($(this).data('value') || '');
+    /* ── Bersihkan filter per tabel ──
+       Tiga tabel, tiga mekanisme filter yang berbeda, jadi tidak ada satu
+       pemanggilan yang bisa membereskan ketiganya:
+       - Collection Performance & Summary PO memakai DataTables, filternya
+         disimpan TesysColumnFilter -> clearAll() yang mencabut filter kolom
+         maupun filter baris sekaligus, termasuk chip-nya.
+       - Summary Progress bukan DataTable; filternya centang manager + kotak
+         cari yang mengatur display baris sendiri.
+       Yang TIDAK ikut direset: pilihan kolom (Kolom) dan formula VAR — itu
+       cara menampilkan, bukan penyaringan data, dan mengembalikannya diam-diam
+       berarti mencabut pengaturan yang sengaja dipasang pengguna. */
+    $('#btnClearCp').on('click', function () {
+        TesysColumnFilter.clearAll('#tblCollectionPerformance');
+        $('#cpShowRate100').prop('checked', false);
+        $('#tblCollectionPerformance').DataTable().search('').draw();
+    });
+
+    $('#btnClearPo').on('click', function () {
+        TesysColumnFilter.clearAll('#tblPoSummary');
+        $('#poShowRate100').prop('checked', false);
+        $('#tblPoSummary').DataTable().search('').draw();
+    });
+
+    $('#btnClearProg').on('click', function () {
+        $('#progMgrList .prog-mgr-check').prop('checked', false);
+        $('#progMgrSearch').val('').trigger('input');
+        applyProgManager(new Set());
+        $('#progSearch').val('').trigger('input');
+    });
+
+    function progMgrTerpilih() {
+        var set = new Set();
+        $('#progMgrList .prog-mgr-check:checked').each(function () { set.add(String(this.value)); });
+        return set;
+    }
+
+    /* Menu tetap terbuka saat mencentang: Bootstrap menutup dropdown pada klik
+       apa pun di dalamnya, dan menutup setiap satu manager dicentang membuat
+       memilih tiga manager berarti membuka menunya tiga kali. */
+    $('#progMgrFilter').on('click', '.prog-mgr-menu', function (e) { e.stopPropagation(); });
+
+    $('#progMgrFilter').on('change', '.prog-mgr-check', function () {
+        applyProgManager(progMgrTerpilih());
+    });
+
+    $('#progMgrSearch').on('input', function () {
+        var q = $(this).val().toLowerCase();
+        $('#progMgrList label').each(function () {
+            $(this).toggle($(this).text().toLowerCase().indexOf(q) !== -1);
+        });
     });
 
     /* ── Summary Progress — sembunyikan/tampilkan kolom ──

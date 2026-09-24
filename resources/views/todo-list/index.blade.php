@@ -121,8 +121,6 @@
                     'title'       => $section['title'],
                     'statusLabel' => $section['status_label'],
                     'groups'      => $section['groups'],
-                    'approveUrl'  => $section['approve_url'],
-                    'rejectUrl'   => $section['reject_url'],
                 ])
             @endforeach
 
@@ -445,23 +443,6 @@
                     </h3>
                 </div>
 
-                {{-- Multi-select: Close / Reject beberapa CR sekaligus. Memakai
-                     mesin bulk yang sama dengan worklist review (lihat
-                     _worklist_section.blade.php + handler .todo-bulk-* di bawah). --}}
-                <div class="todo-bulk-bar">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div style="font-size:12.5px;color:var(--text);"><strong class="todo-bulk-count">0</strong> CR dipilih<span class="todo-bulk-amount"></span></div>
-                        <div class="d-flex" style="gap:8px;">
-                            <button type="button" class="btn btn-outline-success btn-sm todo-bulk-approve" disabled>
-                                <i class="fas fa-lock mr-1"></i>Close
-                            </button>
-                            <button type="button" class="btn btn-outline-danger btn-sm todo-bulk-reject" disabled>
-                                <i class="fas fa-times mr-1"></i>Reject
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="card-body p-0">
                     <div style="padding:6px 16px;border-bottom:1px solid var(--border);">
                         <button type="button" class="btn btn-link todo-toggle-all p-0" style="font-size:11.5px;font-weight:600;text-decoration:none;" data-state="collapsed">
@@ -472,7 +453,6 @@
                         <table class="table table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
-                                    <th scope="col" style="width:1%;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
                                     <th scope="col" class="text-nowrap" style="width:1%;">CR Number</th>
                                     <th scope="col">Description</th>
                                     <th scope="col" class="text-nowrap" style="width:1%;">Beneficiary</th>
@@ -493,7 +473,6 @@
                     @endphp
                                 {{-- LAPIS 1 — PURCHASE ORDER (MN-03). --}}
                                 <tr class="todo-po-row" data-target="todo-settle-close-po-{{ $poi }}">
-                                    <td><input type="checkbox" class="todo-check-group" data-group="todo-settle-close-po-{{ $poi }}" aria-label="Pilih semua CR PO ini"></td>
                                     <td colspan="3">
                                         <i class="fas fa-chevron-right todo-caret mr-2"></i>
                                         <strong>{{ $poGroup['po'] }}</strong>
@@ -524,7 +503,6 @@
                                 {{-- LAPIS 2 — BUDGET PLAN. --}}
                                 <tr class="todo-group-row todo-settle-close-po-{{ $poi }}" style="display:none;"
                                     data-target="todo-settle-close-grp-{{ $gi }}">
-                                    <td><input type="checkbox" class="todo-check-group" data-group="todo-settle-close-grp-{{ $gi }}" aria-label="Pilih semua CR budget plan ini"></td>
                                     <td colspan="5" style="padding-left:32px;">
                                         <i class="fas fa-chevron-right todo-caret mr-2"></i>
                                         <strong>{{ $group['label'] }}</strong>
@@ -544,14 +522,6 @@
                                 @endphp
                                 <tr class="{{ $indukBarisCr }} todo-row" style="display:none;"
                                     data-pm="{{ $group['pm'] }}" data-po="{{ $poGroup['po'] }}" data-search="{{ $crSearch }}">
-                                    {{-- CR yang Second Payment-nya masih PENDING memang tidak bisa
-                                         di-Close, jadi tidak diberi checkbox sama sekali daripada
-                                         ikut terpilih lalu gagal diam-diam saat bulk. --}}
-                                    <td>
-                                        @unless($cr->pending_second_payment)
-                                        <input type="checkbox" class="todo-check" value="{{ $cr->id }}" data-amount="{{ $cr->amount }}" aria-label="Pilih {{ $cr->code }}">
-                                        @endunless
-                                    </td>
                                     <td class="text-nowrap">
                                         <button type="button" class="cr-number-btn todo-open-drawer" data-id="{{ $cr->id }}">{{ $cr->code }}</button>
                                     </td>
@@ -595,14 +565,6 @@
                     </div>
                 </div>
 
-                {{-- FORM tersembunyi untuk bulk Close/Reject — ids diisi JS dari checkbox --}}
-                <form id="frmTodoBulkApprove-settle-close" action="{{ route('budget-request.settlement-bulk-close') }}" method="POST" style="display:none;">
-                    @csrf
-                </form>
-                <form id="frmTodoBulkReject-settle-close" action="{{ route('budget-request.settlement-bulk-reject') }}" method="POST" style="display:none;">
-                    @csrf
-                    <textarea name="notes"></textarea>
-                </form>
             </div>
             @endif
 
@@ -1541,6 +1503,11 @@
             <div class="tab-pane fade" id="todoPaneRealisasi"></div>
             <div class="tab-pane fade" id="todoPaneLog"></div>
         </div>
+        {{-- Bar aksi workflow — isinya dibangun dari workflow_actions milik
+             detail-json, jadi tombol yang tampil persis sama dengan yang
+             diizinkan server untuk user & status ini. Disembunyikan saat CR
+             tidak punya aksi apa pun bagi user ini. --}}
+        <div id="todoDrwActions" class="todo-drawer-actions" style="display:none;"></div>
     </div>
 </div>
 
@@ -1628,6 +1595,19 @@
 .todo-drawer-body { padding:20px 22px;overflow-y:auto;flex:1; }
 .todo-drawer-body .nav-tabs .nav-link { color:var(--text-faint);border:none;border-bottom:2px solid transparent; }
 .todo-drawer-body .nav-tabs .nav-link.active { color:var(--text);border-bottom-color:var(--accent);background:transparent; }
+/* Bar aksi drawer — menempel di dasar panel, tidak ikut tergulir bersama isi
+   tab, supaya tombol Approve/Reject tetap terjangkau pada CR berisi banyak
+   rincian. */
+.todo-drawer-actions {
+    flex-shrink:0;padding:12px 22px;background:var(--surface-2);border-top:1px solid var(--border);
+    display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;
+}
+.todo-drawer-actions .btn { font-size:12px;font-weight:600;padding:6px 16px; }
+/* Drawer duduk di z-index 1051 — di ATAS modal Bootstrap bawaan (1050).
+   Modal konfirmasi yang dipanggil DARI drawer karena itu perlu dinaikkan,
+   berikut backdrop-nya, kalau tidak ia muncul di belakang panel. */
+#mdlDrwAction { z-index:1080; }
+body.todo-drawer-open .modal-backdrop { z-index:1070; }
 .todo-drw-row { margin-bottom:14px; }
 .todo-drw-label { font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);font-weight:700;margin-bottom:3px; }
 .todo-drw-value { font-size:13px;color:var(--text); }
@@ -2067,86 +2047,6 @@ $(function () {
         $btn.html(expanding ? '<i class="fas fa-compress-alt mr-1"></i>Collapse All' : '<i class="fas fa-expand-alt mr-1"></i>Expand All');
     });
 
-    /* ── WORKLIST — checkbox & bulk approve/reject (per section) ── */
-    function updateBulkBar($section) {
-        var $checked = $section.find('.todo-check:checked');
-        var n = $checked.length;
-        var total = 0;
-        $checked.each(function () { total += parseFloat($(this).data('amount')) || 0; });
-        $section.find('.todo-bulk-count').text(n);
-        $section.find('.todo-bulk-amount').text(n > 0 ? (' - ' + Math.round(total).toLocaleString('id-ID')) : '');
-        $section.find('.todo-bulk-approve, .todo-bulk-reject').prop('disabled', n === 0);
-
-        // Sinkronkan checkbox header grup: tercentang kalau semua CR dalam grup itu tercentang
-        // (termasuk saat "select all" section ditekan, atau CR dicentang satu-satu).
-        $section.find('.todo-check-group').each(function () {
-            var group = $(this).data('group');
-            var $leaves = $('.' + group).find('.todo-check');
-            $(this).prop('checked', $leaves.length > 0 && $leaves.filter(':checked').length === $leaves.length);
-        });
-    }
-    $(document).on('change', '.todo-check', function () {
-        updateBulkBar($(this).closest('.todo-worklist'));
-    });
-    $(document).on('change', '.todo-check-all', function () {
-        var $section = $(this).closest('.todo-worklist');
-        $section.find('.todo-check').prop('checked', $(this).is(':checked'));
-        updateBulkBar($section);
-    });
-
-    /* ── WORKLIST — checkbox di header grup: pilih semua CR dalam grup itu ── */
-    $(document).on('click', '.todo-check-group', function (e) {
-        e.stopPropagation();
-    });
-    $(document).on('change', '.todo-check-group', function () {
-        var group = $(this).data('group');
-        var $section = $(this).closest('.todo-worklist');
-        $('.' + group).find('.todo-check').prop('checked', $(this).is(':checked'));
-        updateBulkBar($section);
-    });
-
-    $(document).on('click', '.todo-bulk-approve', function () {
-        var $section = $(this).closest('.todo-worklist');
-        var key = $section.data('section');
-        var ids = $section.find('.todo-check:checked').map(function () { return $(this).val(); }).get();
-        if (!ids.length) return;
-        // Label ikut tombolnya: section settlement menutup CR ("Close"),
-        // section review meng-approve-nya.
-        var verb = $(this).text().trim() || 'Approve';
-        Swal.fire({
-            title: verb + ' ' + ids.length + ' CR?', icon: 'question', showCancelButton: true,
-            confirmButtonColor: 'var(--success)', cancelButtonColor: '#55595e',
-            confirmButtonText: 'Ya, ' + verb, cancelButtonText: 'Batal'
-        }).then(function (r) {
-            if (!r.isConfirmed) return;
-            var $form = $('#frmTodoBulkApprove-' + key);
-            $form.find('input[name="ids[]"]').remove();
-            ids.forEach(function (id) { $form.append('<input type="hidden" name="ids[]" value="' + id + '">'); });
-            $form.submit();
-        });
-    });
-
-    $(document).on('click', '.todo-bulk-reject', function () {
-        var $section = $(this).closest('.todo-worklist');
-        var key = $section.data('section');
-        var ids = $section.find('.todo-check:checked').map(function () { return $(this).val(); }).get();
-        if (!ids.length) return;
-        $('#bulkRejectCount').text(ids.length);
-        $('#bulkRejectNotes').val('').removeClass('is-invalid');
-        $('#mdlBulkRejectCR').data('ids', ids).data('key', key).modal('show');
-    });
-    $('#btnBulkRejectConfirm').on('click', function () {
-        var notes = $('#bulkRejectNotes').val().trim();
-        if (!notes) { $('#bulkRejectNotes').addClass('is-invalid'); return; }
-        var ids = $('#mdlBulkRejectCR').data('ids') || [];
-        var key = $('#mdlBulkRejectCR').data('key');
-        var $form = $('#frmTodoBulkReject-' + key);
-        $form.find('input[name="ids[]"]').remove();
-        ids.forEach(function (id) { $form.append('<input type="hidden" name="ids[]" value="' + id + '">'); });
-        $form.find('textarea[name="notes"]').val(notes);
-        $form.submit();
-    });
-
     /* ── HEAD APPROVE ── */
     $(document).on('click', '.btn-head-approve', function () {
         var id = $(this).data('id'), code = $(this).data('code');
@@ -2276,9 +2176,28 @@ $(function () {
         return $(document.createElement('span')).text(s == null ? '' : s).html();
     }
 
-    function closeTodoFilterDropdowns() { $('.todo-filter-dropdown').remove(); }
+    function closeTodoFilterDropdowns() {
+        $('.todo-filter-dropdown').remove();
+        // Penjaga klik-di-luar ikut dilepas — kalau ditinggal, handler milik
+        // panel yang sudah hilang masih menunggu dan bisa menutup panel
+        // berikutnya begitu ia dibuka.
+        $(document).off('click.todoFilterOutside');
+    }
+
+    /* Satu tombol = buka DAN tutup. Pemicu yang sedang membuka panel dicatat
+       di elemen panelnya, jadi klik kedua pada tombol yang sama dikenali
+       sebagai perintah tutup, bukan gambar ulang. Sama seperti perilaku
+       filter di halaman lain (lihat tesys-column-filter.js). */
+    function isTodoDropdownOpenFor($btn) {
+        var el = $btn.get(0), open = false;
+        $('.todo-filter-dropdown').each(function () {
+            if ($(this).data('todoOwner') === el) open = true;
+        });
+        return open;
+    }
 
     function openTodoFilterDropdown($btn, field, label) {
+        if (isTodoDropdownOpenFor($btn)) { closeTodoFilterDropdowns(); return; }
         closeTodoFilterDropdowns();
         var current = todoFilterState[field] || new Set();
 
@@ -2302,6 +2221,7 @@ $(function () {
         if (!uniqueRaw.length) $list.append('<div class="text-muted" style="font-size:12px;">Tidak ada data</div>');
 
         $dd.append($search, $list);
+        $dd.data('todoOwner', $btn.get(0));
         $('body').append($dd);
 
         var offset = $btn.offset();
@@ -2527,6 +2447,8 @@ $(function () {
         $('#todoTabRealisasiLi').hide();
         $('#todoDrwCode').text('CR-...');
         $('#todoDrwStatusWrap').html('');
+        $('#todoDrwActions').hide().empty();
+        $('body').addClass('todo-drawer-open');
 
         $.get('/budget-request/' + id + '/detail-json', function (d) {
             $('#todoDrwCode').text(d.code);
@@ -2548,6 +2470,9 @@ $(function () {
             info += todoDrwRow('Request Date', esc(d.created_at));
             if (d.notes) info += todoDrwRow('Notes', esc(d.notes));
             $('#todoPaneInfo').html(info);
+
+            /* ── BAR AKSI WORKFLOW ── */
+            renderDrawerActions(d);
 
             /* ── TAB REQUEST (rincian item pengajuan + attachment) ── */
             var reqHtml = '';
@@ -2696,11 +2621,66 @@ $(function () {
     function esc(s) { return $(document.createElement('span')).text(s == null ? '' : s).html(); }
     function escAttr(s) { return esc(s).replace(/"/g, '&quot;'); }
 
+    /* ── AKSI WORKFLOW DARI DRAWER ──────────────────────────────────────────
+       Daftar aksinya datang dari server (workflow_actions pada detail-json),
+       bukan disusun ulang di sini: gerbang role & status hanya ditulis sekali,
+       di tempat yang sama dengan method aksinya. Halaman ini cuma menggambar
+       apa yang dikirim. */
+    var todoDrwActions = {}; // key aksi -> definisi, diisi ulang tiap drawer dibuka
+
+    function renderDrawerActions(d) {
+        var list = d.workflow_actions || [];
+        todoDrwActions = {};
+        if (!list.length) { $('#todoDrwActions').hide().empty(); return; }
+
+        var html = '';
+        list.forEach(function (a) {
+            todoDrwActions[a.key] = a;
+            html += '<button type="button" class="btn btn-' + esc(a.variant) + ' todo-drw-action" data-key="' + escAttr(a.key) + '">' +
+                '<i class="fas ' + esc(a.icon) + ' mr-1"></i>' + esc(a.label) + '</button>';
+        });
+        $('#todoDrwActions').html(html).css('display', 'flex');
+    }
+
+    $(document).on('click', '.todo-drw-action', function () {
+        var a = todoDrwActions[$(this).data('key')];
+        if (!a) return;
+
+        $('#drwActionTitle').html('<i class="fas ' + esc(a.icon) + ' mr-2" style="color:var(--accent);"></i>' + esc(a.title));
+        $('#drwActionText').text(a.confirm);
+        $('#frmDrwAction').attr('action', a.url);
+
+        var $notes = $('#drwActionNotes').val('').removeClass('is-invalid');
+        // Reject wajib beralasan (server pun memvalidasinya); approve/check/
+        // close hanya menawarkan catatan.
+        $notes.prop('required', !!a.notes_required);
+        $('#drwActionNotesLabel').html(a.notes_required
+            ? 'Alasan <span class="text-danger">*</span>'
+            : 'Catatan (opsional)');
+        $notes.attr('placeholder', a.notes_required ? 'Tuliskan alasan...' : 'Catatan...');
+
+        $('#drwActionSubmit')
+            .attr('class', 'btn btn-' + a.variant)
+            .html('<i class="fas ' + esc(a.icon) + ' mr-1"></i> ' + esc(a.label));
+
+        $('#mdlDrwAction').modal('show');
+    });
+
+    $('#frmDrwAction').on('submit', function (e) {
+        var $notes = $('#drwActionNotes');
+        if ($notes.prop('required') && !$.trim($notes.val())) {
+            e.preventDefault();
+            $notes.addClass('is-invalid').focus();
+        }
+    });
+    $('#drwActionNotes').on('input', function () { $(this).removeClass('is-invalid'); });
+
     $(document).on('click', '.todo-open-drawer', function () {
         openCrDrawer($(this).data('id'));
     });
     $('#todoDrwClose, #todoDrawerOverlay').on('click', function () {
         $('#todoDrawerOverlay, #todoDrawer').fadeOut(150);
+        $('body').removeClass('todo-drawer-open');
     });
 
     /* ── TAKEOUT / RESTORE SUB-ITEM (dari drawer approval) ── */
@@ -2748,6 +2728,7 @@ $(function () {
         var idx      = 0;
         var zoomed   = false;
         var isDragging = false, dragStartX = 0, dragStartY = 0, imgX = 0, imgY = 0;
+        var justSwiped = false;   // menandai klik yang sebenarnya gerakan geser
 
         function renderViewer() {
             var item = images[idx];
@@ -2756,7 +2737,12 @@ $(function () {
             stageImg.src = item.full;
             $('#imgViewerName').text(item.name || '');
             counter.textContent = (idx + 1) + ' / ' + images.length;
-            $('#imgViewerPrev, #imgViewerNext').toggle(images.length > 1);
+            /* Panah hanya ada kalau memang ada tujuannya: tidak tampil untuk
+               lampiran tunggal, tidak ada panah kiri di lampiran pertama dan
+               tidak ada panah kanan di lampiran terakhir. */
+            var banyak = images.length > 1;
+            $('#imgViewerPrev').css('display', (banyak && idx > 0) ? 'flex' : 'none');
+            $('#imgViewerNext').css('display', (banyak && idx < images.length - 1) ? 'flex' : 'none');
         }
 
         function resetZoom() {
@@ -2784,8 +2770,8 @@ $(function () {
             $('body').css('overflow', '');
         }
 
-        function showNext() { if (images.length) { idx = (idx + 1) % images.length; renderViewer(); } }
-        function showPrev() { if (images.length) { idx = (idx - 1 + images.length) % images.length; renderViewer(); } }
+        function showNext() { if (idx < images.length - 1) { idx++; renderViewer(); } }
+        function showPrev() { if (idx > 0) { idx--; renderViewer(); } }
 
         $(document).on('click', '.cr-att-thumb', function () {
             var $group = $(this).closest('.cr-att-grid');
@@ -2812,7 +2798,12 @@ $(function () {
         $('#imgViewerClose').on('click', closeViewer);
         $('#imgViewerNext').on('click', showNext);
         $('#imgViewerPrev').on('click', showPrev);
-        $(overlay).on('click', function (e) { if (e.target === overlay) closeViewer(); });
+        $(overlay).on('click', function (e) {
+            // Klik di area kosong menutup viewer — kecuali kalau klik itu
+            // ujung dari gerakan geser antar lampiran.
+            if (justSwiped) { justSwiped = false; return; }
+            if (e.target === overlay) closeViewer();
+        });
 
         $(document).on('keydown', function (e) {
             if (!overlay.classList.contains('show')) return;
@@ -2853,6 +2844,48 @@ $(function () {
         document.addEventListener('mouseup', function () {
             isDragging = false;
             stageImg.classList.remove('dragging');
+        });
+
+        /* ── GESER KIRI/KANAN untuk pindah lampiran ─────────────────────────
+           Saat gambar TIDAK di-zoom, tarikan mendatar (mouse maupun sentuh)
+           berpindah ke lampiran sebelum/sesudahnya — pola yang sama dengan
+           galeri ponsel. Saat di-zoom, tarikan tetap menggeser gambar
+           (pan), jadi keduanya tidak saling rebutan. */
+        var SWIPE_MIN = 50;          // px, biar klik/getar kecil tidak terbaca geser
+        var swipeX = null, swipeY = null;
+
+        function swipeStart(x, y) { if (!zoomed) { swipeX = x; swipeY = y; } }
+
+        function swipeEnd(x, y) {
+            if (swipeX === null || images.length < 2) { swipeX = swipeY = null; return; }
+            var dx = x - swipeX, dy = y - swipeY;
+            swipeX = swipeY = null;
+            if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) <= Math.abs(dy)) return;
+            if (dx < 0 && idx >= images.length - 1) return;   // sudah di lampiran terakhir
+            if (dx > 0 && idx <= 0) return;                   // sudah di lampiran pertama
+            justSwiped = true;
+            if (dx < 0) showNext(); else showPrev();
+        }
+
+        stageImg.addEventListener('mousedown', function (e) { swipeStart(e.clientX, e.clientY); });
+        document.addEventListener('mouseup', function (e) {
+            if (!overlay.classList.contains('show')) { swipeX = swipeY = null; return; }
+            swipeEnd(e.clientX, e.clientY);
+        });
+
+        stageImg.addEventListener('touchstart', function (e) {
+            var t = e.changedTouches[0];
+            swipeStart(t.clientX, t.clientY);
+        }, { passive: true });
+        stageImg.addEventListener('touchend', function (e) {
+            var t = e.changedTouches[0];
+            swipeEnd(t.clientX, t.clientY);
+        }, { passive: true });
+
+        /* Geser juga boleh lewat area kosong di kiri/kanan gambar. */
+        overlay.addEventListener('mousedown', function (e) {
+            if (e.target === stageImg) return;
+            swipeStart(e.clientX, e.clientY);
         });
     })();
 

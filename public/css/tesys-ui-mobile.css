@@ -1,0 +1,323 @@
+/* ==========================================================================
+   TESYS — LAPIS MOBILE
+   --------------------------------------------------------------------------
+   Lapis terakhir yang dimuat (sesudah tesys-ui-luxe.css), khusus menyesuaikan
+   tampilan untuk layar handphone. Ditaruh di satu berkas — bukan disebar
+   sebagai @media di tiap view — karena pola yang perlu diperbaiki berulang di
+   banyak modul (modal detail dua kolom, tabel lebar, baris tombol), sehingga
+   memperbaikinya satu kali lebih jujur daripada menyalin aturan yang sama ke
+   belasan blade.
+
+   Penting soal urutan: @stack('styles') di layout berada SEBELUM berkas-berkas
+   tesys-*.css, jadi <style> milik halaman kalah urutan dari berkas ini pada
+   spesifisitas yang sama. Karena itu di sini hampir tidak perlu !important.
+
+   Titik patah mengikuti konvensi yang sudah dipakai proyek:
+     900px  — tablet / sidebar jadi laci
+     768px  — batas modal dua kolom (dipakai keluarga modal detail sejak awal)
+     640px  — handphone
+     480px  — handphone kecil
+   ========================================================================== */
+
+
+/* ==========================================================================
+   1. MODAL DETAIL DUA KOLOM
+   --------------------------------------------------------------------------
+   Pola yang sama dipakai enam modul: panel gelap 280px di kiri + panel isi di
+   kanan (.pic-/.bp-/.cr-/.fc-/.prj-). Di layar sempit dua kolom itu memaksa
+   panel kanan menyusut sampai tabelnya tidak terbaca, jadi keduanya ditumpuk:
+   kepala dokumen di atas, rinciannya di bawah.
+   Sebelumnya hanya Forecast yang punya aturan ini; sekarang seluruh keluarga.
+   ========================================================================== */
+@media (max-width: 767.98px) {
+    .pic-modal-flex,
+    .bp-modal-flex,
+    .cr-modal-flex,
+    .fc-modal-flex,
+    .prj-modal-flex {
+        flex-direction: column;
+        /* Tinggi pasti hanya masuk akal saat dua kolom sejajar — begitu
+           ditumpuk, tingginya harus mengikuti isi supaya tidak ada ruang
+           kosong menggantung di bawah panel gelap. */
+        min-height: 0;
+        height: auto;
+    }
+
+    .pic-sidebar,
+    .bp-sidebar,
+    .cr-sidebar,
+    .fc-sidebar,
+    .prj-sidebar {
+        width: 100%;
+        flex: 0 0 auto;
+        max-height: none;
+        padding: 20px 16px;
+    }
+
+    /* Pengisi yang mendorong tombol alur ke dasar kolom. Saat ditumpuk ia
+       tidak punya tinggi sisa untuk didorong, dan kalau dibiarkan tumbuh ia
+       menyisakan celah kosong sebelum tombol. */
+    .fc-sidebar-spacer,
+    .cr-sidebar-spacer,
+    .bp-sidebar-spacer,
+    .pic-sidebar-spacer,
+    .prj-sidebar-spacer { flex: 0 0 auto; }
+
+    .pic-main-panel,
+    .bp-main-panel,
+    .cr-main-panel,
+    .fc-main-panel,
+    .prj-main-panel {
+        padding: 16px 12px;
+        /* Panel kanan menggulir sendiri saat dua kolom, supaya kepala dokumen
+           tetap terlihat. Ditumpuk, yang menggulir cukup badan modalnya. */
+        overflow-y: visible;
+        max-height: none;
+    }
+
+    /* Aturan di atas bertabrakan dengan pengunci tinggi milik halaman
+       (body.tesys-ui .modal-body.dm-body .fc-modal-flex { height:100% }),
+       jadi disebut ulang dengan spesifisitas yang setara. */
+    body.tesys-ui .modal-body.dm-body .fc-modal-flex,
+    body.tesys-ui .modal-body.dm-body .cr-modal-flex,
+    body.tesys-ui .modal-body.dm-body .bp-modal-flex,
+    body.tesys-ui .modal-body.dm-body .pic-modal-flex,
+    body.tesys-ui .modal-body.dm-body .prj-modal-flex { height: auto; min-height: 0; }
+
+    body.tesys-ui .modal-body.dm-body .fc-main-panel,
+    body.tesys-ui .modal-body.dm-body .cr-main-panel,
+    body.tesys-ui .modal-body.dm-body .bp-main-panel,
+    body.tesys-ui .modal-body.dm-body .pic-main-panel,
+    body.tesys-ui .modal-body.dm-body .prj-main-panel { overflow-y: visible; max-height: none; }
+
+    /* Modal detail dikunci setinggi layar (lihat #modalForecastDetail). Di HP
+       kunci itu justru memotong isi, karena yang menggulir sudah dipindah ke
+       badan modal. */
+    #modalForecastDetail .modal-dialog  { height: auto; }
+    #modalForecastDetail .modal-content { height: auto; }
+    .modal-body.dm-body { overflow-y: auto; }
+
+    /* Kolom samping gelap di _detail_modal.blade.php memakai grid Bootstrap
+       (col-md-3) dengan min-height mati 420px lewat atribut style. */
+    .modal .dm-side[class*="col-md-"] { min-height: 0 !important; }
+}
+
+
+/* ==========================================================================
+   2. LEBAR & MARGIN MODAL
+   --------------------------------------------------------------------------
+   .modal-xl / .modal-dialog-xxl dirancang untuk layar lebar. Di HP, margin
+   bawaan Bootstrap menyisakan bingkai yang memakan ruang baca tanpa memberi
+   apa pun, jadi modal dibiarkan hampir selebar layar.
+   ========================================================================== */
+@media (max-width: 640px) {
+    .modal-dialog,
+    .modal-dialog.modal-lg,
+    .modal-dialog.modal-xl,
+    .modal-dialog.modal-dialog-xxl {
+        max-width: none;
+        width: auto;
+        margin: 8px;
+    }
+
+    .modal-header, .modal .dm-head { padding: 12px 14px; }
+    .modal-body   { padding: 14px; }
+
+    /* Tombol di kaki modal sering ada tiga; berjajar di layar sempit mereka
+       terpotong. Dibungkus agar turun baris, bukan meluber. */
+    .modal-footer { padding: 10px 14px; flex-wrap: wrap; gap: 8px; }
+    .modal-footer > .btn { flex: 1 1 auto; }
+}
+
+
+/* ==========================================================================
+   3. TABEL
+   --------------------------------------------------------------------------
+   Hampir semua tabel sudah dibungkus .table-responsive, jadi gulir mendatar
+   sudah jalan. Yang kurang: gulirnya terasa kaku, dan kolom beku yang di
+   layar sempit memakan separuh lebar.
+   ========================================================================== */
+@media (max-width: 767.98px) {
+    .table-responsive {
+        -webkit-overflow-scrolling: touch;   /* gulir dengan inersia di iOS */
+        overscroll-behavior-x: contain;      /* jangan tarik halaman ikut geser */
+    }
+
+    /* Kolom beku kiri: lebar 280px itu untuk layar lebar. Di HP ia menyisakan
+       terlalu sedikit ruang bagi kolom angka di sebelahnya.
+       Sengaja TANPA max-width: sel ini berisi nama yang tidak patah baris,
+       dan membatasi lebarnya membuat teks meluber menimpa kolom sebelahnya —
+       persis cacat yang diperbaiki di bagian 3b. */
+    .col-pic-hscroll .col-pic-table th.col-sticky-left,
+    .col-pic-hscroll .col-pic-table td.col-sticky-left,
+    th.col-sticky-left,
+    td.col-sticky-left { min-width: 150px !important; }
+
+    /* Sel dipadatkan supaya lebih banyak kolom muat sebelum perlu digulir. */
+    .table { font-size: 12px; }
+    .table td, .table th { padding: 7px 8px; }
+}
+
+@media (max-width: 480px) {
+    .table { font-size: 11.5px; }
+    .table td, .table th { padding: 6px 6px; }
+}
+
+
+/* ==========================================================================
+   3b. TABEL BERLEBAR PASTI YANG TERGENCET
+   --------------------------------------------------------------------------
+   CACAT: di Finance Summary > Active Cash Advance, tulisan header dan nama PIC
+   saling menimpa ("MANAGER / PIC / COST REQUEST" menumpuk dengan "AGING",
+   "HANI21" dengan kolom sebelahnya).
+
+   SEBABNYA bukan gulir yang kurang, tapi aritmetika lebar. #tblAca dipaksa
+   `width:100% !important` dan `table-layout:fixed`, sedangkan colgroup-nya
+   sudah memesan 90+120+140+90+160 = 600px untuk lima kolom kanan. Di layar
+   375px, kolom pertama (yang tidak dipesan) kebagian lebar sisa yang MINUS,
+   jadi ia menyusut ke nol sementara isinya — yang sengaja tidak patah baris —
+   tetap tergambar penuh dan meluber ke atas kolom tetangganya.
+
+   Menambah min-width saja tidak cukup: selama table-layout:fixed masih
+   berlaku, kolom pertama tetap hanya menerima sisa. Jadi di HP tabel ini
+   dikembalikan ke lebar otomatis (kolom mengikuti isinya) DAN diberi lebar
+   minimum, supaya yang bergerak adalah pembungkus .table-responsive —
+   digulir mendatar, bukan digencet.
+   ========================================================================== */
+@media (max-width: 767.98px) {
+    table.aca-fixed,
+    #tblAca.col-pic-table {
+        table-layout: auto;
+        min-width: 680px;
+        width: auto !important;
+    }
+
+    /* colgroup memesan lebar lewat atribut style, yang tidak bisa dimatikan
+       dari sini. Dengan table-layout:auto pesanan itu jadi sekadar usulan,
+       tapi kolom Value 160px masih kelewat lapang untuk layar HP — lebar
+       sebenarnya ditentukan ulang dari sel-selnya. */
+    table.aca-fixed th,
+    table.aca-fixed td { width: auto; }
+
+    /* Nama CR yang dipotong elipsis butuh lebar untuk dipotong; tanpa ini ia
+       ikut menyusut ke nol bersama kolomnya. */
+    table.aca-fixed td.aca-lv3 { min-width: 200px; }
+
+    /* Pengaman umum: tabel mana pun yang memakai table-layout:fixed di dalam
+       pembungkus gulir akan mengalami cacat yang sama begitu jumlah lebar
+       kolom pastinya melewati lebar layar. */
+    .table-responsive > table[style*="table-layout"] { min-width: 100%; }
+}
+
+
+/* ==========================================================================
+   4. BARIS TOMBOL & TAB
+   ========================================================================== */
+@media (max-width: 640px) {
+    /* Tombol aksi per baris tabel (.ts-actions) dan baris tombol lepas:
+       dibiarkan turun baris daripada mendorong lebar tabel. */
+    .ts-actions,
+    .action-buttons { flex-wrap: wrap; }
+
+    /* Bilah bulk (Todo List, worklist review): hitungan dan tombolnya
+       ditumpuk, karena berjajar mereka saling menghimpit sampai label
+       "Close"/"Reject" terpotong. */
+    .todo-bulk-bar > .d-flex {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 8px;
+    }
+    .todo-bulk-bar > .d-flex > .d-flex > .btn { flex: 1 1 0; }
+
+    /* Tab yang banyak (Forecast, Finance Summary) digulir mendatar, bukan
+       dipatahkan jadi beberapa baris yang menekan isi ke bawah. */
+    .nav-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .nav-tabs .nav-link { white-space: nowrap; }
+
+    /* Kepala kartu menampung judul + jumlah + keterangan + tombol dalam satu
+       baris flex. Di HP keempatnya tidak muat; tanpa wrap, tombol di ujung
+       (mis. "Buka Semua") menekan keterangan sampai terpotong. */
+    .card-header.d-flex { flex-wrap: wrap; gap: 6px; }
+    .card-header.d-flex > .ml-auto { margin-left: 0 !important; }
+}
+
+
+/* ==========================================================================
+   5. GRAFIK (Finance Summary — tab Collection)
+   --------------------------------------------------------------------------
+   Donat dipatok 220px di samping legendanya. Di HP barisnya memang sudah
+   flex-wrap, tapi donat berdiri di kiri dengan ruang kosong lebar di kanan.
+   ========================================================================== */
+@media (max-width: 640px) {
+    .col-donut-row { justify-content: center; }
+    .col-donut-chart {
+        flex: 0 0 auto;
+        width: min(220px, 70vw);
+        height: min(220px, 70vw);
+    }
+    .col-chart-wrap { height: 200px; }
+    .col-chart-wrap canvas { max-height: 200px; }
+}
+
+
+/* ==========================================================================
+   6. DIALOG KETERANGAN (SweetAlert2)
+   --------------------------------------------------------------------------
+   Kotak keterangan realisasi Forecast dilebarkan jadi 560px. Di HP lebar itu
+   tidak terpakai, dan textarea setinggi 140px menutup hampir seluruh layar
+   begitu papan ketik naik.
+   ========================================================================== */
+@media (max-width: 640px) {
+    .fc-swal-notes { width: 94vw; padding: 18px 16px 14px; }
+    .fc-swal-notes .swal2-textarea { height: 96px; min-height: 80px; font-size: 16px; }
+    .swal2-actions { flex-wrap: wrap; gap: 8px; }
+}
+
+
+/* ==========================================================================
+   7. ISIAN FORM
+   --------------------------------------------------------------------------
+   iOS memperbesar halaman sendiri begitu isian yang disentuh berukuran di
+   bawah 16px. Pembesaran itu tidak kembali sendiri dan membuat tata letak
+   terlihat rusak, jadi semua isian dinaikkan ke 16px di HP.
+   ========================================================================== */
+@media (max-width: 640px) {
+    .form-control,
+    .form-control-sm,
+    .custom-select,
+    textarea.form-control,
+    .inp-actual-item { font-size: 16px; }
+
+    .form-control-sm, .inp-actual-item { height: 36px; }
+
+    /* Dua kolom isian jadi satu kolom. Aturan bawaan hanya menyebut
+       .form-grid/.grid-2/.grid-3; kolom Bootstrap di form panjang
+       (Budget Request create/edit) ikut diratakan. */
+    .modal .row > [class*="col-md-"],
+    .modal .row > [class*="col-lg-"] { flex: 0 0 100%; max-width: 100%; }
+}
+
+
+/* ==========================================================================
+   8. KUOTA CASH ADVANCE (Budget Request)
+   --------------------------------------------------------------------------
+   Pemberitahuan sisa kuota CA muncul di atas form; di HP ia hanya perlu
+   dipadatkan supaya tidak mendorong isian pertama keluar layar.
+   ========================================================================== */
+@media (max-width: 640px) {
+    #caQuotaAlert { font-size: 12px; padding: 8px 10px; }
+    #caQuotaAlert .badge { white-space: normal; }
+}
+
+
+/* ==========================================================================
+   9. AREA UNGGAH LAMPIRAN
+   ========================================================================== */
+@media (max-width: 640px) {
+    .att-dropzone, #attUploadArea { padding: 16px 12px; font-size: 12px; }
+    .att-dropzone .fa-2x { font-size: 1.4em; }
+}

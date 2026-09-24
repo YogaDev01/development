@@ -61,7 +61,7 @@
                         <div class="toolbar-input">
                             <input type="search" name="q" class="form-control form-control-sm"
                                    value="{{ $filters['q'] }}"
-                                   placeholder="Kode / no. referensi / kode invoice / customer">
+                                   placeholder="Kode / referensi / customer">
                         </div>
                     </div>
 
@@ -173,5 +173,18 @@
 <style>
 .font-weight-600 { font-weight:600; }
 .table td, .table th { vertical-align:middle !important; }
+
+/* Bilah filter: .toolbar-row/.toolbar-input belum punya definisi global, jadi
+   tanpa ini label "Cari :" jatuh ke baris sendiri di atas input. Nilainya
+   disamakan dengan index lain (Account, Bank, Access Group). */
+.toolbar-row   { display:flex; align-items:center; gap:8px; }
+.toolbar-label { min-width:50px; font-weight:600; color:var(--text-dim); white-space:nowrap; margin-bottom:0; }
+.toolbar-input { min-width:230px; }
+.custom-toolbar .toolbar-input .form-control { width:100%; }
+
+@media (max-width: 575.98px) {
+    .toolbar-row   { width:100%; }
+    .toolbar-input { flex:1; min-width:0; }
+}
 </style>
 @endpush

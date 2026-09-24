@@ -1132,6 +1132,7 @@ $(function () {
         var idx      = 0;
         var zoomed   = false;
         var isDragging = false, dragStartX = 0, dragStartY = 0, imgX = 0, imgY = 0;
+        var justSwiped = false;   // menandai klik yang sebenarnya gerakan geser
 
         function renderViewer() {
             var item = images[idx];
@@ -1140,7 +1141,12 @@ $(function () {
             stageImg.src = item.full;
             $('#imgViewerName').text(item.name || '');
             counter.textContent = (idx + 1) + ' / ' + images.length;
-            $('#imgViewerPrev, #imgViewerNext').toggle(images.length > 1);
+            /* Panah hanya ada kalau memang ada tujuannya: tidak tampil untuk
+               lampiran tunggal, tidak ada panah kiri di lampiran pertama dan
+               tidak ada panah kanan di lampiran terakhir. */
+            var banyak = images.length > 1;
+            $('#imgViewerPrev').css('display', (banyak && idx > 0) ? 'flex' : 'none');
+            $('#imgViewerNext').css('display', (banyak && idx < images.length - 1) ? 'flex' : 'none');
         }
 
         function resetZoom() {
@@ -1168,8 +1174,8 @@ $(function () {
             $('body').css('overflow', '');
         }
 
-        function showNext() { if (images.length) { idx = (idx + 1) % images.length; renderViewer(); } }
-        function showPrev() { if (images.length) { idx = (idx - 1 + images.length) % images.length; renderViewer(); } }
+        function showNext() { if (idx < images.length - 1) { idx++; renderViewer(); } }
+        function showPrev() { if (idx > 0) { idx--; renderViewer(); } }
 
         // Trigger: tombol View gambar pada tabel Attachment
         $(document).on('click', '.bp-att-view-img', function () {
@@ -1184,7 +1190,12 @@ $(function () {
         $('#imgViewerClose').on('click', closeViewer);
         $('#imgViewerNext').on('click', showNext);
         $('#imgViewerPrev').on('click', showPrev);
-        $(overlay).on('click', function (e) { if (e.target === overlay) closeViewer(); });
+        $(overlay).on('click', function (e) {
+            // Klik di area kosong menutup viewer — kecuali kalau klik itu
+            // ujung dari gerakan geser antar lampiran.
+            if (justSwiped) { justSwiped = false; return; }
+            if (e.target === overlay) closeViewer();
+        });
 
         $(document).on('keydown', function (e) {
             if (!overlay.classList.contains('show')) return;
@@ -1225,6 +1236,48 @@ $(function () {
         document.addEventListener('mouseup', function () {
             isDragging = false;
             stageImg.classList.remove('dragging');
+        });
+
+        /* ── GESER KIRI/KANAN untuk pindah lampiran ─────────────────────────
+           Saat gambar TIDAK di-zoom, tarikan mendatar (mouse maupun sentuh)
+           berpindah ke lampiran sebelum/sesudahnya — pola yang sama dengan
+           galeri ponsel. Saat di-zoom, tarikan tetap menggeser gambar
+           (pan), jadi keduanya tidak saling rebutan. */
+        var SWIPE_MIN = 50;          // px, biar klik/getar kecil tidak terbaca geser
+        var swipeX = null, swipeY = null;
+
+        function swipeStart(x, y) { if (!zoomed) { swipeX = x; swipeY = y; } }
+
+        function swipeEnd(x, y) {
+            if (swipeX === null || images.length < 2) { swipeX = swipeY = null; return; }
+            var dx = x - swipeX, dy = y - swipeY;
+            swipeX = swipeY = null;
+            if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) <= Math.abs(dy)) return;
+            if (dx < 0 && idx >= images.length - 1) return;   // sudah di lampiran terakhir
+            if (dx > 0 && idx <= 0) return;                   // sudah di lampiran pertama
+            justSwiped = true;
+            if (dx < 0) showNext(); else showPrev();
+        }
+
+        stageImg.addEventListener('mousedown', function (e) { swipeStart(e.clientX, e.clientY); });
+        document.addEventListener('mouseup', function (e) {
+            if (!overlay.classList.contains('show')) { swipeX = swipeY = null; return; }
+            swipeEnd(e.clientX, e.clientY);
+        });
+
+        stageImg.addEventListener('touchstart', function (e) {
+            var t = e.changedTouches[0];
+            swipeStart(t.clientX, t.clientY);
+        }, { passive: true });
+        stageImg.addEventListener('touchend', function (e) {
+            var t = e.changedTouches[0];
+            swipeEnd(t.clientX, t.clientY);
+        }, { passive: true });
+
+        /* Geser juga boleh lewat area kosong di kiri/kanan gambar. */
+        overlay.addEventListener('mousedown', function (e) {
+            if (e.target === stageImg) return;
+            swipeStart(e.clientX, e.clientY);
         });
     })();
 
@@ -1724,11 +1777,20 @@ $(function () {
         $('#bpNotesCollapse').hide(); $('#bpNotesToggleIcon').removeClass('rotated');
     });
 
-    // Auto-buka modal detail bila diakses dengan ?open=<id> (mis. dari link Treasury)
-    (function autoOpenFromQuery() {
+    // Auto-buka modal detail bila diakses dengan ?open=<id> (mis. dari link Treasury).
+    // Parameternya dibuang dari URL setelah dipakai, supaya reload / redirect
+    // back() tidak membuka modal detail itu lagi.
+    (function () {
         var params = new URLSearchParams(window.location.search);
         var openId = params.get('open');
-        if (openId) openBPDetail(openId);
+        if (!openId) return;
+
+        params.delete('open');
+        var sisa = params.toString();
+        window.history.replaceState({}, '',
+            window.location.pathname + (sisa ? '?' + sisa : '') + window.location.hash);
+
+        openBPDetail(openId);
     })();
 
     /* ── 4 TAHAP APPROVAL: Manager submit -> Head check -> Finance verify ->

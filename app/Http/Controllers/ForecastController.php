@@ -7,7 +7,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 use App\Models\Forecast;
+use App\Models\ForecastActualEntry;
 use App\Models\ForecastDetail;
+use App\Models\ForecastLog;
 use App\Models\SourceFund;
 
 class ForecastController extends Controller
@@ -81,6 +83,8 @@ class ForecastController extends Controller
             ]);
 
             $this->syncDetails($forecast, $validated['details']);
+
+            ForecastLog::record($forecast->id, 'CREATED', $forecast->label);
         });
 
         return redirect('/forecast')->with('success', 'Forecast berhasil dibuat.');
@@ -115,7 +119,30 @@ class ForecastController extends Controller
      */
     public function detailJson($id)
     {
-        $forecast = Forecast::with(['details.sourceFund', 'details.project.customer', 'creator'])->findOrFail($id);
+        $forecast = Forecast::with([
+            'details.sourceFund',
+            'details.project.customer',
+            'details.actualEntries.creator:id,name',
+            'creator',
+            'logs',
+        ])->findOrFail($id);
+
+        // Rincian dikelompokkan per rekening: satu forecast bisa menyentuh
+        // beberapa rekening sekaligus, dan yang ingin dibaca orang adalah
+        // "rencana & realisasi rekening ini", bukan satu daftar panjang yang
+        // rekeningnya berselang-seling.
+        $groups = $forecast->details
+            ->groupBy(fn ($d) => $d->sourceFund->name ?? 'Tanpa Rekening')
+            ->sortKeys()
+            ->map(fn ($rows, $nama) => [
+                'source_fund'       => $nama,
+                'rows'              => $rows->map(fn ($d) => $this->barisRincian($d, $forecast))->values(),
+                'plan_formatted'    => number_format($rows->sum('signed_amount'), 0, ',', '.'),
+                'actual_formatted'  => number_format($rows->sum('signed_actual_amount'), 0, ',', '.'),
+                'variance_formatted'=> number_format($rows->sum('variance'), 0, ',', '.'),
+                'variance_negative' => $rows->sum('variance') < 0,
+            ])
+            ->values();
 
         return response()->json([
             'id'     => $forecast->id,
@@ -156,23 +183,53 @@ class ForecastController extends Controller
             'can_close'         => $forecast->status === 'ACTIVE',
             'can_update_actual' => $forecast->status === 'ACTIVE' && $forecast->details->isNotEmpty(),
 
-            'details' => $forecast->details->map(fn ($d) => [
-                'id'          => $d->id,
-                'description' => $d->description,
-                'project'     => $d->project?->code,
-                'project_name' => $d->project?->name,
-                'type'        => $d->type,
-                'type_label'  => $d->type_label,
-                'type_color'  => $d->type_color,
-                'source_fund' => $d->sourceFund->name ?? '-',
-                'amount'           => $d->amount,
-                'amount_formatted' => $d->amount_formatted,
-                'actual_amount'           => $d->actual_amount,
-                'actual_amount_formatted' => $d->actual_amount_formatted,
-                'selisih_formatted' => number_format($d->amount - $d->actual_amount, 0, ',', '.'),
-                'selisih_negative'  => ($d->amount - $d->actual_amount) < 0,
+            'detail_count' => $forecast->details->count(),
+            'groups'       => $groups,
+
+            'logs' => $forecast->logs->map(fn ($l) => [
+                'action'       => $l->action,
+                'action_label' => $l->action_label,
+                'action_color' => $l->action_color,
+                'actor'        => $l->actor_name ?: '-',
+                'notes'        => $l->notes,
+                'at'           => $l->created_at?->format('d/m/Y H:i'),
             ])->values(),
         ]);
+    }
+
+    /** Satu baris rincian, sudah bertanda dan sudah terformat. */
+    private function barisRincian(ForecastDetail $d, Forecast $forecast): array
+    {
+        return [
+            'id'           => $d->id,
+            'description'  => $d->description,
+            'project'      => $d->project?->code,
+            'project_name' => $d->project?->name,
+            'type'         => $d->type,
+            'type_label'   => $d->type_label,
+            'type_color'   => $d->type_color,
+            'source_fund'  => $d->sourceFund->name ?? '-',
+
+            // Semua angka di sini sudah bertanda: realisasi atas baris KELUAR
+            // adalah uang yang pergi, jadi ia tampil negatif — bukan bertambah.
+            'amount_formatted'        => $d->amount_formatted,
+            // Nilai polos ikut dikirim: kotak isian di kolom Actual memakainya
+            // sebagai isi awal, dan pemisah ribuannya dipasang di peramban.
+            'actual_amount'           => (int) $d->actual_amount,
+            'actual_amount_formatted' => $d->actual_amount_formatted,
+            'selisih_formatted'       => number_format($d->variance, 0, ',', '.'),
+            'selisih_negative'        => $d->variance < 0,
+
+            'entry_count' => $d->actualEntries->count(),
+            'entries'     => $d->actualEntries->map(fn ($e) => [
+                'id'        => $e->id,
+                'amount'    => $e->amount_formatted,
+                'notes'     => $e->notes,
+                'user'      => $e->creator->name ?? '-',
+                'at'        => $e->created_at?->format('d/m/Y H:i'),
+                'can_delete'=> $forecast->status === 'ACTIVE',
+            ])->values(),
+        ];
     }
 
     /*
@@ -219,6 +276,11 @@ class ForecastController extends Controller
             ]);
 
             $this->syncDetails($forecast, $validated['details']);
+
+            // Mengubah rencana berarti menyusun ulang barisnya (delete-all
+            // then recreate), jadi realisasi yang sudah tercatat ikut hilang —
+            // itu dicatat apa adanya di riwayat, bukan didiamkan.
+            ForecastLog::record($forecast->id, 'UPDATED', 'Rencana diubah.');
         });
 
         return redirect('/forecast')->with('success', 'Forecast berhasil diupdate.');
@@ -262,49 +324,117 @@ class ForecastController extends Controller
 
         $forecast->update(['status' => 'ACTIVE', 'activated_at' => now()]);
 
+        ForecastLog::record($forecast->id, 'ACTIVATED');
+
         return back()->with('success', 'Forecast diaktifkan. Actual Amount sekarang bisa diisi per item.');
     }
 
     /*
     |--------------------------------------------------------------------------
-    | UPDATE ACTUAL — hanya saat ACTIVE
+    | REALISASI — entri berulang per baris, hanya saat ACTIVE
     |--------------------------------------------------------------------------
     */
 
-    public function updateActual(Request $request, $id)
+    /**
+     * Menambah satu entri realisasi pada satu baris rencana.
+     *
+     * Realisasi datang bertahap (satu rencana bisa dibayar beberapa kali),
+     * jadi yang dicatat adalah setiap kejadiannya — bukan satu angka yang
+     * ditimpa tanpa jejak. `notes` wajib: entri tanpa keterangan tidak
+     * menjelaskan apa-apa saat dibaca kembali berbulan-bulan kemudian, dan
+     * aturan itu ditegakkan di sini, bukan hanya di peramban.
+     *
+     * `amount` selalu disimpan positif; arah (IN/OUT) sudah melekat di baris
+     * detail, sehingga entri pada baris KELUAR otomatis terbaca negatif lewat
+     * ForecastActualEntry::getSignedAmountAttribute().
+     */
+    public function storeActual(Request $request, $id, $detailId)
     {
         $forecast = Forecast::findOrFail($id);
 
         if ($forecast->status !== 'ACTIVE') {
-            return back()->with('error', 'Actual Amount hanya bisa diupdate selama forecast ACTIVE.');
+            return back()->with('error', 'Realisasi hanya bisa diisi selama forecast ACTIVE.');
         }
 
-        // Actual diinput per detail item, bukan agregat header — header
-        // actual_amount otomatis ke-sync lewat ForecastDetail::booted().
+        $detail = $forecast->details()->whereKey($detailId)->firstOrFail();
+
         $validated = $request->validate([
-            'details'                 => 'required|array',
-            'details.*'               => 'nullable',
+            'amount' => 'required',
+            'notes'  => 'required|string|max:255',
+        ], [
+            'notes.required' => 'Keterangan wajib diisi sebelum realisasi ditambahkan.',
         ]);
 
-        DB::transaction(function () use ($forecast, $validated) {
-            // Alasan withoutEvents + sync sekali di akhir sama persis dengan
-            // syncDetails(): realisasi seluruh baris dikirim sekaligus, jadi
-            // menghitung header per baris berarti menghitungnya di atas
-            // realisasi yang baru terisi sebagian.
-            ForecastDetail::withoutEvents(function () use ($forecast, $validated) {
-                foreach ($validated['details'] as $detailId => $rawAmount) {
-                    $detail = $forecast->details()->whereKey($detailId)->first();
-                    if (!$detail) {
-                        continue;
-                    }
-                    $detail->update(['actual_amount' => (int) preg_replace('/\D/', '', (string) $rawAmount)]);
-                }
-            });
+        $amount = (int) preg_replace('/\D/', '', (string) $validated['amount']);
 
+        if ($amount <= 0) {
+            return back()->with('error', 'Nilai realisasi harus lebih dari nol.');
+        }
+
+        DB::transaction(function () use ($forecast, $detail, $amount, $validated) {
+            // Event ForecastDetail dimatikan karena syncActual() sendiri sudah
+            // menulis baris detail — membiarkan hook `saved` berjalan berarti
+            // header dihitung dua kali untuk satu penambahan yang sama.
+            $entry = $detail->actualEntries()->create([
+                'amount'     => $amount,
+                'notes'      => trim($validated['notes']),
+                'created_by' => Auth::id(),
+            ]);
+
+            ForecastDetail::withoutEvents(fn () => $detail->syncActual());
             $forecast->refresh()->syncAmounts();
+
+            ForecastLog::record(
+                $forecast->id,
+                'ACTUAL_ADDED',
+                $detail->description . ' — ' . $entry->amount_formatted . ' · ' . $entry->notes
+            );
         });
 
-        return back()->with('success', 'Actual Amount diupdate.');
+        // Dipanggil dari dalam modal lewat AJAX: modalnya menggambar ulang
+        // dirinya sendiri dari payload detail, jadi halamannya tidak perlu
+        // dimuat ulang sama sekali. Jalur non-AJAX tetap ada sebagai cadangan
+        // (JavaScript mati, atau form disubmit langsung).
+        if ($request->ajax()) {
+            return response()->json(['message' => 'Realisasi ditambahkan.']);
+        }
+
+        return redirect('/forecast?open=' . $forecast->id)->with('success', 'Realisasi ditambahkan.');
+    }
+
+    /**
+     * Menghapus satu entri realisasi. Sama seperti penambahan: hanya selama
+     * ACTIVE, dan tetap meninggalkan jejak di riwayat.
+     */
+    public function destroyActual(Request $request, $id, $entryId)
+    {
+        $forecast = Forecast::findOrFail($id);
+
+        if ($forecast->status !== 'ACTIVE') {
+            return back()->with('error', 'Realisasi hanya bisa diubah selama forecast ACTIVE.');
+        }
+
+        $entry = ForecastActualEntry::with('detail')
+            ->whereHas('detail', fn ($q) => $q->where('forecast_id', $forecast->id))
+            ->findOrFail($entryId);
+
+        $detail  = $entry->detail;
+        $catatan = $detail->description . ' — ' . $entry->amount_formatted . ' · ' . $entry->notes;
+
+        DB::transaction(function () use ($forecast, $detail, $entry, $catatan) {
+            $entry->delete();
+
+            ForecastDetail::withoutEvents(fn () => $detail->syncActual());
+            $forecast->refresh()->syncAmounts();
+
+            ForecastLog::record($forecast->id, 'ACTUAL_REMOVED', $catatan);
+        });
+
+        if ($request->ajax()) {
+            return response()->json(['message' => 'Realisasi dihapus.']);
+        }
+
+        return redirect('/forecast?open=' . $forecast->id)->with('success', 'Realisasi dihapus.');
     }
 
     /*
@@ -322,6 +452,8 @@ class ForecastController extends Controller
         }
 
         $forecast->update(['status' => 'CLOSED', 'closed_at' => now()]);
+
+        ForecastLog::record($forecast->id, 'CLOSED');
 
         return back()->with('success', 'Forecast di-Close.');
     }

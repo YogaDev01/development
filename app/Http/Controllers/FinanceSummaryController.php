@@ -10,6 +10,7 @@ use App\Models\BudgetPlan;
 use App\Models\BudgetRequest;
 use App\Models\BudgetRequestRealization;
 use App\Models\RequestDetail;
+use App\Models\RequestStatusLog;
 use App\Models\Account;
 use App\Models\CashReceipt;
 use App\Models\DailyTransaction;
@@ -590,8 +591,8 @@ class FinanceSummaryController extends Controller
     public const ACA_SORTS = [
         'value_desc' => 'Nilai: Besar → Kecil',
         'value_asc'  => 'Nilai: Kecil → Besar',
-        'name_asc'   => 'Penerima Dana: A → Z',
-        'name_desc'  => 'Penerima Dana: Z → A',
+        'name_asc'   => 'PIC: A → Z',
+        'name_desc'  => 'PIC: Z → A',
     ];
 
     /** Urutan bawaan — sama dengan perilaku sebelum pilihan ini ada. */
@@ -632,6 +633,25 @@ class FinanceSummaryController extends Controller
         return $user->accessGroup
             ? $user->accessGroup->details->pluck('project_id')->all()
             : [];
+    }
+
+    /**
+     * Umur CA dalam hari sejak dibayar.
+     *
+     * Baris di tabel ini semuanya BELUM closed (lihat ACTIVE_CA_STATUSES),
+     * jadi ujung penghitungnya hari ini - bukan closed_at. Begitu CR ditutup
+     * ia keluar dari tabel, sehingga angka di sini selalu berarti "sudah
+     * sekian hari berjalan dan belum tuntas".
+     *
+     * @return int|null null kalau paid_at belum terisi (data lama sebelum
+     *                  kolom ini diisi konsisten) - ditampilkan sebagai "-",
+     *                  bukan 0, supaya tidak terbaca sebagai baru dibayar.
+     */
+    private static function acaAging($paidAt): ?int
+    {
+        return $paidAt
+            ? (int) $paidAt->copy()->startOfDay()->diffInDays(now()->startOfDay(), false)
+            : null;
     }
 
     private function activeCashAdvanceData(Request $request): array
@@ -681,16 +701,69 @@ class FinanceSummaryController extends Controller
                 'budgetPlan',
                 fn ($bp) => $bp->whereIn('project_id', $scopedProjectIds ?: [0])
             ))
-            ->with(['beneficiary', 'budgetPlan.project.manager'])
+            ->with(['beneficiary.pic', 'budgetPlan.project.manager'])
+
             ->orderByDesc('amount')
             ->get()
             ->filter(fn ($cr) => $cr->budgetPlan?->project?->manager);
+
+        /*
+        | FALLBACK TANGGAL PAID. paid_at tidak selalu terisi - CR yang dibayar
+        | lewat jalur lama, atau yang sempat bolak-balik Paid -> Realized ->
+        | Paid, bisa meninggalkan kolom itu kosong sehingga kolom Tanggal &
+        | Aging tampil "-" padahal uangnya jelas sudah keluar (statusnya PAID).
+        |
+        | Sumber cadangannya jejak status: log 'paid' PERTAMA milik CR itu -
+        | yang dicari adalah kapan uang pertama kali keluar, bukan pembayaran
+        | kedua atau perjalanan ulang setelah realisasi ditolak.
+        */
+        $paidLogMap = RequestStatusLog::whereIn('budget_request_id', $crs->pluck('id'))
+            ->where(fn ($q) => $q->where('action_type', 'paid')->orWhere('status_to', 'PAID'))
+            ->orderBy('created_at')
+            ->get()
+            ->groupBy('budget_request_id')
+            ->map(fn ($logs) => $logs->first()->created_at);
+
+        $crs->each(function ($cr) use ($paidLogMap) {
+            if ($cr->paid_at) {
+                return;
+            }
+
+            /*
+            | Urutan cadangan: jejak log 'paid' dulu, baru updated_at.
+            |
+            | updated_at dipakai sebagai cadangan TERAKHIR karena baris di tabel
+            | ini pasti sudah lewat pembayaran (lihat ACTIVE_CA_STATUSES) - jadi
+            | perubahan terakhirnya adalah perkiraan terdekat kapan status itu
+            | dipasang. CR yang baru masuk Paid hari ini karena itu langsung
+            | tampil bertanggal hari ini dengan aging 0, bukan "-" yang terbaca
+            | seolah datanya rusak. Perkiraan ini bisa meleset kalau dokumennya
+            | disunting lagi setelah dibayar, tapi meleset beberapa hari lebih
+            | berguna daripada kolom kosong.
+            */
+            $cr->paid_at = $paidLogMap[$cr->id] ?? $cr->updated_at;
+        });
 
         $groups = $crs->groupBy(fn ($cr) => $cr->budgetPlan->project->manager_id)
             ->map(function ($managerCrs) use ($urutNama, $menurun, $bandingNama) {
                 $manager = $managerCrs->first()->budgetPlan->project->manager;
 
-                $beneficiaries = $managerCrs->groupBy('beneficiary_id')
+                /*
+                | Lapis 2 dikelompokkan per PIC, bukan per Beneficiary. Satu PIC
+                | memegang beberapa penerima dana, dan yang dikejar saat CA
+                | menggantung adalah ORANGNYA - bukan rekening tujuannya. Dulu
+                | pengajuan satu PIC terpecah ke beberapa baris beneficiary
+                | sehingga beban sebenarnya per PIC tidak pernah terlihat.
+                |
+                | Beneficiary yang belum punya PIC tidak dilebur jadi satu grup
+                | kosong: kuncinya jatuh ke id beneficiary-nya sendiri supaya
+                | pengajuan milik orang berbeda tidak tercampur hanya karena
+                | sama-sama belum dipetakan.
+                */
+                $beneficiaries = $managerCrs
+                    ->groupBy(fn ($cr) => $cr->beneficiary?->pic_id
+                        ? 'pic:' . $cr->beneficiary->pic_id
+                        : 'ben:' . ($cr->beneficiary_id ?? 0))
                     ->map(function ($beneficiaryCrs) use ($urutNama, $menurun, $bandingNama) {
                         $ben = $beneficiaryCrs->first()->beneficiary;
 
@@ -713,14 +786,34 @@ class FinanceSummaryController extends Controller
                                 'status'       => $cr->status,
                                 'status_label' => self::ACTIVE_CA_STAGE[$cr->status]['label'] ?? $cr->status_label,
                                 'status_color' => self::ACTIVE_CA_STAGE[$cr->status]['color'] ?? $cr->status_color,
-                                'date'         => $cr->created_at?->format('d/m/Y'),
+                                /*
+                                | "Tanggal" = kapan uangnya BENAR-BENAR keluar
+                                | (paid_at), bukan created_at. Umur CA dihitung
+                                | sejak pembayaran; tanggal pengajuan dibuat
+                                | tidak menanggung apa pun.
+                                */
+                                'paid_date'    => $cr->paid_at?->format('d/m/Y'),
+                                'aging'        => self::acaAging($cr->paid_at),
                             ])
                             ->values();
 
+                        /*
+                        | Tanggal & aging tingkat grup memakai pembayaran
+                        | TERTUA di dalamnya - itu CA yang paling lama
+                        | menggantung, dan itulah yang menentukan apakah grup
+                        | ini perlu dikejar. Memakai yang terbaru justru
+                        | menyembunyikan tunggakan lama di balik pembayaran
+                        | baru.
+                        */
+                        $paidTertua = $beneficiaryCrs->pluck('paid_at')->filter()->min();
+
                         return [
-                            'beneficiary' => $ben?->nickname ?? '-',
+                            'beneficiary' => $ben?->pic?->pic ?: ($ben?->nickname ?? '-'),
+                            // "Quantity CA" = jumlah DOKUMEN CR milik PIC ini.
                             'qty'         => $beneficiaryCrs->count(),
                             'value'       => (int) $beneficiaryCrs->sum('amount'),
+                            'paid_date'   => $paidTertua?->format('d/m/Y'),
+                            'aging'       => self::acaAging($paidTertua),
                             'items'       => $items,
                         ];
                     })
@@ -731,11 +824,16 @@ class FinanceSummaryController extends Controller
                     )
                     ->values();
 
+                $paidTertuaMgr = $managerCrs->pluck('paid_at')->filter()->min();
+
                 return [
                     'manager'        => strtoupper($manager->username ?? '-'),
                     'beneficiaries'  => $beneficiaries,
+                    // Total CR dari seluruh PIC di bawah manager ini.
                     'qty'            => $beneficiaries->sum('qty'),
                     'value'          => $beneficiaries->sum('value'),
+                    'paid_date'      => $paidTertuaMgr?->format('d/m/Y'),
+                    'aging'          => self::acaAging($paidTertuaMgr),
                 ];
             })
             /*

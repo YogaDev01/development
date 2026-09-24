@@ -376,11 +376,11 @@ $(function () {
     */
     // key -> index kolom (urutan render, kolom 0 "No" disembunyikan DataTable).
     var colVisMap = {
-        type: 4, uploaded: 6, margin: 7, contract: 8, povalue: 9, budget: 10,
-        varcost: 11, payment: 12, profit: 13, overhead: 14, fixedcost: 15, netprofit: 16
+        poqty: 4, type: 5, uploaded: 7, margin: 8, contract: 9, povalue: 10, budget: 11,
+        varcost: 12, payment: 13, profit: 14, overhead: 15, fixedcost: 16, netprofit: 17
     };
     var colVisDefault = {
-        type: true, uploaded: true, margin: true, povalue: true, contract: true, budget: false,
+        poqty: true, type: true, uploaded: true, margin: true, povalue: true, contract: true, budget: false,
         varcost: false, payment: false, profit: true, overhead: false, fixedcost: false, netprofit: true
     };
 
@@ -402,24 +402,25 @@ $(function () {
         autoWidth: false, pageLength: 10, lengthChange: true, searching: true,
         order: [], // pertahankan urutan asli dari server (input terbaru di atas)
         columnDefs: [
-            // 0=No(hidden) 1=Kode 2=Scope 3=Status 4=Tipe 5=Progress 6=Uploaded
-            // 7=Margin 8=Contract 9=PO Value 10=Budget 11=Variable Cost
-            // 12=Received Payment 13=Gross Profit 14=Overhead 15=Fixed Cost
-            // 16=Net Profit 17=Action
+            // 0=No(hidden) 1=Kode 2=Scope 3=Status 4=Qty PO 5=Tipe 6=Progress
+            // 7=Uploaded 8=Margin 9=Contract 10=PO Value 11=Budget 12=Variable Cost
+            // 13=Received Payment 14=Gross Profit 15=Overhead 16=Fixed Cost
+            // 17=Net Profit 18=Action
             { targets: [0], visible: false, orderable: false },
-            { orderable: false, targets: [6, 7, 17] },
-            { targets: [4],  visible: getColVisPref('type') },
-            { targets: [6],  visible: getColVisPref('uploaded') },
-            { targets: [7],  visible: getColVisPref('margin') },
-            { targets: [8],  visible: getColVisPref('contract') },
-            { targets: [9],  visible: getColVisPref('povalue') },
-            { targets: [10], visible: getColVisPref('budget') },
-            { targets: [11], visible: getColVisPref('varcost') },
-            { targets: [12], visible: getColVisPref('payment') },
-            { targets: [13], visible: getColVisPref('profit') },
-            { targets: [14], visible: getColVisPref('overhead') },
-            { targets: [15], visible: getColVisPref('fixedcost') },
-            { targets: [16], visible: getColVisPref('netprofit') }
+            { orderable: false, targets: [7, 8, 18] },
+            { targets: [4],  visible: getColVisPref('poqty') },
+            { targets: [5],  visible: getColVisPref('type') },
+            { targets: [7],  visible: getColVisPref('uploaded') },
+            { targets: [8],  visible: getColVisPref('margin') },
+            { targets: [9],  visible: getColVisPref('contract') },
+            { targets: [10], visible: getColVisPref('povalue') },
+            { targets: [11], visible: getColVisPref('budget') },
+            { targets: [12], visible: getColVisPref('varcost') },
+            { targets: [13], visible: getColVisPref('payment') },
+            { targets: [14], visible: getColVisPref('profit') },
+            { targets: [15], visible: getColVisPref('overhead') },
+            { targets: [16], visible: getColVisPref('fixedcost') },
+            { targets: [17], visible: getColVisPref('netprofit') }
         ],
         dom: 'rt<"row mt-3 align-items-center"<"col-md-6 col-12 mb-2 mb-md-0"i><"col-md-6 col-12 d-flex flex-wrap justify-content-between justify-content-md-end align-items-center gap-2"lp>>',
         language: {
@@ -477,9 +478,10 @@ $(function () {
     }
 
     function recalcFooterPO() {
-        var totalValue = 0, totalContract = 0, totalBp = 0, totalCr = 0, totalPayment = 0, totalProfit = 0, totalNet = 0;
+        var totalValue = 0, totalContract = 0, totalBp = 0, totalCr = 0, totalPayment = 0, totalProfit = 0, totalNet = 0, totalQty = 0;
         table.rows({ search: 'applied' }).every(function () {
             var node = this.node();
+            totalQty      += parseFloat(node.querySelector('.col-raw-poqty')?.dataset.raw)    || 0;
             totalValue    += parseFloat(node.querySelector('.col-raw-value')?.dataset.raw)    || 0;
             totalContract += parseFloat(node.querySelector('.col-raw-contract')?.dataset.raw) || 0;
             totalBp       += parseFloat(node.querySelector('.col-raw-bp')?.dataset.raw)       || 0;
@@ -488,6 +490,7 @@ $(function () {
             totalProfit   += parseFloat(node.querySelector('.col-raw-profit')?.dataset.raw)   || 0;
             totalNet      += parseFloat(node.querySelector('.col-raw-net')?.dataset.raw)      || 0;
         });
+        $('#poFooterQty').text(totalQty ? moneyFmtPO(totalQty) : '');
         $('#poFooterValue').text(moneyFmtPO(totalValue));
         $('#poFooterContract').text(moneyFmtPO(totalContract));
         $('#poFooterBp').text(moneyFmtPO(totalBp));
@@ -831,6 +834,7 @@ $(function () {
         var idx      = 0;
         var zoomed   = false;
         var isDragging = false, dragStartX = 0, dragStartY = 0, imgX = 0, imgY = 0;
+        var justSwiped = false;   // menandai klik yang sebenarnya gerakan geser
 
         function renderViewer() {
             var item = images[idx];
@@ -839,7 +843,12 @@ $(function () {
             stageImg.src = item.full;
             $('#imgViewerName').text(item.name || '');
             counter.textContent = (idx + 1) + ' / ' + images.length;
-            $('#imgViewerPrev, #imgViewerNext').toggle(images.length > 1);
+            /* Panah hanya ada kalau memang ada tujuannya: tidak tampil untuk
+               lampiran tunggal, tidak ada panah kiri di lampiran pertama dan
+               tidak ada panah kanan di lampiran terakhir. */
+            var banyak = images.length > 1;
+            $('#imgViewerPrev').css('display', (banyak && idx > 0) ? 'flex' : 'none');
+            $('#imgViewerNext').css('display', (banyak && idx < images.length - 1) ? 'flex' : 'none');
         }
 
         function resetZoom() {
@@ -867,8 +876,8 @@ $(function () {
             $('body').css('overflow', '');
         }
 
-        function showNext() { if (images.length) { idx = (idx + 1) % images.length; renderViewer(); } }
-        function showPrev() { if (images.length) { idx = (idx - 1 + images.length) % images.length; renderViewer(); } }
+        function showNext() { if (idx < images.length - 1) { idx++; renderViewer(); } }
+        function showPrev() { if (idx > 0) { idx--; renderViewer(); } }
 
         // Attachment tab (tabel): tombol View untuk gambar -> carousel dalam grup tabelnya.
         $(document).on('click', '.prj-att-view-img', function () {
@@ -883,7 +892,12 @@ $(function () {
         $('#imgViewerClose').on('click', closeViewer);
         $('#imgViewerNext').on('click', showNext);
         $('#imgViewerPrev').on('click', showPrev);
-        $(overlay).on('click', function (e) { if (e.target === overlay) closeViewer(); });
+        $(overlay).on('click', function (e) {
+            // Klik di area kosong menutup viewer — kecuali kalau klik itu
+            // ujung dari gerakan geser antar lampiran.
+            if (justSwiped) { justSwiped = false; return; }
+            if (e.target === overlay) closeViewer();
+        });
 
         $(document).on('keydown', function (e) {
             if (!overlay.classList.contains('show')) return;
@@ -924,6 +938,48 @@ $(function () {
         document.addEventListener('mouseup', function () {
             isDragging = false;
             stageImg.classList.remove('dragging');
+        });
+
+        /* ── GESER KIRI/KANAN untuk pindah lampiran ─────────────────────────
+           Saat gambar TIDAK di-zoom, tarikan mendatar (mouse maupun sentuh)
+           berpindah ke lampiran sebelum/sesudahnya — pola yang sama dengan
+           galeri ponsel. Saat di-zoom, tarikan tetap menggeser gambar
+           (pan), jadi keduanya tidak saling rebutan. */
+        var SWIPE_MIN = 50;          // px, biar klik/getar kecil tidak terbaca geser
+        var swipeX = null, swipeY = null;
+
+        function swipeStart(x, y) { if (!zoomed) { swipeX = x; swipeY = y; } }
+
+        function swipeEnd(x, y) {
+            if (swipeX === null || images.length < 2) { swipeX = swipeY = null; return; }
+            var dx = x - swipeX, dy = y - swipeY;
+            swipeX = swipeY = null;
+            if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) <= Math.abs(dy)) return;
+            if (dx < 0 && idx >= images.length - 1) return;   // sudah di lampiran terakhir
+            if (dx > 0 && idx <= 0) return;                   // sudah di lampiran pertama
+            justSwiped = true;
+            if (dx < 0) showNext(); else showPrev();
+        }
+
+        stageImg.addEventListener('mousedown', function (e) { swipeStart(e.clientX, e.clientY); });
+        document.addEventListener('mouseup', function (e) {
+            if (!overlay.classList.contains('show')) { swipeX = swipeY = null; return; }
+            swipeEnd(e.clientX, e.clientY);
+        });
+
+        stageImg.addEventListener('touchstart', function (e) {
+            var t = e.changedTouches[0];
+            swipeStart(t.clientX, t.clientY);
+        }, { passive: true });
+        stageImg.addEventListener('touchend', function (e) {
+            var t = e.changedTouches[0];
+            swipeEnd(t.clientX, t.clientY);
+        }, { passive: true });
+
+        /* Geser juga boleh lewat area kosong di kiri/kanan gambar. */
+        overlay.addEventListener('mousedown', function (e) {
+            if (e.target === stageImg) return;
+            swipeStart(e.clientX, e.clientY);
         });
     })();
 
@@ -1713,10 +1769,20 @@ $(function () {
         $('#prjNotesToggleIcon, #prjBastToggleIcon, #prjClosedToggleIcon').removeClass('rotated');
     });
 
-    // Auto-buka modal detail bila diakses dengan ?open=<id> (mis. dari To Do)
+    // Auto-buka modal detail bila diakses dengan ?open=<id> (mis. dari To Do).
+    // Parameternya dibuang dari URL setelah dipakai, supaya reload / redirect
+    // back() tidak membuka modal detail itu lagi.
     (function () {
-        var openId = new URLSearchParams(window.location.search).get('open');
-        if (openId) openProjectDetail(openId);
+        var params = new URLSearchParams(window.location.search);
+        var openId = params.get('open');
+        if (!openId) return;
+
+        params.delete('open');
+        var sisa = params.toString();
+        window.history.replaceState({}, '',
+            window.location.pathname + (sisa ? '?' + sisa : '') + window.location.hash);
+
+        openProjectDetail(openId);
     })();
 
 });

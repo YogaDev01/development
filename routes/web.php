@@ -474,7 +474,10 @@ Route::middleware('auth')->group(function () {
         Route::put('forecast/{id}',      [ForecastController::class, 'update'])->name('forecast.update');
         Route::delete('forecast/{id}',   [ForecastController::class, 'destroy'])->name('forecast.destroy');
         Route::post('forecast/{id}/activate',      [ForecastController::class, 'activate'])->name('forecast.activate');
-        Route::post('forecast/{id}/update-actual', [ForecastController::class, 'updateActual'])->name('forecast.update-actual');
+        // Realisasi: entri berulang per baris rincian, masing-masing wajib
+        // berketerangan (lihat ForecastController::storeActual()).
+        Route::post('forecast/{id}/detail/{detail}/actual', [ForecastController::class, 'storeActual'])->name('forecast.actual.store');
+        Route::delete('forecast/{id}/actual/{entry}', [ForecastController::class, 'destroyActual'])->name('forecast.actual.destroy');
         Route::post('forecast/{id}/close',         [ForecastController::class, 'close'])->name('forecast.close');
     });
 
@@ -544,6 +547,8 @@ Route::middleware('auth')->group(function () {
     
     Route::get('budget-request/{id}/detail-json', [BudgetRequestController::class, 'showJson'])->name('budget-request.show-json');
     Route::post('budget-request/check-nob',       [BudgetRequestController::class, 'checkNob'])->name('budget-request.check-nob');
+    // Info pagu Cash Advance per PIC (dipakai form create/edit saat beneficiary dipilih)
+    Route::get('budget-request/ca-quota',        [BudgetRequestController::class, 'caQuota'])->name('budget-request.ca-quota');
     
     // Workflow
     Route::middleware('role:superadmin,manager')->post('budget-request/{id}/submit', [BudgetRequestController::class, 'submit'])->name('budget-request.submit');

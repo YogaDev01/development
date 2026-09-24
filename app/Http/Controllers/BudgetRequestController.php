@@ -50,15 +50,23 @@ class BudgetRequestController extends Controller
         'PAYROLL'  => 'Fixed Cost',
     ];
 
-    /** Nama Tipe Request (RequestType.name, case-insensitive) yang wajib punya lampiran. */
-    private const ATTACHMENT_REQUIRED_TYPE_NAMES = ['payment', 'pettycash', 'petty cash', 'purchase', 'reimbursement'];
+    /*
+    | ATURAN LAMPIRAN
+    |  - Cash Advance : Lampiran Tambahan (global) WAJIB, Lampiran Item opsional
+    |                   (bukti final baru ada saat settlement).
+    |  - Tipe lain    : Lampiran Item WAJIB di tiap baris rincian, global opsional.
+    |  - Settlement   : Lampiran Item wajib di tiap baris realisasi, global opsional.
+    */
 
-    private function typeRequiresAttachment(?int $typeId): bool
+    /** Nama RequestType (case-insensitive) yang dihitung sebagai Cash Advance. */
+    private const CASH_ADVANCE_TYPE_NAMES = ['cash advance', 'cash-advance', 'cashadvance'];
+
+    private function typeIsCashAdvance(?int $typeId): bool
     {
         if (! $typeId) return false;
 
         $name = strtolower(trim(RequestType::find($typeId)->name ?? ''));
-        return in_array($name, self::ATTACHMENT_REQUIRED_TYPE_NAMES, true);
+        return in_array($name, self::CASH_ADVANCE_TYPE_NAMES, true);
     }
 
     /*
@@ -136,38 +144,225 @@ class BudgetRequestController extends Controller
      *
      * @return array<int|string, \App\Models\RequestDetail>  map: key form -> detail
      */
-    /**
-     * Apakah ada MINIMAL SATU lampiran — item ATAU tambahan/pendukung — pada
-     * request ini. Untuk edit ($cr diisi), lampiran existing yang tidak
-     * dicentang hapus ikut dihitung.
-     */
-    private function hasAnyAttachment(Request $request, ?BudgetRequest $cr = null): bool
-    {
-        // Lampiran tambahan (global) baru
-        $globalNew = collect($request->file('attachments', []))
-            ->contains(fn ($row) => ($row['file'] ?? $row) && ($row['file'] ?? $row)->isValid());
-        if ($globalNew) return true;
+    /*
+    |--------------------------------------------------------------------------
+    | PAGU CASH ADVANCE PER PIC
+    |--------------------------------------------------------------------------
+    | Beneficiary terhubung ke satu PIC (beneficiaries.pic_id). Semua Cash
+    | Advance milik PIC yang sama berbagi satu pagu: maksimal
+    | BudgetRequest::CA_LIMIT_COUNT pengajuan berjalan dengan total nominal
+    | BudgetRequest::CA_LIMIT_AMOUNT. Kuota baru pulih saat CR CLOSED.
+    */
 
-        // Lampiran per item baru
-        foreach ((array) $request->file('details', []) as $row) {
-            foreach ((array) ($row['attachments'] ?? []) as $file) {
-                if ($file && $file->isValid()) return true;
-            }
+    /** Ambang "mendekati batas": sisa pengajuan <= 2 atau sisa nominal <= 20%. */
+    private const CA_WARN_REMAINING_COUNT = 2;
+    private const CA_WARN_REMAINING_RATIO = 0.2;
+
+    /**
+     * Pemakaian pagu CA milik PIC pemilik $beneficiaryId. Null kalau
+     * beneficiary tidak ada atau belum punya PIC (pagu tidak berlaku).
+     */
+    private function cashAdvanceQuota(?int $beneficiaryId, ?int $excludeCrId = null): ?array
+    {
+        $ben = $beneficiaryId ? Beneficiary::with('pic')->find($beneficiaryId) : null;
+        if (! $ben || ! $ben->pic_id) return null;
+
+        $names = self::CASH_ADVANCE_TYPE_NAMES;
+
+        $row = BudgetRequest::query()
+            ->join('beneficiaries', 'beneficiaries.id', '=', 'budget_request.beneficiary_id')
+            ->join('request_type', 'request_type.id', '=', 'budget_request.type_id')
+            ->where('beneficiaries.pic_id', $ben->pic_id)
+            ->whereRaw(
+                'LOWER(TRIM(request_type.name)) IN (' . implode(',', array_fill(0, count($names), '?')) . ')',
+                $names
+            )
+            ->whereNotIn('budget_request.status', BudgetRequest::CA_QUOTA_RELEASED_STATUSES)
+            ->when($excludeCrId, fn ($q) => $q->where('budget_request.id', '!=', $excludeCrId))
+            ->selectRaw('COUNT(*) AS used_count, COALESCE(SUM(budget_request.amount), 0) AS used_amount')
+            ->first();
+
+        $usedCount  = (int) ($row->used_count ?? 0);
+        $usedAmount = (int) ($row->used_amount ?? 0);
+
+        return [
+            'pic_id'           => (int) $ben->pic_id,
+            'pic_name'         => $ben->pic?->pic ?? '-',
+            'used_count'       => $usedCount,
+            'used_amount'      => $usedAmount,
+            'limit_count'      => BudgetRequest::CA_LIMIT_COUNT,
+            'limit_amount'     => BudgetRequest::CA_LIMIT_AMOUNT,
+            'remaining_count'  => max(0, BudgetRequest::CA_LIMIT_COUNT - $usedCount),
+            'remaining_amount' => max(0, BudgetRequest::CA_LIMIT_AMOUNT - $usedAmount),
+        ];
+    }
+
+    /** Total nominal rincian yang sedang diajukan (amount x qty). */
+    private function requestedDetailTotal(Request $request): int
+    {
+        $total = 0;
+        foreach ((array) $request->input('details', []) as $row) {
+            $total += $this->normalizeMoney($row['amount'] ?? null) * max(1, (int) ($row['qty'] ?? 1));
+        }
+        return $total;
+    }
+
+    /**
+     * Pagu CA terlampaui? Mengembalikan pesan error, atau null kalau lolos.
+     */
+    private function cashAdvanceQuotaError(?int $beneficiaryId, int $amount, ?int $excludeCrId = null): ?string
+    {
+        $q = $this->cashAdvanceQuota($beneficiaryId, $excludeCrId);
+        if (! $q) return null;
+
+        $rp = fn ($n) => 'Rp ' . number_format($n, 0, ',', '.');
+
+        if ($q['remaining_count'] < 1) {
+            return 'Pagu Cash Advance PIC "' . $q['pic_name'] . '" sudah habis: '
+                . $q['used_count'] . ' dari ' . $q['limit_count'] . ' pengajuan masih berjalan. '
+                . 'Selesaikan (Close) pengajuan yang berjalan dulu.';
         }
 
-        if (!$cr) return false;
+        if ($amount > $q['remaining_amount']) {
+            return 'Pagu nominal Cash Advance PIC "' . $q['pic_name'] . '" tidak mencukupi. '
+                . 'Terpakai ' . $rp($q['used_amount']) . ' dari ' . $rp($q['limit_amount'])
+                . ', sisa ' . $rp($q['remaining_amount']) . ', sedangkan pengajuan ini ' . $rp($amount) . '.';
+        }
 
-        // Existing global yang tidak dihapus
-        $gDel = (array) $request->input('delete_attachments', []);
-        if ($cr->attachments()->whereNotIn('id', $gDel ?: [0])->exists()) return true;
+        return null;
+    }
 
-        // Existing per item yang tidak dihapus
-        $dDel = (array) $request->input('delete_detail_attachments', []);
-        $exists = \App\Models\RequestDetailAttachment::whereIn(
-            'request_detail_id', $cr->details()->pluck('id')
-        )->whereNotIn('id', $dDel ?: [0])->exists();
+    /**
+     * Peringatan "kuota mendekati batas" setelah CR tersimpan/disubmit.
+     * Null kalau masih jauh dari batas.
+     */
+    private function cashAdvanceQuotaWarning(?int $beneficiaryId): ?string
+    {
+        $q = $this->cashAdvanceQuota($beneficiaryId);
+        if (! $q) return null;
 
-        return $exists;
+        $rp   = fn ($n) => 'Rp ' . number_format($n, 0, ',', '.');
+        $warn = [];
+
+        if ($q['remaining_count'] <= self::CA_WARN_REMAINING_COUNT) {
+            $warn[] = $q['remaining_count'] === 0
+                ? 'kuota pengajuan HABIS (' . $q['used_count'] . '/' . $q['limit_count'] . ')'
+                : 'sisa ' . $q['remaining_count'] . ' pengajuan lagi (' . $q['used_count'] . '/' . $q['limit_count'] . ')';
+        }
+
+        if ($q['remaining_amount'] <= $q['limit_amount'] * self::CA_WARN_REMAINING_RATIO) {
+            $warn[] = $q['remaining_amount'] === 0
+                ? 'pagu nominal HABIS (' . $rp($q['used_amount']) . '/' . $rp($q['limit_amount']) . ')'
+                : 'sisa pagu nominal tinggal ' . $rp($q['remaining_amount']);
+        }
+
+        if (! $warn) return null;
+
+        return 'Perhatian - pagu Cash Advance PIC "' . $q['pic_name'] . '": '
+            . implode(' dan ', $warn) . '. Kuota pulih setelah pengajuan berjalan di-Close.';
+    }
+
+    /** Endpoint AJAX: info pagu CA untuk beneficiary terpilih di form. */
+    public function caQuota(Request $request)
+    {
+        $q = $this->cashAdvanceQuota(
+            $request->beneficiary_id ? (int) $request->beneficiary_id : null,
+            $request->cr_id ? (int) $request->cr_id : null
+        );
+
+        if (! $q) {
+            return response()->json(['has_quota' => false]);
+        }
+
+        $rp      = fn ($n) => 'Rp ' . number_format($n, 0, ',', '.');
+        $warnCnt = $q['remaining_count'] <= self::CA_WARN_REMAINING_COUNT;
+        $warnAmt = $q['remaining_amount'] <= $q['limit_amount'] * self::CA_WARN_REMAINING_RATIO;
+
+        return response()->json(array_merge($q, [
+            'has_quota'                  => true,
+            'used_amount_formatted'      => $rp($q['used_amount']),
+            'limit_amount_formatted'     => $rp($q['limit_amount']),
+            'remaining_amount_formatted' => $rp($q['remaining_amount']),
+            'level'                      => ($q['remaining_count'] < 1 || $q['remaining_amount'] < 1)
+                                                ? 'blocked'
+                                                : (($warnCnt || $warnAmt) ? 'warning' : 'ok'),
+        ]));
+    }
+
+    /**
+     * Ada minimal satu Lampiran Tambahan (global)? Untuk edit ($cr diisi),
+     * lampiran existing yang tidak dicentang hapus ikut dihitung.
+     */
+    private function hasGlobalAttachment(Request $request, ?BudgetRequest $cr = null): bool
+    {
+        $hasNew = collect($request->file('attachments', []))
+            ->contains(function ($row) {
+                $file = is_array($row) ? ($row['file'] ?? null) : $row;
+                return $file && $file->isValid();
+            });
+        if ($hasNew) return true;
+
+        if (! $cr) return false;
+
+        $del = (array) $request->input('delete_attachments', []);
+        return $cr->attachments()->whereNotIn('id', $del ?: [0])->exists();
+    }
+
+    /**
+     * Nomor baris Rincian Pengajuan yang belum punya Lampiran Item (file baru
+     * maupun lampiran existing yang dipertahankan). Baris kosong diabaikan,
+     * mengikuti aturan skip di syncDetails().
+     *
+     * @return int[]
+     */
+    private function detailsMissingItemAttachment(Request $request, ?BudgetRequest $cr = null): array
+    {
+        $rows  = (array) $request->input('details', []);
+        $files = (array) $request->file('details', []);
+        $del   = (array) $request->input('delete_detail_attachments', []);
+
+        $missing = [];
+        $no      = 0;
+
+        foreach ($rows as $key => $row) {
+            if (! $this->normalizeMoney($row['amount'] ?? null) && blank($row['budget_detail_id'] ?? null)) {
+                continue;
+            }
+            $no++;
+
+            $hasNew = collect((array) ($files[$key]['attachments'] ?? []))
+                ->contains(fn ($f) => $f && $f->isValid());
+            if ($hasNew) continue;
+
+            $detailId = $row['id'] ?? null;
+            if ($cr && $detailId && \App\Models\RequestDetailAttachment::where('request_detail_id', (int) $detailId)
+                    ->whereNotIn('id', $del ?: [0])->exists()) {
+                continue;
+            }
+
+            $missing[] = $no;
+        }
+
+        return $missing;
+    }
+
+    /**
+     * Validasi aturan lampiran saat store/update. Mengembalikan pesan error,
+     * atau null kalau lolos.
+     */
+    private function attachmentRuleError(Request $request, ?int $typeId, ?BudgetRequest $cr = null): ?string
+    {
+        if ($this->typeIsCashAdvance($typeId)) {
+            return $this->hasGlobalAttachment($request, $cr)
+                ? null
+                : 'Pengajuan Cash Advance wajib melampirkan minimal 1 file di "Lampiran Tambahan / Pendukung".';
+        }
+
+        $missing = $this->detailsMissingItemAttachment($request, $cr);
+        if (! $missing) return null;
+
+        return 'Setiap baris Rincian Pengajuan wajib punya "Lampiran Item". Baris yang belum berlampiran: no. '
+            . implode(', ', $missing) . '.';
     }
 
     private function syncDetails(BudgetRequest $cr, Request $request): array
@@ -646,9 +841,17 @@ class BudgetRequestController extends Controller
             'details.*.attachments.*'    => 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
         ]);
 
-        if ($this->typeRequiresAttachment((int) $request->type_id) && ! $this->hasAnyAttachment($request)) {
-            return back()->withInput()
-                ->with('error', 'Tipe request ini wajib punya minimal 1 lampiran — di kolom "Lampiran Item" atau di Lampiran Tambahan.');
+        if ($msg = $this->attachmentRuleError($request, (int) $request->type_id)) {
+            return back()->withInput()->with('error', $msg);
+        }
+
+        // Pagu Cash Advance per PIC (lewat beneficiary) — blokir kalau habis.
+        if ($this->typeIsCashAdvance((int) $request->type_id)) {
+            $msg = $this->cashAdvanceQuotaError(
+                (int) $request->beneficiary_id,
+                $this->requestedDetailTotal($request)
+            );
+            if ($msg) return back()->withInput()->with('error', $msg);
         }
 
         $budgetPlan = BudgetPlan::with(['project', 'costCenter'])->findOrFail($request->budget_plan_id);
@@ -745,6 +948,93 @@ class BudgetRequestController extends Controller
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Aksi workflow satuan yang tersedia untuk $user pada $cr saat ini.
+     *
+     * Satu katalog dipakai bersama oleh semua layar yang menampilkan detail CR
+     * (drawer Todo List, modal Cost Request), supaya tombol yang tampil selalu
+     * sama dengan yang benar-benar diizinkan method aksinya. Setiap entri
+     * menyebut sendiri apakah catatan wajib: reject SELALU wajib beralasan
+     * (method-nya memvalidasi `notes` required), approve/check/close tidak.
+     *
+     * Bentuk entri:
+     *   key            penanda unik untuk JavaScript
+     *   label          teks tombol
+     *   url            endpoint POST
+     *   variant        kelas warna Bootstrap tanpa prefix "btn-"
+     *   icon           kelas Font Awesome
+     *   title          judul modal konfirmasi
+     *   confirm        kalimat penjelas akibat aksi
+     *   notes_required true = alasan wajib diisi
+     */
+    private function workflowActions(BudgetRequest $cr, ?User $user): array
+    {
+        if (! $user) {
+            return [];
+        }
+
+        $aksi = [];
+
+        $tambah = function (string $key, string $label, string $route, string $variant, string $icon, string $title, string $confirm, bool $notesRequired) use (&$aksi, $cr) {
+            $aksi[] = [
+                'key'            => $key,
+                'label'          => $label,
+                'url'            => route($route, $cr->id),
+                'variant'        => $variant,
+                'icon'           => $icon,
+                'title'          => $title,
+                'confirm'        => $confirm,
+                'notes_required' => $notesRequired,
+            ];
+        };
+
+        // ── Approval pengajuan ──
+        if ($cr->status === 'SUBMITTED' && $user->hasRole(['superadmin', 'head'])) {
+            $tambah('head-approve', 'Approve', 'budget-request.head-approve', 'success', 'fa-check', 'Head Approve',
+                'Approve CR ' . $cr->code . '? Status akan menjadi CHECKED dan diteruskan ke Cost Control.', false);
+            $tambah('head-reject', 'Reject', 'budget-request.head-reject', 'danger', 'fa-times', 'Tolak CR',
+                'CR ' . $cr->code . ' akan menjadi REJECTED.', true);
+        }
+
+        if ($cr->status === 'CHECKED' && $user->hasRole(['superadmin', 'finance', 'finance_manager', 'cost_control'])) {
+            $tambah('finance-verify', 'Verify', 'budget-request.finance-verify', 'success', 'fa-check-double', 'Cost Control Verify',
+                'Verifikasi CR ' . $cr->code . '? Status akan menjadi VERIFIED dan menunggu approval CEO.', false);
+            $tambah('finance-reject', 'Reject', 'budget-request.finance-reject', 'danger', 'fa-times', 'Tolak CR',
+                'CR ' . $cr->code . ' akan menjadi REJECTED.', true);
+        }
+
+        if ($cr->status === 'VERIFIED' && $user->hasRole(['superadmin', 'approver'])) {
+            $tambah('ceo-approve', 'Approve', 'budget-request.ceo-approve', 'success', 'fa-check', 'CEO Approve',
+                'Approve CR ' . $cr->code . '? Status akan menjadi APPROVED dan siap masuk batch pembayaran.', false);
+            $tambah('ceo-reject', 'Reject', 'budget-request.ceo-reject', 'danger', 'fa-times', 'Tolak CR',
+                'CR ' . $cr->code . ' akan menjadi REJECTED.', true);
+        }
+
+        // ── Settlement ──
+        if ($cr->status === 'REALIZED' && $user->hasRole(['superadmin', 'head'])) {
+            $tambah('head-check-settlement', 'Check', 'budget-request.head-check-settlement', 'success', 'fa-check-double', 'Settlement — Head Check',
+                'Check Settlement CR ' . $cr->code . '? Status akan berubah menjadi SETTLE CHECKED, menunggu verifikasi Finance.', false);
+            $tambah('head-reject-settlement', 'Reject', 'budget-request.head-reject-settlement', 'danger', 'fa-times', 'Tolak Settlement',
+                'CR ' . $cr->code . ' akan dikembalikan ke status PAID untuk diajukan ulang Settlement-nya.', true);
+        }
+
+        if ($cr->status === 'SETTLE_CHECKED' && $user->hasRole(['superadmin', 'finance', 'finance_manager', 'cost_control'])) {
+            $tambah('finance-verify-settlement', 'Verify', 'budget-request.finance-verify-settlement', 'success', 'fa-check-double', 'Settlement — Finance Verify',
+                'Verifikasi Settlement CR ' . $cr->code . '? Status akan berubah menjadi SETTLE VERIFIED, menunggu Close Finance Manager.', false);
+            $tambah('finance-reject-settlement', 'Reject', 'budget-request.finance-reject-settlement', 'danger', 'fa-times', 'Tolak Settlement',
+                'CR ' . $cr->code . ' akan dikembalikan ke status PAID untuk diajukan ulang Settlement-nya.', true);
+        }
+
+        if ($cr->status === 'SETTLE_VERIFIED' && $user->hasRole(['superadmin', 'finance_manager'])) {
+            $tambah('ceo-close-settlement', 'Close', 'budget-request.ceo-close-settlement', 'danger', 'fa-lock', 'Settlement — Close',
+                'Close Settlement CR ' . $cr->code . '? Status akan berubah menjadi CLOSED.', false);
+            $tambah('manager-reject-settlement', 'Reject', 'budget-request.manager-reject-settlement', 'danger', 'fa-times', 'Tolak Settlement',
+                'CR ' . $cr->code . ' akan dikembalikan ke status PAID. Second Payment yang belum dibayar ikut dibatalkan.', true);
+        }
+
+        return $aksi;
+    }
+
     public function showJson(Request $request, $id)
     {
         /*
@@ -791,6 +1081,14 @@ class BudgetRequestController extends Controller
             'is_cash_advance'  => $cr->isCashAdvance(),
             // Apakah user yang login boleh takeout/restore item pada tahap CR ini.
             'can_moderate_items' => $cr->canModerateItems(Auth::user()),
+            /*
+             | Aksi workflow yang BOLEH dilakukan user ini pada CR ini sekarang.
+             | Dihitung di server, bukan ditebak di JavaScript: gerbang role &
+             | status yang sama persis dengan method aksinya masing-masing —
+             | kalau daftar ini dibangun di layar, cepat atau lambat tombolnya
+             | muncul untuk orang yang lalu ditolak 403 saat menekannya.
+             */
+            'workflow_actions' => $this->workflowActions($cr, Auth::user()),
             'is_nob'           => (bool) $cr->is_nob,
             'type'             => $cr->type?->name ?? '-',
             'cluster'          => $cr->cluster?->name ?? '-',
@@ -1097,9 +1395,19 @@ class BudgetRequestController extends Controller
             'delete_detail_attachments' => 'nullable|array',
         ]);
 
-        if ($this->typeRequiresAttachment((int) $request->type_id) && ! $this->hasAnyAttachment($request, $cr)) {
-            return back()->withInput()
-                ->with('error', 'Tipe request ini wajib punya minimal 1 lampiran — di kolom "Lampiran Item" atau di Lampiran Tambahan.');
+        if ($msg = $this->attachmentRuleError($request, (int) $request->type_id, $cr)) {
+            return back()->withInput()->with('error', $msg);
+        }
+
+        // Pagu Cash Advance per PIC — CR yang sedang diedit dikecualikan dari
+        // hitungan supaya nominal lamanya tidak dihitung dua kali.
+        if ($this->typeIsCashAdvance((int) $request->type_id)) {
+            $msg = $this->cashAdvanceQuotaError(
+                (int) $request->beneficiary_id,
+                $this->requestedDetailTotal($request),
+                $cr->id
+            );
+            if ($msg) return back()->withInput()->with('error', $msg);
         }
 
         $budgetPlan = BudgetPlan::findOrFail($request->budget_plan_id);
@@ -1166,15 +1474,28 @@ class BudgetRequestController extends Controller
             return back()->with('error', 'Hanya CR berstatus DRAFT yang dapat disubmit.');
         }
 
-        // Tipe yang wajib lampiran: minimal 1 lampiran (item ATAU tambahan) harus ada.
-        if ($this->typeRequiresAttachment($cr->type_id)) {
-            $hasItemAtt = \App\Models\RequestDetailAttachment::whereIn(
-                'request_detail_id', $cr->details()->pluck('id')
-            )->exists();
-
-            if (!$hasItemAtt && $cr->attachments()->count() === 0) {
-                return back()->with('error', 'Tidak bisa submit: tipe request ini wajib punya minimal 1 lampiran (Lampiran Item atau Lampiran Tambahan).');
+        // Aturan lampiran — Cash Advance wajib Lampiran Tambahan (global),
+        // tipe lain wajib Lampiran Item di tiap baris rincian.
+        if ($cr->isCashAdvance()) {
+            if ($cr->attachments()->count() === 0) {
+                return back()->with('error', 'Tidak bisa submit: pengajuan Cash Advance wajib punya minimal 1 file di "Lampiran Tambahan / Pendukung".');
             }
+        } else {
+            $withoutAtt = $cr->details()
+                ->where('status', '!=', 'TAKEOUT')
+                ->whereDoesntHave('attachments')
+                ->count();
+
+            if ($withoutAtt > 0) {
+                return back()->with('error', 'Tidak bisa submit: masih ada ' . $withoutAtt . ' baris Rincian Pengajuan tanpa "Lampiran Item".');
+            }
+        }
+
+        // Pagu Cash Advance per PIC — dicek ulang di sini karena kuota bisa
+        // terpakai CR lain sejak draft ini dibuat.
+        if ($cr->isCashAdvance()) {
+            $msg = $this->cashAdvanceQuotaError($cr->beneficiary_id, (int) $cr->amount, $cr->id);
+            if ($msg) return back()->with('error', $msg);
         }
 
         $cr->update(['status' => 'SUBMITTED', 'submitted_at' => now()]);
@@ -1188,8 +1509,13 @@ class BudgetRequestController extends Controller
             'workflow'
         );
 
-        return back()
-            ->with('success', 'Cost Request berhasil diajukan ke Head.');
+        $res = back()->with('success', 'Cost Request berhasil diajukan ke Head.');
+
+        if ($cr->isCashAdvance() && $warn = $this->cashAdvanceQuotaWarning($cr->beneficiary_id)) {
+            $res->with('warning', $warn);
+        }
+
+        return $res;
     }
 
     /** Role Head — penerima notifikasi saat CR disubmit manager. */
@@ -1767,6 +2093,29 @@ class BudgetRequestController extends Controller
         if ($submittedIds->diff($validDetailIds)->isNotEmpty()) {
             return back()->withInput()
                 ->with('error', 'Item realisasi yang dipilih tidak sesuai dengan Cost Request ini.');
+        }
+
+        // CR yang sudah cair (PAID) wajib melampirkan bukti per item di tiap
+        // baris Rincian Settlement; lampiran global di sini hanya opsional.
+        $missingAtt = [];
+        $no         = 0;
+        foreach ((array) $request->input('realizations', []) as $i => $row) {
+            if (! $this->normalizeMoney($row['amount'] ?? null) && blank($row['request_detail_id'] ?? null)) {
+                continue;
+            }
+            $no++;
+
+            $hasFile = collect((array) $request->file("realizations.$i.attachments", []))
+                ->contains(fn ($f) => $f && $f->isValid());
+            if (! $hasFile) $missingAtt[] = $no;
+        }
+
+        if ($missingAtt) {
+            return back()->withInput()->with(
+                'error',
+                'Setiap baris Rincian Settlement wajib punya "Lampiran Item". Baris yang belum berlampiran: no. '
+                . implode(', ', $missingAtt) . '.'
+            );
         }
 
         DB::transaction(function () use ($request, $cr) {

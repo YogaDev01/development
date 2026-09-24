@@ -114,6 +114,11 @@
          Dimuat paling akhir karena beberapa aturan sidebar di tesys-ui.css
          menunjuk token permukaan, yang harus tetap terang. --}}
     <link rel="stylesheet" href="{{ asset('css/tesys-ui-luxe.css') }}?v={{ filemtime(public_path('css/tesys-ui-luxe.css')) }}">
+
+    {{-- Lapis mobile: penyesuaian layar handphone. Harus SESUDAH luxe dan
+         sesudah @stack('styles') (yang ada di atas), supaya aturannya menang
+         atas <style> per halaman tanpa perlu !important. --}}
+    <link rel="stylesheet" href="{{ asset('css/tesys-ui-mobile.css') }}?v={{ filemtime(public_path('css/tesys-ui-mobile.css')) }}">
 </head>
 
 <body class="tesys-ui {{ request()->is('/') ? 'dashboard-page' : '' }}">
@@ -221,6 +226,20 @@
             </button>
         </div>
 
+        {{-- Command palette: pindah halaman & cari dokumen lintas modul.
+             Tempatnya di sidebar, tepat di atas daftar menu, karena yang
+             dicari orang di sini sama dengan isi daftar itu: halaman dan
+             dokumen. Di topbar ia bersaing dengan pencarian dalam halaman
+             yang pekerjaannya berbeda. --}}
+        <div class="sidebar-cmd">
+            <button type="button" class="ts-cmd-trigger" data-cmd-open
+                    title="Cari halaman, dokumen, dan aksi (Ctrl+K)" aria-label="Cari di seluruh TESYS">
+                <i class="fas fa-search" aria-hidden="true"></i>
+                <span>Cari di TESYS…</span>
+                <span class="ts-cmd-kbd" aria-hidden="true">Ctrl K</span>
+            </button>
+        </div>
+
         {{-- Isi menu tiap aplikasi dibaca dari config/navigation.php oleh
              satu partial yang sama — lihat layouts/partials/nav.blade.php. --}}
         <nav class="nav">
@@ -272,17 +291,23 @@
                 </div>
             </div>
 
-            <div class="topbar-actions">
-
-                {{-- Command palette: pindah halaman & cari dokumen lintas modul.
-                     Selalu ada di semua halaman, berbeda dari pencarian dalam
-                     halaman di sebelahnya yang hanya menyaring tabel di layar. --}}
-                <button type="button" class="ts-cmd-trigger" data-cmd-open
-                        title="Cari halaman, dokumen, dan aksi (Ctrl+K)" aria-label="Cari di seluruh TESYS">
-                    <i class="fas fa-search" aria-hidden="true"></i>
-                    <span>Cari di TESYS…</span>
-                    <span class="ts-cmd-kbd" aria-hidden="true">Ctrl K</span>
+            {{-- Penanda "sedang preview role lain" di tengah topbar. Sekaligus
+                 tombol pulang: satu klik kembali ke Superadmin tanpa harus
+                 membuka popup akun dulu. --}}
+            @if(Auth::user()->isViewingAs())
+            <form action="{{ route('view-as.reset') }}" method="POST" class="mb-0 viewas-chip">
+                @csrf
+                <span class="viewas-chip-label">
+                    <i class="fas fa-user-secret" aria-hidden="true"></i>
+                    Melihat sebagai <strong>{{ Str::upper($role->name) }}</strong>
+                </span>
+                <button type="submit" class="viewas-chip-btn" title="Kembali ke tampilan Superadmin">
+                    <i class="fas fa-undo" aria-hidden="true"></i> Kembali ke Superadmin
                 </button>
+            </form>
+            @endif
+
+            <div class="topbar-actions">
 
                 {{-- Pencarian cepat: menyaring tabel di halaman yang sedang dibuka.
                      Disembunyikan otomatis oleh tesys-shell.js bila halaman tidak
@@ -393,29 +418,62 @@
                         </a>
                         @endforeach
 
-                        {{-- Ganti tampilan role (superadmin saja). Rute, nama field, dan
-                             daftar role TIDAK berubah — hanya istilah & susunannya
-                             dibuat lebih mudah dipahami daripada "View As". --}}
+                        {{-- Ganti tampilan role (superadmin saja). Rute & nama field
+                             TIDAK berubah — daftar role kini tampil sebagai pilihan
+                             langsung yang selalu ada, jadi superadmin bisa lompat dari
+                             satu role ke role lain tanpa harus reset dulu. --}}
                         @if(Auth::user()->isRealSuperadmin())
+                        @php
+                            $viewAsRoles = \App\Models\Role::where('status', 'ACTIVE')
+                                ->whereRaw('LOWER(name) != ?', ['superadmin'])
+                                ->orderBy('name')->get();
+                            $viewAsAktifId = Auth::user()->isViewingAs() ? $role?->id : null;
+                        @endphp
                         <div class="user-pop-sep"></div>
-                        <div class="user-pop-group">
-                            <div class="user-pop-group-label">Ganti Role</div>
-                            @if(Auth::user()->isViewingAs())
+                        <div class="user-pop-group role-switch">
+                            <div class="user-pop-group-label">
+                                Ganti Role
+                                @if($viewAsAktifId)
+                                <span class="role-switch-badge">preview</span>
+                                @endif
+                            </div>
+
+                            <div class="role-switch-search">
+                                <i class="fas fa-search"></i>
+                                <input type="text" class="form-control form-control-sm"
+                                       placeholder="Cari role…" autocomplete="off"
+                                       aria-label="Cari role" data-role-filter>
+                            </div>
+
+                            <div class="role-switch-list" role="listbox">
                                 <form action="{{ route('view-as.reset') }}" method="POST" class="mb-0">
                                     @csrf
-                                    <button type="submit" class="btn btn-light btn-sm btn-block">Kembali ke Superadmin</button>
+                                    <button type="submit"
+                                            class="role-switch-item{{ $viewAsAktifId ? '' : ' is-active' }}"
+                                            data-role-name="superadmin">
+                                        <span class="role-switch-dot"><i class="fas fa-shield-alt"></i></span>
+                                        <span class="role-switch-name">SUPERADMIN</span>
+                                        <span class="role-switch-tag">role asli</span>
+                                    </button>
                                 </form>
-                            @else
+
                                 <form action="{{ route('view-as') }}" method="POST" class="mb-0">
                                     @csrf
-                                    <select name="role_id" class="form-control form-control-sm" onchange="this.form.submit()" aria-label="Tampilkan sebagai role">
-                                        <option value="">Tampilkan sebagai…</option>
-                                        @foreach(\App\Models\Role::where('status', 'ACTIVE')->whereRaw('LOWER(name) != ?', ['superadmin'])->orderBy('name')->get() as $viewAsRole)
-                                        <option value="{{ $viewAsRole->id }}">{{ Str::upper($viewAsRole->name) }}</option>
-                                        @endforeach
-                                    </select>
+                                    @foreach($viewAsRoles as $viewAsRole)
+                                    <button type="submit" name="role_id" value="{{ $viewAsRole->id }}"
+                                            class="role-switch-item{{ $viewAsAktifId === $viewAsRole->id ? ' is-active' : '' }}"
+                                            data-role-name="{{ Str::lower($viewAsRole->name) }}">
+                                        <span class="role-switch-dot">{{ Str::upper(Str::substr($viewAsRole->name, 0, 1)) }}</span>
+                                        <span class="role-switch-name">{{ Str::upper($viewAsRole->name) }}</span>
+                                        @if($viewAsAktifId === $viewAsRole->id)
+                                        <span class="role-switch-tag"><i class="fas fa-check"></i> aktif</span>
+                                        @endif
+                                    </button>
+                                    @endforeach
                                 </form>
-                            @endif
+
+                                <div class="role-switch-empty" hidden>Role tidak ditemukan.</div>
+                            </div>
                         </div>
                         @endif
 
@@ -450,16 +508,8 @@
 
         </div>
 
-        @if(Auth::user()->isViewingAs())
-        <div class="viewas-banner">
-            <i class="fas fa-user-secret"></i>
-            <span>Melihat sebagai <strong>{{ Str::upper($role->name) }}</strong> — ini hanya preview, bukan role sungguhan Anda.</span>
-            <form action="{{ route('view-as.reset') }}" method="POST" class="mb-0">
-                @csrf
-                <button type="submit" class="btn btn-dark btn-sm">Kembali ke Superadmin</button>
-            </form>
-        </div>
-        @endif
+        {{-- Banner "Melihat sebagai …" dihapus: statusnya sudah terbaca dari
+             pengalih role di topbar, termasuk tombol kembali ke superadmin. --}}
 
         <div class="content">
             @yield('content')
@@ -510,13 +560,120 @@
 <script src="{{ asset('plugins/tom-select/tom-select.complete.min.js') }}"></script>
 <script src="{{ asset('plugins/bootstrap-select/bootstrap-select.min.js') }}"></script>
 
+{{-- =================================================================
+     TOAST
+     Pemberitahuan hasil aksi muncul di kanan bawah selama dua detik.
+     Bila beberapa datang sekaligus, tumpukannya bertambah ke atas dan
+     dibatasi tiga — yang tertua ditutup lebih dulu. SweetAlert sengaja
+     tidak dipakai di sini karena ia hanya menampilkan satu toast pada
+     satu waktu: pesan kedua menimpa yang pertama sebelum sempat dibaca.
+================================================================= --}}
+<script>
+(function () {
+    var MAKS  = 3;
+    var UMUR  = 3000;
+    var JEDA  = 450;
+
+    function tutup(el) {
+        if (!el || el.dataset.closing) return;
+        el.dataset.closing = '1';
+        el.classList.remove('show');
+        setTimeout(function () { el.remove(); }, 250);
+    }
+
+    /* Wadahnya dirender di akhir halaman, sedangkan flash session dipanggil
+       lebih awal — jadi dibuat di sini kalau belum ada. */
+    function wadah() {
+        var stack = document.getElementById('toastStack');
+        if (!stack) {
+            stack = document.createElement('div');
+            stack.className = 'ts-toast-stack';
+            stack.id = 'toastStack';
+            document.body.appendChild(stack);
+        }
+        return stack;
+    }
+
+    /* Muncul satu per satu: kalau beberapa pesan datang bersamaan, yang
+       berikutnya menunggu giliran supaya tumpukannya terlihat bertambah,
+       bukan langsung penuh sekaligus. */
+    var antrean = [];
+    var jalan   = false;
+
+    function giliran() {
+        if (jalan || !antrean.length) return;
+        jalan = true;
+        tampilkan.apply(null, antrean.shift());
+        setTimeout(function () { jalan = false; giliran(); }, JEDA);
+    }
+
+    function tampilkan(type, title, msg) {
+        var stack = wadah();
+
+        var tampil = stack.querySelectorAll('.ts-toast:not([data-closing])');
+        for (var i = 0; i <= tampil.length - MAKS; i++) tutup(tampil[i]);
+
+        var el = document.createElement('div');
+        el.className = 'ts-toast ts-toast-' + (type || 'info');
+        var ikon = type === 'success' ? '✓' : ((type === 'error' || type === 'warning') ? '!' : 'i');
+        el.innerHTML = '<div class="ts-toast-ic"></div>'
+                     + '<div class="ts-toast-teks"><div class="ts-toast-title"></div>'
+                     + '<div class="ts-toast-msg"></div></div>'
+                     + '<button type="button" class="ts-toast-close" aria-label="Tutup">×</button>';
+        el.querySelector('.ts-toast-ic').textContent    = ikon;
+        el.querySelector('.ts-toast-title').textContent = title || '';
+        el.querySelector('.ts-toast-msg').textContent   = msg || '';
+        el.querySelector('.ts-toast-close').addEventListener('click', function () { tutup(el); });
+
+        /* Ditahan selama kursor ada di atasnya: pesan yang sedang dibaca
+           tidak ikut hilang saat hitungan tiga detiknya habis. */
+        var waktu;
+        function hitung() { waktu = setTimeout(function () { tutup(el); }, UMUR); }
+        el.addEventListener('mouseenter', function () {
+            clearTimeout(waktu);
+            el.classList.add('is-hold');
+        });
+        el.addEventListener('mouseleave', function () {
+            el.classList.remove('is-hold');
+            hitung();
+        });
+
+        stack.appendChild(el);
+        requestAnimationFrame(function () { el.classList.add('show'); });
+        hitung();
+    }
+
+    window.tsToast = function (type, title, msg) {
+        antrean.push([type, title, msg]);
+        giliran();
+    };
+
+    window.toast = window.toast || {
+        success: function (t, m) { window.tsToast('success', t, m); },
+        error:   function (t, m) { window.tsToast('error',   t, m); },
+        warning: function (t, m) { window.tsToast('warning', t, m); },
+        info:    function (t, m) { window.tsToast('info',    t, m); }
+    };
+})();
+</script>
+
 @if(session('success'))
 <script type="application/json" id="tesysFlashSuccess">@json(session('success'))</script>
 <script>
+window.tsToast('success', JSON.parse(document.getElementById('tesysFlashSuccess').textContent));
+</script>
+@endif
+
+@if(session('warning'))
+{{-- Peringatan yang perlu dibaca (mis. pagu Cash Advance hampir habis) —
+     sengaja modal, bukan toast 3 detik. --}}
+<script type="application/json" id="tesysFlashWarning">@json(session('warning'))</script>
+<script>
 Swal.fire({
-    toast: true, position: 'top-end', icon: 'success',
-    title: JSON.parse(document.getElementById('tesysFlashSuccess').textContent),
-    showConfirmButton: false, timer: 3000, timerProgressBar: true
+    icon: 'warning',
+    title: 'Perhatian',
+    text: JSON.parse(document.getElementById('tesysFlashWarning').textContent),
+    confirmButtonColor: '#92232b'
 });
 </script>
 @endif
@@ -524,11 +681,7 @@ Swal.fire({
 @if(session('error'))
 <script type="application/json" id="tesysFlashError">@json(session('error'))</script>
 <script>
-Swal.fire({
-    toast: true, position: 'top-end', icon: 'error',
-    title: JSON.parse(document.getElementById('tesysFlashError').textContent),
-    showConfirmButton: false, timer: 3000, timerProgressBar: true
-});
+window.tsToast('error', JSON.parse(document.getElementById('tesysFlashError').textContent));
 </script>
 @endif
 
@@ -757,7 +910,7 @@ $(function () {
 <!-- PAGE SCRIPT -->
 @stack('scripts')
 
-<div class="toast-stack" id="toastStack"></div>
+{{-- Wadah toast dibuat otomatis oleh window.tsToast (lihat blok TOAST di atas). --}}
 
 {{-- ================================================================ --}}
 {{-- COMMAND PALETTE (Ctrl+K)                                         --}}
@@ -828,6 +981,31 @@ $(function () {
      CSS bisa menyamakan ukurannya tanpa ikut memampatkan tombol yang
      punya label. Lihat catatan di berkasnya. --}}
 <script src="{{ asset('js/tesys-icon-buttons.js') }}?v={{ filemtime(public_path('js/tesys-icon-buttons.js')) }}"></script>
+
+{{-- Filter daftar "Ganti Role" di popup user (superadmin saja). --}}
+<script>
+(function () {
+    var input = document.querySelector('[data-role-filter]');
+    if (!input) return;
+    var list  = input.closest('.role-switch').querySelector('.role-switch-list');
+    var items = Array.prototype.slice.call(list.querySelectorAll('.role-switch-item'));
+    var empty = list.querySelector('.role-switch-empty');
+
+    input.addEventListener('input', function () {
+        var q = input.value.trim().toLowerCase();
+        var tampil = 0;
+        items.forEach(function (el) {
+            var cocok = !q || (el.dataset.roleName || '').indexOf(q) !== -1;
+            el.hidden = !cocok;
+            if (cocok) tampil++;
+        });
+        empty.hidden = tampil > 0;
+    });
+
+    // Klik di dalam kotak pencarian tidak boleh menutup popup user.
+    input.addEventListener('click', function (e) { e.stopPropagation(); });
+})();
+</script>
 
 </body>
 </html>

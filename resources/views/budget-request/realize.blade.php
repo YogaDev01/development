@@ -85,10 +85,10 @@
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Request</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Settle</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Variance</th>
-                                <th scope="col" class="text-center text-nowrap" style="width:1%;">Lampiran Item</th>
+                                <th scope="col" class="text-center text-nowrap" style="width:1%;">Lampiran Item <span class="badge badge-danger">Wajib</span></th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="realizeBody">
                             @forelse($budgetRequest->details->where('status', '!=', 'TAKEOUT')->values() as $i => $detail)
                             @php $existing = $existingByDetail->get($detail->id); @endphp
                             <tr data-detail-id="{{ $detail->id }}">
@@ -145,8 +145,12 @@
             <div class="card card-info card-outline shadow-sm mb-3">
                 <div class="card-header d-flex align-items-center">
                     <h3 class="card-title mb-0"><i class="fas fa-check-double mr-1"></i> Bukti Settlement (Global)</h3>
+                    <button type="button" class="btn btn-sm btn-primary ml-auto" id="btnAddRealAttachment">
+                        <i class="fas fa-plus mr-1"></i> Tambah Lampiran
+                    </button>
                 </div>
                 <div class="card-body">
+                    <div id="realAttUploadArea" style="display:none;">
                     <div id="dropZoneReal" class="att-dropzone mb-3" tabindex="0">
                         <i class="fas fa-cloud-upload-alt fa-2x mb-2 d-block"></i>
                         <p class="mb-0">
@@ -156,7 +160,7 @@
                         <small class="text-muted">Bisa pilih/drop/paste beberapa file sekaligus</small>
                         <input type="file" id="dropZoneInputReal" multiple style="display:none;">
                     </div>
-                    <div class="table-responsive">
+                    <div class="table-responsive mt-3" id="realAttTableWrap" style="display:none;">
                         <table class="table table-bordered mb-0">
                             <thead class="bg-light">
                                 <tr>
@@ -167,6 +171,7 @@
                             </thead>
                             <tbody id="realAttachmentBody"></tbody>
                         </table>
+                    </div>
                     </div>
                 </div>
                 <div class="card-footer">
@@ -179,12 +184,13 @@
 
             <div class="card shadow-sm">
                 <div class="card-body d-flex align-items-center" style="gap:8px;">
-                    <button type="submit" id="submitBtn" class="btn btn-info">
+                    <button type="submit" id="submitBtn" class="btn btn-secondary" disabled>
                         <i class="fas fa-paper-plane mr-1"></i> Submit Settlement
                     </button>
                     <a href="{{ url('/budget-request?open=' . $budgetRequest->id) }}" class="btn btn-secondary">
                         <i class="fas fa-times mr-1"></i> Cancel
                     </a>
+                    <small id="submitHint" class="text-muted ml-1" style="display:none;"></small>
                 </div>
             </div>
         </form>
@@ -251,6 +257,46 @@ $(function () {
     $(document).on('input', '.realize-amount-input', recalcTotalRealized);
     recalcTotalRealized();
 
+    /* ── KEADAAN TOMBOL SUBMIT ──────────────────────────────────────────────
+       Tombolnya abu-abu & mati selama syaratnya belum lengkap, lalu berubah
+       jadi tombol aktif begitu semua baris siap — supaya jelas kapan
+       settlement benar-benar boleh dikirim. */
+    function updateSettleSubmitState() {
+        var $rows   = $('#tblSettlement tbody tr[data-detail-id]');
+        var reasons = [];
+
+        if (!$rows.length) {
+            reasons.push('tidak ada item yang bisa disettle');
+        } else {
+            var kosong = [], tanpaAtt = [];
+            $rows.each(function (i) {
+                var $row = $(this);
+                if (parseRp($row.find('.realize-amount-input').val()) <= 0) kosong.push(i + 1);
+
+                var inp = $row.find('.detail-att-input')[0];
+                if (!inp || !inp.files || !inp.files.length) tanpaAtt.push(i + 1);
+            });
+
+            if (kosong.length)   reasons.push('nilai Settle baris no. ' + kosong.join(', '));
+            if (tanpaAtt.length) reasons.push('Lampiran Item baris no. ' + tanpaAtt.join(', '));
+        }
+
+        var siap = reasons.length === 0;
+
+        $('#submitBtn')
+            .prop('disabled', !siap)
+            .toggleClass('btn-info', siap)
+            .toggleClass('btn-secondary', !siap);
+
+        $('#submitHint')
+            .text(siap ? '' : 'Lengkapi: ' + reasons.join('; '))
+            .toggle(!siap);
+    }
+
+    $(document).on('input change', '#realizeForm', updateSettleSubmitState);
+    window.__updateSettleSubmitState = updateSettleSubmitState;
+    updateSettleSubmitState();
+
     /* ── LAMPIRAN ITEM PER BARIS (drag & drop + paste + klik) ───────────────
        Pola sama seperti kolom "Lampiran Item" di form Cost Request. ── */
     function appendFilesToInput(input, fileList) {
@@ -277,6 +323,7 @@ $(function () {
                 f.name.replace(/</g, '&lt;') +
                 ' <i class="fas fa-times text-danger detail-att-del" data-i="' + idx + '" style="cursor:pointer;"></i></div>';
         }).join('');
+        if (window.__updateSettleSubmitState) window.__updateSettleSubmitState();
     }
 
     document.addEventListener('click', function (e) {
@@ -354,7 +401,29 @@ $(function () {
        Pola sama seperti "Lampiran Tambahan / Pendukung" di form Cost Request. ── */
     var attIdx = 0;
 
+    /** Area upload disembunyikan sampai user menekan "Tambah Lampiran". */
+    function showRealAttUploadArea() {
+        var area = document.getElementById('realAttUploadArea');
+        if (area) area.style.display = '';
+    }
+
+    /** Daftar file hanya tampil kalau memang sudah ada barisnya. */
+    function refreshRealAttTable() {
+        var wrap  = document.getElementById('realAttTableWrap');
+        var tbody = document.getElementById('realAttachmentBody');
+        if (wrap && tbody) wrap.style.display = tbody.children.length ? '' : 'none';
+    }
+
+    document.getElementById('btnAddRealAttachment').addEventListener('click', function () {
+        // Cukup buka area upload-nya; baris file baru muncul setelah ada file
+        // yang benar-benar dipilih/di-drop/di-paste.
+        showRealAttUploadArea();
+        var zone = document.getElementById('dropZoneReal');
+        if (zone) zone.focus();
+    });
+
     function addAttachmentRow(file) {
+        showRealAttUploadArea();
         var i     = attIdx++;
         var tbody = document.getElementById('realAttachmentBody');
         var tr    = document.createElement('tr');
@@ -377,6 +446,7 @@ $(function () {
 
     function renumberAttachments() {
         document.querySelectorAll('#realAttachmentBody .row-no').forEach(function (el, i) { el.textContent = i + 1; });
+        refreshRealAttTable();
     }
 
     document.addEventListener('click', function (e) {
@@ -481,6 +551,7 @@ $(function () {
                     applied++;
                 });
                 recalcTotalRealized();
+                if (window.__updateSettleSubmitState) window.__updateSettleSubmitState();
 
                 if (applied > 0) {
                     Swal.fire({
@@ -506,6 +577,23 @@ $(function () {
     /* SUBMIT */
     form.on('submit', function (e) {
         e.preventDefault();
+
+        // CR yang sudah PAID: tiap baris settlement wajib punya Lampiran Item.
+        var missAtt = [];
+        $('#realizeBody tr[data-detail-id]').each(function (idx) {
+            var inp = this.querySelector('.detail-att-input');
+            if (!inp || !inp.files || !inp.files.length) missAtt.push(idx + 1);
+        });
+        if (missAtt.length) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Lampiran Item belum lengkap',
+                text: 'Setiap baris Rincian Settlement wajib punya Lampiran Item. Baris belum berlampiran: no. ' + missAtt.join(', ') + '.',
+                confirmButtonColor: '#92232b'
+            });
+            return;
+        }
+
         Swal.fire({
             title: 'Submit Settlement?',
             text: 'Konfirmasi pengajuan settlement untuk Cost Request ini.',

@@ -79,6 +79,12 @@ class Forecast extends Model
         );
     }
 
+    /** Jejak aktivitas — terbaru di atas, seperti modul lain. */
+    public function logs()
+    {
+        return $this->hasMany(ForecastLog::class)->latest('id');
+    }
+
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -128,9 +134,17 @@ class Forecast extends Model
         ]);
     }
 
+    /**
+     * RENCANA + REALISASI, searah dengan ForecastDetail::getVarianceAttribute()
+     * — lihat penjelasan bentuknya di sana.
+     *
+     * Kedua angka header sudah bertanda dan sudah merupakan jumlah seluruh
+     * barisnya, jadi menjumlahkannya di sini memberi hasil yang sama dengan
+     * menjumlahkan variance tiap baris, tanpa perlu menyentuh relasi detail.
+     */
     public function getVarianceAttribute(): int
     {
-        return (int) $this->forecast_amount - (int) $this->actual_amount;
+        return (int) $this->forecast_amount + (int) $this->actual_amount;
     }
 
     public function getAchievementPctAttribute(): float

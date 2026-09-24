@@ -46,7 +46,7 @@ public/js/tesys-ui.js
 **(c)** Cari `</body>`. Tepat **sebelum** baris itu, tempelkan:
 
 ```blade
-<div class="toast-stack" id="toastStack"></div>
+<div class="ts-toast-stack" id="toastStack"></div>
 <script src="{{ asset('js/tesys-ui.js') }}?v=1"></script>
 ```
 

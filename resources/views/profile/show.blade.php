@@ -154,6 +154,10 @@
                             </div>
 
                             <div class="d-flex justify-content-end mt-3">
+                                {{-- Batal = keluar dari Profil Saya, balik ke Dashboard (route '/' tanpa nama). --}}
+                                <a href="{{ url('/') }}" class="btn btn-secondary mr-2">
+                                    <i class="fas fa-times mr-1"></i> Batal
+                                </a>
                                 <button type="submit" class="btn btn-primary">
                                     <i class="fas fa-save mr-1"></i> Simpan Perubahan
                                 </button>

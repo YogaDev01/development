@@ -70,6 +70,25 @@ class BudgetRequest extends Model
 
     /*
     |--------------------------------------------------------------------------
+    | PAGU CASH ADVANCE PER PIC
+    |--------------------------------------------------------------------------
+    | Setiap PIC (master_pics, lewat beneficiaries.pic_id) hanya boleh punya
+    | maksimal 10 Cash Advance berjalan dengan total nominal 20 juta. Kuota
+    | dipakai sejak CR dibuat dan baru pulih saat CR di-CLOSED (CANCELLED
+    | dikecualikan karena pengajuannya memang sudah mati/dibatalkan).
+    */
+
+    /** Maksimal jumlah Cash Advance berjalan per PIC. */
+    public const CA_LIMIT_COUNT = 10;
+
+    /** Maksimal total nominal Cash Advance berjalan per PIC (rupiah). */
+    public const CA_LIMIT_AMOUNT = 20000000;
+
+    /** Status yang TIDAK lagi memakai kuota CA milik PIC. */
+    public const CA_QUOTA_RELEASED_STATUSES = ['CLOSED', 'CANCELLED'];
+
+    /*
+    |--------------------------------------------------------------------------
     | RELATIONSHIPS
     |--------------------------------------------------------------------------
     */
@@ -178,7 +197,7 @@ class BudgetRequest extends Model
      * Process (QUEUED) > Paid > Settle (REALIZED) > Closed. Tipe lain langsung
      * Process (QUEUED) > (Treasury tandai Paid) > Closed, tanpa tahap realisasi.
      * Deteksi berbasis nama RequestType (case-insensitive), pola sama seperti
-     * BudgetRequestController::typeRequiresAttachment().
+     * BudgetRequestController::typeIsCashAdvance().
      */
     public function isCashAdvance(): bool
     {

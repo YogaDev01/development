@@ -113,8 +113,9 @@ class ForecastAmountSignTest extends TestCase
         $detailId = $forecast->details()->firstOrFail()->id;
 
         $this->actingAs($this->finance())
-            ->post('/forecast/' . $forecast->id . '/update-actual', [
-                'details' => [$detailId => '8.000.000'],
+            ->post('/forecast/' . $forecast->id . '/detail/' . $detailId . '/actual', [
+                'amount' => '8.000.000',
+                'notes'  => 'Pembayaran sewa bulan berjalan',
             ])
             ->assertRedirect();
 

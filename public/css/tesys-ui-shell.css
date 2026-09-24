@@ -1552,3 +1552,120 @@ body.tesys-ui.sidebar-rail .sidebar::after {
 /* Sedikit lebih rapat supaya lebih banyak menu muat sebelum perlu digulir. */
 body.tesys-ui.sidebar-rail .sidebar .nav-item { padding: 8px 0; }
 body.tesys-ui.sidebar-rail .sidebar .nav { gap: 1px; }
+
+/* ------------------------------------------- GANTI ROLE (VIEW AS) */
+/* Daftar role di popup user: selalu tampil (termasuk saat sedang
+   preview), jadi superadmin bisa lompat antar role tanpa reset dulu. */
+body.tesys-ui .user-pop-group.role-switch { padding-bottom: var(--sp-2); }
+body.tesys-ui .role-switch-badge {
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: var(--radius-pill);
+    background: var(--warning-bg);
+    color: var(--warning);
+    font-size: 9px;
+    letter-spacing: .06em;
+}
+body.tesys-ui .role-switch-search { position: relative; margin-bottom: 6px; }
+body.tesys-ui .role-switch-search i {
+    position: absolute; left: 9px; top: 50%; transform: translateY(-50%);
+    font-size: 10px; color: var(--text-faint); pointer-events: none;
+}
+body.tesys-ui .role-switch-search .form-control { padding-left: 25px; font-size: 12px; }
+body.tesys-ui .role-switch-list {
+    max-height: 210px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-right: 2px;
+}
+body.tesys-ui .role-switch-list form { display: contents; }
+body.tesys-ui .role-switch-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: var(--fw-label, 500);
+    text-align: left;
+    cursor: pointer;
+    transition: background .12s ease, border-color .12s ease;
+}
+body.tesys-ui .role-switch-item:hover { background: var(--surface-2); }
+body.tesys-ui .role-switch-item.is-active {
+    background: var(--primary-bg, var(--surface-2));
+    border-color: var(--primary, var(--border));
+    font-weight: 600;
+}
+body.tesys-ui .role-switch-dot {
+    width: 20px; height: 20px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 9.5px; font-weight: 700;
+}
+body.tesys-ui .role-switch-item.is-active .role-switch-dot {
+    background: var(--primary, var(--surface-2));
+    border-color: transparent;
+    color: #fff;
+}
+body.tesys-ui .role-switch-name { flex: 1; letter-spacing: .02em; }
+body.tesys-ui .role-switch-tag {
+    font-size: 9px; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--text-faint);
+}
+body.tesys-ui .role-switch-item.is-active .role-switch-tag { color: var(--primary, var(--text-dim)); }
+body.tesys-ui .role-switch-empty {
+    padding: 8px; font-size: 11.5px; color: var(--text-faint); text-align: center;
+}
+body.tesys-ui .viewas-banner .viewas-quick {
+    display: flex; align-items: center; gap: 6px;
+}
+body.tesys-ui .viewas-banner .viewas-quick select {
+    height: 26px; padding: 0 22px 0 8px; font-size: 11.5px;
+    border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: var(--surface); color: var(--text);
+}
+
+/* Chip "sedang preview role lain" di tengah topbar + tombol pulangnya. */
+body.tesys-ui .viewas-chip {
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px 4px 12px;
+    border-radius: var(--radius-pill);
+    background: var(--warning-bg);
+    border: 1px solid rgba(161, 128, 28, .28);
+    white-space: nowrap;
+}
+body.tesys-ui .viewas-chip-label {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 11.5px; color: var(--warning);
+}
+body.tesys-ui .viewas-chip-label strong { letter-spacing: .04em; }
+body.tesys-ui .viewas-chip-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 11px;
+    border: none;
+    border-radius: var(--radius-pill);
+    background: var(--warning);
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: filter .12s ease;
+}
+body.tesys-ui .viewas-chip-btn:hover { filter: brightness(1.08); }
+@media (max-width: 900px) {
+    body.tesys-ui .viewas-chip { padding-left: 8px; }
+    body.tesys-ui .viewas-chip-label { display: none; }
+}

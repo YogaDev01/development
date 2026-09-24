@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Forecast;
+use App\Models\ForecastLog;
 
 /**
  * Auto-close Finance Forecast yang masih ACTIVE tapi date_end sudah
@@ -25,6 +26,11 @@ class AutoCloseForecasts extends Command
 
         foreach ($forecasts as $forecast) {
             $forecast->update(['status' => 'CLOSED', 'closed_at' => now()]);
+
+            // Tanpa pengguna yang masuk, ForecastLog::record() mencatatnya
+            // sebagai 'Sistem' — jalur otomatis tetap meninggalkan jejak yang
+            // sama dengan tombol Close manual.
+            ForecastLog::record($forecast->id, 'AUTO_CLOSED', 'date_end sudah terlewati.');
             // `description` sudah pensiun sejak 2026_09_20_000013 — kolomnya
             // masih ada tapi tidak pernah diisi lagi, jadi barisnya selalu
             // tercetak kosong. Penggantinya `notes`, lewat accessor `label`.

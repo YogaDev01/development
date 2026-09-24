@@ -287,12 +287,15 @@ class ProjectController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Purchase Order');
 
+        /* Urutan kolom mengikuti tabel di layar: 'Qty PO' (jumlah No. PO yang
+           sudah dientri) duduk tepat di kanan Status, dan 'PO Quantity'
+           (ekspektasi manual) tetap di kolom terakhir sebagai pembandingnya. */
         $headers = [
-            'Code', 'Scope of Work', 'Status', 'Customer', 'Manager', 'Financing', 'Progress %',
+            'Code', 'Scope of Work', 'Status', 'Qty PO', 'Customer', 'Manager', 'Financing', 'Progress %',
             'PO Value', 'Contract', 'Budget', 'Variable Cost', 'Received Payment', 'Gross Profit',
             'Overhead', 'Fixed Cost', 'Net Profit', 'Tipe', 'PO Quantity',
         ];
-        $cols = range('A', 'R');
+        $cols = range('A', 'S');
         foreach ($headers as $i => $label) {
             $c = $cols[$i];
             $sheet->setCellValue($c . '1', $label);
@@ -314,21 +317,22 @@ class ProjectController extends Controller
             $sheet->setCellValue('A' . $row, $p->code);
             $sheet->setCellValue('B' . $row, $p->name);
             $sheet->setCellValue('C' . $row, $p->status_label);
-            $sheet->setCellValue('D' . $row, $p->customer->name ?? '-');
-            $sheet->setCellValue('E' . $row, strtoupper($p->pm_internal_name ?: '-'));
-            $sheet->setCellValue('F' . $row, $p->financing_label);
-            $sheet->setCellValue('G' . $row, $p->implementationProgress());
-            $sheet->setCellValue('H' . $row, (int) ($p->value ?? 0));
-            $sheet->setCellValue('I' . $row, (int) ($p->contract ?? 0));
-            $sheet->setCellValue('J' . $row, $p->budgetPlanTotal());
-            $sheet->setCellValue('K' . $row, $variable);
-            $sheet->setCellValue('L' . $row, $payment);
-            $sheet->setCellValue('M' . $row, $gross);
-            $sheet->setCellValue('N' . $row, $overhead);
-            $sheet->setCellValue('O' . $row, $fixed);
-            $sheet->setCellValue('P' . $row, $net);
-            $sheet->setCellValue('Q' . $row, $p->type_label ?? '-');
-            $sheet->setCellValue('R' . $row, $p->po_quantity);
+            $sheet->setCellValue('D' . $row, $p->poNumbers->count());
+            $sheet->setCellValue('E' . $row, $p->customer->name ?? '-');
+            $sheet->setCellValue('F' . $row, strtoupper($p->pm_internal_name ?: '-'));
+            $sheet->setCellValue('G' . $row, $p->financing_label);
+            $sheet->setCellValue('H' . $row, $p->implementationProgress());
+            $sheet->setCellValue('I' . $row, (int) ($p->value ?? 0));
+            $sheet->setCellValue('J' . $row, (int) ($p->contract ?? 0));
+            $sheet->setCellValue('K' . $row, $p->budgetPlanTotal());
+            $sheet->setCellValue('L' . $row, $variable);
+            $sheet->setCellValue('M' . $row, $payment);
+            $sheet->setCellValue('N' . $row, $gross);
+            $sheet->setCellValue('O' . $row, $overhead);
+            $sheet->setCellValue('P' . $row, $fixed);
+            $sheet->setCellValue('Q' . $row, $net);
+            $sheet->setCellValue('R' . $row, $p->type_label ?? '-');
+            $sheet->setCellValue('S' . $row, $p->po_quantity);
             $row++;
         }
 

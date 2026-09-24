@@ -56,7 +56,7 @@
                         <tbody>
                             @forelse($forecasts as $f)
                             @php $varClass = $f->variance < 0 ? 'text-danger' : 'text-success'; @endphp
-                            <tr>
+                            <tr data-forecast="{{ $f->id }}">
                                 <td>{{ $loop->iteration }}</td>
                                 <td>
                                     {{-- Judulnya catatan forecast; PO ditampilkan sebagai
@@ -82,8 +82,8 @@
                                     @endif
                                 </td>
                                 <td class="text-right">{{ $f->forecast_amount_formatted }}</td>
-                                <td class="text-right">{{ $f->actual_amount_formatted }}</td>
-                                <td class="text-right {{ $varClass }}">{{ $f->variance_formatted }} ({{ $f->achievement_pct }}%)</td>
+                                <td class="text-right fc-row-actual">{{ $f->actual_amount_formatted }}</td>
+                                <td class="text-right fc-row-variance {{ $varClass }}">{{ $f->variance_formatted }} ({{ $f->achievement_pct }}%)</td>
                                 <td><span class="badge badge-{{ $f->status_color }}">{{ $f->status }}</span></td>
                                 <td class="text-center action-column">
                                     <div class="action-buttons ts-actions">
@@ -212,6 +212,9 @@
                                 <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#fcPaneRincian"
                                     style="font-size:12px;font-weight:600;padding:8px 12px;"><i class="fas fa-list-ul mr-1"></i> Rincian
                                     <span id="fcDetailCount" class="badge badge-secondary ml-1" style="font-size:10px;"></span></a></li>
+                                <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#fcPaneLog"
+                                    style="font-size:12px;font-weight:600;padding:8px 12px;"><i class="fas fa-history mr-1"></i> Log
+                                    <span id="fcLogCount" class="badge badge-secondary ml-1" style="font-size:10px;"></span></a></li>
                             </ul>
 
                             <div class="tab-content">
@@ -228,43 +231,39 @@
                                 </div>
 
                                 <div class="tab-pane fade" id="fcPaneRincian">
-                                    <form id="frmUpdateActual" method="POST">
-                                        @csrf
-                                        <div class="d-flex align-items-center flex-wrap mb-2" style="gap:8px;">
-                                            <small id="fcActualHint" style="color:var(--text-faint);display:none;">
-                                                Actual diisi per item, lalu disimpan sekaligus.
-                                            </small>
-                                            <button type="submit" id="fcBtnSimpanActual"
-                                                    class="btn btn-success btn-sm ml-auto" style="display:none;">
-                                                <i class="fas fa-save mr-1"></i> Simpan Actual
-                                            </button>
-                                        </div>
+                                    {{-- Rincian dikelompokkan PER REKENING: satu forecast bisa
+                                         menyentuh beberapa rekening, dan yang ingin dibaca orang
+                                         adalah rencana & realisasi satu rekening — bukan satu
+                                         daftar panjang yang rekeningnya berselang-seling.
+                                         Tabel per grup dibangun di JS dari `groups`. --}}
+                                    <div class="d-flex align-items-center flex-wrap mb-2" style="gap:8px;">
+                                        <small id="fcActualHint" style="color:var(--text-faint);display:none;">
+                                            Ketik nominal realisasi di kolom Actual, lalu tekan
+                                            <i class="fas fa-save"></i> — keterangannya wajib dan ditanyakan sebelum disimpan.
+                                        </small>
+                                    </div>
 
-                                        <div class="table-responsive">
-                                            <table class="table table-bordered mb-0" style="font-size:12.5px;">
-                                                <thead class="bg-light">
-                                                    <tr>
-                                                        <th scope="col">Description</th>
-                                                        <th scope="col" class="text-nowrap">PO</th>
-                                                        <th scope="col" class="text-nowrap">Tipe</th>
-                                                        <th scope="col" class="text-nowrap">Source Fund</th>
-                                                        <th scope="col" class="text-right">Amount (Plan)</th>
-                                                        <th scope="col" class="text-right" style="width:150px;">Actual</th>
-                                                        <th scope="col" class="text-right">Variance</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="fcDetailBody"></tbody>
-                                                <tfoot>
-                                                    <tr style="background:var(--surface-2);">
-                                                        <th colspan="4" class="text-right">Total</th>
-                                                        <th class="text-right" id="fcFootForecast"></th>
-                                                        <th class="text-right" id="fcFootActual"></th>
-                                                        <th class="text-right" id="fcFootVariance"></th>
-                                                    </tr>
-                                                </tfoot>
-                                            </table>
-                                        </div>
-                                    </form>
+                                    <div id="fcGroups"></div>
+
+                                    <div class="table-responsive mt-3">
+                                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
+                                            <tfoot>
+                                                <tr style="background:var(--surface-2);">
+                                                    <th class="text-right">Grand Total</th>
+                                                    <th class="text-right" style="width:160px;" id="fcFootForecast"></th>
+                                                    <th class="text-right" style="width:160px;" id="fcFootActual"></th>
+                                                    <th class="text-right" style="width:160px;" id="fcFootVariance"></th>
+                                                    <th style="width:90px;"></th>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div class="tab-pane fade" id="fcPaneLog">
+                                    {{-- Jejak aktivitas, bentuknya mengikuti timeline log modul
+                                         lain (lihat delivery-note/show). --}}
+                                    <div id="fcLogList" class="fc-timeline"></div>
                                 </div>
                             </div>
                         </div>
@@ -279,6 +278,16 @@
 {{-- Form alur, disubmit dari tombol di panel gelap setelah konfirmasi. --}}
 <form id="frmActivate" method="POST" style="display:none;">@csrf</form>
 <form id="frmClose" method="POST" style="display:none;">@csrf</form>
+
+{{-- Penambahan & penghapusan entri realisasi. Isinya ditulis JS setelah
+     dialog keterangan dikonfirmasi — keterangannya wajib, dan syarat itu
+     ditegakkan lagi di server (ForecastController::storeActual()). --}}
+<form id="frmActualStore" method="POST" style="display:none;">
+    @csrf
+    <input type="hidden" name="amount" id="inpActualAmount">
+    <input type="hidden" name="notes" id="inpActualNotes">
+</form>
+<form id="frmActualDestroy" method="POST" style="display:none;">@csrf @method('DELETE')</form>
 
 @endsection
 
@@ -325,6 +334,74 @@
    kepala dokumen di kiri tetap terlihat saat rinciannya panjang. */
 body.tesys-ui .modal-body.dm-body .fc-modal-flex { height:100%; min-height:100%; }
 body.tesys-ui .modal-body.dm-body .fc-main-panel { overflow-y:auto; max-height:100%; }
+
+/* --- Rincian per rekening ------------------------------------------------
+   Tiap Source Fund punya tabelnya sendiri; kepala grup adalah pita tipis di
+   atas tabel supaya batas antar rekening terbaca tanpa garis tebal. */
+.fc-group-head {
+    font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    padding:6px 10px; background:var(--surface-2); border:1px solid var(--border);
+    border-bottom:0; border-radius:var(--radius-sm) var(--radius-sm) 0 0; color:var(--text);
+}
+
+/* Jumlah keterangan yang menempel di tombolnya — penanda bahwa baris ini
+   sudah punya catatan realisasi, tanpa harus dibuka dulu. */
+.fc-entry-count {
+    position:absolute; top:-5px; right:-5px; min-width:15px; height:15px; padding:0 3px;
+    border-radius:8px; background:var(--accent, #c8a24a); color:#1b1b1b;
+    font-size:9px; font-weight:700; line-height:15px; text-align:center;
+}
+.ts-actions .btn-fc-entries { position:relative; }
+
+/* Satu entri realisasi di baris keterangan. */
+.fc-entry {
+    display:flex; align-items:flex-start; gap:8px;
+    padding:6px 0; border-bottom:1px dashed var(--border); font-size:12px;
+}
+.fc-entry:last-child  { border-bottom:0; }
+.fc-entry-main        { flex:1 1 auto; min-width:0; }
+.fc-entry-meta        { color:var(--text-faint); font-size:10.5px; margin-top:2px; }
+
+/* SweetAlert2 dipanggil dari DALAM modal detail, jadi lapisannya harus di
+   atas backdrop Bootstrap (1040) dan modalnya sendiri (1050) — kalau tidak,
+   dialognya tampil di bawah lapisan gelap dan tidak bisa disentuh. */
+.swal2-container { z-index: 20000 !important; }
+
+/* Kolom nominal realisasi: rapat, karena ia duduk di bawah angka akumulasi
+   dalam satu sel. */
+.inp-actual-item { height:31px; font-size:12.5px; padding:4px 8px; }
+
+/* Teks samar di kotak Actual bukan sekadar petunjuk — ia angka realisasi yang
+   sudah tercatat, jadi dibuat cukup pekat untuk dibaca sebagai nilai. */
+.inp-actual-item::placeholder { color:var(--text); opacity:.5; }
+
+/* Dialog keterangan realisasi.
+   Bawaan SweetAlert2 membuat kotak isiannya sempit dan menjulang: keterangan
+   ditulis mendatar, jadi kotaknya dilebarkan dan tingginya dipangkas —
+   persegi panjang, bukan kolom sempit. Lebar popupnya disamakan dengan dialog
+   konfirmasi lain supaya sebentuk dengan yang sudah ada. */
+.fc-swal-notes { width:560px; max-width:94vw; padding:24px 28px 20px; }
+.fc-swal-notes .swal2-textarea {
+    display:block; width:100%; max-width:100%; height:140px; min-height:100px;
+    margin:0; padding:10px 12px; font-size:13px; resize:vertical; box-sizing:border-box;
+}
+.fc-swal-notes .swal2-html-container { margin:0 0 12px; text-align:left; }
+.fc-swal-notes .swal2-actions        { margin-top:18px; }
+
+/* --- Log -------------------------------------------------------------
+   Timeline sederhana, sebentuk dengan log modul lain. */
+.fc-tl-item {
+    position:relative; display:flex; gap:10px;
+    padding:0 0 14px 14px; border-left:2px solid var(--border);
+}
+.fc-tl-item:last-child { border-left-color:transparent; padding-bottom:0; }
+.fc-tl-dot {
+    position:absolute; left:-6px; top:4px; width:10px; height:10px; border-radius:50%;
+    padding:0; border:2px solid var(--surface);
+}
+.fc-tl-body  { font-size:12px; }
+.fc-tl-date  { color:var(--text-faint); font-size:10.5px; margin-top:3px; }
+.fc-tl-notes { margin-top:4px; font-size:11.5px; color:var(--text); }
 </style>
 @endpush
 
@@ -352,6 +429,38 @@ $(function () {
     */
 
     var BASE = '{{ url("/forecast") }}';
+
+    /* Forecast yang sedang terbuka. Tombol realisasi dipasang lewat delegasi
+       (barisnya dibangun ulang tiap modal dibuka), jadi alamat aksinya disusun
+       dari sini, bukan dari atribut tiap tombol. */
+    var idAktif = null;
+
+    var TOKEN = $('#frmActualStore input[name="_token"]').val();
+
+    /* Validasi Laravel (422) mengirim pesannya di `errors`; sisanya jatuh ke
+       kalimat cadangan supaya pengguna tidak pernah melihat dialog kosong. */
+    function pesanGagal(xhr, cadangan) {
+        var j = xhr.responseJSON || {};
+        if (j.errors) {
+            var k = Object.keys(j.errors)[0];
+            if (k) return j.errors[k][0];
+        }
+        return j.message || cadangan;
+    }
+
+    /*
+    | Bootstrap menarik kembali fokus ke modalnya setiap kali fokus lari ke
+    | elemen di luar — dan SweetAlert2 hidup DI LUAR modal itu. Akibatnya
+    | kolom isian dialog tidak bisa diklik maupun diketik sama sekali: setiap
+    | klik langsung direbut balik. Penjagaan itu dimatikan untuk modal ini
+    | saja, bukan untuk seluruh aplikasi.
+    |
+    | Dialognya juga harus berada di atas backdrop modal (z-index Bootstrap
+    | 1050/1040), jadi lapisannya dinaikkan lewat kelas di bawah.
+    */
+    $('#modalForecastDetail').on('shown.bs.modal', function () {
+        $(document).off('focusin.bs.modal');
+    });
 
     function esc(nilai) {
         return $('<div>').text(nilai == null ? '' : String(nilai)).html();
@@ -390,53 +499,172 @@ $(function () {
 
         $('#frmActivate').attr('action', BASE + '/' + d.id + '/activate');
         $('#frmClose').attr('action', BASE + '/' + d.id + '/close');
-        $('#frmUpdateActual').attr('action', BASE + '/' + d.id + '/update-actual');
 
-        $('#fcBtnSimpanActual').toggle(!!d.can_update_actual);
         $('#fcActualHint').toggle(!!d.can_update_actual);
 
-        var rows = '';
-        d.details.forEach(function (x) {
-            rows += '<tr>'
-                + '<td>' + esc(x.description) + '</td>'
-                + '<td class="text-nowrap">' + (x.project
-                        ? '<span title="' + esc(x.project_name || '') + '">' + esc(x.project) + '</span>'
-                        : '<span class="text-muted">-</span>') + '</td>'
-                + '<td class="text-nowrap"><span class="badge badge-' + esc(x.type_color) + ' px-2 py-1" style="font-size:9.5px;">'
-                    + esc(x.type_label) + '</span></td>'
-                + '<td class="text-nowrap">' + esc(x.source_fund) + '</td>'
-                + '<td class="text-right">' + esc(x.amount_formatted) + '</td>'
-                + '<td class="text-right">'
-                    + (d.can_update_actual
-                        ? '<input type="text" name="details[' + x.id + ']" class="form-control form-control-sm text-right inp-actual-item" value="' + esc(x.actual_amount) + '">'
-                        : esc(x.actual_amount_formatted))
-                + '</td>'
-                + '<td class="text-right ' + (x.selisih_negative ? 'text-danger' : 'text-success') + '">'
-                    + esc(x.selisih_formatted) + '</td>'
-                + '</tr>';
-        });
+        renderRincian(d);
+        renderLog(d);
 
-        if (!d.details.length) {
-            rows = '<tr><td colspan="7" class="text-center text-muted py-3">Belum ada detail.</td></tr>';
-        }
-
-        $('#fcDetailBody').html(rows);
-        $('#fcDetailCount').text(d.details.length);
+        $('#fcDetailCount').text(d.detail_count);
         $('#fcFootForecast').text(d.forecast_amount);
         $('#fcFootActual').text(d.actual_amount);
         $('#fcFootVariance').text(d.variance);
     }
 
-    function bukaDetail(id) {
-        $('#fcDetailLoading').show();
-        $('#fcDetailContent').hide();
-        $('#modalForecastDetail').modal('show');
+    /* Satu tabel per rekening, dengan subtotalnya sendiri. Angka yang datang
+       dari server sudah bertanda — baris KELUAR (rencana maupun realisasinya)
+       memang tampil negatif, karena uangnya pergi. */
+    function renderRincian(d) {
+        var html = '';
 
-        $.get(BASE + '/' + id + '/detail-json', function (d) {
+        d.groups.forEach(function (g) {
+            html += '<div class="fc-group mb-3">'
+                + '<div class="fc-group-head"><i class="fas fa-university mr-1"></i>' + esc(g.source_fund) + '</div>'
+                + '<div class="table-responsive"><table class="table table-bordered mb-0" style="font-size:12.5px;">'
+                + '<thead class="bg-light"><tr>'
+                +   '<th scope="col">Description</th>'
+                +   '<th scope="col" class="text-nowrap">PO</th>'
+                +   '<th scope="col" class="text-nowrap">Tipe</th>'
+                +   '<th scope="col" class="text-right" style="width:150px;">Amount (Plan)</th>'
+                +   '<th scope="col" class="text-right" style="width:150px;">Actual</th>'
+                +   '<th scope="col" class="text-right" style="width:150px;">Variance</th>'
+                +   '<th scope="col" class="text-center" style="width:90px;">Aksi</th>'
+                + '</tr></thead><tbody>';
+
+            g.rows.forEach(function (x) { html += barisRincian(x, d); });
+
+            html += '</tbody><tfoot><tr style="background:var(--surface-2);">'
+                + '<th colspan="3" class="text-right">Subtotal ' + esc(g.source_fund) + '</th>'
+                + '<th class="text-right">' + esc(g.plan_formatted) + '</th>'
+                + '<th class="text-right">' + esc(g.actual_formatted) + '</th>'
+                + '<th class="text-right ' + (g.variance_negative ? 'text-danger' : 'text-success') + '">'
+                    + esc(g.variance_formatted) + '</th>'
+                + '<th></th>'
+                + '</tr></tfoot></table></div></div>';
+        });
+
+        if (!d.groups.length) {
+            html = '<p class="text-center text-muted py-3 mb-0">Belum ada detail.</p>';
+        }
+
+        $('#fcGroups').html(html);
+    }
+
+    function barisRincian(x, d) {
+        /* Dua tombol: menambah realisasi (selalu lewat dialog berketerangan)
+           dan membuka daftar keterangan yang sudah tercatat. Tombol tambah
+           hanya muncul kalau server memang menerimanya. */
+        var aksi = '';
+        if (d.can_update_actual) {
+            aksi += '<button type="button" class="ts-action-primary is-success btn-fc-add-actual"'
+                + ' data-detail="' + x.id + '" data-desc="' + esc(x.description) + '" data-type="' + esc(x.type) + '"'
+                + ' title="Simpan realisasi (isi keterangan)"><i class="fas fa-save" aria-hidden="true"></i>'
+                + '<span class="ts-al">Simpan realisasi</span></button>';
+        }
+        aksi += '<button type="button" class="ts-action-primary is-neutral btn-fc-entries"'
+            + ' data-detail="' + x.id + '" title="Keterangan realisasi">'
+            + '<i class="fas fa-comment-dots" aria-hidden="true"></i>'
+            + (x.entry_count ? '<span class="fc-entry-count">' + x.entry_count + '</span>' : '')
+            + '<span class="ts-al">Keterangan realisasi</span></button>';
+
+        var baris = '<tr>'
+            + '<td>' + esc(x.description) + '</td>'
+            + '<td class="text-nowrap">' + (x.project
+                    ? '<span title="' + esc(x.project_name || '') + '">' + esc(x.project) + '</span>'
+                    : '<span class="text-muted">-</span>') + '</td>'
+            + '<td class="text-nowrap"><span class="badge badge-' + esc(x.type_color) + ' px-2 py-1" style="font-size:9.5px;">'
+                + esc(x.type_label) + '</span></td>'
+            + '<td class="text-right ' + (x.type === 'OUT' ? 'text-danger' : '') + '">' + esc(x.amount_formatted) + '</td>'
+            /* Satu kotak isian saja per sel, angkanya DI DALAM kotak dan rata
+               kanan — sebentuk dengan kolom Amount di form Forecast. Isinya
+               realisasi yang sudah tercatat; mengetik angka lain lalu menekan
+               simpan berarti menambahkan realisasi sebesar angka itu. */
+            + '<td class="text-right ' + (x.type === 'OUT' ? 'text-danger' : '') + '">'
+                + (d.can_update_actual
+                    /* Kotaknya KOSONG; realisasi yang sudah tercatat jadi teks
+                       samar di dalamnya. Dengan begitu yang diketik selalu
+                       jelas maksudnya — penambahan, bukan penggantian — dan
+                       setelah disimpan kotaknya kosong lagi dengan sendirinya,
+                       siap untuk penambahan berikutnya. */
+                    ? '<input type="text" class="form-control form-control-sm text-right inp-actual-item"'
+                        + ' data-detail="' + x.id + '" data-type="' + esc(x.type) + '"'
+                        + ' inputmode="numeric" placeholder="' + esc(x.actual_amount_formatted) + '">'
+                    : esc(x.actual_amount_formatted))
+            + '</td>'
+            + '<td class="text-right ' + (x.selisih_negative ? 'text-danger' : 'text-success') + '">' + esc(x.selisih_formatted) + '</td>'
+            + '<td class="text-center action-column"><div class="action-buttons ts-actions">' + aksi + '</div></td>'
+            + '</tr>';
+
+        /* Baris keterangan: tersembunyi sampai tombolnya ditekan, supaya tabel
+           tetap terbaca sebagai rencana — bukan sebagai catatan panjang. */
+        var isi = '';
+        if (x.entries.length) {
+            x.entries.forEach(function (e) {
+                isi += '<div class="fc-entry">'
+                    + '<div class="fc-entry-main">'
+                    +   '<strong>' + esc(e.amount) + '</strong> · ' + esc(e.notes)
+                    +   '<div class="fc-entry-meta">' + esc(e.user) + ' — ' + esc(e.at) + '</div>'
+                    + '</div>'
+                    + (e.can_delete
+                        ? '<button type="button" class="btn btn-link text-danger p-0 btn-fc-del-entry"'
+                            + ' data-entry="' + e.id + '" title="Hapus realisasi">'
+                            + '<i class="fas fa-times"></i></button>'
+                        : '')
+                    + '</div>';
+            });
+        } else {
+            isi = '<div class="text-muted" style="font-size:11.5px;">Belum ada realisasi yang dicatat.</div>';
+        }
+
+        baris += '<tr class="fc-entry-row" data-detail="' + x.id + '" style="display:none;">'
+            + '<td colspan="7" style="background:var(--surface-2);">' + isi + '</td></tr>';
+
+        return baris;
+    }
+
+    function renderLog(d) {
+        var html = '';
+        d.logs.forEach(function (l) {
+            html += '<div class="fc-tl-item">'
+                + '<span class="fc-tl-dot badge-' + esc(l.action_color) + '"></span>'
+                + '<div class="fc-tl-body">'
+                +   '<span class="badge badge-' + esc(l.action_color) + ' px-2 py-1 mr-2" style="font-size:9px;">'
+                +       esc(l.action_label) + '</span>'
+                +   '<strong>' + esc(l.actor) + '</strong>'
+                +   '<div class="fc-tl-date">' + esc(l.at) + '</div>'
+                +   (l.notes ? '<div class="fc-tl-notes">' + esc(l.notes) + '</div>' : '')
+                + '</div></div>';
+        });
+
+        $('#fcLogList').html(html || '<div class="text-center text-muted py-3">Belum ada aktivitas.</div>');
+        $('#fcLogCount').text(d.logs.length);
+    }
+
+    /*
+    | `diam` = menyegarkan isi modal yang sudah terbuka tanpa menampilkan
+    | kerangka pemuatan. Dipakai setelah realisasi disimpan: yang berubah
+    | hanya angka-angkanya, dan mengedipkan seluruh modal untuk itu membuat
+    | pekerjaan yang mulus terasa seperti pindah halaman.
+    */
+    function bukaDetail(id, diam) {
+        idAktif = id;
+
+        if (!diam) {
+            $('#fcDetailLoading').show();
+            $('#fcDetailContent').hide();
+            $('#modalForecastDetail').modal('show');
+        }
+
+        return $.get(BASE + '/' + id + '/detail-json', function (d) {
             isiModal(d);
+            perbaruiBarisDaftar(d);
             $('#fcDetailLoading').hide();
             $('#fcDetailContent').show();
         }).fail(function () {
+            if (diam) {
+                toast('error', 'Gagal memuat ulang detail.');
+                return;
+            }
             $('#fcDetailLoading').html(
                 '<p class="text-danger mb-0"><i class="fas fa-exclamation-triangle mr-1"></i>'
                 + 'Gagal memuat detail. Silakan coba lagi.</p>'
@@ -444,21 +672,160 @@ $(function () {
         });
     }
 
+    /* Baris di daftar belakang ikut diperbarui — tanpa muat ulang, angkanya
+       akan tertinggal dari yang baru saja terlihat di modal. */
+    function perbaruiBarisDaftar(d) {
+        var $tr = $('tr[data-forecast="' + d.id + '"]');
+        if (!$tr.length) return;
+
+        $tr.find('.fc-row-actual').text(d.actual_amount);
+        $tr.find('.fc-row-variance')
+            .text(d.variance + ' (' + d.achievement_pct + '%)')
+            .toggleClass('text-danger', !!d.variance_negative)
+            .toggleClass('text-success', !d.variance_negative);
+    }
+
+    /* Pemberitahuan ringkas di pojok — pengganti pesan flash, yang dulu hanya
+       muncul karena halamannya dimuat ulang. */
+    function toast(ikon, pesan) {
+        Swal.fire({
+            toast: true, position: 'top-end', icon: ikon, title: pesan,
+            showConfirmButton: false, timer: 2200, timerProgressBar: true
+        });
+    }
+
     $(document).on('click', '.btn-fc-view', function () {
         bukaDetail($(this).data('id'));
     });
 
-    /* Pemisah ribuan saat mengetik, dan dibuang lagi sebelum dikirim — sama
-       seperti form Forecast lain, supaya angka yang sampai ke server tetap
-       bilangan polos. */
-    $(document).on('input', '.inp-actual-item', function () {
-        var v = this.value.replace(/\D/g, '');
-        this.value = v ? parseInt(v, 10).toLocaleString('id-ID') : '';
+    /* Daftar keterangan per baris: dibuka/ditutup di tempat, tanpa memuat
+       ulang modalnya. */
+    $(document).on('click', '.btn-fc-entries', function () {
+        $('.fc-entry-row[data-detail="' + $(this).data('detail') + '"]').toggle();
     });
 
-    $('#frmUpdateActual').on('submit', function () {
-        $(this).find('.inp-actual-item').each(function () {
-            $(this).val($(this).val().replace(/\./g, ''));
+    /* Pemisah ribuan saat mengetik di kolom Actual — sama seperti form
+       Forecast lain, supaya angka yang sampai ke server tetap bilangan polos. */
+    /*
+    | Angka realisasi tampil BERTANDA mengikuti arah barisnya: Masuk menambah
+    | kas (+), Keluar menguranginya (-). Tandanya dipasang otomatis — yang
+    | diketik pengguna cukup angkanya, dan yang dikirim ke server pun tetap
+    | bilangan polos tanpa tanda (arahnya sudah melekat di baris detail).
+    */
+    function formatActual(el) {
+        var angka = (el.value || '').replace(/\D/g, '');
+        var nilai = angka ? parseInt(angka, 10) : 0;
+
+        // Kosong tetap kosong — supaya teks samar berisi realisasi yang sudah
+        // tercatat tidak tertimbun angka 0 yang tidak berarti apa-apa.
+        el.value = nilai > 0
+            ? ($(el).data('type') === 'OUT' ? '-' : '') + nilai.toLocaleString('id-ID')
+            : '';
+    }
+
+    $(document).on('input', '.inp-actual-item', function () {
+        var posisi = this.value.length - this.selectionEnd;
+        formatActual(this);
+        // Kursor dikembalikan dihitung dari BELAKANG: pemisah ribuan dan tanda
+        // minus yang baru dipasang menggeser posisinya kalau dihitung dari depan.
+        var balik = Math.max(0, this.value.length - posisi);
+        this.setSelectionRange(balik, balik);
+    });
+
+    /* Enter di kolom nominal = menekan tombol simpan barisnya. Tanpa ini
+       Enter men-submit form terdekat dan nominalnya hilang tanpa penjelasan. */
+    $(document).on('keydown', '.inp-actual-item', function (e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        $('.btn-fc-add-actual[data-detail="' + $(this).data('detail') + '"]').click();
+    });
+
+    /*
+    | Nominalnya diketik di tabel; yang ditanyakan dialog ini hanya
+    | KETERANGAN — dan itu wajib: tombol konfirmasinya menolak jalan selama
+    | kosong, dan server menolaknya lagi (ForecastController::storeActual)
+    | supaya aturannya tidak bergantung pada peramban.
+    |
+    | Untuk baris KELUAR angka yang diketik tetap positif — arahnya sudah
+    | melekat di barisnya, dan nilainya tercatat sebagai pengurang.
+    */
+    $(document).on('click', '.btn-fc-add-actual', function () {
+        var detailId = $(this).data('detail');
+        var keluar   = $(this).data('type') === 'OUT';
+        var desc     = $(this).data('desc');
+        var $inp     = $('.inp-actual-item[data-detail="' + detailId + '"]');
+        var jumlah   = ($inp.val() || '').replace(/\D/g, '');
+
+        if (!jumlah || parseInt(jumlah, 10) <= 0) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Nominal belum diisi',
+                text: 'Isi dulu nominal realisasi di kolom Actual baris ini.',
+                confirmButtonColor: '#55595e'
+            }).then(function () { $inp.trigger('focus'); });
+            return;
+        }
+
+        Swal.fire({
+            title: 'Keterangan Realisasi',
+            html:
+                '<p style="font-size:12px;color:#6c757d;margin-bottom:10px;">'
+                + esc(desc) + ' — realisasi yang ditambahkan: <strong>' + (keluar ? '-' : '') + esc(parseInt(jumlah, 10).toLocaleString('id-ID'))
+                + '</strong>' + (keluar ? ' <span style="color:#dc3545;">(Keluar, dicatat sebagai pengurang)</span>' : '')
+                + '</p>'
+                + '<textarea id="swalNotes" class="swal2-textarea" placeholder="Keterangan (wajib)"></textarea>',
+            customClass: { popup: 'fc-swal-notes' },
+            showCancelButton: true,
+            confirmButtonText: 'Simpan',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#55595e',
+            didOpen: function () { document.getElementById('swalNotes').focus(); },
+            preConfirm: function () {
+                var ket = (document.getElementById('swalNotes').value || '').trim();
+                if (!ket) {
+                    Swal.showValidationMessage('Keterangan wajib diisi sebelum realisasi ditambahkan.');
+                    return false;
+                }
+                return ket;
+            }
+        }).then(function (r) {
+            if (!r.isConfirmed) return;
+
+            $.post(BASE + '/' + idAktif + '/detail/' + detailId + '/actual', {
+                _token: TOKEN,
+                amount: jumlah,
+                notes:  r.value
+            }).done(function (res) {
+                bukaDetail(idAktif, true);
+                toast('success', res.message || 'Realisasi ditambahkan.');
+            }).fail(function (xhr) {
+                toast('error', pesanGagal(xhr, 'Realisasi gagal disimpan.'));
+            });
+        });
+    });
+
+    $(document).on('click', '.btn-fc-del-entry', function () {
+        var entryId = $(this).data('entry');
+
+        Swal.fire({
+            title: 'Hapus realisasi ini?',
+            text: 'Actual baris ini akan dihitung ulang.',
+            icon: 'warning', showCancelButton: true,
+            confirmButtonColor: '#9a3030', cancelButtonColor: '#55595e',
+            confirmButtonText: 'Ya, Hapus', cancelButtonText: 'Batal'
+        }).then(function (r) {
+            if (!r.isConfirmed) return;
+
+            $.post(BASE + '/' + idAktif + '/actual/' + entryId, {
+                _token: TOKEN,
+                _method: 'DELETE'
+            }).done(function (res) {
+                bukaDetail(idAktif, true);
+                toast('success', res.message || 'Realisasi dihapus.');
+            }).fail(function (xhr) {
+                toast('error', pesanGagal(xhr, 'Realisasi gagal dihapus.'));
+            });
         });
     });
 
@@ -484,7 +851,17 @@ $(function () {
        dan redirect edit() saat forecast terkunci tetap mendarat di detail yang
        benar, bukan di daftar tanpa penjelasan. */
     var mintaBuka = new URLSearchParams(window.location.search).get('open');
-    if (mintaBuka) bukaDetail(mintaBuka);
+    if (mintaBuka) {
+        bukaDetail(mintaBuka);
+
+        /* Penandanya dibuang dari alamat setelah dipakai. Kalau dibiarkan, ia
+           ikut tersimpan di riwayat peramban: menyegarkan halaman daftar
+           (atau membukanya lagi dari bookmark) akan membuka modal detail
+           dengan sendirinya, padahal yang diminta hanya daftarnya. */
+        if (window.history.replaceState) {
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+    }
 });
 </script>
 @endpush

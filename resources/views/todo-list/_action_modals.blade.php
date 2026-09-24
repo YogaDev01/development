@@ -119,22 +119,31 @@
     </div></div>
 </div>
 
-{{-- BULK REJECT — dipakai section Head/Cost Control/CEO --}}
-<div class="modal fade" id="mdlBulkRejectCR" tabindex="-1" aria-hidden="true">
+{{--
+    AKSI DARI DRAWER DETAIL — satu modal untuk semua tahap (Approve, Verify,
+    Check, Close, Reject). Judul, teks, warna tombol, dan wajib-tidaknya catatan
+    diisi JavaScript dari entri workflow_actions yang dikirim server; textarea
+    di-set required hanya untuk aksi yang memang mewajibkan alasan (Reject).
+--}}
+<div class="modal fade" id="mdlDrwAction" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog"><div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
         <div class="modal-header" style="background:var(--charcoal);border-bottom:3px solid var(--accent);">
-            <h5 class="modal-title text-white">Reject <span id="bulkRejectCount"></span> CR</h5>
+            <h5 class="modal-title text-white" id="drwActionTitle"></h5>
             <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
         </div>
-        <div class="modal-body" style="padding:24px;">
-            <div class="form-group mb-0">
-                <label class="font-weight-600">Alasan Penolakan <span class="text-danger">*</span></label>
-                <textarea id="bulkRejectNotes" class="form-control" rows="3" required placeholder="Tuliskan alasan..."></textarea>
+        <form id="frmDrwAction" method="POST">@csrf
+            <div class="modal-body" style="padding:24px;">
+                <p id="drwActionText" class="text-muted mb-3"></p>
+                <div class="form-group mb-0">
+                    <label class="font-weight-600" id="drwActionNotesLabel">Catatan (opsional)</label>
+                    <textarea name="notes" id="drwActionNotes" class="form-control" rows="3" placeholder="Catatan..."></textarea>
+                    <div class="invalid-feedback">Alasan wajib diisi.</div>
+                </div>
             </div>
-        </div>
-        <div class="modal-footer" style="background:var(--surface-2);">
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-            <button type="button" class="btn btn-danger" id="btnBulkRejectConfirm">Tolak Semua</button>
-        </div>
+            <div class="modal-footer" style="background:var(--surface-2);">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                <button type="submit" class="btn btn-success" id="drwActionSubmit">Konfirmasi</button>
+            </div>
+        </form>
     </div></div>
 </div>

@@ -56,23 +56,66 @@
     };
     window.TesysUI.closeModal = function (id) { closeOverlay(document.getElementById(id)); };
 
-    /* ---------------- Toast ---------------- */
-    window.TesysUI.toast = function (type, title, msg) {
+    /* ---------------- Toast ----------------
+       Muncul di kanan bawah, menumpuk ke atas bila ada lebih dari satu,
+       dan paling banyak tiga yang tampak bersamaan — yang tertua ditutup
+       lebih dulu supaya tumpukannya tidak pernah menutupi layar. Umurnya
+       dua detik: cukup untuk dibaca, tidak sampai mengganggu.          */
+    var TOAST_MAX  = 3;
+    var TOAST_LIFE = 3000;
+    var TOAST_JEDA = 450;
+
+    function tutupToast(el) {
+        if (!el || el.dataset.closing) return;
+        el.dataset.closing = '1';
+        el.classList.remove('show');
+        setTimeout(function () { el.remove(); }, 250);
+    }
+
+    /* Muncul satu per satu: pesan yang datang bersamaan diantre supaya
+       tumpukannya terlihat bertambah, bukan langsung penuh sekaligus. */
+    var antrean = [];
+    var jalan   = false;
+
+    function giliranToast() {
+        if (jalan || !antrean.length) return;
+        jalan = true;
+        tampilkanToast.apply(null, antrean.shift());
+        setTimeout(function () { jalan = false; giliranToast(); }, TOAST_JEDA);
+    }
+
+    function tampilkanToast(type, title, msg) {
         var stack = document.getElementById('toastStack');
         if (!stack) return;
+
+        var tampil = stack.querySelectorAll('.ts-toast:not([data-closing])');
+        for (var i = 0; i <= tampil.length - TOAST_MAX; i++) tutupToast(tampil[i]);
+
         var el = document.createElement('div');
-        el.className = 'toast toast-' + (type || 'info');
+        el.className = 'ts-toast ts-toast-' + (type || 'info');
         var icon = type === 'success' ? '✓' : ((type === 'error' || type === 'warning') ? '!' : 'i');
-        el.innerHTML = '<div class="toast-ic">' + icon + '</div><div><div class="toast-title"></div>'
-            + '<div class="toast-msg"></div></div>';
-        el.querySelector('.toast-title').textContent = title || '';
-        el.querySelector('.toast-msg').textContent = msg || '';
+        el.innerHTML = '<div class="ts-toast-ic">' + icon + '</div>'
+            + '<div class="ts-toast-teks"><div class="ts-toast-title"></div>'
+            + '<div class="ts-toast-msg"></div></div>'
+            + '<button type="button" class="ts-toast-close" aria-label="Tutup">×</button>';
+        el.querySelector('.ts-toast-title').textContent = title || '';
+        el.querySelector('.ts-toast-msg').textContent = msg || '';
+        el.querySelector('.ts-toast-close').addEventListener('click', function () { tutupToast(el); });
+
+        /* Hitungan ditahan selagi kursor di atas toast. */
+        var waktu;
+        function hitung() { waktu = setTimeout(function () { tutupToast(el); }, TOAST_LIFE); }
+        el.addEventListener('mouseenter', function () { clearTimeout(waktu); el.classList.add('is-hold'); });
+        el.addEventListener('mouseleave', function () { el.classList.remove('is-hold'); hitung(); });
+
         stack.appendChild(el);
         requestAnimationFrame(function () { el.classList.add('show'); });
-        setTimeout(function () {
-            el.classList.remove('show');
-            setTimeout(function () { el.remove(); }, 250);
-        }, 4200);
+        hitung();
+    }
+
+    window.TesysUI.toast = function (type, title, msg) {
+        antrean.push([type, title, msg]);
+        giliranToast();
     };
 
     /*

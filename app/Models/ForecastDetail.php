@@ -57,6 +57,29 @@ class ForecastDetail extends Model
         return $this->belongsTo(Project::class);
     }
 
+    /**
+     * Realisasi baris ini — beberapa kejadian, bukan satu angka.
+     * Terbaru di atas: yang paling sering dicari adalah entri terakhir.
+     */
+    public function actualEntries()
+    {
+        return $this->hasMany(ForecastActualEntry::class)->latest('id');
+    }
+
+    /**
+     * Hitung ulang actual_amount baris dari entri-entrinya.
+     *
+     * Kolomnya tetap ada (dan tetap menyimpan besaran tanpa tanda) supaya
+     * Forecast::syncAmounts() dan seluruh tampilan lama tidak perlu tahu dari
+     * mana angkanya berasal; yang berubah hanya siapa yang berhak mengisinya.
+     */
+    public function syncActual(): void
+    {
+        $this->update([
+            'actual_amount' => (int) $this->actualEntries()->sum("amount"),
+        ]);
+    }
+
     public function getTypeLabelAttribute(): string
     {
         return self::TYPES[$this->type] ?? $this->type;
@@ -73,13 +96,42 @@ class ForecastDetail extends Model
         return $this->type === 'IN' ? $this->amount : -$this->amount;
     }
 
+    /** Realisasi bertanda — alasannya sama dengan getSignedAmountAttribute(). */
+    public function getSignedActualAmountAttribute(): int
+    {
+        return $this->type === 'IN' ? $this->actual_amount : -$this->actual_amount;
+    }
+
+    /**
+     * RENCANA + REALISASI, keduanya bertanda menurut arah barisnya.
+     *
+     * Bentuk ini diminta langsung oleh pengguna, dan dua sifat itulah yang
+     * dicarinya: angkanya BERTAMBAH setiap realisasi diisi (rumus selisih
+     * justru menyusut), dan tandanya tetap mengikuti arah baris — baris Masuk
+     * positif, baris Keluar negatif — sama seperti kolom Amount dan Actual di
+     * barisnya sendiri.
+     *
+     *   MASUK  rencana  100, realisasi    0 ->  +100
+     *   MASUK  rencana  100, realisasi  0,1 ->  +100,1
+     *   KELUAR rencana  -50, realisasi    0 ->   -50
+     *   KELUAR rencana  -50, realisasi  -30 ->   -80
+     *
+     * Perlu dicatat: ini bukan variance dalam arti akuntansi (selisih rencana
+     * vs realisasi), melainkan jumlah keduanya. Kolomnya dibiarkan bernama
+     * Variance sesuai permintaan.
+     */
+    public function getVarianceAttribute(): int
+    {
+        return $this->signed_amount + $this->signed_actual_amount;
+    }
+
     public function getAmountFormattedAttribute(): string
     {
-        return number_format($this->amount, 0, ',', '.');
+        return number_format($this->signed_amount, 0, ',', '.');
     }
 
     public function getActualAmountFormattedAttribute(): string
     {
-        return number_format($this->actual_amount, 0, ',', '.');
+        return number_format($this->signed_actual_amount, 0, ',', '.');
     }
 }

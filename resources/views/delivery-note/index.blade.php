@@ -147,3 +147,22 @@
 </div>
 
 @endsection
+
+@push('styles')
+<style>
+/* Blok "Cari :" di bilah filter tidak punya gaya sendiri di halaman ini,
+   sehingga label jatuh di atas input dan barisnya terlihat tidak sejajar
+   dengan dropdown & tombol di sebelahnya. Aturannya disamakan dengan
+   halaman index lain (Account, Budget Plan): label dan input satu baris,
+   rata tengah secara vertikal. */
+.toolbar-row   { display:flex; align-items:center; gap:8px; }
+.toolbar-label { font-weight:600; color:var(--text-dim); white-space:nowrap; margin-bottom:0; line-height:30px; }
+.toolbar-input { min-width:260px; }
+.toolbar-input .form-control { width:100%; }
+
+@media (max-width: 575.98px) {
+    .toolbar-row   { width:100%; }
+    .toolbar-input { flex:1; min-width:0; }
+}
+</style>
+@endpush

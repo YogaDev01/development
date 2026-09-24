@@ -33,7 +33,27 @@
         return $opt.data('label') || $opt.text().trim();
     }
 
+    /* Satu tombol = buka DAN tutup.
+
+       Pemicu panel dicatat di elemen panelnya, jadi klik kedua pada tombol
+       yang sama bisa dikenali sebagai perintah tutup. Tanpa ini tiap klik
+       selalu menghapus lalu menggambar ulang panel — dari layar terlihat
+       seperti dropdown yang tidak bisa ditutup. */
+    function closeAllTss() {
+        $('.tss-dropdown').remove();
+        $(document).off('click.tss-outside');
+    }
+
+    function isTssOpenFor($btn) {
+        var el = $btn.get(0), open = false;
+        $('.tss-dropdown').each(function () {
+            if ($(this).data('tssOwner') === el) open = true;
+        });
+        return open;
+    }
+
     function positionDropdown($dd, $anchor) {
+        $dd.data('tssOwner', $anchor.get(0));
         $('body').append($dd);
         var offset = $anchor.offset();
         var ddWidth = $dd.outerWidth();
@@ -46,7 +66,7 @@
     function bindOutsideClose($dd) {
         $(document).one('click.tss-outside', function handler(ev) {
             if ($(ev.target).closest('.tss-dropdown, .tss-btn').length === 0) {
-                $dd.remove();
+                closeAllTss();
             } else if ($(document.body).find($dd).length) {
                 $(document).one('click.tss-outside', handler);
             }
@@ -83,7 +103,8 @@
 
         $btn.on('click', function (e) {
             e.stopPropagation();
-            $('.tss-dropdown').remove();
+            if (isTssOpenFor($btn)) { closeAllTss(); return; }
+            closeAllTss();
 
             var $dd = $('<div class="tss-dropdown"></div>');
             var $search = $('<input type="text" class="form-control form-control-sm mb-2" placeholder="' +
@@ -163,7 +184,8 @@
 
         $btn.on('click', function (e) {
             e.stopPropagation();
-            $('.tss-dropdown').remove();
+            if (isTssOpenFor($btn)) { closeAllTss(); return; }
+            closeAllTss();
 
             var $dd = $('<div class="tss-dropdown"></div>');
             var $search = $('<input type="text" class="form-control form-control-sm mb-2" placeholder="' +

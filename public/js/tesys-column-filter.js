@@ -86,6 +86,28 @@
 
     function closeAllDropdowns() {
         $('.tcf-dropdown').remove();
+        // Penjaga klik-di-luar ikut dilepas. Kalau ditinggal, handler dari
+        // dropdown yang sudah hilang masih menunggu dan bisa menutup
+        // dropdown berikutnya begitu ia dibuka.
+        $(document).off('click.tcf-outside');
+    }
+
+    /*
+     | Satu tombol = buka DAN tutup.
+     |
+     | Sebelumnya tiap klik pada pemicu selalu menggambar dropdown baru, jadi
+     | menekan tombol yang sama untuk kedua kalinya terlihat seperti tidak
+     | terjadi apa-apa — padahal panelnya dihapus lalu dipasang lagi. Pemicu
+     | yang sedang membuka panel dicatat di elemen panelnya, sehingga klik
+     | berikutnya pada pemicu itu juga bisa dikenali sebagai perintah tutup.
+     */
+    function isDropdownOpenFor($trigger) {
+        var el = $trigger.get(0);
+        var open = false;
+        $('.tcf-dropdown').each(function () {
+            if ($(this).data('tcfOwner') === el) open = true;
+        });
+        return open;
     }
 
     function applyFilter(tableId, table, tableEl, columns) {
@@ -94,6 +116,7 @@
     }
 
     function openDropdown($icon, tableId, table, tableEl, colIdx, columns) {
+        if (isDropdownOpenFor($icon)) { closeAllDropdowns(); return; }
         closeAllDropdowns();
 
         var current = (state[tableId] && state[tableId][colIdx]) ? state[tableId][colIdx] : new Set();
@@ -132,6 +155,7 @@
         });
 
         $dd.append($search, $list);
+        $dd.data('tcfOwner', $icon.get(0));
         $('body').append($dd);
 
         var offset = $icon.offset();
@@ -239,6 +263,7 @@
     var rowFieldButtons = {}; // { tableId: { field: jQuery button } }
 
     function openRowFilterDropdown($btn, tableId, table, tableEl, field, label, valueLabels, options, showSearch) {
+        if (isDropdownOpenFor($btn)) { closeAllDropdowns(); return; }
         closeAllDropdowns();
 
         var current = (rowFilterState[tableId] && rowFilterState[tableId][field]) ? rowFilterState[tableId][field] : new Set();
@@ -305,6 +330,7 @@
 
         if ($search) $dd.append($search);
         $dd.append($list);
+        $dd.data('tcfOwner', $btn.get(0));
         $('body').append($dd);
 
         var offset = $btn.offset();

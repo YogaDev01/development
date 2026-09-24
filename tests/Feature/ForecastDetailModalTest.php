@@ -86,9 +86,20 @@ class ForecastDetailModalTest extends TestCase
 
         // Rencana pengeluaran bernilai bersih negatif — angkanya ikut bertanda.
         $this->assertSame('-10.000.000', $res->json('forecast_amount'));
+
+        // Variance bertanda mengikuti ARAH barisnya: seluruh angka pada baris
+        // KELUAR bernilai negatif, termasuk selisihnya.
+        $this->assertSame('-10.000.000', $res->json('variance'));
         $this->assertTrue($res->json('variance_negative'));
-        $this->assertCount(1, $res->json('details'));
-        $this->assertSame('Sewa kantor', $res->json('details.0.description'));
+        // Rincian dikirim TERKELOMPOK per rekening — satu tabel per Source Fund
+        // di modalnya.
+        $this->assertSame(1, $res->json('detail_count'));
+        $this->assertCount(1, $res->json('groups'));
+        $this->assertCount(1, $res->json('groups.0.rows'));
+        $this->assertSame('Sewa kantor', $res->json('groups.0.rows.0.description'));
+
+        // Baris KELUAR tampil bertanda minus, termasuk rencananya.
+        $this->assertSame('-10.000.000', $res->json('groups.0.rows.0.amount_formatted'));
     }
 
     public function test_alur_yang_boleh_dijalankan_ikut_dikirim(): void

@@ -635,3 +635,52 @@ body.tesys-ui .pagination .page-item:not(.active) .page-link:hover {
     color: var(--accent-text) !important;
 }
 body.tesys-ui .pagination .page-item.disabled .page-link { color: var(--text-faint) !important; }
+
+/* ------------------------------------------- 6d. IKON URUT DATATABLES */
+/* Padding tabel di atas (9px 12px !important) menganulir padding-right:30px
+   bawaan DataTables, sehingga panah urut yang diposisikan absolut di kanan
+   menimpa judul kolom. Ruangnya dikembalikan di sini, dan panahnya dibuat
+   satu ukuran kecil sejajar tengah supaya terbaca sebagai penanda, bukan
+   teks tambahan. */
+body.tesys-ui table.dataTable > thead > tr > th:not(.sorting_disabled),
+body.tesys-ui table.dataTable > thead > tr > td:not(.sorting_disabled) {
+    padding-right: 26px !important;
+    position: relative;
+}
+body.tesys-ui table.dataTable > thead .sorting:before,
+body.tesys-ui table.dataTable > thead .sorting:after,
+body.tesys-ui table.dataTable > thead .sorting_asc:before,
+body.tesys-ui table.dataTable > thead .sorting_asc:after,
+body.tesys-ui table.dataTable > thead .sorting_desc:before,
+body.tesys-ui table.dataTable > thead .sorting_desc:after,
+body.tesys-ui table.dataTable > thead .sorting_asc_disabled:before,
+body.tesys-ui table.dataTable > thead .sorting_asc_disabled:after,
+body.tesys-ui table.dataTable > thead .sorting_desc_disabled:before,
+body.tesys-ui table.dataTable > thead .sorting_desc_disabled:after {
+    bottom: auto;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 9px;
+    line-height: 1;
+    opacity: .3;
+}
+body.tesys-ui table.dataTable > thead .sorting:before,
+body.tesys-ui table.dataTable > thead .sorting_asc:before,
+body.tesys-ui table.dataTable > thead .sorting_desc:before,
+body.tesys-ui table.dataTable > thead .sorting_asc_disabled:before,
+body.tesys-ui table.dataTable > thead .sorting_desc_disabled:before { right: 15px; }
+body.tesys-ui table.dataTable > thead .sorting:after,
+body.tesys-ui table.dataTable > thead .sorting_asc:after,
+body.tesys-ui table.dataTable > thead .sorting_desc:after,
+body.tesys-ui table.dataTable > thead .sorting_asc_disabled:after,
+body.tesys-ui table.dataTable > thead .sorting_desc_disabled:after { right: 7px; }
+body.tesys-ui table.dataTable > thead .sorting_asc:before,
+body.tesys-ui table.dataTable > thead .sorting_desc:after {
+    opacity: 1;
+    color: var(--accent, #d71920);
+}
+/* Kolom yang juga punya ikon filter butuh satu slot lagi di kanan. */
+body.tesys-ui table.dataTable > thead > tr > th:has(.tcf-filter-icon):not(.sorting_disabled) {
+    padding-right: 40px !important;
+}
+body.tesys-ui .tcf-filter-icon { position: relative; z-index: 1; }

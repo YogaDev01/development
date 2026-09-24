@@ -458,9 +458,17 @@ $(function () {
         }
         syncButtonLabel();
 
+        // Satu tombol = buka DAN tutup: kalau panelnya sedang terbuka, klik
+        // berikutnya pada tombol yang sama menutupnya, bukan menggambar ulang.
+        function closePoPicker() {
+            $('.po-picker-dropdown').remove();
+            $(document).off('click.po-picker-outside');
+        }
+
         $btn.on('click', function (e) {
             e.stopPropagation();
-            $('.po-picker-dropdown').remove();
+            if ($('.po-picker-dropdown').length) { closePoPicker(); return; }
+            closePoPicker();
 
             var $dd = $('<div class="po-picker-dropdown"></div>').css({ maxHeight: '380px' });
             var $search = $('<input type="text" class="form-control form-control-sm mb-2" placeholder="Cari No. PO / customer / scope of work...">');
@@ -504,7 +512,7 @@ $(function () {
 
             $(document).one('click.po-picker-outside', function handler(ev) {
                 if ($(ev.target).closest('.po-picker-dropdown, #btnPoPicker').length === 0) {
-                    $('.po-picker-dropdown').remove();
+                    closePoPicker();
                 } else {
                     $(document).one('click.po-picker-outside', handler);
                 }

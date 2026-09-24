@@ -516,20 +516,89 @@ body.tesys-ui *::-webkit-scrollbar-corner { background: transparent; }
 .stage-item:hover .stage-num { transform: scale(1.08); }
 .stage-lbl { font-size: 9.7px; color: var(--text-dim); text-align: center; font-weight: 600; line-height: 1.2; }
 
-/* ---------------------------------------------------------------- TOAST */
-.toast-stack { position: fixed; top: 20px; right: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; width: 320px; max-width: 90vw; }
-.toast {
-    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
-    box-shadow: var(--shadow-lg); padding: 13px 14px; display: flex; gap: 10px; align-items: flex-start;
-    opacity: 0; transform: translateX(16px); transition: opacity .22s ease, transform .22s ease;
+/* ---------------------------------------------------------------- TOAST
+   Kartu pil bertinta: seluruh permukaan mengambil warna jenis pesannya
+   (oranye untuk peringatan, hijau untuk berhasil, dst.), judul tebal
+   sewarna itu, keterangan di bawahnya, dan tombol tutup di kanan.
+
+   Tumpukan tumbuh dari bawah: toast terbaru masuk di bawah dan yang lama
+   bergeser naik. Perpindahan itu digerakkan oleh layout flex, jadi tiap
+   toast masuk lewat max-height yang membuka — tanpa itu kartu di atasnya
+   melompat, bukan menggeser.
+*/
+.ts-toast-stack { position: fixed; bottom: 16px; right: 16px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; width: max-content; max-width: min(320px, 90vw); align-items: flex-end; }
+
+/* Satu variabel warna per jenis; ikon, latar, garis tepi, judul, dan bilah
+   waktu semuanya membacanya, jadi tidak bisa jadi beda warna. */
+.ts-toast-success { --toast-warna: #2e9e63; --toast-latar: #e9f7ef; --toast-garis: #b6e3c8; }
+.ts-toast-info    { --toast-warna: #2f7bc4; --toast-latar: #e9f2fb; --toast-garis: #bcd8f2; }
+.ts-toast-warning { --toast-warna: #e08a2c; --toast-latar: #fdf0dd; --toast-garis: #f4d3a2; }
+.ts-toast-error   { --toast-warna: #d0453f; --toast-latar: #fcebea; --toast-garis: #f3c2bf; }
+
+.ts-toast {
+    position: relative; overflow: hidden; cursor: default;
+    background: var(--toast-latar); border: 1px solid var(--toast-garis);
+    border-radius: 11px; box-shadow: 0 6px 16px rgba(17, 24, 39, .1);
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 9px 0 10px; width: 100%;
+    opacity: 0; transform: translateY(14px); max-height: 0;
+    transition: opacity .24s ease, transform .24s ease, max-height .24s ease,
+                padding .24s ease, box-shadow .2s ease;
 }
-.toast.show { opacity: 1; transform: translateX(0); }
-.toast-ic { width: 22px; height: 22px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
-.toast-title { font-size: 12.5px; font-weight: var(--fw-section, 600); }
-.toast-msg { font-size: 11.5px; color: var(--text-faint); margin-top: 1px; }
-.toast-success .toast-ic { background: var(--success-bg); color: var(--success); }
-.toast-info .toast-ic { background: var(--info-bg); color: var(--info); }
-.toast-error .toast-ic { background: var(--danger-bg); color: var(--danger); }
+.ts-toast.show { opacity: 1; transform: translateY(0); max-height: 180px; padding-top: 14px; padding-bottom: 14px; }
+.ts-toast:hover { box-shadow: 0 12px 26px rgba(17, 24, 39, .16); }
+
+/* Ikon: lingkaran penuh berwarna dengan lambang putih di tengahnya. */
+.ts-toast-ic {
+    width: 17px; height: 17px; border-radius: 50%; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--toast-warna); color: #fff; border: 0;
+    font-size: 10px; font-weight: 700; line-height: 1;
+    align-self: center;
+}
+
+.ts-toast-teks { min-width: 0; flex: 1; }
+.ts-toast-title { font-size: 11.5px; font-weight: 700; line-height: 1.35; color: var(--toast-warna); }
+.ts-toast-msg { font-size: 11px; line-height: 1.45; color: #4b4b52; margin-top: 3px; }
+.ts-toast-msg:empty { display: none; }
+
+/* Tombol tutup — toast tidak lagi menutup saat kartunya diklik, supaya
+   teksnya bisa disorot dan disalin tanpa keburu hilang. */
+.ts-toast-close {
+    flex: none; align-self: center; margin: 0 -2px 0 0;
+    width: 17px; height: 17px; border: 0; background: transparent; cursor: pointer;
+    color: #6b6b73; font-size: 13px; line-height: 1; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s ease, color .15s ease;
+}
+.ts-toast-close:hover { background: rgba(0, 0, 0, .07); color: #1f1f24; }
+
+/* Bilah waktu di tepi bawah — memperlihatkan sisa umur toast, sehingga
+   hilangnya tidak terasa mendadak. Durasinya disamakan dengan JS (3 detik). */
+.ts-toast::after {
+    content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: 100%;
+    background: var(--toast-warna); opacity: .45; transform-origin: left center; transform: scaleX(1);
+}
+.ts-toast.show::after { transition: transform 3s linear; transform: scaleX(0); }
+.ts-toast.is-hold::after { transition: none; transform: scaleX(1); }
+.ts-toast[data-closing]::after { transition: none; }
+
+/* Tema gelap: latar kartu memakai versi pekat dari warna jenisnya, bukan
+   tinta terang — pada tema gelap tinta terang menyilaukan dan teks abu-abu
+   di atasnya nyaris tak terbaca. */
+html[data-theme="dark"] .ts-toast-success { --toast-warna: #6ed49b; --toast-latar: #11291d; --toast-garis: #2f6a46; }
+html[data-theme="dark"] .ts-toast-info    { --toast-warna: #74b3ea; --toast-latar: #101f30; --toast-garis: #2c5c8a; }
+html[data-theme="dark"] .ts-toast-warning { --toast-warna: #f0a64a; --toast-latar: #33200d; --toast-garis: #8a5a1e; }
+html[data-theme="dark"] .ts-toast-error   { --toast-warna: #ef8279; --toast-latar: #2f1411; --toast-garis: #8a3b34; }
+html[data-theme="dark"] .ts-toast { box-shadow: 0 12px 28px rgba(0, 0, 0, .5); }
+html[data-theme="dark"] .ts-toast-msg { color: #d8d4d0; }
+html[data-theme="dark"] .ts-toast-ic { color: #1a1a1f; }
+html[data-theme="dark"] .ts-toast-close { color: #9b9691; }
+html[data-theme="dark"] .ts-toast-close:hover { background: rgba(255, 255, 255, .1); color: #f2efec; }
+
+@media (prefers-reduced-motion: reduce) {
+    .ts-toast, .ts-toast.show::after { transition-duration: .01ms; }
+}
 
 /* --------------------------------------------------------- EMPTY STATE */
 .empty-state { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 40px 20px; gap: 9px; color: var(--text-faint); }

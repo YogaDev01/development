@@ -76,12 +76,18 @@
                     </div>
                     <div class="custom-toolbar-right d-flex flex-wrap align-items-center" style="gap:8px;">
                         <div class="dropdown" id="colVisDropdown">
-                            <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown">
+                            {{-- data-display="static" mematikan Popper: menu tetap menempel di bawah
+                                 tombol. Tanpa ini, daftar kolom yang panjang bikin Popper "flip" ke atas
+                                 dan menutupi baris tombol toolbar, apalagi karena tiap centang memicu
+                                 columns.adjust() yang mengubah tinggi/lebar halaman di belakang menu. --}}
+                            <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle"
+                                    data-toggle="dropdown" data-display="static">
                                 <i class="fas fa-columns mr-1"></i> Kolom
                             </button>
                             <div class="dropdown-menu dropdown-menu-right p-2" style="min-width:200px;max-height:340px;overflow-y:auto;">
                                 @php
                                     $poHideableCols = [
+                                        'poqty'      => 'Qty PO',
                                         'type'       => 'Tipe',
                                         'uploaded'   => 'Uploaded',
                                         'margin'     => 'Margin',
@@ -126,6 +132,7 @@
                                 <th scope="col" class="text-nowrap po-col-kode" style="width:1%;">Kode</th>
                                 <th scope="col">Scope of Work</th>
                                 <th scope="col" class="text-center text-nowrap" style="width:1%;">Status</th>
+                                <th scope="col" class="text-center text-nowrap" style="width:1%;" title="Jumlah No. PO yang sudah dientri pada kode ini (dibanding PO Quantity kalau diisi).">Qty PO</th>
                                 <th scope="col" class="text-center text-nowrap" style="width:1%;">Tipe</th>
                                 <th scope="col" class="text-center text-nowrap" style="width:1%;">Progress</th>
                                 <th scope="col" class="text-center col-wrap-header" style="width:110px;" title="Lingkaran isi = status Upload dokumen (No. PO). Cincin luar = status Progress milestone (Project Monitoring).">Uploaded</th>
@@ -217,6 +224,18 @@
                                 <td class="text-center text-nowrap">
                                     <x-status :status="$project->status" context="project"
                                               class="po-status-link" :data-id="$project->id" />
+                                </td>
+
+                                {{-- Qty PO = jumlah No. PO yang benar-benar sudah dientri pada 1 kode.
+                                     Angka pembanding di kanan = PO Quantity (ekspektasi manual), ditandai
+                                     kuning kalau keduanya tidak cocok — sama seperti sub-teks di PO Value. --}}
+                                <td class="text-center text-nowrap col-raw-poqty" data-raw="{{ $poActual }}"
+                                    data-order="{{ $poActual }}">
+                                    <button type="button" class="po-cell-link po-value-link {{ $project->poAdjustmentRequired() ? 'text-warning' : '' }}"
+                                            data-id="{{ $project->id }}"
+                                            title="{{ $poActual }} No. PO dientri{{ $project->po_quantity ? ' dari ' . $project->po_quantity . ' PO Quantity' : '' }}">
+                                        {{ $poActual }}{{ $project->po_quantity ? ' / ' . $project->po_quantity : '' }}
+                                    </button>
                                 </td>
 
                                 <td class="text-center text-nowrap">
@@ -470,6 +489,7 @@
                                 <th class="text-nowrap po-col-kode" style="font-size:12px;">Total</th>
                                 <th class="text-nowrap" style="font-size:11px;color:var(--text-faint);">(data tampil)</th>
                                 <th></th>
+                                <th class="text-center text-nowrap" id="poFooterQty" style="font-size:12px;color:var(--info);"></th>
                                 <th></th>
                                 <th></th>
                                 <th></th>

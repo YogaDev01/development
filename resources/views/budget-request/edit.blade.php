@@ -203,6 +203,7 @@
                         <!-- WORKFLOW INFO berdasarkan Tipe Request -->
                         <div class="col-12 mt-2">
                             <div id="workflowAlert" class="alert mb-0" style="display:none;font-size:13px;"></div>
+                            <div id="caQuotaAlert" class="alert mb-0 mt-2" style="display:none;font-size:13px;"></div>
                         </div>
 
                     </div>
@@ -239,7 +240,7 @@
                                     <th scope="col" style="width:12%;" class="text-right">Harga Satuan</th>
                                     <th scope="col" style="width:6%;" class="text-center">Qty</th>
                                     <th scope="col" style="width:12%;" class="text-right">Total</th>
-                                    <th scope="col" style="width:10%;" class="text-center">Lampiran Item</th>
+                                    <th scope="col" style="width:10%;" class="text-center">Lampiran Item <span id="itemAttRequiredBadge" class="badge badge-danger" style="display:none;">Wajib</span></th>
                                     <th scope="col" style="width:5%;" class="text-center">Aksi</th>
                                 </tr>
                             </thead>
@@ -324,27 +325,34 @@
                         <i class="fas fa-info-circle mr-1"></i>
                         Bukti <strong>global / pendukung</strong> (bukan khusus satu item), contoh: foto undangan meeting.
                         Nota/bukti <strong>per item</strong> di-upload di kolom <strong>“Lampiran Item”</strong> pada tabel Rincian Pengajuan.
+                        <br>
+                        <strong>Aturan:</strong> tipe <strong>Cash Advance</strong> wajib mengisi lampiran di sini
+                        (Lampiran Item opsional, bukti final dilengkapi saat settlement). Tipe <strong>selain</strong>
+                        Cash Advance sebaliknya — <strong>Lampiran Item wajib di setiap baris rincian</strong>,
+                        lampiran di sini opsional.
                     </div>
-                    <div id="dropZoneCR" class="att-dropzone mb-3" tabindex="0">
-                        <i class="fas fa-cloud-upload-alt fa-2x mb-2 d-block"></i>
-                        <p class="mb-0">
-                            Drag &amp; drop file ke sini, paste gambar (Ctrl+V), atau
-                            <span class="text-primary" style="text-decoration:underline;cursor:pointer;" id="dropZoneBrowseCR">klik untuk pilih</span>
-                        </p>
-                        <small class="text-muted">Bisa pilih/drop/paste beberapa file sekaligus</small>
-                        <input type="file" id="dropZoneInputCR" multiple style="display:none;">
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table table-bordered mb-0">
-                            <thead class="bg-light">
-                                <tr>
-                                    <th scope="col" style="width:5%;" class="text-center">No</th>
-                                    <th scope="col" style="width:85%;">File</th>
-                                    <th scope="col" style="width:10%;" class="text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="attachmentBody"></tbody>
-                        </table>
+                    <div id="attUploadArea" style="display:none;">
+                        <div id="dropZoneCR" class="att-dropzone mb-3" tabindex="0">
+                            <i class="fas fa-cloud-upload-alt fa-2x mb-2 d-block"></i>
+                            <p class="mb-0">
+                                Drag &amp; drop file ke sini, paste gambar (Ctrl+V), atau
+                                <span class="text-primary" style="text-decoration:underline;cursor:pointer;" id="dropZoneBrowseCR">klik untuk pilih</span>
+                            </p>
+                            <small class="text-muted">Bisa pilih/drop/paste beberapa file sekaligus</small>
+                            <input type="file" id="dropZoneInputCR" multiple style="display:none;">
+                        </div>
+                        <div class="table-responsive mt-3" id="attTableWrap" style="display:none;">
+                            <table class="table table-bordered mb-0">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th scope="col" style="width:5%;" class="text-center">No</th>
+                                        <th scope="col" style="width:85%;">File</th>
+                                        <th scope="col" style="width:10%;" class="text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="attachmentBody"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
                 <div class="card-footer">
@@ -426,7 +434,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var budgetDetails = []; // sub-item Budget Plan yang sedang aktif (di-fetch via AJAX)
     var firstLoad      = true;
 
-    var ATTACHMENT_REQUIRED_TYPES = ['payment', 'pettycash', 'petty cash', 'purchase', 'reimbursement'];
+    var CASH_ADVANCE_TYPES = ['cash advance', 'cash-advance', 'cashadvance'];
     var existingAttachmentCount = parseInt(document.getElementById('existingAttachmentCountHolder').value, 10) || 0;
 
     // ── SEARCHABLE DROPDOWN: Budget Plan & Beneficiary ──────────────
@@ -986,6 +994,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (e.target.closest('.btn-remove-att')) {
             e.target.closest('tr').remove();
             renumber('attachmentBody');
+            refreshAttTable();
             if (window.__updateSubmitState) window.__updateSubmitState();
         }
     });
@@ -993,7 +1002,21 @@ document.addEventListener('DOMContentLoaded', function () {
     // Attachment rows (+ drag & drop multi-file)
     var attIdx = 0;
 
+    /** Area upload lampiran global disembunyikan sampai user menambah lampiran. */
+    function showAttUploadArea() {
+        var area = document.getElementById('attUploadArea');
+        if (area) area.style.display = '';
+    }
+
+    /** Daftar file hanya tampil kalau memang sudah ada barisnya. */
+    function refreshAttTable() {
+        var wrap  = document.getElementById('attTableWrap');
+        var tbody = document.getElementById('attachmentBody');
+        if (wrap && tbody) wrap.style.display = tbody.children.length ? '' : 'none';
+    }
+
     function addAttachmentRow(file) {
+        showAttUploadArea();
         var i     = attIdx++;
         var tbody = document.getElementById('attachmentBody');
         var tr    = document.createElement('tr');
@@ -1002,6 +1025,7 @@ document.addEventListener('DOMContentLoaded', function () {
             '<td><input type="file" name="attachments[' + i + '][file]" class="form-control-file"></td>' +
             '<td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-att"><i class="fas fa-trash"></i></button></td>';
         tbody.appendChild(tr);
+        refreshAttTable();
 
         if (file) {
             var input = tr.querySelector('input[type="file"]');
@@ -1018,7 +1042,11 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     document.getElementById('btnAddAttachment').addEventListener('click', function () {
-        addAttachmentRow(null);
+        // Cukup buka area upload-nya; baris file baru muncul setelah ada file
+        // yang benar-benar dipilih/di-drop/di-paste.
+        showAttUploadArea();
+        var zone = document.getElementById('dropZoneCR');
+        if (zone) zone.focus();
     });
 
     (function () {
@@ -1105,19 +1133,129 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ── LAMPIRAN WAJIB untuk tipe tertentu (Payment/Pettycash/Purchase/Reimbursement) ──
-    function typeRequiresAttachment() {
+    // ── ATURAN LAMPIRAN ────────────────────────────────────────────────────
+    //  Cash Advance : Lampiran Tambahan (global) WAJIB, Lampiran Item opsional.
+    //  Tipe lain    : Lampiran Item WAJIB di tiap baris rincian, global opsional.
+    function typeIsCashAdvance() {
         var sel = document.getElementById('selectType');
         var opt = sel.options[sel.selectedIndex];
         var name = opt ? (opt.dataset.name || '') : '';
-        return ATTACHMENT_REQUIRED_TYPES.indexOf(name) !== -1;
+        return CASH_ADVANCE_TYPES.indexOf(name) !== -1;
+    }
+
+    /** Lampiran global: file baru + existing yang tidak dicentang hapus. */
+    function globalAttachmentCount() {
+        var n = 0;
+        document.querySelectorAll('#attachmentBody input[type="file"]').forEach(function (i) {
+            if (i.files && i.files.length) n += i.files.length;
+        });
+        var exist = (typeof existingAttachmentCount !== 'undefined') ? existingAttachmentCount : 0;
+        var gDel  = document.querySelectorAll('input[name="delete_attachments[]"]:checked').length;
+        return n + Math.max(0, exist - gDel);
+    }
+
+    /** Nomor baris rincian yang belum punya Lampiran Item. */
+    function rowsMissingItemAttachment() {
+        var miss = [];
+        document.querySelectorAll('#detailBody .detail-row').forEach(function (row, idx) {
+            var inp = row.querySelector('.detail-att-input');
+            if (inp && inp.files && inp.files.length) return;
+
+            var chks = row.querySelectorAll('.del-detail-att');
+            var kept = 0;
+            chks.forEach(function (c) { if (!c.checked) kept++; });
+            if (kept > 0) return;
+
+            miss.push(idx + 1);
+        });
+        return miss;
     }
 
     function refreshAttachmentRequiredUI() {
-        document.getElementById('attRequiredBadge').style.display = typeRequiresAttachment() ? 'inline-block' : 'none';
+        var ca = typeIsCashAdvance();
+        var gBadge = document.getElementById('attRequiredBadge');
+        var iBadge = document.getElementById('itemAttRequiredBadge');
+        if (gBadge) gBadge.style.display = ca ? 'inline-block' : 'none';
+        if (iBadge) iBadge.style.display = ca ? 'none' : 'inline-block';
     }
 
     document.getElementById('selectType').addEventListener('change', refreshAttachmentRequiredUI);
     refreshAttachmentRequiredUI();
+
+
+    /* ── PAGU CASH ADVANCE PER PIC ──────────────────────────────────────────
+       Setiap beneficiary terhubung ke satu PIC. Semua Cash Advance milik PIC
+       itu berbagi pagu: maks 10 pengajuan berjalan & total 20 juta. Kuota
+       pulih setelah pengajuan di-Close. Panel ini hanya tampil untuk tipe
+       Cash Advance. */
+    var caQuotaState = null;   // null = tidak ada pagu / belum diambil
+
+    function renderCaQuota() {
+        var box = document.getElementById('caQuotaAlert');
+        if (!box) return;
+
+        if (!typeIsCashAdvance() || !caQuotaState || !caQuotaState.has_quota) {
+            box.style.display = 'none';
+            return;
+        }
+
+        var q = caQuotaState;
+        var cls = q.level === 'blocked' ? 'alert-danger'
+                : (q.level === 'warning' ? 'alert-warning' : 'alert-info');
+        var icon = q.level === 'ok' ? 'fa-info-circle' : 'fa-exclamation-triangle';
+        var head = q.level === 'blocked'
+                ? 'Pagu Cash Advance PIC <strong>' + q.pic_name + '</strong> sudah habis — pengajuan baru tidak bisa disimpan.'
+                : (q.level === 'warning'
+                    ? 'Pagu Cash Advance PIC <strong>' + q.pic_name + '</strong> hampir habis.'
+                    : 'Pagu Cash Advance PIC <strong>' + q.pic_name + '</strong>.');
+
+        box.className = 'alert mb-0 mt-2 ' + cls;
+        box.innerHTML = '<i class="fas ' + icon + ' mr-1"></i> ' + head +
+            ' Pengajuan berjalan: <strong>' + q.used_count + ' / ' + q.limit_count + '</strong>' +
+            ' (sisa ' + q.remaining_count + ').' +
+            ' Nominal: <strong>' + q.used_amount_formatted + ' / ' + q.limit_amount_formatted + '</strong>' +
+            ' (sisa ' + q.remaining_amount_formatted + ').' +
+            ' <br><small>Kuota pulih setelah pengajuan berjalan di-Close.</small>';
+        box.style.display = 'block';
+    }
+
+    function fetchCaQuota() {
+        var ben = document.getElementById('selectBeneficiary').value;
+        if (!typeIsCashAdvance() || !ben) {
+            caQuotaState = null;
+            renderCaQuota();
+            if (window.__updateSubmitState) window.__updateSubmitState();
+            return;
+        }
+
+        var url = '{{ route('budget-request.ca-quota') }}?beneficiary_id=' + encodeURIComponent(ben) +
+                  '&cr_id=' + encodeURIComponent({{ $cr->id }} || '');
+
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { return r.json(); })
+            .then(function (j) {
+                caQuotaState = j;
+                renderCaQuota();
+                if (window.__updateSubmitState) window.__updateSubmitState();
+            })
+            .catch(function () { caQuotaState = null; renderCaQuota(); });
+    }
+
+    /** Sisa pagu nominal terlampaui oleh total rincian saat ini? */
+    function caQuotaAmountExceeded() {
+        if (!typeIsCashAdvance() || !caQuotaState || !caQuotaState.has_quota) return false;
+        var total = 0;
+        document.querySelectorAll('#detailBody .detail-row').forEach(function (row) {
+            var amt = row.querySelector('.inp-amount');
+            var qty = row.querySelector('.inp-qty');
+            total += parse(amt ? amt.value : 0) * Math.max(1, parseInt(qty ? qty.value : 1, 10) || 1);
+        });
+        return total > caQuotaState.remaining_amount;
+    }
+
+    document.getElementById('selectBeneficiary').addEventListener('change', fetchCaQuota);
+    document.getElementById('selectType').addEventListener('change', fetchCaQuota);
+    fetchCaQuota();
 
     // ── INFO WORKFLOW berdasarkan Tipe Request ─────────────────────────────
     function refreshWorkflowAlert() {
@@ -1191,8 +1329,23 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-        if (typeRequiresAttachment() && totalAttachmentCount() < 1) {
-            reasons.push('minimal 1 lampiran (item atau tambahan)');
+        refreshAttachmentRequiredUI();
+        if (typeIsCashAdvance() && caQuotaState && caQuotaState.has_quota) {
+            if (caQuotaState.remaining_count < 1) {
+                reasons.push('pagu jumlah pengajuan Cash Advance PIC ' + caQuotaState.pic_name + ' sudah habis');
+            } else if (caQuotaAmountExceeded()) {
+                reasons.push('total pengajuan melebihi sisa pagu Cash Advance (' + caQuotaState.remaining_amount_formatted + ')');
+            }
+        }
+        if (typeIsCashAdvance()) {
+            if (globalAttachmentCount() < 1) {
+                reasons.push('Lampiran Tambahan / Pendukung (wajib untuk Cash Advance)');
+            }
+        } else {
+            var missAtt = rowsMissingItemAttachment();
+            if (missAtt.length) {
+                reasons.push('Lampiran Item pada baris rincian no. ' + missAtt.join(', '));
+            }
         }
 
         var btn  = document.getElementById('btnSaveCR');

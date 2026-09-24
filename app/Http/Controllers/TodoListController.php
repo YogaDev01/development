@@ -442,36 +442,30 @@ class TodoListController extends Controller
     {
         $sections = [];
 
-        // Head — SUBMITTED, grouped per Budget Plan, bulk approve/reject.
+        // Head — SUBMITTED, grouped per Budget Plan. Approve/Reject per CR dari drawer detail.
         if ($user->hasRole(['superadmin', 'head'])) {
             $sections['head'] = [
                 'title'        => 'Menunggu Approval Head',
                 'status_label' => 'Submitted',
                 'groups'       => $this->buildPoGroups('SUBMITTED', $denganCoa),
-                'approve_url'  => route('budget-request.review-bulk-approve'),
-                'reject_url'   => route('budget-request.review-bulk-reject'),
             ];
         }
 
-        // Cost Control — verifikasi CHECKED, grouped per Budget Plan, bulk approve/reject.
+        // Cost Control — verifikasi CHECKED, grouped per Budget Plan.
         if ($user->hasRole(['superadmin', 'finance', 'finance_manager', 'cost_control'])) {
             $sections['cost_control_checked'] = [
                 'title'        => 'Menunggu Verifikasi Cost Control',
                 'status_label' => 'Checked',
                 'groups'       => $this->buildPoGroups('CHECKED', $denganCoa),
-                'approve_url'  => route('budget-request.review-bulk-approve'),
-                'reject_url'   => route('budget-request.review-bulk-reject'),
             ];
         }
 
-        // CEO / Approver — VERIFIED, grouped per Budget Plan, bulk approve/reject.
+        // CEO / Approver — VERIFIED, grouped per Budget Plan.
         if ($user->hasRole(['superadmin', 'approver', 'guest'])) {
             $sections['ceo'] = [
                 'title'        => 'Menunggu Approval CEO',
                 'status_label' => 'Verified',
                 'groups'       => $this->buildPoGroups('VERIFIED', $denganCoa),
-                'approve_url'  => route('budget-request.review-bulk-approve'),
-                'reject_url'   => route('budget-request.review-bulk-reject'),
             ];
         }
 

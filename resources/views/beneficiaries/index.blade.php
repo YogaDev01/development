@@ -869,6 +869,39 @@ table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before {
     .modal-body { padding:20px !important; }
 }
 
+
+/*
+|--------------------------------------------------------------------------
+| SEARCHABLE SELECT (Bank & PIC di modal Tambah/Edit)
+|--------------------------------------------------------------------------
+| Select native tidak bisa dicari; daftar bank & PIC sudah ratusan baris.
+| Select-nya tetap ada (tersembunyi) supaya nama field & submit form tidak
+| berubah — lapisan ini hanya UI di atasnya.
+*/
+.ss-wrap { position:relative; }
+.ss-wrap > select.ss-native { display:none !important; }
+.ss-display {
+    display:flex; align-items:center; justify-content:space-between;
+    cursor:pointer; user-select:none; white-space:nowrap; overflow:hidden;
+}
+.ss-display .ss-label { overflow:hidden; text-overflow:ellipsis; }
+.ss-display.ss-placeholder .ss-label { color:#9aa0a6; }
+.ss-display .ss-caret { margin-left:8px; color:#6c757d; flex:0 0 auto; }
+.ss-wrap.open .ss-display { border-color:#c0392b; box-shadow:0 0 0 .15rem rgba(192,57,43,.15); }
+.ss-menu {
+    display:none; position:fixed; z-index:2000;
+    background:#fff; border:1px solid #e0e0e0; border-radius:6px;
+    box-shadow:0 6px 18px rgba(0,0,0,.12); padding:8px;
+}
+.ss-menu.open { display:block; }
+.ss-menu .ss-search { height:34px; font-size:13px; }
+.ss-options { max-height:230px; overflow-y:auto; margin-top:6px; }
+.ss-menu.ss-up { box-shadow:0 -6px 18px rgba(0,0,0,.12); }
+.ss-opt { padding:7px 10px; font-size:13px; border-radius:4px; cursor:pointer; }
+.ss-opt:hover, .ss-opt.hl { background:#f4f5f7; }
+.ss-opt.active { background:#fdecea; color:#c0392b; font-weight:600; }
+.ss-none { display:none; padding:10px; font-size:13px; color:#9aa0a6; text-align:center; }
+
 </style>
 @endpush
 
@@ -1214,7 +1247,7 @@ $(function () {
             $('#formMovePic').attr('action', '{{ url("/beneficiaries") }}/' + id + '/move-pic');
             $('#movePicNama').text(nama);
             // Dimulai dari PIC saat ini supaya terlihat sedang pindah dari mana.
-            $('#movePicTujuan').val(String(asal));
+            $('#movePicTujuan').val(String(asal)).trigger('change');
             $('#modalMovePic').modal('show');
         }).modal('hide');
     });
@@ -1337,6 +1370,159 @@ $(function () {
 
     /*
     |--------------------------------------------------------------------------
+    | SEARCHABLE SELECT — Bank & PIC
+    |--------------------------------------------------------------------------
+    | Membungkus <select> native jadi dropdown ber-kolom-cari. Select aslinya
+    | tetap dipakai sebagai sumber nilai (name & submit tidak berubah), jadi
+    | kode lain cukup .val(...).trigger('change') untuk mengisinya.
+    */
+    function initSearchableSelect(selector, placeholderCari) {
+        var $sel = $(selector);
+        if (!$sel.length || $sel.data('ssInit')) return;
+        $sel.data('ssInit', true);
+
+        var kosongTeks = $sel.find('option[value=""]').first().text().trim() || '— Pilih —';
+
+        var $wrap = $('<div class="ss-wrap"></div>');
+        $sel.before($wrap);
+        $wrap.append($sel.addClass('ss-native'));
+
+        var $disp = $('<div class="ss-display form-control" tabindex="0">' +
+                          '<span class="ss-label"></span>' +
+                          '<i class="fas fa-caret-down ss-caret"></i>' +
+                      '</div>');
+        var $menu = $('<div class="ss-menu">' +
+                          '<input type="text" class="ss-search form-control" autocomplete="off">' +
+                          '<div class="ss-options"></div>' +
+                          '<div class="ss-none">Tidak ada hasil</div>' +
+                      '</div>');
+        $menu.find('.ss-search').attr('placeholder', placeholderCari);
+        $wrap.append($disp);
+        /* Panelnya dikeluarkan dari modal-body — kolom itu punya overflow
+           sendiri sehingga dropdown di dalamnya ikut terpotong. Ditempel ke
+           elemen .modal (bukan <body>) supaya focus-trap Bootstrap tidak
+           merebut fokus dari kolom carinya. */
+        var $host = $sel.closest('.modal');
+        (($host.length ? $host : $('body'))).append($menu);
+        $menu.data('ssWrap', $wrap);
+
+        var $opts = $menu.find('.ss-options');
+        $sel.find('option').each(function () {
+            if (this.value === '') return;
+            $opts.append(
+                $('<div class="ss-opt"></div>')
+                    .attr('data-value', this.value)
+                    .text($(this).text().trim())
+            );
+        });
+
+        function syncLabel() {
+            var v = $sel.val();
+            var t = $sel.find('option:selected').text().trim();
+            $disp.toggleClass('ss-placeholder', !v);
+            $disp.find('.ss-label').text(v ? t : kosongTeks);
+            $opts.find('.ss-opt').removeClass('active');
+            if (v) $opts.find('.ss-opt').filter(function () {
+                return $(this).attr('data-value') === String(v);
+            }).addClass('active');
+        }
+
+        function filter(q) {
+            q = (q || '').toLowerCase().trim();
+            var ada = 0;
+            $opts.find('.ss-opt').each(function () {
+                var cocok = !q || $(this).text().toLowerCase().indexOf(q) !== -1;
+                $(this).toggle(cocok).removeClass('hl');
+                if (cocok) ada++;
+            });
+            $menu.find('.ss-none').toggle(ada === 0);
+        }
+
+        /* Posisi panel dihitung manual (position:fixed): menempel di bawah
+           kolomnya, lalu dibalik ke atas kalau ruang bawah tidak cukup. */
+        function posisikan() {
+            var r = $disp[0].getBoundingClientRect();
+            var maxH = Math.min(300, Math.max(180, window.innerHeight - 32));
+            $menu.css({ left: r.left + 'px', width: r.width + 'px', top: '', bottom: '' });
+            $opts.css('max-height', (maxH - 70) + 'px');
+
+            var tinggi = $menu.outerHeight();
+            var ruangBawah = window.innerHeight - r.bottom - 8;
+            if (ruangBawah < tinggi && r.top - 8 > ruangBawah) {
+                $menu.addClass('ss-up').css('top', Math.max(8, r.top - tinggi - 4) + 'px');
+            } else {
+                $menu.removeClass('ss-up').css('top', (r.bottom + 4) + 'px');
+            }
+        }
+
+        function buka() {
+            tutupSemua();
+            $wrap.addClass('open');
+            $menu.addClass('open');
+            filter('');
+            posisikan();
+            $menu.find('.ss-search').val('').focus();
+            var $act = $opts.find('.ss-opt.active');
+            if ($act.length) $opts.scrollTop($act.position().top + $opts.scrollTop() - 60);
+        }
+        function tutup() { $wrap.removeClass('open'); $menu.removeClass('open'); }
+
+        $(window).on('resize scroll', function () { if ($menu.hasClass('open')) posisikan(); });
+        $(document).on('scroll', '.modal', function () { if ($menu.hasClass('open')) posisikan(); });
+        $menu.on('ssReposisi', posisikan);
+
+        $disp.on('click', function () { $wrap.hasClass('open') ? tutup() : buka(); });
+        $disp.on('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') { e.preventDefault(); buka(); }
+        });
+
+        $menu.on('click', function (e) { e.stopPropagation(); });
+        $menu.find('.ss-search').on('input', function () { filter(this.value); });
+        $menu.find('.ss-search').on('keydown', function (e) {
+            var $vis = $opts.find('.ss-opt:visible');
+            var i = $vis.index($vis.filter('.hl'));
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (!$vis.length) return;
+                i = e.key === 'ArrowDown' ? (i + 1) % $vis.length : (i <= 0 ? $vis.length - 1 : i - 1);
+                $vis.removeClass('hl').eq(i).addClass('hl');
+                var el = $vis.get(i);
+                if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                var $pilih = $vis.filter('.hl').first();
+                if (!$pilih.length) $pilih = $vis.first();
+                if ($pilih.length) $pilih.trigger('click');
+            } else if (e.key === 'Escape') {
+                e.preventDefault(); tutup(); $disp.focus();
+            }
+        });
+
+        $opts.on('click', '.ss-opt', function () {
+            $sel.val($(this).attr('data-value')).trigger('change');
+            tutup();
+            $disp.focus();
+        });
+
+        $sel.on('change', syncLabel);
+        syncLabel();
+    }
+
+    /* Satu dropdown terbuka dalam satu waktu; klik di luar juga menutup. */
+    function tutupSemua() { $('.ss-wrap.open').removeClass('open'); $('.ss-menu.open').removeClass('open'); }
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('.ss-wrap, .ss-menu').length) tutupSemua();
+    });
+    $(document).on('hidden.bs.modal', '.modal', tutupSemua);
+
+    initSearchableSelect('#tambahBank', 'Cari nama bank...');
+    initSearchableSelect('#tambahPic',  'Cari nama PIC...');
+    initSearchableSelect('#editBank',   'Cari nama bank...');
+    initSearchableSelect('#editPic',    'Cari nama PIC...');
+    initSearchableSelect('#movePicTujuan', 'Cari nama PIC...');
+
+    /*
+    |--------------------------------------------------------------------------
     | MODAL EDIT — load data via AJAX
     |--------------------------------------------------------------------------
     | Ikut digerbang $canManage. Tanpa ini penangannya tetap terpasang untuk
@@ -1360,8 +1546,8 @@ $(function () {
             $('#editNickname').val(res.nickname);
             $('#editCompleteName').val(res.complete_name);
             $('#editCategory').val(res.category ?? 'EXTERNAL');
-            $('#editPic').val(res.pic_id ?? '');
-            $('#editBank').val(res.bank_id ?? '');
+            $('#editPic').val(res.pic_id ?? '').trigger('change');
+            $('#editBank').val(res.bank_id ?? '').trigger('change');
             $('#editAccountNumber').val(res.account_number ?? '');
             $('#editContact').val(res.contact ?? '');
             $('#editStatus').val(res.status);
@@ -1383,6 +1569,7 @@ $(function () {
     $(document).on('click', '.btn-edit', function () {
         bukaModalEdit($(this).data('id'));
     });
+
 
     /* Edit dari dalam modal Detail PIC: modalnya ditutup lebih dulu, dan modal
        Edit baru dibuka setelah penutupannya benar-benar selesai. */
