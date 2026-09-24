@@ -239,8 +239,14 @@ class BudgetRequest extends Model
     /** Sejak kapan CR ini berada di status-nya sekarang — dasar hitungan aging. */
     public function getAgingSinceAttribute(): \Illuminate\Support\Carbon
     {
-        return $this->latestStatusChangeLog()?->created_at ?? $this->created_at ?? now();
+        // Dibaca berkali-kali per CR (sortBy di tiap antrean Todo/Dashboard,
+        // aging_label, dst). Tanpa cache, CR yang statusLogs-nya tidak
+        // di-eager-load memicu satu query SETIAP kali dibaca.
+        return $this->agingSinceCache ??= ($this->latestStatusChangeLog()?->created_at ?? $this->created_at ?? now());
     }
+
+    /** Cache in-memory per instance untuk aging_since. */
+    private ?\Illuminate\Support\Carbon $agingSinceCache = null;
 
     /** Cache in-memory per instance — lihat catatan di getTotalRealizationAttribute(). */
     private ?int $totalRealizationCache = null;

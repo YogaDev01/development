@@ -2425,7 +2425,7 @@ $(function () {
             var url = '/storage/' + a.path;
             if (a.is_image) {
                 html += '<div class="cr-att-card">' +
-                    '<img src="' + url + '" class="cr-att-thumb" data-full="' + url + '" data-name="' + esc(a.original_name) + '">' +
+                    '<img loading="lazy" src="' + url + '" class="cr-att-thumb" data-full="' + url + '" data-name="' + esc(a.original_name) + '">' +
                     '<div class="cr-att-name">' + esc(a.original_name) + '</div>' +
                 '</div>';
             } else {

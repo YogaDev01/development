@@ -36,6 +36,9 @@ return [
     ],
 
     'fonnte' => [
+        // Saklar notifikasi WhatsApp. Bawaannya MATI (dimatikan 23 Sep 2026);
+        // nyalakan lagi dengan FONNTE_ENABLED=true di .env.
+        'enabled' => (bool) env('FONNTE_ENABLED', false),
         'token' => env('FONNTE_TOKEN'),
         'url'   => env('FONNTE_API_URL', 'https://api.fonnte.com/send'),
     ],

@@ -1298,7 +1298,12 @@ $(function () {
             }
         });
     }
-    setInterval(pollNewMessages, 10000);
+    // Tab tersembunyi tidak polling (lihat catatan tesysPoll di layout);
+    // begitu tab dilihat lagi, pesan baru langsung diambil sekali.
+    setInterval(function () { if (!document.hidden) pollNewMessages(); }, 10000);
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) pollNewMessages();
+    });
 
     /* ── Buka milestone tertentu bila diakses dengan ?detail=<id> (dari modal PO) ── */
     var deepDetailId = new URLSearchParams(window.location.search).get('detail');

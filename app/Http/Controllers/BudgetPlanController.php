@@ -398,7 +398,11 @@ class BudgetPlanController extends Controller
 
         $this->scopeVisibleTo($query);
 
-        $budgetPlans = $query->latest()->get();
+        // "Actual" per baris (BudgetPlan::usedAmount) dihitung dalam query yang
+        // sama, bukan satu query SUM per Budget Plan.
+        $budgetPlans = $query
+            ->withSum(['costRequests as used_amount_sum' => fn ($q) => $q->whereIn('status', \App\Support\BudgetConsumption::DISBURSED)], 'amount')
+            ->latest()->get();
 
         $summary = [
             'total'    => $budgetPlans->count(),

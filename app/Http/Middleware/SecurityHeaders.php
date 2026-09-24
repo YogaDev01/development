@@ -43,6 +43,25 @@ class SecurityHeaders
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
 
+        /*
+        | Lapisan cache Hostinger (LiteSpeed Cache Manager / hcdn) TIDAK boleh
+        | menyimpan halaman aplikasi. 23 Sep 2026: Dashboard & Treasury terus
+        | 500 untuk satu pengguna — padahal laravel.log & log error hPanel
+        | kosong, dan Incognito (cookie lain) bisa membuka — tanda respons
+        | error disajikan dari cache di depan aplikasi, bukan dari Laravel.
+        |
+        | X-LiteSpeed-Cache-Control dibaca langsung oleh LiteSpeed. Bawaan
+        | Laravel "no-cache, private" diperketat jadi no-store; respons yang
+        | sudah menetapkan cache sendiri (mis. lampiran di SecureFileController,
+        | "private, max-age=...") dibiarkan.
+        */
+        $response->headers->set('X-LiteSpeed-Cache-Control', 'no-cache');
+
+        $cache = (string) $response->headers->get('Cache-Control');
+        if (! str_contains($cache, 'max-age=') || str_contains($cache, 'max-age=0')) {
+            $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        }
+
         return $response;
     }
 }

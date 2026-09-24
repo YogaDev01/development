@@ -219,6 +219,12 @@ class BudgetPlan extends Model
 
     public function usedAmount(): int
     {
+        // Diisi massal oleh withSum() di halaman daftar (BudgetPlanController::index)
+        // supaya tidak satu query per baris; kondisinya sama dengan query di bawah.
+        if (array_key_exists('used_amount_sum', $this->attributes)) {
+            return (int) $this->attributes['used_amount_sum'];
+        }
+
         return $this->costRequests()
             ->whereIn('status', \App\Support\BudgetConsumption::DISBURSED)
             ->sum('amount');

@@ -18,12 +18,16 @@
                 <div class="chat-bubble-attachments" data-image-group="log-{{ $log->id }}">
                     @foreach($log->attachments as $att)
                         @if($att->isImage())
+                            {{-- lazy: tiap gambar = satu request PHP+MySQL (route
+                                 /storage terautentikasi); tanpa ini seluruh
+                                 riwayat chat memuat puluhan gambar ~1 MB serentak. --}}
                             <img src="{{ asset('storage/'.$att->file_path) }}"
+                                 loading="lazy" decoding="async"
                                  class="chat-att-img"
                                  data-full="{{ asset('storage/'.$att->file_path) }}"
                                  data-name="{{ $att->file_name }}">
                         @elseif($att->isVideo())
-                            <video src="{{ asset('storage/'.$att->file_path) }}" class="chat-att-video" controls></video>
+                            <video src="{{ asset('storage/'.$att->file_path) }}" class="chat-att-video" controls preload="none"></video>
                         @elseif($att->isPdf())
                             <a href="{{ asset('storage/'.$att->file_path) }}" target="_blank" rel="noopener" class="chat-att-file">
                                 <i class="fas fa-file-pdf mr-1"></i>{{ $att->file_name }}

@@ -224,6 +224,10 @@ class ProjectController extends Controller
         [$projects, $truncated, $total] = $this->cappedRows($query, 'id');
         $maxRows = $this->maxRows;
 
+        // Angka keuangan per baris (Variable Cost, Payment, margin) dimuat
+        // massal sekali — lihat Project::preloadFinancials().
+        Project::preloadFinancials($projects);
+
         /*
         | Badge R/B/I/P (PO Received/BAST/Invoice/Payment) diselaraskan dengan
         | status milestone Project Monitoring saat ini, supaya tidak "nyangkut"
@@ -282,6 +286,7 @@ class ProjectController extends Controller
         $projects = Project::with(['customer', 'manager', 'budgetPlans', 'poNumbers', 'invoices'])
             ->when($ids->isNotEmpty(), fn ($q) => $q->whereIn('id', $ids))
             ->latest()->get();
+        Project::preloadFinancials($projects);
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();

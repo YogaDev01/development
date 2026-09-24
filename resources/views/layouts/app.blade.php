@@ -320,25 +320,6 @@
 
                 @yield('page-actions')
 
-                {{-- To Do Bell — ringkasan task dari TodoListController::fetchBell() --}}
-                <div class="dropdown" id="todoBellWrap">
-                    <button type="button" class="icon-btn" data-toggle="dropdown" data-display="static" id="todoBellToggle" title="Todo List">
-                        <i class="fas fa-tasks"></i>
-                        <span id="todoBadge" class="badge badge-warning" style="display:none;"></span>
-                    </button>
-                    <div class="dropdown-menu dropdown-menu-right ts-pop" id="todoDropdown">
-                        <div class="ts-pop-head">
-                            <strong>Todo List</strong>
-                            <a href="{{ route('todo-list.index') }}">Lihat semua &rarr;</a>
-                        </div>
-                        <div id="todoList" class="ts-pop-body"></div>
-                        <div id="todoEmpty" class="ts-pop-empty" style="display:none;">
-                            <i class="fas fa-check-circle d-block mb-2"></i>
-                            Semua tugas sudah selesai.
-                        </div>
-                    </div>
-                </div>
-
                 {{-- Notification Bell --}}
                 <div class="dropdown" id="notifBellWrap">
                     <button type="button" class="icon-btn" data-toggle="dropdown" data-display="static" id="notifBellToggle" title="Notifikasi">
@@ -746,6 +727,32 @@ $.ajaxSetup({
     headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
 });
 
+/*
+  Polling bell yang sadar tab. Dulu setInterval(60 detik) jalan di SETIAP tab
+  yang terbuka, termasuk yang tersembunyi — dan Chrome menyelaraskan timer tab
+  latar ke detik yang sama. User dengan 7 tab = 14 request PHP+MySQL serentak
+  tiap menit; di log produksi terlihat sebagai rombongan "[2002] Operation not
+  permitted" dari satu user dalam satu detik, yang ikut menjatuhkan halaman
+  user lain (batas koneksi/proses Hostinger dihitung per akun, bukan per user).
+
+  Sekarang: tab tersembunyi tidak polling sama sekali; begitu tab dilihat lagi,
+  polling dijalankan sekali (bila sudah lewat interval). Jitter acak mencegah
+  tab-tab yang dibuka bersamaan jatuh di detik yang sama.
+*/
+window.tesysPoll = function (fn, intervalMs) {
+    var terakhir = 0;
+    function jalan() {
+        if (document.hidden) return;
+        terakhir = Date.now();
+        fn();
+    }
+    jalan();
+    setInterval(jalan, intervalMs + Math.floor(Math.random() * 15000));
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden && Date.now() - terakhir >= intervalMs) jalan();
+    });
+};
+
 $(function () {
     var fetchUrl = "{{ route('notifications.fetch') }}";
 
@@ -805,106 +812,10 @@ $(function () {
         $.post("{{ route('notifications.read-all') }}", function () { pollNotifications(); });
     });
 
-    pollNotifications();
-    setInterval(pollNotifications, 60000);
+    tesysPoll(pollNotifications, 60000);
 });
 </script>
 
-<!-- TO DO BELL (ringkasan dari modul Todo List) -->
-<script>
-$(function () {
-    var todoCountUrl = "{{ route('todo-list.count') }}";
-    var todoFetchUrl = "{{ route('todo-list.fetch') }}";
-    var todoListUrl  = "{{ route('todo-list.index') }}";
-
-    function renderTodoBadge(count) {
-        var $badge = $('#todoBadge');
-        if (count > 0) {
-            $badge.text(count > 99 ? '99+' : count).show();
-        } else {
-            $badge.hide();
-        }
-    }
-
-    /* Penjagaan yang sama seperti renderNotifications di atas. */
-    function renderTodos(data) {
-        if (!data || !Array.isArray(data.items)) {
-            $('#todoList').empty();
-            $('#todoEmpty').show();
-            return;
-        }
-
-        renderTodoBadge(data.count);
-
-        var $list = $('#todoList').empty();
-        if (!data.items.length) {
-            $('#todoEmpty').show();
-            return;
-        }
-        $('#todoEmpty').hide();
-
-        data.items.forEach(function (t) {
-            // Semua item mengarah ke halaman Todo List penuh (bukan detail
-            // masing-masing modul) — popup ini hanya ringkasan sekilas.
-            var $item = $('<a></a>')
-                .addClass('notif-row')
-                .attr('href', todoListUrl);
-
-            $item.append($('<span class="notif-row-title"></span>').text(t.title));
-            $item.append(
-                $('<span class="notif-row-meta"></span>').append(
-                    $('<span class="badge badge-' + (t.status_color || 'secondary') + '"></span>').text(t.status_label),
-                    $('<span></span>').text(t.date)
-                )
-            );
-            $item.append($('<span class="notif-row-time text-' + (t.color || 'secondary') + '"></span>').text(t.aging_label));
-
-            $list.append($item);
-        });
-    }
-
-    /*
-      Polling hanya mengambil ANGKA-nya (todo-list/count), bukan seluruh isi
-      popup. Menyusun isi popup berarti membangun ulang seluruh worklist —
-      ribuan query — padahal yang berubah di layar cuma satu angka kecil, dan
-      sebagian besar polling terjadi saat dropdown-nya bahkan tidak dibuka.
-
-      Isi popup baru diambil saat dropdown benar-benar dibuka (todo-list/fetch),
-      lalu ditahan sebentar supaya membuka-tutup berulang tidak memanggil ulang.
-    */
-    function pollTodoCount() {
-        $.get(todoCountUrl, function (data) {
-            renderTodoBadge(data && data.count ? data.count : 0);
-        }).fail(function () {
-            // Diam-diam gagal — badge tetap seperti sebelumnya, tidak boleh
-            // mengganggu topbar/halaman lain.
-        });
-    }
-
-    var todoItemsUmur = 0;          // kapan isi popup terakhir diambil
-    var todoItemsTtl  = 30000;      // tahan 30 detik, sepadan dengan cache server
-    var todoItemsJalan = false;
-
-    function muatIsiTodo(paksa) {
-        if (todoItemsJalan) return;
-        if (!paksa && Date.now() - todoItemsUmur < todoItemsTtl) return;
-
-        todoItemsJalan = true;
-        $.get(todoFetchUrl, function (data) {
-            renderTodos(data);
-            todoItemsUmur = Date.now();
-        }).always(function () {
-            todoItemsJalan = false;
-        });
-    }
-
-    // Bootstrap 4 memancarkan show.bs.dropdown pada pembungkusnya.
-    $('#todoBellWrap').on('show.bs.dropdown', function () { muatIsiTodo(false); });
-
-    pollTodoCount();
-    setInterval(pollTodoCount, 60000);
-});
-</script>
 @endauth
 
 <!-- PAGE SCRIPT -->

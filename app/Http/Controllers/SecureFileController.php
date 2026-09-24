@@ -43,7 +43,18 @@ class SecureFileController extends Controller
         $disk = Storage::disk('secure');
 
         if (! $disk->exists($path)) {
-            abort(404);
+            /*
+            | Lampiran yang diunggah SEBELUM pindah ke disk privat masih tinggal
+            | di storage/app/public (disk "public"), sementara path di basis
+            | datanya sama. Tanpa jalur ini semuanya 404 (ditemukan 23 Sep 2026
+            | pada lampiran PO lama). Pemeriksaan akses di bawah tetap berlaku;
+            | "php artisan files:pindah-lampiran-lama" memindahkannya permanen.
+            */
+            $disk = Storage::disk('public');
+
+            if (! $disk->exists($path)) {
+                abort(404);
+            }
         }
 
         if (! $access->allows($path)) {
@@ -70,8 +81,12 @@ class SecureFileController extends Controller
         return $disk->response($path, basename($path), [
             'Content-Type'           => $mime,
             'X-Content-Type-Options' => 'nosniff',
-            // Berkas keuangan tidak boleh mengendap di cache bersama (proxy).
-            'Cache-Control'          => 'private, max-age=0, must-revalidate',
+            // "private": tidak boleh mengendap di cache bersama (proxy/CDN).
+            // max-age: nama berkas acak dari Storage::store() dan isinya tak
+            // pernah ditimpa, jadi aman disimpan di peramban pemilik sesi.
+            // Dulu max-age=0 membuat setiap buka halaman mengunduh ulang semua
+            // gambar lewat PHP+MySQL — pemicu lonjakan CPU 100% di Hostinger.
+            'Cache-Control'          => 'private, max-age=604800',
         ], $disposition);
     }
 }
