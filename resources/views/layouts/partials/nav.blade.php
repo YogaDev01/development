@@ -14,7 +14,8 @@
 --}}
 @php
     $navItems    = config('navigation.items', []);
-    $navSections = config('navigation.apps.' . $currentApp, []);
+    // Seksi aplikasi + Master Data bersama (sama di semua aplikasi).
+    $navSections = \App\Support\Navigation::sections($currentApp);
 
     $homeUrl = $currentAppConfig['home'];
 

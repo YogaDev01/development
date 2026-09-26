@@ -8,6 +8,7 @@
 |
 |   'items'  — setiap menu yang ada: namanya, ikonnya, tujuannya, kapan ia
 |              dianggap sedang dibuka, dan hak akses apa yang dibutuhkan.
+|   'master_data' — daftar Master Data bersama, sama di semua aplikasi.
 |   'apps'   — aplikasi mana menampilkan menu apa, dalam seksi apa.
 |
 | Berkas ini HANYA menentukan tampilan navigasi. Kewenangan tetap dijaga
@@ -301,8 +302,27 @@ return [
     ],
 
     /*
-    | Isi sidebar tiap aplikasi. Seksi kosong (semua menunya tidak boleh
-    | dibuka user ini) otomatis tidak dirender, termasuk labelnya.
+    | MASTER DATA — satu daftar untuk SEMUA aplikasi.
+    |
+    | Master data adalah milik bersama (Customer yang ditagih Finance adalah
+    | Customer yang dikirimi barang oleh Logistics), jadi daftarnya ditulis
+    | SEKALI di sini dan disisipkan otomatis ke setiap aplikasi tepat setelah
+    | seksi Overview. Yang tampil untuk seorang user ditentukan menu access
+    | role-nya saja: bila Customer dicentang, ia muncul di Master Data Finance,
+    | Logistics, HR, dan seterusnya — sama persis di semua aplikasi.
+    |
+    | Karena itu JANGAN menulis 'Master Data' lagi di daftar 'apps' di bawah.
+    | Lihat App\Support\Navigation::sections().
+    */
+    'master_data' => [
+        'customer', 'beneficiary', 'source-fund', 'cost-center', 'account',
+        'project-master', 'milestone', 'pic', 'team', 'employee', 'user-access',
+    ],
+
+    /*
+    | Isi sidebar tiap aplikasi (tanpa Master Data — lihat 'master_data').
+    | Seksi kosong (semua menunya tidak boleh dibuka user ini) otomatis tidak
+    | dirender, termasuk labelnya.
     */
     'apps' => [
 
@@ -315,26 +335,22 @@ return [
          */
         'finance' => [
             'Overview'    => ['dashboard'],
-            'Master Data' => ['customer', 'beneficiary', 'source-fund', 'cost-center', 'account'],
             'Workflow'    => ['todo-list', 'purchase-order', 'budgeting', 'cost-request', 'treasury', 'invoice', 'cash-receipt', 'delivery-note', 'cost-register', 'cash-management', 'closing'],
             'Analysis'    => ['finance-summary', 'forecast', 'reports'],
         ],
 
         'hr' => [
             'Overview'    => ['dashboard'],
-            'Master Data' => ['employee', 'team'],
             'Workflow'    => ['payroll-run'],
         ],
 
         'rnd' => [
             'Overview'    => ['dashboard'],
-            'Master Data' => ['user-access'],
             'Workflow'    => ['feedback-inbox'],
         ],
 
         'logistic' => [
             'Overview'    => ['dashboard'],
-            'Master Data' => ['customer', 'beneficiary', 'team'],
         ],
 
         /*
@@ -346,13 +362,11 @@ return [
          */
         'operation' => [
             'Overview'    => ['dashboard'],
-            'Master Data' => ['customer', 'team', 'project-master', 'milestone', 'pic'],
             'Workflow'    => ['project-monitoring'],
         ],
 
         'project' => [
             'Overview'    => ['dashboard', 'project-summary'],
-            'Master Data' => ['customer', 'team', 'project-master', 'milestone', 'pic'],
             'Workflow'    => ['project-monitoring'],
         ],
     ],

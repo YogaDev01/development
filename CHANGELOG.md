@@ -17,17 +17,20 @@ lebih ringan.
 - Halaman error sendiri (403, 404, 419, 429, 500) dengan penjelasan berbahasa Indonesia dan jalan keluar yang jelas, menggantikan layar error bawaan.
 - Akun yang dinonaktifkan langsung kehilangan sesinya saat itu juga, tidak lagi menunggu sesinya kedaluwarsa sendiri.
 - Pemantauan antrean notifikasi terjadwal: penumpukan job tercatat sebagai peringatan sehingga worker yang mati bisa ketahuan lebih cepat.
+- Atur Menu Access di Role Master kini dikelompokkan per aplikasi (Tesys Finance, HR, R&D, Operations, Project) dengan pilih-semua per aplikasi, dan disusun otomatis dari peta menu yang sama dengan sidebar.
 
 ### Berubah
 - Fitur Tesys AI dilepas beserta seluruh layanan pendukungnya; aplikasi jadi lebih ringan dan tidak lagi bergantung pada layanan pihak ketiga.
 - Dashboard disederhanakan menjadi sapaan dan panel riwayat rilis; ringkasan pekerjaan tetap lengkap di Todo List dan badge lonceng.
 - Pemuatan aset (CSS/JS) memakai satu penanda versi, memangkas puluhan akses berkas di setiap permintaan halaman.
 - Global Search, Invoice, Budget Plan, Cost Request, Project, dan Forecast dirapikan penulisan kodenya agar hak akses dan alur datanya konsisten.
+- Master Data kini satu daftar bersama untuk semua aplikasi: menu Master Data yang tampil di sidebar Finance, Logistics, HR, dan lainnya sama persis, hanya ditentukan menu access role.
 
 ### Perbaikan
 - Nilai uang di atas Rp 2,14 miliar (Fixed Cost, Cost Register, arus kas) tidak lagi menyebabkan error 500 — kolomnya diperlebar.
 - Menghapus data master (user, beneficiary, cluster) tidak lagi bisa ikut menghapus Cost Request beserta rincian dan riwayat persetujuannya; kini ditolak di tingkat basis data.
 - Berkas migrasi dengan spasi pada namanya diganti nama agar aman dijalankan di semua lingkungan.
+- Migrasi update daily_transactions yang ikut terjalankan ulang setelah ganti nama tidak lagi gagal "Data truncated for column status" pada basis data yang sudah memakai status DONE.
 
 ## [2.3.3] - 2026-09-26 — Cost Request: Tab Cash Advance, Cost Payment & Database
 

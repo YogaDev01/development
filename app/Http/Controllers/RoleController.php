@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\Role;
 use App\Models\MenuItem;
+use App\Support\Navigation;
 
 class RoleController extends Controller
 {
@@ -129,10 +130,14 @@ class RoleController extends Controller
     {
         $role = Role::with('menuItems')->findOrFail($id);
 
-        $menuItems = MenuItem::ordered()->get()->groupBy('section');
-
         $selectedIds = $role->menuItems->pluck('id')->toArray();
 
+        /*
+        | Susunan checklist dibaca dari config/navigation.php + config/apps.php
+        | (sumber yang sama dengan sidebar), bukan dari kolom menu_items.section
+        | yang ditulis tangan: menu dikelompokkan per aplikasi Tesys -> seksi,
+        | dan Master Data tampil SEKALI karena berlaku di semua aplikasi.
+        */
         return response()->json([
             'role'         => [
                 'id'         => $role->id,
@@ -141,12 +146,7 @@ class RoleController extends Controller
                 'is_super'   => strtolower($role->name) === 'superadmin',
             ],
             'selected_ids' => $selectedIds,
-            'menu_items'   => $menuItems->map(fn($items) => $items->map(fn($item) => [
-                'id'    => $item->id,
-                'key'   => $item->key,
-                'label' => $item->label,
-                'icon'  => $item->icon,
-            ])),
+            'tree'         => Navigation::accessTree(),
         ]);
     }
 }

@@ -32,16 +32,25 @@ return new class extends Migration
         |----------------------------------------------------------------------
         | 1. Tambah status PAID ke daily_transactions
         |----------------------------------------------------------------------
+        |
+        | Hanya dijalankan bila ENUM belum memuat PAID. Pada basis data yang
+        | sudah bermigrasi, migrasi 2026_09_02_000003 telah mengganti APPROVED
+        | menjadi DONE — memaksa ENUM lama di sini akan memotong baris DONE
+        | ("Data truncated for column 'status'").
         */
-        DB::statement("
-            ALTER TABLE daily_transactions
-            MODIFY COLUMN status ENUM(
-                'PENDING_APPROVER',
-                'APPROVED',
-                'PAID',
-                'REJECTED'
-            ) DEFAULT 'PENDING_APPROVER'
-        ");
+        $statusColumn = DB::selectOne("SHOW COLUMNS FROM daily_transactions LIKE 'status'");
+
+        if (! str_contains($statusColumn->Type ?? '', "'PAID'")) {
+            DB::statement("
+                ALTER TABLE daily_transactions
+                MODIFY COLUMN status ENUM(
+                    'PENDING_APPROVER',
+                    'APPROVED',
+                    'PAID',
+                    'REJECTED'
+                ) DEFAULT 'PENDING_APPROVER'
+            ");
+        }
 
         /*
         |----------------------------------------------------------------------

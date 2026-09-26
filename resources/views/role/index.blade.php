@@ -224,7 +224,7 @@
                             <div class="d-flex align-items-center" style="gap:8px;">
                                 <input type="checkbox" id="selectAll">
                                 <label for="selectAll" class="mb-0 font-weight-600" style="font-size:13px; cursor:pointer;">
-                                    Pilih Semua Menu
+                                    Pilih Semua Menu (seluruh Tesys)
                                 </label>
                             </div>
                             <small id="selectedCount" class="text-muted">0 menu dipilih</small>
@@ -353,6 +353,28 @@
 
 .menu-check-item.is-checked label { color:#1e40af; }
 
+/* Satu blok per aplikasi Tesys (+ blok "Semua Tesys" untuk Master Data) */
+.menu-group {
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    margin-bottom:16px;
+    overflow:hidden;
+}
+.menu-group-head {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 14px;
+    background:var(--surface-2);
+    border-bottom:1px solid var(--border);
+    font-size:13px; font-weight:700; color:var(--text);
+}
+.menu-group-head input[type="checkbox"] { width:16px; height:16px; accent-color:var(--info); cursor:pointer; }
+.menu-group-note {
+    padding:8px 14px 0;
+    font-size:12px; color:var(--text-faint);
+}
+.menu-group-body { padding:4px 14px 8px; }
+.menu-group-body .menu-section-label:first-child { margin-top:0; }
+
 /* MOBILE */
 @media (max-width: 768px) {
     .content-header .row { flex-direction:column; }
@@ -432,21 +454,85 @@ $(function () {
     |--------------------------------------------------------------------------
     */
 
-    const sectionLabels = {
-        'dashboard': { label: 'Dashboard',          icon: 'fas fa-tachometer-alt' },
-        'master':    { label: 'Master Data',         icon: 'fas fa-database'       },
-        'finance':   { label: 'Finance Management',  icon: 'fas fa-money-bill-wave'},
-        'general':   { label: 'General',             icon: 'fas fa-comment-dots'   },
-        'project':   { label: 'Project Management',  icon: 'fas fa-concierge-bell' },
-    };
+    /*
+     | Susunan checklist datang dari server (App\Support\Navigation::accessTree),
+     | yang membacanya dari config/navigation.php — sumber yang sama dengan
+     | sidebar. Tidak ada daftar seksi yang ditulis tangan di sini lagi.
+     |
+     | Satu menu boleh muncul di lebih dari satu aplikasi (mis. Project
+     | Monitoring di Operations dan Project). Hak aksesnya tetap SATU baris,
+     | jadi semua kotak dengan value yang sama selalu disamakan, dan hitungan
+     | memakai id unik.
+     */
+    const CB = '#menuSections input[name="menu_item_ids[]"]';
+
+    function esc(s) {
+        return $('<div>').text(s == null ? '' : s).html();
+    }
+
+    function renderItems(items, selected) {
+        let html = '<div class="row">';
+        items.forEach(function (item) {
+            let checked = selected.includes(item.id) ? 'checked' : '';
+            let uid = 'm_' + item.id + '_' + Math.random().toString(36).slice(2, 7);
+            html += '<div class="col-md-6"><div class="menu-check-item ' + (checked ? 'is-checked' : '') + '">' +
+                '<input type="checkbox" name="menu_item_ids[]" value="' + item.id + '" id="' + uid + '" ' + checked + '>' +
+                '<label for="' + uid + '">' +
+                    '<i class="' + esc(item.icon) + ' mr-2 text-muted" style="font-size:12px;"></i>' + esc(item.label) +
+                '</label>' +
+            '</div></div>';
+        });
+        return html + '</div>';
+    }
+
+    function renderGroup(title, icon, sections, selected, note) {
+        let html = '<div class="menu-group">' +
+            '<div class="menu-group-head">' +
+                '<label class="mb-0 d-flex align-items-center" style="gap:8px; cursor:pointer;">' +
+                    '<input type="checkbox" class="group-select">' +
+                    '<i class="' + esc(icon) + '" style="color:var(--accent);"></i>' +
+                    '<span>' + esc(title) + '</span>' +
+                '</label>' +
+                '<small class="text-muted group-count"></small>' +
+            '</div>';
+        if (note) {
+            html += '<div class="menu-group-note">' + note + '</div>';
+        }
+        html += '<div class="menu-group-body">';
+        sections.forEach(function (sec) {
+            html += '<div class="menu-section-label">' + esc(sec.label) + '</div>';
+            html += renderItems(sec.items, selected);
+        });
+        return html + '</div></div>';
+    }
+
+    function uniqueChecked($scope) {
+        let ids = {};
+        $scope.find('input[name="menu_item_ids[]"]:checked').each(function () { ids[this.value] = 1; });
+        return Object.keys(ids).length;
+    }
+
+    function uniqueTotal($scope) {
+        let ids = {};
+        $scope.find('input[name="menu_item_ids[]"]').each(function () { ids[this.value] = 1; });
+        return Object.keys(ids).length;
+    }
 
     function updateCount() {
-        let count = $('#menuSections input[name="menu_item_ids[]"]:checked').length;
-        let total = $('#menuSections input[name="menu_item_ids[]"]').length;
-        $('#selectedCount').text(count + ' menu dipilih');
+        let $all = $('#menuSections');
+        let count = uniqueChecked($all), total = uniqueTotal($all);
+        $('#selectedCount').text(count + ' / ' + total + ' menu dipilih');
         $('#selectAll').prop('indeterminate', count > 0 && count < total);
         $('#selectAll').prop('checked', count === total && total > 0);
-        $('#menuSections input[name="menu_item_ids[]"]').each(function () {
+
+        $('#menuSections .menu-group').each(function () {
+            let $g = $(this);
+            let c = uniqueChecked($g), t = uniqueTotal($g);
+            $g.find('.group-count').text(c + ' / ' + t);
+            $g.find('.group-select').prop('indeterminate', c > 0 && c < t).prop('checked', c === t && t > 0);
+        });
+
+        $(CB).each(function () {
             $(this).closest('.menu-check-item').toggleClass('is-checked', $(this).is(':checked'));
         });
     }
@@ -463,25 +549,21 @@ $(function () {
             $('#modalTitle').text('Atur Menu Access — ' + d.role.name);
             $('#formConfigure').attr('action', '{{ url("/role") }}/' + d.role.id);
 
-            const sectionOrder = ['dashboard', 'master', 'finance', 'general', 'project'];
+            let tree = d.tree || {};
             let html = '';
 
-            sectionOrder.forEach(function (section) {
-                if (!d.menu_items[section]) return;
-                let sec = sectionLabels[section] || { label: section, icon: 'fas fa-circle' };
-                html += '<div class="menu-section-label"><i class="' + sec.icon + ' mr-2"></i>' + sec.label + '</div>';
-                html += '<div class="row">';
-                d.menu_items[section].forEach(function (item) {
-                    let checked = d.selected_ids.includes(item.id) ? 'checked' : '';
-                    html += '<div class="col-md-6"><div class="menu-check-item ' + (checked ? 'is-checked' : '') + '">' +
-                        '<input type="checkbox" name="menu_item_ids[]" value="' + item.id + '" id="m_' + item.id + '" ' + checked + '>' +
-                        '<label for="m_' + item.id + '">' +
-                            '<i class="' + item.icon + ' mr-2 text-muted" style="font-size:12px;"></i>' + item.label +
-                        '</label>' +
-                    '</div></div>';
-                });
-                html += '</div>';
+            if ((tree.shared || []).length) {
+                html += renderGroup('Semua Tesys', 'fas fa-globe', tree.shared, d.selected_ids,
+                    '<i class="fas fa-info-circle mr-1"></i>Master Data berlaku di <strong>semua aplikasi</strong>: ' +
+                    'menu yang dicentang di sini muncul di sidebar Master Data setiap Tesys.');
+            }
+            (tree.apps || []).forEach(function (app) {
+                html += renderGroup(app.label, app.icon, app.sections, d.selected_ids);
             });
+            if ((tree.others || []).length) {
+                html += renderGroup('Lainnya', 'fas fa-ellipsis-h',
+                    [{ label: 'Belum dipetakan ke aplikasi', items: tree.others }], d.selected_ids);
+            }
 
             $('#menuSections').html(html);
             updateCount();
@@ -492,10 +574,23 @@ $(function () {
         });
     });
 
-    $(document).on('change', '#menuSections input[name="menu_item_ids[]"]', updateCount);
+    // Menu yang tampil di beberapa aplikasi: samakan semua kotaknya.
+    $(document).on('change', CB, function () {
+        $(CB + '[value="' + this.value + '"]').prop('checked', this.checked);
+        updateCount();
+    });
+
+    // Pilih semua per aplikasi.
+    $(document).on('change', '#menuSections .group-select', function () {
+        let on = this.checked;
+        $(this).closest('.menu-group').find('input[name="menu_item_ids[]"]').each(function () {
+            $(CB + '[value="' + this.value + '"]').prop('checked', on);
+        });
+        updateCount();
+    });
 
     $('#selectAll').on('change', function () {
-        $('#menuSections input[name="menu_item_ids[]"]').prop('checked', $(this).is(':checked'));
+        $(CB).prop('checked', $(this).is(':checked'));
         updateCount();
     });
 
