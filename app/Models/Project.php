@@ -424,6 +424,22 @@ class Project extends Model
     public function isClosed(): bool       { return $this->status === 'CLOSED'; }
 
     /** Head bisa edit hanya saat DRAFT */
+    /**
+     * Peran yang boleh mengedit PO pada status APA PUN — bukan cuma DRAFT/
+     * SUBMITTED/WAITING_PO seperti Head & Finance. Ditaruh di model supaya
+     * route, controller, dan tombol di daftar PO membaca daftar yang sama;
+     * sebelumnya tiap tempat menulis daftar perannya sendiri dan gampang
+     * bergeser satu sama lain.
+     */
+    public const FULL_EDIT_ROLES = ['superadmin', 'approver', 'finance_manager'];
+
+    public function isFullyEditableBy($user = null): bool
+    {
+        $user ??= Auth::user();
+
+        return in_array($user?->role?->name, self::FULL_EDIT_ROLES, true);
+    }
+
     public function isEditableByHead(): bool { return $this->status === 'DRAFT'; }
 
     /** Finance bisa edit saat DRAFT, SUBMITTED, atau WAITING_PO */

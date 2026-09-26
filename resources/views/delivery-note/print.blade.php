@@ -69,7 +69,7 @@ $company = ['name' => 'PT TEREX', 'logo' => 'ts_logo_dark.png'];
             <img src="{{ asset('dist/img/' . $company['logo']) }}" alt="{{ $company['name'] }}">
             <div>
                 <p class="company-name">{{ $company['name'] }}</p>
-                <p class="company-address">Perumahan Pemda Bekasi Jl. Arjuna Raya No 42A Blok B</p>
+                <p class="company-address">Jl. Arjuna Raya No 42A</p>
                 <p class="company-address">Kel. Jati Asih, Kec. Jati Asih, Kota Bekasi, 17423</p>
                 <p class="company-address">Telp: 0822-9389-8749, Email: finance@terex.id</p>
             </div>
@@ -84,7 +84,7 @@ $company = ['name' => 'PT TEREX', 'logo' => 'ts_logo_dark.png'];
         <div class="block">
             <strong>Pengirim</strong>
             {{ $company['name'] }}<br>
-            Perumahan Pemda Bekasi Jl. Arjuna Raya No 42A Blok B<br>
+            Jl. Arjuna Raya No 42A<br>
             Kel. Jati Asih, Kec. Jati Asih, Kota Bekasi, 17423
         </div>
         <div class="block" style="text-align:right;">

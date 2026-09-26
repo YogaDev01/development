@@ -84,6 +84,16 @@ class WorkflowStatus
             'tone'        => 'attention',
             'icon'        => 'fa-hourglass-half',
         ],
+        'SETTLE_APPROVED' => [
+            'description' => 'Settlement sudah disetujui',
+            'tone'        => 'positive',
+            'icon'        => 'fa-check-circle',
+        ],
+        'SECOND_APPROVED' => [
+            'description' => 'Second Payment sudah disetujui',
+            'tone'        => 'positive',
+            'icon'        => 'fa-check-circle',
+        ],
         'CLOSED' => [
             'description' => 'Selesai',
             'tone'        => 'done',
@@ -300,7 +310,8 @@ class WorkflowStatus
     private const FLOWS = [
         'budget-request' => [
             'DRAFT', 'SUBMITTED', 'CHECKED', 'VERIFIED', 'APPROVED', 'QUEUED',
-            'PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED',
+            'PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED',
+            'SETTLE_APPROVED', 'SECOND_APPROVED', 'CLOSED',
         ],
         'budget-plan' => [
             'DRAFT', 'SUBMITTED', 'CHECKED', 'VERIFIED', 'ACTIVE', 'CLOSING', 'CLOSED',

@@ -20,8 +20,16 @@ class MasterPic extends Model
         'account_number',
         'phone',
         'email',
+        // Keterangan tambahan per PIC, diisi dari Daftar PIC. Lihat migrasi
+        // 2026_09_25_000010.
+        'token',
+        'nominal',
         'status',
         'input_by',
+    ];
+
+    protected $casts = [
+        'nominal' => 'decimal:2',
     ];
 
     public const TYPES = [

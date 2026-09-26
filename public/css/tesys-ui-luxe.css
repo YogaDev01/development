@@ -1988,15 +1988,30 @@ body.tesys-ui .sidebar .sidebar-cmd .ts-cmd-kbd {
 }
 
 /* Mode rail: tombolnya menyusut jadi ikon saja — pencarian tetap bisa
-   dibuka tanpa harus melebarkan menu dulu. */
-body.tesys-ui.sidebar-rail .sidebar .sidebar-cmd { padding: 2px 0 10px; }
+   dibuka tanpa harus melebarkan menu dulu.
+
+   Ukurannya sengaja dijiplak dari .nav-item di mode rail (jalur 10px kiri
+   kanan, ikon di tengah): kalau geometrinya beda sedikit saja, ikon cari
+   terlihat meleset dari deretan ikon menu tepat di bawahnya. Teks dan
+   pintasan papan ketik dimatikan dengan !important karena aturan lebar
+   penuh di atas punya kekhususan yang sama. */
+body.tesys-ui.sidebar-rail .sidebar .sidebar-cmd {
+    padding: 2px 10px 10px;
+    overflow: hidden;          /* apa pun yang lebih lebar dari jalur dipotong */
+}
 body.tesys-ui.sidebar-rail .sidebar .sidebar-cmd .ts-cmd-trigger {
-    width: 32px;
-    margin: 0 auto;
-    padding: 0;
+    width: 100%;
+    min-width: 0;
+    height: 34px;
+    margin: 0;
+    padding: 0 !important;
+    gap: 0;
     justify-content: center;
 }
-body.tesys-ui.sidebar-rail .sidebar .sidebar-cmd .ts-cmd-trigger > span { display: none; }
+body.tesys-ui.sidebar-rail .sidebar .sidebar-cmd .ts-cmd-trigger > i { font-size: 13px; }
+body.tesys-ui.sidebar-rail .sidebar .sidebar-cmd .ts-cmd-trigger > span,
+body.tesys-ui.sidebar-rail .sidebar .sidebar-cmd .ts-cmd-trigger > span:not(.ts-cmd-kbd),
+body.tesys-ui.sidebar-rail .sidebar .sidebar-cmd .ts-cmd-kbd { display: none !important; }
 /* Aturan bawaan menyembunyikan label pemicu di bawah 768px (dulu ia tombol
    ikon di topbar yang sempit). Di sidebar ruangnya lapang, jadi labelnya
    dikembalikan; yang disembunyikan hanya pintasan papan ketik karena di

@@ -28,6 +28,8 @@
                 ['Settle',    $summary['realized'],  'primary',  'REALIZED'],
                 ['Settle Checked',  $summary['settle_checked'],  'info',    'SETTLE_CHECKED'],
                 ['Settle Verified', $summary['settle_verified'], 'primary', 'SETTLE_VERIFIED'],
+                ['Settle Approved', $summary['settle_approved'], 'success', 'SETTLE_APPROVED'],
+                ['Second Approved', $summary['second_approved'], 'success', 'SECOND_APPROVED'],
                 ['Closed',    $summary['closed'],    'dark',     'CLOSED'],
             ];
         @endphp
@@ -89,8 +91,10 @@
                                         'paid_at'   => 'Tanggal Paid',
                                         'pengaju'   => 'Pengaju',
                                         'penerima'  => 'Penerima',
+                                        'pic'       => 'PIC',
                                         'realisasi' => 'Settlement',
                                         'refund'    => 'Refund',
+                                        'claim'     => 'Expense Claim',
                                     ];
                                 @endphp
                                 @foreach($crHideableCols as $key => $label)
@@ -124,9 +128,16 @@
                                 <th scope="col" class="text-nowrap" style="width:1%;">Tanggal Paid</th>
                                 <th scope="col" class="text-nowrap" style="width:1%;">Requestor</th>
                                 <th scope="col" class="text-nowrap" style="width:1%;">Beneficiary</th>
+                                {{-- PIC = pemegang beneficiary. Ditaruh persis di sebelah
+                                     Beneficiary karena keduanya menjawab "uangnya untuk siapa"
+                                     pada dua tingkat yang berbeda. --}}
+                                <th scope="col" class="text-nowrap" style="width:1%;">PIC</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Request</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Settlement</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Refund</th>
+                                {{-- Kebalikan Refund: settlement melebihi pengajuan, jadi masih
+                                     ada kekurangan bayar yang ditagihkan balik. --}}
+                                <th scope="col" class="text-right text-nowrap" style="width:1%;">Expense Claim</th>
                                 <th scope="col" class="text-nowrap" style="width:1%;">Status</th>
                                 <th scope="col" class="text-center all action-column" style="width:1%;">Action</th>
                             </tr>
@@ -146,6 +157,9 @@
                                    sendiri — angka yang tidak pernah benar. refundAmount()
                                    sudah menjaga aturan itu di satu tempat. */
                                 $refund    = $cr->refundAmount();
+                                /* Expense Claim = kebalikannya: settlement lebih besar dari
+                                   pengajuan. Aturan settle-nya sama dengan refund. */
+                                $claim     = $cr->expenseClaimAmount();
                             @endphp
                             <tr data-id="{{ $cr->id }}"
                                 data-status="{{ $cr->status }}"
@@ -153,6 +167,10 @@
                                 data-pminternal="{{ strtoupper($cr->pm_internal_name) }}"
                                 data-po="{{ $cr->budgetPlan?->project ? '[' . $cr->budgetPlan->project->code . '] ' . $cr->budgetPlan->project->name : '' }}"
                                 data-beneficiary="{{ $cr->beneficiary?->nickname ?? '' }}"
+                                {{-- PIC = pemegang beneficiary-nya. Dipakai filter "PIC" dan
+                                     tautan dari kartu Active Cash Advance di halaman Summary,
+                                     yang mengelompokkan CA per PIC, bukan per beneficiary. --}}
+                                data-pic="{{ $cr->beneficiary?->pic?->pic ?? '' }}"
                                 data-nob="{{ ($isNob || $isNobItem) ? '1' : '0' }}"
                                 data-date="{{ $cr->created_at->format('Y-m-d') }}"
                                 class="{{ $isNob ? 'row-nob' : ($isNobItem ? 'row-nob-item' : '') }}">
@@ -194,6 +212,10 @@
                                     {{ $cr->beneficiary?->nickname ?? '-' }}
                                 </td>
 
+                                <td class="text-nowrap">
+                                    {{ $cr->beneficiary?->pic?->pic ?? '-' }}
+                                </td>
+
                                 <td class="text-right text-nowrap col-raw-amount" data-raw="{{ $cr->amount }}">
                                     <button type="button" class="cr-cell-link btn-detail-cr" data-id="{{ $cr->id }}" data-tab="#crPaneDetails" title="Detail Request">{{ $cr->amount_formatted }}</button>
                                 </td>
@@ -202,8 +224,17 @@
                                     <button type="button" class="cr-cell-link btn-detail-cr" data-id="{{ $cr->id }}" data-tab="#crPaneRealization" title="Detail Settlement">{{ number_format($realisasi, 0, ',', '.') }}</button>
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-var {{ $refund > 0 ? 'text-var-pos' : '' }}" data-raw="{{ $refund }}">
-                                    {{ number_format($refund, 0, ',', '.') }}
+                                {{-- Refund & Expense Claim sama-sama lahir dari settlement, jadi
+                                     selnya bisa diklik ke tab Settlement — tampilannya persis
+                                     kolom Request & Settlement, tanpa warna khusus. --}}
+                                <td class="text-right text-nowrap col-raw-var" data-raw="{{ $refund }}">
+                                    <button type="button" class="cr-cell-link btn-detail-cr"
+                                            data-id="{{ $cr->id }}" data-tab="#crPaneRealization" title="Detail Settlement">{{ number_format($refund, 0, ',', '.') }}</button>
+                                </td>
+
+                                <td class="text-right text-nowrap col-raw-claim" data-raw="{{ $claim }}">
+                                    <button type="button" class="cr-cell-link btn-detail-cr"
+                                            data-id="{{ $cr->id }}" data-tab="#crPaneRealization" title="Detail Settlement">{{ number_format($claim, 0, ',', '.') }}</button>
                                 </td>
 
                                 <td class="text-nowrap">
@@ -242,11 +273,19 @@
                                         $bolehSettle    = $st === 'PAID' && $u->hasRole(['superadmin','manager','supervisor']);
                                         $bolehHeadSet   = $st === 'REALIZED' && $u->hasRole(['superadmin','head']);
                                         $bolehFinSet    = $st === 'SETTLE_CHECKED' && $u->hasRole(['superadmin','finance','finance_manager','cost_control']);
-                                        $bolehTutup     = $st === 'SETTLE_VERIFIED' && $u->hasRole(['superadmin','finance_manager']);
+                                        /* Cabang Expense Claim (settlement > pengajuan): CR wajib lewat
+                                           Settle Approve (Finance Manager) lalu Second Approve (Approver)
+                                           sebelum boleh di-Close. Tanpa klaim, Close tetap langsung dari
+                                           SETTLE_VERIFIED seperti sebelumnya. */
+                                        $adaClaim       = $claim > 0;
+                                        $bolehSetApp    = $st === 'SETTLE_VERIFIED' && $adaClaim && $u->hasRole(['superadmin','finance_manager']);
+                                        $boleh2ndApp    = $st === 'SETTLE_APPROVED' && $u->hasRole(['superadmin','approver']);
+                                        $bolehTutup     = $st === 'SETTLE_VERIFIED' && !$adaClaim
+                                                            && $u->hasRole(['superadmin','finance_manager']);
 
                                         $adaAksi = $bolehSubmit || $bolehUbahDraft || $bolehHead || $bolehFinance
                                             || $bolehCeo || $bolehRevisi || $bolehSettle || $bolehHeadSet
-                                            || $bolehFinSet || $bolehTutup;
+                                            || $bolehFinSet || $bolehSetApp || $boleh2ndApp || $bolehTutup;
                                     @endphp
 
                                     <div class="action-buttons ts-actions">
@@ -315,6 +354,28 @@
                                         <button type="button" class="ts-action-primary btn-finance-verify-settlement"
                                                 data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Verify → Settle Verified">
                                             <i class="fas fa-check-double"></i><span class="ts-al">Verify</span>
+                                        </button>
+                                        @endif
+
+                                        @if($bolehSetApp)
+                                        <button type="button" class="ts-action-primary btn-settle-approve"
+                                                data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Approve → Second Approve">
+                                            <i class="fas fa-check-double"></i><span class="ts-al">Settle Approve</span>
+                                        </button>
+                                        <button type="button" class="ts-action-primary is-danger btn-settle-reject"
+                                                data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Reject → Paid">
+                                            <i class="fas fa-times"></i><span class="ts-al">Reject</span>
+                                        </button>
+                                        @endif
+
+                                        @if($boleh2ndApp)
+                                        <button type="button" class="ts-action-primary btn-second-approve"
+                                                data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Approve → Treasury">
+                                            <i class="fas fa-hand-holding-usd"></i><span class="ts-al">Second Approve</span>
+                                        </button>
+                                        <button type="button" class="ts-action-primary is-danger btn-second-reject"
+                                                data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Reject → Paid">
+                                            <i class="fas fa-times"></i><span class="ts-al">Reject</span>
                                         </button>
                                         @endif
 
@@ -436,10 +497,11 @@
                         </tbody>
                         <tfoot>
                             <tr style="background:var(--surface-2);">
-                                <th colspan="7" class="text-right" style="font-size:12px;">Total (data tampil)</th>
+                                <th colspan="8" class="text-right" style="font-size:12px;">Total (data tampil)</th>
                                 <th class="text-right text-nowrap" id="crFooterAmount" style="font-size:12px;color:var(--info);"></th>
                                 <th class="text-right text-nowrap" id="crFooterRealisasi" style="font-size:12px;color:var(--success);"></th>
                                 <th class="text-right text-nowrap" id="crFooterVar" style="font-size:12px;"></th>
+                                <th class="text-right text-nowrap" id="crFooterClaim" style="font-size:12px;"></th>
                                 <th colspan="2"></th>
                             </tr>
                         </tfoot>
@@ -1094,8 +1156,12 @@ $(function () {
     // KOLOM TOGGLE — Tanggal/Pengaju/Penerima/Realisasi/Refund bisa disembunyikan
     // lewat dropdown "Kolom", preferensi disimpan di localStorage (pola sama
     // seperti invoice-cash-receipt/index.blade.php).
-    var crColVisMap = { tanggal: 3, paid_at: 4, pengaju: 5, penerima: 6, realisasi: 8, refund: 9 };
-    var crColVisDefault = { tanggal: true, paid_at: true, pengaju: true, penerima: true, realisasi: false, refund: true };
+    /* Indeks mengikuti urutan <th>: No(0) Code(1) Desc(2) Tanggal(3) TanggalPaid(4)
+       Requestor(5) Beneficiary(6) PIC(7) Request(8) Settlement(9) Refund(10)
+       ExpenseClaim(11) Status(12) Action(13). Menyisipkan kolom di tengah
+       menggeser indeks kolom sesudahnya — sesuaikan juga columnDefs di bawah. */
+    var crColVisMap = { tanggal: 3, paid_at: 4, pengaju: 5, penerima: 6, pic: 7, realisasi: 9, refund: 10, claim: 11 };
+    var crColVisDefault = { tanggal: true, paid_at: true, pengaju: true, penerima: true, pic: true, realisasi: false, refund: true, claim: true };
     function getCrColVis(key) {
         var stored = localStorage.getItem('crColVis_' + key);
         return stored === null ? !!crColVisDefault[key] : stored === '1';
@@ -1120,8 +1186,10 @@ $(function () {
                 { targets:[4], visible: getCrColVis('paid_at') },
                 { targets:[5], visible: getCrColVis('pengaju') },
                 { targets:[6], visible: getCrColVis('penerima') },
-                { targets:[8], visible: getCrColVis('realisasi') },
-                { targets:[9], visible: getCrColVis('refund') },
+                { targets:[7], visible: getCrColVis('pic') },
+                { targets:[9], visible: getCrColVis('realisasi') },
+                { targets:[10], visible: getCrColVis('refund') },
+                { targets:[11], visible: getCrColVis('claim') },
             ],
             dom:'rt<"row mt-3 align-items-center"<"col-md-6 col-12 mb-2 mb-md-0"i><"col-md-6 col-12 d-flex justify-content-end"lp>>',
             /*
@@ -1190,6 +1258,7 @@ $(function () {
             window.history.replaceState({}, '', url.toString());
         });
 
+
         (function applyStatusFilterFromUrl() {
             var status = new URLSearchParams(window.location.search).get('status');
             if (!status) return;
@@ -1208,18 +1277,20 @@ $(function () {
         };
 
         var recalcFooterCR = function () {
-            var totalAmount = 0, totalRealisasi = 0, totalVar = 0;
+            var totalAmount = 0, totalRealisasi = 0, totalVar = 0, totalClaim = 0;
             table.rows({ search: 'applied' }).every(function () {
                 var node = this.node();
                 totalAmount    += parseFloat(node.querySelector('.col-raw-amount')?.dataset.raw)    || 0;
                 totalRealisasi += parseFloat(node.querySelector('.col-raw-realisasi')?.dataset.raw) || 0;
                 totalVar       += parseFloat(node.querySelector('.col-raw-var')?.dataset.raw)       || 0;
+                totalClaim     += parseFloat(node.querySelector('.col-raw-claim')?.dataset.raw)     || 0;
             });
             $('#crFooterAmount').text(moneyFmtCR(totalAmount));
             $('#crFooterRealisasi').text(moneyFmtCR(totalRealisasi));
             $('#crFooterVar').html(
                 '<span class="' + (totalVar >= 0 ? 'text-var-pos' : 'text-var-neg') + '">' + moneyFmtCR(totalVar) + '</span>'
             );
+            $('#crFooterClaim').text(moneyFmtCR(totalClaim));
         };
 
         table.on('draw', recalcFooterCR);
@@ -1229,9 +1300,41 @@ $(function () {
             { key: 'po',          label: 'PO' },
             { key: 'type',        label: 'Tipe' },
             { key: 'beneficiary', label: 'Beneficiary' },
+            { key: 'pic',         label: 'PIC' },
             { key: 'pminternal',  label: 'Manager' },
             { key: 'status',      label: 'Status' },
         ]);
+
+        /* Filter dari tautan luar (kartu Active Cash Advance di Summary).
+           Dipasang lewat setRowFilter supaya hasilnya persis seperti user
+           mencentang sendiri: chip filternya muncul dan bisa dilepas. */
+        (function applyRowFilterFromUrl() {
+            var q = new URLSearchParams(window.location.search);
+            var manager = q.get('manager');
+            var pic     = q.get('pic');
+            if (manager) TesysColumnFilter.setRowFilter('#tblCR', 'pminternal', manager.toUpperCase());
+            if (pic)     TesysColumnFilter.setRowFilter('#tblCR', 'pic', pic);
+
+            /* Tipe & daftar status ikut dibawa supaya daftar di sini memuat
+               himpunan yang sama dengan kartu asalnya. setRowFilter menambah
+               (bukan mengganti) nilai pada field yang sama, jadi beberapa
+               status bisa dipasang berurutan. */
+            var type = q.get('type');
+            if (type) TesysColumnFilter.setRowFilter('#tblCR', 'type', type);
+
+            /* Daftar PIC di bawah manager yang dipilih. Dipasang sebagai filter
+               agar namanya terbaca di chip - bukan untuk mempersempit, karena
+               filter Manager sudah melakukannya. */
+            (q.get('pics') || '').split(',').forEach(function (nm) {
+                nm = nm.trim();
+                if (nm) TesysColumnFilter.setRowFilter('#tblCR', 'pic', nm);
+            });
+
+            (q.get('statuses') || '').split(',').forEach(function (st) {
+                st = st.trim();
+                if (st) TesysColumnFilter.setRowFilter('#tblCR', 'status', st);
+            });
+        })();
     } catch (err) {
         console.error('Gagal inisialisasi DataTable Cost Request:', err);
     }
@@ -1452,8 +1555,28 @@ $(function () {
     $(document).on('click', '.btn-finance-verify-settlement', function () {
         var id = $(this).data('id'), code = $(this).data('code');
         openSettlementApproveModal(id, code, 'finance-verify-settlement',
-            'Verifikasi Settlement CR ' + code + '? Status akan berubah menjadi SETTLE VERIFIED, menunggu Close CEO.',
+            'Verifikasi Settlement CR ' + code + '? Status akan berubah menjadi SETTLE VERIFIED. CR dengan Expense Claim lanjut ke Settle Approve, selebihnya langsung menunggu Close.',
             'Verify → Settle Verified');
+    });
+    $(document).on('click', '.btn-settle-approve', function () {
+        var id = $(this).data('id'), code = $(this).data('code');
+        openSettlementApproveModal(id, code, 'settle-approve',
+            'Setujui Expense Claim CR ' + code + '? Pengajuan lanjut ke antrean Second Approve Approver.',
+            'Approve → Second Approve');
+    });
+    $(document).on('click', '.btn-second-approve', function () {
+        var id = $(this).data('id'), code = $(this).data('code');
+        openSettlementApproveModal(id, code, 'second-approve',
+            'Setujui Expense Claim CR ' + code + '? Pengajuan masuk antrean Buat Batch Baru Treasury, jadi Process setelah dibatch, dan CLOSED otomatis setelah dibayar.',
+            'Approve → Treasury');
+    });
+    $(document).on('click', '.btn-settle-reject', function () {
+        openNotesModal($(this).data('id'), 'settle-reject', 'Reject Expense Claim', 'Alasan', 'btn-danger', 'Reject → Paid',
+            '<i class="fas fa-info-circle mr-1"></i> CR kembali ke <strong>PAID</strong> untuk disettle ulang. Expense Claim yang sudah terbentuk dibatalkan.');
+    });
+    $(document).on('click', '.btn-second-reject', function () {
+        openNotesModal($(this).data('id'), 'second-reject', 'Reject Expense Claim', 'Alasan', 'btn-danger', 'Reject → Paid',
+            '<i class="fas fa-info-circle mr-1"></i> CR kembali ke <strong>PAID</strong> untuk disettle ulang. Expense Claim yang sudah terbentuk dibatalkan.');
     });
     $(document).on('click', '.btn-ceo-close-settlement', function () {
         var id = $(this).data('id'), code = $(this).data('code');
@@ -1893,7 +2016,7 @@ $(function () {
                 logHtml += '<div class="cr-chat-row ' + (mine ? 'mine' : '') + '">' +
                     '<div class="cr-chat-av">' + initials + '</div>' +
                     '<div>' +
-                        '<div class="cr-chat-meta">' + (mine ? '' : '<strong>' + actor + '</strong> · ') + log.date + '</div>' +
+                        '<div class="cr-chat-meta"><strong>' + actor + '</strong> · ' + log.date + '</div>' +
                         '<div class="cr-chat-bubble">' +
                             '<span class="badge badge-' + log.action_color + ' px-2 py-1" style="font-size:9px;">' + log.action_label + '</span>' +
                             (log.status_from && log.status_to ? ' <span style="font-size:10px;opacity:.75;">' + (log.status_from_label || log.status_from) + ' → ' + (log.status_to_label || log.status_to) + '</span>' : '') +

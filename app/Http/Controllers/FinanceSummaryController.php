@@ -701,7 +701,7 @@ class FinanceSummaryController extends Controller
                 'budgetPlan',
                 fn ($bp) => $bp->whereIn('project_id', $scopedProjectIds ?: [0])
             ))
-            ->with(['beneficiary.pic', 'budgetPlan.project.manager'])
+            ->with(['beneficiary.pic', 'budgetPlan.project.manager', 'type'])
 
             ->orderByDesc('amount')
             ->get()
@@ -807,8 +807,18 @@ class FinanceSummaryController extends Controller
                         */
                         $paidTertua = $beneficiaryCrs->pluck('paid_at')->filter()->min();
 
+                        /*
+                        | Halaman Cost Request membuka dirinya pada rentang bulan
+                        | berjalan. CA aktif bisa jauh lebih tua dari itu, jadi
+                        | tautan dari sini membawa date_from sendiri - kalau
+                        | tidak, tab yang terbuka tampil kosong justru untuk
+                        | baris yang barusan diklik.
+                        */
+                        $crTertua = $beneficiaryCrs->pluck('created_at')->filter()->min();
+
                         return [
                             'beneficiary' => $ben?->pic?->pic ?: ($ben?->nickname ?? '-'),
+                            'date_from'   => $crTertua?->format('Y-m-d'),
                             // "Quantity CA" = jumlah DOKUMEN CR milik PIC ini.
                             'qty'         => $beneficiaryCrs->count(),
                             'value'       => (int) $beneficiaryCrs->sum('amount'),
@@ -825,9 +835,20 @@ class FinanceSummaryController extends Controller
                     ->values();
 
                 $paidTertuaMgr = $managerCrs->pluck('paid_at')->filter()->min();
+                $crTertuaMgr   = $managerCrs->pluck('created_at')->filter()->min();
 
                 return [
                     'manager'        => strtoupper($manager->username ?? '-'),
+                    'date_from'      => $crTertuaMgr?->format('Y-m-d'),
+                    /*
+                    | Daftar PIC di bawah manager ini, dibawa tautan "value" ke
+                    | halaman Cost Request supaya chip PIC di sana menyebut
+                    | namanya satu per satu - filter Manager saja memang sudah
+                    | mempersempit barisnya, tapi tidak memberi tahu siapa saja
+                    | yang tercakup tanpa menyisir daftarnya.
+                    */
+                    'pics'           => $beneficiaries->pluck('beneficiary')
+                        ->filter(fn ($n) => $n !== '-')->unique()->values()->implode(','),
                     'beneficiaries'  => $beneficiaries,
                     // Total CR dari seluruh PIC di bawah manager ini.
                     'qty'            => $beneficiaries->sum('qty'),
@@ -851,6 +872,14 @@ class FinanceSummaryController extends Controller
         return [
             'activeCashAdvance'  => $groups,
             'activeCaGrandQty'   => $groups->sum('qty'),
+            /*
+            | Dibawa tautan "value" ke halaman Cost Request supaya tab yang
+            | terbuka memuat HIMPUNAN YANG SAMA dengan kartu ini - tanpa ini,
+            | daftar di sana ikut memuat CR Draft/Approved dan tipe non-CA, dan
+            | totalnya tidak akan pernah cocok dengan angka yang barusan diklik.
+            */
+            'acaLinkStatuses'    => implode(',', self::ACTIVE_CA_STATUSES),
+            'acaLinkType'        => $crs->first()?->type?->name,
             'activeCaGrandValue' => $groups->sum('value'),
             // Hanya kunci yang aktif yang dikirim ke view — judul kolomnya
             // sendiri yang jadi tombol urut, jadi view tidak perlu daftar
@@ -1304,19 +1333,40 @@ class FinanceSummaryController extends Controller
     /**
      * MN-10B — PROGRESS SUMMARY: Customer -> PO -> No. PO.
      *
-     * Tiap No. PO dilacak melalui 4 tahap sesuai pipeline ProjectPoNumber yang
-     * sudah ada (RELEASED -> PARTIAL -> BAST_SUBMITTED -> INVOICED -> PAID):
+     * Kolomnya ANTREAN (backlog), bukan pencapaian kumulatif. Tiap No. PO
+     * jatuh ke SATU kolom saja — tahap tempat ia sedang tertahan:
      *
-     *   BAST    : BAST-nya sudah lengkap (BAST_SUBMITTED ke atas)
-     *   Partial : BAST-nya baru sebagian (status PARTIAL)
-     *   Invoice : sudah terbit invoice atas No. PO ini
-     *   Paid    : sudah ada uang masuk atas invoice No. PO ini
+     *   Waiting PO      : sisa nilai kontrak yang No. PO-nya belum terbit
+     *                     (tingkat PO, bukan No. PO — belum ada barisnya)
+     *   Waiting BAST    : No. PO berstatus RELEASED / PARTIAL
+     *   Waiting Invoice : No. PO berstatus BAST_SUBMITTED
+     *   Waiting Payment : No. PO berstatus INVOICED
+     *   Close           : No. PO berstatus PAID - tidak mengantre lagi,
+     *                     tapi tetap diberi kolom supaya Contract = jumlah
+     *                     seluruh kolom di kanannya. Tanpa kolom ini, PO yang
+     *                     sudah lunas tampil berkontrak sekian tapi nol di
+     *                     semua kolom, dan barisnya terbaca seperti data hilang.
      *
-     * Tahap bersifat progresif: satu No. PO dihitung di tahap mana pun yang
-     * sudah dicapainya, jadi Qty tiap tahap = "sudah sampai tahap ini", bukan
-     * "sedang di tahap ini" — itulah yang dibutuhkan untuk membaca progres dari
-     * pekerjaan sampai pembayaran. Tidak ada tabel/kolom baru: semua diturunkan
-     * dari relasi existing.
+     * Tahapnya DITENTUKAN OLEH STATUS No. PO, bukan diterka dari ada/tidaknya
+     * baris invoice. Modul Purchase Order memakai status yang sama persis untuk
+     * badge & agregatnya (Project::workProgressStatus(), billingProgressStatus(),
+     * paymentProgressStatus(), waitingInvoicePoCount() — yang terakhir literal
+     * "No. PO berstatus BAST_SUBMITTED"). Sebelumnya tabel ini menyimpulkan
+     * tahap dari kombinasi status + keberadaan invoice, sehingga No. PO yang
+     * sudah punya baris invoice tapi statusnya masih BAST_SUBMITTED dihitung
+     * "menunggu pembayaran" di sini, padahal halaman Purchase Order menandainya
+     * "Waiting Invoice" — dua halaman menyebut tahap berbeda untuk PO yang sama.
+     *
+     * Versi sebelumnya progresif ("sudah sampai tahap ini"), sehingga satu No.
+     * PO terhitung di semua tahap yang sudah dilewatinya. Itu menjawab "sudah
+     * sejauh mana", bukan "apa yang macet" — dan yang dikejar orang dari tabel
+     * ini adalah yang kedua.
+     *
+     * Contract = nilai kontrak PO-nya. Ia TIDAK persis sama dengan jumlah empat
+     * kolom Waiting: yang sudah tuntas (invoice lunas) tidak lagi mengantre di
+     * mana pun, jadi selisihnya justru bagian yang sudah selesai.
+     *
+     * Tidak ada tabel/kolom baru: semua diturunkan dari relasi existing.
      *
      * Dataset-nya sama persis dengan DataTable & Summary Card (P-02).
      */
@@ -1329,63 +1379,76 @@ class FinanceSummaryController extends Controller
             return ['progressRows' => collect(), 'progressTotals' => $this->emptyProgressTotals()];
         }
 
-        // Semua invoice yang relevan diambil SEKALI (bukan per No. PO) supaya
-        // tidak N+1, lalu dikelompokkan per project_po_number_id.
-        $invoices = Invoice::select('id', 'po_id', 'project_po_number_id', 'status', 'captured_total')
-            ->where('status', '!=', 'DRAFT')
-            ->whereIn('po_id', $projects->pluck('id'))
-            ->when($scope['invoiceIds'] !== null, fn ($q) => $q->whereIn('id', $scope['invoiceIds']))
-            ->with('cashReceipts:id,invoice_id,amount,withholding_tax')
-            ->get();
-
-        $invoicesByPoNumber = $invoices->groupBy('project_po_number_id');
-
+        /*
+        | Invoice & cash receipt TIDAK lagi dibaca di sini. Tahap tiap No. PO
+        | ditentukan kolom status-nya sendiri (RELEASED -> ... -> PAID), yang
+        | memang sudah disinkronkan saat invoice terbit dan saat pembayaran
+        | masuk. Query invoice beserta cashReceipts-nya dulu hanya dipakai untuk
+        | menerka tahap dari keberadaan dokumen - terkaan yang justru membuat
+        | halaman ini berbeda pendapat dengan modul Purchase Order.
+        */
         $rows = $projects
             ->sortBy(fn ($p) => strtolower($p->customer->name) . '|' . strtolower($p->name ?? ''))
-            ->map(function ($project) use ($invoicesByPoNumber) {
+            ->map(function ($project) {
                 $poNumberRows = collect($project->poNumbers)
                     ->sortBy('po_number')
-                    ->map(function ($poNumber) use ($invoicesByPoNumber) {
-                        $poInvoices = $invoicesByPoNumber->get($poNumber->id, collect());
+                    ->map(function ($poNumber) {
+                        $nominal = (int) $poNumber->nominal;
 
-                        $invoiceValue = (int) $poInvoices->sum('captured_total');
-                        $paidValue    = (int) $poInvoices->sum(fn ($inv) => (int) $inv->cashReceipts->sum('amount')
-                            + (int) $inv->cashReceipts->sum('withholding_tax'));
-
-                        $bastDone    = in_array($poNumber->status, ['BAST_SUBMITTED', 'INVOICED', 'PAID'], true);
-                        $bastPartial = $poNumber->status === 'PARTIAL';
-
-                        // Nilai BAST: pakai nilai_bast kalau diisi, kalau tidak
-                        // jatuh ke nominal No. PO (BAST atas seluruh No. PO).
-                        $bastValue = (int) ($poNumber->nilai_bast ?: $poNumber->nominal);
+                        /*
+                        | Satu status = satu kolom, dan yang dipindahkan adalah
+                        | NOMINAL PENUH No. PO itu.
+                        |
+                        | Sebelumnya tiap kolom memakai ukurannya sendiri (sisa
+                        | belum di-BAST, nilai BAST, sisa tagihan), sehingga
+                        | sebuah PO bisa "menguap": Fiberhome bernilai kontrak
+                        | 390 juta hanya muncul 301 juta karena kolom Waiting
+                        | Paid menghitung sisa tagihan, bukan nilai No. PO yang
+                        | tertahan di tahap itu. Tabel ini menjawab "nilai sebesar
+                        | apa yang sedang berhenti di tahap mana", jadi tiap
+                        | rupiah kontrak harus berada tepat di satu kolom dan
+                        | Contract = Waiting PO + seluruh kolom Waiting lainnya.
+                        |
+                        | PARTIAL tetap utuh di Waiting BAST: selama BAST-nya
+                        | belum dinyatakan lengkap, No. PO itu belum pindah tahap
+                        | menurut Project::workProgressStatus() — dan halaman
+                        | Purchase Order membacanya dengan aturan yang sama.
+                        */
+                        $waitBast    = in_array($poNumber->status, ['RELEASED', 'PARTIAL'], true);
+                        $waitInvoice = $poNumber->status === 'BAST_SUBMITTED';
+                        $waitPayment = $poNumber->status === 'INVOICED';
+                        $sudahClose  = $poNumber->status === 'PAID';
 
                         return [
                             'po_number'     => $poNumber->po_number,
                             'status'        => $poNumber->status,
-                            'nominal'       => (int) $poNumber->nominal,
-                            /*
-                             | PO Received = No. PO yang sudah TERBIT dari customer.
-                             | Barisnya ada berarti No. PO-nya sudah diterima, jadi
-                             | qty-nya selalu 1 dan nilainya nominal No. PO itu —
-                             | inilah titik awal rantai Received -> BAST -> Invoice
-                             | -> Paid, yang sebelumnya tidak punya kolom sendiri
-                             | sehingga rantai itu terbaca tanpa pangkal.
-                             */
-                            'received_qty'   => 1,
-                            'received_value' => (int) $poNumber->nominal,
-                            'bast_qty'      => $bastDone ? 1 : 0,
-                            'bast_value'    => $bastDone ? $bastValue : 0,
-                            'partial_qty'   => $bastPartial ? 1 : 0,
-                            'partial_value' => $bastPartial ? $bastValue : 0,
-                            'invoice_qty'   => $poInvoices->isNotEmpty() ? 1 : 0,
-                            'invoice_value' => $invoiceValue,
-                            'paid_qty'      => $paidValue > 0 ? 1 : 0,
-                            'paid_value'    => $invoiceValue > 0 ? min($paidValue, $invoiceValue) : $paidValue,
+                            'nominal'       => $nominal,
+
+                            'wait_bast_qty'      => $waitBast ? 1 : 0,
+                            'wait_bast_value'    => $waitBast ? $nominal : 0,
+
+                            'wait_invoice_qty'   => $waitInvoice ? 1 : 0,
+                            'wait_invoice_value' => $waitInvoice ? $nominal : 0,
+
+                            'wait_payment_qty'   => $waitPayment ? 1 : 0,
+                            'wait_payment_value' => $waitPayment ? $nominal : 0,
+
+                            'closed_qty'         => $sudahClose ? 1 : 0,
+                            'closed_value'       => $sudahClose ? $nominal : 0,
                         ];
                     })
                     ->values();
 
                 $sum = fn (string $key) => (int) $poNumberRows->sum($key);
+
+                $kontrak = (int) ($project->contract ?? 0);
+                /*
+                | Bisa negatif kalau No. PO yang terbit melampaui nilai kontrak
+                | (mis. ada addendum yang belum tercatat). Dipotong di 0: antrean
+                | negatif tidak berarti apa-apa, dan kalau dijumlahkan ia
+                | mengurangi antrean PO lain yang nyata.
+                */
+                $sisaKontrak = max(0, $kontrak - (int) $poNumberRows->sum('nominal'));
 
                 return [
                     'customer'      => $project->customer->name,
@@ -1396,16 +1459,26 @@ class FinanceSummaryController extends Controller
                     'po_value'      => (int) ($project->value ?? 0),
                     'po_numbers'    => $poNumberRows,
                     'po_number_qty' => $poNumberRows->count(),
-                    'received_qty'   => $sum('received_qty'),
-                    'received_value' => $sum('received_value'),
-                    'bast_qty'      => $sum('bast_qty'),
-                    'bast_value'    => $sum('bast_value'),
-                    'partial_qty'   => $sum('partial_qty'),
-                    'partial_value' => $sum('partial_value'),
-                    'invoice_qty'   => $sum('invoice_qty'),
-                    'invoice_value' => $sum('invoice_value'),
-                    'paid_qty'      => $sum('paid_qty'),
-                    'paid_value'    => $sum('paid_value'),
+
+                    /*
+                    | Contract & Waiting PO hidup di tingkat PO, bukan No. PO:
+                    | yang ditunggu justru No. PO yang BELUM terbit, sehingga
+                    | tidak punya baris untuk dihitung. Sisanya = nilai kontrak
+                    | dikurangi seluruh No. PO yang sudah terbit.
+                    */
+                    'contract_qty'  => 1,
+                    'contract_value' => $kontrak,
+                    'wait_po_qty'   => $sisaKontrak > 0 ? 1 : 0,
+                    'wait_po_value' => $sisaKontrak,
+
+                    'wait_bast_qty'      => $sum('wait_bast_qty'),
+                    'wait_bast_value'    => $sum('wait_bast_value'),
+                    'wait_invoice_qty'   => $sum('wait_invoice_qty'),
+                    'wait_invoice_value' => $sum('wait_invoice_value'),
+                    'wait_payment_qty'   => $sum('wait_payment_qty'),
+                    'wait_payment_value' => $sum('wait_payment_value'),
+                    'closed_qty'         => $sum('closed_qty'),
+                    'closed_value'       => $sum('closed_value'),
                 ];
             })
             ->values();
@@ -1419,16 +1492,18 @@ class FinanceSummaryController extends Controller
                 'po_qty'        => $projectRows->count(),
                 'po_number_qty' => (int) $projectRows->sum('po_number_qty'),
                 'contract'      => (int) $projectRows->sum('contract'),
-                'received_qty'   => (int) $projectRows->sum('received_qty'),
-                'received_value' => (int) $projectRows->sum('received_value'),
-                'bast_qty'      => (int) $projectRows->sum('bast_qty'),
-                'bast_value'    => (int) $projectRows->sum('bast_value'),
-                'partial_qty'   => (int) $projectRows->sum('partial_qty'),
-                'partial_value' => (int) $projectRows->sum('partial_value'),
-                'invoice_qty'   => (int) $projectRows->sum('invoice_qty'),
-                'invoice_value' => (int) $projectRows->sum('invoice_value'),
-                'paid_qty'      => (int) $projectRows->sum('paid_qty'),
-                'paid_value'    => (int) $projectRows->sum('paid_value'),
+                'contract_qty'       => (int) $projectRows->sum('contract_qty'),
+                'contract_value'     => (int) $projectRows->sum('contract_value'),
+                'wait_po_qty'        => (int) $projectRows->sum('wait_po_qty'),
+                'wait_po_value'      => (int) $projectRows->sum('wait_po_value'),
+                'wait_bast_qty'      => (int) $projectRows->sum('wait_bast_qty'),
+                'wait_bast_value'    => (int) $projectRows->sum('wait_bast_value'),
+                'wait_invoice_qty'   => (int) $projectRows->sum('wait_invoice_qty'),
+                'wait_invoice_value' => (int) $projectRows->sum('wait_invoice_value'),
+                'wait_payment_qty'   => (int) $projectRows->sum('wait_payment_qty'),
+                'wait_payment_value' => (int) $projectRows->sum('wait_payment_value'),
+                'closed_qty'         => (int) $projectRows->sum('closed_qty'),
+                'closed_value'       => (int) $projectRows->sum('closed_value'),
             ])
             ->sortBy('customer')
             ->values();
@@ -1438,16 +1513,18 @@ class FinanceSummaryController extends Controller
             'po_qty'        => (int) $grouped->sum('po_qty'),
             'po_number_qty' => (int) $grouped->sum('po_number_qty'),
             'contract'      => (int) $grouped->sum('contract'),
-            'received_qty'   => (int) $grouped->sum('received_qty'),
-            'received_value' => (int) $grouped->sum('received_value'),
-            'bast_qty'      => (int) $grouped->sum('bast_qty'),
-            'bast_value'    => (int) $grouped->sum('bast_value'),
-            'partial_qty'   => (int) $grouped->sum('partial_qty'),
-            'partial_value' => (int) $grouped->sum('partial_value'),
-            'invoice_qty'   => (int) $grouped->sum('invoice_qty'),
-            'invoice_value' => (int) $grouped->sum('invoice_value'),
-            'paid_qty'      => (int) $grouped->sum('paid_qty'),
-            'paid_value'    => (int) $grouped->sum('paid_value'),
+            'contract_qty'       => (int) $grouped->sum('contract_qty'),
+            'contract_value'     => (int) $grouped->sum('contract_value'),
+            'wait_po_qty'        => (int) $grouped->sum('wait_po_qty'),
+            'wait_po_value'      => (int) $grouped->sum('wait_po_value'),
+            'wait_bast_qty'      => (int) $grouped->sum('wait_bast_qty'),
+            'wait_bast_value'    => (int) $grouped->sum('wait_bast_value'),
+            'wait_invoice_qty'   => (int) $grouped->sum('wait_invoice_qty'),
+            'wait_invoice_value' => (int) $grouped->sum('wait_invoice_value'),
+            'wait_payment_qty'   => (int) $grouped->sum('wait_payment_qty'),
+            'wait_payment_value' => (int) $grouped->sum('wait_payment_value'),
+            'closed_qty'         => (int) $grouped->sum('closed_qty'),
+            'closed_value'       => (int) $grouped->sum('closed_value'),
         ];
 
         return ['progressRows' => $grouped, 'progressTotals' => $totals];
@@ -1457,9 +1534,12 @@ class FinanceSummaryController extends Controller
     {
         return [
             'customer_qty' => 0, 'po_qty' => 0, 'po_number_qty' => 0, 'contract' => 0,
-            'received_qty' => 0, 'received_value' => 0,
-            'bast_qty' => 0, 'bast_value' => 0, 'partial_qty' => 0, 'partial_value' => 0,
-            'invoice_qty' => 0, 'invoice_value' => 0, 'paid_qty' => 0, 'paid_value' => 0,
+            'contract_qty' => 0, 'contract_value' => 0,
+            'wait_po_qty' => 0, 'wait_po_value' => 0,
+            'wait_bast_qty' => 0, 'wait_bast_value' => 0,
+            'wait_invoice_qty' => 0, 'wait_invoice_value' => 0,
+            'wait_payment_qty' => 0, 'wait_payment_value' => 0,
+            'closed_qty' => 0, 'closed_value' => 0,
         ];
     }
 

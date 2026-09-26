@@ -51,6 +51,13 @@ class BudgetRequestSecondPayment extends Model
     public function scopeAvailableForBatch($query)
     {
         return $query->where('status', 'PENDING')
+            /*
+            | Expense Claim baru boleh masuk batch Treasury setelah disetujui
+            | dua lapis: Settle Approve (Finance Manager) lalu Second Approve
+            | (Approver). Approval terakhir itulah yang memindahkan CR induk
+            | ke SECOND_APPROVED — status "menunggu Buat Batch Baru".
+            */
+            ->whereHas('budgetRequest', fn ($q) => $q->where('status', 'SECOND_APPROVED'))
             ->whereDoesntHave('dailyTransactionItems', fn ($q) =>
                 $q->where('status', 'INCLUDED')
                   ->whereHas('dailyTransaction', fn ($q2) =>

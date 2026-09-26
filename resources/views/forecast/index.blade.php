@@ -245,15 +245,26 @@
 
                                     <div id="fcGroups"></div>
 
+                                    {{-- Grand Total berdiri di tabelnya sendiri (ia menutup
+                                         SEMUA rekening, bukan salah satunya), jadi lebar
+                                         kolomnya harus dipatok sama persis dengan tabel grup
+                                         di atasnya — lihat colgroup & .fc-table. --}}
                                     <div class="table-responsive mt-3">
-                                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
+                                        <table class="table table-bordered mb-0 fc-table" style="font-size:12.5px;">
+                                            <colgroup>
+                                                <col style="width:22%;"><col style="width:10%;">
+                                                <col style="width:14%;"><col style="width:14%;">
+                                                <col style="width:14%;"><col style="width:14%;">
+                                                <col style="width:12%;">
+                                            </colgroup>
                                             <tfoot>
                                                 <tr style="background:var(--surface-2);">
-                                                    <th class="text-right">Grand Total</th>
-                                                    <th class="text-right" style="width:160px;" id="fcFootForecast"></th>
-                                                    <th class="text-right" style="width:160px;" id="fcFootActual"></th>
-                                                    <th class="text-right" style="width:160px;" id="fcFootVariance"></th>
-                                                    <th style="width:90px;"></th>
+                                                    <th colspan="2" class="text-right">Grand Total</th>
+                                                    <th class="text-right" id="fcFootMasuk"></th>
+                                                    <th class="text-right text-danger" id="fcFootKeluar"></th>
+                                                    <th class="text-right" id="fcFootActual"></th>
+                                                    <th class="text-right" id="fcFootVariance"></th>
+                                                    <th></th>
                                                 </tr>
                                             </tfoot>
                                         </table>
@@ -369,6 +380,13 @@ body.tesys-ui .modal-body.dm-body .fc-main-panel { overflow-y:auto; max-height:1
 
 /* Kolom nominal realisasi: rapat, karena ia duduk di bawah angka akumulasi
    dalam satu sel. */
+/* Tabel rincian & Grand Total memakai lebar kolom yang dipatok lewat
+   colgroup. Tanpa table-layout:fixed peramban tetap melebarkan kolom menurut
+   isinya, dan Grand Total — yang berada di tabel terpisah karena menutup
+   semua rekening — melenceng dari kolom yang diringkasnya. */
+.fc-table { table-layout: fixed; }
+.fc-table td, .fc-table th { overflow-wrap: anywhere; }
+
 .inp-actual-item { height:31px; font-size:12.5px; padding:4px 8px; }
 
 /* Teks samar di kotak Actual bukan sekadar petunjuk — ia angka realisasi yang
@@ -506,7 +524,8 @@ $(function () {
         renderLog(d);
 
         $('#fcDetailCount').text(d.detail_count);
-        $('#fcFootForecast').text(d.forecast_amount);
+        $('#fcFootMasuk').text(d.masuk_total);
+        $('#fcFootKeluar').text(d.keluar_total);
         $('#fcFootActual').text(d.actual_amount);
         $('#fcFootVariance').text(d.variance);
     }
@@ -520,22 +539,28 @@ $(function () {
         d.groups.forEach(function (g) {
             html += '<div class="fc-group mb-3">'
                 + '<div class="fc-group-head"><i class="fas fa-university mr-1"></i>' + esc(g.source_fund) + '</div>'
-                + '<div class="table-responsive"><table class="table table-bordered mb-0" style="font-size:12.5px;">'
+                + '<div class="table-responsive"><table class="table table-bordered mb-0 fc-table" style="font-size:12.5px;">'
+                + '<colgroup><col style="width:22%;"><col style="width:10%;"><col style="width:14%;"><col style="width:14%;"><col style="width:14%;"><col style="width:14%;"><col style="width:12%;"></colgroup>'
+                /* Rencana dipecah jadi dua kolom menurut arahnya — Masuk dan
+                   Keluar berdiri sendiri, menggantikan pasangan lama
+                   "Tipe + Amount (Plan)" yang memaksa pembaca menggabungkan
+                   dua kolom di kepalanya sendiri. */
                 + '<thead class="bg-light"><tr>'
                 +   '<th scope="col">Description</th>'
                 +   '<th scope="col" class="text-nowrap">PO</th>'
-                +   '<th scope="col" class="text-nowrap">Tipe</th>'
-                +   '<th scope="col" class="text-right" style="width:150px;">Amount (Plan)</th>'
-                +   '<th scope="col" class="text-right" style="width:150px;">Actual</th>'
-                +   '<th scope="col" class="text-right" style="width:150px;">Variance</th>'
-                +   '<th scope="col" class="text-center" style="width:90px;">Aksi</th>'
+                +   '<th scope="col" class="text-right">Masuk</th>'
+                +   '<th scope="col" class="text-right">Keluar</th>'
+                +   '<th scope="col" class="text-right">Actual</th>'
+                +   '<th scope="col" class="text-right">Variance</th>'
+                +   '<th scope="col" class="text-center">Aksi</th>'
                 + '</tr></thead><tbody>';
 
             g.rows.forEach(function (x) { html += barisRincian(x, d); });
 
             html += '</tbody><tfoot><tr style="background:var(--surface-2);">'
-                + '<th colspan="3" class="text-right">Subtotal ' + esc(g.source_fund) + '</th>'
-                + '<th class="text-right">' + esc(g.plan_formatted) + '</th>'
+                + '<th colspan="2" class="text-right">Subtotal ' + esc(g.source_fund) + '</th>'
+                + '<th class="text-right">' + esc(g.masuk_formatted) + '</th>'
+                + '<th class="text-right text-danger">' + esc(g.keluar_formatted) + '</th>'
                 + '<th class="text-right">' + esc(g.actual_formatted) + '</th>'
                 + '<th class="text-right ' + (g.variance_negative ? 'text-danger' : 'text-success') + '">'
                     + esc(g.variance_formatted) + '</th>'
@@ -572,9 +597,12 @@ $(function () {
             + '<td class="text-nowrap">' + (x.project
                     ? '<span title="' + esc(x.project_name || '') + '">' + esc(x.project) + '</span>'
                     : '<span class="text-muted">-</span>') + '</td>'
-            + '<td class="text-nowrap"><span class="badge badge-' + esc(x.type_color) + ' px-2 py-1" style="font-size:9.5px;">'
-                + esc(x.type_label) + '</span></td>'
-            + '<td class="text-right ' + (x.type === 'OUT' ? 'text-danger' : '') + '">' + esc(x.amount_formatted) + '</td>'
+            /* Nilainya jatuh ke kolom yang sesuai arahnya; kolom seberangnya
+               dibiarkan kosong agar arah baris terbaca dari letak angkanya. */
+            + '<td class="text-right">' + (x.type === 'IN'
+                    ? esc(x.amount_formatted) : '<span class="text-muted">-</span>') + '</td>'
+            + '<td class="text-right text-danger">' + (x.type === 'OUT'
+                    ? esc(x.amount_formatted) : '<span class="text-muted">-</span>') + '</td>'
             /* Satu kotak isian saja per sel, angkanya DI DALAM kotak dan rata
                kanan — sebentuk dengan kolom Amount di form Forecast. Isinya
                realisasi yang sudah tercatat; mengetik angka lain lalu menekan
@@ -617,7 +645,7 @@ $(function () {
         }
 
         baris += '<tr class="fc-entry-row" data-detail="' + x.id + '" style="display:none;">'
-            + '<td colspan="7" style="background:var(--surface-2);">' + isi + '</td></tr>';
+            + '<td colspan="8" style="background:var(--surface-2);">' + isi + '</td></tr>';
 
         return baris;
     }

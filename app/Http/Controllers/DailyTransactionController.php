@@ -335,8 +335,21 @@ class DailyTransactionController extends Controller
             | budget_request_id ikut diisi supaya baris ini punya Budget Plan,
             | penerima, dan rekening tujuan yang sama dengan CR induknya.
             */
-            $secondPayments = \App\Models\BudgetRequestSecondPayment::whereIn('id', $secondPayIds)->get();
+            $secondPayments = \App\Models\BudgetRequestSecondPayment::with('budgetRequest')->whereIn('id', $secondPayIds)->get();
             foreach ($secondPayments as $sp) {
+                /*
+                | Kaki pembayaran Expense Claim: CR induknya sedang
+                | SECOND_APPROVED (menunggu Buat Batch Baru). Begitu ikut batch
+                | ia jadi QUEUED (Process) — sama seperti CR biasa yang
+                | dibatch — dan akan CLOSED saat batch ditandai PAID.
+                */
+                $indukCr = $sp->budgetRequest;
+                if ($indukCr && $indukCr->status === 'SECOND_APPROVED') {
+                    $indukCr->update(['status' => 'QUEUED']);
+                    $indukCr->addLog('SECOND_APPROVED', 'QUEUED', 'second_payment_batched',
+                        'Masuk batch ' . $batch->code . ($request->notes ? ' - ' . $request->notes : ''));
+                }
+
                 $batch->items()->create([
                     'budget_request_id' => $sp->budget_request_id,
                     'second_payment_id' => $sp->id,
@@ -790,11 +803,19 @@ class DailyTransactionController extends Controller
                     'status'            => 'INCLUDED',
                 ]);
 
-                $crStatus = $sp->budgetRequest?->status;
-                $sp->budgetRequest?->addLog(
+                // Sama seperti saat batch dibuat: CR induk Expense Claim ikut
+                // jadi QUEUED (Process) begitu masuk batch.
+                $indukCr  = $sp->budgetRequest;
+                $crStatus = $indukCr?->status;
+                $indukCr?->addLog(
                     $crStatus, $crStatus, 'second_payment_batched',
                     'Second Payment ' . $sp->amount_formatted . ' masuk batch ' . $batch->code
                 );
+                if ($indukCr && $indukCr->status === 'SECOND_APPROVED') {
+                    $indukCr->update(['status' => 'QUEUED']);
+                    $indukCr->addLog('SECOND_APPROVED', 'QUEUED', 'second_payment_batched',
+                        'Masuk batch ' . $batch->code);
+                }
                 $added++;
             }
 
@@ -879,12 +900,25 @@ class DailyTransactionController extends Controller
                         'notes'   => $request->payment_notes,
                     ]);
 
-                    $crStatus = $item->budgetRequest?->status;
-                    $item->budgetRequest?->addLog(
+                    $indukCr  = $item->budgetRequest;
+                    $crStatus = $indukCr?->status;
+                    $indukCr?->addLog(
                         $crStatus, $crStatus, 'second_payment_paid',
                         'Second Payment ' . $sp->amount_formatted . ' dibayar lewat batch '
                             . $batch->code . ($request->payment_notes ? ' - ' . $request->payment_notes : '')
                     );
+
+                    /*
+                    | Expense Claim lunas = urusan CR ini selesai. CR yang
+                    | sampai ke sini sudah lewat Settle Approve & 2nd Approve,
+                    | jadi tidak ada lagi tahap Close manual — langsung CLOSED.
+                    */
+                    if ($indukCr && $indukCr->status === 'QUEUED') {
+                        $dari = $indukCr->status;
+                        $indukCr->update(['status' => 'CLOSED', 'closed_at' => now()]);
+                        $indukCr->addLog($dari, 'CLOSED', 'settlement_closed',
+                            'Ditutup otomatis setelah Expense Claim dibayar pada batch ' . $batch->code);
+                    }
                     continue;
                 }
 

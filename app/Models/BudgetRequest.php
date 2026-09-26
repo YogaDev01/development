@@ -63,6 +63,11 @@ class BudgetRequest extends Model
         'REALIZED',
         'SETTLE_CHECKED',
         'SETTLE_VERIFIED',
+        // Dua tahap baru — sudah terdaftar supaya label, warna, dan stepper
+        // konsisten. Transisinya belum dipasang (getAllowedNextStatuses):
+        // aturan perpindahannya menyusul.
+        'SETTLE_APPROVED',
+        'SECOND_APPROVED',
         'CLOSED',
         'REJECTED',
         'CANCELLED',
@@ -70,22 +75,33 @@ class BudgetRequest extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | PAGU CASH ADVANCE PER PIC
+    | LIMIT CASH ADVANCE PER PIC
     |--------------------------------------------------------------------------
-    | Setiap PIC (master_pics, lewat beneficiaries.pic_id) hanya boleh punya
-    | maksimal 10 Cash Advance berjalan dengan total nominal 20 juta. Kuota
-    | dipakai sejak CR dibuat dan baru pulih saat CR di-CLOSED (CANCELLED
-    | dikecualikan karena pengajuannya memang sudah mati/dibatalkan).
+    | Angkanya BUKAN konstanta: diambil dari Master PIC (master_pics) milik
+    | beneficiary yang dipilih — kolom `token` jadi batas jumlah pengajuan dan
+    | kolom `nominal` jadi batas total rupiah. Kolom yang kosong berarti aspek
+    | itu tidak dibatasi.
+    |
+    | Jumlah pengajuan dihitung mulai CR mencapai tahap PAID (uangnya benar-
+    | benar keluar) sampai tahap SETTLE_APPROVED selesai di-approve Approver.
+    | Begitu CR pindah ke SECOND_APPROVED, slotnya LEPAS — seluruh approval
+    | settlement sudah tuntas, jadi PIC boleh mengajukan Cash Advance baru
+    | tanpa menunggu pembayaran Expense Claim dan penutupan CR-nya.
+    |
+    | Nominal tetap dihitung sejak CR dibuat sampai CLOSED/CANCELLED.
     */
 
-    /** Maksimal jumlah Cash Advance berjalan per PIC. */
-    public const CA_LIMIT_COUNT = 10;
-
-    /** Maksimal total nominal Cash Advance berjalan per PIC (rupiah). */
-    public const CA_LIMIT_AMOUNT = 20000000;
-
-    /** Status yang TIDAK lagi memakai kuota CA milik PIC. */
+    /** Status yang TIDAK lagi memakai limit CA milik PIC. */
     public const CA_QUOTA_RELEASED_STATUSES = ['CLOSED', 'CANCELLED'];
+
+    /**
+     * Status yang dihitung sebagai "pengajuan berjalan": sudah cair dan
+     * approval settlement-nya belum tuntas. SECOND_APPROVED dan seterusnya
+     * sengaja TIDAK ikut — di situlah slot limit dikembalikan.
+     */
+    public const CA_COUNTED_STATUSES = [
+        'PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'SETTLE_APPROVED',
+    ];
 
     /*
     |--------------------------------------------------------------------------
@@ -306,7 +322,9 @@ class BudgetRequest extends Model
     */
 
     /** Status yang dianggap sudah melewati settlement. */
-    public const SETTLED_STATUSES = ['SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'];
+    public const SETTLED_STATUSES = [
+        'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'SETTLE_APPROVED', 'SECOND_APPROVED', 'CLOSED',
+    ];
 
     public function isSettled(): bool
     {
@@ -320,11 +338,62 @@ class BudgetRequest extends Model
      */
     public function refundAmount(): int
     {
-        if (!$this->isSettled()) {
+        /*
+        | Tipe selain Cash Advance TIDAK punya tahap settlement: dananya cair
+        | sesuai pengajuan lalu langsung Closed, jadi tidak pernah ada sisa
+        | yang dikembalikan. Tanpa penjagaan ini CR non-CA yang Closed terbaca
+        | refund = SELURUH nominalnya, karena total_realization-nya memang 0 —
+        | angka itu lalu ikut mengalir ke detail CR, Budget Plan, Project, dan
+        | export.
+        */
+        if (!$this->isCashAdvance() || !$this->isSettled()) {
             return 0;
         }
 
         return max(0, (int) $this->amount - $this->total_realization);
+    }
+
+    /**
+     * Expense Claim = Settlement - Request. Kebalikan refund: settlement
+     * MELEBIHI nilai pengajuan, jadi ada kekurangan bayar yang ditagihkan
+     * balik ke perusahaan (diselesaikan lewat Second Payment).
+     *
+     * Sengaja TIDAK memakai penjagaan isSettled() seperti refundAmount():
+     * angkanya sudah nyata sejak realisasi diinput (status Settle), dan justru
+     * di tahap itulah kelebihannya perlu terlihat. Tetap tidak pernah negatif
+     * — kekurangan realisasi adalah urusan Refund, bukan kolom ini. CR non
+     * Cash Advance ikut nol dengan sendirinya karena realisasinya 0.
+     */
+    public function expenseClaimAmount(): int
+    {
+        return max(0, $this->total_realization - (int) $this->amount);
+    }
+
+    /**
+     * CR sedang berada di kaki pembayaran Expense Claim — sudah pernah
+     | di-Second Approve, jadi QUEUED di sini BUKAN pencairan pengajuan awal
+     * melainkan pembayaran kekurangan settlement. Dipakai Treasury untuk
+     * memutuskan: batch dibayar -> CR langsung CLOSED, bukan PAID.
+     */
+    public function isExpenseClaimLeg(): bool
+    {
+        return $this->statusLogs()->where('status_to', 'SECOND_APPROVED')->exists();
+    }
+
+    /** Settlement melebihi pengajuan, jadi wajib lewat Settle Approved & Second Approved. */
+    public function hasExpenseClaim(): bool
+    {
+        return $this->expenseClaimAmount() > 0;
+    }
+
+    public function getExpenseClaimAttribute(): int
+    {
+        return $this->expenseClaimAmount();
+    }
+
+    public function getExpenseClaimFormattedAttribute(): string
+    {
+        return number_format($this->expenseClaimAmount(), 0, ',', '.');
     }
 
     public function getRefundAttribute(): int
@@ -388,7 +457,18 @@ class BudgetRequest extends Model
             // close. Reject di tiap tahap mengembalikan ke PAID untuk direvisi.
             'REALIZED'         => ['SETTLE_CHECKED', 'PAID'],
             'SETTLE_CHECKED'   => ['SETTLE_VERIFIED', 'PAID'],
-            'SETTLE_VERIFIED'  => ['CLOSED'],
+            /*
+            | Cabang Expense Claim: settlement melebihi pengajuan, jadi
+            | kekurangannya harus disetujui dua lapis dulu.
+            |   SETTLE_VERIFIED  -> menunggu approve Finance Manager
+            |   SETTLE_APPROVED  -> menunggu approve Approver
+            |   SECOND_APPROVED  -> menunggu Treasury membuat batch
+            |   QUEUED (Process) -> menunggu dibayar, lalu CLOSED otomatis
+            | Tanpa klaim, alurnya tetap SETTLE_VERIFIED -> CLOSED.
+            */
+            'SETTLE_VERIFIED'  => $this->expenseClaimAmount() > 0 ? ['SETTLE_APPROVED', 'PAID'] : ['CLOSED'],
+            'SETTLE_APPROVED'  => ['SECOND_APPROVED', 'PAID'],
+            'SECOND_APPROVED'  => ['QUEUED'],
             'REJECTED'  => ['DRAFT', 'CANCELLED'],     // Manager decision: Revise or Cancel
             default     => [],
         };
@@ -508,6 +588,8 @@ class BudgetRequest extends Model
             'QUEUED'    => 'warning',
             'PAID'      => 'success',
             'REALIZED'  => 'primary',
+            'SETTLE_APPROVED' => 'success',
+            'SECOND_APPROVED' => 'success',
             'CLOSED'    => 'dark',
             'REJECTED'  => 'danger',
             'CANCELLED' => 'dark',
@@ -538,6 +620,8 @@ class BudgetRequest extends Model
             'REALIZED'  => 'Settle',
             'SETTLE_CHECKED'  => 'Checked',
             'SETTLE_VERIFIED' => 'Verified',
+            'SETTLE_APPROVED' => 'Settle Approved',
+            'SECOND_APPROVED' => 'Second Approved',
             'CLOSED'    => 'Closed',
             'REJECTED'  => 'Rejected',
             'CANCELLED' => 'Cancelled',

@@ -147,3 +147,23 @@
         </form>
     </div></div>
 </div>
+
+{{-- BULK REJECT — dipakai section Head/Cost Control/CEO --}}
+<div class="modal fade" id="mdlBulkRejectCR" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog"><div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
+        <div class="modal-header" style="background:var(--charcoal);border-bottom:3px solid var(--accent);">
+            <h5 class="modal-title text-white">Reject <span id="bulkRejectCount"></span> CR</h5>
+            <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+        </div>
+        <div class="modal-body" style="padding:24px;">
+            <div class="form-group mb-0">
+                <label class="font-weight-600">Alasan Penolakan <span class="text-danger">*</span></label>
+                <textarea id="bulkRejectNotes" class="form-control" rows="3" required placeholder="Tuliskan alasan..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer" style="background:var(--surface-2);">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+            <button type="button" class="btn btn-danger" id="btnBulkRejectConfirm">Tolak Semua</button>
+        </div>
+    </div></div>
+</div>

@@ -84,11 +84,13 @@
                             <tr>
                                 <th scope="col" width="4%"  class="all">No</th>
                                 <th scope="col" width="10%" class="all">Type</th>
-                                <th scope="col" width="19%" class="all">Nama PIC</th>
-                                <th scope="col" width="14%">Jabatan</th>
-                                <th scope="col" width="14%">Terhubung Ke</th>
+                                <th scope="col" width="16%" class="all">Nama PIC</th>
+                                <th scope="col" width="12%">Jabatan</th>
+                                <th scope="col" width="12%">Terhubung Ke</th>
                                 <th scope="col" width="12%">Phone</th>
-                                <th scope="col" width="14%">Email</th>
+                                <th scope="col" width="12%">Email</th>
+                                <th scope="col" width="9%">Token</th>
+                                <th scope="col" width="9%" class="text-right">Nominal</th>
                                 <th scope="col" width="7%">Status</th>
                                 <th scope="col" width="10%" class="text-center all action-column">Action</th>
                             </tr>
@@ -136,6 +138,21 @@
                                 </td>
                                 <td>{{ $pic->phone ?? '-' }}</td>
                                 <td>{{ $pic->email ?? '-' }}</td>
+                                {{-- Hanya dibaca di sini. Mengubahnya lewat modal Edit,
+                                     sejalan dengan kolom lain di baris ini. --}}
+                                <td>{{ $pic->token ?: '-' }}</td>
+                                <td class="text-right" data-order="{{ $pic->nominal !== null ? (float) $pic->nominal : -1 }}">
+                                    @if($pic->nominal !== null)
+                                        {{-- Pemisah ribuan titik, desimal koma. Desimal hanya
+                                             ditulis kalau memang ada — ",00" di setiap baris
+                                             menambah lebar kolom tanpa menambah keterangan. --}}
+                                        {{ fmod((float) $pic->nominal, 1) == 0.0
+                                            ? number_format((float) $pic->nominal, 0, ',', '.')
+                                            : number_format((float) $pic->nominal, 2, ',', '.') }}
+                                    @else
+                                        <span class="text-muted">-</span>
+                                    @endif
+                                </td>
                                 <td>
                                     @if($pic->status == 'ACTIVE')
                                         <span class="badge badge-success px-2 py-1">ACTIVE</span>
@@ -149,27 +166,23 @@
                                         <button type="button"
                                                 class="ts-action-primary is-neutral btn-edit"
                                                 data-id="{{ $pic->id }}"
-                                                title="Edit" aria-label="Edit {{ $pic->name }}">
+                                                title="Edit" aria-label="Edit {{ $pic->pic }}">
                                             <i class="fas fa-pen" aria-hidden="true"></i><span class="ts-al">Edit</span>
                                         </button>
 
-                                        <button type="button" class="ts-action-more"
-                                                aria-haspopup="true" aria-expanded="false"
-                                                title="Aksi lain" aria-label="Aksi lain untuk {{ $pic->name }}">
-                                            <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
-                                        </button>
-
-                                        <div class="ts-action-menu dropdown-menu" hidden>
-                                            <form action="{{ url('/master-pic/' . $pic->id) }}"
-                                                  method="POST" class="delete-form">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="dropdown-item is-danger">
-                                                    <i class="fas fa-trash"></i>Hapus
-                                                </button>
-                                            </form>
-
-                                        </div>
+                                        {{-- Hapus ditampilkan langsung, bukan di balik menu
+                                             "aksi lain": isinya memang cuma satu perintah, jadi
+                                             menunya hanya menambah satu klik tanpa menyembunyikan
+                                             apa pun. --}}
+                                        <form action="{{ url('/master-pic/' . $pic->id) }}"
+                                              method="POST" class="d-inline delete-form">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="ts-action-primary is-danger"
+                                                    title="Hapus" aria-label="Hapus {{ $pic->pic }}">
+                                                <i class="fas fa-trash" aria-hidden="true"></i><span class="ts-al">Hapus</span>
+                                            </button>
+                                        </form>
 
                                     </div>
                                 </td>
@@ -177,7 +190,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="9">
+                                <td colspan="11">
                                     <x-empty title="Belum ada data PIC" icon="fas fa-folder-open" compact />
                                 </td>
                             </tr>
@@ -295,6 +308,28 @@
                                 <input type="email" name="email" id="tambahEmail"
                                        class="form-control"
                                        placeholder="Masukkan email"
+                                       autocomplete="off">
+                            </div>
+                        </div>
+
+                        <!-- TOKEN -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="font-weight-600">Token</label>
+                                <input type="text" name="token" id="tambahToken"
+                                       class="form-control" maxlength="100"
+                                       placeholder="Masukkan token"
+                                       autocomplete="off">
+                            </div>
+                        </div>
+
+                        <!-- NOMINAL -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="font-weight-600">Nominal</label>
+                                <input type="text" name="nominal" id="tambahNominal"
+                                       class="form-control text-right money-input"
+                                       inputmode="decimal" placeholder="0"
                                        autocomplete="off">
                             </div>
                         </div>
@@ -454,6 +489,26 @@
                                 </div>
                             </div>
 
+                            <!-- TOKEN -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="font-weight-600">Token</label>
+                                    <input type="text" name="token" id="editToken"
+                                           class="form-control" maxlength="100"
+                                           autocomplete="off">
+                                </div>
+                            </div>
+
+                            <!-- NOMINAL -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="font-weight-600">Nominal</label>
+                                    <input type="text" name="nominal" id="editNominal"
+                                           class="form-control text-right money-input"
+                                           inputmode="decimal" autocomplete="off">
+                                </div>
+                            </div>
+
                             <!-- AKUN USER (M-02) -->
                             <div class="col-md-6">
                                 <div class="form-group">
@@ -540,6 +595,9 @@
 #picTable            { width:100% !important; }
 .table td,.table th { vertical-align:middle !important; }
 .action-column      { white-space:nowrap !important; min-width:80px !important; }
+
+/* Kolom uang dibaca dengan membandingkan digitnya, jadi angkanya rata kanan. */
+.money-input { font-variant-numeric: tabular-nums; }
 .action-buttons     { display:flex; align-items:center; justify-content:center; flex-wrap:nowrap; gap:4px; }
 .action-buttons .btn { flex-shrink:0; }
 
@@ -652,6 +710,12 @@ $(function () {
             $('#editAccountNumber').val(res.account_number ?? '');
             $('#editPhone').val(res.phone ?? '');
             $('#editEmail').val(res.email ?? '');
+            $('#editToken').val(res.token ?? '');
+            // Nilai dari server selalu berdesimal dua ("100000000.00"). Desimal
+            // nol dibuang supaya yang terlihat sama dengan yang tertulis di tabel.
+            $('#editNominal').val(res.nominal !== null && res.nominal !== undefined
+                ? formatMoney(String(res.nominal).replace(/\.00$/, '').replace('.', ','))
+                : '');
             $('#editUser').val(res.user_id ?? '');
             $('#editEmployee').val(res.employee_id ?? '');
             $('#editStatus').val(res.status);
@@ -687,6 +751,58 @@ $(function () {
 
     /*
     |--------------------------------------------------------------------------
+    | NOMINAL — pemisah ribuan
+    |
+    | Kotaknya bertipe text, bukan number: input number tidak bisa menampilkan
+    | titik pemisah, dan tampilannya ikut berubah-ubah mengikuti locale browser
+    | ("100000000,00" pada tangkapan layar sebelumnya). Yang dikirim ke server
+    | tetap angka polos — lihat handler submit di bawah.
+    |--------------------------------------------------------------------------
+    */
+
+    function formatMoney(raw) {
+        let v = String(raw ?? '').replace(/[^\d,.-]/g, '');
+        if (v === '') return '';
+
+        // Titik dianggap pemisah ribuan, koma pemisah desimal.
+        v = v.replace(/\./g, '');
+        let parts  = v.split(',');
+        let intRaw = parts[0].replace(/\D/g, '');
+        let dec    = parts.length > 1 ? parts[1].replace(/\D/g, '').slice(0, 2) : null;
+
+        if (intRaw === '') intRaw = '0';
+        let int = intRaw.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+        return dec !== null ? int + ',' + dec : int;
+    }
+
+    // Angka polos untuk dikirim ke server: "100.000.000,50" -> "100000000.50"
+    function unformatMoney(raw) {
+        let v = String(raw ?? '').trim();
+        if (v === '') return '';
+        return v.replace(/\./g, '').replace(',', '.');
+    }
+
+    $(document).on('input', '.money-input', function () {
+        let el  = this;
+        let end = el.value.length - el.selectionStart;   // jarak kursor dari kanan
+        el.value = formatMoney(el.value);
+        // Kursor dikembalikan diukur dari kanan, supaya titik yang baru
+        // disisipkan tidak melompatkan kursor ke ujung.
+        let pos = Math.max(0, el.value.length - end);
+        try { el.setSelectionRange(pos, pos); } catch (e) {}
+    });
+
+    // Kedua form dikirim biasa (bukan AJAX), jadi nilainya dipoloskan tepat
+    // sebelum berangkat — kalau tidak, "100.000.000" gagal validasi numeric.
+    $(document).on('submit', '#formTambah, #formEdit', function () {
+        $(this).find('.money-input').each(function () {
+            this.value = unformatMoney(this.value);
+        });
+    });
+
+    /*
+    |--------------------------------------------------------------------------
     | DATATABLE (dibungkus try-catch — kalau gagal, modal Tambah/Edit
     | di atas tetap jalan normal, tabel jatuh ke tampilan HTML polos)
     |--------------------------------------------------------------------------
@@ -701,7 +817,8 @@ $(function () {
         columnDefs: [
             { responsivePriority: 1,   targets: [0, 1, -1] },
             { responsivePriority: 2,   targets: [4] },
-            { responsivePriority: 100, targets: [2, 3, 5, 6, 7] }
+            { responsivePriority: 3,   targets: [7, 8] },
+            { responsivePriority: 100, targets: [2, 3, 5, 6, 9] }
         ],
         dom:
             'rt' +

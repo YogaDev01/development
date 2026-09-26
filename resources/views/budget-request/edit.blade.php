@@ -1183,12 +1183,12 @@ document.addEventListener('DOMContentLoaded', function () {
     refreshAttachmentRequiredUI();
 
 
-    /* ── PAGU CASH ADVANCE PER PIC ──────────────────────────────────────────
+    /* ── LIMIT CASH ADVANCE PER PIC ─────────────────────────────────────────
        Setiap beneficiary terhubung ke satu PIC. Semua Cash Advance milik PIC
-       itu berbagi pagu: maks 10 pengajuan berjalan & total 20 juta. Kuota
-       pulih setelah pengajuan di-Close. Panel ini hanya tampil untuk tipe
+       itu berbagi satu limit yang diambil dari Master PIC (token = jumlah
+       pengajuan, nominal = total rupiah). Panel ini hanya tampil untuk tipe
        Cash Advance. */
-    var caQuotaState = null;   // null = tidak ada pagu / belum diambil
+    var caQuotaState = null;   // null = tidak ada limit / belum diambil
 
     function renderCaQuota() {
         var box = document.getElementById('caQuotaAlert');
@@ -1204,18 +1204,26 @@ document.addEventListener('DOMContentLoaded', function () {
                 : (q.level === 'warning' ? 'alert-warning' : 'alert-info');
         var icon = q.level === 'ok' ? 'fa-info-circle' : 'fa-exclamation-triangle';
         var head = q.level === 'blocked'
-                ? 'Pagu Cash Advance PIC <strong>' + q.pic_name + '</strong> sudah habis — pengajuan baru tidak bisa disimpan.'
+                ? 'Limit Cash Advance PIC <strong>' + q.pic_name + '</strong> sudah habis — pengajuan baru tidak bisa disimpan.'
                 : (q.level === 'warning'
-                    ? 'Pagu Cash Advance PIC <strong>' + q.pic_name + '</strong> hampir habis.'
-                    : 'Pagu Cash Advance PIC <strong>' + q.pic_name + '</strong>.');
+                    ? 'Limit Cash Advance PIC <strong>' + q.pic_name + '</strong> hampir habis.'
+                    : 'Limit Cash Advance PIC <strong>' + q.pic_name + '</strong>.');
+
+        /* Aspek yang tidak diisi di Master PIC tidak ditampilkan — menulis
+           "0" atau "tanpa batas" di situ cuma bikin salah baca. */
+        var bagian = '';
+        if (q.limit_count !== null) {
+            bagian += ' Pengajuan berjalan: <strong>' + q.used_count + ' / ' + q.limit_count + '</strong>' +
+                      ' (sisa ' + q.remaining_count + ').';
+        }
+        if (q.limit_amount !== null) {
+            bagian += ' Nominal: <strong>' + q.used_amount_formatted + ' / ' + q.limit_amount_formatted + '</strong>' +
+                      ' (sisa ' + q.remaining_amount_formatted + ').';
+        }
 
         box.className = 'alert mb-0 mt-2 ' + cls;
-        box.innerHTML = '<i class="fas ' + icon + ' mr-1"></i> ' + head +
-            ' Pengajuan berjalan: <strong>' + q.used_count + ' / ' + q.limit_count + '</strong>' +
-            ' (sisa ' + q.remaining_count + ').' +
-            ' Nominal: <strong>' + q.used_amount_formatted + ' / ' + q.limit_amount_formatted + '</strong>' +
-            ' (sisa ' + q.remaining_amount_formatted + ').' +
-            ' <br><small>Kuota pulih setelah pengajuan berjalan di-Close.</small>';
+        box.innerHTML = '<i class="fas ' + icon + ' mr-1"></i> ' + head + bagian +
+            ' <br><small>Jumlah pengajuan dihitung sejak CR berstatus Paid; limit pulih setelah pengajuan di-Close.</small>';
         box.style.display = 'block';
     }
 
@@ -1241,9 +1249,10 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(function () { caQuotaState = null; renderCaQuota(); });
     }
 
-    /** Sisa pagu nominal terlampaui oleh total rincian saat ini? */
+    /** Sisa limit nominal terlampaui oleh total rincian saat ini? */
     function caQuotaAmountExceeded() {
         if (!typeIsCashAdvance() || !caQuotaState || !caQuotaState.has_quota) return false;
+        if (caQuotaState.remaining_amount === null) return false;   // nominal tidak dibatasi
         var total = 0;
         document.querySelectorAll('#detailBody .detail-row').forEach(function (row) {
             var amt = row.querySelector('.inp-amount');
@@ -1331,10 +1340,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         refreshAttachmentRequiredUI();
         if (typeIsCashAdvance() && caQuotaState && caQuotaState.has_quota) {
-            if (caQuotaState.remaining_count < 1) {
-                reasons.push('pagu jumlah pengajuan Cash Advance PIC ' + caQuotaState.pic_name + ' sudah habis');
+            if (caQuotaState.remaining_count !== null && caQuotaState.remaining_count < 1) {
+                reasons.push('jatah pengajuan Cash Advance PIC ' + caQuotaState.pic_name + ' sudah habis');
             } else if (caQuotaAmountExceeded()) {
-                reasons.push('total pengajuan melebihi sisa pagu Cash Advance (' + caQuotaState.remaining_amount_formatted + ')');
+                reasons.push('total pengajuan melebihi sisa limit Cash Advance (' + caQuotaState.remaining_amount_formatted + ')');
             }
         }
         if (typeIsCashAdvance()) {

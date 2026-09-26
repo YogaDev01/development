@@ -121,6 +121,8 @@
                     'title'       => $section['title'],
                     'statusLabel' => $section['status_label'],
                     'groups'      => $section['groups'],
+                    'approveUrl'  => $section['approve_url'],
+                    'rejectUrl'   => $section['reject_url'],
                 ])
             @endforeach
 
@@ -432,6 +434,75 @@
             @endif
             @endforeach
 
+            {{-- EXPENSE CLAIM — 2ND APPROVE (SETTLE_APPROVED -> SECOND_APPROVED, role approver).
+                 Hanya CR yang settlement-nya melebihi pengajuan yang sampai ke sini. --}}
+            @if($approverSecondApprove->isNotEmpty())
+            <div id="tl-settle-2nd" class="card card-warning card-outline shadow-sm mt-3 todo-worklist" data-section="settle-2nd">
+                <div class="card-header d-flex align-items-center">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-hand-holding-usd mr-1"></i> Expense Claim — Second Approve
+                        <span class="badge badge-secondary ml-1">{{ $approverSecondApprove->sum('qty') }}</span>
+                        <span class="text-muted ml-1" style="font-size:11px;">dari {{ $approverSecondApprove->count() }} PO</span>
+                    </h3>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0" style="font-size:12px;">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th scope="col">Code</th>
+                                    <th scope="col">Deskripsi</th>
+                                    <th scope="col" class="text-nowrap">Beneficiary</th>
+                                    <th scope="col" class="text-right text-nowrap">Request</th>
+                                    <th scope="col" class="text-right text-nowrap">Settlement</th>
+                                    <th scope="col" class="text-right text-nowrap">Expense Claim</th>
+                                    <th scope="col" class="text-center text-nowrap">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($approverSecondApprove as $poGroup)
+                                @foreach($poGroup['plans'] as $group)
+                                @foreach($group['items'] as $cr)
+                                @php
+                                    $crAging = $cr->aging_days;
+                                    $crAgingClass = $crAging >= 3 ? 'text-danger' : ($crAging >= 1 ? 'rv-nob-item' : 'text-muted');
+                                @endphp
+                                <tr class="todo-row"
+                                    data-pm="{{ $group['pm'] }}" data-po="{{ $poGroup['po'] }}"
+                                    data-search="{{ strtolower($cr->code . ' ' . $cr->description . ' ' . ($cr->beneficiary?->nickname ?? '')) }}">
+                                    <td class="text-nowrap">
+                                        <button type="button" class="cr-number-btn todo-open-drawer" data-id="{{ $cr->id }}">{{ $cr->code }}</button>
+                                    </td>
+                                    <td>{{ Str::limit($cr->description, 120) }}</td>
+                                    <td class="text-nowrap">{{ $cr->beneficiary?->nickname ?? '-' }}</td>
+                                    <td class="text-right text-nowrap">{{ $cr->amount_formatted }}</td>
+                                    <td class="text-right text-nowrap">{{ number_format($cr->total_realization, 0, ',', '.') }}</td>
+                                    <td class="text-right text-nowrap text-danger"><strong>{{ $cr->expense_claim_fmt }}</strong></td>
+                                    <td class="text-center text-nowrap {{ $crAgingClass }}">{{ $cr->aging_label }}</td>
+                                    <td class="text-center text-nowrap">
+                                        <div class="action-buttons ts-actions">
+                                            <button type="button" class="ts-action-primary btn-second-approve"
+                                                    data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Approve → Treasury">
+                                                <i class="fas fa-hand-holding-usd" aria-hidden="true"></i><span class="ts-al">Second Approve</span>
+                                            </button>
+                                            <button type="button" class="ts-action-primary is-danger btn-second-reject"
+                                                    data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Reject → Paid">
+                                                <i class="fas fa-times" aria-hidden="true"></i><span class="ts-al">Reject</span>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforeach
+                                @endforeach
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             {{-- SETTLEMENT — CEO CLOSE (SETTLE_VERIFIED), diblokir kalau masih ada Second Payment PENDING --}}
             @if($ceoSettlementClose->isNotEmpty())
             <div id="tl-settle-close" class="card card-success card-outline shadow-sm mt-3 todo-worklist" data-section="settle-close">
@@ -441,6 +512,23 @@
                         <span class="badge badge-secondary ml-1">{{ $ceoSettlementClose->sum('qty') }}</span>
                         <span class="text-muted ml-1" style="font-size:11px;">dari {{ $ceoSettlementClose->count() }} PO</span>
                     </h3>
+                </div>
+
+                {{-- Multi-select: Close / Reject beberapa CR sekaligus. Memakai
+                     mesin bulk yang sama dengan worklist review (lihat
+                     _worklist_section.blade.php + handler .todo-bulk-* di bawah). --}}
+                <div class="todo-bulk-bar">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div style="font-size:12.5px;color:var(--text);"><strong class="todo-bulk-count">0</strong> CR dipilih<span class="todo-bulk-amount"></span></div>
+                        <div class="d-flex" style="gap:8px;">
+                            <button type="button" class="btn btn-outline-success btn-sm todo-bulk-approve" disabled>
+                                <i class="fas fa-lock mr-1"></i>Close
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-sm todo-bulk-reject" disabled>
+                                <i class="fas fa-times mr-1"></i>Reject
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="card-body p-0">
@@ -453,6 +541,7 @@
                         <table class="table table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
+                                    <th scope="col" style="width:1%;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
                                     <th scope="col" class="text-nowrap" style="width:1%;">CR Number</th>
                                     <th scope="col">Description</th>
                                     <th scope="col" class="text-nowrap" style="width:1%;">Beneficiary</th>
@@ -473,6 +562,7 @@
                     @endphp
                                 {{-- LAPIS 1 — PURCHASE ORDER (MN-03). --}}
                                 <tr class="todo-po-row" data-target="todo-settle-close-po-{{ $poi }}">
+                                    <td><input type="checkbox" class="todo-check-group" data-group="todo-settle-close-po-{{ $poi }}" aria-label="Pilih semua CR PO ini"></td>
                                     <td colspan="3">
                                         <i class="fas fa-chevron-right todo-caret mr-2"></i>
                                         <strong>{{ $poGroup['po'] }}</strong>
@@ -503,6 +593,7 @@
                                 {{-- LAPIS 2 — BUDGET PLAN. --}}
                                 <tr class="todo-group-row todo-settle-close-po-{{ $poi }}" style="display:none;"
                                     data-target="todo-settle-close-grp-{{ $gi }}">
+                                    <td><input type="checkbox" class="todo-check-group" data-group="todo-settle-close-grp-{{ $gi }}" aria-label="Pilih semua CR budget plan ini"></td>
                                     <td colspan="5" style="padding-left:32px;">
                                         <i class="fas fa-chevron-right todo-caret mr-2"></i>
                                         <strong>{{ $group['label'] }}</strong>
@@ -522,6 +613,16 @@
                                 @endphp
                                 <tr class="{{ $indukBarisCr }} todo-row" style="display:none;"
                                     data-pm="{{ $group['pm'] }}" data-po="{{ $poGroup['po'] }}" data-search="{{ $crSearch }}">
+                                    {{-- CR yang Second Payment-nya masih PENDING memang tidak bisa
+                                         di-Close, jadi tidak diberi checkbox sama sekali daripada
+                                         ikut terpilih lalu gagal diam-diam saat bulk. --}}
+                                    {{-- CR dengan Expense Claim juga tidak diberi checkbox: aksinya
+                                         Settle Approve, bukan Close, jadi tidak boleh ikut bulk Close. --}}
+                                    <td>
+                                        @unless($cr->pending_second_payment || $cr->needs_settle_approve)
+                                        <input type="checkbox" class="todo-check" value="{{ $cr->id }}" data-amount="{{ $cr->amount }}" aria-label="Pilih {{ $cr->code }}">
+                                        @endunless
+                                    </td>
                                     <td class="text-nowrap">
                                         <button type="button" class="cr-number-btn todo-open-drawer" data-id="{{ $cr->id }}">{{ $cr->code }}</button>
                                     </td>
@@ -537,10 +638,22 @@
                                         </span>
                                         @else
                                         <div class="action-buttons ts-actions">
+                                            @if($cr->needs_settle_approve)
+                                            <button type="button" class="ts-action-primary btn-settle-approve"
+                                                    data-id="{{ $cr->id }}" data-code="{{ $cr->code }}"
+                                                    title="Expense Claim {{ $cr->expense_claim_fmt }} — Approve → Second Approve">
+                                                <i class="fas fa-check-double" aria-hidden="true"></i><span class="ts-al">Settle Approve</span>
+                                            </button>
+                                            <button type="button" class="ts-action-primary is-danger btn-settle-reject"
+                                                    data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Reject → Paid">
+                                                <i class="fas fa-times" aria-hidden="true"></i><span class="ts-al">Reject</span>
+                                            </button>
+                                            @else
                                             <button type="button" class="ts-action-primary btn-ceo-close-settlement"
                                                     data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Close">
                                                 <i class="fas fa-lock" aria-hidden="true"></i><span class="ts-al">Close</span>
                                             </button>
+                                            @endif
 
                                             <button type="button" class="ts-action-more"
                                                     aria-haspopup="true" aria-expanded="false"
@@ -565,6 +678,14 @@
                     </div>
                 </div>
 
+                {{-- FORM tersembunyi untuk bulk Close/Reject — ids diisi JS dari checkbox --}}
+                <form id="frmTodoBulkApprove-settle-close" action="{{ route('budget-request.settlement-bulk-close') }}" method="POST" style="display:none;">
+                    @csrf
+                </form>
+                <form id="frmTodoBulkReject-settle-close" action="{{ route('budget-request.settlement-bulk-reject') }}" method="POST" style="display:none;">
+                    @csrf
+                    <textarea name="notes"></textarea>
+                </form>
             </div>
             @endif
 
@@ -2047,6 +2168,86 @@ $(function () {
         $btn.html(expanding ? '<i class="fas fa-compress-alt mr-1"></i>Collapse All' : '<i class="fas fa-expand-alt mr-1"></i>Expand All');
     });
 
+    /* ── WORKLIST — checkbox & bulk approve/reject (per section) ── */
+    function updateBulkBar($section) {
+        var $checked = $section.find('.todo-check:checked');
+        var n = $checked.length;
+        var total = 0;
+        $checked.each(function () { total += parseFloat($(this).data('amount')) || 0; });
+        $section.find('.todo-bulk-count').text(n);
+        $section.find('.todo-bulk-amount').text(n > 0 ? (' - ' + Math.round(total).toLocaleString('id-ID')) : '');
+        $section.find('.todo-bulk-approve, .todo-bulk-reject').prop('disabled', n === 0);
+
+        // Sinkronkan checkbox header grup: tercentang kalau semua CR dalam grup itu tercentang
+        // (termasuk saat "select all" section ditekan, atau CR dicentang satu-satu).
+        $section.find('.todo-check-group').each(function () {
+            var group = $(this).data('group');
+            var $leaves = $('.' + group).find('.todo-check');
+            $(this).prop('checked', $leaves.length > 0 && $leaves.filter(':checked').length === $leaves.length);
+        });
+    }
+    $(document).on('change', '.todo-check', function () {
+        updateBulkBar($(this).closest('.todo-worklist'));
+    });
+    $(document).on('change', '.todo-check-all', function () {
+        var $section = $(this).closest('.todo-worklist');
+        $section.find('.todo-check').prop('checked', $(this).is(':checked'));
+        updateBulkBar($section);
+    });
+
+    /* ── WORKLIST — checkbox di header grup: pilih semua CR dalam grup itu ── */
+    $(document).on('click', '.todo-check-group', function (e) {
+        e.stopPropagation();
+    });
+    $(document).on('change', '.todo-check-group', function () {
+        var group = $(this).data('group');
+        var $section = $(this).closest('.todo-worklist');
+        $('.' + group).find('.todo-check').prop('checked', $(this).is(':checked'));
+        updateBulkBar($section);
+    });
+
+    $(document).on('click', '.todo-bulk-approve', function () {
+        var $section = $(this).closest('.todo-worklist');
+        var key = $section.data('section');
+        var ids = $section.find('.todo-check:checked').map(function () { return $(this).val(); }).get();
+        if (!ids.length) return;
+        // Label ikut tombolnya: section settlement menutup CR ("Close"),
+        // section review meng-approve-nya.
+        var verb = $(this).text().trim() || 'Approve';
+        Swal.fire({
+            title: verb + ' ' + ids.length + ' CR?', icon: 'question', showCancelButton: true,
+            confirmButtonColor: 'var(--success)', cancelButtonColor: '#55595e',
+            confirmButtonText: 'Ya, ' + verb, cancelButtonText: 'Batal'
+        }).then(function (r) {
+            if (!r.isConfirmed) return;
+            var $form = $('#frmTodoBulkApprove-' + key);
+            $form.find('input[name="ids[]"]').remove();
+            ids.forEach(function (id) { $form.append('<input type="hidden" name="ids[]" value="' + id + '">'); });
+            $form.submit();
+        });
+    });
+
+    $(document).on('click', '.todo-bulk-reject', function () {
+        var $section = $(this).closest('.todo-worklist');
+        var key = $section.data('section');
+        var ids = $section.find('.todo-check:checked').map(function () { return $(this).val(); }).get();
+        if (!ids.length) return;
+        $('#bulkRejectCount').text(ids.length);
+        $('#bulkRejectNotes').val('').removeClass('is-invalid');
+        $('#mdlBulkRejectCR').data('ids', ids).data('key', key).modal('show');
+    });
+    $('#btnBulkRejectConfirm').on('click', function () {
+        var notes = $('#bulkRejectNotes').val().trim();
+        if (!notes) { $('#bulkRejectNotes').addClass('is-invalid'); return; }
+        var ids = $('#mdlBulkRejectCR').data('ids') || [];
+        var key = $('#mdlBulkRejectCR').data('key');
+        var $form = $('#frmTodoBulkReject-' + key);
+        $form.find('input[name="ids[]"]').remove();
+        ids.forEach(function (id) { $form.append('<input type="hidden" name="ids[]" value="' + id + '">'); });
+        $form.find('textarea[name="notes"]').val(notes);
+        $form.submit();
+    });
+
     /* ── HEAD APPROVE ── */
     $(document).on('click', '.btn-head-approve', function () {
         var id = $(this).data('id'), code = $(this).data('code');
@@ -2145,6 +2346,24 @@ $(function () {
         openSettlementApproveModal(id, 'finance-verify-settlement',
             'Verifikasi Settlement CR ' + code + '? Status akan berubah menjadi SETTLE VERIFIED, menunggu Close CEO.',
             'Verify → Settle Verified');
+    });
+    $(document).on('click', '.btn-settle-approve', function () {
+        openSettlementApproveModal($(this).data('id'), 'settle-approve',
+            'Setujui Expense Claim CR ' + $(this).data('code') + '? Pengajuan lanjut ke antrean Second Approve Approver.',
+            'Approve → Second Approve');
+    });
+    $(document).on('click', '.btn-settle-reject', function () {
+        openNotesModal($(this).data('id'), 'settle-reject', 'Reject Expense Claim', 'Alasan', 'btn-danger', 'Reject → Paid',
+            '<i class="fas fa-info-circle mr-1"></i> CR kembali ke <strong>PAID</strong> untuk disettle ulang. Expense Claim yang sudah terbentuk dibatalkan.');
+    });
+    $(document).on('click', '.btn-second-reject', function () {
+        openNotesModal($(this).data('id'), 'second-reject', 'Reject Expense Claim', 'Alasan', 'btn-danger', 'Reject → Paid',
+            '<i class="fas fa-info-circle mr-1"></i> CR kembali ke <strong>PAID</strong> untuk disettle ulang. Expense Claim yang sudah terbentuk dibatalkan.');
+    });
+    $(document).on('click', '.btn-second-approve', function () {
+        openSettlementApproveModal($(this).data('id'), 'second-approve',
+            'Setujui Expense Claim CR ' + $(this).data('code') + '? Pengajuan masuk antrean Buat Batch Baru Treasury, jadi Process setelah dibatch, dan CLOSED otomatis setelah dibayar.',
+            'Approve → Treasury');
     });
     $(document).on('click', '.btn-ceo-close-settlement', function () {
         var id = $(this).data('id'), code = $(this).data('code');

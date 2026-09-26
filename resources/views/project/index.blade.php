@@ -87,11 +87,11 @@
                             <div class="dropdown-menu dropdown-menu-right p-2" style="min-width:200px;max-height:340px;overflow-y:auto;">
                                 @php
                                     $poHideableCols = [
-                                        'poqty'      => 'Qty PO',
                                         'type'       => 'Tipe',
                                         'uploaded'   => 'Uploaded',
                                         'margin'     => 'Margin',
                                         'contract'   => 'Contract',
+                                        'poqty'      => 'Qty PO',
                                         'povalue'    => 'PO Value',
                                         'budget'     => 'Budget',
                                         'varcost'    => 'Variable Cost',
@@ -132,12 +132,12 @@
                                 <th scope="col" class="text-nowrap po-col-kode" style="width:1%;">Kode</th>
                                 <th scope="col">Scope of Work</th>
                                 <th scope="col" class="text-center text-nowrap" style="width:1%;">Status</th>
-                                <th scope="col" class="text-center text-nowrap" style="width:1%;" title="Jumlah No. PO yang sudah dientri pada kode ini (dibanding PO Quantity kalau diisi).">Qty PO</th>
                                 <th scope="col" class="text-center text-nowrap" style="width:1%;">Tipe</th>
                                 <th scope="col" class="text-center text-nowrap" style="width:1%;">Progress</th>
                                 <th scope="col" class="text-center col-wrap-header" style="width:110px;" title="Lingkaran isi = status Upload dokumen (No. PO). Cincin luar = status Progress milestone (Project Monitoring).">Uploaded</th>
                                 <th scope="col" class="text-center col-wrap-header" style="width:80px;">Margin</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Contract</th>
+                                <th scope="col" class="text-center text-nowrap" style="width:1%;" title="Jumlah No. PO yang sudah terbit pada kode ini. Klik untuk membuka Summary Progress khusus PO ini.">Qty PO</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">PO Value</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Budget</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Variable Cost</th>
@@ -226,18 +226,6 @@
                                               class="po-status-link" :data-id="$project->id" />
                                 </td>
 
-                                {{-- Qty PO = jumlah No. PO yang benar-benar sudah dientri pada 1 kode.
-                                     Angka pembanding di kanan = PO Quantity (ekspektasi manual), ditandai
-                                     kuning kalau keduanya tidak cocok — sama seperti sub-teks di PO Value. --}}
-                                <td class="text-center text-nowrap col-raw-poqty" data-raw="{{ $poActual }}"
-                                    data-order="{{ $poActual }}">
-                                    <button type="button" class="po-cell-link po-value-link {{ $project->poAdjustmentRequired() ? 'text-warning' : '' }}"
-                                            data-id="{{ $project->id }}"
-                                            title="{{ $poActual }} No. PO dientri{{ $project->po_quantity ? ' dari ' . $project->po_quantity . ' PO Quantity' : '' }}">
-                                        {{ $poActual }}{{ $project->po_quantity ? ' / ' . $project->po_quantity : '' }}
-                                    </button>
-                                </td>
-
                                 <td class="text-center text-nowrap">
                                     @if($project->type)
                                         <span class="badge badge-{{ $project->type_color }}" style="font-size:10px;">{{ $project->type_label }}</span>
@@ -265,6 +253,25 @@
 
                                 <td class="text-right text-nowrap col-raw-contract" data-raw="{{ $project->contract ?? 0 }}">
                                     <button type="button" class="po-cell-link po-summary-link" data-id="{{ $project->id }}" title="Lihat Summary">{{ $project->contract_formatted }}</button>
+                                </td>
+
+                                {{-- Qty PO = No. PO yang sudah terbit pada kode ini. Bukan modal:
+                                     rinciannya sudah ada di Summary Progress (tab Collection),
+                                     jadi sel ini menautkan ke sana dengan kode PO-nya sebagai
+                                     pencarian awal, dibuka di tab baru supaya daftar PO yang
+                                     sedang difilter user tidak hilang. --}}
+                                <td class="text-center text-nowrap col-raw-poqty" data-raw="{{ $poActual }}" data-order="{{ $poActual }}">
+                                    @if($poActual > 0 && Auth::user()->role?->hasMenu('finance-summary'))
+                                        <a href="{{ route('finance-summary.index', ['tab' => 'collection', 'progress' => $project->code]) }}"
+                                           target="_blank" rel="noopener" class="po-cell-link"
+                                           title="Lihat {{ $poActual }} No. PO di Summary Progress">{{ $poActual }}</a>
+                                    @elseif($poActual > 0)
+                                        {{-- Tanpa akses Summary, angkanya tetap tampil tapi tidak
+                                             ditautkan: link-nya cuma akan berakhir di halaman 403. --}}
+                                        {{ $poActual }}
+                                    @else
+                                        <span class="text-muted">0</span>
+                                    @endif
                                 </td>
 
                                 <td class="text-right text-nowrap col-raw-value" data-raw="{{ $project->value ?? 0 }}">
@@ -316,7 +323,10 @@
                                         $pengguna = Auth::user();
 
                                         $bolehSubmit    = $project->status === 'DRAFT' && $pengguna->hasRole(['superadmin','head']);
-                                        $bolehEditPenuh = ($pengguna->hasRole(['superadmin','finance','finance_manager']) && in_array($project->status, ['DRAFT','SUBMITTED']))
+                                        // Approver & Finance Manager: edit terbuka di semua status
+                                        // (Project::FULL_EDIT_ROLES), peran lain tetap per-status.
+                                        $bolehEditPenuh = $project->isFullyEditableBy($pengguna)
+                                            || ($pengguna->hasRole(['finance']) && in_array($project->status, ['DRAFT','SUBMITTED']))
                                             || ($pengguna->hasRole(['head']) && $project->status === 'DRAFT');
                                         // Menambah No. PO dan mengaktifkan dijaga gerbang yang sama persis.
                                         $bolehWaitingPo = $project->status === 'WAITING_PO' && $pengguna->hasRole(['superadmin','finance','finance_manager','head']);
@@ -489,12 +499,12 @@
                                 <th class="text-nowrap po-col-kode" style="font-size:12px;">Total</th>
                                 <th class="text-nowrap" style="font-size:11px;color:var(--text-faint);">(data tampil)</th>
                                 <th></th>
-                                <th class="text-center text-nowrap" id="poFooterQty" style="font-size:12px;color:var(--info);"></th>
                                 <th></th>
                                 <th></th>
                                 <th></th>
                                 <th></th>
                                 <th class="text-right text-nowrap" id="poFooterContract" style="font-size:12px;color:var(--info);"></th>
+                                <th class="text-center text-nowrap" id="poFooterQty" style="font-size:12px;color:var(--info);"></th>
                                 <th class="text-right text-nowrap" id="poFooterValue" style="font-size:12px;color:var(--info);"></th>
                                 <th class="text-right text-nowrap" id="poFooterBp" style="font-size:12px;color:var(--text-faint);"></th>
                                 <th class="text-right text-nowrap" id="poFooterCr" style="font-size:12px;color:var(--warning);"></th>

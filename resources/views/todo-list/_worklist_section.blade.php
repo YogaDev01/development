@@ -1,13 +1,9 @@
 {{--
-    Satu worklist Cost Request grouped per Budget Plan, dengan modal
-    "View Budget" (breakdown Chart of Account + NOB coloring) — persis pola
-    "Review Cost Request" yang dulu ada di budget-request/index.blade.php,
-    sekarang dipakai ulang untuk tiap role (Head/Cost Control/CEO) di halaman
-    Todo List.
-
-    Approve/Reject dilakukan per CR dari drawer detail (klik nomor CR), bukan
-    lewat bulk action di kartu ini: satu tempat memutuskan, dengan rincian CR
-    terbuka di depan mata saat memutuskannya.
+    Satu worklist Cost Request grouped per Budget Plan, dengan checkbox + bulk
+    approve/reject dan modal "View Budget" (breakdown Chart of Account + NOB
+    coloring) — persis pola "Review Cost Request" yang dulu ada di
+    budget-request/index.blade.php, sekarang dipakai ulang untuk tiap role
+    (Head/Cost Control/CEO) di halaman Todo List.
 
     Wajib diisi dari pemanggil:
       $key          : string unik per section (dipakai untuk id elemen, mis. 'head')
@@ -16,6 +12,8 @@
       $groups       : Collection PO-level (MN-03) —
                       [{po, customer, pm, qty, amount, plans: [{label, pm, po_code,
                         items, coa_groups, is_nob_full, cr_nob}]}]
+      $approveUrl   : action form bulk approve
+      $rejectUrl    : action form bulk reject
 --}}
 @if($groups->isNotEmpty())
 <div id="tl-{{ $key }}" class="card card-warning card-outline shadow-sm mt-3 todo-worklist" data-section="{{ $key }}">
@@ -28,6 +26,20 @@
         </h3>
     </div>
 
+    <div class="todo-bulk-bar">
+        <div class="d-flex align-items-center justify-content-between">
+            <div style="font-size:12.5px;color:var(--text);"><strong class="todo-bulk-count">0</strong> CR dipilih<span class="todo-bulk-amount"></span></div>
+            <div class="d-flex" style="gap:8px;">
+                <button type="button" class="btn btn-outline-success btn-sm todo-bulk-approve" disabled>
+                    <i class="fas fa-check mr-1"></i>Approve
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm todo-bulk-reject" disabled>
+                    <i class="fas fa-times mr-1"></i>Reject
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="card-body p-0">
         <div style="padding:6px 16px;border-bottom:1px solid var(--border);">
             <button type="button" class="btn btn-link todo-toggle-all p-0" style="font-size:11.5px;font-weight:600;text-decoration:none;" data-state="collapsed">
@@ -38,6 +50,7 @@
             <table class="table table-bordered mb-0 todo-tbl" style="font-size:12.5px;">
                 <thead class="bg-light">
                     <tr>
+                        <th scope="col" style="width:1%;"><input type="checkbox" class="todo-check-all"></th>
                         <th scope="col" class="text-nowrap" style="width:1%;">CR Number</th>
                         <th scope="col">Description</th>
                         <th scope="col" class="text-nowrap" style="width:1%;">Beneficiary</th>
@@ -68,6 +81,7 @@
 
                     {{-- LAPIS 1 — PURCHASE ORDER (MN-03). --}}
                     <tr class="todo-po-row" data-target="todo-{{ $key }}-po-{{ $poi }}">
+                        <td><input type="checkbox" class="todo-check-group" data-group="{{ $kelasSemuaCr }}"></td>
                         <td colspan="3">
                             <i class="fas fa-chevron-right todo-caret mr-2"></i>
                             <strong>{{ $poGroup['po'] }}</strong>
@@ -111,6 +125,7 @@
                          punya lebih dari satu plan. --}}
                     <tr class="todo-group-row todo-{{ $key }}-po-{{ $poi }}" style="display:none;"
                         data-target="todo-{{ $key }}-grp-{{ $gi }}">
+                        <td><input type="checkbox" class="todo-check-group" data-group="todo-{{ $key }}-grp-{{ $gi }}"></td>
                         <td colspan="3" style="padding-left:28px;">
                             <i class="fas fa-chevron-right todo-caret mr-2"></i>
                             <strong>{{ $group['label'] }}</strong>
@@ -140,6 +155,7 @@
                     @endphp
                     <tr class="{{ $indukBarisCr }} {{ $kelasSemuaCr }} todo-row {{ $crNobClass }}" style="display:none;"
                         data-pm="{{ $group['pm'] }}" data-po="{{ $poGroup['po'] }}" data-search="{{ $crSearch }}">
+                        <td><input type="checkbox" class="todo-check" value="{{ $cr->id }}" data-amount="{{ $cr->amount }}"></td>
                         <td class="text-nowrap">
                             <button type="button" class="cr-number-btn todo-open-drawer" data-id="{{ $cr->id }}">{{ $cr->code }}</button>
                             @if($crNob['full'] ?? false)<span class="badge badge-danger ml-1" style="font-size:9px;">NOB</span>@endif
@@ -155,7 +171,7 @@
                 </tbody>
                 <tfoot>
                     <tr style="background:var(--surface-2);">
-                        <th colspan="3" class="text-right">Subtotal</th>
+                        <th colspan="4" class="text-right">Subtotal</th>
                         <th class="text-right text-nowrap">
                             {{ number_format($groups->sum('amount'), 0, ',', '.') }}
                         </th>
@@ -166,6 +182,14 @@
         </div>
     </div>
 
+    {{-- FORM tersembunyi untuk bulk approve/reject — ids diisi JS dari checkbox --}}
+    <form id="frmTodoBulkApprove-{{ $key }}" action="{{ $approveUrl }}" method="POST" style="display:none;">
+        @csrf
+    </form>
+    <form id="frmTodoBulkReject-{{ $key }}" action="{{ $rejectUrl }}" method="POST" style="display:none;">
+        @csrf
+        <textarea name="notes"></textarea>
+    </form>
 </div>
 
 {{-- MODAL VIEW BUDGET — breakdown Chart of Account per Budget Plan --}}

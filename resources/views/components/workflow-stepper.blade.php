@@ -13,6 +13,14 @@
     $total = $total ?? collect($steps)->sum(fn($s) => $s[1]);
     $field = $field ?? 'status';
     $compact = $compact ?? false;
+
+    /*
+    | Label multi-kata dipecah satu kata per baris ("Settle Approved" jadi dua
+    | baris). Label sepanjang itu memaksa kolom grid melebar, dan dengan 13
+    | tahap alurnya jadi memanjang sampai perlu digulir. Memecahnya membuat
+    | lebar kolom ditentukan kata terpanjang, bukan seluruh frasa.
+    */
+    $wfLabel = fn ($text) => implode('<br>', array_map('e', preg_split('/\s+/', trim((string) $text))));
 @endphp
 
 @once
@@ -157,7 +165,7 @@
         @foreach($steps as $s)
             <div class="wf-tl-step" role="button" tabindex="0" data-status="{{ $s[3] }}">
                 <span class="badge wf-tl-node {{ $s[1] > 0 ? 'badge-' . $s[2] : 'is-empty' }}">{{ $s[1] }}</span>
-                <div class="wf-tl-label {{ $s[1] > 0 ? 'is-on' : 'is-off' }}">{{ $s[0] }}</div>
+                <div class="wf-tl-label {{ $s[1] > 0 ? 'is-on' : 'is-off' }}">{!! $wfLabel($s[0]) !!}</div>
             </div>
         @endforeach
     </div>
@@ -186,7 +194,7 @@
             @foreach($steps as $s)
                 <div class="wf-tl-step" role="button" tabindex="0" data-status="{{ $s[3] }}">
                     <span class="badge wf-tl-node {{ $s[1] > 0 ? 'badge-' . $s[2] : 'is-empty' }}">{{ $s[1] }}</span>
-                    <div class="wf-tl-label {{ $s[1] > 0 ? 'is-on' : 'is-off' }}">{{ $s[0] }}</div>
+                    <div class="wf-tl-label {{ $s[1] > 0 ? 'is-on' : 'is-off' }}">{!! $wfLabel($s[0]) !!}</div>
                 </div>
             @endforeach
         </div>

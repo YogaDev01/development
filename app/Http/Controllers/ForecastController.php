@@ -137,7 +137,12 @@ class ForecastController extends Controller
             ->map(fn ($rows, $nama) => [
                 'source_fund'       => $nama,
                 'rows'              => $rows->map(fn ($d) => $this->barisRincian($d, $forecast))->values(),
-                'plan_formatted'    => number_format($rows->sum('signed_amount'), 0, ',', '.'),
+
+                // Rencana dipecah menurut arahnya: kolom Masuk dan kolom
+                // Keluar berdiri sendiri, jadi subtotalnya pun dua angka.
+                'masuk_formatted'   => number_format($rows->where('type', 'IN')->sum('signed_amount'), 0, ',', '.'),
+                'keluar_formatted'  => number_format($rows->where('type', 'OUT')->sum('signed_amount'), 0, ',', '.'),
+
                 'actual_formatted'  => number_format($rows->sum('signed_actual_amount'), 0, ',', '.'),
                 'variance_formatted'=> number_format($rows->sum('variance'), 0, ',', '.'),
                 'variance_negative' => $rows->sum('variance') < 0,
@@ -185,6 +190,10 @@ class ForecastController extends Controller
 
             'detail_count' => $forecast->details->count(),
             'groups'       => $groups,
+
+            // Grand total rencana, dipecah searah dengan kolomnya.
+            'masuk_total'  => number_format($forecast->details->where('type', 'IN')->sum('signed_amount'), 0, ',', '.'),
+            'keluar_total' => number_format($forecast->details->where('type', 'OUT')->sum('signed_amount'), 0, ',', '.'),
 
             'logs' => $forecast->logs->map(fn ($l) => [
                 'action'       => $l->action,

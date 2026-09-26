@@ -146,12 +146,16 @@ class BudgetRequestController extends Controller
      */
     /*
     |--------------------------------------------------------------------------
-    | PAGU CASH ADVANCE PER PIC
+    | LIMIT CASH ADVANCE PER PIC
     |--------------------------------------------------------------------------
-    | Beneficiary terhubung ke satu PIC (beneficiaries.pic_id). Semua Cash
-    | Advance milik PIC yang sama berbagi satu pagu: maksimal
-    | BudgetRequest::CA_LIMIT_COUNT pengajuan berjalan dengan total nominal
-    | BudgetRequest::CA_LIMIT_AMOUNT. Kuota baru pulih saat CR CLOSED.
+    | Beneficiary terhubung ke satu PIC (beneficiaries.pic_id), dan semua Cash
+    | Advance milik PIC yang sama berbagi satu limit. Angkanya diambil dari
+    | Master PIC: kolom `token` = batas jumlah pengajuan, kolom `nominal` =
+    | batas total rupiah. Kolom yang kosong/0 berarti aspek itu tidak dibatasi.
+    |
+    | Jumlah pengajuan dihitung dari CR yang sudah mencapai tahap PAID (uangnya
+    | benar-benar keluar), sedangkan nominal dihitung sejak CR dibuat. Keduanya
+    | lepas begitu CR CLOSED (atau CANCELLED).
     */
 
     /** Ambang "mendekati batas": sisa pengajuan <= 2 atau sisa nominal <= 20%. */
@@ -159,17 +163,27 @@ class BudgetRequestController extends Controller
     private const CA_WARN_REMAINING_RATIO = 0.2;
 
     /**
-     * Pemakaian pagu CA milik PIC pemilik $beneficiaryId. Null kalau
-     * beneficiary tidak ada atau belum punya PIC (pagu tidak berlaku).
+     * Pemakaian limit CA milik PIC pemilik $beneficiaryId. Null kalau
+     * beneficiary tidak ada, belum punya PIC, atau PIC-nya tidak mengisi
+     * token maupun nominal (berarti tidak ada batas yang berlaku).
      */
     private function cashAdvanceQuota(?int $beneficiaryId, ?int $excludeCrId = null): ?array
     {
         $ben = $beneficiaryId ? Beneficiary::with('pic')->find($beneficiaryId) : null;
         if (! $ben || ! $ben->pic_id) return null;
 
+        // Batas dari Master PIC. Token bebas huruf/angka, jadi hanya dipakai
+        // kalau isinya memang angka; kosong/0 = aspek itu tanpa batas.
+        $pic         = $ben->pic;
+        $limitCount  = is_numeric($pic?->token) ? (int) $pic->token : null;
+        $limitAmount = $pic?->nominal !== null ? (int) $pic->nominal : null;
+        if (! $limitCount)  $limitCount  = null;
+        if (! $limitAmount) $limitAmount = null;
+        if ($limitCount === null && $limitAmount === null) return null;
+
         $names = self::CASH_ADVANCE_TYPE_NAMES;
 
-        $row = BudgetRequest::query()
+        $base = fn () => BudgetRequest::query()
             ->join('beneficiaries', 'beneficiaries.id', '=', 'budget_request.beneficiary_id')
             ->join('request_type', 'request_type.id', '=', 'budget_request.type_id')
             ->where('beneficiaries.pic_id', $ben->pic_id)
@@ -177,23 +191,27 @@ class BudgetRequestController extends Controller
                 'LOWER(TRIM(request_type.name)) IN (' . implode(',', array_fill(0, count($names), '?')) . ')',
                 $names
             )
-            ->whereNotIn('budget_request.status', BudgetRequest::CA_QUOTA_RELEASED_STATUSES)
-            ->when($excludeCrId, fn ($q) => $q->where('budget_request.id', '!=', $excludeCrId))
-            ->selectRaw('COUNT(*) AS used_count, COALESCE(SUM(budget_request.amount), 0) AS used_amount')
-            ->first();
+            ->when($excludeCrId, fn ($q) => $q->where('budget_request.id', '!=', $excludeCrId));
 
-        $usedCount  = (int) ($row->used_count ?? 0);
-        $usedAmount = (int) ($row->used_amount ?? 0);
+        // Jumlah pengajuan: hanya yang sudah cair (PAID ke atas) dan belum tutup.
+        $usedCount = (int) $base()
+            ->whereIn('budget_request.status', BudgetRequest::CA_COUNTED_STATUSES)
+            ->count();
+
+        // Nominal: seluruh CR yang belum lepas (termasuk yang masih diproses).
+        $usedAmount = (int) $base()
+            ->whereNotIn('budget_request.status', BudgetRequest::CA_QUOTA_RELEASED_STATUSES)
+            ->sum('budget_request.amount');
 
         return [
             'pic_id'           => (int) $ben->pic_id,
-            'pic_name'         => $ben->pic?->pic ?? '-',
+            'pic_name'         => $pic?->pic ?? '-',
             'used_count'       => $usedCount,
             'used_amount'      => $usedAmount,
-            'limit_count'      => BudgetRequest::CA_LIMIT_COUNT,
-            'limit_amount'     => BudgetRequest::CA_LIMIT_AMOUNT,
-            'remaining_count'  => max(0, BudgetRequest::CA_LIMIT_COUNT - $usedCount),
-            'remaining_amount' => max(0, BudgetRequest::CA_LIMIT_AMOUNT - $usedAmount),
+            'limit_count'      => $limitCount,
+            'limit_amount'     => $limitAmount,
+            'remaining_count'  => $limitCount  === null ? null : max(0, $limitCount - $usedCount),
+            'remaining_amount' => $limitAmount === null ? null : max(0, $limitAmount - $usedAmount),
         ];
     }
 
@@ -208,7 +226,7 @@ class BudgetRequestController extends Controller
     }
 
     /**
-     * Pagu CA terlampaui? Mengembalikan pesan error, atau null kalau lolos.
+     * Limit CA terlampaui? Mengembalikan pesan error, atau null kalau lolos.
      */
     private function cashAdvanceQuotaError(?int $beneficiaryId, int $amount, ?int $excludeCrId = null): ?string
     {
@@ -217,14 +235,14 @@ class BudgetRequestController extends Controller
 
         $rp = fn ($n) => 'Rp ' . number_format($n, 0, ',', '.');
 
-        if ($q['remaining_count'] < 1) {
-            return 'Pagu Cash Advance PIC "' . $q['pic_name'] . '" sudah habis: '
+        if ($q['remaining_count'] !== null && $q['remaining_count'] < 1) {
+            return 'Limit Cash Advance PIC "' . $q['pic_name'] . '" sudah habis: '
                 . $q['used_count'] . ' dari ' . $q['limit_count'] . ' pengajuan masih berjalan. '
                 . 'Selesaikan (Close) pengajuan yang berjalan dulu.';
         }
 
-        if ($amount > $q['remaining_amount']) {
-            return 'Pagu nominal Cash Advance PIC "' . $q['pic_name'] . '" tidak mencukupi. '
+        if ($q['remaining_amount'] !== null && $amount > $q['remaining_amount']) {
+            return 'Limit nominal Cash Advance PIC "' . $q['pic_name'] . '" tidak mencukupi. '
                 . 'Terpakai ' . $rp($q['used_amount']) . ' dari ' . $rp($q['limit_amount'])
                 . ', sisa ' . $rp($q['remaining_amount']) . ', sedangkan pengajuan ini ' . $rp($amount) . '.';
         }
@@ -233,7 +251,7 @@ class BudgetRequestController extends Controller
     }
 
     /**
-     * Peringatan "kuota mendekati batas" setelah CR tersimpan/disubmit.
+     * Peringatan "limit mendekati batas" setelah CR tersimpan/disubmit.
      * Null kalau masih jauh dari batas.
      */
     private function cashAdvanceQuotaWarning(?int $beneficiaryId): ?string
@@ -244,25 +262,26 @@ class BudgetRequestController extends Controller
         $rp   = fn ($n) => 'Rp ' . number_format($n, 0, ',', '.');
         $warn = [];
 
-        if ($q['remaining_count'] <= self::CA_WARN_REMAINING_COUNT) {
+        if ($q['remaining_count'] !== null && $q['remaining_count'] <= self::CA_WARN_REMAINING_COUNT) {
             $warn[] = $q['remaining_count'] === 0
-                ? 'kuota pengajuan HABIS (' . $q['used_count'] . '/' . $q['limit_count'] . ')'
+                ? 'jatah pengajuan HABIS (' . $q['used_count'] . '/' . $q['limit_count'] . ')'
                 : 'sisa ' . $q['remaining_count'] . ' pengajuan lagi (' . $q['used_count'] . '/' . $q['limit_count'] . ')';
         }
 
-        if ($q['remaining_amount'] <= $q['limit_amount'] * self::CA_WARN_REMAINING_RATIO) {
+        if ($q['remaining_amount'] !== null
+            && $q['remaining_amount'] <= $q['limit_amount'] * self::CA_WARN_REMAINING_RATIO) {
             $warn[] = $q['remaining_amount'] === 0
-                ? 'pagu nominal HABIS (' . $rp($q['used_amount']) . '/' . $rp($q['limit_amount']) . ')'
-                : 'sisa pagu nominal tinggal ' . $rp($q['remaining_amount']);
+                ? 'limit nominal HABIS (' . $rp($q['used_amount']) . '/' . $rp($q['limit_amount']) . ')'
+                : 'sisa limit nominal tinggal ' . $rp($q['remaining_amount']);
         }
 
         if (! $warn) return null;
 
-        return 'Perhatian - pagu Cash Advance PIC "' . $q['pic_name'] . '": '
-            . implode(' dan ', $warn) . '. Kuota pulih setelah pengajuan berjalan di-Close.';
+        return 'Perhatian - limit Cash Advance PIC "' . $q['pic_name'] . '": '
+            . implode(' dan ', $warn) . '. Limit pulih setelah pengajuan berjalan di-Close.';
     }
 
-    /** Endpoint AJAX: info pagu CA untuk beneficiary terpilih di form. */
+    /** Endpoint AJAX: info limit CA untuk beneficiary terpilih di form. */
     public function caQuota(Request $request)
     {
         $q = $this->cashAdvanceQuota(
@@ -275,17 +294,18 @@ class BudgetRequestController extends Controller
         }
 
         $rp      = fn ($n) => 'Rp ' . number_format($n, 0, ',', '.');
-        $warnCnt = $q['remaining_count'] <= self::CA_WARN_REMAINING_COUNT;
-        $warnAmt = $q['remaining_amount'] <= $q['limit_amount'] * self::CA_WARN_REMAINING_RATIO;
+        $habis   = ($q['remaining_count'] !== null && $q['remaining_count'] < 1)
+                || ($q['remaining_amount'] !== null && $q['remaining_amount'] < 1);
+        $warnCnt = $q['remaining_count'] !== null && $q['remaining_count'] <= self::CA_WARN_REMAINING_COUNT;
+        $warnAmt = $q['remaining_amount'] !== null
+                && $q['remaining_amount'] <= $q['limit_amount'] * self::CA_WARN_REMAINING_RATIO;
 
         return response()->json(array_merge($q, [
             'has_quota'                  => true,
             'used_amount_formatted'      => $rp($q['used_amount']),
-            'limit_amount_formatted'     => $rp($q['limit_amount']),
-            'remaining_amount_formatted' => $rp($q['remaining_amount']),
-            'level'                      => ($q['remaining_count'] < 1 || $q['remaining_amount'] < 1)
-                                                ? 'blocked'
-                                                : (($warnCnt || $warnAmt) ? 'warning' : 'ok'),
+            'limit_amount_formatted'     => $q['limit_amount'] === null ? null : $rp($q['limit_amount']),
+            'remaining_amount_formatted' => $q['remaining_amount'] === null ? null : $rp($q['remaining_amount']),
+            'level'                      => $habis ? 'blocked' : (($warnCnt || $warnAmt) ? 'warning' : 'ok'),
         ]));
     }
 
@@ -483,15 +503,46 @@ class BudgetRequestController extends Controller
 
     private function syncRealizations(BudgetRequest $cr, Request $request): void
     {
-        // Hapus dulu lampiran per-item baris realisasi lama (file fisik) sebelum
-        // baris-baris realisasi ikut terhapus cascade — realisasi hanya
-        // disubmit sekali per CR (bukan flow edit berkali-kali), jadi delete-
-        // then-recreate di sini aman (tidak ada lampiran yang perlu dipertahankan).
-        foreach ($cr->realizations as $old) {
+        /*
+        | Baris realisasi memang dibuat ulang tiap submit, TAPI lampirannya
+        | tidak ikut dibuang: settlement bisa ditolak (kembali ke PAID) lalu
+        | diajukan lagi, dan bukti yang sudah diunggah harus tetap ada. Karena
+        | itu lampiran lama dipetakan per request_detail_id dulu, lalu
+        | di-"pindah" ke baris realisasi yang baru dengan mengubah
+        | realization_id-nya — filenya tidak pernah disentuh.
+        |
+        | Yang benar-benar dihapus hanya lampiran yang dicentang hapus oleh
+        | user (delete_realization_attachments[]).
+        */
+        $hapusIds = array_filter((array) $request->input('delete_realization_attachments', []));
+
+        /*
+        | FK realization_detail_attachments ON DELETE CASCADE: begitu baris
+        | realisasi dihapus, baris lampirannya ikut lenyap. Jadi datanya
+        | di-SNAPSHOT dulu (file di disk tidak disentuh), lalu dibuat ulang
+        | menunjuk baris realisasi yang baru.
+        */
+        $hapusIds      = array_map('strval', $hapusIds);
+        $lamaPerDetail = [];
+
+        foreach ($cr->realizations()->with('attachments')->get() as $old) {
             foreach ($old->attachments as $att) {
-                Storage::disk('secure')->delete($att->path);
+                if (in_array((string) $att->id, $hapusIds, true)) {
+                    Storage::disk('secure')->delete($att->path);
+                    continue;
+                }
+
+                $lamaPerDetail[(int) $old->request_detail_id][] = [
+                    'original_name' => $att->original_name,
+                    'stored_name'   => $att->stored_name,
+                    'path'          => $att->path,
+                    'mime_type'     => $att->mime_type,
+                    'size'          => $att->size,
+                    'uploaded_by'   => $att->uploaded_by,
+                ];
             }
         }
+
         $cr->realizations()->delete();
 
         foreach ((array) $request->input('realizations', []) as $i => $row) {
@@ -512,6 +563,12 @@ class BudgetRequestController extends Controller
                 'notes'             => $row['notes'] ?? null,
             ]);
 
+            // Lampiran lama milik item yang sama dibuat ulang di baris baru.
+            foreach ($lamaPerDetail[(int) ($detail->id ?? 0)] ?? [] as $att) {
+                $realization->attachments()->create($att);
+            }
+            unset($lamaPerDetail[(int) ($detail->id ?? 0)]);
+
             $rowFiles = $request->file("realizations.$i.attachments", []);
             foreach ((array) $rowFiles as $file) {
                 if (!$file || !$file->isValid()) continue;
@@ -524,6 +581,14 @@ class BudgetRequestController extends Controller
                     'size'          => $file->getSize(),
                     'uploaded_by'   => Auth::id(),
                 ]);
+            }
+        }
+
+        // Lampiran yang item-nya tidak ikut disubmit lagi tidak punya induk —
+        // barisnya sudah hilang ikut cascade, filenya dibuang di sini.
+        foreach ($lamaPerDetail as $atts) {
+            foreach ($atts as $att) {
+                Storage::disk('secure')->delete($att['path']);
             }
         }
     }
@@ -703,7 +768,7 @@ class BudgetRequestController extends Controller
 
         $query = BudgetRequest::with([
             'type', 'cluster', 'budgetPlan.project.manager', 'budgetPlan.costCenter',
-            'applicant', 'details', 'beneficiary', 'realizations',
+            'applicant', 'details', 'beneficiary.pic', 'realizations',
         ])
             /*
             | Rentang tanggal memakai perbandingan langsung pada kolom, bukan
@@ -753,6 +818,8 @@ class BudgetRequestController extends Controller
             'realized'  => (int) ($statusCounts['REALIZED'] ?? 0),
             'settle_checked'  => (int) ($statusCounts['SETTLE_CHECKED'] ?? 0),
             'settle_verified' => (int) ($statusCounts['SETTLE_VERIFIED'] ?? 0),
+            'settle_approved' => (int) ($statusCounts['SETTLE_APPROVED'] ?? 0),
+            'second_approved' => (int) ($statusCounts['SECOND_APPROVED'] ?? 0),
             'closed'    => (int) ($statusCounts['CLOSED'] ?? 0),
             'rejected'  => (int) ($statusCounts['REJECTED'] ?? 0),
             'cancelled' => (int) ($statusCounts['CANCELLED'] ?? 0),
@@ -845,7 +912,7 @@ class BudgetRequestController extends Controller
             return back()->withInput()->with('error', $msg);
         }
 
-        // Pagu Cash Advance per PIC (lewat beneficiary) — blokir kalau habis.
+        // Limit Cash Advance per PIC (lewat beneficiary) — blokir kalau habis.
         if ($this->typeIsCashAdvance((int) $request->type_id)) {
             $msg = $this->cashAdvanceQuotaError(
                 (int) $request->beneficiary_id,
@@ -1399,7 +1466,7 @@ class BudgetRequestController extends Controller
             return back()->withInput()->with('error', $msg);
         }
 
-        // Pagu Cash Advance per PIC — CR yang sedang diedit dikecualikan dari
+        // Limit Cash Advance per PIC — CR yang sedang diedit dikecualikan dari
         // hitungan supaya nominal lamanya tidak dihitung dua kali.
         if ($this->typeIsCashAdvance((int) $request->type_id)) {
             $msg = $this->cashAdvanceQuotaError(
@@ -1491,7 +1558,7 @@ class BudgetRequestController extends Controller
             }
         }
 
-        // Pagu Cash Advance per PIC — dicek ulang di sini karena kuota bisa
+        // Limit Cash Advance per PIC — dicek ulang di sini karena limit bisa
         // terpakai CR lain sejak draft ini dibuat.
         if ($cr->isCashAdvance()) {
             $msg = $this->cashAdvanceQuotaError($cr->beneficiary_id, (int) $cr->amount, $cr->id);
@@ -2046,7 +2113,9 @@ class BudgetRequestController extends Controller
         // 'realizations' di-eager-load supaya kalau settlement ini pernah
         // ditolak (REALIZED -> PAID) & disubmit ulang, kolom "Description
         // Settle" & "Settle" ke-prefill dari input sebelumnya (bukan reset).
-        $budgetRequest = $this->findVisibleCr($id, ['details.account', 'realizations']);
+        $budgetRequest = $this->findVisibleCr($id, [
+            'details.account', 'realizations.attachments', 'realizationAttachments',
+        ]);
 
         if ($budgetRequest->status !== 'PAID') {
             return redirect()->route('budget-request.index')
@@ -2078,6 +2147,9 @@ class BudgetRequestController extends Controller
             'realizations.*.attachments.*'     => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
             'realization_attachments'          => 'nullable|array',
             'realization_attachments.*'        => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
+            // Lampiran lama yang dicentang hapus oleh user.
+            'delete_realization_attachments'        => 'nullable|array',
+            'delete_realization_global_attachments' => 'nullable|array',
         ]);
 
         $cr = $this->findVisibleCr($id);
@@ -2107,6 +2179,21 @@ class BudgetRequestController extends Controller
 
             $hasFile = collect((array) $request->file("realizations.$i.attachments", []))
                 ->contains(fn ($f) => $f && $f->isValid());
+
+            // Lampiran dari submit sebelumnya (mis. settlement yang sempat
+            // ditolak) tetap dihitung, selama tidak dicentang hapus.
+            if (! $hasFile) {
+                $detailId = (int) ($row['request_detail_id'] ?? 0);
+                $hapusIds = array_filter((array) $request->input('delete_realization_attachments', []));
+
+                $hasFile = \App\Models\RealizationDetailAttachment::whereIn(
+                        'realization_id',
+                        $cr->realizations()->where('request_detail_id', $detailId)->pluck('id')
+                    )
+                    ->whereNotIn('id', $hapusIds ?: [0])
+                    ->exists();
+            }
+
             if (! $hasFile) $missingAtt[] = $no;
         }
 
@@ -2119,11 +2206,19 @@ class BudgetRequestController extends Controller
         }
 
         DB::transaction(function () use ($request, $cr) {
-            // Delete old realizations & attachments jika ada
-            $cr->realizationAttachments()->each(function ($att) {
-                Storage::disk('secure')->delete($att->path);
-                $att->delete();
-            });
+            /*
+            | Lampiran global settlement TIDAK lagi dihapus borongan — kalau
+            | settlement pernah ditolak, bukti lama harus tetap ada. Yang
+            | dihapus hanya yang dicentang user.
+            */
+            $hapusGlobal = array_filter((array) $request->input('delete_realization_global_attachments', []));
+            if ($hapusGlobal) {
+                $cr->realizationAttachments()->whereIn('id', $hapusGlobal)->get()
+                    ->each(function ($att) {
+                        Storage::disk('secure')->delete($att->path);
+                        $att->delete();
+                    });
+            }
 
             $this->syncRealizations($cr, $request);
             $this->storeRealizationAttachments($cr, $request);
@@ -2240,9 +2335,12 @@ class BudgetRequestController extends Controller
             $cr->update(['status' => 'SETTLE_VERIFIED']);
             $cr->addLog('SETTLE_CHECKED', 'SETTLE_VERIFIED', 'settlement_verified', $request->notes);
 
-            // Selisih = Settlement - Original Approved Amount. Kalau > 0, CR
-            // baru boleh Close setelah Second Payment ini PAID (lihat
-            // ceoCloseSettlement()/markSecondPaymentPaid()).
+            /*
+            | Selisih = Settlement - Original Approved Amount. Kalau > 0, CR
+            | tetap berhenti di SETTLE_VERIFIED — bedanya aksi Finance Manager
+            | di sana bukan Close melainkan Settle Approve, karena kekurangan
+            | bayarnya wajib disetujui dua lapis sebelum dibayar Treasury.
+            */
             $overage = $cr->settlement_overage;
             if ($overage > 0) {
                 $cr->secondPayments()->create([
@@ -2252,15 +2350,21 @@ class BudgetRequestController extends Controller
             }
         });
 
+        // CR dengan Expense Claim belum boleh ditutup: masih harus lewat
+        // Settle Approved (Finance Manager) lalu 2nd Approved (Approver).
+        $adaClaim = $cr->fresh()->hasExpenseClaim();
+
         NotifyService::send(
-            $this->approverUsers(),
-            'Settlement CR menunggu Close',
+            $this->financeManagerUsers(),
+            $adaClaim ? 'Settlement CR menunggu Settle Approve' : 'Settlement CR menunggu Close',
             $user->name . ' memverifikasi Settlement Cost Request "' . $cr->description . '" (' . $cr->code . ').',
             route('budget-request.index'),
             'workflow'
         );
 
-        return back()->with('success', 'Settlement diverifikasi. Menunggu Close CEO.');
+        return back()->with('success', $adaClaim
+            ? 'Settlement diverifikasi. Ada Expense Claim — menunggu Settle Approve Finance Manager.'
+            : 'Settlement diverifikasi. Menunggu Close Finance Manager.');
     }
 
     public function financeRejectSettlement(Request $request, $id)
@@ -2294,6 +2398,140 @@ class BudgetRequestController extends Controller
         }
 
         return back()->with('success', 'Settlement ditolak. CR dikembalikan ke status PAID.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | EXPENSE CLAIM — SETTLE APPROVED -> SECOND APPROVED
+    |--------------------------------------------------------------------------
+    | Hanya dilewati CR yang settlement-nya MELEBIHI pengajuan (Expense Claim).
+    | Finance Manager menyetujui klaimnya (SETTLE_APPROVED), lalu Approver
+    | menyetujui pembayaran keduanya (SECOND_APPROVED); Close tetap milik
+    | Finance Manager seperti alur tanpa klaim.
+    */
+
+    /** Finance Manager — SETTLE_VERIFIED -> SETTLE_APPROVED. */
+    public function settleApprove(Request $request, $id)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        if (!$user->hasRole(['superadmin', 'finance_manager'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk approval tahap ini.');
+        }
+
+        $cr = $this->findVisibleCr($id);
+
+        if (! $cr->hasExpenseClaim()) {
+            return back()->with('error', 'CR ini tidak punya Expense Claim — langsung Close, tanpa tahap Settle Approve.');
+        }
+
+        // Transisi terkunci: lihat Concerns\TransitionsStatus.
+        $cr = $this->transitionStatus(BudgetRequest::class, $id, 'SETTLE_VERIFIED', ['status' => 'SETTLE_APPROVED'], function ($cr) use ($request) {
+            $cr->addLog('SETTLE_VERIFIED', 'SETTLE_APPROVED', 'settlement_approved', $request->notes);
+        });
+
+        if (! $cr) {
+            return back()->with('error', 'Status sudah berubah — muat ulang halaman.');
+        }
+
+        NotifyService::send(
+            $this->approverUsers(),
+            'Expense Claim menunggu Second Approve (Approver)',
+            $user->name . ' menyetujui Settlement Cost Request "' . $cr->description . '" (' . $cr->code . ')'
+                . ' dengan Expense Claim ' . number_format($cr->expenseClaimAmount(), 0, ',', '.') . '.',
+            route('budget-request.index'),
+            'workflow'
+        );
+
+        return back()->with('success', 'Expense Claim disetujui. Menunggu Second Approve Approver.');
+    }
+
+    /** Approver — SETTLE_APPROVED -> SECOND_APPROVED. */
+    public function secondApprove(Request $request, $id)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        if (!$user->hasRole(['superadmin', 'approver'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk approval tahap ini.');
+        }
+
+        $this->findVisibleCr($id);
+
+        /*
+        | Approver setuju -> CR masuk SECOND_APPROVED sambil menunggu Treasury
+        | membuat batch. Begitu ikut sebuah batch ia jadi QUEUED (Process),
+        | lalu CLOSED otomatis saat batch itu ditandai PAID.
+        */
+        $cr = $this->transitionStatus(BudgetRequest::class, $id, 'SETTLE_APPROVED', ['status' => 'SECOND_APPROVED'], function ($cr) use ($request) {
+            $cr->addLog('SETTLE_APPROVED', 'SECOND_APPROVED', 'second_payment_approved', $request->notes);
+        });
+
+        if (! $cr) {
+            return back()->with('error', 'Status sudah berubah — muat ulang halaman.');
+        }
+
+        NotifyService::send(
+            $this->treasuryUsers(),
+            'Expense Claim siap dibatch',
+            $user->name . ' menyetujui Expense Claim Cost Request "' . $cr->description . '" (' . $cr->code . ')'
+                . ' sebesar ' . number_format($cr->expenseClaimAmount(), 0, ',', '.') . '. Silakan masukkan ke batch pembayaran.',
+            route('daily-transaction.create'),
+            'workflow'
+        );
+
+        return back()->with('success', 'Expense Claim disetujui. Masuk antrean Buat Batch Baru Treasury — CR akan CLOSED setelah dibayar.');
+    }
+
+    /** Finance Manager — reject Expense Claim di tahap Settle Approve: CR kembali ke PAID. */
+    public function settleReject(Request $request, $id)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        if (!$user->hasRole(['superadmin', 'finance_manager'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk approval tahap ini.');
+        }
+
+        $request->validate(['notes' => 'required|string|max:500']);
+
+        $cr = $this->findVisibleCr($id);
+
+        if ($error = $this->applySettlementRejectClose($cr, $request->notes, ['SETTLE_VERIFIED'])) {
+            return back()->with('error', $error);
+        }
+
+        return back()->with('success', 'Expense Claim ditolak. CR dikembalikan ke status PAID untuk disettle ulang.');
+    }
+
+    /** Approver — reject Expense Claim di tahap Second Approve: CR kembali ke PAID. */
+    public function secondReject(Request $request, $id)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        if (!$user->hasRole(['superadmin', 'approver'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk approval tahap ini.');
+        }
+
+        $request->validate(['notes' => 'required|string|max:500']);
+
+        $cr = $this->findVisibleCr($id);
+
+        if ($error = $this->applySettlementRejectClose($cr, $request->notes, ['SETTLE_APPROVED'])) {
+            return back()->with('error', $error);
+        }
+
+        return back()->with('success', 'Expense Claim ditolak. CR dikembalikan ke status PAID untuk disettle ulang.');
+    }
+
+    /** Penerima notifikasi tahap Finance Manager. */
+    private function financeManagerUsers()
+    {
+        return app(RoleDirectory::class)->usersWithRoles(['finance_manager']);
+    }
+
+    /** Penerima notifikasi tahap Treasury. */
+    private function treasuryUsers()
+    {
+        return app(RoleDirectory::class)->usersWithRoles(['treasury', 'finance_manager']);
     }
 
     public function ceoCloseSettlement(Request $request, $id)
@@ -2334,12 +2572,22 @@ class BudgetRequestController extends Controller
             return 'CR ' . $cr->code . ': status tidak valid.';
         }
 
+        /*
+        | CR dengan Expense Claim tidak ditutup dari sini: ia lewat Settle
+        | Approve -> 2nd Approve -> batch Treasury, dan CLOSED-nya dipasang
+        | saat batch itu ditandai PAID (DailyTransactionController::markPaid).
+        */
+        if ($cr->hasExpenseClaim()) {
+            return 'CR ' . $cr->code . ' punya Expense Claim — tutupnya otomatis setelah Expense Claim dibayar Treasury.';
+        }
+
         if ($cr->pendingSecondPayment()) {
             return 'CR ' . $cr->code . ' belum bisa di-Close — Second Payment masih PENDING.';
         }
 
+        $dari = $cr->status;
         $cr->update(['status' => 'CLOSED', 'closed_at' => now()]);
-        $cr->addLog('SETTLE_VERIFIED', 'CLOSED', 'settlement_closed', $notes);
+        $cr->addLog($dari, 'CLOSED', 'settlement_closed', $notes);
 
         if ($cr->applicant) {
             NotifyService::send(
@@ -2361,9 +2609,12 @@ class BudgetRequestController extends Controller
      * settlement diperbaiki. Kalau baris itu sudah masuk batch Treasury
      * (apalagi sudah PAID), reject ditolak: uangnya sudah bergerak.
      */
-    private function applySettlementRejectClose(BudgetRequest $cr, string $notes): ?string
+    /**
+     * @param string[] $dariStatus status yang boleh ditolak dari tahap ini.
+     */
+    private function applySettlementRejectClose(BudgetRequest $cr, string $notes, array $dariStatus = ['SETTLE_VERIFIED']): ?string
     {
-        if ($cr->status !== 'SETTLE_VERIFIED') {
+        if (! in_array($cr->status, $dariStatus, true)) {
             return 'CR ' . $cr->code . ': status tidak valid.';
         }
 
@@ -2382,8 +2633,9 @@ class BudgetRequestController extends Controller
             foreach ($secondPayments as $sp) {
                 $sp->delete();
             }
+            $dari = $cr->status;
             $cr->update(['status' => 'PAID']);
-            $cr->addLog('SETTLE_VERIFIED', 'PAID', 'settlement_rejected', $notes);
+            $cr->addLog($dari, 'PAID', 'settlement_rejected', $notes);
         });
 
         if ($cr->applicant) {

@@ -187,8 +187,11 @@ Route::middleware('auth')->group(function () {
         Route::post('project/import-preview', [ProjectController::class, 'importDetailPreview'])->name('project.import-preview');
     });
 
-    // Edit — superadmin/head bebas, finance juga boleh (gerbang detail per-status ada di controller)
-    Route::middleware('role:superadmin,finance,finance_manager,head')->group(function () {
+    // Edit — superadmin/head bebas, finance juga boleh (gerbang detail per-status ada di controller).
+    // Approver & Finance Manager boleh mengedit PO pada status apa pun
+    // (Project::FULL_EDIT_ROLES); pembatasan per-status untuk peran lain tetap
+    // dijaga di ProjectController::edit()/update().
+    Route::middleware('role:superadmin,approver,finance,finance_manager,head')->group(function () {
         Route::get('project/{id}/edit', [ProjectController::class, 'edit'])->name('project.edit');
         Route::put('project/{id}',      [ProjectController::class, 'update'])->name('project.update');
 
@@ -559,6 +562,12 @@ Route::middleware('auth')->group(function () {
     Route::post('budget-request/{id}/head-reject-settlement',     [BudgetRequestController::class, 'headRejectSettlement'])->name('budget-request.head-reject-settlement');
     Route::post('budget-request/{id}/finance-verify-settlement',  [BudgetRequestController::class, 'financeVerifySettlement'])->name('budget-request.finance-verify-settlement');
     Route::post('budget-request/{id}/finance-reject-settlement', [BudgetRequestController::class, 'financeRejectSettlement'])->name('budget-request.finance-reject-settlement');
+    // Cabang Expense Claim: Settle Approve (Finance Manager) -> 2nd Approve (Approver)
+    // sebelum boleh di-Close. Gerbang peran dicek lagi di controller.
+    Route::post('budget-request/{id}/settle-approve',             [BudgetRequestController::class, 'settleApprove'])->name('budget-request.settle-approve');
+    Route::post('budget-request/{id}/second-approve',             [BudgetRequestController::class, 'secondApprove'])->name('budget-request.second-approve');
+    Route::post('budget-request/{id}/settle-reject',              [BudgetRequestController::class, 'settleReject'])->name('budget-request.settle-reject');
+    Route::post('budget-request/{id}/second-reject',              [BudgetRequestController::class, 'secondReject'])->name('budget-request.second-reject');
     Route::post('budget-request/{id}/ceo-close-settlement',       [BudgetRequestController::class, 'ceoCloseSettlement'])->name('budget-request.ceo-close-settlement');
     Route::post('budget-request/{id}/manager-reject-settlement',  [BudgetRequestController::class, 'managerRejectSettlement'])->name('budget-request.manager-reject-settlement');
     // Bulk Close/Reject dari To-Do List (multi-select baris tahap Finance Manager Close)

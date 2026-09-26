@@ -119,6 +119,22 @@
                                         <i class="fas fa-paperclip"></i> <span class="detail-att-label">Lampiran</span>
                                     </button>
                                     <div class="detail-att-hint text-muted" style="font-size:9px;">drop / paste / klik</div>
+                                    {{-- Lampiran dari submit sebelumnya (mis. settlement yang sempat
+                                         di-reject dan kembali ke Paid) tetap ditampilkan supaya tidak
+                                         perlu diunggah ulang. Centang untuk membuangnya. --}}
+                                    @if($existing && $existing->attachments->isNotEmpty())
+                                    <div class="mt-1 realize-att-existing" style="font-size:10px;line-height:1.5;">
+                                        @foreach($existing->attachments as $att)
+                                        <label class="d-block text-muted mb-0" style="font-weight:400;cursor:pointer;">
+                                            <input type="checkbox" name="delete_realization_attachments[]"
+                                                   value="{{ $att->id }}" class="del-realize-att">
+                                            <a href="{{ asset('storage/' . $att->path) }}" target="_blank" rel="noopener">
+                                                <i class="fas fa-file mr-1"></i>{{ $att->original_name }}
+                                            </a>
+                                        </label>
+                                        @endforeach
+                                    </div>
+                                    @endif
                                     <div class="detail-att-list mt-1" style="font-size:10px;line-height:1.5;"></div>
                                 </td>
                             </tr>
@@ -150,6 +166,39 @@
                     </button>
                 </div>
                 <div class="card-body">
+                    @if($budgetRequest->realizationAttachments->isNotEmpty())
+                    {{-- Bukti global dari submit sebelumnya — ikut dipertahankan. --}}
+                    <div class="table-responsive mb-3">
+                        <table class="table table-bordered table-sm mb-0" style="font-size:12px;">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th scope="col" style="width:5%;" class="text-center">No</th>
+                                    <th scope="col">File (sudah diunggah)</th>
+                                    <th scope="col" style="width:10%;" class="text-center">Hapus</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($budgetRequest->realizationAttachments as $i => $att)
+                                <tr>
+                                    <td class="text-center align-middle">{{ $i + 1 }}</td>
+                                    <td class="align-middle">
+                                        <a href="{{ asset('storage/' . $att->path) }}" target="_blank" rel="noopener">
+                                            <i class="fas fa-file mr-1"></i>{{ $att->original_name }}
+                                        </a>
+                                        <small class="text-muted ml-2">({{ $att->size_formatted }})</small>
+                                    </td>
+                                    <td class="text-center align-middle">
+                                        <input type="checkbox" name="delete_realization_global_attachments[]"
+                                               value="{{ $att->id }}"
+                                               style="width:16px;height:16px;accent-color:var(--danger);">
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @endif
+
                     <div id="realAttUploadArea" style="display:none;">
                     <div id="dropZoneReal" class="att-dropzone mb-3" tabindex="0">
                         <i class="fas fa-cloud-upload-alt fa-2x mb-2 d-block"></i>
@@ -273,8 +322,11 @@ $(function () {
                 var $row = $(this);
                 if (parseRp($row.find('.realize-amount-input').val()) <= 0) kosong.push(i + 1);
 
-                var inp = $row.find('.detail-att-input')[0];
-                if (!inp || !inp.files || !inp.files.length) tanpaAtt.push(i + 1);
+                var inp  = $row.find('.detail-att-input')[0];
+                var baru  = inp && inp.files && inp.files.length;
+                // Lampiran lama yang tidak dicentang hapus tetap dihitung.
+                var lama  = $row.find('.del-realize-att').filter(function () { return !this.checked; }).length;
+                if (!baru && !lama) tanpaAtt.push(i + 1);
             });
 
             if (kosong.length)   reasons.push('nilai Settle baris no. ' + kosong.join(', '));
@@ -283,9 +335,11 @@ $(function () {
 
         var siap = reasons.length === 0;
 
+        // Abu-abu selama belum lengkap, merah (warna aksi utama TESYS) begitu
+        // settlement benar-benar siap dikirim.
         $('#submitBtn')
             .prop('disabled', !siap)
-            .toggleClass('btn-info', siap)
+            .toggleClass('btn-primary', siap)
             .toggleClass('btn-secondary', !siap);
 
         $('#submitHint')
@@ -581,8 +635,10 @@ $(function () {
         // CR yang sudah PAID: tiap baris settlement wajib punya Lampiran Item.
         var missAtt = [];
         $('#realizeBody tr[data-detail-id]').each(function (idx) {
-            var inp = this.querySelector('.detail-att-input');
-            if (!inp || !inp.files || !inp.files.length) missAtt.push(idx + 1);
+            var inp  = this.querySelector('.detail-att-input');
+            var baru = inp && inp.files && inp.files.length;
+            var lama = $(this).find('.del-realize-att').filter(function () { return !this.checked; }).length;
+            if (!baru && !lama) missAtt.push(idx + 1);
         });
         if (missAtt.length) {
             Swal.fire({

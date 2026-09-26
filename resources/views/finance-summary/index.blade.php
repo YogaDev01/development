@@ -428,11 +428,30 @@
                     | satu per satu. Ambangnya lokal di sini - tidak ada aturan
                     | SLA settlement resmi di aplikasi yang bisa dirujuk.
                     */
+                    /*
+                    | Tautan nilai CA -> halaman Cost Request dengan filternya
+                    | sudah terpasang. Rentang tanggal dibawa dari baris yang
+                    | diklik (CR tertua di grup itu) karena halaman tujuan
+                    | membuka dirinya pada bulan berjalan saja.
+                    */
+                    $acaCrUrl = function (array $param, ?string $dateFrom) use ($acaLinkStatuses, $acaLinkType) {
+                        return route('budget-request.index', array_filter(array_merge($param, [
+                            'date_from' => $dateFrom,
+                            'date_to'   => now()->format('Y-m-d'),
+                            // Himpunannya dipersempit persis seperti kartu ini:
+                            // tipe Cash Advance, status yang masih berjalan.
+                            'statuses'  => $acaLinkStatuses,
+                            'type'      => $acaLinkType,
+                        ])));
+                    };
+
                     $acaAging = function (?int $hari) {
                         if ($hari === null) return '<span class="text-muted">-</span>';
-                        $warna = $hari >= 60 ? 'var(--danger)' : ($hari >= 30 ? 'var(--warning)' : 'var(--muted, #6c757d)');
-                        $tebal = $hari >= 30 ? '700' : '400';
-                        return '<span style="color:' . $warna . ';font-weight:' . $tebal . ';">' . $hari . ' hari</span>';
+                        // Lewat 7 hari = merah. Ambangnya lokal di sini - tidak ada
+                        // aturan SLA settlement resmi di aplikasi yang bisa dirujuk.
+                        $lewat = $hari > 7;
+                        return '<span style="color:' . ($lewat ? 'var(--danger)' : 'var(--muted, #6c757d)')
+                            . ';font-weight:' . ($lewat ? '700' : '400') . ';">' . $hari . ' hari</span>';
                     };
                 @endphp
 
@@ -504,8 +523,8 @@
                                              di bawah cuma mengenal satu pasang data-sort-*, dan
                                              urutan umur sudah terwakili - aging berbanding lurus
                                              dengan tanggal bayar. --}}
-                                        <th scope="col" rowspan="2" class="text-center col-grp-head col-grp-bad aca-head-rule-bad">Aging</th>
-                                        <th scope="col" rowspan="2" class="text-center aca-head-plain">Tanggal</th>
+                                        <th scope="col" rowspan="2" class="text-center aca-head-plain">Aging</th>
+                                        <th scope="col" rowspan="2" class="text-center aca-head-plain">Tanggal Paid</th>
 
                                         {{-- ACTION = posisi dokumen di alur Cost Request
                                              (Paid -> Settle Checked -> Settle Verified), sama
@@ -513,7 +532,7 @@
                                              lapis CR: manager & PIC adalah kumpulan dokumen yang
                                              tahapnya bisa berbeda-beda, jadi satu badge di sana
                                              akan mengaku mewakili sesuatu yang tidak tunggal. --}}
-                                        <th scope="col" rowspan="2" class="text-center col-grp-head col-grp-good aca-head-rule-good">Action</th>
+                                        <th scope="col" rowspan="2" class="text-center aca-head-plain">Status</th>
 
                                         {{-- Jumlah DOKUMEN CR: per PIC di lapis 2, dan totalnya
                                              di lapis manager. Lapis CR sendiri dikosongkan -
@@ -523,12 +542,12 @@
                                              satu payung untuk ukurannya, lalu QTY & VALUE sebagai
                                              satuan di bawahnya. Bentuk yang sama dipakai dua tabel
                                              berarti pembacanya tidak perlu belajar dua kali. --}}
-                                        <th scope="col" colspan="2" class="text-center col-grp-head col-grp-blue">Cash Advance</th>
+                                        <th scope="col" colspan="2" class="text-center col-grp-head">Cash Advance</th>
                                     </tr>
                                     <tr>
                                         <th scope="col" class="text-center aca-head-plain">Qty</th>
 
-                                        <th scope="col" class="text-right col-subhead-blue">
+                                        <th scope="col" class="text-right aca-head-plain">
                                             <button type="button" class="aca-sort" data-aca-sort="value"
                                                     title="Urutkan menurut nilai CA">
                                                 Value
@@ -556,11 +575,15 @@
                                              sekumpulan CR yang dibayar pada hari berbeda-beda hanya
                                              mewakili yang paling tua, dan itu terbaca seolah berlaku
                                              untuk semuanya. --}}
-                                        <td class="text-center aca-drill col-cell-bad"><i class="fas fa-chevron-down" aria-hidden="true"></i><span class="sr-only">Lihat per Cost Request</span></td>
-                                        <td class="text-center aca-drill"><i class="fas fa-chevron-down" aria-hidden="true"></i><span class="sr-only">Lihat per Cost Request</span></td>
-                                        <td class="text-center aca-drill col-cell-good"><i class="fas fa-chevron-down" aria-hidden="true"></i><span class="sr-only">Lihat per Cost Request</span></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
                                         <td class="text-center" style="font-weight:700;">{{ $g['qty'] }}</td>
-                                        <td class="text-right col-cell-blue" style="font-weight:700;">{{ $fmtRpFull($g['value']) }}</td>
+                                        <td class="text-right" style="font-weight:700;">
+                                            <a href="{{ $acaCrUrl(['manager' => $g['manager'], 'pics' => $g['pics']], $g['date_from']) }}"
+                                               target="_blank" rel="noopener" class="aca-value-link"
+                                               title="Buka Cost Request milik {{ $g['manager'] }}">{{ $fmtRpFull($g['value']) }}</a>
+                                        </td>
                                     </tr>
 
                                     @foreach($g['beneficiaries'] as $bi => $b)
@@ -572,11 +595,15 @@
                                             <i class="fas fa-caret-right aca-caret mr-2"></i>
                                             {{ $b['beneficiary'] }}
                                         </td>
-                                        <td class="text-center aca-drill col-cell-bad"><i class="fas fa-chevron-down" aria-hidden="true"></i><span class="sr-only">Lihat per Cost Request</span></td>
-                                        <td class="text-center aca-drill"><i class="fas fa-chevron-down" aria-hidden="true"></i><span class="sr-only">Lihat per Cost Request</span></td>
-                                        <td class="text-center aca-drill col-cell-good"><i class="fas fa-chevron-down" aria-hidden="true"></i><span class="sr-only">Lihat per Cost Request</span></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
                                         <td class="text-center">{{ $b['qty'] }}</td>
-                                        <td class="text-right col-cell-blue">{{ $fmtRpFull($b['value']) }}</td>
+                                        <td class="text-right">
+                                            <a href="{{ $acaCrUrl(['pic' => $b['beneficiary']], $b['date_from']) }}"
+                                               target="_blank" rel="noopener" class="aca-value-link"
+                                               title="Buka Cost Request milik {{ $b['beneficiary'] }}">{{ $fmtRpFull($b['value']) }}</a>
+                                        </td>
                                     </tr>
 
                                     {{-- LAPIS 3 — COST REQUEST. Kelas aca-allcr-{{ $gi }} ikut
@@ -602,9 +629,9 @@
                                                title="Lihat detail {{ $caItem['code'] }}">{{ $caItem['code'] }}</a>
                                             <span class="aca-cr-desc" title="{{ $caItem['description'] }}">{{ $caItem['description'] }}</span>
                                         </td>
-                                        <td class="text-center text-nowrap col-cell-bad">{!! $acaAging($caItem['aging']) !!}</td>
+                                        <td class="text-center text-nowrap">{!! $acaAging($caItem['aging']) !!}</td>
                                         <td class="text-center text-nowrap">{{ $caItem['paid_date'] ?? '-' }}</td>
-                                        <td class="text-center text-nowrap col-cell-good">
+                                        <td class="text-center text-nowrap">
                                             <span class="badge badge-{{ $caItem['status_color'] }}" style="font-size:9px;">{{ $caItem['status_label'] }}</span>
                                         </td>
                                         {{-- Selalu "1 CR": satu baris di lapis ini memang satu
@@ -612,7 +639,7 @@
                                              dijumlahkan - Grand Total menjumlahkan lapis manager,
                                              jadi baris ini tidak ikut terhitung dua kali. --}}
                                         <td class="text-center text-muted" style="font-size:11px;">1</td>
-                                        <td class="text-right text-nowrap col-cell-blue">{{ $fmtRpFull($caItem['amount']) }}</td>
+                                        <td class="text-right text-nowrap">{{ $fmtRpFull($caItem['amount']) }}</td>
                                     </tr>
                                     @endforeach
                                     @endforeach
@@ -625,7 +652,7 @@
                                     <tr style="background:var(--surface-2);">
                                         <th colspan="4" class="text-left">Grand Total</th>
                                         <th class="text-center">{{ $activeCaGrandQty }}</th>
-                                        <th class="text-right col-cell-blue">{{ $fmtRpFull($activeCaGrandValue) }}</th>
+                                        <th class="text-right">{{ $fmtRpFull($activeCaGrandValue) }}</th>
                                     </tr>
                                 </tfoot>
                                 @endif
@@ -1317,6 +1344,50 @@
                                          (col_manager, server-side). Dua tabel lain di panel ini
                                          punya chip Manager sendiri lewat TesysColumnFilter; tabel
                                          ini bukan DataTable, jadi filternya dibuat manual. --}}
+                                {{-- Lima tahap ANTREAN, bukan pencapaian kumulatif: tiap No. PO
+                                     jatuh di satu kolom saja - tempat ia sedang tertahan.
+                                     Didefinisikan sekali di sini lalu dipakai header, baris
+                                     data, dan menu Kolom, supaya menambah/menggeser tahap
+                                     tidak perlu disunting di empat tempat yang harus tetap
+                                     sinkron. --}}
+                                @php
+                                    $progGroups = [
+                                        'contract'     => ['label' => 'Contract',        'tone' => null],
+                                        'wait_po'      => ['label' => 'Waiting PO',      'tone' => 'blue'],
+                                        'wait_bast'    => ['label' => 'Waiting BAST',    'tone' => 'good'],
+                                        'wait_invoice' => ['label' => 'Waiting Invoice', 'tone' => 'warn'],
+                                        // Label "Paid", bukan "Payment": tahap yang ditunggu di sini adalah
+                                        // status Paid pada No. PO, dan itu pula sebutannya di
+                                        // stepper Purchase Order.
+                                        'wait_payment' => ['label' => 'Waiting Paid', 'tone' => 'bad'],
+                                        /*
+                                        | VAR dihitung di browser dari dua kolom yang dipilih di
+                                        | dropdown, bukan dikirim server: mengganti formula tidak
+                                        | perlu memuat ulang halaman, dan angkanya ikut berubah
+                                        | saat filter Manager menghitung ulang subtotal. Ditandai
+                                        | 'computed' supaya perulangan sel di bawah tahu baris ini
+                                        | tidak punya data dari controller.
+                                        */
+                                        'var'          => ['label' => 'VAR', 'tone' => 'warn', 'computed' => true],
+                                        // Bukan antrean, melainkan yang sudah tuntas - ditaruh
+                                        // paling kanan sebagai ujung alur, dan membuat Contract
+                                        // sama dengan jumlah seluruh kolom di kanannya.
+                                        'closed'       => ['label' => 'Closed',       'tone' => 'good'],
+                                    ];
+
+                                    /*
+                                    | Kolom yang boleh jadi operan VAR - semua kecuali VAR itu
+                                    | sendiri. Dipakai menyusun atribut data-* di tiap sel VAR.
+                                    */
+                                    $progVarOperands = ['contract', 'wait_po', 'wait_bast', 'wait_invoice', 'wait_payment', 'closed'];
+                                    // Contract & Waiting PO hidup di tingkat PO: yang ditunggu
+                                    // justru No. PO yang belum terbit, jadi baris No. PO tidak
+                                    // punya angkanya dan menulis 0 di sana akan terbaca sebagai
+                                    // "tidak ada sisa", bukan "tidak berlaku".
+                                    $progPoLevel = ['contract', 'wait_po'];
+                                    $progRp      = fn ($n) => number_format((int) $n, 0, ',', '.');
+                                    $progCols    = 1 + count($progGroups) * 2;
+                                @endphp
                                     @php
                                         $progManagers = collect($progressRows)
                                             ->flatMap(fn ($c) => collect($c['projects'])->pluck('manager'))
@@ -1357,37 +1428,31 @@
                                             title="Bersihkan filter" aria-label="Bersihkan filter">
                                         <i class="fas fa-eraser"></i>
                                     </button>
+                                    {{-- VAR dihitung ulang di frontend sesuai formula yang
+                                         dipilih, pola yang sama dengan PO Summary: tiap sel
+                                         membawa angka semua tahap lewat data-*, jadi ganti
+                                         formula tidak perlu memuat ulang halaman. --}}
+                                    <label class="mb-0" style="font-size:11px;color:var(--text-faint);">VAR:</label>
+                                    <select id="progVarFormula" class="form-control form-control-sm" style="font-size:11px;width:auto;">
+                                        <option value="contract_minus_closed">Contract &minus; Closed</option>
+                                        <option value="contract_minus_wait_po">Contract &minus; Waiting PO</option>
+                                        <option value="wait_bast_minus_wait_invoice">Waiting BAST &minus; Waiting Invoice</option>
+                                        <option value="wait_invoice_minus_wait_payment">Waiting Invoice &minus; Waiting Paid</option>
+                                        <option value="wait_payment_minus_closed">Waiting Paid &minus; Closed</option>
+                                    </select>
+
                                     <div class="dropdown" id="progColvis">
                                         <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-display="static">
                                             <i class="fas fa-columns mr-1"></i>Kolom
                                         </button>
                                         <div class="dropdown-menu dropdown-menu-right js-colvis-menu p-2" style="font-size:12px;min-width:200px;max-height:360px;overflow-y:auto;">
-                                            @foreach([
-                                                'received' => 'PO RECEIVED',
-                                                'bast'     => 'BAST',
-                                                'partial'  => 'PARTIAL',
-                                                'invoice'  => 'INVOICE',
-                                                'paid'     => 'PAID',
-                                                'var'      => 'VAR',
-                                            ] as $grpKey => $grpLabel)
-                                            <div class="text-muted font-weight-bold px-1 {{ $loop->first ? '' : 'mt-1' }}" style="font-size:10px;letter-spacing:.03em;">{{ $grpLabel }}</div>
+                                            @foreach($progGroups as $grpKey => $grpDef)
+                                            <div class="text-muted font-weight-bold px-1 {{ $loop->first ? '' : 'mt-1' }}" style="font-size:10px;letter-spacing:.03em;">{{ strtoupper($grpDef['label']) }}</div>
                                             <label class="dropdown-item m-0 p-1"><input type="checkbox" class="prog-colvis-toggle mr-1" data-c="{{ $grpKey }}_qty" checked>Qty</label>
                                             <label class="dropdown-item m-0 p-1"><input type="checkbox" class="prog-colvis-toggle mr-1" data-c="{{ $grpKey }}_value" checked>Value</label>
                                             @endforeach
                                         </div>
                                     </div>
-                                    {{-- VAR dihitung ulang di frontend sesuai formula yang dipilih,
-                                         pola yang sama dengan PO Summary: tiap sel membawa angka
-                                         tiap tahap lewat data-*, jadi ganti formula tidak perlu
-                                         memuat ulang halaman. --}}
-                                    <label class="mb-0" style="font-size:11px;color:var(--text-faint);">VAR:</label>
-                                    <select id="progVarFormula" class="form-control form-control-sm" style="font-size:11px;width:auto;">
-                                        <option value="received_minus_bast">Received &minus; BAST</option>
-                                        <option value="received_minus_invoice">Received &minus; Invoice</option>
-                                        <option value="received_minus_paid">Received &minus; Paid</option>
-                                        <option value="bast_minus_invoice">BAST &minus; Invoice</option>
-                                        <option value="invoice_minus_paid">Invoice &minus; Paid</option>
-                                    </select>
                                     <button type="button" class="btn btn-outline-secondary btn-sm" id="progExpandAll" style="font-size:11px;">
                                         <i class="fas fa-angle-double-down mr-1"></i>Buka Semua
                                     </button>
@@ -1404,26 +1469,16 @@
                                     <thead>
                                         <tr>
                                             <th scope="col" rowspan="2" class="col-sticky-left" style="vertical-align:middle;border-bottom:2px solid var(--border);min-width:280px;">Customer / PO / No. PO</th>
-                                            <th scope="col" data-grp="received" colspan="2" class="text-center col-grp-head col-grp-blue">PO Received</th>
-                                            <th scope="col" data-grp="bast"     colspan="2" class="text-center col-grp-head col-grp-good">BAST</th>
-                                            <th scope="col" data-grp="partial"  colspan="2" class="text-center col-grp-head col-grp-warn">Partial</th>
-                                            <th scope="col" data-grp="invoice"  colspan="2" class="text-center col-grp-head col-grp-blue">Invoice</th>
-                                            <th scope="col" data-grp="paid"     colspan="2" class="text-center col-grp-head col-grp-good">Paid</th>
-                                            <th scope="col" data-grp="var"      colspan="2" class="text-center col-grp-head col-grp-warn">VAR</th>
+                                            @foreach($progGroups as $gk => $g)
+                                            <th scope="col" data-grp="{{ $gk }}" colspan="2"
+                                                class="text-center col-grp-head {{ $g['tone'] ? 'col-grp-' . $g['tone'] : '' }}">{{ $g['label'] }}</th>
+                                            @endforeach
                                         </tr>
                                         <tr>
-                                            <th scope="col" data-c="received_qty"   class="col-subhead-blue">Qty</th>
-                                            <th scope="col" data-c="received_value" class="col-subhead-blue">Value</th>
-                                            <th scope="col" data-c="bast_qty"       class="col-subhead-good">Qty</th>
-                                            <th scope="col" data-c="bast_value"     class="col-subhead-good">Value</th>
-                                            <th scope="col" data-c="partial_qty"    class="col-subhead-warn">Qty</th>
-                                            <th scope="col" data-c="partial_value"  class="col-subhead-warn">Value</th>
-                                            <th scope="col" data-c="invoice_qty"    class="col-subhead-blue">Qty</th>
-                                            <th scope="col" data-c="invoice_value"  class="col-subhead-blue">Value</th>
-                                            <th scope="col" data-c="paid_qty"       class="col-subhead-good">Qty</th>
-                                            <th scope="col" data-c="paid_value"     class="col-subhead-good">Value</th>
-                                            <th scope="col" data-c="var_qty"        class="col-subhead-warn">Qty</th>
-                                            <th scope="col" data-c="var_value"      class="col-subhead-warn">Value</th>
+                                            @foreach($progGroups as $gk => $g)
+                                            <th scope="col" data-c="{{ $gk }}_qty"   class="{{ $g['tone'] ? 'col-subhead-' . $g['tone'] : 'prog-subhead-plain' }}">Qty</th>
+                                            <th scope="col" data-c="{{ $gk }}_value" class="{{ $g['tone'] ? 'col-subhead-' . $g['tone'] : 'prog-subhead-plain' }}">Value</th>
+                                            @endforeach
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1435,22 +1490,17 @@
                                                     <i class="fas fa-caret-right prog-caret mr-1"></i>{{ $cust['customer'] }}
                                                     <span class="badge badge-secondary ml-1 prog-cust-count" style="font-size:9px;">{{ $cust['po_qty'] }} PO &middot; {{ $cust['po_number_qty'] }} No. PO</span>
                                                 </td>
-                                                <td data-c="received_qty" class="text-right col-cell-blue" style="font-weight:700;">{{ $cust['received_qty'] }}</td>
-                                                <td data-c="received_value" class="text-right col-cell-blue">{{ number_format($cust['received_value'], 0, ',', '.') }}</td>
-                                                <td data-c="bast_qty" class="text-right col-cell-good" style="font-weight:700;">{{ $cust['bast_qty'] }}</td>
-                                                <td data-c="bast_value" class="text-right col-cell-good">{{ number_format($cust['bast_value'], 0, ',', '.') }}</td>
-                                                <td data-c="partial_qty" class="text-right col-cell-warn" style="font-weight:700;">{{ $cust['partial_qty'] }}</td>
-                                                <td data-c="partial_value" class="text-right col-cell-warn">{{ number_format($cust['partial_value'], 0, ',', '.') }}</td>
-                                                <td data-c="invoice_qty" class="text-right col-cell-blue" style="font-weight:700;">{{ $cust['invoice_qty'] }}</td>
-                                                <td data-c="invoice_value" class="text-right col-cell-blue">{{ number_format($cust['invoice_value'], 0, ',', '.') }}</td>
-                                                <td data-c="paid_qty" class="text-right col-cell-good" style="font-weight:700;">{{ $cust['paid_qty'] }}</td>
-                                                <td data-c="paid_value" class="text-right col-cell-good">{{ number_format($cust['paid_value'], 0, ',', '.') }}</td>
-                                                <td data-c="var_qty" class="text-right col-cell-warn prog-var-qty" style="font-weight:700;"
-                                                    data-received-qty="{{ $cust['received_qty'] }}" data-bast-qty="{{ $cust['bast_qty'] }}"
-                                                    data-invoice-qty="{{ $cust['invoice_qty'] }}" data-paid-qty="{{ $cust['paid_qty'] }}">0</td>
-                                                <td data-c="var_value" class="text-right col-cell-warn prog-var-value"
-                                                    data-received-value="{{ $cust['received_value'] }}" data-bast-value="{{ $cust['bast_value'] }}"
-                                                    data-invoice-value="{{ $cust['invoice_value'] }}" data-paid-value="{{ $cust['paid_value'] }}">0</td>
+                                                @foreach($progGroups as $gk => $g)
+                                                @if(!empty($g['computed']))
+                                                <td data-c="{{ $gk }}_qty" class="text-right col-cell-{{ $g['tone'] }} prog-var-qty" style="font-weight:700;"
+                                                    @foreach($progVarOperands as $op) data-{{ str_replace('_', '-', $op) }}-qty="{{ $cust[$op . '_qty'] }}" @endforeach>0</td>
+                                                <td data-c="{{ $gk }}_value" class="text-right col-cell-{{ $g['tone'] }} prog-var-value"
+                                                    @foreach($progVarOperands as $op) data-{{ str_replace('_', '-', $op) }}-value="{{ $cust[$op . '_value'] }}" @endforeach>0</td>
+                                                @else
+                                                <td data-c="{{ $gk }}_qty" class="text-right {{ $g['tone'] ? 'col-cell-' . $g['tone'] : '' }}" style="font-weight:700;">{{ $cust[$gk . '_qty'] }}</td>
+                                                <td data-c="{{ $gk }}_value" class="text-right {{ $g['tone'] ? 'col-cell-' . $g['tone'] : '' }}">{{ $progRp($cust[$gk . '_value']) }}</td>
+                                                @endif
+                                                @endforeach
                                             </tr>
 
                                             @foreach($cust['projects'] as $pi => $proj)
@@ -1458,8 +1508,10 @@
                                                 <tr class="prog-row prog-row-project" data-level="project" data-key="{{ $projKey }}"
                                                     data-parent="{{ $custKey }}" style="display:none;"
                                                     data-manager="{{ $proj['manager'] }}"
-                                                    @foreach(['received','bast','partial','invoice','paid'] as $g)
-                                                    data-{{ $g }}-qty="{{ $proj[$g . '_qty'] }}" data-{{ $g }}-value="{{ $proj[$g . '_value'] }}"
+                                                    {{-- VAR dilewati: kolomnya dihitung di browser, tidak
+                                                         punya angka dari controller untuk dibawa di sini. --}}
+                                                    @foreach($progVarOperands as $gk)
+                                                    data-{{ str_replace('_', '-', $gk) }}-qty="{{ $proj[$gk . '_qty'] }}" data-{{ str_replace('_', '-', $gk) }}-value="{{ $proj[$gk . '_value'] }}"
                                                     @endforeach
                                                     data-text="{{ strtolower($cust['customer'] . ' ' . $proj['project'] . ' ' . $proj['project_code']) }}">
                                                     <td class="col-sticky-left prog-lv2" style="cursor:pointer;">
@@ -1467,22 +1519,17 @@
                                                         <span class="prog-name">{{ $proj['project'] }}</span>
                                                         <span class="text-muted ml-1" style="font-size:10px;">{{ $proj['project_code'] }} &middot; {{ $proj['manager'] }}</span>
                                                     </td>
-                                                    <td data-c="received_qty" class="text-right col-cell-blue">{{ $proj['received_qty'] }}</td>
-                                                    <td data-c="received_value" class="text-right col-cell-blue">{{ number_format($proj['received_value'], 0, ',', '.') }}</td>
-                                                    <td data-c="bast_qty" class="text-right col-cell-good">{{ $proj['bast_qty'] }}</td>
-                                                    <td data-c="bast_value" class="text-right col-cell-good">{{ number_format($proj['bast_value'], 0, ',', '.') }}</td>
-                                                    <td data-c="partial_qty" class="text-right col-cell-warn">{{ $proj['partial_qty'] }}</td>
-                                                    <td data-c="partial_value" class="text-right col-cell-warn">{{ number_format($proj['partial_value'], 0, ',', '.') }}</td>
-                                                    <td data-c="invoice_qty" class="text-right col-cell-blue">{{ $proj['invoice_qty'] }}</td>
-                                                    <td data-c="invoice_value" class="text-right col-cell-blue">{{ number_format($proj['invoice_value'], 0, ',', '.') }}</td>
-                                                    <td data-c="paid_qty" class="text-right col-cell-good">{{ $proj['paid_qty'] }}</td>
-                                                    <td data-c="paid_value" class="text-right col-cell-good">{{ number_format($proj['paid_value'], 0, ',', '.') }}</td>
-                                                <td data-c="var_qty" class="text-right col-cell-warn prog-var-qty" style="font-weight:700;"
-                                                    data-received-qty="{{ $proj['received_qty'] }}" data-bast-qty="{{ $proj['bast_qty'] }}"
-                                                    data-invoice-qty="{{ $proj['invoice_qty'] }}" data-paid-qty="{{ $proj['paid_qty'] }}">0</td>
-                                                <td data-c="var_value" class="text-right col-cell-warn prog-var-value"
-                                                    data-received-value="{{ $proj['received_value'] }}" data-bast-value="{{ $proj['bast_value'] }}"
-                                                    data-invoice-value="{{ $proj['invoice_value'] }}" data-paid-value="{{ $proj['paid_value'] }}">0</td>
+                                                    @foreach($progGroups as $gk => $g)
+                                                    @if(!empty($g['computed']))
+                                                    <td data-c="{{ $gk }}_qty" class="text-right col-cell-{{ $g['tone'] }} prog-var-qty"
+                                                        @foreach($progVarOperands as $op) data-{{ str_replace('_', '-', $op) }}-qty="{{ $proj[$op . '_qty'] }}" @endforeach>0</td>
+                                                    <td data-c="{{ $gk }}_value" class="text-right col-cell-{{ $g['tone'] }} prog-var-value"
+                                                        @foreach($progVarOperands as $op) data-{{ str_replace('_', '-', $op) }}-value="{{ $proj[$op . '_value'] }}" @endforeach>0</td>
+                                                    @else
+                                                    <td data-c="{{ $gk }}_qty" class="text-right {{ $g['tone'] ? 'col-cell-' . $g['tone'] : '' }}">{{ $proj[$gk . '_qty'] }}</td>
+                                                    <td data-c="{{ $gk }}_value" class="text-right {{ $g['tone'] ? 'col-cell-' . $g['tone'] : '' }}">{{ $progRp($proj[$gk . '_value']) }}</td>
+                                                    @endif
+                                                    @endforeach
                                                 </tr>
 
                                                 @forelse($proj['po_numbers'] as $pn)
@@ -1494,57 +1541,55 @@
                                                             <span class="badge ml-1 {{ $pn['status'] === 'PAID' ? 'badge-success' : ($pn['status'] === 'INVOICED' ? 'badge-info' : ($pn['status'] === 'PARTIAL' ? 'badge-warning' : 'badge-secondary')) }}"
                                                                   style="font-size:9px;">{{ $pn['status'] }}</span>
                                                         </td>
-                                                        <td data-c="received_qty" class="text-right col-cell-blue">{{ $pn['received_qty'] ?: '-' }}</td>
-                                                        <td data-c="received_value" class="text-right col-cell-blue">{{ $pn['received_value'] ? number_format($pn['received_value'], 0, ',', '.') : '-' }}</td>
-                                                        <td data-c="bast_qty" class="text-right col-cell-good">{{ $pn['bast_qty'] ?: '-' }}</td>
-                                                        <td data-c="bast_value" class="text-right col-cell-good">{{ $pn['bast_value'] ? number_format($pn['bast_value'], 0, ',', '.') : '-' }}</td>
-                                                        <td data-c="partial_qty" class="text-right col-cell-warn">{{ $pn['partial_qty'] ?: '-' }}</td>
-                                                        <td data-c="partial_value" class="text-right col-cell-warn">{{ $pn['partial_value'] ? number_format($pn['partial_value'], 0, ',', '.') : '-' }}</td>
-                                                        <td data-c="invoice_qty" class="text-right col-cell-blue">{{ $pn['invoice_qty'] ?: '-' }}</td>
-                                                        <td data-c="invoice_value" class="text-right col-cell-blue">{{ $pn['invoice_value'] ? number_format($pn['invoice_value'], 0, ',', '.') : '-' }}</td>
-                                                        <td data-c="paid_qty" class="text-right col-cell-good">{{ $pn['paid_qty'] ?: '-' }}</td>
-                                                        <td data-c="paid_value" class="text-right col-cell-good">{{ $pn['paid_value'] ? number_format($pn['paid_value'], 0, ',', '.') : '-' }}</td>
-                                                    <td data-c="var_qty" class="text-right col-cell-warn prog-var-qty" style="font-weight:700;"
-                                                        data-received-qty="{{ $pn['received_qty'] }}" data-bast-qty="{{ $pn['bast_qty'] }}"
-                                                        data-invoice-qty="{{ $pn['invoice_qty'] }}" data-paid-qty="{{ $pn['paid_qty'] }}">0</td>
-                                                    <td data-c="var_value" class="text-right col-cell-warn prog-var-value"
-                                                        data-received-value="{{ $pn['received_value'] }}" data-bast-value="{{ $pn['bast_value'] }}"
-                                                        data-invoice-value="{{ $pn['invoice_value'] }}" data-paid-value="{{ $pn['paid_value'] }}">0</td>
+                                                        @foreach($progGroups as $gk => $g)
+                                                            @php $tone = $g['tone'] ? 'col-cell-' . $g['tone'] : ''; @endphp
+                                                            @if(!empty($g['computed']))
+                                                            {{-- Baris No. PO tidak punya angka Contract/Waiting PO
+                                                                 (keduanya tingkat PO), jadi operan yang tidak
+                                                                 berlaku dikirim 0 - VAR-nya tetap terhitung untuk
+                                                                 pasangan tahap yang memang ada di baris ini. --}}
+                                                            <td data-c="{{ $gk }}_qty" class="text-right {{ $tone }} prog-var-qty"
+                                                                @foreach($progVarOperands as $op) data-{{ str_replace('_', '-', $op) }}-qty="{{ $pn[$op . '_qty'] ?? 0 }}" @endforeach>0</td>
+                                                            <td data-c="{{ $gk }}_value" class="text-right {{ $tone }} prog-var-value"
+                                                                @foreach($progVarOperands as $op) data-{{ str_replace('_', '-', $op) }}-value="{{ $pn[$op . '_value'] ?? 0 }}" @endforeach>0</td>
+                                                            @elseif(in_array($gk, $progPoLevel, true))
+                                                            <td data-c="{{ $gk }}_qty" class="text-right text-muted {{ $tone }}">&ndash;</td>
+                                                            <td data-c="{{ $gk }}_value" class="text-right text-muted {{ $tone }}">&ndash;</td>
+                                                            @else
+                                                            <td data-c="{{ $gk }}_qty" class="text-right {{ $tone }}">{{ $pn[$gk . '_qty'] ?: '-' }}</td>
+                                                            <td data-c="{{ $gk }}_value" class="text-right {{ $tone }}">{{ $pn[$gk . '_value'] ? $progRp($pn[$gk . '_value']) : '-' }}</td>
+                                                            @endif
+                                                        @endforeach
                                                     </tr>
                                                 @empty
                                                     <tr class="prog-row prog-row-ponumber" data-level="ponumber"
                                                         data-parent="{{ $projKey }}" style="display:none;" data-text="">
-                                                        <td colspan="13" class="text-muted prog-lv3" style="font-size:11px;">Belum ada No. PO terbit.</td>
+                                                        <td colspan="{{ $progCols }}" class="text-muted prog-lv3" style="font-size:11px;">Belum ada No. PO terbit.</td>
                                                     </tr>
                                                 @endforelse
                                             @endforeach
                                         @empty
-                                            <tr><td colspan="13" class="text-center text-muted py-3">Tidak ada PO pada filter ini.</td></tr>
+                                            <tr><td colspan="{{ $progCols }}" class="text-center text-muted py-3">Tidak ada PO pada filter ini.</td></tr>
                                         @endforelse
                                         <tr id="progNoMatch" style="display:none;">
-                                            <td colspan="13" class="text-center text-muted py-3">Tidak ada yang cocok dengan pencarian.</td>
+                                            <td colspan="{{ $progCols }}" class="text-center text-muted py-3">Tidak ada yang cocok dengan pencarian.</td>
                                         </tr>
                                     </tbody>
                                     @if($progressRows->isNotEmpty())
                                     <tfoot>
                                         <tr class="col-detail-subtotal">
                                             <td class="col-sticky-left">Grand Total &mdash; <span id="progGrandCount">{{ $progressTotals['customer_qty'] }} customer &middot; {{ $progressTotals['po_qty'] }} PO &middot; {{ $progressTotals['po_number_qty'] }} No. PO</span></td>
-                                            <td data-c="received_qty" class="text-right">{{ $progressTotals['received_qty'] }}</td>
-                                            <td data-c="received_value" class="text-right">{{ number_format($progressTotals['received_value'], 0, ',', '.') }}</td>
-                                            <td data-c="bast_qty" class="text-right">{{ $progressTotals['bast_qty'] }}</td>
-                                            <td data-c="bast_value" class="text-right">{{ number_format($progressTotals['bast_value'], 0, ',', '.') }}</td>
-                                            <td data-c="partial_qty" class="text-right">{{ $progressTotals['partial_qty'] }}</td>
-                                            <td data-c="partial_value" class="text-right">{{ number_format($progressTotals['partial_value'], 0, ',', '.') }}</td>
-                                            <td data-c="invoice_qty" class="text-right">{{ $progressTotals['invoice_qty'] }}</td>
-                                            <td data-c="invoice_value" class="text-right">{{ number_format($progressTotals['invoice_value'], 0, ',', '.') }}</td>
-                                            <td data-c="paid_qty" class="text-right">{{ $progressTotals['paid_qty'] }}</td>
-                                            <td data-c="paid_value" class="text-right">{{ number_format($progressTotals['paid_value'], 0, ',', '.') }}</td>
-                                                <td data-c="var_qty" class="text-right col-cell-warn prog-var-qty" style="font-weight:700;"
-                                                    data-received-qty="{{ $progressTotals['received_qty'] }}" data-bast-qty="{{ $progressTotals['bast_qty'] }}"
-                                                    data-invoice-qty="{{ $progressTotals['invoice_qty'] }}" data-paid-qty="{{ $progressTotals['paid_qty'] }}">0</td>
-                                                <td data-c="var_value" class="text-right col-cell-warn prog-var-value"
-                                                    data-received-value="{{ $progressTotals['received_value'] }}" data-bast-value="{{ $progressTotals['bast_value'] }}"
-                                                    data-invoice-value="{{ $progressTotals['invoice_value'] }}" data-paid-value="{{ $progressTotals['paid_value'] }}">0</td>
+                                            @foreach($progGroups as $gk => $g)
+                                            @if(!empty($g['computed']))
+                                            <td data-c="{{ $gk }}_qty" class="text-right col-cell-{{ $g['tone'] }} prog-var-qty" style="font-weight:700;"
+                                                @foreach($progVarOperands as $op) data-{{ str_replace('_', '-', $op) }}-qty="{{ $progressTotals[$op . '_qty'] }}" @endforeach>0</td>
+                                            <td data-c="{{ $gk }}_value" class="text-right col-cell-{{ $g['tone'] }} prog-var-value"
+                                                @foreach($progVarOperands as $op) data-{{ str_replace('_', '-', $op) }}-value="{{ $progressTotals[$op . '_value'] }}" @endforeach>0</td>
+                                            @else
+                                            <td data-c="{{ $gk }}_qty" class="text-right">{{ $progressTotals[$gk . '_qty'] }}</td>
+                                            <td data-c="{{ $gk }}_value" class="text-right">{{ $progRp($progressTotals[$gk . '_value']) }}</td>
+                                            @endif
+                                            @endforeach
                                         </tr>
                                     </tfoot>
                                     @endif
@@ -1603,12 +1648,30 @@
 }
 .aca-cr-desc { font-size:11.5px; }
 
-/* Sel Aging/Tanggal/Action di lapis grup.
-   Ketiganya melekat pada satu dokumen, jadi grup tidak punya nilai tunggal
-   untuk ditulis di sana. Dikosongkan begitu saja, deretan sel kosong terbaca
-   seperti data yang gagal dimuat — panah ke bawah menyatakan "nilainya ada di
-   baris-baris di bawah ini", bukan "tidak ada datanya". */
-.aca-drill { color:var(--text-faint); font-size:10px; opacity:.55; }
+/* Nilai yang bisa diklik. Warnanya dibiarkan mengikuti teks dan baru berubah
+   saat disentuh — kolom ini penuh angka, dan membirukan semuanya membuat
+   perbandingan nominal jadi sulit dibaca. */
+/* Aturannya diambil dari .po-cell-link di modul Purchase Order (lihat
+   project/_index-assets.blade.php): angka hitam biasa, berubah jadi chip
+   arang saat disorot. Ruang & sudutnya sudah disiapkan sejak keadaan diam
+   supaya baris tidak bergeser atau berubah tinggi begitu kursor lewat. */
+/* Kekhususan sengaja dinaikkan ke `body.tesys-ui a.…` (0-2-1).
+   tesys-ui-compat.css memasang `body.tesys-ui a { color: var(--accent-text) }`
+   pada 0-1-1 — seri dengan `a.aca-value-link`, dan yang belakangan menang, jadi
+   angkanya tetap merah. .po-cell-link di modul Purchase Order tidak kena
+   masalah ini semata karena di sana elemennya <button>, bukan <a>. */
+body.tesys-ui a.aca-value-link,
+a.aca-value-link {
+    display:inline-block; padding:2px 8px; border:0; border-radius:var(--radius-sm);
+    background:transparent; font-weight:700; line-height:1.4;
+    color:var(--text); text-decoration:none; cursor:pointer;
+    transition:background-color .12s ease, color .12s ease;
+}
+body.tesys-ui a.aca-value-link:hover,
+body.tesys-ui a.aca-value-link:focus,
+a.aca-value-link:hover, a.aca-value-link:focus {
+    background:var(--charcoal); color:#fff; text-decoration:none; outline:none;
+}
 
 /* col-pic-table memasang width:auto supaya tabel matriksnya boleh melebar
    melampaui kartu dan digulung mendatar. Tabel ini tidak begitu: lebarnya
@@ -1681,27 +1744,41 @@ button.aca-sort:focus-visible { outline:2px solid var(--accent); outline-offset:
    terpotong di balik kolom yang masih beku. Garis panduan di bawah tidak
    membutuhkannya — `position:sticky` sudah jadi containing block untuk anak
    yang absolute. */
+/* Contract tidak berwarna: ia patokan, bukan salah satu antrean. Memberinya
+   pita warna membuat kelima kolom terbaca sederajat, padahal empat kolom
+   Waiting adalah bagian-bagian DARI Contract. Garis tegas bawahnya tetap
+   dipasang supaya batas blok header lurus satu garis dengan grup berwarna. */
+#tblProgressSummary thead th.prog-subhead-plain {
+    background:var(--surface-2); border-bottom:2px solid var(--border) !important;
+}
+
 #tblProgressSummary .prog-lv1 { padding-left: 10px !important; font-weight: 700; }
 #tblProgressSummary .prog-lv2 { padding-left: 34px !important; }
 #tblProgressSummary .prog-lv3 { padding-left: 62px !important; }
 #tblProgressSummary .prog-lv2 .prog-name { font-weight: 600; }
 
-#tblProgressSummary .prog-lv2::before,
-#tblProgressSummary .prog-lv3::before {
-    content: '';
-    position: absolute;
-    left: 18px;
-    top: 0;
-    bottom: 0;
-    border-left: 1px solid var(--border);
+/* Garis panduan digambar sebagai LATAR sel, bukan elemen absolut.
+
+   Versi absolut (::before/::after dengan top:0;bottom:0) bersandar pada sel
+   sebagai containing block — dan sel ini mengandalkan `position:sticky` untuk
+   itu. Begitu sticky tidak berlaku (tabel dengan border-collapse di sebagian
+   peramban, atau saat seluruh pohon dibuka dan barisnya digambar ulang),
+   acuannya melompat ke kartu terdekat: garisnya lalu memanjang menembus
+   judul "Summary Progress" sampai ke ujung kartu. Gradien latar tidak punya
+   acuan lain selain selnya sendiri, jadi tidak mungkin keluar dari baris. */
+#tblProgressSummary .prog-lv2,
+#tblProgressSummary .prog-lv3 {
+    background-image: linear-gradient(to right,
+        transparent 18px, var(--border) 18px, var(--border) 19px, transparent 19px);
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
 }
-#tblProgressSummary .prog-lv3::after {
-    content: '';
-    position: absolute;
-    left: 42px;
-    top: 0;
-    bottom: 0;
-    border-left: 1px solid var(--border);
+#tblProgressSummary .prog-lv3 {
+    background-image:
+        linear-gradient(to right,
+            transparent 18px, var(--border) 18px, var(--border) 19px, transparent 19px),
+        linear-gradient(to right,
+            transparent 42px, var(--border) 42px, var(--border) 43px, transparent 43px);
 }
 #tblProgressSummary .prog-row-ponumber .col-sticky-left { color: var(--text-dim); }
 
@@ -3342,19 +3419,47 @@ $(function () {
         }, 150);
     });
 
+    /* Deep-link dari kolom Qty PO di Daftar Purchase Order:
+       ?tab=collection&progress=<kode PO>. Kotak cari diisi kodenya supaya
+       filternya jadi keadaan yang bisa dilihat & dihapus user (bukan
+       penyembunyian diam-diam), lalu baris PO-nya dibuka sampai No. PO dan
+       digulirkan ke layar — panel ini duduk paling bawah di tab Collection. */
+    (function () {
+        var wanted = new URLSearchParams(window.location.search).get('progress');
+        if (!wanted) return;
+
+        var $search = $('#progSearch');
+        if (!$search.length) return;
+
+        $search.val(wanted).trigger('input');
+
+        // Menunggu debounce pencarian (150ms) selesai sebelum membuka anaknya.
+        setTimeout(function () {
+            var q = wanted.toLowerCase();
+            var $proj = $('#tblProgressSummary tbody tr.prog-row-project').filter(function () {
+                return ($(this).data('text') || '').toString().indexOf(q) !== -1;
+            }).first();
+            if (!$proj.length) return;
+
+            progChildren($proj.data('key')).show();
+            $proj.find('.prog-caret').removeClass('fa-caret-right').addClass('fa-caret-down');
+            $proj[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 250);
+    })();
+
     /* Summary Progress — VAR dihitung ulang di frontend sesuai formula
-       dropdown, tanpa reload: tiap sel sudah membawa angka semua tahap lewat
-       data-*. Pola yang sama dengan PO Summary (lihat recalcPoVar). */
+       dropdown, tanpa reload: tiap sel VAR sudah membawa angka semua tahap
+       lewat data-*. Pola yang sama dengan PO Summary (lihat recalcPoVar). */
     var progVarPairs = {
-        received_minus_bast:    ['received', 'bast'],
-        received_minus_invoice: ['received', 'invoice'],
-        received_minus_paid:    ['received', 'paid'],
-        bast_minus_invoice:     ['bast', 'invoice'],
-        invoice_minus_paid:     ['invoice', 'paid']
+        contract_minus_closed:          ['contract', 'closed'],
+        contract_minus_wait_po:         ['contract', 'waitPo'],
+        wait_bast_minus_wait_invoice:   ['waitBast', 'waitInvoice'],
+        wait_invoice_minus_wait_payment:['waitInvoice', 'waitPayment'],
+        wait_payment_minus_closed:      ['waitPayment', 'closed']
     };
 
     function recalcProgVar() {
-        var pair = progVarPairs[$('#progVarFormula').val()] || progVarPairs.received_minus_bast;
+        var pair = progVarPairs[$('#progVarFormula').val()] || progVarPairs.contract_minus_closed;
         var a = pair[0], b = pair[1];
 
         $('#tblProgressSummary .prog-var-qty').each(function () {
@@ -3378,7 +3483,11 @@ $(function () {
        cukup: baris Customer dan Grand Total adalah angka yang sudah dijumlah di
        server, jadi keduanya HARUS dihitung ulang dari baris PO yang lolos —
        kalau tidak, tabel menampilkan total yang tidak sesuai isinya. */
-    var PROG_GROUPS = ['received', 'bast', 'partial', 'invoice', 'paid'];
+    /* Harus sama dengan kunci $progGroups di markup: tiap tahap dibaca dari
+       atribut data-<tahap>-qty/-value milik baris PO. Garis bawah ditulis
+       sebagai tanda hubung karena begitulah atributnya ditulis di HTML. */
+    var PROG_GROUPS = ['contract', 'wait_po', 'wait_bast', 'wait_invoice', 'wait_payment', 'closed'];
+    function progAttr(g) { return g.replace(/_/g, '-'); }
 
     function progSetAngka($row, data) {
         PROG_GROUPS.forEach(function (g) {
@@ -3386,13 +3495,14 @@ $(function () {
             $row.find('[data-c="' + g + '_value"]').text(data[g + 'Value'].toLocaleString('id-ID'));
         });
 
-        // Sel VAR membaca angkanya dari .data() (bukan teks), jadi cache jQuery-nya
-        // ikut diperbarui supaya recalcProgVar() memakai angka hasil filter.
+        /* Sel VAR membaca angkanya dari .data() (bukan teks), jadi cache
+           jQuery-nya ikut diperbarui supaya recalcProgVar() memakai angka hasil
+           filter, bukan angka bawaan server. */
         var $vq = $row.find('.prog-var-qty'), $vv = $row.find('.prog-var-value');
         PROG_GROUPS.forEach(function (g) {
-            if (g === 'partial') return;               // VAR tidak memakai Partial
-            $vq.data(g + 'Qty', data[g + 'Qty']);
-            $vv.data(g + 'Value', data[g + 'Value']);
+            var k = g.replace(/_([a-z])/g, function (m, c) { return c.toUpperCase(); });
+            $vq.data(k + 'Qty', data[g + 'Qty']);
+            $vv.data(k + 'Value', data[g + 'Value']);
         });
     }
 
@@ -3424,8 +3534,8 @@ $(function () {
                 if (!lolos) return;
                 adaYangLolos = true;
                 PROG_GROUPS.forEach(function (g) {
-                    sub[g + 'Qty']   += parseInt($proj.attr('data-' + g + '-qty'), 10) || 0;
-                    sub[g + 'Value'] += parseInt($proj.attr('data-' + g + '-value'), 10) || 0;
+                    sub[g + 'Qty']   += parseInt($proj.attr('data-' + progAttr(g) + '-qty'), 10) || 0;
+                    sub[g + 'Value'] += parseInt($proj.attr('data-' + progAttr(g) + '-value'), 10) || 0;
                 });
             });
 

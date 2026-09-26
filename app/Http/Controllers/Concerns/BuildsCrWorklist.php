@@ -313,7 +313,11 @@ trait BuildsCrWorklist
      * Setiap CR hanya berstatus satu hal di satu waktu, jadi kedua bucket ini
      * otomatis mutually exclusive (tidak ada double counting).
      */
-    private function buildReviewCoaBreakdown(BudgetPlan $bp, $crs, string $requestStatus = ''): \Illuminate\Support\Collection
+    /**
+     * @param string|string[] $requestStatus satu status, atau beberapa
+     *        sekaligus saat section-nya menggabungkan beberapa antrean.
+     */
+    private function buildReviewCoaBreakdown(BudgetPlan $bp, $crs, string|array $requestStatus = ''): \Illuminate\Support\Collection
     {
         $bp->loadMissing('details.account');
 
@@ -321,9 +325,12 @@ trait BuildsCrWorklist
 
         [$pipelineByDetailId, $disbursedByDetailId] = $this->coaRowsFor($detailIds);
 
-        $requestStatuses = in_array($requestStatus, ['SUBMITTED', 'CHECKED', 'VERIFIED'], true)
-            ? [$requestStatus]
-            : ['SUBMITTED', 'CHECKED', 'VERIFIED'];
+        // Section yang menggabungkan beberapa status mengirim array; yang
+        // dipakai hanya status yang memang salah satu dari tiga tahap
+        // approval, sisanya jatuh ke fallback "ketiganya sekaligus".
+        $diminta = array_intersect((array) $requestStatus, ['SUBMITTED', 'CHECKED', 'VERIFIED']);
+
+        $requestStatuses = $diminta ? array_values($diminta) : ['SUBMITTED', 'CHECKED', 'VERIFIED'];
 
         $toCrItem = fn ($p, string $stage) => [
             'detail_id'        => $p->id,

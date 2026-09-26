@@ -292,15 +292,12 @@ class ProjectController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Purchase Order');
 
-        /* Urutan kolom mengikuti tabel di layar: 'Qty PO' (jumlah No. PO yang
-           sudah dientri) duduk tepat di kanan Status, dan 'PO Quantity'
-           (ekspektasi manual) tetap di kolom terakhir sebagai pembandingnya. */
         $headers = [
-            'Code', 'Scope of Work', 'Status', 'Qty PO', 'Customer', 'Manager', 'Financing', 'Progress %',
+            'Code', 'Scope of Work', 'Status', 'Customer', 'Manager', 'Financing', 'Progress %',
             'PO Value', 'Contract', 'Budget', 'Variable Cost', 'Received Payment', 'Gross Profit',
             'Overhead', 'Fixed Cost', 'Net Profit', 'Tipe', 'PO Quantity',
         ];
-        $cols = range('A', 'S');
+        $cols = range('A', 'R');
         foreach ($headers as $i => $label) {
             $c = $cols[$i];
             $sheet->setCellValue($c . '1', $label);
@@ -322,22 +319,21 @@ class ProjectController extends Controller
             $sheet->setCellValue('A' . $row, $p->code);
             $sheet->setCellValue('B' . $row, $p->name);
             $sheet->setCellValue('C' . $row, $p->status_label);
-            $sheet->setCellValue('D' . $row, $p->poNumbers->count());
-            $sheet->setCellValue('E' . $row, $p->customer->name ?? '-');
-            $sheet->setCellValue('F' . $row, strtoupper($p->pm_internal_name ?: '-'));
-            $sheet->setCellValue('G' . $row, $p->financing_label);
-            $sheet->setCellValue('H' . $row, $p->implementationProgress());
-            $sheet->setCellValue('I' . $row, (int) ($p->value ?? 0));
-            $sheet->setCellValue('J' . $row, (int) ($p->contract ?? 0));
-            $sheet->setCellValue('K' . $row, $p->budgetPlanTotal());
-            $sheet->setCellValue('L' . $row, $variable);
-            $sheet->setCellValue('M' . $row, $payment);
-            $sheet->setCellValue('N' . $row, $gross);
-            $sheet->setCellValue('O' . $row, $overhead);
-            $sheet->setCellValue('P' . $row, $fixed);
-            $sheet->setCellValue('Q' . $row, $net);
-            $sheet->setCellValue('R' . $row, $p->type_label ?? '-');
-            $sheet->setCellValue('S' . $row, $p->po_quantity);
+            $sheet->setCellValue('D' . $row, $p->customer->name ?? '-');
+            $sheet->setCellValue('E' . $row, strtoupper($p->pm_internal_name ?: '-'));
+            $sheet->setCellValue('F' . $row, $p->financing_label);
+            $sheet->setCellValue('G' . $row, $p->implementationProgress());
+            $sheet->setCellValue('H' . $row, (int) ($p->value ?? 0));
+            $sheet->setCellValue('I' . $row, (int) ($p->contract ?? 0));
+            $sheet->setCellValue('J' . $row, $p->budgetPlanTotal());
+            $sheet->setCellValue('K' . $row, $variable);
+            $sheet->setCellValue('L' . $row, $payment);
+            $sheet->setCellValue('M' . $row, $gross);
+            $sheet->setCellValue('N' . $row, $overhead);
+            $sheet->setCellValue('O' . $row, $fixed);
+            $sheet->setCellValue('P' . $row, $net);
+            $sheet->setCellValue('Q' . $row, $p->type_label ?? '-');
+            $sheet->setCellValue('R' . $row, $p->po_quantity);
             $row++;
         }
 
@@ -759,28 +755,38 @@ class ProjectController extends Controller
         $user      = Auth::user();
         $role      = $user->role->name ?? '';
 
-        // Saat WAITING_PO, semua role (superadmin/finance/head) diarahkan ke halaman
-        // terpisah yang cuma berisi Detail No. PO — bukan form edit lengkap lagi
-        // (lihat editPoNumbers()).
-        if ($project->status === 'WAITING_PO' && in_array($role, ['superadmin', 'finance', 'finance_manager', 'head'])) {
-            return redirect('/project/' . $project->id . '/edit-po-numbers');
-        }
+        /*
+        | Approver & Finance Manager boleh mengedit PO pada status apa pun, jadi
+        | seluruh gerbang per-status di bawah dilewati — termasuk pengalihan ke
+        | halaman "tambah No. PO" saat WAITING_PO, karena buat mereka yang perlu
+        | diedit justru bisa field mana saja.
+        */
+        if (!$project->isFullyEditableBy($user)) {
 
-        if ($role === 'head' && !$project->isEditableByHead()) {
-            return redirect('/project')
-                ->with('error', 'PO hanya dapat diedit oleh Head saat berstatus DRAFT.');
-        }
+            // Saat WAITING_PO, semua role (superadmin/finance/head) diarahkan ke halaman
+            // terpisah yang cuma berisi Detail No. PO — bukan form edit lengkap lagi
+            // (lihat editPoNumbers()).
+            if ($project->status === 'WAITING_PO' && in_array($role, ['superadmin', 'finance', 'finance_manager', 'head'])) {
+                return redirect('/project/' . $project->id . '/edit-po-numbers');
+            }
 
-        // Finance bisa edit DRAFT, SUBMITTED, WAITING_PO
-        if (in_array($role, ['finance', 'finance_manager']) && !$project->isEditableByFinance()) {
-            return redirect('/project')
-                ->with('error', 'PO tidak dapat diedit pada status ini.');
-        }
+            if ($role === 'head' && !$project->isEditableByHead()) {
+                return redirect('/project')
+                    ->with('error', 'PO hanya dapat diedit oleh Head saat berstatus DRAFT.');
+            }
 
-        // ACTIVE & CLOSED tidak bisa diedit siapapun
-        if (in_array($project->status, ['ACTIVE', 'CLOSED']) && !in_array($role, ['superadmin'])) {
-            return redirect('/project')
-                ->with('error', 'PO berstatus ACTIVE atau CLOSED tidak dapat diedit.');
+            // Finance bisa edit DRAFT, SUBMITTED, WAITING_PO
+            if (in_array($role, ['finance', 'finance_manager']) && !$project->isEditableByFinance()) {
+                return redirect('/project')
+                    ->with('error', 'PO tidak dapat diedit pada status ini.');
+            }
+
+            // ACTIVE & CLOSED tidak bisa diedit siapapun
+            if (in_array($project->status, ['ACTIVE', 'CLOSED']) && !in_array($role, ['superadmin'])) {
+                return redirect('/project')
+                    ->with('error', 'PO berstatus ACTIVE atau CLOSED tidak dapat diedit.');
+            }
+
         }
 
         $customers    = Customer::where('status', 'ACTIVE')->orderBy('name')->get();
@@ -812,9 +818,16 @@ class ProjectController extends Controller
         $user    = Auth::user();
         $role    = $user->role->name ?? '';
 
-        // Cek akses edit
-        if (in_array($role, ['head']) && !$project->isEditableByHead()) {
-            return redirect('/project')->with('error', 'Tidak dapat mengedit PO pada status ini.');
+        // Cek akses edit — Approver & Finance Manager lolos untuk semua status
+        // (lihat Project::FULL_EDIT_ROLES).
+        if (!$project->isFullyEditableBy($user)) {
+            if (in_array($role, ['head']) && !$project->isEditableByHead()) {
+                return redirect('/project')->with('error', 'Tidak dapat mengedit PO pada status ini.');
+            }
+
+            if (in_array($role, ['finance']) && !$project->isEditableByFinance()) {
+                return redirect('/project')->with('error', 'Tidak dapat mengedit PO pada status ini.');
+            }
         }
 
         $request->validate([
@@ -843,7 +856,10 @@ class ProjectController extends Controller
             'access_group_ids.*' => 'exists:access_groups,id',
         ]);
 
-        DB::transaction(function () use ($request, $project) {
+        // Dipotret sebelum update supaya isi log bisa menyebut nilai lama -> baru.
+        $sebelum = $project->getOriginal();
+
+        DB::transaction(function () use ($request, $project, $sebelum) {
             $project->update([
                 'name'           => strtoupper(trim($request->name)),
                 'customer_id'    => $request->customer_id,
@@ -876,6 +892,8 @@ class ProjectController extends Controller
             $this->syncPics($project, $request);
             $this->storeAttachments($project, $request, 'general');
             $this->storePoNumbers($project, $request);
+
+            $this->logProjectEdit($project, $sebelum);
         });
 
         return redirect('/project')->with('success', 'PO berhasil diupdate.');
@@ -889,12 +907,58 @@ class ProjectController extends Controller
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Satu baris log per penyimpanan form edit, berisi field apa saja yang
+     * berubah beserta nilai lama -> barunya. Ditulis untuk SEMUA peran, bukan
+     * cuma Approver/Finance Manager: begitu PO bisa diubah di status mana pun,
+     * riwayat "siapa mengubah apa" jadi satu-satunya cara menelusurinya.
+     *
+     * Kalau tidak ada satu pun kolom PO yang berubah (mis. hanya menambah
+     * lampiran atau milestone), log tetap ditulis tanpa rincian — yang penting
+     * tercatat bahwa PO ini disunting dan oleh siapa.
+     */
+    private function logProjectEdit(Project $project, array $sebelum): void
+    {
+        $label = [
+            'name'            => 'Scope of Work',
+            'customer_id'     => 'Customer',
+            'manager_id'      => 'Manager',
+            'po_quantity'     => 'PO Quantity',
+            'contract'        => 'Contract',
+            'overhead'        => 'Overhead',
+            'fixed_cost'      => 'Fixed Cost',
+            'term_of_payment' => 'Term of Payment',
+            'financing'       => 'Financing',
+            'type'            => 'Tipe',
+            'po_number'       => 'No. PO (header)',
+            'notes'           => 'Catatan',
+        ];
+
+        $ubahan = [];
+        foreach ($label as $kolom => $nama) {
+            $lama = $sebelum[$kolom] ?? null;
+            $baru = $project->getAttribute($kolom);
+            if ((string) $lama === (string) $baru) {
+                continue;
+            }
+            $ubahan[] = $nama . ': ' . ($lama === null || $lama === '' ? '-' : $lama)
+                . ' -> ' . ($baru === null || $baru === '' ? '-' : $baru);
+        }
+
+        $project->addLog(
+            $project->status,
+            $project->status,
+            'edited',
+            $ubahan ? implode('; ', $ubahan) : 'Disunting tanpa perubahan field PO.'
+        );
+    }
+
     public function editPoNumbers($id)
     {
         $project = Project::with(['poNumbers.attachments'])->findOrFail($id);
         $role    = Auth::user()->role->name ?? '';
 
-        if (!in_array($role, ['superadmin', 'finance', 'finance_manager', 'head']) || $project->status !== 'WAITING_PO') {
+        if (!in_array($role, ['superadmin', 'approver', 'finance', 'finance_manager', 'head']) || $project->status !== 'WAITING_PO') {
             return redirect('/project')
                 ->with('error', 'Halaman ini hanya untuk Superadmin/Finance/Head pada PO berstatus Waiting PO.');
         }
@@ -907,9 +971,9 @@ class ProjectController extends Controller
         $project = Project::findOrFail($id);
         $role    = Auth::user()->role->name ?? '';
 
-        if (!in_array($role, ['superadmin', 'finance', 'finance_manager', 'head']) || $project->status !== 'WAITING_PO') {
+        if (!in_array($role, ['superadmin', 'approver', 'finance', 'finance_manager', 'head']) || $project->status !== 'WAITING_PO') {
             return redirect('/project')
-                ->with('error', 'Halaman ini hanya untuk Superadmin/Finance/Head pada PO berstatus Waiting PO.');
+                ->with('error', 'Halaman ini hanya untuk Superadmin/Approver/Finance/Head pada PO berstatus Waiting PO.');
         }
 
         $request->validate([
@@ -920,7 +984,17 @@ class ProjectController extends Controller
             'po_numbers.*.file'          => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
         ]);
 
+        $sebelumJumlah = $project->poNumbers()->count();
+
         $this->storePoNumbers($project, $request);
+
+        $ditambah = $project->poNumbers()->count() - $sebelumJumlah;
+        $project->addLog(
+            $project->status,
+            $project->status,
+            'po_number_added',
+            $ditambah > 0 ? $ditambah . ' No. PO ditambahkan.' : 'Tidak ada No. PO baru yang tersimpan.'
+        );
 
         return redirect('/project')->with('success', 'No. PO berhasil ditambahkan.');
     }

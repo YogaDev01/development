@@ -122,6 +122,7 @@ class TodoListController extends Controller
             ['key' => 'settlement',      'label' => 'Kirim Settlement',          'icon' => 'fas fa-receipt',          'tone' => 'progress',  'items' => $data['managerPaid']],
             ['key' => 'settle-check',    'label' => 'Settlement — Head Check',   'icon' => 'fas fa-clipboard-check',  'tone' => 'progress',  'items' => $rata($data['headSettlementCheck'])],
             ['key' => 'settle-verify',   'label' => 'Settlement — Verifikasi',   'icon' => 'fas fa-clipboard-check',  'tone' => 'progress',  'items' => $rata($data['financeSettlementVerify'])],
+            ['key' => 'settle-2nd',      'label' => 'Expense Claim — Second Approve', 'icon' => 'fas fa-hand-holding-usd', 'tone' => 'attention', 'items' => $rata($data['approverSecondApprove'])],
             ['key' => 'settle-close',    'label' => 'Settlement — Penutupan',    'icon' => 'fas fa-lock',             'tone' => 'progress',  'items' => $rata($data['ceoSettlementClose'])],
             ['key' => 'po-submitted',    'label' => 'PO — Approval Finance',     'icon' => 'fas fa-file-signature',   'tone' => 'attention', 'items' => $data['poSubmitted']],
             ['key' => 'collection',      'label' => 'Menunggu Invoice Ditagih',  'icon' => 'fas fa-file-invoice',     'tone' => 'attention', 'items' => $data['collectionWaitingInvoice']],
@@ -187,6 +188,7 @@ class TodoListController extends Controller
         return [
             'sections' => [], 'managerRejected' => collect(), 'managerPaid' => collect(),
             'headSettlementCheck' => collect(), 'financeSettlementVerify' => collect(),
+            'approverSecondApprove' => collect(),
             'ceoSettlementClose' => collect(), 'secondPaymentPending' => collect(),
             'budgetingHeadCheck' => collect(), 'budgetingVerify' => collect(),
             'budgetingCeoApprove' => collect(), 'budgetingRejected' => collect(),
@@ -197,7 +199,11 @@ class TodoListController extends Controller
             'collectionWaitingInvoice' => collect(),
             'comingSoonRoles' => [], 'totalPending' => 0, 'maxAging' => '0 hari', 'completedToday' => 0,
             'hasAnyTask' => false, 'hasAnySection' => false,
-            'summaryTable' => ['columns' => [], 'rows' => [], 'columnTotals' => [], 'grandTotal' => 0, 'flat' => []],
+            // Bentuknya WAJIB sama dengan keluaran buildSummaryTable() —
+            // view _summary_task_list membaca modules/rows/moduleTotals/
+            // grandTotal. Kalau beda, fallback yang mestinya menyelamatkan
+            // halaman justru ikut melempar "Undefined array key".
+            'summaryTable' => ['modules' => [], 'rows' => [], 'moduleTotals' => [], 'grandTotal' => 0],
             'allTasks' => collect(),
         ];
     }
@@ -215,30 +221,36 @@ class TodoListController extends Controller
     {
         $sections = [];
 
-        // Head — SUBMITTED, grouped per Budget Plan. Approve/Reject per CR dari drawer detail.
+        // Head — SUBMITTED, grouped per Budget Plan, bulk approve/reject.
         if ($user->hasRole(['superadmin', 'head'])) {
             $sections['head'] = [
                 'title'        => 'Menunggu Approval Head',
                 'status_label' => 'Submitted',
                 'groups'       => $this->buildPoGroups('SUBMITTED', $denganCoa),
+                'approve_url'  => route('budget-request.review-bulk-approve'),
+                'reject_url'   => route('budget-request.review-bulk-reject'),
             ];
         }
 
-        // Cost Control — verifikasi CHECKED, grouped per Budget Plan.
+        // Cost Control — verifikasi CHECKED, grouped per Budget Plan, bulk approve/reject.
         if ($user->hasRole(['superadmin', 'finance', 'finance_manager', 'cost_control'])) {
             $sections['cost_control_checked'] = [
                 'title'        => 'Menunggu Verifikasi Cost Control',
                 'status_label' => 'Checked',
                 'groups'       => $this->buildPoGroups('CHECKED', $denganCoa),
+                'approve_url'  => route('budget-request.review-bulk-approve'),
+                'reject_url'   => route('budget-request.review-bulk-reject'),
             ];
         }
 
-        // CEO / Approver — VERIFIED, grouped per Budget Plan.
+        // CEO / Approver — VERIFIED, grouped per Budget Plan, bulk approve/reject.
         if ($user->hasRole(['superadmin', 'approver', 'guest'])) {
             $sections['ceo'] = [
                 'title'        => 'Menunggu Approval CEO',
                 'status_label' => 'Verified',
                 'groups'       => $this->buildPoGroups('VERIFIED', $denganCoa),
+                'approve_url'  => route('budget-request.review-bulk-approve'),
+                'reject_url'   => route('budget-request.review-bulk-reject'),
             ];
         }
 
@@ -315,11 +327,33 @@ class TodoListController extends Controller
         // PENDING — ditandai di sini supaya Blade bisa tampilkan alasannya.
         $ceoSettlementClose = collect();
         if ($user->hasRole(['superadmin', 'finance_manager'])) {
+            /*
+            | Satu antrean Finance Manager di status SETTLE_VERIFIED, dua aksi:
+            |   tanpa Expense Claim -> Close
+            |   ada Expense Claim   -> Settle Approve / Reject, lanjut ke
+            |                          antrean Second Approve milik Approver
+            */
             $ceoSettlementClose = $addRefund($this->buildPoGroups('SETTLE_VERIFIED', $denganCoa));
             foreach ($ceoSettlementClose as $po) {
                 foreach ($po['plans'] as $group) {
                     foreach ($group['items'] as $cr) {
                         $cr->pending_second_payment = $cr->pendingSecondPayment();
+                        $cr->needs_settle_approve   = $cr->hasExpenseClaim();
+                        $cr->expense_claim_fmt      = number_format($cr->expenseClaimAmount(), 0, ',', '.');
+                    }
+                }
+            }
+        }
+
+        // Approver — Second Approve Expense Claim (SETTLE_APPROVED ->
+        // SECOND_APPROVED, lalu menunggu Treasury membuat batch).
+        $approverSecondApprove = collect();
+        if ($user->hasRole(['superadmin', 'approver'])) {
+            $approverSecondApprove = $addRefund($this->buildPoGroups('SETTLE_APPROVED', $denganCoa));
+            foreach ($approverSecondApprove as $po) {
+                foreach ($po['plans'] as $group) {
+                    foreach ($group['items'] as $cr) {
+                        $cr->expense_claim_fmt = number_format($cr->expenseClaimAmount(), 0, ',', '.');
                     }
                 }
             }
@@ -620,6 +654,7 @@ class TodoListController extends Controller
             ->concat($managerRejected)->concat($managerPaid)
             ->concat($flattenPoGroups($headSettlementCheck))
             ->concat($flattenPoGroups($financeSettlementVerify))
+            ->concat($flattenPoGroups($approverSecondApprove))
             ->concat($flattenPoGroups($ceoSettlementClose))
             ->concat($secondPaymentPending)
             ->concat($budgetingHeadCheck)->concat($budgetingVerify)
@@ -652,6 +687,7 @@ class TodoListController extends Controller
         $hasAnyTask = $totalPending > 0 || $milestoneOverdue->isNotEmpty();
         $hasAnySection = !empty($sections) || $managerRejected->isNotEmpty() || $managerPaid->isNotEmpty()
             || $headSettlementCheck->isNotEmpty() || $financeSettlementVerify->isNotEmpty()
+            || $approverSecondApprove->isNotEmpty()
             || $ceoSettlementClose->isNotEmpty() || $secondPaymentPending->isNotEmpty()
             || !empty($comingSoonRoles)
             || $budgetingHeadCheck->isNotEmpty() || $budgetingVerify->isNotEmpty()
@@ -666,7 +702,8 @@ class TodoListController extends Controller
 
         return compact(
             'sections', 'managerRejected', 'managerPaid',
-            'headSettlementCheck', 'financeSettlementVerify', 'ceoSettlementClose', 'secondPaymentPending',
+            'headSettlementCheck', 'financeSettlementVerify', 'approverSecondApprove',
+            'ceoSettlementClose', 'secondPaymentPending',
             'budgetingHeadCheck', 'budgetingVerify', 'budgetingCeoApprove', 'budgetingRejected',
             'treasuryBatchCreate', 'treasuryBatchGroups', 'batchSourceFunds', 'treasuryProcess', 'treasuryReadyToPay', 'poSubmitted',
             'invoiceVerify', 'invoiceApprove', 'milestoneOverdue', 'collectionWaitingInvoice',
@@ -946,12 +983,13 @@ class TodoListController extends Controller
      * CHECKED/VERIFIED), sama persis dengan pola yang dulu ada di
      * BudgetRequestController::index() (section "Review Cost Request").
      */
-    private function buildStatusGroups(string $status, bool $denganCoa = true): \Illuminate\Support\Collection
+    /** @param string|string[] $status satu status, atau beberapa sekaligus. */
+    private function buildStatusGroups(string|array $status, bool $denganCoa = true): \Illuminate\Support\Collection
     {
         $query = BudgetRequest::with([
             'type', 'beneficiary', 'applicant', 'details', 'statusLogs', 'realizations',
             'budgetPlan.project.customer', 'budgetPlan.project.manager', 'budgetPlan.costCenter',
-        ])->where('status', $status);
+        ])->whereIn('status', (array) $status);
         $this->scopeByRole($query);
 
         $crs = $query->get();
@@ -1026,7 +1064,8 @@ class TodoListController extends Controller
      * per PO, jumlah CR, dan urutannya ikut terhitung dari himpunan yang sama
      * dengan yang dirender, sehingga tetap konsisten saat disaring atau dicari.
      */
-    private function buildPoGroups(string $status, bool $denganCoa = true): \Illuminate\Support\Collection
+    /** @param string|string[] $status satu status, atau beberapa sekaligus. */
+    private function buildPoGroups(string|array $status, bool $denganCoa = true): \Illuminate\Support\Collection
     {
         return $this->buildStatusGroups($status, $denganCoa)
             // PO yang sama bisa punya beberapa Budget Plan; kunci grupnya
