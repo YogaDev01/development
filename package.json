@@ -2,15 +2,29 @@
     "$schema": "https://www.schemastore.org/package.json",
     "private": true,
     "type": "module",
-    "scripts": {
-        "build": "vite build",
-        "dev": "vite"
-    },
+    "//": [
+        "Vite, Tailwind dan laravel-vite-plugin DICABUT pada 26 Sep 2026.",
+        "",
+        "Alasannya bukan preferensi, tapi karena keduanya tidak tersambung ke",
+        "aplikasi. @vite() hanya dipakai satu berkas - resources/views/welcome.blade.php,",
+        "halaman bawaan Laravel yang bahkan tidak punya route - sementara",
+        "resources/css/app.css berisi 390 byte dan resources/js/app.js berisi",
+        "satu komentar. Aset yang BENAR-BENAR dilayani ada di public/ (plugins,",
+        "dist, css, js) dan dimuat langsung oleh resources/views/layouts/app.blade.php.",
+        "",
+        "Dua sistem berdampingan dengan satu yang mati adalah keadaan paling",
+        "mahal: 'composer setup' menjalankan npm install + npm run build yang",
+        "tidak menghasilkan apa pun yang dipakai, dan pembaca kode wajar",
+        "menyimpulkan ada pipeline build yang perlu dijalankan sebelum deploy.",
+        "",
+        "concurrently DIPERTAHANKAN: dipakai oleh composer script 'dev' untuk",
+        "menjalankan serve + queue + pail berbarengan.",
+        "",
+        "Kalau suatu saat aset TESYS memang akan dibundel, kembalikan Vite",
+        "bersamaan dengan memindahkan berkas di public/css & public/js ke",
+        "resources/ - bukan sebelumnya."
+    ],
     "devDependencies": {
-        "@tailwindcss/vite": "^4.0.0",
-        "concurrently": "^9.0.1",
-        "laravel-vite-plugin": "^3.1",
-        "tailwindcss": "^4.0.0",
-        "vite": "^8.0.0"
+        "concurrently": "^9.0.1"
     }
 }

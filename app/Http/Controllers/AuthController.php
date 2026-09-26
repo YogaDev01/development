@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use App\Models\User;
 
 class AuthController extends Controller
 {
@@ -25,9 +26,13 @@ class AuthController extends Controller
 
     public function showLoginForm()
     {
-        // Jika sudah login, redirect ke dashboard
+        // Jika sudah login, redirect ke dashboard. Dashboard dilayani '/',
+        // bukan '/dashboard' (route itu tidak ada) - cabang ini praktis tidak
+        // pernah tercapai karena middleware 'guest' sudah lebih dulu
+        // mengalihkan, tapi kalau gerbang itu suatu saat dicabut, tujuan yang
+        // salah berarti 404 alih-alih dashboard.
         if (Auth::check()) {
-            return redirect('/dashboard');
+            return redirect('/');
         }
 
         return view('auth.login');
@@ -86,8 +91,23 @@ class AuthController extends Controller
                 ->withInput($request->only('username'));
         }
 
-        // Attempt login
-        $credentials = $request->only('username', 'password');
+        /*
+        | 'status' ikut jadi bagian kredensial.
+        |
+        | Kolom users.status sudah ada sejak awal dan menu User & Access
+        | memvalidasi serta menyimpannya (ACTIVE/INACTIVE), tapi sebelum ini
+        | tidak ada satu pun tempat yang MEMBACA-nya untuk memutuskan akses.
+        | Akibatnya menonaktifkan user tidak mencabut apa pun: yang
+        | bersangkutan tetap bisa login dan menyetujui pembayaran. Yang
+        | membuatnya berbahaya: UserController::destroy() menolak penghapusan
+        | user yang sudah punya transaksi dengan pesan "Nonaktifkan saja",
+        | jadi admin memang diarahkan ke jalan yang ternyata tidak berfungsi.
+        |
+        | Diletakkan di kredensial Auth::attempt(), bukan sebagai pemeriksaan
+        | terpisah setelah login berhasil: dengan begini tidak ada sesi yang
+        | pernah terbentuk untuk akun nonaktif.
+        */
+        $credentials = $request->only('username', 'password') + ['status' => 'ACTIVE'];
         $remember = $request->has('remember');
 
         if (Auth::attempt($credentials, $remember)) {
@@ -112,6 +132,27 @@ class AuthController extends Controller
             'ip'       => $request->ip(),
             'attempts' => RateLimiter::attempts($throttleKey),
         ]);
+
+        /*
+        | Akun nonaktif dibedakan dari password salah.
+        |
+        | Tanpa ini keduanya berbunyi "Username atau password salah", sehingga
+        | karyawan yang aksesnya memang sudah dicabut akan melapor "lupa
+        | password" dan admin ikut kebingungan mencari sebab yang tidak ada.
+        | Yang dibocorkan pesan ini hanya keberadaan akun yang sudah
+        | dinonaktifkan - bukan password, dan bukan akun yang aktif - sementara
+        | manfaat operasionalnya nyata.
+        */
+        $akunNonaktif = User::where('username', $request->input('username'))
+            ->where('status', '!=', 'ACTIVE')
+            ->exists();
+
+        if ($akunNonaktif) {
+            return redirect()
+                ->back()
+                ->withErrors(['login' => 'Akun ini tidak aktif. Hubungi administrator.'])
+                ->withInput($request->only('username'));
+        }
 
         return redirect()
             ->back()

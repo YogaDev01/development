@@ -43,7 +43,22 @@ return [
             'driver' => 'local',
             'root' => storage_path('app/private'),
             'serve' => false,
-            'throw' => false,
+            /*
+            | 'throw' => true — kegagalan penyimpanan harus BERSUARA.
+            |
+            | Dengan false (bawaan Laravel), disk penuh / izin folder salah /
+            | path tidak sah hanya mengembalikan false. Kode pemanggil di
+            | aplikasi ini tidak memeriksa nilai kembali itu — polanya selalu
+            | `$path = $file->store(...)` lalu langsung menyimpan barisnya.
+            | Hasilnya: berkas TIDAK tersimpan, barisnya tersimpan, tidak ada
+            | error di mana pun, dan baru ketahuan berbulan-bulan kemudian saat
+            | seseorang mengklik lampiran yang ternyata tidak ada. Untuk bukti
+            | transfer dan BAST itu bukan gangguan kecil, itu masalah kepatuhan.
+            |
+            | Dengan true, kegagalan melempar exception dan langsung terlihat
+            | saat unggah — saat masih bisa diulang.
+            */
+            'throw' => true,
             'report' => false,
         ],
 
@@ -59,7 +74,10 @@ return [
         'secure' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'throw' => false,
+            // Lihat alasan 'throw' => true pada disk 'local' di atas. Disk ini
+            // memegang SELURUH lampiran aplikasi, jadi justru di sini
+            // kegagalan yang tertelan paling mahal akibatnya.
+            'throw' => true,
             'report' => false,
         ],
 

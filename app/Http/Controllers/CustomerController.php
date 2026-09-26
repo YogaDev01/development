@@ -15,6 +15,8 @@ use App\Models\MasterPic;
 
 class CustomerController extends Controller
 {
+    use \App\Http\Controllers\Concerns\CapsLargeLists;
+
     /**
      * Aturan validasi untuk detail (kontak) & lampiran, dipakai store & update.
      */
@@ -69,20 +71,44 @@ class CustomerController extends Controller
      */
     public function index()
     {
-        $customers = Customer::with('customerType')->latest()->get();
+        /*
+        | Ringkasan AGREGAT + baris dibatasi (Concerns\CapsLargeLists).
+        |
+        | Daftar ini dirender penuh ke DOM lalu diurus DataTables di peramban -
+        | tidak ada paginasi server. Selama datanya ratusan baris itu cepat;
+        | begitu ribuan, halamannya membeku sebelum menampilkan apa pun, tanpa
+        | tanda apa-apa selain peramban yang berhenti merespons.
+        |
+        | Angka ringkasan dipindah ke query agregat supaya tetap benar walau
+        | daftar barisnya dipotong. Kalau ia ikut dihitung dari koleksi yang
+        | sudah terpotong, angkanya salah TANPA ada tanda bahwa ia salah - itu
+        | lebih buruk daripada daftar yang terpotong dengan jujur.
+        */
+        $query = Customer::with('customerType');
 
         $types = CustomerType::all();
 
+        $perStatus = (clone $query)->toBase()
+            ->selectRaw('status, COUNT(*) as jumlah')
+            ->groupBy('status')
+            ->pluck('jumlah', 'status');
+
         $summary = [
-            'total'    => $customers->count(),
-            'active'   => $customers->where('status', 'ACTIVE')->count(),
-            'inactive' => $customers->where('status', 'INACTIVE')->count(),
+            'total'    => (int) $perStatus->sum(),
+            'active'   => (int) ($perStatus['ACTIVE'] ?? 0),
+            'inactive' => (int) ($perStatus['INACTIVE'] ?? 0),
         ];
+
+        [$customers, $truncated, $total] = $this->cappedRows($query, 'id');
+        $maxRows = $this->maxRows;
 
         return view('customer.index', compact(
             'customers',
             'types',
-            'summary'
+            'summary',
+            'truncated',
+            'total',
+            'maxRows'
         ));
     }
 

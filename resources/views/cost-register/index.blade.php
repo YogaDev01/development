@@ -48,6 +48,18 @@
                     <div class="toolbar-input" id="crSearch"></div>
                 </div>
 
+                {{-- Daftar dibatasi baris terbaru (Concerns\CapsLargeLists);
+                     angka pada kartu ringkasan tetap dihitung dari SELURUH
+                     data lewat query agregat, jadi ia tidak ikut terpotong. --}}
+                @if(!empty($truncated))
+                <div class="alert alert-warning py-2 px-3 mb-3" style="font-size:12.5px;">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                    Menampilkan <strong>@rupiah($maxRows)</strong> catatan terbaru dari total
+                    <strong>@rupiah($total)</strong>.
+                    Gunakan pencarian untuk mempersempit.
+                </div>
+                @endif
+
                 <div class="table-responsive">
                     <table id="tblCostRegister" class="table table-bordered table-hover table-striped mb-0">
                         <thead class="bg-light">
@@ -82,7 +94,10 @@
                                 <td class="text-nowrap fit-col">
                                     <span class="badge badge-{{ $cr->type_color }} px-2 py-1">{{ $cr->type_label }}</span>
                                 </td>
-                                <td class="text-right fit-col"><strong>{{ number_format($cr->amount, 0, ',', '.') }}</strong></td>
+                                {{-- @rupiah: direktif terpusat (lihat AppServiceProvider). Modul ini
+                                     dipakai sebagai acuan konversi; sisanya menyusul per modul,
+                                     bukan diborong dalam satu commit. --}}
+                                <td class="text-right fit-col"><strong>@rupiah($cr->amount)</strong></td>
                                 <td class="text-nowrap fit-col">
                                     {{-- MN-09 — posisi baris ini di alur Non-CR menuju Treasury. --}}
                                     <span class="badge badge-{{ $cr->status_color }} px-2 py-1">{{ $cr->status }}</span>

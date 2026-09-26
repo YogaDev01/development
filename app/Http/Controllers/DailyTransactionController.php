@@ -766,17 +766,47 @@ class DailyTransactionController extends Controller
         $added = 0;
 
         DB::transaction(function () use ($request, $batch, &$added) {
-            foreach ($request->cr_ids as $crId) {
-                $cr = BudgetRequest::find($crId);
-                if (!$cr || $cr->status !== 'APPROVED') continue;
+            /*
+            | Dua pemuatan MASSAL sebelum loop, bukan dua query per baris.
+            |
+            | Versi sebelumnya memanggil BudgetRequest::find() dan satu
+            | pemeriksaan "sudah masuk batch lain?" (dengan whereHas, jadi
+            | subquery) untuk SETIAP id yang dipilih. Batch berisi 100 Cost
+            | Request karena itu mengeluarkan 200+ query tambahan di dalam satu
+            | transaksi - menahan kunci baris lebih lama dari yang perlu, dan
+            | pada batch besar berisiko menabrak max_execution_time di tengah
+            | jalan.
+            |
+            | Jumlah query sekarang tetap dua, baik yang dipilih 5 baris maupun
+            | 500. Aturannya tidak berubah sama sekali: hanya CR berstatus
+            | APPROVED, dan tidak boleh sudah berada di batch PENDING_APPROVER
+            | atau DONE mana pun.
+            */
+            $crIds = collect((array) $request->cr_ids)
+                ->filter(fn ($v) => is_numeric($v))
+                ->map(fn ($v) => (int) $v)
+                ->unique()
+                ->values();
 
-                $alreadyIn = DailyTransactionItem::where('budget_request_id', $crId)
-                    ->where('status', 'INCLUDED')
-                    ->whereHas('dailyTransaction', fn($q) =>
-                        $q->whereIn('status', ['PENDING_APPROVER', 'DONE'])
-                    )->exists();
+            $kandidat = BudgetRequest::whereIn('id', $crIds)
+                ->where('status', 'APPROVED')
+                ->get()
+                ->keyBy('id');
 
-                if ($alreadyIn) continue;
+            $sudahMasukBatch = DailyTransactionItem::whereIn('budget_request_id', $crIds)
+                ->where('status', 'INCLUDED')
+                ->whereHas('dailyTransaction', fn ($q) =>
+                    $q->whereIn('status', ['PENDING_APPROVER', 'DONE'])
+                )
+                ->pluck('budget_request_id')
+                ->map(fn ($v) => (int) $v)
+                ->all();
+
+            foreach ($crIds as $crId) {
+                $cr = $kandidat->get($crId);
+                if (! $cr) continue;
+
+                if (in_array($crId, $sudahMasukBatch, true)) continue;
 
                 $batch->items()->create([
                     'budget_request_id' => $crId,

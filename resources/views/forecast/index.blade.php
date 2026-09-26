@@ -38,6 +38,17 @@
                 </div>
             </div>
             <div class="card-body">
+                {{-- Daftar dibatasi baris terbaru (Concerns\CapsLargeLists);
+                     angka kartu ringkasan tetap dihitung dari SELURUH data
+                     lewat query agregat, jadi tidak ikut terpotong. --}}
+                @if(!empty($truncated))
+                <div class="alert alert-warning py-2 px-3 mb-3" style="font-size:12.5px;">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                    Menampilkan <strong>{{ number_format($maxRows, 0, ',', '.') }}</strong> forecast terbaru dari total
+                    <strong>{{ number_format($total, 0, ',', '.') }}</strong>.
+                    Gunakan pencarian/filter untuk mempersempit.
+                </div>
+                @endif
                 <div class="table-responsive">
                     <table class="table table-bordered table-hover mb-0" style="font-size:12.5px;">
                         <thead class="bg-light">
@@ -231,44 +242,30 @@
                                 </div>
 
                                 <div class="tab-pane fade" id="fcPaneRincian">
-                                    {{-- Rincian dikelompokkan PER REKENING: satu forecast bisa
-                                         menyentuh beberapa rekening, dan yang ingin dibaca orang
-                                         adalah rencana & realisasi satu rekening — bukan satu
-                                         daftar panjang yang rekeningnya berselang-seling.
-                                         Tabel per grup dibangun di JS dari `groups`. --}}
+                                    {{-- SATU tabel untuk seluruh rekening, dengan baris induk
+                                         per Source Fund yang bisa dibuka-tutup — bentuknya
+                                         mengikuti tab Budget di Budgeting. Satu tabel berarti
+                                         satu baris kepala kolom, dan seluruh angka (rincian,
+                                         subtotal, grand total) berdiri di kolom yang sama
+                                         tanpa perlu disejajarkan sendiri.
+
+                                         Isinya dibangun di JS dari `groups`. --}}
                                     <div class="d-flex align-items-center flex-wrap mb-2" style="gap:8px;">
                                         <small id="fcActualHint" style="color:var(--text-faint);display:none;">
                                             Ketik nominal realisasi di kolom Actual, lalu tekan
                                             <i class="fas fa-save"></i> — keterangannya wajib dan ditanyakan sebelum disimpan.
                                         </small>
+                                        <div class="ml-auto d-flex" style="gap:6px;">
+                                            <button type="button" id="fcExpandAll" class="btn btn-outline-secondary btn-sm" style="font-size:11px;">
+                                                <i class="fas fa-angle-double-down mr-1"></i> Expand All
+                                            </button>
+                                            <button type="button" id="fcCollapseAll" class="btn btn-outline-secondary btn-sm" style="font-size:11px;">
+                                                <i class="fas fa-angle-double-up mr-1"></i> Collapse All
+                                            </button>
+                                        </div>
                                     </div>
 
-                                    <div id="fcGroups"></div>
-
-                                    {{-- Grand Total berdiri di tabelnya sendiri (ia menutup
-                                         SEMUA rekening, bukan salah satunya), jadi lebar
-                                         kolomnya harus dipatok sama persis dengan tabel grup
-                                         di atasnya — lihat colgroup & .fc-table. --}}
-                                    <div class="table-responsive mt-3">
-                                        <table class="table table-bordered mb-0 fc-table" style="font-size:12.5px;">
-                                            <colgroup>
-                                                <col style="width:22%;"><col style="width:10%;">
-                                                <col style="width:14%;"><col style="width:14%;">
-                                                <col style="width:14%;"><col style="width:14%;">
-                                                <col style="width:12%;">
-                                            </colgroup>
-                                            <tfoot>
-                                                <tr style="background:var(--surface-2);">
-                                                    <th colspan="2" class="text-right">Grand Total</th>
-                                                    <th class="text-right" id="fcFootMasuk"></th>
-                                                    <th class="text-right text-danger" id="fcFootKeluar"></th>
-                                                    <th class="text-right" id="fcFootActual"></th>
-                                                    <th class="text-right" id="fcFootVariance"></th>
-                                                    <th></th>
-                                                </tr>
-                                            </tfoot>
-                                        </table>
-                                    </div>
+                                    <div id="fcGroups" class="table-responsive"></div>
                                 </div>
 
                                 <div class="tab-pane fade" id="fcPaneLog">
@@ -347,13 +344,19 @@ body.tesys-ui .modal-body.dm-body .fc-modal-flex { height:100%; min-height:100%;
 body.tesys-ui .modal-body.dm-body .fc-main-panel { overflow-y:auto; max-height:100%; }
 
 /* --- Rincian per rekening ------------------------------------------------
-   Tiap Source Fund punya tabelnya sendiri; kepala grup adalah pita tipis di
-   atas tabel supaya batas antar rekening terbaca tanpa garis tebal. */
-.fc-group-head {
-    font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
-    padding:6px 10px; background:var(--surface-2); border:1px solid var(--border);
-    border-bottom:0; border-radius:var(--radius-sm) var(--radius-sm) 0 0; color:var(--text);
+   Satu tabel, dengan baris induk per Source Fund yang bisa dibuka-tutup. */
+.fc-grp-head {
+    background:var(--surface-2); cursor:pointer; user-select:none;
 }
+.fc-grp-head:hover     { background:var(--surface-3, var(--surface-2)); filter:brightness(.98); }
+.fc-grp-head td        { font-size:11.5px; text-transform:uppercase; letter-spacing:.03em; }
+.fc-grp-caret          { font-size:10px; color:var(--text-faint); transition:transform .12s ease; }
+
+/* Rincian menjorok ke dalam, supaya hubungan induk-anak terbaca sekilas
+   tanpa garis penghubung. */
+.fc-indent             { padding-left:28px !important; }
+
+.fc-grand th           { background:var(--surface-2); }
 
 /* Jumlah keterangan yang menempel di tombolnya — penanda bahwa baris ini
    sudah punya catatan realisasi, tanpa harus dibuka dulu. */
@@ -530,52 +533,70 @@ $(function () {
         $('#fcFootVariance').text(d.variance);
     }
 
-    /* Satu tabel per rekening, dengan subtotalnya sendiri. Angka yang datang
-       dari server sudah bertanda — baris KELUAR (rencana maupun realisasinya)
-       memang tampil negatif, karena uangnya pergi. */
+    /*
+    | SATU tabel untuk seluruh rekening. Tiap Source Fund menjadi baris induk
+    | yang bisa dibuka-tutup dan sudah membawa subtotalnya sendiri, persis
+    | seperti Chart of Account di tab Budget.
+    |
+    | Bentuk lama — satu tabel terpisah per rekening — mengulang baris kepala
+    | kolom sebanyak rekeningnya dan membuat Grand Total berdiri di tabelnya
+    | sendiri, sehingga kolomnya harus disejajarkan dengan tangan. Di satu
+    | tabel, persoalan itu hilang dengan sendirinya.
+    |
+    | Angka yang datang dari server sudah bertanda: baris KELUAR (rencana
+    | maupun realisasinya) memang tampil negatif, karena uangnya pergi.
+    */
     function renderRincian(d) {
-        var html = '';
+        if (!d.groups.length) {
+            $('#fcGroups').html('<p class="text-center text-muted py-3 mb-0">Belum ada detail.</p>');
+            return;
+        }
 
-        d.groups.forEach(function (g) {
-            html += '<div class="fc-group mb-3">'
-                + '<div class="fc-group-head"><i class="fas fa-university mr-1"></i>' + esc(g.source_fund) + '</div>'
-                + '<div class="table-responsive"><table class="table table-bordered mb-0 fc-table" style="font-size:12.5px;">'
-                + '<colgroup><col style="width:22%;"><col style="width:10%;"><col style="width:14%;"><col style="width:14%;"><col style="width:14%;"><col style="width:14%;"><col style="width:12%;"></colgroup>'
-                /* Rencana dipecah jadi dua kolom menurut arahnya — Masuk dan
-                   Keluar berdiri sendiri, menggantikan pasangan lama
-                   "Tipe + Amount (Plan)" yang memaksa pembaca menggabungkan
-                   dua kolom di kepalanya sendiri. */
-                + '<thead class="bg-light"><tr>'
-                +   '<th scope="col">Description</th>'
-                +   '<th scope="col" class="text-nowrap">PO</th>'
-                +   '<th scope="col" class="text-right">Masuk</th>'
-                +   '<th scope="col" class="text-right">Keluar</th>'
-                +   '<th scope="col" class="text-right">Actual</th>'
-                +   '<th scope="col" class="text-right">Variance</th>'
-                +   '<th scope="col" class="text-center">Aksi</th>'
-                + '</tr></thead><tbody>';
+        var html = '<table class="table table-bordered mb-0 fc-table" style="font-size:12.5px;">'
+            + '<colgroup><col style="width:22%;"><col style="width:10%;"><col style="width:14%;">'
+            + '<col style="width:14%;"><col style="width:14%;"><col style="width:14%;"><col style="width:12%;"></colgroup>'
+            + '<thead class="bg-light"><tr>'
+            +   '<th scope="col">Description</th>'
+            +   '<th scope="col" class="text-nowrap">PO</th>'
+            +   '<th scope="col" class="text-right">Masuk</th>'
+            +   '<th scope="col" class="text-right">Keluar</th>'
+            +   '<th scope="col" class="text-right">Actual</th>'
+            +   '<th scope="col" class="text-right">Variance</th>'
+            +   '<th scope="col" class="text-center">Aksi</th>'
+            + '</tr></thead><tbody>';
 
-            g.rows.forEach(function (x) { html += barisRincian(x, d); });
+        d.groups.forEach(function (g, i) {
+            html += '<tr class="fc-grp-head" data-grp="' + i + '">'
+                + '<td colspan="2">'
+                +   '<i class="fas fa-chevron-down fc-grp-caret mr-2"></i>'
+                +   '<i class="fas fa-university mr-1 text-muted"></i>'
+                +   '<strong>' + esc(g.source_fund) + '</strong>'
+                +   '<span class="badge badge-light border ml-2" style="font-size:9.5px;">' + g.rows.length + '</span>'
+                + '</td>'
+                + '<td class="text-right">' + esc(g.masuk_formatted) + '</td>'
+                + '<td class="text-right text-danger">' + esc(g.keluar_formatted) + '</td>'
+                + '<td class="text-right">' + esc(g.actual_formatted) + '</td>'
+                + '<td class="text-right ' + (g.variance_negative ? 'text-danger' : 'text-success') + '">'
+                    + esc(g.variance_formatted) + '</td>'
+                + '<td></td>'
+                + '</tr>';
 
-            html += '</tbody><tfoot><tr style="background:var(--surface-2);">'
-                + '<th colspan="2" class="text-right">Subtotal ' + esc(g.source_fund) + '</th>'
-                + '<th class="text-right">' + esc(g.masuk_formatted) + '</th>'
-                + '<th class="text-right text-danger">' + esc(g.keluar_formatted) + '</th>'
-                + '<th class="text-right">' + esc(g.actual_formatted) + '</th>'
-                + '<th class="text-right ' + (g.variance_negative ? 'text-danger' : 'text-success') + '">'
-                    + esc(g.variance_formatted) + '</th>'
-                + '<th></th>'
-                + '</tr></tfoot></table></div></div>';
+            g.rows.forEach(function (x) { html += barisRincian(x, d, i); });
         });
 
-        if (!d.groups.length) {
-            html = '<p class="text-center text-muted py-3 mb-0">Belum ada detail.</p>';
-        }
+        html += '</tbody><tfoot><tr class="fc-grand">'
+            + '<th colspan="2" class="text-right">Grand Total</th>'
+            + '<th class="text-right" id="fcFootMasuk"></th>'
+            + '<th class="text-right text-danger" id="fcFootKeluar"></th>'
+            + '<th class="text-right" id="fcFootActual"></th>'
+            + '<th class="text-right" id="fcFootVariance"></th>'
+            + '<th></th>'
+            + '</tr></tfoot></table>';
 
         $('#fcGroups').html(html);
     }
 
-    function barisRincian(x, d) {
+    function barisRincian(x, d, grp) {
         /* Dua tombol: menambah realisasi (selalu lewat dialog berketerangan)
            dan membuka daftar keterangan yang sudah tercatat. Tombol tambah
            hanya muncul kalau server memang menerimanya. */
@@ -592,8 +613,8 @@ $(function () {
             + (x.entry_count ? '<span class="fc-entry-count">' + x.entry_count + '</span>' : '')
             + '<span class="ts-al">Keterangan realisasi</span></button>';
 
-        var baris = '<tr>'
-            + '<td>' + esc(x.description) + '</td>'
+        var baris = '<tr class="fc-grp-row" data-grp="' + grp + '">'
+            + '<td class="fc-indent">' + esc(x.description) + '</td>'
             + '<td class="text-nowrap">' + (x.project
                     ? '<span title="' + esc(x.project_name || '') + '">' + esc(x.project) + '</span>'
                     : '<span class="text-muted">-</span>') + '</td>'
@@ -644,7 +665,7 @@ $(function () {
             isi = '<div class="text-muted" style="font-size:11.5px;">Belum ada realisasi yang dicatat.</div>';
         }
 
-        baris += '<tr class="fc-entry-row" data-detail="' + x.id + '" style="display:none;">'
+        baris += '<tr class="fc-entry-row fc-grp-row" data-grp="' + grp + '" data-detail="' + x.id + '" style="display:none;">'
             + '<td colspan="8" style="background:var(--surface-2);">' + isi + '</td></tr>';
 
         return baris;
@@ -724,6 +745,37 @@ $(function () {
 
     $(document).on('click', '.btn-fc-view', function () {
         bukaDetail($(this).data('id'));
+    });
+
+    /*
+    | Membuka/menutup satu rekening. Baris keterangan ikut disembunyikan saat
+    | grupnya ditutup, tapi tidak ikut terbuka begitu saja saat grupnya dibuka
+    | — ia punya tombolnya sendiri, dan membuka semuanya sekaligus akan
+    | mengubur tabelnya di bawah catatan.
+    */
+    function setGrup($head, buka) {
+        $head.toggleClass('is-collapsed', !buka)
+             .find('.fc-grp-caret')
+             .toggleClass('fa-chevron-down', buka)
+             .toggleClass('fa-chevron-right', !buka);
+
+        $('.fc-grp-row[data-grp="' + $head.data('grp') + '"]').each(function () {
+            var $r = $(this);
+            $r.toggle(buka && !$r.hasClass('fc-entry-row'));
+        });
+    }
+
+    $(document).on('click', '.fc-grp-head', function () {
+        var $h = $(this);
+        setGrup($h, $h.hasClass('is-collapsed'));
+    });
+
+    $('#fcExpandAll').on('click', function () {
+        $('#fcGroups .fc-grp-head').each(function () { setGrup($(this), true); });
+    });
+
+    $('#fcCollapseAll').on('click', function () {
+        $('#fcGroups .fc-grp-head').each(function () { setGrup($(this), false); });
     });
 
     /* Daftar keterangan per baris: dibuka/ditutup di tempat, tanpa memuat

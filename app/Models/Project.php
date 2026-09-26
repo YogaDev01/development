@@ -431,13 +431,31 @@ class Project extends Model
      * sebelumnya tiap tempat menulis daftar perannya sendiri dan gampang
      * bergeser satu sama lain.
      */
-    public const FULL_EDIT_ROLES = ['superadmin', 'approver', 'finance_manager'];
+    /**
+     * @deprecated Dipertahankan hanya sebagai alias; sumbernya kini
+     *             App\Support\AccessRoles::PO_FULL_EDIT.
+     */
+    public const FULL_EDIT_ROLES = \App\Support\AccessRoles::PO_FULL_EDIT;
 
     public function isFullyEditableBy($user = null): bool
     {
         $user ??= Auth::user();
 
-        return in_array($user?->role?->name, self::FULL_EDIT_ROLES, true);
+        /*
+        | Memakai hasRole(), bukan in_array() pada nama mentah.
+        |
+        | Versi sebelumnya membandingkan $user->role->name secara PERSIS
+        | (case-sensitive) dengan daftar huruf kecil. Data peran di basis data
+        | ini tidak dijamin seragam kapitalisasinya - RoleDirectory dan
+        | User::hasRole() keduanya sengaja menormalkan huruf karena alasan itu.
+        | Akibatnya, peran yang tersimpan sebagai "Approver" atau "Superadmin"
+        | TIDAK pernah lolos pemeriksaan ini, dan tombol edit penuh hilang tanpa
+        | sebab yang kelihatan.
+        |
+        | hasRole() juga menghormati fitur View As, sama seperti seluruh gerbang
+        | peran lain di aplikasi.
+        */
+        return $user?->hasRole(\App\Support\AccessRoles::PO_FULL_EDIT) ?? false;
     }
 
     public function isEditableByHead(): bool { return $this->status === 'DRAFT'; }

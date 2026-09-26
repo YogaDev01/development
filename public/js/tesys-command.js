@@ -29,8 +29,24 @@
 (function () {
     'use strict';
 
-    var TUNDA_KETIK = 220;   // ms; menunggu ketikan berhenti sebelum meminta ke server
-    var MIN_HURUF   = 2;
+    /*
+     * TUNDA_KETIK: jeda setelah ketikan BERHENTI sebelum bertanya ke server.
+     *
+     * Dinaikkan dari 220 ke 500 ms. Pencarian lintas modul di server memakai
+     * LIKE pada kolom kode & deskripsi lima tabel terbesar; setiap permintaan
+     * karena itu mahal, dan pada 220 ms mengetik dengan kecepatan normal masih
+     * mengirim beberapa permintaan per kata. Setengah detik sudah terasa
+     * seketika bagi yang mengetik, tapi memotong jumlah permintaan secara
+     * drastis. AbortController di bawah tetap membatalkan permintaan yang
+     * sudah tidak relevan.
+     *
+     * MIN_HURUF: dinaikkan dari 2 ke 3. Dua huruf cocok dengan hampir semua
+     * baris, jadi hasilnya tidak berguna sementara biaya pencariannya penuh.
+     * Di bawah batas ini palet tetap menjawab - halaman & aksi disaring
+     * seketika di peramban, tanpa menyentuh server sama sekali.
+     */
+    var TUNDA_KETIK = 500;
+    var MIN_HURUF   = 3;
 
     var akar, kolom, isi, pemuat;
     var timer = null;

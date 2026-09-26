@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 use App\Models\Project;
 use App\Models\BudgetPlan;
@@ -24,6 +25,18 @@ class FinanceSummaryController extends Controller
 
     /** Role yang boleh melihat nilai PO */
     private const PO_VALUE_ROLES = ['superadmin', 'approver', 'finance', 'finance_manager', 'head', 'guest'];
+
+    /**
+     * Jendela tahun untuk grafik & breakdown bulanan di tab Executive.
+     *
+     * Grafik tren dan tooltip breakdown sebelumnya tidak dibatasi apa pun:
+     * setiap pemuatan tab memindai seluruh riwayat projects, cash_receipts dan
+     * daily_transactions, sehingga biayanya naik terus dan tidak pernah
+     * membaik. Lima tahun jauh melebihi horizon yang benar-benar dilihat
+     * manajemen di grafik tren, dan membuat penyaringannya bisa memakai indeks
+     * tanggal yang sudah ada.
+     */
+    private const CHART_TAHUN_KE_BELAKANG = 5;
 
     /** Role yang boleh melihat tab Summary Executive (C-Level). */
     private const EXECUTIVE_ROLES = ['superadmin', 'finance', 'finance_manager', 'approver', 'guest'];
@@ -104,6 +117,36 @@ class FinanceSummaryController extends Controller
         return view('finance-summary.index', $data);
     }
 
+    /**
+     * Hitung jumlah & total per status dalam SATU query agregat.
+     *
+     * Sebelumnya setiap blok di budgetData() menarik seluruh isi tabelnya ke
+     * memori lalu memanggil ->count() dan ->sum() per status di atas koleksi
+     * itu - 30+ iterasi atas data yang sama. Itu pekerjaan yang memang
+     * dirancang untuk dilakukan basis data, dan pola yang benar sudah dipakai
+     * di tempat lain dalam proyek ini (crStatusCounts(), ProjectController::index()).
+     *
+     * @param  string|null  $sumColumn  kolom yang dijumlahkan, null kalau hanya menghitung.
+     * @return array{counts: \Illuminate\Support\Collection, sums: \Illuminate\Support\Collection}
+     */
+    private function agregatPerStatus($query, ?string $sumColumn = null): array
+    {
+        $pilih = ['status', DB::raw('COUNT(*) as jumlah')];
+
+        if ($sumColumn) {
+            $pilih[] = DB::raw('COALESCE(SUM(' . $sumColumn . '), 0) as total');
+        }
+
+        $baris = (clone $query)->select($pilih)->groupBy('status')->get();
+
+        return [
+            'counts' => $baris->pluck('jumlah', 'status')->map(fn ($v) => (int) $v),
+            'sums'   => $sumColumn
+                ? $baris->pluck('total', 'status')->map(fn ($v) => (int) $v)
+                : collect(),
+        ];
+    }
+
     private function budgetData(Request $request): array
     {
         /*
@@ -121,27 +164,50 @@ class FinanceSummaryController extends Controller
 
         /*
         |--------------------------------------------------------------------------
+        | CATATAN PERUBAHAN 26 Sep 2026 - agregasi di basis data
+        |--------------------------------------------------------------------------
+        | Versi sebelumnya memuat SELURUH isi projects, budget_plans dan
+        | budget_request ke memori PHP (masing-masing ->get()), lalu menghitung
+        | jumlah & total per status di atas koleksi itu. Untuk halaman yang
+        | paling sering dibuka manajemen, itu berarti halaman ini yang pertama
+        | mati begitu data tumbuh: pada ~100.000 Cost Request saja sudah ratusan
+        | MB memori sebelum satu angka pun tampil.
+        |
+        | Dua hal yang membuat rows itu perlu - $poList dan $crList - ternyata
+        | TIDAK DIPAKAI di mana pun: keduanya disusun, dikirim ke view, dan
+        | tidak pernah dibaca (komentarnya masih menyebut "modal timeline",
+        | padahal modal itu sekarang memakai endpoint budget-request/{id}/detail-json,
+        | seperti dijelaskan di index()). Dengan keduanya dihapus, tidak ada lagi
+        | alasan memuat baris sama sekali - semuanya angka agregat.
+        |
+        | Angka yang dihasilkan sama persis; yang berubah hanya di mana ia
+        | dihitung.
+        */
+
+        /*
+        |--------------------------------------------------------------------------
         | PO (Project)
         |--------------------------------------------------------------------------
         */
-        $poQuery = Project::with('customer:id,name');
+        $poQuery = Project::query();
         if (is_array($scopedProjectIds)) {
             $poQuery->whereIn('id', $scopedProjectIds ?: [0]);
         }
-        $projects = $poQuery->get(['id', 'name', 'value', 'status', 'customer_id']);
+
+        $poAgg = $this->agregatPerStatus($poQuery, 'value');
 
         $po = [
-            'total'         => $projects->count(),
-            'total_value'   => (int) $projects->sum('value'),
-            'draft'         => $projects->where('status', 'DRAFT')->count(),
-            'submitted'     => $projects->where('status', 'SUBMITTED')->count(),
-            'waiting_po'    => $projects->where('status', 'WAITING_PO')->count(),
-            'active'        => $projects->where('status', 'ACTIVE')->count(),
-            'progress_done' => $projects->where('status', 'PROGRESS_DONE')->count(),
-            'billed'        => $projects->where('status', 'BILLED')->count(),
-            'paid'          => $projects->where('status', 'PAID')->count(),
-            'closing'       => $projects->where('status', 'CLOSING')->count(),
-            'closed'        => $projects->where('status', 'CLOSED')->count(),
+            'total'         => (int) $poAgg['counts']->sum(),
+            'total_value'   => (int) $poAgg['sums']->sum(),
+            'draft'         => $poAgg['counts']['DRAFT'] ?? 0,
+            'submitted'     => $poAgg['counts']['SUBMITTED'] ?? 0,
+            'waiting_po'    => $poAgg['counts']['WAITING_PO'] ?? 0,
+            'active'        => $poAgg['counts']['ACTIVE'] ?? 0,
+            'progress_done' => $poAgg['counts']['PROGRESS_DONE'] ?? 0,
+            'billed'        => $poAgg['counts']['BILLED'] ?? 0,
+            'paid'          => $poAgg['counts']['PAID'] ?? 0,
+            'closing'       => $poAgg['counts']['CLOSING'] ?? 0,
+            'closed'        => $poAgg['counts']['CLOSED'] ?? 0,
         ];
 
         // PRIVASI: nilai PO di-null-kan di lapisan data bila role tak berhak.
@@ -160,66 +226,82 @@ class FinanceSummaryController extends Controller
         if (is_array($scopedProjectIds)) {
             $bpQuery->whereIn('project_id', $scopedProjectIds ?: [0]);
         }
-        $budgetPlans = $bpQuery->get(['id', 'code', 'description', 'amount', 'status']);
+
+        $bpAgg = $this->agregatPerStatus($bpQuery, 'amount');
 
         $bp = [
-            'total'         => $budgetPlans->count(),
-            'total_amount'  => (int) $budgetPlans->sum('amount'),
-            'active_amount' => (int) $budgetPlans->where('status', 'ACTIVE')->sum('amount'),
-            'draft'         => $budgetPlans->where('status', 'DRAFT')->count(),
-            'submitted'     => $budgetPlans->where('status', 'SUBMITTED')->count(),
-            'checked'       => $budgetPlans->where('status', 'CHECKED')->count(),
-            'verified'      => $budgetPlans->where('status', 'VERIFIED')->count(),
-            'active'        => $budgetPlans->where('status', 'ACTIVE')->count(),
-            'closing'       => $budgetPlans->where('status', 'CLOSING')->count(),
-            'closed'        => $budgetPlans->where('status', 'CLOSED')->count(),
-            'rejected'      => $budgetPlans->where('status', 'REJECTED')->count(),
+            'total'         => (int) $bpAgg['counts']->sum(),
+            'total_amount'  => (int) $bpAgg['sums']->sum(),
+            'active_amount' => $bpAgg['sums']['ACTIVE'] ?? 0,
+            'draft'         => $bpAgg['counts']['DRAFT'] ?? 0,
+            'submitted'     => $bpAgg['counts']['SUBMITTED'] ?? 0,
+            'checked'       => $bpAgg['counts']['CHECKED'] ?? 0,
+            'verified'      => $bpAgg['counts']['VERIFIED'] ?? 0,
+            'active'        => $bpAgg['counts']['ACTIVE'] ?? 0,
+            'closing'       => $bpAgg['counts']['CLOSING'] ?? 0,
+            'closed'        => $bpAgg['counts']['CLOSED'] ?? 0,
+            'rejected'      => $bpAgg['counts']['REJECTED'] ?? 0,
         ];
 
         /*
         |--------------------------------------------------------------------------
         | COST REQUEST (BudgetRequest)
         |--------------------------------------------------------------------------
+        | Scoping-nya DIPERTAHANKAN apa adanya: whereHas('budgetPlan.project')
+        | memang tidak menyertakan CR yang budget plan-nya tanpa project
+        | (overhead / payroll lewat cost center). Itu perilaku sebelumnya dan
+        | bukan bagian dari perubahan ini.
         */
-        $crQuery = BudgetRequest::with(['applicant:id,username', 'type:id,name']);
+        $crQuery = BudgetRequest::query();
         if (is_array($scopedProjectIds)) {
             $ids = $scopedProjectIds ?: [0];
             $crQuery->whereHas('budgetPlan.project', fn ($q) => $q->whereIn('id', $ids));
         }
-        $costRequests = $crQuery->get(['id', 'description', 'amount', 'status', 'budget_plan_id', 'applicant_id', 'type_id']);
+
+        $crAgg = $this->agregatPerStatus($crQuery, 'amount');
 
         $cr = [
-            'total'        => $costRequests->count(),
-            'total_amount' => (int) $costRequests->sum('amount'),
-            'draft'        => $costRequests->where('status', 'DRAFT')->count(),
-            'submitted'    => $costRequests->where('status', 'SUBMITTED')->count(),
-            'approved'     => $costRequests->where('status', 'APPROVED')->count(),
-            'verified'     => $costRequests->where('status', 'VERIFIED')->count(),
-            'queued'       => $costRequests->where('status', 'QUEUED')->count(),
-            'paid'         => $costRequests->where('status', 'PAID')->count(),
-            'realized'     => $costRequests->where('status', 'REALIZED')->count(),
-            'closed'       => $costRequests->where('status', 'CLOSED')->count(),
-            'rejected'     => $costRequests->where('status', 'REJECTED')->count(),
+            'total'        => (int) $crAgg['counts']->sum(),
+            'total_amount' => (int) $crAgg['sums']->sum(),
+            'draft'        => $crAgg['counts']['DRAFT'] ?? 0,
+            'submitted'    => $crAgg['counts']['SUBMITTED'] ?? 0,
+            'approved'     => $crAgg['counts']['APPROVED'] ?? 0,
+            'verified'     => $crAgg['counts']['VERIFIED'] ?? 0,
+            'queued'       => $crAgg['counts']['QUEUED'] ?? 0,
+            'paid'         => $crAgg['counts']['PAID'] ?? 0,
+            'realized'     => $crAgg['counts']['REALIZED'] ?? 0,
+            'closed'       => $crAgg['counts']['CLOSED'] ?? 0,
+            'rejected'     => $crAgg['counts']['REJECTED'] ?? 0,
         ];
 
-        // Total realisasi GLOBAL (semua CR dalam scope akses, TIDAK terikat filter
-        // budget plan di panel kanan) — dipakai untuk card KPI "Total Realisasi".
-        $allCrIds = $costRequests->pluck('id');
-        $globalRealized = $allCrIds->isEmpty()
-            ? 0
-            : (int) BudgetRequestRealization::whereIn('budget_request_id', $allCrIds)->sum('total');
-        $cr['realized_amount'] = $globalRealized;
+        /*
+        | Total realisasi GLOBAL (semua CR dalam scope akses, TIDAK terikat
+        | filter budget plan di panel kanan) - dipakai card KPI "Total Realisasi".
+        |
+        | Memakai SUBQUERY, bukan whereIn() atas daftar id yang ditarik ke PHP.
+        | Versi sebelumnya mengirim seluruh id CR kembali ke basis data sebagai
+        | satu klausa IN raksasa; pada puluhan ribu id, panjang teks query-nya
+        | menembus max_allowed_packet dan permintaannya gagal dengan galat yang
+        | tidak menunjuk sebab sebenarnya.
+        */
+        $cr['realized_amount'] = (int) BudgetRequestRealization::whereIn(
+            'budget_request_id',
+            (clone $crQuery)->select('id')
+        )->sum('total');
 
         /*
         |--------------------------------------------------------------------------
-        | SERAPAN ANGGARAN — dengan filter budget plan
+        | SERAPAN ANGGARAN - dengan filter budget plan
         |--------------------------------------------------------------------------
         | Pilihan: 'all' (semua budget ACTIVE) atau satu budget plan ACTIVE.
+        |
+        | Hanya budget plan ACTIVE yang diambil barisnya - itu yang mengisi
+        | dropdown, jadi memang perlu. Jumlahnya per definisi kecil.
         */
-        $activeBudgetPlans = $budgetPlans
+        $activeBudgetPlans = (clone $bpQuery)
             ->where('status', 'ACTIVE')
-            ->sortBy('code')
-            ->values();
+            ->orderBy('code')
+            ->get(['id', 'code', 'description', 'amount']);
 
         $selectedBudgetId = $request->query('budget_plan_id', 'all');
 
@@ -236,14 +318,19 @@ class FinanceSummaryController extends Controller
 
         $totalBudget = (int) $targetPlans->sum('amount');
 
-        $scopedCRs  = $costRequests->whereIn('budget_plan_id', $targetPlanIds);
-        $usedCRs    = $scopedCRs->whereIn('status', self::USED_STATUSES);
-        $usedCrIds  = $usedCRs->pluck('id');
-        $usedAmount = (int) $usedCRs->sum('amount');
+        // CR yang MENYERAP anggaran pada budget plan terpilih. Dipakai tiga kali
+        // di bawah (jumlah terpakai, realisasi, rincian per account) sebagai
+        // SUBQUERY, jadi tidak ada baris yang keluar ke PHP.
+        $usedCrQuery = (clone $crQuery)
+            ->whereIn('budget_plan_id', $targetPlanIds->all() ?: [0])
+            ->whereIn('status', self::USED_STATUSES);
 
-        $realizedAmount = $usedCrIds->isEmpty()
-            ? 0
-            : (int) BudgetRequestRealization::whereIn('budget_request_id', $usedCrIds)->sum('total');
+        $usedAmount = (int) (clone $usedCrQuery)->sum('amount');
+
+        $realizedAmount = (int) BudgetRequestRealization::whereIn(
+            'budget_request_id',
+            (clone $usedCrQuery)->select('id')
+        )->sum('total');
 
         $remainingBudget = max(0, $totalBudget - $usedAmount);
 
@@ -254,30 +341,26 @@ class FinanceSummaryController extends Controller
         |--------------------------------------------------------------------------
         | RINCIAN TERSERAP PER ACCOUNT (Akomodasi, Transport, dll)
         |--------------------------------------------------------------------------
-        | Dikelompokkan di PHP agar tidak bergantung pada nama tabel raw.
+        | Dijumlahkan di basis data lalu namanya dilekatkan. Sebelumnya seluruh
+        | baris request_detail milik CR terpakai ditarik ke memori hanya untuk
+        | dikelompokkan per account_id - jumlah barisnya kelipatan dari jumlah
+        | CR, jadi ini blok paling berat di halaman ini.
         */
-        $accountBreakdown = collect();
+        $breakdownRows = RequestDetail::whereIn('budget_request_id', (clone $usedCrQuery)->select('id'))
+            ->select('account_id', DB::raw('COALESCE(SUM(total), 0) as total'))
+            ->groupBy('account_id')
+            ->orderByDesc('total')
+            ->get();
 
-        if ($usedCrIds->isNotEmpty()) {
-            $details = RequestDetail::whereIn('budget_request_id', $usedCrIds)
-                ->get(['account_id', 'total']);
+        $accountNames = $breakdownRows->pluck('account_id')->filter()->unique()->values()->isEmpty()
+            ? collect()
+            : Account::whereIn('id', $breakdownRows->pluck('account_id')->filter()->unique()->values())
+                ->pluck('name', 'id');
 
-            $accountNames = Account::whereIn(
-                'id',
-                $details->pluck('account_id')->filter()->unique()->values()
-            )->pluck('name', 'id');
-
-            $accountBreakdown = $details
-                ->groupBy('account_id')
-                ->map(function ($rows, $accountId) use ($accountNames) {
-                    return [
-                        'name'  => $accountNames[$accountId] ?? 'Tanpa Account',
-                        'total' => (int) $rows->sum('total'),
-                    ];
-                })
-                ->sortByDesc('total')
-                ->values();
-        }
+        $accountBreakdown = $breakdownRows->map(fn ($row) => [
+            'name'  => $accountNames[$row->account_id] ?? 'Tanpa Account',
+            'total' => (int) $row->total,
+        ])->values();
 
         $breakdownTotal = (int) $accountBreakdown->sum('total');
 
@@ -293,36 +376,6 @@ class FinanceSummaryController extends Controller
             'realized_of_used_pct' => $realizedOfUsedPct,
         ];
 
-        /*
-        |--------------------------------------------------------------------------
-        | LIST RINGKAS PER STATUS — dipakai modal timeline (tanpa pindah halaman)
-        |--------------------------------------------------------------------------
-        */
-        $poList = $hidePo ? collect() : $projects->map(fn ($p) => [
-            'status'    => $p->status,
-            'title'     => $p->name,
-            'subtitle'  => $p->customer->name ?? '-',
-            'value'     => number_format($p->value ?? 0, 0, ',', '.'),
-            'value_raw' => (int) ($p->value ?? 0),
-            'url'       => url('/project'),
-        ])->groupBy('status');
-
-        $crList = $costRequests->map(function ($c) {
-            // NOB dibaca dari kolom, bukan dari awalan teks deskripsi.
-            $isNob = (bool) $c->is_nob;
-            $desc  = $c->description;
-
-            return [
-                'status'    => $c->status,
-                'title'     => $desc,
-                'subtitle'  => strtoupper($c->applicant->username ?? '-') . ' • ' . ($c->type->name ?? '-'),
-                'value'     => number_format($c->amount ?? 0, 0, ',', '.'),
-                'value_raw' => (int) ($c->amount ?? 0),
-                'is_nob'    => $isNob,
-                'url'       => url('/budget-request'),
-            ];
-        })->groupBy('status');
-
         return compact(
             'po',
             'bp',
@@ -332,8 +385,6 @@ class FinanceSummaryController extends Controller
             'selectedBudgetId',
             'accountBreakdown',
             'breakdownTotal',
-            'poList',
-            'crList',
             'hidePo'
         );
     }
@@ -485,17 +536,38 @@ class FinanceSummaryController extends Controller
 
         // 4) Revenue Value — total nilai PO per bulan (berdasarkan created_at PO),
         // per tahun, supaya bisa gonta-ganti tahun di frontend tanpa reload.
+        /*
+        | Ketiga rangkaian bulanan DIBATASI jendela tahun.
+        |
+        | GROUP BY di sini memang harus memakai YEAR()/MONTH() - itu bentuk
+        | datanya. Yang bisa diperbaiki adalah PENYARINGANNYA: dengan
+        | menambahkan perbandingan langsung pada kolom tanggalnya, indeks
+        | (projects_created_at_idx, cash_receipts received_date, daily_transactions date)
+        | menyaring lebih dulu, dan fungsi tanggal hanya bekerja pada baris yang
+        | lolos. Tanpa itu, membuka tab Executive berarti tiga pemindaian tabel
+        | PENUH - dan biayanya naik terus karena riwayatnya tidak pernah
+        | dibatasi apa pun.
+        |
+        | Jendelanya CHART_TAHUN_KE_BELAKANG tahun; dropdown tahun di frontend
+        | mengikuti apa yang dikirim, jadi ia otomatis menampilkan rentang yang
+        | sama.
+        */
+        $batasChart = now()->startOfYear()->subYears(self::CHART_TAHUN_KE_BELAKANG - 1)->format('Y-m-d H:i:s');
+
         $revenueChart = $this->monthlySeriesByYear(
-            Project::selectRaw('YEAR(created_at) as yr, MONTH(created_at) as mo, SUM(value) as total')
+            Project::where('created_at', '>=', $batasChart)
+                ->selectRaw('YEAR(created_at) as yr, MONTH(created_at) as mo, COALESCE(SUM(value),0) as total')
         );
 
         // 5) Treasury — Cash Receipt (masuk) vs Cash Out/Daily Transaction PAID (keluar), per bulan per tahun.
         $cashInChart = $this->monthlySeriesByYear(
-            CashReceipt::selectRaw('YEAR(received_date) as yr, MONTH(received_date) as mo, SUM(amount) as total')
+            CashReceipt::where('received_date', '>=', $batasChart)
+                ->selectRaw('YEAR(received_date) as yr, MONTH(received_date) as mo, COALESCE(SUM(amount),0) as total')
         );
         $cashOutChart = $this->monthlySeriesByYear(
             DailyTransaction::where('status', 'PAID')
-                ->selectRaw('YEAR(date) as yr, MONTH(date) as mo, SUM(captured_amount) as total')
+                ->where('date', '>=', $batasChart)
+                ->selectRaw('YEAR(date) as yr, MONTH(date) as mo, COALESCE(SUM(captured_amount),0) as total')
         );
 
         // 6) Breakdown per customer/entitas untuk tooltip Revenue Value & Treasury.
@@ -509,32 +581,88 @@ class FinanceSummaryController extends Controller
         }
         $revenueBreakdown = $this->topBreakdown($revenueRawBreakdown);
 
+        /*
+        | Breakdown Cash In - DIJUMLAHKAN DI BASIS DATA.
+        |
+        | Versi sebelumnya: CashReceipt::with('invoice.po.customer')->get() -
+        | SELURUH cash receipt yang pernah ada, dengan tiga tingkat relasi,
+        | ditarik ke memori hanya untuk dikelompokkan per tahun/bulan/customer.
+        | Tidak ada filter tanggal sama sekali, jadi biayanya tumbuh selamanya.
+        |
+        | Sekarang satu query agregat dengan LEFT JOIN, dibatasi jendela tahun
+        | yang sama dengan chart-nya. Nama customer yang kosong (invoice tanpa
+        | PO, atau PO tanpa customer) tetap jatuh ke 'Unknown' seperti
+        | sebelumnya, lewat COALESCE.
+        */
         $cashInRawBreakdown = [];
-        CashReceipt::with('invoice.po.customer')->get()->each(function ($cr) use (&$cashInRawBreakdown) {
-            if (!$cr->received_date) return;
-            $y = (int) $cr->received_date->format('Y');
-            $m = (int) $cr->received_date->format('n');
-            $cust = $cr->invoice->po->customer->name ?? 'Unknown';
-            $cashInRawBreakdown[$y][$m][$cust] = ($cashInRawBreakdown[$y][$m][$cust] ?? 0) + (int) $cr->amount;
-        });
+        CashReceipt::query()
+            ->where('cash_receipts.received_date', '>=', $batasChart)
+            /*
+            | deleted_at dijadikan SYARAT JOIN, bukan where.
+            |
+            | invoices memakai SoftDeletes, jadi versi relasi sebelumnya
+            | (->with('invoice.po.customer')) mengembalikan null untuk invoice
+            | yang ada di recycle bin, dan baris itu jatuh ke 'Unknown'.
+            | Menaruh kondisinya di dalam ON menjaga perilaku itu; menaruhnya
+            | di where() akan mengubah LEFT JOIN jadi INNER JOIN secara efektif
+            | dan menghilangkan baris cash receipt tanpa invoice sama sekali.
+            */
+            ->leftJoin('invoices', function ($j) {
+                $j->on('invoices.id', '=', 'cash_receipts.invoice_id')
+                  ->whereNull('invoices.deleted_at');
+            })
+            ->leftJoin('projects', 'projects.id', '=', 'invoices.po_id')
+            ->leftJoin('customers', 'customers.id', '=', 'projects.customer_id')
+            ->selectRaw("YEAR(cash_receipts.received_date) as yr, MONTH(cash_receipts.received_date) as mo, COALESCE(customers.name, 'Unknown') as label, COALESCE(SUM(cash_receipts.amount),0) as total")
+            ->groupBy('yr', 'mo', 'label')
+            ->get()
+            ->each(function ($row) use (&$cashInRawBreakdown) {
+                $cashInRawBreakdown[(int) $row->yr][(int) $row->mo][$row->label] = (int) $row->total;
+            });
         $cashInBreakdown = $this->topBreakdown($cashInRawBreakdown);
 
+        /*
+        | Breakdown Cash Out - DIJUMLAHKAN DI BASIS DATA.
+        |
+        | Versi sebelumnya memuat SELURUH batch Treasury berstatus PAID dengan
+        | eager load EMPAT tingkat
+        | (includedItems.budgetRequest.budgetPlan.project.customer), tanpa
+        | filter tanggal, lalu mengelompokkannya di PHP. Itu blok terberat di
+        | tab Executive: jumlah baris yang dihidrasi adalah jumlah item di
+        | seluruh batch yang pernah dibayar, dan setiap satu membangun rantai
+        | objek Eloquent sepanjang empat model.
+        |
+        | Label-nya dipertahankan persis: nama customer bila budget plan-nya
+        | budget proyek, "Overhead: <cost center>" bila budget cost center,
+        | 'Unknown' bila keduanya kosong. CONCAT menghasilkan NULL kalau nama
+        | cost center-nya NULL, sehingga COALESCE jatuh ke 'Unknown' - sama
+        | dengan rantai ?? di versi lama.
+        |
+        | budget_request memakai SoftDeletes; kondisinya ditaruh di ON, karena
+        | relasi budgetRequest pada versi lama mengembalikan null untuk CR yang
+        | terhapus dan item itu di-skip (continue).
+        */
         $cashOutRawBreakdown = [];
-        DailyTransaction::where('status', 'PAID')
-            ->with(['includedItems.budgetRequest.budgetPlan.project.customer', 'includedItems.budgetRequest.budgetPlan.costCenter'])
+        DailyTransaction::query()
+            ->where('daily_transactions.status', 'PAID')
+            ->where('daily_transactions.date', '>=', $batasChart)
+            ->join('daily_transaction_items', function ($j) {
+                $j->on('daily_transaction_items.daily_transaction_id', '=', 'daily_transactions.id')
+                  ->where('daily_transaction_items.status', '=', 'INCLUDED');
+            })
+            ->join('budget_request', function ($j) {
+                $j->on('budget_request.id', '=', 'daily_transaction_items.budget_request_id')
+                  ->whereNull('budget_request.deleted_at');
+            })
+            ->leftJoin('budget_plans', 'budget_plans.id', '=', 'budget_request.budget_plan_id')
+            ->leftJoin('projects', 'projects.id', '=', 'budget_plans.project_id')
+            ->leftJoin('customers', 'customers.id', '=', 'projects.customer_id')
+            ->leftJoin('cost_centers', 'cost_centers.id', '=', 'budget_plans.cost_center_id')
+            ->selectRaw("YEAR(daily_transactions.date) as yr, MONTH(daily_transactions.date) as mo, COALESCE(customers.name, CONCAT('Overhead: ', cost_centers.name), 'Unknown') as label, COALESCE(SUM(budget_request.amount),0) as total")
+            ->groupBy('yr', 'mo', 'label')
             ->get()
-            ->each(function ($dt) use (&$cashOutRawBreakdown) {
-                if (!$dt->date) return;
-                $y = (int) $dt->date->format('Y');
-                $m = (int) $dt->date->format('n');
-                foreach ($dt->includedItems as $item) {
-                    $br = $item->budgetRequest;
-                    if (!$br) continue;
-                    $plan = $br->budgetPlan;
-                    $label = $plan?->project?->customer?->name
-                        ?? ($plan?->costCenter?->name ? 'Overhead: ' . $plan->costCenter->name : 'Unknown');
-                    $cashOutRawBreakdown[$y][$m][$label] = ($cashOutRawBreakdown[$y][$m][$label] ?? 0) + (int) $br->amount;
-                }
+            ->each(function ($row) use (&$cashOutRawBreakdown) {
+                $cashOutRawBreakdown[(int) $row->yr][(int) $row->mo][$row->label] = (int) $row->total;
             });
         $cashOutBreakdown = $this->topBreakdown($cashOutRawBreakdown);
 

@@ -69,7 +69,7 @@
          termasuk nilai variabel SCSS yang sudah disesuaikan AdminLTE.
 
          Hasilnya beban CSS halaman turun dari 1.780 KB ke 576 KB. --}}
-    <link rel="stylesheet" href="{{ asset('css/bootstrap-4.6.1.css') }}?v={{ filemtime(public_path('css/bootstrap-4.6.1.css')) }}">
+    <link rel="stylesheet" href="@aset('css/bootstrap-4.6.1.css')">
 
     <!-- TOM SELECT -->
     {{-- Pustaka pihak ketiga dilayani dari server sendiri, bukan CDN.
@@ -78,8 +78,16 @@
          berarti pembaruan mayor bisa masuk diam-diam dan merusak halaman;
          (3) aplikasi ini dipakai di jaringan kantor yang tidak selalu punya
          akses keluar - kalau CDN tak terjangkau, dropdown-nya mati. --}}
-    <link rel="stylesheet" href="{{ asset('plugins/tom-select/tom-select.css') }}">
-    <link rel="stylesheet" href="{{ asset('plugins/bootstrap-select/bootstrap-select.min.css') }}">
+    <link rel="stylesheet" href="@aset('plugins/tom-select/tom-select.css')">
+
+    {{-- bootstrap-select TIDAK dimuat di sini lagi.
+         Ia dipakai HANYA di accessgroup/create & accessgroup/edit (class
+         "selectpicker") - dua halaman dari ~144 - tapi sebelumnya dimuat di
+         setiap halaman, berikut CSS dan JS-nya.
+         Selain beban yang tak terpakai, dua pustaka dropdown yang sama-sama
+         mengikat diri ke elemen <select> adalah penyebab klasik dropdown yang
+         tidak mau menutup atau nilainya tidak terkirim. Kini dimuat lewat
+         @stack('styles')/@stack('scripts') di kedua halaman itu saja. --}}
 
     <!-- Flatpickr (self-hosted — sebagian jaringan kantor memblokir jsdelivr) -->
     <link rel="stylesheet" href="{{ asset('plugins/flatpickr/dist/flatpickr.min.css') }}">
@@ -90,7 +98,7 @@
     <script src="{{ asset('plugins/sweetalert2/sweetalert2.all.min.js') }}"></script>
 
     <!-- BASE STYLE (komponen app yang tidak ada di Bootstrap: tss-*, form-clean, dll) -->
-    <link rel="stylesheet" href="{{ asset('css/tesys-ui-base.css') }}?v={{ filemtime(public_path('css/tesys-ui-base.css')) }}">
+    <link rel="stylesheet" href="@aset('css/tesys-ui-base.css')">
 
     <!-- STACK STYLE -->
     @stack('styles')
@@ -102,23 +110,23 @@
         supaya shadow/radius hasil revisi yang dipakai.
     --}}
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
-    <link rel="stylesheet" href="{{ asset('css/tesys-ui.css') }}?v={{ filemtime(public_path('css/tesys-ui.css')) }}">
-    <link rel="stylesheet" href="{{ asset('css/tesys-ui-tokens.css') }}?v={{ filemtime(public_path('css/tesys-ui-tokens.css')) }}">
-    <link rel="stylesheet" href="{{ asset('css/tesys-ui-components.css') }}?v={{ filemtime(public_path('css/tesys-ui-components.css')) }}">
-    <link rel="stylesheet" href="{{ asset('css/tesys-ui-compat.css') }}?v={{ filemtime(public_path('css/tesys-ui-compat.css')) }}">
-    <link rel="stylesheet" href="{{ asset('css/tesys-ui-pages.css') }}?v={{ filemtime(public_path('css/tesys-ui-pages.css')) }}">
-    <link rel="stylesheet" href="{{ asset('css/tesys-ui-shell.css') }}?v={{ filemtime(public_path('css/tesys-ui-shell.css')) }}">
-    <link rel="stylesheet" href="{{ asset('css/tesys-ui-motion.css') }}?v={{ filemtime(public_path('css/tesys-ui-motion.css')) }}">
+    <link rel="stylesheet" href="@aset('css/tesys-ui.css')">
+    <link rel="stylesheet" href="@aset('css/tesys-ui-tokens.css')">
+    <link rel="stylesheet" href="@aset('css/tesys-ui-components.css')">
+    <link rel="stylesheet" href="@aset('css/tesys-ui-compat.css')">
+    <link rel="stylesheet" href="@aset('css/tesys-ui-pages.css')">
+    <link rel="stylesheet" href="@aset('css/tesys-ui-shell.css')">
+    <link rel="stylesheet" href="@aset('css/tesys-ui-motion.css')">
 
     {{-- Lapis luxe: chrome gelap (sidebar + topbar) di atas isi terang.
          Dimuat paling akhir karena beberapa aturan sidebar di tesys-ui.css
          menunjuk token permukaan, yang harus tetap terang. --}}
-    <link rel="stylesheet" href="{{ asset('css/tesys-ui-luxe.css') }}?v={{ filemtime(public_path('css/tesys-ui-luxe.css')) }}">
+    <link rel="stylesheet" href="@aset('css/tesys-ui-luxe.css')">
 
     {{-- Lapis mobile: penyesuaian layar handphone. Harus SESUDAH luxe dan
          sesudah @stack('styles') (yang ada di atas), supaya aturannya menang
          atas <style> per halaman tanpa perlu !important. --}}
-    <link rel="stylesheet" href="{{ asset('css/tesys-ui-mobile.css') }}?v={{ filemtime(public_path('css/tesys-ui-mobile.css')) }}">
+    <link rel="stylesheet" href="@aset('css/tesys-ui-mobile.css')">
 </head>
 
 <body class="tesys-ui {{ request()->is('/') ? 'dashboard-page' : '' }}">
@@ -512,34 +520,34 @@
 <script src="{{ asset('plugins/datatables-responsive/js/responsive.bootstrap4.min.js') }}"></script>
 
 <!-- TESYS TABLE (kendali daftar: Page Size masuk ke bilah kendali) -->
-<script src="{{ asset('js/tesys-table.js') }}?v={{ filemtime(public_path('js/tesys-table.js')) }}"></script>
+<script src="@aset('js/tesys-table.js')"></script>
 
 <!-- TESYS COLUMN FILTER (filter header ala Excel untuk DataTables) -->
-<script src="{{ asset('js/tesys-column-filter.js') }}?v={{ filemtime(public_path('js/tesys-column-filter.js')) }}"></script>
+<script src="@aset('js/tesys-column-filter.js')"></script>
 
 <!-- TESYS TIMELINE (riwayat workflow) -->
-<script src="{{ asset('js/tesys-timeline.js') }}?v={{ filemtime(public_path('js/tesys-timeline.js')) }}"></script>
+<script src="@aset('js/tesys-timeline.js')"></script>
 
 <!-- TESYS CHART (bakuan grafik + keadaan kosong; menunggu Chart.js halaman) -->
-<script src="{{ asset('js/tesys-chart.js') }}?v={{ filemtime(public_path('js/tesys-chart.js')) }}"></script>
+<script src="@aset('js/tesys-chart.js')"></script>
 
 {{-- TESYS WORKFLOW — perjalanan dokumen (komponen x-workflow-flow) + drawer.
      Ditulis sebagai komentar Blade, BUKAN komentar HTML: tag komponen di dalam
      <!-- --> tetap dikompilasi Blade dan membuat komponen tak tertutup. --}}
-<script src="{{ asset('js/tesys-workflow.js') }}?v={{ filemtime(public_path('js/tesys-workflow.js')) }}"></script>
+<script src="@aset('js/tesys-workflow.js')"></script>
 
 <!-- TESYS DRAWER (panel tinjau dari kanan) -->
-<script src="{{ asset('js/tesys-drawer.js') }}?v={{ filemtime(public_path('js/tesys-drawer.js')) }}"></script>
+<script src="@aset('js/tesys-drawer.js')"></script>
 
 <!-- TESYS ROW ACTIONS (menu aksi pada kolom tabel) -->
-<script src="{{ asset('js/tesys-row-actions.js') }}?v={{ filemtime(public_path('js/tesys-row-actions.js')) }}"></script>
+<script src="@aset('js/tesys-row-actions.js')"></script>
 
 <!-- TESYS SEARCHABLE SELECT (pengganti Tom Select) -->
-<script src="{{ asset('js/tesys-searchable-select.js') }}?v={{ filemtime(public_path('js/tesys-searchable-select.js')) }}"></script>
+<script src="@aset('js/tesys-searchable-select.js')"></script>
 
 <!-- TOM SELECT -->
-<script src="{{ asset('plugins/tom-select/tom-select.complete.min.js') }}"></script>
-<script src="{{ asset('plugins/bootstrap-select/bootstrap-select.min.js') }}"></script>
+<script src="@aset('plugins/tom-select/tom-select.complete.min.js')"></script>
+{{-- bootstrap-select dipindah ke halaman yang memakainya - lihat catatan di <head>. --}}
 
 {{-- =================================================================
      TOAST
@@ -882,16 +890,25 @@ $(function () {
         window.TESYS_ACTIONS    = data.actions;
     })();
 </script>
-<script src="{{ asset('js/tesys-export-filtered.js') }}?v={{ filemtime(public_path('js/tesys-export-filtered.js')) }}"></script>
-<script src="{{ asset('js/tesys-command.js') }}?v={{ filemtime(public_path('js/tesys-command.js')) }}"></script>
-<script src="{{ asset('js/tesys-ui.js') }}?v={{ filemtime(public_path('js/tesys-ui.js')) }}"></script>
-<script src="{{ asset('js/tesys-shell.js') }}?v={{ filemtime(public_path('js/tesys-shell.js')) }}"></script>
-<script src="{{ asset('js/tesys-clock.js') }}?v={{ filemtime(public_path('js/tesys-clock.js')) }}"></script>
+<script src="@aset('js/tesys-export-filtered.js')"></script>
+<script src="@aset('js/tesys-command.js')"></script>
+
+{{-- Penjaga sesi untuk halaman berform.
+     Mengetik di dalam form tidak memperpanjang sesi - hanya permintaan ke
+     server yang memperpanjangnya. Tanpa ini, form Cost Request yang diisi
+     bertahap gagal dengan 419 saat Simpan ditekan dan seluruh isinya hilang,
+     tanpa jejak galat di mana pun. Skrip ini hanya aktif kalau halamannya
+     memang punya form berisi (lihat berkasnya). --}}
+<script>window.TESYS_KEEPALIVE_URL = "{{ route('notifications.fetch') }}";</script>
+<script src="@aset('js/tesys-session-keepalive.js')"></script>
+<script src="@aset('js/tesys-ui.js')"></script>
+<script src="@aset('js/tesys-shell.js')"></script>
+<script src="@aset('js/tesys-clock.js')"></script>
 
 {{-- Menandai tombol yang isinya HANYA ikon di dalam sel tabel, supaya
      CSS bisa menyamakan ukurannya tanpa ikut memampatkan tombol yang
      punya label. Lihat catatan di berkasnya. --}}
-<script src="{{ asset('js/tesys-icon-buttons.js') }}?v={{ filemtime(public_path('js/tesys-icon-buttons.js')) }}"></script>
+<script src="@aset('js/tesys-icon-buttons.js')"></script>
 
 {{-- Filter daftar "Ganti Role" di popup user (superadmin saja). --}}
 <script>

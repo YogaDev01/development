@@ -655,101 +655,29 @@
 
                             <!-- LOG & APPROVAL -->
                             <div class="tab-pane fade {{ $invRestricted ? 'show active' : '' }}" id="tabLog">
-                                @php
-                                    $timelineEvents = collect();
-
-                                    $timelineEvents->push([
-                                        'badge' => 'DRAFT', 'color' => 'secondary',
-                                        'actor' => $invoice->createdBy->name ?? '-',
-                                        'sort'  => $invoice->created_at,
-                                        'label' => $invoice->created_at?->format('d/m/Y H:i'),
-                                        'extra' => null,
-                                    ]);
-                                    if ($invoice->submitted_at) {
-                                        $timelineEvents->push([
-                                            'badge' => 'SUBMIT', 'color' => 'warning',
-                                            'actor' => $invoice->submittedBy->name ?? '-',
-                                            'sort'  => $invoice->submitted_at,
-                                            'label' => $invoice->submitted_at->format('d/m/Y H:i'),
-                                            'extra' => null,
-                                        ]);
-                                    }
-                                    if ($invoice->verified_at) {
-                                        $timelineEvents->push([
-                                            'badge' => 'VERIFY', 'color' => 'info',
-                                            'actor' => $invoice->verifiedBy->name ?? '-',
-                                            'sort'  => $invoice->verified_at,
-                                            'label' => $invoice->verified_at->format('d/m/Y H:i'),
-                                            'extra' => null,
-                                        ]);
-                                    }
-                                    if ($invoice->approved_at) {
-                                        $timelineEvents->push([
-                                            'badge' => 'APPROVE', 'color' => 'primary',
-                                            'actor' => $invoice->approvedBy->name ?? '-',
-                                            'sort'  => $invoice->approved_at,
-                                            'label' => $invoice->approved_at->format('d/m/Y H:i'),
-                                            'extra' => null,
-                                        ]);
-                                    }
-                                    if ($invoice->sent_at) {
-                                        $timelineEvents->push([
-                                            'badge' => 'SENT', 'color' => 'indigo',
-                                            'actor' => $invoice->sentBy->name ?? '-',
-                                            'sort'  => $invoice->sent_at,
-                                            'label' => $invoice->sent_at->format('d/m/Y H:i'),
-                                            'extra' => null,
-                                        ]);
-                                    }
-                                    if ($invoice->received_at) {
-                                        $dn = $invoice->deliveryNote;
-                                        $extra = $dn
-                                            ? '<div style="font-size:11px;margin-top:4px;"><i class="fas fa-truck mr-1"></i>Via Surat Jalan '
-                                              . '<a href="' . route('delivery-note.show', $dn->id) . '" target="_blank">' . e($dn->code) . '</a>'
-                                              . ' — lihat lampiran bukti terima di sana.</div>'
-                                            : null;
-                                        $timelineEvents->push([
-                                            'badge' => 'RECEIVED', 'color' => 'purple',
-                                            'actor' => $invoice->receivedBy->name ?? '-',
-                                            'sort'  => $invoice->received_at,
-                                            'label' => $invoice->received_at->format('d/m/Y H:i'),
-                                            'extra' => $extra,
-                                        ]);
-                                    }
-                                    foreach ($invoice->cashReceipts as $cr) {
-                                        $lines = [];
-                                        $lines[] = number_format($cr->amount, 0, ',', '.') . ' diterima'
-                                                   . ($cr->sourceFund ? ' via ' . e($cr->sourceFund->name) : '');
-                                        if ($cr->withholding_tax > 0) {
-                                            $lines[] = 'PPh Ps.4(2) di-settle: ' . number_format($cr->withholding_tax, 0, ',', '.');
-                                        }
-                                        if ($cr->notes) {
-                                            $lines[] = e($cr->notes);
-                                        }
-                                        $timelineEvents->push([
-                                            'badge' => $cr->withholding_tax > 0 ? 'PAYMENT + SETTLE' : 'PAYMENT',
-                                            'color' => 'success',
-                                            'actor' => $cr->inputBy->name ?? '-',
-                                            'sort'  => $cr->created_at,
-                                            'label' => $cr->received_date ? $cr->received_date->format('d/m/Y') : $cr->created_at->format('d/m/Y'),
-                                            'extra' => '<div style="font-size:12px;margin-top:2px;">' . implode('<br>', $lines) . '</div>',
-                                        ]);
-                                    }
-                                    if ($invoice->cancelled_at) {
-                                        $extra = $invoice->cancel_reason
-                                            ? '<div style="font-size:12px;margin-top:2px;">' . e($invoice->cancel_reason) . '</div>'
-                                            : null;
-                                        $timelineEvents->push([
-                                            'badge' => 'CANCELLED', 'color' => 'dark',
-                                            'actor' => $invoice->cancelledBy->name ?? '-',
-                                            'sort'  => $invoice->cancelled_at,
-                                            'label' => $invoice->cancelled_at->format('d/m/Y H:i'),
-                                            'extra' => $extra,
-                                        ]);
-                                    }
-
-                                    $timelineEvents = $timelineEvents->sortByDesc('sort')->values();
-                                @endphp
+                @php
+                                    /*
+                                     | Penyusunan timeline dipindah ke
+                                     | App\Support\InvoiceTimeline.
+                                     |
+                                     | Sebelumnya ~95 baris PHP di sini membangun
+                                     | koleksi peristiwa, membaca relasi, memformat
+                                     | mata uang, dan MENYUSUN POTONGAN HTML sebagai
+                                     | string yang dikeluarkan dengan {!! !!}.
+                                     | Semuanya sudah ter-escape, jadi bukan lubang
+                                     | keamanan - tapi logika urutan peristiwa dan
+                                     | perhitungan PPh tidak bisa diuji tanpa
+                                     | merender halaman, dan relasi yang dibaca di
+                                     | dalam view membuat halaman ini diam-diam
+                                     | menjadi N+1 setiap kali eager load di
+                                     | controller berubah.
+                                     |
+                                     | Kelas itu mengembalikan DATA, bukan HTML,
+                                     | sehingga {!! !!} tidak diperlukan lagi di
+                                     | bawah.
+                                     */
+                                    $timelineEvents = \App\Support\InvoiceTimeline::untuk($invoice);
+                                                                @endphp
                                 <div class="inv-timeline p-3">
                                     @forelse($timelineEvents as $ev)
                                     <div class="inv-timeline-item">
@@ -758,8 +686,23 @@
                                             <span class="badge badge-{{ $ev['color'] }} px-2 py-1 mr-2" style="font-size:9px;">{{ $ev['badge'] }}</span>
                                             <strong>{{ $ev['actor'] }}</strong>
                                             <div class="inv-timeline-date">{{ $ev['label'] }}</div>
-                                            @if($ev['extra'])
-                                                {!! $ev['extra'] !!}
+                                            @if(!empty($ev['lines']))
+                                                <div style="font-size:12px;margin-top:2px;">
+                                                    @foreach($ev['lines'] as $baris)
+                                                        <div>
+                                                            @if(!empty($baris['ikon']))
+                                                                <i class="{{ $baris['ikon'] }} mr-1"></i>
+                                                            @endif
+                                                            {{ $baris['teks'] }}
+                                                            @if(!empty($baris['tautan']))
+                                                                <a href="{{ $baris['tautan']['url'] }}" target="_blank">{{ $baris['tautan']['label'] }}</a>
+                                                            @endif
+                                                            @if(!empty($baris['sesudah']))
+                                                                {{ $baris['sesudah'] }}
+                                                            @endif
+                                                        </div>
+                                                    @endforeach
+                                                </div>
                                             @endif
                                         </div>
                                     </div>

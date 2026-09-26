@@ -27,6 +27,8 @@ use App\Services\RoleDirectory;
 
 class BudgetPlanController extends Controller
 {
+    use Concerns\ScopesBudgetPlanVisibility;
+
     /*
     |--------------------------------------------------------------------------
     | KONFIGURASI SUMBER DANA
@@ -53,17 +55,8 @@ class BudgetPlanController extends Controller
     ];
 
     /** Role yang boleh melihat budget OVERHEAD */
-    private const OVERHEAD_PRIVILEGED_ROLES = ['superadmin', 'approver', 'finance_manager'];
-
-    /** Role yang boleh melihat budget PAYROLL (rahasia).
-     *  'hr' & 'finance_manager' dibuat di langkah berikutnya. */
-    private const PAYROLL_ROLES = ['superadmin', 'approver', 'hr', 'finance_manager'];
-
-    /** Role yang melihat SEMUA budget proyek (tanpa filter access group) */
-    private const PROJECT_PRIVILEGED_ROLES = [
-        'superadmin', 'finance', 'finance_manager', 'approver', 'admin',
-        'cost_control', 'treasury', 'collection', 'accounting',
-    ];
+    // OVERHEAD_PRIVILEGED_ROLES / PAYROLL_ROLES / PROJECT_PRIVILEGED_ROLES
+    // pindah ke Concerns\ScopesBudgetPlanVisibility bersama method yang memakainya.
 
     /*
     |--------------------------------------------------------------------------
@@ -199,27 +192,8 @@ class BudgetPlanController extends Controller
     | proyek), melainkan lewat ROLE.
     */
 
-    private function overheadPrivileged(): bool
-    {
-        return in_array(strtolower(Auth::user()->role->name ?? ''), self::OVERHEAD_PRIVILEGED_ROLES);
-    }
-
-    private function accessibleOverheadCostCenterIds(): \Illuminate\Support\Collection
-    {
-        $user = Auth::user();
-        return $user->accessGroup ? $user->accessGroup->costCenterIds() : collect();
-    }
-
-    private function canSeeOverhead(): bool
-    {
-        return $this->overheadPrivileged()
-            || $this->accessibleOverheadCostCenterIds()->isNotEmpty();
-    }
-
-    private function canSeePayroll(): bool
-    {
-        return in_array(strtolower(Auth::user()->role->name ?? ''), self::PAYROLL_ROLES);
-    }
+    // overheadPrivileged() / accessibleOverheadCostCenterIds() / canSeeOverhead() /
+    // canSeePayroll() pindah ke Concerns\ScopesBudgetPlanVisibility.
 
     /**
      * Apakah user yang login berhak melihat detail satu Budget Plan.
@@ -235,7 +209,7 @@ class BudgetPlanController extends Controller
         $role = strtolower($user->role->name ?? '');
 
         if ($bp->isProjectBudget()) {
-            if (in_array($role, self::PROJECT_PRIVILEGED_ROLES)) {
+            if (in_array($role, self::BP_PROJECT_PRIVILEGED_ROLES)) {
                 return true;
             }
             $projectIds = $user->accessGroup
@@ -246,10 +220,10 @@ class BudgetPlanController extends Controller
 
         if ($bp->isCostCenterBudget()) {
             if (strtoupper($bp->costCenter?->type ?? '') === 'PAYROLL') {
-                return $this->canSeePayroll();
+                return $this->bpCanSeePayroll();
             }
-            return $this->overheadPrivileged()
-                || $this->accessibleOverheadCostCenterIds()->contains((int) $bp->cost_center_id);
+            return $this->bpOverheadPrivileged()
+                || $this->bpAccessibleOverheadCostCenterIds()->contains((int) $bp->cost_center_id);
         }
 
         return false;
@@ -264,17 +238,17 @@ class BudgetPlanController extends Controller
 
         // Overhead (dan tipe non-payroll lain — Tax/Asset/Liability/Capital/
         // Adjustment, diperlakukan sama): privileged semua; lainnya per access group
-        if ($this->overheadPrivileged()) {
+        if ($this->bpOverheadPrivileged()) {
             $conditions[] = ['types' => CostCenter::OVERHEAD_LIKE_TYPES, 'ids' => null];
         } else {
-            $ccIds = $this->accessibleOverheadCostCenterIds();
+            $ccIds = $this->bpAccessibleOverheadCostCenterIds();
             if ($ccIds->isNotEmpty()) {
                 $conditions[] = ['types' => CostCenter::OVERHEAD_LIKE_TYPES, 'ids' => $ccIds->all()];
             }
         }
 
         // Payroll: role-gated
-        if ($this->canSeePayroll()) {
+        if ($this->bpCanSeePayroll()) {
             $conditions[] = ['types' => ['PAYROLL'], 'ids' => null];
         }
 
@@ -345,46 +319,9 @@ class BudgetPlanController extends Controller
         return $bp;
     }
 
-    public function scopeVisibleTo($query): void
-    {
-        $user = Auth::user();
-        $role = strtolower($user->role->name ?? '');
-
-        $projectIds = $user->accessGroup
-            ? $user->accessGroup->details->pluck('project_id')->filter()->values()
-            : collect();
-
-        $overheadPrivileged = $this->overheadPrivileged();
-        $overheadCcIds      = $this->accessibleOverheadCostCenterIds();
-        $canPayroll         = $this->canSeePayroll();
-
-        $query->where(function ($q) use ($role, $projectIds, $overheadPrivileged, $overheadCcIds, $canPayroll) {
-
-            // 1) Budget proyek
-            $q->where(function ($qq) use ($role, $projectIds) {
-                $qq->whereNotNull('project_id');
-
-                if (!in_array($role, self::PROJECT_PRIVILEGED_ROLES)) {
-                    $qq->whereIn('project_id', $projectIds->isEmpty() ? [0] : $projectIds);
-                }
-            });
-
-            // 2) Budget overhead (dan tipe non-payroll lain — Tax/Asset/Liability/
-            // Capital/Adjustment — yang diperlakukan sama seperti Overhead)
-            if ($overheadPrivileged) {
-                $q->orWhereHas('costCenter', fn ($c) => $c->whereIn('type', CostCenter::OVERHEAD_LIKE_TYPES));
-            } elseif ($overheadCcIds->isNotEmpty()) {
-                $q->orWhereHas('costCenter', fn ($c) =>
-                    $c->whereIn('type', CostCenter::OVERHEAD_LIKE_TYPES)->whereIn('id', $overheadCcIds)
-                );
-            }
-
-            // 3) Budget payroll
-            if ($canPayroll) {
-                $q->orWhereHas('costCenter', fn ($c) => $c->where('type', 'PAYROLL'));
-            }
-        });
-    }
+    // scopeVisibleTo() pindah ke Concerns\ScopesBudgetPlanVisibility supaya
+    // GlobalSearchController bisa memakainya lewat `use`, bukan dengan
+    // me-resolve controller ini dari container.
 
     /*
     |--------------------------------------------------------------------------
@@ -439,39 +376,18 @@ class BudgetPlanController extends Controller
             ->filter(fn ($v) => is_numeric($v))
             ->map(fn ($v) => (int) $v);
 
-        $user = Auth::user();
-        $role = strtolower($user->role->name ?? '');
-
+        /*
+        | Aturan visibilitas dipanggil, TIDAK disalin.
+        |
+        | Sebelumnya seluruh badan scopeVisibleTo() diketik ulang di sini -
+        | 30 baris identik. Dua salinan aturan akses berarti ekspor dan daftar
+        | bisa diam-diam berbeda isi: yang satu diperbarui, yang lain
+        | terlupakan, dan gejalanya adalah baris yang tidak tampil di tabel
+        | tapi ikut terbawa ke berkas Excel.
+        */
         $query = BudgetPlan::with(['project.customer', 'project.manager', 'costCenter', 'inputBy']);
 
-        $projectIds = $user->accessGroup
-            ? $user->accessGroup->details->pluck('project_id')->filter()->values()
-            : collect();
-
-        $overheadPrivileged = $this->overheadPrivileged();
-        $overheadCcIds      = $this->accessibleOverheadCostCenterIds();
-        $canPayroll         = $this->canSeePayroll();
-
-        $query->where(function ($q) use ($role, $projectIds, $overheadPrivileged, $overheadCcIds, $canPayroll) {
-            $q->where(function ($qq) use ($role, $projectIds) {
-                $qq->whereNotNull('project_id');
-                if (!in_array($role, self::PROJECT_PRIVILEGED_ROLES)) {
-                    $qq->whereIn('project_id', $projectIds->isEmpty() ? [0] : $projectIds);
-                }
-            });
-
-            if ($overheadPrivileged) {
-                $q->orWhereHas('costCenter', fn ($c) => $c->whereIn('type', CostCenter::OVERHEAD_LIKE_TYPES));
-            } elseif ($overheadCcIds->isNotEmpty()) {
-                $q->orWhereHas('costCenter', fn ($c) =>
-                    $c->whereIn('type', CostCenter::OVERHEAD_LIKE_TYPES)->whereIn('id', $overheadCcIds)
-                );
-            }
-
-            if ($canPayroll) {
-                $q->orWhereHas('costCenter', fn ($c) => $c->where('type', 'PAYROLL'));
-            }
-        });
+        $this->scopeVisibleTo($query);
 
         $budgetPlans = $query->when($ids->isNotEmpty(), fn ($q) => $q->whereIn('id', $ids))
             ->latest()->get();
@@ -593,10 +509,10 @@ class BudgetPlanController extends Controller
 
             // GUARD: cegah user membuat budget pada cost center yang tidak boleh dia akses
             if (strtoupper($costCenter->type) === 'PAYROLL') {
-                $allowed = $this->canSeePayroll();
+                $allowed = $this->bpCanSeePayroll();
             } else {
-                $allowed = $this->overheadPrivileged()
-                    || $this->accessibleOverheadCostCenterIds()->contains((int) $costCenter->id);
+                $allowed = $this->bpOverheadPrivileged()
+                    || $this->bpAccessibleOverheadCostCenterIds()->contains((int) $costCenter->id);
             }
 
             if (!$allowed) {
@@ -1547,11 +1463,29 @@ class BudgetPlanController extends Controller
                 ->with('error', 'Hanya Budget Plan berstatus DRAFT yang dapat dihapus.');
         }
 
-        DB::transaction(function () use ($bp) {
-            foreach ($bp->attachments as $att) {
-                Storage::disk('secure')->delete($att->path);
-            }
+        /*
+        | Berkas dihapus SETELAH transaksi benar-benar sukses.
+        |
+        | Sebelumnya Storage::delete() dipanggil di DALAM transaksi. Penghapusan
+        | berkas tidak transaksional: kalau transaksinya rollback setelah
+        | berkasnya terhapus — deadlock, constraint, timeout — barisnya kembali
+        | utuh sementara lampirannya sudah hilang dari disk. Hasilnya baris
+        | Budget Plan yang menunjuk berkas yang tidak ada lagi, tanpa error di
+        | mana pun, dan baru ketahuan saat seseorang mengklik lampirannya.
+        |
+        | DB::afterCommit() menjalankan closure hanya kalau commit berhasil, dan
+        | di luar transaksi apa pun kalau memang tidak ada transaksi.
+        */
+        $paths = $bp->attachments->pluck('path')->filter()->all();
+
+        DB::transaction(function () use ($bp, $paths) {
             $bp->delete();
+
+            DB::afterCommit(function () use ($paths) {
+                foreach ($paths as $path) {
+                    Storage::disk('secure')->delete($path);
+                }
+            });
         });
 
         return redirect('/budget-plan')

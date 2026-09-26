@@ -11,6 +11,8 @@ use Illuminate\Support\Str;
 
 class CostRegisterController extends Controller
 {
+    use \App\Http\Controllers\Concerns\CapsLargeLists;
+
     /*
     |--------------------------------------------------------------------------
     | INDEX
@@ -19,22 +21,48 @@ class CostRegisterController extends Controller
 
     public function index()
     {
-        $registers = CostRegister::with(['project.customer', 'attachments', 'inputBy', 'beneficiary'])
-            ->latest()
+        $query = CostRegister::with(['project.customer', 'attachments', 'inputBy', 'beneficiary']);
+
+        /*
+        | Ringkasan dihitung AGREGAT, bukan dari koleksi baris.
+        |
+        | Sebelumnya seluruh isi cost_registers ditarik ke memori lalu
+        | dihitung/dijumlahkan per tipe & status di atas koleksi itu. Dua
+        | masalah: (1) biayanya naik terus seiring catatan bertambah, dan (2)
+        | begitu daftar barisnya dibatasi (di bawah), angka ringkasannya akan
+        | ikut terpotong dan salah TANPA ada tanda apa pun bahwa ia salah.
+        |
+        | Pola yang sama dipakai ProjectController::index() dengan alasan yang
+        | sama persis.
+        */
+        $perStatus = (clone $query)->toBase()
+            ->selectRaw('status, COUNT(*) as jumlah, COALESCE(SUM(amount),0) as total')
+            ->groupBy('status')
             ->get();
 
+        $perTipe = (clone $query)->toBase()
+            ->selectRaw('type, COALESCE(SUM(amount),0) as total')
+            ->groupBy('type')
+            ->pluck('total', 'type');
+
         $summary = [
-            'total'    => $registers->count(),
-            'fixed'    => (int) $registers->where('type', 'FIXED_COST')->sum('amount'),
-            'overhead' => (int) $registers->where('type', 'OVERHEAD')->sum('amount'),
+            'total'    => (int) $perStatus->sum('jumlah'),
+            'fixed'    => (int) ($perTipe['FIXED_COST'] ?? 0),
+            'overhead' => (int) ($perTipe['OVERHEAD'] ?? 0),
             // MN-09 — posisi alur Non-CR menuju Treasury.
-            'draft'     => $registers->where('status', 'DRAFT')->count(),
-            'submitted' => $registers->where('status', 'SUBMITTED')->count(),
-            'queued'    => $registers->where('status', 'QUEUED')->count(),
-            'paid'      => (int) $registers->where('status', 'PAID')->sum('amount'),
+            'draft'     => (int) ($perStatus->firstWhere('status', 'DRAFT')->jumlah ?? 0),
+            'submitted' => (int) ($perStatus->firstWhere('status', 'SUBMITTED')->jumlah ?? 0),
+            'queued'    => (int) ($perStatus->firstWhere('status', 'QUEUED')->jumlah ?? 0),
+            'paid'      => (int) ($perStatus->firstWhere('status', 'PAID')->total ?? 0),
         ];
 
-        return view('cost-register.index', compact('registers', 'summary'));
+        // Baris dibatasi (Concerns\CapsLargeLists): daftar ini dirender penuh ke
+        // DOM lalu diurus DataTables di peramban, jadi ribuan baris membekukan
+        // halaman sebelum menampilkan apa pun.
+        [$registers, $truncated, $total] = $this->cappedRows($query, 'id');
+        $maxRows = $this->maxRows;
+
+        return view('cost-register.index', compact('registers', 'summary', 'truncated', 'total', 'maxRows'));
     }
 
     /*

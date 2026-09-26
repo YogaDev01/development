@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rules\Password;
 use App\Models\User;
 use App\Models\Role;
 use App\Models\ProjectMonitoringLog;
@@ -59,7 +60,10 @@ class ProfileController extends Controller
             'name'             => 'required|string|max:255',
             'phone'            => 'nullable|string|max:30',
             'current_password' => 'nullable|required_with:password|string',
-            'password'         => 'nullable|min:6|confirmed',
+            // Aturan sama dengan UserController (pembuatan/penggantian oleh
+            // admin) supaya tidak ada jalur yang lebih longgar: sebelumnya
+            // min:6 di kedua tempat, sehingga "123456" lolos.
+            'password'         => ['nullable', 'confirmed', Password::min(10)->letters()->numbers()],
         ]);
 
         if ($request->filled('password')) {

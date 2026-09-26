@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use App\Models\Project;
 use App\Models\ProjectDetail;
 use App\Models\ProjectMonitoringLog;
@@ -25,13 +26,32 @@ class ProjectMonitoringController extends Controller
      * keanggotaan Access Group-nya (finance/finance manager/approver
      * lintas-PO).
      */
-    private const MENTION_BYPASS_ROLES = ['superadmin', 'admin', 'approver', 'finance', 'finance_manager', 'cost_control', 'treasury', 'collection', 'accounting'];
+    /**
+     * Role yang melihat SELURUH PO di modul ini (tidak dibatasi Access Group).
+     *
+     * public: App\Services\FileAccess memakai daftar yang sama untuk lampiran
+     * log monitoring, supaya "boleh membuka halamannya" selalu setara dengan
+     * "boleh membuka lampirannya". Merujuk konstanta ini - bukan menyalin
+     * isinya - adalah bedanya antara satu sumber kebenaran dan dua daftar yang
+     * diam-diam bisa menyimpang.
+     */
+    public const MENTION_BYPASS_ROLES = ['superadmin', 'admin', 'approver', 'finance', 'finance_manager', 'cost_control', 'treasury', 'collection', 'accounting'];
+
+    /**
+     * Jumlah log obrolan yang dimuat saat halaman detail dibuka.
+     *
+     * Log yang lebih lama tidak hilang — hanya tidak ikut dirender pada
+     * pemuatan awal. Angkanya dipilih cukup besar supaya percakapan yang
+     * sedang berjalan utuh terlihat, dan cukup kecil supaya PO berumur panjang
+     * tidak membuat halamannya berhenti merespons.
+     */
+    private const LOG_AWAL_MAKS = 200;
 
     /**
      * Role yang berperan sebagai "Head" — bisa meng-ACC/tolak pengajuan
      * milestone selesai.
      */
-    private const HEAD_ROLES = ['superadmin', 'approver'];
+    private const HEAD_ROLES = \App\Support\AccessRoles::MONITORING_HEAD;
 
     /** Status Cost Request yang dianggap relevan untuk notifikasi feed. */
     private const COST_REQUEST_STATUS_LABELS = [
@@ -161,9 +181,40 @@ class ProjectMonitoringController extends Controller
             'details.cluster',
             'details.stage',
             'details.submittedDoneBy',
-            'monitoringLogs.user',
-            'monitoringLogs.attachments',
         ]);
+
+        /*
+        | Riwayat log DIBATASI.
+        |
+        | monitoringLogs adalah kanal obrolan per PO — ia hanya bertambah,
+        | tidak pernah menyusut. Sebelumnya seluruh riwayat dimuat sekaligus
+        | beserta relasi user & lampirannya, lalu dirender penuh ke DOM. Untuk
+        | PO yang berjalan setahun dengan percakapan harian itu berarti ribuan
+        | baris pada setiap pembukaan halaman, dan biayanya naik terus tanpa
+        | pernah ada yang menyadari kapan halamannya mulai berat.
+        |
+        | Mekanisme pemuatan bertahap sudah ada dan sudah benar:
+        | fetchMessages() mengambil log baru secara inkremental lewat
+        | where('id', '>', $afterId). Yang kurang hanya batas pada pemuatan
+        | AWAL-nya.
+        |
+        | Diambil yang TERBARU, lalu diurutkan naik lagi supaya gelembung
+        | obrolan tetap tampil kronologis seperti sebelumnya. $lastLogId di
+        | view diambil dari max('id') koleksi ini, jadi polling tetap benar.
+        */
+        $totalLogs = $project->monitoringLogs()->count();
+
+        $project->setRelation('monitoringLogs',
+            $project->monitoringLogs()
+                ->with(['user', 'attachments'])
+                ->orderByDesc('id')
+                ->limit(self::LOG_AWAL_MAKS)
+                ->get()
+                ->sortBy('created_at')
+                ->values()
+        );
+
+        $logsTruncated = $totalLogs > self::LOG_AWAL_MAKS;
 
         /*
         | Di halaman detail — satu proyek, dan inilah halaman yang memang
@@ -196,8 +247,8 @@ class ProjectMonitoringController extends Controller
 
         return view('project-monitoring.show', compact(
             'project', 'canManage', 'canSetMilestone', 'isHead', 'clusters', 'detailsByCluster', 'mentionUsers',
-            'budgetPlans', 'costRequestFeeds'
-        ));
+            'budgetPlans', 'costRequestFeeds', 'logsTruncated', 'totalLogs'
+        ) + ['logLimit' => self::LOG_AWAL_MAKS]);
     }
 
     /**
@@ -266,7 +317,18 @@ class ProjectMonitoringController extends Controller
             'project_detail_id'    => 'nullable|exists:project_details,id',
             'budget_plan_id'       => 'nullable|exists:budget_plans,id',
             'attachments'          => 'nullable|array',
-            'attachments.*'        => 'file|max:51200',
+            /*
+            | Disamakan dengan 13 form unggah lain di aplikasi.
+            |
+            | Sebelumnya 'file|max:51200' - satu-satunya aturan unggahan tanpa
+            | daftar putih tipe, dengan batas 50 MB sementara modul lain
+            | memakai 5-10 MB. Eksekusi di server tidak mungkin (disk 'secure'
+            | ada di storage/app/private, di luar docroot) dan SecureFileController
+            | memaksa unduh untuk MIME yang tidak dikenal, jadi ini bukan RCE
+            | maupun XSS - tapi tetap membuka penyalahgunaan penyimpanan dan
+            | penyebaran berkas berbahaya antar pengguna lewat kanal obrolan.
+            */
+            'attachments.*'        => 'file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
         ]);
 
         $fail = function (string $msg) use ($request) {
@@ -282,14 +344,31 @@ class ProjectMonitoringController extends Controller
         $detail = null;
         $budgetPlan = null;
 
+        /*
+        | Milestone & Budget Plan dicari LEWAT RELASI PO-nya, bukan global.
+        |
+        | Sebelumnya keduanya diambil dengan ProjectDetail::findOrFail() /
+        | BudgetPlan::findOrFail() — id-nya cuma divalidasi 'exists', tanpa
+        | memastikan ia milik $project. Akses ke PO-nya sendiri sudah dijaga
+        | benar di atas (findAccessibleProject + canManageProject), tapi id
+        | turunannya tidak: pengguna yang berhak atas PO 5 bisa mengirim
+        | project_detail_id milestone PO 11, dan barisnya tersimpan dengan
+        | project_id 5 tapi menunjuk milestone PO lain.
+        |
+        | Akibatnya bukan kebocoran (log dibaca per project_id), melainkan
+        | baris yang tertulis silang antar-PO — cukup untuk membuat laporan
+        | progress salah tanpa ada yang tampak keliru di layar mana pun.
+        |
+        | Dengan ->details() / ->budgetPlans(), id dari PO lain langsung 404.
+        */
         if ($request->filled('project_detail_id')) {
-            $detail = ProjectDetail::findOrFail($request->project_detail_id);
+            $detail = $project->details()->findOrFail($request->project_detail_id);
 
             if ($detail->status === 'NOT_STARTED') {
                 return $fail('Milestone ini belum dimulai — gunakan menu (⋮) untuk Start Milestone.');
             }
         } else {
-            $budgetPlan = \App\Models\BudgetPlan::findOrFail($request->budget_plan_id);
+            $budgetPlan = $project->budgetPlans()->findOrFail($request->budget_plan_id);
 
             if ($budgetPlan->status !== 'ACTIVE') {
                 return $fail('Budget Plan ini tidak aktif — tidak bisa menulis aktivitas baru.');
@@ -526,32 +605,89 @@ class ProjectMonitoringController extends Controller
 
         $detailIds = ProjectDetail::where('project_id', $project->id)->pluck('id')->all();
 
+        /*
+        | Bobot ditulis DI DALAM satu transaksi, dan dikelompokkan per nilai.
+        |
+        | Sebelumnya: satu UPDATE per milestone di dalam loop, tanpa transaksi.
+        | Dua akibatnya. (1) Jumlah query naik sebanding jumlah milestone. (2)
+        | Lebih penting: validasi "total bobot harus tepat 100" diperiksa
+        | sebelum loop, tapi penulisannya tidak atomik — kalau gagal di tengah,
+        | PO itu tinggal dengan bobot yang totalnya BUKAN 100, yaitu keadaan
+        | yang justru divalidasi supaya tidak pernah terjadi. Progress
+        | implementasi lalu dihitung dari pembagi yang salah.
+        |
+        | Milestone dengan bobot sama diperbarui bersama (biasanya bobotnya
+        | hanya beberapa nilai berbeda), jadi query-nya sedikit walau
+        | milestone-nya banyak.
+        */
+        $perBobot = [];
+
         foreach ($request->weights as $detailId => $weight) {
-            if (! in_array((int) $detailId, $detailIds, true)) continue;
-            ProjectDetail::where('id', $detailId)->update(['weight' => (int) $weight]);
+            $detailId = (int) $detailId;
+            if (! in_array($detailId, $detailIds, true)) continue;
+            $perBobot[(int) $weight][] = $detailId;
         }
 
-        ProjectMonitoringLog::create([
-            'project_id' => $project->id,
-            'user_id'    => Auth::id(),
-            'type'       => 'SYSTEM',
-            'message'    => Auth::user()->name . ' memperbarui bobot milestone.',
-        ]);
+        DB::transaction(function () use ($perBobot, $project) {
+            foreach ($perBobot as $bobot => $ids) {
+                ProjectDetail::whereIn('id', $ids)->update(['weight' => $bobot]);
+            }
+
+            ProjectMonitoringLog::create([
+                'project_id' => $project->id,
+                'user_id'    => Auth::id(),
+                'type'       => 'SYSTEM',
+                'message'    => Auth::user()->name . ' memperbarui bobot milestone.',
+            ]);
+        });
 
         return back()->with('success', 'Bobot milestone berhasil disimpan.');
     }
 
     /**
      * Rekonsiliasi status header (PO Received/BAST/Invoice/Payment) berdasarkan
-     * status milestone SAAT INI — dipanggil tiap halaman index/detail dimuat,
-     * supaya header tidak "nyangkut" kalau perubahan sebelumnya gagal ter-sync
-     * (mis. data lama sebelum fitur auto-sync ini ada). Logikanya sendiri ada
-     * di Project::reconcileMonitoringStatuses() supaya bisa dipakai ulang oleh
-     * halaman lain yang menampilkan badge yang sama (mis. Project index).
+     * status milestone SAAT INI — dipanggil saat halaman detail dimuat, supaya
+     * header tidak "nyangkut" kalau perubahan sebelumnya gagal ter-sync (mis.
+     * data lama sebelum fitur auto-sync ini ada). Logikanya sendiri ada di
+     * Project::reconcileMonitoringStatuses() supaya bisa dipakai ulang oleh
+     * halaman lain yang menampilkan badge yang sama.
+     *
+     * AMAN DARI PENULISAN GANDA.
+     *
+     * Penyelarasan ini menulis pada permintaan GET — itu memang disengaja dan
+     * dipertahankan, karena halaman inilah yang memiliki data monitoring dan
+     * membukanya adalah saat yang tepat untuk merapikan. Yang perlu dijaga
+     * adalah akibatnya saat dua orang membuka PO yang sama bersamaan:
+     *
+     *   Tanpa penguncian, keduanya membaca nilai kolom yang sama-sama basi,
+     *   keduanya memutuskan "ada yang perlu diubah", lalu keduanya menulis.
+     *   Nilai akhirnya memang sama (idempoten), tapi log SYSTEM-nya tidak:
+     *   feed aktivitas PO itu mendapat dua baris "status diperbarui" yang
+     *   identik untuk satu perubahan yang sama. Pada tab yang di-refresh
+     *   berulang, baris itu menumpuk dan mengubur percakapan sungguhan.
+     *
+     * lockForUpdate() membuat permintaan kedua MENUNGGU, lalu membaca ulang
+     * nilai yang sudah diperbarui permintaan pertama. syncMonitoringHeaderStatus()
+     * mengembalikan null kalau kolomnya sudah sesuai, jadi yang kedua tidak
+     * menulis apa pun — tidak ke kolom, tidak ke log.
+     *
+     * Transaksinya sengaja SEMPIT: hanya membungkus baca-kunci + tulis, bukan
+     * seluruh penyusunan halaman, supaya tidak menahan baris lebih lama dari
+     * yang perlu.
      */
     private function reconcileMonitoringStatuses(Project $project): void
     {
-        $project->reconcileMonitoringStatuses();
+        DB::transaction(function () use ($project) {
+            // Kunci baris PO-nya, lalu muat ulang nilai kolom monitoring dari
+            // basis data. Tanpa refresh ini, model di memori masih memegang
+            // nilai yang dibaca SEBELUM kunci didapat — tepat kondisi basi
+            // yang ingin dihindari.
+            Project::whereKey($project->getKey())->lockForUpdate()->first();
+
+            $project->refresh()->loadMissing('details.stage');
+
+            $project->reconcileMonitoringStatuses();
+        });
     }
 
     /**

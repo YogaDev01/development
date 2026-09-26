@@ -626,7 +626,13 @@ body.tesys-ui .modal-body .nav-tabs { border-bottom: 1px solid var(--border) !im
 }
 
 /* Pencarian cepat dilepas lebih awal: di lebar ini ia menekan judul halaman. */
-@media (max-width: 720px) {
+/* Disamakan ke 640px, breakpoint "tablet sempit / ponsel" yang dipakai 11
+   aturan lain di berkas-berkas ini. Sebelumnya 720px - satu-satunya di
+   seluruh CSS - sehingga pada lebar 641-720px quick search sudah hilang
+   sementara komponen lain masih dalam mode lebar. Tidak ada alasan khusus
+   untuk 720; beda 80px itu hanya menghasilkan rentang di mana tata letak
+   terlihat setengah beralih. */
+@media (max-width: 640px) {
     body.tesys-ui #tsQuickSearchWrap { display: none !important; }
 }
 

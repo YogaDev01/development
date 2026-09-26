@@ -24,6 +24,8 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 class InvoiceCashReceiptController extends Controller
 {
+    use Concerns\ScopesInvoiceVisibility;
+
     use \App\Http\Controllers\Concerns\CapsLargeLists;
 
     /** Role — penerima notifikasi tiap tahap workflow invoice. */
@@ -50,15 +52,9 @@ class InvoiceCashReceiptController extends Controller
      * Request / BuildsCrWorklist); role finance/approval lain tetap lihat
      * semua invoice seperti sebelumnya.
      */
-    public function scopeVisibleTo($query): void
-    {
-        /** @var User $user */
-        $user = Auth::user();
-
-        if ($user->hasRole(['manager', 'head'])) {
-            $query->whereIn('po_id', $user->accessibleProjectIds()->all());
-        }
-    }
+    // scopeVisibleTo() pindah ke Concerns\ScopesInvoiceVisibility - lihat
+    // catatan di sana soal kenapa GlobalSearchController tidak boleh
+    // me-resolve controller ini dari container.
 
     public function index()
     {
@@ -70,7 +66,7 @@ class InvoiceCashReceiptController extends Controller
         // BuildsCrWorklist) — role finance/approval lain tetap lihat semua
         // invoice seperti sebelumnya.
         $query = Invoice::with(['po.customer', 'po.manager', 'poNumber', 'cashReceipts']);
-        $this->scopeVisibleTo($query);
+        $this->scopeInvoiceVisibleTo($query);
 
         /*
         | Ringkasan dihitung lewat agregat, bukan dari koleksi baris.
@@ -460,14 +456,23 @@ class InvoiceCashReceiptController extends Controller
 
     public function show($id)
     {
-        $invoice = Invoice::with([
+        /*
+        | Relasi yang dibutuhkan TIMELINE diambil dari kelasnya sendiri
+        | (InvoiceTimeline::relasiDibutuhkan()), bukan diketik ulang di sini.
+        |
+        | Daftar lama melewatkan 'receivedBy' dan 'deliveryNote' — keduanya
+        | dibaca saat menyusun peristiwa RECEIVED, jadi halaman detail invoice
+        | yang sudah diterima mengeluarkan dua query tambahan per pemuatan tanpa
+        | ada yang menyadarinya. Itu tepat jenis penyimpangan yang terjadi kalau
+        | "apa yang dibaca view" dan "apa yang dimuat controller" dipelihara di
+        | dua tempat berbeda.
+        */
+        $invoice = Invoice::with(array_merge([
             'po.customer', 'po.attachments',
             'poNumber.attachments',
             'sourceFund.bank',
             'details', 'attachments.inputBy',
-            'cashReceipts.sourceFund', 'cashReceipts.inputBy',
-            'createdBy', 'submittedBy', 'verifiedBy', 'approvedBy', 'sentBy', 'cancelledBy',
-        ])->findOrFail($id);
+        ], \App\Support\InvoiceTimeline::relasiDibutuhkan()))->findOrFail($id);
 
         $this->assertCanViewInvoice($invoice);
 

@@ -47,19 +47,18 @@ return [
         'token' => env('EXPORT_API_TOKEN'),
     ],
 
-    'openai' => [
-        'key'              => env('OPENAI_API_KEY'),
-        'model'            => env('OPENAI_MODEL', 'gpt-4o-mini'),
-        'reasoning_effort' => env('OPENAI_REASONING_EFFORT'),
-    ],
-
-    'gemini' => [
-        'key'   => env('GEMINI_API_KEY'),
-        'model' => env('GEMINI_MODEL', 'gemini-flash-lite-latest'),
-    ],
-
-    'tavily' => [
-        'key' => env('TAVILY_API_KEY'),
-    ],
+    /*
+    | Kunci OpenAI / Gemini / Tavily DIHAPUS pada 26 Sep 2026, bersama modul
+    | AI yang memakainya.
+    |
+    | Modul itu ternyata tidak terjangkau sama sekali: TesysAiController tidak
+    | pernah terpasang di route mana pun, sehingga ketiga service provider AI
+    | (OpenAiService, GeminiService, TavilyService), seluruh isi app/Services/Ai
+    | dan app/Services/Finance/AiDataService hanya saling merujuk satu sama
+    | lain. Membiarkan kuncinya di sini membuat pembaca menyimpulkan ada fitur
+    | AI yang aktif dan perlu dikonfigurasi - padahal tidak ada.
+    |
+    | Kalau modulnya dihidupkan lagi, kembalikan bersama route-nya.
+    */
 
 ];

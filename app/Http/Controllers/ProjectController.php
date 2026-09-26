@@ -21,6 +21,7 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use App\Services\RoleDirectory;
+use App\Support\AccessRoles;
 
 class ProjectController extends Controller
 {
@@ -40,24 +41,59 @@ class ProjectController extends Controller
     }
 
     /**
-     * Apakah user boleh melihat detail JSON satu PO. Longgar — mengikuti dua
-     * pintu masuk yang sah: Daftar PO (menu:list-po, tanpa scoping) & Project
-     * Monitoring (per access group, terbuka untuk semua role). Yang diblok:
-     * user tanpa menu list-po DAN tanpa PO ini di access group-nya.
+     * Peran yang melihat SELURUH PO, tanpa dibatasi Access Group.
+     *
+     * Daftarnya di App\Support\AccessRoles::PO_FULL_SCOPE — bukan literal di
+     * sini — supaya halaman daftar, detail JSON, dan ekspor tidak bisa
+     * berbeda pendapat tentang siapa yang berhak.
+     */
+    private function hasFullPoScope(): bool
+    {
+        return Auth::user()->hasRole(AccessRoles::PO_FULL_SCOPE);
+    }
+
+    /**
+     * ID PO yang boleh dilihat user saat ini (null = tidak dibatasi).
+     *
+     * Bentuknya disamakan dengan ProjectMonitoringController::accessibleProjectIds()
+     * supaya kedua modul menyaring dengan cara yang sama persis.
+     */
+    private function accessiblePoIds(): ?array
+    {
+        if ($this->hasFullPoScope()) {
+            return null;
+        }
+
+        return Auth::user()->accessibleProjectIds()->all();
+    }
+
+    /** Boleh melihat kolom bernilai uang pada PO? */
+    private function canSeePoValue(): bool
+    {
+        return Auth::user()->hasRole(AccessRoles::PO_VALUE);
+    }
+
+    /**
+     * Apakah user boleh melihat detail JSON satu PO.
+     *
+     * Sebelum 26 Sep 2026 method ini praktis mengizinkan semua orang: daftar
+     * peran literalnya memuat 'guest', dan cabang kedua meloloskan siapa pun
+     * yang punya menu list-po — sementara halaman list-po sendiri tidak
+     * menyaring baris sama sekali. Hasilnya nilai kontrak, Gross Profit dan
+     * Net Profit setiap PO terbuka untuk hampir seluruh peran, membatalkan
+     * aturan privasi yang dijaga ketat di Finance Summary.
+     *
+     * Sekarang: peran ber-scope penuh boleh semua; sisanya hanya PO yang ada
+     * di Access Group-nya — aturan yang sama dengan daftarnya, jadi tidak ada
+     * baris yang bisa dibuka lewat URL tapi tidak tampil di tabel.
      */
     private function canViewProjectJson(Project $project): bool
     {
-        $user = Auth::user();
-        $role = strtolower($user->role->name ?? '');
-
-        if (in_array($role, ['superadmin', 'admin', 'approver', 'finance', 'finance_manager', 'guest'])) {
-            return true;
-        }
-        if ($user->role && $user->role->hasMenu('list-po')) {
+        if ($this->hasFullPoScope()) {
             return true;
         }
 
-        return $user->accessibleProjectIds()->contains($project->id);
+        return Auth::user()->accessibleProjectIds()->contains($project->id);
     }
 
     /**
@@ -208,7 +244,23 @@ class ProjectController extends Controller
 
     public function index()
     {
-        $query = Project::with(['customer', 'inputBy', 'manager', 'budgetPlans', 'poNumbers', 'invoices', 'details.stage']);
+        /*
+        | Penyaringan baris per Access Group.
+        |
+        | Sebelumnya daftar ini TIDAK menyaring apa pun: gerbangnya hanya
+        | menu:list-po, sehingga setiap pemegang menu melihat seluruh PO
+        | perusahaan. Dua modul lain memperlakukan data yang sama sebagai
+        | terbatas — Project Monitoring membatasi ke accessibleProjectIds(),
+        | dan Finance Summary bahkan menyembunyikan NILAI PO dari Manager
+        | dengan komentar "// PRIVASI:". Halaman ini melewati keduanya.
+        |
+        | Sekarang ketiganya sepakat. Peran ber-scope penuh
+        | (AccessRoles::PO_FULL_SCOPE) tidak terpengaruh sama sekali.
+        */
+        $accessibleIds = $this->accessiblePoIds();
+
+        $query = Project::with(['customer', 'inputBy', 'manager', 'budgetPlans', 'poNumbers', 'invoices', 'details.stage'])
+            ->when(is_array($accessibleIds), fn ($q) => $q->whereIn('id', $accessibleIds ?: [0]));
 
         /*
         | Ringkasan dihitung agregat supaya tetap benar walau daftar barisnya
@@ -262,7 +314,12 @@ class ProjectController extends Controller
             'closed'        => (int) ($statusCounts['CLOSED'] ?? 0),
         ];
 
-        return view('project.index', compact('projects', 'summary', 'truncated', 'total', 'maxRows'));
+        // Kolom bernilai uang ditutup di VIEW untuk peran yang tidak berhak —
+        // kolomnya tetap ada supaya indeks kolom, filter kolom dan ekspor
+        // yang mengandalkan posisi tidak bergeser.
+        $canSeePoValue = $this->canSeePoValue();
+
+        return view('project.index', compact('projects', 'summary', 'truncated', 'total', 'maxRows', 'canSeePoValue'));
     }
 
     /*
@@ -281,9 +338,23 @@ class ProjectController extends Controller
          */
         $ids = collect((array) $request->input('ids', []))
             ->filter(fn ($v) => is_numeric($v))
-            ->map(fn ($v) => (int) $v);
+            ->map(fn ($v) => (int) $v)
+            /*
+            | Dibatasi jumlahnya. Daftar id datang dari peramban, jadi
+            | panjangnya ditentukan klien; tanpa batas, satu permintaan bisa
+            | menyusun klausa whereIn yang menembus max_allowed_packet MySQL
+            | dan gagal dengan galat yang tidak menunjuk sebab sebenarnya.
+            */
+            ->take(20000);
+
+        // Ekspor mengikuti scope yang sama dengan daftarnya. Route ini sudah
+        // digerbang role:superadmin,approver — keduanya ber-scope penuh — tapi
+        // scope-nya tetap diterapkan supaya penambahan peran di route tidak
+        // diam-diam membuka seluruh PO lewat tombol Export.
+        $accessibleIds = $this->accessiblePoIds();
 
         $projects = Project::with(['customer', 'manager', 'budgetPlans', 'poNumbers', 'invoices'])
+            ->when(is_array($accessibleIds), fn ($q) => $q->whereIn('id', $accessibleIds ?: [0]))
             ->when($ids->isNotEmpty(), fn ($q) => $q->whereIn('id', $ids))
             ->latest()->get();
         Project::preloadFinancials($projects);

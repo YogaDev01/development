@@ -1,5 +1,14 @@
 @extends('layouts.app')
 
+@push('styles')
+    {{-- bootstrap-select dimuat di HALAMAN INI SAJA.
+         Halaman ini salah satu dari dua tempat yang memakai class
+         "selectpicker"; memuatnya di layout global berarti dua pustaka dropdown
+         (bersama tom-select) aktif di seluruh aplikasi, padahal hanya di sini
+         yang membutuhkannya. --}}
+    <link rel="stylesheet" href="@aset('plugins/bootstrap-select/bootstrap-select.min.css')">
+@endpush
+
 @section('content')
 
 <div class="content">
@@ -404,14 +413,8 @@
 @endsection
 
 @push('scripts')
-
-<!-- BOOTSTRAP SELECT -->
-<link 
-    rel="stylesheet"
-    href="{{ asset('plugins/bootstrap-select/bootstrap-select.min.css') }}"
->
-
-<script src="{{ asset('plugins/bootstrap-select/bootstrap-select.min.js') }}"></script>
+{{-- Wajib dimuat sebelum pemanggilan .selectpicker() di bawah. --}}
+<script src="@aset('plugins/bootstrap-select/bootstrap-select.min.js')"></script>
 
 <script>
 

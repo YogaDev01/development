@@ -486,6 +486,22 @@
 /* ── TABEL: scroll horizontal, semua kolom fit-content kecuali Description,
    kolom Code & Action dibekukan (pola sama seperti invoice-cash-receipt &
    project/Purchase Order). ── */
+/*
+| .cr-table-wrap dipakai di _table.blade.php sebagai pembungkus tabel, tapi
+| sebelumnya TIDAK PERNAH didefinisikan di CSS mana pun. Akibatnya markup yang
+| dikirim server tidak punya area geser sama sekali: pada layar sempit, tabel
+| ~20 kolom memaksa SELURUH halaman menggeser sampai JavaScript di bawah
+| membungkusnya ulang dengan .cr-hscroll. Ada jenak tata letak rusak di setiap
+| pemuatan, dan kalau JavaScript gagal, tabel tersibuk di aplikasi merusak
+| layout secara permanen.
+|
+| Didefinisikan di sini supaya markup server sudah benar sendiri; pembungkusan
+| oleh JavaScript tetap bekerja seperti sebelumnya (dan kini hanya menambahkan
+| perilaku, bukan menjadi syarat).
+*/
+.cr-table-wrap { overflow-x:auto; }
+.cr-table-wrap .cr-tbl { width:auto !important; min-width:100%; margin-bottom:0; }
+
 .cr-hscroll { overflow-x:auto; }
 .cr-hscroll .cr-tbl { width:auto !important; min-width:100%; margin-bottom:0; }
 .cr-hscroll .cr-tbl th,
@@ -757,14 +773,14 @@ $(function () {
         { key: 'status',      label: 'Status' },
     ];
     var CR_TABS = {
-        ca: { id: 'tblCA', mapVis: { tanggal: 3, paid_at: 4, pengaju: 5, penerima: 6, pic: 7, realisasi: 9, refund: 10, claim: 11 },
+        ca: { id: 'tblCA', mapVis: { tanggal: 3, paid_at: 4, pengaju: 5, pic: 6, realisasi: 8, refund: 9, claim: 10 },
               filters: CR_ROW_FILTERS },
-        cp: { id: 'tblCP', mapVis: { tanggal: 3, paid_at: 4, pengaju: 5, penerima: 6, pic: 7 },
+        cp: { id: 'tblCP', mapVis: { tanggal: 3, paid_at: 4, pengaju: 5, pic: 6 },
               filters: CR_ROW_FILTERS },
-        db: { id: 'tblDB', mapVis: { tanggal: 4, paid_at: 5, pengaju: 6, penerima: 7, pic: 8 },
+        db: { id: 'tblDB', mapVis: { tanggal: 4, paid_at: 5, pengaju: 6, pic: 7 },
               filters: [{ key: 'jenis', label: 'Jenis', search: false }].concat(CR_ROW_FILTERS) },
     };
-    var crVisDefault = { tanggal: true, paid_at: true, pengaju: true, penerima: true, pic: true, realisasi: false, refund: true, claim: true };
+    var crVisDefault = { tanggal: true, paid_at: true, pengaju: true, pic: true, realisasi: false, refund: true, claim: true };
 
     // Preferensi kolom per tab (kunci tab Cash Advance tetap sama seperti sebelumnya).
     function crVisKey(tab, key) { return 'crColVis_' + (tab === 'ca' ? '' : tab + '_') + key; }

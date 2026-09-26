@@ -14,6 +14,8 @@ use App\Models\SourceFund;
 
 class ForecastController extends Controller
 {
+    use \App\Http\Controllers\Concerns\CapsLargeLists;
+
     /*
     |--------------------------------------------------------------------------
     | INDEX
@@ -22,19 +24,38 @@ class ForecastController extends Controller
 
     public function index(Request $request)
     {
-        $forecasts = Forecast::with(['details.sourceFund:id,name', 'details.project:id,code,name'])
-            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
-            ->latest()
-            ->get();
+        /*
+        | Ringkasan AGREGAT + baris dibatasi (Concerns\CapsLargeLists).
+        |
+        | Daftar ini dirender penuh ke DOM lalu diurus DataTables di peramban -
+        | tidak ada paginasi server. Selama datanya ratusan baris itu cepat;
+        | begitu ribuan, halamannya membeku sebelum menampilkan apa pun, tanpa
+        | tanda apa-apa selain peramban yang berhenti merespons.
+        |
+        | Angka ringkasan dipindah ke query agregat supaya tetap benar walau
+        | daftar barisnya dipotong. Kalau ia ikut dihitung dari koleksi yang
+        | sudah terpotong, angkanya salah TANPA ada tanda bahwa ia salah - itu
+        | lebih buruk daripada daftar yang terpotong dengan jujur.
+        */
+        $query = Forecast::with(['details.sourceFund:id,name', 'details.project:id,code,name'])
+            ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status));
+
+        $perStatus = (clone $query)->toBase()
+            ->selectRaw('status, COUNT(*) as jumlah')
+            ->groupBy('status')
+            ->pluck('jumlah', 'status');
 
         $summary = [
-            'total'  => $forecasts->count(),
-            'draft'  => $forecasts->where('status', 'DRAFT')->count(),
-            'active' => $forecasts->where('status', 'ACTIVE')->count(),
-            'closed' => $forecasts->where('status', 'CLOSED')->count(),
+            'total'  => (int) $perStatus->sum(),
+            'draft'  => (int) ($perStatus['DRAFT'] ?? 0),
+            'active' => (int) ($perStatus['ACTIVE'] ?? 0),
+            'closed' => (int) ($perStatus['CLOSED'] ?? 0),
         ];
 
-        return view('forecast.index', compact('forecasts', 'summary'));
+        [$forecasts, $truncated, $total] = $this->cappedRows($query, 'id');
+        $maxRows = $this->maxRows;
+
+        return view('forecast.index', compact('forecasts', 'summary', 'truncated', 'total', 'maxRows'));
     }
 
     /*

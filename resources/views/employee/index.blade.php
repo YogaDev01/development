@@ -49,6 +49,17 @@
                     </div>
                 </div>
 
+                {{-- Daftar dibatasi baris terbaru (Concerns\CapsLargeLists);
+                     angka kartu ringkasan tetap dihitung dari SELURUH data
+                     lewat query agregat, jadi tidak ikut terpotong. --}}
+                @if(!empty($truncated))
+                <div class="alert alert-warning py-2 px-3 mb-3" style="font-size:12.5px;">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                    Menampilkan <strong>{{ number_format($maxRows, 0, ',', '.') }}</strong> karyawan dari total
+                    <strong>{{ number_format($total, 0, ',', '.') }}</strong>.
+                    Gunakan pencarian/filter untuk mempersempit.
+                </div>
+                @endif
                 <div class="table-responsive">
                     <table id="empTable" class="table table-bordered table-hover table-striped mb-0">
                         <thead class="bg-light">

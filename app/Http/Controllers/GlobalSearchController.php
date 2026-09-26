@@ -36,13 +36,60 @@ use Illuminate\Support\Str;
  */
 class GlobalSearchController extends Controller
 {
+    /*
+    | Ketiga aturan visibilitas dipinjam lewat trait, bukan dengan me-resolve
+    | controller lain dari container seperti sebelumnya
+    | (app(BudgetPlanController::class)->scopeVisibleTo(...)).
+    |
+    | Niatnya sejak awal benar - aturan visibilitas tidak boleh ditulis dua
+    | kali - dan itu tidak berubah. Yang berubah cuma cara meminjamnya:
+    | controller membawa keadaan yang terikat satu permintaan HTTP, jadi
+    | memanggilnya sebagai layanan berperilaku tidak menentu di luar siklus
+    | request. Trait memberi hasil yang sama tanpa ketergantungan itu.
+    */
     use BuildsCrWorklist;
+    use Concerns\ScopesBudgetPlanVisibility;
+    use Concerns\ScopesInvoiceVisibility;
 
     /** Maksimum baris per modul, supaya daftar tetap terbaca sekali lihat. */
     private const PER_MODUL = 5;
 
-    /** Minimal panjang kata kunci — di bawah ini hasilnya terlalu umum. */
-    private const MIN_HURUF = 2;
+    /**
+     * Minimal panjang kata kunci.
+     *
+     * Dinaikkan dari 2 ke 3, sejalan dengan tesys-command.js. Dua huruf cocok
+     * dengan hampir semua baris, jadi hasilnya tidak berguna sementara biaya
+     * pencariannya penuh: lima modul, dua kolom masing-masing.
+     */
+    private const MIN_HURUF = 3;
+
+    /**
+     * Susun kondisi pencarian untuk satu modul.
+     *
+     * Kolom KODE dicari dengan pola AWALAN ("CR-123%"), bukan "%CR-123%".
+     * Wildcard di awal membuat MySQL tidak bisa memakai indeks sama sekali dan
+     * memaksa pemindaian tabel penuh — pada tabel berisi ratusan ribu baris,
+     * dikali dua kolom dikali lima modul, satu pencarian berarti sepuluh
+     * pemindaian penuh. Kode dokumen di aplikasi ini selalu dicari dari
+     * depannya (CR-, BP-, INV-, SJ-), jadi pola awalan tidak mengurangi
+     * kegunaannya sama sekali sementara indeks 'code' yang sudah ada langsung
+     * terpakai.
+     *
+     * Kolom DESKRIPSI tetap memakai pola mengandung — di situ pencarian dari
+     * tengah memang yang diinginkan. Itu tetap memindai, tapi satu kolom
+     * memindai jauh lebih murah daripada dua.
+     *
+     * Karakter '%' dan '_' dari pengguna di-escape: tanpa itu keduanya
+     * berfungsi sebagai wildcard, sehingga mengetik "%" saja mencocokkan
+     * seluruh tabel.
+     */
+    private function cocok($query, string $kolomKode, string $kolomTeks, string $q)
+    {
+        $aman = addcslashes($q, '%_\\');
+
+        return $query->where(fn ($w) => $w->where($kolomKode, 'like', "{$aman}%")
+            ->orWhere($kolomTeks, 'like', "%{$aman}%"));
+    }
 
     public function search(Request $request)
     {
@@ -118,9 +165,7 @@ class GlobalSearchController extends Controller
 
     private function costRequest(string $q): array
     {
-        $query = BudgetRequest::with('beneficiary')
-            ->where(fn ($w) => $w->where('code', 'like', "%{$q}%")
-                ->orWhere('description', 'like', "%{$q}%"));
+        $query = $this->cocok(BudgetRequest::with('beneficiary'), 'code', 'description', $q);
 
         // Scoping milik modul Cost Request sendiri (trait BuildsCrWorklist).
         $this->scopeByRole($query);
@@ -144,9 +189,7 @@ class GlobalSearchController extends Controller
     {
         // ProjectController::index() tidak menyaring baris per role; di sini
         // pun tidak, supaya hasilnya sama dengan isi halaman Purchase Order.
-        $items = Project::with('customer')
-            ->where(fn ($w) => $w->where('code', 'like', "%{$q}%")
-                ->orWhere('name', 'like', "%{$q}%"))
+        $items = $this->cocok(Project::with('customer'), 'code', 'name', $q)
             ->latest()->limit(self::PER_MODUL)->get()
             ->map(fn ($p) => $this->baris(
                 $p->code,
@@ -161,11 +204,9 @@ class GlobalSearchController extends Controller
 
     private function budgetPlan(string $q): array
     {
-        $query = BudgetPlan::with('project')
-            ->where(fn ($w) => $w->where('code', 'like', "%{$q}%")
-                ->orWhere('description', 'like', "%{$q}%"));
+        $query = $this->cocok(BudgetPlan::with('project'), 'code', 'description', $q);
 
-        app(BudgetPlanController::class)->scopeVisibleTo($query);
+        $this->scopeVisibleTo($query);
 
         return [
             'key'   => 'budget-plan',
@@ -184,11 +225,9 @@ class GlobalSearchController extends Controller
 
     private function invoice(string $q): array
     {
-        $query = Invoice::with('po')
-            ->where(fn ($w) => $w->where('code', 'like', "%{$q}%")
-                ->orWhere('faktur_number', 'like', "%{$q}%"));
+        $query = $this->cocok(Invoice::with('po'), 'code', 'faktur_number', $q);
 
-        app(InvoiceCashReceiptController::class)->scopeVisibleTo($query);
+        $this->scopeInvoiceVisibleTo($query);
 
         return [
             'key'   => 'invoice',
@@ -209,8 +248,7 @@ class GlobalSearchController extends Controller
     private function dailyTransaction(string $q): array
     {
         // DailyTransactionController::index() juga tidak menyaring baris per role.
-        $items = DailyTransaction::where(fn ($w) => $w->where('code', 'like', "%{$q}%")
-                ->orWhere('description', 'like', "%{$q}%"))
+        $items = $this->cocok(DailyTransaction::query(), 'code', 'description', $q)
             ->latest()->limit(self::PER_MODUL)->get()
             ->map(fn ($trx) => $this->baris(
                 $trx->code,

@@ -38,7 +38,7 @@
     </script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="{{ asset('plugins/fontawesome-free/css/all.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/tesys-ui-tokens.css') }}?v={{ filemtime(public_path('css/tesys-ui-tokens.css')) }}">
+    <link rel="stylesheet" href="@aset('css/tesys-ui-tokens.css')">
 
     <style>
         * { box-sizing: border-box; }

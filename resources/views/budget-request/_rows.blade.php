@@ -68,11 +68,8 @@
                                 </td>
 
                                 <td class="text-nowrap">
-                                    {{ $cr->beneficiary?->nickname ?? '-' }}
-                                </td>
-
-                                <td class="text-nowrap">
                                     {{ $cr->beneficiary?->pic?->pic ?? '-' }}
+                                    <div style="font-size:10px;color:var(--text-faint);margin-top:2px;">{{ $cr->beneficiary?->nickname ?? '-' }}</div>
                                 </td>
 
                                 <td class="text-right text-nowrap col-raw-amount" data-raw="{{ $cr->amount }}">

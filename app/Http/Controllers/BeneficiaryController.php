@@ -24,7 +24,9 @@ class BeneficiaryController extends Controller
      * routes/web.php — dua tempat itu berpasangan. Yang satu menjaga pintunya,
      * yang satu menentukan tombolnya dirender atau tidak.
      */
-    public const MANAGE_ROLES = ['superadmin'];
+    /** Sumbernya App\Support\AccessRoles::BENEFICIARY_MANAGE; konstanta ini
+     *  dipertahankan karena routes/web.php merujuknya dalam komentar. */
+    public const MANAGE_ROLES = \App\Support\AccessRoles::BENEFICIARY_MANAGE;
 
     /** Boleh mengubah/menghapus baris yang sudah ada? */
     private function canManage(): bool

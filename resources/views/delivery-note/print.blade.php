@@ -40,8 +40,6 @@ $company = ['name' => 'PT TEREX', 'logo' => 'ts_logo_dark.png'];
     table.details td.num { text-align: right; }
     table.details .fit { width: 1%; white-space: nowrap; }
 
-    .notes-block { font-size: 12px; margin-bottom: 24px; }
-    .notes-block strong { display: block; font-size: 11px; text-transform: uppercase; color: #888; margin-bottom: 4px; }
 
     .signature-row { display: flex; justify-content: space-between; margin-top: 50px; }
     .signature-row .box { text-align: center; width: 220px; font-size: 12px; }
@@ -91,9 +89,6 @@ $company = ['name' => 'PT TEREX', 'logo' => 'ts_logo_dark.png'];
             <strong>Penerima</strong>
             {{ $deliveryNote->customer->name ?? '-' }}<br>
             {{ $deliveryNote->customer->address ?? '-' }}
-            @if($deliveryNote->customer->npwp ?? null)
-                <br>NPWP: {{ $deliveryNote->customer->npwp }}
-            @endif
         </div>
     </div>
 
@@ -131,13 +126,6 @@ $company = ['name' => 'PT TEREX', 'logo' => 'ts_logo_dark.png'];
             @endforeach
         </tbody>
     </table>
-
-    @if($deliveryNote->notes)
-    <div class="notes-block">
-        <strong>Catatan</strong>
-        {{ $deliveryNote->notes }}
-    </div>
-    @endif
 
     <div class="signature-row">
         <div class="box">

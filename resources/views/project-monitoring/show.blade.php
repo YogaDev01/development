@@ -3,6 +3,12 @@
 @section('title', 'Detail Project Monitoring')
 
 @php
+    /*
+     | $project->monitoringLogs sudah dibatasi ProjectMonitoringController::show()
+     | ke $logLimit log TERBARU (diurutkan kronologis kembali). $lastLogId
+     | karena itu tetap id tertinggi yang dirender, sehingga polling
+     | fetchMessages() (where id > lastLogId) tetap benar.
+     */
     $allLogs = $project->monitoringLogs;
     $lastLogId = $allLogs->max('id') ?? 0;
 @endphp
@@ -37,7 +43,14 @@
                 {{-- SIDEBAR: CLUSTER (dropdown toggle) > MILESTONE --}}
                 <div class="col-md-4 col-lg-3 d-flex flex-column monitoring-sidebar">
                     <div class="sidebar-topbar d-flex align-items-center" style="gap:6px;">
-                        <input type="text" id="chatSearch" class="form-control form-control-sm" placeholder="Cari di seluruh log...">
+                        {{-- Placeholder menyesuaikan kenyataan: pencarian ini
+                             bekerja di peramban atas log yang DIMUAT, dan
+                             pemuatan awal dibatasi (lihat banner di bawah).
+                             Menjanjikan "seluruh log" saat sebagiannya tidak
+                             ada di halaman hanya membuat orang menyimpulkan
+                             datanya hilang. --}}
+                        <input type="text" id="chatSearch" class="form-control form-control-sm"
+                               placeholder="{{ ($logsTruncated ?? false) ? 'Cari di log terbaru...' : 'Cari di seluruh log...' }}">
                         @if($canManage)
                         <button aria-label="Atur Bobot Milestone" type="button" class="btn btn-outline-secondary btn-sm" id="btnEditWeights" title="Atur Bobot Milestone" style="flex-shrink:0;">
                             <i class="fas fa-balance-scale"></i>
@@ -147,6 +160,18 @@
                          data-detail-base-url="{{ url('/project-monitoring/detail') }}"
                          data-mention-users="{{ $mentionUsers->map(fn($u) => ['id' => $u->id, 'name' => $u->name, 'username' => $u->username ?: \Illuminate\Support\Str::of($u->name)->replace(' ', '')->limit(8, '')])->values()->toJson() }}"
                          class="chat-scroll">
+                        @if($logsTruncated ?? false)
+                        {{-- Jujur soal apa yang tidak ada di halaman ini.
+                             Tanpa penanda, riwayat yang tidak dimuat tampak
+                             seperti riwayat yang hilang - dan orang akan
+                             melaporkannya sebagai data terhapus. --}}
+                        <div class="alert alert-info py-2 px-3 mb-2" style="font-size:12px;">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Menampilkan <strong>{{ number_format($logLimit, 0, ',', '.') }}</strong> aktivitas terbaru
+                            dari total <strong>{{ number_format($totalLogs, 0, ',', '.') }}</strong>.
+                            Aktivitas lebih lama tidak dimuat agar halaman tetap responsif.
+                        </div>
+                        @endif
                         <div id="chatPlaceholder" class="chat-empty">
                             <i class="fas fa-comments"></i>
                             <div class="chat-empty-title">Belum ada yang dipilih</div>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 use App\Models\User;
 use App\Models\Role;
@@ -135,7 +136,18 @@ class UserController extends Controller
 
             'phone' => 'nullable|string|max:20',
 
-            'password' => 'required|min:6',
+            /*
+            | Kebijakan password: min 10 karakter, wajib huruf DAN angka.
+            |
+            | Sebelumnya 'min:6' saja, sehingga "123456" lolos untuk akun yang
+            | bisa menyetujui pembayaran. Batas laju login memperlambat serangan
+            | daring, tapi tidak menolong sama sekali terhadap password yang
+            | memang mudah ditebak pada percobaan pertama.
+            |
+            | Password yang SUDAH ada tidak dipaksa berubah — aturan ini hanya
+            | berlaku untuk yang dibuat/diganti setelah ini.
+            */
+            'password' => ['required', 'confirmed', Password::min(10)->letters()->numbers()],
 
             'role_id' => 'required|exists:roles,id',
 
@@ -336,7 +348,8 @@ class UserController extends Controller
 
             $request->validate([
 
-                'password' => 'min:6',
+                // Sama dengan aturan saat pembuatan akun (lihat store()).
+                'password' => ['confirmed', Password::min(10)->letters()->numbers()],
 
             ]);
 
@@ -400,6 +413,43 @@ class UserController extends Controller
         if (\App\Models\BudgetRequest::withTrashed()->where('applicant_id', $user->id)->exists()) {
             return redirect('/user')
                 ->with('error', 'User tidak dapat dihapus karena sudah memiliki Cost Request. Nonaktifkan saja.');
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Tiga FK lain yang juga ON DELETE CASCADE ke users
+        |--------------------------------------------------------------------------
+        | Dua penjaga di atas menutup Project & Cost Request, tapi users masih
+        | dirujuk cascade oleh tiga tabel lain:
+        |
+        |   daily_transactions.created_by   -> batch pembayaran Treasury
+        |   feedback_submissions.user_id    -> riwayat kritik/saran ke CEO
+        |   team_members.user_id            -> keanggotaan Team
+        |
+        | Yang paling berat konsekuensinya daily_transactions: tabel itu TIDAK
+        | memakai SoftDeletes, dan daily_transaction_items ikut cascade di
+        | belakangnya. Menghapus satu user berarti batch pembayaran yang sudah
+        | APPROVED/PAID lenyap permanen beserta seluruh itemnya - di level
+        | MySQL, tanpa lewat Eloquent, tanpa recycle bin, tanpa jejak. Setelah
+        | itu rekonsiliasi kas tidak lagi bisa dibuktikan.
+        |
+        | Migrasi 2026_09_26_000002 mengubah created_by menjadi RESTRICT supaya
+        | database menolak sendiri; penjaga di sini yang memberi pesan yang
+        | bisa dimengerti alih-alih error constraint mentah.
+        */
+        if (\App\Models\DailyTransaction::where('created_by', $user->id)->exists()) {
+            return redirect('/user')
+                ->with('error', 'User tidak dapat dihapus karena sudah pernah membuat batch Treasury. Nonaktifkan saja.');
+        }
+
+        if (\App\Models\FeedbackSubmission::where('user_id', $user->id)->exists()) {
+            return redirect('/user')
+                ->with('error', 'User tidak dapat dihapus karena memiliki riwayat General Feedback. Nonaktifkan saja.');
+        }
+
+        if (\App\Models\TeamMember::where('user_id', $user->id)->exists()) {
+            return redirect('/user')
+                ->with('error', 'User tidak dapat dihapus karena masih tercatat sebagai anggota Team. Keluarkan dari Team lebih dulu, atau nonaktifkan saja.');
         }
 
         /*

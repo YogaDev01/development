@@ -91,7 +91,6 @@
                                         'uploaded'   => 'Uploaded',
                                         'margin'     => 'Margin',
                                         'contract'   => 'Contract',
-                                        'poqty'      => 'Qty PO',
                                         'povalue'    => 'PO Value',
                                         'budget'     => 'Budget',
                                         'varcost'    => 'Variable Cost',
@@ -137,7 +136,6 @@
                                 <th scope="col" class="text-center col-wrap-header" style="width:110px;" title="Lingkaran isi = status Upload dokumen (No. PO). Cincin luar = status Progress milestone (Project Monitoring).">Uploaded</th>
                                 <th scope="col" class="text-center col-wrap-header" style="width:80px;">Margin</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Contract</th>
-                                <th scope="col" class="text-center text-nowrap" style="width:1%;" title="Jumlah No. PO yang sudah terbit pada kode ini. Klik untuk membuka Summary Progress khusus PO ini.">Qty PO</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">PO Value</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Budget</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Variable Cost</th>
@@ -166,6 +164,29 @@
                                 $waitingBudget = $project->isWaitingBudget();
                                 $poActual = $project->poNumbers->count();
                                 $marginBadge = fn ($v) => $v >= 20 ? 'success' : ($v >= 0 ? 'warning' : 'danger');
+
+                                /*
+                                | PRIVASI NILAI PO.
+                                |
+                                | $canSeePoValue dikirim ProjectController::index()
+                                | dari AccessRoles::PO_VALUE — daftar yang sama
+                                | dengan FinanceSummaryController, supaya kedua
+                                | halaman tidak berbeda pendapat soal siapa yang
+                                | boleh melihat nilai PO.
+                                |
+                                | Kolomnya TIDAK dihilangkan, hanya isinya
+                                | ditutup: menghapus kolom akan menggeser indeks
+                                | kolom yang dipakai filter kolom (tesys-column-filter.js)
+                                | dan ekspor terfilter (tesys-export-filtered.js),
+                                | dan pergeseran seperti itu sudah beberapa kali
+                                | jadi sumber regresi di tabel lain.
+                                |
+                                | data-raw ikut di-nol-kan: angka aslinya ada di
+                                | atribut HTML, jadi menutup tampilannya saja
+                                | tidak menutup apa pun.
+                                */
+                                $poNilai = fn ($isi) => $canSeePoValue ? $isi : '—';
+                                $poRaw   = fn ($v) => $canSeePoValue ? $v : 0;
                                 $workBadge    = \App\Models\Project::progressBadge($project->workProgressStatus());
                                 $billingBadge = \App\Models\Project::progressBadge($project->billingProgressStatus());
                                 $paymentBadge = \App\Models\Project::progressBadge($project->paymentProgressStatus());
@@ -251,31 +272,12 @@
                                     <div><span class="po-margin-label">GM</span> <span class="text-{{ $marginBadge($planGm) }}">{{ rtrim(rtrim(number_format($planGm, 1, ',', '.'), '0'), ',') }}%</span></div>
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-contract" data-raw="{{ $project->contract ?? 0 }}">
-                                    <button type="button" class="po-cell-link po-summary-link" data-id="{{ $project->id }}" title="Lihat Summary">{{ $project->contract_formatted }}</button>
+                                <td class="text-right text-nowrap col-raw-contract" data-raw="{{ $poRaw($project->contract ?? 0) }}">
+                                    <button type="button" class="po-cell-link po-summary-link" data-id="{{ $project->id }}" title="Lihat Summary">{{ $poNilai($project->contract_formatted) }}</button>
                                 </td>
 
-                                {{-- Qty PO = No. PO yang sudah terbit pada kode ini. Bukan modal:
-                                     rinciannya sudah ada di Summary Progress (tab Collection),
-                                     jadi sel ini menautkan ke sana dengan kode PO-nya sebagai
-                                     pencarian awal, dibuka di tab baru supaya daftar PO yang
-                                     sedang difilter user tidak hilang. --}}
-                                <td class="text-center text-nowrap col-raw-poqty" data-raw="{{ $poActual }}" data-order="{{ $poActual }}">
-                                    @if($poActual > 0 && Auth::user()->role?->hasMenu('finance-summary'))
-                                        <a href="{{ route('finance-summary.index', ['tab' => 'collection', 'progress' => $project->code]) }}"
-                                           target="_blank" rel="noopener" class="po-cell-link"
-                                           title="Lihat {{ $poActual }} No. PO di Summary Progress">{{ $poActual }}</a>
-                                    @elseif($poActual > 0)
-                                        {{-- Tanpa akses Summary, angkanya tetap tampil tapi tidak
-                                             ditautkan: link-nya cuma akan berakhir di halaman 403. --}}
-                                        {{ $poActual }}
-                                    @else
-                                        <span class="text-muted">0</span>
-                                    @endif
-                                </td>
-
-                                <td class="text-right text-nowrap col-raw-value" data-raw="{{ $project->value ?? 0 }}">
-                                    <button type="button" class="po-cell-link po-value-link" data-id="{{ $project->id }}" title="Lihat No. PO">{{ $project->value_formatted }}</button>
+                                <td class="text-right text-nowrap col-raw-value" data-raw="{{ $poRaw($project->value ?? 0) }}">
+                                    <button type="button" class="po-cell-link po-value-link" data-id="{{ $project->id }}" title="Lihat No. PO">{{ $poNilai($project->value_formatted) }}</button>
                                     {{-- PO Quantity = ekspektasi manual; angka kiri = No. PO yang benar-benar
                                          sudah dientri. Ditandai kuning kalau tidak cocok (poAdjustmentRequired). --}}
                                     <div class="po-qty-sub {{ $project->poAdjustmentRequired() ? 'is-mismatch' : '' }}"
@@ -284,32 +286,32 @@
                                     </div>
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-bp" data-raw="{{ $bpTotal }}">
-                                    <button type="button" class="po-cell-link po-budget-link" data-id="{{ $project->id }}" title="Lihat Budget">{{ number_format($bpTotal, 0, ',', '.') }}</button>
+                                <td class="text-right text-nowrap col-raw-bp" data-raw="{{ $poRaw($bpTotal) }}">
+                                    <button type="button" class="po-cell-link po-budget-link" data-id="{{ $project->id }}" title="Lihat Budget">{{ $poNilai(number_format($bpTotal, 0, ',', '.')) }}</button>
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-cr" data-raw="{{ $costTotal }}">
-                                    <button type="button" class="po-cell-link po-cost-link" data-id="{{ $project->id }}" title="Lihat Cost">{{ number_format($costTotal, 0, ',', '.') }}</button>
+                                <td class="text-right text-nowrap col-raw-cr" data-raw="{{ $poRaw($costTotal) }}">
+                                    <button type="button" class="po-cell-link po-cost-link" data-id="{{ $project->id }}" title="Lihat Cost">{{ $poNilai(number_format($costTotal, 0, ',', '.')) }}</button>
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-payment" data-raw="{{ $paymentTotal }}">
-                                    <button type="button" class="po-cell-link po-invoice-link" data-id="{{ $project->id }}" title="Lihat Invoice">{{ number_format($paymentTotal, 0, ',', '.') }}</button>
+                                <td class="text-right text-nowrap col-raw-payment" data-raw="{{ $poRaw($paymentTotal) }}">
+                                    <button type="button" class="po-cell-link po-invoice-link" data-id="{{ $project->id }}" title="Lihat Invoice">{{ $poNilai(number_format($paymentTotal, 0, ',', '.')) }}</button>
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-profit" data-raw="{{ $grossProfitTotal }}">
-                                    <button type="button" class="po-cell-link po-summary-link {{ $grossProfitTotal < 0 ? 'po-neg' : '' }}" data-id="{{ $project->id }}" title="Lihat Summary">{{ ($grossProfitTotal < 0 ? '-' : '') }}{{ number_format(abs($grossProfitTotal), 0, ',', '.') }}</button>
+                                <td class="text-right text-nowrap col-raw-profit" data-raw="{{ $poRaw($grossProfitTotal) }}">
+                                    <button type="button" class="po-cell-link po-summary-link {{ $grossProfitTotal < 0 ? 'po-neg' : '' }}" data-id="{{ $project->id }}" title="Lihat Summary">{{ $poNilai(($grossProfitTotal < 0 ? '-' : '') . number_format(abs($grossProfitTotal), 0, ',', '.')) }}</button>
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-overhead" data-raw="{{ $project->overhead ?? 0 }}">
-                                    <button type="button" class="po-cell-link po-cost-link" data-id="{{ $project->id }}" title="Lihat Cost">{{ $project->overhead_formatted }}</button>
+                                <td class="text-right text-nowrap col-raw-overhead" data-raw="{{ $poRaw($project->overhead ?? 0) }}">
+                                    <button type="button" class="po-cell-link po-cost-link" data-id="{{ $project->id }}" title="Lihat Cost">{{ $poNilai($project->overhead_formatted) }}</button>
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-fixedcost" data-raw="{{ $project->fixed_cost ?? 0 }}">
-                                    <button type="button" class="po-cell-link po-cost-link" data-id="{{ $project->id }}" title="Lihat Cost">{{ $project->fixed_cost_formatted }}</button>
+                                <td class="text-right text-nowrap col-raw-fixedcost" data-raw="{{ $poRaw($project->fixed_cost ?? 0) }}">
+                                    <button type="button" class="po-cell-link po-cost-link" data-id="{{ $project->id }}" title="Lihat Cost">{{ $poNilai($project->fixed_cost_formatted) }}</button>
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-net" data-raw="{{ $netProfitTotal }}">
-                                    <button type="button" class="po-cell-link po-summary-link {{ $netProfitTotal < 0 ? 'po-neg' : '' }}" data-id="{{ $project->id }}" title="Lihat Summary">{{ ($netProfitTotal < 0 ? '-' : '') }}{{ number_format(abs($netProfitTotal), 0, ',', '.') }}</button>
+                                <td class="text-right text-nowrap col-raw-net" data-raw="{{ $poRaw($netProfitTotal) }}">
+                                    <button type="button" class="po-cell-link po-summary-link {{ $netProfitTotal < 0 ? 'po-neg' : '' }}" data-id="{{ $project->id }}" title="Lihat Summary">{{ $poNilai(($netProfitTotal < 0 ? '-' : '') . number_format(abs($netProfitTotal), 0, ',', '.')) }}</button>
                                 </td>
 
                                 <td class="text-center action-column">
@@ -413,7 +415,14 @@
                                         @php
                                             // Edit hanya masuk menu bila slot aksi utama sudah terpakai
                                             // Submit atau Approve, supaya tidak muncul dua kali.
-                                            $editDiMenu     = $bolehEditPenuh && ($bolehSubmit || $bolehFinance);
+                                            // Edit turun ke menu setiap kali slot aksi utama sudah
+                                            // dipakai cabang yang berada SEBELUM Edit di rantai
+                                            // @elseif di atas. Tanpa mendaftar semuanya, peran yang
+                                            // boleh mengedit di semua status (Project::FULL_EDIT_ROLES)
+                                            // kehilangan jalan masuknya begitu barisnya punya aksi
+                                            // lain — mis. Aktifkan saat Waiting PO.
+                                            $editDiMenu     = $bolehEditPenuh && ($bolehSubmit || $bolehFinance
+                                                || $bolehWaitingPo || $bolehClosing || $bolehVerClosing);
                                             $tambahPoDiMenu = $bolehWaitingPo;
                                             // Submit BAST menempati slot aksi utama hanya kalau slot itu
                                             // masih kosong; bila sudah dipakai aksi yang lebih mendesak
@@ -504,7 +513,6 @@
                                 <th></th>
                                 <th></th>
                                 <th class="text-right text-nowrap" id="poFooterContract" style="font-size:12px;color:var(--info);"></th>
-                                <th class="text-center text-nowrap" id="poFooterQty" style="font-size:12px;color:var(--info);"></th>
                                 <th class="text-right text-nowrap" id="poFooterValue" style="font-size:12px;color:var(--info);"></th>
                                 <th class="text-right text-nowrap" id="poFooterBp" style="font-size:12px;color:var(--text-faint);"></th>
                                 <th class="text-right text-nowrap" id="poFooterCr" style="font-size:12px;color:var(--warning);"></th>

@@ -38,7 +38,16 @@ body{
   margin:0; background:var(--bg); color:var(--text);
   font-family:"Inter",-apple-system,Segoe UI,sans-serif;
   font-size:13px; line-height:1.5;
-  position:relative; overflow-x:hidden;
+  position:relative;
+  /* overflow-x:hidden di <body> menjadikan body kotak gulir tersendiri, dan
+     itu MEMATIKAN position:sticky milik sidebar: begitu halaman lebih tinggi
+     dari layar, sidebar ikut tergulir ke atas sehingga blok merek terpotong
+     dan kotaknya berhenti di tengah halaman. `clip` memotong limpahan
+     mendatar yang sama tanpa membuat kotak gulir. Baris `hidden` ditinggal
+     lebih dulu sebagai cadangan untuk peramban lama yang belum mengenal
+     `clip` — yang mengenalnya akan memakai baris kedua. */
+  overflow-x:hidden;
+  overflow-x:clip;
 }
 h1,h2,h3{font-family:"Plus Jakarta Sans",-apple-system,sans-serif; text-wrap:balance; margin:0;}
 ::selection{background:var(--accent-tint); color:var(--accent-text);}
@@ -83,6 +92,10 @@ button{font-family:inherit; cursor:pointer;}
   width:240px; flex:none; background:var(--sidebar); color:var(--sidebar-text);
   display:flex; flex-direction:column; border-right:1px solid var(--sidebar-border);
   position:sticky; top:0; height:100vh; overflow:hidden;
+  /* .shell adalah flex row: tanpa ini sidebar diregangkan setinggi seluruh
+     halaman (align-items:stretch), dan elemen yang setinggi wadahnya tidak
+     pernah bisa menempel saat digulir. */
+  align-self:flex-start;
 }
 .brand{
   display:flex; align-items:center; gap:9px; padding:20px 18px 16px;

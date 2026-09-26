@@ -69,6 +69,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Asset Version
+    |--------------------------------------------------------------------------
+    |
+    | Penanda yang dibubuhkan ke URL aset statis (?v=...) untuk memaksa
+    | peramban mengambil versi baru setelah deploy. Dibaca oleh
+    | App\Support\AssetVersion, dipakai lewat direktif Blade @aset().
+    |
+    | Kosongkan untuk perilaku bawaan: nomor versi aplikasi
+    | (config('changelog.current')) di produksi, timestamp di lingkungan lain.
+    | Isi hanya bila aset perlu di-bust tanpa menaikkan versi aplikasi.
+    |
+    */
+
+    'asset_version' => env('ASSET_VERSION'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |

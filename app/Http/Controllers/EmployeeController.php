@@ -10,6 +10,8 @@ use App\Models\Bank;
 
 class EmployeeController extends Controller
 {
+    use \App\Http\Controllers\Concerns\CapsLargeLists;
+
     /*
     |--------------------------------------------------------------------------
     | INDEX
@@ -18,17 +20,43 @@ class EmployeeController extends Controller
 
     public function index()
     {
-        $employees = Employee::with('bank')
-            ->orderBy('name')
-            ->get();
+        /*
+        | Ringkasan AGREGAT + baris dibatasi (Concerns\CapsLargeLists).
+        |
+        | Daftar ini dirender penuh ke DOM lalu diurus DataTables di peramban -
+        | tidak ada paginasi server. Selama datanya ratusan baris itu cepat;
+        | begitu ribuan, halamannya membeku sebelum menampilkan apa pun, tanpa
+        | tanda apa-apa selain peramban yang berhenti merespons.
+        |
+        | Angka ringkasan dipindah ke query agregat supaya tetap benar walau
+        | daftar barisnya dipotong. Kalau ia ikut dihitung dari koleksi yang
+        | sudah terpotong, angkanya salah TANPA ada tanda bahwa ia salah - itu
+        | lebih buruk daripada daftar yang terpotong dengan jujur.
+        */
+        $query = Employee::with('bank');
+
+        $perStatus = (clone $query)->toBase()
+            ->selectRaw('status, COUNT(*) as jumlah')
+            ->groupBy('status')
+            ->pluck('jumlah', 'status');
 
         $summary = [
-            'total'    => $employees->count(),
-            'active'   => $employees->where('status', 'ACTIVE')->count(),
-            'inactive' => $employees->where('status', 'INACTIVE')->count(),
+            'total'    => (int) $perStatus->sum(),
+            'active'   => (int) ($perStatus['ACTIVE'] ?? 0),
+            'inactive' => (int) ($perStatus['INACTIVE'] ?? 0),
         ];
 
-        return view('employee.index', compact('employees', 'summary'));
+        /*
+        | Diurutkan menurut 'name', bukan 'id': daftar karyawan dibaca secara
+        | alfabetis, dan cappedRows() mengambil N baris TERATAS menurut kolom
+        | yang diberikan secara menurun. Karena itu di sini urutannya dibalik
+        | setelah dipotong, supaya yang tampil tetap A-Z.
+        */
+        [$employees, $truncated, $total] = $this->cappedRows($query, 'name');
+        $employees = $employees->sortBy('name')->values();
+        $maxRows = $this->maxRows;
+
+        return view('employee.index', compact('employees', 'summary', 'truncated', 'total', 'maxRows'));
     }
 
     /*

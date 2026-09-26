@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Models\Role;
 use App\Models\MenuItem;
 
@@ -66,10 +69,52 @@ class RoleController extends Controller
             'menu_item_ids.*' => 'exists:menu_items,id',
         ]);
 
-        // Sync — hapus semua lalu insert yang dipilih
-        $role->menuItems()->sync(
-            $request->input('menu_item_ids', [])
-        );
+        $sebelum = $role->menuItems()->pluck('menu_items.id')->map(fn ($id) => (int) $id)->sort()->values();
+        $sesudah = collect($request->input('menu_item_ids', []))
+            ->map(fn ($id) => (int) $id)->unique()->sort()->values();
+
+        /*
+        | sync() DI DALAM transaksi.
+        |
+        | sync() mengeluarkan DELETE lalu INSERT. Kalau gagal di antara keduanya
+        | — deadlock, koneksi terputus, timeout — role kehilangan SELURUH
+        | menunya, dan karena CheckMenu serta sidebar membaca tabel yang sama,
+        | setiap pengguna role itu langsung terkunci dari seluruh aplikasi
+        | sampai superadmin menyadarinya dan memperbaiki manual. Untuk satu
+        | operasi yang bisa mengunci puluhan orang, "biasanya berhasil" bukan
+        | jaminan yang cukup.
+        */
+        DB::transaction(function () use ($role, $sesudah) {
+            $role->menuItems()->sync($sesudah->all());
+        });
+
+        /*
+        | Jejak audit perubahan hak akses.
+        |
+        | Sebelumnya tidak ada catatan apa pun tentang siapa mengubah kewenangan
+        | role mana dan kapan. Untuk sistem yang menyetujui pembayaran, itu
+        | celah audit: pertanyaan "sejak kapan role ini boleh membuka Treasury,
+        | dan siapa yang memberikannya" tidak bisa dijawab.
+        |
+        | Dicatat hanya SELISIHNYA, bukan seluruh daftar — yang ingin diketahui
+        | saat menelusuri adalah apa yang berubah.
+        */
+        $ditambah = $sesudah->diff($sebelum);
+        $dicabut  = $sebelum->diff($sesudah);
+
+        if ($ditambah->isNotEmpty() || $dicabut->isNotEmpty()) {
+            $namaMenu = MenuItem::whereIn('id', $ditambah->merge($dicabut))
+                ->pluck('key', 'id');
+
+            Log::info('Menu access role diubah', [
+                'role_id'    => $role->id,
+                'role'       => $role->name,
+                'ditambah'   => $ditambah->map(fn ($id) => $namaMenu[$id] ?? $id)->values()->all(),
+                'dicabut'    => $dicabut->map(fn ($id) => $namaMenu[$id] ?? $id)->values()->all(),
+                'oleh_id'    => Auth::id(),
+                'oleh'       => Auth::user()?->username,
+            ]);
+        }
 
         return redirect()->route('role.index')
             ->with('success', 'Menu access untuk role ' . $role->name . ' berhasil diupdate.');

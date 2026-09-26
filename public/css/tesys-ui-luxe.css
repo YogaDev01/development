@@ -2020,3 +2020,48 @@ body.tesys-ui.sidebar-rail .sidebar .sidebar-cmd .ts-cmd-kbd { display: none !im
     body.tesys-ui .sidebar .sidebar-cmd .ts-cmd-trigger span:not(.ts-cmd-kbd) { display: block; }
     body.tesys-ui .sidebar .sidebar-cmd .ts-cmd-kbd { display: none; }
 }
+
+/* ===================================================================
+   SIDEBAR DIKELUARKAN DARI ALIRAN DOKUMEN
+
+   `position:sticky` membuat sidebar TERIKAT pada tinggi .shell: begitu ada
+   apa pun di luar .shell yang menambah tinggi halaman (atau isi halaman
+   lebih pendek dari layar saat tampilan diperbesar), sisi bawah .shell naik
+   dan sidebar ikut tertarik ke atas — blok merek terpotong dan kotaknya
+   berhenti di tengah layar, persis keluhan "sidebar tidak penuh saat
+   di-zoom". Sticky tidak punya cara menolak itu: elemen sticky tidak boleh
+   melewati batas induknya.
+
+   Dijadikan `fixed` supaya acuannya layar, bukan .shell. Lebar yang
+   ditinggalkannya digantikan padding-kiri pada .shell, jadi kolom konten
+   tetap berada di tempat yang sama dan ketiga keadaan (penuh / rail /
+   tertutup) cukup mengubah satu angka.
+   =================================================================== */
+body.tesys-ui .shell {
+    padding-left: 240px;
+    transition: padding-left var(--dur-slow, .36s) var(--ease, cubic-bezier(.4, 0, .2, 1));
+}
+body.tesys-ui .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    /* dvh mengikuti bilah alamat peramban ponsel yang muncul-hilang; peramban
+       yang belum mengenalnya tetap memakai baris 100vh di atas. */
+    height: 100dvh;
+    /* Keadaan tertutup dulu digeser dengan margin-left negatif. Pada elemen
+       fixed margin itu ikut menggeser acuan lebar, jadi dipindah ke transform
+       yang murni memindahkan gambar. */
+    margin-left: 0 !important;
+    transition: transform var(--dur-slow, .36s) var(--ease, cubic-bezier(.4, 0, .2, 1));
+}
+body.tesys-ui.sidebar-rail .shell { padding-left: 68px; }
+body.tesys-ui.sidebar-off .shell { padding-left: 0; }
+body.tesys-ui.sidebar-off .sidebar { transform: translateX(-100%); }
+
+/* Layar sempit sudah punya aturannya sendiri (laci melayang di atas konten,
+   lihat blok "7. LAYAR KECIL" di tesys-ui-shell.css): di sana konten memakai
+   lebar penuh, jadi tidak ada lebar yang perlu disisakan. */
+@media (max-width: 900px) {
+    body.tesys-ui .shell { padding-left: 0 !important; }
+}

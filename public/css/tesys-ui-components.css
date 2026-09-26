@@ -455,7 +455,9 @@ body.ts-drawer-lock { overflow: hidden; }
 .ts-dw-file span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ts-dw-file small { flex: none; color: var(--text-faint); font-size: 10.5px; }
 
-@media (max-width: 600px) {
+/* Disamakan ke 640px - lihat catatan breakpoint di tesys-ui-shell.css.
+   Sebelumnya 600px, satu-satunya pemakaian nilai itu. */
+@media (max-width: 640px) {
     .ts-drawer-panel { width: 100vw; border-left: none; }
     .ts-dw-kv { grid-template-columns: 1fr; gap: 2px 0; }
     .ts-dw-kv dt { margin-top: 8px; }

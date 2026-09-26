@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Http\Controllers\Concerns\BuildsCrWorklist;
+use App\Http\Controllers\ProjectMonitoringController;
 use App\Models\BudgetPlanAttachment;
 use App\Models\BudgetRequest;
 use App\Models\BudgetRequestRealizationAttachment;
@@ -10,6 +11,7 @@ use App\Models\CashReceipt;
 use App\Models\Invoice;
 use App\Models\InvoiceAttachment;
 use App\Models\ProjectAttachment;
+use App\Models\ProjectMonitoringLogAttachment;
 use App\Models\RealizationDetailAttachment;
 use App\Models\RequestAttachment;
 use App\Models\RequestDetailAttachment;
@@ -73,9 +75,75 @@ class FileAccess
             // ---- Budget Plan: lampiran mengikuti CR-nya lewat budget plan
             'budget_plan_attachments'          => $this->allowsBudgetPlan($path),
 
-            // ---- Sisanya: cukup login (lihat catatan kelas)
-            default                            => true,
+            /*
+            | ---- Treasury, Cost Register, Customer, Surat Jalan, Monitoring
+            |
+            | Kelima folder ini sebelumnya jatuh ke `default => true`, yaitu
+            | "cukup login". Artinya SETIAP pengguna yang login - termasuk role
+            | guest, yang di route lain hanya diberi akses baca master data -
+            | bisa mengunduh bukti transfer Treasury, dokumen pelanggan, dan
+            | bukti terima Surat Jalan asalkan tahu path berkasnya.
+            |
+            | Itu bertentangan dengan catatan kelas di atas, yang menyebut
+            | "bukti transfer" sebagai contoh justru dari berkas yang dulu
+            | bocor dan kini harus dilindungi. Bukti transfer Treasury ada di
+            | daily_transaction_attachments - salah satu yang jatuh ke default.
+            |
+            | Aturannya tetap tidak ditulis ulang di sini: masing-masing
+            | meminjam gerbang menu modulnya sendiri, sama dengan yang dipakai
+            | route index-nya, sehingga "bisa membuka halamannya" selalu setara
+            | dengan "bisa membuka lampirannya".
+            */
+            'daily_transaction_attachments'    => $this->allowsMenu('finance-daily-transaction'),
+            'cost_register_attachments'        => $this->allowsMenu('finance-daily-transaction'),
+            'customer_attachments'             => $this->allowsMenu('customer'),
+            'delivery_note_evidence'           => $this->allowsMenu('delivery-note'),
+
+            // Lampiran log Project Monitoring mengikuti Access Group proyek,
+            // aturan yang sama dengan halaman Project Monitoring itu sendiri.
+            'monitoring_attachments'           => $this->allowsMonitoring($path),
+
+            // Foto profil. Sengaja terbuka untuk semua pengguna login: avatar
+            // memang ditampilkan di navbar, daftar Team dan bubble chat.
+            'avatars'                          => true,
+
+            /*
+            | ---- Sisanya DITOLAK.
+            |
+            | Bawaan lama (true) berarti setiap folder unggahan BARU otomatis
+            | terbuka untuk semua pengguna login sampai seseorang ingat
+            | menambahkannya di sini - dan yang lupa tidak menghasilkan gejala
+            | apa pun, jadi tidak akan pernah ketahuan. Dengan ditolak sebagai
+            | bawaan, folder yang terlewat langsung terlihat (lampirannya 403)
+            | dan tinggal didaftarkan di atas.
+            */
+            default                            => false,
         };
+    }
+
+    /**
+     * Gerbang menu, cermin persis App\Http\Middleware\CheckMenu - bukan aturan
+     * baru. Dipakai folder lampiran yang keterlihatannya memang sama dengan
+     * "boleh membuka halaman modulnya".
+     */
+    private function allowsMenu(string $key): bool
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        if (! $user->relationLoaded('role')) {
+            $user->load('role');
+        }
+
+        if (! $user->role) {
+            return false;
+        }
+
+        if (strtolower($user->role->name) === 'superadmin') {
+            return true;
+        }
+
+        return $user->role->hasMenu($key);
     }
 
     /**
@@ -150,6 +218,37 @@ class FileAccess
         $poId = Invoice::whereKey($invoiceId)->value('po_id');
 
         return $poId && $user->accessibleProjectIds()->contains($poId);
+    }
+
+    /**
+     * Lampiran log Project Monitoring. Pemiliknya ditelusuri lewat RELASI
+     * (attachment -> log -> project_id), bukan lewat tabel project_attachments
+     * seperti lampiran PO - keduanya folder berbeda dengan tabel berbeda.
+     *
+     * Aturannya disamakan dengan ProjectMonitoringController::canManageProject():
+     * role istimewa melihat semua, sisanya dibatasi Access Group-nya. Berkas
+     * tanpa baris pemilik ditolak, sama seperti lampiran Cost Request.
+     */
+    private function allowsMonitoring(string $path): bool
+    {
+        $projectId = ProjectMonitoringLogAttachment::where('file_path', $path)
+            ->first()?->log?->project_id;
+
+        if (! $projectId) {
+            return false;
+        }
+
+        /** @var User $user */
+        $user = Auth::user();
+
+        // Daftar role-nya DIRUJUK dari controller-nya, bukan disalin ke sini.
+        // Menyalin berarti dua daftar yang harus diingat untuk diubah bersama,
+        // dan yang satu pasti terlupakan.
+        if ($user->hasRole(ProjectMonitoringController::MENTION_BYPASS_ROLES)) {
+            return true;
+        }
+
+        return $user->accessibleProjectIds()->contains($projectId);
     }
 
     /** Lampiran PO/BAST mengikuti Access Group proyek untuk manager & head. */

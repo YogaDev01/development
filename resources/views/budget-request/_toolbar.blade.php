@@ -4,8 +4,7 @@
         'tanggal'  => 'Tanggal',
         'paid_at'  => 'Tanggal Paid',
         'pengaju'  => 'Pengaju',
-        'penerima' => 'Penerima',
-        'pic'      => 'PIC',
+        'pic'      => 'PIC & Penerima',
     ];
     if ($tab === 'ca') {
         $hideable['realisasi'] = 'Settlement';

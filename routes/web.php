@@ -87,10 +87,22 @@ Route::middleware('auth')->group(function () {
         Route::post('/read-all', [NotificationController::class, 'markAllRead'])->name('read-all');
     });
 
-    // Command palette (Ctrl+K). Tanpa gerbang menu di sini: tiap modul
-    // digerbangi sendiri di dalam controller memakai kunci menu yang sama
-    // dengan route index-nya, lalu di-scope memakai aturan modul itu sendiri.
-    Route::get('global-search', [\App\Http\Controllers\GlobalSearchController::class, 'search'])->name('global-search');
+    /*
+    | Command palette (Ctrl+K). Tanpa gerbang menu di sini: tiap modul
+    | digerbangi sendiri di dalam controller memakai kunci menu yang sama
+    | dengan route index-nya, lalu di-scope memakai aturan modul itu sendiri.
+    |
+    | throttle:60,1 — endpoint ini yang paling mahal per permintaan di seluruh
+    | aplikasi (pencarian lintas lima tabel terbesar) sekaligus yang paling
+    | mudah dipicu: satu ketikan. Peramban sudah men-debounce 500 ms dan
+    | membatalkan permintaan basi, tapi debounce di sisi klien bukan batas —
+    | ia bisa dilewati hanya dengan memanggil URL-nya langsung. 60 per menit
+    | jauh di atas pemakaian wajar, dan cukup rendah untuk mencegah satu
+    | pengguna menghabiskan koneksi basis data untuk semua orang.
+    */
+    Route::middleware('throttle:60,1')
+        ->get('global-search', [\App\Http\Controllers\GlobalSearchController::class, 'search'])
+        ->name('global-search');
 
     Route::prefix('profile')->name('profile.')->group(function () {
         Route::get('/', [ProfileController::class, 'show'])->name('show');
@@ -141,8 +153,19 @@ Route::middleware('auth')->group(function () {
         ->name('project.export-excel');
     
     // Options JSON untuk dropdown
-    Route::get('cluster/options-json', fn() => response()->json(\App\Models\Cluster::orderBy('name')->get(['id','name'])))->name('cluster.options-json');
-    Route::get('stage/options-json',   fn() => response()->json(\App\Models\Stage::orderBy('name')->get(['id','name'])))->name('stage.options-json');
+    /*
+    | Pengisi dropdown. Sebelumnya hanya bermiddleware 'auth', sehingga setiap
+    | pengguna yang login - termasuk peran yang tidak punya menunya sama sekali -
+    | bisa menarik DAFTAR LENGKAP cluster & stage hanya dengan membuka URL-nya.
+    | Bukan data transaksi, tapi tidak ada alasan membukanya, dan gerbangnya
+    | disamakan dengan halaman yang memang memakainya.
+    */
+    Route::middleware('menu:project')
+        ->get('cluster/options-json', fn() => response()->json(\App\Models\Cluster::orderBy('name')->get(['id','name'])))
+        ->name('cluster.options-json');
+    Route::middleware('menu:milestone')
+        ->get('stage/options-json', fn() => response()->json(\App\Models\Stage::orderBy('name')->get(['id','name'])))
+        ->name('stage.options-json');
     
     // Workflow actions — otorisasi tahap (status) tetap dijaga di controller,
     // gerbang role di sini mencegah endpoint dipanggil langsung oleh role lain.
@@ -354,7 +377,10 @@ Route::middleware('auth')->group(function () {
     | MASTER DATA - PIC
     |--------------------------------------------------------------------------
     */
-    Route::get('master-pic/options-json', [MasterPicController::class, 'optionsJson'])->name('master-pic.options-json');
+    // Lihat catatan gerbang options-json di atas.
+    Route::middleware('menu:master-pic')
+        ->get('master-pic/options-json', [MasterPicController::class, 'optionsJson'])
+        ->name('master-pic.options-json');
 
     Route::middleware('menu:master-pic')->group(function () {
         Route::post('master-pic',               [MasterPicController::class, 'store'])->name('master-pic.store');
@@ -375,7 +401,10 @@ Route::middleware('auth')->group(function () {
     | MASTER DATA - SOURCE FUND
     |--------------------------------------------------------------------------
     */
-    Route::get('source-fund/options-json', [SourceFundController::class, 'optionsJson'])->name('source-fund.options-json');
+    // Lihat catatan gerbang options-json di atas.
+    Route::middleware('menu:source-fund')
+        ->get('source-fund/options-json', [SourceFundController::class, 'optionsJson'])
+        ->name('source-fund.options-json');
 
     Route::middleware('role:superadmin,finance,finance_manager')->group(function () {
         Route::post('source-fund',               [SourceFundController::class, 'store'])->name('source-fund.store');
@@ -537,42 +566,97 @@ Route::middleware('auth')->group(function () {
     // Info pagu Cash Advance per PIC (dipakai form create/edit saat beneficiary dipilih)
     Route::get('budget-request/ca-quota',        [BudgetRequestController::class, 'caQuota'])->name('budget-request.ca-quota');
     
-    // Workflow
-    Route::middleware('role:superadmin,manager')->post('budget-request/{id}/submit', [BudgetRequestController::class, 'submit'])->name('budget-request.submit');
-    Route::post('budget-request/{id}/head-approve',        [BudgetRequestController::class, 'headApprove'])->name('budget-request.head-approve');
-    Route::post('budget-request/{id}/head-reject',         [BudgetRequestController::class, 'headReject'])->name('budget-request.head-reject');
-    Route::post('budget-request/{id}/finance-verify',      [BudgetRequestController::class, 'financeVerify'])->name('budget-request.finance-verify');
-    Route::post('budget-request/{id}/finance-reject',      [BudgetRequestController::class, 'financeReject'])->name('budget-request.finance-reject');
-    Route::post('budget-request/{id}/ceo-approve',         [BudgetRequestController::class, 'ceoApprove'])->name('budget-request.ceo-approve');
-    Route::post('budget-request/{id}/ceo-reject',          [BudgetRequestController::class, 'ceoReject'])->name('budget-request.ceo-reject');
-    Route::post('budget-request/{id}/manager-revise',      [BudgetRequestController::class, 'managerRevise'])->name('budget-request.manager-revise');
-    Route::post('budget-request/{id}/manager-cancel',      [BudgetRequestController::class, 'managerCancel'])->name('budget-request.manager-cancel');
-    Route::post('budget-request/review-bulk-approve',      [BudgetRequestController::class, 'reviewBulkApprove'])->name('budget-request.review-bulk-approve');
-    Route::post('budget-request/review-bulk-reject',       [BudgetRequestController::class, 'reviewBulkReject'])->name('budget-request.review-bulk-reject');
-    // Takeout / restore sub-item pengajuan (Head/Finance/CEO) — otorisasi per tahap di controller
-    Route::post('budget-request/{id}/detail/{detailId}/takeout', [BudgetRequestController::class, 'takeoutDetail'])->name('budget-request.detail.takeout');
-    Route::post('budget-request/{id}/detail/{detailId}/restore', [BudgetRequestController::class, 'restoreDetail'])->name('budget-request.detail.restore');
-    Route::get('budget-request/{id}/realize-form',          [BudgetRequestController::class, 'realizeForm'])->name('budget-request.realize-form');
-    Route::post('budget-request/{id}/submit-realization',  [BudgetRequestController::class, 'submitRealization'])->name('budget-request.submit-realization');
-    // GET ke URL POST (mis. tombol Back / refresh browser setelah submit) — jangan
-    // tampilkan 405, kembalikan saja ke form realisasi.
-    Route::get('budget-request/{id}/submit-realization',   [BudgetRequestController::class, 'realizeForm']);
-    // Settlement Cash Advance: Head check -> Finance verify -> CEO close.
-    Route::post('budget-request/{id}/head-check-settlement',      [BudgetRequestController::class, 'headCheckSettlement'])->name('budget-request.head-check-settlement');
-    Route::post('budget-request/{id}/head-reject-settlement',     [BudgetRequestController::class, 'headRejectSettlement'])->name('budget-request.head-reject-settlement');
-    Route::post('budget-request/{id}/finance-verify-settlement',  [BudgetRequestController::class, 'financeVerifySettlement'])->name('budget-request.finance-verify-settlement');
-    Route::post('budget-request/{id}/finance-reject-settlement', [BudgetRequestController::class, 'financeRejectSettlement'])->name('budget-request.finance-reject-settlement');
-    // Cabang Expense Claim: Settle Approve (Finance Manager) -> 2nd Approve (Approver)
-    // sebelum boleh di-Close. Gerbang peran dicek lagi di controller.
-    Route::post('budget-request/{id}/settle-approve',             [BudgetRequestController::class, 'settleApprove'])->name('budget-request.settle-approve');
-    Route::post('budget-request/{id}/second-approve',             [BudgetRequestController::class, 'secondApprove'])->name('budget-request.second-approve');
-    Route::post('budget-request/{id}/settle-reject',              [BudgetRequestController::class, 'settleReject'])->name('budget-request.settle-reject');
-    Route::post('budget-request/{id}/second-reject',              [BudgetRequestController::class, 'secondReject'])->name('budget-request.second-reject');
-    Route::post('budget-request/{id}/ceo-close-settlement',       [BudgetRequestController::class, 'ceoCloseSettlement'])->name('budget-request.ceo-close-settlement');
-    Route::post('budget-request/{id}/manager-reject-settlement',  [BudgetRequestController::class, 'managerRejectSettlement'])->name('budget-request.manager-reject-settlement');
-    // Bulk Close/Reject dari To-Do List (multi-select baris tahap Finance Manager Close)
-    Route::post('budget-request/settlement-bulk-close',  [BudgetRequestController::class, 'settlementBulkClose'])->name('budget-request.settlement-bulk-close');
-    Route::post('budget-request/settlement-bulk-reject', [BudgetRequestController::class, 'settlementBulkReject'])->name('budget-request.settlement-bulk-reject');
+    /*
+    |--------------------------------------------------------------------------
+    | WORKFLOW COST REQUEST
+    |--------------------------------------------------------------------------
+    | Gerbang role: di bawah adalah LAPIS KEDUA, bukan satu-satunya.
+    |
+    | Otorisasi sebenarnya tetap di controller: setiap method memeriksa
+    | hasRole([...]) lalu abort(403), dan findVisibleCr() memastikan dokumennya
+    | memang boleh diakses user itu. Itu sudah benar dan tidak diubah.
+    |
+    | Yang kurang sebelumnya: 23 route ini sama sekali tidak bergerbang peran di
+    | level route, padahal modul sejenis (Budget Plan, di atas) memasangnya di
+    | KEDUA tempat. Bedanya terasa saat ada aksi workflow BARU ditambahkan:
+    | tanpa gerbang route, method yang lupa memeriksa peran tidak memunculkan
+    | gejala apa pun sampai seseorang menemukannya.
+    |
+    | Daftar peran di setiap grup dicocokkan PERSIS dengan cek di controller
+    | (BudgetRequestController + BudgetRequest::STAGE_ROLES). Kalau keduanya
+    | berbeda, gejalanya membingungkan: tombol terlihat lalu menabrak 403.
+    */
+
+    // Pengaju: submit & batal (manager), revisi & input realisasi (manager +
+    // supervisor, sesuai cek di controller).
+    Route::middleware('role:superadmin,manager')->group(function () {
+        Route::post('budget-request/{id}/submit',         [BudgetRequestController::class, 'submit'])->name('budget-request.submit');
+        Route::post('budget-request/{id}/manager-cancel', [BudgetRequestController::class, 'managerCancel'])->name('budget-request.manager-cancel');
+    });
+
+    Route::middleware('role:superadmin,manager,supervisor')->group(function () {
+        Route::post('budget-request/{id}/manager-revise',     [BudgetRequestController::class, 'managerRevise'])->name('budget-request.manager-revise');
+        Route::get('budget-request/{id}/realize-form',        [BudgetRequestController::class, 'realizeForm'])->name('budget-request.realize-form');
+        Route::post('budget-request/{id}/submit-realization', [BudgetRequestController::class, 'submitRealization'])->name('budget-request.submit-realization');
+        // GET ke URL POST (mis. tombol Back / refresh peramban setelah submit):
+        // jangan tampilkan 405, kembalikan saja ke form realisasi.
+        Route::get('budget-request/{id}/submit-realization',  [BudgetRequestController::class, 'realizeForm']);
+    });
+
+    // Tahap 1 - Head: check pengajuan & check settlement.
+    Route::middleware('role:superadmin,head')->group(function () {
+        Route::post('budget-request/{id}/head-approve',           [BudgetRequestController::class, 'headApprove'])->name('budget-request.head-approve');
+        Route::post('budget-request/{id}/head-reject',            [BudgetRequestController::class, 'headReject'])->name('budget-request.head-reject');
+        Route::post('budget-request/{id}/head-check-settlement',  [BudgetRequestController::class, 'headCheckSettlement'])->name('budget-request.head-check-settlement');
+        Route::post('budget-request/{id}/head-reject-settlement', [BudgetRequestController::class, 'headRejectSettlement'])->name('budget-request.head-reject-settlement');
+    });
+
+    // Tahap 2 - Finance: verify pengajuan & verify settlement.
+    // cost_control ikut karena peran itu mengambil alih langkah verifikasi
+    // Finance pada sebagian alur (BudgetRequest::STAGE_ROLES['CHECKED']).
+    Route::middleware('role:superadmin,finance,finance_manager,cost_control')->group(function () {
+        Route::post('budget-request/{id}/finance-verify',            [BudgetRequestController::class, 'financeVerify'])->name('budget-request.finance-verify');
+        Route::post('budget-request/{id}/finance-reject',            [BudgetRequestController::class, 'financeReject'])->name('budget-request.finance-reject');
+        Route::post('budget-request/{id}/finance-verify-settlement', [BudgetRequestController::class, 'financeVerifySettlement'])->name('budget-request.finance-verify-settlement');
+        Route::post('budget-request/{id}/finance-reject-settlement', [BudgetRequestController::class, 'financeRejectSettlement'])->name('budget-request.finance-reject-settlement');
+    });
+
+    // Tahap 3 - CEO/Approver: persetujuan akhir pengajuan & 2nd Approve.
+    Route::middleware('role:superadmin,approver')->group(function () {
+        Route::post('budget-request/{id}/ceo-approve',    [BudgetRequestController::class, 'ceoApprove'])->name('budget-request.ceo-approve');
+        Route::post('budget-request/{id}/ceo-reject',     [BudgetRequestController::class, 'ceoReject'])->name('budget-request.ceo-reject');
+        Route::post('budget-request/{id}/second-approve', [BudgetRequestController::class, 'secondApprove'])->name('budget-request.second-approve');
+        Route::post('budget-request/{id}/second-reject',  [BudgetRequestController::class, 'secondReject'])->name('budget-request.second-reject');
+    });
+
+    // Penutupan settlement - authorizeSettlementClose(): Finance Manager.
+    Route::middleware('role:superadmin,finance_manager')->group(function () {
+        Route::post('budget-request/{id}/settle-approve',            [BudgetRequestController::class, 'settleApprove'])->name('budget-request.settle-approve');
+        Route::post('budget-request/{id}/settle-reject',             [BudgetRequestController::class, 'settleReject'])->name('budget-request.settle-reject');
+        Route::post('budget-request/{id}/ceo-close-settlement',      [BudgetRequestController::class, 'ceoCloseSettlement'])->name('budget-request.ceo-close-settlement');
+        Route::post('budget-request/{id}/manager-reject-settlement', [BudgetRequestController::class, 'managerRejectSettlement'])->name('budget-request.manager-reject-settlement');
+        // Bulk Close/Reject dari To-Do List (multi-select baris tahap Finance Manager Close)
+        Route::post('budget-request/settlement-bulk-close',  [BudgetRequestController::class, 'settlementBulkClose'])->name('budget-request.settlement-bulk-close');
+        Route::post('budget-request/settlement-bulk-reject', [BudgetRequestController::class, 'settlementBulkReject'])->name('budget-request.settlement-bulk-reject');
+    });
+
+    /*
+    | Takeout/restore sub-item & bulk approve/reject dari To-Do List.
+    |
+    | Ketiganya berlaku pada BEBERAPA tahap sekaligus, dan peran yang berhak
+    | ditentukan oleh status dokumen saat itu - BudgetRequest::STAGE_ROLES
+    | (canModerateItems / applyReviewApprove). Gerbang di sini karena itu berupa
+    | GABUNGAN seluruh peran tahap; penyaringan per-tahap yang sesungguhnya
+    | tetap dilakukan controller, dan sengaja TIDAK digandakan di sini karena
+    | menuliskannya ulang per-status hanya akan jadi salinan kedua yang bisa
+    | menyimpang.
+    */
+    Route::middleware('role:superadmin,head,finance,finance_manager,cost_control,approver')->group(function () {
+        Route::post('budget-request/review-bulk-approve', [BudgetRequestController::class, 'reviewBulkApprove'])->name('budget-request.review-bulk-approve');
+        Route::post('budget-request/review-bulk-reject',  [BudgetRequestController::class, 'reviewBulkReject'])->name('budget-request.review-bulk-reject');
+        Route::post('budget-request/{id}/detail/{detailId}/takeout', [BudgetRequestController::class, 'takeoutDetail'])->name('budget-request.detail.takeout');
+        Route::post('budget-request/{id}/detail/{detailId}/restore', [BudgetRequestController::class, 'restoreDetail'])->name('budget-request.detail.restore');
+    });
     
     // CRUD
     Route::middleware('role:superadmin,manager,supervisor')->group(function () {
@@ -622,46 +706,68 @@ Route::middleware('auth')->group(function () {
     | SERVICE MANAGEMENT - PROJECT MONITORING
     |--------------------------------------------------------------------------
     */
-    // Dibuka untuk semua role (tanpa gerbang menu:project-monitoring) —
-    // sebelumnya beberapa role (mis. finance) diblokir/tidak melihat data.
-    Route::group([], function () {
+    /*
+    | AKSES SENGAJA TERBUKA UNTUK SEMUA PERAN - dan itu bukan kelalaian.
+    |
+    | Modul ini tidak digerbangi 'menu:project-monitoring'. Alasannya historis
+    | dan masih berlaku: beberapa peran yang memang perlu membaca progres PO
+    | (mis. finance) tidak punya menu itu di master Role, dan menggerbanginya
+    | membuat mereka melihat halaman kosong atau 403.
+    |
+    | Yang menjaga data BUKAN gerbang route, melainkan controller-nya, dan itu
+    | sudah menyeluruh:
+    |   - findAccessibleProject() membatasi PO ke Access Group pengguna,
+    |     kecuali untuk MENTION_BYPASS_ROLES yang memang melihat semua;
+    |   - canManageProject() menjaga setiap aksi tulis;
+    |   - canSetMilestone() memisahkan supervisor (hanya boleh menulis log);
+    |   - milestone & budget plan dicari lewat relasi PO-nya, jadi id dari PO
+    |     lain tidak bisa disusupkan.
+    |
+    | `Route::group([], ...)` yang membungkusnya sebelumnya sudah dihapus:
+    | grup tanpa atribut tidak melakukan apa pun selain menyamarkan ketiadaan
+    | gerbang sebagai "ada grupnya, berarti ada aturannya". Route-nya tetap di
+    | dalam grup 'auth' yang membungkus seluruh blok ini.
+    |
+    | CATATAN KEBIJAKAN: kalau suatu saat Project Monitoring perlu benar-benar
+    | bisa dicabut lewat master Role, gerbang 'menu:project-monitoring' harus
+    | dipasang BERSAMAAN dengan pemberian menu itu ke peran-peran yang sekarang
+    | mengandalkan keterbukaan ini - kalau tidak, mereka langsung terkunci.
+    */
 
-        Route::get(
-            'project-monitoring',
-            [ProjectMonitoringController::class, 'index']
-        )->name('project-monitoring.index');
+    Route::get(
+        'project-monitoring',
+        [ProjectMonitoringController::class, 'index']
+    )->name('project-monitoring.index');
 
-        Route::get(
-            'project-monitoring/{id}',
-            [ProjectMonitoringController::class, 'show']
-        )->name('project-monitoring.show');
+    Route::get(
+        'project-monitoring/{id}',
+        [ProjectMonitoringController::class, 'show']
+    )->name('project-monitoring.show');
 
-        Route::post(
-            'project-monitoring/{id}/message',
-            [ProjectMonitoringController::class, 'storeMessage']
-        )->name('project-monitoring.message.store');
+    Route::post(
+        'project-monitoring/{id}/message',
+        [ProjectMonitoringController::class, 'storeMessage']
+    )->name('project-monitoring.message.store');
 
-        Route::get(
-            'project-monitoring/{id}/messages',
-            [ProjectMonitoringController::class, 'fetchMessages']
-        )->name('project-monitoring.message.fetch');
+    Route::get(
+        'project-monitoring/{id}/messages',
+        [ProjectMonitoringController::class, 'fetchMessages']
+    )->name('project-monitoring.message.fetch');
 
-        Route::post(
-            'project-monitoring/detail/{detailId}/set-status',
-            [ProjectMonitoringController::class, 'setMilestoneStatus']
-        )->name('project-monitoring.detail.set-status');
+    Route::post(
+        'project-monitoring/detail/{detailId}/set-status',
+        [ProjectMonitoringController::class, 'setMilestoneStatus']
+    )->name('project-monitoring.detail.set-status');
 
-        Route::post(
-            'project-monitoring/detail/{detailId}/set-finish',
-            [ProjectMonitoringController::class, 'setMilestoneFinish']
-        )->name('project-monitoring.detail.set-finish');
+    Route::post(
+        'project-monitoring/detail/{detailId}/set-finish',
+        [ProjectMonitoringController::class, 'setMilestoneFinish']
+    )->name('project-monitoring.detail.set-finish');
 
-        Route::post(
-            'project-monitoring/{id}/weights',
-            [ProjectMonitoringController::class, 'updateWeights']
-        )->name('project-monitoring.weights.update');
-
-    });
+    Route::post(
+        'project-monitoring/{id}/weights',
+        [ProjectMonitoringController::class, 'updateWeights']
+    )->name('project-monitoring.weights.update');
 
         /*
     |--------------------------------------------------------------------------
@@ -1034,5 +1140,17 @@ Route::middleware('auth')->group(function () {
 Route::middleware('throttle:30,1')->group(function () {
     Route::get('/api/public/budget-request', [BudgetRequestController::class, 'apiExportData']);
     Route::get('/api/public/budget-request/detail', [BudgetRequestController::class, 'apiExportDetailData']);
+
+    /*
+    | KETIGA endpoint publik ada di dalam grup ini.
+    |
+    | Sebelumnya '/realisasi' berada di luar grup dan karenanya tidak punya
+    | batas laju sama sekali - satu-satunya endpoint bertoken di aplikasi yang
+    | bisa dipanggil tanpa henti. Itu membatalkan seluruh alasan throttle di
+    | komentar atas: token statis yang dibandingkan dengan hash_equals tetap
+    | bisa ditebak beruntun kalau tidak ada yang memperlambat percobaannya,
+    | dan token yang tertebak membuka SELURUH Cost Request tanpa batasan
+    | access group.
+    */
+    Route::get('/api/public/budget-request/realisasi', [BudgetRequestController::class, 'apiExportRealizationData']);
 });
-Route::get('/api/public/budget-request/realisasi', [BudgetRequestController::class, 'apiExportRealizationData']);

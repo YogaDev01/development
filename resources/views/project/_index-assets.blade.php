@@ -97,16 +97,6 @@ body.tesys-ui .po-mini-badge.border-secondary { border-color:var(--border) !impo
 }
 .po-status-link { cursor:pointer; }
 .po-status-link:hover { filter:brightness(.92); }
-/* Sel Qty PO memakai <a> (buka tab baru), bukan <button> seperti sel nominal
-   lain. tesys-ui-compat.css memasang `body.tesys-ui a { color:var(--accent-text) }`
-   dan `a:hover { color:var(--accent-dark) }` dengan kekhususan 0-2-1 — lebih
-   tinggi daripada `.po-cell-link`, jadi angkanya jadi merah dan sorotnya tidak
-   berubah. Awalan body.tesys-ui di sini menyamakan kekhususannya. */
-body.tesys-ui a.po-cell-link,
-body.tesys-ui a.po-cell-link:visited { color:var(--text); }
-body.tesys-ui a.po-cell-link:hover,
-body.tesys-ui a.po-cell-link:focus { background:var(--charcoal); color:#fff; }
-
 .po-cell-link.po-neg { color:var(--danger); }
 .po-cell-link.po-neg:hover, .po-cell-link.po-neg:focus { color:#fff; }
 
@@ -386,11 +376,11 @@ $(function () {
     */
     // key -> index kolom (urutan render, kolom 0 "No" disembunyikan DataTable).
     var colVisMap = {
-        type: 4, uploaded: 6, margin: 7, contract: 8, poqty: 9, povalue: 10, budget: 11,
-        varcost: 12, payment: 13, profit: 14, overhead: 15, fixedcost: 16, netprofit: 17
+        type: 4, uploaded: 6, margin: 7, contract: 8, povalue: 9, budget: 10,
+        varcost: 11, payment: 12, profit: 13, overhead: 14, fixedcost: 15, netprofit: 16
     };
     var colVisDefault = {
-        type: true, uploaded: true, margin: true, povalue: true, contract: true, poqty: true, budget: false,
+        type: true, uploaded: true, margin: true, povalue: true, contract: true, budget: false,
         varcost: false, payment: false, profit: true, overhead: false, fixedcost: false, netprofit: true
     };
 
@@ -413,24 +403,23 @@ $(function () {
         order: [], // pertahankan urutan asli dari server (input terbaru di atas)
         columnDefs: [
             // 0=No(hidden) 1=Kode 2=Scope 3=Status 4=Tipe 5=Progress 6=Uploaded
-            // 7=Margin 8=Contract 9=Qty PO 10=PO Value 11=Budget 12=Variable Cost
-            // 13=Received Payment 14=Gross Profit 15=Overhead 16=Fixed Cost
-            // 17=Net Profit 18=Action
+            // 7=Margin 8=Contract 9=PO Value 10=Budget 11=Variable Cost
+            // 12=Received Payment 13=Gross Profit 14=Overhead 15=Fixed Cost
+            // 16=Net Profit 17=Action
             { targets: [0], visible: false, orderable: false },
-            { orderable: false, targets: [6, 7, 18] },
+            { orderable: false, targets: [6, 7, 17] },
             { targets: [4],  visible: getColVisPref('type') },
             { targets: [6],  visible: getColVisPref('uploaded') },
             { targets: [7],  visible: getColVisPref('margin') },
             { targets: [8],  visible: getColVisPref('contract') },
-            { targets: [9],  visible: getColVisPref('poqty') },
-            { targets: [10], visible: getColVisPref('povalue') },
-            { targets: [11], visible: getColVisPref('budget') },
-            { targets: [12], visible: getColVisPref('varcost') },
-            { targets: [13], visible: getColVisPref('payment') },
-            { targets: [14], visible: getColVisPref('profit') },
-            { targets: [15], visible: getColVisPref('overhead') },
-            { targets: [16], visible: getColVisPref('fixedcost') },
-            { targets: [17], visible: getColVisPref('netprofit') }
+            { targets: [9],  visible: getColVisPref('povalue') },
+            { targets: [10], visible: getColVisPref('budget') },
+            { targets: [11], visible: getColVisPref('varcost') },
+            { targets: [12], visible: getColVisPref('payment') },
+            { targets: [13], visible: getColVisPref('profit') },
+            { targets: [14], visible: getColVisPref('overhead') },
+            { targets: [15], visible: getColVisPref('fixedcost') },
+            { targets: [16], visible: getColVisPref('netprofit') }
         ],
         dom: 'rt<"row mt-3 align-items-center"<"col-md-6 col-12 mb-2 mb-md-0"i><"col-md-6 col-12 d-flex flex-wrap justify-content-between justify-content-md-end align-items-center gap-2"lp>>',
         language: {
@@ -488,10 +477,9 @@ $(function () {
     }
 
     function recalcFooterPO() {
-        var totalValue = 0, totalContract = 0, totalBp = 0, totalCr = 0, totalPayment = 0, totalProfit = 0, totalNet = 0, totalQty = 0;
+        var totalValue = 0, totalContract = 0, totalBp = 0, totalCr = 0, totalPayment = 0, totalProfit = 0, totalNet = 0;
         table.rows({ search: 'applied' }).every(function () {
             var node = this.node();
-            totalQty      += parseFloat(node.querySelector('.col-raw-poqty')?.dataset.raw)    || 0;
             totalValue    += parseFloat(node.querySelector('.col-raw-value')?.dataset.raw)    || 0;
             totalContract += parseFloat(node.querySelector('.col-raw-contract')?.dataset.raw) || 0;
             totalBp       += parseFloat(node.querySelector('.col-raw-bp')?.dataset.raw)       || 0;
@@ -500,7 +488,6 @@ $(function () {
             totalProfit   += parseFloat(node.querySelector('.col-raw-profit')?.dataset.raw)   || 0;
             totalNet      += parseFloat(node.querySelector('.col-raw-net')?.dataset.raw)      || 0;
         });
-        $('#poFooterQty').text(totalQty);
         $('#poFooterValue').text(moneyFmtPO(totalValue));
         $('#poFooterContract').text(moneyFmtPO(totalContract));
         $('#poFooterBp').text(moneyFmtPO(totalBp));
