@@ -184,7 +184,39 @@ class BudgetRequest extends Model
     {
         $name = strtolower(trim($this->type?->name ?? ''));
 
-        return in_array($name, ['cash advance', 'cash-advance', 'cashadvance'], true);
+        return in_array($name, self::CASH_ADVANCE_TYPE_NAMES, true);
+    }
+
+    /** Nama RequestType (lowercase) yang dianggap Cash Advance. */
+    public const CASH_ADVANCE_TYPE_NAMES = ['cash advance', 'cash-advance', 'cashadvance'];
+
+    /** @var array<int>|null cache per-request: id RequestType Cash Advance */
+    private static ?array $cashAdvanceTypeIdsCache = null;
+
+    /**
+     * ID RequestType Cash Advance (tabel kecil, di-cache per request). Dipakai
+     * scope di bawah supaya pemisahan Cash Advance vs Cost Payment cukup
+     * whereIn/whereNotIn pada type_id (memanfaatkan indeks), bukan join/subquery.
+     */
+    public static function cashAdvanceTypeIds(): array
+    {
+        return self::$cashAdvanceTypeIdsCache ??= RequestType::query()
+            ->whereRaw('LOWER(TRIM(name)) IN (?, ?, ?)', self::CASH_ADVANCE_TYPE_NAMES)
+            ->pluck('id')->map(fn ($id) => (int) $id)->all();
+    }
+
+    /** Hanya Cash Advance (alur penuh sampai Settlement). */
+    public function scopeCashAdvance($query)
+    {
+        return $query->whereIn('type_id', self::cashAdvanceTypeIds());
+    }
+
+    /** Semua selain Cash Advance (Process langsung Closed, tanpa Settlement). */
+    public function scopeCostPayment($query)
+    {
+        $ids = self::cashAdvanceTypeIds();
+
+        return $query->where(fn ($w) => $w->whereNull('type_id')->orWhereNotIn('type_id', $ids));
     }
 
     /**

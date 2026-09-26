@@ -596,6 +596,8 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('menu:finance-cost-request,project-cost-request')->group(function () {
         Route::get('budget-request',          [BudgetRequestController::class, 'index'])->name('budget-request.index');
+        // Isi tabel per tab (Cash Advance / Cost Payment / Database) — dimuat AJAX saat tab dibuka.
+        Route::get('budget-request/tab/{tab}', [BudgetRequestController::class, 'tab'])->name('budget-request.tab');
         // POST juga didukung — export mengirim daftar ID hasil filter aktif di
         // tabel (bisa banyak baris, tidak muat di query string GET).
         Route::match(['get', 'post'], 'budget-request/export', [BudgetRequestController::class, 'export'])->name('budget-request.export');

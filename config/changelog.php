@@ -26,10 +26,37 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '2.3.2',
+    'current' => '2.3.3',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '2.3.3',
+            'date'    => '2026-09-26',
+            'title'   => 'Cost Request: Tab Cash Advance, Cost Payment & Database',
+            'summary' => 'Halaman Cost Request kini dipisah menjadi tiga tab sesuai alurnya, dan data '
+                       . 'setiap tab baru dimuat saat tab dibuka sehingga halaman lebih ringan.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Tab Cash Advance: khusus Cash Advance dengan alur penuh sampai Settlement.',
+                        'Tab Cost Payment: semua pengajuan selain Cash Advance — setelah Process langsung Closed, tanpa Settlement.',
+                        'Tab Database: gabungan Cash Advance dan Cost Payment dengan kolom Cost (nilai Settlement untuk Cash Advance, nilai Request untuk Cost Payment).',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Data tabel tiap tab baru dimuat saat tab dibuka, sehingga halaman Cost Request terbuka lebih cepat.',
+                        'Export Excel mengikuti tab, filter, dan kolom yang sedang aktif di tabel.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '2.3.2',
