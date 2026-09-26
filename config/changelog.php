@@ -6,7 +6,7 @@
 |--------------------------------------------------------------------------
 |
 | Sumber tunggal riwayat versi aplikasi. Ditampilkan di Dashboard
-| (panel "What's New") dan dicerminkan di CHANGELOG.md pada root project.
+| (panel riwayat rilis) dan dicerminkan di CHANGELOG.md pada root project.
 |
 | Cara menambah rilis baru:
 |   1. Tambahkan entri baru di PALING ATAS array 'releases'.
@@ -26,10 +26,52 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '2.3.3',
+    'current' => '2.4.0',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '2.4.0',
+            'date'    => '2026-09-26',
+            'title'   => 'Stabilitas, Keamanan Data & Perampingan Aplikasi',
+            'summary' => 'Rilis besar yang merapikan fondasi aplikasi: sesi tidak lagi mati saat form '
+                       . 'panjang sedang diisi, dokumen keuangan tidak bisa ikut terhapus bersama data '
+                       . 'master, nilai rupiah miliaran tidak lagi menyebabkan error, halaman error '
+                       . 'tampil rapi, dan fitur yang tidak dipakai (Tesys AI) dilepas agar aplikasi '
+                       . 'lebih ringan.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Sesi dijaga tetap hidup selama form panjang (Cost Request, Budget Plan) sedang diisi, dengan peringatan sebelum sesi benar-benar habis — isian tidak lagi hilang karena 419.',
+                        'Halaman error sendiri (403, 404, 419, 429, 500) dengan penjelasan berbahasa Indonesia dan jalan keluar yang jelas, menggantikan layar error bawaan.',
+                        'Akun yang dinonaktifkan langsung kehilangan sesinya saat itu juga, tidak lagi menunggu sesinya kedaluwarsa sendiri.',
+                        'Pemantauan antrean notifikasi terjadwal: penumpukan job tercatat sebagai peringatan sehingga worker yang mati bisa ketahuan lebih cepat.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Fitur Tesys AI dilepas beserta seluruh layanan pendukungnya; aplikasi jadi lebih ringan dan tidak lagi bergantung pada layanan pihak ketiga.',
+                        'Dashboard disederhanakan menjadi sapaan dan panel riwayat rilis; ringkasan pekerjaan tetap lengkap di Todo List dan badge lonceng.',
+                        'Pemuatan aset (CSS/JS) memakai satu penanda versi, memangkas puluhan akses berkas di setiap permintaan halaman.',
+                        'Global Search, Invoice, Budget Plan, Cost Request, Project, dan Forecast dirapikan penulisan kodenya agar hak akses dan alur datanya konsisten.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Nilai uang di atas Rp 2,14 miliar (Fixed Cost, Cost Register, arus kas) tidak lagi menyebabkan error 500 — kolomnya diperlebar.',
+                        'Menghapus data master (user, beneficiary, cluster) tidak lagi bisa ikut menghapus Cost Request beserta rincian dan riwayat persetujuannya; kini ditolak di tingkat basis data.',
+                        'Berkas migrasi dengan spasi pada namanya diganti nama agar aman dijalankan di semua lingkungan.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '2.3.3',

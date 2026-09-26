@@ -4,6 +4,31 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [2.4.0] - 2026-09-26 — Stabilitas, Keamanan Data & Perampingan Aplikasi
+
+Rilis besar yang merapikan fondasi aplikasi: sesi tidak lagi mati saat form
+panjang sedang diisi, dokumen keuangan tidak bisa ikut terhapus bersama data
+master, nilai rupiah miliaran tidak lagi menyebabkan error, halaman error
+tampil rapi, dan fitur yang tidak dipakai (Tesys AI) dilepas agar aplikasi
+lebih ringan.
+
+### Baru
+- Sesi dijaga tetap hidup selama form panjang (Cost Request, Budget Plan) sedang diisi, dengan peringatan sebelum sesi benar-benar habis — isian tidak lagi hilang karena 419.
+- Halaman error sendiri (403, 404, 419, 429, 500) dengan penjelasan berbahasa Indonesia dan jalan keluar yang jelas, menggantikan layar error bawaan.
+- Akun yang dinonaktifkan langsung kehilangan sesinya saat itu juga, tidak lagi menunggu sesinya kedaluwarsa sendiri.
+- Pemantauan antrean notifikasi terjadwal: penumpukan job tercatat sebagai peringatan sehingga worker yang mati bisa ketahuan lebih cepat.
+
+### Berubah
+- Fitur Tesys AI dilepas beserta seluruh layanan pendukungnya; aplikasi jadi lebih ringan dan tidak lagi bergantung pada layanan pihak ketiga.
+- Dashboard disederhanakan menjadi sapaan dan panel riwayat rilis; ringkasan pekerjaan tetap lengkap di Todo List dan badge lonceng.
+- Pemuatan aset (CSS/JS) memakai satu penanda versi, memangkas puluhan akses berkas di setiap permintaan halaman.
+- Global Search, Invoice, Budget Plan, Cost Request, Project, dan Forecast dirapikan penulisan kodenya agar hak akses dan alur datanya konsisten.
+
+### Perbaikan
+- Nilai uang di atas Rp 2,14 miliar (Fixed Cost, Cost Register, arus kas) tidak lagi menyebabkan error 500 — kolomnya diperlebar.
+- Menghapus data master (user, beneficiary, cluster) tidak lagi bisa ikut menghapus Cost Request beserta rincian dan riwayat persetujuannya; kini ditolak di tingkat basis data.
+- Berkas migrasi dengan spasi pada namanya diganti nama agar aman dijalankan di semua lingkungan.
+
 ## [2.3.3] - 2026-09-26 — Cost Request: Tab Cash Advance, Cost Payment & Database
 
 Halaman Cost Request kini dipisah menjadi tiga tab sesuai alurnya, dan data
