@@ -15,6 +15,10 @@
                                    sendiri — angka yang tidak pernah benar. refundAmount()
                                    sudah menjaga aturan itu di satu tempat. */
                                 $refund    = $mode === 'ca' ? $cr->refundAmount() : 0;
+                                /* Expense Claim = kebalikan Refund: settlement lebih besar dari
+                                   pengajuan, jadi masih ada kekurangan bayar yang ditagihkan balik.
+                                   Aturan settle-nya sama dengan refund. */
+                                $claim     = $mode === 'ca' ? $cr->expenseClaimAmount() : 0;
                             @endphp
                             <tr data-id="{{ $cr->id }}"
                                 data-status="{{ $cr->status }}"
@@ -22,6 +26,10 @@
                                 data-pminternal="{{ strtoupper($cr->pm_internal_name) }}"
                                 data-po="{{ $cr->budgetPlan?->project ? '[' . $cr->budgetPlan->project->code . '] ' . $cr->budgetPlan->project->name : '' }}"
                                 data-beneficiary="{{ $cr->beneficiary?->nickname ?? '' }}"
+                                {{-- PIC = pemegang beneficiary-nya. Dipakai filter "PIC" dan
+                                     tautan dari kartu Active Cash Advance di halaman Summary,
+                                     yang mengelompokkan CA per PIC, bukan per beneficiary. --}}
+                                data-pic="{{ $cr->beneficiary?->pic?->pic ?? '' }}"
                                 data-nob="{{ ($isNob || $isNobItem) ? '1' : '0' }}"
                                 data-date="{{ $cr->created_at->format('Y-m-d') }}"
                                 class="{{ $isNob ? 'row-nob' : ($isNobItem ? 'row-nob-item' : '') }}">
@@ -63,6 +71,10 @@
                                     {{ $cr->beneficiary?->nickname ?? '-' }}
                                 </td>
 
+                                <td class="text-nowrap">
+                                    {{ $cr->beneficiary?->pic?->pic ?? '-' }}
+                                </td>
+
                                 <td class="text-right text-nowrap col-raw-amount" data-raw="{{ $cr->amount }}">
                                     <button type="button" class="cr-cell-link btn-detail-cr" data-id="{{ $cr->id }}" data-tab="#crPaneDetails" title="Detail Request">{{ $cr->amount_formatted }}</button>
                                 </td>
@@ -74,6 +86,13 @@
 
                                 <td class="text-right text-nowrap col-raw-var {{ $refund > 0 ? 'text-var-pos' : '' }}" data-raw="{{ $refund }}">
                                     {{ number_format($refund, 0, ',', '.') }}
+                                </td>
+
+                                {{-- Expense Claim lahir dari settlement juga, jadi selnya bisa
+                                     diklik ke tab Settlement seperti kolom Request & Settlement. --}}
+                                <td class="text-right text-nowrap col-raw-claim" data-raw="{{ $claim }}">
+                                    <button type="button" class="cr-cell-link btn-detail-cr"
+                                            data-id="{{ $cr->id }}" data-tab="#crPaneRealization" title="Detail Settlement">{{ number_format($claim, 0, ',', '.') }}</button>
                                 </td>
                                 @endif
 
@@ -113,11 +132,19 @@
                                         $bolehSettle    = $st === 'PAID' && $u->hasRole(['superadmin','manager','supervisor']);
                                         $bolehHeadSet   = $st === 'REALIZED' && $u->hasRole(['superadmin','head']);
                                         $bolehFinSet    = $st === 'SETTLE_CHECKED' && $u->hasRole(['superadmin','finance','finance_manager','cost_control']);
-                                        $bolehTutup     = $st === 'SETTLE_VERIFIED' && $u->hasRole(['superadmin','finance_manager']);
+                                        /* Cabang Expense Claim (settlement > pengajuan): CR wajib lewat
+                                           Settle Approve (Finance Manager) lalu Second Approve (Approver)
+                                           sebelum boleh di-Close. Tanpa klaim, Close tetap langsung dari
+                                           SETTLE_VERIFIED seperti sebelumnya. */
+                                        $adaClaim       = $claim > 0;
+                                        $bolehSetApp    = $st === 'SETTLE_VERIFIED' && $adaClaim && $u->hasRole(['superadmin','finance_manager']);
+                                        $boleh2ndApp    = $st === 'SETTLE_APPROVED' && $u->hasRole(['superadmin','approver']);
+                                        $bolehTutup     = $st === 'SETTLE_VERIFIED' && !$adaClaim
+                                                            && $u->hasRole(['superadmin','finance_manager']);
 
                                         $adaAksi = $bolehSubmit || $bolehUbahDraft || $bolehHead || $bolehFinance
                                             || $bolehCeo || $bolehRevisi || $bolehSettle || $bolehHeadSet
-                                            || $bolehFinSet || $bolehTutup;
+                                            || $bolehFinSet || $bolehSetApp || $boleh2ndApp || $bolehTutup;
                                     @endphp
 
                                     <div class="action-buttons ts-actions">
@@ -186,6 +213,28 @@
                                         <button type="button" class="ts-action-primary btn-finance-verify-settlement"
                                                 data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Verify → Settle Verified">
                                             <i class="fas fa-check-double"></i><span class="ts-al">Verify</span>
+                                        </button>
+                                        @endif
+
+                                        @if($bolehSetApp)
+                                        <button type="button" class="ts-action-primary btn-settle-approve"
+                                                data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Approve &rarr; Second Approve">
+                                            <i class="fas fa-check-double"></i><span class="ts-al">Settle Approve</span>
+                                        </button>
+                                        <button type="button" class="ts-action-primary is-danger btn-settle-reject"
+                                                data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Reject &rarr; Paid">
+                                            <i class="fas fa-times"></i><span class="ts-al">Reject</span>
+                                        </button>
+                                        @endif
+
+                                        @if($boleh2ndApp)
+                                        <button type="button" class="ts-action-primary btn-second-approve"
+                                                data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Approve &rarr; Treasury">
+                                            <i class="fas fa-hand-holding-usd"></i><span class="ts-al">Second Approve</span>
+                                        </button>
+                                        <button type="button" class="ts-action-primary is-danger btn-second-reject"
+                                                data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Reject &rarr; Paid">
+                                            <i class="fas fa-times"></i><span class="ts-al">Reject</span>
                                         </button>
                                         @endif
 

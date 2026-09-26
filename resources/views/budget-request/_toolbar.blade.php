@@ -5,10 +5,12 @@
         'paid_at'  => 'Tanggal Paid',
         'pengaju'  => 'Pengaju',
         'penerima' => 'Penerima',
+        'pic'      => 'PIC',
     ];
     if ($tab === 'ca') {
         $hideable['realisasi'] = 'Settlement';
         $hideable['refund']    = 'Refund';
+        $hideable['claim']     = 'Expense Claim';
     }
     $canAdd = Auth::user()->hasRole(['superadmin','manager','supervisor']);
 @endphp

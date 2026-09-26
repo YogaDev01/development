@@ -847,13 +847,13 @@ class BudgetRequestController extends Controller
         $truncated = $total > $maxRows;
 
         if ($tab === 'ca') {
-            $query->with(['type', 'budgetPlan.project.manager', 'applicant', 'details', 'beneficiary', 'realizations']);
+            $query->with(['type', 'budgetPlan.project.manager', 'applicant', 'details', 'beneficiary.pic', 'realizations']);
         } elseif ($tab === 'cp') {
             // Tanpa 'realizations': Cost Payment tidak punya Settlement.
-            $query->with(['type', 'budgetPlan.project.manager', 'applicant', 'details', 'beneficiary']);
+            $query->with(['type', 'budgetPlan.project.manager', 'applicant', 'details', 'beneficiary.pic']);
         } else {
             // Database: read-only & ringan — nilai Settlement cukup withSum, tanpa memuat baris realisasi.
-            $query->with(['type', 'budgetPlan.project.manager', 'applicant', 'beneficiary'])
+            $query->with(['type', 'budgetPlan.project.manager', 'applicant', 'beneficiary.pic'])
                 ->withSum('realizations as realization_sum', 'total');
         }
 

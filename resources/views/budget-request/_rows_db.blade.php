@@ -15,6 +15,7 @@
         data-pminternal="{{ strtoupper($cr->pm_internal_name) }}"
         data-po="{{ $cr->budgetPlan?->project ? '[' . $cr->budgetPlan->project->code . '] ' . $cr->budgetPlan->project->name : '' }}"
         data-beneficiary="{{ $cr->beneficiary?->nickname ?? '' }}"
+        data-pic="{{ $cr->beneficiary?->pic?->pic ?? '' }}"
         class="{{ $isNob ? 'row-nob' : '' }}">
         <td class="text-nowrap">{{ $loop->iteration }}</td>
 

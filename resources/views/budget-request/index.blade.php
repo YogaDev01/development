@@ -752,18 +752,19 @@ $(function () {
         { key: 'po',          label: 'PO' },
         { key: 'type',        label: 'Tipe' },
         { key: 'beneficiary', label: 'Beneficiary' },
+        { key: 'pic',         label: 'PIC' },
         { key: 'pminternal',  label: 'Manager' },
         { key: 'status',      label: 'Status' },
     ];
     var CR_TABS = {
-        ca: { id: 'tblCA', mapVis: { tanggal: 3, paid_at: 4, pengaju: 5, penerima: 6, realisasi: 8, refund: 9 },
+        ca: { id: 'tblCA', mapVis: { tanggal: 3, paid_at: 4, pengaju: 5, penerima: 6, pic: 7, realisasi: 9, refund: 10, claim: 11 },
               filters: CR_ROW_FILTERS },
-        cp: { id: 'tblCP', mapVis: { tanggal: 3, paid_at: 4, pengaju: 5, penerima: 6 },
+        cp: { id: 'tblCP', mapVis: { tanggal: 3, paid_at: 4, pengaju: 5, penerima: 6, pic: 7 },
               filters: CR_ROW_FILTERS },
         db: { id: 'tblDB', mapVis: { tanggal: 4, paid_at: 5, pengaju: 6, penerima: 7 },
               filters: [{ key: 'jenis', label: 'Jenis', search: false }].concat(CR_ROW_FILTERS) },
     };
-    var crVisDefault = { tanggal: true, paid_at: true, pengaju: true, penerima: true, realisasi: false, refund: true };
+    var crVisDefault = { tanggal: true, paid_at: true, pengaju: true, penerima: true, pic: true, realisasi: false, refund: true, claim: true };
 
     // Preferensi kolom per tab (kunci tab Cash Advance tetap sama seperti sebelumnya).
     function crVisKey(tab, key) { return 'crColVis_' + (tab === 'ca' ? '' : tab + '_') + key; }
@@ -848,18 +849,20 @@ $(function () {
 
         // Footer: total dari SEMUA baris yang lolos filter/search (bukan cuma halaman aktif).
         var recalcFooter = function () {
-            var amount = 0, real = 0, vr = 0, cost = 0;
+            var amount = 0, real = 0, vr = 0, cost = 0, claim = 0;
             table.rows({ search: 'applied' }).every(function () {
                 var node = this.node();
                 amount += parseFloat(node.querySelector('.col-raw-amount')?.dataset.raw)    || 0;
                 real   += parseFloat(node.querySelector('.col-raw-realisasi')?.dataset.raw) || 0;
                 vr     += parseFloat(node.querySelector('.col-raw-var')?.dataset.raw)       || 0;
                 cost   += parseFloat(node.querySelector('.col-raw-cost')?.dataset.raw)      || 0;
+                claim  += parseFloat(node.querySelector('.col-raw-claim')?.dataset.raw)     || 0;
             });
             $tbl.find('.cr-foot-amount').text(crMoney(amount));
             $tbl.find('.cr-foot-realisasi').text(crMoney(real));
             $tbl.find('.cr-foot-cost').text(crMoney(cost));
             $tbl.find('.cr-foot-var').html('<span class="' + (vr >= 0 ? 'text-var-pos' : 'text-var-neg') + '">' + crMoney(vr) + '</span>');
+            $tbl.find('.cr-foot-claim').text(crMoney(claim));
         };
         table.on('draw', recalcFooter);
         recalcFooter();
@@ -879,6 +882,41 @@ $(function () {
         if (urlStatus && crCurrentTab() === tab) {
             var $step = $('[data-wf-table="' + cfg.id + '"] .wf-tl-step[data-status="' + urlStatus + '"]');
             if ($step.length) $step.trigger('click');
+        }
+
+        /* Filter dari tautan luar (kartu Active Cash Advance di Summary).
+           Dipasang lewat setRowFilter supaya hasilnya persis seperti user
+           mencentang sendiri: chip filternya muncul dan bisa dilepas.
+           Sama seperti ?status=, hanya berlaku untuk tab yang dibuka dari URL. */
+        if (crCurrentTab() === tab) {
+            (function applyRowFilterFromUrl() {
+                var q   = new URLSearchParams(window.location.search);
+                var sel = '#' + cfg.id;
+                var manager = q.get('manager');
+                var pic     = q.get('pic');
+                if (manager) TesysColumnFilter.setRowFilter(sel, 'pminternal', manager.toUpperCase());
+                if (pic)     TesysColumnFilter.setRowFilter(sel, 'pic', pic);
+
+                /* Tipe & daftar status ikut dibawa supaya daftar di sini memuat
+                   himpunan yang sama dengan kartu asalnya. setRowFilter menambah
+                   (bukan mengganti) nilai pada field yang sama, jadi beberapa
+                   status bisa dipasang berurutan. */
+                var type = q.get('type');
+                if (type) TesysColumnFilter.setRowFilter(sel, 'type', type);
+
+                /* Daftar PIC di bawah manager yang dipilih. Dipasang sebagai filter
+                   agar namanya terbaca di chip - bukan untuk mempersempit, karena
+                   filter Manager sudah melakukannya. */
+                (q.get('pics') || '').split(',').forEach(function (nm) {
+                    nm = nm.trim();
+                    if (nm) TesysColumnFilter.setRowFilter(sel, 'pic', nm);
+                });
+
+                (q.get('statuses') || '').split(',').forEach(function (st) {
+                    st = st.trim();
+                    if (st) TesysColumnFilter.setRowFilter(sel, 'status', st);
+                });
+            })();
         }
     }
 

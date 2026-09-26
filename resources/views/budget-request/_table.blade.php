@@ -29,6 +29,9 @@
                 <th scope="col" data-col="paid_at" class="text-nowrap" style="width:1%;">Tanggal Paid</th>
                 <th scope="col" data-col="pengaju" class="text-nowrap" style="width:1%;">Requestor</th>
                 <th scope="col" data-col="penerima" class="text-nowrap" style="width:1%;">Beneficiary</th>
+                {{-- PIC = pemegang beneficiary. Ditaruh persis di sebelah Beneficiary karena
+                     keduanya menjawab "uangnya untuk siapa" pada dua tingkat yang berbeda. --}}
+                <th scope="col" data-col="pic" class="text-nowrap" style="width:1%;">PIC</th>
                 @if($isDb)
                 <th scope="col" class="text-right text-nowrap" style="width:1%;" data-col="cost">Cost</th>
                 @else
@@ -37,6 +40,9 @@
                 @if($tab === 'ca')
                 <th scope="col" class="text-right text-nowrap" style="width:1%;" data-col="realisasi">Settlement</th>
                 <th scope="col" class="text-right text-nowrap" style="width:1%;" data-col="refund">Refund</th>
+                {{-- Kebalikan Refund: settlement melebihi pengajuan, jadi masih ada
+                     kekurangan bayar yang ditagihkan balik. --}}
+                <th scope="col" class="text-right text-nowrap" style="width:1%;" data-col="claim">Expense Claim</th>
                 @endif
                 <th scope="col" data-col="status" class="text-nowrap" style="width:1%;">Status</th>
                 @unless($isDb)
@@ -54,13 +60,14 @@
         <tfoot>
             <tr style="background:var(--surface-2);">
                 @if($tab === 'ca')
-                <th colspan="7" class="text-right" style="font-size:12px;">Total (data tampil)</th>
+                <th colspan="8" class="text-right" style="font-size:12px;">Total (data tampil)</th>
                 <th class="text-right text-nowrap cr-foot-amount" style="font-size:12px;color:var(--info);"></th>
                 <th class="text-right text-nowrap cr-foot-realisasi" style="font-size:12px;color:var(--success);"></th>
                 <th class="text-right text-nowrap cr-foot-var" style="font-size:12px;"></th>
+                <th class="text-right text-nowrap cr-foot-claim" style="font-size:12px;"></th>
                 <th colspan="2"></th>
                 @elseif($tab === 'cp')
-                <th colspan="7" class="text-right" style="font-size:12px;">Total (data tampil)</th>
+                <th colspan="8" class="text-right" style="font-size:12px;">Total (data tampil)</th>
                 <th class="text-right text-nowrap cr-foot-amount" style="font-size:12px;color:var(--info);"></th>
                 <th colspan="2"></th>
                 @else
