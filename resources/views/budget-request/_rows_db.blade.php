@@ -59,6 +59,10 @@
             {{ $cr->beneficiary?->nickname ?? '-' }}
         </td>
 
+        <td class="text-nowrap">
+            {{ $cr->beneficiary?->pic?->pic ?? '-' }}
+        </td>
+
         <td class="text-right text-nowrap col-raw-cost" data-raw="{{ $cost }}">
             <button type="button" class="cr-cell-link btn-detail-cr" data-id="{{ $cr->id }}"
                     data-tab="{{ $isCa ? '#crPaneRealization' : '#crPaneDetails' }}"

@@ -71,7 +71,7 @@
                 <th class="text-right text-nowrap cr-foot-amount" style="font-size:12px;color:var(--info);"></th>
                 <th colspan="2"></th>
                 @else
-                <th colspan="8" class="text-right" style="font-size:12px;">Total Cost (data tampil)</th>
+                <th colspan="9" class="text-right" style="font-size:12px;">Total Cost (data tampil)</th>
                 <th class="text-right text-nowrap cr-foot-cost" style="font-size:12px;color:var(--info);"></th>
                 <th colspan="1"></th>
                 @endif

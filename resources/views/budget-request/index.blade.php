@@ -761,7 +761,7 @@ $(function () {
               filters: CR_ROW_FILTERS },
         cp: { id: 'tblCP', mapVis: { tanggal: 3, paid_at: 4, pengaju: 5, penerima: 6, pic: 7 },
               filters: CR_ROW_FILTERS },
-        db: { id: 'tblDB', mapVis: { tanggal: 4, paid_at: 5, pengaju: 6, penerima: 7 },
+        db: { id: 'tblDB', mapVis: { tanggal: 4, paid_at: 5, pengaju: 6, penerima: 7, pic: 8 },
               filters: [{ key: 'jenis', label: 'Jenis', search: false }].concat(CR_ROW_FILTERS) },
     };
     var crVisDefault = { tanggal: true, paid_at: true, pengaju: true, penerima: true, pic: true, realisasi: false, refund: true, claim: true };
