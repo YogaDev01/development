@@ -763,19 +763,6 @@ class BudgetRequestController extends Controller
     /** Batas baris yang dirender ke satu tab (DataTables memproses semua baris di browser). */
     private const TAB_MAX_ROWS = 1000;
 
-<<<<<<< HEAD
-        $query = BudgetRequest::with([
-            'type', 'cluster', 'budgetPlan.project.manager', 'budgetPlan.costCenter',
-            'applicant', 'details', 'beneficiary.pic', 'realizations',
-        ])
-            /*
-            | Rentang tanggal memakai perbandingan langsung pada kolom, bukan
-            | whereDate(). whereDate() membungkus kolom dengan DATE(created_at),
-            | dan fungsi di sisi kolom membuat MySQL tidak bisa memakai indeks
-            | apa pun — jadi penyaringan tanggal selalu memindai seluruh tabel,
-            | tepat pada tabel yang paling cepat tumbuh.
-            */
-=======
     /** @return array{0:string,1:string} [dateFrom, dateTo] — default awal bulan s/d hari ini. */
     private function crDateRange(Request $request): array
     {
@@ -793,7 +780,6 @@ class BudgetRequestController extends Controller
     private function crBaseQuery(string $dateFrom, string $dateTo)
     {
         $query = BudgetRequest::query()
->>>>>>> 3ddff46c7129d803275eecd21869a3d8a00764fb
             ->where('created_at', '>=', $dateFrom . ' 00:00:00')
             ->where('created_at', '<=', $dateTo . ' 23:59:59');
 
@@ -873,32 +859,7 @@ class BudgetRequestController extends Controller
 
         $rows = $query->latest()->limit($maxRows)->get();
 
-<<<<<<< HEAD
-        $summary = [
-            'total'     => $total,
-            'draft'     => (int) ($statusCounts['DRAFT'] ?? 0),
-            'submitted' => (int) ($statusCounts['SUBMITTED'] ?? 0),
-            'checked'   => (int) ($statusCounts['CHECKED'] ?? 0),
-            'verified'  => (int) ($statusCounts['VERIFIED'] ?? 0),
-            'approved'  => (int) ($statusCounts['APPROVED'] ?? 0),
-            'queued'    => (int) ($statusCounts['QUEUED'] ?? 0),
-            'paid'      => (int) ($statusCounts['PAID'] ?? 0),
-            'realized'  => (int) ($statusCounts['REALIZED'] ?? 0),
-            'settle_checked'  => (int) ($statusCounts['SETTLE_CHECKED'] ?? 0),
-            'settle_verified' => (int) ($statusCounts['SETTLE_VERIFIED'] ?? 0),
-            'settle_approved' => (int) ($statusCounts['SETTLE_APPROVED'] ?? 0),
-            'second_approved' => (int) ($statusCounts['SECOND_APPROVED'] ?? 0),
-            'closed'    => (int) ($statusCounts['CLOSED'] ?? 0),
-            'rejected'  => (int) ($statusCounts['REJECTED'] ?? 0),
-            'cancelled' => (int) ($statusCounts['CANCELLED'] ?? 0),
-        ];
-
-        return view('budget-request.index', compact(
-            'budgetRequests', 'summary', 'dateFrom', 'dateTo', 'truncated', 'maxRows', 'total'
-        ));
-=======
         return view('budget-request._table', compact('tab', 'rows', 'total', 'maxRows', 'truncated'));
->>>>>>> 3ddff46c7129d803275eecd21869a3d8a00764fb
     }
 
     /*
