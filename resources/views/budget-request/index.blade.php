@@ -30,6 +30,8 @@
                 ['Settle',          $n($caCounts, 'REALIZED'),        'primary',   'REALIZED'],
                 ['Settle Checked',  $n($caCounts, 'SETTLE_CHECKED'),  'info',      'SETTLE_CHECKED'],
                 ['Settle Verified', $n($caCounts, 'SETTLE_VERIFIED'), 'primary',   'SETTLE_VERIFIED'],
+                ['Settle Approved', $n($caCounts, 'SETTLE_APPROVED'), 'success',   'SETTLE_APPROVED'],
+                ['Second Approved', $n($caCounts, 'SECOND_APPROVED'), 'success',   'SECOND_APPROVED'],
                 ['Closed',          $n($caCounts, 'CLOSED'),          'dark',      'CLOSED'],
             ];
 
