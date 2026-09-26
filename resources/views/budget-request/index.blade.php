@@ -15,8 +15,8 @@
             </ol>
         </div>
 
-        <!-- SUMMARY WORKFLOW (clickable, filter tabel Cost Request) -->
         @php
+<<<<<<< HEAD
             $crSteps = [
                 ['Draft',     $summary['draft'],     'secondary', 'DRAFT'],
                 ['Submitted', $summary['submitted'], 'warning',   'SUBMITTED'],
@@ -31,49 +31,100 @@
                 ['Settle Approved', $summary['settle_approved'], 'success', 'SETTLE_APPROVED'],
                 ['Second Approved', $summary['second_approved'], 'success', 'SECOND_APPROVED'],
                 ['Closed',    $summary['closed'],    'dark',     'CLOSED'],
+=======
+            $n = fn ($counts, $s) => (int) ($counts[$s] ?? 0);
+
+            // Cash Advance: alur penuh sampai Settlement.
+            $caSteps = [
+                ['Draft',           $n($caCounts, 'DRAFT'),           'secondary', 'DRAFT'],
+                ['Submitted',       $n($caCounts, 'SUBMITTED'),       'warning',   'SUBMITTED'],
+                ['Checked',         $n($caCounts, 'CHECKED'),         'info',      'CHECKED'],
+                ['Verified',        $n($caCounts, 'VERIFIED'),        'primary',   'VERIFIED'],
+                ['Approved',        $n($caCounts, 'APPROVED'),        'success',   'APPROVED'],
+                ['Process',         $n($caCounts, 'QUEUED'),          'warning',   'QUEUED'],
+                ['Paid',            $n($caCounts, 'PAID'),            'success',   'PAID'],
+                ['Settle',          $n($caCounts, 'REALIZED'),        'primary',   'REALIZED'],
+                ['Settle Checked',  $n($caCounts, 'SETTLE_CHECKED'),  'info',      'SETTLE_CHECKED'],
+                ['Settle Verified', $n($caCounts, 'SETTLE_VERIFIED'), 'primary',   'SETTLE_VERIFIED'],
+                ['Closed',          $n($caCounts, 'CLOSED'),          'dark',      'CLOSED'],
+>>>>>>> 3ddff46c7129d803275eecd21869a3d8a00764fb
             ];
+
+            // Cost Payment: setelah Process langsung Closed (tanpa Settlement).
+            $cpSteps = [
+                ['Draft',     $n($cpCounts, 'DRAFT'),     'secondary', 'DRAFT'],
+                ['Submitted', $n($cpCounts, 'SUBMITTED'), 'warning',   'SUBMITTED'],
+                ['Checked',   $n($cpCounts, 'CHECKED'),   'info',      'CHECKED'],
+                ['Verified',  $n($cpCounts, 'VERIFIED'),  'primary',   'VERIFIED'],
+                ['Approved',  $n($cpCounts, 'APPROVED'),  'success',   'APPROVED'],
+                ['Process',   $n($cpCounts, 'QUEUED'),    'warning',   'QUEUED'],
+            ];
+            // Data lama (sebelum pemisahan alur): non-CA yang masih tertahan di Paid — tampilkan hanya bila ada.
+            if ($n($cpCounts, 'PAID') > 0) {
+                $cpSteps[] = ['Paid', $n($cpCounts, 'PAID'), 'success', 'PAID'];
+            }
+            $cpSteps[] = ['Closed', $n($cpCounts, 'CLOSED'), 'dark', 'CLOSED'];
         @endphp
-        <x-workflow-stepper :steps="$crSteps" :compact="true" table="tblCR" field="status" />
-        <!-- <div class="text-muted text-center" style="font-size:11.5px;margin-top:-4px;margin-bottom:12px;">
-            <i class="fas fa-info-circle mr-1"></i>Pengajuan akan diproses pada hari Senin, Rabu &amp; Jumat
-        </div> -->
+
+        {{-- Tab + rentang tanggal (filter tanggal berlaku untuk semua tab) --}}
+        <div class="d-flex justify-content-between align-items-end flex-wrap mt-2" style="gap:8px;">
+            <ul class="nav nav-tabs cr-main-tabs" id="crTabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link {{ $activeTab === 'ca' ? 'active' : '' }}" data-toggle="tab" data-crtab="ca" href="#crPaneCA" role="tab">
+                        <i class="fas fa-hand-holding-usd mr-1"></i> Cash Advance
+                        <span class="badge badge-secondary ml-1">{{ number_format($caTotal, 0, ',', '.') }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ $activeTab === 'cp' ? 'active' : '' }}" data-toggle="tab" data-crtab="cp" href="#crPaneCP" role="tab">
+                        <i class="fas fa-file-invoice-dollar mr-1"></i> Cost Payment
+                        <span class="badge badge-secondary ml-1">{{ number_format($cpTotal, 0, ',', '.') }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ $activeTab === 'db' ? 'active' : '' }}" data-toggle="tab" data-crtab="db" href="#crPaneDB" role="tab">
+                        <i class="fas fa-database mr-1"></i> Database
+                        <span class="badge badge-secondary ml-1">{{ number_format($caTotal + $cpTotal, 0, ',', '.') }}</span>
+                    </a>
+                </li>
+            </ul>
+            <div class="d-flex align-items-center flex-wrap pb-1" style="gap:8px;">
+                <div class="d-flex align-items-center cr-date-range" style="gap:4px;">
+                    <input type="text" id="crDateFrom" class="form-control form-control-sm" value="{{ $dateFrom }}" readonly>
+                    <span class="text-muted" style="font-size:12px;">s/d</span>
+                    <input type="text" id="crDateTo" class="form-control form-control-sm" value="{{ $dateTo }}" readonly>
+                </div>
+                <button id="btnRefreshCR" class="btn btn-secondary btn-sm">
+                    <i class="fas fa-sync-alt mr-1"></i> Refresh
+                </button>
+            </div>
+        </div>
 
         {{-- Worklist approval per Budget Plan (dulu section "Review Cost Request") sudah
              dipindah ke halaman Todo List Request. --}}
-        <div class="card card-primary card-outline shadow-sm mt-3">
+        <div class="tab-content pt-3">
+            @foreach([
+                'ca' => ['pane' => 'crPaneCA', 'steps' => $caSteps, 'table' => 'tblCA'],
+                'cp' => ['pane' => 'crPaneCP', 'steps' => $cpSteps, 'table' => 'tblCP'],
+                'db' => ['pane' => 'crPaneDB', 'steps' => null,     'table' => 'tblDB'],
+            ] as $tabKey => $cfg)
+            <div class="tab-pane fade {{ $activeTab === $tabKey ? 'show active' : '' }} cr-pane" id="{{ $cfg['pane'] }}" data-tab="{{ $tabKey }}" role="tabpanel">
 
-            <div class="card-header d-flex align-items-center">
-                <h3 class="card-title"><i class="fas fa-file-invoice-dollar mr-1"></i> Daftar Request</h3>
-                <div class="ml-auto d-flex align-items-center flex-wrap" style="gap:8px;">
-                    <div class="d-flex align-items-center cr-date-range" style="gap:4px;">
-                        <input type="text" id="crDateFrom" class="form-control form-control-sm" value="{{ $dateFrom }}" readonly>
-                        <span class="text-muted" style="font-size:12px;">s/d</span>
-                        <input type="text" id="crDateTo" class="form-control form-control-sm" value="{{ $dateTo }}" readonly>
-                    </div>
-                    <button id="btnRefreshCR" class="btn btn-secondary btn-sm">
-                        <i class="fas fa-sync-alt mr-1"></i> Refresh
-                    </button>
-                </div>
-            </div>
-
-            <div class="card-body">
-
-                @if(!empty($truncated))
-                <div class="alert alert-warning py-2 px-3 mb-3" style="font-size:12.5px;">
-                    <i class="fas fa-exclamation-triangle mr-1"></i>
-                    Menampilkan <strong>{{ number_format($maxRows, 0, ',', '.') }}</strong> Cost Request terbaru dari total
-                    <strong>{{ number_format($total, 0, ',', '.') }}</strong> pada rentang tanggal ini.
-                    Persempit rentang tanggal, atau gunakan <strong>Export Excel</strong> untuk data lengkap.
-                </div>
+                @if($cfg['steps'])
+                {{-- Angka stepper dihitung di server (query agregat) — tampil segera walau tabel belum dimuat. --}}
+                <x-workflow-stepper :steps="$cfg['steps']" :compact="true" :table="$cfg['table']" field="status" />
                 @endif
 
-                <!-- FILTER -->
-                <div class="custom-toolbar mb-3 d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
-                    <div class="custom-toolbar-left d-flex align-items-center flex-wrap" style="gap:8px;">
-                        <div class="toolbar-row">
-                            <span class="toolbar-label">Cari :</span>
-                            <div class="toolbar-input" id="crSearchBox"></div>
+                <div class="card card-primary card-outline shadow-sm mt-3">
+                    <div class="card-body">
+                        @include('budget-request._toolbar', ['tab' => $tabKey])
+
+                        {{-- Diisi AJAX saat tab pertama kali dibuka (data baru dimuat hanya bila tab dibuka). --}}
+                        <div class="cr-tab-host" data-tab="{{ $tabKey }}"
+                             data-url="{{ url('/budget-request/tab/' . $tabKey) }}">
+                            <x-skeleton type="table" :rows="8" :cols="6" />
                         </div>
+<<<<<<< HEAD
                         <button aria-label="Clear Filter" type="button" id="btnClearFilterCR" class="btn btn-outline-secondary btn-sm" title="Clear Filter">
                             <i class="fas fa-eraser"></i>
                         </button>
@@ -525,7 +576,12 @@
                     </template>
                 </div>
 
+=======
+                    </div>
+                </div>
+>>>>>>> 3ddff46c7129d803275eecd21869a3d8a00764fb
             </div>
+            @endforeach
         </div>
     </div>
 </div>
@@ -881,9 +937,9 @@
 .text-var-neg { color:var(--danger); }
 
 /* ── Gaya index Purchase Order: baris bersih + link kode/status biru-tua ── */
-#tblCR tbody tr,
-#tblCR tbody tr:hover { background-color:var(--surface) !important; }
-#tblCR tbody td { background-color:var(--surface); }
+.cr-tbl tbody tr,
+.cr-tbl tbody tr:hover { background-color:var(--surface) !important; }
+.cr-tbl tbody td { background-color:var(--surface); }
 .cr-number-btn, .cr-cell-link {
     display:inline-block; background:transparent; border:none; padding:2px 8px; border-radius:var(--radius-sm);
     color:var(--text); font-weight:700; line-height:1.4;
@@ -900,24 +956,24 @@
    kolom Code & Action dibekukan (pola sama seperti invoice-cash-receipt &
    project/Purchase Order). ── */
 .cr-hscroll { overflow-x:auto; }
-.cr-hscroll #tblCR { width:auto !important; min-width:100%; margin-bottom:0; }
-.cr-hscroll #tblCR th,
-.cr-hscroll #tblCR td { white-space:nowrap; }
+.cr-hscroll .cr-tbl { width:auto !important; min-width:100%; margin-bottom:0; }
+.cr-hscroll .cr-tbl th,
+.cr-hscroll .cr-tbl td { white-space:nowrap; }
 
-.cr-hscroll #tblCR th.cr-col-code,
-.cr-hscroll #tblCR td.cr-col-code {
+.cr-hscroll .cr-tbl th.cr-col-code,
+.cr-hscroll .cr-tbl td.cr-col-code {
     position:sticky; left:0; z-index:3; background:var(--surface);
     box-shadow:2px 0 6px -2px rgba(0,0,0,.18);
 }
-.cr-hscroll #tblCR th.action-column,
-.cr-hscroll #tblCR td.action-column {
+.cr-hscroll .cr-tbl th.action-column,
+.cr-hscroll .cr-tbl td.action-column {
     position:sticky; right:0; z-index:3; background:var(--surface);
     box-shadow:-2px 0 6px -2px rgba(0,0,0,.18);
 }
-.cr-hscroll #tblCR thead th.cr-col-code,
-.cr-hscroll #tblCR thead th.action-column { background:var(--surface-2); z-index:4; }
-.cr-hscroll #tblCR tfoot th.cr-col-code,
-.cr-hscroll #tblCR tfoot th.action-column { background:var(--surface-2); }
+.cr-hscroll .cr-tbl thead th.cr-col-code,
+.cr-hscroll .cr-tbl thead th.action-column { background:var(--surface-2); z-index:4; }
+.cr-hscroll .cr-tbl tfoot th.cr-col-code,
+.cr-hscroll .cr-tbl tfoot th.action-column { background:var(--surface-2); }
 
 /* Modal detail CR — ukuran & style disamakan dengan modal show Budget Plan. */
 .modal-dialog-xxl {
@@ -1000,7 +1056,7 @@
 .toolbar-row         { display:flex; align-items:center; gap:8px; }
 .toolbar-label       { min-width:50px; font-weight:600; color:var(--text-dim); white-space:nowrap; flex-shrink:0; }
 .toolbar-input       { min-width:180px; }
-#crSearchBox input   { width:180px; border-radius:var(--radius-sm); }
+.cr-search-box input   { width:180px; border-radius:var(--radius-sm); }
 .ts-wrapper          { min-width:260px; }
 .ts-control .item {
     max-width: 240px;
@@ -1016,7 +1072,7 @@
 }
 .ts-control .item .remove { flex-shrink: 0; }
 .ts-control          { border-radius:var(--radius-sm) !important; border:1px solid var(--border) !important; min-height:38px !important; padding:6px 10px !important; box-shadow:none !important; }
-#tblCR               { width:100% !important; }
+.cr-tbl               { width:100% !important; }
 .table td,.table th  { vertical-align:middle !important; }
 .action-column       { white-space:nowrap !important; width:1% !important; }
 .action-buttons      { display:flex; align-items:center; justify-content:center; gap:3px; flex-wrap:nowrap; }
@@ -1028,6 +1084,12 @@
 .dataTables_length select { appearance:none !important; background-color:var(--surface) !important; color:var(--text-dim) !important; border:1px solid var(--border) !important; border-radius:var(--radius-sm) !important; padding:4px 30px 4px 10px !important; height:36px !important; min-width:72px !important; font-size:14px !important; font-weight:600 !important; cursor:pointer; box-shadow:none !important; }
 .dataTables_paginate .paginate_button { border-radius:var(--radius-sm) !important; margin:0 2px; }
 .dataTables_paginate .paginate_button.current { background:var(--accent) !important; background-image:none !important; border-color:var(--accent-dark) !important; color:#fff !important; font-weight:700 !important; }
+/* Tab utama: Cash Advance / Cost Payment / Database */
+.cr-main-tabs { border-bottom:2px solid var(--border); flex-wrap:wrap; }
+.cr-main-tabs .nav-link { color:var(--text-faint); border:none; border-bottom:2px solid transparent; border-radius:0; padding:9px 16px; font-weight:600; font-size:13px; margin-bottom:-2px; }
+.cr-main-tabs .nav-link:hover { color:var(--text); }
+.cr-main-tabs .nav-link.active { color:var(--accent) !important; border-bottom-color:var(--accent) !important; background:transparent !important; }
+.cr-tab-host { min-height:120px; }
 #crDetailTabs .nav-link { color:var(--text-faint); border:none; border-bottom:2px solid transparent; border-radius:0; padding:8px 12px; }
 #crDetailTabs .nav-link.active { color:var(--accent) !important; border-bottom-color:var(--accent) !important; background:transparent !important; font-weight:700; }
 @media (max-width:576px) {
@@ -1035,18 +1097,18 @@
     .custom-toolbar-left { flex-direction:column !important; align-items:stretch !important; width:100%; }
     .custom-toolbar-right { width:100%; }
     .custom-toolbar-right .btn { width:100%; }
-    #btnClearFilterCR { width:100%; }
-    #crRowFilters { width:100%; }
-    #crRowFilters .tcf-row-btn { width:100%; }
+    .cr-btn-clear { width:100%; }
+    .cr-row-filters { width:100%; }
+    .cr-row-filters .tcf-row-btn { width:100%; }
     .toolbar-row { width:100%; }
     .toolbar-input { flex:1; min-width:0; }
-    #crSearchBox input { width:100%; }
+    .cr-search-box input { width:100%; }
     .ts-wrapper { width:100% !important; min-width:0 !important; }
     .card-header { flex-direction:column; align-items:stretch !important; gap:10px; }
     .card-header .card-title { margin-bottom:0; }
     .card-header .ml-auto { margin-left:0 !important; flex-wrap:wrap; }
     .card-header .ml-auto .btn { flex:1 1 auto; }
-    #crRowFilters .tcf-row-btn { flex:1 1 auto; }
+    .cr-row-filters .tcf-row-btn { flex:1 1 auto; }
 }
 
 /* --- Filter dropdown: bedakan header grup vs item --- */
@@ -1148,6 +1210,7 @@ $(function () {
 
     // (accounts holder lama sudah tidak diperlukan — realisasi sekarang pakai CR Detail Item)
 
+<<<<<<< HEAD
     /* ── DATATABLE ──
     | Dibungkus try/catch: kalau init gagal (mis. edge-case DataTable/responsive
     | saat tabel benar-benar kosong), error-nya tidak boleh merambat dan
@@ -1197,67 +1260,142 @@ $(function () {
               kasus yang berbeda dari "belum ada data sama sekali" (itu ditangani
               komponen empty di Blade). Keduanya kini sama-sama menjelaskan sebab
               dan memberi jalan keluar, bukan sekadar "Data tidak ditemukan".
+=======
+    /* ── TAB CASH ADVANCE / COST PAYMENT / DATABASE — data dimuat saat tab dibuka ──
+    | Halaman awal hanya membawa kerangka + angka stepper. Baris tabel diambil
+    | AJAX (BudgetRequestController::tab) HANYA ketika tab pertama kali dibuka,
+    | lalu DataTables dipasang pada tabel tab itu saja.
+    | Catatan: jangan menulis tag komponen atau direktif Blade di komentar. */
+    var CR_DATE_FROM = '{{ $dateFrom }}';
+    var CR_DATE_TO   = '{{ $dateTo }}';
+    var CR_ROW_FILTERS = [
+        { key: 'po',          label: 'PO' },
+        { key: 'type',        label: 'Tipe' },
+        { key: 'beneficiary', label: 'Beneficiary' },
+        { key: 'pminternal',  label: 'Manager' },
+        { key: 'status',      label: 'Status' },
+    ];
+    var CR_TABS = {
+        ca: { id: 'tblCA', mapVis: { tanggal: 3, paid_at: 4, pengaju: 5, penerima: 6, realisasi: 8, refund: 9 },
+              filters: CR_ROW_FILTERS },
+        cp: { id: 'tblCP', mapVis: { tanggal: 3, paid_at: 4, pengaju: 5, penerima: 6 },
+              filters: CR_ROW_FILTERS },
+        db: { id: 'tblDB', mapVis: { tanggal: 4, paid_at: 5, pengaju: 6, penerima: 7 },
+              filters: [{ key: 'jenis', label: 'Jenis', search: false }].concat(CR_ROW_FILTERS) },
+    };
+    var crVisDefault = { tanggal: true, paid_at: true, pengaju: true, penerima: true, realisasi: false, refund: true };
 
-              Catatan: jangan menulis tag komponen atau direktif Blade di dalam
-              komentar mana pun pada berkas ini — Blade tetap mengompilasinya.
-            */
-            language:{ lengthMenu:'Page Size _MENU_',
-                emptyTable: (document.getElementById('crEmptyTemplate') || {}).innerHTML || 'Belum ada data',
-                zeroRecords:'<div class="ts-empty ts-empty-compact">'
-                    + '<span class="ts-empty-ic" aria-hidden="true"><i class="fas fa-search"></i></span>'
-                    + '<p class="ts-empty-title">Tidak ada yang cocok</p>'
-                    + '<p class="ts-empty-msg">Tidak ada Cost Request yang cocok dengan pencarian atau filter yang sedang aktif.</p>'
-                    + '<div class="ts-empty-action"><button type="button" class="ts-action-primary is-neutral" id="crEmptyReset">'
-                    + '<i class="fas fa-undo"></i><span class="ts-al">Reset filter</span></button></div></div>',
-                info:'Menampilkan _START_ sampai _END_ dari _TOTAL_ data', infoEmpty:'Tidak ada data', paginate:{previous:'Previous',next:'Next'} }
+    // Preferensi kolom per tab (kunci tab Cash Advance tetap sama seperti sebelumnya).
+    function crVisKey(tab, key) { return 'crColVis_' + (tab === 'ca' ? '' : tab + '_') + key; }
+    function getCrColVis(tab, key) {
+        var stored = localStorage.getItem(crVisKey(tab, key));
+        return stored === null ? !!crVisDefault[key] : stored === '1';
+    }
+    function setCrColVis(tab, key, visible) { localStorage.setItem(crVisKey(tab, key), visible ? '1' : '0'); }
+>>>>>>> 3ddff46c7129d803275eecd21869a3d8a00764fb
+
+    function crMoney(v) {
+        var sign = v < 0 ? '-' : '';
+        return sign + Math.abs(Math.round(v)).toLocaleString('id-ID');
+    }
+    function crPane(tab) { return $('.cr-pane[data-tab="' + tab + '"]'); }
+    function crCurrentTab() { return $('#crTabs .nav-link.active').data('crtab') || 'ca'; }
+
+    function initCrTable(tab) {
+        var cfg = CR_TABS[tab], $pane = crPane(tab), $host = $pane.find('.cr-tab-host');
+        var $tbl = $('#' + cfg.id);
+        if (!$tbl.length) return;
+
+        var emptyTpl = $host.find('.cr-empty-template')[0];
+        var defs = [{ targets: [0], visible: false, orderable: false }];
+        Object.keys(cfg.mapVis).forEach(function (k) {
+            defs.push({ targets: [cfg.mapVis[k]], visible: getCrColVis(tab, k) });
         });
 
-        $('#tblCR').wrap('<div class="cr-hscroll table-responsive"></div>');
+        var table;
+        try {
+            // TIDAK pakai extension "responsive" DataTables (rebentrok dengan toggle
+            // visibility manual). Tabel selalu scroll horizontal; kolom Code & Action
+            // dibekukan lewat CSS .cr-hscroll.
+            table = $tbl.DataTable({
+                autoWidth: false, pageLength: 10, lengthChange: true, searching: true,
+                order: [], // pertahankan urutan dari server (input terbaru di atas)
+                columnDefs: defs,
+                dom: 'rt<"row mt-3 align-items-center"<"col-md-6 col-12 mb-2 mb-md-0"i><"col-md-6 col-12 d-flex justify-content-end"lp>>',
+                language: { lengthMenu: 'Page Size _MENU_',
+                    emptyTable: (emptyTpl && emptyTpl.innerHTML) || 'Belum ada data',
+                    zeroRecords: '<div class="ts-empty ts-empty-compact">'
+                        + '<span class="ts-empty-ic" aria-hidden="true"><i class="fas fa-search"></i></span>'
+                        + '<p class="ts-empty-title">Tidak ada yang cocok</p>'
+                        + '<p class="ts-empty-msg">Tidak ada Cost Request yang cocok dengan pencarian atau filter yang sedang aktif.</p>'
+                        + '<div class="ts-empty-action"><button type="button" class="ts-action-primary is-neutral cr-empty-reset">'
+                        + '<i class="fas fa-undo"></i><span class="ts-al">Reset filter</span></button></div></div>',
+                    info: 'Menampilkan _START_ sampai _END_ dari _TOTAL_ data', infoEmpty: 'Tidak ada data',
+                    paginate: { previous: 'Previous', next: 'Next' } }
+            });
+        } catch (err) {
+            console.error('Gagal inisialisasi DataTable tab ' + tab + ':', err);
+            return;
+        }
+        cfg.table = table;
 
-        $('.cr-col-vis-toggle').each(function () {
+        $tbl.wrap('<div class="cr-hscroll table-responsive"></div>');
+
+        // Toggle kolom
+        $pane.find('.cr-col-vis-toggle').each(function () {
             var key = $(this).data('column');
-            if (crColVisMap[key] == null) return;
-            $(this).prop('checked', table.column(crColVisMap[key]).visible());
-        });
-        $('.cr-col-vis-toggle').on('change', function () {
+            if (cfg.mapVis[key] == null) return;
+            $(this).prop('checked', table.column(cfg.mapVis[key]).visible());
+        }).off('change').on('change', function () {
             var key = $(this).data('column');
-            if (crColVisMap[key] == null) return;
+            if (cfg.mapVis[key] == null) return;
             var visible = $(this).is(':checked');
-            table.column(crColVisMap[key]).visible(visible);
-            setCrColVis(key, visible);
+            table.column(cfg.mapVis[key]).visible(visible);
+            setCrColVis(tab, key, visible);
             try { table.columns.adjust(); } catch (e) {}
         });
-        $('#crColVisDropdown .dropdown-menu').on('click', function (e) { e.stopPropagation(); });
+        $pane.find('.cr-col-dropdown .dropdown-menu').off('click').on('click', function (e) { e.stopPropagation(); });
         table.on('column-visibility.dt', function () { try { table.columns.adjust(); } catch (e) {} });
 
-        $('#tblCR_filter').hide();
-        $('#crSearchBox').html('<input type="search" id="crSearchInput" class="form-control form-control-sm" placeholder="Cari data...">');
-        // Debounce — hindari full-scan tabel pada tiap ketukan (berat kalau baris banyak).
-        var crSearchTimer = null;
-        $('#crSearchInput').on('keyup search', function () {
+        // Pencarian (debounce — hindari full-scan tabel pada tiap ketukan)
+        $('#' + cfg.id + '_filter').hide();
+        $pane.find('.cr-search-box').html('<input type="search" class="form-control form-control-sm cr-search-input" placeholder="Cari data...">');
+        var searchTimer = null;
+        $pane.find('.cr-search-input').on('keyup search', function () {
             var val = this.value;
-            clearTimeout(crSearchTimer);
-            crSearchTimer = setTimeout(function () { table.search(val).draw(); }, 300);
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(function () { table.search(val).draw(); }, 300);
         });
 
-        /*
-        | SINKRON FILTER STEPPER STATUS <-> URL (?status=...)
-        | Supaya filter status tidak hilang saat halaman reload setelah action
-        | (approve/reject/verify/dll — form-form itu POST lalu redirect back()
-        | ke URL saat ini, jadi query string ?status= harus tetap ada).
-        */
-        $(document).on('click', '.wf-tl-step', function () {
-            var $step = $(this);
-            if (!$step.closest('[data-wf-table="tblCR"]').length) return;
+        // Footer: total dari SEMUA baris yang lolos filter/search (bukan cuma halaman aktif).
+        var recalcFooter = function () {
+            var amount = 0, real = 0, vr = 0, cost = 0;
+            table.rows({ search: 'applied' }).every(function () {
+                var node = this.node();
+                amount += parseFloat(node.querySelector('.col-raw-amount')?.dataset.raw)    || 0;
+                real   += parseFloat(node.querySelector('.col-raw-realisasi')?.dataset.raw) || 0;
+                vr     += parseFloat(node.querySelector('.col-raw-var')?.dataset.raw)       || 0;
+                cost   += parseFloat(node.querySelector('.col-raw-cost')?.dataset.raw)      || 0;
+            });
+            $tbl.find('.cr-foot-amount').text(crMoney(amount));
+            $tbl.find('.cr-foot-realisasi').text(crMoney(real));
+            $tbl.find('.cr-foot-cost').text(crMoney(cost));
+            $tbl.find('.cr-foot-var').html('<span class="' + (vr >= 0 ? 'text-var-pos' : 'text-var-neg') + '">' + crMoney(vr) + '</span>');
+        };
+        table.on('draw', recalcFooter);
+        recalcFooter();
+
+        TesysColumnFilter.initRowFilters('#' + cfg.id, $pane.find('.cr-row-filters'), cfg.filters);
+
+        $pane.find('.cr-btn-clear').off('click').on('click', function () {
+            TesysColumnFilter.clearAll('#' + cfg.id);
+            TesysWorkflowStepper.clear(cfg.id);
             var url = new URL(window.location.href);
-            if ($step.hasClass('wf-active')) {
-                url.searchParams.set('status', $step.data('status'));
-            } else {
-                url.searchParams.delete('status');
-            }
+            url.searchParams.delete('status');
             window.history.replaceState({}, '', url.toString());
         });
 
+<<<<<<< HEAD
 
         (function applyStatusFilterFromUrl() {
             var status = new URLSearchParams(window.location.search).get('status');
@@ -1337,35 +1475,77 @@ $(function () {
         })();
     } catch (err) {
         console.error('Gagal inisialisasi DataTable Cost Request:', err);
+=======
+        // Filter status dari URL (?status=) hanya untuk tab yang sedang aktif dibuka dari URL.
+        var urlStatus = new URLSearchParams(window.location.search).get('status');
+        if (urlStatus && crCurrentTab() === tab) {
+            var $step = $('[data-wf-table="' + cfg.id + '"] .wf-tl-step[data-status="' + urlStatus + '"]');
+            if ($step.length) $step.trigger('click');
+        }
+>>>>>>> 3ddff46c7129d803275eecd21869a3d8a00764fb
     }
 
-    $('#btnRefreshCR').on('click', function () { location.reload(); });
+    function crLoadTab(tab) {
+        var cfg = CR_TABS[tab];
+        if (!cfg) return;
+        if (cfg.loaded) { try { cfg.table && cfg.table.columns.adjust(); } catch (e) {} return; }
+        if (cfg.loading) return;
 
-    $('#btnClearFilterCR').on('click', function () {
-        TesysColumnFilter.clearAll('#tblCR');
-        TesysWorkflowStepper.clear('tblCR');
+        var $host = crPane(tab).find('.cr-tab-host');
+        cfg.loading = true;
+        $.get($host.data('url'), { date_from: CR_DATE_FROM, date_to: CR_DATE_TO })
+            .done(function (html) {
+                $host.html(html);
+                cfg.loaded = true;
+                initCrTable(tab);
+            })
+            .fail(function () {
+                $host.html('<div class="text-center text-muted py-4">'
+                    + '<i class="fas fa-exclamation-triangle mr-1"></i> Gagal memuat data. '
+                    + '<button type="button" class="btn btn-sm btn-outline-secondary ml-2 cr-tab-retry" data-tab="' + tab + '">Coba lagi</button></div>');
+            })
+            .always(function () { cfg.loading = false; });
+    }
+
+    $(document).on('click', '.cr-tab-retry', function () { crLoadTab($(this).data('tab')); });
+
+    // Buka tab -> muat datanya (sekali), sinkronkan ?tab= di URL, buang ?status= milik tab sebelumnya.
+    $('#crTabs a[data-toggle="tab"]').on('shown.bs.tab', function () {
+        var tab = $(this).data('crtab');
         var url = new URL(window.location.href);
+        url.searchParams.set('tab', tab);
         url.searchParams.delete('status');
+        window.history.replaceState({}, '', url.toString());
+        crLoadTab(tab);
+    });
+
+    crLoadTab('{{ $activeTab }}');
+
+    // Sinkron filter stepper status <-> URL (?status=) supaya tidak hilang setelah aksi (POST lalu redirect back()).
+    $(document).on('click', '.wf-tl-step', function () {
+        var $step = $(this);
+        if (!$step.closest('[data-wf-table]').length) return;
+        var url = new URL(window.location.href);
+        if ($step.hasClass('wf-active')) {
+            url.searchParams.set('status', $step.data('status'));
+        } else {
+            url.searchParams.delete('status');
+        }
         window.history.replaceState({}, '', url.toString());
     });
 
-    /* Tombol "Reset filter" pada keadaan kosong memakai ulang perilaku tombol
-       Clear Filter di toolbar — tidak ada logika reset kedua. Delegasi dipakai
-       karena baris kosong dibuat ulang oleh DataTables setiap kali menggambar. */
-    $(document).on('click', '#crEmptyReset', function () {
-        // Mengosongkan input saja tidak cukup — DataTables masih memegang kata
-        // kunci lama. 'keyup' dipicu agar melewati jalur pencarian yang sama
-        // dengan yang dipakai pengguna, bukan jalur kedua.
-        $('#crSearchInput').val('').trigger('keyup');
-        $('#btnClearFilterCR').trigger('click');
+    $('#btnRefreshCR').on('click', function () { location.reload(); });
+
+    /* Tombol "Reset filter" pada keadaan kosong memakai ulang tombol Clear Filter tab-nya. */
+    $(document).on('click', '.cr-empty-reset', function () {
+        var $pane = $(this).closest('.cr-pane');
+        $pane.find('.cr-search-input').val('').trigger('keyup');
+        $pane.find('.cr-btn-clear').trigger('click');
     });
 
     /* ── FILTER TANGGAL — server-side (reload halaman dengan ?date_from=&date_to=) ──
-    | Data memang benar-benar ditarik ulang dari server sesuai rentang ini,
-    | bukan sekadar disaring di browser, supaya status/summary di atas selalu
-    | konsisten dengan data yang tampil (dan tidak menarik ribuan baris sekaligus).
-    | Pakai "date_from"/"date_to" (bukan "from"/"to") karena "from" sudah dipakai
-    | link sidebar (?from=finance) untuk penanda menu aktif — beda keperluan. */
+    | Berlaku untuk semua tab; ?tab= ikut terbawa di URL. Pakai "date_from"/"date_to"
+    | (bukan "from"/"to") karena "from" sudah dipakai link sidebar (?from=finance). */
     function reloadWithDateRange(from, to) {
         var url = new URL(window.location.href);
         url.searchParams.delete('from');
@@ -1374,30 +1554,30 @@ $(function () {
         window.location.href = url.toString();
     }
 
-    (function updateExportLink() {
-        // Fallback (JS gagal / DataTable belum siap): GET biasa, seluruh rentang tanggal.
-        var url = '{{ url("/budget-request/export") }}?date_from=' + encodeURIComponent('{{ $dateFrom }}') + '&date_to=' + encodeURIComponent('{{ $dateTo }}');
-        $('#btnExportCR').attr('href', url);
-    })();
-
-    // Export mengikuti filter yang SEDANG AKTIF di tabel (search, dropdown
-    // PO/Tipe/Beneficiary/Manager/Status, klik stepper status). Kalau
-    // TIDAK ada filter tambahan aktif, export tetap ambil seluruh data pada
-    // rentang tanggal (bukan cuma baris yang ter-render/ter-cap di tabel) —
-    // supaya "Export Excel untuk data lengkap" pada banner truncated masih benar.
-    $('#btnExportCR').on('click', function (e) {
+    // Export mengikuti filter yang SEDANG AKTIF di tabel tab tsb (search, dropdown, stepper).
+    // Tanpa filter tambahan -> export penuh rentang tanggal (bukan hanya baris ter-render/ter-cap).
+    $(document).on('click', '.cr-btn-export', function (e) {
         e.preventDefault();
-        var $btn = $(this);
+        var tab = $(this).data('tab');
+        var cfg = CR_TABS[tab];
+        var fallback = '{{ url("/budget-request/export") }}?date_from=' + encodeURIComponent(CR_DATE_FROM)
+            + '&date_to=' + encodeURIComponent(CR_DATE_TO) + '&tab=' + encodeURIComponent(tab);
 
         try {
+            var table = cfg && cfg.table;
+            if (!table) { window.location.href = fallback; return; }
+
+            // Kolom export = kolom yang AKTIF (terlihat) di tabel tab ini, urut sesuai tabel.
+            var cols = [];
+            table.columns().every(function () {
+                var k = $(this.header()).data('col');
+                if (k && this.visible()) cols.push(k);
+            });
+            fallback += cols.map(function (k) { return '&cols[]=' + encodeURIComponent(k); }).join('');
+
             var total    = table.rows().count();
             var filtered = table.rows({ search: 'applied' }).count();
-
-            if (filtered === total) {
-                // Tidak ada filter tambahan -> export penuh sesuai rentang tanggal.
-                window.location.href = $btn.attr('href');
-                return;
-            }
+            if (filtered === total) { window.location.href = fallback; return; }
 
             var ids = [];
             table.rows({ search: 'applied' }).every(function () {
@@ -1407,15 +1587,14 @@ $(function () {
 
             var $f = $('<form method="POST" action="' + '{{ url("/budget-request/export") }}' + '"></form>');
             $f.append($('<input type="hidden" name="_token">').val($('meta[name="csrf-token"]').attr('content')));
-            ids.forEach(function (id) {
-                $f.append($('<input type="hidden" name="ids[]">').val(id));
-            });
+            $f.append($('<input type="hidden" name="tab">').val(tab));
+            cols.forEach(function (k) { $f.append($('<input type="hidden" name="cols[]">').val(k)); });
+            ids.forEach(function (id) { $f.append($('<input type="hidden" name="ids[]">').val(id)); });
             $('body').append($f);
             $f[0].submit();
             $f.remove();
         } catch (err) {
-            // DataTable gagal init — fallback: GET biasa, semua data rentang tanggal.
-            window.location.href = $btn.attr('href');
+            window.location.href = fallback;
         }
     });
 
@@ -2086,7 +2265,7 @@ $(function () {
         TesysDrawer.open('crDrawer', pemicu);
 
         // Aksi baris disalin apa adanya, termasuk form dan token CSRF-nya.
-        var baris = pemicu ? $(pemicu).closest('tr') : $('#tblCR tbody tr[data-id="' + id + '"]');
+        var baris = pemicu ? $(pemicu).closest('tr') : $('.cr-tbl:not([data-tab="db"]) tbody tr[data-id="' + id + '"]').first();
         var aksi = baris.find('.ts-actions').children('.ts-action-primary, form').clone(true, true);
         if (aksi.length) $('#crDrawerActions').append(aksi);
 

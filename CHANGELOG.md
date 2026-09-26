@@ -4,6 +4,20 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [2.3.3] - 2026-09-26 — Cost Request: Tab Cash Advance, Cost Payment & Database
+
+Halaman Cost Request kini dipisah menjadi tiga tab sesuai alurnya, dan data
+setiap tab baru dimuat saat tab dibuka sehingga halaman lebih ringan.
+
+### Baru
+- Tab Cash Advance: khusus Cash Advance dengan alur penuh sampai Settlement.
+- Tab Cost Payment: semua pengajuan selain Cash Advance — setelah Process langsung Closed, tanpa Settlement.
+- Tab Database: gabungan Cash Advance dan Cost Payment dengan kolom Cost (nilai Settlement untuk Cash Advance, nilai Request untuk Cost Payment).
+
+### Berubah
+- Data tabel tiap tab baru dimuat saat tab dibuka, sehingga halaman Cost Request terbuka lebih cepat.
+- Export Excel mengikuti tab, filter, dan kolom yang sedang aktif di tabel.
+
 ## [2.3.2] - 2026-09-23 — Lampiran Lama Bisa Dibuka Kembali
 
 Lampiran yang diunggah sebelum sistem penyimpanan berkas diperketat (mis.

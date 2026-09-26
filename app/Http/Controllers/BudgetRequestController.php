@@ -760,12 +760,10 @@ class BudgetRequestController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function index(Request $request)
-    {
-        // Default rentang tanggal: awal bulan berjalan s/d hari ini.
-        $dateFrom = $request->filled('date_from') ? $request->date_from : now()->startOfMonth()->format('Y-m-d');
-        $dateTo   = $request->filled('date_to')   ? $request->date_to   : now()->format('Y-m-d');
+    /** Batas baris yang dirender ke satu tab (DataTables memproses semua baris di browser). */
+    private const TAB_MAX_ROWS = 1000;
 
+<<<<<<< HEAD
         $query = BudgetRequest::with([
             'type', 'cluster', 'budgetPlan.project.manager', 'budgetPlan.costCenter',
             'applicant', 'details', 'beneficiary.pic', 'realizations',
@@ -777,35 +775,105 @@ class BudgetRequestController extends Controller
             | apa pun — jadi penyaringan tanggal selalu memindai seluruh tabel,
             | tepat pada tabel yang paling cepat tumbuh.
             */
+=======
+    /** @return array{0:string,1:string} [dateFrom, dateTo] — default awal bulan s/d hari ini. */
+    private function crDateRange(Request $request): array
+    {
+        return [
+            $request->filled('date_from') ? $request->date_from : now()->startOfMonth()->format('Y-m-d'),
+            $request->filled('date_to')   ? $request->date_to   : now()->format('Y-m-d'),
+        ];
+    }
+
+    /**
+     * Query dasar daftar CR: rentang tanggal + scoping role. Rentang tanggal
+     * memakai perbandingan langsung pada kolom, bukan whereDate() — fungsi di
+     * sisi kolom membuat MySQL tidak bisa memakai indeks (scan seluruh tabel).
+     */
+    private function crBaseQuery(string $dateFrom, string $dateTo)
+    {
+        $query = BudgetRequest::query()
+>>>>>>> 3ddff46c7129d803275eecd21869a3d8a00764fb
             ->where('created_at', '>=', $dateFrom . ' 00:00:00')
             ->where('created_at', '<=', $dateTo . ' 23:59:59');
 
         $this->scopeByRole($query);
 
-        // Ringkasan per status dihitung lewat satu query agregat (bukan dari
-        // koleksi baris) supaya angka stepper tetap benar walau daftar baris
-        // dibatasi.
-        $statusCounts = (clone $query)
+        return $query;
+    }
+
+    /** Hitung CR per status (satu query agregat) untuk angka stepper. */
+    private function crStatusCounts($query)
+    {
+        return (clone $query)
             ->select('status', DB::raw('COUNT(*) as c'))
             ->groupBy('status')
             ->pluck('c', 'status');
+    }
 
-        $total = (int) $statusCounts->sum();
+    /**
+     * Halaman index hanya memuat KERANGKA 3 tab (Cash Advance / Cost Payment /
+     * Database) + angka stepper. Baris tabel TIDAK dirender di sini — dimuat
+     * lewat tab() ketika tab dibuka, supaya halaman awal ringan.
+     */
+    public function index(Request $request)
+    {
+        [$dateFrom, $dateTo] = $this->crDateRange($request);
 
-        // Batas render baris: tabel Cost Request diproses DataTables di sisi
-        // browser (semua baris jadi node DOM). Rentang tanggal lebar / backdate
-        // bisa menghasilkan ribuan baris -> browser freeze, tombol filter &
-        // search gagal init. Dibatasi ke N terbaru; untuk data lengkap pakai
-        // Export Excel atau persempit rentang tanggal.
-        $maxRows   = 1000;
+        $base     = $this->crBaseQuery($dateFrom, $dateTo);
+        $caCounts = $this->crStatusCounts((clone $base)->cashAdvance());
+        $cpCounts = $this->crStatusCounts((clone $base)->costPayment());
+
+        $activeTab = in_array($request->query('tab'), ['ca', 'cp', 'db'], true) ? $request->query('tab') : 'ca';
+
+        return view('budget-request.index', [
+            'dateFrom'  => $dateFrom,
+            'dateTo'    => $dateTo,
+            'caCounts'  => $caCounts,
+            'cpCounts'  => $cpCounts,
+            'caTotal'   => (int) $caCounts->sum(),
+            'cpTotal'   => (int) $cpCounts->sum(),
+            'activeTab' => $activeTab,
+        ]);
+    }
+
+    /**
+     * Isi tabel satu tab (HTML fragment) — dipanggil AJAX saat tab dibuka.
+     *   ca : Cash Advance (alur penuh, ada Settlement/Refund)
+     *   cp : Cost Payment (selain Cash Advance; tanpa Settlement)
+     *   db : gabungan keduanya, kolom nilai "Cost" (Settlement utk CA, Request utk CP)
+     */
+    public function tab(Request $request, string $tab)
+    {
+        abort_unless(in_array($tab, ['ca', 'cp', 'db'], true), 404);
+
+        [$dateFrom, $dateTo] = $this->crDateRange($request);
+        $query = $this->crBaseQuery($dateFrom, $dateTo);
+
+        if ($tab === 'ca') {
+            $query->cashAdvance();
+        } elseif ($tab === 'cp') {
+            $query->costPayment();
+        }
+
+        $total     = (clone $query)->count();
+        $maxRows   = self::TAB_MAX_ROWS;
         $truncated = $total > $maxRows;
 
-        $budgetRequests = $query->latest()->limit($maxRows)->get();
+        if ($tab === 'ca') {
+            $query->with(['type', 'budgetPlan.project.manager', 'applicant', 'details', 'beneficiary', 'realizations']);
+        } elseif ($tab === 'cp') {
+            // Tanpa 'realizations': Cost Payment tidak punya Settlement.
+            $query->with(['type', 'budgetPlan.project.manager', 'applicant', 'details', 'beneficiary']);
+        } else {
+            // Database: read-only & ringan — nilai Settlement cukup withSum, tanpa memuat baris realisasi.
+            $query->with(['type', 'budgetPlan.project.manager', 'applicant', 'beneficiary'])
+                ->withSum('realizations as realization_sum', 'total');
+        }
 
-        // Worklist approval per Budget Plan (dulu section "Review Cost Request"
-        // di halaman ini) sudah dipindah ke halaman Todo List Request —
-        // lihat TodoListController::index().
+        $rows = $query->latest()->limit($maxRows)->get();
 
+<<<<<<< HEAD
         $summary = [
             'total'     => $total,
             'draft'     => (int) ($statusCounts['DRAFT'] ?? 0),
@@ -828,6 +896,9 @@ class BudgetRequestController extends Controller
         return view('budget-request.index', compact(
             'budgetRequests', 'summary', 'dateFrom', 'dateTo', 'truncated', 'maxRows', 'total'
         ));
+=======
+        return view('budget-request._table', compact('tab', 'rows', 'total', 'maxRows', 'truncated'));
+>>>>>>> 3ddff46c7129d803275eecd21869a3d8a00764fb
     }
 
     /*
@@ -2963,6 +3034,15 @@ class BudgetRequestController extends Controller
         // dropdown PO/Tipe/Beneficiary/Manager/Status/NOB, klik stepper status)
         // — browser mengirim ID baris yang lolos filter tersebut. Tanpa ids
         // (mis. diakses langsung), fallback ke rentang tanggal seperti biasa.
+        // Export dari tab Cash Advance / Cost Payment hanya mengambil CR tab tsb.
+        // (tab 'db' / kosong = semua).
+        $tab = $request->input('tab');
+        if ($tab === 'ca') {
+            $query->cashAdvance();
+        } elseif ($tab === 'cp') {
+            $query->costPayment();
+        }
+
         $ids = collect((array) $request->input('ids', []))
             ->filter(fn ($v) => is_numeric($v))
             ->map(fn ($v) => (int) $v);
@@ -2991,55 +3071,55 @@ class BudgetRequestController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Header');
 
-        $headers = [
-            'Kode', 'Tanggal', 'Tanggal Paid', 'Deskripsi', 'Tipe', 'Sumber Dana', 'Beneficiary',
-            'Pemohon', 'Request', 'Realisasi', 'Refund', 'Status', 'NOB', 'Transaction ID',
+        /*
+        | Kolom Header mengikuti KOLOM AKTIF tabel di layar (dikirim JS lewat cols[],
+        | urutan sesuai tabel). Tanpa cols (akses langsung) -> semua kolom lengkap.
+        */
+        $columnDefs = [
+            'code'      => ['Kode',         16, fn ($cr) => $cr->code],
+            'desc'      => ['Deskripsi',    40, fn ($cr) => $cr->is_nob ? ltrim(preg_replace('/^\[NOB\]\s*/i', '', $cr->description)) : $cr->description],
+            'jenis'     => ['Jenis',        14, fn ($cr) => $cr->isCashAdvance() ? 'Cash Advance' : 'Cost Payment'],
+            'tanggal'   => ['Tanggal',      16, fn ($cr) => $cr->created_at?->format('d-m-Y H:i')],
+            'paid_at'   => ['Tanggal Paid', 16, fn ($cr) => $cr->paid_at?->format('d-m-Y H:i') ?? '-'],
+            'pengaju'   => ['Requestor',    16, fn ($cr) => strtoupper($cr->applicant?->username ?? '-')],
+            'penerima'  => ['Beneficiary',  20, fn ($cr) => $cr->beneficiary?->nickname ?? '-'],
+            'request'   => ['Request',      16, fn ($cr) => (int) $cr->amount],
+            'realisasi' => ['Settlement',   16, fn ($cr) => (int) $cr->total_realization],
+            'refund'    => ['Refund',       16, fn ($cr) => (int) $cr->refundAmount()],
+            // Cost: Cash Advance = nilai Settlement, Cost Payment = nilai Request.
+            'cost'      => ['Cost',         16, fn ($cr) => $cr->isCashAdvance() ? (int) $cr->total_realization : (int) $cr->amount],
+            'status'    => ['Status',       14, fn ($cr) => $cr->status],
+            // Hanya untuk export tanpa cols (bentuk lengkap lama):
+            'type'      => ['Tipe',         16, fn ($cr) => $cr->type?->name ?? '-'],
+            'sumber'    => ['Sumber Dana',  28, fn ($cr) => $cr->budgetPlan?->isProjectBudget()
+                ? ($cr->budgetPlan->project?->name ?? '-')
+                : ($cr->budgetPlan?->costCenter?->name ?? '-')],
+            'nob'       => ['NOB',           8, fn ($cr) => $cr->is_nob ? 'YA' : '-'],
+            'txid'      => ['Transaction ID', 22, fn ($cr) => $cr->statusLogs->firstWhere('action_type', 'paid')?->notes ?? '-'],
         ];
 
-        foreach ($headers as $i => $label) {
-            $col = chr(65 + $i);
-            $sheet->setCellValue($col . '1', $label);
+        $legacyOrder = ['code', 'tanggal', 'paid_at', 'desc', 'type', 'sumber', 'penerima', 'pengaju', 'request', 'realisasi', 'refund', 'status', 'nob', 'txid'];
+        $requested   = collect((array) $request->input('cols', []))->filter(fn ($k) => isset($columnDefs[$k]))->values()->all();
+        $activeCols  = $requested ?: $legacyOrder;
+
+        foreach ($activeCols as $i => $key) {
+            $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1);
+            $sheet->setCellValue($col . '1', $columnDefs[$key][0]);
             $sheet->getStyle($col . '1')->getFont()->setBold(true);
             $sheet->getStyle($col . '1')->getFill()
                 ->setFillType(Fill::FILL_SOLID)
                 ->getStartColor()->setRGB('0D1B2A');
             $sheet->getStyle($col . '1')->getFont()->getColor()->setRGB('FFFFFF');
+            $sheet->getColumnDimension($col)->setWidth($columnDefs[$key][1]);
         }
 
         $row = 2;
         foreach ($budgetRequests as $cr) {
-            $isNob = (bool) $cr->is_nob;
-            $desc  = $isNob ? ltrim(preg_replace('/^\[NOB\]\s*/i', '', $cr->description)) : $cr->description;
-
-            $sumber = $cr->budgetPlan?->isProjectBudget()
-                ? ($cr->budgetPlan->project?->name ?? '-')
-                : ($cr->budgetPlan?->costCenter?->name ?? '-');
-
-            $realisasi = $cr->total_realization;
-            $refund    = $cr->refundAmount(); // P-01
-
-            // Transaction ID: diambil dari catatan (notes) log status QUEUED -> PAID.
-            $paidLog = $cr->statusLogs->firstWhere('action_type', 'paid');
-
-            $sheet->setCellValue('A' . $row, $cr->code);
-            $sheet->setCellValue('B' . $row, $cr->created_at?->format('d-m-Y H:i'));
-            $sheet->setCellValue('C' . $row, $cr->paid_at?->format('d-m-Y H:i') ?? '-');
-            $sheet->setCellValue('D' . $row, $desc);
-            $sheet->setCellValue('E' . $row, $cr->type?->name ?? '-');
-            $sheet->setCellValue('F' . $row, $sumber);
-            $sheet->setCellValue('G' . $row, $cr->beneficiary?->nickname ?? '-');
-            $sheet->setCellValue('H' . $row, strtoupper($cr->applicant?->username ?? '-'));
-            $sheet->setCellValue('I' . $row, (int) $cr->amount);
-            $sheet->setCellValue('J' . $row, $realisasi);
-            $sheet->setCellValue('K' . $row, $refund);
-            $sheet->setCellValue('L' . $row, $cr->status);
-            $sheet->setCellValue('M' . $row, $isNob ? 'YA' : '-');
-            $sheet->setCellValue('N' . $row, $paidLog?->notes ?? '-');
+            foreach ($activeCols as $i => $key) {
+                $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1);
+                $sheet->setCellValue($col . $row, $columnDefs[$key][2]($cr));
+            }
             $row++;
-        }
-
-        foreach (['A'=>16,'B'=>16,'C'=>16,'D'=>40,'E'=>16,'F'=>28,'G'=>20,'H'=>16,'I'=>16,'J'=>16,'K'=>16,'L'=>12,'M'=>8,'N'=>22] as $col => $width) {
-            $sheet->getColumnDimension($col)->setWidth($width);
         }
 
         /*
