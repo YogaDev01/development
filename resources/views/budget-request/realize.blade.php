@@ -85,7 +85,7 @@
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Request</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Settle</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Variance</th>
-                                <th scope="col" class="text-center text-nowrap" style="width:1%;">Lampiran Item <span class="badge badge-danger">Wajib</span></th>
+                                <th scope="col" class="text-center text-nowrap" style="width:1%;">Lampiran Item <span class="badge badge-danger" title="Wajib jika nilai Settle lebih dari 0">Wajib*</span></th>
                             </tr>
                         </thead>
                         <tbody id="realizeBody">
@@ -109,7 +109,7 @@
                                     <input type="text" inputmode="numeric"
                                            name="realizations[{{ $i }}][amount]"
                                            class="form-control form-control-sm text-right realize-amount-input"
-                                           value="{{ (int) ($existing->amount ?? $detail->total) }}" placeholder="0" required>
+                                           value="{{ (int) ($existing->amount ?? $detail->total) }}" placeholder="0">
                                 </td>
                                 <td class="text-right text-nowrap align-middle font-weight-bold realize-variance-cell">0</td>
                                 <td class="text-nowrap detail-att-cell" data-idx="{{ $i }}" tabindex="0">
@@ -317,10 +317,11 @@ $(function () {
         if (!$rows.length) {
             reasons.push('tidak ada item yang bisa disettle');
         } else {
-            var kosong = [], tanpaAtt = [];
+            var tanpaAtt = [];
             $rows.each(function (i) {
                 var $row = $(this);
-                if (parseRp($row.find('.realize-amount-input').val()) <= 0) kosong.push(i + 1);
+                // Settle boleh 0; baris bernilai 0 tidak wajib berlampiran.
+                if (parseRp($row.find('.realize-amount-input').val()) <= 0) return;
 
                 var inp  = $row.find('.detail-att-input')[0];
                 var baru  = inp && inp.files && inp.files.length;
@@ -329,7 +330,6 @@ $(function () {
                 if (!baru && !lama) tanpaAtt.push(i + 1);
             });
 
-            if (kosong.length)   reasons.push('nilai Settle baris no. ' + kosong.join(', '));
             if (tanpaAtt.length) reasons.push('Lampiran Item baris no. ' + tanpaAtt.join(', '));
         }
 
@@ -635,6 +635,7 @@ $(function () {
         // CR yang sudah PAID: tiap baris settlement wajib punya Lampiran Item.
         var missAtt = [];
         $('#realizeBody tr[data-detail-id]').each(function (idx) {
+            if (parseRp($(this).find('.realize-amount-input').val()) <= 0) return;
             var inp  = this.querySelector('.detail-att-input');
             var baru = inp && inp.files && inp.files.length;
             var lama = $(this).find('.del-realize-att').filter(function () { return !this.checked; }).length;

@@ -26,10 +26,27 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '2.4.1',
+    'current' => '2.4.2',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '2.4.2',
+            'date'    => '2026-09-27',
+            'title'   => 'Settlement Boleh Bernilai 0',
+            'summary' => 'Penyesuaian form Settlement Cost Request: item yang tidak terpakai atau dananya dikembalikan kini bisa disettle dengan nilai 0 tanpa lampiran.',
+            'sections' => [
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Cost Request > Submit Settlement: kolom Settle per item boleh diisi 0 (atau dikosongkan = 0).',
+                        'Lampiran Item hanya wajib untuk baris yang nilai Settle-nya lebih dari 0; baris bernilai 0 tidak perlu lampiran.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '2.4.1',

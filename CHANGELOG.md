@@ -4,6 +4,15 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [2.4.2] - 2026-09-27 — Settlement Boleh Bernilai 0
+
+Penyesuaian form Settlement Cost Request: item yang tidak terpakai atau dananya
+dikembalikan kini bisa disettle dengan nilai 0 tanpa lampiran.
+
+### Berubah
+- Cost Request > Submit Settlement: kolom Settle per item boleh diisi 0 (atau dikosongkan = 0).
+- Lampiran Item hanya wajib untuk baris yang nilai Settle-nya lebih dari 0; baris bernilai 0 tidak perlu lampiran.
+
 ## [2.4.1] - 2026-09-27 — Approval Massal di Todo List & Menu Access per Aplikasi
 
 Rilis lanjutan yang mempercepat pekerjaan approval harian: Todo List mendukung

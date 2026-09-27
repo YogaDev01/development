@@ -2187,7 +2187,8 @@ class BudgetRequestController extends Controller
         $request->validate([
             'realizations'                     => 'required|array|min:1',
             'realizations.*.request_detail_id' => 'required|exists:request_detail,id',
-            'realizations.*.amount'            => 'required',
+            // Settle boleh 0 (mis. uang dikembalikan utuh); kosong dianggap 0.
+            'realizations.*.amount'            => 'nullable',
             'realizations.*.attachments'       => 'nullable|array',
             'realizations.*.attachments.*'     => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
             'realization_attachments'          => 'nullable|array',
@@ -2221,6 +2222,11 @@ class BudgetRequestController extends Controller
                 continue;
             }
             $no++;
+
+            // Baris dengan Settle 0 tidak wajib berlampiran.
+            if (! $this->normalizeMoney($row['amount'] ?? null)) {
+                continue;
+            }
 
             $hasFile = collect((array) $request->file("realizations.$i.attachments", []))
                 ->contains(fn ($f) => $f && $f->isValid());
