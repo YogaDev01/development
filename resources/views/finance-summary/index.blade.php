@@ -1360,6 +1360,10 @@
                                         // status Paid pada No. PO, dan itu pula sebutannya di
                                         // stepper Purchase Order.
                                         'wait_payment' => ['label' => 'Waiting Paid', 'tone' => 'bad'],
+                                        // Bukan antrean, melainkan yang sudah tuntas - ujung alur
+                                        // tahapan, dan membuat Contract sama dengan jumlah seluruh
+                                        // kolom tahap di kanannya.
+                                        'closed'       => ['label' => 'Closed',       'tone' => 'good'],
                                         /*
                                         | VAR dihitung di browser dari dua kolom yang dipilih di
                                         | dropdown, bukan dikirim server: mengganti formula tidak
@@ -1367,12 +1371,14 @@
                                         | saat filter Manager menghitung ulang subtotal. Ditandai
                                         | 'computed' supaya perulangan sel di bawah tahu baris ini
                                         | tidak punya data dari controller.
+                                        |
+                                        | Ditaruh paling kanan DAN dibekukan ('sticky'): VAR adalah
+                                        | angka yang dibandingkan terus-menerus dengan tahap mana
+                                        | pun, jadi ia harus tetap terlihat saat kolom tahap di
+                                        | kirinya digulir - pola yang sama dengan Payment Rate di
+                                        | Summary PO.
                                         */
-                                        'var'          => ['label' => 'VAR', 'tone' => 'warn', 'computed' => true],
-                                        // Bukan antrean, melainkan yang sudah tuntas - ditaruh
-                                        // paling kanan sebagai ujung alur, dan membuat Contract
-                                        // sama dengan jumlah seluruh kolom di kanannya.
-                                        'closed'       => ['label' => 'Closed',       'tone' => 'good'],
+                                        'var'          => ['label' => 'VAR', 'tone' => 'warn', 'computed' => true, 'sticky' => true],
                                     ];
 
                                     /*
@@ -1387,6 +1393,10 @@
                                     $progPoLevel = ['contract', 'wait_po'];
                                     $progRp      = fn ($n) => number_format((int) $n, 0, ',', '.');
                                     $progCols    = 1 + count($progGroups) * 2;
+                                    // Kelas pembeku kolom kanan, dipasang di SEMUA sel grup yang
+                                    // ditandai 'sticky' (header grup, sub-header, tiap tingkat
+                                    // baris, dan footer) supaya satu kolom membeku utuh.
+                                    $progStick   = fn ($g) => !empty($g['sticky']) ? ' prog-sticky' : '';
                                 @endphp
                                     @php
                                         $progManagers = collect($progressRows)
@@ -1471,13 +1481,13 @@
                                             <th scope="col" rowspan="2" class="col-sticky-left" style="vertical-align:middle;border-bottom:2px solid var(--border);min-width:280px;">Customer / PO / No. PO</th>
                                             @foreach($progGroups as $gk => $g)
                                             <th scope="col" data-grp="{{ $gk }}" colspan="2"
-                                                class="text-center col-grp-head {{ $g['tone'] ? 'col-grp-' . $g['tone'] : '' }}">{{ $g['label'] }}</th>
+                                                class="text-center col-grp-head {{ $g['tone'] ? 'col-grp-' . $g['tone'] : '' }}{{ $progStick($g) }}">{{ $g['label'] }}</th>
                                             @endforeach
                                         </tr>
                                         <tr>
                                             @foreach($progGroups as $gk => $g)
-                                            <th scope="col" data-c="{{ $gk }}_qty"   class="{{ $g['tone'] ? 'col-subhead-' . $g['tone'] : 'prog-subhead-plain' }}">Qty</th>
-                                            <th scope="col" data-c="{{ $gk }}_value" class="{{ $g['tone'] ? 'col-subhead-' . $g['tone'] : 'prog-subhead-plain' }}">Value</th>
+                                            <th scope="col" data-c="{{ $gk }}_qty"   class="{{ $g['tone'] ? 'col-subhead-' . $g['tone'] : 'prog-subhead-plain' }}{{ $progStick($g) }}">Qty</th>
+                                            <th scope="col" data-c="{{ $gk }}_value" class="{{ $g['tone'] ? 'col-subhead-' . $g['tone'] : 'prog-subhead-plain' }}{{ $progStick($g) }}">Value</th>
                                             @endforeach
                                         </tr>
                                     </thead>
@@ -1492,13 +1502,13 @@
                                                 </td>
                                                 @foreach($progGroups as $gk => $g)
                                                 @if(!empty($g['computed']))
-                                                <td data-c="{{ $gk }}_qty" class="text-right col-cell-{{ $g['tone'] }} prog-var-qty" style="font-weight:700;"
+                                                <td data-c="{{ $gk }}_qty" class="text-right col-cell-{{ $g['tone'] }} prog-var-qty{{ $progStick($g) }}" style="font-weight:700;"
                                                     @foreach($progVarOperands as $op) data-{{ str_replace('_', '-', $op) }}-qty="{{ $cust[$op . '_qty'] }}" @endforeach>0</td>
-                                                <td data-c="{{ $gk }}_value" class="text-right col-cell-{{ $g['tone'] }} prog-var-value"
+                                                <td data-c="{{ $gk }}_value" class="text-right col-cell-{{ $g['tone'] }} prog-var-value{{ $progStick($g) }}"
                                                     @foreach($progVarOperands as $op) data-{{ str_replace('_', '-', $op) }}-value="{{ $cust[$op . '_value'] }}" @endforeach>0</td>
                                                 @else
-                                                <td data-c="{{ $gk }}_qty" class="text-right {{ $g['tone'] ? 'col-cell-' . $g['tone'] : '' }}" style="font-weight:700;">{{ $cust[$gk . '_qty'] }}</td>
-                                                <td data-c="{{ $gk }}_value" class="text-right {{ $g['tone'] ? 'col-cell-' . $g['tone'] : '' }}">{{ $progRp($cust[$gk . '_value']) }}</td>
+                                                <td data-c="{{ $gk }}_qty" class="text-right {{ $g['tone'] ? 'col-cell-' . $g['tone'] : '' }}{{ $progStick($g) }}" style="font-weight:700;">{{ $cust[$gk . '_qty'] }}</td>
+                                                <td data-c="{{ $gk }}_value" class="text-right {{ $g['tone'] ? 'col-cell-' . $g['tone'] : '' }}{{ $progStick($g) }}">{{ $progRp($cust[$gk . '_value']) }}</td>
                                                 @endif
                                                 @endforeach
                                             </tr>
@@ -1521,13 +1531,13 @@
                                                     </td>
                                                     @foreach($progGroups as $gk => $g)
                                                     @if(!empty($g['computed']))
-                                                    <td data-c="{{ $gk }}_qty" class="text-right col-cell-{{ $g['tone'] }} prog-var-qty"
+                                                    <td data-c="{{ $gk }}_qty" class="text-right col-cell-{{ $g['tone'] }} prog-var-qty{{ $progStick($g) }}"
                                                         @foreach($progVarOperands as $op) data-{{ str_replace('_', '-', $op) }}-qty="{{ $proj[$op . '_qty'] }}" @endforeach>0</td>
-                                                    <td data-c="{{ $gk }}_value" class="text-right col-cell-{{ $g['tone'] }} prog-var-value"
+                                                    <td data-c="{{ $gk }}_value" class="text-right col-cell-{{ $g['tone'] }} prog-var-value{{ $progStick($g) }}"
                                                         @foreach($progVarOperands as $op) data-{{ str_replace('_', '-', $op) }}-value="{{ $proj[$op . '_value'] }}" @endforeach>0</td>
                                                     @else
-                                                    <td data-c="{{ $gk }}_qty" class="text-right {{ $g['tone'] ? 'col-cell-' . $g['tone'] : '' }}">{{ $proj[$gk . '_qty'] }}</td>
-                                                    <td data-c="{{ $gk }}_value" class="text-right {{ $g['tone'] ? 'col-cell-' . $g['tone'] : '' }}">{{ $progRp($proj[$gk . '_value']) }}</td>
+                                                    <td data-c="{{ $gk }}_qty" class="text-right {{ $g['tone'] ? 'col-cell-' . $g['tone'] : '' }}{{ $progStick($g) }}">{{ $proj[$gk . '_qty'] }}</td>
+                                                    <td data-c="{{ $gk }}_value" class="text-right {{ $g['tone'] ? 'col-cell-' . $g['tone'] : '' }}{{ $progStick($g) }}">{{ $progRp($proj[$gk . '_value']) }}</td>
                                                     @endif
                                                     @endforeach
                                                 </tr>
@@ -1548,16 +1558,16 @@
                                                                  (keduanya tingkat PO), jadi operan yang tidak
                                                                  berlaku dikirim 0 - VAR-nya tetap terhitung untuk
                                                                  pasangan tahap yang memang ada di baris ini. --}}
-                                                            <td data-c="{{ $gk }}_qty" class="text-right {{ $tone }} prog-var-qty"
+                                                            <td data-c="{{ $gk }}_qty" class="text-right {{ $tone }} prog-var-qty{{ $progStick($g) }}"
                                                                 @foreach($progVarOperands as $op) data-{{ str_replace('_', '-', $op) }}-qty="{{ $pn[$op . '_qty'] ?? 0 }}" @endforeach>0</td>
-                                                            <td data-c="{{ $gk }}_value" class="text-right {{ $tone }} prog-var-value"
+                                                            <td data-c="{{ $gk }}_value" class="text-right {{ $tone }} prog-var-value{{ $progStick($g) }}"
                                                                 @foreach($progVarOperands as $op) data-{{ str_replace('_', '-', $op) }}-value="{{ $pn[$op . '_value'] ?? 0 }}" @endforeach>0</td>
                                                             @elseif(in_array($gk, $progPoLevel, true))
-                                                            <td data-c="{{ $gk }}_qty" class="text-right text-muted {{ $tone }}">&ndash;</td>
-                                                            <td data-c="{{ $gk }}_value" class="text-right text-muted {{ $tone }}">&ndash;</td>
+                                                            <td data-c="{{ $gk }}_qty" class="text-right text-muted {{ $tone }}{{ $progStick($g) }}">&ndash;</td>
+                                                            <td data-c="{{ $gk }}_value" class="text-right text-muted {{ $tone }}{{ $progStick($g) }}">&ndash;</td>
                                                             @else
-                                                            <td data-c="{{ $gk }}_qty" class="text-right {{ $tone }}">{{ $pn[$gk . '_qty'] ?: '-' }}</td>
-                                                            <td data-c="{{ $gk }}_value" class="text-right {{ $tone }}">{{ $pn[$gk . '_value'] ? $progRp($pn[$gk . '_value']) : '-' }}</td>
+                                                            <td data-c="{{ $gk }}_qty" class="text-right {{ $tone }}{{ $progStick($g) }}">{{ $pn[$gk . '_qty'] ?: '-' }}</td>
+                                                            <td data-c="{{ $gk }}_value" class="text-right {{ $tone }}{{ $progStick($g) }}">{{ $pn[$gk . '_value'] ? $progRp($pn[$gk . '_value']) : '-' }}</td>
                                                             @endif
                                                         @endforeach
                                                     </tr>
@@ -1581,13 +1591,13 @@
                                             <td class="col-sticky-left">Grand Total &mdash; <span id="progGrandCount">{{ $progressTotals['customer_qty'] }} customer &middot; {{ $progressTotals['po_qty'] }} PO &middot; {{ $progressTotals['po_number_qty'] }} No. PO</span></td>
                                             @foreach($progGroups as $gk => $g)
                                             @if(!empty($g['computed']))
-                                            <td data-c="{{ $gk }}_qty" class="text-right col-cell-{{ $g['tone'] }} prog-var-qty" style="font-weight:700;"
+                                            <td data-c="{{ $gk }}_qty" class="text-right col-cell-{{ $g['tone'] }} prog-var-qty{{ $progStick($g) }}" style="font-weight:700;"
                                                 @foreach($progVarOperands as $op) data-{{ str_replace('_', '-', $op) }}-qty="{{ $progressTotals[$op . '_qty'] }}" @endforeach>0</td>
-                                            <td data-c="{{ $gk }}_value" class="text-right col-cell-{{ $g['tone'] }} prog-var-value"
+                                            <td data-c="{{ $gk }}_value" class="text-right col-cell-{{ $g['tone'] }} prog-var-value{{ $progStick($g) }}"
                                                 @foreach($progVarOperands as $op) data-{{ str_replace('_', '-', $op) }}-value="{{ $progressTotals[$op . '_value'] }}" @endforeach>0</td>
                                             @else
-                                            <td data-c="{{ $gk }}_qty" class="text-right">{{ $progressTotals[$gk . '_qty'] }}</td>
-                                            <td data-c="{{ $gk }}_value" class="text-right">{{ $progRp($progressTotals[$gk . '_value']) }}</td>
+                                            <td data-c="{{ $gk }}_qty" class="text-right{{ $progStick($g) }}">{{ $progressTotals[$gk . '_qty'] }}</td>
+                                            <td data-c="{{ $gk }}_value" class="text-right{{ $progStick($g) }}">{{ $progRp($progressTotals[$gk . '_value']) }}</td>
                                             @endif
                                             @endforeach
                                         </tr>
@@ -2127,10 +2137,36 @@ td.exec-indent { padding-left:28px !important; }
     position:sticky; right:0; z-index:3; background:var(--surface);
     box-shadow:-2px 0 6px -2px rgba(0,0,0,.18);
 }
+/* `position` DIULANG dengan !important di sini, bukan mubazir. Tema memasang
+       body.tesys-ui table.dataTable > thead > tr > th:not(.sorting_disabled) { position:relative }
+   (tesys-ui-compat.css & tesys-ui-luxe.css, penjangkar panah urut :before/:after).
+   Spesifisitasnya (0,3,5) menang atas aturan sticky di atas (0,3,1), jadi HEADER
+   kolom beku balik jadi relative dan ikut tergulir sementara sel tubuhnya tetap
+   nempel — kolom Status/Payment Rate lalu menutupi kolom di sebelah kirinya.
+   Hanya mengenai tabel DataTables, itu sebabnya Summary Progress (tabel biasa)
+   tidak terdampak. Aturan tema TIDAK diubah: ia berlaku untuk semua DataTable di
+   aplikasi, dan `position:sticky` tetap jadi containing block bagi panah urutnya. */
 .col-pic-hscroll .col-pic-table thead th.col-sticky-left,
-.col-pic-hscroll .col-pic-table thead th.col-sticky-right { z-index:4; }
+.col-pic-hscroll .col-pic-table thead th.col-sticky-right { position:sticky !important; z-index:4; }
 .col-pic-hscroll .col-pic-table tfoot td.col-sticky-left,
 .col-pic-hscroll .col-pic-table tfoot td.col-sticky-right { background:var(--surface-2); }
+
+/* ── Summary Progress: kolom VAR dibekukan di kanan ──
+   Dua kolom bersebelahan (Qty + Value), jadi tidak bisa dua-duanya right:0.
+   Offset kanan Qty = lebar kolom Value, diisi JS ke --prog-var-value-w dan
+   dihitung ulang tiap kali menu Kolom menyembunyikan salah satunya (kalau Value
+   disembunyikan nilainya 0 dan Qty otomatis merapat ke tepi).
+   Latar sengaja TIDAK diatur: .col-cell-warn / .col-subhead-warn / .col-grp-warn
+   sudah memberi warna tone yang pekat lewat !important. */
+#tblProgressSummary .prog-sticky { position:sticky !important; z-index:3; }
+#tblProgressSummary thead .prog-sticky { z-index:4; }
+#tblProgressSummary [data-c="var_value"].prog-sticky { right:0; }
+#tblProgressSummary [data-c="var_qty"].prog-sticky   { right:var(--prog-var-value-w, 0px); }
+#tblProgressSummary thead th[data-grp="var"].prog-sticky { right:0; }
+/* Bayangan hanya di sisi terluar kiri dari blok beku, supaya tidak muncul garis
+   bayangan di antara Qty dan Value. Kelasnya dipindah JS mengikuti kolom mana
+   yang sedang jadi paling kiri. */
+#tblProgressSummary .prog-sticky-edge { box-shadow:-2px 0 6px -2px rgba(0,0,0,.18); }
 
 /* ── Filter multi-pilih (tombol-dropdown checklist) ── */
 .col-mf { position:relative; display:inline-block; }
@@ -3650,6 +3686,32 @@ $(function () {
         return state;
     }
 
+    /* Kolom VAR dibekukan di kanan dan lebarnya dua kolom, jadi offset kanan
+       kolom Qty harus sama dengan lebar kolom Value — dan itu berubah begitu
+       salah satunya disembunyikan lewat menu Kolom, atau saat lebar jendela
+       berubah. Nilainya ditaruh di custom property --prog-var-value-w yang
+       dibaca CSS, plus penanda .prog-sticky-edge untuk menaruh bayangan hanya
+       di kolom beku paling kiri. */
+    function syncProgVarSticky() {
+        var $tabel = $('#tblProgressSummary');
+        if (!$tabel.length) return;
+
+        var $thQty   = $tabel.find('thead th[data-c="var_qty"]');
+        var $thValue = $tabel.find('thead th[data-c="var_value"]');
+
+        // :visible ikut false saat tab Collection masih tersembunyi — lebarnya
+        // memang belum bisa diukur di situ, makanya fungsi ini dipanggil lagi
+        // pada shown.bs.tab.
+        var lebarValue = $thValue.is(':visible') ? $thValue.outerWidth() : 0;
+        $tabel[0].style.setProperty('--prog-var-value-w', lebarValue + 'px');
+
+        // Bayangan hanya di kolom beku terkiri yang masih tampak.
+        var kiri = $thQty.is(':visible') ? 'var_qty' : ($thValue.is(':visible') ? 'var_value' : null);
+        $tabel.find('.prog-sticky-edge').removeClass('prog-sticky-edge');
+        if (kiri) $tabel.find('.prog-sticky[data-c="' + kiri + '"]').addClass('prog-sticky-edge');
+    }
+    window.syncProgVarSticky = syncProgVarSticky;
+
     function applyProgColvis(simpan) {
         var state = progColvisState();
 
@@ -3663,6 +3725,9 @@ $(function () {
             var n = (state[grp + '_qty'] ? 1 : 0) + (state[grp + '_value'] ? 1 : 0);
             $(this).attr('colspan', Math.max(1, n)).toggle(n > 0);
         });
+
+        // Lebar kolom baru selesai dihitung ulang browser setelah toggle di atas.
+        syncProgVarSticky();
 
         if (simpan !== false) {
             try { localStorage.setItem(PROG_COLVIS_KEY, JSON.stringify(state)); } catch (e) {}
@@ -3682,7 +3747,15 @@ $(function () {
             });
         } catch (e) {}
         applyProgColvis(false);
+    } else {
+        syncProgVarSticky();
     }
+
+    /* Tab Collection bisa belum terlihat saat load — lebar kolom baru benar
+       setelah tabelnya tampil, jadi offset dihitung ulang di sana (pola sama
+       dengan initCollectionTables / initCollectionCharts). */
+    $('#summaryTabCollectionLink').on('shown.bs.tab', syncProgVarSticky);
+    $(window).on('resize', syncProgVarSticky);
 
     if ($('#summaryPaneCollection').hasClass('active')) {
         initCollectionTables();

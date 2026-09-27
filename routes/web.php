@@ -957,6 +957,8 @@ Route::middleware('auth')->group(function () {
     */
     Route::middleware('menu:todo-list')->get('todo-list', [TodoListController::class, 'index'])->name('todo-list.index');
     Route::middleware('menu:todo-list')->match(['get', 'post'], 'todo-list/export', [TodoListController::class, 'exportList'])->name('todo-list.export');
+    Route::middleware('menu:todo-list')->post('todo-list/bulk/{section}/{mode}', [TodoListController::class, 'bulk'])
+        ->whereIn('mode', ['approve', 'reject'])->name('todo-list.bulk');
 
     /*
     |--------------------------------------------------------------------------

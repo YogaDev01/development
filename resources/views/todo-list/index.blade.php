@@ -3,6 +3,25 @@
 @section('title', 'Todo List Request')
 
 @section('content')
+@php
+    /* Atribut grouping PO untuk baris tabel flat (dibaca JS "GROUPING PO"):
+       label & keterangan sama formatnya dengan lapis PO di worklist CR —
+       "[kode] nama" + "(customer - manager)". Tanpa project = "— Tanpa PO —"
+       dengan keterangan cost center / sumber dana. */
+    $poAttrs = function ($project, ?string $fallbackSub = null, $amount = 0) {
+        if ($project) {
+            $pm  = strtoupper($project->pm_internal_name ?? '-');
+            $sub = ($project->customer?->name ?? '-') . ($pm && $pm !== '-' ? ' - ' . $pm : '');
+            $label = '[' . $project->code . '] ' . $project->name;
+        } else {
+            $label = '— Tanpa PO —';
+            $sub   = $fallbackSub ?? '';
+        }
+        return new \Illuminate\Support\HtmlString(
+            'data-po-key="' . e($label) . '" data-po-label="' . e($label) . '" data-po-sub="' . e($sub) . '" data-po-amount="' . e((float) $amount) . '"'
+        );
+    };
+@endphp
 
 <div class="content" id="todoApp">
     <div class="container-fluid">
@@ -137,13 +156,13 @@
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
+                        <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
                                     <th scope="col" class="text-nowrap" style="width:1%;">CR Number</th>
                                     <th scope="col">Description</th>
                                     <th scope="col">Alasan Ditolak</th>
-                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Amount</th>
+                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:1%;">Amount</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Batch Treasury</th>
                                 </tr>
@@ -155,7 +174,7 @@
                                     $crAging = $cr->aging_days;
                                     $crAgingClass = $crAging >= 3 ? 'text-danger' : ($crAging >= 1 ? 'rv-nob-item' : 'text-muted');
                                 @endphp
-                                <tr class="todo-row" data-pm="{{ strtoupper($cr->pm_internal_name) }}" data-po="{{ $cr->po_label }}" data-search="{{ $crSearch }}">
+                                <tr class="todo-row" {{ $poAttrs($cr->budgetPlan?->project, $cr->budgetPlan?->costCenter?->name, $cr->amount) }} data-pm="{{ strtoupper($cr->pm_internal_name) }}" data-po="{{ $cr->po_label }}" data-search="{{ $crSearch }}">
                                     <td class="text-nowrap">
                                         <button type="button" class="cr-number-btn todo-open-drawer" data-id="{{ $cr->id }}">{{ $cr->code }}</button>
                                     </td>
@@ -228,13 +247,13 @@
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
+                        <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
                                     <th scope="col" class="text-nowrap" style="width:1%;">CR Number</th>
                                     <th scope="col">Description</th>
                                     <th scope="col" class="text-nowrap" style="width:1%;">Beneficiary</th>
-                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Amount</th>
+                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:1%;">Amount</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
                                 </tr>
@@ -246,7 +265,7 @@
                                     $crAging = $cr->aging_days;
                                     $crAgingClass = $crAging >= 3 ? 'text-danger' : ($crAging >= 1 ? 'rv-nob-item' : 'text-muted');
                                 @endphp
-                                <tr class="todo-row" data-pm="{{ strtoupper($cr->pm_internal_name) }}" data-po="{{ $cr->po_label }}" data-search="{{ $crSearch }}">
+                                <tr class="todo-row" {{ $poAttrs($cr->budgetPlan?->project, $cr->budgetPlan?->costCenter?->name, $cr->amount) }} data-pm="{{ strtoupper($cr->pm_internal_name) }}" data-po="{{ $cr->po_label }}" data-search="{{ $crSearch }}">
                                     <td class="text-nowrap">
                                         <button type="button" class="cr-number-btn todo-open-drawer" data-id="{{ $cr->id }}">{{ $cr->code }}</button>
                                     </td>
@@ -291,6 +310,7 @@
                         <span class="text-muted ml-1" style="font-size:11px;">dari {{ $stage['data']->count() }} PO</span>
                     </h3>
                 </div>
+                @include('todo-list._bulk_bar', ['key' => $stage['key'], 'approveLabel' => $stage['key'] === 'settle-check' ? 'Check' : 'Verify', 'unit' => 'CR'])
                 <div class="card-body p-0">
                     <div style="padding:6px 16px;border-bottom:1px solid var(--border);">
                         <button type="button" class="btn btn-link todo-toggle-all p-0" style="font-size:11.5px;font-weight:600;text-decoration:none;" data-state="collapsed">
@@ -301,6 +321,7 @@
                         <table class="table table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
+                                    <th scope="col" style="width:1%;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
                                     <th scope="col" class="text-nowrap" style="width:1%;">CR Number</th>
                                     <th scope="col">Description</th>
                                     <th scope="col" class="text-nowrap" style="width:1%;">Beneficiary</th>
@@ -321,6 +342,7 @@
                     @endphp
                                 {{-- LAPIS 1 — PURCHASE ORDER (MN-03). --}}
                                 <tr class="todo-po-row" data-target="todo-{{ $stage['key'] }}-po-{{ $poi }}">
+                                    <td><input type="checkbox" class="todo-check-group" data-group="todo-{{ $stage['key'] }}-po-{{ $poi }}" aria-label="Pilih semua CR PO ini"></td>
                                     <td colspan="3">
                                         <i class="fas fa-chevron-right todo-caret mr-2"></i>
                                         <strong>{{ $poGroup['po'] }}</strong>
@@ -351,6 +373,7 @@
                                 {{-- LAPIS 2 — BUDGET PLAN. --}}
                                 <tr class="todo-group-row todo-{{ $stage['key'] }}-po-{{ $poi }}" style="display:none;"
                                     data-target="todo-{{ $stage['key'] }}-grp-{{ $gi }}">
+                                    <td><input type="checkbox" class="todo-check-group" data-group="todo-{{ $stage['key'] }}-grp-{{ $gi }}" aria-label="Pilih semua CR budget plan ini"></td>
                                     <td colspan="3" style="padding-left:32px;">
                                         <i class="fas fa-chevron-right todo-caret mr-2"></i>
                                         <strong>{{ $group['label'] }}</strong>
@@ -377,6 +400,7 @@
                                 @endphp
                                 <tr class="{{ $indukBarisCr }} todo-row" style="display:none;"
                                     data-pm="{{ $group['pm'] }}" data-po="{{ $poGroup['po'] }}" data-search="{{ $crSearch }}">
+                                    <td><input type="checkbox" class="todo-check" value="{{ $cr->id }}" data-amount="{{ $cr->amount }}" aria-label="Pilih {{ $cr->code }}"></td>
                                     <td class="text-nowrap">
                                         <button type="button" class="cr-number-btn todo-open-drawer" data-id="{{ $cr->id }}">{{ $cr->code }}</button>
                                     </td>
@@ -417,7 +441,7 @@
                             </tbody>
                             <tfoot>
                                 <tr style="background:var(--surface-2);">
-                                    <th colspan="3" class="text-right">Subtotal</th>
+                                    <th colspan="4" class="text-right">Subtotal</th>
                                     <th class="text-right text-nowrap">
                                         {{ number_format($stage['data']->sum('amount'), 0, ',', '.') }}
                                     </th>
@@ -445,17 +469,19 @@
                         <span class="text-muted ml-1" style="font-size:11px;">dari {{ $approverSecondApprove->count() }} PO</span>
                     </h3>
                 </div>
+                @include('todo-list._bulk_bar', ['key' => 'settle-2nd', 'approveLabel' => 'Second Approve', 'unit' => 'CR'])
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover mb-0" style="font-size:12px;">
+                        <table class="table todo-po-group table-sm table-hover mb-0" style="font-size:12px;">
                             <thead class="bg-light">
                                 <tr>
+                                    <th scope="col" style="width:1%;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
                                     <th scope="col">Code</th>
                                     <th scope="col">Deskripsi</th>
                                     <th scope="col" class="text-nowrap">Beneficiary</th>
                                     <th scope="col" class="text-right text-nowrap">Request</th>
                                     <th scope="col" class="text-right text-nowrap">Settlement</th>
-                                    <th scope="col" class="text-right text-nowrap">Expense Claim</th>
+                                    <th scope="col" data-po-amount class="text-right text-nowrap">Expense Claim</th>
                                     <th scope="col" class="text-center text-nowrap">Aging</th>
                                     <th scope="col" class="text-center text-nowrap">Aksi</th>
                                 </tr>
@@ -468,9 +494,10 @@
                                     $crAging = $cr->aging_days;
                                     $crAgingClass = $crAging >= 3 ? 'text-danger' : ($crAging >= 1 ? 'rv-nob-item' : 'text-muted');
                                 @endphp
-                                <tr class="todo-row"
+                                <tr class="todo-row" data-po-key="{{ $poGroup['po'] }}" data-po-label="{{ $poGroup['po'] }}" data-po-sub="{{ $poGroup['customer'] . (($poGroup['pm'] ?? '-') !== '-' ? ' - ' . $poGroup['pm'] : '') }}" data-po-amount="{{ $cr->expense_claim }}"
                                     data-pm="{{ $group['pm'] }}" data-po="{{ $poGroup['po'] }}"
                                     data-search="{{ strtolower($cr->code . ' ' . $cr->description . ' ' . ($cr->beneficiary?->nickname ?? '')) }}">
+                                    <td><input type="checkbox" class="todo-check" value="{{ $cr->id }}" data-amount="{{ $cr->expense_claim ?? $cr->amount }}" aria-label="Pilih {{ $cr->code }}"></td>
                                     <td class="text-nowrap">
                                         <button type="button" class="cr-number-btn todo-open-drawer" data-id="{{ $cr->id }}">{{ $cr->code }}</button>
                                     </td>
@@ -522,7 +549,7 @@
                         <div style="font-size:12.5px;color:var(--text);"><strong class="todo-bulk-count">0</strong> CR dipilih<span class="todo-bulk-amount"></span></div>
                         <div class="d-flex" style="gap:8px;">
                             <button type="button" class="btn btn-outline-success btn-sm todo-bulk-approve" disabled>
-                                <i class="fas fa-lock mr-1"></i>Close
+                                <i class="fas fa-check-double mr-1"></i>Approve
                             </button>
                             <button type="button" class="btn btn-outline-danger btn-sm todo-bulk-reject" disabled>
                                 <i class="fas fa-times mr-1"></i>Reject
@@ -547,6 +574,7 @@
                                     <th scope="col" class="text-nowrap" style="width:1%;">Beneficiary</th>
                                     <th scope="col" class="text-right text-nowrap" style="width:1%;">Amount</th>
                                     <th scope="col" class="text-right text-nowrap" style="width:1%;">Refund</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Expense Claim</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
                                 </tr>
@@ -579,7 +607,7 @@
                                     <td class="text-right text-nowrap" style="font-weight:700;">
                                         {{ number_format($poGroup['amount'], 0, ',', '.') }}
                                     </td>
-                                    <td colspan="3"></td>
+                                    <td colspan="4"></td>
                                 </tr>
 
                                 @foreach($poGroup['plans'] as $pi => $group)
@@ -600,7 +628,7 @@
                                         <span class="text-muted" style="font-size:11px;">({{ $group['pm'] }})</span>
                                         <span class="badge badge-secondary ml-1">{{ $group['items']->count() }}</span>
                                     </td>
-                                    <td colspan="2"></td>
+                                    <td colspan="3"></td>
                                 </tr>
                                 @endif
                                 @foreach($group['items'] as $cr)
@@ -609,17 +637,22 @@
                                         . ($cr->beneficiary?->nickname ?? '') . ' ' . $poGroup['po']);
                                     $crAging = $cr->aging_days;
                                     $crAgingClass = $crAging >= 3 ? 'text-danger' : ($crAging >= 1 ? 'rv-nob-item' : 'text-muted');
-                                    $refundClass = $cr->proposed_refund < 0 ? 'text-danger' : ($cr->proposed_refund > 0 ? 'text-success' : 'text-muted');
+                                    // Refund & Expense Claim saling eksklusif: settlement di bawah
+                                    // pengajuan = Refund, di atasnya = Expense Claim. Nilai negatif
+                                    // Refund sudah diwakili kolom Expense Claim, jadi tampil 0.
+                                    $refundShown = max(0, (int) $cr->proposed_refund);
+                                    $refundClass = $refundShown > 0 ? 'text-success' : 'text-muted';
                                 @endphp
                                 <tr class="{{ $indukBarisCr }} todo-row" style="display:none;"
                                     data-pm="{{ $group['pm'] }}" data-po="{{ $poGroup['po'] }}" data-search="{{ $crSearch }}">
                                     {{-- CR yang Second Payment-nya masih PENDING memang tidak bisa
                                          di-Close, jadi tidak diberi checkbox sama sekali daripada
                                          ikut terpilih lalu gagal diam-diam saat bulk. --}}
-                                    {{-- CR dengan Expense Claim juga tidak diberi checkbox: aksinya
-                                         Settle Approve, bukan Close, jadi tidak boleh ikut bulk Close. --}}
+                                    {{-- CR dengan Expense Claim tetap diberi checkbox: bulk Approve
+                                         menjalankan Settle Approve untuknya, Close untuk yang lain
+                                         (lihat HandlesCrSettlement::settlementBulkClose). --}}
                                     <td>
-                                        @unless($cr->pending_second_payment || $cr->needs_settle_approve)
+                                        @unless($cr->pending_second_payment && ! $cr->needs_settle_approve)
                                         <input type="checkbox" class="todo-check" value="{{ $cr->id }}" data-amount="{{ $cr->amount }}" aria-label="Pilih {{ $cr->code }}">
                                         @endunless
                                     </td>
@@ -629,10 +662,14 @@
                                     <td>{{ Str::limit($cr->description, 120) }}</td>
                                     <td class="text-nowrap">{{ $cr->beneficiary?->nickname ?? '-' }}</td>
                                     <td class="text-right text-nowrap"><strong>{{ $cr->amount_formatted }}</strong></td>
-                                    <td class="text-right text-nowrap {{ $refundClass }}"><strong>{{ $cr->proposed_refund_formatted }}</strong></td>
+                                    <td class="text-right text-nowrap {{ $refundClass }}"><strong>{{ number_format($refundShown, 0, ',', '.') }}</strong></td>
+                                    <td class="text-right text-nowrap {{ $cr->needs_settle_approve ? 'text-danger' : 'text-muted' }}"><strong>{{ $cr->needs_settle_approve ? $cr->expense_claim_fmt : '0' }}</strong></td>
                                     <td class="text-center text-nowrap {{ $crAgingClass }}">{{ $cr->aging_label }}</td>
                                     <td class="text-center text-nowrap">
-                                        @if($cr->pending_second_payment)
+                                        {{-- Expense Claim > 0 SELALU punya Second Payment PENDING (dibuat
+                                             saat Finance Verify), jadi cabang Settle Approve harus dicek
+                                             lebih dulu — kalau tidak, badge "Pending" menutupi aksinya. --}}
+                                        @if($cr->pending_second_payment && ! $cr->needs_settle_approve)
                                         <span class="badge badge-warning" style="font-size:9px;" title="Second Payment {{ $cr->pending_second_payment->amount_formatted }} masih PENDING">
                                             <i class="fas fa-hourglass-half mr-1"></i>Second Payment Pending
                                         </span>
@@ -707,19 +744,19 @@
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
+                        <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
                                     <th scope="col" class="text-nowrap" style="width:1%;">CR Number</th>
                                     <th scope="col">Description</th>
                                     <th scope="col" class="text-nowrap" style="width:1%;">Beneficiary</th>
-                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Second Payment</th>
+                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:1%;">Second Payment</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($secondPaymentPending as $cr)
-                                <tr class="todo-row" data-search="{{ strtolower($cr->code . ' ' . $cr->description . ' ' . ($cr->beneficiary?->nickname ?? '')) }}">
+                                <tr class="todo-row" {{ $poAttrs($cr->budgetPlan?->project, $cr->budgetPlan?->costCenter?->name, $cr->pending_payment?->amount ?? 0) }} data-search="{{ strtolower($cr->code . ' ' . $cr->description . ' ' . ($cr->beneficiary?->nickname ?? '')) }}">
                                     <td class="text-nowrap">
                                         <button type="button" class="cr-number-btn todo-open-drawer" data-id="{{ $cr->id }}">{{ $cr->code }}</button>
                                     </td>
@@ -755,22 +792,24 @@
             @endphp
             @foreach($budgetingStages as $stage)
             @if($stage['data']->isNotEmpty())
-            <div id="tl-{{ $stage['key'] }}" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
+            <div id="tl-{{ $stage['key'] }}" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section todo-worklist" data-section="{{ $stage['key'] }}">
                 <div class="card-header">
                     <h3 class="card-title mb-0">
                         <i class="fas fa-coins mr-1"></i> {{ $stage['title'] }}
                         <span class="badge badge-secondary ml-1">{{ $stage['data']->count() }}</span>
                     </h3>
                 </div>
+                @include('todo-list._bulk_bar', ['key' => $stage['key'], 'approveLabel' => $stage['approveTitle'], 'unit' => 'budget'])
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
+                        <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
+                                    <th scope="col" style="width:1%;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
                                     <th scope="col" class="text-nowrap" style="width:1%;">Code</th>
                                     <th scope="col">Description</th>
                                     <th scope="col" class="text-nowrap" style="width:1%;">Sumber Dana</th>
-                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Amount</th>
+                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:1%;">Amount</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
                                 </tr>
@@ -778,7 +817,8 @@
                             <tbody>
                                 @foreach($stage['data'] as $bp)
                                 @php $bpAgingClass = $bp->aging_days >= 3 ? 'text-danger' : ($bp->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
-                                <tr class="todo-row" data-search="{{ strtolower($bp->code . ' ' . $bp->description . ' ' . $bp->source_name) }}">
+                                <tr class="todo-row" {{ $poAttrs($bp->project, $bp->costCenter?->name ?? $bp->source_name, $bp->amount) }} data-search="{{ strtolower($bp->code . ' ' . $bp->description . ' ' . $bp->source_name) }}">
+                                    <td><input type="checkbox" class="todo-check" value="{{ $bp->id }}" data-amount="{{ $bp->amount }}" aria-label="Pilih {{ $bp->code }}"></td>
                                     {{-- Todo #4 — kode membuka rincian Budget Plan di
                                          tempat, sehingga approver tidak perlu pindah ke
                                          halaman Budgeting hanya untuk melihat isinya
@@ -842,13 +882,13 @@
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
+                        <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
                                     <th scope="col" class="text-nowrap" style="width:1%;">Code</th>
                                     <th scope="col">Description</th>
                                     <th scope="col" class="text-nowrap" style="width:1%;">Sumber Dana</th>
-                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Amount</th>
+                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:1%;">Amount</th>
                                     <th scope="col">Alasan Ditolak</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
@@ -857,7 +897,7 @@
                             <tbody>
                                 @foreach($budgetingRejected as $bp)
                                 @php $bpAgingClass = $bp->aging_days >= 3 ? 'text-danger' : ($bp->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
-                                <tr class="todo-row" data-search="{{ strtolower($bp->code . ' ' . $bp->description . ' ' . $bp->source_name) }}">
+                                <tr class="todo-row" {{ $poAttrs($bp->project, $bp->costCenter?->name ?? $bp->source_name, $bp->amount) }} data-search="{{ strtolower($bp->code . ' ' . $bp->description . ' ' . $bp->source_name) }}">
                                     {{-- Todo #4 — kode membuka rincian Budget Plan di
                                          tempat, sehingga approver tidak perlu pindah ke
                                          halaman Budgeting hanya untuk melihat isinya
@@ -1000,18 +1040,20 @@
             @endif
 
             @if($treasuryProcess->isNotEmpty())
-            <div id="tl-batch-process" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
+            <div id="tl-batch-process" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section todo-worklist" data-section="batch-process">
                 <div class="card-header">
                     <h3 class="card-title mb-0">
                         <i class="fas fa-money-check-alt mr-1"></i> Treasury — Menunggu Proses
                         <span class="badge badge-secondary ml-1">{{ $treasuryProcess->count() }}</span>
                     </h3>
                 </div>
+                @include('todo-list._bulk_bar', ['key' => 'batch-process', 'approveLabel' => 'Proses', 'unit' => 'batch'])
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-bordered mb-0 todo-fit-table" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
+                                    <th scope="col" style="width:1%;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
                                     <th scope="col" class="todo-col-fit">Batch Code</th>
                                     <th scope="col" class="todo-col-desc">Deskripsi</th>
                                     <th scope="col" class="todo-col-fit">Tanggal</th>
@@ -1026,6 +1068,7 @@
                                 @foreach($treasuryProcess as $batch)
                                 @php $dtAgingClass = $batch->aging_days >= 3 ? 'text-danger' : ($batch->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
                                 <tr class="todo-row" data-search="{{ strtolower($batch->code . ' ' . $batch->description) }}">
+                                    <td><input type="checkbox" class="todo-check" value="{{ $batch->id }}" data-amount="{{ $batch->captured_amount }}" aria-label="Pilih {{ $batch->code }}"></td>
                                     <td class="todo-col-fit"><a href="{{ route('daily-transaction.show', $batch->id) }}" class="cr-number-btn">{{ $batch->code }}</a></td>
                                     <td class="todo-col-desc">{{ $batch->description ?? '-' }}</td>
                                     <td class="todo-col-fit">{{ $batch->date?->format('d M Y') ?? '-' }}</td>
@@ -1069,7 +1112,7 @@
                             </tbody>
                             <tfoot>
                                 <tr style="background:var(--surface-2);">
-                                    <th colspan="5" class="text-right">Subtotal</th>
+                                    <th colspan="6" class="text-right">Subtotal</th>
                                     <th class="text-right">{{ number_format($treasuryProcess->sum('captured_amount'), 0, ',', '.') }}</th>
                                     <th colspan="2"></th>
                                 </tr>
@@ -1153,12 +1196,12 @@
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
+                        <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
                                     <th scope="col" class="text-nowrap" style="width:1%;">No. PO</th>
                                     <th scope="col">PO / Customer</th>
-                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Sisa Ditagih</th>
+                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:1%;">Sisa Ditagih</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
                                 </tr>
@@ -1166,7 +1209,7 @@
                             <tbody>
                                 @foreach($collectionWaitingInvoice as $poNumber)
                                 @php $poAgingClass = $poNumber->aging_days >= 3 ? 'text-danger' : ($poNumber->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
-                                <tr class="todo-row" data-search="{{ strtolower($poNumber->po_number . ' ' . ($poNumber->project?->name ?? '') . ' ' . ($poNumber->project?->customer?->name ?? '')) }}">
+                                <tr class="todo-row" {{ $poAttrs($poNumber->project, null, $poNumber->remainingValue()) }} data-search="{{ strtolower($poNumber->po_number . ' ' . ($poNumber->project?->name ?? '') . ' ' . ($poNumber->project?->customer?->name ?? '')) }}">
                                     <td class="text-nowrap">{{ $poNumber->po_number }} <span class="badge badge-{{ $poNumber->status_color }}" style="font-size:9px;">{{ $poNumber->status_label }}</span></td>
                                     <td>{{ $poNumber->project?->name ?? '-' }} <span class="text-muted">({{ $poNumber->project?->customer?->name ?? '-' }})</span></td>
                                     <td class="text-right text-nowrap"><strong>{{ $poNumber->remaining_value_formatted }}</strong></td>
@@ -1270,21 +1313,23 @@
             @endif
 
             @if($invoiceVerify->isNotEmpty())
-            <div id="tl-invoice-verify" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
+            <div id="tl-invoice-verify" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section todo-worklist" data-section="invoice-verify">
                 <div class="card-header">
                     <h3 class="card-title mb-0">
                         <i class="fas fa-file-invoice mr-1"></i> Invoice — Menunggu Verifikasi
                         <span class="badge badge-secondary ml-1">{{ $invoiceVerify->count() }}</span>
                     </h3>
                 </div>
+                @include('todo-list._bulk_bar', ['key' => 'invoice-verify', 'approveLabel' => 'Verify', 'canReject' => false, 'unit' => 'invoice'])
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
+                        <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
+                                    <th scope="col" style="width:1%;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
                                     <th scope="col" class="text-nowrap" style="width:1%;">Invoice</th>
                                     <th scope="col">PO / Customer</th>
-                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Amount</th>
+                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:1%;">Amount</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
                                 </tr>
@@ -1292,7 +1337,8 @@
                             <tbody>
                                 @foreach($invoiceVerify as $inv)
                                 @php $invAgingClass = $inv->aging_days >= 3 ? 'text-danger' : ($inv->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
-                                <tr class="todo-row" data-search="{{ strtolower($inv->code . ' ' . ($inv->po?->name ?? '') . ' ' . ($inv->po?->customer?->name ?? '')) }}">
+                                <tr class="todo-row" {{ $poAttrs($inv->po, null, $inv->billed_amount) }} data-search="{{ strtolower($inv->code . ' ' . ($inv->po?->name ?? '') . ' ' . ($inv->po?->customer?->name ?? '')) }}">
+                                    <td><input type="checkbox" class="todo-check" value="{{ $inv->id }}" data-amount="{{ $inv->billed_amount }}" aria-label="Pilih {{ $inv->code }}"></td>
                                     <td class="text-nowrap"><a href="{{ route('invoice-cash-receipt.show', $inv->id) }}" class="cr-number-btn">{{ $inv->code }}</a></td>
                                     <td>{{ $inv->po?->name ?? '-' }} <span class="text-muted">({{ $inv->po?->customer?->name ?? '-' }})</span></td>
                                     <td class="text-right text-nowrap"><strong>{{ $inv->billed_amount_formatted }}</strong></td>
@@ -1332,21 +1378,23 @@
 
             {{-- INVOICE — MENUNGGU APPROVAL --}}
             @if($invoiceApprove->isNotEmpty())
-            <div id="tl-invoice-approve" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
+            <div id="tl-invoice-approve" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section todo-worklist" data-section="invoice-approve">
                 <div class="card-header">
                     <h3 class="card-title mb-0">
                         <i class="fas fa-file-invoice-dollar mr-1"></i> Invoice — Menunggu Approval
                         <span class="badge badge-secondary ml-1">{{ $invoiceApprove->count() }}</span>
                     </h3>
                 </div>
+                @include('todo-list._bulk_bar', ['key' => 'invoice-approve', 'approveLabel' => 'Approve', 'canReject' => false, 'unit' => 'invoice'])
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
+                        <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
+                                    <th scope="col" style="width:1%;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
                                     <th scope="col" class="text-nowrap" style="width:1%;">Invoice</th>
                                     <th scope="col">PO / Customer</th>
-                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Amount</th>
+                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:1%;">Amount</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
                                 </tr>
@@ -1354,7 +1402,8 @@
                             <tbody>
                                 @foreach($invoiceApprove as $inv)
                                 @php $invAgingClass = $inv->aging_days >= 3 ? 'text-danger' : ($inv->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
-                                <tr class="todo-row" data-search="{{ strtolower($inv->code . ' ' . ($inv->po?->name ?? '') . ' ' . ($inv->po?->customer?->name ?? '')) }}">
+                                <tr class="todo-row" {{ $poAttrs($inv->po, null, $inv->billed_amount) }} data-search="{{ strtolower($inv->code . ' ' . ($inv->po?->name ?? '') . ' ' . ($inv->po?->customer?->name ?? '')) }}">
+                                    <td><input type="checkbox" class="todo-check" value="{{ $inv->id }}" data-amount="{{ $inv->billed_amount }}" aria-label="Pilih {{ $inv->code }}"></td>
                                     <td class="text-nowrap"><a href="{{ route('invoice-cash-receipt.show', $inv->id) }}" class="cr-number-btn">{{ $inv->code }}</a></td>
                                     <td>{{ $inv->po?->name ?? '-' }} <span class="text-muted">({{ $inv->po?->customer?->name ?? '-' }})</span></td>
                                     <td class="text-right text-nowrap"><strong>{{ $inv->billed_amount_formatted }}</strong></td>
@@ -1403,7 +1452,7 @@
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
+                        <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
                                     <th scope="col" class="text-nowrap" style="width:1%;">PO</th>
@@ -1415,7 +1464,7 @@
                             </thead>
                             <tbody>
                                 @foreach($milestoneOverdue as $detail)
-                                <tr class="todo-row" data-search="{{ strtolower(($detail->project?->name ?? '') . ' ' . ($detail->stage?->name ?? '')) }}">
+                                <tr class="todo-row" {{ $poAttrs($detail->project) }} data-search="{{ strtolower(($detail->project?->name ?? '') . ' ' . ($detail->stage?->name ?? '')) }}">
                                     <td class="text-nowrap">{{ $detail->project?->name ?? '-' }} <span class="text-muted">({{ $detail->project?->customer?->name ?? '-' }})</span></td>
                                     <td>{{ $detail->stage?->name ?? '-' }} <span class="badge badge-secondary" style="font-size:9px;">{{ str_replace('_',' ', $detail->status) }}</span></td>
                                     <td class="text-center text-nowrap">{{ $detail->plan_end?->format('d M Y') ?? '-' }}</td>
@@ -2094,6 +2143,58 @@ $(function () {
         });
     });
 
+    /* ── GROUPING PO untuk tabel flat (table.todo-po-group) ──
+       Baris dikelompokkan per PO dari atribut data-po-* (diisi $poAttrs di
+       Blade), menjadi lapis .todo-po-row yang sama dengan worklist CR —
+       sehingga buka/tutup, filter, Expand All, dan checkbox grup ikut
+       bekerja tanpa kode tambahan. Urutan grup mengikuti baris pertamanya,
+       jadi urutan aging tertua dari server tetap terjaga. */
+    (function groupFlatTablesByPo() {
+        function escHtml(v) { return $('<span>').text(v == null ? '' : v).html(); }
+        $('table.todo-po-group').each(function (ti) {
+            var $table = $(this);
+            var $tbody = $table.children('tbody').first();
+            var $rows = $tbody.children('tr.todo-row');
+            if (!$rows.length) return;
+
+            var $ths = $table.find('thead tr').first().children('th');
+            var nCol = $ths.length;
+            var hasCheck = $table.find('thead .todo-check-all').length > 0;
+            var amtIdx = $ths.index($ths.filter('[data-po-amount]'));
+
+            var groups = [], byKey = {};
+            $rows.each(function () {
+                var key = $(this).attr('data-po-key') || '— Tanpa PO —';
+                if (!byKey[key]) {
+                    byKey[key] = { label: $(this).attr('data-po-label') || key, sub: $(this).attr('data-po-sub') || '', rows: [], amount: 0 };
+                    groups.push(byKey[key]);
+                }
+                byKey[key].rows.push(this);
+                byKey[key].amount += parseFloat($(this).attr('data-po-amount')) || 0;
+            });
+
+            $rows.detach();
+            groups.forEach(function (g, gi) {
+                var cls = 'tlpg' + ti + '-po-' + gi;
+                var used = hasCheck ? 1 : 0;
+                var html = '<tr class="todo-po-row" data-target="' + cls + '">';
+                if (hasCheck) {
+                    html += '<td><input type="checkbox" class="todo-check-group" data-group="' + cls + '" aria-label="Pilih semua item PO ini"></td>';
+                }
+                html += '<td colspan="' + ((amtIdx > 0 ? amtIdx : nCol) - used) + '">' +
+                    '<i class="fas fa-chevron-right todo-caret mr-2"></i><strong>' + escHtml(g.label) + '</strong>' +
+                    (g.sub ? ' <span class="text-muted" style="font-size:11px;">(' + escHtml(g.sub) + ')</span>' : '') +
+                    ' <span class="badge badge-secondary ml-1">' + g.rows.length + '</span></td>';
+                if (amtIdx > 0) {
+                    html += '<td class="text-right text-nowrap" style="font-weight:700;">' + Math.round(g.amount).toLocaleString('id-ID') + '</td>';
+                    if (nCol - amtIdx - 1 > 0) html += '<td colspan="' + (nCol - amtIdx - 1) + '"></td>';
+                }
+                $tbody.append(html + '</tr>');
+                g.rows.forEach(function (r) { $(r).addClass(cls).hide(); $tbody.append(r); });
+            });
+        });
+    })();
+
     /* ── WORKLIST — buka/tutup lapis PURCHASE ORDER (MN-03) ──
        Menutup PO ikut menutup seluruh Budget Plan di dalamnya beserta CR-nya;
        kalau tidak, baris CR akan menggantung tanpa induk yang terlihat. */
@@ -2169,6 +2270,16 @@ $(function () {
     });
 
     /* ── WORKLIST — checkbox & bulk approve/reject (per section) ── */
+    // CR di bawah PO bisa bertingkat (PO -> Budget Plan -> CR), jadi checkbox
+    // grup menjangkau juga CR milik grup anak di bawahnya.
+    function groupLeaves(group) {
+        var $rows = $('.' + group);
+        var $leaves = $rows.find('.todo-check');
+        $rows.find('.todo-check-group').each(function () {
+            $leaves = $leaves.add(groupLeaves($(this).data('group')));
+        });
+        return $leaves;
+    }
     function updateBulkBar($section) {
         var $checked = $section.find('.todo-check:checked');
         var n = $checked.length;
@@ -2181,8 +2292,7 @@ $(function () {
         // Sinkronkan checkbox header grup: tercentang kalau semua CR dalam grup itu tercentang
         // (termasuk saat "select all" section ditekan, atau CR dicentang satu-satu).
         $section.find('.todo-check-group').each(function () {
-            var group = $(this).data('group');
-            var $leaves = $('.' + group).find('.todo-check');
+            var $leaves = groupLeaves($(this).data('group'));
             $(this).prop('checked', $leaves.length > 0 && $leaves.filter(':checked').length === $leaves.length);
         });
     }
@@ -2200,9 +2310,8 @@ $(function () {
         e.stopPropagation();
     });
     $(document).on('change', '.todo-check-group', function () {
-        var group = $(this).data('group');
         var $section = $(this).closest('.todo-worklist');
-        $('.' + group).find('.todo-check').prop('checked', $(this).is(':checked'));
+        groupLeaves($(this).data('group')).prop('checked', $(this).is(':checked'));
         updateBulkBar($section);
     });
 
@@ -2507,6 +2616,7 @@ $(function () {
         $('#btnTodoClearFilter').toggle(filtering);
 
         if (!filtering) {
+            $('.todo-row').removeClass('todo-filtered-out');
             /* Filter dilepas. Kartu section dan lapis PO dikembalikan tampil;
                lapis Budget Plan & baris CR di dalam section GROUPED dikembalikan
                tertutup.
@@ -2531,8 +2641,17 @@ $(function () {
                 $section.find('.todo-caret').removeClass('rotated');
             });
 
-            // Baris CR di section flat tidak punya induk — harus tetap tampil.
-            $('.todo-flat-section .todo-row').show();
+            // Baris di tabel flat yang sudah ter-grouping PO kembali tertutup
+            // di bawah induknya; sisanya (tanpa lapis PO) tetap tampil.
+            $('.todo-flat-section').each(function () {
+                var $sec = $(this);
+                if ($sec.find('.todo-po-row').length) {
+                    $sec.find('.todo-row').hide();
+                    $sec.find('.todo-caret').removeClass('rotated');
+                } else {
+                    $sec.find('.todo-row').show();
+                }
+            });
 
             $('#todoNoMatch').hide();
             return;
@@ -2547,7 +2666,7 @@ $(function () {
                 var val = ($row.data(field) || '').toString();
                 if (!todoFilterState[field].has(val)) match = false;
             });
-            $row.toggle(match);
+            $row.toggle(match).toggleClass('todo-filtered-out', !match);
             if (match) anyVisible = true;
         });
 
@@ -2591,8 +2710,10 @@ $(function () {
         var $btn = $(this);
 
         try {
+            // Dinilai dari hasil filter, bukan :visible — baris di dalam grup
+            // yang sedang tertutup tetap bagian dari data yang diekspor.
             var $semua = $('.todo-row');
-            var $tampil = $semua.filter(':visible');
+            var $tampil = $semua.not('.todo-filtered-out');
             if ($tampil.length === $semua.length) return; // GET biasa
 
             var ids = [];
@@ -2846,13 +2967,24 @@ $(function () {
        di tempat yang sama dengan method aksinya. Halaman ini cuma menggambar
        apa yang dikirim. */
     var todoDrwActions = {}; // key aksi -> definisi, diisi ulang tiap drawer dibuka
+    // Checkbox baris tempat drawer dibuka (kosong kalau barisnya tidak punya
+    // checkbox) — dipakai tombol "Pilih" untuk ikut multi-select.
+    var $todoDrwCheck = $();
+
+    function drawerSelectButton() {
+        if (!$todoDrwCheck.length) return '';
+        var on = $todoDrwCheck.is(':checked');
+        return '<button type="button" class="btn btn-outline-secondary mr-auto todo-drw-select">' +
+            '<i class="fas ' + (on ? 'fa-minus-square' : 'fa-check-square') + ' mr-1"></i>' +
+            (on ? 'Batal Pilih' : 'Pilih') + '</button>';
+    }
 
     function renderDrawerActions(d) {
         var list = d.workflow_actions || [];
         todoDrwActions = {};
-        if (!list.length) { $('#todoDrwActions').hide().empty(); return; }
+        var html = drawerSelectButton();
+        if (!list.length && !html) { $('#todoDrwActions').hide().empty(); return; }
 
-        var html = '';
         list.forEach(function (a) {
             todoDrwActions[a.key] = a;
             html += '<button type="button" class="btn btn-' + esc(a.variant) + ' todo-drw-action" data-key="' + escAttr(a.key) + '">' +
@@ -2895,7 +3027,17 @@ $(function () {
     $('#drwActionNotes').on('input', function () { $(this).removeClass('is-invalid'); });
 
     $(document).on('click', '.todo-open-drawer', function () {
+        $todoDrwCheck = $(this).closest('tr').find('.todo-check').first();
         openCrDrawer($(this).data('id'));
+    });
+
+    // Pilih/batal pilih baris asal lalu tutup drawer, supaya user bisa lanjut
+    // memilih baris lain dan memproses sekaligus lewat bar multi-select.
+    $(document).on('click', '.todo-drw-select', function () {
+        if (!$todoDrwCheck.length) return;
+        $todoDrwCheck.prop('checked', !$todoDrwCheck.is(':checked')).trigger('change');
+        $('#todoDrawerOverlay, #todoDrawer').fadeOut(150);
+        $('body').removeClass('todo-drawer-open');
     });
     $('#todoDrwClose, #todoDrawerOverlay').on('click', function () {
         $('#todoDrawerOverlay, #todoDrawer').fadeOut(150);

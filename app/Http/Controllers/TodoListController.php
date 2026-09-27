@@ -849,6 +849,87 @@ class TodoListController extends Controller
     }
 
     /**
+     * Section Todo List => route aksi satuan [approve, reject]. Bulk memanggil
+     * ulang aksi satuan itu per baris, jadi seluruh aturan (cek status, lock,
+     * log, notifikasi) tetap satu sumber di controller modulnya masing-masing.
+     */
+    private const BULK_ROUTES = [
+        'settle-check'   => ['budget-request.head-check-settlement', 'budget-request.head-reject-settlement'],
+        'settle-verify'  => ['budget-request.finance-verify-settlement', 'budget-request.finance-reject-settlement'],
+        'settle-2nd'     => ['budget-request.second-approve', 'budget-request.second-reject'],
+        'bp-head'        => ['budget-plan.head-approve', 'budget-plan.head-reject'],
+        'bp-verify'      => ['budget-plan.finance-verify', 'budget-plan.finance-reject'],
+        'bp-ceo'         => ['budget-plan.ceo-approve', 'budget-plan.ceo-reject'],
+        'batch-process'  => ['daily-transaction.approve', 'daily-transaction.reject-batch'],
+        'invoice-verify' => ['invoice-cash-receipt.verify', null],
+        'invoice-approve'=> ['invoice-cash-receipt.approve', null],
+    ];
+
+    /** POST /todo-list/bulk/{section}/{mode} — multi-select approve/reject. */
+    public function bulk(Request $request, string $section, string $mode)
+    {
+        $routeName = self::BULK_ROUTES[$section][$mode === 'reject' ? 1 : 0] ?? null;
+        abort_unless($routeName && in_array($mode, ['approve', 'reject'], true), 404);
+
+        if ($mode === 'reject') {
+            $request->validate(['notes' => 'required|string|max:500']);
+        }
+
+        $route = \Illuminate\Support\Facades\Route::getRoutes()->getByName($routeName);
+        abort_unless($route, 404);
+
+        // Middleware role: milik route aslinya ikut ditegakkan di sini, karena
+        // action dipanggil langsung (tidak lewat router).
+        /** @var User $user */
+        $user = Auth::user();
+        foreach ($route->gatherMiddleware() as $mw) {
+            if (is_string($mw) && str_starts_with($mw, 'role:')
+                && !$user->hasRole(explode(',', substr($mw, 5)))) {
+                abort(403, 'Anda tidak memiliki wewenang untuk aksi ini.');
+            }
+        }
+
+        [$controllerClass, $method] = explode('@', $route->getActionName());
+        $controller = app($controllerClass);
+
+        $ok = 0;
+        $errors = [];
+        foreach (array_unique((array) $request->input('ids', [])) as $id) {
+            session()->forget(['success', 'error']);
+            try {
+                app()->call([$controller, $method], ['id' => $id]);
+                if ($err = session('error')) {
+                    $errors[] = '#' . $id . ': ' . $err;
+                } else {
+                    $ok++;
+                }
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                $errors[] = '#' . $id . ': ' . collect($e->errors())->flatten()->first();
+            } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+                $errors[] = '#' . $id . ': ' . ($e->getMessage() ?: 'Akses ditolak.');
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('TodoList bulk gagal', [
+                    'section' => $section, 'mode' => $mode, 'id' => $id, 'error' => $e->getMessage(),
+                ]);
+                $errors[] = '#' . $id . ': terjadi kesalahan sistem.';
+            }
+        }
+        session()->forget(['success', 'error']);
+
+        $redirect = redirect()->route('todo-list.index');
+        $verb = $mode === 'reject' ? 'ditolak' : 'diproses';
+        if ($ok) {
+            $redirect->with('success', $ok . ' item berhasil ' . $verb . '.');
+        }
+        if ($errors) {
+            $redirect->with('error', count($errors) . ' item dilewati: ' . implode(' | ', array_slice($errors, 0, 5))
+                . (count($errors) > 5 ? ' ...' : ''));
+        }
+
+        return $redirect;
+    }
+
+    /**
      * GET /todo-list/export — export Excel dari seluruh task yang tampil untuk
      * user yang login saat ini (union semua section, sama seperti index()).
      */

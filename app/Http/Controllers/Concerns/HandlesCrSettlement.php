@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Concerns;
 use App\Models\BudgetRequest;
 use App\Models\User;
 use App\Services\NotifyService;
+use App\Services\RoleDirectory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -484,11 +485,24 @@ trait HandlesCrSettlement
         $errors = [];
 
         foreach ($this->visibleCrs($ids) as $cr) {
-            $error = $this->applySettlementClose($cr, $request->notes);
+            // CR ber-Expense Claim tidak di-Close melainkan di-Settle Approve —
+            // lewat method satuannya supaya aturan & notifikasinya satu sumber.
+            if ($cr->hasExpenseClaim()) {
+                session()->forget('error');
+                try {
+                    $this->settleApprove($request, $cr->id);
+                    $error = session('error');
+                } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+                    $error = 'CR ' . $cr->code . ': ' . ($e->getMessage() ?: 'akses ditolak.');
+                }
+                session()->forget(['success', 'error']);
+            } else {
+                $error = $this->applySettlementClose($cr, $request->notes);
+            }
             if ($error) { $errors[] = $error; } else { $ok++; }
         }
 
-        return $this->settlementBulkResponse($ok, $errors, 'di-Close');
+        return $this->settlementBulkResponse($ok, $errors, 'di-approve');
     }
 
     /** Bulk Reject dari To-Do List (multi-select baris). */

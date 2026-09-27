@@ -26,10 +26,46 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '2.4.0',
+    'current' => '2.4.1',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '2.4.1',
+            'date'    => '2026-09-27',
+            'title'   => 'Approval Massal di Todo List & Menu Access per Aplikasi',
+            'summary' => 'Rilis lanjutan yang mempercepat pekerjaan approval harian: Todo List mendukung approve/reject massal, menu access diatur per aplikasi Tesys dengan Master Data bersama, dan beberapa perbaikan tombol approval serta migrasi.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Todo List: approve/reject massal (multi-select) untuk Check & Verify Settlement, Second Approve, approval Budget Plan (Head/Finance/CEO), proses batch Treasury, serta Verify & Approve Invoice. Tiap baris tetap diproses lewat aksi satuannya, jadi aturan, log, dan notifikasinya sama.',
+                        'Atur Menu Access di Role Master kini dikelompokkan per aplikasi (Tesys Finance, HR, R&D, Operations, Project) dengan pilih-semua per aplikasi, dan disusun otomatis dari peta menu yang sama dengan sidebar.',
+                        'Cost Request: tombol "Tolak settlement" untuk Manager pada CR yang Settlement-nya sudah terverifikasi.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Master Data kini satu daftar bersama untuk semua aplikasi: menu Master Data yang tampil di sidebar Finance, Logistics, HR, dan lainnya sama persis, hanya ditentukan menu access role.',
+                        'Treasury (buat batch): Second Payment kini dikelompokkan per PM Internal bersama Cost Request biasa; setiap grup bisa dibuka-tutup, dipilih sekaligus, dan menampilkan ringkasan nilainya.',
+                        'Finance Summary: kolom Closed dipindah sebelum VAR, dan kolom VAR dibekukan di sisi kanan sehingga tetap terlihat saat tabel digulir.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Tombol approval Cost Request kini mengikuti peran per tahap yang sama dengan server, sehingga tidak lagi hilang untuk peran yang sebenarnya berhak (mis. cost_control di tahap Checked).',
+                        'Bulk Close settlement dari Todo List: CR yang punya Expense Claim kini di-Settle Approve, tidak di-Close.',
+                        'Migrasi update daily_transactions yang ikut terjalankan ulang setelah ganti nama tidak lagi gagal "Data truncated for column status" pada basis data yang sudah memakai status DONE.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '2.4.0',
@@ -49,7 +85,6 @@ return [
                         'Halaman error sendiri (403, 404, 419, 429, 500) dengan penjelasan berbahasa Indonesia dan jalan keluar yang jelas, menggantikan layar error bawaan.',
                         'Akun yang dinonaktifkan langsung kehilangan sesinya saat itu juga, tidak lagi menunggu sesinya kedaluwarsa sendiri.',
                         'Pemantauan antrean notifikasi terjadwal: penumpukan job tercatat sebagai peringatan sehingga worker yang mati bisa ketahuan lebih cepat.',
-                        'Atur Menu Access di Role Master kini dikelompokkan per aplikasi (Tesys Finance, HR, R&D, Operations, Project) dengan pilih-semua per aplikasi, dan disusun otomatis dari peta menu yang sama dengan sidebar.',
                     ],
                 ],
                 [
@@ -60,7 +95,6 @@ return [
                         'Dashboard disederhanakan menjadi sapaan dan panel riwayat rilis; ringkasan pekerjaan tetap lengkap di Todo List dan badge lonceng.',
                         'Pemuatan aset (CSS/JS) memakai satu penanda versi, memangkas puluhan akses berkas di setiap permintaan halaman.',
                         'Global Search, Invoice, Budget Plan, Cost Request, Project, dan Forecast dirapikan penulisan kodenya agar hak akses dan alur datanya konsisten.',
-                        'Master Data kini satu daftar bersama untuk semua aplikasi: menu Master Data yang tampil di sidebar Finance, Logistics, HR, dan lainnya sama persis, hanya ditentukan menu access role.',
                     ],
                 ],
                 [
@@ -70,7 +104,6 @@ return [
                         'Nilai uang di atas Rp 2,14 miliar (Fixed Cost, Cost Register, arus kas) tidak lagi menyebabkan error 500 — kolomnya diperlebar.',
                         'Menghapus data master (user, beneficiary, cluster) tidak lagi bisa ikut menghapus Cost Request beserta rincian dan riwayat persetujuannya; kini ditolak di tingkat basis data.',
                         'Berkas migrasi dengan spasi pada namanya diganti nama agar aman dijalankan di semua lingkungan.',
-                        'Migrasi update daily_transactions yang ikut terjalankan ulang setelah ganti nama tidak lagi gagal "Data truncated for column status" pada basis data yang sudah memakai status DONE.',
                     ],
                 ],
             ],

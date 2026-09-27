@@ -121,9 +121,14 @@
 
                                         $bolehSubmit    = $st === 'DRAFT' && $u->hasRole(['superadmin','manager']);
                                         $bolehUbahDraft = $st === 'DRAFT' && $u->hasRole(['superadmin','manager','supervisor']);
-                                        $bolehHead      = $st === 'SUBMITTED' && $u->hasRole(['superadmin','head']);
-                                        $bolehFinance   = $st === 'CHECKED' && $u->hasRole(['superadmin','finance','finance_manager']);
-                                        $bolehCeo       = $st === 'VERIFIED' && $u->hasRole(['superadmin','approver']);
+                                        /* Peran tiap tahap approval diambil dari BudgetRequest::STAGE_ROLES —
+                                           sumber yang sama dengan controller & middleware route, supaya
+                                           tombol tidak hilang untuk peran yang sebenarnya berhak
+                                           (mis. cost_control di tahap Checked -> Verified). */
+                                        $stageRoles     = fn ($s) => array_merge(['superadmin'], \App\Models\BudgetRequest::STAGE_ROLES[$s] ?? []);
+                                        $bolehHead      = $st === 'SUBMITTED' && $u->hasRole($stageRoles('SUBMITTED'));
+                                        $bolehFinance   = $st === 'CHECKED' && $u->hasRole($stageRoles('CHECKED'));
+                                        $bolehCeo       = $st === 'VERIFIED' && $u->hasRole($stageRoles('VERIFIED'));
                                         $bolehRevisi    = $st === 'REJECTED' && $u->hasRole(['superadmin','manager','supervisor']);
                                         $bolehBatal     = $st === 'REJECTED' && $u->hasRole(['superadmin','manager']);
                                         $bolehSettle    = $st === 'PAID' && $u->hasRole(['superadmin','manager','supervisor']);
@@ -245,7 +250,7 @@
                                         {{-- ── AKSI LAIN — termasuk semua aksi mundur/merusak ── --}}
                                         @php
                                             $adaMenu = $bolehUbahDraft || $bolehHead || $bolehFinance || $bolehCeo
-                                                || $bolehBatal || $bolehHeadSet || $bolehFinSet;
+                                                || $bolehBatal || $bolehHeadSet || $bolehFinSet || $bolehTutup;
                                         @endphp
 
                                         @if($adaMenu)
@@ -306,6 +311,14 @@
                                             @if($bolehFinSet)
                                             <div class="dropdown-divider"></div>
                                             <button type="button" class="dropdown-item is-danger btn-finance-reject-settlement"
+                                                    data-id="{{ $cr->id }}" data-code="{{ $cr->code }}">
+                                                <i class="fas fa-times"></i>Tolak settlement
+                                            </button>
+                                            @endif
+
+                                            @if($bolehTutup)
+                                            <div class="dropdown-divider"></div>
+                                            <button type="button" class="dropdown-item is-danger btn-manager-reject-settlement"
                                                     data-id="{{ $cr->id }}" data-code="{{ $cr->code }}">
                                                 <i class="fas fa-times"></i>Tolak settlement
                                             </button>

@@ -152,7 +152,7 @@
 <div class="modal fade" id="mdlBulkRejectCR" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog"><div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
         <div class="modal-header" style="background:var(--charcoal);border-bottom:3px solid var(--accent);">
-            <h5 class="modal-title text-white">Reject <span id="bulkRejectCount"></span> CR</h5>
+            <h5 class="modal-title text-white">Reject <span id="bulkRejectCount"></span> item</h5>
             <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
         </div>
         <div class="modal-body" style="padding:24px;">

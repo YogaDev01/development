@@ -151,7 +151,8 @@ class DailyTransactionController extends Controller
         | pengeluaran lain.
         */
         $availableSecondPayments = \App\Models\BudgetRequestSecondPayment::availableForBatch()
-            ->with(['budgetRequest.beneficiary', 'budgetRequest.budgetPlan.project.customer'])
+            // project.manager: dikelompokkan per PM Internal bersama CR biasa.
+            ->with(['budgetRequest.beneficiary', 'budgetRequest.budgetPlan.project.customer', 'budgetRequest.budgetPlan.project.manager'])
             ->latest()->get();
 
         return view('daily-transaction.create', compact(
