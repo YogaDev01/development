@@ -262,6 +262,34 @@
     var rowFilterState = {}; // { tableId: { field: Set(rawValues) } }
     var rowFieldButtons = {}; // { tableId: { field: jQuery button } }
 
+    /*
+     | Filter bertingkat: daftar pilihan satu dropdown MENGIKUTI filter lain
+     | yang sedang aktif.
+     |
+     | Sebelumnya tiap dropdown membaca seluruh baris tabel apa adanya, jadi
+     | setelah Manager dipilih, dropdown PO/Tipe/Beneficiary/PIC masih
+     | menawarkan semua nilai — termasuk yang tidak dimiliki manager itu dan
+     | pasti menghasilkan tabel kosong kalau dicentang. Di sini baris yang
+     | dipakai menyusun daftar disaring dulu oleh filter field LAIN; filter
+     | field itu sendiri sengaja diabaikan, supaya pilihan yang sudah
+     | tercentang tidak lenyap dari daftarnya sendiri dan masih bisa
+     | dilepas kembali.
+     */
+    function rowPassesOtherFilters(tr, tableId, exceptField) {
+        var tableState = rowFilterState[tableId];
+        if (!tableState) return true;
+
+        for (var field in tableState) {
+            if (!tableState.hasOwnProperty(field)) continue;
+            if (field === exceptField) continue;
+            var selected = tableState[field];
+            if (!selected || selected.size === 0) continue;
+            var raw = (tr.getAttribute('data-' + field) || '').toString();
+            if (!selected.has(raw)) return false;
+        }
+        return true;
+    }
+
     function openRowFilterDropdown($btn, tableId, table, tableEl, field, label, valueLabels, options, showSearch) {
         if (isDropdownOpenFor($btn)) { closeAllDropdowns(); return; }
         closeAllDropdowns();
@@ -284,9 +312,38 @@
               yang bermakna (mis. ACTIVE sebelum INACTIVE), bukan alfabetis.
             */
             uniqueRaw = options.slice();
+
+            /*
+              ...KECUALI saat filter lain sedang aktif. Selama tidak ada filter
+              lain, daftar lengkap itu memang berguna: nilai yang belum dipakai
+              satu baris pun tetap terlihat. Begitu Manager (atau field lain)
+              dipilih, daftar yang tetap lengkap justru menawarkan pilihan yang
+              sudah pasti mengosongkan tabel — jadi di keadaan itu ia ikut
+              menyempit ke nilai yang benar-benar dimiliki baris tersisa.
+            */
+            var lainAktif = false;
+            var stateLain = rowFilterState[tableId];
+            for (var f in (stateLain || {})) {
+                if (stateLain.hasOwnProperty(f) && f !== field && stateLain[f] && stateLain[f].size) {
+                    lainAktif = true;
+                }
+            }
+
+            if (lainAktif) {
+                var ada = {};
+                table.rows({ search: 'none' }).nodes().each(function (tr) {
+                    if (!rowPassesOtherFilters(tr, tableId, field)) return;
+                    ada[(tr.getAttribute('data-' + field) || '').toString()] = true;
+                });
+                uniqueRaw = uniqueRaw.filter(function (v) {
+                    // Yang sudah tercentang tetap ditampilkan supaya bisa dilepas.
+                    return ada[v] || current.has(v);
+                });
+            }
         } else {
             var seen = {};
             table.rows({ search: 'none' }).nodes().each(function (tr) {
+                if (!rowPassesOtherFilters(tr, tableId, field)) return;
                 var raw = ($(tr).attr('data-' + field) || '').toString();
                 if (!seen[raw]) { seen[raw] = true; uniqueRaw.push(raw); }
             });

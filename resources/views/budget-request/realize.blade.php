@@ -231,6 +231,30 @@
                 </div>
             </div>
 
+            {{-- KETERANGAN SETTLEMENT — opsional, ikut tercatat di Log CR bersama
+                 rincian settlement yang disubmit. Polanya sama dengan lampiran:
+                 kolomnya baru muncul setelah tombolnya diklik. --}}
+            <div class="card card-secondary card-outline shadow-sm mb-3">
+                <div class="card-header d-flex align-items-center">
+                    <h3 class="card-title mb-0"><i class="fas fa-comment-dots mr-1"></i> Keterangan</h3>
+                    <button type="button" class="btn btn-sm btn-primary ml-auto" id="btnAddSettleNote">
+                        <i class="fas fa-plus mr-1"></i> Tambah Keterangan
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="settleNoteArea" style="display:none;">
+                        <textarea name="settlement_notes" id="settlementNotes" class="form-control" rows="3"
+                                  maxlength="1000" placeholder="Mis. nota hotel atas nama rekan kerja, selisih karena kenaikan tarif, dsb."></textarea>
+                        <small class="text-muted d-block mt-1">
+                            Keterangan ini ikut tersimpan di Log Cost Request bersama settlement yang disubmit. Maks 1000 karakter.
+                        </small>
+                    </div>
+                    <p id="settleNoteEmpty" class="text-muted mb-0" style="font-size:12px;">
+                        Belum ada keterangan. Klik <strong>Tambah Keterangan</strong> kalau settlement ini perlu penjelasan.
+                    </p>
+                </div>
+            </div>
+
             <div class="card shadow-sm">
                 <div class="card-body d-flex align-items-center" style="gap:8px;">
                     <button type="submit" id="submitBtn" class="btn btn-secondary" disabled>
@@ -305,6 +329,18 @@ $(function () {
     }
     $(document).on('input', '.realize-amount-input', recalcTotalRealized);
     recalcTotalRealized();
+
+    /* ── KETERANGAN SETTLEMENT ─────────────────────────────────────────────
+       Kolomnya disembunyikan sampai user menekan "Tambah Keterangan", sama
+       seperti area upload lampiran. */
+    document.getElementById('btnAddSettleNote').addEventListener('click', function () {
+        var area = document.getElementById('settleNoteArea');
+        var kosong = document.getElementById('settleNoteEmpty');
+        if (area) area.style.display = '';
+        if (kosong) kosong.style.display = 'none';
+        var ta = document.getElementById('settlementNotes');
+        if (ta) ta.focus();
+    });
 
     /* ── KEADAAN TOMBOL SUBMIT ──────────────────────────────────────────────
        Tombolnya abu-abu & mati selama syaratnya belum lengkap, lalu berubah

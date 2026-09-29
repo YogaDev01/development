@@ -871,6 +871,62 @@
             @endif
             @endforeach
 
+            {{-- BUDGETING — JATUH TEMPO PLAN FINISH, MANAGER AJUKAN CLOSING --}}
+            @if($budgetingClosingDue->isNotEmpty())
+            <div id="tl-bp-closing-due" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-flag-checkered mr-1"></i> Budgeting — Ajukan Closing (Plan Finish terlewati)
+                        <span class="badge badge-secondary ml-1">{{ $budgetingClosingDue->count() }}</span>
+                    </h3>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th scope="col" class="text-nowrap" style="width:1%;">Code</th>
+                                    <th scope="col">Description</th>
+                                    <th scope="col" class="text-nowrap" style="width:1%;">Sumber Dana</th>
+                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:1%;">Amount</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Plan Finish</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($budgetingClosingDue as $bp)
+                                @php $bpAgingClass = $bp->aging_days >= 3 ? 'text-danger' : ($bp->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
+                                <tr class="todo-row" {{ $poAttrs($bp->project, $bp->costCenter?->name ?? $bp->source_name, $bp->amount) }} data-search="{{ strtolower($bp->code . ' ' . $bp->description . ' ' . $bp->source_name) }}">
+                                    <td class="text-nowrap">
+                                        <button type="button" class="cr-number-btn todo-bp-detail"
+                                                data-id="{{ $bp->id }}">{{ $bp->code }}</button>
+                                    </td>
+                                    <td>{{ Str::limit($bp->description, 120) }}</td>
+                                    <td class="text-nowrap">{{ $bp->source_name }}</td>
+                                    <td class="text-right text-nowrap"><strong>{{ $bp->amount_formatted }}</strong></td>
+                                    <td class="text-center text-nowrap text-danger">{{ $bp->plan_finish?->format('d-m-Y') ?? '-' }}</td>
+                                    <td class="text-center text-nowrap {{ $bpAgingClass }}">{{ $bp->aging_label }}</td>
+                                    <td class="text-center text-nowrap">
+                                        {{-- Pengajuan closing wajib berlampiran, jadi barisnya
+                                             mengantar ke halaman Budgeting (modal Submit
+                                             Closing) alih-alih beraksi langsung dari sini. --}}
+                                        <div class="action-buttons ts-actions">
+                                            <a href="{{ url('/budget-plan') }}" class="ts-action-primary"
+                                               title="Ajukan Closing di halaman Budgeting">
+                                                <i class="fas fa-flag-checkered" aria-hidden="true"></i><span class="ts-al">Ajukan Closing</span>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             {{-- BUDGETING — REJECTED, MANAGER REVISE KE DRAFT --}}
             @if($budgetingRejected->isNotEmpty())
             <div id="tl-bp-rejected" class="card card-danger card-outline shadow-sm mt-3 todo-flat-section">
@@ -2529,9 +2585,26 @@ $(function () {
         closeTodoFilterDropdowns();
         var current = todoFilterState[field] || new Set();
 
+        /* Filter bertingkat: daftar pilihan mengikuti filter LAIN yang sedang
+           aktif. Setelah Manager dipilih, dropdown PO hanya menawarkan PO milik
+           manager itu — bukan seluruh PO yang pasti mengosongkan tabel kalau
+           dicentang. Filter field ini sendiri diabaikan supaya pilihan yang
+           sudah tercentang tidak hilang dari daftarnya sendiri. */
+        function todoRowPassesOtherFilters($tr) {
+            for (var f in todoFilterState) {
+                if (!todoFilterState.hasOwnProperty(f) || f === field) continue;
+                var sel = todoFilterState[f];
+                if (!sel || sel.size === 0) continue;
+                if (!sel.has(($tr.data(f) || '').toString())) return false;
+            }
+            return true;
+        }
+
         var uniqueRaw = [], seen = {};
         $('.todo-row').each(function () {
-            var raw = ($(this).data(field) || '').toString();
+            var $tr = $(this);
+            if (!todoRowPassesOtherFilters($tr)) return;
+            var raw = ($tr.data(field) || '').toString();
             if (raw && !seen[raw]) { seen[raw] = true; uniqueRaw.push(raw); }
         });
         uniqueRaw.sort(function (a, b) { return a.localeCompare(b); });

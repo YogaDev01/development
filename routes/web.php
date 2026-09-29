@@ -160,10 +160,15 @@ Route::middleware('auth')->group(function () {
     | Bukan data transaksi, tapi tidak ada alasan membukanya, dan gerbangnya
     | disamakan dengan halaman yang memang memakainya.
     */
-    Route::middleware('menu:project')
+    /*
+    | 'list-po' ikut dibolehkan: form Tambah/Edit PO mengisi dropdown Project &
+    | Milestone dari sini, sedangkan Head tidak punya menu master Project Master
+    | maupun Milestone - tanpa ini kedua dropdown itu selalu "Tidak ada data".
+    */
+    Route::middleware('menu:project,list-po')
         ->get('cluster/options-json', fn() => response()->json(\App\Models\Cluster::orderBy('name')->get(['id','name'])))
         ->name('cluster.options-json');
-    Route::middleware('menu:milestone')
+    Route::middleware('menu:milestone,list-po')
         ->get('stage/options-json', fn() => response()->json(\App\Models\Stage::orderBy('name')->get(['id','name'])))
         ->name('stage.options-json');
     
@@ -178,6 +183,8 @@ Route::middleware('auth')->group(function () {
         Route::post('project/{id}/finance-approve', [ProjectController::class, 'financeApprove'])->name('project.finance-approve');
         Route::post('project/{id}/finance-revise',  [ProjectController::class, 'financeRevise'])->name('project.finance-revise');
         Route::post('project/{id}/verify-closing',  [ProjectController::class, 'verifyClosing'])->name('project.verify-closing');
+        // Tutup langsung dari PAID, tanpa menunggu MoM Closing dari Head.
+        Route::post('project/{id}/finance-close',    [ProjectController::class, 'financeClose'])->name('project.finance-close');
         Route::post('project/{id}/reject-closing',  [ProjectController::class, 'rejectClosing'])->name('project.reject-closing');
     });
 
@@ -530,6 +537,9 @@ Route::middleware('auth')->group(function () {
         Route::post('budget-plan/{id}/finance-reject', [BudgetPlanController::class, 'financeReject'])->name('budget-plan.finance-reject');
         Route::post('budget-plan/{id}/verify-closing', [BudgetPlanController::class, 'verifyClosing'])->name('budget-plan.verify-closing');
         Route::post('budget-plan/{id}/reject-closing', [BudgetPlanController::class, 'rejectClosing'])->name('budget-plan.reject-closing');
+        // Close langsung dari ACTIVE — jalur Finance menutup budget yang sudah
+        // selesai tanpa menunggu pengajuan closing dari manager.
+        Route::post('budget-plan/{id}/finance-close',  [BudgetPlanController::class, 'financeClose'])->name('budget-plan.finance-close');
     });
 
     Route::middleware('role:superadmin,approver')->group(function () {
@@ -876,7 +886,7 @@ Route::middleware('auth')->group(function () {
     | tabel cash_receipts yang sama.
     */
 
-    Route::middleware('role:superadmin,finance,finance_manager,treasury,approver')->group(function () {
+    Route::middleware('role:superadmin,finance,finance_manager,treasury,approver,collection')->group(function () {
         Route::get('cash-receipt', [\App\Http\Controllers\CashReceiptController::class, 'index'])->name('cash-receipt.index');
         Route::get('cash-receipt/create', [\App\Http\Controllers\CashReceiptController::class, 'create'])->name('cash-receipt.create');
         Route::post('cash-receipt', [\App\Http\Controllers\CashReceiptController::class, 'store'])->name('cash-receipt.store');

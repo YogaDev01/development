@@ -255,14 +255,13 @@
                                             Ketik nominal realisasi di kolom Actual, lalu tekan
                                             <i class="fas fa-save"></i> — keterangannya wajib dan ditanyakan sebelum disimpan.
                                         </small>
-                                        <div class="ml-auto d-flex" style="gap:6px;">
-                                            <button type="button" id="fcExpandAll" class="btn btn-outline-secondary btn-sm" style="font-size:11px;">
-                                                <i class="fas fa-angle-double-down mr-1"></i> Expand All
-                                            </button>
-                                            <button type="button" id="fcCollapseAll" class="btn btn-outline-secondary btn-sm" style="font-size:11px;">
-                                                <i class="fas fa-angle-double-up mr-1"></i> Collapse All
-                                            </button>
-                                        </div>
+                                        {{-- Satu saklar, bukan sepasang tombol: hanya satu dari
+                                             keduanya yang pernah berguna pada satu saat, dan
+                                             tombolnya sendiri sudah menyatakan keadaan tabel
+                                             sekarang. --}}
+                                        <button type="button" id="fcToggleAll" class="btn btn-outline-secondary btn-sm ml-auto" style="font-size:11px;">
+                                            <i class="fas fa-angle-double-down mr-1"></i> <span>Expand All</span>
+                                        </button>
                                     </div>
 
                                     <div id="fcGroups" class="table-responsive"></div>
@@ -594,6 +593,13 @@ $(function () {
             + '</tr></tfoot></table>';
 
         $('#fcGroups').html(html);
+
+        /* Semua rekening tertutup saat pertama tampil: yang dicari orang
+           ketika membuka Rincian adalah gambaran per rekening lebih dulu —
+           subtotalnya sudah ada di baris induk — baru menurunkan satu yang
+           hendak dikerjakan. */
+        $('#fcGroups .fc-grp-head').each(function () { setGrup($(this), false); });
+        perbaruiSaklar();
     }
 
     function barisRincian(x, d, grp) {
@@ -768,14 +774,27 @@ $(function () {
     $(document).on('click', '.fc-grp-head', function () {
         var $h = $(this);
         setGrup($h, $h.hasClass('is-collapsed'));
+        perbaruiSaklar();
     });
 
-    $('#fcExpandAll').on('click', function () {
-        $('#fcGroups .fc-grp-head').each(function () { setGrup($(this), true); });
-    });
+    /* Saklarnya menyebut PERBUATAN berikutnya, bukan keadaan sekarang: selama
+       masih ada rekening yang tertutup, ia membuka semuanya. */
+    function semuaTertutup() {
+        return $('#fcGroups .fc-grp-head').length > 0
+            && $('#fcGroups .fc-grp-head').not('.is-collapsed').length === 0;
+    }
 
-    $('#fcCollapseAll').on('click', function () {
-        $('#fcGroups .fc-grp-head').each(function () { setGrup($(this), false); });
+    function perbaruiSaklar() {
+        var buka = semuaTertutup();
+        $('#fcToggleAll')
+            .find('span').text(buka ? 'Expand All' : 'Collapse All').end()
+            .find('i').attr('class', 'fas mr-1 ' + (buka ? 'fa-angle-double-down' : 'fa-angle-double-up'));
+    }
+
+    $('#fcToggleAll').on('click', function () {
+        var buka = semuaTertutup();
+        $('#fcGroups .fc-grp-head').each(function () { setGrup($(this), buka); });
+        perbaruiSaklar();
     });
 
     /* Daftar keterangan per baris: dibuka/ditutup di tempat, tanpa memuat

@@ -113,6 +113,7 @@ class TodoListController extends Controller
             ['key' => 'bp-head',         'label' => 'Budgeting — Approval Head', 'icon' => 'fas fa-coins',            'tone' => 'attention', 'items' => $data['budgetingHeadCheck']],
             ['key' => 'bp-verify',       'label' => 'Budgeting — Verifikasi',    'icon' => 'fas fa-coins',            'tone' => 'attention', 'items' => $data['budgetingVerify']],
             ['key' => 'bp-ceo',          'label' => 'Budgeting — Approval CEO',  'icon' => 'fas fa-coins',            'tone' => 'attention', 'items' => $data['budgetingCeoApprove']],
+            ['key' => 'bp-closing-due',  'label' => 'Budgeting — Ajukan Closing','icon' => 'fas fa-flag-checkered',   'tone' => 'attention', 'items' => $data['budgetingClosingDue']],
             ['key' => 'bp-rejected',     'label' => 'Budgeting Ditolak',         'icon' => 'fas fa-undo',             'tone' => 'danger',    'items' => $data['budgetingRejected']],
             ['key' => 'reject',          'label' => 'Tindak Lanjut CR Ditolak',  'icon' => 'fas fa-undo',             'tone' => 'danger',    'items' => $data['managerRejected']],
             ['key' => 'batch-create',    'label' => 'Buat Batch Pembayaran',     'icon' => 'fas fa-layer-group',      'tone' => 'progress',  'items' => $data['treasuryBatchCreate']],
@@ -192,6 +193,7 @@ class TodoListController extends Controller
             'ceoSettlementClose' => collect(), 'secondPaymentPending' => collect(),
             'budgetingHeadCheck' => collect(), 'budgetingVerify' => collect(),
             'budgetingCeoApprove' => collect(), 'budgetingRejected' => collect(),
+            'budgetingClosingDue' => collect(),
             'treasuryBatchCreate' => collect(), 'batchSourceFunds' => collect(),
             'treasuryProcess' => collect(), 'treasuryReadyToPay' => collect(),
             'poSubmitted' => collect(),
@@ -422,6 +424,21 @@ class TodoListController extends Controller
         if ($user->hasRole(['superadmin', 'approver', 'guest'])) {
             $budgetingCeoApprove = BudgetPlan::with(['project.customer', 'costCenter'])
                 ->where('status', 'VERIFIED')
+                ->latest()
+                ->get()
+                ->map(fn ($bp) => $this->withAging($bp, $bp->updated_at))
+                ->sortBy('aging_since')->values();
+        }
+
+        // Manager — Budgeting: Ajukan Closing. Budget yang plan_finish-nya sudah
+        // lewat dipindahkan ke CLOSING oleh budget-plan:auto-closing, tapi berkas
+        // closing-nya belum diajukan (closing_submitted_at NULL) sehingga tugasnya
+        // masih di manager, bukan di Finance.
+        $budgetingClosingDue = collect();
+        if ($user->hasRole(['superadmin', 'manager'])) {
+            $budgetingClosingDue = BudgetPlan::with(['project.customer', 'costCenter'])
+                ->where('status', 'CLOSING')
+                ->whereNull('closing_submitted_at')
                 ->latest()
                 ->get()
                 ->map(fn ($bp) => $this->withAging($bp, $bp->updated_at))
@@ -659,6 +676,7 @@ class TodoListController extends Controller
             ->concat($secondPaymentPending)
             ->concat($budgetingHeadCheck)->concat($budgetingVerify)
             ->concat($budgetingCeoApprove)->concat($budgetingRejected)
+            ->concat($budgetingClosingDue)
             ->concat($treasuryBatchCreate)
             ->concat($treasuryProcess)->concat($treasuryReadyToPay)
             ->concat($poSubmitted)
@@ -692,6 +710,7 @@ class TodoListController extends Controller
             || !empty($comingSoonRoles)
             || $budgetingHeadCheck->isNotEmpty() || $budgetingVerify->isNotEmpty()
             || $budgetingCeoApprove->isNotEmpty() || $budgetingRejected->isNotEmpty()
+            || $budgetingClosingDue->isNotEmpty()
             || $treasuryBatchCreate->isNotEmpty()
             || $treasuryProcess->isNotEmpty() || $treasuryReadyToPay->isNotEmpty()
             || $poSubmitted->isNotEmpty()
@@ -705,6 +724,7 @@ class TodoListController extends Controller
             'headSettlementCheck', 'financeSettlementVerify', 'approverSecondApprove',
             'ceoSettlementClose', 'secondPaymentPending',
             'budgetingHeadCheck', 'budgetingVerify', 'budgetingCeoApprove', 'budgetingRejected',
+            'budgetingClosingDue',
             'treasuryBatchCreate', 'treasuryBatchGroups', 'batchSourceFunds', 'treasuryProcess', 'treasuryReadyToPay', 'poSubmitted',
             'invoiceVerify', 'invoiceApprove', 'milestoneOverdue', 'collectionWaitingInvoice',
             'comingSoonRoles', 'totalPending', 'maxAging', 'completedToday', 'hasAnyTask', 'hasAnySection',
@@ -811,7 +831,8 @@ class TodoListController extends Controller
 
             ['Head',            'Submit Closing',          'Purchase Order', Project::where('status', 'PAID')->count(),     url('/project?status=PAID')],
             ['Finance',         'Verifikasi Closing',      'Purchase Order', Project::where('status', 'CLOSING')->count(),  url('/project?status=CLOSING')],
-            ['Finance',         'Verifikasi Closing',      'Budgeting',      BudgetPlan::where('status', 'CLOSING')->count(), url('/budget-plan')],
+            ['Manager',         'Ajukan Closing',          'Budgeting',      BudgetPlan::where('status', 'CLOSING')->whereNull('closing_submitted_at')->count(),    url('/budget-plan')],
+            ['Finance',         'Verifikasi Closing',      'Budgeting',      BudgetPlan::where('status', 'CLOSING')->whereNotNull('closing_submitted_at')->count(), url('/budget-plan')],
         ];
 
         $rows = [];

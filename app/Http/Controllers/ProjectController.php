@@ -319,7 +319,11 @@ class ProjectController extends Controller
         // yang mengandalkan posisi tidak bergeser.
         $canSeePoValue = $this->canSeePoValue();
 
-        return view('project.index', compact('projects', 'summary', 'truncated', 'total', 'maxRows', 'canSeePoValue'));
+        // Kolom uang (beserta dropdown "Kolom") hanya dirender untuk peran
+        // tertentu; sisanya cuma melihat Budget & Variable Cost.
+        $bolehKolomFinansial = Auth::user()->hasRole(AccessRoles::PO_MONEY_COLUMNS);
+
+        return view('project.index', compact('projects', 'summary', 'truncated', 'total', 'maxRows', 'canSeePoValue', 'bolehKolomFinansial'));
     }
 
     /*
@@ -1439,6 +1443,48 @@ class ProjectController extends Controller
 
             $this->storeAttachments($project, $request, 'closing');
             $project->addLog('ACTIVE', 'CLOSED', 'closed', $request->closing_notes);
+        });
+
+        return redirect('/project')->with('success', 'PO berhasil ditutup.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | FINANCE CLOSE — PAID → CLOSED langsung, tanpa menunggu MoM dari Head.
+    |--------------------------------------------------------------------------
+    | Jalur normalnya PAID → CLOSING (Head submit MoM) → CLOSED (Finance
+    | verifikasi). Jalur ini memangkasnya untuk PO yang tagihannya sudah lunas
+    | dan tidak menyisakan MoM apa pun — polanya sama persis dengan
+    | BudgetPlanController::financeClose(). Lampiran closing tidak diwajibkan
+    | karena tidak ada dokumen MoM yang diverifikasi di sini; yang jadi jejaknya
+    | adalah catatan wajib + baris log.
+    */
+    public function financeClose(Request $request, $id)
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        if (!$user->hasRole(['superadmin', 'finance', 'finance_manager'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk menutup PO.');
+        }
+
+        $request->validate(['notes' => 'required|string|max:1000']);
+
+        $project = Project::findOrFail($id);
+
+        if ($project->status !== 'PAID') {
+            return back()->with('error', 'Hanya PO berstatus PAID yang dapat ditutup langsung oleh Finance.');
+        }
+
+        DB::transaction(function () use ($request, $project) {
+            $project->update([
+                'status'        => 'CLOSED',
+                'closed_by'     => Auth::id(),
+                'closed_at'     => now(),
+                'closing_notes' => $request->notes,
+            ]);
+
+            $project->addLog('PAID', 'CLOSED', 'finance_closed', $request->notes);
         });
 
         return redirect('/project')->with('success', 'PO berhasil ditutup.');

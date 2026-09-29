@@ -16,11 +16,52 @@
             </ol>
         </div>
 
+        {{-- Nama akun/karyawan contoh masih berlabel "DUMMY" di basis data. Kata
+             itu dibuang untuk TAMPILAN saja — nilai yang dikirim tetap id-nya,
+             dan username asli di tabel users tidak disentuh supaya loginnya
+             tidak ikut berubah. --}}
+        @php
+            $tanpaDummy = function ($v) {
+                $bersih = trim(preg_replace('/\s{2,}/', ' ', preg_replace('/\bdummy\b[\s._-]*/i', '', (string) $v)));
+                return $bersih !== '' ? $bersih : (string) $v;
+            };
+        @endphp
+
+        {{-- Tab utama. Internal paling kiri sekaligus tab bawaan: daftar itulah
+             yang paling sering dikerjakan. Outsider = semua yang BUKAN internal
+             (Customer, External, Site Keeper) — jenis baru apa pun ikut masuk ke
+             sana dengan sendirinya. Database memuat semuanya.
+
+             Seluruh baris dikirim sekali, lalu tab dipilah di browser. Berpindah
+             tab tidak memuat ulang halaman: pemuatan ulang sempat memperlihatkan
+             halaman setengah jadi tanpa gaya, dan itu terjadi setiap kali tab
+             disentuh padahal datanya tidak berubah. --}}
+        @php $picTabs = [
+            'internal' => ['Internal', 'fas fa-users'],
+            'outsider' => ['Outsider', 'fas fa-handshake'],
+            'db'       => ['Database', 'fas fa-database'],
+        ]; @endphp
+        <ul class="nav nav-tabs pic-main-tabs mt-2 mb-3" role="tablist">
+            @foreach($picTabs as $key => [$label, $icon])
+                <li class="nav-item">
+                    {{-- href tetap ditulis supaya tautannya bisa dibuka di tab baru
+                         dan terbaca sebagai tautan; klik biasa ditangani JS. --}}
+                    <a class="nav-link pic-tab {{ $tab === $key ? 'active' : '' }}"
+                       data-pictab="{{ $key }}"
+                       href="{{ url('/master-pic?tab=' . $key) }}">
+                        <i class="{{ $icon }} mr-1"></i> {{ $label }}
+                        <span class="badge badge-secondary ml-1">{{ number_format($tabCounts[$key], 0, ',', '.') }}</span>
+                    </a>
+                </li>
+            @endforeach
+        </ul>
+
+        {{-- Kartu menerangkan isi tab yang sedang terbuka. Pecahan per jenis
+             tidak diulang di sini — itu sudah dipegang tab dan filter Type. --}}
         <x-stat-cards :cards="[
             ['Total PIC', $summary['total'], 'primary', 'fas fa-id-badge'],
-            ['PIC Customer', $summary['customer'], 'info', 'fas fa-building'],
-            ['PIC Internal', $summary['internal'], 'warning', 'fas fa-users'],
             ['Active', $summary['active'], 'success', 'fas fa-check-circle'],
+            ['Inactive', $summary['inactive'], $summary['inactive'] > 0 ? 'warning' : 'secondary', 'fas fa-ban'],
             ['Internal Tanpa Akun', $summary['unlinked'], $summary['unlinked'] > 0 ? 'danger' : 'secondary', 'fas fa-user-slash'],
         ]" />
 
@@ -28,7 +69,10 @@
 
             <!-- CARD HEADER -->
             <div class="card-header d-flex align-items-center">
-                <h3 class="card-title"><i class="fas fa-id-badge mr-1"></i> Daftar PIC</h3>
+                <h3 class="card-title">
+                    <i class="fas fa-id-badge mr-1"></i>
+                    Daftar PIC <span id="picTabLabel">{{ $tab === 'db' ? '' : $picTabs[$tab][0] }}</span>
+                </h3>
                 <div class="ml-auto d-flex" style="gap:8px;">
                     <button id="refreshTable" class="btn btn-secondary btn-sm" type="button">
                         <i class="fas fa-sync-alt mr-1"></i> Refresh
@@ -56,19 +100,21 @@
                              dikerjakan sampai habis tanpa memilah sendiri dari
                              daftar penuh. Diproses di server, jadi angkanya tetap
                              konsisten dengan isi tabel. --}}
+                        <span id="picUnlinkedWrap" @if($tab === 'outsider') style="display:none;" @endif>
                         @if(($filters['unlinked'] ?? false))
-                            <a href="{{ url('/master-pic') }}" class="btn btn-danger btn-sm">
+                            <a href="{{ url('/master-pic?tab=' . $tab) }}" class="btn btn-danger btn-sm">
                                 <i class="fas fa-user-slash mr-1"></i> Belum Terhubung
                                 <span class="badge badge-light ml-1">{{ $summary['unlinked'] }}</span>
                                 <i class="fas fa-times ml-1" title="Hapus saringan"></i>
                             </a>
                         @elseif($summary['unlinked'] > 0)
-                            <a href="{{ url('/master-pic?unlinked=1') }}" class="btn btn-outline-danger btn-sm"
+                            <a href="{{ url('/master-pic?tab=internal&unlinked=1') }}" class="btn btn-outline-danger btn-sm"
                                title="Tampilkan hanya PIC internal yang belum terhubung ke akun User">
                                 <i class="fas fa-user-slash mr-1"></i> Belum Terhubung
                                 <span class="badge badge-danger ml-1">{{ $summary['unlinked'] }}</span>
                             </a>
                         @endif
+                        </span>
                     </div>
                     <div class="custom-toolbar-right d-flex flex-wrap" style="gap:8px;">
                         <button type="button" class="btn btn-success btn-sm" id="btnTambah">
@@ -97,14 +143,14 @@
                         </thead>
                         <tbody>
                             @forelse($pics as $pic)
-                            <tr data-type="{{ $pic->type == 'customer' ? 'Customer' : 'Internal' }}" data-status="{{ $pic->status }}">
+                            <tr data-type="{{ $pic->type_label }}" data-typekey="{{ $pic->type }}" data-status="{{ $pic->status }}">
                                 <td>{{ $loop->iteration }}</td>
                                 <td>
-                                    @if($pic->type == 'customer')
-                                        <span class="badge badge-primary px-2 py-1">Customer</span>
-                                    @else
-                                        <span class="badge badge-secondary px-2 py-1">Internal</span>
-                                    @endif
+                                    {{-- Label & warnanya diambil dari MasterPic::TYPES, jadi
+                                         menambah jenis baru tidak perlu menyentuh baris ini. --}}
+                                    <span class="badge {{ \App\Models\MasterPic::TYPE_BADGES[$pic->type] ?? 'badge-light' }} px-2 py-1">
+                                        {{ $pic->type_label }}
+                                    </span>
                                 </td>
                                 <td>
                                     <strong>{{ $pic->pic }}</strong>
@@ -235,8 +281,9 @@
                                     Type <span class="text-danger">*</span>
                                 </label>
                                 <select name="type" id="tambahType" class="form-control" required>
-                                    <option value="internal">Internal</option>
-                                    <option value="customer">Customer</option>
+                                    @foreach(\App\Models\MasterPic::TYPES as $val => $label)
+                                        <option value="{{ $val }}">{{ $label }}</option>
+                                    @endforeach
                                 </select>
                             </div>
                         </div>
@@ -342,7 +389,7 @@
                                 <select name="user_id" id="tambahUser" class="form-control">
                                     <option value="">— Tidak terhubung —</option>
                                     @foreach($users as $u)
-                                        <option value="{{ $u->id }}">{{ strtoupper($u->username) }} — {{ $u->name }}</option>
+                                        <option value="{{ $u->id }}">{{ strtoupper($tanpaDummy($u->username)) }} — {{ $tanpaDummy($u->name) }}</option>
                                     @endforeach
                                 </select>
                                 <small class="form-text text-muted">Isi untuk PIC internal supaya datanya menyatu dengan Team.</small>
@@ -355,7 +402,7 @@
                                 <select name="employee_id" id="tambahEmployee" class="form-control">
                                     <option value="">— Tidak terhubung —</option>
                                     @foreach($employees as $e)
-                                        <option value="{{ $e->id }}">{{ $e->name }} ({{ $e->employee_number }})</option>
+                                        <option value="{{ $e->id }}">{{ $tanpaDummy($e->name) }} ({{ $e->employee_number }})</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -422,8 +469,9 @@
                                         Type <span class="text-danger">*</span>
                                     </label>
                                     <select name="type" id="editType" class="form-control" required>
-                                        <option value="internal">Internal</option>
-                                        <option value="customer">Customer</option>
+                                        @foreach(\App\Models\MasterPic::TYPES as $val => $label)
+                                            <option value="{{ $val }}">{{ $label }}</option>
+                                        @endforeach
                                     </select>
                                 </div>
                             </div>
@@ -516,7 +564,7 @@
                                     <select name="user_id" id="editUser" class="form-control">
                                         <option value="">— Tidak terhubung —</option>
                                         @foreach($users as $u)
-                                            <option value="{{ $u->id }}">{{ strtoupper($u->username) }} — {{ $u->name }}</option>
+                                            <option value="{{ $u->id }}">{{ strtoupper($tanpaDummy($u->username)) }} — {{ $tanpaDummy($u->name) }}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -529,7 +577,7 @@
                                     <select name="employee_id" id="editEmployee" class="form-control">
                                         <option value="">— Tidak terhubung —</option>
                                         @foreach($employees as $e)
-                                            <option value="{{ $e->id }}">{{ $e->name }} ({{ $e->employee_number }})</option>
+                                            <option value="{{ $e->id }}">{{ $tanpaDummy($e->name) }} ({{ $e->employee_number }})</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -590,6 +638,12 @@
 .ts-wrapper  { min-width:260px; width:100%; }
 .ts-control  { border-radius:var(--radius-sm) !important; border:1px solid var(--border) !important; min-height:38px !important; padding:6px 10px !important; box-shadow:none !important; }
 .ts-control.focus { border-color:var(--border-strong) !important; box-shadow:0 0 0 0.15rem rgba(0,123,255,.15) !important; }
+
+/* TAB UTAMA */
+.pic-main-tabs { border-bottom:2px solid var(--border); flex-wrap:wrap; }
+.pic-main-tabs .nav-link { color:var(--text-faint); border:none; border-bottom:2px solid transparent; border-radius:0; padding:9px 16px; font-weight:600; font-size:13px; margin-bottom:-2px; }
+.pic-main-tabs .nav-link:hover { color:var(--text); }
+.pic-main-tabs .nav-link.active { color:var(--accent) !important; border-bottom-color:var(--accent) !important; background:transparent !important; }
 
 /* TABLE */
 #picTable            { width:100% !important; }
@@ -677,6 +731,11 @@ table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before {
 
 $(function () {
 
+    // Tab yang sedang terbuka. Dipakai juga oleh modal Tambah (jenis bawaan),
+    // jadi dideklarasikan sebelum handler mana pun dipasang.
+    var activeTab = '{{ $tab }}';
+    var PIC_SUMMARIES = @json($summaries);
+
     /*
     |--------------------------------------------------------------------------
     | MODAL TAMBAH & EDIT — dibind PALING AWAL, supaya tetap responsif
@@ -684,8 +743,36 @@ $(function () {
     |--------------------------------------------------------------------------
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | DROPDOWN BER-PENCARIAN
+    |
+    | Daftar Akun User dan Karyawan sudah puluhan baris — menggulirnya sampai
+    | ketemu lebih lama daripada mengetik dua huruf. <select> aslinya tetap ada
+    | (disembunyikan), jadi nilai yang dikirim form tidak berubah.
+    |--------------------------------------------------------------------------
+    */
+    [
+        ['#tambahBank',     '— Pilih Bank —',        'Cari bank...'],
+        ['#tambahUser',     '— Tidak terhubung —',   'Cari akun user...'],
+        ['#tambahEmployee', '— Tidak terhubung —',   'Cari karyawan...'],
+        ['#editBank',       '— Pilih Bank —',        'Cari bank...'],
+        ['#editUser',       '— Tidak terhubung —',   'Cari akun user...'],
+        ['#editEmployee',   '— Tidak terhubung —',   'Cari karyawan...'],
+    ].forEach(function (cfg) {
+        if ($(cfg[0]).length) {
+            TesysSearchableSelect.init(cfg[0], { placeholder: cfg[1], searchPlaceholder: cfg[2] });
+        }
+    });
+
     $(document).on('click', '#btnTambah', function () {
         $('#formTambah')[0].reset();
+        // Jenisnya disetel mengikuti tab yang sedang dibuka — PIC yang ditambah
+        // dari tab Internal hampir selalu internal. Masih bisa diganti.
+        if (activeTab === 'internal') $('#tambahType').val('internal');
+        // reset() hanya mengubah <select> yang tersembunyi — tombolnya masih
+        // memajang pilihan sebelumnya sampai diberitahu.
+        $('#tambahBank, #tambahUser, #tambahEmployee').trigger('tss:sync');
         $('#modalTambah').modal('show');
         $('#modalTambah').one('shown.bs.modal', function () {
             $('#tambahPic').focus();
@@ -719,6 +806,7 @@ $(function () {
             $('#editUser').val(res.user_id ?? '');
             $('#editEmployee').val(res.employee_id ?? '');
             $('#editStatus').val(res.status);
+            $('#editBank, #editUser, #editEmployee').trigger('tss:sync');
 
             $('#editLoading').hide();
             $('#editFields').show();
@@ -842,14 +930,99 @@ $(function () {
     );
     $('#globalSearch').on('keyup', function () { picTable.search(this.value).draw(); });
 
+    /* Daftar pilihan dinyatakan, bukan disimpulkan dari baris yang ada: jenis
+       yang belum dipakai satu PIC pun tetap harus terlihat di filter — justru
+       di situ orang ingin memastikan memang belum ada. search:false karena
+       pilihannya sedikit. */
     TesysColumnFilter.initRowFilters('#picTable', '#picRowFilters', [
-        { key: 'type', label: 'Type' },
-        { key: 'status', label: 'Status' },
+        // Tombolnya tetap dipasang untuk ketiga tab lalu disembunyikan oleh
+        // applyTab() di tab Internal — memasang ulang tiap ganti tab berarti
+        // membongkar state filter yang sudah terpasang di DataTable.
+        { key: 'type', label: 'Type', options: @json(array_values(\App\Models\MasterPic::TYPES)), search: false },
+        { key: 'status', label: 'Status', options: ['ACTIVE', 'INACTIVE'], search: false },
     ]);
 
     $('#btnClearFilterPic').on('click', function () {
         TesysColumnFilter.clearAll('#picTable');
     });
+
+    /*
+    |--------------------------------------------------------------------------
+    | TAB — dipilah di browser, tanpa memuat ulang halaman
+    |
+    | Seluruh baris sudah ada di tabel; tab hanya menentukan baris mana yang
+    | lolos saringan dan kolom mana yang diperlihatkan. Angka kartu untuk
+    | ketiga tab ikut dikirim dari server, jadi tidak ada permintaan baru.
+    |--------------------------------------------------------------------------
+    */
+
+    $.fn.dataTable.ext.search.push(function (settings, searchData, index) {
+        if (settings.nTable.id !== 'picTable') return true;
+        if (activeTab === 'db') return true;
+
+        var row = settings.aoData[index].nTr;
+        if (!row) return true;
+
+        var jenis = row.getAttribute('data-typekey') || '';
+        return activeTab === 'internal' ? jenis === 'internal' : jenis !== 'internal';
+    });
+
+    var PIC_TAB_LABEL = { internal: 'Internal', outsider: 'Outsider', db: '' };
+
+    function applyTab(tab, pushUrl) {
+        if (!PIC_TAB_LABEL.hasOwnProperty(tab)) tab = 'internal';
+        activeTab = tab;
+
+        $('.pic-tab').removeClass('active')
+            .filter('[data-pictab="' + tab + '"]').addClass('active');
+
+        // Kolom disembunyikan, bukan dihapus dari markup: indeks kolom lain
+        // (dipakai columnDefs & data-order) jadi tidak ikut bergeser.
+        // Type mubazir di tab Internal; di Database rincian kontak dilepas
+        // supaya barisnya tetap terbaca.
+        picTable.column(1).visible(tab !== 'internal', false);
+        [4, 5, 6].forEach(function (i) { picTable.column(i).visible(tab !== 'db', false); });
+        picTable.columns.adjust();
+
+        // Filter Type tidak menyaring apa pun di tab Internal. Sisa pilihan dari
+        // tab sebelumnya ikut dibersihkan, supaya tabel tidak tampak kosong
+        // karena saringan yang tombolnya sedang tidak terlihat.
+        var $tombolType = $('#picRowFilters .tcf-row-btn').eq(0);
+        if (tab === 'internal') {
+            if ($tombolType.hasClass('tcf-row-active')) TesysColumnFilter.clearAll('#picTable');
+            $tombolType.hide();
+        } else {
+            $tombolType.show();
+        }
+
+        $('#picUnlinkedWrap').toggle(tab !== 'outsider');
+        $('#picTabLabel').text(PIC_TAB_LABEL[tab]);
+
+        var ringkas = PIC_SUMMARIES[tab] || {};
+        $('.ts-kpi-row .ts-kpi').each(function (i) {
+            var nilai = [ringkas.total, ringkas.active, ringkas.inactive, ringkas.unlinked][i];
+            if (nilai !== undefined) $(this).find('.ts-kpi-value').text(nilai);
+        });
+
+        picTable.page('first').draw();
+
+        // Alamat ikut diperbarui tanpa memuat ulang, jadi menyegarkan halaman
+        // atau menyalin tautannya tetap membuka tab yang sama.
+        if (pushUrl && window.history && history.replaceState) {
+            var u = new URL(window.location.href);
+            u.searchParams.set('tab', tab);
+            history.replaceState(null, '', u.toString());
+        }
+    }
+
+    $(document).on('click', '.pic-tab', function (e) {
+        // Ctrl/cmd/tengah dibiarkan membuka tautan seperti biasa.
+        if (e.which === 2 || e.ctrlKey || e.metaKey || e.shiftKey) return;
+        e.preventDefault();
+        applyTab($(this).data('pictab'), true);
+    });
+
+    applyTab(activeTab, false);
 
     $('#refreshTable').on('click', function () {
         $('#globalSearch').val('');

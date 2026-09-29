@@ -100,23 +100,19 @@
                                             <i class="fas fa-pen" aria-hidden="true"></i><span class="ts-al">Edit</span>
                                         </button>
 
-                                        <button type="button" class="ts-action-more"
-                                                aria-haspopup="true" aria-expanded="false"
-                                                title="Aksi lain" aria-label="Aksi lain untuk {{ $stage->name }}">
-                                            <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
-                                        </button>
-
-                                        <div class="ts-action-menu dropdown-menu" hidden>
-                                            <form action="{{ route('stage.destroy', $stage->id) }}"
-                                                  method="POST" class="delete-form">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="dropdown-item is-danger">
-                                                    <i class="fas fa-trash"></i>Hapus
-                                                </button>
-                                            </form>
-
-                                        </div>
+                                        {{-- Hapus ditampilkan langsung, bukan disembunyikan di
+                                             balik menu "aksi lain": isinya memang cuma satu
+                                             perintah, jadi menunya hanya menambah satu klik
+                                             tanpa menyembunyikan apa pun. --}}
+                                        <form action="{{ route('stage.destroy', $stage->id) }}"
+                                              method="POST" class="d-inline delete-form">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="ts-action-primary is-danger"
+                                                    title="Hapus" aria-label="Hapus {{ $stage->name }}">
+                                                <i class="fas fa-trash" aria-hidden="true"></i><span class="ts-al">Hapus</span>
+                                            </button>
+                                        </form>
 
                                     </div>
                                 </td>

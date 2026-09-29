@@ -15,6 +15,8 @@ class BudgetPlan extends Model
         'type',
         'amount',
         'status',
+        'plan_finish',
+        'closing_submitted_at',
         'notes',
         'approver_notes',
         'approved_by',
@@ -23,8 +25,10 @@ class BudgetPlan extends Model
     ];
 
     protected $casts = [
-        'amount'      => 'integer',
-        'approved_at' => 'datetime',
+        'amount'               => 'integer',
+        'approved_at'          => 'datetime',
+        'plan_finish'          => 'date',
+        'closing_submitted_at' => 'datetime',
     ];
 
     public const STATUSES = [
@@ -186,6 +190,19 @@ class BudgetPlan extends Model
     public function isVerified(): bool   { return $this->status === 'VERIFIED'; }
     public function isActive(): bool     { return $this->status === 'ACTIVE'; }
     public function isClosing(): bool    { return $this->status === 'CLOSING'; }
+
+    /** CLOSING yang berkas closing-nya belum diajukan manager (hasil auto-closing
+     *  saat plan_finish terlewati) — tugasnya masih di manager, bukan Finance. */
+    public function isClosingPending(): bool { return $this->status === 'CLOSING' && is_null($this->closing_submitted_at); }
+
+    /** CLOSING yang sudah diajukan manager — menunggu verifikasi Finance. */
+    public function isClosingSubmitted(): bool { return $this->status === 'CLOSING' && !is_null($this->closing_submitted_at); }
+
+    /** Sudah sampai (atau lewat) tanggal rencana selesai — hari-H ikut terhitung. */
+    public function isPastPlanFinish(): bool
+    {
+        return $this->plan_finish && !$this->plan_finish->isAfter(today());
+    }
     public function isClosed(): bool     { return $this->status === 'CLOSED'; }
     public function isRejected(): bool   { return $this->status === 'REJECTED'; }
     public function isEditable(): bool   { return $this->status === 'DRAFT'; }

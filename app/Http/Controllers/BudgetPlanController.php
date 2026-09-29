@@ -488,6 +488,7 @@ class BudgetPlanController extends Controller
             'project_id'     => 'required_if:source_type,PROJECT|nullable|exists:projects,id',
             'cost_center_id' => 'required_if:source_type,COST_CENTER|nullable|exists:cost_centers,id',
             'description'    => 'required|string|max:500',
+            'plan_finish'    => 'required|date',
             'notes'          => 'nullable|string',
             'details'        => 'required|array|min:1',
             'details.*.account_id' => 'nullable|exists:accounts,id',
@@ -534,6 +535,7 @@ class BudgetPlanController extends Controller
                 'type'           => 'one_time',   // fixed default
                 'amount'         => 0,
                 'status'         => 'DRAFT',
+                'plan_finish'    => $request->plan_finish,
                 'notes'          => $request->notes,
                 'input_by'       => Auth::id(),
             ]);
@@ -594,6 +596,7 @@ class BudgetPlanController extends Controller
             ['Terpakai', $used],
             ['Sisa', $remaining],
             ['Status', $bp->status],
+            ['Plan Finish', $bp->plan_finish?->format('d-m-Y')],
             ['Notes', $bp->notes],
             ['Catatan Approver', $bp->approver_notes],
             ['Approved By', $bp->approvedBy->name ?? '-'],
@@ -755,6 +758,7 @@ class BudgetPlanController extends Controller
             'description'      => $bp->description,
             'status'           => $bp->status,
             'status_color'     => $bp->status_color,
+            'plan_finish'      => $bp->plan_finish?->format('d-m-Y'),
             'notes'            => $bp->notes,
             'approver_notes'   => $bp->approver_notes,
             'amount'           => (int) ($bp->amount ?? 0),
@@ -945,6 +949,7 @@ class BudgetPlanController extends Controller
             // Budget proyek masih boleh ganti PO; budget cost center tidak ganti apa pun.
             'project_id'  => ($budgetPlan->isProjectBudget() ? 'required|exists:projects,id' : 'nullable'),
             'description' => 'required|string|max:500',
+            'plan_finish' => 'required|date',
             'notes'       => 'nullable|string',
             'details'     => 'required|array|min:1',
             'details.*.account_id' => 'nullable|exists:accounts,id',
@@ -958,6 +963,7 @@ class BudgetPlanController extends Controller
 
             $payload = [
                 'description' => strtoupper(trim($request->description)),
+                'plan_finish' => $request->plan_finish,
                 'notes'       => $request->notes,
             ];
 
@@ -1316,14 +1322,20 @@ class BudgetPlanController extends Controller
 
         $bp = $this->findVisibleBudgetPlan($id);
 
-        if ($bp->status !== 'ACTIVE') {
-            return back()->with('error', 'Hanya Budget Plan berstatus ACTIVE yang dapat diajukan closing.');
+        // CLOSING yang belum diajukan berkasnya adalah hasil auto-closing saat
+        // plan_finish terlewati — manager tetap harus mengunggah berkas closing
+        // dari sana, jadi status itu ikut diterima di sini.
+        if (!in_array($bp->status, ['ACTIVE', 'CLOSING'], true) || $bp->isClosingSubmitted()) {
+            return back()->with('error', 'Hanya Budget Plan berstatus ACTIVE atau CLOSING (belum diajukan) yang dapat diajukan closing.');
         }
 
-        DB::transaction(function () use ($request, $bp) {
+        $statusAwal = $bp->status;
+
+        DB::transaction(function () use ($request, $bp, $statusAwal) {
             $bp->update([
-                'status'         => 'CLOSING',
-                'approver_notes' => $request->closing_notes,
+                'status'               => 'CLOSING',
+                'closing_submitted_at' => now(),
+                'approver_notes'       => $request->closing_notes,
             ]);
 
             foreach ($request->file('closing_attachments', []) as $file) {
@@ -1338,8 +1350,16 @@ class BudgetPlanController extends Controller
                 ]);
             }
 
-            $bp->addLog('ACTIVE', 'CLOSING', 'closing_submitted', $request->closing_notes);
+            $bp->addLog($statusAwal, 'CLOSING', 'closing_submitted', $request->closing_notes);
         });
+
+        NotifyService::send(
+            $this->financeUsers(),
+            'Pengajuan closing Budget Plan',
+            Auth::user()->name . ' mengajukan closing Budget Plan "' . $bp->description . '" (' . $bp->code . ') untuk diverifikasi.',
+            route('budget-plan.index'),
+            'workflow'
+        );
 
         return redirect('/budget-plan')
             ->with('success', 'Pengajuan closing berhasil dikirim ke Finance.');
@@ -1372,6 +1392,56 @@ class BudgetPlanController extends Controller
 
     /*
     |--------------------------------------------------------------------------
+    | FINANCE CLOSE — ACTIVE → CLOSED
+    |--------------------------------------------------------------------------
+    | Jalur pintas untuk Finance menutup budget yang pekerjaannya sudah selesai
+    | tanpa menunggu manager mengajukan closing berlampiran. Bedanya dengan
+    | verifyClosing(): di sini tidak ada berkas closing yang diverifikasi, jadi
+    | alasannya wajib ditulis supaya jejaknya tetap bisa dipertanggungjawabkan.
+    */
+
+    public function financeClose(Request $request, $id)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        if (!$user->hasRole(['superadmin', 'finance', 'finance_manager'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk menutup Budget Plan.');
+        }
+
+        $request->validate(['notes' => 'required|string|max:500']);
+
+        $bp = $this->findVisibleBudgetPlan($id);
+
+        if ($bp->status !== 'ACTIVE') {
+            return back()->with('error', 'Hanya Budget Plan berstatus ACTIVE yang dapat ditutup langsung.');
+        }
+
+        $bp->update([
+            'status'         => 'CLOSED',
+            'approver_notes' => $request->notes,
+            'approved_by'    => $user->id,
+            'approved_at'    => now(),
+        ]);
+        $bp->addLog('ACTIVE', 'CLOSED', 'finance_closed', $request->notes);
+
+        // Manager pengaju perlu tahu budgetnya sudah ditutup — setelah ini tidak
+        // ada lagi cost request yang bisa dibebankan ke sana.
+        if ($bp->inputBy) {
+            NotifyService::send(
+                [$bp->inputBy],
+                'Budget Plan ditutup Finance',
+                $user->name . ' menutup Budget Plan "' . $bp->description . '" (' . $bp->code . '). Alasan: ' . $request->notes,
+                route('budget-plan.index'),
+                'workflow'
+            );
+        }
+
+        return redirect('/budget-plan')
+            ->with('success', 'Budget Plan berhasil ditutup (CLOSED).');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | FINANCE REJECT CLOSING — CLOSING → ACTIVE
     |--------------------------------------------------------------------------
     */
@@ -1385,7 +1455,11 @@ class BudgetPlanController extends Controller
             return back()->with('error', 'Status tidak valid.');
         }
 
-        $bp->update(['status' => 'ACTIVE', 'approver_notes' => $request->notes]);
+        $bp->update([
+            'status'               => 'ACTIVE',
+            'closing_submitted_at' => null,
+            'approver_notes'       => $request->notes,
+        ]);
         $bp->addLog('CLOSING', 'ACTIVE', 'closing_rejected', $request->notes);
 
         return redirect('/budget-plan')

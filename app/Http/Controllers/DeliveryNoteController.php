@@ -17,61 +17,37 @@ class DeliveryNoteController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function index(Request $request)
+    public function index()
     {
-        $search   = trim((string) $request->query('q', ''));
-        $status   = $request->query('status');
-        $customer = $request->query('customer_id');
-
         /*
-         | MN-08 — pencarian di daftar Surat Jalan menembus relasi sampai ke
-         | KODE INVOICE dan NO. PO:
+         | Penyaringan dikerjakan di browser (DataTables + TesysColumnFilter),
+         | sama seperti Cash Receipt: tidak ada tombol "Terapkan" dan tidak ada
+         | muat ulang halaman — mengetik atau mencentang langsung menyaring.
          |
-         |     Surat Jalan -> Invoice -> No. PO
-         |
-         | Itu yang benar-benar dicari orang: mereka memegang kode invoice atau
-         | nomor PO dari customer, lalu ingin tahu surat jalan mana yang
-         | membawanya. Mencari lewat kode surat jalan saja praktis tidak pernah
-         | terpakai karena kode itu justru yang sedang dicari.
-         |
-         | Penyaringannya dikerjakan di SQL (whereHas), bukan dengan memuat
-         | semua baris lalu memfilter di PHP — daftar ini tumbuh terus.
+         | Kartu ringkasan tetap tidak boleh bercerita lain dari tabelnya; itu
+         | dijaga di sisi klien dengan menghitung ulang kartu dari baris yang
+         | lolos filter (refreshCards di view), bukan lagi dengan memaksa
+         | query ulang ke server.
          */
-        $baseQuery = DeliveryNote::with(['customer:id,name', 'items.invoice:id,code'])
+        // poNumber ikut dimuat karena kotak cari di browser juga harus
+        // menemukan Surat Jalan lewat No. PO — nomornya ditulis tersembunyi di
+        // kolom Invoice agar bisa dicari tanpa memenuhi layar.
+        $deliveryNotes = DeliveryNote::with([
+                'customer:id,name',
+                'items.invoice:id,code,project_po_number_id',
+                'items.invoice.poNumber:id,po_number',
+            ])
             ->withCount('items')
-            ->when(in_array($status, DeliveryNote::STATUSES, true), fn ($q) => $q->where('status', $status))
-            ->when($customer, fn ($q) => $q->where('customer_id', $customer))
-            ->when($search !== '', function ($q) use ($search) {
-                $like = '%' . $search . '%';
-
-                $q->where(function ($w) use ($like) {
-                    $w->where('code', 'like', $like)
-                      ->orWhereHas('customer', fn ($r) => $r->where('name', 'like', $like))
-                      ->orWhereHas('items.invoice', fn ($r) => $r->where('code', 'like', $like))
-                      ->orWhereHas('items.invoice.poNumber', fn ($r) => $r->where('po_number', 'like', $like))
-                      ->orWhereHas('items.invoice.po', fn ($r) => $r->where('code', 'like', $like)
-                                                                    ->orWhere('name', 'like', $like));
-                });
-            });
-
-        // Ringkasan dihitung dari himpunan yang SAMA dengan daftar (sebelum
-        // dipotong halaman), bukan dari query lain — supaya kartu di atas tidak
-        // pernah bercerita lain dari isi tabel.
-        $scoped = (clone $baseQuery)->get(['id', 'status']);
+            ->latest()
+            ->get();
 
         $summary = [
-            'total'    => $scoped->count(),
-            'sent'     => $scoped->where('status', 'SENT')->count(),
-            'received' => $scoped->where('status', 'RECEIVED')->count(),
+            'total'    => $deliveryNotes->count(),
+            'sent'     => $deliveryNotes->where('status', 'SENT')->count(),
+            'received' => $deliveryNotes->where('status', 'RECEIVED')->count(),
         ];
 
-        $deliveryNotes = $baseQuery->latest()->paginate(20)->withQueryString();
-
-        $customers = \App\Models\Customer::orderBy('name')->get(['id', 'name']);
-
-        $filters = ['q' => $search, 'status' => $status, 'customer_id' => $customer];
-
-        return view('delivery-note.index', compact('deliveryNotes', 'summary', 'customers', 'filters'));
+        return view('delivery-note.index', compact('deliveryNotes', 'summary'));
     }
 
     /*

@@ -1352,7 +1352,14 @@
                                      sinkron. --}}
                                 @php
                                     $progGroups = [
-                                        'contract'     => ['label' => 'Contract',        'tone' => null],
+                                        /*
+                                        | Contract disembunyikan secara bawaan: ia patokan, bukan
+                                        | tahap yang sedang dikejar, dan menempati dua kolom paling
+                                        | kiri yang mendorong kolom antrean menjauh dari nama PO.
+                                        | Tetap tersedia lewat menu Kolom bagi yang perlu
+                                        | membandingkan nilai kontraknya.
+                                        */
+                                        'contract'     => ['label' => 'Contract',        'tone' => null, 'hidden_default' => true],
                                         'wait_po'      => ['label' => 'Waiting PO',      'tone' => 'blue'],
                                         'wait_bast'    => ['label' => 'Waiting BAST',    'tone' => 'good'],
                                         'wait_invoice' => ['label' => 'Waiting Invoice', 'tone' => 'warn'],
@@ -1386,6 +1393,15 @@
                                     | sendiri. Dipakai menyusun atribut data-* di tiap sel VAR.
                                     */
                                     $progVarOperands = ['contract', 'wait_po', 'wait_bast', 'wait_invoice', 'wait_payment', 'closed'];
+
+                                    // Kunci sub-kolom yang selalu mulai tersembunyi saat halaman
+                                    // dimuat - diturunkan dari 'hidden_default' supaya daftarnya
+                                    // tidak perlu ditulis ulang di JS.
+                                    $progColvisSelaluOff = collect($progGroups)
+                                        ->filter(fn ($g) => ! empty($g['hidden_default']))
+                                        ->keys()
+                                        ->flatMap(fn ($k) => [$k . '_qty', $k . '_value'])
+                                        ->values();
                                     // Contract & Waiting PO hidup di tingkat PO: yang ditunggu
                                     // justru No. PO yang belum terbit, jadi baris No. PO tidak
                                     // punya angkanya dan menulis 0 di sana akan terbaca sebagai
@@ -1458,8 +1474,9 @@
                                         <div class="dropdown-menu dropdown-menu-right js-colvis-menu p-2" style="font-size:12px;min-width:200px;max-height:360px;overflow-y:auto;">
                                             @foreach($progGroups as $grpKey => $grpDef)
                                             <div class="text-muted font-weight-bold px-1 {{ $loop->first ? '' : 'mt-1' }}" style="font-size:10px;letter-spacing:.03em;">{{ strtoupper($grpDef['label']) }}</div>
-                                            <label class="dropdown-item m-0 p-1"><input type="checkbox" class="prog-colvis-toggle mr-1" data-c="{{ $grpKey }}_qty" checked>Qty</label>
-                                            <label class="dropdown-item m-0 p-1"><input type="checkbox" class="prog-colvis-toggle mr-1" data-c="{{ $grpKey }}_value" checked>Value</label>
+                                            @php $awal = empty($grpDef['hidden_default']) ? 'checked' : ''; @endphp
+                                            <label class="dropdown-item m-0 p-1"><input type="checkbox" class="prog-colvis-toggle mr-1" data-c="{{ $grpKey }}_qty" {{ $awal }}>Qty</label>
+                                            <label class="dropdown-item m-0 p-1"><input type="checkbox" class="prog-colvis-toggle mr-1" data-c="{{ $grpKey }}_value" {{ $awal }}>Value</label>
                                             @endforeach
                                         </div>
                                     </div>
@@ -1526,8 +1543,13 @@
                                                     data-text="{{ strtolower($cust['customer'] . ' ' . $proj['project'] . ' ' . $proj['project_code']) }}">
                                                     <td class="col-sticky-left prog-lv2" style="cursor:pointer;">
                                                         <i class="fas fa-caret-right prog-caret mr-1"></i>
+                                                        {{-- Kode PO di DEPAN nama, format sama dengan Todo List:
+                                                             [0004] Nama (CUSTOMER - MANAGER). Kode adalah yang
+                                                             dipakai orang untuk mencocokkan baris dengan dokumen,
+                                                             jadi ia yang dibaca lebih dulu. --}}
+                                                        <span class="prog-code">[{{ $proj['project_code'] }}]</span>
                                                         <span class="prog-name">{{ $proj['project'] }}</span>
-                                                        <span class="text-muted ml-1" style="font-size:10px;">{{ $proj['project_code'] }} &middot; {{ $proj['manager'] }}</span>
+                                                        <span class="text-muted ml-1" style="font-size:10px;">({{ $proj['manager'] }})</span>
                                                     </td>
                                                     @foreach($progGroups as $gk => $g)
                                                     @if(!empty($g['computed']))
@@ -1766,6 +1788,7 @@ button.aca-sort:focus-visible { outline:2px solid var(--accent); outline-offset:
 #tblProgressSummary .prog-lv2 { padding-left: 34px !important; }
 #tblProgressSummary .prog-lv3 { padding-left: 62px !important; }
 #tblProgressSummary .prog-lv2 .prog-name { font-weight: 600; }
+#tblProgressSummary .prog-lv2 .prog-code { font-weight: 700; margin-right: 4px; }
 
 /* Garis panduan digambar sebagai LATAR sel, bukan elemen absolut.
 
@@ -2197,6 +2220,20 @@ td.exec-indent { padding-left:28px !important; }
 
 @push('scripts')
 <script>
+/* Halaman ini selalu dibuka dari atas.
+   Browser mengembalikan posisi gulir terakhir saat halaman dimuat ulang
+   (history.scrollRestoration bawaan 'auto'). Di halaman sepanjang ini efeknya
+   membuka Summary langsung di tengah tabel paling bawah, seolah tab yang dibuka
+   bukan yang dipilih. Dimatikan sebelum $(function) supaya berlaku juga saat
+   browser memulihkan posisi sebelum skrip lain jalan.
+
+   ?progress= dikecualikan: deep-link dari Daftar Purchase Order memang menggulir
+   ke baris PO yang dituju (lihat blok deep-link di bawah). */
+if ('scrollRestoration' in history && !new URLSearchParams(window.location.search).get('progress')) {
+    history.scrollRestoration = 'manual';
+    window.scrollTo(0, 0);
+}
+
 $(function () {
     $('.js-pct-width').each(function () {
         $(this).css('width', $(this).data('width') + '%');
@@ -2713,6 +2750,54 @@ $(function () {
         return true;
     }
 
+    /*
+     | Filter bertingkat: daftar pilihan satu tombol mengikuti filter LAIN yang
+     | sedang aktif. Begitu Manager dipilih, dropdown Status dan Progress hanya
+     | menawarkan nilai yang benar-benar dimiliki proyek manager itu — daftar
+     | penuh di situ hanya menawarkan pilihan yang pasti mengosongkan tabel.
+     | Filter tombol itu sendiri diabaikan supaya pilihan yang sudah tercentang
+     | tidak lenyap dari daftarnya sendiri dan masih bisa dilepas.
+     */
+    function execRowPassesExcept($row, except) {
+        if (except !== 'status' && filterState.status.size > 0 &&
+            !filterState.status.has($row.attr('data-status'))) return false;
+
+        if (except !== 'pm' && filterState.pm.size > 0) {
+            var pmNames = ($row.attr('data-pm-internal') || '').split(',').map(function (n) { return n.trim(); });
+            if (!pmNames.some(function (n) { return filterState.pm.has(n); })) return false;
+        }
+
+        var letters = ['r', 'b', 'i', 'p'];
+        for (var i = 0; i < letters.length; i++) {
+            var letter = letters[i];
+            if (except === 'progress:' + letter) continue;
+            var set = filterState.progress[letter];
+            if (set.size > 0 && !set.has($row.attr('data-progress-' + letter))) return false;
+        }
+        return true;
+    }
+
+    // Baris data proyek — induk grup customer tidak membawa data-pm-internal.
+    function execDataRows(except) {
+        return $('[data-pm-internal]').filter(function () {
+            return execRowPassesExcept($(this), except);
+        });
+    }
+
+    // Nilai yang masih tersisa untuk satu atribut, setelah filter lain dipakai.
+    function execNilaiTersisa(attr, except, pecahKoma) {
+        var ada = {};
+        execDataRows(except).each(function () {
+            var raw = ($(this).attr(attr) || '').toString();
+            if (pecahKoma) {
+                raw.split(',').forEach(function (n) { n = n.trim(); if (n) ada[n] = true; });
+            } else if (raw !== '') {
+                ada[raw] = true;
+            }
+        });
+        return ada;
+    }
+
     function marginColorClass(v) {
         return v >= 20 ? 'success' : (v >= 0 ? 'warning' : 'danger');
     }
@@ -2915,19 +3000,23 @@ $(function () {
 
     $('#btnFilterStatus').on('click', function (e) {
         e.stopPropagation();
-        var options = statusData.map(function (s) { return { value: s.status, label: s.label }; });
+        var tersisa = execNilaiTersisa('data-status', 'status', false);
+        var options = statusData
+            .map(function (s) { return { value: s.status, label: s.label }; })
+            .filter(function (o) { return tersisa[o.value] || filterState.status.has(o.value); });
         openExecFilterDropdown($(this), options, filterState.status);
     });
 
     $('#btnFilterPm').on('click', function (e) {
         e.stopPropagation();
         var names = new Set();
-        $('[data-pm-internal]').each(function () {
+        execDataRows('pm').each(function () {
             ($(this).attr('data-pm-internal') || '').split(',').forEach(function (n) {
                 n = n.trim();
                 if (n && n !== '-') names.add(n);
             });
         });
+        filterState.pm.forEach(function (n) { names.add(n); });
         var options = Array.from(names).sort().map(function (n) { return { value: n, label: n.toUpperCase() }; });
         openExecFilterDropdown($(this), options, filterState.pm);
     });
@@ -2940,7 +3029,11 @@ $(function () {
     $('.exec-progress-filter-btn').on('click', function (e) {
         e.stopPropagation();
         var letter = $(this).data('letter');
-        openExecFilterDropdown($(this), progressBucketOptions, filterState.progress[letter]);
+        var sisa = execNilaiTersisa('data-progress-' + letter, 'progress:' + letter, false);
+        var options = progressBucketOptions.filter(function (o) {
+            return sisa[o.value] || filterState.progress[letter].has(o.value);
+        });
+        openExecFilterDropdown($(this), options, filterState.progress[letter]);
     });
 
     $('#btnClearExecFilter').on('click', function () {
@@ -3740,9 +3833,17 @@ $(function () {
 
     if ($('#progColvis').length) {
         try {
+            /* Kolom yang SELALU mulai tersembunyi tiap halaman dimuat, walau
+               sesi sebelumnya sempat menampilkannya. Pilihan kolom lain tetap
+               diingat lewat localStorage; yang ini sengaja tidak, karena
+               statusnya bawaan tampilan - bukan preferensi yang menempel. */
+            var progColvisSelaluOff = @json($progColvisSelaluOff);
+
             var tersimpan = JSON.parse(localStorage.getItem(PROG_COLVIS_KEY) || '{}');
             $('#progColvis .prog-colvis-toggle').each(function () {
-                var v = tersimpan[$(this).data('c')];
+                var key = $(this).data('c');
+                if (progColvisSelaluOff.indexOf(key) !== -1) { this.checked = false; return; }
+                var v = tersimpan[key];
                 if (typeof v === 'boolean') this.checked = v;
             });
         } catch (e) {}

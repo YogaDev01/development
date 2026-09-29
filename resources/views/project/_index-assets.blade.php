@@ -384,7 +384,24 @@ $(function () {
         varcost: false, payment: false, profit: true, overhead: false, fixedcost: false, netprofit: true
     };
 
+    /*
+    | Kolom uang dibatasi peran: hanya Superadmin/Approver/Finance Manager
+    | (Project::FULL_EDIT_ROLES) yang boleh melihatnya. Peran lain dipaksa
+    | melihat Budget & Variable Cost saja — dipaksa, bukan sekadar default,
+    | karena preferensi di localStorage bisa saja menyimpan keadaan lama dari
+    | sesi peran lain di browser yang sama.
+    */
+    var bolehKolomFinansial = @json($bolehKolomFinansial);
+    var kolomUangTerbatas = ['margin', 'contract', 'povalue', 'payment', 'profit',
+                             'overhead', 'fixedcost', 'netprofit'];
+    var kolomWajibTampil  = ['budget', 'varcost'];
+
     function getColVisPref(key) {
+        if (!bolehKolomFinansial) {
+            if (kolomUangTerbatas.indexOf(key) !== -1) return false;
+            if (kolomWajibTampil.indexOf(key) !== -1) return true;
+        }
+
         var stored = localStorage.getItem('poColVis_' + key);
         return stored === null ? !!colVisDefault[key] : stored === '1';
     }
@@ -709,6 +726,20 @@ $(function () {
         $('#frmVerifyClosing').attr('action', '/project/' + id + '/verify-closing');
         $('#frmVerifyClosing textarea[name="notes"]').val('');
         $('#mdlVerifyClosing').modal('show');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | FINANCE CLOSE — PAID langsung ke CLOSED
+    |--------------------------------------------------------------------------
+    */
+    $(document).on('click', '.btn-finance-close', function () {
+        var id   = $(this).data('id');
+        var name = $(this).data('name');
+        $('#financeCloseText').text('Tutup PO: ' + name + '. Status akan berubah menjadi CLOSED.');
+        $('#frmFinanceClose').attr('action', '/project/' + id + '/finance-close');
+        $('#frmFinanceClose textarea[name="notes"]').val('');
+        $('#mdlFinanceClose').modal('show');
     });
 
     /*

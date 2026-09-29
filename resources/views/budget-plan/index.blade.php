@@ -165,11 +165,17 @@
                                         $bolehFinance    = $stBp === 'CHECKED' && $pengguna->hasRole(['superadmin','finance','finance_manager']);
                                         $bolehCeo        = $stBp === 'VERIFIED' && $pengguna->hasRole(['superadmin','approver']);
                                         $bolehRevisi     = $stBp === 'REJECTED' && $pengguna->hasRole(['superadmin','manager']);
-                                        $bolehClosing    = $stBp === 'ACTIVE' && $pengguna->hasRole(['superadmin','manager']);
-                                        $bolehVerClosing = $stBp === 'CLOSING' && $pengguna->hasRole(['superadmin','finance','finance_manager']);
+                                        // CLOSING punya dua tahap: hasil auto-closing saat Plan
+                                        // Finish terlewati (berkas belum diajukan) masih tugas
+                                        // manager; baru setelah diajukan jadi giliran Finance.
+                                        $bolehClosing    = ($stBp === 'ACTIVE' || $bp->isClosingPending()) && $pengguna->hasRole(['superadmin','manager']);
+                                        $bolehVerClosing = $bp->isClosingSubmitted() && $pengguna->hasRole(['superadmin','finance','finance_manager']);
+                                        // Finance boleh menutup budget yang sudah ACTIVE tanpa
+                                        // menunggu pengajuan closing dari manager.
+                                        $bolehTutup      = $stBp === 'ACTIVE' && $pengguna->hasRole(['superadmin','finance','finance_manager']);
 
                                         $adaAksi = $bolehDraft || $bolehHead || $bolehFinance || $bolehCeo
-                                            || $bolehRevisi || $bolehClosing || $bolehVerClosing;
+                                            || $bolehRevisi || $bolehClosing || $bolehVerClosing || $bolehTutup;
                                     @endphp
 
                                     <div class="action-buttons ts-actions">
@@ -214,6 +220,12 @@
                                         <button type="button" class="ts-action-primary btn-verify-closing-bp"
                                                 data-id="{{ $bp->id }}" title="Approve Closing → Closed">
                                             <i class="fas fa-check-double"></i><span class="ts-al">Approve Closing</span>
+                                        </button>
+                                        @elseif($bolehTutup)
+                                        <button type="button" class="ts-action-primary btn-finance-close-bp"
+                                                data-id="{{ $bp->id }}" data-desc="{{ $bp->description }}"
+                                                title="Close → Closed">
+                                            <i class="fas fa-lock"></i><span class="ts-al">Close</span>
                                         </button>
                                         @endif
 
@@ -276,6 +288,17 @@
                                             <button type="button" class="dropdown-item is-danger btn-reject-closing-bp"
                                                     data-id="{{ $bp->id }}">
                                                 <i class="fas fa-times"></i>Tolak Closing
+                                            </button>
+                                            @endif
+
+                                            @if($bolehTutup && $bolehClosing)
+                                            {{-- Superadmin memegang dua peran sekaligus: tombol
+                                                 utamanya Submit Closing, jadi Close disediakan
+                                                 di sini agar tidak hilang. --}}
+                                            <div class="dropdown-divider"></div>
+                                            <button type="button" class="dropdown-item btn-finance-close-bp"
+                                                    data-id="{{ $bp->id }}" data-desc="{{ $bp->description }}">
+                                                <i class="fas fa-lock"></i>Close
                                             </button>
                                             @endif
 
@@ -376,6 +399,10 @@
                                     <div id="bpRemaining" class="text-white" style="font-size:12px;"></div>
                                     <span id="bpMarginBadge" class="badge px-2 py-1" style="font-size:10px;"></span>
                                 </div>
+                            </div>
+                            <div class="mb-3">
+                                <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Plan Finish</span>
+                                <div id="bpPlanFinish" class="text-white mt-1" style="font-size:12px;"></div>
                             </div>
                             <div class="mb-3">
                                 <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Input By</span>
@@ -762,6 +789,42 @@
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-success">
                         <i class="fas fa-check-double mr-1"></i> Approve → Closed
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- MODAL FINANCE CLOSE — ACTIVE → CLOSED --}}
+<div class="modal fade" id="mdlFinanceCloseBP" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
+            <div class="modal-header" style="background:var(--charcoal);border-bottom:3px solid var(--accent);">
+                <h5 class="modal-title text-white">
+                    <i class="fas fa-lock mr-2" style="color:var(--accent);"></i> Close Budget Plan
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <form id="frmFinanceCloseBP" method="POST">
+                @csrf
+                <div class="modal-body" style="padding:24px 28px;">
+                    <p id="financeCloseBPText" class="text-muted mb-3"></p>
+                    <div class="alert alert-warning mb-3" style="font-size:12px;">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                        Status langsung menjadi <strong>CLOSED</strong> tanpa melewati tahap Closing.
+                        Setelah ditutup, tidak ada Cost Request baru yang bisa dibebankan ke budget ini.
+                    </div>
+                    <div class="form-group mb-0">
+                        <label class="font-weight-600">Alasan <span class="text-danger">*</span></label>
+                        <textarea name="notes" class="form-control" rows="3"
+                                  placeholder="Tuliskan alasan penutupan budget..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer" style="background:var(--surface-2);">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-lock mr-1"></i> Close
                     </button>
                 </div>
             </form>
@@ -1451,6 +1514,7 @@ $(function () {
             $('#bpProgressBar').css('width', Math.min(d.usage_percentage, 100) + '%');
             $('#bpRemaining').text(d.remaining_amount.toLocaleString('id-ID'));
             $('#bpInputBy').text(d.input_by);
+            $('#bpPlanFinish').text(d.plan_finish || '-');
 
             var marginPct = d.amount > 0 ? Math.round((d.remaining_amount / d.amount) * 1000) / 10 : 0;
             var marginColor = marginPct <= 0 ? 'danger' : (marginPct <= 15 ? 'warning' : 'light border');
@@ -1882,6 +1946,14 @@ $(function () {
     });
 
     /* ── REJECT CLOSING ── */
+    $(document).on('click', '.btn-finance-close-bp', function () {
+        var id = $(this).data('id');
+        $('#financeCloseBPText').text('Close budget: ' + ($(this).data('desc') || ''));
+        $('#frmFinanceCloseBP').attr('action', '/budget-plan/' + id + '/finance-close');
+        $('#frmFinanceCloseBP').find('textarea').val('');
+        $('#mdlFinanceCloseBP').modal('show');
+    });
+
     $(document).on('click', '.btn-reject-closing-bp', function () {
         var id = $(this).data('id');
         $('#frmRejectClosingBP').attr('action', '/budget-plan/' + id + '/reject-closing');

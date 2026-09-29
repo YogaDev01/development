@@ -26,10 +26,43 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '2.4.2',
+    'current' => '2.4.3',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '2.4.3',
+            'date'    => '2026-09-29',
+            'title'   => 'Auto-Closing Budget Plan, Jenis PIC Baru & Filter Bertingkat',
+            'summary' => 'Budget Plan kini punya tanggal rencana selesai dan pindah sendiri ke Closing '
+                       . 'saat jatuh tempo, Master PIC bertambah jenis External dan Site Keeper, dan '
+                       . 'filter kolom di seluruh tabel jadi bertingkat sehingga pilihannya selalu '
+                       . 'masuk akal.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Budget Plan punya tanggal rencana selesai (Plan Finish); begitu tanggalnya terlewati, budget yang masih Active dipindahkan otomatis ke Closing lewat penjadwalan harian.',
+                        'Status Closing kini membedakan dua keadaan: jatuh tempo (menunggu manager mengajukan berkas closing) dan sudah diajukan (menunggu verifikasi Finance), sehingga Todo List tiap peran tidak tercampur.',
+                        'Master PIC: dua jenis baru, External dan Site Keeper, lengkap dengan tab, hitungan per jenis, dan penanda PIC internal yang belum punya akun User.',
+                        'Akun User dibuatkan untuk PIC internal yang belum memilikinya (peran staff, kata sandi awal wajib diganti saat login pertama).',
+                        'Role Collection mendapat akses menu Cash Receipt (M-03).',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Filter kolom kini bertingkat: setelah satu filter dipilih, pilihan di dropdown lain ikut menyempit ke nilai yang benar-benar ada, tidak lagi menawarkan kombinasi yang pasti mengosongkan tabel.',
+                        'Tampilan halaman tidak lagi berkedip saat dimuat - sidebar langsung tergambar pada keadaan terakhirnya dan isi halaman ditahan sampai markup lengkap.',
+                        'Tabel Cash Receipt, Surat Jalan, Milestone, Project Master, dan Forecast diseragamkan dengan toolbar, filter, dan pengaturan kolom yang sama.',
+                        'Summary: kolom Contract disembunyikan secara bawaan agar kolom antrean lebih dekat ke nama PO; tetap bisa dimunculkan lewat menu Kolom.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '2.4.2',

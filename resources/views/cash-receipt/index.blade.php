@@ -27,12 +27,17 @@
             </ol>
         </div>
 
+        {{-- Kartu dibungkus wadah ber-id: isinya dihitung ulang dari baris yang
+             terlihat setiap kali filter tabel berubah, supaya kartu dan tabel
+             tidak pernah bercerita hal berbeda. --}}
+        <div id="crCards">
         <x-stat-cards :cards="[
             ['Bukti Terima', $summary['count'], 'secondary', 'fas fa-receipt'],
             ['Total Diterima', 'Rp ' . number_format($summary['total'], 0, ',', '.'), 'success', 'fas fa-hand-holding-usd'],
             ['Invoice Tertutup', $summary['invoice_count'], 'primary', 'fas fa-file-invoice'],
             ['Belum Teralokasi', 'Rp ' . number_format($summary['unallocated'], 0, ',', '.'), $summary['unallocated'] > 0 ? 'warning' : 'secondary', 'fas fa-unlink'],
         ]" />
+        </div>
 
         <div class="card card-primary card-outline shadow-sm mt-3">
             <div class="card-header d-flex align-items-center flex-wrap" style="gap:8px;">
@@ -46,54 +51,32 @@
 
             <div class="card-body">
                 {{--
-                     Bentuk bilah filter disamakan dengan halaman index lain
-                     (List PO, Budget Plan): satu baris .custom-toolbar, kontrol
-                     setinggi 30px, tombol bersih berikon penghapus di ujung.
-                     Yang TIDAK diubah adalah cara kerjanya — penyaringan tetap
-                     diproses di server lewat GET, karena kartu ringkasan di atas
-                     dibangun dari query yang sama; memindahkannya ke DataTables
-                     akan membuat kartu dan tabel bercerita hal berbeda. --}}
-                <form method="GET" action="{{ route('cash-receipt.index') }}"
-                      class="custom-toolbar mb-3 d-flex align-items-center justify-content-start flex-wrap" style="gap:8px;">
+                     Penyaringan dikerjakan di browser: kotak cari disambungkan
+                     ke pencarian DataTables, dan Status/Customer memakai
+                     dropdown centang TesysColumnFilter — bentuk yang sama
+                     dengan halaman index lain. Tidak ada tombol "Terapkan" dan
+                     tidak ada muat ulang halaman: mencentang langsung menyaring.
+                --}}
+                <div class="custom-toolbar mb-3 d-flex align-items-center justify-content-start flex-wrap" style="gap:8px;">
 
                     <div class="toolbar-row">
                         <span class="toolbar-label">Cari :</span>
                         <div class="toolbar-input">
-                            <input type="search" name="q" class="form-control form-control-sm"
-                                   value="{{ $filters['q'] }}"
+                            <input type="search" id="crSearch" class="form-control form-control-sm"
                                    placeholder="Kode / referensi / customer">
                         </div>
                     </div>
 
-                    <select name="customer_id" class="form-control form-control-sm {{ $filters['customer_id'] ? ' col-mf-active' : '' }}"
-                            style="width:auto;min-width:150px;" aria-label="Filter Customer">
-                        <option value="">Semua Customer</option>
-                        @foreach($customers as $c)
-                            <option value="{{ $c->id }}" @selected((string) $filters['customer_id'] === (string) $c->id)>{{ $c->name }}</option>
-                        @endforeach
-                    </select>
+                    <div id="crRowFilters" class="d-flex flex-wrap" style="gap:8px;"></div>
 
-                    <select name="status" class="form-control form-control-sm {{ $filters['status'] ? ' col-mf-active' : '' }}"
-                            style="width:auto;min-width:130px;" aria-label="Filter Status">
-                        <option value="">Semua Status</option>
-                        @foreach(\App\Models\CashReceiptHeader::STATUSES as $st)
-                            <option value="{{ $st }}" @selected($filters['status'] === $st)>{{ $st }}</option>
-                        @endforeach
-                    </select>
-
-                    <button type="submit" class="btn btn-sm btn-outline-secondary col-mf-btn" title="Terapkan filter">
-                        <i class="fas fa-filter"></i> Terapkan
-                    </button>
-
-                    @if($filters['q'] !== '' || $filters['status'] || $filters['customer_id'])
-                    <a href="{{ route('cash-receipt.index') }}" class="btn btn-outline-secondary btn-sm" title="Clear Filter" aria-label="Clear Filter">
+                    <button type="button" id="btnClearFilterCR" class="btn btn-outline-secondary btn-sm"
+                            title="Clear Filter" aria-label="Clear Filter">
                         <i class="fas fa-eraser"></i>
-                    </a>
-                    @endif
-                </form>
+                    </button>
+                </div>
 
                 <div class="table-responsive">
-                    <table class="table table-bordered table-hover table-striped mb-0">
+                    <table id="tblCashReceipt" class="table table-bordered table-hover table-striped mb-0">
                         <thead class="bg-light">
                             <tr>
                                 <th scope="col" class="text-nowrap">Kode</th>
@@ -107,13 +90,20 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($headers as $h)
+                            @foreach($headers as $h)
                             @php
                                 $allocated   = $h->allocatedAmount();
                                 $unallocated = $h->unallocatedAmount();
                                 $stBadge = ['DRAFT' => 'badge-warning', 'ALLOCATED' => 'badge-success', 'CANCELLED' => 'badge-danger'][$h->status] ?? 'badge-secondary';
                             @endphp
-                            <tr>
+                            {{-- data-* dibaca dua pihak: TesysColumnFilter untuk
+                                 menyaring, dan penghitung kartu untuk menjumlah
+                                 baris yang tersisa. --}}
+                            <tr data-status="{{ $h->status }}"
+                                data-customer="{{ $h->customer->name ?? '-' }}"
+                                data-total="{{ (int) $h->total_amount }}"
+                                data-invoices="{{ $h->details->count() }}"
+                                data-unallocated="{{ max(0, $unallocated) }}">
                                 <td class="text-nowrap"><strong>{{ $h->code }}</strong></td>
                                 <td class="text-nowrap">{{ $h->received_date?->format('d M Y') }}</td>
                                 <td>{{ $h->customer->name ?? '-' }}</td>
@@ -146,20 +136,9 @@
                                     </a>
                                 </td>
                             </tr>
-                            @empty
-                            <tr>
-                                <td colspan="8">
-                                    <x-empty title="Tidak ada penerimaan yang cocok dengan filter ini"
-                                             icon="fas fa-receipt" compact />
-                                </td>
-                            </tr>
-                            @endforelse
+                            @endforeach
                         </tbody>
                     </table>
-                </div>
-
-                <div class="mt-3">
-                    {{ $headers->links() }}
                 </div>
             </div>
         </div>
@@ -187,4 +166,84 @@
     .toolbar-input { flex:1; min-width:0; }
 }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+$(function () {
+
+    var table = $('#tblCashReceipt').DataTable({
+        responsive: { details: { type: 'inline' } },
+        autoWidth: false, pageLength: 25, lengthChange: true, searching: true,
+        order: [], // urutan dari server (terbaru di atas) dipertahankan
+        columnDefs: [
+            { targets: [7], orderable: false },
+            { responsivePriority: 1, targets: [0, 2, -1] },
+        ],
+        dom: 'rt<"row mt-3 align-items-center"<"col-md-6 col-12 mb-2 mb-md-0"i><"col-md-6 col-12 d-flex justify-content-end"lp>>',
+        language: {
+            lengthMenu: 'Page Size _MENU_',
+            emptyTable: '<div class="ts-empty ts-empty-compact">'
+                + '<span class="ts-empty-ic" aria-hidden="true"><i class="fas fa-receipt"></i></span>'
+                + '<p class="ts-empty-title">Belum ada penerimaan</p>'
+                + '<p class="ts-empty-msg">Belum ada bukti terima yang tercatat.</p></div>',
+            zeroRecords: '<div class="ts-empty ts-empty-compact">'
+                + '<span class="ts-empty-ic" aria-hidden="true"><i class="fas fa-search"></i></span>'
+                + '<p class="ts-empty-title">Tidak ada yang cocok</p>'
+                + '<p class="ts-empty-msg">Tidak ada penerimaan yang cocok dengan filter yang sedang aktif.</p></div>',
+            info: 'Menampilkan _START_ sampai _END_ dari _TOTAL_ data',
+            infoEmpty: 'Tidak ada data',
+            paginate: { previous: 'Previous', next: 'Next' }
+        }
+    });
+
+    /* Kotak cari sendiri (kotak bawaan DataTables disembunyikan lewat dom). */
+    $('#crSearch').on('keyup search', function () { table.search(this.value).draw(); });
+
+    /* Dropdown centang. Status memakai daftar TETAP supaya nilai yang belum
+       dipakai satu baris pun tetap terlihat — berguna justru saat seseorang
+       ingin memastikan memang belum ada. Customer disimpulkan dari baris. */
+    TesysColumnFilter.initRowFilters('#tblCashReceipt', '#crRowFilters', [
+        { key: 'status',   label: 'Status',   options: @json(\App\Models\CashReceiptHeader::STATUSES), search: false },
+        { key: 'customer', label: 'Customer' },
+    ]);
+
+    $('#btnClearFilterCR').on('click', function () {
+        TesysColumnFilter.clearAll('#tblCashReceipt');
+        $('#crSearch').val('');
+        table.search('').draw();
+    });
+
+    /*
+     | Kartu ringkasan dihitung ulang dari baris yang LOLOS filter (bukan hanya
+     | yang tampil di halaman aktif), jadi angka di atas selalu menggambarkan
+     | isi tabel di bawahnya. Inilah yang membuat penyaringan di browser aman
+     | dilakukan — dulu penyaringan dipaksa lewat reload demi hal ini.
+     */
+    var rupiah = function (n) { return 'Rp ' + (n || 0).toLocaleString('id-ID'); };
+
+    function refreshCards() {
+        var jumlah = 0, total = 0, invoice = 0, sisa = 0;
+
+        table.rows({ search: 'applied' }).nodes().each(function (tr) {
+            jumlah  += 1;
+            total   += parseInt(tr.getAttribute('data-total') || 0, 10);
+            invoice += parseInt(tr.getAttribute('data-invoices') || 0, 10);
+            sisa    += parseInt(tr.getAttribute('data-unallocated') || 0, 10);
+        });
+
+        var $nilai = $('#crCards .ts-kpi-value');
+        $nilai.eq(0).text(jumlah);
+        $nilai.eq(1).text(rupiah(total));
+        $nilai.eq(2).text(invoice);
+        $nilai.eq(3).text(rupiah(sisa));
+
+        // Nada ikon "Belum Teralokasi" ikut keadaan, seperti versi server-nya.
+        var $ic = $('#crCards .ts-kpi').eq(3).find('.ts-kpi-ic');
+        $ic.toggleClass('ts-tone-attention', sisa > 0).toggleClass('ts-tone-neutral', sisa <= 0);
+    }
+
+    table.on('draw', refreshCards);
+});
+</script>
 @endpush

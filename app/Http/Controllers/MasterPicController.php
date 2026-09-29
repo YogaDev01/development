@@ -24,9 +24,20 @@ class MasterPicController extends Controller
         // memilah-milah sendiri dari daftar penuh.
         $unlinked = $request->boolean('unlinked');
 
+        /*
+         * Tab utama. Internal ditaruh paling kiri dan menjadi tab bawaan: itu
+         * daftar yang paling sering dikerjakan (pemetaan ke akun User ada di
+         * situ). 'db' = seluruh jenis, termasuk Customer dan Site Keeper yang
+         * tidak punya tab sendiri — di sana filter Type yang memisahkannya.
+         */
+        $tab = $request->query('tab', 'internal');
+        if (! in_array($tab, ['internal', 'outsider', 'db'], true)) {
+            $tab = 'internal';
+        }
+
         $pics = MasterPic::with(['user:id,username,name', 'employee:id,name,employee_number', 'bank:id,name'])
             ->withCount('beneficiaries')
-            ->when(in_array($type, ['customer', 'internal'], true), fn ($q) => $q->where('type', $type))
+            ->when(in_array($type, array_keys(MasterPic::TYPES), true), fn ($q) => $q->where('type', $type))
             ->when(in_array($status, ['ACTIVE', 'INACTIVE'], true), fn ($q) => $q->where('status', $status))
             ->when($unlinked, fn ($q) => $q->where('type', 'internal')->whereNull('user_id'))
             ->when($search !== '', function ($q) use ($search) {
@@ -42,17 +53,44 @@ class MasterPicController extends Controller
             ->latest()
             ->get();
 
-        $summary = [
-            'total'    => $pics->count(),
-            'customer' => $pics->where('type', 'customer')->count(),
-            'internal' => $pics->where('type', 'internal')->count(),
-            'active'   => $pics->where('status', 'ACTIVE')->count(),
-            // Berapa PIC internal yang BELUM terhubung ke akun User. Sengaja
-            // dihitung dari SELURUH data, bukan dari hasil saringan: angka ini
-            // menandai sisa pekerjaan, jadi ia harus tetap turun saat dikerjakan
-            // dan tidak boleh ikut mengecil hanya karena daftarnya disaring.
-            'unlinked' => MasterPic::where('type', 'internal')->whereNull('user_id')->count(),
+        /*
+         * Seluruh baris dikirim sekali, lalu tab dipilah di browser — berpindah
+         * tab tidak memuat ulang halaman. Karena itu angka per tab ikut dihitung
+         * di sini untuk ketiganya sekaligus; kartu ringkasannya tinggal ditukar
+         * oleh JS saat tab berganti, tanpa permintaan baru ke server.
+         */
+        $isiTab = [
+            'internal' => $pics->where('type', 'internal'),
+            'outsider' => $pics->where('type', '!=', 'internal'),
+            'db'       => $pics,
         ];
+
+        // Berapa PIC internal yang BELUM terhubung ke akun User. Sengaja dihitung
+        // dari SELURUH data, bukan dari hasil saringan: angka ini menandai sisa
+        // pekerjaan, jadi ia harus tetap turun saat dikerjakan dan tidak boleh
+        // ikut mengecil hanya karena daftarnya disaring.
+        $unlinked = MasterPic::where('type', 'internal')->whereNull('user_id')->count();
+
+        $summaries = [];
+        foreach ($isiTab as $key => $isi) {
+            $summaries[$key] = [
+                'total'    => $isi->count(),
+                'active'   => $isi->where('status', 'ACTIVE')->count(),
+                'inactive' => $isi->where('status', 'INACTIVE')->count(),
+                'unlinked' => $unlinked,
+            ];
+        }
+
+        // Badge tab dihitung dari seluruh data, bukan dari hasil saringan: ia
+        // menerangkan isi tab yang belum dibuka.
+        $semua = MasterPic::selectRaw('type, count(*) as n')->groupBy('type')->pluck('n', 'type');
+        $tabCounts = [
+            'internal' => (int) ($semua['internal'] ?? 0),
+            'outsider' => (int) ($semua->sum() - ($semua['internal'] ?? 0)),
+            'db'       => (int) $semua->sum(),
+        ];
+
+        $summary = $summaries[$tab];
 
         $users = \App\Models\User::orderBy('username')->get(['id', 'username', 'name']);
         $employees = \App\Models\Employee::where('status', 'ACTIVE')
@@ -64,7 +102,9 @@ class MasterPicController extends Controller
 
         $filters = ['type' => $type, 'status' => $status, 'q' => $search, 'unlinked' => $unlinked];
 
-        return view('master-pic.index', compact('pics', 'summary', 'users', 'employees', 'banks', 'filters'));
+        return view('master-pic.index', compact(
+            'pics', 'summary', 'summaries', 'users', 'employees', 'banks', 'filters', 'tab', 'tabCounts'
+        ));
     }
 
     /**
@@ -73,7 +113,7 @@ class MasterPicController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'type'        => 'required|in:customer,internal',
+            'type'        => 'required|in:' . implode(',', array_keys(MasterPic::TYPES)),
             'pic'         => 'required|string|max:255',
             'position'    => 'nullable|string|max:255',
             'bank_id'        => 'nullable|exists:banks,id',
@@ -143,7 +183,7 @@ class MasterPicController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'type'        => 'required|in:customer,internal',
+            'type'        => 'required|in:' . implode(',', array_keys(MasterPic::TYPES)),
             'pic'         => 'required|string|max:255',
             'position'    => 'nullable|string|max:255',
             'bank_id'        => 'nullable|exists:banks,id',

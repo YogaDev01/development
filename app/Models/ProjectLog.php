@@ -39,6 +39,7 @@ class ProjectLog extends Model
         'closing_approved'     => 'Closing Diverifikasi → Closed',
         'closing_rejected'     => 'MoM Ditolak → kembali ke Paid',
         'closed'               => 'Ditutup',
+        'finance_closed'       => 'Ditutup Finance (dari Paid)',
         'revised'              => 'Dikembalikan untuk Revisi',
         'rejected'             => 'Ditolak',
     ];
@@ -81,7 +82,8 @@ class ProjectLog extends Model
             'closing_submitted'                          => 'primary',
             'edited', 'po_number_added'                  => 'info',
             'billed'                                     => 'info',
-            'paid', 'closing_approved', 'closed'         => 'success',
+            'paid', 'closing_approved', 'closed',
+            'finance_closed'                             => 'success',
             'closing_rejected', 'rejected'               => 'danger',
             'revised'                                    => 'warning',
             default                                      => 'secondary',

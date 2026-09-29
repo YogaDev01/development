@@ -44,6 +44,56 @@
         })();
     </script>
 
+    {{-- Kerangka halaman dipasang SEBELUM satu lembar gaya pun diminta, dengan
+         alasan yang sama seperti tema di atas: keadaan sidebar (mengecil /
+         tertutup di layar sempit) disimpan di localStorage, dan kalau baru
+         dipasang oleh tesys-shell.js di kaki halaman, sidebar sempat tergambar
+         dalam keadaan yang salah lalu melompat. tesys-shell.js tetap memasang
+         ulang keadaan yang sama nanti — ini hanya mendahuluinya. --}}
+    <script>
+        (function () {
+            var narrow = window.matchMedia('(max-width: 900px)').matches;
+            var rail = false;
+            try { rail = localStorage.getItem('tesys.sidebar.rail') === '1'; } catch (e) {}
+
+            var kelas = 'tesys-booting';
+            if (narrow) kelas += ' sidebar-off';
+            else if (rail) kelas += ' sidebar-rail';
+
+            // <body> belum ada di titik ini, jadi kelasnya dititipkan di <html>
+            // dan dipindahkan begitu <body> lahir (lihat skrip di bawah <body>).
+            document.documentElement.className += ' ' + kelas;
+
+            /* Selubung pemuatan.
+
+               Halaman ini digambar bertahap oleh server, jadi sempat terlihat
+               separuh jadi — topbar dan isi sudah ada, sidebar belum. Selama
+               <html> masih bertanda tesys-booting, isinya ditahan; tandanya
+               dilepas begitu seluruh markup terbaca.
+
+               Pelepasnya dipasang DI SINI, bukan di kaki halaman: dengan begitu
+               pengaman waktunya sudah berjalan walau ada skrip lain yang gagal
+               di tengah jalan — halaman tidak mungkin tertinggal kosong. */
+            function tampilkan() {
+                document.documentElement.classList.remove('tesys-booting');
+            }
+            document.addEventListener('DOMContentLoaded', tampilkan);
+            window.addEventListener('load', tampilkan);
+            setTimeout(tampilkan, 1500);
+        })();
+    </script>
+
+    <style>
+        /* Isi ditahan, bukan dihapus: tata letaknya tetap dihitung, jadi tidak
+           ada lompatan saat selubungnya dilepas. <html> tetap memakai warna
+           latar temanya supaya yang terlihat selama itu bukan putih polos. */
+        html.tesys-booting body { visibility: hidden; }
+        /* Latar tema dipasang di <html> juga, supaya yang terlihat selama
+           penantian itu warna aplikasi — bukan putih yang menyilaukan di tema
+           gelap. */
+        html.tesys-booting { background: var(--body-bg, #f4f5f3); }
+    </style>
+
     <title>@yield('title', 'Dashboard') | TESYS</title>
 
     <!-- FONT AWESOME (ikon di dalam halaman masih memakainya) -->
@@ -130,6 +180,20 @@
 </head>
 
 <body class="tesys-ui {{ request()->is('/') ? 'dashboard-page' : '' }}">
+
+<script>
+    /* Keadaan sidebar sudah disimpulkan di <head> (sebelum gaya apa pun
+       diminta) tapi dititipkan di <html>, karena <body> belum ada saat itu.
+       Di sini kelasnya dipindahkan ke tempat yang dibaca CSS. */
+    (function () {
+        ['sidebar-off', 'sidebar-rail'].forEach(function (k) {
+            if (document.documentElement.classList.contains(k)) {
+                document.documentElement.classList.remove(k);
+                document.body.classList.add(k);
+            }
+        });
+    })();
+</script>
 
 @php
     // effectiveRole() supaya sidebar konsisten dengan View As

@@ -2196,6 +2196,8 @@ class BudgetRequestController extends Controller
             // Lampiran lama yang dicentang hapus oleh user.
             'delete_realization_attachments'        => 'nullable|array',
             'delete_realization_global_attachments' => 'nullable|array',
+            // Keterangan opsional dari pengaju — ikut ditulis ke Log CR.
+            'settlement_notes'                      => 'nullable|string|max:1000',
         ]);
 
         $cr = $this->findVisibleCr($id);
@@ -2279,9 +2281,18 @@ class BudgetRequestController extends Controller
                 'realized_at' => now(),
             ]);
 
-            $cr->addLog('PAID', 'REALIZED', 'realization_submitted',
-                'Total realisasi: ' . number_format($cr->fresh()->total_realization, 0, ',', '.')
-            );
+            /*
+            | Catatan log menggabungkan angka dan keterangan pengaju supaya
+            | approver membaca keduanya dalam satu baris riwayat — bukan cuma
+            | total, yang tidak pernah menjelaskan KENAPA settlement-nya begitu.
+            */
+            $catatan = 'Total realisasi: ' . number_format($cr->fresh()->total_realization, 0, ',', '.');
+
+            if ($ket = trim((string) $request->input('settlement_notes'))) {
+                $catatan .= ' — Keterangan: ' . $ket;
+            }
+
+            $cr->addLog('PAID', 'REALIZED', 'realization_submitted', $catatan);
         });
 
         NotifyService::send(

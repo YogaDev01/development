@@ -75,6 +75,12 @@
                         <div id="poRowFilters" class="d-flex flex-wrap" style="gap:8px;"></div>
                     </div>
                     <div class="custom-toolbar-right d-flex flex-wrap align-items-center" style="gap:8px;">
+                        {{-- Kolom uang (Contract, PO Value, Margin, Received Payment, Gross/Net
+                             Profit, Overhead, Fixed Cost) hanya untuk Superadmin/Approver/Finance
+                             Manager — daftar perannya sama dengan Project::FULL_EDIT_ROLES. Peran
+                             lain cuma melihat Budget & Variable Cost, jadi dropdown "Kolom" pun
+                             tidak ditampilkan: isinya semua kolom yang tidak boleh mereka buka. --}}
+                        @if($bolehKolomFinansial)
                         <div class="dropdown" id="colVisDropdown">
                             {{-- data-display="static" mematikan Popper: menu tetap menempel di bawah
                                  tombol. Tanpa ini, daftar kolom yang panjang bikin Popper "flip" ke atas
@@ -109,6 +115,7 @@
                                 @endforeach
                             </div>
                         </div>
+                        @endif
                         @if(Auth::user()->hasRole(['superadmin','approver']))
                         <a href="{{ route('project.export-excel') }}" id="btnExportPO" class="btn btn-outline-success btn-sm">
                             <i class="fas fa-file-excel mr-1"></i> Export Excel
@@ -334,6 +341,10 @@
                                         $bolehWaitingPo = $project->status === 'WAITING_PO' && $pengguna->hasRole(['superadmin','finance','finance_manager','head']);
                                         $bolehFinance   = $project->status === 'SUBMITTED' && $pengguna->hasRole(['superadmin','finance','finance_manager']);
                                         $bolehClosing   = $project->status === 'PAID' && $pengguna->hasRole(['superadmin','head']);
+                                        // Finance boleh menutup PO yang sudah PAID tanpa menunggu
+                                        // MoM Closing dari Head (ProjectController::financeClose).
+                                        $bolehFinanceClose = $project->status === 'PAID'
+                                            && $pengguna->hasRole(['superadmin','finance','finance_manager']);
                                         $bolehVerClosing = $project->status === 'CLOSING' && $pengguna->hasRole(['superadmin','finance','finance_manager']);
                                         $bolehHapus     = $project->status === 'DRAFT' && $pengguna->hasRole(['superadmin','head']);
 
@@ -352,7 +363,7 @@
                                             && $project->poNumbers->whereIn('status', ['RELEASED', 'PARTIAL'])->isNotEmpty();
 
                                         $adaAksi = $bolehSubmit || $bolehEditPenuh || $bolehWaitingPo || $bolehFinance
-                                            || $bolehClosing || $bolehVerClosing || $bolehHapus;
+                                            || $bolehClosing || $bolehVerClosing || $bolehFinanceClose || $bolehHapus;
                                     @endphp
 
                                     <div class="action-buttons ts-actions">
@@ -393,6 +404,12 @@
                                                 title="Submit MoM Closing">
                                             <i class="fas fa-file-contract"></i><span class="ts-al">Submit Closing</span>
                                         </button>
+                                        @elseif($bolehFinanceClose)
+                                        <button type="button" class="ts-action-primary btn-finance-close"
+                                                data-id="{{ $project->id }}" data-name="{{ $project->name }}"
+                                                title="Tutup PO">
+                                            <i class="fas fa-lock"></i><span class="ts-al">Close</span>
+                                        </button>
                                         @elseif($bolehVerClosing)
                                         <button type="button" class="ts-action-primary btn-verify-closing"
                                                 data-id="{{ $project->id }}" data-name="{{ $project->name }}"
@@ -430,7 +447,11 @@
                                             // lebih dekat daripada harus lewat modal detail.
                                             $bastDiMenu = $bolehBast && ($bolehSubmit || $bolehFinance || $bolehWaitingPo
                                                 || $bolehClosing || $bolehVerClosing || $bolehEditPenuh);
-                                            $adaMenu = $editDiMenu || $tambahPoDiMenu || $bastDiMenu || $bolehFinance || $bolehVerClosing || $bolehHapus;
+                                            // Close turun ke menu kalau slot utama sudah dipakai
+                                            // Submit Closing (Head/Superadmin pada PO yang sama).
+                                            $financeCloseDiMenu = $bolehFinanceClose && $bolehClosing;
+                                            $adaMenu = $editDiMenu || $tambahPoDiMenu || $bastDiMenu || $bolehFinance
+                                                || $bolehVerClosing || $financeCloseDiMenu || $bolehHapus;
                                         @endphp
 
                                         @if($adaMenu)
@@ -447,6 +468,13 @@
                                                class="dropdown-item" target="_blank">
                                                 <i class="fas fa-pen"></i>Edit
                                             </a>
+                                            @endif
+
+                                            @if($financeCloseDiMenu)
+                                            <button type="button" class="dropdown-item btn-finance-close"
+                                                    data-id="{{ $project->id }}" data-name="{{ $project->name }}">
+                                                <i class="fas fa-lock"></i>Close
+                                            </button>
                                             @endif
 
                                             @if($bastDiMenu)
@@ -1084,6 +1112,42 @@
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-success">
                         <i class="fas fa-check mr-1"></i> Approve → Closed
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL FINANCE CLOSE — PAID langsung ke CLOSED -->
+<div class="modal fade" id="mdlFinanceClose" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
+            <div class="modal-header" style="background:var(--charcoal);border-bottom:3px solid var(--accent);">
+                <h5 class="modal-title text-white">
+                    <i class="fas fa-lock mr-2" style="color:var(--accent);"></i> Tutup PO
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <form id="frmFinanceClose" method="POST" target="_blank">
+                @csrf
+                <div class="modal-body" style="padding:24px 28px;">
+                    <div class="alert alert-warning mb-3" style="font-size:12px;">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        PO langsung berubah menjadi <strong>CLOSED</strong> tanpa menunggu MoM Closing
+                        dari Head. Status ini tidak bisa dibatalkan dari daftar PO.
+                    </div>
+                    <p id="financeCloseText" class="text-muted mb-3"></p>
+                    <div class="form-group mb-0">
+                        <label class="font-weight-600">Alasan / Catatan Penutupan <span class="text-danger">*</span></label>
+                        <textarea name="notes" class="form-control" rows="3"
+                                  placeholder="Tuliskan alasan PO ditutup langsung..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer" style="background:var(--surface-2);">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-lock mr-1"></i> Tutup PO
                     </button>
                 </div>
             </form>

@@ -56,6 +56,16 @@ final class AccessRoles
     public const PO_VALUE = ['superadmin', 'approver', 'finance', 'finance_manager', 'head', 'guest'];
 
     /**
+     * Melihat KOLOM uang di Daftar Purchase Order sama sekali.
+     *
+     * Lebih ketat daripada PO_VALUE: di sana kolomnya tetap ada tapi isinya
+     * ditutup, di sini kolomnya tidak dirender sama sekali - termasuk dropdown
+     * "Kolom" yang isinya memang cuma kolom-kolom itu. Peran di luar daftar ini
+     * hanya melihat Budget & Variable Cost.
+     */
+    public const PO_MONEY_COLUMNS = ['superadmin', 'approver', 'finance_manager'];
+
+    /**
      * Boleh MENGUBAH Purchase Order pada status apa pun.
      *
      * Dipindahkan dari Project::FULL_EDIT_ROLES. Pembatasan per-status untuk

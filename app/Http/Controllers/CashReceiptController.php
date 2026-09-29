@@ -26,62 +26,41 @@ use Illuminate\Support\Facades\Storage;
  */
 class CashReceiptController extends Controller
 {
+    /*
+    | Daftar + ringkasan dikirim UTUH ke halaman, lalu penyaringan dikerjakan
+    | di browser (DataTables + TesysColumnFilter), sama seperti halaman index
+    | lain. Sebelumnya penyaringan diproses di server lewat GET; itu berarti
+    | tiap kali status atau customer dipilih, halaman dimuat ulang.
+    |
+    | Yang dulu jadi alasan bertahan di server adalah kartu ringkasan di atas
+    | tabel: kalau tabel disaring di browser sementara kartunya tetap angka
+    | server, keduanya bercerita hal berbeda. Itu diselesaikan di sisi tampilan
+    | — kartunya dihitung ulang dari baris yang terlihat setiap kali filter
+    | berubah (lihat resources/views/cash-receipt/index.blade.php), bukan
+    | dengan memaksa halaman reload.
+    |
+    | Angka di sini tinggal jadi keadaan awal (tanpa filter apa pun).
+    */
     public function index(Request $request)
     {
-        $status   = $request->query('status');
-        $customer = $request->query('customer_id');
-        $search   = trim((string) $request->query('q', ''));
-
         $headers = CashReceiptHeader::with([
                 'customer:id,name', 'sourceFund:id,name', 'createdBy:id,username', 'details.invoice:id,code',
             ])
-            ->when(in_array($status, CashReceiptHeader::STATUSES, true), fn ($q) => $q->where('status', $status))
-            ->when($customer, fn ($q) => $q->where('customer_id', $customer))
-            ->when($search !== '', function ($q) use ($search) {
-                $like = '%' . $search . '%';
-                // Pencarian menembus sampai KODE INVOICE — itu yang dipegang
-                // orang saat menelusuri sebuah penerimaan, bukan kode batch-nya.
-                $q->where(fn ($w) => $w->where('code', 'like', $like)
-                    ->orWhere('reference_number', 'like', $like)
-                    ->orWhereHas('customer', fn ($r) => $r->where('name', 'like', $like))
-                    ->orWhereHas('details.invoice', fn ($r) => $r->where('code', 'like', $like)));
-            })
             ->orderByDesc('received_date')
             ->orderByDesc('id')
-            ->paginate(25)
-            ->withQueryString();
-
-        // Ringkasan dihitung dari query yang SAMA dengan daftar (tanpa paging),
-        // bukan dari query lain — pelajaran dari bug P-02.
-        $scoped = CashReceiptHeader::with('details')
-            ->when(in_array($status, CashReceiptHeader::STATUSES, true), fn ($q) => $q->where('status', $status))
-            ->when($customer, fn ($q) => $q->where('customer_id', $customer))
-            ->when($search !== '', function ($q) use ($search) {
-                $like = '%' . $search . '%';
-                // Pencarian menembus sampai KODE INVOICE — itu yang dipegang
-                // orang saat menelusuri sebuah penerimaan, bukan kode batch-nya.
-                $q->where(fn ($w) => $w->where('code', 'like', $like)
-                    ->orWhere('reference_number', 'like', $like)
-                    ->orWhereHas('customer', fn ($r) => $r->where('name', 'like', $like))
-                    ->orWhereHas('details.invoice', fn ($r) => $r->where('code', 'like', $like)));
-            })
             ->get();
 
         $summary = [
-            'count'         => $scoped->count(),
-            'total'         => (int) $scoped->sum('total_amount'),
-            'invoice_count' => (int) $scoped->sum(fn ($h) => $h->details->count()),
-            'allocated'     => (int) $scoped->sum(fn ($h) => $h->allocatedAmount()),
-            // Alur baru menyamakan total dengan jumlah alokasi, jadi angka ini
-            // hanya bisa tidak-nol untuk bukti terima lama.
-            'unallocated'   => (int) $scoped->sum(fn ($h) => max(0, $h->unallocatedAmount())),
+            'count'         => $headers->count(),
+            'total'         => (int) $headers->sum('total_amount'),
+            'invoice_count' => (int) $headers->sum(fn ($h) => $h->details->count()),
+            'allocated'     => (int) $headers->sum(fn ($h) => $h->allocatedAmount()),
+            'unallocated'   => (int) $headers->sum(fn ($h) => max(0, $h->unallocatedAmount())),
         ];
 
         return view('cash-receipt.index', [
-            'headers'   => $headers,
-            'summary'   => $summary,
-            'customers' => Customer::orderBy('name')->get(['id', 'name']),
-            'filters'   => ['status' => $status, 'customer_id' => $customer, 'q' => $search],
+            'headers' => $headers,
+            'summary' => $summary,
         ]);
     }
 

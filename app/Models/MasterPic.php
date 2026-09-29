@@ -33,8 +33,18 @@ class MasterPic extends Model
     ];
 
     public const TYPES = [
-        'customer' => 'Customer',
-        'internal' => 'Internal',
+        'customer'    => 'Customer',
+        'internal'    => 'Internal',
+        'external'    => 'External',
+        'site_keeper' => 'Site Keeper',
+    ];
+
+    /** Warna badge per jenis, dipakai di Daftar PIC. */
+    public const TYPE_BADGES = [
+        'customer'    => 'badge-primary',
+        'internal'    => 'badge-secondary',
+        'external'    => 'badge-info',
+        'site_keeper' => 'badge-dark',
     ];
 
     /*
