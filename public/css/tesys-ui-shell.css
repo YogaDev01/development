@@ -524,13 +524,52 @@ body.tesys-ui .dataTables_wrapper .dataTables_length {
     align-items: center;
     margin-right: 12px !important;
 }
-/* Pemilih jumlah baris disamakan tingginya dengan tombol halaman. */
+/* Labelnya keterangan, bukan kendali: dikecilkan dan diredupkan supaya yang
+   menonjol adalah angkanya. */
+body.tesys-ui .dataTables_wrapper .dataTables_length label {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 8px;
+    margin: 0 !important;
+    font-size: 10.5px !important;
+    font-weight: 600 !important;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--text-faint) !important;
+}
+/* Pemilih jumlah baris: satu bentuk dengan tombol halaman di sebelahnya —
+   tinggi sama, sudut sama, dan panah digambar sendiri supaya panah bawaan
+   sistem (yang tidak bisa ditata) tidak ikut tampil. */
 body.tesys-ui .dataTables_wrapper .dataTables_length select {
-    height: 34px !important;
-    min-height: 34px;
-    border-radius: 10px !important;
-    padding: 0 26px 0 10px !important;
-    line-height: 32px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    height: 30px !important;
+    min-height: 30px;
+    width: auto !important;
+    min-width: 68px;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-sm) !important;
+    background-color: var(--surface) !important;
+    background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='%238a8f98' d='M6 8.2 2.3 4.5l.9-.9L6 6.4l2.8-2.8.9.9z'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat;
+    background-position: right 9px center;
+    background-size: 10px 10px;
+    padding: 0 26px 0 11px !important;
+    line-height: 28px;
+    font-size: 11.5px !important;
+    font-weight: 600;
+    color: var(--text) !important;
+    cursor: pointer;
+    transition: border-color .12s ease, box-shadow .12s ease;
+}
+body.tesys-ui .dataTables_wrapper .dataTables_length select:hover {
+    border-color: var(--border-strong) !important;
+}
+body.tesys-ui .dataTables_wrapper .dataTables_length select:focus {
+    outline: none;
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 3px rgba(146, 35, 43, .14) !important;
 }
 body.tesys-ui .dataTables_wrapper .dataTables_info { font-size: 11.5px; }
 

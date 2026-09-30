@@ -25,7 +25,7 @@ class ProjectLog extends Model
 
     public const ACTIONS = [
         'created'              => 'Dibuat',
-        'submitted'            => 'Diajukan ke Finance',
+        'submitted'            => 'Diajukan',
         'approved_waiting'     => 'Disetujui (Waiting PO)',
         'approved_active'      => 'Disetujui (Active)',
         'waiting_to_active'    => 'PO Diterima → Active',
@@ -39,7 +39,7 @@ class ProjectLog extends Model
         'closing_approved'     => 'Closing Diverifikasi → Closed',
         'closing_rejected'     => 'MoM Ditolak → kembali ke Paid',
         'closed'               => 'Ditutup',
-        'finance_closed'       => 'Ditutup Finance (dari Paid)',
+        'finance_closed'       => 'Ditutup (dari Paid)',
         'revised'              => 'Dikembalikan untuk Revisi',
         'rejected'             => 'Ditolak',
     ];

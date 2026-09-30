@@ -1,7 +1,7 @@
 /* =====================================================================
    Tesys — Timeline riwayat workflow
    ---------------------------------------------------------------------
-   Merender daftar status log menjadi timeline: pelaku, peran, waktu,
+   Merender daftar status log menjadi timeline: pelaku, waktu,
    perpindahan status, dan catatan.
 
    Dipakai oleh drawer tinjau Cost Request, dan siap dipakai ulang oleh
@@ -10,7 +10,7 @@
    Bentuk data yang diharapkan (persis seperti yang sudah dikembalikan
    endpoint detail-json masing-masing modul):
 
-     [{ action_label, date, actor, role, notes,
+     [{ action_label, date, actor, notes,
         status_from_label, status_to_label }]
 
    Urutan masukan boleh terbaru-dulu (bawaan endpoint) — kirim
@@ -69,7 +69,6 @@
                  +    '</div>'
                  +    '<div class="ts-tl-actor">'
                  +      esc(l.actor || 'System')
-                 +      (l.role ? ' · ' + esc(l.role) : '')
                  +      (transisi ? ' · ' + transisi : '')
                  +    '</div>'
                  +    (l.notes ? '<div class="ts-tl-note">' + esc(l.notes) + '</div>' : '')

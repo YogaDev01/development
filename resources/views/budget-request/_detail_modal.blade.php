@@ -223,7 +223,7 @@ $(function () {
             d.logs.forEach(function(log) {
                 logHtml += '<div class="d-flex align-items-start mb-3" style="gap:10px;">' +
                     '<span class="badge badge-' + log.action_color + ' mt-1 px-2 py-1" style="font-size:10px;white-space:nowrap;">' + log.action_label + '</span>' +
-                    '<div><div style="font-size:12px;font-weight:600;">' + log.actor + ' <span style="color:var(--text-faint);font-weight:400;">(' + (log.role||'system') + ')</span></div>' +
+                    '<div><div style="font-size:12px;font-weight:600;">' + log.actor + '</div>' +
                     '<div style="font-size:11px;color:var(--text-faint);">' + log.date + '</div>' +
                     (log.notes ? '<div style="font-size:12px;margin-top:4px;padding:6px 10px;background:var(--surface-2);border-radius:var(--radius-sm);border:1px solid var(--border);">' + log.notes + '</div>' : '') +
                     '</div></div>';

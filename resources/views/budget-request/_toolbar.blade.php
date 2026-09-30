@@ -29,14 +29,16 @@
                 <i class="fas fa-filter mr-1"></i> Filter
             </button>
             <div class="cr-pop-menu cr-filter-panel p-3" style="min-width:420px;">
-                <div class="text-muted mb-2" style="font-size:10px;font-weight:700;letter-spacing:.04em;">FILTER</div>
+                <div class="cr-filter-title">FILTER</div>
                 {{-- Diisi TesysColumnFilter: satu tombol per field, masing-masing
                      membuka daftar bercentang dengan kotak pencarian. --}}
                 <div class="cr-row-filters"></div>
                 {{-- Tanpa tombol "Terapkan": filter langsung berlaku begitu nilainya
                      dicentang, jadi tombol itu hanya menambah satu klik. --}}
-                <div class="mt-3">
-                    <button type="button" class="btn btn-outline-secondary btn-sm cr-filter-reset">Reset</button>
+                <div class="cr-filter-foot">
+                    <button type="button" class="btn btn-primary btn-sm cr-filter-reset">
+                        <i class="fas fa-undo mr-1"></i>Reset
+                    </button>
                 </div>
             </div>
         </div>

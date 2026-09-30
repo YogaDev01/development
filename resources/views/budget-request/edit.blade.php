@@ -32,7 +32,7 @@
         @if($cr->statusLogs->first() && in_array($cr->statusLogs->first()->action_type, ['manager_revised','finance_revised']))
         <div class="alert alert-warning mb-3">
             <i class="fas fa-exclamation-triangle mr-2"></i>
-            <strong>Catatan Revisi ({{ $cr->statusLogs->first()->actor_role }}):</strong>
+            <strong>Catatan Revisi:</strong>
             {{ $cr->statusLogs->first()->notes }}
         </div>
         @endif

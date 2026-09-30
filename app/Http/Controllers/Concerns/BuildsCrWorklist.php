@@ -259,6 +259,54 @@ trait BuildsCrWorklist
         return $this->queryCoaRows($detailIds);
     }
 
+    /**
+     * Status CR yang barisnya dibaca untuk kolom Used / Expense Claim /
+     * Approved (leg kedua). DISBURSED ditambah:
+     *   - QUEUED          : sudah diproses Treasury (masuk batch) -> Used.
+     *   - SETTLE_APPROVED : expense claim masih direview Approver.
+     *   - SECOND_APPROVED : expense claim sudah di-approve, belum dibatch.
+     * Dua status settlement terakhir dulu tidak ada di DISBURSED, sehingga
+     * CR yang sampai ke tahap itu hilang sama sekali dari hitungan.
+     */
+    private const COA_SETTLED_ROW_STATUSES = [
+        'QUEUED', 'PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED',
+        'SETTLE_APPROVED', 'SECOND_APPROVED', 'CLOSED',
+    ];
+
+    /** Status settlement yang expense claim-nya masih direview (belum Second Approved). */
+    private const COA_CLAIM_REVIEW_STATUSES = ['REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'SETTLE_APPROVED'];
+
+    /**
+     * Bagi satu baris CR yang sudah cair ke kolom modal. Mengembalikan
+     * [used, expenseClaim, approved] — ketiganya saling eksklusif sehingga
+     * Variance = Budget - Used - Request - Expense Claim - Approved tidak
+     * pernah menghitung satu rupiah dua kali.
+     *
+     *   base  = nilai yang diajukan & dicairkan pada baris ini
+     *   real  = nilai settlement baris ini (null kalau belum settle)
+     *   lebih = bagian settlement di atas base (expense claim)
+     */
+    private function coaSettledSplit($row, callable $isClaimLeg): array
+    {
+        $status = $row->budgetRequest->status;
+        $base   = (int) $row->total;
+        $real   = $row->realization?->total;
+        $lebih  = $real === null ? 0 : max(0, (int) $real - $base);
+        $dalam  = $real === null ? $base : min((int) $real, $base);
+
+        return match (true) {
+            // Batch Treasury: leg pertama (pencairan awal) atau leg kedua (expense claim).
+            $status === 'QUEUED'  => [$isClaimLeg($row->budgetRequest) ? $dalam + $lebih : $base, 0, 0],
+            $status === 'PAID'    => [$base, 0, 0],
+            // Settlement berjalan: kelebihannya adalah pengajuan ke-2 yang sedang direview.
+            in_array($status, self::COA_CLAIM_REVIEW_STATUSES, true) => [$dalam, $lebih, 0],
+            // Expense claim sudah di-approve, belum diproses ke Treasury.
+            $status === 'SECOND_APPROVED' => [$dalam, 0, $lebih],
+            // CLOSED: seluruh settlement (termasuk kelebihan yang sudah dibayar).
+            default => [(int) ($real ?? $base), 0, 0],
+        };
+    }
+
     private function queryCoaRows(\Illuminate\Support\Collection $detailIds): array
     {
         /*
@@ -271,7 +319,7 @@ trait BuildsCrWorklist
          | (dan karenanya tidak boleh dihitung dua kali sebagai history).
          */
         $pipeline = \App\Models\RequestDetail::whereIn('budget_detail_id', $detailIds)
-            ->whereHas('budgetRequest', fn ($q) => $q->whereIn('status', ['SUBMITTED', 'CHECKED', 'VERIFIED', 'APPROVED', 'QUEUED']))
+            ->whereHas('budgetRequest', fn ($q) => $q->whereIn('status', ['SUBMITTED', 'CHECKED', 'VERIFIED', 'APPROVED']))
             ->with('budgetRequest.beneficiary')
             ->get()
             ->groupBy('budget_detail_id');
@@ -286,7 +334,7 @@ trait BuildsCrWorklist
          */
         $disbursed = \App\Models\RequestDetail::whereIn('budget_detail_id', $detailIds)
             ->where('request_detail.status', '!=', 'TAKEOUT')
-            ->whereHas('budgetRequest', fn ($q) => $q->whereIn('status', \App\Support\BudgetConsumption::DISBURSED))
+            ->whereHas('budgetRequest', fn ($q) => $q->whereIn('status', self::COA_SETTLED_ROW_STATUSES))
             ->with(['budgetRequest.beneficiary', 'realization'])
             ->get()
             ->groupBy('budget_detail_id');
@@ -307,11 +355,12 @@ trait BuildsCrWorklist
      *   - CEO         -> VERIFIED
      * (di luar 3 tahap approval itu, mis. dibuka dari section Settlement,
      * fallback ke ketiganya sekaligus supaya tidak salah makna).
-     * Approved = CR yang sudah lolos ketiga tahap approval (APPROVED) ATAU
-     * sudah QUEUED (tinggal menunggu diproses/dibayar) — dua-duanya dianggap
-     * "selesai proses approval", cuma beda status transient menuju pembayaran.
-     * Setiap CR hanya berstatus satu hal di satu waktu, jadi kedua bucket ini
-     * otomatis mutually exclusive (tidak ada double counting).
+     * Expense Claim = pengajuan ke-2 (kelebihan settlement Cash Advance) yang
+     * masih direview: REALIZED s/d SETTLE_APPROVED.
+     * Approved = sudah lolos approval tapi BELUM diproses ke Treasury:
+     * pengajuan APPROVED + expense claim SECOND_APPROVED. QUEUED (sudah masuk
+     * batch Treasury) dihitung di Used. Semua kolom saling eksklusif — lihat
+     * coaSettledSplit().
      */
     /**
      * @param string|string[] $requestStatus satu status, atau beberapa
@@ -331,6 +380,12 @@ trait BuildsCrWorklist
         $diminta = array_intersect((array) $requestStatus, ['SUBMITTED', 'CHECKED', 'VERIFIED']);
 
         $requestStatuses = $diminta ? array_values($diminta) : ['SUBMITTED', 'CHECKED', 'VERIFIED'];
+
+        // QUEUED bisa leg pertama atau leg kedua (expense claim); dicek sekali per CR.
+        $claimLegMemo = [];
+        $isClaimLeg = function ($cr) use (&$claimLegMemo) {
+            return $claimLegMemo[$cr->id] ??= $cr->isExpenseClaimLeg();
+        };
 
         $toCrItem = fn ($p, string $stage) => [
             'detail_id'        => $p->id,
@@ -355,24 +410,15 @@ trait BuildsCrWorklist
 
         return $bp->details
             ->groupBy(fn ($d) => $d->account?->name ?? '-')
-            ->map(function ($details, $accName) use ($pipelineByDetailId, $disbursedByDetailId, $toCrItem, $requestStatuses) {
-                $subItems = $details->map(function ($d) use ($pipelineByDetailId, $disbursedByDetailId, $toCrItem, $requestStatuses) {
+            ->map(function ($details, $accName) use ($pipelineByDetailId, $disbursedByDetailId, $toCrItem, $requestStatuses, $isClaimLeg) {
+                $subItems = $details->map(function ($d) use ($pipelineByDetailId, $disbursedByDetailId, $toCrItem, $requestStatuses, $isClaimLeg) {
                     $disbursedRows = $disbursedByDetailId->get($d->id, collect());
-                    $used = (int) $disbursedRows->sum(fn ($r) => $r->realization->total ?? $r->total);
 
-                    /*
-                     | Expense Claim = bagian realisasi yang MELEBIHI nilai yang
-                     | diajukan pada baris itu — kewajiban bayar yang lahir
-                     | setelah settlement. Sudah ikut terhitung di kolom Used
-                     | (Used memakai nilai realisasi kalau ada), jadi kolom ini
-                     | bukan tambahan pemakaian anggaran, melainkan penjelasan
-                     | berapa dari Used yang datang dari kelebihan settlement.
-                     */
-                    $expenseClaim = (int) $disbursedRows->sum(function ($r) {
-                        $realisasi = $r->realization?->total;
-
-                        return $realisasi === null ? 0 : max(0, (int) $realisasi - (int) $r->total);
-                    });
+                    $used = 0; $expenseClaim = 0; $approvedClaim = 0;
+                    foreach ($disbursedRows as $r) {
+                        [$u, $e, $a] = $this->coaSettledSplit($r, $isClaimLeg);
+                        $used += $u; $expenseClaim += $e; $approvedClaim += $a;
+                    }
 
                     $pipelineRows = $pipelineByDetailId->get($d->id, collect());
 
@@ -381,11 +427,13 @@ trait BuildsCrWorklist
                     $takeoutRows = $pipelineRows->where('status', '=', 'TAKEOUT');
 
                     $requestRows  = $activeRows->filter(fn ($p) => in_array($p->budgetRequest->status, $requestStatuses, true));
-                    $approvedRows = $activeRows->filter(fn ($p) => in_array($p->budgetRequest->status, ['APPROVED', 'QUEUED'], true));
+                    // Approved = lolos approval, BELUM diproses ke Treasury:
+                    // pengajuan APPROVED + expense claim SECOND_APPROVED.
+                    $approvedRows = $activeRows->filter(fn ($p) => $p->budgetRequest->status === 'APPROVED');
 
                     $requestAmount  = (int) $requestRows->sum('total');
-                    $approvedAmount = (int) $approvedRows->sum('total');
-                    $remaining      = (int) $d->total - $used - $requestAmount - $approvedAmount;
+                    $approvedAmount = (int) $approvedRows->sum('total') + $approvedClaim;
+                    $remaining      = (int) $d->total - $used - $requestAmount - $expenseClaim - $approvedAmount;
 
                     // Riwayat CR yang sudah PAID/REALIZED/CLOSED untuk sub-item ini
                     // (di luar CR yang lagi jalan di pipeline), supaya list CR di

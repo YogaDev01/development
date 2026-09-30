@@ -46,9 +46,8 @@ class RequestStatusLog extends Model
         'realized'                 => 'Direalisasi',
         'settlement_checked'       => 'Settlement Diperiksa',
         'settlement_verified'      => 'Settlement Diverifikasi',
-        'settlement_approved'      => 'Settlement Disetujui (Finance Manager)',
-        'second_payment_approved'  => 'Second Approved (Approver)',
-        'second_payment_batched'   => 'Expense Claim Masuk Batch',
+        'settlement_approved'      => 'Settlement Disetujui',
+        'second_payment_approved'  => 'Second Payment Disetujui',
         'settlement_closed'        => 'Settlement Ditutup',
         'settlement_rejected'      => 'Settlement Ditolak',
         'closed'                   => 'Ditutup',
@@ -63,7 +62,7 @@ class RequestStatusLog extends Model
         // Second Payment — kekurangan bayar hasil Settlement. Dibayar lewat
         // batch Treasury, jadi jejaknya mengikuti siklus batch.
         'second_payment_batched'      => 'Second Payment Masuk Batch',
-        'second_payment_ceo_approved' => 'Second Payment Disetujui',
+        'second_payment_ceo_approved' => 'Second Payment Disetujui untuk Dibayar',
         'second_payment_paid'         => 'Second Payment Telah Dibayar',
         'second_payment_takeout'      => 'Second Payment Di-takeout dari Batch',
         'second_payment_batch_rejected' => 'Batch Second Payment Ditolak',

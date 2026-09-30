@@ -437,9 +437,9 @@
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a class="nav-link" data-toggle="tab" href="#bpPaneBeneficiary" style="font-size:13px;font-weight:600;">
-                                        <i class="fas fa-users mr-1"></i> Beneficiary
-                                        <span id="bpBeneficiaryCount" class="badge badge-secondary ml-1" style="font-size:10px;"></span>
+                                    <a class="nav-link" data-toggle="tab" href="#bpPaneCashAdvance" style="font-size:13px;font-weight:600;">
+                                        <i class="fas fa-hand-holding-usd mr-1"></i> Cash Advance
+                                        <span id="bpCaCount" class="badge badge-secondary ml-1" style="font-size:10px;"></span>
                                     </a>
                                 </li>
                                 <li class="nav-item">
@@ -594,25 +594,29 @@
                                     </div>
                                 </div>
 
-                                <!-- TAB BENEFICIARY -->
-                                <div class="tab-pane fade" id="bpPaneBeneficiary">
+                                <!-- TAB CASH ADVANCE -->
+                                <div class="tab-pane fade" id="bpPaneCashAdvance">
+                                    <div class="bp-groupcard mb-3">
+                                        <div class="bp-groupcard-title">Ringkasan Cash Advance</div>
+                                        <div id="bpCaSummary"></div>
+                                    </div>
                                     <div class="table-responsive">
                                         <table class="table table-bordered mb-0" style="font-size:12px;">
                                             <thead style="background:var(--surface-2);">
                                                 <tr>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;">Beneficiary</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;">Request</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;">Realization</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;">Refund</th>
+                                                    <th scope="col" style="width:1%;"></th>
+                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;">PIC / Cost Request</th>
+                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;width:1%;white-space:nowrap;">Status</th>
+                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;width:1%;white-space:nowrap;">Tanggal Paid</th>
+                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;width:1%;white-space:nowrap;text-align:center;">Aging</th>
+                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:1%;white-space:nowrap;">Value</th>
                                                 </tr>
                                             </thead>
-                                            <tbody id="bpBeneficiaryBody"></tbody>
+                                            <tbody id="bpCashAdvanceBody"></tbody>
                                             <tfoot>
                                                 <tr style="background:var(--surface-2);">
-                                                    <th class="text-right">Total</th>
-                                                    <th class="text-right" id="bpBenReqTotal" style="color:var(--info);"></th>
-                                                    <th class="text-right" id="bpBenRealTotal" style="color:var(--success);"></th>
-                                                    <th class="text-right" id="bpBenRefundTotal" style="color:var(--warning);"></th>
+                                                    <th colspan="5" class="text-right">Total</th>
+                                                    <th class="text-right" id="bpCaValueTotal" style="color:var(--info);"></th>
                                                 </tr>
                                             </tfoot>
                                         </table>
@@ -1188,6 +1192,13 @@ $(function () {
         $('#bpRequestBody .' + target).toggle();
     });
 
+    /* Cash Advance BP: expand/collapse per PIC untuk lihat rincian CA-nya */
+    $(document).on('click', '#bpCashAdvanceBody .bp-req-row', function () {
+        var target = $(this).data('target');
+        $(this).find('.bp-req-caret').toggleClass('rotated');
+        $('#bpCashAdvanceBody .' + target).toggle();
+    });
+
     /* ── IMAGE VIEWER — carousel + zoom (ala WhatsApp), untuk tab Attachment ── */
     (function () {
         var overlay  = document.getElementById('imgViewerOverlay');
@@ -1571,26 +1582,66 @@ $(function () {
                 );
             })();
 
-            /* Beneficiary */
-            (function renderBpBeneficiary() {
-                var rows = d.beneficiaries || [];
-                $('#bpBeneficiaryCount').text(rows.length);
-                var tr = 0, treal = 0, tref = 0;
-                $('#bpBeneficiaryBody').html(rows.length
-                    ? rows.map(function (r) {
-                        tr += r.request || 0; treal += r.realization || 0; tref += r.refund || 0;
-                        return '<tr>' +
-                            '<td>' + (r.beneficiary || '-') + '</td>' +
-                            '<td class="text-right text-nowrap">' + r.request_formatted + '</td>' +
-                            '<td class="text-right text-nowrap">' + r.realization_formatted + '</td>' +
-                            '<td class="text-right text-nowrap">' + r.refund_formatted + '</td>' +
+            /* Cash Advance — dikelompokkan per PIC, expand/collapse untuk lihat
+               rincian tiap Cost Request (pola sama seperti Tab Cost di bawah). */
+            (function renderBpCashAdvance() {
+                var ca     = d.cash_advance || {};
+                var groups = ca.groups || [];
+                $('#bpCaCount').text(ca.total || 0);
+
+                function line(label, val, color, bold) {
+                    return '<div class="bp-gc-row' + (bold ? ' bold' : '') + '">' +
+                        '<span>' + label + '</span><span' + (color ? ' style="color:' + color + '"' : '') + '>' + val + '</span></div>';
+                }
+                $('#bpCaSummary').html(
+                    line('Diajukan', ca.total || 0, '', true) +
+                    line('Sudah Settle', ca.settled || 0, 'var(--success)') +
+                    line('Belum Settle', ca.pending || 0, 'var(--warning)') +
+                    ((ca.rejected || 0) > 0 ? line('Ditolak / Batal', ca.rejected, 'var(--danger)') : '')
+                );
+
+                var caStatusColors = {
+                    'SUBMITTED':'warning','CHECKED':'info','VERIFIED':'primary','APPROVED':'info',
+                    'QUEUED':'warning','PAID':'success','REALIZED':'success',
+                    'SETTLE_CHECKED':'info','SETTLE_VERIFIED':'primary','SETTLE_APPROVED':'success',
+                    'SECOND_APPROVED':'success','CLOSED':'dark','REJECTED':'danger','CANCELLED':'dark'
+                };
+
+                var caHtml = '';
+                if (groups.length) {
+                    groups.forEach(function (g, gi) {
+                        var gClass = 'bp-ca-' + gi;
+                        caHtml += '<tr class="bp-req-row" data-target="' + gClass + '" style="background:var(--surface-2);">' +
+                            '<td><i class="fas fa-chevron-right bp-req-caret"></i></td>' +
+                            '<td colspan="3">' +
+                                '<strong>' + (g.pic_name || '-') + '</strong> ' +
+                                '<span class="badge badge-secondary ml-1" style="font-size:9px;">' + g.total + ' CA</span>' +
+                                ((g.settled || 0) > 0 ? ' <span class="badge badge-success" style="font-size:9px;">' + g.settled + ' settle</span>' : '') +
+                                ((g.pending || 0) > 0 ? ' <span class="badge badge-warning" style="font-size:9px;">' + g.pending + ' belum</span>' : '') +
+                            '</td>' +
+                            '<td></td>' +
+                            '<td class="text-right text-nowrap"><strong>' + g.value_formatted + '</strong></td>' +
                         '</tr>';
-                    }).join('')
-                    : '<tr><td colspan="4" class="text-center text-muted py-3">Belum ada beneficiary.</td></tr>');
-                var rp = function (v) { return Math.round(v).toLocaleString('id-ID'); };
-                $('#bpBenReqTotal').text(rp(tr));
-                $('#bpBenRealTotal').text(rp(treal));
-                $('#bpBenRefundTotal').text(rp(tref));
+
+                        (g.items || []).forEach(function (cr) {
+                            caHtml += '<tr class="' + gClass + '" style="display:none;">' +
+                                '<td></td>' +
+                                '<td class="bp-req-indent">' +
+                                    '<div style="font-weight:600;">' + cr.code + '</div>' +
+                                    '<small class="text-muted">' + cr.description + ' &bull; ' + (cr.beneficiary || '-') + '</small>' +
+                                '</td>' +
+                                '<td><span class="badge badge-' + (caStatusColors[cr.status] || 'secondary') + ' px-2 py-1" style="font-size:10px;">' + cr.status_label + '</span></td>' +
+                                '<td class="text-nowrap">' + (cr.paid_date || '-') + '</td>' +
+                                '<td class="text-center text-nowrap">' + (cr.aging !== null ? cr.aging + ' hari' : '-') + '</td>' +
+                                '<td class="text-right text-nowrap">' + cr.amount_formatted + '</td>' +
+                            '</tr>';
+                        });
+                    });
+                } else {
+                    caHtml = '<tr><td colspan="6" class="text-center text-muted py-3">Belum ada Cash Advance.</td></tr>';
+                }
+                $('#bpCashAdvanceBody').html(caHtml);
+                $('#bpCaValueTotal').text(Math.round(ca.total_value || 0).toLocaleString('id-ID'));
             })();
 
             /* Tab Detail — pivot: grup per Account (expand/collapse), summary per grup.

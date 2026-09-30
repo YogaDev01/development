@@ -729,7 +729,13 @@
 .cr-filter-panel .cr-row-filters {
     display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
 }
-.cr-filter-panel .tcf-row-btn { width: 100%; text-align: left; }
+.cr-filter-panel .tcf-row-btn { width: 100%; text-align: left; justify-content: space-between; overflow: hidden; }
+.cr-filter-panel .tcf-row-btn > i { margin-left: 6px; flex: 0 0 auto; }
+.cr-filter-title {
+    font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text-faint); margin-bottom: 10px;
+}
+.cr-filter-foot { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
 .cr-filter-toggle.cr-filter-on { background: var(--accent); border-color: var(--accent); color: #fff; }
 @media (max-width: 575.98px) {
     .cr-filter-panel { min-width: 260px !important; }

@@ -32,13 +32,11 @@
                     <thead class="bg-light">
                         <tr>
                             <th scope="col" style="color:var(--text-faint);font-size:11px;">Chart of Account</th>
-                            <th scope="col" class="text-right text-nowrap" style="color:var(--text-faint);font-size:11px;width:1%;">Price</th>
-                            <th scope="col" class="text-center text-nowrap" style="color:var(--text-faint);font-size:11px;width:1%;">Qty</th>
                             <th scope="col" class="text-right text-nowrap" style="color:var(--text-faint);font-size:11px;width:1%;">Budget</th>
                             <th scope="col" class="text-right text-nowrap" style="color:var(--text-faint);font-size:11px;width:1%;">Used</th>
                             <th scope="col" class="text-right text-nowrap" style="color:var(--text-faint);font-size:11px;width:1%;" title="Nilai pengajuan yang sedang menunggu di tahap Anda">Request</th>
-                            <th scope="col" class="text-right text-nowrap" style="color:var(--text-faint);font-size:11px;width:1%;" title="Sudah lolos 3 tahap approval, tinggal menunggu diproses">Approved</th>
-                            <th scope="col" class="text-right text-nowrap" style="color:var(--text-faint);font-size:11px;width:1%;" title="Bagian realisasi yang melebihi nilai pengajuan — sudah termasuk di kolom Used">Expense Claim</th>
+                            <th scope="col" class="text-right text-nowrap" style="color:var(--text-faint);font-size:11px;width:1%;" title="Pengajuan ke-2 (kelebihan settlement Cash Advance) yang sedang direview">Expense Claim</th>
+                            <th scope="col" class="text-right text-nowrap" style="color:var(--text-faint);font-size:11px;width:1%;" title="Sudah di-approve (Approved / Second Approved), belum diproses ke Treasury">Approved</th>
                             <th scope="col" class="text-right text-nowrap" style="color:var(--text-faint);font-size:11px;width:1%;">Variance</th>
                         </tr>
                     </thead>
@@ -50,7 +48,7 @@
                             $coaClass = 'todocoa-' . $key . '-' . $gi . '-' . $ci;
                         @endphp
                         <tr class="todo-coa-row" data-target="{{ $coaClass }}" style="cursor:pointer;background:var(--surface-3);">
-                            <td colspan="3" class="{{ $coaNobClass }}" style="font-weight:700;">
+                            <td class="{{ $coaNobClass }}" style="font-weight:700;">
                                 <button type="button" class="btn btn-outline-secondary" style="padding:1px 6px;margin-right:6px;" tabindex="-1">
                                     <i class="fas fa-chevron-right todo-coa-caret" style="font-size:10px;transition:transform .15s;display:inline-block;"></i>
                                 </button>
@@ -63,8 +61,8 @@
                             <td class="text-right text-nowrap {{ $coaNobClass }}" style="font-weight:700;">{{ $fmt($coa['budget']) }}</td>
                             <td class="text-right text-nowrap {{ $coaNobClass }}" style="font-weight:700;">{{ $fmt($coa['used']) }}</td>
                             <td class="text-right text-nowrap" style="font-weight:700;color:var(--warning);">{{ $coa['request'] > 0 ? $fmt($coa['request']) : '-' }}</td>
-                            <td class="text-right text-nowrap" style="font-weight:700;color:var(--success);">{{ $coa['approved'] > 0 ? $fmt($coa['approved']) : '-' }}</td>
                             <td class="text-right text-nowrap" style="font-weight:700;color:var(--danger);">{{ ($coa['expense_claim'] ?? 0) > 0 ? $fmt($coa['expense_claim']) : '-' }}</td>
+                            <td class="text-right text-nowrap" style="font-weight:700;color:var(--success);">{{ $coa['approved'] > 0 ? $fmt($coa['approved']) : '-' }}</td>
                             <td class="text-right text-nowrap {{ $coaColorClass }}" style="font-weight:700;">{{ $fmt($coa['remaining']) }}</td>
                         </tr>
 
@@ -85,7 +83,7 @@
                                 @if($sub['request_amount'] > 0)
                                 <span class="badge badge-warning ml-1" style="font-size:9px;">New Request</span>
                                 @endif
-                                @if($sub['request_amount'] > 0 || $sub['approved_amount'] > 0)
+                                @if($sub['request_amount'] > 0 || $sub['approved_amount'] > 0 || ($sub['expense_claim'] ?? 0) > 0)
                                 @if(count($sub['cr_items']))
                                 <button type="button" class="btn btn-outline-secondary todo-si-toggle" data-target="{{ $subClass }}-row" style="font-size:9px;line-height:1;padding:2px 6px;margin-left:6px;">
                                     {{ count($sub['cr_items']) }} CR <i class="fas fa-chevron-down ml-1" style="font-size:8px;"></i>
@@ -93,19 +91,17 @@
                                 @endif
                                 @endif
                             </td>
-                            <td class="text-right text-nowrap">{{ $fmt($sub['total']) }}</td>
-                            <td class="text-center text-nowrap">{{ rtrim(rtrim(number_format($sub['qty'], 2, ',', '.'), '0'), ',') }} {{ $sub['unit'] }}</td>
                             <td class="text-right text-nowrap"><strong>{{ $sub['total_formatted'] }}</strong></td>
                             <td class="text-right text-nowrap">{{ $sub['used_formatted'] }}</td>
                             <td class="text-right text-nowrap" style="color:var(--warning);">{{ $sub['request_formatted'] ?? '-' }}</td>
-                            <td class="text-right text-nowrap" style="color:var(--success);">{{ $sub['approved_formatted'] ?? '-' }}</td>
                             <td class="text-right text-nowrap" style="color:var(--danger);">{{ $sub['expense_claim_formatted'] ?? '-' }}</td>
+                            <td class="text-right text-nowrap" style="color:var(--success);">{{ $sub['approved_formatted'] ?? '-' }}</td>
                             <td class="text-right text-nowrap {{ $subColorClass }}">{{ $sub['remaining_formatted'] }}</td>
                         </tr>
 
                         @if(count($sub['cr_items']))
                         <tr class="{{ $subClass }}-row" style="display:none;">
-                            <td colspan="9" style="background:var(--surface-2);padding:10px 14px 10px 48px;">
+                            <td colspan="7" style="background:var(--surface-2);padding:10px 14px 10px 48px;">
                                 <table class="table table-sm table-bordered mb-0" style="width:auto;max-width:100%;font-size:11px;color:var(--text);">
                                     <thead style="background:var(--surface-2);">
                                         <tr>
@@ -180,17 +176,17 @@
                         @endif
                         @endforeach
                         @empty
-                        <tr><td colspan="9" class="text-center text-muted py-3">Belum ada detail budget.</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted py-3">Belum ada detail budget.</td></tr>
                         @endforelse
                     </tbody>
                     <tfoot>
                         <tr style="background:var(--surface-2);">
-                            <th colspan="3" class="text-right">Total</th>
+                            <th class="text-right">Total</th>
                             <th class="text-right" style="color:var(--info);">{{ $fmt($group['coa_groups']->sum('budget')) }}</th>
                             <th class="text-right">{{ $fmt($group['coa_groups']->sum('used')) }}</th>
                             <th class="text-right" style="color:var(--warning);">{{ $fmt($group['coa_groups']->sum('request')) }}</th>
-                            <th class="text-right" style="color:var(--success);">{{ $fmt($group['coa_groups']->sum('approved')) }}</th>
                             <th class="text-right" style="color:var(--danger);">{{ $fmt($group['coa_groups']->sum('expense_claim')) }}</th>
+                            <th class="text-right" style="color:var(--success);">{{ $fmt($group['coa_groups']->sum('approved')) }}</th>
                             <th class="text-right">{{ $fmt($group['coa_groups']->sum('remaining')) }}</th>
                         </tr>
                     </tfoot>

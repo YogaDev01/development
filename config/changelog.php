@@ -26,10 +26,46 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '2.5.0',
+    'current' => '2.5.1',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '2.5.1',
+            'date'    => '2026-10-01',
+            'title'   => 'Cash Advance per PIC, Detail Budget & Hitungan Anggaran Lebih Akurat',
+            'summary' => 'Rilis lanjutan yang memperjelas pemakaian anggaran: tab Cash Advance per PIC di Budget Plan, Detail Budget di Todo List, hitungan Used/Expense Claim/Approved yang saling eksklusif, serta riwayat persetujuan dan filter tabel yang lebih rapi.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Detail Budget Plan: tab Cash Advance baru yang mengelompokkan Cash Advance per PIC (total, sudah settle, masih menggantung, nilai), bisa dibuka per PIC untuk melihat tiap CR beserta tanggal Paid dan aging-nya.',
+                        'Todo List: tombol Detail Budget di section Budgeting membuka modal dengan tab Budget (rincian per Chart of Account), PO, dan Attachment; satu tombol View Budget per grup PO di worklist Cost Request.',
+                        'View Budget: kolom Expense Claim dan Approved dipisah sehingga Variance tidak pernah menghitung satu rupiah dua kali.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Perhitungan kolom anggaran per CoA: CR yang sudah masuk batch Treasury (QUEUED) kini dihitung di Used, bukan Approved; expense claim yang masih direview masuk kolom Expense Claim, yang sudah Second Approved masuk Approved.',
+                        'Riwayat persetujuan (Cost Request, Budget Plan, Purchase Order) memakai label berbahasa Indonesia yang lebih ringkas dan tidak lagi menampilkan nama peran pelaku.',
+                        'Panel filter kolom tampil sebagai grid dua kolom dengan tombol Reset yang lebih jelas; pemilih jumlah baris tabel diseragamkan dengan tombol halaman.',
+                        'Todo List lebih ringan: rincian CoA Budget Plan tidak lagi dihitung untuk setiap baris saat halaman dibuka, melainkan dimuat saat Detail Budget diklik.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'CR yang sudah sampai tahap Settle Approved atau Second Approved tidak lagi hilang dari hitungan pemakaian anggaran.',
+                        'Second Payment yang masuk batch Treasury hanya mencatat satu baris riwayat, tidak lagi tampak terduplikasi.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '2.5.0',

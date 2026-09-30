@@ -755,12 +755,6 @@
 
                                             <i class="fas fa-user mr-1"></i>{{ $log->actor_name ?? '-' }}
 
-                                            @if($log->actor_role)
-
-                                                <span class="badge badge-secondary ml-1">{{ $log->actor_role }}</span>
-
-                                            @endif
-
                                         </small>
 
                                         @if(!empty($log->notes))

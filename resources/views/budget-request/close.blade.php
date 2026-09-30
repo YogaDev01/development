@@ -179,7 +179,7 @@
 
                                         <small class="text-muted">
 
-                                            By: {{ $log->actor_name }} ({{ $log->actor_role }})
+                                            By: {{ $log->actor_name }}
 
                                         </small>
 

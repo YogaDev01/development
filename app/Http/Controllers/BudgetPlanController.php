@@ -736,21 +736,60 @@ class BudgetPlanController extends Controller
         $sumRefund  = (int) $costRequests->sum($refundOf);
         $actualUsed = $sumRequest - $sumRefund;
 
-        // Rekap per beneficiary (dari cost request PAID/REALIZED/CLOSED)
-        $beneficiaries = $costRequests->groupBy(fn ($cr) => $cr->beneficiary->nickname ?? '-')
-            ->map(function ($rows, $name) use ($refundOf) {
-                $req    = (int) $rows->sum('amount');
-                $refund = (int) $rows->sum($refundOf);
+        // Tab Cash Advance — CR bertipe Cash Advance yang terhubung ke budget plan
+        // ini, dikelompokkan per PIC (bukan per beneficiary — satu PIC bisa
+        // memegang beberapa penerima dana, dan yang perlu dikejar saat CA
+        // menggantung adalah orangnya). "Settle" = sudah melewati tahap
+        // settlement (BudgetRequest::SETTLED_STATUSES), bukan cuma sudah Paid.
+        // Referensi tabel: FinanceSummaryController::activeCashAdvanceData().
+        $cashAdvanceCrs = BudgetRequest::where('budget_plan_id', $bp->id)
+            ->cashAdvance()
+            ->where('status', '!=', 'DRAFT')
+            ->with(['beneficiary.pic'])
+            ->orderByDesc('created_at')
+            ->get();
+
+        $caNegativeStatuses = ['REJECTED', 'CANCELLED'];
+        $caSettledCount     = $cashAdvanceCrs->filter(fn ($cr) => $cr->isSettled())->count();
+        $caNegativeCount    = $cashAdvanceCrs->whereIn('status', $caNegativeStatuses)->count();
+
+        $caGroups = $cashAdvanceCrs
+            ->groupBy(fn ($cr) => $cr->beneficiary?->pic_id
+                ? 'pic:' . $cr->beneficiary->pic_id
+                : 'ben:' . ($cr->beneficiary_id ?? 0))
+            ->map(function ($crs) use ($caNegativeStatuses) {
+                $first    = $crs->first();
+                $settled  = $crs->filter(fn ($cr) => $cr->isSettled())->count();
+                $negative = $crs->whereIn('status', $caNegativeStatuses)->count();
+
                 return [
-                    'beneficiary'           => $name,
-                    'request'               => $req,
-                    'request_formatted'     => number_format($req, 0, ',', '.'),
-                    'realization'           => $req - $refund,
-                    'realization_formatted' => number_format($req - $refund, 0, ',', '.'),
-                    'refund'                => $refund,
-                    'refund_formatted'      => number_format($refund, 0, ',', '.'),
+                    'pic_name' => $first->beneficiary?->pic?->pic
+                        ?: ($first->beneficiary?->nickname ?? $first->beneficiary?->complete_name ?? '-'),
+                    'total'    => $crs->count(),
+                    'settled'  => $settled,
+                    'pending'  => $crs->count() - $settled - $negative,
+                    'value'          => (int) $crs->sum('amount'),
+                    'value_formatted'=> number_format($crs->sum('amount'), 0, ',', '.'),
+                    'items' => $crs->map(fn ($cr) => [
+                        'id'               => $cr->id,
+                        'code'             => $cr->code,
+                        'description'      => $cr->description ?: '-',
+                        'beneficiary'      => $cr->beneficiary?->nickname ?? $cr->beneficiary?->complete_name ?? '-',
+                        'amount'           => (int) $cr->amount,
+                        'amount_formatted' => number_format($cr->amount, 0, ',', '.'),
+                        'status'           => $cr->status,
+                        'status_label'     => $cr->status_label,
+                        'status_color'     => $cr->status_color,
+                        'is_settled'       => $cr->isSettled(),
+                        'paid_date'        => $cr->paid_at?->format('d/m/Y'),
+                        'aging'            => $cr->paid_at
+                            ? (int) $cr->paid_at->copy()->startOfDay()->diffInDays(now()->startOfDay(), false)
+                            : null,
+                    ])->values(),
                 ];
-            })->sortByDesc('request')->values();
+            })
+            ->sortByDesc('total')
+            ->values();
 
         return response()->json([
             'id'               => $bp->id,
@@ -768,6 +807,7 @@ class BudgetPlanController extends Controller
             'usage_percentage' => $bp->amount > 0
                 ? round(($bp->usedAmount() / $bp->amount) * 100, 1)
                 : 0,
+            'project_id'       => $bp->project_id,
             'project'          => $bp->project->name ?? '-',
             'project_code'     => $bp->project->code ?? '-',
             'customer'         => $bp->project->customer->name ?? '-',
@@ -784,7 +824,14 @@ class BudgetPlanController extends Controller
                     'actual_used_formatted'  => $rp($actualUsed),
                 ],
             ],
-            'beneficiaries' => $beneficiaries,
+            'cash_advance' => [
+                'total'       => $cashAdvanceCrs->count(),
+                'settled'     => $caSettledCount,
+                'pending'     => $cashAdvanceCrs->count() - $caSettledCount - $caNegativeCount,
+                'rejected'    => $caNegativeCount,
+                'total_value' => (int) $cashAdvanceCrs->sum('amount'),
+                'groups'      => $caGroups,
+            ],
 
             // Source fund (PROJECT | OVERHEAD | PAYROLL)
             'source_type'      => $bp->source_type,

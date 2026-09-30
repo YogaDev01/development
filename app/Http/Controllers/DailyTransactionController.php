@@ -345,10 +345,10 @@ class DailyTransactionController extends Controller
                 | dibatch — dan akan CLOSED saat batch ditandai PAID.
                 */
                 $indukCr = $sp->budgetRequest;
+                $statusAwal = $indukCr?->status;
+
                 if ($indukCr && $indukCr->status === 'SECOND_APPROVED') {
                     $indukCr->update(['status' => 'QUEUED']);
-                    $indukCr->addLog('SECOND_APPROVED', 'QUEUED', 'second_payment_batched',
-                        'Masuk batch ' . $batch->code . ($request->notes ? ' - ' . $request->notes : ''));
                 }
 
                 $batch->items()->create([
@@ -357,9 +357,14 @@ class DailyTransactionController extends Controller
                     'status'            => 'INCLUDED',
                 ]);
 
-                $sp->budgetRequest?->addLog(
-                    $sp->budgetRequest->status,
-                    $sp->budgetRequest->status,
+                /*
+                | Satu kejadian = satu baris log. Sebelumnya masuk batch
+                | menulis dua log (perpindahan status dan nominal) sehingga
+                | riwayat persetujuan tampak terduplikasi.
+                */
+                $indukCr?->addLog(
+                    $statusAwal,
+                    $indukCr->status,
                     'second_payment_batched',
                     'Second Payment ' . $sp->amount_formatted . ' masuk batch ' . $batch->code
                         . ($request->notes ? ' - ' . $request->notes : '')
@@ -838,15 +843,15 @@ class DailyTransactionController extends Controller
                 // jadi QUEUED (Process) begitu masuk batch.
                 $indukCr  = $sp->budgetRequest;
                 $crStatus = $indukCr?->status;
-                $indukCr?->addLog(
-                    $crStatus, $crStatus, 'second_payment_batched',
-                    'Second Payment ' . $sp->amount_formatted . ' masuk batch ' . $batch->code
-                );
                 if ($indukCr && $indukCr->status === 'SECOND_APPROVED') {
                     $indukCr->update(['status' => 'QUEUED']);
-                    $indukCr->addLog('SECOND_APPROVED', 'QUEUED', 'second_payment_batched',
-                        'Masuk batch ' . $batch->code);
                 }
+                // Satu baris log saja (lihat store()): status awal -> status
+                // sekarang, dengan nominal Second Payment-nya.
+                $indukCr?->addLog(
+                    $crStatus, $indukCr->status, 'second_payment_batched',
+                    'Second Payment ' . $sp->amount_formatted . ' masuk batch ' . $batch->code
+                );
                 $added++;
             }
 

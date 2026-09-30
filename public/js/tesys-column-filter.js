@@ -462,15 +462,17 @@
               '<div class="ts-pop-menu p-3" style="min-width:420px;">' +
                 '<div class="tcf-pop-title">FILTER</div>' +
                 '<div class="tcf-pop-body"></div>' +
-                '<div class="mt-3">' +
-                  '<button type="button" class="btn btn-outline-secondary btn-sm tcf-filter-reset">Reset</button>' +
+                '<div class="tcf-pop-foot">' +
+                  '<button type="button" class="btn btn-primary btn-sm tcf-filter-reset">' +
+                    '<i class="fas fa-undo mr-1"></i>Reset' +
+                  '</button>' +
                 '</div>' +
               '</div>' +
             '</div>'
         );
 
         $container.before($pop);
-        $pop.find('.tcf-pop-body').append($container);
+        $pop.find('.tcf-pop-body').append($container.addClass('tcf-pop-grid'));
         // Tanpa "Terapkan": filter berlaku begitu nilainya dicentang.
         $pop.find('.tcf-filter-reset').on('click', function () {
             Api.clearAll(tableSelector);
@@ -634,7 +636,7 @@
     if (!document.getElementById('tcf-inline-style')) {
         var style = document.createElement('style');
         style.id = 'tcf-inline-style';
-        style.textContent = '.tcf-filter-icon.tcf-active{opacity:1 !important;color:var(--accent,#d71920);} .tcf-row-btn.tcf-row-active{background:var(--accent,#d71920) !important;color:#fff !important;border-color:var(--accent,#d71920) !important;} .tcf-item{padding:4px 6px;border-radius:4px;margin:0 -6px;width:calc(100% + 12px);white-space:nowrap;} .tcf-item span{white-space:nowrap;} .tcf-item:hover{background:var(--surface-2,#f2f4f7);} .tcf-list{overflow-x:hidden !important;} .tcf-chip-row{display:flex;flex-wrap:wrap;max-width:100%;} .tcf-chip{max-width:100%;white-space:normal !important;word-break:break-word;}.ts-pop{position:relative;}.ts-pop-menu{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:1080;background:var(--surface,#fff);border:1px solid var(--border,#e5e7eb);border-radius:var(--radius-md,10px);box-shadow:0 8px 24px rgba(0,0,0,.14);}.ts-pop.show .ts-pop-menu{display:block;}.tcf-pop-title{font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--text-faint,#8a8f98);margin-bottom:8px;}.tcf-pop-body{display:flex;flex-wrap:wrap;gap:8px;}.tcf-pop-body > *{display:flex;flex-wrap:wrap;gap:8px;}@media (max-width:640px){.ts-pop-menu{min-width:260px !important;max-width:calc(100vw - 32px);}}';
+        style.textContent = '.tcf-filter-icon.tcf-active{opacity:1 !important;color:var(--accent,#d71920);} .tcf-row-btn.tcf-row-active{background:var(--accent,#d71920) !important;color:#fff !important;border-color:var(--accent,#d71920) !important;} .tcf-item{padding:4px 6px;border-radius:4px;margin:0 -6px;width:calc(100% + 12px);white-space:nowrap;} .tcf-item span{white-space:nowrap;} .tcf-item:hover{background:var(--surface-2,#f2f4f7);} .tcf-list{overflow-x:hidden !important;} .tcf-chip-row{display:flex;flex-wrap:wrap;max-width:100%;} .tcf-chip{max-width:100%;white-space:normal !important;word-break:break-word;}.ts-pop{position:relative;}.ts-pop-menu{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:1080;background:var(--surface,#fff);border:1px solid var(--border,#e5e7eb);border-radius:var(--radius-md,10px);box-shadow:0 8px 24px rgba(0,0,0,.14);}.ts-pop.show .ts-pop-menu{display:block;}.tcf-pop-title{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint,#8a8f98);margin-bottom:10px;}.tcf-pop-body{display:block !important;}.tcf-pop-grid{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:8px !important;align-items:start;width:100% !important;}.tcf-pop-grid .tcf-row-btn{width:100% !important;min-width:0;justify-content:space-between;text-align:left;overflow:hidden;}.tcf-pop-grid .tcf-row-btn > i{margin-left:6px;flex:0 0 auto;}.tcf-pop-foot{margin-top:12px;padding-top:10px;border-top:1px solid var(--border,#e5e7eb);}@media (max-width:640px){.ts-pop-menu{min-width:260px !important;max-width:calc(100vw - 32px);}.tcf-pop-grid{grid-template-columns:1fr !important;}}';
         document.head.appendChild(style);
     }
 })(window, jQuery);

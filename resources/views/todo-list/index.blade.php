@@ -8,6 +8,18 @@
        label & keterangan sama formatnya dengan lapis PO di worklist CR —
        "[kode] nama" + "(customer - manager)". Tanpa project = "— Tanpa PO —"
        dengan keterangan cost center / sumber dana. */
+    /* Kolom PO tabel Budgeting: "[0000] SCOPE OF WORK (Customer - Manager)".
+       Budget non-proyek (cost center) tidak punya PO — tampil nama sumbernya. */
+    $bpPoLabel = function ($bp) {
+        $project = $bp->project;
+        if (! $project) {
+            return $bp->source_name ?: '-';
+        }
+        $pm = strtoupper($project->pm_internal_name ?? '-');
+        return '[' . $project->code . '] ' . $project->name
+            . ' (' . ($project->customer?->name ?? '-') . ($pm !== '-' ? ' - ' . $pm : '') . ')';
+    };
+
     $poAttrs = function ($project, ?string $fallbackSub = null, $amount = 0) {
         if ($project) {
             $pm  = strtoupper($project->pm_internal_name ?? '-');
@@ -361,11 +373,18 @@
                                     </td>
                                     <td colspan="2"></td>
                                     <td class="text-center text-nowrap">
-                                        {{-- Plan tunggal: lapis Budget Plan dilewati, jadi tombol
-                                             rincian anggarannya pindah ke baris PO ini. --}}
-                                        @if($planTunggal)
-                                        <button aria-label="View Budget" type="button" class="btn btn-outline-secondary btn-sm todo-view-budget" data-target="#mdlTodoCoa-{{ $stage['key'] }}-{{ $poi }}-0" style="padding:1px 8px;font-size:10.5px;" title="View Budget"><i class="fas fa-chart-pie"></i></button>
-                                        @endif
+                                        @php
+                                            $poBudgetTargets = collect($poGroup['plans'])->keys()
+                                                ->map(fn ($pi) => '#mdlTodoCoa-' . $stage['key'] . '-' . $poi . '-' . $pi)->implode(',');
+                                        @endphp
+                                        {{-- Satu tombol untuk seluruh Budget Plan di PO ini — modal
+                                             gabungan menampilkan tabel per kode anggaran. --}}
+                                        <div class="action-buttons ts-actions">
+                                            <button aria-label="View Budget" type="button" class="ts-action-primary is-neutral todo-view-budget-group"
+                                                    data-targets="{{ $poBudgetTargets }}" data-po-label="{{ $poGroup['po'] }}" title="View Budget">
+                                                <i class="fas fa-chart-pie" aria-hidden="true"></i><span class="ts-al">View Budget</span>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
 
@@ -395,7 +414,7 @@
                                     </td>
                                     <td></td>
                                     <td class="text-center text-nowrap">
-                                        <button aria-label="View Budget" type="button" class="btn btn-outline-secondary btn-sm todo-view-budget" data-target="#mdlTodoCoa-{{ $stage['key'] }}-{{ $gi }}" style="padding:1px 8px;font-size:10.5px;" title="View Budget"><i class="fas fa-chart-pie"></i></button>
+                                        
                                     </td>
                                 </tr>
                                 @endif
@@ -530,7 +549,9 @@
                                                     data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Reject → Paid">
                                                 <i class="fas fa-times" aria-hidden="true"></i><span class="ts-al">Reject</span>
                                             </button>
-                                            <button aria-label="View Budget" type="button" class="ts-action-primary is-neutral todo-view-budget"
+                                            {{-- Sumber tombol View Budget di header grup PO (disembunyikan
+                                                 di baris — rinciannya milik grup, bukan item). --}}
+                                            <button aria-label="View Budget" type="button" class="ts-action-primary is-neutral todo-view-budget todo-po-mirror d-none"
                                                     data-target="#mdlTodoCoa-settle-2nd-{{ $gi }}" title="View Budget">
                                                 <i class="fas fa-chart-pie" aria-hidden="true"></i><span class="ts-al">View Budget</span>
                                             </button>
@@ -628,11 +649,18 @@
                                     </td>
                                     <td colspan="3"></td>
                                     <td class="text-center text-nowrap">
-                                        {{-- Plan tunggal: lapis Budget Plan dilewati, jadi tombol
-                                             rincian anggarannya pindah ke baris PO ini. --}}
-                                        @if($planTunggal)
-                                        <button aria-label="View Budget" type="button" class="btn btn-outline-secondary btn-sm todo-view-budget" data-target="#mdlTodoCoa-settle-close-{{ $poi }}-0" style="padding:1px 8px;font-size:10.5px;" title="View Budget"><i class="fas fa-chart-pie"></i></button>
-                                        @endif
+                                        @php
+                                            $poBudgetTargets = collect($poGroup['plans'])->keys()
+                                                ->map(fn ($pi) => '#mdlTodoCoa-settle-close-' . $poi . '-' . $pi)->implode(',');
+                                        @endphp
+                                        {{-- Satu tombol untuk seluruh Budget Plan di PO ini — modal
+                                             gabungan menampilkan tabel per kode anggaran. --}}
+                                        <div class="action-buttons ts-actions">
+                                            <button aria-label="View Budget" type="button" class="ts-action-primary is-neutral todo-view-budget-group"
+                                                    data-targets="{{ $poBudgetTargets }}" data-po-label="{{ $poGroup['po'] }}" title="View Budget">
+                                                <i class="fas fa-chart-pie" aria-hidden="true"></i><span class="ts-al">View Budget</span>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
 
@@ -656,7 +684,7 @@
                                     </td>
                                     <td colspan="2"></td>
                                     <td class="text-center text-nowrap">
-                                        <button aria-label="View Budget" type="button" class="btn btn-outline-secondary btn-sm todo-view-budget" data-target="#mdlTodoCoa-settle-close-{{ $gi }}" style="padding:1px 8px;font-size:10.5px;" title="View Budget"><i class="fas fa-chart-pie"></i></button>
+                                        
                                     </td>
                                 </tr>
                                 @endif
@@ -805,9 +833,9 @@
                                         {{-- Section ini datar (tanpa lapis Budget Plan), jadi rincian
                                              anggarannya dibuka lewat modal Budget Plan milik CR ini. --}}
                                         @if($cr->budget_plan_id)
-                                        <button aria-label="View Budget" type="button" class="btn btn-outline-secondary btn-sm todo-bp-detail ml-1"
-                                                data-id="{{ $cr->budget_plan_id }}" style="padding:1px 8px;font-size:10.5px;" title="View Budget">
-                                            <i class="fas fa-chart-pie"></i>
+                                        <button aria-label="Detail Budget" type="button" class="btn btn-outline-secondary btn-sm todo-bp-detail ml-1"
+                                                data-id="{{ $cr->budget_plan_id }}" style="padding:1px 8px;font-size:10.5px;" title="Detail Budget">
+                                            <i class="fas fa-info-circle"></i>
                                         </button>
                                         @endif
                                     </td>
@@ -841,14 +869,14 @@
                 @include('todo-list._bulk_bar', ['key' => $stage['key'], 'approveLabel' => $stage['approveTitle'], 'unit' => 'budget'])
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
+                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
                                     <th scope="col" style="width:1%;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
                                     <th scope="col" class="text-nowrap" style="width:1%;">Code</th>
                                     <th scope="col">Description</th>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">Sumber Dana</th>
-                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:1%;">Amount</th>
+                                    <th scope="col">PO</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Budget</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
                                 </tr>
@@ -856,7 +884,7 @@
                             <tbody>
                                 @foreach($stage['data'] as $bp)
                                 @php $bpAgingClass = $bp->aging_days >= 3 ? 'text-danger' : ($bp->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
-                                <tr class="todo-row" {{ $poAttrs($bp->project, $bp->costCenter?->name ?? $bp->source_name, $bp->amount) }} data-search="{{ strtolower($bp->code . ' ' . $bp->description . ' ' . $bp->source_name) }}">
+                                <tr class="todo-row" data-search="{{ strtolower($bp->code . ' ' . $bp->description . ' ' . $bpPoLabel($bp)) }}">
                                     <td><input type="checkbox" class="todo-check" value="{{ $bp->id }}" data-amount="{{ $bp->amount }}" aria-label="Pilih {{ $bp->code }}"></td>
                                     {{-- Todo #4 — kode membuka rincian Budget Plan di
                                          tempat, sehingga approver tidak perlu pindah ke
@@ -867,7 +895,7 @@
                                                 data-id="{{ $bp->id }}">{{ $bp->code }}</button>
                                     </td>
                                     <td>{{ Str::limit($bp->description, 120) }}</td>
-                                    <td class="text-nowrap">{{ $bp->source_name }}</td>
+                                    <td>{{ $bpPoLabel($bp) }}</td>
                                     <td class="text-right text-nowrap"><strong>{{ $bp->amount_formatted }}</strong></td>
                                     <td class="text-center text-nowrap {{ $bpAgingClass }}">{{ $bp->aging_label }}</td>
                                     <td class="text-center text-nowrap">
@@ -881,9 +909,8 @@
                                                 </button>
                                             </form>
 
-                                            <button aria-label="View Budget" type="button" class="ts-action-primary is-neutral todo-view-budget todo-po-mirror"
-                                                    data-target="#mdlTodoCoa-bp-{{ $bp->id }}-0-0" title="View Budget">
-                                                <i class="fas fa-chart-pie" aria-hidden="true"></i><span class="ts-al">View Budget</span>
+                                            <button aria-label="Detail" type="button" class="ts-action-primary is-neutral todo-bp-detail" data-id="{{ $bp->id }}" title="Detail Budget">
+                                                <i class="fas fa-info-circle" aria-hidden="true"></i><span class="ts-al">Detail</span>
                                             </button>
                                             <button type="button" class="ts-action-more"
                                                     aria-haspopup="true" aria-expanded="false"
@@ -906,12 +933,6 @@
                     </div>
                 </div>
             </div>
-
-            {{-- Modal View Budget per Budget Plan — bentuknya sama persis dengan
-                 section Cost Request & Settlement (lihat _budget_modals). --}}
-            @foreach($stage['data'] as $bp)
-            @include('todo-list._budget_modals', ['key' => 'bp-' . $bp->id, 'groups' => $bp->view_budget_groups])
-            @endforeach
             @endif
             @endforeach
 
@@ -926,13 +947,13 @@
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
+                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
                                     <th scope="col" class="text-nowrap" style="width:1%;">Code</th>
                                     <th scope="col">Description</th>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">Sumber Dana</th>
-                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:1%;">Amount</th>
+                                    <th scope="col">PO</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Budget</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Plan Finish</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
@@ -941,13 +962,13 @@
                             <tbody>
                                 @foreach($budgetingClosingDue as $bp)
                                 @php $bpAgingClass = $bp->aging_days >= 3 ? 'text-danger' : ($bp->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
-                                <tr class="todo-row" {{ $poAttrs($bp->project, $bp->costCenter?->name ?? $bp->source_name, $bp->amount) }} data-search="{{ strtolower($bp->code . ' ' . $bp->description . ' ' . $bp->source_name) }}">
+                                <tr class="todo-row" data-search="{{ strtolower($bp->code . ' ' . $bp->description . ' ' . $bpPoLabel($bp)) }}">
                                     <td class="text-nowrap">
                                         <button type="button" class="cr-number-btn todo-bp-detail"
                                                 data-id="{{ $bp->id }}">{{ $bp->code }}</button>
                                     </td>
                                     <td>{{ Str::limit($bp->description, 120) }}</td>
-                                    <td class="text-nowrap">{{ $bp->source_name }}</td>
+                                    <td>{{ $bpPoLabel($bp) }}</td>
                                     <td class="text-right text-nowrap"><strong>{{ $bp->amount_formatted }}</strong></td>
                                     <td class="text-center text-nowrap text-danger">{{ $bp->plan_finish?->format('d-m-Y') ?? '-' }}</td>
                                     <td class="text-center text-nowrap {{ $bpAgingClass }}">{{ $bp->aging_label }}</td>
@@ -960,9 +981,8 @@
                                                title="Ajukan Closing di halaman Budgeting">
                                                 <i class="fas fa-flag-checkered" aria-hidden="true"></i><span class="ts-al">Ajukan Closing</span>
                                             </a>
-                                            <button aria-label="View Budget" type="button" class="ts-action-primary is-neutral todo-view-budget todo-po-mirror"
-                                                    data-target="#mdlTodoCoa-bp-{{ $bp->id }}-0-0" title="View Budget">
-                                                <i class="fas fa-chart-pie" aria-hidden="true"></i><span class="ts-al">View Budget</span>
+                                            <button aria-label="Detail" type="button" class="ts-action-primary is-neutral todo-bp-detail" data-id="{{ $bp->id }}" title="Detail Budget">
+                                                <i class="fas fa-info-circle" aria-hidden="true"></i><span class="ts-al">Detail</span>
                                             </button>
                                         </div>
                                     </td>
@@ -974,13 +994,6 @@
                 </div>
             </div>
             @endif
-
-
-            {{-- Modal View Budget per Budget Plan — bentuknya sama persis dengan
-                 section Cost Request & Settlement (lihat _budget_modals). --}}
-            @foreach($budgetingClosingDue as $bp)
-            @include('todo-list._budget_modals', ['key' => 'bp-' . $bp->id, 'groups' => $bp->view_budget_groups])
-            @endforeach
 
             {{-- BUDGETING — REJECTED, MANAGER REVISE KE DRAFT --}}
             @if($budgetingRejected->isNotEmpty())
@@ -993,13 +1006,13 @@
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
+                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
                                     <th scope="col" class="text-nowrap" style="width:1%;">Code</th>
                                     <th scope="col">Description</th>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">Sumber Dana</th>
-                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:1%;">Amount</th>
+                                    <th scope="col">PO</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Budget</th>
                                     <th scope="col">Alasan Ditolak</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
@@ -1008,7 +1021,7 @@
                             <tbody>
                                 @foreach($budgetingRejected as $bp)
                                 @php $bpAgingClass = $bp->aging_days >= 3 ? 'text-danger' : ($bp->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
-                                <tr class="todo-row" {{ $poAttrs($bp->project, $bp->costCenter?->name ?? $bp->source_name, $bp->amount) }} data-search="{{ strtolower($bp->code . ' ' . $bp->description . ' ' . $bp->source_name) }}">
+                                <tr class="todo-row" data-search="{{ strtolower($bp->code . ' ' . $bp->description . ' ' . $bpPoLabel($bp)) }}">
                                     {{-- Todo #4 — kode membuka rincian Budget Plan di
                                          tempat, sehingga approver tidak perlu pindah ke
                                          halaman Budgeting hanya untuk melihat isinya
@@ -1018,7 +1031,7 @@
                                                 data-id="{{ $bp->id }}">{{ $bp->code }}</button>
                                     </td>
                                     <td>{{ Str::limit($bp->description, 120) }}</td>
-                                    <td class="text-nowrap">{{ $bp->source_name }}</td>
+                                    <td>{{ $bpPoLabel($bp) }}</td>
                                     <td class="text-right text-nowrap"><strong>{{ $bp->amount_formatted }}</strong></td>
                                     <td class="text-muted">{{ Str::limit($bp->approver_notes ?? '-', 100) }}</td>
                                     <td class="text-center text-nowrap {{ $bpAgingClass }}">{{ $bp->aging_label }}</td>
@@ -1029,9 +1042,8 @@
                                                     title="Revise → Draft">
                                                 <i class="fas fa-undo" aria-hidden="true"></i><span class="ts-al">Revise</span>
                                             </button>
-                                            <button aria-label="View Budget" type="button" class="ts-action-primary is-neutral todo-view-budget todo-po-mirror"
-                                                    data-target="#mdlTodoCoa-bp-{{ $bp->id }}-0-0" title="View Budget">
-                                                <i class="fas fa-chart-pie" aria-hidden="true"></i><span class="ts-al">View Budget</span>
+                                            <button aria-label="Detail" type="button" class="ts-action-primary is-neutral todo-bp-detail" data-id="{{ $bp->id }}" title="Detail Budget">
+                                                <i class="fas fa-info-circle" aria-hidden="true"></i><span class="ts-al">Detail</span>
                                             </button>
                                         </div>
                                     </td>
@@ -1043,13 +1055,6 @@
                 </div>
             </div>
             @endif
-
-
-            {{-- Modal View Budget per Budget Plan — bentuknya sama persis dengan
-                 section Cost Request & Settlement (lihat _budget_modals). --}}
-            @foreach($budgetingRejected as $bp)
-            @include('todo-list._budget_modals', ['key' => 'bp-' . $bp->id, 'groups' => $bp->view_budget_groups])
-            @endforeach
 
             {{-- TREASURY — MENUNGGU PROSES (batch PENDING_APPROVER, ditandai "Submitted" -> jadi Approved/Done setelah diproses CEO) --}}
             {{-- TREASURY — BUAT BATCH PEMBAYARAN (CR APPROVED, belum masuk batch manapun) --}}
@@ -1759,27 +1764,51 @@
                 </div>
 
                 <div id="todoBpBody" style="display:none;">
-                    <div class="row mb-3" id="todoBpKpi"></div>
+                    <ul class="nav nav-tabs mb-3" id="todoBpTabs" role="tablist">
+                        <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#todoBpTabBudget" role="tab"><i class="fas fa-coins mr-1"></i>Budget</a></li>
+                        <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#todoBpTabPo" role="tab"><i class="fas fa-file-signature mr-1"></i>PO</a></li>
+                        <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#todoBpTabAtt" role="tab"><i class="fas fa-paperclip mr-1"></i>Attachment <span class="badge badge-secondary ml-1" id="todoBpAttCount">0</span></a></li>
+                    </ul>
 
-                    <h6 class="font-weight-bold" style="font-size:12px;">Rincian Anggaran per Chart of Account</h6>
-                    <div class="table-responsive">
-                        <table class="table table-sm table-bordered mb-0" style="font-size:12px;min-width:620px;">
-                            <thead class="bg-light">
-                                <tr>
-                                    <th scope="col">Chart of Account</th>
-                                    <th scope="col">Keterangan</th>
-                                    <th scope="col" class="text-right text-nowrap">Anggaran</th>
-                                    <th scope="col" class="text-right text-nowrap">Terpakai</th>
-                                    <th scope="col" class="text-right text-nowrap">Sisa</th>
-                                </tr>
-                            </thead>
-                            <tbody id="todoBpDetails"></tbody>
-                        </table>
-                    </div>
+                    <div class="tab-content">
+                        {{-- TAB BUDGET — rincian anggaran per Chart of Account. --}}
+                        <div class="tab-pane fade show active" id="todoBpTabBudget" role="tabpanel">
+                            <div class="row mb-3" id="todoBpKpi"></div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered mb-0" style="font-size:12px;min-width:620px;">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th scope="col">Keterangan</th>
+                                            <th scope="col" class="text-right text-nowrap" style="width:1%;">Satuan</th>
+                                            <th scope="col" class="text-center text-nowrap" style="width:1%;">Qty</th>
+                                            <th scope="col" class="text-right text-nowrap" style="width:1%;">Budget</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="todoBpDetails"></tbody>
+                                    <tfoot>
+                                        <tr style="background:var(--surface-2);">
+                                            <th colspan="3" class="text-right">Total</th>
+                                            <th class="text-right text-nowrap" id="todoBpTotal">0</th>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
 
-                    <div id="todoBpNotesWrap" class="mt-3" style="display:none;">
-                        <h6 class="font-weight-bold" style="font-size:12px;">Catatan</h6>
-                        <p id="todoBpNotes" class="text-muted mb-0" style="font-size:12px;"></p>
+                            <div id="todoBpNotesWrap" class="mt-3" style="display:none;">
+                                <h6 class="font-weight-bold" style="font-size:12px;">Catatan</h6>
+                                <p id="todoBpNotes" class="text-muted mb-0" style="font-size:12px;"></p>
+                            </div>
+                        </div>
+
+                        {{-- TAB PO — ringkasan dari halaman Purchase Order (project/{id}/detail-json). --}}
+                        <div class="tab-pane fade" id="todoBpTabPo" role="tabpanel">
+                            <div id="todoBpPoBody"></div>
+                        </div>
+
+                        {{-- TAB ATTACHMENT — lampiran PO & No. PO dari halaman Purchase Order. --}}
+                        <div class="tab-pane fade" id="todoBpTabAtt" role="tabpanel">
+                            <div id="todoBpAttBody"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2265,6 +2294,85 @@ $(function () {
             '</div>';
     }
 
+    /* Tab PO & Attachment: dari endpoint halaman Purchase Order yang sudah
+       ada (project/{id}/detail-json), bukan salinan data tersendiri. */
+    function todoBpAttLink(a) {
+        var ikon = a.is_image ? 'fa-file-image' : (a.is_pdf ? 'fa-file-pdf' : 'fa-file');
+        return '<a href="{{ url('/storage') }}/' + encodeURI(a.path) + '" target="_blank" rel="noopener" class="d-block mb-1" style="font-size:12.5px;">' +
+            '<i class="fas ' + ikon + ' mr-1"></i>' + esc(a.title || a.file_name || 'File') + '</a>';
+    }
+
+    function todoBpInfo(label, nilai) {
+        return '<div class="col-md-4 col-6 mb-3"><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint);">' + label + '</div>' +
+            '<div style="font-size:13px;font-weight:600;">' + nilai + '</div></div>';
+    }
+
+    function todoBpLoadPo(projectId) {
+        var kosong = function (pesan) {
+            var html = '<div class="text-center text-muted py-4" style="font-size:12.5px;"><i class="fas fa-info-circle d-block mb-2" style="font-size:20px;"></i>' + pesan + '</div>';
+            $('#todoBpPoBody, #todoBpAttBody').html(html);
+            $('#todoBpAttCount').text('0');
+        };
+        if (!projectId) { kosong('Budget ini tidak terkait Purchase Order (budget cost center).'); return; }
+
+        $('#todoBpPoBody, #todoBpAttBody').html('<div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin"></i></div>');
+
+        $.get('{{ url("/project") }}/' + projectId + '/detail-json', function (p) {
+            var poRows = (p.po_numbers || []).map(function (n) {
+                return '<tr><td class="text-nowrap">' + esc(n.po_number) + '</td>' +
+                    '<td class="text-nowrap">' + esc(n.release_date || '-') + '</td>' +
+                    '<td class="text-right text-nowrap">' + esc(n.nominal_formatted || '-') + '</td>' +
+                    '<td class="text-center"><span class="badge badge-' + esc(n.status_color || 'secondary') + '">' + esc(n.status_label || n.status || '-') + '</span></td></tr>';
+            }).join('');
+
+            $('#todoBpPoBody').html(
+                '<div class="row">' +
+                    todoBpInfo('PO', '[' + esc(p.code) + '] ' + esc(p.name)) +
+                    todoBpInfo('Customer', esc(p.customer)) +
+                    todoBpInfo('Manager', esc((p.manager || '-').toUpperCase())) +
+                    todoBpInfo('Nilai Kontrak', esc(p.contract_formatted || '-')) +
+                    todoBpInfo('Nilai PO', esc(p.value_formatted || '-')) +
+                    todoBpInfo('Status', '<span class="badge badge-' + esc(p.status_color || 'secondary') + '">' + esc(p.status_label || '-') + '</span>') +
+                '</div>' +
+                '<h6 class="font-weight-bold" style="font-size:12px;">No. PO</h6>' +
+                '<div class="table-responsive"><table class="table table-sm table-bordered mb-0" style="font-size:12px;">' +
+                    '<thead class="bg-light"><tr><th>No. PO</th><th>Tanggal Rilis</th><th class="text-right">Nominal</th><th class="text-center">Status</th></tr></thead>' +
+                    '<tbody>' + (poRows || '<tr><td colspan="4" class="text-center text-muted py-3">Belum ada No. PO.</td></tr>') + '</tbody>' +
+                '</table></div>'
+            );
+
+            // Lampiran PO (per jenis) + lampiran tiap No. PO beserta BAST-nya.
+            var bagian = [], jumlah = 0;
+            $.each(p.attachments || {}, function (jenis, daftar) {
+                if (!daftar || !daftar.length) return;
+                jumlah += daftar.length;
+                bagian.push('<h6 class="font-weight-bold mt-2" style="font-size:12px;text-transform:capitalize;">' + esc(String(jenis).replace(/_/g, ' ')) + '</h6>' +
+                    daftar.map(todoBpAttLink).join(''));
+            });
+            (p.po_numbers || []).forEach(function (n) {
+                var poAtt = n.attachments || [], bastAtt = n.bast_attachments || [];
+                if (!poAtt.length && !bastAtt.length) return;
+                jumlah += poAtt.length + bastAtt.length;
+                bagian.push('<h6 class="font-weight-bold mt-2" style="font-size:12px;">No. PO ' + esc(n.po_number) + '</h6>' +
+                    poAtt.map(todoBpAttLink).join('') +
+                    (bastAtt.length ? '<div class="text-muted mt-1" style="font-size:11px;">BAST</div>' + bastAtt.map(todoBpAttLink).join('') : ''));
+            });
+            $('#todoBpAttCount').text(jumlah);
+            $('#todoBpAttBody').html(bagian.join('') || '<div class="text-center text-muted py-4" style="font-size:12.5px;">Belum ada attachment di Purchase Order ini.</div>');
+        }).fail(function (xhr) {
+            kosong(xhr.status === 403
+                ? 'Anda tidak memiliki akses ke Purchase Order ini.'
+                : 'Gagal memuat data Purchase Order.');
+        });
+    }
+
+    $(document).on('click', '.todo-bpd-coa', function () {
+        var $rows = $('#todoBpDetails .' + $(this).data('target'));
+        var expanding = $rows.first().is(':hidden');
+        $rows.toggle(expanding);
+        $(this).find('.todo-coa-caret').toggleClass('rotated', expanding);
+    });
+
     $(document).on('click', '.todo-bp-detail', function (e) {
         e.stopPropagation();
 
@@ -2275,6 +2383,9 @@ $(function () {
         $('#todoBpTitle').text('Rincian Budget Plan');
         $('#todoBpSubtitle').text('');
         $('#todoBpOpenPage').attr('href', '{{ url("/budget-plan") }}?open=' + id);
+        $('#todoBpTabs a[href="#todoBpTabBudget"]').tab('show');
+        $('#todoBpPoBody, #todoBpAttBody').empty();
+        $('#todoBpAttCount').text('0');
         $('#mdlTodoBp').modal('show');
 
         $.get('{{ url("/budget-plan") }}/' + id + '/detail-json', function (d) {
@@ -2295,25 +2406,49 @@ $(function () {
                 todoBpKartu('Terpakai (%)', (d.usage_percentage || 0) + '%', (d.usage_percentage || 0) > 100 ? 'danger' : 'text')
             );
 
-            /* Nama kuncinya mengikuti payload showJson() apa adanya:
-               `total` = nilai anggaran baris (amount = harga satuan, bukan
-               nilai baris), `deskripsi`, `used`, `remaining`. Menebak nama lain
-               akan menghasilkan kolom kosong tanpa error apa pun. */
-            var baris = (d.details || []).map(function (x) {
-                var sisaBaris = parseInt(x.remaining, 10) || 0;
-                return '<tr>' +
-                    '<td>' + (x.account || '-') + '</td>' +
-                    '<td>' + (x.deskripsi || '-') +
-                        (x.qty ? ' <span class="text-muted" style="font-size:10px;">(' + x.qty + ' ' + (x.unit || '') + ')</span>' : '') +
-                    '</td>' +
-                    '<td class="text-right text-nowrap">' + todoBpRp(x.total) + '</td>' +
-                    '<td class="text-right text-nowrap">' + todoBpRp(x.used) + '</td>' +
-                    '<td class="text-right text-nowrap" style="color:var(--' + (sisaBaris < 0 ? 'danger' : 'text') + ');">' +
-                        todoBpRp(sisaBaris) + '</td>' +
-                '</tr>';
+            /* Rincian dikelompokkan per Chart of Account. Kunci payload showJson():
+               `amount` = harga satuan, `qty` + `unit`, `total` = nilai baris.
+               Tanpa kolom Terpakai/Sisa: budget yang sedang diajukan memang
+               belum pernah terpakai. */
+            var perCoa = {}, urutan = [];
+            (d.details || []).forEach(function (x) {
+                var k = x.account || '-';
+                if (!perCoa[k]) { perCoa[k] = { rows: [], total: 0 }; urutan.push(k); }
+                perCoa[k].rows.push(x);
+                perCoa[k].total += parseInt(x.total, 10) || 0;
+            });
+            urutan.sort();
+
+            var grandTotal = 0;
+            var baris = urutan.map(function (k, ki) {
+                var g = perCoa[k];
+                var cls = 'todo-bpd-coa-' + ki;
+                grandTotal += g.total;
+                // Baris CoA bisa dibuka/tutup (awal: tertutup), sama seperti
+                // modal View Budget di worklist Cost Request.
+                var html = '<tr class="todo-bpd-coa" data-target="' + cls + '" style="background:var(--surface-2);font-weight:700;cursor:pointer;">' +
+                    '<td colspan="3">' +
+                        '<button type="button" class="btn btn-outline-secondary" style="padding:1px 6px;margin-right:6px;" tabindex="-1" aria-label="Buka/tutup ' + escAttr(k) + '">' +
+                            '<i class="fas fa-chevron-right todo-coa-caret" style="font-size:10px;transition:transform .15s;display:inline-block;"></i>' +
+                        '</button>' +
+                        esc(k) + ' <span class="badge badge-secondary ml-1" style="font-size:9px;">' + g.rows.length + '</span></td>' +
+                    '<td class="text-right text-nowrap">' + todoBpRp(g.total) + '</td></tr>';
+                g.rows.forEach(function (x) {
+                    var qty = x.qty ? (parseFloat(x.qty).toLocaleString('id-ID') + (x.unit ? ' ' + esc(x.unit) : '')) : '-';
+                    html += '<tr class="' + cls + '" style="display:none;">' +
+                        '<td style="padding-left:24px;">' + esc(x.deskripsi || '-') + '</td>' +
+                        '<td class="text-right text-nowrap">' + todoBpRp(x.amount) + '</td>' +
+                        '<td class="text-center text-nowrap">' + qty + '</td>' +
+                        '<td class="text-right text-nowrap">' + todoBpRp(x.total) + '</td>' +
+                    '</tr>';
+                });
+                return html;
             }).join('');
 
-            $('#todoBpDetails').html(baris || '<tr><td colspan="5" class="text-center text-muted py-3">Belum ada rincian anggaran.</td></tr>');
+            $('#todoBpDetails').html(baris || '<tr><td colspan="4" class="text-center text-muted py-3">Belum ada rincian anggaran.</td></tr>');
+            $('#todoBpTotal').text(todoBpRp(grandTotal));
+
+            todoBpLoadPo(d.project_id);
 
             var catatan = [d.notes, d.approver_notes].filter(Boolean).join(' — ');
             $('#todoBpNotes').text(catatan);
@@ -2402,17 +2537,18 @@ $(function () {
                    satu modal berisi tabel per kode (lihat handler
                    .todo-view-budget-group). Dua tombol sejajar tanpa label cuma
                    menyisakan tebak-tebakan tombol mana milik anggaran mana. */
-                var mirrorSeen = {}, mirrorTargets = [];
+                var mirrorSeen = {}, mirrorTargets = [], mirrorOnlyHeader = false;
                 g.rows.forEach(function (r) {
                     var $b = $(r).find('.todo-po-mirror').first();
                     if (!$b.length) return;
+                    if ($b.hasClass('d-none')) mirrorOnlyHeader = true;
                     var key = $b.attr('data-target') || '';
                     if (!key || mirrorSeen[key]) return;
                     mirrorSeen[key] = true;
                     mirrorTargets.push(key);
                 });
                 var groupBtn = mirrorTargets.length
-                    ? '<div class="action-buttons ts-actions todo-po-mirror-box">' +
+                    ? '<div class="action-buttons ts-actions todo-po-mirror-box"' + (mirrorOnlyHeader ? ' data-keep="1"' : '') + '>' +
                         '<button aria-label="View Budget" type="button" class="ts-action-primary is-neutral todo-view-budget-group"' +
                         ' data-targets="' + escHtml(mirrorTargets.join(',')) + '"' +
                         ' data-po-label="' + escHtml(g.label) + '" title="View Budget">' +
@@ -2460,7 +2596,9 @@ $(function () {
         /* Tombol View Budget di baris PO hanya pintasan selagi grupnya
            tertutup — begitu dibuka, tiap barisnya sudah punya tombol sendiri,
            jadi yang di atas ditarik kembali supaya tidak dobel. */
-        $(this).find('.todo-po-mirror-box').toggle(!expanding);
+        // Kecuali tombolnya memang HANYA ada di header (data-keep) — misalnya
+        // Expense Claim, yang barisnya tidak punya tombol View Budget sendiri.
+        $(this).find('.todo-po-mirror-box').not('[data-keep]').toggle(!expanding);
     });
 
     /* ── WORKLIST — tombol View Budget ── */
