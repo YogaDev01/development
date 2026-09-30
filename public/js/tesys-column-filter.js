@@ -432,6 +432,99 @@
         });
     }
 
+    /* ── SATU TOMBOL "FILTER" ──────────────────────────────────────────────
+    | Halaman dengan banyak field filter menaruh tombolnya berjejer di bilah
+    | kendali (Status, Customer, Financing, Manager, Tipe, …) sampai memakan
+    | seluruh baris dan mendorong tombol aksi. Begitu ada lebih dari satu
+    | field, deretan itu dipindahkan ke dalam satu popover "Filter" — pola
+    | yang sudah dipakai Cost Request — lengkap dengan tombol Reset.
+    |
+    | Dikerjakan di sini, bukan di tiap halaman: kontainer dan daftar field-nya
+    | memang sudah lewat fungsi ini, jadi tidak ada markup yang perlu diubah.
+    |
+    | Popover-nya tidak memakai dropdown Bootstrap: Popper menghitung posisi
+    | terhadap kontainer tabel yang bisa digulir, sehingga panelnya melompat
+    | saat dibuka. Panel cukup ditempel absolut di bawah tombolnya, lalu
+    | digeser kalau ujungnya melewati tepi layar.
+    */
+    function bungkusFilterKePopover($container, tableSelector) {
+        if (!$container.length) return;
+        // Halaman yang sudah punya popover Filter sendiri dibiarkan.
+        if ($container.closest('.ts-pop, .cr-pop, .dropdown-menu').length) return;
+        if ($container.data('tcf-popover')) return;
+        $container.data('tcf-popover', true);
+
+        var $pop = $(
+            '<div class="ts-pop tcf-filter-pop">' +
+              '<button type="button" class="btn btn-outline-secondary btn-sm ts-pop-toggle">' +
+                '<i class="fas fa-filter mr-1"></i> Filter' +
+              '</button>' +
+              '<div class="ts-pop-menu p-3" style="min-width:420px;">' +
+                '<div class="tcf-pop-title">FILTER</div>' +
+                '<div class="tcf-pop-body"></div>' +
+                '<div class="mt-3">' +
+                  '<button type="button" class="btn btn-outline-secondary btn-sm tcf-filter-reset">Reset</button>' +
+                '</div>' +
+              '</div>' +
+            '</div>'
+        );
+
+        $container.before($pop);
+        $pop.find('.tcf-pop-body').append($container);
+        // Tanpa "Terapkan": filter berlaku begitu nilainya dicentang.
+        $pop.find('.tcf-filter-reset').on('click', function () {
+            Api.clearAll(tableSelector);
+        });
+
+        pindahkanTombolKolom($pop);
+    }
+
+    /* Tombol "Kolom" biasanya berdiri di sisi aksi (bersama Export/Tambah),
+       padahal ia kendali tampilan — sama seperti Cari dan Filter. Dipindahkan
+       ke sisi kiri, tepat setelah tombol Filter, supaya sisi kanan benar-benar
+       hanya berisi tombol yang mengubah sesuatu. */
+    function pindahkanTombolKolom($pop) {
+        var $bilah = $pop.closest('.custom-toolbar');
+        if (!$bilah.length) return;
+
+        var $kolom = $bilah.find('.custom-toolbar-right .dropdown').filter(function () {
+            return $(this).find('.fa-columns').length > 0;
+        }).first();
+        if (!$kolom.length || $kolom.data('tcf-dipindah')) return;
+
+        // Menu-nya tadinya rata kanan karena menempel di ujung kanan bilah;
+        // setelah pindah ke kiri, perataannya ikut dibalik.
+        $kolom.find('.dropdown-menu').removeClass('dropdown-menu-right');
+        $kolom.data('tcf-dipindah', true).insertAfter($pop);
+    }
+
+    $(document).on('click', '.ts-pop-toggle', function (e) {
+        e.stopPropagation();
+        var $pop = $(this).closest('.ts-pop');
+        var buka = !$pop.hasClass('show');
+
+        $('.ts-pop').removeClass('show');
+        $pop.toggleClass('show', buka);
+        if (!buka) return;
+
+        var $menu = $pop.find('.ts-pop-menu');
+        $menu.css({ left: 0, right: 'auto' });
+        var rect = $menu[0].getBoundingClientRect();
+        if (rect.right > window.innerWidth - 8) $menu.css({ left: 'auto', right: 0 });
+    });
+
+    $(document).on('click', function (e) {
+        // Daftar centang tiap filter (.tcf-dropdown) dipasang di <body>, bukan di
+        // dalam panel. Tanpa pengecualian ini, mencentang satu nilai dianggap
+        // "klik di luar" sehingga panel Filter-nya ikut tertutup.
+        if ($(e.target).closest('.ts-pop, .tcf-dropdown').length) return;
+        $('.ts-pop').removeClass('show');
+    });
+
+    $(document).on('keydown', function (e) {
+        if (e.key === 'Escape') $('.ts-pop').removeClass('show');
+    });
+
     Api.initRowFilters = function (tableSelector, containerSelector, fields) {
         var $table = $(tableSelector);
         if ($table.length === 0) return;
@@ -459,6 +552,9 @@
                 openRowFilterDropdown($btn, tableId, table, tableEl, f.key, f.label, f.valueLabels, f.options, f.search);
             });
         });
+
+        // Lebih dari satu field: deretan tombolnya dilipat ke satu popover "Filter".
+        if (fields.length > 1) bungkusFilterKePopover($container, tableSelector);
 
         $(document).on('click', '.tcf-chip-clear', function () {
             var $chip = $(this).closest('.tcf-chip');
@@ -538,7 +634,7 @@
     if (!document.getElementById('tcf-inline-style')) {
         var style = document.createElement('style');
         style.id = 'tcf-inline-style';
-        style.textContent = '.tcf-filter-icon.tcf-active{opacity:1 !important;color:var(--accent,#d71920);} .tcf-row-btn.tcf-row-active{background:var(--accent,#d71920) !important;color:#fff !important;border-color:var(--accent,#d71920) !important;} .tcf-item{padding:4px 6px;border-radius:4px;margin:0 -6px;width:calc(100% + 12px);white-space:nowrap;} .tcf-item span{white-space:nowrap;} .tcf-item:hover{background:var(--surface-2,#f2f4f7);} .tcf-list{overflow-x:hidden !important;} .tcf-chip-row{display:flex;flex-wrap:wrap;max-width:100%;} .tcf-chip{max-width:100%;white-space:normal !important;word-break:break-word;}';
+        style.textContent = '.tcf-filter-icon.tcf-active{opacity:1 !important;color:var(--accent,#d71920);} .tcf-row-btn.tcf-row-active{background:var(--accent,#d71920) !important;color:#fff !important;border-color:var(--accent,#d71920) !important;} .tcf-item{padding:4px 6px;border-radius:4px;margin:0 -6px;width:calc(100% + 12px);white-space:nowrap;} .tcf-item span{white-space:nowrap;} .tcf-item:hover{background:var(--surface-2,#f2f4f7);} .tcf-list{overflow-x:hidden !important;} .tcf-chip-row{display:flex;flex-wrap:wrap;max-width:100%;} .tcf-chip{max-width:100%;white-space:normal !important;word-break:break-word;}.ts-pop{position:relative;}.ts-pop-menu{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:1080;background:var(--surface,#fff);border:1px solid var(--border,#e5e7eb);border-radius:var(--radius-md,10px);box-shadow:0 8px 24px rgba(0,0,0,.14);}.ts-pop.show .ts-pop-menu{display:block;}.tcf-pop-title{font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--text-faint,#8a8f98);margin-bottom:8px;}.tcf-pop-body{display:flex;flex-wrap:wrap;gap:8px;}.tcf-pop-body > *{display:flex;flex-wrap:wrap;gap:8px;}@media (max-width:640px){.ts-pop-menu{min-width:260px !important;max-width:calc(100vw - 32px);}}';
         document.head.appendChild(style);
     }
 })(window, jQuery);

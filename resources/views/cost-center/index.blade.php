@@ -448,7 +448,7 @@ $(function () {
             lengthChange: true,
             searching: true,
             responsive: { details: { type: 'inline' } },
-            dom: 'rt<"d-flex justify-content-between align-items-center mt-3"ip>',
+            dom: 'rt<"d-flex justify-content-between align-items-center mt-3"i<"d-flex align-items-center"lp>>',
             columnDefs: [
                 { responsivePriority: 1,   targets: [0, 1, 2, -1] },
                 { responsivePriority: 2,   targets: [5] },

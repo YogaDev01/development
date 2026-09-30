@@ -119,7 +119,7 @@ class TodoListController extends Controller
             ['key' => 'batch-create',    'label' => 'Buat Batch Pembayaran',     'icon' => 'fas fa-layer-group',      'tone' => 'progress',  'items' => $data['treasuryBatchCreate']],
             ['key' => 'batch-process',   'label' => 'Proses Batch',              'icon' => 'fas fa-money-check-alt',  'tone' => 'progress',  'items' => $data['treasuryProcess']],
             ['key' => 'batch-pay',       'label' => 'Tandai Batch Paid',         'icon' => 'fas fa-money-bill-wave',  'tone' => 'progress',  'items' => $data['treasuryReadyToPay']],
-            ['key' => 'second-payment',  'label' => 'Pembayaran Termin Kedua',   'icon' => 'fas fa-hand-holding-usd', 'tone' => 'progress',  'items' => $data['secondPaymentPending']],
+            ['key' => 'second-payment',  'label' => 'Second Approval',   'icon' => 'fas fa-hand-holding-usd', 'tone' => 'progress',  'items' => $data['secondPaymentPending']],
             ['key' => 'settlement',      'label' => 'Kirim Settlement',          'icon' => 'fas fa-receipt',          'tone' => 'progress',  'items' => $data['managerPaid']],
             ['key' => 'settle-check',    'label' => 'Settlement — Head Check',   'icon' => 'fas fa-clipboard-check',  'tone' => 'progress',  'items' => $rata($data['headSettlementCheck'])],
             ['key' => 'settle-verify',   'label' => 'Settlement — Verifikasi',   'icon' => 'fas fa-clipboard-check',  'tone' => 'progress',  'items' => $rata($data['financeSettlementVerify'])],
@@ -403,31 +403,52 @@ class TodoListController extends Controller
         // endpoint single-record per tahap.
         $budgetingHeadCheck = collect();
         if ($user->hasRole(['superadmin', 'head'])) {
-            $budgetingHeadCheck = BudgetPlan::with(['project.customer', 'costCenter'])
+            $budgetingHeadCheck = BudgetPlan::with(['project.customer', 'project.manager', 'costCenter', 'details.account'])
                 ->where('status', 'SUBMITTED')
                 ->latest()
                 ->get()
-                ->map(fn ($bp) => $this->withAging($bp, $bp->updated_at))
+                ->map(function ($bp) use ($denganCoa) {
+                    $bp = $this->withAging($bp, $bp->updated_at);
+                    // Rincian CoA hanya disiapkan untuk HALAMAN Todo List —
+                    // lonceng navbar tidak punya tombol View Budget, dan
+                    // breakdown ini bagian termahal di modul ini.
+                    $bp->view_budget_groups = $denganCoa ? $this->planViewGroups($bp) : collect();
+                    return $bp;
+                })
                 ->sortBy('aging_since')->values();
         }
 
         $budgetingVerify = collect();
         if ($user->hasRole(['superadmin', 'finance', 'finance_manager'])) {
-            $budgetingVerify = BudgetPlan::with(['project.customer', 'costCenter'])
+            $budgetingVerify = BudgetPlan::with(['project.customer', 'project.manager', 'costCenter', 'details.account'])
                 ->where('status', 'CHECKED')
                 ->latest()
                 ->get()
-                ->map(fn ($bp) => $this->withAging($bp, $bp->updated_at))
+                ->map(function ($bp) use ($denganCoa) {
+                    $bp = $this->withAging($bp, $bp->updated_at);
+                    // Rincian CoA hanya disiapkan untuk HALAMAN Todo List —
+                    // lonceng navbar tidak punya tombol View Budget, dan
+                    // breakdown ini bagian termahal di modul ini.
+                    $bp->view_budget_groups = $denganCoa ? $this->planViewGroups($bp) : collect();
+                    return $bp;
+                })
                 ->sortBy('aging_since')->values();
         }
 
         $budgetingCeoApprove = collect();
         if ($user->hasRole(['superadmin', 'approver', 'guest'])) {
-            $budgetingCeoApprove = BudgetPlan::with(['project.customer', 'costCenter'])
+            $budgetingCeoApprove = BudgetPlan::with(['project.customer', 'project.manager', 'costCenter', 'details.account'])
                 ->where('status', 'VERIFIED')
                 ->latest()
                 ->get()
-                ->map(fn ($bp) => $this->withAging($bp, $bp->updated_at))
+                ->map(function ($bp) use ($denganCoa) {
+                    $bp = $this->withAging($bp, $bp->updated_at);
+                    // Rincian CoA hanya disiapkan untuk HALAMAN Todo List —
+                    // lonceng navbar tidak punya tombol View Budget, dan
+                    // breakdown ini bagian termahal di modul ini.
+                    $bp->view_budget_groups = $denganCoa ? $this->planViewGroups($bp) : collect();
+                    return $bp;
+                })
                 ->sortBy('aging_since')->values();
         }
 
@@ -437,23 +458,37 @@ class TodoListController extends Controller
         // masih di manager, bukan di Finance.
         $budgetingClosingDue = collect();
         if ($user->hasRole(['superadmin', 'manager'])) {
-            $budgetingClosingDue = BudgetPlan::with(['project.customer', 'costCenter'])
+            $budgetingClosingDue = BudgetPlan::with(['project.customer', 'project.manager', 'costCenter', 'details.account'])
                 ->where('status', 'CLOSING')
                 ->whereNull('closing_submitted_at')
                 ->latest()
                 ->get()
-                ->map(fn ($bp) => $this->withAging($bp, $bp->updated_at))
+                ->map(function ($bp) use ($denganCoa) {
+                    $bp = $this->withAging($bp, $bp->updated_at);
+                    // Rincian CoA hanya disiapkan untuk HALAMAN Todo List —
+                    // lonceng navbar tidak punya tombol View Budget, dan
+                    // breakdown ini bagian termahal di modul ini.
+                    $bp->view_budget_groups = $denganCoa ? $this->planViewGroups($bp) : collect();
+                    return $bp;
+                })
                 ->sortBy('aging_since')->values();
         }
 
         // Manager — Budgeting: Reject Handling (REJECTED -> DRAFT via Revise).
         $budgetingRejected = collect();
         if ($user->hasRole(['superadmin', 'manager'])) {
-            $budgetingRejected = BudgetPlan::with(['project.customer', 'costCenter'])
+            $budgetingRejected = BudgetPlan::with(['project.customer', 'project.manager', 'costCenter', 'details.account'])
                 ->where('status', 'REJECTED')
                 ->latest()
                 ->get()
-                ->map(fn ($bp) => $this->withAging($bp, $bp->updated_at))
+                ->map(function ($bp) use ($denganCoa) {
+                    $bp = $this->withAging($bp, $bp->updated_at);
+                    // Rincian CoA hanya disiapkan untuk HALAMAN Todo List —
+                    // lonceng navbar tidak punya tombol View Budget, dan
+                    // breakdown ini bagian termahal di modul ini.
+                    $bp->view_budget_groups = $denganCoa ? $this->planViewGroups($bp) : collect();
+                    return $bp;
+                })
                 ->sortBy('aging_since')->values();
         }
 
@@ -1202,6 +1237,41 @@ class TodoListController extends Controller
      * dengan yang dirender, sehingga tetap konsisten saat disaring atau dicari.
      */
     /** @param string|string[] $status satu status, atau beberapa sekaligus. */
+    /**
+     * Bungkus SATU Budget Plan menjadi struktur yang sama dengan buildPoGroups()
+     * (PO -> Budget Plan -> CR), supaya section Budgeting bisa memakai modal
+     * "View Budget" yang sama persis dengan section Cost Request & Settlement
+     * — bukan modal ringkasan tersendiri yang bentuknya berbeda.
+     *
+     * Daftar CR-nya kosong: di section Budgeting yang ditinjau adalah RENCANA
+     * anggarannya, bukan pengajuan yang sedang antre. Kolom Request/Approved
+     * pada modal tetap terisi dari pipeline anggaran itu sendiri (lihat
+     * buildReviewCoaBreakdown(), yang memang tidak membaca daftar CR yang
+     * dikirimkan).
+     */
+    private function planViewGroups(BudgetPlan $bp): \Illuminate\Support\Collection
+    {
+        $coaGroups = $this->buildReviewCoaBreakdown($bp, collect(), '');
+
+        return collect([[
+            'po'       => $this->poLabel($bp),
+            'po_code'  => $bp->project?->code,
+            'customer' => $this->customerLabel($bp),
+            'pm'       => strtoupper($bp->project?->manager?->name ?? '-'),
+            'plans'    => collect([[
+                'label'       => $this->budgetPlanLabel($bp),
+                'customer'    => $this->customerLabel($bp),
+                'po'          => $this->poLabel($bp),
+                'pm'          => strtoupper($bp->project?->manager?->name ?? '-'),
+                'po_code'     => $bp->project?->code,
+                'items'       => collect(),
+                'coa_groups'  => $coaGroups,
+                'is_nob_full' => $coaGroups->sum('remaining') < 0,
+                'cr_nob'      => [],
+            ]]),
+        ]]);
+    }
+
     private function buildPoGroups(string|array $status, bool $denganCoa = true): \Illuminate\Support\Collection
     {
         return $this->buildStatusGroups($status, $denganCoa)

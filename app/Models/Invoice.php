@@ -141,6 +141,11 @@ class Invoice extends Model
         return $this->hasMany(InvoiceAttachment::class);
     }
 
+    public function comments()
+    {
+        return $this->hasMany(InvoiceComment::class)->orderBy('created_at');
+    }
+
     public function cashReceipts()
     {
         return $this->hasMany(CashReceipt::class)->orderBy('received_date');

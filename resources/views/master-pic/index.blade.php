@@ -313,29 +313,6 @@
                             </div>
                         </div>
 
-                        {{-- BANK & REKENING — milik PIC-nya sendiri, bukan rekening
-                             beneficiary yang ia tangani. --}}
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="font-weight-600">Bank</label>
-                                <select name="bank_id" id="tambahBank" class="form-control">
-                                    <option value="">— Pilih Bank —</option>
-                                    @foreach($banks as $bank)
-                                        <option value="{{ $bank->id }}">{{ $bank->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="font-weight-600">No. Rekening</label>
-                                <input type="text" name="account_number" id="tambahAccountNumber"
-                                       class="form-control"
-                                       placeholder="Masukkan nomor rekening"
-                                       autocomplete="off">
-                            </div>
-                        </div>
 
                         <!-- PHONE -->
                         <div class="col-md-6">
@@ -392,7 +369,7 @@
                                         <option value="{{ $u->id }}">{{ strtoupper($tanpaDummy($u->username)) }} — {{ $tanpaDummy($u->name) }}</option>
                                     @endforeach
                                 </select>
-                                <small class="form-text text-muted">Isi untuk PIC internal supaya datanya menyatu dengan Team.</small>
+                                <small class="form-text text-muted field-hint">Isi untuk PIC internal supaya datanya menyatu dengan Team.</small>
                             </div>
                         </div>
 
@@ -498,27 +475,6 @@
                                 </div>
                             </div>
 
-                            {{-- BANK & REKENING milik PIC-nya sendiri. --}}
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="font-weight-600">Bank</label>
-                                    <select name="bank_id" id="editBank" class="form-control">
-                                        <option value="">— Pilih Bank —</option>
-                                        @foreach($banks as $bank)
-                                            <option value="{{ $bank->id }}">{{ $bank->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="font-weight-600">No. Rekening</label>
-                                    <input type="text" name="account_number" id="editAccountNumber"
-                                           class="form-control" autocomplete="off">
-                                </div>
-                            </div>
-
                             <!-- PHONE -->
                             <div class="col-md-6">
                                 <div class="form-group">
@@ -572,7 +528,7 @@
 
                             <!-- DATA KARYAWAN (M-02) -->
                             <div class="col-md-6">
-                                <div class="form-group">
+                                <div class="form-group mb-0">
                                     <label class="font-weight-600">Data Karyawan</label>
                                     <select name="employee_id" id="editEmployee" class="form-control">
                                         <option value="">— Tidak terhubung —</option>
@@ -620,6 +576,22 @@
 
 @push('styles')
 <style>
+
+/* Jarak antar isian di modal PIC dibuat seragam: tinggi tiap kolom disamakan
+   supaya keterangan kecil di bawah "Akun User" tidak menggeser baris berikutnya. */
+#modalTambah .modal-body .form-group,
+#modalEdit   .modal-body .form-group { margin-bottom:18px; }
+#modalTambah .modal-body .row > [class^="col-"],
+#modalEdit   .modal-body .row > [class^="col-"] { display:flex; flex-direction:column; }
+#modalTambah .modal-body .form-group.mb-0,
+#modalEdit   .modal-body .form-group.mb-0 { margin-bottom:0 !important; }
+/* Keterangan kecil diletakkan di sela jarak baris, bukan menambah tinggi
+   kolomnya, supaya baris "Data Karyawan" di bawahnya tidak ikut terdorong. */
+#modalTambah .modal-body .form-group { position:relative; }
+#modalTambah .modal-body .field-hint {
+    position:absolute; top:100%; left:0; right:0; margin-top:2px;
+    font-size:12px; line-height:1.3;
+}
 
 .action-header-buttons { display:flex; gap:8px; }
 .card-header .btn      { border-radius:var(--radius-sm); font-weight:600; }
@@ -753,10 +725,8 @@ $(function () {
     |--------------------------------------------------------------------------
     */
     [
-        ['#tambahBank',     '— Pilih Bank —',        'Cari bank...'],
         ['#tambahUser',     '— Tidak terhubung —',   'Cari akun user...'],
         ['#tambahEmployee', '— Tidak terhubung —',   'Cari karyawan...'],
-        ['#editBank',       '— Pilih Bank —',        'Cari bank...'],
         ['#editUser',       '— Tidak terhubung —',   'Cari akun user...'],
         ['#editEmployee',   '— Tidak terhubung —',   'Cari karyawan...'],
     ].forEach(function (cfg) {
@@ -772,7 +742,7 @@ $(function () {
         if (activeTab === 'internal') $('#tambahType').val('internal');
         // reset() hanya mengubah <select> yang tersembunyi — tombolnya masih
         // memajang pilihan sebelumnya sampai diberitahu.
-        $('#tambahBank, #tambahUser, #tambahEmployee').trigger('tss:sync');
+        $('#tambahUser, #tambahEmployee').trigger('tss:sync');
         $('#modalTambah').modal('show');
         $('#modalTambah').one('shown.bs.modal', function () {
             $('#tambahPic').focus();
@@ -793,8 +763,6 @@ $(function () {
             $('#editType').val(res.type);
             $('#editPic').val(res.pic);
             $('#editPosition').val(res.position ?? '');
-            $('#editBank').val(res.bank_id ?? '');
-            $('#editAccountNumber').val(res.account_number ?? '');
             $('#editPhone').val(res.phone ?? '');
             $('#editEmail').val(res.email ?? '');
             $('#editToken').val(res.token ?? '');
@@ -806,7 +774,7 @@ $(function () {
             $('#editUser').val(res.user_id ?? '');
             $('#editEmployee').val(res.employee_id ?? '');
             $('#editStatus').val(res.status);
-            $('#editBank, #editUser, #editEmployee').trigger('tss:sync');
+            $('#editUser, #editEmployee').trigger('tss:sync');
 
             $('#editLoading').hide();
             $('#editFields').show();

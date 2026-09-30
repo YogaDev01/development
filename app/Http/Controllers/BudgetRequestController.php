@@ -776,12 +776,17 @@ class BudgetRequestController extends Controller
     /** Batas baris yang dirender ke satu tab (DataTables memproses semua baris di browser). */
     private const TAB_MAX_ROWS = 1000;
 
-    /** @return array{0:string,1:string} [dateFrom, dateTo] — default awal bulan s/d hari ini. */
+    /**
+     * @return array{0:string,1:string} [dateFrom, dateTo] — default 12 bulan terakhir.
+     *
+     * Default sebelumnya awal bulan s/d hari ini, sehingga tiap tanggal 1 daftar
+     * CR tampak kosong: semua pengajuan bulan-bulan sebelumnya jatuh di luar rentang.
+     */
     private function crDateRange(Request $request): array
     {
         return [
-            $request->filled('date_from') ? $request->date_from : now()->startOfMonth()->format('Y-m-d'),
-            $request->filled('date_to')   ? $request->date_to   : now()->format('Y-m-d'),
+            $request->filled('date_from') ? $request->date_from : now()->startOfMonth()->subMonths(11)->format('Y-m-d'),
+            $request->filled('date_to')   ? $request->date_to   : now()->endOfMonth()->format('Y-m-d'),
         ];
     }
 
@@ -1236,6 +1241,20 @@ class BudgetRequestController extends Controller
             'approved_at'      => $cr->approved_at?->format('d M Y H:i'),
             'paid_at'          => $cr->paid_at?->format('d M Y H:i'),
 
+            /*
+             | Riwayat pengajuan BENEFICIARY yang sama — dipakai panel Info di
+             | Todo List supaya approver bisa melihat apa saja yang pernah
+             | dibayarkan ke orang ini tanpa pindah halaman.
+             |
+             | Kolom "cost" sengaja TIDAK selalu diambil dari nilai pengajuan:
+             | Cash Advance baru diketahui biayanya setelah settlement, jadi
+             | yang berlaku adalah total realisasinya. Settlement 0 berarti
+             | belum ada realisasi sama sekali — di situ nilai pengajuan yang
+             | masih mewakili biayanya. Non Cash Advance selalu memakai nilai
+             | pengajuan.
+             */
+            'beneficiary_history' => $this->beneficiaryHistory($cr),
+
             'details' => $cr->details->map(function ($d) {
                 $bd        = $d->budgetDetail;
                 $budget    = $bd->total ?? 0;
@@ -1419,6 +1438,50 @@ class BudgetRequestController extends Controller
             ] : null,
         ]);
     }
+
+    /**
+     * Riwayat pengajuan Cost Request untuk beneficiary yang sama.
+     *
+     * Hanya CR yang sudah benar-benar dibayar yang masuk (paid_at terisi) —
+     * yang dicari pemakainya adalah "apa saja yang pernah cair ke orang ini",
+     * bukan daftar pengajuan yang masih bisa batal di tengah jalan. CR yang
+     * sedang dibuka sendiri dikeluarkan supaya tidak terhitung dua kali.
+     *
+     * Nilai "cost": Cash Advance dinilai dari settlement-nya, dan baru jatuh
+     * balik ke nilai pengajuan kalau settlement-nya masih 0 (belum ada
+     * realisasi). Non Cash Advance selalu memakai nilai pengajuan.
+     */
+    private function beneficiaryHistory(BudgetRequest $cr): \Illuminate\Support\Collection
+    {
+        if (! $cr->beneficiary_id) {
+            return collect();
+        }
+
+        return BudgetRequest::with(['type', 'realizations'])
+            ->where('beneficiary_id', $cr->beneficiary_id)
+            ->where('id', '!=', $cr->id)
+            ->whereNotNull('paid_at')
+            ->orderByDesc('paid_at')
+            ->limit(50)
+            ->get()
+            ->map(function ($h) {
+                $cost = $h->isCashAdvance()
+                    ? ((int) $h->total_realization ?: (int) $h->amount)
+                    : (int) $h->amount;
+
+                return [
+                    'id'             => $h->id,
+                    'code'           => $h->code,
+                    'description'    => $h->description,
+                    'type'           => $h->type?->name ?? '-',
+                    'cost'           => $cost,
+                    'cost_formatted' => number_format($cost, 0, ',', '.'),
+                    'paid_at'        => $h->paid_at?->format('d M Y') ?? '-',
+                ];
+            })
+            ->values();
+    }
+
 
     /*
     |--------------------------------------------------------------------------
@@ -2616,7 +2679,8 @@ class BudgetRequestController extends Controller
     {
         $query = BudgetRequest::with([
             'type', 'cluster', 'budgetPlan.project', 'budgetPlan.costCenter',
-            'applicant', 'beneficiary', 'details.account', 'statusLogs', 'realizations',
+            'applicant', 'beneficiary.pic', 'details.account', 'statusLogs', 'realizations',
+            'dailyTransactionItems.dailyTransaction',
         ]);
 
         $this->scopeByRole($query);
@@ -2677,6 +2741,8 @@ class BudgetRequestController extends Controller
             'request'   => ['Request',      16, fn ($cr) => (int) $cr->amount],
             'realisasi' => ['Settlement',   16, fn ($cr) => (int) $cr->total_realization],
             'refund'    => ['Refund',       16, fn ($cr) => (int) $cr->refundAmount()],
+            'claim'     => ['Expense Claim', 16, fn ($cr) => (int) $cr->expenseClaimAmount()],
+            'pic'       => ['PIC',          20, fn ($cr) => $cr->beneficiary?->pic?->pic ?? '-'],
             // Cost: Cash Advance = nilai Settlement, Cost Payment = nilai Request.
             'cost'      => ['Cost',         16, fn ($cr) => $cr->isCashAdvance() ? (int) $cr->total_realization : (int) $cr->amount],
             'status'    => ['Status',       14, fn ($cr) => $cr->status],
@@ -2686,12 +2752,39 @@ class BudgetRequestController extends Controller
                 ? ($cr->budgetPlan->project?->name ?? '-')
                 : ($cr->budgetPlan?->costCenter?->name ?? '-')],
             'nob'       => ['NOB',           8, fn ($cr) => $cr->is_nob ? 'YA' : '-'],
-            'txid'      => ['Transaction ID', 22, fn ($cr) => $cr->statusLogs->firstWhere('action_type', 'paid')?->notes ?? '-'],
+            /*
+            | Transaction ID = kode batch Treasury yang membayar CR ini
+            | (daily_transactions.code, mis. 202609280010009). Dulu diambil
+            | dari catatan log 'paid', padahal kolom itu hanya terisi kalau
+            | Treasury kebetulan mengetik sesuatu — hasilnya hampir selalu
+            | kosong. Baris Second Payment dikecualikan: yang dicari adalah
+            | pembayaran pengajuan awalnya.
+            */
+            'txid'      => ['Transaction ID', 22, function ($cr) {
+                $item = $cr->dailyTransactionItems
+                    ->whereNull('second_payment_id')
+                    ->where('status', 'INCLUDED')
+                    ->sortByDesc('id')
+                    ->first();
+
+                return $item?->dailyTransaction?->code
+                    ?? ($cr->statusLogs->firstWhere('action_type', 'paid')?->notes ?: '-');
+            }],
         ];
 
-        $legacyOrder = ['code', 'tanggal', 'paid_at', 'desc', 'type', 'sumber', 'penerima', 'pengaju', 'request', 'realisasi', 'refund', 'status', 'nob', 'txid'];
-        $requested   = collect((array) $request->input('cols', []))->filter(fn ($k) => isset($columnDefs[$k]))->values()->all();
-        $activeCols  = $requested ?: $legacyOrder;
+        /*
+        | Export SELALU memuat seluruh kolom, tidak lagi mengikuti kolom yang
+        | kebetulan tampil di layar. Menyembunyikan kolom di tabel tujuannya
+        | merapikan pandangan, bukan memangkas isi berkas — dan file inilah
+        | yang dipakai untuk rekap di luar aplikasi, jadi kolom yang hilang
+        | tidak bisa dipulihkan penerimanya.
+        */
+        $activeCols = [
+            'code', 'tanggal', 'paid_at', 'desc', 'jenis', 'type', 'sumber',
+            'penerima', 'pic', 'pengaju',
+            'request', 'realisasi', 'refund', 'claim', 'cost',
+            'status', 'nob', 'txid',
+        ];
 
         foreach ($activeCols as $i => $key) {
             $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1);

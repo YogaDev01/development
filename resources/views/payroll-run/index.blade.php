@@ -208,7 +208,7 @@ $(function () {
             searching: true,
             responsive: { details: { type: 'inline' } },
             order: [], // pertahankan urutan asli dari server (input terbaru di atas)
-            dom: 'rt<"d-flex justify-content-between align-items-center mt-3"ip>',
+            dom: 'rt<"d-flex justify-content-between align-items-center mt-3"i<"d-flex align-items-center"lp>>',
             columnDefs: [
                 { targets: [0], visible: false, orderable: false },
                 { responsivePriority: 1,   targets: [0, 2, 5, -1] },

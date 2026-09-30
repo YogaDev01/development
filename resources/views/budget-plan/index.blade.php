@@ -571,8 +571,9 @@
                                                     <th scope="col" style="color:var(--text-faint);font-size:11px;width:1%;"></th>
                                                     <th scope="col" style="color:var(--text-faint);font-size:11px;">Description</th>
                                                     <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:1%;white-space:nowrap;">Request</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:1%;white-space:nowrap;">Realization</th>
+                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:1%;white-space:nowrap;">Settlement</th>
                                                     <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:1%;white-space:nowrap;">Refund</th>
+                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:1%;white-space:nowrap;">Expense Claim</th>
                                                     <th scope="col" style="color:var(--text-faint);font-size:11px;width:1%;white-space:nowrap;">Date</th>
                                                     <th scope="col" style="color:var(--text-faint);font-size:11px;width:1%;white-space:nowrap;">Status</th>
                                                 </tr>
@@ -585,6 +586,7 @@
                                                     <th class="text-right" id="bpRequestTotal" style="color:var(--info);"></th>
                                                     <th class="text-right" id="bpRealizationTotal" style="color:var(--success);"></th>
                                                     <th class="text-right" id="bpRefundTotal" style="color:var(--warning);"></th>
+                                                    <th class="text-right" id="bpClaimTotal" style="color:var(--danger);"></th>
                                                     <th colspan="2"></th>
                                                 </tr>
                                             </tfoot>
@@ -1714,7 +1716,7 @@ $(function () {
                 'REALIZED':'success','CLOSED':'dark','REJECTED':'danger'
             };
             $('#bpRequestCount').text(d.requests.length);
-            var reqHtml = '', reqTotalAmount = 0, reqTotalRealization = 0, reqTotalRefund = 0;
+            var reqHtml = '', reqTotalAmount = 0, reqTotalRealization = 0, reqTotalRefund = 0, reqTotalClaim = 0;
             if (d.requests.length) {
                 d.requests.forEach(function (cr, ri) {
                     var isFinal = cr.status === 'REALIZED' || cr.status === 'CLOSED';
@@ -1722,6 +1724,7 @@ $(function () {
                     reqTotalAmount += cr.amount || 0;
                     reqTotalRealization += cr.realization || 0;
                     reqTotalRefund += refundVal;
+                    reqTotalClaim += cr.expense_claim || 0;
                     var reqClass = 'bp-req-' + ri;
                     reqHtml += '<tr class="bp-req-row" data-target="' + reqClass + '">' +
                         '<td><i class="fas fa-chevron-right bp-req-caret"></i></td>' +
@@ -1735,6 +1738,7 @@ $(function () {
                         '</td>' +
                         '<td class="text-right text-nowrap">' + cr.realization_formatted + '</td>' +
                         '<td class="text-right text-nowrap">' + (isFinal ? cr.refund_formatted : '<span class="text-muted">-</span>') + '</td>' +
+                        '<td class="text-right text-nowrap">' + ((cr.expense_claim || 0) > 0 ? cr.expense_claim_formatted : '<span class="text-muted">-</span>') + '</td>' +
                         '<td class="text-nowrap">' + cr.date + '</td>' +
                         '<td><span class="badge badge-' + (crStatusColors[cr.status] || 'secondary') + ' px-2 py-1" style="font-size:10px;">' + cr.status + '</span></td>' +
                     '</tr>';
@@ -1748,21 +1752,22 @@ $(function () {
                                 '<td class="bp-req-indent" colspan="2" style="' + strike + '">' + det.description + badge +
                                     (det.notes ? '<div><small class="text-muted" style="text-decoration:none;">' + det.notes + '</small></div>' : '') +
                                 '</td>' +
-                                '<td class="text-right" colspan="3" style="' + strike + '">' + det.qty + ' &times; ' + det.amount_formatted + ' = <strong>' + det.total_formatted + '</strong></td>' +
+                                '<td class="text-right" colspan="4" style="' + strike + '">' + det.qty + ' &times; ' + det.amount_formatted + ' = <strong>' + det.total_formatted + '</strong></td>' +
                                 '<td></td>' +
                             '</tr>';
                         });
                     } else {
-                        reqHtml += '<tr class="' + reqClass + '" style="display:none;"><td></td><td colspan="6" class="text-muted bp-req-indent">No item detail.</td></tr>';
+                        reqHtml += '<tr class="' + reqClass + '" style="display:none;"><td></td><td colspan="7" class="text-muted bp-req-indent">No item detail.</td></tr>';
                     }
                 });
             } else {
-                reqHtml = '<tr><td colspan="7" class="text-center text-muted py-3">No linked Cost Request yet.</td></tr>';
+                reqHtml = '<tr><td colspan="8" class="text-center text-muted py-3">No linked Cost Request yet.</td></tr>';
             }
             $('#bpRequestBody').html(reqHtml);
             $('#bpRequestTotal').text(reqTotalAmount.toLocaleString('id-ID'));
             $('#bpRealizationTotal').text(reqTotalRealization.toLocaleString('id-ID'));
             $('#bpRefundTotal').text(reqTotalRefund.toLocaleString('id-ID'));
+            $('#bpClaimTotal').text(reqTotalClaim.toLocaleString('id-ID'));
 
             /* Tab Attachment — thumbnail gambar (medium), file lain pakai ikon; klik gambar buka carousel viewer */
             $('#bpAttCount').text(d.attachments.length);

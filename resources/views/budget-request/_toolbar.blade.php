@@ -23,14 +23,29 @@
         <button aria-label="Clear Filter" type="button" class="btn btn-outline-secondary btn-sm cr-btn-clear" title="Clear Filter">
             <i class="fas fa-eraser"></i>
         </button>
-        <div class="cr-row-filters d-flex flex-wrap" style="gap:8px;"></div>
-    </div>
-    <div class="custom-toolbar-right d-flex flex-wrap" style="gap:8px;">
-        <div class="dropdown cr-col-dropdown">
-            <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown">
+        <div class="cr-pop cr-filter-dropdown">
+            <button type="button" class="btn btn-outline-secondary btn-sm cr-pop-toggle cr-filter-toggle"
+                    aria-haspopup="true" aria-expanded="false">
+                <i class="fas fa-filter mr-1"></i> Filter
+            </button>
+            <div class="cr-pop-menu cr-filter-panel p-3" style="min-width:420px;">
+                <div class="text-muted mb-2" style="font-size:10px;font-weight:700;letter-spacing:.04em;">FILTER</div>
+                {{-- Diisi TesysColumnFilter: satu tombol per field, masing-masing
+                     membuka daftar bercentang dengan kotak pencarian. --}}
+                <div class="cr-row-filters"></div>
+                {{-- Tanpa tombol "Terapkan": filter langsung berlaku begitu nilainya
+                     dicentang, jadi tombol itu hanya menambah satu klik. --}}
+                <div class="mt-3">
+                    <button type="button" class="btn btn-outline-secondary btn-sm cr-filter-reset">Reset</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="cr-pop cr-col-dropdown">
+            <button type="button" class="btn btn-outline-secondary btn-sm cr-pop-toggle">
                 <i class="fas fa-columns mr-1"></i> Kolom
             </button>
-            <div class="dropdown-menu dropdown-menu-right p-2" style="min-width:200px;max-height:340px;overflow-y:auto;">
+            <div class="cr-pop-menu p-2" style="min-width:200px;max-height:340px;overflow-y:auto;">
                 @foreach($hideable as $key => $label)
                 <div class="custom-control custom-checkbox">
                     <input type="checkbox" class="custom-control-input cr-col-vis-toggle" id="crColVis_{{ $tab }}_{{ $key }}" data-column="{{ $key }}">
@@ -39,6 +54,8 @@
                 @endforeach
             </div>
         </div>
+    </div>
+    <div class="custom-toolbar-right d-flex flex-wrap" style="gap:8px;">
         <a href="{{ url('/budget-request/export') }}" class="btn btn-info btn-sm cr-btn-export" data-tab="{{ $tab }}">
             <i class="fas fa-file-excel mr-1"></i> Export Excel
         </a>

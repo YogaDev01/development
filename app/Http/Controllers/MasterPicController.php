@@ -35,7 +35,7 @@ class MasterPicController extends Controller
             $tab = 'internal';
         }
 
-        $pics = MasterPic::with(['user:id,username,name', 'employee:id,name,employee_number', 'bank:id,name'])
+        $pics = MasterPic::with(['user:id,username,name', 'employee:id,name,employee_number'])
             ->withCount('beneficiaries')
             ->when(in_array($type, array_keys(MasterPic::TYPES), true), fn ($q) => $q->where('type', $type))
             ->when(in_array($status, ['ACTIVE', 'INACTIVE'], true), fn ($q) => $q->where('status', $status))
@@ -46,7 +46,6 @@ class MasterPicController extends Controller
                     ->orWhere('position', 'like', $like)
                     ->orWhere('phone', 'like', $like)
                     ->orWhere('email', 'like', $like)
-                    ->orWhere('account_number', 'like', $like)
                     ->orWhere('token', 'like', $like)
                     ->orWhereHas('user', fn ($r) => $r->where('username', 'like', $like)->orWhere('name', 'like', $like)));
             })
@@ -96,14 +95,10 @@ class MasterPicController extends Controller
         $employees = \App\Models\Employee::where('status', 'ACTIVE')
             ->orderBy('name')->get(['id', 'name', 'employee_number']);
 
-        // Rekening PIC memakai bank yang sama dengan Beneficiary, bukan teks
-        // bebas — lihat migrasi 2026_09_22_000020.
-        $banks = \App\Models\Bank::orderBy('name')->get(['id', 'name']);
-
         $filters = ['type' => $type, 'status' => $status, 'q' => $search, 'unlinked' => $unlinked];
 
         return view('master-pic.index', compact(
-            'pics', 'summary', 'summaries', 'users', 'employees', 'banks', 'filters', 'tab', 'tabCounts'
+            'pics', 'summary', 'summaries', 'users', 'employees', 'filters', 'tab', 'tabCounts'
         ));
     }
 
@@ -116,8 +111,6 @@ class MasterPicController extends Controller
             'type'        => 'required|in:' . implode(',', array_keys(MasterPic::TYPES)),
             'pic'         => 'required|string|max:255',
             'position'    => 'nullable|string|max:255',
-            'bank_id'        => 'nullable|exists:banks,id',
-            'account_number' => 'nullable|string|max:50',
             'phone'       => 'nullable|string|max:50',
             'email'       => 'nullable|email|max:255',
             // Token bebas huruf/angka; nominal boleh kosong tapi kalau diisi
@@ -134,8 +127,6 @@ class MasterPicController extends Controller
             'type'        => $request->type,
             'pic'         => strtoupper($request->pic),
             'position'    => $request->position,
-            'bank_id'        => $request->bank_id ?: null,
-            'account_number' => $request->account_number ?: null,
             'phone'       => $request->phone,
             'email'       => $request->email,
             'token'       => $request->token ?: null,
@@ -165,8 +156,6 @@ class MasterPicController extends Controller
             'type'     => $pic->type,
             'pic'      => $pic->pic,
             'position' => $pic->position,
-            'bank_id'        => $pic->bank_id,
-            'account_number' => $pic->account_number,
             'phone'    => $pic->phone,
             'email'       => $pic->email,
             'token'       => $pic->token,
@@ -186,8 +175,6 @@ class MasterPicController extends Controller
             'type'        => 'required|in:' . implode(',', array_keys(MasterPic::TYPES)),
             'pic'         => 'required|string|max:255',
             'position'    => 'nullable|string|max:255',
-            'bank_id'        => 'nullable|exists:banks,id',
-            'account_number' => 'nullable|string|max:50',
             'phone'       => 'nullable|string|max:50',
             'email'       => 'nullable|email|max:255',
             // Token bebas huruf/angka; nominal boleh kosong tapi kalau diisi
@@ -206,8 +193,6 @@ class MasterPicController extends Controller
             'type'        => $request->type,
             'pic'         => strtoupper($request->pic),
             'position'    => $request->position,
-            'bank_id'        => $request->bank_id ?: null,
-            'account_number' => $request->account_number ?: null,
             'phone'       => $request->phone,
             'email'       => $request->email,
             'token'       => $request->token ?: null,

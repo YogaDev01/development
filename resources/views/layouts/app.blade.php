@@ -584,10 +584,10 @@
 <script src="{{ asset('plugins/datatables-responsive/js/responsive.bootstrap4.min.js') }}"></script>
 
 <!-- TESYS TABLE (kendali daftar: Page Size masuk ke bilah kendali) -->
-<script src="@aset('js/tesys-table.js')"></script>
 
 <!-- TESYS COLUMN FILTER (filter header ala Excel untuk DataTables) -->
 <script src="@aset('js/tesys-column-filter.js')"></script>
+<script src="@aset('js/tesys-toolbar-actions.js')"></script>
 
 <!-- TESYS TIMELINE (riwayat workflow) -->
 <script src="@aset('js/tesys-timeline.js')"></script>

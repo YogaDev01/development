@@ -96,8 +96,8 @@
                                         'receiveddate'  => 'Received Date',
                                         'aging'         => 'Aging',
                                         'invoice'       => 'Invoice',
-                                        'tax'           => 'Tax',
-                                        'wht'           => 'Withholding Tax',
+                                        'tax'           => 'PPN',
+                                        'wht'           => 'PPH',
                                         'total'         => 'Total',
                                         'received'      => 'Payment',
                                         'lastcr'        => 'Payment Date',
@@ -140,9 +140,9 @@
                                 <th scope="col" class="text-nowrap" style="width:1%;">Received Date</th>
                                 <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Invoice</th>
-                                <th scope="col" class="text-right text-nowrap" style="width:1%;">Tax</th>
-                                <th scope="col" class="text-right text-nowrap" style="width:1%;" title="PPh yang dipotong di muka — mengurangi Total">Withholding Tax</th>
-                                <th scope="col" class="text-right text-nowrap" style="width:1%;" title="Invoice + Tax &minus; Withholding Tax">Total</th>
+                                <th scope="col" class="text-right text-nowrap" style="width:1%;">PPN</th>
+                                <th scope="col" class="text-right text-nowrap" style="width:1%;" title="PPh yang dipotong di muka — mengurangi Total">PPH</th>
+                                <th scope="col" class="text-right text-nowrap" style="width:1%;" title="Invoice + PPN &minus; PPH">Total</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Payment</th>
                                 <th scope="col" class="text-nowrap" style="width:1%;">Payment Date</th>
                                 <th scope="col" class="text-center text-nowrap" style="width:1%;">Status</th>
@@ -302,7 +302,9 @@
 
                                         $adaAksi = $bolehDraft || $bolehVerify || $bolehApprove
                                             || $bolehRevisi || $bolehPulihkan || $bolehBatal;
-                                        $adaMenu = $bolehDraft || $bolehRevisi || $bolehPulihkan || $bolehBatal;
+                                        // Aksi pertama selalu jadi tombol utama; sisanya (minimal Komentar)
+                                        // selalu masuk ke titik tiga.
+                                        $adaMenu = true;
                                     @endphp
 
                                     <div class="action-buttons ts-actions">
@@ -344,9 +346,9 @@
                                         {{-- Tanpa aksi, barisnya tetap punya jalan masuk ke detail --}}
                                         @unless($adaAksi)
                                         <a href="{{ url('/invoice-cash-receipt/' . $invoice->id) }}"
-                                           class="ts-action-more"
+                                           class="ts-action-primary is-neutral"
                                            title="Lihat detail" aria-label="Lihat detail {{ $invoice->code }}">
-                                            <i class="fas fa-eye" aria-hidden="true"></i>
+                                            <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Detail</span>
                                         </a>
                                         @endunless
 
@@ -360,9 +362,16 @@
 
                                         <div class="ts-action-menu dropdown-menu" hidden>
 
+                                            @if($adaAksi)
                                             <a href="{{ url('/invoice-cash-receipt/' . $invoice->id) }}" class="dropdown-item">
                                                 <i class="fas fa-eye"></i>Detail
                                             </a>
+                                            @endif
+
+                                            <button type="button" class="dropdown-item btn-comment-inv"
+                                                    data-id="{{ $invoice->id }}" data-code="{{ $invoice->code }}">
+                                                <i class="fas fa-comment"></i>Komentar
+                                            </button>
 
                                             @if($bolehDraft)
                                             <a href="{{ route('invoice-cash-receipt.edit', $invoice->id) }}" class="dropdown-item">
@@ -423,6 +432,33 @@
                     </table>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+{{-- MODAL KOMENTAR --}}
+<div class="modal fade" id="mdlCommentInv" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
+            <div class="modal-header" style="background:var(--charcoal);border-bottom:3px solid var(--accent);">
+                <h5 class="modal-title text-white"><i class="fas fa-comment mr-2" style="color:var(--accent);"></i> Komentar Invoice</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <form id="frmCommentInv" method="POST">
+                @csrf
+                <div class="modal-body" style="padding:24px 28px;">
+                    <p id="commentInvText" class="text-muted mb-3"></p>
+                    <div class="form-group mb-0">
+                        <label class="font-weight-600">Komentar <span class="text-danger">*</span></label>
+                        <textarea name="comment" class="form-control" rows="4" maxlength="2000"
+                                  placeholder="Tulis komentar..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer" style="background:var(--surface-2);">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane mr-1"></i> Kirim</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -541,20 +577,32 @@
 .inv-hscroll #tblInvoice th,
 .inv-hscroll #tblInvoice td { white-space:nowrap; }
 
+/* Kolom Code & Action dibekukan di tepi kiri/kanan — termasuk sel header dan
+   footer-nya. position:sticky pada <th> perlu !important karena CSS DataTables
+   memasang position:relative pada setiap header yang bisa diurutkan
+   (table.dataTable>thead .sorting), yang kalau menang akan membatalkan freeze
+   di baris header saja: datanya beku, judul kolomnya ikut menggeser.
+   Latar sel wajib pekat, kalau tidak isi kolom lain terlihat menembusnya. */
 .inv-hscroll #tblInvoice th.inv-col-code,
 .inv-hscroll #tblInvoice td.inv-col-code {
-    position:sticky; left:0; z-index:3; background:var(--surface);
+    position:sticky !important; left:0; z-index:3;
+    background:var(--surface);
     box-shadow:2px 0 6px -2px rgba(0,0,0,.18);
 }
 .inv-hscroll #tblInvoice th.action-column,
 .inv-hscroll #tblInvoice td.action-column {
-    position:sticky; right:0; z-index:3; background:var(--surface);
+    position:sticky !important; right:0; z-index:3;
+    background:var(--surface);
     box-shadow:-2px 0 6px -2px rgba(0,0,0,.18);
 }
 .inv-hscroll #tblInvoice thead th.inv-col-code,
-.inv-hscroll #tblInvoice thead th.action-column { background:var(--surface-2); z-index:4; }
+.inv-hscroll #tblInvoice thead th.action-column,
 .inv-hscroll #tblInvoice tfoot th.inv-col-code,
-.inv-hscroll #tblInvoice tfoot th.action-column { background:var(--surface-2); }
+.inv-hscroll #tblInvoice tfoot th.action-column {
+    background:var(--surface-2) !important; z-index:4;
+}
+.inv-hscroll #tblInvoice tbody tr:hover > td.inv-col-code,
+.inv-hscroll #tblInvoice tbody tr:hover > td.action-column { background:var(--surface-2); }
 
 .dataTables_wrapper .row:last-child { margin-top:18px; align-items:center; }
 .dataTables_info { padding-top:0 !important; font-size:14px; color:var(--text-faint); }
@@ -801,7 +849,7 @@ $(function () {
         if (tombol && window.TesysUI && TesysUI.busy) TesysUI.busy(tombol, true);
     }
 
-    $(document).on('submit', '#frmReviseInv, #frmCancelInv', function () { sibukkan(this); });
+    $(document).on('submit', '#frmReviseInv, #frmCancelInv, #frmCommentInv', function () { sibukkan(this); });
 
     /* SUBMIT CONFIRM */
     $(document).on('submit', '.frmSubmitInv', function (e) {
@@ -829,6 +877,15 @@ $(function () {
         e.preventDefault(); var form = this;
         Swal.fire({ title:'Hapus Invoice?', text:'Data tidak dapat dikembalikan.', icon:'warning', showCancelButton:true, confirmButtonColor:WARNA_BAHAYA, cancelButtonColor:WARNA_BATAL, confirmButtonText:'Ya, Hapus', cancelButtonText:'Batal' })
         .then(function(r){ if(r.isConfirmed) { sibukkan(form); form.submit(); } });
+    });
+
+    /* ── KOMENTAR ── */
+    $(document).on('click', '.btn-comment-inv', function () {
+        var id = $(this).data('id');
+        $('#commentInvText').text('Komentar untuk invoice ' + $(this).data('code') + ' akan tercatat di Log & Approval.');
+        $('#frmCommentInv').attr('action', '/invoice-cash-receipt/' + id + '/comment');
+        $('#frmCommentInv textarea[name="comment"]').val('');
+        $('#mdlCommentInv').modal('show');
     });
 
     /* ── REVISE ── */

@@ -517,6 +517,13 @@ body.tesys-ui .dataTables_wrapper .pagination .page-item.disabled .page-link {
     color: var(--text-faint) !important;
     opacity: .6;
 }
+/* Page Size duduk di baris bawah, tepat di kiri Previous/Next — beri jarak
+   supaya tidak menempel ke tombol halaman. */
+body.tesys-ui .dataTables_wrapper .dataTables_length {
+    display: flex;
+    align-items: center;
+    margin-right: 12px !important;
+}
 /* Pemilih jumlah baris disamakan tingginya dengan tombol halaman. */
 body.tesys-ui .dataTables_wrapper .dataTables_length select {
     height: 34px !important;
@@ -1373,47 +1380,20 @@ body.tesys-ui.sidebar-rail .sidebar .brand .brand-text { display: none; }
 }
 
 /* =====================================================================
-   BILAH KENDALI vs TOMBOL AKSI
-   Bilah abu hanya berisi kendali daftar: pencarian, filter, dan jumlah
-   baris. Tombol yang MENGUBAH sesuatu (tambah, export, atur kolom) keluar
-   dari bilah itu dan berdiri di barisnya sendiri di kanan atas — supaya
-   "menyaring apa yang saya lihat" tidak tercampur dengan "melakukan sesuatu".
+   BILAH KENDALI + TOMBOL AKSI — SATU BARIS
+   Satu bilah abu berisi kendali daftar (pencarian, filter, kolom) di kiri
+   dan tombol aksi (Export, Tambah) di kanan.
 
-   Tanpa mengubah markup 23 halaman: urutan visualnya dibalik lewat
-   column-reverse, jadi .custom-toolbar-right (aksi) naik ke atas.
-
-   Sebagian halaman memakai .custom-toolbar TANPA pembagian kiri/kanan —
-   seluruh isinya memang kendali. Yang itu tetap satu baris; pembedanya
-   :has(), yang sudah dipakai berkas ini di tempat lain.
+   Sebelumnya keduanya dipisah jadi dua baris lewat column-reverse: tombol
+   aksi naik ke atas, di luar bilah abu. Pemisahan itu memakan satu baris
+   penuh hanya untuk dua tombol dan membuat tepi kanan bilah kosong
+   melompong, jadi keduanya dirapatkan kembali ke satu baris.
    ===================================================================== */
 
-/* ---- Bilah yang terbagi: wadahnya bening, yang abu hanya bagian kiri ---- */
+/* ---- Bilah yang terbagi: wadahnya sendiri yang jadi bilah abu ---- */
 body.tesys-ui .custom-toolbar:has(> .custom-toolbar-left) {
     display: flex;
-    flex-direction: column-reverse;
-    gap: var(--sp-2);
-    padding: 0;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-}
-
-/* Baris tombol aksi — rata kanan, di luar bilah abu.
-   align-self dipakai (bukan mengandalkan align-items induk) karena markup
-   halaman memasang kelas utilitas Bootstrap .align-items-center ber-!important
-   pada .custom-toolbar; align-self tidak ditimpa olehnya. */
-body.tesys-ui .custom-toolbar-right {
-    align-self: flex-end;
-    margin-left: 0;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    gap: var(--sp-2);
-}
-
-/* Bilah abu: pencarian + filter di kiri, jumlah baris di kanan. */
-body.tesys-ui .custom-toolbar-left {
-    align-self: stretch;
-    display: flex;
+    flex-direction: row;
     align-items: center;
     flex-wrap: wrap;
     gap: var(--sp-2);
@@ -1421,6 +1401,35 @@ body.tesys-ui .custom-toolbar-left {
     background: var(--surface-2);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
+}
+
+/* Tombol aksi — rata kanan pada baris yang sama.
+   align-self dipakai (bukan mengandalkan align-items induk) karena markup
+   halaman memasang kelas utilitas Bootstrap .align-items-center ber-!important
+   pada .custom-toolbar; align-self tidak ditimpa olehnya. */
+body.tesys-ui .custom-toolbar-right {
+    align-self: center;
+    margin-left: auto;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+}
+
+/* Bagian kiri: bening, karena wadahnya yang sudah abu. */
+body.tesys-ui .custom-toolbar-left {
+    align-self: center;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+}
+
+@media (max-width: 640px) {
+    body.tesys-ui .custom-toolbar-right { margin-left: 0; width: 100%; }
 }
 
 /* ---- Bilah yang tidak terbagi: seluruh isinya kendali, satu baris abu ---- */
@@ -1431,36 +1440,6 @@ body.tesys-ui .custom-toolbar:not(:has(> .custom-toolbar-left)) {
     border-radius: var(--radius-sm);
     row-gap: var(--sp-2);
 }
-
-/* Jumlah baris dipindahkan ke bilah kendali oleh tesys-table.js, lalu
-   didorong ke ujung kanan bilah. !important diperlukan karena
-   tesys-ui-base.css mengunci margin elemen ini dengan !important juga. */
-body.tesys-ui .custom-toolbar .dataTables_length {
-    margin-left: auto !important;
-    margin-right: 0 !important;
-}
-body.tesys-ui .custom-toolbar .dataTables_length label {
-    margin: 0;
-    gap: 8px;
-    font-size: var(--fs-label, 11.5px);
-    font-weight: var(--fw-label, 500);
-    color: var(--text-faint);
-}
-body.tesys-ui .custom-toolbar .dataTables_length select {
-    height: 30px !important;
-    min-width: 64px !important;
-    padding: 0 26px 0 10px !important;
-    font-size: 11.5px !important;
-    font-weight: var(--fw-label, 500) !important;
-    border-radius: var(--radius-sm) !important;
-    border-color: var(--border) !important;
-    color: var(--text) !important;
-}
-
-@media (max-width: 640px) {
-    body.tesys-ui .custom-toolbar .dataTables_length { margin-left: 0 !important; width: 100%; }
-}
-
 /* =====================================================================
    PEMINDAH APLIKASI — LATAR DIREDAM
    Saat panel aplikasi terbuka, halaman di belakangnya diburamkan tipis.

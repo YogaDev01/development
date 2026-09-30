@@ -359,7 +359,14 @@
                                     <td class="text-right text-nowrap" style="font-weight:700;">
                                         {{ number_format($poGroup['amount'], 0, ',', '.') }}
                                     </td>
-                                    <td colspan="3"></td>
+                                    <td colspan="2"></td>
+                                    <td class="text-center text-nowrap">
+                                        {{-- Plan tunggal: lapis Budget Plan dilewati, jadi tombol
+                                             rincian anggarannya pindah ke baris PO ini. --}}
+                                        @if($planTunggal)
+                                        <button aria-label="View Budget" type="button" class="btn btn-outline-secondary btn-sm todo-view-budget" data-target="#mdlTodoCoa-{{ $stage['key'] }}-{{ $poi }}-0" style="padding:1px 8px;font-size:10.5px;" title="View Budget"><i class="fas fa-chart-pie"></i></button>
+                                        @endif
+                                    </td>
                                 </tr>
 
                                 @foreach($poGroup['plans'] as $pi => $group)
@@ -386,7 +393,10 @@
                                     <td class="text-right text-nowrap" style="font-weight:700;">
                                         {{ number_format($group['items']->sum('proposed_refund'), 0, ',', '.') }}
                                     </td>
-                                    <td colspan="2"></td>
+                                    <td></td>
+                                    <td class="text-center text-nowrap">
+                                        <button aria-label="View Budget" type="button" class="btn btn-outline-secondary btn-sm todo-view-budget" data-target="#mdlTodoCoa-{{ $stage['key'] }}-{{ $gi }}" style="padding:1px 8px;font-size:10.5px;" title="View Budget"><i class="fas fa-chart-pie"></i></button>
+                                    </td>
                                 </tr>
                                 @endif
                                 @foreach($group['items'] as $cr)
@@ -408,7 +418,7 @@
                                     <td class="text-nowrap">{{ $cr->beneficiary?->nickname ?? '-' }}</td>
                                     <td class="text-right text-nowrap"><strong>{{ $cr->amount_formatted }}</strong></td>
                                     <td class="text-right text-nowrap {{ $refundClass }}"><strong>{{ $cr->proposed_refund_formatted }}</strong>
-                                        @if($cr->proposed_refund < 0)<span class="badge badge-warning ml-1" style="font-size:8px;">Second Payment</span>@endif
+                                        @if($cr->proposed_refund < 0)<span class="badge badge-warning ml-1" style="font-size:8px;">Second Approval</span>@endif
                                     </td>
                                     <td class="text-center text-nowrap {{ $crAgingClass }}">{{ $cr->aging_label }}</td>
                                     <td class="text-center text-nowrap">
@@ -455,6 +465,8 @@
                     </div>
                 </div>
             </div>
+
+            @include('todo-list._budget_modals', ['key' => $stage['key'], 'groups' => $stage['data']])
             @endif
             @endforeach
 
@@ -487,10 +499,11 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($approverSecondApprove as $poGroup)
-                                @foreach($poGroup['plans'] as $group)
+                                @foreach($approverSecondApprove as $poi => $poGroup)
+                                @foreach($poGroup['plans'] as $pi => $group)
                                 @foreach($group['items'] as $cr)
                                 @php
+                                    $gi = $poi . '-' . $pi;
                                     $crAging = $cr->aging_days;
                                     $crAgingClass = $crAging >= 3 ? 'text-danger' : ($crAging >= 1 ? 'rv-nob-item' : 'text-muted');
                                 @endphp
@@ -517,6 +530,10 @@
                                                     data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Reject → Paid">
                                                 <i class="fas fa-times" aria-hidden="true"></i><span class="ts-al">Reject</span>
                                             </button>
+                                            <button aria-label="View Budget" type="button" class="ts-action-primary is-neutral todo-view-budget"
+                                                    data-target="#mdlTodoCoa-settle-2nd-{{ $gi }}" title="View Budget">
+                                                <i class="fas fa-chart-pie" aria-hidden="true"></i><span class="ts-al">View Budget</span>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -530,7 +547,9 @@
             </div>
             @endif
 
-            {{-- SETTLEMENT — CEO CLOSE (SETTLE_VERIFIED), diblokir kalau masih ada Second Payment PENDING --}}
+            @include('todo-list._budget_modals', ['key' => 'settle-2nd', 'groups' => $approverSecondApprove])
+
+            {{-- SETTLEMENT — CEO CLOSE (SETTLE_VERIFIED), diblokir kalau masih ada Second Approval PENDING --}}
             @if($ceoSettlementClose->isNotEmpty())
             <div id="tl-settle-close" class="card card-success card-outline shadow-sm mt-3 todo-worklist" data-section="settle-close">
                 <div class="card-header d-flex align-items-center">
@@ -607,7 +626,14 @@
                                     <td class="text-right text-nowrap" style="font-weight:700;">
                                         {{ number_format($poGroup['amount'], 0, ',', '.') }}
                                     </td>
-                                    <td colspan="4"></td>
+                                    <td colspan="3"></td>
+                                    <td class="text-center text-nowrap">
+                                        {{-- Plan tunggal: lapis Budget Plan dilewati, jadi tombol
+                                             rincian anggarannya pindah ke baris PO ini. --}}
+                                        @if($planTunggal)
+                                        <button aria-label="View Budget" type="button" class="btn btn-outline-secondary btn-sm todo-view-budget" data-target="#mdlTodoCoa-settle-close-{{ $poi }}-0" style="padding:1px 8px;font-size:10.5px;" title="View Budget"><i class="fas fa-chart-pie"></i></button>
+                                        @endif
+                                    </td>
                                 </tr>
 
                                 @foreach($poGroup['plans'] as $pi => $group)
@@ -628,7 +654,10 @@
                                         <span class="text-muted" style="font-size:11px;">({{ $group['pm'] }})</span>
                                         <span class="badge badge-secondary ml-1">{{ $group['items']->count() }}</span>
                                     </td>
-                                    <td colspan="3"></td>
+                                    <td colspan="2"></td>
+                                    <td class="text-center text-nowrap">
+                                        <button aria-label="View Budget" type="button" class="btn btn-outline-secondary btn-sm todo-view-budget" data-target="#mdlTodoCoa-settle-close-{{ $gi }}" style="padding:1px 8px;font-size:10.5px;" title="View Budget"><i class="fas fa-chart-pie"></i></button>
+                                    </td>
                                 </tr>
                                 @endif
                                 @foreach($group['items'] as $cr)
@@ -670,8 +699,8 @@
                                              saat Finance Verify), jadi cabang Settle Approve harus dicek
                                              lebih dulu — kalau tidak, badge "Pending" menutupi aksinya. --}}
                                         @if($cr->pending_second_payment && ! $cr->needs_settle_approve)
-                                        <span class="badge badge-warning" style="font-size:9px;" title="Second Payment {{ $cr->pending_second_payment->amount_formatted }} masih PENDING">
-                                            <i class="fas fa-hourglass-half mr-1"></i>Second Payment Pending
+                                        <span class="badge badge-warning" style="font-size:9px;" title="Second Approval {{ $cr->pending_second_payment->amount_formatted }} masih PENDING">
+                                            <i class="fas fa-hourglass-half mr-1"></i>Second Approval Pending
                                         </span>
                                         @else
                                         <div class="action-buttons ts-actions">
@@ -726,6 +755,8 @@
             </div>
             @endif
 
+            @include('todo-list._budget_modals', ['key' => 'settle-close', 'groups' => $ceoSettlementClose])
+
             {{-- SECOND PAYMENT — selisih Settlement yang belum dibayar.
                  Informatif saja: pelunasannya lewat batch Treasury
                  (Daily Transaction), bukan ditandai dari halaman ini. --}}
@@ -733,7 +764,7 @@
             <div id="tl-second-payment" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
                 <div class="card-header">
                     <h3 class="card-title mb-0">
-                        <i class="fas fa-hand-holding-usd mr-1"></i> Second Payment — Menunggu Pembayaran
+                        <i class="fas fa-hand-holding-usd mr-1"></i> Second Approval — Menunggu Pembayaran
                         <span class="badge badge-secondary ml-1">{{ $secondPaymentPending->count() }}</span>
                     </h3>
                     <div class="card-tools">
@@ -750,7 +781,7 @@
                                     <th scope="col" class="text-nowrap" style="width:1%;">CR Number</th>
                                     <th scope="col">Description</th>
                                     <th scope="col" class="text-nowrap" style="width:1%;">Beneficiary</th>
-                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:1%;">Second Payment</th>
+                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:1%;">Second Approval</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
                                 </tr>
                             </thead>
@@ -770,6 +801,14 @@
                                             </a>
                                         @else
                                             <span class="badge badge-warning" style="font-size:10px;" title="Belum dimasukkan ke batch Treasury mana pun">Belum dibatch</span>
+                                        @endif
+                                        {{-- Section ini datar (tanpa lapis Budget Plan), jadi rincian
+                                             anggarannya dibuka lewat modal Budget Plan milik CR ini. --}}
+                                        @if($cr->budget_plan_id)
+                                        <button aria-label="View Budget" type="button" class="btn btn-outline-secondary btn-sm todo-bp-detail ml-1"
+                                                data-id="{{ $cr->budget_plan_id }}" style="padding:1px 8px;font-size:10.5px;" title="View Budget">
+                                            <i class="fas fa-chart-pie"></i>
+                                        </button>
                                         @endif
                                     </td>
                                 </tr>
@@ -842,17 +881,16 @@
                                                 </button>
                                             </form>
 
+                                            <button aria-label="View Budget" type="button" class="ts-action-primary is-neutral todo-view-budget todo-po-mirror"
+                                                    data-target="#mdlTodoCoa-bp-{{ $bp->id }}-0-0" title="View Budget">
+                                                <i class="fas fa-chart-pie" aria-hidden="true"></i><span class="ts-al">View Budget</span>
+                                            </button>
                                             <button type="button" class="ts-action-more"
                                                     aria-haspopup="true" aria-expanded="false"
                                                     title="Aksi lain" aria-label="Aksi lain untuk {{ $bp->code }}">
                                                 <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
                                             </button>
                                             <div class="ts-action-menu dropdown-menu" hidden>
-                                                <button type="button" class="dropdown-item todo-bp-detail"
-                                                        data-id="{{ $bp->id }}">
-                                                    <i class="fas fa-chart-pie"></i>Lihat Rincian
-                                                </button>
-                                                <div class="dropdown-divider"></div>
                                                 <button type="button" class="dropdown-item is-danger todo-bp-reject"
                                                         data-id="{{ $bp->id }}" data-action="{{ route($stage['rejectRoute'], $bp->id) }}">
                                                     <i class="fas fa-times"></i>Reject
@@ -868,6 +906,12 @@
                     </div>
                 </div>
             </div>
+
+            {{-- Modal View Budget per Budget Plan — bentuknya sama persis dengan
+                 section Cost Request & Settlement (lihat _budget_modals). --}}
+            @foreach($stage['data'] as $bp)
+            @include('todo-list._budget_modals', ['key' => 'bp-' . $bp->id, 'groups' => $bp->view_budget_groups])
+            @endforeach
             @endif
             @endforeach
 
@@ -916,6 +960,10 @@
                                                title="Ajukan Closing di halaman Budgeting">
                                                 <i class="fas fa-flag-checkered" aria-hidden="true"></i><span class="ts-al">Ajukan Closing</span>
                                             </a>
+                                            <button aria-label="View Budget" type="button" class="ts-action-primary is-neutral todo-view-budget todo-po-mirror"
+                                                    data-target="#mdlTodoCoa-bp-{{ $bp->id }}-0-0" title="View Budget">
+                                                <i class="fas fa-chart-pie" aria-hidden="true"></i><span class="ts-al">View Budget</span>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -926,6 +974,13 @@
                 </div>
             </div>
             @endif
+
+
+            {{-- Modal View Budget per Budget Plan — bentuknya sama persis dengan
+                 section Cost Request & Settlement (lihat _budget_modals). --}}
+            @foreach($budgetingClosingDue as $bp)
+            @include('todo-list._budget_modals', ['key' => 'bp-' . $bp->id, 'groups' => $bp->view_budget_groups])
+            @endforeach
 
             {{-- BUDGETING — REJECTED, MANAGER REVISE KE DRAFT --}}
             @if($budgetingRejected->isNotEmpty())
@@ -974,6 +1029,10 @@
                                                     title="Revise → Draft">
                                                 <i class="fas fa-undo" aria-hidden="true"></i><span class="ts-al">Revise</span>
                                             </button>
+                                            <button aria-label="View Budget" type="button" class="ts-action-primary is-neutral todo-view-budget todo-po-mirror"
+                                                    data-target="#mdlTodoCoa-bp-{{ $bp->id }}-0-0" title="View Budget">
+                                                <i class="fas fa-chart-pie" aria-hidden="true"></i><span class="ts-al">View Budget</span>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -984,6 +1043,13 @@
                 </div>
             </div>
             @endif
+
+
+            {{-- Modal View Budget per Budget Plan — bentuknya sama persis dengan
+                 section Cost Request & Settlement (lihat _budget_modals). --}}
+            @foreach($budgetingRejected as $bp)
+            @include('todo-list._budget_modals', ['key' => 'bp-' . $bp->id, 'groups' => $bp->view_budget_groups])
+            @endforeach
 
             {{-- TREASURY — MENUNGGU PROSES (batch PENDING_APPROVER, ditandai "Submitted" -> jadi Approved/Done setelah diproses CEO) --}}
             {{-- TREASURY — BUAT BATCH PEMBAYARAN (CR APPROVED, belum masuk batch manapun) --}}
@@ -1092,11 +1158,11 @@
                                 <tr class="todo-po-row" data-target="tlbatch-second">
                                     <td>
                                         <input type="checkbox" class="tl-batch-check-group"
-                                               data-group="tlbatch-second" title="Pilih semua Second Payment">
+                                               data-group="tlbatch-second" title="Pilih semua Second Approval">
                                     </td>
                                     <td colspan="3">
                                         <i class="fas fa-chevron-right todo-caret rotated mr-2"></i>
-                                        <strong>Second Payment</strong>
+                                        <strong>Second Approval</strong>
                                         <span class="text-muted" style="font-size:11px;">(sudah Second Approve)</span>
                                         <span class="badge badge-secondary ml-1">{{ $treasuryBatchSecond->count() }}</span>
                                     </td>
@@ -1748,6 +1814,24 @@
     </div>
 </div>
 
+{{-- MODAL VIEW BUDGET GABUNGAN — dipakai baris PO yang memayungi lebih dari
+     satu Budget Plan. Isinya disalin dari modal per-plan oleh handler
+     .todo-view-budget-group, jadi tidak ada duplikasi markup tabel di sini. --}}
+<div class="modal fade" id="mdlTodoCoaMulti" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
+            <div class="modal-header" style="background:var(--charcoal);border-bottom:3px solid var(--accent);">
+                <h5 class="modal-title text-white mb-0" id="mdlTodoCoaMultiTitle">View Budget</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body p-0" id="mdlTodoCoaMultiBody" style="max-height:75vh;overflow-y:auto;overflow-x:auto;"></div>
+            <div class="modal-footer" style="border-top:1px solid var(--border);">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- ============================== DETAIL DRAWER ============================== --}}
 <div id="todoDrawerOverlay" class="todo-drawer-overlay"></div>
 <div id="todoDrawer" class="todo-drawer">
@@ -1848,6 +1932,15 @@
 .todo-fit-table th.todo-col-desc,
 .todo-fit-table td.todo-col-desc { white-space:normal;min-width:220px; }
 
+/* Judul pemisah antar Budget Plan pada modal View Budget gabungan */
+.todo-multi-head {
+    padding:10px 16px;background:var(--surface-2);border-top:1px solid var(--border);
+    border-bottom:1px solid var(--border);font-size:12.5px;font-weight:700;color:var(--text);
+    cursor:pointer;
+}
+.todo-multi-head:hover { background:var(--surface-3); }
+#mdlTodoCoaMultiBody > .todo-multi-head:first-child { border-top:none; }
+
 .todo-coa-row:hover { background:var(--surface-3) !important; }
 .todo-coa-caret { transition:transform .15s ease; }
 .todo-coa-caret.rotated { transform:rotate(90deg); }
@@ -1879,6 +1972,15 @@
 #mdlDrwAction { z-index:1080; }
 body.todo-drawer-open .modal-backdrop { z-index:1070; }
 .todo-drw-row { margin-bottom:14px; }
+/* Chip Chart of Account pada tab Info drawer — bentuknya mengikuti badge
+   status yang sudah dipakai di tab Log: pil lembut, bukan kotak tabel. */
+.todo-coa-chips { display:flex;flex-wrap:wrap;gap:6px;margin-top:2px; }
+.todo-coa-chip {
+    display:inline-flex;align-items:baseline;gap:6px;
+    background:rgba(200,39,46,0.10);color:var(--accent);
+    border:1px solid rgba(200,39,46,0.22);border-radius:999px;
+    padding:3px 10px;font-size:11.5px;font-weight:700;line-height:1.3;
+}
 .todo-drw-label { font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);font-weight:700;margin-bottom:3px; }
 .todo-drw-value { font-size:13px;color:var(--text); }
 .todo-timeline { list-style:none;margin:0;padding:0; }
@@ -2288,9 +2390,45 @@ $(function () {
                     '<i class="fas fa-chevron-right todo-caret mr-2"></i><strong>' + escHtml(g.label) + '</strong>' +
                     (g.sub ? ' <span class="text-muted" style="font-size:11px;">(' + escHtml(g.sub) + ')</span>' : '') +
                     ' <span class="badge badge-secondary ml-1">' + g.rows.length + '</span></td>';
+                /*
+                 | Tombol View Budget ikut naik ke baris PO supaya rincian
+                 | anggaran bisa dibuka tanpa membuka grupnya dulu. Hanya
+                 | dilakukan kalau SELURUH baris di grup ini menunjuk rincian
+                 | yang sama — kalau tidak, satu tombol di baris PO akan
+                 | mengaku mewakili beberapa anggaran sekaligus.
+                 */
+                /* Satu PO bisa berisi beberapa Budget Plan. Tombolnya tetap
+                   SATU — targetnya dikumpulkan jadi daftar, lalu dibuka sebagai
+                   satu modal berisi tabel per kode (lihat handler
+                   .todo-view-budget-group). Dua tombol sejajar tanpa label cuma
+                   menyisakan tebak-tebakan tombol mana milik anggaran mana. */
+                var mirrorSeen = {}, mirrorTargets = [];
+                g.rows.forEach(function (r) {
+                    var $b = $(r).find('.todo-po-mirror').first();
+                    if (!$b.length) return;
+                    var key = $b.attr('data-target') || '';
+                    if (!key || mirrorSeen[key]) return;
+                    mirrorSeen[key] = true;
+                    mirrorTargets.push(key);
+                });
+                var groupBtn = mirrorTargets.length
+                    ? '<div class="action-buttons ts-actions todo-po-mirror-box">' +
+                        '<button aria-label="View Budget" type="button" class="ts-action-primary is-neutral todo-view-budget-group"' +
+                        ' data-targets="' + escHtml(mirrorTargets.join(',')) + '"' +
+                        ' data-po-label="' + escHtml(g.label) + '" title="View Budget">' +
+                        '<i class="fas fa-chart-pie" aria-hidden="true"></i><span class="ts-al">View Budget</span></button>' +
+                      '</div>'
+                    : '';
+
                 if (amtIdx > 0) {
                     html += '<td class="text-right text-nowrap" style="font-weight:700;">' + Math.round(g.amount).toLocaleString('id-ID') + '</td>';
-                    if (nCol - amtIdx - 1 > 0) html += '<td colspan="' + (nCol - amtIdx - 1) + '"></td>';
+                    var sisa = nCol - amtIdx - 1;
+                    if (groupBtn && sisa > 0) {
+                        if (sisa - 1 > 0) html += '<td colspan="' + (sisa - 1) + '"></td>';
+                        html += '<td class="text-center text-nowrap">' + groupBtn + '</td>';
+                    } else if (sisa > 0) {
+                        html += '<td colspan="' + sisa + '"></td>';
+                    }
                 }
                 $tbody.append(html + '</tr>');
                 g.rows.forEach(function (r) { $(r).addClass(cls).hide(); $tbody.append(r); });
@@ -2318,12 +2456,61 @@ $(function () {
         }
 
         $(this).find('.todo-caret').toggleClass('rotated', expanding);
+
+        /* Tombol View Budget di baris PO hanya pintasan selagi grupnya
+           tertutup — begitu dibuka, tiap barisnya sudah punya tombol sendiri,
+           jadi yang di atas ditarik kembali supaya tidak dobel. */
+        $(this).find('.todo-po-mirror-box').toggle(!expanding);
     });
 
     /* ── WORKLIST — tombol View Budget ── */
     $(document).on('click', '.todo-view-budget', function (e) {
         e.stopPropagation();
         $($(this).data('target')).modal('show');
+    });
+
+    /* ── WORKLIST — tombol View Budget di baris PO ──
+       Satu PO bisa memayungi beberapa Budget Plan, dan masing-masing punya
+       modalnya sendiri. Daripada menaruh sederet tombol di satu baris, isinya
+       disalin ke SATU modal gabungan: satu tabel per kode, berurutan. Salinan
+       dibuat ulang tiap kali dibuka supaya selalu mengikuti modal sumbernya. */
+    $(document).on('click', '.todo-view-budget-group', function (e) {
+        e.stopPropagation();
+
+        var targets = ($(this).attr('data-targets') || '').split(',').filter(Boolean);
+        if (!targets.length) return;
+        if (targets.length === 1) { $(targets[0]).modal('show'); return; }
+
+        var $body = $('#mdlTodoCoaMultiBody').empty();
+        $('#mdlTodoCoaMultiTitle').text($(this).attr('data-po-label') || 'View Budget');
+
+        targets.forEach(function (sel, i) {
+            var $src = $(sel);
+            if (!$src.length) return;
+
+            /* Tabelnya disembunyikan dulu: modal gabungan bisa memuat beberapa
+               anggaran sekaligus, dan menumpuk semuanya terbuka membuat yang
+               dicari justru harus digulir dulu. Judul kode = tombol bukanya. */
+            $body.append(
+                '<div class="todo-multi-head" data-target="tlmulti-' + i + '">' +
+                    '<i class="fas fa-chevron-right todo-caret mr-2"></i>' +
+                    ($src.find('.modal-title').first().html() || '') +
+                '</div>'
+            );
+            $('<div class="todo-multi-sec tlmulti-' + i + '" style="display:none;"></div>')
+                .append($src.find('.modal-body').first().children().clone())
+                .appendTo($body);
+        });
+
+        $('#mdlTodoCoaMulti').modal('show');
+    });
+
+    /* Buka/tutup satu kode di modal View Budget gabungan. */
+    $(document).on('click', '.todo-multi-head', function () {
+        var $sec = $('#mdlTodoCoaMultiBody').find('.' + $(this).data('target'));
+        var buka = !$sec.is(':visible');
+        $sec.toggle(buka);
+        $(this).find('.todo-caret').toggleClass('rotated', buka);
     });
 
     /* ── MODAL VIEW BUDGET — collapse/expand Chart of Account & list CR ── */
@@ -2590,7 +2777,7 @@ $(function () {
     });
     $(document).on('click', '.btn-manager-reject-settlement', function () {
         openNotesModal($(this).data('id'), 'manager-reject-settlement', 'Tolak Settlement', 'Alasan', 'btn-danger', 'Tolak → Paid',
-            '<i class="fas fa-info-circle mr-1"></i> CR akan dikembalikan ke status <strong>PAID</strong> untuk diajukan ulang Settlement-nya. Second Payment yang belum dibayar ikut dibatalkan.');
+            '<i class="fas fa-info-circle mr-1"></i> CR akan dikembalikan ke status <strong>PAID</strong> untuk diajukan ulang Settlement-nya. Second Approval yang belum dibayar ikut dibatalkan.');
     });
     $(document).on('click', '.btn-finance-reject-settlement', function () {
         openNotesModal($(this).data('id'), 'finance-reject-settlement', 'Tolak Settlement', 'Alasan', 'btn-danger', 'Tolak → Paid',
@@ -2921,6 +3108,25 @@ $(function () {
             var poBudgetRef = (d.code_reference || '-') + ' - ' + (bpName || '-');
 
             var info = '';
+
+            /* Chart of Account yang dipotong CR ini — nama akunnya saja, tanpa
+               keterangan baris anggaran: yang dicari di sini adalah pos mana
+               yang dipakai, rinciannya sudah ada di tab Request & modal View
+               Budget. Akun yang sama digabung jadi satu chip. */
+            var coaChips = [], coaSeen = {};
+            (d.details || []).forEach(function (it) {
+                var akun = it.account || '-';
+                if (coaSeen[akun]) return;
+                coaSeen[akun] = true;
+                coaChips.push('<span class="todo-coa-chip">' + esc(akun) + '</span>');
+            });
+            /* Tanpa label: chip-nya sudah menerangkan dirinya sendiri, dan
+               label "Chart of Account" di atasnya hanya menambah satu baris
+               teks sebelum isi drawer yang sebenarnya. */
+            if (coaChips.length) {
+                info += '<div class="todo-coa-chips" style="margin-bottom:14px;">' + coaChips.join('') + '</div>';
+            }
+
             info += todoDrwRow('Description', esc(d.description));
             info += todoDrwRow('Request Type', esc(d.type));
             info += todoDrwRow('PO & Budget Reference', esc(poBudgetRef));
@@ -2929,6 +3135,36 @@ $(function () {
             info += todoDrwRow('Requester', esc(d.applicant));
             info += todoDrwRow('Request Date', esc(d.created_at));
             if (d.notes) info += todoDrwRow('Notes', esc(d.notes));
+
+            /* Riwayat pengajuan beneficiary yang sama — kolom Cost sudah
+               dihitung server (Cash Advance memakai settlement, jatuh balik ke
+               nilai pengajuan saat settlement masih 0). */
+            var hist = d.beneficiary_history || [];
+            info += '<div class="todo-drw-row" style="margin-top:18px;">' +
+                '<div class="todo-drw-label">Riwayat Pengajuan Beneficiary Ini</div>';
+            if (hist.length) {
+                info += '<div class="table-responsive" style="max-height:260px;overflow-y:auto;">' +
+                    '<table class="table table-sm table-bordered mb-0" style="font-size:11.5px;">' +
+                    '<thead class="bg-light"><tr>' +
+                        '<th scope="col" class="text-nowrap">Kode</th>' +
+                        '<th scope="col">Description</th>' +
+                        '<th scope="col" class="text-right text-nowrap">Cost</th>' +
+                        '<th scope="col" class="text-nowrap">Tanggal Paid</th>' +
+                    '</tr></thead><tbody>';
+                hist.forEach(function (h) {
+                    info += '<tr>' +
+                        '<td class="text-nowrap"><button type="button" class="cr-number-btn todo-open-drawer" data-id="' + h.id + '">' + esc(h.code) + '</button></td>' +
+                        '<td>' + esc(h.description || '-') + '</td>' +
+                        '<td class="text-right text-nowrap"><strong>' + esc(h.cost_formatted) + '</strong></td>' +
+                        '<td class="text-nowrap">' + esc(h.paid_at) + '</td>' +
+                    '</tr>';
+                });
+                info += '</tbody></table></div>';
+            } else {
+                info += '<div class="text-muted" style="font-size:12px;">Belum ada pengajuan lain yang sudah dibayar untuk beneficiary ini.</div>';
+            }
+            info += '</div>';
+
             $('#todoPaneInfo').html(info);
 
             /* ── BAR AKSI WORKFLOW ── */
@@ -3030,7 +3266,7 @@ $(function () {
                    bahwa masih ada kewajiban yang belum dibayar. */
                 var lebihBayar = parseInt(d.settlement_overage, 10) || 0;
                 if (lebihBayar > 0) {
-                    realHtml += '<div class="todo-drw-row" style="margin-top:14px;"><div class="todo-drw-label">Second Payment (Settlement − Pengajuan)</div>' +
+                    realHtml += '<div class="todo-drw-row" style="margin-top:14px;"><div class="todo-drw-label">Second Approval (Settlement − Pengajuan)</div>' +
                         '<div class="todo-drw-value" style="font-weight:700;color:var(--warning);">' + esc(d.settlement_overage_formatted) + '</div></div>';
                 } else {
                     var refundColor = d.refund > 0 ? 'var(--success)' : 'var(--text)';

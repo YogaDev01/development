@@ -727,6 +727,19 @@ class InvoiceCashReceiptController extends Controller
         return back()->with('success', 'Invoice ' . $invoice->code . ' ditandai diterima. Jatuh tempo aktual dihitung otomatis.');
     }
 
+    public function storeComment(Request $request, $id)
+    {
+        $request->validate(['comment' => 'required|string|max:2000']);
+
+        $invoice = Invoice::findOrFail($id);
+        $invoice->comments()->create([
+            'user_id' => Auth::id(),
+            'comment' => $request->comment,
+        ]);
+
+        return back()->with('success', 'Komentar untuk invoice ' . $invoice->code . ' tersimpan di Log & Approval.');
+    }
+
     public function cancel(Request $request, $id)
     {
         $request->validate([

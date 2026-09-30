@@ -507,20 +507,32 @@
 .cr-hscroll .cr-tbl th,
 .cr-hscroll .cr-tbl td { white-space:nowrap; }
 
+/* Kolom Code & Action dibekukan di tepi kiri/kanan — termasuk sel header dan
+   footer-nya. position:sticky pada <th> perlu !important karena CSS DataTables
+   memasang position:relative pada setiap header yang bisa diurutkan
+   (table.dataTable>thead .sorting), yang kalau menang akan membatalkan freeze
+   di baris header saja: datanya beku, judul kolomnya ikut menggeser.
+   Latar sel wajib pekat, kalau tidak isi kolom lain terlihat menembusnya. */
 .cr-hscroll .cr-tbl th.cr-col-code,
 .cr-hscroll .cr-tbl td.cr-col-code {
-    position:sticky; left:0; z-index:3; background:var(--surface);
+    position:sticky !important; left:0; z-index:3;
+    background:var(--surface);
     box-shadow:2px 0 6px -2px rgba(0,0,0,.18);
 }
 .cr-hscroll .cr-tbl th.action-column,
 .cr-hscroll .cr-tbl td.action-column {
-    position:sticky; right:0; z-index:3; background:var(--surface);
+    position:sticky !important; right:0; z-index:3;
+    background:var(--surface);
     box-shadow:-2px 0 6px -2px rgba(0,0,0,.18);
 }
 .cr-hscroll .cr-tbl thead th.cr-col-code,
-.cr-hscroll .cr-tbl thead th.action-column { background:var(--surface-2); z-index:4; }
+.cr-hscroll .cr-tbl thead th.action-column,
 .cr-hscroll .cr-tbl tfoot th.cr-col-code,
-.cr-hscroll .cr-tbl tfoot th.action-column { background:var(--surface-2); }
+.cr-hscroll .cr-tbl tfoot th.action-column {
+    background:var(--surface-2) !important; z-index:4;
+}
+.cr-hscroll .cr-tbl tbody tr:hover > td.cr-col-code,
+.cr-hscroll .cr-tbl tbody tr:hover > td.action-column { background:var(--surface-2); }
 
 /* Modal detail CR — ukuran & style disamakan dengan modal show Budget Plan. */
 .modal-dialog-xxl {
@@ -711,6 +723,27 @@
     .imgViewerNav { width:36px; height:36px; font-size:16px; }
     #imgViewerPrev { left:6px; } #imgViewerNext { right:6px; }
 }
+
+/* Panel filter gabungan: dua kolom, rapat, dan tidak terpotong kontainer. */
+.cr-filter-panel { max-height: 70vh; overflow-y: auto; }
+.cr-filter-panel .cr-row-filters {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+}
+.cr-filter-panel .tcf-row-btn { width: 100%; text-align: left; }
+.cr-filter-toggle.cr-filter-on { background: var(--accent); border-color: var(--accent); color: #fff; }
+@media (max-width: 575.98px) {
+    .cr-filter-panel { min-width: 260px !important; }
+    .cr-filter-panel .cr-row-filters { grid-template-columns: 1fr; }
+}
+
+/* Popover toolbar (Filter & Kolom) — ditempel pada tombolnya sendiri. */
+.cr-pop { position: relative; }
+.cr-pop-menu {
+    display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 1080;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-md); box-shadow: 0 8px 24px rgba(0,0,0,.14);
+}
+.cr-pop.show .cr-pop-menu { display: block; }
 </style>
 @endpush
 
@@ -773,12 +806,14 @@ $(function () {
         { key: 'status',      label: 'Status' },
     ];
     var CR_TABS = {
+        // Tab Cash Advance isinya sudah pasti satu tipe, jadi filter Tipe
+        // tidak menyaring apa pun di sini.
         ca: { id: 'tblCA', mapVis: { tanggal: 3, paid_at: 4, pengaju: 5, pic: 6, realisasi: 8, refund: 9, claim: 10 },
-              filters: CR_ROW_FILTERS },
+              filters: CR_ROW_FILTERS.filter(function (f) { return f.key !== 'type'; }) },
         cp: { id: 'tblCP', mapVis: { tanggal: 3, paid_at: 4, pengaju: 5, pic: 6 },
               filters: CR_ROW_FILTERS },
         db: { id: 'tblDB', mapVis: { tanggal: 4, paid_at: 5, pengaju: 6, pic: 7 },
-              filters: [{ key: 'jenis', label: 'Jenis', search: false }].concat(CR_ROW_FILTERS) },
+              filters: CR_ROW_FILTERS },
     };
     var crVisDefault = { tanggal: true, paid_at: true, pengaju: true, pic: true, realisasi: false, refund: true, claim: true };
 
@@ -795,6 +830,78 @@ $(function () {
         return sign + Math.abs(Math.round(v)).toLocaleString('id-ID');
     }
     function crPane(tab) { return $('.cr-pane[data-tab="' + tab + '"]'); }
+
+    /* ── PANEL FILTER GABUNGAN ─────────────────────────────────────────────
+    | Dulu tiap field punya tombol dropdown sendiri sehingga toolbar penuh
+    | tombol dan posisinya bergeser-geser saat dibuka. Sekarang semuanya
+    | dikumpulkan di satu panel: satu <select> per field, pilihannya diambil
+    | dari nilai yang benar-benar ada pada baris tabel, lalu diterapkan
+    | sekaligus lewat API filter yang sama (jadi chip & reset tetap jalan). */
+    function buildFilterPanel($pane, cfg) {
+        /*
+        | Panel ini TIDAK membuat kontrol sendiri: tombol per-field bawaan
+        | TesysColumnFilter dipindahkan ke dalamnya. Dengan begitu tiap filter
+        | tetap punya kotak pencarian dan daftar centang (bisa pilih lebih dari
+        | satu nilai), lengkap dengan chip dan penyorotan tombol — perilaku yang
+        | sudah dipakai modul lain, tanpa menduplikasi logikanya.
+        */
+        var $filters = $pane.find('.cr-row-filters');
+        if (!$filters.length) return;
+
+        function tandaiAktif() {
+            var ada = $filters.find('.tcf-row-active').length > 0;
+            $pane.find('.cr-filter-toggle').toggleClass('cr-filter-on', ada);
+        }
+
+        $filters.off('click.crfilter').on('click.crfilter', '.tcf-row-btn', function () {
+            setTimeout(tandaiAktif, 50);
+        });
+
+        $pane.find('.cr-filter-reset').off('click').on('click', function () {
+            TesysColumnFilter.clearAll('#' + cfg.id);
+            tandaiAktif();
+        });
+
+        tandaiAktif();
+    }
+
+
+    /* ── POPOVER FILTER & KOLOM ────────────────────────────────────────────
+    | Tidak memakai dropdown Bootstrap: Popper menghitung posisinya terhadap
+    | kontainer tabel yang bisa digulir, sehingga panelnya melompat-lompat
+    | saat dibuka. Di sini panel cukup ditempel absolut di bawah tombolnya,
+    | lalu digeser ke kiri kalau ujungnya melewati tepi layar. */
+    $(document).on('click', '.cr-pop-toggle', function (e) {
+        e.stopPropagation();
+        var $pop = $(this).closest('.cr-pop');
+        var buka = !$pop.hasClass('show');
+
+        $('.cr-pop').removeClass('show');
+        $pop.toggleClass('show', buka);
+        if (!buka) return;
+
+        // Geser kalau panel keluar dari tepi kanan layar.
+        var $menu = $pop.find('.cr-pop-menu');
+        $menu.css({ left: 0, right: 'auto' });
+        var rect = $menu[0].getBoundingClientRect();
+        if (rect.right > window.innerWidth - 8) $menu.css({ left: 'auto', right: 0 });
+    });
+
+    $(document).on('click', function (e) {
+        /*
+        | Daftar centang tiap filter (.tcf-dropdown) dipasang di <body>, bukan
+        | di dalam panel. Tanpa pengecualian ini, mencentang satu nilai dianggap
+        | "klik di luar" sehingga panel Filter-nya ikut tertutup dan daftarnya
+        | tertinggal mengambang.
+        */
+        if ($(e.target).closest('.cr-pop, .tcf-dropdown').length) return;
+        $('.cr-pop').removeClass('show');
+    });
+
+    $(document).on('keydown', function (e) {
+        if (e.key === 'Escape') $('.cr-pop').removeClass('show');
+    });
+
     function crCurrentTab() { return $('#crTabs .nav-link.active').data('crtab') || 'ca'; }
 
     function initCrTable(tab) {
@@ -811,8 +918,7 @@ $(function () {
         var table;
         try {
             // TIDAK pakai extension "responsive" DataTables (rebentrok dengan toggle
-            // visibility manual). Tabel selalu scroll horizontal; kolom Code & Action
-            // dibekukan lewat CSS .cr-hscroll.
+            // visibility manual). Tabel selalu scroll horizontal lewat .cr-hscroll.
             table = $tbl.DataTable({
                 autoWidth: false, pageLength: 10, lengthChange: true, searching: true,
                 order: [], // pertahankan urutan dari server (input terbaru di atas)
@@ -884,6 +990,7 @@ $(function () {
         recalcFooter();
 
         TesysColumnFilter.initRowFilters('#' + cfg.id, $pane.find('.cr-row-filters'), cfg.filters);
+        buildFilterPanel($pane, cfg);
 
         $pane.find('.cr-btn-clear').off('click').on('click', function () {
             TesysColumnFilter.clearAll('#' + cfg.id);

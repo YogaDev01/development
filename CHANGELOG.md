@@ -4,6 +4,28 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [2.5.0] - 2026-10-01 — Komentar Invoice, View Budget di Todo List & Toolbar Seragam
+
+Invoice kini bisa dikomentari langsung dari daftarnya dan komentarnya masuk
+ke Log & Approval, section Budgeting di Todo List ikut punya tombol View
+Budget, dan tombol aksi di seluruh halaman daftar dikumpulkan pada satu
+bilah kendali.
+
+### Baru
+- Komentar bebas pada Invoice: bisa ditulis langsung dari daftar Collection dan tercatat di Log & Approval bersama peristiwa lainnya.
+- Panel Info Cost Request menampilkan riwayat pengajuan sebelumnya untuk beneficiary yang sama.
+- Tombol View Budget kini juga tersedia di section Budgeting pada Todo List, memakai modal breakdown Chart of Account yang sama dengan section Cost Request dan Settlement.
+- Cost Request: panel Filter berisi satu tombol per kolom, langsung berlaku tanpa tombol Terapkan, dan bisa direset sekaligus.
+
+### Berubah
+- Tombol Tambah dan Export dipindah ke bilah kendali daftar sejajar dengan Cari, Filter, dan Kolom, sehingga tidak lagi tersebar di dua tempat - berlaku di Master PIC, Cost Center, Employee, Payroll Run, Budgeting, dan Collection.
+- Export Excel Cost Request selalu memuat seluruh kolom, tidak lagi mengikuti kolom yang kebetulan sedang tampil di layar.
+- Master PIC tidak lagi menyimpan bank dan nomor rekening; data rekening cukup dipegang Beneficiary agar tidak ada dua sumber yang bisa berbeda.
+
+### Perbaikan
+- Kolom Cost pada Cost Request tidak lagi bergantung pada catatan pembayaran yang bisa kosong, sehingga nilainya tidak tampil nol untuk pengajuan yang sudah dibayar.
+- Filter kolom lebih rapi mengikuti daftar yang sedang tampil, dan sisa skrip tabel lama yang tidak terpakai dibuang.
+
 ## [2.4.5] - 2026-09-30 — Deskripsi Panjang, Lampiran Settlement & Beneficiary Lebih Jelas
 
 Kolom deskripsi yang sempit kini bisa dibuka penuh di Cost Request maupun

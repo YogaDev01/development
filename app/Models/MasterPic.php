@@ -16,8 +16,6 @@ class MasterPic extends Model
         'position',
         // Rekening milik PIC-nya sendiri — bukan rekening beneficiary yang ia
         // tangani. Lihat migrasi 2026_09_22_000020.
-        'bank_id',
-        'account_number',
         'phone',
         'email',
         // Keterangan tambahan per PIC, diisi dari Daftar PIC. Lihat migrasi
@@ -56,12 +54,6 @@ class MasterPic extends Model
     public function inputBy()
     {
         return $this->belongsTo(User::class, 'input_by');
-    }
-
-    /** Bank rekening milik PIC ini. */
-    public function bank()
-    {
-        return $this->belongsTo(Bank::class, 'bank_id');
     }
 
     /** Akun aplikasi milik PIC ini (M-02). */

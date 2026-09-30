@@ -130,6 +130,17 @@ final class InvoiceTimeline
             ));
         }
 
+        // Komentar bebas dari tombol aksi di daftar invoice.
+        foreach ($invoice->comments as $km) {
+            $peristiwa->push(self::baris(
+                'KOMENTAR', 'light',
+                $km->user->name ?? '-',
+                $km->created_at,
+                $km->created_at?->format('d/m/Y H:i'),
+                [['teks' => $km->comment, 'ikon' => 'fas fa-comment']]
+            ));
+        }
+
         if ($invoice->cancelled_at) {
             $peristiwa->push(self::baris(
                 'CANCELLED', 'dark',
@@ -158,7 +169,7 @@ final class InvoiceTimeline
         return [
             'createdBy', 'submittedBy', 'verifiedBy', 'approvedBy', 'sentBy',
             'receivedBy', 'cancelledBy', 'deliveryNote',
-            'cashReceipts.sourceFund', 'cashReceipts.inputBy',
+            'cashReceipts.sourceFund', 'cashReceipts.inputBy', 'comments.user',
         ];
     }
 

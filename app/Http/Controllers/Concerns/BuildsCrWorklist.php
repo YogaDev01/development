@@ -360,6 +360,20 @@ trait BuildsCrWorklist
                     $disbursedRows = $disbursedByDetailId->get($d->id, collect());
                     $used = (int) $disbursedRows->sum(fn ($r) => $r->realization->total ?? $r->total);
 
+                    /*
+                     | Expense Claim = bagian realisasi yang MELEBIHI nilai yang
+                     | diajukan pada baris itu — kewajiban bayar yang lahir
+                     | setelah settlement. Sudah ikut terhitung di kolom Used
+                     | (Used memakai nilai realisasi kalau ada), jadi kolom ini
+                     | bukan tambahan pemakaian anggaran, melainkan penjelasan
+                     | berapa dari Used yang datang dari kelebihan settlement.
+                     */
+                    $expenseClaim = (int) $disbursedRows->sum(function ($r) {
+                        $realisasi = $r->realization?->total;
+
+                        return $realisasi === null ? 0 : max(0, (int) $realisasi - (int) $r->total);
+                    });
+
                     $pipelineRows = $pipelineByDetailId->get($d->id, collect());
 
                     // Baris takeout: tampil saja, TIDAK pernah masuk hitungan.
@@ -410,6 +424,8 @@ trait BuildsCrWorklist
                         'total_formatted'       => number_format($d->total, 0, ',', '.'),
                         'used'                  => $used,
                         'used_formatted'        => number_format($used, 0, ',', '.'),
+                        'expense_claim'         => $expenseClaim,
+                        'expense_claim_formatted' => $expenseClaim > 0 ? number_format($expenseClaim, 0, ',', '.') : null,
                         'remaining'             => $remaining,
                         'remaining_formatted'   => number_format($remaining, 0, ',', '.'),
                         'request_amount'        => $requestAmount,
@@ -430,6 +446,7 @@ trait BuildsCrWorklist
                     'items'     => $subItems,
                     'budget'    => $subItems->sum('total'),
                     'used'      => $subItems->sum('used'),
+                    'expense_claim' => $subItems->sum('expense_claim'),
                     'request'   => $subItems->sum('request_amount'),
                     'approved'  => $subItems->sum('approved_amount'),
                     'remaining' => $subItems->sum('remaining'),

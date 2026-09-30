@@ -880,6 +880,8 @@ class BudgetPlanController extends Controller
                     'realization_formatted' => number_format($realisasi, 0, ',', '.'),
                     'refund'              => $refund,
                     'refund_formatted'    => number_format($refund, 0, ',', '.'),
+                    'expense_claim'           => $cr->expenseClaimAmount(),
+                    'expense_claim_formatted' => number_format($cr->expenseClaimAmount(), 0, ',', '.'),
                     'status'              => $cr->status,
                     'status_color'        => $cr->status_color,
                     'date'                => $cr->created_at->format('d M Y'),

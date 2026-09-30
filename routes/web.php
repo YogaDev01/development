@@ -837,6 +837,11 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('menu:invoice-cash-receipt')->group(function () {
 
+        Route::post(
+            'invoice-cash-receipt/{id}/comment',
+            [InvoiceCashReceiptController::class, 'storeComment']
+        )->name('invoice-cash-receipt.comment');
+
         Route::get(
             'invoice-cash-receipt',
             [InvoiceCashReceiptController::class, 'index']

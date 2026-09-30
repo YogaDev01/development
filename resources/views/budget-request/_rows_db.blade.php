@@ -4,9 +4,11 @@
         $isCa  = $cr->isCashAdvance();
         $isNob = (bool) $cr->is_nob;
         /* Kolom "Cost": sumber nilai berbeda menurut jenis —
-           Cash Advance  -> nilai Settlement (realisasi),
+           Cash Advance  -> nilai Settlement (realisasi); bila settlement masih 0
+                            (belum disettle) pakai nilai Request,
            Cost Payment  -> nilai Request. */
-        $cost  = $isCa ? (int) ($cr->realization_sum ?? 0) : (int) $cr->amount;
+        $caReal = (int) ($cr->realization_sum ?? 0);
+        $cost   = $isCa ? ($caReal > 0 ? $caReal : (int) $cr->amount) : (int) $cr->amount;
     @endphp
     <tr data-id="{{ $cr->id }}"
         data-status="{{ $cr->status }}"
