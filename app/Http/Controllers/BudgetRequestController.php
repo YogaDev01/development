@@ -946,7 +946,7 @@ class BudgetRequestController extends Controller
             'notes'                 => 'nullable|string',
             'details'               => 'required|array|min:1',
             'details.*.budget_detail_id' => 'required|exists:budget_plan_details,id',
-            'details.*.notes'            => 'required|string',
+            'details.*.notes'            => 'required|string|max:255',
             'details.*.amount'           => 'required',
             'details.*.qty'              => 'required|integer|min:1',
             'details.*.attachments'      => 'nullable|array',
@@ -1438,7 +1438,15 @@ class BudgetRequestController extends Controller
         $types         = RequestType::whereNotNull('name')->where('name', '!=', '')->orderBy('name')->get();
         $budgetPlans   = $this->getAvailableBudgetPlans();
         $clusters      = Cluster::where('status', 'ACTIVE')->orderBy('name')->get();
-        $beneficiaries = Beneficiary::where('status', 'ACTIVE')->orderBy('complete_name')->get();
+        /*
+        | Hanya beneficiary ACTIVE yang boleh dipilih — TAPI penerima dana yang
+        | sudah dipakai CR ini tetap disertakan walau statusnya sudah INACTIVE.
+        | Tanpa itu, membuka form edit diam-diam mengosongkan pilihannya dan
+        | penyimpanan berikutnya mengganti penerima dana tanpa disadari.
+        */
+        $beneficiaries = Beneficiary::where('status', 'ACTIVE')
+            ->orWhere('id', $cr->beneficiary_id)
+            ->orderBy('complete_name')->get();
 
         $accountsBySource = [
             'PROJECT'  => $this->getAccountsFor('PROJECT'),
@@ -1498,7 +1506,7 @@ class BudgetRequestController extends Controller
             'details'               => 'required|array|min:1',
             'details.*.id'               => 'nullable|integer',
             'details.*.budget_detail_id' => 'required|exists:budget_plan_details,id',
-            'details.*.notes'            => 'required|string',
+            'details.*.notes'            => 'required|string|max:255',
             'details.*.amount'           => 'required',
             'details.*.qty'              => 'required|integer|min:1',
             'details.*.attachments'      => 'nullable|array',

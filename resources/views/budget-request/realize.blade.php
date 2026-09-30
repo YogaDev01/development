@@ -97,10 +97,15 @@
                                     <input type="hidden" name="realizations[{{ $i }}][request_detail_id]" value="{{ $detail->id }}">
                                 </td>
                                 <td>
-                                    <input type="text" name="realizations[{{ $i }}][notes]"
-                                           class="form-control form-control-sm realize-notes-input"
-                                           maxlength="255"
-                                           value="{{ $existing->notes ?? '' }}" placeholder="Catatan settle...">
+                                    <div class="desc-wrap">
+                                        <input type="text" name="realizations[{{ $i }}][notes]"
+                                               class="form-control form-control-sm realize-notes-input"
+                                               maxlength="255"
+                                               value="{{ $existing->notes ?? '' }}" placeholder="Catatan settle...">
+                                        <button type="button" class="desc-expand" title="Lihat / ubah deskripsi lengkap" tabindex="-1">
+                                            <i class="fas fa-expand-alt"></i>
+                                        </button>
+                                    </div>
                                     {{-- Penghitung sisa karakter: ikut berubah saat mengetik dan
                                          berubah merah begitu batasnya habis, supaya user tahu
                                          kenapa ketikannya berhenti. --}}
@@ -130,13 +135,18 @@
                                     @if($existing && $existing->attachments->isNotEmpty())
                                     <div class="mt-1 realize-att-existing" style="font-size:10px;line-height:1.5;">
                                         @foreach($existing->attachments as $att)
-                                        <label class="d-block text-muted mb-0" style="font-weight:400;cursor:pointer;">
+                                        {{-- Tampilannya disamakan dengan file yang baru dipilih:
+                                             nama diklik untuk memeriksa isinya, × untuk membuang
+                                             supaya bisa diganti lampiran lain. --}}
+                                        <div class="att-lama text-muted">
                                             <input type="checkbox" name="delete_realization_attachments[]"
-                                                   value="{{ $att->id }}" class="del-realize-att">
-                                            <a href="{{ asset('storage/' . $att->path) }}" target="_blank" rel="noopener">
-                                                <i class="fas fa-file mr-1"></i>{{ $att->original_name }}
-                                            </a>
-                                        </label>
+                                                   value="{{ $att->id }}" class="del-realize-att d-none">
+                                            <i class="fas fa-file mr-1"></i>
+                                            <a href="#" class="att-lama-open"
+                                               data-url="{{ asset('storage/' . $att->path) }}"
+                                               data-nama="{{ $att->original_name }}">{{ $att->original_name }}</a>
+                                            <i class="fas fa-times text-danger att-lama-del ml-1" style="cursor:pointer;" title="Hapus lampiran ini"></i>
+                                        </div>
                                         @endforeach
                                     </div>
                                     @endif
@@ -186,16 +196,19 @@
                                 @foreach($budgetRequest->realizationAttachments as $i => $att)
                                 <tr>
                                     <td class="text-center align-middle">{{ $i + 1 }}</td>
-                                    <td class="align-middle">
-                                        <a href="{{ asset('storage/' . $att->path) }}" target="_blank" rel="noopener">
-                                            <i class="fas fa-file mr-1"></i>{{ $att->original_name }}
-                                        </a>
+                                    <td class="align-middle att-lama">
+                                        <input type="checkbox" name="delete_realization_global_attachments[]"
+                                               value="{{ $att->id }}" class="del-realize-att-global d-none">
+                                        <i class="fas fa-file mr-1"></i>
+                                        <a href="#" class="att-lama-open"
+                                           data-url="{{ asset('storage/' . $att->path) }}"
+                                           data-nama="{{ $att->original_name }}">{{ $att->original_name }}</a>
                                         <small class="text-muted ml-2">({{ $att->size_formatted }})</small>
                                     </td>
                                     <td class="text-center align-middle">
-                                        <input type="checkbox" name="delete_realization_global_attachments[]"
-                                               value="{{ $att->id }}"
-                                               style="width:16px;height:16px;accent-color:var(--danger);">
+                                        <button type="button" class="btn btn-sm btn-danger att-lama-del" title="Hapus lampiran ini">
+                                            <i class="fas fa-times"></i>
+                                        </button>
                                     </td>
                                 </tr>
                                 @endforeach
@@ -340,7 +353,7 @@ $(function () {
 
     function refreshNoteCount(el) {
         var sisa  = NOTE_MAX - (el.value || '').length;
-        var $info = $(el).siblings('.realize-notes-count');
+        var $info = $(el).closest('td').find('.realize-notes-count');
         if (!$info.length) return;
 
         if (sisa <= 0) {
@@ -353,6 +366,48 @@ $(function () {
     }
 
     $(document).on('input', '.realize-notes-input', function () { refreshNoteCount(this); });
+
+    /* ── LIHAT / UBAH DESKRIPSI PENUH ─────────────────────────────────────
+       Kolomnya sempit dan teks panjang terpotong. Ikon di ujung kanan kotak
+       membuka pop-up berisi teks utuh yang juga bisa disunting; ditutup
+       dengan klik di luar, Esc, atau tanda X. */
+    $(document).on('click', '.desc-expand', function () {
+        var $inp = $(this).closest('.desc-wrap').find('.realize-notes-input');
+
+        Swal.fire({
+            title: 'Description Settle',
+            html: '<textarea id="descPopupInput" class="form-control" rows="6" maxlength="255" '
+                + 'placeholder="Catatan settle..." style="font-size:13px;width:100%;resize:vertical;">'
+                + $('<div>').text($inp.val() || '').html() + '</textarea>'
+                + '<small id="descPopupCount" class="d-block mt-1" style="font-size:11px;text-align:left;"></small>',
+            width: '560px',
+            showConfirmButton: false,
+            showCloseButton: true,
+            customClass: { closeButton: 'att-close-btn' },
+            didOpen: function (popup) {
+                var ta  = popup.querySelector('#descPopupInput');
+                var inf = popup.querySelector('#descPopupCount');
+                if (!ta) return;
+
+                function hitung() {
+                    var sisa = NOTE_MAX - ta.value.length;
+                    inf.textContent = sisa <= 0
+                        ? 'Batas ' + NOTE_MAX + ' karakter sudah habis — tidak bisa menambah teks lagi.'
+                        : 'Sisa ' + sisa + ' karakter.';
+                    inf.className = 'd-block mt-1 ' + (sisa <= 0 ? 'text-danger' : 'text-muted');
+                }
+
+                ta.addEventListener('input', hitung);
+                hitung();
+                ta.focus();
+                ta.setSelectionRange(ta.value.length, ta.value.length);
+            },
+            willClose: function (popup) {
+                var ta = popup.querySelector('#descPopupInput');
+                if (ta) $inp.val(ta.value).trigger('input').trigger('change');
+            }
+        });
+    });
     $('.realize-notes-input').each(function () { refreshNoteCount(this); });
 
     /* ── KETERANGAN SETTLEMENT ─────────────────────────────────────────────
@@ -487,6 +542,57 @@ $(function () {
             didClose: function () { URL.revokeObjectURL(url); }
         });
     }
+
+    /** Pratinjau lampiran yang SUDAH tersimpan — pop-up, sama seperti file baru. */
+    function bukaFileTersimpan(url, nama) {
+        var ext   = (nama || '').split('.').pop().toLowerCase();
+        var isImg = ['jpg','jpeg','png','gif','webp','bmp'].indexOf(ext) !== -1;
+        var isPdf = ext === 'pdf';
+        var judul = $('<div>').text(nama || 'Lampiran').html();
+
+        var isi;
+        if (isImg) {
+            isi = '<img src="' + url + '" alt="' + judul + '" style="max-width:100%;max-height:70vh;object-fit:contain;border-radius:6px;">';
+        } else if (isPdf) {
+            isi = '<iframe src="' + url + '" style="width:100%;height:70vh;border:1px solid var(--border);border-radius:6px;"></iframe>';
+        } else {
+            isi = '<p class="mb-2">Pratinjau tidak tersedia untuk jenis file ini.</p>' +
+                  '<a href="' + url + '" target="_blank" rel="noopener" class="btn btn-sm btn-primary">' +
+                  '<i class="fas fa-external-link-alt mr-1"></i> Buka file</a>';
+        }
+
+        Swal.fire({
+            title: judul,
+            html: isi,
+            width: isImg || isPdf ? '860px' : '520px',
+            showConfirmButton: false,
+            showCloseButton: true,
+            customClass: { closeButton: 'att-close-btn' }
+        });
+    }
+
+    $(document).on('click', '.att-lama-open', function (e) {
+        e.preventDefault();
+        bukaFileTersimpan($(this).data('url'), $(this).data('nama'));
+    });
+
+    /* Tombol × pada lampiran lama: tidak langsung menghapus file, hanya
+       menandainya untuk dibuang saat settlement disubmit — bisa dibatalkan
+       lagi dengan klik kedua. */
+    $(document).on('click', '.att-lama-del', function () {
+        // Lampiran item: tombolnya berada DI DALAM .att-lama. Lampiran global:
+        // tombolnya di kolom sebelah, jadi dicari lewat barisnya.
+        var $wrap = $(this).closest('.att-lama');
+        if (!$wrap.length) $wrap = $(this).closest('tr').find('.att-lama').first();
+        var $chk  = $wrap.find('input[type="checkbox"]');
+
+        var hapus = !$chk.prop('checked');
+        $chk.prop('checked', hapus);
+        $wrap.toggleClass('att-lama-dibuang', hapus);
+        $(this).attr('title', hapus ? 'Batalkan penghapusan' : 'Hapus lampiran ini');
+
+        if (window.__updateSettleSubmitState) window.__updateSettleSubmitState();
+    });
 
     function appendFilesToInput(input, fileList) {
         fileList = tolakVideo(fileList);
@@ -894,6 +1000,21 @@ $(function () {
 .detail-att-cell:focus-within { background: var(--warning-bg); }
 .detail-att-hint { opacity: .6; }
 .detail-att-cell .btn-detail-att { border-radius: var(--radius-sm); }
+
+/* Kotak deskripsi + ikon "lihat penuh" di ujung kanannya. Latarnya penuh
+   supaya teks panjang tidak lewat di bawah ikon. */
+.desc-wrap { position: relative; }
+.desc-wrap .realize-notes-input { padding-right: 30px; }
+.desc-wrap .desc-expand {
+    position: absolute; top: 2px; right: 2px; bottom: 2px; width: 26px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface); border: none; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    line-height: 1; color: var(--text-faint); cursor: pointer; font-size: 11px; z-index: 2;
+}
+.desc-wrap .desc-expand:hover { color: var(--accent); }
+
+/* Lampiran lama yang ditandai untuk dibuang saat submit. */
+.att-lama-dibuang { text-decoration: line-through; opacity: .55; }
 
 /* Tombol X pratinjau lampiran: tanpa kotak/latar, merah saja. */
 .swal2-close.att-close-btn {

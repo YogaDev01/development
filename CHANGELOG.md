@@ -4,6 +4,23 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [2.4.5] - 2026-09-30 — Deskripsi Panjang, Lampiran Settlement & Beneficiary Lebih Jelas
+
+Kolom deskripsi yang sempit kini bisa dibuka penuh di Cost Request maupun
+Settlement, lampiran settlement yang sudah tersimpan bisa diperiksa dan
+diganti, dan pilihan Beneficiary menyebutkan bank serta nomor rekeningnya.
+
+### Baru
+- Kolom Description di form Cost Request dan Settlement bisa dibuka penuh lewat ikon di ujung kanannya - teks panjang yang terpotong bisa dibaca dan disunting di pop-up, lengkap dengan sisa karakter.
+- Lampiran yang sudah tersimpan di Settlement kini bisa dibuka untuk diperiksa dan dibuang satu per satu, sama seperti lampiran yang baru dipilih.
+
+### Berubah
+- Pilihan Beneficiary menampilkan nama bank dan nomor rekening, sehingga penerima dana bernama mirip tidak lagi tertukar.
+
+### Perbaikan
+- Beneficiary yang sudah dinonaktifkan tetap muncul saat mengedit Cost Request yang memakainya, agar penerima dananya tidak tergantikan diam-diam.
+- Deskripsi per baris Cost Request dibatasi 255 karakter di server, sejalan dengan batas pada formnya.
+
 ## [2.4.4] - 2026-09-30 — Summary Progress Bertahap, Role Supervisor & Batch Second Payment
 
 Tabel Summary tab Progress kini memecah nilai No. PO sesuai tahap yang sudah

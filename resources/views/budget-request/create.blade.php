@@ -103,7 +103,8 @@
                                             class="form-control @error('beneficiary_id') is-invalid @enderror" required>
                                         <option value="">— Pilih Beneficiary —</option>
                                         @foreach($beneficiaries as $ben)
-                                            @php $benLabel = $ben->complete_name . ' — ' . ($ben->bank?->name ?? '-') . ' ' . ($ben->account_number ?? '-'); @endphp
+                                            @php $benLabel = trim(($ben->nickname ? $ben->nickname . ' · ' : '') . $ben->complete_name)
+                                                . ' — ' . ($ben->bank?->name ?? '-') . ' ' . ($ben->account_number ?? '-'); @endphp
                                             <option value="{{ $ben->id }}"
                                                 data-bank="{{ $ben->bank?->name ?? '-' }}"
                                                 data-account="{{ $ben->account_number ?? '-' }}"
@@ -732,7 +733,11 @@ document.addEventListener('DOMContentLoaded', function () {
             '<td><select name="details[' + i + '][budget_detail_id]" class="form-control form-control-sm select-budget-detail" required>' + subOpts + '</select></td>' +
             '<td>' +
                 '<span class="badge badge-danger nob-badge d-none mb-1"><i class="fas fa-exclamation-triangle mr-1"></i>NOB</span>' +
-                '<input type="text" name="details[' + i + '][notes]" class="form-control form-control-sm" value="' + notesVal + '" placeholder="Deskripsi..." required>' +
+                '<div class="desc-wrap">' +
+                    '<input type="text" name="details[' + i + '][notes]" class="form-control form-control-sm inp-notes" maxlength="255" value="' + notesVal + '" placeholder="Deskripsi..." required>' +
+                    '<button type="button" class="desc-expand" title="Lihat deskripsi lengkap" tabindex="-1"><i class="fas fa-expand-alt"></i></button>' +
+                    '<small class="desc-count text-muted">Sisa 255 karakter.</small>' +
+                '</div>' +
             '</td>' +
             '<td class="text-right cell-remaining col-remaining" style="display:none;">—</td>' +
             '<td><input type="text" name="details[' + i + '][amount]" class="form-control form-control-sm text-right inp-amount" value="' + amountVal + '" placeholder="0" required></td>' +
@@ -879,7 +884,8 @@ document.addEventListener('DOMContentLoaded', function () {
         var tr    = document.createElement('tr');
         tr.innerHTML =
             '<td class="text-center align-middle row-no"></td>' +
-            '<td><input type="file" name="attachments[' + i + '][file]" class="form-control-file"></td>' +
+            '<td><input type="file" name="attachments[' + i + '][file]" class="form-control-file">' +
+                '<div class="att-global-preview mt-1" style="font-size:11px;"></div></td>' +
             '<td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-att"><i class="fas fa-trash"></i></button></td>';
         tbody.appendChild(tr);
         refreshAttTable();
@@ -917,8 +923,128 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // ── LAMPIRAN PER ITEM (drag & drop + paste + klik, kolom "Lampiran Item") ──
+
+    /* ── SISA KARAKTER DESKRIPSI ─────────────────────────────────────────── */
+    var DESC_MAX = 255;
+
+    function refreshDescCount(el) {
+        var $info = $(el).closest('.desc-wrap').find('.desc-count');
+        if (!$info.length) return;
+        var sisa = DESC_MAX - (el.value || '').length;
+        $info.text(sisa <= 0
+                ? 'Batas ' + DESC_MAX + ' karakter sudah habis — tidak bisa menambah teks lagi.'
+                : 'Sisa ' + sisa + ' karakter.')
+             .toggleClass('text-danger', sisa <= 0)
+             .toggleClass('text-muted', sisa > 0);
+    }
+
+    $(document).on('input', '.inp-notes', function () { refreshDescCount(this); });
+    $(document).on('click', '#btnAddDetail', function () {
+        setTimeout(function () { $('.inp-notes').each(function () { refreshDescCount(this); }); }, 0);
+    });
+    // Baris juga dirender ulang saat Budget Plan diganti / data awal dimuat.
+    $(document).on('change', '#selectBudgetPlan', function () {
+        setTimeout(function () { $('.inp-notes').each(function () { refreshDescCount(this); }); }, 400);
+    });
+    setTimeout(function () { $('.inp-notes').each(function () { refreshDescCount(this); }); }, 300);
+
+    /* ── LAMPIRAN: video ditolak, file bisa dibuka untuk dicek ───────────── */
+    var VIDEO_EXT = ['mp4','mov','avi','mkv','wmv','flv','webm','m4v','3gp','mpg','mpeg','ts','m2ts','ogv'];
+
+    function isVideoFile(f) {
+        if (!f) return false;
+        if ((f.type || '').toLowerCase().indexOf('video/') === 0) return true;
+        return VIDEO_EXT.indexOf((f.name || '').split('.').pop().toLowerCase()) !== -1;
+    }
+
+    /** Buang file video; kalau ada, tampilkan pop-up. */
+    function tolakVideo(fileList) {
+        var ok = [], tolak = [];
+        Array.from(fileList || []).forEach(function (f) { (isVideoFile(f) ? tolak : ok).push(f); });
+
+        if (tolak.length) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Lampiran tidak boleh video',
+                html: 'File berikut tidak bisa dilampirkan:<br><strong>'
+                    + tolak.map(function (f) { return $('<div>').text(f.name).html(); }).join('<br>')
+                    + '</strong><br><br>Lampirkan foto (JPG/PNG) atau dokumen (PDF, DOC, XLS) saja.',
+                confirmButtonColor: '#92232b'
+            });
+        }
+        return ok;
+    }
+
+    /** Pratinjau file yang belum terunggah — pop-up, bukan tab baru. */
+    function bukaFileLokal(file) {
+        if (!file) return;
+
+        var url   = URL.createObjectURL(file);
+        var nama  = $('<div>').text(file.name).html();
+        var ext   = (file.name || '').split('.').pop().toLowerCase();
+        var isImg = (file.type || '').indexOf('image/') === 0 || ['jpg','jpeg','png','gif','webp','bmp'].indexOf(ext) !== -1;
+        var isPdf = (file.type || '') === 'application/pdf' || ext === 'pdf';
+
+        var isi;
+        if (isImg) {
+            isi = '<img src="' + url + '" alt="' + nama + '" style="max-width:100%;max-height:70vh;object-fit:contain;border-radius:6px;">';
+        } else if (isPdf) {
+            isi = '<iframe src="' + url + '" style="width:100%;height:70vh;border:1px solid var(--border);border-radius:6px;"></iframe>';
+        } else {
+            isi = '<p class="mb-2">Pratinjau tidak tersedia untuk jenis file ini.</p>'
+                + '<a href="' + url + '" download="' + nama + '" class="btn btn-sm btn-primary">'
+                + '<i class="fas fa-download mr-1"></i> Unduh untuk memeriksa</a>';
+        }
+
+        Swal.fire({
+            title: nama, html: isi,
+            width: isImg || isPdf ? '860px' : '520px',
+            showConfirmButton: false, showCloseButton: true,
+            customClass: { closeButton: 'att-close-btn' },
+            didClose: function () { URL.revokeObjectURL(url); }
+        });
+    }
+
+    // Klik nama file pada Lampiran Item -> pratinjau.
+    document.addEventListener('click', function (e) {
+        var a = e.target.closest('.detail-att-open');
+        if (!a) return;
+        e.preventDefault();
+        var input = a.closest('.detail-att-cell').querySelector('.detail-att-input');
+        bukaFileLokal((input.files || [])[parseInt(a.dataset.i, 10)]);
+    });
+
+    // Klik nama file pada Lampiran Tambahan (global) -> pratinjau.
+    document.addEventListener('click', function (e) {
+        var a = e.target.closest('.att-global-open');
+        if (!a) return;
+        e.preventDefault();
+        var input = a.closest('td').querySelector('input[type="file"]');
+        bukaFileLokal((input.files || [])[0]);
+    });
+
+    // Baris lampiran global: tolak video & tampilkan tautan pratinjau.
+    document.addEventListener('change', function (e) {
+        var input = e.target.closest('#attachmentBody input[type="file"]');
+        if (!input) return;
+
+        if ((input.files || []).length && !tolakVideo(input.files).length) {
+            input.value = '';
+        }
+
+        var box = input.parentElement.querySelector('.att-global-preview');
+        var f   = (input.files || [])[0];
+        if (box) {
+            box.innerHTML = f
+                ? '<i class="fas fa-file mr-1"></i><a href="#" class="att-global-open" title="Lihat lampiran">'
+                    + $('<div>').text(f.name).html() + '</a>'
+                : '';
+        }
+    });
+
     function appendFilesToInput(input, fileList) {
-        if (!fileList || !fileList.length) return;
+        fileList = tolakVideo(fileList);
+        if (!fileList.length) return;
         try {
             var dt = new DataTransfer();
             Array.from(input.files || []).forEach(function (f) { dt.items.add(f); });
@@ -938,7 +1064,8 @@ document.addEventListener('DOMContentLoaded', function () {
         label.textContent = files.length ? (files.length + ' file') : 'Lampiran';
         list.innerHTML = files.map(function (f, idx) {
             return '<div class="text-muted"><i class="fas fa-file mr-1"></i>' +
-                f.name.replace(/</g, '&lt;') +
+                '<a href="#" class="detail-att-open" data-i="' + idx + '" title="Lihat lampiran">' +
+                f.name.replace(/</g, '&lt;') + '</a>' +
                 ' <i class="fas fa-times text-danger detail-att-del" data-i="' + idx + '" style="cursor:pointer;"></i></div>';
         }).join('');
     }
@@ -1218,6 +1345,57 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Re-cek setiap ada perubahan pada form
+
+    /* ── LIHAT DESKRIPSI PENUH ─────────────────────────────────────────────
+       Kolom deskripsi sempit dan teksnya sering terpotong. Ikon di ujung
+       kanan kotak membuka pop-up berisi teks utuh; klik di mana saja untuk
+       menutup. Isinya hanya dibaca — penyuntingan tetap di kotaknya. */
+    $(document).on('click', '.desc-expand', function () {
+        var $inp = $(this).closest('.desc-wrap').find('.inp-notes');
+        var isi  = $inp.val() || '';
+
+        Swal.fire({
+            title: 'Deskripsi',
+            html: '<textarea id="descPopupInput" class="form-control" rows="6" maxlength="255" '
+                + 'placeholder="Deskripsi..." '
+                + 'style="font-size:13px;width:100%;resize:vertical;">'
+                + $('<div>').text(isi).html() + '</textarea>'
+                + '<small id="descPopupCount" class="d-block mt-1" style="font-size:11px;text-align:left;"></small>',
+            width: '560px',
+            showConfirmButton: false,
+            showCloseButton: true,
+            customClass: { closeButton: 'att-close-btn' },
+            didOpen: function (popup) {
+                var ta  = popup.querySelector('#descPopupInput');
+                var inf = popup.querySelector('#descPopupCount');
+                if (!ta) return;
+
+                // Penghitung sisa karakter, sama seperti kolom Description Settle.
+                function hitung() {
+                    var sisa = 255 - ta.value.length;
+                    inf.textContent = sisa <= 0
+                        ? 'Batas 255 karakter sudah habis — tidak bisa menambah teks lagi.'
+                        : 'Sisa ' + sisa + ' karakter.';
+                    inf.className = 'd-block mt-1 ' + (sisa <= 0 ? 'text-danger' : 'text-muted');
+                }
+
+                ta.addEventListener('input', hitung);
+                hitung();
+
+                ta.focus();
+                ta.setSelectionRange(ta.value.length, ta.value.length);
+            },
+            /* Ditulis balik ke kotak aslinya saat pop-up ditutup — dengan cara
+               apa pun (X, Esc, klik di luar) — supaya tidak ada hasil ketikan
+               yang hilang. Event input/change dipicu agar validasi & keadaan
+               tombol Simpan ikut menyesuaikan. */
+            willClose: function (popup) {
+                var ta = popup.querySelector('#descPopupInput');
+                if (ta) $inp.val(ta.value).trigger('input').trigger('change');
+            }
+        });
+    });
+
     document.getElementById('frmCR').addEventListener('input', updateSubmitState);
     document.getElementById('frmCR').addEventListener('change', updateSubmitState);
     window.__updateSubmitState = updateSubmitState;
@@ -1353,6 +1531,30 @@ document.addEventListener('DOMContentLoaded', function () {
 
 @push('styles')
 <style>
+
+/* Kotak deskripsi + ikon "lihat penuh" di ujung kanannya. */
+.desc-wrap { position: relative; }
+/* Ruang untuk ikonnya, DAN latar penuh di belakangnya — tanpa itu teks yang
+   panjang lewat di bawah ikon sehingga ikonnya sulit dikenali/diklik. */
+.desc-wrap .inp-notes { padding-right: 30px; }
+.desc-wrap .desc-expand {
+    position: absolute; top: 2px; right: 2px; bottom: 2px; width: 26px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface); border: none; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    line-height: 1; color: var(--text-faint); cursor: pointer; font-size: 11px; z-index: 2;
+}
+.desc-wrap .desc-expand:hover { color: var(--accent); }
+/* Sisa karakter digantung DI LUAR alur (absolute) supaya tinggi selnya tidak
+   berubah — kalau ikut alur, kotak Deskripsi terdorong naik dan tidak lagi
+   sejajar dengan Harga Satuan/Qty di baris yang sama. */
+.desc-wrap .desc-count {
+    position: absolute; top: 100%; left: 0; margin-top: 2px;
+    font-size: 10px; line-height: 1.2; white-space: nowrap;
+}
+
+/* Tombol X pop-up: tanpa kotak, merah. */
+.swal2-close.att-close-btn { color: var(--danger); background: transparent; box-shadow: none; border: none; outline: none; }
+.swal2-close.att-close-btn:hover, .swal2-close.att-close-btn:focus { color: var(--danger); background: transparent; box-shadow: none; outline: none; }
 .font-weight-600 { font-weight:600; }
 table td { vertical-align:middle !important; }
 
