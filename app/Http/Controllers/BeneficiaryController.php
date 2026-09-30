@@ -60,9 +60,7 @@ class BeneficiaryController extends Controller
         $status   = $request->query('status');
         $search   = trim((string) $request->query('q', ''));
 
-        // pic.bank ikut dimuat: panel detail PIC menampilkan rekening PIC-nya
-        // sendiri, bukan hanya rekening beneficiary yang ia tangani.
-        $beneficiaries = Beneficiary::with(['bank', 'user', 'pic.bank'])
+        $beneficiaries = Beneficiary::with(['bank', 'user', 'pic'])
             ->when(in_array($category, Beneficiary::CATEGORIES, true),
                 fn ($q) => $q->where('category', $category))
             ->when(in_array($status, ['ACTIVE', 'INACTIVE'], true),
@@ -122,9 +120,6 @@ class BeneficiaryController extends Controller
                     'type'     => $pic->type,
                     'phone'    => $pic->phone,
                     'email'    => $pic->email,
-                    // Rekening PIC-nya sendiri (migrasi 2026_09_22_000020).
-                    'bank'           => $pic->bank->name ?? null,
-                    'account_number' => $pic->account_number,
                     'total'    => $rows->count(),
                     'items'    => $rows->map(fn ($b) => [
                         'id'             => $b->id,

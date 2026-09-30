@@ -785,7 +785,7 @@ class BudgetRequestController extends Controller
     private function crDateRange(Request $request): array
     {
         return [
-            $request->filled('date_from') ? $request->date_from : now()->startOfMonth()->subMonths(11)->format('Y-m-d'),
+            $request->filled('date_from') ? $request->date_from : now()->startOfMonth()->format('Y-m-d'),
             $request->filled('date_to')   ? $request->date_to   : now()->endOfMonth()->format('Y-m-d'),
         ];
     }

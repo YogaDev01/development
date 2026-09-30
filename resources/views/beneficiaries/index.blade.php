@@ -554,15 +554,6 @@
                             <div id="picDetailPosition" class="text-white mt-1" style="font-size:12px;"></div>
                         </div>
 
-                        {{-- Rekening milik PIC-nya sendiri. Nominalnya bukan angka
-                             uang, tapi ini keterangan yang paling dicari di panel
-                             ini — jadi diberi nada terang seperti baris nominal. --}}
-                        <div class="mb-2">
-                            <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">No. Rekening</span>
-                            <div id="picDetailAccount" style="color:var(--accent);font-size:15px;font-weight:700;margin-top:4px;"></div>
-                            <div id="picDetailBank" style="color:var(--text-faint);font-size:11px;"></div>
-                        </div>
-
                         <div class="mb-2">
                             <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Telepon</span>
                             <div id="picDetailPhone" class="text-white mt-1" style="font-size:12px;"></div>
@@ -1062,9 +1053,6 @@ $(function () {
         );
 
         $('#picDetailPosition').text(g.position || '-');
-        // Rekening PIC-nya sendiri — yang sebelumnya tidak ada di panel ini.
-        $('#picDetailAccount').text(g.account_number || '-');
-        $('#picDetailBank').text(g.bank || (g.account_number ? '' : 'Belum diisi di Master PIC'));
         $('#picDetailPhone').text(g.phone || '-');
         $('#picDetailEmail').text(g.email || '-');
         $('#picDetailTotal').text(g.total + ' beneficiary');

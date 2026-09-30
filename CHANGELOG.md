@@ -4,6 +4,17 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [2.5.2] - 2026-10-01 — Perbaikan Halaman Beneficiary & Filter Tanggal Cost Request
+
+Rilis perbaikan: halaman Beneficiary kembali bisa dibuka dan rentang tanggal
+bawaan Cost Request kini fokus ke bulan berjalan.
+
+### Berubah
+- Cost Request: rentang tanggal bawaan kini dimulai dari awal bulan berjalan, bukan 12 bulan ke belakang.
+
+### Perbaikan
+- Halaman Beneficiary tidak lagi error 500 setelah kolom rekening dihapus dari Master PIC; panel detail PIC tidak lagi menampilkan No. Rekening PIC.
+
 ## [2.5.1] - 2026-10-01 — Cash Advance per PIC, Detail Budget & Hitungan Anggaran Lebih Akurat
 
 Rilis lanjutan yang memperjelas pemakaian anggaran: tab Cash Advance per PIC di

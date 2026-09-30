@@ -26,10 +26,33 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '2.5.1',
+    'current' => '2.5.2',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '2.5.2',
+            'date'    => '2026-10-01',
+            'title'   => 'Perbaikan Halaman Beneficiary & Filter Tanggal Cost Request',
+            'summary' => 'Rilis perbaikan: halaman Beneficiary kembali bisa dibuka dan rentang tanggal bawaan Cost Request kini fokus ke bulan berjalan.',
+            'sections' => [
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Cost Request: rentang tanggal bawaan kini dimulai dari awal bulan berjalan, bukan 12 bulan ke belakang.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Halaman Beneficiary tidak lagi error 500 setelah kolom rekening dihapus dari Master PIC; panel detail PIC tidak lagi menampilkan No. Rekening PIC.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '2.5.1',
