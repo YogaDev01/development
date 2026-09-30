@@ -42,26 +42,43 @@ final class BudgetConsumption
         'REALIZED',
         'SETTLE_CHECKED',
         'SETTLE_VERIFIED',
+        'SETTLE_APPROVED',
+        'SECOND_APPROVED',
         'CLOSED',
     ];
 
-    /** Uang sudah keluar (angka "Used" pada Budget Plan). */
+    /**
+     * Uang sudah keluar (angka "Used" pada Budget Plan). SETTLE_APPROVED dan
+     * SECOND_APPROVED dulu tidak ada di sini, sehingga CR yang settlement-nya
+     * punya expense claim hilang dari Used begitu masuk tahap itu. Untuk query
+     * Used, pakai scope BudgetRequest::disbursed() — ia juga menangkap leg
+     * expense claim yang kembali ke QUEUED.
+     */
     public const DISBURSED = [
         'PAID',
         'REALIZED',
         'SETTLE_CHECKED',
         'SETTLE_VERIFIED',
+        'SETTLE_APPROVED',
+        'SECOND_APPROVED',
         'CLOSED',
     ];
 
-    /** Terpakai menurut laporan (sejak lolos verifikasi Finance). */
+    /**
+     * Terpakai menurut laporan (sejak lolos verifikasi Finance). APPROVED
+     * dulu terlewat, sehingga CR yang baru di-approve CEO hilang dari laporan
+     * sampai masuk batch Treasury.
+     */
     public const REPORTED = [
         'VERIFIED',
+        'APPROVED',
         'QUEUED',
         'PAID',
         'REALIZED',
         'SETTLE_CHECKED',
         'SETTLE_VERIFIED',
+        'SETTLE_APPROVED',
+        'SECOND_APPROVED',
         'CLOSED',
     ];
 

@@ -1400,7 +1400,7 @@ class BudgetRequestController extends Controller
                     $crDetails = collect();
                     if (\Illuminate\Support\Facades\Schema::hasColumn('request_detail', 'budget_detail_id')) {
                         $crDetails = $d->costRequestDetails()
-                            ->whereHas('budgetRequest', fn ($q) => $q->whereIn('status', ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED']))
+                            ->whereHas('budgetRequest', fn ($q) => $q->disbursed())
                             ->with(['budgetRequest:id,code,description,beneficiary_id,created_at', 'budgetRequest.beneficiary:id,nickname', 'realization'])
                             ->get()
                             ->map(function ($rd) {
@@ -1476,7 +1476,11 @@ class BudgetRequestController extends Controller
                     'type'           => $h->type?->name ?? '-',
                     'cost'           => $cost,
                     'cost_formatted' => number_format($cost, 0, ',', '.'),
+                    'status'         => $h->status,
+                    'status_label'   => BudgetRequest::statusLabelFor($h->status),
+                    'status_color'   => $h->status_color,
                     'paid_at'        => $h->paid_at?->format('d M Y') ?? '-',
+                    'paid_at_raw'    => $h->paid_at?->format('Y-m-d H:i:s'),
                 ];
             })
             ->values();

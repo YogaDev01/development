@@ -1082,7 +1082,7 @@ class DailyTransactionController extends Controller
                     // yang menyumbang ke nilai "Used", bukan cuma pengajuan baru di batch ini.
                     $historyItems = $d->costRequestDetails()
                         ->whereNotIn('id', $reqData['detail_ids'] ?: [0])
-                        ->whereHas('budgetRequest', fn ($q) => $q->whereIn('status', ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED']))
+                        ->whereHas('budgetRequest', fn ($q) => $q->disbursed())
                         ->with(['budgetRequest.beneficiary', 'realization'])
                         ->get()
                         ->map(function ($od) {

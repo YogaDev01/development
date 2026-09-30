@@ -338,7 +338,7 @@ class BudgetPlanController extends Controller
         // "Actual" per baris (BudgetPlan::usedAmount) dihitung dalam query yang
         // sama, bukan satu query SUM per Budget Plan.
         $budgetPlans = $query
-            ->withSum(['costRequests as used_amount_sum' => fn ($q) => $q->whereIn('status', \App\Support\BudgetConsumption::DISBURSED)], 'amount')
+            ->withSum(['costRequests as used_amount_sum' => fn ($q) => $q->disbursed()], 'amount')
             ->latest()->get();
 
         $summary = [
@@ -690,7 +690,7 @@ class BudgetPlanController extends Controller
         abort_unless($this->canViewBudgetPlan($bp), 403);
 
         $costRequests = BudgetRequest::where('budget_plan_id', $bp->id)
-            ->whereIn('status', ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'])
+            ->disbursed()
             ->with(['type', 'applicant', 'beneficiary', 'details', 'realizations'])
             ->latest()
             ->get();
@@ -853,7 +853,7 @@ class BudgetPlanController extends Controller
                 $crDetails = collect();
                 if (\Illuminate\Support\Facades\Schema::hasColumn('request_detail', 'budget_detail_id')) {
                     $crDetails = $d->costRequestDetails()
-                        ->whereHas('budgetRequest', fn ($q) => $q->whereIn('status', ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED']))
+                        ->whereHas('budgetRequest', fn ($q) => $q->disbursed())
                         ->with(['budgetRequest:id,code,description,beneficiary_id,created_at', 'budgetRequest.beneficiary:id,nickname', 'realization'])
                         ->get()
                         ->map(function ($rd) {

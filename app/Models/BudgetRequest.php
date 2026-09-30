@@ -246,6 +246,31 @@ class BudgetRequest extends Model
         return $query->whereIn('type_id', self::cashAdvanceTypeIds());
     }
 
+    /**
+     * CR yang uangnya sudah keluar — dasar kolom "Used" Budget Plan.
+     * Selain daftar DISBURSED, ikut juga CR yang sedang di leg expense claim
+     * dan kembali ke QUEUED (masuk batch Treasury untuk kekurangannya):
+     * pencairan awalnya sudah lama keluar, jadi tidak boleh hilang dari Used.
+     */
+    public function scopeDisbursed($query)
+    {
+        return $query->where(fn ($w) => $w
+            ->whereIn('status', \App\Support\BudgetConsumption::DISBURSED)
+            ->orWhere(fn ($q) => $q
+                ->where('status', 'QUEUED')
+                ->whereHas('statusLogs', fn ($l) => $l->where('status_to', 'SECOND_APPROVED'))));
+    }
+
+    /** Padanan scopeDisbursed() untuk CR yang sudah dimuat (collection). */
+    public function isDisbursed(): bool
+    {
+        if (in_array($this->status, \App\Support\BudgetConsumption::DISBURSED, true)) {
+            return true;
+        }
+
+        return $this->status === 'QUEUED' && $this->isExpenseClaimLeg();
+    }
+
     /** Semua selain Cash Advance (Process langsung Closed, tanpa Settlement). */
     public function scopeCostPayment($query)
     {
@@ -650,8 +675,8 @@ class BudgetRequest extends Model
             'QUEUED'    => 'Process',
             'PAID'      => 'Paid',
             'REALIZED'  => 'Settle',
-            'SETTLE_CHECKED'  => 'Checked',
-            'SETTLE_VERIFIED' => 'Verified',
+            'SETTLE_CHECKED'  => 'Settle Checked',
+            'SETTLE_VERIFIED' => 'Settle Verified',
             'SETTLE_APPROVED' => 'Settle Approved',
             'SECOND_APPROVED' => 'Second Approved',
             'CLOSED'    => 'Closed',

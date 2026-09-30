@@ -4,16 +4,24 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
-## [2.5.2] - 2026-10-01 — Perbaikan Halaman Beneficiary & Filter Tanggal Cost Request
+## [2.5.2] - 2026-10-01 — Perbaikan Beneficiary, Riwayat Pengajuan & Hitungan Pemakaian Anggaran
 
-Rilis perbaikan: halaman Beneficiary kembali bisa dibuka dan rentang tanggal
-bawaan Cost Request kini fokus ke bulan berjalan.
+Rilis perbaikan: halaman Beneficiary kembali bisa dibuka, riwayat pengajuan
+beneficiary di Todo List lebih mudah dibaca, dan CR yang sedang di tahap Settle
+Approve / Second Approve kini ikut terhitung di Used, Variable Cost, pengecekan
+NOB, dan laporan.
 
 ### Berubah
 - Cost Request: rentang tanggal bawaan kini dimulai dari awal bulan berjalan, bukan 12 bulan ke belakang.
+- Todo List: riwayat pengajuan beneficiary di detail CR kini berupa tabel yang bisa diurutkan per kolom, dengan baris subtotal dan header yang tetap terlihat saat digulir, kolom Status, dan tombol View yang langsung membuka detail CR di halaman Cost Request.
+- Label status settlement kini "Settle Checked" dan "Settle Verified", sehingga tidak tertukar dengan Checked/Verified pada tahap pengajuan.
 
 ### Perbaikan
 - Halaman Beneficiary tidak lagi error 500 setelah kolom rekening dihapus dari Master PIC; panel detail PIC tidak lagi menampilkan No. Rekening PIC.
+- Used Budget Plan (daftar, total per plan, dan per rincian): CR berstatus Settle Approved / Second Approved dan expense claim yang sudah masuk batch Treasury tidak lagi hilang dari hitungan.
+- Purchase Order: Actual Used dan Variable Cost ikut menghitung CR di tahap Settle Approved / Second Approved; drawer detail CR dan Daily Transaction memakai aturan yang sama.
+- Pengecekan NOB kini menganggap CR di tahap Settle Approved / Second Approved sudah memakai budget, sehingga sisa budget tidak tampak lebih besar dari kenyataan.
+- Finance Summary & Report: CR yang sudah di-approve CEO (belum masuk batch Treasury) serta CR di tahap Settle Approved / Second Approved kini ikut terhitung.
 
 ## [2.5.1] - 2026-10-01 — Cash Advance per PIC, Detail Budget & Hitungan Anggaran Lebih Akurat
 

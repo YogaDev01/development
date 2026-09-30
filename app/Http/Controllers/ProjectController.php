@@ -535,7 +535,7 @@ class ProjectController extends Controller
         // realisasi & selisihnya jadi Refund. Kalau belum ada realisasi,
         // Variable Cost pakai nilai pengajuan penuh (Refund 0).
         $costRequests = \App\Models\BudgetRequest::whereIn('budget_plan_id', $project->budgetPlans->pluck('id'))
-            ->whereIn('status', ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'])
+            ->disbursed()
             ->with(['beneficiary:id,nickname', 'realizations'])
             ->orderByDesc('created_at')
             ->get()
@@ -674,7 +674,7 @@ class ProjectController extends Controller
                     $crDetails = collect();
                     if (\Illuminate\Support\Facades\Schema::hasColumn('request_detail', 'budget_detail_id')) {
                         $crDetails = $d->costRequestDetails()
-                            ->whereHas('budgetRequest', fn ($q) => $q->whereIn('status', ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED']))
+                            ->whereHas('budgetRequest', fn ($q) => $q->disbursed())
                             ->with(['budgetRequest:id,code,description,beneficiary_id,created_at', 'budgetRequest.beneficiary:id,nickname', 'realization'])
                             ->get()
                             ->map(function ($rd) {

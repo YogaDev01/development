@@ -243,7 +243,7 @@ class BudgetPlan extends Model
         }
 
         return $this->costRequests()
-            ->whereIn('status', \App\Support\BudgetConsumption::DISBURSED)
+            ->disbursed()
             ->sum('amount');
     }
 

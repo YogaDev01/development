@@ -100,7 +100,7 @@ class BudgetPlanDetail extends Model
 
         return $this->usedAmountCache = (int) $this->costRequestDetails()
             ->whereHas('budgetRequest', function ($q) {
-                $q->whereIn('status', \App\Support\BudgetConsumption::DISBURSED);
+                $q->disbursed();
             })
             ->with('realization')
             ->get()

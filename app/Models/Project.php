@@ -596,11 +596,11 @@ class Project extends Model
     public function actualUsedTotal(): int
     {
         if ($this->crCache !== null) {
-            return (int) $this->crCache->whereIn('status', ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'])->sum('amount');
+            return (int) $this->crCache->filter(fn ($c) => $c->isDisbursed())->sum('amount');
         }
 
         return (int) BudgetRequest::whereIn('budget_plan_id', $this->budgetPlans->pluck('id'))
-            ->whereIn('status', ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'])
+            ->disbursed()
             ->sum('amount');
     }
 
@@ -630,15 +630,14 @@ class Project extends Model
     public function variableCostTotal(): int
     {
         $crs = $this->crCache !== null
-            ? $this->crCache->whereIn('status', ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'])
+            ? $this->crCache->filter(fn ($c) => $c->isDisbursed())
             : BudgetRequest::whereIn('budget_plan_id', $this->budgetPlans->pluck('id'))
-                ->whereIn('status', ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'])
+                ->disbursed()
                 ->with('realizations')
                 ->get();
 
         return (int) $crs->sum(function ($c) {
-            $hasRealization = in_array($c->status, ['REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'])
-                && $c->realizations->isNotEmpty();
+            $hasRealization = $c->status !== 'PAID' && $c->realizations->isNotEmpty();
 
             return $hasRealization ? (int) $c->total_realization : (int) $c->amount;
         });

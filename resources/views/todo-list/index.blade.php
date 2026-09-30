@@ -1990,6 +1990,17 @@
 /* Bar aksi drawer — menempel di dasar panel, tidak ikut tergulir bersama isi
    tab, supaya tombol Approve/Reject tetap terjangkau pada CR berisi banyak
    rincian. */
+/* Riwayat pengajuan beneficiary — subtotal + header dibekukan */
+.todo-benhist-wrap { max-height:300px; overflow:auto; border:1px solid var(--border); border-radius:var(--radius-md); }
+.todo-benhist-table { border-collapse:separate; border-spacing:0; width:100%; }
+.todo-benhist-table th, .todo-benhist-table td { border-bottom:1px solid var(--border); padding:6px 10px; vertical-align:middle; }
+.todo-benhist-table thead th { position:sticky; z-index:2; }
+/* Semua kolom selebar isinya; Description mengambil sisa lebar. */
+.todo-benhist-table th, .todo-benhist-table td { width:1%; white-space:nowrap; }
+.todo-benhist-table .todo-benhist-desc { width:auto; white-space:normal; }
+.todo-benhist-sub th { top:0; background:var(--surface-3); font-weight:700; color:var(--text); }
+.todo-benhist-head th { top:30px; background:var(--surface-2); font-size:10.5px; letter-spacing:.04em; text-transform:uppercase; color:var(--text-faint); cursor:pointer; user-select:none; white-space:nowrap; }
+.todo-benhist-head th:hover { color:var(--text); }
 .todo-drawer-actions {
     flex-shrink:0;padding:12px 22px;background:var(--surface-2);border-top:1px solid var(--border);
     display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;
@@ -3281,29 +3292,17 @@ $(function () {
             info += '<div class="todo-drw-row" style="margin-top:18px;">' +
                 '<div class="todo-drw-label">Riwayat Pengajuan Beneficiary Ini</div>';
             if (hist.length) {
-                info += '<div class="table-responsive" style="max-height:260px;overflow-y:auto;">' +
-                    '<table class="table table-sm table-bordered mb-0" style="font-size:11.5px;">' +
-                    '<thead class="bg-light"><tr>' +
-                        '<th scope="col" class="text-nowrap">Kode</th>' +
-                        '<th scope="col">Description</th>' +
-                        '<th scope="col" class="text-right text-nowrap">Cost</th>' +
-                        '<th scope="col" class="text-nowrap">Tanggal Paid</th>' +
-                    '</tr></thead><tbody>';
-                hist.forEach(function (h) {
-                    info += '<tr>' +
-                        '<td class="text-nowrap"><button type="button" class="cr-number-btn todo-open-drawer" data-id="' + h.id + '">' + esc(h.code) + '</button></td>' +
-                        '<td>' + esc(h.description || '-') + '</td>' +
-                        '<td class="text-right text-nowrap"><strong>' + esc(h.cost_formatted) + '</strong></td>' +
-                        '<td class="text-nowrap">' + esc(h.paid_at) + '</td>' +
-                    '</tr>';
-                });
-                info += '</tbody></table></div>';
+                // Tabel dibangun ulang oleh renderBenHist() setiap kali diurutkan.
+                window.__benHist = { rows: hist.slice(), key: 'paid_at_raw', dir: 'desc' };
+                info += '<div class="todo-benhist-wrap" id="todoBenHist"></div>';
             } else {
+                window.__benHist = null;
                 info += '<div class="text-muted" style="font-size:12px;">Belum ada pengajuan lain yang sudah dibayar untuk beneficiary ini.</div>';
             }
             info += '</div>';
 
             $('#todoPaneInfo').html(info);
+            renderBenHist();
 
             /* ── BAR AKSI WORKFLOW ── */
             renderDrawerActions(d);
@@ -3472,6 +3471,79 @@ $(function () {
             '<i class="fas ' + (on ? 'fa-minus-square' : 'fa-check-square') + ' mr-1"></i>' +
             (on ? 'Batal Pilih' : 'Pilih') + '</button>';
     }
+
+    /* ── RIWAYAT PENGAJUAN BENEFICIARY (drawer tab Info) ──
+       Bisa diurutkan per kolom. Baris subtotal + header dibekukan (sticky) di
+       atas area scroll-nya sendiri, jadi total tetap terlihat saat daftar
+       panjang digulir. */
+    var benHistCols = [
+        { key: 'description',  label: 'Description',  type: 'text', cls: 'todo-benhist-desc' },
+        { key: 'status_label', label: 'Status',       type: 'text', cls: 'text-nowrap text-center' },
+        { key: 'cost',         label: 'Cost',         type: 'num',  cls: 'text-nowrap text-right' },
+        { key: 'paid_at_raw',  label: 'Tanggal Paid', type: 'text', cls: 'text-nowrap' }
+    ];
+
+    function renderBenHist() {
+        var st = window.__benHist;
+        var $wrap = $('#todoBenHist');
+        if (!st || !$wrap.length) return;
+
+        var rows = st.rows.slice().sort(function (a, b) {
+            var col = benHistCols.filter(function (c) { return c.key === st.key; })[0];
+            var x = a[st.key], y = b[st.key];
+            var r;
+            if (col && col.type === 'num') r = (parseFloat(x) || 0) - (parseFloat(y) || 0);
+            else r = String(x == null ? '' : x).localeCompare(String(y == null ? '' : y), 'id', { numeric: true });
+            return st.dir === 'asc' ? r : -r;
+        });
+
+        var total = rows.reduce(function (t, h) { return t + (parseFloat(h.cost) || 0); }, 0);
+
+        var head = '<tr class="todo-benhist-sub">' +
+                '<th colspan="2" class="text-right">Subtotal (' + rows.length + ' CR)</th>' +
+                '<th class="text-right text-nowrap">' + Math.round(total).toLocaleString('id-ID') + '</th>' +
+                '<th colspan="2"></th>' +
+            '</tr><tr class="todo-benhist-head">';
+        benHistCols.forEach(function (c) {
+            var aktif = st.key === c.key;
+            var ikon = aktif ? (st.dir === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort';
+            head += '<th scope="col" class="todo-benhist-sort ' + c.cls + '" data-key="' + c.key + '" role="button" tabindex="0"' +
+                ' aria-sort="' + (aktif ? (st.dir === 'asc' ? 'ascending' : 'descending') : 'none') + '">' +
+                c.label + ' <i class="fas ' + ikon + '" style="opacity:' + (aktif ? '1' : '.35') + ';font-size:10px;"></i></th>';
+        });
+        head += '<th scope="col" class="text-center text-nowrap">Action</th></tr>';
+
+        var body = rows.map(function (h) {
+            return '<tr>' +
+                '<td class="todo-benhist-desc">' + esc(h.description || '-') + '</td>' +
+                '<td class="text-center text-nowrap"><span class="badge badge-' + esc(h.status_color || 'secondary') + '" style="font-size:9.5px;">' + esc(h.status_label || h.status || '-') + '</span></td>' +
+                '<td class="text-right text-nowrap"><strong>' + esc(h.cost_formatted) + '</strong></td>' +
+                '<td class="text-nowrap">' + esc(h.paid_at) + '</td>' +
+                // Buka halaman Cost Request dengan modal detail CR ini langsung terbuka (?open=).
+                '<td class="text-center text-nowrap"><a href="{{ url('/budget-request') }}?open=' + encodeURIComponent(h.id) + '"' +
+                    ' target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm" style="padding:1px 8px;font-size:10.5px;"' +
+                    ' title="Lihat ' + escAttr(h.code) + ' di halaman Cost Request" aria-label="Lihat ' + escAttr(h.code) + '"><i class="fas fa-eye"></i></a></td>' +
+            '</tr>';
+        }).join('');
+
+        $wrap.html('<table class="table table-sm mb-0 todo-benhist-table" style="font-size:11.5px;">' +
+            '<thead>' + head + '</thead><tbody>' + body + '</tbody></table>');
+
+        // Header kolom menempel tepat di bawah baris subtotal, berapa pun tingginya.
+        var h1 = $wrap.find('.todo-benhist-sub').outerHeight() || 0;
+        $wrap.find('.todo-benhist-head th').css('top', h1 + 'px');
+    }
+
+    $(document).on('click keydown', '.todo-benhist-sort', function (e) {
+        if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        var st = window.__benHist;
+        if (!st) return;
+        var key = $(this).data('key');
+        st.dir = (st.key === key && st.dir === 'desc') ? 'asc' : (st.key === key ? 'desc' : (key === 'cost' || key === 'paid_at_raw' ? 'desc' : 'asc'));
+        st.key = key;
+        renderBenHist();
+    });
 
     function renderDrawerActions(d) {
         var list = d.workflow_actions || [];
