@@ -987,12 +987,12 @@
 
             {{-- TREASURY — MENUNGGU PROSES (batch PENDING_APPROVER, ditandai "Submitted" -> jadi Approved/Done setelah diproses CEO) --}}
             {{-- TREASURY — BUAT BATCH PEMBAYARAN (CR APPROVED, belum masuk batch manapun) --}}
-            @if($treasuryBatchCreate->isNotEmpty())
+            @if($treasuryBatchCreate->isNotEmpty() || $treasuryBatchSecond->isNotEmpty())
             <div id="tl-batch-create" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
                 <div class="card-header">
                     <h3 class="card-title mb-0">
                         <i class="fas fa-layer-group mr-1"></i> Treasury — Buat Batch Pembayaran
-                        <span class="badge badge-secondary ml-1">{{ $treasuryBatchCreate->count() }}</span>
+                        <span class="badge badge-secondary ml-1">{{ $treasuryBatchCreate->count() + $treasuryBatchSecond->count() }}</span>
                     </h3>
                 </div>
                 <div class="card-body p-0">
@@ -1081,11 +1081,55 @@
                                 @endforeach
                                 @endforeach
                                 @endforeach
+
+                                {{-- SECOND PAYMENT yang sudah Second Approve — kewajiban
+                                     bayar yang menunggu Treasury sama seperti CR APPROVED,
+                                     jadi ia ikut bisa dicentang dan dibatch dari sini.
+                                     Dipisahkan pada grupnya sendiri karena yang dikirim ke
+                                     store() bukan id CR melainkan id Second Payment
+                                     (second_payment_ids[]) — lihat data-kind di bawah. --}}
+                                @if($treasuryBatchSecond->isNotEmpty())
+                                <tr class="todo-po-row" data-target="tlbatch-second">
+                                    <td>
+                                        <input type="checkbox" class="tl-batch-check-group"
+                                               data-group="tlbatch-second" title="Pilih semua Second Payment">
+                                    </td>
+                                    <td colspan="3">
+                                        <i class="fas fa-chevron-right todo-caret rotated mr-2"></i>
+                                        <strong>Second Payment</strong>
+                                        <span class="text-muted" style="font-size:11px;">(sudah Second Approve)</span>
+                                        <span class="badge badge-secondary ml-1">{{ $treasuryBatchSecond->count() }}</span>
+                                    </td>
+                                    <td class="text-right text-nowrap" style="font-weight:700;">
+                                        {{ number_format($treasuryBatchSecond->sum('amount'), 0, ',', '.') }}
+                                    </td>
+                                    <td></td>
+                                </tr>
+                                @foreach($treasuryBatchSecond as $sp)
+                                @php
+                                    $spSearch = strtolower($sp->cr_code . ' ' . $sp->cr_desc . ' ' . $sp->beneficiary_label);
+                                @endphp
+                                <tr class="todo-row tlbatch-second" data-po="{{ $sp->po_label }}" data-search="{{ $spSearch }}">
+                                    <td>
+                                        <input type="checkbox" class="tl-batch-check" data-kind="second"
+                                               value="{{ $sp->id }}" data-amount="{{ $sp->amount }}">
+                                    </td>
+                                    <td class="text-nowrap">
+                                        <button type="button" class="cr-number-btn todo-open-drawer" data-id="{{ $sp->budget_request_id }}">{{ $sp->cr_code }}</button>
+                                        <span class="badge badge-warning ml-1" style="font-size:9px;">2nd</span>
+                                    </td>
+                                    <td>{{ Str::limit($sp->cr_desc, 150) }}</td>
+                                    <td class="text-nowrap">{{ $sp->beneficiary_label }}</td>
+                                    <td class="text-right text-nowrap"><strong>{{ $sp->amount_formatted }}</strong></td>
+                                    <td class="text-center text-nowrap text-muted">-</td>
+                                </tr>
+                                @endforeach
+                                @endif
                             </tbody>
                             <tfoot>
                                 <tr style="background:var(--surface-2);">
                                     <th colspan="4" class="text-right">Subtotal</th>
-                                    <th class="text-right">{{ number_format($treasuryBatchCreate->sum('amount'), 0, ',', '.') }}</th>
+                                    <th class="text-right">{{ number_format($treasuryBatchCreate->sum('amount') + $treasuryBatchSecond->sum('amount'), 0, ',', '.') }}</th>
                                     <th></th>
                                 </tr>
                             </tfoot>
@@ -1993,8 +2037,11 @@ $(function () {
         $dipilih.each(function () { total += parseInt($(this).data('amount'), 10) || 0; });
 
         // Daftar id ditulis ulang tiap kali modal dibuka, bukan ditumpuk.
+        // Second Payment dikirim pada parameter tersendiri: store() memang
+        // memvalidasi dan membuat barisnya lewat jalur yang berbeda dari CR.
         $('#tlBatchIds').html($dipilih.map(function () {
-            return '<input type="hidden" name="cr_ids[]" value="' + $(this).val() + '">';
+            var field = $(this).data('kind') === 'second' ? 'second_payment_ids[]' : 'cr_ids[]';
+            return '<input type="hidden" name="' + field + '" value="' + $(this).val() + '">';
         }).get().join(''));
 
         $('#tlBatchSummary').text($dipilih.length + ' CR — Rp ' + total.toLocaleString('id-ID'));

@@ -99,7 +99,12 @@
                                 <td>
                                     <input type="text" name="realizations[{{ $i }}][notes]"
                                            class="form-control form-control-sm realize-notes-input"
+                                           maxlength="255"
                                            value="{{ $existing->notes ?? '' }}" placeholder="Catatan settle...">
+                                    {{-- Penghitung sisa karakter: ikut berubah saat mengetik dan
+                                         berubah merah begitu batasnya habis, supaya user tahu
+                                         kenapa ketikannya berhenti. --}}
+                                    <small class="realize-notes-count text-muted d-block mt-1" style="font-size:10px;"></small>
                                 </td>
                                 <td class="text-center text-nowrap align-middle">{{ rtrim(rtrim(number_format($detail->qty, 2, ',', '.'), '0'), ',') }}</td>
                                 <td class="text-right text-nowrap align-middle font-weight-bold text-primary realize-request-cell" data-raw="{{ (int) $detail->total }}">
@@ -330,6 +335,26 @@ $(function () {
     $(document).on('input', '.realize-amount-input', recalcTotalRealized);
     recalcTotalRealized();
 
+    /* ── SISA KARAKTER "DESCRIPTION SETTLE" ───────────────────────────────── */
+    var NOTE_MAX = 255;
+
+    function refreshNoteCount(el) {
+        var sisa  = NOTE_MAX - (el.value || '').length;
+        var $info = $(el).siblings('.realize-notes-count');
+        if (!$info.length) return;
+
+        if (sisa <= 0) {
+            $info.text('Batas ' + NOTE_MAX + ' karakter sudah habis — tidak bisa menambah teks lagi.')
+                 .removeClass('text-muted').addClass('text-danger');
+        } else {
+            $info.text('Sisa ' + sisa + ' karakter.')
+                 .removeClass('text-danger').addClass('text-muted');
+        }
+    }
+
+    $(document).on('input', '.realize-notes-input', function () { refreshNoteCount(this); });
+    $('.realize-notes-input').each(function () { refreshNoteCount(this); });
+
     /* ── KETERANGAN SETTLEMENT ─────────────────────────────────────────────
        Kolomnya disembunyikan sampai user menekan "Tambah Keterangan", sama
        seperti area upload lampiran. */
@@ -389,7 +414,84 @@ $(function () {
 
     /* ── LAMPIRAN ITEM PER BARIS (drag & drop + paste + klik) ───────────────
        Pola sama seperti kolom "Lampiran Item" di form Cost Request. ── */
+    /* ── LAMPIRAN: video ditolak, file bisa dibuka untuk dicek ─────────────
+       Daftar accept hanya menyaring dialog "pilih file"; drag-drop dan paste
+       bisa menyelipkan apa saja, jadi penyaringnya dipasang di sini. */
+    var VIDEO_EXT = ['mp4','mov','avi','mkv','wmv','flv','webm','m4v','3gp','mpg','mpeg','ts','m2ts','ogv'];
+
+    function isVideoFile(f) {
+        if (!f) return false;
+        if ((f.type || '').toLowerCase().indexOf('video/') === 0) return true;
+        var ext = (f.name || '').split('.').pop().toLowerCase();
+        return VIDEO_EXT.indexOf(ext) !== -1;
+    }
+
+    /** Buang file video dari daftar; kalau ada, tampilkan pop-up. */
+    function tolakVideo(fileList) {
+        var ok = [], tolak = [];
+        Array.from(fileList || []).forEach(function (f) {
+            (isVideoFile(f) ? tolak : ok).push(f);
+        });
+
+        if (tolak.length) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Lampiran tidak boleh video',
+                html: 'File berikut tidak bisa dilampirkan:<br><strong>'
+                    + tolak.map(function (f) { return $('<div>').text(f.name).html(); }).join('<br>')
+                    + '</strong><br><br>Lampirkan foto (JPG/PNG) atau dokumen (PDF, DOC, XLS) saja.',
+                confirmButtonColor: '#92232b'
+            });
+        }
+
+        return ok;
+    }
+
+    /**
+     * Tampilkan file yang BELUM terunggah di dalam pop-up — bukan tab baru,
+     * yang sering diblokir browser dan membuat user keluar dari form.
+     * Gambar dirender langsung, PDF di-embed, sisanya cukup tombol unduh.
+     */
+    function bukaFileLokal(file) {
+        if (!file) return;
+
+        var url   = URL.createObjectURL(file);
+        var nama  = $('<div>').text(file.name).html();
+        var tipe  = (file.type || '').toLowerCase();
+        var ext   = (file.name || '').split('.').pop().toLowerCase();
+        var isImg = tipe.indexOf('image/') === 0 || ['jpg','jpeg','png','gif','webp','bmp'].indexOf(ext) !== -1;
+        var isPdf = tipe === 'application/pdf' || ext === 'pdf';
+
+        var isi;
+        if (isImg) {
+            isi = '<img src="' + url + '" alt="' + nama + '" ' +
+                  'style="max-width:100%;max-height:70vh;object-fit:contain;border-radius:6px;">';
+        } else if (isPdf) {
+            isi = '<iframe src="' + url + '" style="width:100%;height:70vh;border:1px solid var(--border);border-radius:6px;"></iframe>';
+        } else {
+            isi = '<p class="mb-2">Pratinjau tidak tersedia untuk jenis file ini.</p>' +
+                  '<a href="' + url + '" download="' + nama + '" class="btn btn-sm btn-primary">' +
+                  '<i class="fas fa-download mr-1"></i> Unduh untuk memeriksa</a>';
+        }
+
+        Swal.fire({
+            title: nama,
+            html: isi,
+            width: isImg || isPdf ? '860px' : '520px',
+            // Penutupnya cukup tanda X di kanan atas — tombol "Tutup" di bawah
+            // hanya menambah tinggi pop-up tanpa fungsi baru.
+            showConfirmButton: false,
+            showCloseButton: true,
+            customClass: { closeButton: 'att-close-btn' },
+            // Blob baru dilepas setelah pop-up ditutup, kalau tidak gambarnya kosong.
+            didClose: function () { URL.revokeObjectURL(url); }
+        });
+    }
+
     function appendFilesToInput(input, fileList) {
+        fileList = tolakVideo(fileList);
+        if (!fileList.length) return;
+
         if (!fileList || !fileList.length) return;
         try {
             var dt = new DataTransfer();
@@ -410,7 +512,8 @@ $(function () {
         label.textContent = files.length ? (files.length + ' file') : 'Lampiran';
         list.innerHTML = files.map(function (f, idx) {
             return '<div class="text-muted"><i class="fas fa-file mr-1"></i>' +
-                f.name.replace(/</g, '&lt;') +
+                '<a href="#" class="detail-att-open" data-i="' + idx + '" title="Lihat lampiran">' +
+                f.name.replace(/</g, '&lt;') + '</a>' +
                 ' <i class="fas fa-times text-danger detail-att-del" data-i="' + idx + '" style="cursor:pointer;"></i></div>';
         }).join('');
         if (window.__updateSettleSubmitState) window.__updateSettleSubmitState();
@@ -424,6 +527,16 @@ $(function () {
         tmp.type = 'file'; tmp.multiple = true; tmp.accept = real.accept;
         tmp.addEventListener('change', function () { appendFilesToInput(real, tmp.files); });
         tmp.click();
+    });
+
+    // Klik nama file -> buka isinya untuk dicek.
+    document.addEventListener('click', function (e) {
+        var a = e.target.closest('.detail-att-open');
+        if (!a) return;
+        e.preventDefault();
+        var cell  = a.closest('.detail-att-cell');
+        var input = cell.querySelector('.detail-att-input');
+        bukaFileLokal((input.files || [])[parseInt(a.dataset.i, 10)]);
     });
 
     document.addEventListener('click', function (e) {
@@ -513,13 +626,16 @@ $(function () {
     });
 
     function addAttachmentRow(file) {
+        if (file && !tolakVideo([file]).length) return;   // video: ditolak, baris tidak dibuat
+
         showRealAttUploadArea();
         var i     = attIdx++;
         var tbody = document.getElementById('realAttachmentBody');
         var tr    = document.createElement('tr');
         tr.innerHTML =
             '<td class="text-center align-middle row-no"></td>' +
-            '<td><input type="file" name="realization_attachments[' + i + ']" class="form-control-file"></td>' +
+            '<td><input type="file" name="realization_attachments[' + i + ']" class="form-control-file real-att-input">' +
+                '<div class="real-att-preview mt-1" style="font-size:11px;"></div></td>' +
             '<td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-real-att"><i class="fas fa-trash"></i></button></td>';
         tbody.appendChild(tr);
 
@@ -531,8 +647,42 @@ $(function () {
                 input.files = dt.files;
             } catch (err) {}
         }
+
+        renderRealAttPreview(tr.querySelector('.real-att-input'));
         renumberAttachments();
     }
+
+    /** Nama file pada baris lampiran global — bisa diklik untuk dicek. */
+    function renderRealAttPreview(input) {
+        if (!input) return;
+        var box = input.parentElement.querySelector('.real-att-preview');
+        var f   = (input.files || [])[0];
+        if (!box) return;
+
+        box.innerHTML = f
+            ? '<i class="fas fa-file mr-1"></i><a href="#" class="real-att-open" title="Lihat lampiran">'
+                + $('<div>').text(f.name).html() + '</a>'
+            : '';
+    }
+
+    // File dipilih lewat input barisnya sendiri: tolak video & perbarui tautan.
+    document.addEventListener('change', function (e) {
+        var input = e.target.closest('.real-att-input');
+        if (!input) return;
+
+        if ((input.files || []).length && !tolakVideo(input.files).length) {
+            input.value = '';
+        }
+        renderRealAttPreview(input);
+    });
+
+    document.addEventListener('click', function (e) {
+        var a = e.target.closest('.real-att-open');
+        if (!a) return;
+        e.preventDefault();
+        var input = a.closest('td').querySelector('.real-att-input');
+        bukaFileLokal((input.files || [])[0]);
+    });
 
     function renumberAttachments() {
         document.querySelectorAll('#realAttachmentBody .row-no').forEach(function (el, i) { el.textContent = i + 1; });
@@ -744,6 +894,22 @@ $(function () {
 .detail-att-cell:focus-within { background: var(--warning-bg); }
 .detail-att-hint { opacity: .6; }
 .detail-att-cell .btn-detail-att { border-radius: var(--radius-sm); }
+
+/* Tombol X pratinjau lampiran: tanpa kotak/latar, merah saja. */
+.swal2-close.att-close-btn {
+    color: var(--danger);
+    background: transparent;
+    box-shadow: none;
+    border: none;
+    outline: none;
+}
+.swal2-close.att-close-btn:hover,
+.swal2-close.att-close-btn:focus {
+    color: var(--danger);
+    background: transparent;
+    box-shadow: none;
+    outline: none;
+}
 
 /* ── Bukti Settlement (Global) dropzone ── */
 .att-dropzone {

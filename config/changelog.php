@@ -26,10 +26,46 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '2.4.3',
+    'current' => '2.4.4',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '2.4.4',
+            'date'    => '2026-09-30',
+            'title'   => 'Summary Progress Bertahap, Role Supervisor & Batch Second Payment',
+            'summary' => 'Tabel Summary tab Progress kini memecah nilai No. PO sesuai tahap yang sudah '
+                       . 'dilalui, Second Payment yang sudah disetujui bisa langsung dibatch Treasury '
+                       . 'dari Todo List, dan role Supervisor tersedia untuk diatur hak aksesnya.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Role Supervisor ditambahkan; hak aksesnya diatur lewat User & Access > Menu Access seperti role lain.',
+                        'Second Payment yang sudah Second Approve ikut muncul di daftar Buat Batch milik Treasury di Todo List, tidak perlu lagi dicari manual di Daily Transaction.',
+                        'Form Settlement: penghitung sisa karakter pada kolom catatan, dan lampiran bisa dibuka lebih dulu untuk diperiksa sebelum dikirim.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Summary tab Progress: nilai kini mengalir bertahap antar kolom - Waiting BAST, Waiting Invoice, Waiting Paid, dan Closed memuat selisih tiap tahap, sehingga No. PO yang baru sebagian ditagih atau dibayar terlihat terbelah dan jumlah seluruh kolom tetap sama dengan Contract.',
+                        'Nama kolom Summary diseragamkan dengan modul Purchase Order: Waiting Payment menjadi Waiting Paid, dan Close menjadi Closed.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Lampiran berupa video ditolak saat unggah di form Settlement, tidak lagi lolos lalu gagal di server.',
+                        'Catatan per baris Settlement dibatasi 255 karakter di server, sejalan dengan batas pada formnya.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '2.4.3',

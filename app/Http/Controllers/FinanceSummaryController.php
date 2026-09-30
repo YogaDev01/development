@@ -1466,10 +1466,10 @@ class FinanceSummaryController extends Controller
      *
      *   Waiting PO      : sisa nilai kontrak yang No. PO-nya belum terbit
      *                     (tingkat PO, bukan No. PO — belum ada barisnya)
-     *   Waiting BAST    : No. PO berstatus RELEASED / PARTIAL
-     *   Waiting Invoice : No. PO berstatus BAST_SUBMITTED
-     *   Waiting Payment : No. PO berstatus INVOICED
-     *   Close           : No. PO berstatus PAID - tidak mengantre lagi,
+     *   Waiting BAST    : nominal No. PO yang belum di-BAST
+     *   Waiting Invoice : sudah di-BAST, belum ditagihkan
+     *   Waiting Paid    : sudah ditagihkan, uangnya belum masuk
+     *   Closed          : nilai yang uangnya sudah masuk - tidak mengantre lagi,
      *                     tapi tetap diberi kolom supaya Contract = jumlah
      *                     seluruh kolom di kanannya. Tanpa kolom ini, PO yang
      *                     sudah lunas tampil berkontrak sekian tapi nol di
@@ -1508,61 +1508,92 @@ class FinanceSummaryController extends Controller
         }
 
         /*
-        | Invoice & cash receipt TIDAK lagi dibaca di sini. Tahap tiap No. PO
-        | ditentukan kolom status-nya sendiri (RELEASED -> ... -> PAID), yang
-        | memang sudah disinkronkan saat invoice terbit dan saat pembayaran
-        | masuk. Query invoice beserta cashReceipts-nya dulu hanya dipakai untuk
-        | menerka tahap dari keberadaan dokumen - terkaan yang justru membuat
-        | halaman ini berbeda pendapat dengan modul Purchase Order.
+        | Invoice & cash receipt dibaca lagi - tapi sebagai PEMBAGI NILAI, bukan
+        | penentu tahap. Tahapnya tetap dari status No. PO (itu yang menyamakan
+        | halaman ini dengan modul Purchase Order); angka invoice & penerimaan
+        | dipakai untuk memecah nominal No. PO ke beberapa kolom saat baru
+        | sebagian ditagih atau dibayar.
+        |
+        | Diambil SEKALI (bukan per No. PO) supaya tidak N+1.
         */
+        $invoicesByPoNumber = Invoice::select('id', 'po_id', 'project_po_number_id', 'status', 'captured_total')
+            ->where('status', '!=', 'DRAFT')
+            ->whereIn('po_id', $projects->pluck('id'))
+            ->when($scope['invoiceIds'] !== null, fn ($q) => $q->whereIn('id', $scope['invoiceIds']))
+            ->with('cashReceipts:id,invoice_id,amount,withholding_tax')
+            ->get()
+            ->groupBy('project_po_number_id');
+
         $rows = $projects
             ->sortBy(fn ($p) => strtolower($p->customer->name) . '|' . strtolower($p->name ?? ''))
-            ->map(function ($project) {
+            ->map(function ($project) use ($invoicesByPoNumber) {
                 $poNumberRows = collect($project->poNumbers)
                     ->sortBy('po_number')
-                    ->map(function ($poNumber) {
+                    ->map(function ($poNumber) use ($invoicesByPoNumber) {
                         $nominal = (int) $poNumber->nominal;
 
+                        $poInvoices = $invoicesByPoNumber->get($poNumber->id, collect());
+                        $invoiced   = (int) $poInvoices->sum('captured_total');
+                        $paid       = (int) $poInvoices->sum(fn ($inv) => (int) $inv->cashReceipts->sum('amount')
+                            + (int) $inv->cashReceipts->sum('withholding_tax'));
+
                         /*
-                        | Satu status = satu kolom, dan yang dipindahkan adalah
-                        | NOMINAL PENUH No. PO itu.
+                        | NILAI MENGALIR BERTAHAP, tidak lagi pindah utuh.
                         |
-                        | Sebelumnya tiap kolom memakai ukurannya sendiri (sisa
-                        | belum di-BAST, nilai BAST, sisa tagihan), sehingga
-                        | sebuah PO bisa "menguap": Fiberhome bernilai kontrak
-                        | 390 juta hanya muncul 301 juta karena kolom Waiting
-                        | Paid menghitung sisa tagihan, bukan nilai No. PO yang
-                        | tertahan di tahap itu. Tabel ini menjawab "nilai sebesar
-                        | apa yang sedang berhenti di tahap mana", jadi tiap
-                        | rupiah kontrak harus berada tepat di satu kolom dan
-                        | Contract = Waiting PO + seluruh kolom Waiting lainnya.
+                        | Dulu seluruh nominal No. PO duduk di satu kolom sesuai
+                        | statusnya. Akibatnya No. PO 50 juta yang baru ditagih 20
+                        | juta tetap tampil 50 juta di Waiting BAST dan 0 di kolom
+                        | berikutnya — penagihan yang sudah berjalan tidak terlihat
+                        | sama sekali. Sekarang tiap kolom memuat SELISIH antara
+                        | "sudah sampai tahap ini" dan "sudah lanjut ke tahap
+                        | berikutnya":
                         |
-                        | PARTIAL tetap utuh di Waiting BAST: selama BAST-nya
-                        | belum dinyatakan lengkap, No. PO itu belum pindah tahap
-                        | menurut Project::workProgressStatus() — dan halaman
-                        | Purchase Order membacanya dengan aturan yang sama.
+                        |   Waiting BAST    = nominal      - nilai BAST
+                        |   Waiting Invoice = nilai BAST   - nilai invoice
+                        |   Waiting Paid    = nilai invoice - nilai dibayar
+                        |   Closed          = nilai dibayar
+                        |
+                        | Jumlah keempatnya selalu = nominal, jadi Contract tetap
+                        | rekonsiliasi. Qty = 1 di setiap kolom yang masih bernilai,
+                        | sehingga satu No. PO memang bisa terhitung di dua kolom
+                        | ketika ia terbelah — itulah yang dimaksud "qty di BAST
+                        | masih 1, sisanya pindah ke kolom berikutnya".
                         */
-                        $waitBast    = in_array($poNumber->status, ['RELEASED', 'PARTIAL'], true);
-                        $waitInvoice = $poNumber->status === 'BAST_SUBMITTED';
-                        $waitPayment = $poNumber->status === 'INVOICED';
-                        $sudahClose  = $poNumber->status === 'PAID';
+                        $bastMentah = (int) ($poNumber->nilai_bast
+                            ?: (in_array($poNumber->status, ['BAST_SUBMITTED', 'INVOICED', 'PAID'], true) ? $nominal : 0));
+
+                        /*
+                        | Dijaga menaik dan tidak melampaui tahap sebelumnya.
+                        | Tanpa ini satu kolom bisa negatif dan diam-diam
+                        | mengurangi kolom lain di baris yang sama: invoice bisa
+                        | terbit mendahului nilai BAST yang tercatat, pembayaran
+                        | bisa melebihi invoice karena pembulatan, dan nilai BAST
+                        | bisa melebihi nominal kalau ada revisi.
+                        */
+                        $nilaiBast    = min($nominal, max($bastMentah, $invoiced, $paid));
+                        $nilaiInvoice = min($nilaiBast, max($invoiced, $paid));
+                        $nilaiPaid    = min($nilaiInvoice, $paid);
+
+                        $waitBastValue    = $nominal - $nilaiBast;
+                        $waitInvoiceValue = $nilaiBast - $nilaiInvoice;
+                        $waitPaidValue    = $nilaiInvoice - $nilaiPaid;
 
                         return [
                             'po_number'     => $poNumber->po_number,
                             'status'        => $poNumber->status,
                             'nominal'       => $nominal,
 
-                            'wait_bast_qty'      => $waitBast ? 1 : 0,
-                            'wait_bast_value'    => $waitBast ? $nominal : 0,
+                            'wait_bast_qty'      => $waitBastValue > 0 ? 1 : 0,
+                            'wait_bast_value'    => $waitBastValue,
 
-                            'wait_invoice_qty'   => $waitInvoice ? 1 : 0,
-                            'wait_invoice_value' => $waitInvoice ? $nominal : 0,
+                            'wait_invoice_qty'   => $waitInvoiceValue > 0 ? 1 : 0,
+                            'wait_invoice_value' => $waitInvoiceValue,
 
-                            'wait_payment_qty'   => $waitPayment ? 1 : 0,
-                            'wait_payment_value' => $waitPayment ? $nominal : 0,
+                            'wait_payment_qty'   => $waitPaidValue > 0 ? 1 : 0,
+                            'wait_payment_value' => $waitPaidValue,
 
-                            'closed_qty'         => $sudahClose ? 1 : 0,
-                            'closed_value'       => $sudahClose ? $nominal : 0,
+                            'closed_qty'         => $nilaiPaid > 0 ? 1 : 0,
+                            'closed_value'       => $nilaiPaid,
                         ];
                     })
                     ->values();

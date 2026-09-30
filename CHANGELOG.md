@@ -4,6 +4,25 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [2.4.4] - 2026-09-30 — Summary Progress Bertahap, Role Supervisor & Batch Second Payment
+
+Tabel Summary tab Progress kini memecah nilai No. PO sesuai tahap yang sudah
+dilalui, Second Payment yang sudah disetujui bisa langsung dibatch Treasury
+dari Todo List, dan role Supervisor tersedia untuk diatur hak aksesnya.
+
+### Baru
+- Role Supervisor ditambahkan; hak aksesnya diatur lewat User & Access > Menu Access seperti role lain.
+- Second Payment yang sudah Second Approve ikut muncul di daftar Buat Batch milik Treasury di Todo List, tidak perlu lagi dicari manual di Daily Transaction.
+- Form Settlement: penghitung sisa karakter pada kolom catatan, dan lampiran bisa dibuka lebih dulu untuk diperiksa sebelum dikirim.
+
+### Berubah
+- Summary tab Progress: nilai kini mengalir bertahap antar kolom - Waiting BAST, Waiting Invoice, Waiting Paid, dan Closed memuat selisih tiap tahap, sehingga No. PO yang baru sebagian ditagih atau dibayar terlihat terbelah dan jumlah seluruh kolom tetap sama dengan Contract.
+- Nama kolom Summary diseragamkan dengan modul Purchase Order: Waiting Payment menjadi Waiting Paid, dan Close menjadi Closed.
+
+### Perbaikan
+- Lampiran berupa video ditolak saat unggah di form Settlement, tidak lagi lolos lalu gagal di server.
+- Catatan per baris Settlement dibatasi 255 karakter di server, sejalan dengan batas pada formnya.
+
 ## [2.4.3] - 2026-09-29 — Auto-Closing Budget Plan, Jenis PIC Baru & Filter Bertingkat
 
 Budget Plan kini punya tanggal rencana selesai dan pindah sendiri ke Closing

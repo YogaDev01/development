@@ -2189,6 +2189,8 @@ class BudgetRequestController extends Controller
             'realizations.*.request_detail_id' => 'required|exists:request_detail,id',
             // Settle boleh 0 (mis. uang dikembalikan utuh); kosong dianggap 0.
             'realizations.*.amount'            => 'nullable',
+            // Sejalan dengan maxlength input di form settlement.
+            'realizations.*.notes'             => 'nullable|string|max:255',
             'realizations.*.attachments'       => 'nullable|array',
             'realizations.*.attachments.*'     => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
             'realization_attachments'          => 'nullable|array',

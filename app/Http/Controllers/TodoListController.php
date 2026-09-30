@@ -194,7 +194,8 @@ class TodoListController extends Controller
             'budgetingHeadCheck' => collect(), 'budgetingVerify' => collect(),
             'budgetingCeoApprove' => collect(), 'budgetingRejected' => collect(),
             'budgetingClosingDue' => collect(),
-            'treasuryBatchCreate' => collect(), 'batchSourceFunds' => collect(),
+            'treasuryBatchCreate' => collect(), 'treasuryBatchGroups' => collect(),
+            'treasuryBatchSecond' => collect(), 'batchSourceFunds' => collect(),
             'treasuryProcess' => collect(), 'treasuryReadyToPay' => collect(),
             'poSubmitted' => collect(),
             'invoiceVerify' => collect(), 'invoiceApprove' => collect(), 'milestoneOverdue' => collect(),
@@ -528,7 +529,41 @@ class TodoListController extends Controller
          */
         $treasuryBatchGroups = $this->groupCrsByPo($treasuryBatchCreate);
 
-        $batchSourceFunds = $treasuryBatchCreate->isNotEmpty()
+        /*
+         | Second Payment yang sudah lolos Second Approve ikut antre di sini,
+         | BUKAN hanya di section informatif "Second Payment — Menunggu
+         | Pembayaran". Sesudah disetujui ia adalah kewajiban bayar yang
+         | menunggu Treasury persis seperti CR APPROVED; kalau ia tidak muncul
+         | di daftar "Buat Batch", Treasury harus ingat sendiri untuk pindah ke
+         | halaman Daily Transaction demi menemukannya.
+         |
+         | Sumber kelayakannya satu: BudgetRequestSecondPayment::availableForBatch()
+         | — scope yang sama dipakai DailyTransactionController saat menyusun
+         | form batch dan saat memvalidasi id yang dikirim, jadi apa yang
+         | tampil di sini pasti diterima store().
+         */
+        $treasuryBatchSecond = collect();
+        if ($user->hasRole(['superadmin', 'treasury', 'finance', 'finance_manager'])) {
+            $secondQuery = \App\Models\BudgetRequestSecondPayment::availableForBatch()
+                ->with(['budgetRequest.beneficiary', 'budgetRequest.budgetPlan.project.customer', 'budgetRequest.budgetPlan.project.manager', 'budgetRequest.budgetPlan.costCenter'])
+                ->whereHas('budgetRequest', function ($q) {
+                    $this->scopeByRole($q);
+                });
+
+            $treasuryBatchSecond = $secondQuery->latest()->get()
+                ->filter(fn ($sp) => $sp->budgetRequest !== null)
+                ->map(function ($sp) {
+                    $cr = $sp->budgetRequest;
+                    $sp->cr_code     = $cr->code;
+                    $sp->cr_desc     = $cr->description;
+                    $sp->beneficiary_label = $cr->beneficiary?->nickname ?? '-';
+                    $sp->po_label    = $this->poLabel($cr->budgetPlan);
+                    return $sp;
+                })
+                ->values();
+        }
+
+        $batchSourceFunds = ($treasuryBatchCreate->isNotEmpty() || $treasuryBatchSecond->isNotEmpty())
             ? \App\Models\SourceFund::with('bank')
                 ->where('status', 'ACTIVE')
                 ->operational()
@@ -725,7 +760,7 @@ class TodoListController extends Controller
             'ceoSettlementClose', 'secondPaymentPending',
             'budgetingHeadCheck', 'budgetingVerify', 'budgetingCeoApprove', 'budgetingRejected',
             'budgetingClosingDue',
-            'treasuryBatchCreate', 'treasuryBatchGroups', 'batchSourceFunds', 'treasuryProcess', 'treasuryReadyToPay', 'poSubmitted',
+            'treasuryBatchCreate', 'treasuryBatchGroups', 'treasuryBatchSecond', 'batchSourceFunds', 'treasuryProcess', 'treasuryReadyToPay', 'poSubmitted',
             'invoiceVerify', 'invoiceApprove', 'milestoneOverdue', 'collectionWaitingInvoice',
             'comingSoonRoles', 'totalPending', 'maxAging', 'completedToday', 'hasAnyTask', 'hasAnySection',
             'summaryTable', 'allTasks'
