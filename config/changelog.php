@@ -26,10 +26,47 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '2.5.3',
+    'current' => '2.5.4',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '2.5.4',
+            'date'    => '2026-10-02',
+            'title'   => 'Keandalan Transaksi Saat Diproses Bersamaan',
+            'summary' => 'Rilis perbaikan: transaksi keuangan yang diproses dua orang (atau dua tab) '
+                       . 'pada saat yang sama kini ditangani dengan aman - pembayaran, batch Treasury, '
+                       . 'settlement, penerimaan kas, invoice, dan Surat Jalan tidak lagi bisa '
+                       . 'tercatat ganda. Pengguna yang kalah cepat mendapat pesan untuk memuat ulang '
+                       . 'halaman.',
+            'sections' => [
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Status invoice kini menyebut pihak yang benar: verifikasi oleh Accounting / Finance Manager, persetujuan oleh Finance Manager (sebelumnya tertulis CEO).',
+                        'Bila data yang sedang diproses baru saja diubah pengguna lain, aksi dibatalkan dengan pesan "Status sudah berubah" atau "baru saja diproses pengguna lain - muat ulang halaman", alih-alih menimpa hasil orang lain.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Satu Cost Request tidak lagi bisa masuk ke dua batch Treasury aktif saat dua batch dibuat bersamaan.',
+                        'Mark Paid batch Treasury yang ditekan dua kali tidak lagi menggandakan lampiran bukti transfer, log, atau menimpa biaya bank.',
+                        'Verifikasi settlement yang dilakukan bersamaan tidak lagi membuat Second Payment (Expense Claim) ganda.',
+                        'Second Payment dari batch yang ditolak atau dikeluarkan dari batch kini bisa dimasukkan ke batch berikutnya (sebelumnya tertahan dan Cost Request-nya tidak bisa diselesaikan).',
+                        'Alokasi bukti terima tidak lagi bisa melebihi uang yang diterima, dan tidak bisa tercatat pada bukti terima yang sedang dibatalkan.',
+                        'Pencatatan penerimaan untuk beberapa invoice sekaligus kini selalu membaca sisa tagihan terbaru.',
+                        'Revise, approval massal, dan takeout item Cost Request tidak lagi menimpa keputusan pengguna lain; Cost Request yang sudah dibatalkan tidak bisa hidup kembali, dan takeout item terakhir selalu menolak CR secara otomatis.',
+                        'Approval massal Cost Request hanya memproses CR yang memang boleh dilihat pengguna tersebut.',
+                        'Verifikasi, approval, revisi, dan pembatalan invoice, pencatatan pembayaran, settle PPh, serta Surat Jalan aman saat diproses bersamaan; satu invoice tidak lagi bisa masuk ke dua Surat Jalan.',
+                        'Penomoran dokumen tidak lagi gagal (error 500) saat dua dokumen pertama sebuah periode atau PO baru disimpan bersamaan.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '2.5.3',
