@@ -140,6 +140,26 @@ class CashReceiptController extends Controller
             $baris = [];
             $total = 0;
 
+            /*
+            | Semua invoice yang diisi nominalnya dikunci SEKALIGUS, urut id,
+            | sebelum ada pembacaan lain. Dulu dikunci satu per satu mengikuti
+            | urutan request, sehingga:
+            |  - dua penerimaan [A, B] dan [B, A] bersamaan bisa deadlock;
+            |  - invoice kedua dst. dikunci setelah ada baca biasa (relasi po,
+            |    remainingBalance) - di REPEATABLE READ baca biasa pertama
+            |    menetapkan snapshot, jadi sisa tagihan invoice berikutnya bisa
+            |    terbaca dari snapshot lama dan pembayaran yang baru masuk
+            |    terlewat.
+            | Pemeriksaan & pesan tetap mengikuti urutan request.
+            */
+            $berisi = collect($invoiceIds)
+                ->filter(fn ($id) => $this->normalizeMoney($amounts[$id] ?? 0)
+                    + $this->normalizeMoney($withholding[$id] ?? 0) > 0)
+                ->unique()->values();
+
+            $terkunci = Invoice::whereIn('id', $berisi)
+                ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+
             foreach ($invoiceIds as $id) {
                 $nominal = $this->normalizeMoney($amounts[$id] ?? 0);
                 $pph     = $this->normalizeMoney($withholding[$id] ?? 0);
@@ -149,7 +169,7 @@ class CashReceiptController extends Controller
                     continue;
                 }
 
-                $invoice = Invoice::where('id', $id)->lockForUpdate()->first();
+                $invoice = $terkunci[$id] ?? null;
 
                 if (!$invoice) {
                     return ['error' => 'Invoice tidak ditemukan.'];
