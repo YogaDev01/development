@@ -133,6 +133,55 @@ class CashReceiptAllocateLockTest extends TestCase
         $this->assertNotSame('PAID', $invoice->refresh()->status);
     }
 
+    /**
+     * Tabel yang dikunci FOR UPDATE, berurutan, selama $aksi berjalan.
+     *
+     * Urutan kunci global untuk Cash Receipt adalah invoice -> header: hapus
+     * & settle receipt mengunci invoice lalu header lewat hook model, jadi
+     * allocate() dan cancel() wajib memakai urutan yang sama. Deadlock-nya
+     * sendiri butuh dua koneksi; yang dikunci di sini adalah urutannya.
+     */
+    private function urutanKunci(\Closure $aksi): array
+    {
+        $tabel = [];
+        DB::listen(function ($query) use (&$tabel) {
+            if (str_contains($query->sql, 'for update')
+                && preg_match('/from `(invoices|cash_receipt_headers)`/', $query->sql, $m)) {
+                $tabel[] = $m[1];
+            }
+        });
+
+        $aksi();
+
+        return array_values(array_unique($tabel));
+    }
+
+    public function test_alokasi_mengunci_invoice_sebelum_header(): void
+    {
+        $invoice = $this->invoice();
+        $header  = $this->header(10_000_000);
+        $user    = $this->userWithRole('finance');
+
+        $urutan = $this->urutanKunci(fn () => $this->allocate($user, $header, $invoice, '5.000.000'));
+
+        $this->assertSame(['invoices', 'cash_receipt_headers'], $urutan);
+    }
+
+    public function test_pembatalan_mengunci_invoice_sebelum_header(): void
+    {
+        $user    = $this->userWithRole('finance');
+        $invoice = $this->invoice();
+        $header  = $this->header(10_000_000);
+        $this->allocate($user, $header, $invoice, '5.000.000');
+
+        $urutan = $this->urutanKunci(fn () => $this->actingAs($user)
+            ->post('/cash-receipt/' . $header->id . '/cancel', ['cancel_reason' => 'Salah input']));
+
+        $this->assertSame(['invoices', 'cash_receipt_headers'], $urutan);
+        $this->assertSame('CANCELLED', $header->refresh()->status);
+        $this->assertSame(0, CashReceipt::where('cash_receipt_header_id', $header->id)->count());
+    }
+
     public function test_pembatalan_kedua_ditolak(): void
     {
         $user   = $this->userWithRole('finance');
