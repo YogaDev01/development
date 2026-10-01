@@ -12,6 +12,7 @@ Source: `HandlesCrSettlement`, `BudgetRequest::getAllowedNextStatuses()`,
 | SETTLE_VERIFIED → SETTLE_APPROVED (expense claim) | `settle-approve` | finance_manager, superadmin |
 | SETTLE_APPROVED → SECOND_APPROVED / PAID | `second-approve` / `second-reject` | approver, superadmin |
 | SECOND_APPROVED → QUEUED | Treasury batches the Second Payment | treasury group |
+| QUEUED → SECOND_APPROVED | Batch rejected (`reject-batch`) or SP item taken out (`reject-item`); SP stays PENDING and can be batched again (fixed on `develop` 2026-10-02 — before, the CR stayed QUEUED and the SP could never be re-batched) | approver, superadmin |
 | QUEUED → CLOSED | batch `mark-paid` closes CR automatically | treasury group |
 | REALIZED / SETTLE_CHECKED / SETTLE_VERIFIED / SETTLE_APPROVED → PAID | reject actions (head, finance, `settle-reject`, `manager-reject-settlement`, `second-reject`) | per action, see `docs/security.md` |
 

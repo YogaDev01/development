@@ -80,10 +80,13 @@ bypass — superadmin passes because it is listed in each route gate; only
 3. **`ceo-close-settlement` is gated to finance_manager**, not approver; the
    name suggests CEO. UI text ("Menunggu penutupan Finance Manager") matches
    the route, so the route name is the legacy part.
-4. **Invoice approve**: `WorkflowStatus` says VERIFIED = "Menunggu
-   persetujuan CEO", but route `invoice-cash-receipt/{id}/approve` allows only
-   superadmin + finance_manager. Invoice verify allows `accounting` while UI
-   says "Menunggu verifikasi Finance Manager".
+4. **Invoice approve** — *text fixed on `develop` (2026-10-02)*: UI said
+   VERIFIED = "Menunggu persetujuan CEO" while route
+   `invoice-cash-receipt/{id}/approve` allows only superadmin +
+   finance_manager. `WorkflowStatus`, the panduan page, and the submit
+   confirmation now name Accounting / Finance Manager (verify) and Finance
+   Manager (approve). Open question: the Todo List verify queue still shows
+   only for finance_manager although `accounting` may verify.
 5. **Closing** actions only require `menu:closing`; no role gate. Closing a
    period does not lock other modules (no lock check outside Forecast found).
 6. **Concurrency (audit 2026-10-02):** Treasury batch `store`/`addItem`,
@@ -95,6 +98,14 @@ bypass — superadmin passes because it is listed in each route gate; only
    Fix status: H1, H2, H3, M1 (`markPaid`) and M3 (`managerRevise`, bulk
    review, `takeoutDetail`/`restoreDetail` now use locked transitions) are
    fixed on `develop` (pushed as `origin/develop-v2`), not yet released.
+   - **Invoice / Surat Jalan (LOW, fixed on `develop`):** invoice
+     submit/verify/approve/revise use `transitionStatus()`; `cancel` and
+     `settleCashReceipt` (PPh) lock the invoice; `storeCashReceipt` re-checks
+     the invoice status inside its lock; `DeliveryNoteController::store` locks
+     the invoices and re-checks APPROVED + "not already on a Surat Jalan".
+   - **Second Payment re-batch (fixed on `develop`):** `rejectBatch` /
+     `rejectItem` now return the parent CR from QUEUED to SECOND_APPROVED, so
+     a Second Payment from a rejected batch can be batched again.
    - **Bulk review Access Group gap (found 2026-10-02, fixed with M3):**
      `reviewBulkApprove`/`reviewBulkReject` loaded CRs by id without
      `canViewCr()`, so a Head could approve/reject CRs outside their Access
