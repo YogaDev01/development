@@ -966,7 +966,25 @@ class DailyTransactionController extends Controller
 
         $charge = $this->normalizeMoney($request->charge);
 
-        DB::transaction(function () use ($request, $batch, $charge) {
+        try {
+        DB::transaction(function () use ($request, &$batch, $charge) {
+            /*
+            | Kunci batch dulu, baru simpan apa pun. Pemeriksaan isDone() di
+            | atas berjalan tanpa kunci: dua klik Mark Paid bersamaan (dua tab
+            | atau dua staf Treasury) dulu sama-sama lolos, sehingga lampiran
+            | bukti transfer dan log status CR tercatat dua kali, dan charge /
+            | paid_by yang diisi pertama tertimpa. Request kedua sekarang
+            | menunggu, melihat batch sudah PAID, dan mundur sebelum menyimpan
+            | lampiran. Item dimuat ulang dari batch yang terkunci supaya
+            | pemeriksaan status CR di bawah memakai data terbaru.
+            */
+            $batch = DailyTransaction::whereKey($batch->id)->lockForUpdate()->first();
+
+            if (! $batch || ! $batch->isDone()) {
+                throw new \DomainException('Batch ini baru saja ditandai PAID oleh pengguna lain — muat ulang halaman.');
+            }
+
+            $batch->load(['includedItems.budgetRequest', 'includedItems.costRegister']);
 
             // Simpan lampiran ke daily_transaction_attachments
             foreach ($request->file('attachments', []) as $file) {
@@ -1065,6 +1083,9 @@ class DailyTransactionController extends Controller
 
             $batch->recalculateCapturedAmount();
         });
+        } catch (\DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         return redirect('/daily-transaction/' . $id)
             ->with('success', 'Batch ' . $batch->code . ' berhasil ditandai PAID.');
