@@ -275,7 +275,23 @@
      | tercentang tidak lenyap dari daftarnya sendiri dan masih bisa
      | dilepas kembali.
      */
+    /*
+     | Lingkup tambahan di luar filter — mis. tab halaman yang sudah menyaring
+     | baris lewat $.fn.dataTable.ext.search. Daftar pilihan disusun dari
+     | rows({search:'none'}) sehingga saringan semacam itu tidak terlihat:
+     | tanpa ini, tab Internal menawarkan semua bank dari seluruh data padahal
+     | mencentangnya pasti menghasilkan tabel kosong.
+     */
+    var rowScope = {}; // { tableId: function (tr) -> bool }
+
+    function rowInScope(tr, tableId) {
+        var fn = rowScope[tableId];
+        return typeof fn === 'function' ? !!fn(tr) : true;
+    }
+
     function rowPassesOtherFilters(tr, tableId, exceptField) {
+        if (!rowInScope(tr, tableId)) return false;
+
         var tableState = rowFilterState[tableId];
         if (!tableState) return true;
 
@@ -629,6 +645,12 @@
 
         table.draw();
         renderChips(tableId, tableEl, null);
+    };
+
+    /* Dipanggil halaman yang punya saringan di luar filter ini (mis. tab).
+       fn menerima <tr> dan mengembalikan true kalau baris itu masih relevan. */
+    Api.setRowScope = function (tableId, fn) {
+        rowScope[tableId.replace('#', '')] = fn;
     };
 
     window.TesysColumnFilter = Api;

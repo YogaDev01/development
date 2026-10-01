@@ -892,14 +892,7 @@ document.addEventListener('DOMContentLoaded', function () {
             input.value = '';
         }
 
-        var box = input.parentElement.querySelector('.att-global-preview');
-        var f   = (input.files || [])[0];
-        if (box) {
-            box.innerHTML = f
-                ? '<i class="fas fa-file mr-1"></i><a href="#" class="att-global-open" title="Lihat lampiran">'
-                    + $('<div>').text(f.name).html() + '</a>'
-                : '';
-        }
+        renderGlobalAttPreview(input);
     });
 
     function appendFilesToInput(input, fileList) {
@@ -1141,6 +1134,20 @@ document.addEventListener('DOMContentLoaded', function () {
         if (wrap && tbody) wrap.style.display = tbody.children.length ? '' : 'none';
     }
 
+
+    /** Nama file pada baris Lampiran Tambahan — bisa diklik untuk diperiksa. */
+    function renderGlobalAttPreview(input) {
+        if (!input) return;
+        var box = input.parentElement.querySelector('.att-global-preview');
+        if (!box) return;
+
+        var f = (input.files || [])[0];
+        box.innerHTML = f
+            ? '<i class="fas fa-file mr-1"></i><a href="#" class="att-global-open" title="Lihat lampiran">'
+                + $('<div>').text(f.name).html() + '</a>'
+            : '';
+    }
+
     function addAttachmentRow(file) {
         showAttUploadArea();
         var i     = attIdx++;
@@ -1163,6 +1170,10 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch (err) {
                 // Browser lama tanpa dukungan DataTransfer — baris tetap dibuat kosong.
             }
+
+            // File dari drop/paste tidak memicu 'change', jadi tautan
+            // pratinjaunya dirender langsung di sini.
+            renderGlobalAttPreview(input);
         }
         renumber('attachmentBody');
         if (window.__updateSubmitState) window.__updateSubmitState();
@@ -1350,7 +1361,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         box.className = 'alert mb-0 mt-2 ' + cls;
         box.innerHTML = '<i class="fas ' + icon + ' mr-1"></i> ' + head + bagian +
-            ' <br><small>Jumlah pengajuan dihitung sejak CR berstatus Paid; limit pulih setelah pengajuan di-Close.</small>';
+            ' <br><small>Jumlah pengajuan dihitung sejak CR berstatus Paid; limit (jumlah maupun nominal) pulih setelah pengajuan lewat Second Approve.</small>';
         box.style.display = 'block';
     }
 

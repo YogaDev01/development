@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\BuildsCrWorklist;
+use App\Http\Controllers\Concerns\ScopesBudgetPlanVisibility;
 use App\Models\BudgetPlan;
 use App\Models\BudgetRequest;
 use App\Models\DailyTransaction;
@@ -21,6 +22,15 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 class TodoListController extends Controller
 {
     use BuildsCrWorklist;
+    /*
+     | Visibilitas Budget Plan memakai aturan yang SAMA dengan halaman
+     | Budgeting (scopeVisibleTo): budget proyek dibatasi access group kecuali
+     | role privileged, overhead per cost center di access group, payroll per
+     | role. Tanpa ini, antrean Budgeting di Todo List menampilkan Budget Plan
+     | dari PO yang tidak boleh dilihat user — angka di halaman ini pun jadi
+     | berbeda dari daftar di /budget-plan.
+     */
+    use ScopesBudgetPlanVisibility;
 
     /** Role yang lihat semua PO tanpa dibatasi Access Group — dipakai section reminder Milestone (sama seperti ProjectMonitoringController::isPrivileged()). */
     private const PROJECT_PRIVILEGED_ROLES = ['superadmin', 'admin', 'approver', 'finance', 'finance_manager', 'cost_control', 'treasury', 'collection', 'accounting', 'guest'];
@@ -191,6 +201,7 @@ class TodoListController extends Controller
             'headSettlementCheck' => collect(), 'financeSettlementVerify' => collect(),
             'approverSecondApprove' => collect(),
             'ceoSettlementClose' => collect(), 'secondPaymentPending' => collect(),
+            'secondPaymentGroups' => collect(),
             'budgetingHeadCheck' => collect(), 'budgetingVerify' => collect(),
             'budgetingCeoApprove' => collect(), 'budgetingRejected' => collect(),
             'budgetingClosingDue' => collect(),
@@ -397,6 +408,33 @@ class TodoListController extends Controller
                 ->sortBy('aging_since')->values();
         }
 
+        /*
+         | Grup PO + rincian Chart of Account untuk section di atas. Dibangun
+         | dari koleksi yang BENAR-BENAR tampil (bukan query status terpisah),
+         | supaya kolom Request/Approved pada modal "View Budget" mewakili CR
+         | yang sama dengan yang terlihat di barisnya.
+         */
+        $secondPaymentGroups = collect();
+        if ($denganCoa && $secondPaymentPending->isNotEmpty()) {
+            $this->preloadCoaRows($secondPaymentPending->pluck('budgetPlan'));
+
+            $secondPaymentGroups = $this->groupCrsByPo($secondPaymentPending)
+                ->map(function ($poGroup) {
+                    $poGroup['plans'] = $poGroup['plans']->map(function ($g) {
+                        $bp = $g['items']->first()->budgetPlan;
+                        $g['coa_groups'] = $bp
+                            ? $this->buildReviewCoaBreakdown($bp, $g['items'], ['SECOND_APPROVED'])
+                            : collect();
+                        // Dipakai modal untuk mewarnai baris NOB — aturannya sama
+                        // dengan buildStatusGroups(): plan dianggap NOB penuh saat
+                        // sisa seluruh CoA-nya sudah minus.
+                        $g['is_nob_full'] = $g['coa_groups']->sum('remaining') < 0;
+                        return $g;
+                    });
+                    return $poGroup;
+                });
+        }
+
         // Budgeting — 4 tahap sama seperti Cost Request: Manager submit -> Head
         // check -> Finance verify -> CEO approve (Active). Flat list (bukan
         // grouped+bulk seperti CR) karena BudgetPlanController cuma punya
@@ -404,6 +442,7 @@ class TodoListController extends Controller
         $budgetingHeadCheck = collect();
         if ($user->hasRole(['superadmin', 'head'])) {
             $budgetingHeadCheck = BudgetPlan::with(['project.customer', 'project.manager', 'costCenter'])
+                ->tap(fn ($q) => $this->scopeVisibleTo($q))
                 ->where('status', 'SUBMITTED')
                 ->latest()
                 ->get()
@@ -414,6 +453,7 @@ class TodoListController extends Controller
         $budgetingVerify = collect();
         if ($user->hasRole(['superadmin', 'finance', 'finance_manager'])) {
             $budgetingVerify = BudgetPlan::with(['project.customer', 'project.manager', 'costCenter'])
+                ->tap(fn ($q) => $this->scopeVisibleTo($q))
                 ->where('status', 'CHECKED')
                 ->latest()
                 ->get()
@@ -424,6 +464,7 @@ class TodoListController extends Controller
         $budgetingCeoApprove = collect();
         if ($user->hasRole(['superadmin', 'approver', 'guest'])) {
             $budgetingCeoApprove = BudgetPlan::with(['project.customer', 'project.manager', 'costCenter'])
+                ->tap(fn ($q) => $this->scopeVisibleTo($q))
                 ->where('status', 'VERIFIED')
                 ->latest()
                 ->get()
@@ -438,6 +479,7 @@ class TodoListController extends Controller
         $budgetingClosingDue = collect();
         if ($user->hasRole(['superadmin', 'manager'])) {
             $budgetingClosingDue = BudgetPlan::with(['project.customer', 'project.manager', 'costCenter'])
+                ->tap(fn ($q) => $this->scopeVisibleTo($q))
                 ->where('status', 'CLOSING')
                 ->whereNull('closing_submitted_at')
                 ->latest()
@@ -450,6 +492,7 @@ class TodoListController extends Controller
         $budgetingRejected = collect();
         if ($user->hasRole(['superadmin', 'manager'])) {
             $budgetingRejected = BudgetPlan::with(['project.customer', 'project.manager', 'costCenter'])
+                ->tap(fn ($q) => $this->scopeVisibleTo($q))
                 ->where('status', 'REJECTED')
                 ->latest()
                 ->get()
@@ -757,7 +800,7 @@ class TodoListController extends Controller
         return compact(
             'sections', 'managerRejected', 'managerPaid',
             'headSettlementCheck', 'financeSettlementVerify', 'approverSecondApprove',
-            'ceoSettlementClose', 'secondPaymentPending',
+            'ceoSettlementClose', 'secondPaymentPending', 'secondPaymentGroups',
             'budgetingHeadCheck', 'budgetingVerify', 'budgetingCeoApprove', 'budgetingRejected',
             'budgetingClosingDue',
             'treasuryBatchCreate', 'treasuryBatchGroups', 'treasuryBatchSecond', 'batchSourceFunds', 'treasuryProcess', 'treasuryReadyToPay', 'poSubmitted',
@@ -819,6 +862,15 @@ class TodoListController extends Controller
             return $query->count();
         };
 
+        // Angka Budgeting ikut aturan visibilitas yang sama dengan antrean di
+        // atas — kalau tidak, ringkasan menghitung Budget Plan yang barisnya
+        // sendiri tidak pernah tampil untuk user ini.
+        $bpCount = function (callable $filter): int {
+            $query = BudgetPlan::query()->tap(fn ($q) => $this->scopeVisibleTo($q));
+            $filter($query);
+            return $query->count();
+        };
+
         $modules = ['Purchase Order', 'Budgeting', 'Cost Request', 'Treasury', 'Invoice & Cash Receipt'];
 
         /*
@@ -836,10 +888,10 @@ class TodoListController extends Controller
             ['Finance',         'Aktivasi PO',             'Purchase Order', Project::where('status', 'WAITING_PO')->count(),   url('/project?status=WAITING_PO')],
 
             // ---- Budgeting
-            ['Manager',         'Submit (Draft)',          'Budgeting',      BudgetPlan::where('status', 'DRAFT')->count(),     url('/budget-plan')],
-            ['Head',            'Approval Head',           'Budgeting',      BudgetPlan::where('status', 'SUBMITTED')->count(), url('/budget-plan')],
-            ['Cost Control',    'Verifikasi Cost Control', 'Budgeting',      BudgetPlan::where('status', 'CHECKED')->count(),   url('/budget-plan')],
-            ['CEO',             'Approval CEO',            'Budgeting',      BudgetPlan::where('status', 'VERIFIED')->count(),  url('/budget-plan')],
+            ['Manager',         'Submit (Draft)',          'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'DRAFT')),     url('/budget-plan')],
+            ['Head',            'Approval Head',           'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'SUBMITTED')), url('/budget-plan')],
+            ['Cost Control',    'Verifikasi Cost Control', 'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'CHECKED')),   url('/budget-plan')],
+            ['CEO',             'Approval CEO',            'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'VERIFIED')),  url('/budget-plan')],
 
             // ---- Cost Request
             ['Manager',         'Submit (Draft)',          'Cost Request',   $crCount('DRAFT'),     url('/budget-request?status=DRAFT')],
@@ -866,8 +918,8 @@ class TodoListController extends Controller
 
             ['Head',            'Submit Closing',          'Purchase Order', Project::where('status', 'PAID')->count(),     url('/project?status=PAID')],
             ['Finance',         'Verifikasi Closing',      'Purchase Order', Project::where('status', 'CLOSING')->count(),  url('/project?status=CLOSING')],
-            ['Manager',         'Ajukan Closing',          'Budgeting',      BudgetPlan::where('status', 'CLOSING')->whereNull('closing_submitted_at')->count(),    url('/budget-plan')],
-            ['Finance',         'Verifikasi Closing',      'Budgeting',      BudgetPlan::where('status', 'CLOSING')->whereNotNull('closing_submitted_at')->count(), url('/budget-plan')],
+            ['Manager',         'Ajukan Closing',          'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'CLOSING')->whereNull('closing_submitted_at')),    url('/budget-plan')],
+            ['Finance',         'Verifikasi Closing',      'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'CLOSING')->whereNotNull('closing_submitted_at')), url('/budget-plan')],
         ];
 
         $rows = [];

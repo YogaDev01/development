@@ -814,7 +814,10 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($secondPaymentPending as $cr)
+                                @foreach($secondPaymentGroups as $poi => $poGroup)
+                                @foreach($poGroup['plans'] as $pi => $group)
+                                @foreach($group['items'] as $cr)
+                                @php $gi = $poi . '-' . $pi; @endphp
                                 <tr class="todo-row" {{ $poAttrs($cr->budgetPlan?->project, $cr->budgetPlan?->costCenter?->name, $cr->pending_payment?->amount ?? 0) }} data-search="{{ strtolower($cr->code . ' ' . $cr->description . ' ' . ($cr->beneficiary?->nickname ?? '')) }}">
                                     <td class="text-nowrap">
                                         <button type="button" class="cr-number-btn todo-open-drawer" data-id="{{ $cr->id }}">{{ $cr->code }}</button>
@@ -830,16 +833,24 @@
                                         @else
                                             <span class="badge badge-warning" style="font-size:10px;" title="Belum dimasukkan ke batch Treasury mana pun">Belum dibatch</span>
                                         @endif
-                                        {{-- Section ini datar (tanpa lapis Budget Plan), jadi rincian
-                                             anggarannya dibuka lewat modal Budget Plan milik CR ini. --}}
+                                        {{-- Detail Budget Plan milik CR ini (ringkasan plan). --}}
                                         @if($cr->budget_plan_id)
                                         <button aria-label="Detail Budget" type="button" class="btn btn-outline-secondary btn-sm todo-bp-detail ml-1"
                                                 data-id="{{ $cr->budget_plan_id }}" style="padding:1px 8px;font-size:10.5px;" title="Detail Budget">
                                             <i class="fas fa-info-circle"></i>
                                         </button>
                                         @endif
+                                        {{-- Sumber tombol View Budget di header grup PO (disembunyikan
+                                             di baris — rinciannya milik grup, bukan item). Pola sama
+                                             dengan section Second Approve & Settlement. --}}
+                                        <button aria-label="View Budget" type="button" class="ts-action-primary is-neutral todo-view-budget todo-po-mirror d-none"
+                                                data-target="#mdlTodoCoa-second-pay-{{ $gi }}" title="View Budget">
+                                            <i class="fas fa-chart-pie" aria-hidden="true"></i><span class="ts-al">View Budget</span>
+                                        </button>
                                     </td>
                                 </tr>
+                                @endforeach
+                                @endforeach
                                 @endforeach
                             </tbody>
                         </table>
@@ -847,6 +858,8 @@
                 </div>
             </div>
             @endif
+
+            @include('todo-list._budget_modals', ['key' => 'second-pay', 'groups' => $secondPaymentGroups])
 
             {{-- BUDGETING — 4 tahap sama seperti Cost Request: Manager submit -> Head
                  check -> Finance verify -> CEO approve (Active). --}}
@@ -3290,7 +3303,7 @@ $(function () {
                nilai pengajuan saat settlement masih 0). */
             var hist = d.beneficiary_history || [];
             info += '<div class="todo-drw-row" style="margin-top:18px;">' +
-                '<div class="todo-drw-label">Riwayat Pengajuan Beneficiary Ini</div>';
+                '<div class="todo-drw-label">Riwayat Pengajuan Beneficiary Ini di PO Ini</div>';
             if (hist.length) {
                 // Tabel dibangun ulang oleh renderBenHist() setiap kali diurutkan.
                 window.__benHist = { rows: hist.slice(), key: 'paid_at_raw', dir: 'desc' };
@@ -3320,8 +3333,16 @@ $(function () {
                         '<th scope="col" class="text-right text-nowrap">Qty</th><th scope="col" class="text-right text-nowrap">Total</th>' +
                         (showAksi ? '<th scope="col" class="text-center text-nowrap" style="width:1%;">Aksi</th>' : '') +
                     '</tr></thead><tbody>';
+                var reqTotal = 0, reqQty = 0;
                 d.details.forEach(function (item) {
                     var isTakeout = !!item.is_takeout;
+                    // Item yang di-takeout tidak ikut dibawa proses, jadi tidak
+                    // ikut dijumlah — kalau ikut, grand total di sini berbeda
+                    // dengan nilai CR yang di-approve.
+                    if (!isTakeout) {
+                        reqTotal += parseFloat(item.total) || 0;
+                        reqQty   += parseFloat(item.qty) || 0;
+                    }
                     var strike = isTakeout ? 'text-decoration:line-through;color:var(--text-faint);' : '';
                     var badge = isTakeout
                         ? ' <span class="badge badge-warning" style="font-size:8px;" title="' + escAttr(item.takeout_notes || '') + '">Takeout &middot; ' + esc(item.takeout_stage_label || '-') + '</span>'
@@ -3355,7 +3376,14 @@ $(function () {
                         act +
                     '</tr>';
                 });
-                reqHtml += '</tbody></table></div>';
+                reqHtml += '</tbody>' +
+                    '<tfoot><tr style="background:var(--surface-2);">' +
+                        '<th class="text-right">Grand Total</th>' +
+                        '<th class="text-right text-nowrap">' + esc(reqQty.toLocaleString('id-ID')) + '</th>' +
+                        '<th class="text-right text-nowrap">' + esc(Math.round(reqTotal).toLocaleString('id-ID')) + '</th>' +
+                        (showAksi ? '<th></th>' : '') +
+                    '</tr></tfoot>' +
+                    '</table></div>';
             } else {
                 reqHtml = '<p class="text-muted py-2 mb-0" style="font-size:12px;">Belum ada rincian item.</p>';
             }

@@ -21,7 +21,12 @@
         <i class="fas fa-caret-down ml-1"></i>
     </button>
     <div class="col-mf-menu" hidden>
+        {{-- Kotak cari bisa dimatikan ($search = false) untuk daftar pilihan yang
+             pendek & tetap (mis. ember Aging): di daftar lima baris, kotak cari
+             justru menambah langkah sebelum pilihannya terlihat. --}}
+        @if($search ?? true)
         <input type="text" class="form-control form-control-sm col-mf-search" placeholder="Cari...">
+        @endif
         <div class="col-mf-list">
             @forelse($mfOpts as $opt)
             <label class="col-mf-item">

@@ -26,10 +26,51 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '2.5.2',
+    'current' => '2.5.3',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '2.5.3',
+            'date'    => '2026-10-01',
+            'title'   => 'Filter Active Cash Advance, Tab Beneficiary & Hak Akses Budgeting',
+            'summary' => 'Kartu Active Cash Advance di Summary kini bisa disaring per PIC, Aging, dan '
+                       . 'PO tanpa memuat ulang halaman, Beneficiary mendapat tab seperti PIC Master, '
+                       . 'dan antrean Budgeting di Todo List mengikuti hak akses yang sama dengan '
+                       . 'halaman Budgeting.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Kartu Active Cash Advance di Summary punya filter PIC, Aging, dan PO yang bekerja langsung tanpa memuat ulang halaman - subtotal PIC, subtotal Manager, dan Grand Total ikut dihitung ulang.',
+                        'Kode PO pada kartu Active Cash Advance bisa diklik untuk membuka modul Purchase Order bagi role yang berkepentingan; role lain tetap melihat kodenya.',
+                        'Kolom PO Reference pada Active Cash Advance, menunjukkan PO yang membiayai Cash Advance lewat Budget Plan-nya.',
+                        'Beneficiary punya tab Internal, Outsider, dan Database seperti PIC Master; berpindah tab tidak memuat ulang halaman dan kartu ringkasannya ikut menyesuaikan.',
+                        'Todo List: tombol View Budget pada header grup PO dan ringkasan Budget Plan milik tiap Cost Request.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Daftar pilihan pada filter kolom ikut menyempit mengikuti tab yang sedang aktif, sehingga tidak lagi menawarkan nilai yang pasti mengosongkan tabel.',
+                        'Nama file pada Lampiran Tambahan di form Cost Request bisa diklik untuk diperiksa, termasuk berkas yang masuk lewat drag & drop atau tempel.',
+                        'Master PIC: tab Outsider memuat seluruh jenis selain Internal (Customer, External, Site Keeper); pemisahan per jenis tetap lewat filter Type.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Antrean Budgeting di Todo List memakai aturan hak akses yang sama dengan halaman Budgeting, sehingga tidak lagi menampilkan Budget Plan dari PO yang tidak boleh dilihat.',
+                        'Pemakaian anggaran tidak lagi menghitung Cost Request yang sudah tuntas Second Approve, termasuk yang kembali masuk batch Treasury untuk membayar Expense Claim.',
+                        'Item yang di-takeout tidak ikut dijumlah di Todo List, agar grand total-nya sama dengan nilai Cost Request yang disetujui.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '2.5.2',

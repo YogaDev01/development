@@ -464,10 +464,54 @@
                         <span class="badge badge-secondary ml-2">{{ $activeCaGrandQty }}</span>
                         <span class="text-muted ml-2" style="font-size:10px;">Manager &rsaquo; PIC &rsaquo; Cost Request &mdash; Paid / Settle Checked / Settle Verified</span>
 
-                        <button type="button" class="btn btn-outline-secondary btn-sm ml-auto" id="acaExpandAll" style="font-size:11px;">
+                        {{-- Filter duduk sebaris dengan "Buka Semua": keduanya kendali
+                             tabel ini, jadi tidak ada alasan menaruhnya di baris sendiri
+                             yang menyita tinggi kartu.
+
+                             Menyaring TIDAK memuat ulang halaman. Konsekuensinya subtotal
+                             PIC, Manager, dan Grand Total harus dihitung ulang di browser
+                             dari baris yang masih terlihat — kalau tidak, angkanya tetap
+                             menghitung baris yang sudah disembunyikan dan berhenti cocok
+                             dengan isinya. --}}
+                        <div id="acaFilterBar" class="d-flex flex-wrap align-items-center ml-auto" style="gap:6px;">
+                            @include('finance-summary._multi-filter', [
+                                'name'     => 'aca_po',
+                                'label'    => 'PO',
+                                'options'  => $acaPoOptions,
+                                'selected' => [],
+                            ])
+
+                            @include('finance-summary._multi-filter', [
+                                'name'     => 'aca_pic',
+                                'label'    => 'PIC',
+                                'options'  => $acaPicOptions,
+                                'selected' => [],
+                            ])
+
+                            @include('finance-summary._multi-filter', [
+                                'name'     => 'aca_aging',
+                                'label'    => 'Aging',
+                                'options'  => $acaAgingOptions,
+                                'selected' => [],
+                                'search'   => false,
+                            ])
+
+                            {{-- Selalu tampil, tidak muncul-hilang mengikuti ada tidaknya
+                                 filter: tombol yang timbul-tenggelam menggeser posisi
+                                 "Buka Semua" di sebelahnya tiap kali filter dipasang atau
+                                 dilepas, jadi sasaran klik berpindah justru saat sedang
+                                 dipakai berturut-turut. --}}
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="acaFilterReset"
+                                    title="Bersihkan filter" aria-label="Bersihkan filter">
+                                <i class="fas fa-eraser"></i>
+                            </button>
+                        </div>
+
+                        <button type="button" class="btn btn-outline-secondary btn-sm ml-2" id="acaExpandAll" style="font-size:11px;">
                             <i class="fas fa-angle-double-down mr-1"></i>Buka Semua
                         </button>
                     </div>
+
                     <div class="card-body p-0">
                         <div class="table-responsive">
                             {{-- col-pic-table = sistem gaya tabel matriks halaman ini (dipakai Summary
@@ -484,6 +528,7 @@
                                      barisnya, jadi susunan header bebas berubah. --}}
                                 <colgroup>
                                     <col>                      {{-- Manager / PIC / Cost Request --}}
+                                    <col style="width:200px;"> {{-- PO Reference --}}
                                     <col style="width:90px;">  {{-- Aging --}}
                                     <col style="width:120px;"> {{-- Tanggal --}}
                                     <col style="width:140px;"> {{-- Action --}}
@@ -523,6 +568,10 @@
                                              di bawah cuma mengenal satu pasang data-sort-*, dan
                                              urutan umur sudah terwakili - aging berbanding lurus
                                              dengan tanggal bayar. --}}
+                                        {{-- PO Reference = PO yang membiayai CA ini, lewat Budget
+                                             Plan-nya. Hanya terisi di lapis CR (lihat controller). --}}
+                                        <th scope="col" rowspan="2" class="text-left aca-head-plain">PO Reference</th>
+
                                         <th scope="col" rowspan="2" class="text-center aca-head-plain">Aging</th>
                                         <th scope="col" rowspan="2" class="text-center aca-head-plain">Tanggal Paid</th>
 
@@ -564,12 +613,14 @@
                                          format rupiah, dan namanya apa adanya supaya perbandingan
                                          abjadnya sama dengan yang dipakai server. --}}
                                     <tr class="aca-group-row" data-target="aca-grp-{{ $gi }}"
+                                        data-grp="aca-grp-{{ $gi }}"
                                         data-sort-name="{{ $g['manager'] }}" data-sort-value="{{ $g['value'] }}"
                                         style="cursor:pointer;background:var(--surface-2);">
                                         <td class="aca-lv1">
                                             <i class="fas fa-caret-right aca-caret mr-2"></i>
                                             {{ $g['manager'] }}
                                         </td>
+                                        <td></td>
                                         {{-- Aging & Action sengaja kosong di lapis grup: umur dan
                                              tahap melekat pada satu dokumen. Satu angka aging untuk
                                              sekumpulan CR yang dibayar pada hari berbeda-beda hanya
@@ -578,11 +629,11 @@
                                         <td></td>
                                         <td></td>
                                         <td></td>
-                                        <td class="text-center" style="font-weight:700;">{{ $g['qty'] }}</td>
+                                        <td class="text-center aca-qty" style="font-weight:700;">{{ $g['qty'] }}</td>
                                         <td class="text-right" style="font-weight:700;">
                                             <a href="{{ $acaCrUrl(['manager' => $g['manager'], 'pics' => $g['pics']], $g['date_from']) }}"
                                                target="_blank" rel="noopener" class="aca-value-link"
-                                               title="Buka Cost Request milik {{ $g['manager'] }}">{{ $fmtRpFull($g['value']) }}</a>
+                                               title="Buka Cost Request milik {{ $g['manager'] }}"><span class="aca-val">{{ $fmtRpFull($g['value']) }}</span></a>
                                         </td>
                                     </tr>
 
@@ -590,6 +641,7 @@
                                     {{-- LAPIS 2 — BENEFICIARY --}}
                                     <tr class="aca-ben-row aca-grp-{{ $gi }}" style="display:none;cursor:pointer;"
                                         data-target="aca-cr-{{ $gi }}-{{ $bi }}"
+                                        data-grp="aca-grp-{{ $gi }}" data-pic="{{ $b['beneficiary'] }}"
                                         data-sort-name="{{ $b['beneficiary'] }}" data-sort-value="{{ $b['value'] }}">
                                         <td class="aca-lv2">
                                             <i class="fas fa-caret-right aca-caret mr-2"></i>
@@ -598,11 +650,12 @@
                                         <td></td>
                                         <td></td>
                                         <td></td>
-                                        <td class="text-center">{{ $b['qty'] }}</td>
+                                        <td></td>
+                                        <td class="text-center aca-qty">{{ $b['qty'] }}</td>
                                         <td class="text-right">
                                             <a href="{{ $acaCrUrl(['pic' => $b['beneficiary']], $b['date_from']) }}"
                                                target="_blank" rel="noopener" class="aca-value-link"
-                                               title="Buka Cost Request milik {{ $b['beneficiary'] }}">{{ $fmtRpFull($b['value']) }}</a>
+                                               title="Buka Cost Request milik {{ $b['beneficiary'] }}"><span class="aca-val">{{ $fmtRpFull($b['value']) }}</span></a>
                                         </td>
                                     </tr>
 
@@ -614,7 +667,15 @@
                                          workflow stepper di bawah, dan variabel @foreach bocor ke
                                          scope sekitarnya. --}}
                                     @foreach($b['items'] as $caItem)
-                                    <tr class="aca-cr-{{ $gi }}-{{ $bi }} aca-allcr-{{ $gi }}" style="display:none;"
+                                    {{-- data-pic / data-aging / data-amount dipakai penyaring di
+                                         browser: dialah yang menghitung ulang subtotal PIC,
+                                         Manager, dan Grand Total dari baris yang masih terlihat. --}}
+                                    <tr class="aca-cr-row aca-cr-{{ $gi }}-{{ $bi }} aca-allcr-{{ $gi }}" style="display:none;"
+                                        data-grp="aca-grp-{{ $gi }}" data-ben="aca-cr-{{ $gi }}-{{ $bi }}"
+                                        data-pic="{{ $b['beneficiary'] }}"
+                                        data-po="{{ $caItem['po_code'] }}"
+                                        data-aging="{{ $caItem['aging'] === null ? '' : $caItem['aging'] }}"
+                                        data-amount="{{ $caItem['amount'] }}"
                                         data-sort-name="{{ $caItem['code'] }}" data-sort-value="{{ $caItem['amount'] }}">
                                         <td class="aca-lv3">
                                             {{-- Kode CR membuka detail pengajuannya sebagai modal
@@ -628,6 +689,27 @@
                                                data-id="{{ $caItem['id'] }}"
                                                title="Lihat detail {{ $caItem['code'] }}">{{ $caItem['code'] }}</a>
                                             <span class="aca-cr-desc" title="{{ $caItem['description'] }}">{{ $caItem['description'] }}</span>
+                                        </td>
+                                        <td class="aca-po-ref" title="{{ $caItem['po_code'] ? '[' . $caItem['po_code'] . '] ' . $caItem['po_name'] : '' }}">
+                                            @if($caItem['po_code'])
+                                            @if($acaCanOpenPo)
+                                            {{-- ?code=<kode> menyaring daftar Purchase Order pada
+                                                 kode itu dan mengisi kotak "Cari"-nya, jadi
+                                                 penyaringnya terlihat dan bisa dihapus. Bukan
+                                                 ?open=<id> yang langsung membuka modal detail:
+                                                 yang diminta di sini mendarat di daftarnya. --}}
+                                            <a href="{{ route('project.index') }}?code={{ $caItem['po_code'] }}"
+                                               target="_blank" rel="noopener" class="aca-po-code aca-po-link"
+                                               title="Buka PO {{ $caItem['po_code'] }} — {{ $caItem['po_name'] }}">[{{ $caItem['po_code'] }}]</a>
+                                            @else
+                                            {{-- Role lain tetap melihat kodenya; yang dicabut
+                                                 hanya tautannya. --}}
+                                            <span class="aca-po-code">[{{ $caItem['po_code'] }}]</span>
+                                            @endif
+                                            <span class="aca-po-name">{{ $caItem['po_name'] }}</span>
+                                            @else
+                                            <span class="text-muted">&ndash;</span>
+                                            @endif
                                         </td>
                                         <td class="text-center text-nowrap">{!! $acaAging($caItem['aging']) !!}</td>
                                         <td class="text-center text-nowrap">{{ $caItem['paid_date'] ?? '-' }}</td>
@@ -644,15 +726,15 @@
                                     @endforeach
                                     @endforeach
                                     @empty
-                                    <tr><td colspan="6" class="text-center text-muted py-3">Tidak ada Cash Advance aktif.</td></tr>
+                                    <tr><td colspan="7" class="text-center text-muted py-3">Tidak ada Cash Advance aktif.</td></tr>
                                     @endforelse
                                 </tbody>
                                 @if($activeCashAdvance->isNotEmpty())
                                 <tfoot>
                                     <tr style="background:var(--surface-2);">
-                                        <th colspan="4" class="text-left">Grand Total</th>
-                                        <th class="text-center">{{ $activeCaGrandQty }}</th>
-                                        <th class="text-right">{{ $fmtRpFull($activeCaGrandValue) }}</th>
+                                        <th colspan="5" class="text-left">Grand Total</th>
+                                        <th class="text-center aca-qty">{{ $activeCaGrandQty }}</th>
+                                        <th class="text-right aca-val">{{ $fmtRpFull($activeCaGrandValue) }}</th>
                                     </tr>
                                 </tfoot>
                                 @endif
@@ -1740,6 +1822,27 @@ table.aca-fixed td.aca-lv3 { white-space:nowrap; overflow:hidden; text-overflow:
 /* Kode CR yang bisa diklik. Bentuknya sengaja tetap "chip" seperti kode yang
    tidak bisa diklik — yang membedakan hanya warna teks dan kursor, supaya
    barisnya tidak berubah tinggi saat role yang berbeda membukanya. */
+/* PO Reference dipotong elipsis, sama alasannya dengan deskripsi CR: lebar
+   kolomnya dikunci colgroup supaya tabel tidak bergeser saat grup dibuka. */
+/* Baris yang tersaring keluar. !important-nya disengaja: buka/tutup pohon
+   mengatur `display` lewat inline style, dan tanpa ini baris yang sudah
+   tersaring akan muncul lagi begitu grupnya dibuka. */
+#tblAca tr.aca-filtered-out { display:none !important; }
+
+/* Pilihan PIC yang tidak berlaku untuk PO terpilih. Kelas sendiri, bukan
+   atribut `hidden`: atribut itu sudah dipakai kotak cari di dalam menu, dan
+   keduanya akan saling menimpa saat dipakai bersamaan. */
+#acaFilterBar .col-mf-item.aca-opt-off { display:none !important; }
+
+#tblAca td.aca-po-ref { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:11.5px; }
+#tblAca .aca-po-code { font-weight:700; margin-right:4px; }
+/* Kode PO yang bisa diklik — warnanya mengikuti teks dan baru menonjol saat
+   disentuh, pola yang sama dengan kode CR di kolom sebelahnya. */
+body.tesys-ui #tblAca a.aca-po-link { color:var(--text); text-decoration:none; }
+body.tesys-ui #tblAca a.aca-po-link:hover,
+body.tesys-ui #tblAca a.aca-po-link:focus { color:var(--primary); text-decoration:underline; }
+#tblAca .aca-po-name { color:var(--text-dim); }
+
 a.aca-cr-link { color:var(--primary); text-decoration:none; cursor:pointer; }
 a.aca-cr-link:hover,
 a.aca-cr-link:focus { color:var(--primary); border-color:var(--primary); text-decoration:underline; }
@@ -2239,6 +2342,165 @@ $(function () {
         $(this).css('width', $(this).data('width') + '%');
     });
 
+    /* ── Filter Active Cash Advance (PIC & Aging) ──
+       Menyaring di browser, tanpa memuat ulang. Memakai komponen _multi-filter
+       yang sama dengan filter Collection, tapi penanganannya dipasang terpisah:
+       handler milik Collection terikat ke #summaryPaneCollection DAN berada di
+       blok skrip yang digerbang role Collection, sehingga role yang hanya
+       melihat tab Budget tidak akan mendapatkannya sama sekali. */
+    var $acaBar = $('#acaFilterBar');
+
+    var ACA_EMBER = @json(\App\Http\Controllers\FinanceSummaryController::ACA_AGING_BUCKETS);
+
+    function acaPilihan(name) {
+        return $acaBar.find('.col-mf[data-name="' + name + '"] .col-mf-list input:checked')
+            .map(function () { return this.value; }).get();
+    }
+
+    function acaRp(n) { return Number(n || 0).toLocaleString('id-ID'); }
+
+    function acaCocokAging(baris, ember) {
+        if (ember.length === 0) return true;
+
+        var umur = $(baris).attr('data-aging');
+        // paid_at kosong = umurnya tidak diketahui; tidak bisa diklaim masuk
+        // ember mana pun, jadi ikut tersaring keluar.
+        if (umur === '' || umur === undefined) return false;
+        umur = parseInt(umur, 10);
+
+        for (var i = 0; i < ember.length; i++) {
+            var e = ACA_EMBER[ember[i]];
+            if (!e) continue;
+            if (umur >= e.min && (e.max === null || umur <= e.max)) return true;
+        }
+        return false;
+    }
+
+    /* Pilihan PIC menyusut mengikuti PO yang sedang dipilih: menawarkan PIC yang
+       tidak memegang satu pun CA di PO itu berarti menawarkan pilihan yang pasti
+       mengosongkan tabel. PIC yang terlanjur tercentang lalu jadi tidak berlaku
+       ikut dilepas — kalau dibiarkan, ia menyaring diam-diam dari balik daftar
+       yang sudah tidak menampilkannya. */
+    function acaSelaraskanPic(po) {
+        var sah = {};
+        $('#tblAca tbody tr.aca-cr-row').each(function () {
+            var $r = $(this);
+            if (po.length === 0 || po.indexOf($r.attr('data-po')) !== -1) {
+                sah[$r.attr('data-pic')] = true;
+            }
+        });
+
+        var $mf = $acaBar.find('.col-mf[data-name="aca_pic"]');
+        $mf.find('.col-mf-item').each(function () {
+            var cb = $(this).find('input')[0];
+            var berlaku = po.length === 0 || sah[cb.value] === true;
+            $(this).toggleClass('aca-opt-off', !berlaku);
+            if (!berlaku && cb.checked) cb.checked = false;
+        });
+
+        var n = $mf.find('.col-mf-list input:checked').length;
+        $mf.find('.col-mf-badge').text(n).prop('hidden', n === 0);
+        $mf.find('.col-mf-btn').toggleClass('col-mf-active', n > 0);
+    }
+
+    function acaTerapkanFilter() {
+        var po    = acaPilihan('aca_po');
+        acaSelaraskanPic(po);
+
+        var pic   = acaPilihan('aca_pic');
+        var ember = acaPilihan('aca_aging');
+        var aktif = pic.length > 0 || po.length > 0 || ember.length > 0;
+
+        var grand = { qty: 0, val: 0 };
+        var perGrup = {}, perBen = {};
+
+        $('#tblAca tbody tr.aca-cr-row').each(function () {
+            var $r = $(this);
+            var lolos = (pic.length === 0 || pic.indexOf($r.attr('data-pic')) !== -1)
+                && (po.length === 0 || po.indexOf($r.attr('data-po')) !== -1)
+                && acaCocokAging(this, ember);
+
+            $r.toggleClass('aca-filtered-out', !lolos);
+            if (!lolos) return;
+
+            var g = $r.attr('data-grp'), b = $r.attr('data-ben');
+            var nilai = parseInt($r.attr('data-amount'), 10) || 0;
+
+            perGrup[g] = perGrup[g] || { qty: 0, val: 0 };
+            perBen[b]  = perBen[b]  || { qty: 0, val: 0 };
+            perGrup[g].qty++; perGrup[g].val += nilai;
+            perBen[b].qty++;  perBen[b].val  += nilai;
+            grand.qty++;      grand.val      += nilai;
+        });
+
+        // Baris PIC & Manager ikut hilang kalau tidak menyisakan satu CR pun —
+        // menyisakannya bernilai 0 akan terbaca seperti PIC yang kebetulan tidak
+        // punya CA, padahal ia memang sedang disaring keluar.
+        $('#tblAca tbody tr.aca-ben-row').each(function () {
+            var $r = $(this);
+            var d = perBen[$r.attr('data-target')] || { qty: 0, val: 0 };
+            $r.toggleClass('aca-filtered-out', d.qty === 0);
+            $r.find('.aca-qty').text(d.qty);
+            $r.find('.aca-val').text(acaRp(d.val));
+        });
+
+        $('#tblAca tbody tr.aca-group-row').each(function () {
+            var $r = $(this);
+            var d = perGrup[$r.attr('data-grp')] || { qty: 0, val: 0 };
+            $r.toggleClass('aca-filtered-out', d.qty === 0);
+            $r.find('.aca-qty').text(d.qty);
+            $r.find('.aca-val').text(acaRp(d.val));
+        });
+
+        $('#tblAca tfoot .aca-qty').text(grand.qty);
+        $('#tblAca tfoot .aca-val').text(acaRp(grand.val));
+
+
+        /* Filter aktif -> pohonnya langsung dibuka sampai baris CR. Hasil
+           saringan selalu sedikit, dan menyisakannya terlipat berarti pengguna
+           memilih PIC lalu hanya melihat baris manager — yang dicarinya justru
+           PIC itu sendiri. Dilepas lagi saat filter dibersihkan. */
+        acaBukaSemua(aktif);
+    }
+
+    function acaTutupMenu() { $acaBar.find('.col-mf-menu').prop('hidden', true); }
+
+    $acaBar.on('click', '.col-mf-btn', function (e) {
+        var $menu = $(this).siblings('.col-mf-menu');
+        if ($menu.length === 0) return;
+        e.stopPropagation();
+        var willOpen = $menu.prop('hidden');
+        acaTutupMenu();
+        $menu.prop('hidden', !willOpen);
+        if (willOpen) $menu.find('.col-mf-search').val('').trigger('input').trigger('focus');
+    });
+
+    $acaBar.on('click', '.col-mf-menu', function (e) { e.stopPropagation(); });
+    $(document).on('click.acamf', acaTutupMenu);
+
+    $acaBar.on('input', '.col-mf-search', function () {
+        var q = this.value.toLowerCase();
+        $(this).siblings('.col-mf-list').find('.col-mf-item').each(function () {
+            this.hidden = this.textContent.toLowerCase().indexOf(q) === -1;
+        });
+    });
+
+    // Tanpa tombol Apply: tabel menyesuaikan di detik yang sama kotak dicentang.
+    $acaBar.on('change', '.col-mf-menu input[type=checkbox]', function () {
+        var $mf = $(this).closest('.col-mf');
+        var n = $mf.find('.col-mf-list input:checked').length;
+        $mf.find('.col-mf-badge').text(n).prop('hidden', n === 0);
+        $mf.find('.col-mf-btn').toggleClass('col-mf-active', n > 0);
+        acaTerapkanFilter();
+    });
+
+    $('#acaFilterReset').on('click', function () {
+        $acaBar.find('.col-mf-list input:checked').prop('checked', false);
+        $acaBar.find('.col-mf-badge').text(0).prop('hidden', true);
+        $acaBar.find('.col-mf-btn').removeClass('col-mf-active');
+        acaTerapkanFilter();
+    });
+
     /* Active Cash Advance — tiga lapis: Manager > Beneficiary > Cost Request.
        Menutup Manager WAJIB ikut menutup baris CR di dalamnya; kalau tidak,
        baris CR menggantung tanpa induk yang terlihat. */
@@ -2369,19 +2631,23 @@ $(function () {
         perbaruiIkon();
     })();
 
-    $('#acaExpandAll').on('click', function () {
-        var $btn = $(this);
-        var membuka = $btn.data('state') !== 'open';
-
+    /* Satu fungsi untuk tombol Buka/Tutup Semua DAN untuk pembukaan otomatis
+       saat filter aktif, supaya label tombolnya tidak pernah berbohong tentang
+       keadaan pohon. */
+    function acaBukaSemua(membuka) {
         $('.aca-group-row, .aca-ben-row').each(function () {
             $('.' + $(this).data('target')).toggle(membuka);
             acaCaret($(this), membuka);
         });
 
-        $btn.data('state', membuka ? 'open' : 'closed')
+        $('#acaExpandAll').data('state', membuka ? 'open' : 'closed')
             .html(membuka
                 ? '<i class="fas fa-angle-double-up mr-1"></i>Tutup Semua'
                 : '<i class="fas fa-angle-double-down mr-1"></i>Buka Semua');
+    }
+
+    $('#acaExpandAll').on('click', function () {
+        acaBukaSemua($(this).data('state') !== 'open');
     });
 
     /* PO Summary — VAR dihitung ulang di frontend sesuai formula dropdown,
