@@ -3,57 +3,49 @@
 ## Target workflow
 
 ```
-feature/<name>  ──PR──▶  develop  ──(review / testing / UAT)──▶  main  ──▶  production
+feature/<name> | fix/<name> | docs/<name>
+        │  (merge --no-ff, lokal)
+        ▼
+develop  ──push──▶  origin/develop-v2  ──PR + review + UAT──▶  main  ──▶  production
 ```
 
 - No development directly on `main`.
-- One feature/fix per branch; small PRs.
+- One feature/fix per branch, branched from `develop`; small changes.
+- Merge into `develop` with `--no-ff` so each fix stays one revertable unit.
 - `main` = what is (or is about to be) in production. Tag releases (`v2.5.3`).
 - Hotfix: `hotfix/<name>` from `main`, merged back into both `main` and `develop`.
+- Local `develop` tracks **`origin/develop-v2`** (not `origin/develop`, which
+  no longer exists — see below). Push with `git push origin develop:develop-v2`.
 
-## Current state (observed 2026-10-02)
+## Current state (updated 2026-10-02)
 
 | Item | State |
 |------|-------|
-| Current branch | `main` (tracks `origin/main`, at `70dfa9e` "Merge pull request #2 from YogaDev01/newdata") |
-| Uncommitted work | **16 modified files on `main`** (Budget Plan, CR, Daily Transaction, Finance Summary, Project, Report controllers; BudgetPlan/BudgetRequest/Project/RequestDetail models; todo-list & budget-plan views; `.claude/launch.json`). ~247+/89−. Business-logic changes, not committed. |
-| Local branches | `main`, `master` (= `development/develop` "Third Update"), `release/v2.3.1`, `feat/settlement-bulk-close` (0 unique commits — already merged; 25 behind `origin/main`) |
-| Remotes | `origin` and `tesys` → both `github.com/YogaDev01/tesys.git` (duplicate remote); `development` → `github.com/YogaDev01/development.git` |
-| Remote branches | `origin/main`, `origin/develop` (stale: "First Running Github Team"; 2 unique commits, 29 behind `origin/main`), `origin/master`, `origin/feature`, `origin/new-update`, `origin/newdata` |
-| Practice so far | Work committed on `newdata`/`main`, merged to `main` via PR #2; release commits named `feat: rilis vX.Y.Z – …` |
+| `origin/main` | `70dfa9e` — production, default branch. Untouched. |
+| `origin/develop-v2` | Integration branch: `main` + preventive concurrency fixes (H1–H3, M1, M3, Second Payment re-batch, Invoice/Surat Jalan locks), Invoice UI text, docs baseline. Suite 205/205. **Not yet released** — needs PR to `main` + UAT. |
+| Remote branches removed (2026-10-02) | `origin/feature`, `origin/new-update`, `origin/newdata` (0 unique commits, already in `main`); `origin/develop` and `origin/master` (old initial snapshots, history unrelated to `main`). |
+| Archive tags | `archive/old-develop` (`75974df`) and `archive/old-master` (`9e06274`) keep the old `develop`/`master` commits. Restore with `git switch -c <name> archive/old-develop`. |
+| Local branches | `develop` (→ `origin/develop-v2`), `main`, `feature/effective-amount` (unreleased "Nilai Efektif" calculation change — needs tests + Finance review), `master` (old, tracks `development/develop`), `release/v2.3.1` (release marker, merged). |
+| Remotes | `origin` = `github.com/YogaDev01/tesys.git`; `tesys` = duplicate of `origin`; `development` = separate repo `github.com/YogaDev01/development.git` (not managed here). |
+| Local working tree | `.claude/launch.json` has a local change for another project — intentionally never committed. |
 | Deployment | Manual upload to Hostinger shared hosting (files listed per change and uploaded by hand). No CI/CD config in repo. |
 
-### Update 2026-10-02 (baseline established, local only — not pushed)
+## Remaining gaps
 
-- Uncommitted "Nilai Efektif" work moved to `feature/effective-amount`
-  (unreleased, HIGH-risk calculation change; needs tests + Finance review).
-- `docs/baseline`: CLAUDE.md + docs.
-- Local `develop` created from `main` (`origin/develop` left untouched).
-- Preventive fixes: `fix/h1-treasury-batch-lock`,
-  `fix/h2-settlement-verify-lock`, `fix/h3-cash-receipt-allocate-lock`,
-  each branched from `develop`.
-- `.claude/launch.json` local change (other project) intentionally not committed.
+1. `develop-v2` is not yet merged to `main` (PR, review, UAT pending).
+2. No branch protection on `main` in GitHub (PR + review required) — set in
+   GitHub settings.
+3. Duplicate remote `tesys` (optional cleanup: `git remote remove tesys`).
+4. Local `master` and the `development` remote are leftovers from the old
+   repository setup; decide whether to keep them.
+5. The integration branch name `develop-v2` is temporary; optionally rename it
+   to `develop` once the team agrees (old `origin/develop` is gone and archived).
 
-## Gaps vs target
+## Before running tests
 
-1. Active, uncommitted business-logic work sits on `main`.
-2. `origin/develop` is stale and not used as integration branch.
-3. `master`, `feature`, `new-update`, `newdata`, `release/v2.3.1` are
-   leftovers; `feat/settlement-bulk-close` is fully merged.
-4. Two remotes point to the same repo.
-5. Line endings: Git warns CRLF→LF on the modified files (`.gitattributes`
-   exists). Mixed endings make diffs noisy.
-
-## Suggested migration (needs human decision — nothing has been changed)
-
-1. Move the uncommitted work off `main`: `git switch -c feature/<name>` (keeps
-   working-tree changes), commit there.
-2. Reset `develop` to `origin/main` (`git push origin origin/main:develop
-   --force-with-lease` — destructive to the old develop, confirm first).
-3. Delete `feat/settlement-bulk-close` (already merged) after confirmation; review the 2 unique commits on `origin/develop` before resetting it.
-4. Archive/delete stale remote branches after confirmation.
-5. Enable branch protection on `main` (PR + review required) in GitHub.
-6. Remove the duplicate `tesys` remote (optional).
+See `CLAUDE.md` §4: `bootstrap/cache/config.php` must not exist, and
+`APP_ENV=testing DB_DATABASE=tesys_test php artisan config:show
+database.connections.mysql.database` must print `tesys_test`.
 
 ## Rules for Claude
 
@@ -61,3 +53,5 @@ feature/<name>  ──PR──▶  develop  ──(review / testing / UAT)──
   unless explicitly asked.
 - Before starting work, report the current branch and whether the tree is dirty.
 - If asked to commit while on `main`, propose creating a feature branch first.
+- Never delete a remote branch with unique commits without archiving it first
+  (tag) and getting explicit approval.
