@@ -47,9 +47,12 @@ notifikasi, atau route. Satu perubahan otorisasi (lihat "Otorisasi").
   menimpa keputusan orang lain di tengah loop.
 
 ### Cash Receipt (`CashReceiptController`)
-- **H3:** `allocate` mengunci header dulu, lalu invoice; `cancel` memakai urutan
+- **H3:** `allocate` mengunci invoice lalu header (alokasi dari header yang sama antre); `cancel` memakai urutan
   kunci yang sama. Mencegah alokasi melebihi uang yang diterima dan alokasi
   pada bukti terima yang sedang dibatalkan.
+- **Urutan kunci (temuan review ulang):** semua jalur Cash Receipt memakai
+  urutan yang sama, invoice → header (`allocate`, `cancel`, hapus/settle
+  receipt lewat hook model), supaya tidak saling deadlock.
 
 ### Invoice & Surat Jalan (`InvoiceCashReceiptController`, `DeliveryNoteController`)
 - submit / verify / approve / revise memakai `transitionStatus()`.
@@ -79,15 +82,15 @@ notifikasi, atau route. Satu perubahan otorisasi (lihat "Otorisasi").
   git workflow.
 
 ## Test
-- 8 file test baru/diperbarui, **44 test baru**. Setiap skenario race
+- 8 file test baru/diperbarui, **46 test baru**. Setiap skenario race
   disimulasikan dan **terbukti gagal pada kode lama**, lolos pada kode baru.
   - `TreasuryBatchLockTest` (8), `SettlementVerifyLockTest` (5),
-    `CashReceiptAllocateLockTest` (5), `MarkPaidLockTest` (5),
+    `CashReceiptAllocateLockTest` (7), `MarkPaidLockTest` (5),
     `CostRequestReviewLockTest` (9), `SecondPaymentRebatchTest` (4),
     `InvoiceLockTest` (8)
   - `BeneficiaryPicViewTest`: test usang (rekening Master PIC, dihapus sejak
     v2.5.0) diganti dengan test perilaku sekarang.
-- **Suite penuh: 205/205.**
+- **Suite penuh: 207/207.**
 - Batasan: race yang butuh dua koneksi DB (dua alokasi ke dua invoice berbeda,
   dua takeout atas dua item terakhir, dua settle PPh pada receipt berbeda)
   tidak bisa direproduksi di PHPUnit satu koneksi → wajib UAT.
