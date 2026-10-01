@@ -2,7 +2,6 @@
 
 namespace App\Support;
 
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -32,33 +31,37 @@ final class DocumentSequence
      */
     public static function next(string $key, \Closure $seed): int
     {
-        return DB::transaction(function () use ($key, $seed) {
+        /*
+        | Langkah 1 - pastikan baris penghitung ada, DI LUAR kunci.
+        |
+        | Dulu baris dicari dengan SELECT ... FOR UPDATE lalu di-INSERT bila
+        | belum ada. Pada rangkaian yang benar-benar baru, dua permintaan
+        | bersamaan sama-sama mendapat gap lock atas baris kosong itu, lalu
+        | sama-sama INSERT: InnoDB menyelesaikannya sebagai deadlock dan
+        | me-rollback SELURUH transaksi salah satunya - termasuk transaksi
+        | pemanggil (mis. store() Cash Receipt). Blok catch lama menelan galat
+        | itu dan melanjutkan di atas transaksi yang sudah mati, sehingga
+        | perintah berikutnya ter-autocommit dan pengguna mendapat 500
+        | ("There is no active transaction"). Ditemukan lewat UAT konkurensi.
+        |
+        | INSERT IGNORE tanpa SELECT FOR UPDATE sebelumnya tidak memakai gap
+        | lock: permintaan kedua hanya menunggu, lalu barisnya diabaikan.
+        */
+        if (! DB::table('document_sequences')->where('key', $key)->exists()) {
+            DB::table('document_sequences')->insertOrIgnore([
+                'key'        => $key,
+                'counter'    => (int) $seed(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        // Langkah 2 - baris pasti ada: kunci satu baris itu dan naikkan.
+        return DB::transaction(function () use ($key) {
             $row = DB::table('document_sequences')
                 ->where('key', $key)
                 ->lockForUpdate()
                 ->first();
-
-            if (! $row) {
-                $awal = (int) $seed();
-
-                try {
-                    DB::table('document_sequences')->insert([
-                        'key'        => $key,
-                        'counter'    => $awal,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                } catch (QueryException $e) {
-                    // Rangkaian baru saja dibuat oleh permintaan lain; baca ulang
-                    // dengan kunci supaya kita antre di belakangnya.
-                    $row = DB::table('document_sequences')
-                        ->where('key', $key)
-                        ->lockForUpdate()
-                        ->first();
-                }
-
-                $row = $row ?: (object) ['counter' => $awal];
-            }
 
             $berikutnya = ((int) $row->counter) + 1;
 
