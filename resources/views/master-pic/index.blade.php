@@ -28,7 +28,7 @@
         @endphp
 
         {{-- Tab utama. Internal paling kiri sekaligus tab bawaan: daftar itulah
-             yang paling sering dikerjakan. Outsider = semua yang BUKAN internal
+             yang paling sering dikerjakan. Tab External = semua yang BUKAN internal
              (Customer, External, Site Keeper) — jenis baru apa pun ikut masuk ke
              sana dengan sendirinya. Database memuat semuanya.
 
@@ -38,7 +38,7 @@
              disentuh padahal datanya tidak berubah. --}}
         @php $picTabs = [
             'internal' => ['Internal', 'fas fa-users'],
-            'outsider' => ['Outsider', 'fas fa-handshake'],
+            'external' => ['External', 'fas fa-handshake'],
             'db'       => ['Database', 'fas fa-database'],
         ]; @endphp
         <ul class="nav nav-tabs pic-main-tabs mt-2 mb-3" role="tablist">
@@ -100,7 +100,7 @@
                              dikerjakan sampai habis tanpa memilah sendiri dari
                              daftar penuh. Diproses di server, jadi angkanya tetap
                              konsisten dengan isi tabel. --}}
-                        <span id="picUnlinkedWrap" @if($tab === 'outsider') style="display:none;" @endif>
+                        <span id="picUnlinkedWrap" @if($tab === 'external') style="display:none;" @endif>
                         @if(($filters['unlinked'] ?? false))
                             <a href="{{ url('/master-pic?tab=' . $tab) }}" class="btn btn-danger btn-sm">
                                 <i class="fas fa-user-slash mr-1"></i> Belum Terhubung
@@ -128,13 +128,11 @@
                     <table id="picTable" class="table table-bordered table-hover table-striped mb-0">
                         <thead class="bg-light">
                             <tr>
-                                <th scope="col" width="4%"  class="all">No</th>
-                                <th scope="col" width="10%" class="all">Type</th>
-                                <th scope="col" width="16%" class="all">Nama PIC</th>
-                                <th scope="col" width="12%">Jabatan</th>
-                                <th scope="col" width="12%">Terhubung Ke</th>
-                                <th scope="col" width="12%">Phone</th>
-                                <th scope="col" width="12%">Email</th>
+                                <th scope="col" width="11%" class="all">Type</th>
+                                <th scope="col" width="20%" class="all">Nama PIC</th>
+                                <th scope="col" width="15%">Jabatan</th>
+                                <th scope="col" width="14%">Phone</th>
+                                <th scope="col" width="15%">Email</th>
                                 <th scope="col" width="9%">Token</th>
                                 <th scope="col" width="9%" class="text-right">Nominal</th>
                                 <th scope="col" width="7%">Status</th>
@@ -144,7 +142,6 @@
                         <tbody>
                             @forelse($pics as $pic)
                             <tr data-type="{{ $pic->type_label }}" data-typekey="{{ $pic->type }}" data-status="{{ $pic->status }}">
-                                <td>{{ $loop->iteration }}</td>
                                 <td>
                                     {{-- Label & warnanya diambil dari MasterPic::TYPES, jadi
                                          menambah jenis baru tidak perlu menyentuh baris ini. --}}
@@ -161,27 +158,6 @@
                                     @endif
                                 </td>
                                 <td>{{ $pic->position ?? '-' }}</td>
-                                <td>
-                                    {{-- M-02 — kaitan ke orang sebenarnya. PIC internal
-                                         tanpa kaitan ditandai, karena itulah data yang
-                                         masih perlu dirapikan. --}}
-                                    @if($pic->user)
-                                        <span class="badge badge-info px-2 py-1" style="font-size:10px;">
-                                            <i class="fas fa-user mr-1"></i>{{ strtoupper($pic->user->username) }}
-                                        </span>
-                                    @elseif($pic->type === 'internal')
-                                        <span class="badge badge-warning px-2 py-1" style="font-size:10px;" title="PIC internal belum terhubung ke akun User">
-                                            Belum terhubung
-                                        </span>
-                                    @else
-                                        <span class="text-muted">-</span>
-                                    @endif
-                                    @if($pic->employee)
-                                        <div class="text-muted" style="font-size:10px;margin-top:2px;">
-                                            NIP {{ $pic->employee->employee_number }}
-                                        </div>
-                                    @endif
-                                </td>
                                 <td>{{ $pic->phone ?? '-' }}</td>
                                 <td>{{ $pic->email ?? '-' }}</td>
                                 {{-- Hanya dibaca di sini. Mengubahnya lewat modal Edit,
@@ -236,7 +212,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="11">
+                                <td colspan="9">
                                     <x-empty title="Belum ada data PIC" icon="fas fa-folder-open" compact />
                                 </td>
                             </tr>
@@ -871,10 +847,12 @@ $(function () {
         autoWidth: false, pageLength: 10, lengthChange: true,
         searching: true, ordering: true, orderCellsTop: true,
         columnDefs: [
+            // Indeks setelah kolom No & Terhubung Ke dibuang:
+            // 0 Type, 1 Nama PIC, 2 Jabatan, 3 Phone, 4 Email, 5 Token,
+            // 6 Nominal, 7 Status, 8 Action.
             { responsivePriority: 1,   targets: [0, 1, -1] },
-            { responsivePriority: 2,   targets: [4] },
-            { responsivePriority: 3,   targets: [7, 8] },
-            { responsivePriority: 100, targets: [2, 3, 5, 6, 9] }
+            { responsivePriority: 3,   targets: [5, 6] },
+            { responsivePriority: 100, targets: [2, 3, 4, 7] }
         ],
         dom:
             'rt' +
@@ -935,7 +913,7 @@ $(function () {
         return activeTab === 'internal' ? jenis === 'internal' : jenis !== 'internal';
     });
 
-    var PIC_TAB_LABEL = { internal: 'Internal', outsider: 'Outsider', db: '' };
+    var PIC_TAB_LABEL = { internal: 'Internal', external: 'External', db: '' };
 
     function applyTab(tab, pushUrl) {
         if (!PIC_TAB_LABEL.hasOwnProperty(tab)) tab = 'internal';
@@ -948,8 +926,8 @@ $(function () {
         // (dipakai columnDefs & data-order) jadi tidak ikut bergeser.
         // Type mubazir di tab Internal; di Database rincian kontak dilepas
         // supaya barisnya tetap terbaca.
-        picTable.column(1).visible(tab !== 'internal', false);
-        [4, 5, 6].forEach(function (i) { picTable.column(i).visible(tab !== 'db', false); });
+        picTable.column(0).visible(tab !== 'internal', false);
+        [3, 4].forEach(function (i) { picTable.column(i).visible(tab !== 'db', false); });
         picTable.columns.adjust();
 
         // Filter Type tidak menyaring apa pun di tab Internal. Sisa pilihan dari
@@ -963,7 +941,7 @@ $(function () {
             $tombolType.show();
         }
 
-        $('#picUnlinkedWrap').toggle(tab !== 'outsider');
+        $('#picUnlinkedWrap').toggle(tab !== 'external');
         $('#picTabLabel').text(PIC_TAB_LABEL[tab]);
 
         var ringkas = PIC_SUMMARIES[tab] || {};

@@ -552,6 +552,17 @@ $(function () {
         if (qCustomer) TesysColumnFilter.setRowFilter('#projectTable', 'customer', qCustomer);
         if (qManager)  TesysColumnFilter.setRowFilter('#projectTable', 'pm', qManager);
         if (qStatus)   TesysColumnFilter.setRowFilter('#projectTable', 'status', qStatus);
+
+        /* ?code=<kode PO> — tautan kode PO dari kartu Active Cash Advance di
+           Summary. Kode PO bukan salah satu kolom berfilter, jadi dipakai
+           sebagai pencarian teks; kotak "Cari" ikut terisi supaya penyaringnya
+           jadi keadaan yang terlihat dan bisa dihapus user, bukan penyempitan
+           diam-diam yang membuat baris lain seolah hilang. */
+        var qCode = params.get('code');
+        if (qCode) {
+            $('#searchInput').val(qCode);
+            table.search(qCode).draw();
+        }
     })();
 
     $('#refreshTable').on('click', function () { location.reload(); });
@@ -559,6 +570,22 @@ $(function () {
     $('#btnClearFilterPO').on('click', function () {
         TesysColumnFilter.clearAll('#projectTable');
         TesysWorkflowStepper.clear('projectTable');
+
+        /* Pencarian teks ikut dibersihkan. Sebelumnya tidak, karena kotak "Cari"
+           selalu diisi user sendiri sehingga ia tahu isinya. Begitu halaman ini
+           bisa dibuka lewat tautan ?code=<kode PO> dari Summary, kotak itu terisi
+           TANPA user mengetiknya — menekan Clear Filter lalu melihat daftar tetap
+           menyisakan satu baris terbaca seperti tombolnya rusak. */
+        $('#searchInput').val('');
+        table.search('').draw();
+
+        /* ?code= dihapus dari URL supaya memuat ulang halaman tidak memasang
+           kembali filter yang barusan dibersihkan. */
+        var url = new URL(window.location.href);
+        if (url.searchParams.has('code')) {
+            url.searchParams.delete('code');
+            window.history.replaceState({}, '', url.toString());
+        }
     });
 
     /*

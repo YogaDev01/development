@@ -211,9 +211,32 @@ class BudgetRequestController extends Controller
             ->whereIn('budget_request.status', BudgetRequest::CA_COUNTED_STATUSES)
             ->count();
 
-        // Nominal: seluruh CR yang belum lepas (termasuk yang masih diproses).
+        /*
+        | Nominal: seluruh CR yang belum lepas — termasuk yang masih diproses
+        | (Draft/Submitted/dst) supaya pipeline-nya tetap memesan pagu.
+        |
+        | Lepasnya SAMA dengan slot jumlah pengajuan: begitu approval settlement
+        | tuntas di Second Approve. CR yang sudah lewat tahap itu lalu masuk
+        | batch Treasury (statusnya kembali QUEUED untuk membayar Expense Claim)
+        | juga tidak dihitung lagi — makanya dicek lewat jejak lognya, bukan
+        | status saat ini.
+        */
         $usedAmount = (int) $base()
             ->whereNotIn('budget_request.status', BudgetRequest::CA_QUOTA_RELEASED_STATUSES)
+            ->where(function ($q) {
+                // Lepas di Second Approve, dan tetap lepas saat klaimnya
+                // menunggu dibayar Treasury (status kembali QUEUED).
+                $q->where('budget_request.status', '!=', 'SECOND_APPROVED')
+                  ->where(function ($w) {
+                      $w->where('budget_request.status', '!=', 'QUEUED')
+                        ->orWhereNotExists(function ($sq) {
+                            $sq->selectRaw(1)
+                               ->from('request_status_logs')
+                               ->whereColumn('request_status_logs.budget_request_id', 'budget_request.id')
+                               ->where('request_status_logs.status_to', 'SECOND_APPROVED');
+                        });
+                  });
+            })
             ->sum('budget_request.amount');
 
         return [
@@ -1440,7 +1463,8 @@ class BudgetRequestController extends Controller
     }
 
     /**
-     * Riwayat pengajuan Cost Request untuk beneficiary yang sama.
+     * Riwayat pengajuan Cost Request untuk beneficiary yang sama, DI PO
+     * (atau cost center) yang sama dengan CR ini.
      *
      * Hanya CR yang sudah benar-benar dibayar yang masuk (paid_at terisi) —
      * yang dicari pemakainya adalah "apa saja yang pernah cair ke orang ini",
@@ -1457,9 +1481,35 @@ class BudgetRequestController extends Controller
             return collect();
         }
 
+        /*
+         | Riwayat dibatasi pada SUMBER ANGGARAN YANG SAMA dengan CR yang
+         | sedang dibuka: PO (project) yang sama untuk budget proyek, cost
+         | center yang sama untuk budget overhead/payroll.
+         |
+         | Yang dicari pemeriksa saat approval adalah "apa lagi yang pernah
+         | cair ke orang ini DI PO INI" — riwayat lintas PO membawa masuk
+         | pengajuan dari pekerjaan lain yang tidak ada hubungannya dengan
+         | keputusan yang sedang diambil, dan subtotalnya ikut menyesatkan.
+         | Kalau CR ini sendiri tidak punya budget plan, riwayatnya kosong
+         | daripada melebar ke seluruh pengajuan beneficiary.
+         */
+        $bp = $cr->budgetPlan;
+        if (! $bp) {
+            return collect();
+        }
+
         return BudgetRequest::with(['type', 'realizations'])
             ->where('beneficiary_id', $cr->beneficiary_id)
             ->where('id', '!=', $cr->id)
+            ->whereHas('budgetPlan', function ($q) use ($bp) {
+                if ($bp->project_id) {
+                    $q->where('project_id', $bp->project_id);
+                } elseif ($bp->cost_center_id) {
+                    $q->where('cost_center_id', $bp->cost_center_id);
+                } else {
+                    $q->whereRaw('1 = 0');
+                }
+            })
             ->whereNotNull('paid_at')
             ->orderByDesc('paid_at')
             ->limit(50)
@@ -2737,7 +2787,6 @@ class BudgetRequestController extends Controller
         $columnDefs = [
             'code'      => ['Kode',         16, fn ($cr) => $cr->code],
             'desc'      => ['Deskripsi',    40, fn ($cr) => $cr->is_nob ? ltrim(preg_replace('/^\[NOB\]\s*/i', '', $cr->description)) : $cr->description],
-            'jenis'     => ['Jenis',        14, fn ($cr) => $cr->isCashAdvance() ? 'Cash Advance' : 'Cost Payment'],
             'tanggal'   => ['Tanggal',      16, fn ($cr) => $cr->created_at?->format('d-m-Y H:i')],
             'paid_at'   => ['Tanggal Paid', 16, fn ($cr) => $cr->paid_at?->format('d-m-Y H:i') ?? '-'],
             'pengaju'   => ['Requestor',    16, fn ($cr) => strtoupper($cr->applicant?->username ?? '-')],
@@ -2747,8 +2796,17 @@ class BudgetRequestController extends Controller
             'refund'    => ['Refund',       16, fn ($cr) => (int) $cr->refundAmount()],
             'claim'     => ['Expense Claim', 16, fn ($cr) => (int) $cr->expenseClaimAmount()],
             'pic'       => ['PIC',          20, fn ($cr) => $cr->beneficiary?->pic?->pic ?? '-'],
-            // Cost: Cash Advance = nilai Settlement, Cost Payment = nilai Request.
-            'cost'      => ['Cost',         16, fn ($cr) => $cr->isCashAdvance() ? (int) $cr->total_realization : (int) $cr->amount],
+            /*
+            | Cost = biaya yang benar-benar diakui:
+            |   Cash Advance -> nilai Settlement; kalau settlement masih 0
+            |                   (belum disettle), pakai nilai Request.
+            |   Selain CA    -> selalu nilai Request.
+            */
+            'cost'      => ['Cost',         16, function ($cr) {
+                if (! $cr->isCashAdvance()) return (int) $cr->amount;
+                $settle = (int) $cr->total_realization;
+                return $settle > 0 ? $settle : (int) $cr->amount;
+            }],
             'status'    => ['Status',       14, fn ($cr) => $cr->status],
             // Hanya untuk export tanpa cols (bentuk lengkap lama):
             'type'      => ['Tipe',         16, fn ($cr) => $cr->type?->name ?? '-'],
@@ -2764,6 +2822,13 @@ class BudgetRequestController extends Controller
             | kosong. Baris Second Payment dikecualikan: yang dicari adalah
             | pembayaran pengajuan awalnya.
             */
+            'account'   => ['Account',      28, fn ($cr) => $cr->details
+                ->where('status', '!=', 'TAKEOUT')
+                ->map(fn ($d) => $d->account?->name)
+                ->filter()->unique()->implode(', ') ?: '-'],
+            'costtype'  => ['Cost Type',    16, fn ($cr) => $cr->budgetPlan?->isProjectBudget()
+                ? 'Variable Cost'
+                : (self::ACCOUNT_CATEGORY[strtoupper($cr->budgetPlan?->costCenter?->type ?? '')] ?? 'Overhead')],
             'txid'      => ['Transaction ID', 22, function ($cr) {
                 $item = $cr->dailyTransactionItems
                     ->whereNull('second_payment_id')
@@ -2784,10 +2849,10 @@ class BudgetRequestController extends Controller
         | tidak bisa dipulihkan penerimanya.
         */
         $activeCols = [
-            'code', 'tanggal', 'paid_at', 'desc', 'jenis', 'type', 'sumber',
+            'code', 'tanggal', 'paid_at', 'desc', 'type', 'sumber',
             'penerima', 'pic', 'pengaju',
             'request', 'realisasi', 'refund', 'claim', 'cost',
-            'status', 'nob', 'txid',
+            'status', 'nob', 'txid', 'account', 'costtype',
         ];
 
         foreach ($activeCols as $i => $key) {

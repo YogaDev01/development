@@ -31,7 +31,10 @@ class MasterPicController extends Controller
          * tidak punya tab sendiri — di sana filter Type yang memisahkannya.
          */
         $tab = $request->query('tab', 'internal');
-        if (! in_array($tab, ['internal', 'outsider', 'db'], true)) {
+        // CATATAN: tab 'external' = semua jenis yang BUKAN internal (Customer,
+        // External, Site Keeper), bukan hanya jenis 'external'. Namanya mengikuti
+        // yang tertulis di layar; pemisahan per jenis tetap lewat filter Type.
+        if (! in_array($tab, ['internal', 'external', 'db'], true)) {
             $tab = 'internal';
         }
 
@@ -60,7 +63,7 @@ class MasterPicController extends Controller
          */
         $isiTab = [
             'internal' => $pics->where('type', 'internal'),
-            'outsider' => $pics->where('type', '!=', 'internal'),
+            'external' => $pics->where('type', '!=', 'internal'),
             'db'       => $pics,
         ];
 
@@ -85,7 +88,7 @@ class MasterPicController extends Controller
         $semua = MasterPic::selectRaw('type, count(*) as n')->groupBy('type')->pluck('n', 'type');
         $tabCounts = [
             'internal' => (int) ($semua['internal'] ?? 0),
-            'outsider' => (int) ($semua->sum() - ($semua['internal'] ?? 0)),
+            'external' => (int) ($semua->sum() - ($semua['internal'] ?? 0)),
             'db'       => (int) $semua->sum(),
         ];
 

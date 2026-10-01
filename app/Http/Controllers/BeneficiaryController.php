@@ -95,6 +95,26 @@ class BeneficiaryController extends Controller
         $filters = ['category' => $category, 'status' => $status, 'q' => $search];
 
         /*
+        | TAB utama — mengikuti pola PIC Master.
+        |
+        | Internal = kategori INTERNAL; Outsider = semua yang BUKAN internal
+        | (EXTERNAL + BILLING, termasuk kategori baru apa pun nanti); Database
+        | memuat semuanya. Pemilahan baris dikerjakan di peramban: seluruh
+        | baris sudah terkirim sekali, jadi berpindah tab tidak memuat ulang
+        | halaman. Nilainya di sini hanya untuk tab yang aktif saat halaman
+        | dibuka dan angka di badge-nya.
+        */
+        $tab = in_array($request->query('tab'), ['internal', 'outsider', 'db'], true)
+            ? $request->query('tab')
+            : 'internal';
+
+        $tabCounts = [
+            'internal' => $beneficiaries->where('category', 'INTERNAL')->count(),
+            'outsider' => $beneficiaries->where('category', '!=', 'INTERNAL')->count(),
+            'db'       => $beneficiaries->count(),
+        ];
+
+        /*
         | Ringkasan per PIC — dipakai saat kata pencarian cocok dengan nama PIC.
         |
         | Mencari "RANI FEBRIANDINI" dulu memuntahkan 18 baris beneficiary yang
@@ -169,7 +189,8 @@ class BeneficiaryController extends Controller
             ]);
 
         return view('beneficiaries.index', compact(
-            'beneficiaries', 'banks', 'pics', 'summary', 'filters', 'canManage', 'picGroups', 'beneficiaryPicker'
+            'beneficiaries', 'banks', 'pics', 'summary', 'filters', 'canManage', 'picGroups', 'beneficiaryPicker',
+            'tab', 'tabCounts'
         ));
     }
 

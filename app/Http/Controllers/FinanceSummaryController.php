@@ -727,6 +727,22 @@ class FinanceSummaryController extends Controller
     public const ACA_SORT_DEFAULT = 'value_desc';
 
     /**
+     * Ember umur CA, dipakai filter "Aging" di kartu Active Cash Advance.
+     *
+     * [min, max] dalam hari; max null = tanpa batas atas. Dibuat konstan supaya
+     * label di tombol filter dan rentang yang disaring tidak bisa berbeda —
+     * kalau keduanya ditulis terpisah, mengubah salah satu diam-diam membuat
+     * filter menyaring rentang yang tidak sama dengan yang tertulis.
+     */
+    public const ACA_AGING_BUCKETS = [
+        '1_7'   => ['label' => '1 – 7 hari',   'min' => 0,  'max' => 7],
+        '8_14'  => ['label' => '8 – 14 hari',  'min' => 8,  'max' => 14],
+        '15_30' => ['label' => '15 – 30 hari', 'min' => 15, 'max' => 30],
+        '31_60' => ['label' => '31 – 60 hari', 'min' => 31, 'max' => 60],
+        '60_up' => ['label' => '> 60 hari',    'min' => 61, 'max' => null],
+    ];
+
+    /**
      * Label tahap khusus tabel ini.
      *
      * BudgetRequest::statusLabelFor() memberi SETTLE_CHECKED label "Checked" dan
@@ -784,6 +800,8 @@ class FinanceSummaryController extends Controller
 
     private function activeCashAdvanceData(Request $request): array
     {
+        $role = strtolower(Auth::user()->role->name ?? '');
+
         /*
         | Urutan dibaca dari URL dan divalidasi terhadap daftar tetap di atas.
         | Nilai asing jatuh ke bawaan, bukan diteruskan ke sortBy() — kunci yang
@@ -872,6 +890,36 @@ class FinanceSummaryController extends Controller
             $cr->paid_at = $paidLogMap[$cr->id] ?? $cr->updated_at;
         });
 
+        /*
+        | Pilihan untuk filter PIC di kartu ini. PENYARINGANNYA SENDIRI dikerjakan
+        | di browser (lihat acaTerapkanFilter di view) supaya memilih PIC tidak
+        | memuat ulang halaman. Yang dihitung ulang di sana bukan cuma baris yang
+        | terlihat, tapi juga subtotal PIC, Manager, dan Grand Total — tanpa itu
+        | angkanya tetap menghitung baris yang sudah disembunyikan.
+        |
+        | Daftar di sini sengaja LENGKAP dan tidak ikut menyusut saat filter
+        | aktif: semua barisnya memang sudah ter-render, jadi tidak ada yang
+        | perlu disembunyikan dari daftar pilihan.
+        */
+        $acaPicOptions = $crs
+            ->map(fn ($cr) => $cr->beneficiary?->pic?->pic ?: ($cr->beneficiary?->nickname ?? null))
+            ->filter()->unique()->sort(SORT_NATURAL | SORT_FLAG_CASE)
+            ->map(fn ($n) => ['value' => $n, 'label' => $n])
+            ->values();
+
+        /*
+        | Pilihan filter PO. Nilainya KODE PO (bukan nama) karena itu yang
+        | dibawa tiap baris CR lewat data-po dan yang tetap sama walau nama
+        | pekerjaannya diubah; labelnya tetap memakai nama supaya bisa dikenali.
+        */
+        $acaPoOptions = $crs
+            ->map(fn ($cr) => $cr->budgetPlan?->project)
+            ->filter()
+            ->unique('id')
+            ->sortBy('code')
+            ->map(fn ($p) => ['value' => $p->code, 'label' => '[' . $p->code . '] ' . $p->name])
+            ->values();
+
         $groups = $crs->groupBy(fn ($cr) => $cr->budgetPlan->project->manager_id)
             ->map(function ($managerCrs) use ($urutNama, $menurun, $bandingNama) {
                 $manager = $managerCrs->first()->budgetPlan->project->manager;
@@ -922,6 +970,14 @@ class FinanceSummaryController extends Controller
                                 */
                                 'paid_date'    => $cr->paid_at?->format('d/m/Y'),
                                 'aging'        => self::acaAging($cr->paid_at),
+                                /*
+                                | PO Reference = PO tempat Budget Plan CA ini
+                                | bergantung. Hanya diisi di lapis CR: satu PIC
+                                | bisa memegang CA dari beberapa PO, jadi menulis
+                                | satu nama PO di baris grup akan menyesatkan.
+                                */
+                                'po_code'      => $cr->budgetPlan?->project?->code,
+                                'po_name'      => $cr->budgetPlan?->project?->name,
                             ])
                             ->values();
 
@@ -1006,6 +1062,17 @@ class FinanceSummaryController extends Controller
             | daftar di sana ikut memuat CR Draft/Approved dan tipe non-CA, dan
             | totalnya tidak akan pernah cocok dengan angka yang barusan diklik.
             */
+            'acaPicOptions'      => $acaPicOptions,
+            'acaPoOptions'       => $acaPoOptions,
+            /*
+            | Kode PO baru bisa diklik untuk membuka modul Purchase Order oleh
+            | role yang memang berkepentingan atas PO-nya. Role lain tetap
+            | MELIHAT kodenya - yang dicabut hanya tautannya, bukan informasinya,
+            | karena kode itu konteks yang membuat baris CA ini bisa dibaca.
+            */
+            'acaCanOpenPo'       => in_array($role, ['superadmin', 'approver', 'finance_manager'], true),
+            'acaAgingOptions'    => collect(self::ACA_AGING_BUCKETS)
+                ->map(fn ($e, $k) => ['value' => $k, 'label' => $e['label']])->values(),
             'acaLinkStatuses'    => implode(',', self::ACTIVE_CA_STATUSES),
             'acaLinkType'        => $crs->first()?->type?->name,
             'activeCaGrandValue' => $groups->sum('value'),

@@ -16,6 +16,33 @@
             </ol>
         </div>
 
+        {{-- Tab utama — pola yang sama dengan PIC Master. Internal paling kiri
+             sekaligus tab bawaan; External = semua yang BUKAN internal
+             (kategori EXTERNAL + BILLING), jadi kategori baru ikut masuk ke
+             sana dengan sendirinya; Database memuat semuanya.
+
+             Seluruh baris dikirim sekali lalu dipilah di peramban: berpindah
+             tab tidak memuat ulang halaman. --}}
+        @php $benTabs = [
+            'internal' => ['Internal', 'fas fa-building'],
+            'outsider' => ['External', 'fas fa-truck'],
+            'db'       => ['Database', 'fas fa-database'],
+        ]; @endphp
+        <ul class="nav nav-tabs ben-main-tabs mt-2 mb-3" role="tablist">
+            @foreach($benTabs as $key => [$label, $icon])
+                <li class="nav-item">
+                    {{-- href tetap ditulis supaya bisa dibuka di tab baru dan
+                         terbaca sebagai tautan; klik biasa ditangani JS. --}}
+                    <a class="nav-link ben-tab {{ $tab === $key ? 'active' : '' }}"
+                       data-bentab="{{ $key }}"
+                       href="{{ url('/beneficiaries?tab=' . $key) }}">
+                        <i class="{{ $icon }} mr-1"></i> {{ $label }}
+                        <span class="badge badge-secondary ml-1">{{ number_format($tabCounts[$key], 0, ',', '.') }}</span>
+                    </a>
+                </li>
+            @endforeach
+        </ul>
+
         {{-- Angkanya dirender server untuk keadaan awal, lalu dihitung ulang di
              peramban tiap tabel digambar supaya selalu sama dengan baris yang
              benar-benar tampil (lihat hitungUlangKartu). Urutan kartu di bawah
@@ -869,6 +896,11 @@ table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before {
 | Select-nya tetap ada (tersembunyi) supaya nama field & submit form tidak
 | berubah — lapisan ini hanya UI di atasnya.
 */
+.ben-main-tabs { border-bottom:2px solid var(--border); flex-wrap:wrap; }
+.ben-main-tabs .nav-link { color:var(--text-faint); border:none; border-bottom:2px solid transparent; border-radius:0; padding:9px 16px; font-weight:600; font-size:13px; margin-bottom:-2px; }
+.ben-main-tabs .nav-link:hover { color:var(--text); }
+.ben-main-tabs .nav-link.active { color:var(--accent) !important; border-bottom-color:var(--accent) !important; background:transparent !important; }
+
 .ss-wrap { position:relative; }
 .ss-wrap > select.ss-native { display:none !important; }
 .ss-display {
@@ -1300,6 +1332,99 @@ $(function () {
 
     table.on('draw', hitungUlangKartu);
     hitungUlangKartu();
+
+    /*
+    |--------------------------------------------------------------------------
+    | TAB — dipilah di peramban, tanpa memuat ulang halaman
+    |--------------------------------------------------------------------------
+    | Seluruh baris sudah ada di tabel; tab hanya menentukan baris mana yang
+    | lolos saringan. Kartu KPI ikut benar dengan sendirinya karena
+    | hitungUlangKartu() menghitung dari baris yang lolos saringan.
+    */
+    var benActiveTab = @json($tab);
+
+    function barisIkutTab(tr) {
+        if (benActiveTab === 'db') return true;
+        var kategori = (tr.getAttribute('data-category') || '');
+        return benActiveTab === 'internal' ? kategori === 'INTERNAL' : kategori !== 'INTERNAL';
+    }
+
+    /* Daftar pilihan di tombol filter disusun dari SELURUH baris tabel, jadi
+       tab tidak terlihat olehnya: di tab Internal, filter Bank sempat
+       menawarkan semua bank padahal mencentangnya pasti menghasilkan tabel
+       kosong. Lingkup ini membuat pilihannya ikut tab yang sedang terbuka. */
+    if (window.TesysColumnFilter && TesysColumnFilter.setRowScope) {
+        TesysColumnFilter.setRowScope('beneficiaryTable', barisIkutTab);
+    }
+
+    $.fn.dataTable.ext.search.push(function (settings, searchData, index) {
+        if (settings.nTable.id !== 'beneficiaryTable') return true;
+        if (benActiveTab === 'db') return true;
+
+        var row = settings.aoData[index].nTr;
+        if (!row) return true;
+
+        return barisIkutTab(row);
+    });
+
+    function applyBenTab(tab, pushUrl) {
+        if (['internal', 'outsider', 'db'].indexOf(tab) === -1) tab = 'internal';
+        benActiveTab = tab;
+
+        $('.ben-tab').removeClass('active')
+            .filter('[data-bentab="' + tab + '"]').addClass('active');
+
+        // Kolom Kategori mubazir di tab Internal — isinya pasti INTERNAL semua.
+        // Disembunyikan, bukan dibuang dari markup: indeks kolom lain (dipakai
+        // columnDefs) jadi tidak ikut bergeser.
+        table.column(3).visible(tab !== 'internal', false);
+        // Di Database rincian rekening dilepas (Bank, Account Number, Kontak)
+        // supaya barisnya tetap terbaca — tab ini untuk melihat SEMUA baris,
+        // bukan menelaah satu per satu.
+        [5, 6, 7].forEach(function (i) { table.column(i).visible(tab !== 'db', false); });
+        table.columns.adjust();
+
+        /* Saringan Kategori tidak menyaring apa pun di tab Internal. Sisa
+           pilihan dari tab sebelumnya ikut dibersihkan supaya tabel tidak
+           tampak kosong karena saringan yang tombolnya sedang tidak terlihat. */
+        var $tombolKategori = $('#benRowFilters .tcf-row-btn').eq(0);
+        var $tombolBank     = $('#benRowFilters .tcf-row-btn').eq(1);
+
+        /* Saringan yang kolomnya sedang tidak terlihat ikut disembunyikan:
+           Kategori di tab Internal (isinya pasti INTERNAL), Bank di tab
+           Database (kolom Bank memang dilepas di sana). Pilihan yang terlanjur
+           aktif dibersihkan dulu — kalau tidak, tabel tampak kosong karena
+           saringan yang tombolnya sudah tidak ada. */
+        var sembunyikan = [];
+        if (tab === 'internal') sembunyikan.push($tombolKategori);
+        if (tab === 'db')       sembunyikan.push($tombolBank);
+
+        var adaYangAktif = sembunyikan.some(function ($b) { return $b.hasClass('tcf-row-active'); });
+        if (adaYangAktif) TesysColumnFilter.clearAll('#beneficiaryTable');
+
+        $tombolKategori.toggle(tab !== 'internal');
+        $tombolBank.toggle(tab !== 'db');
+
+        table.page('first').draw();
+
+        // Alamat ikut diperbarui tanpa memuat ulang, jadi menyegarkan halaman
+        // atau menyalin tautannya tetap membuka tab yang sama.
+        if (pushUrl && window.history && history.replaceState) {
+            var u = new URL(window.location.href);
+            u.searchParams.set('tab', tab);
+            history.replaceState(null, '', u.toString());
+        }
+    }
+
+    $(document).on('click', '.ben-tab', function (e) {
+        // Ctrl/cmd/tengah dibiarkan membuka tautan seperti biasa.
+        if (e.which === 2 || e.ctrlKey || e.metaKey || e.shiftKey) return;
+        e.preventDefault();
+        applyBenTab($(this).data('bentab'), true);
+    });
+
+    applyBenTab(benActiveTab, false);
+
 
     $('#btnClearFilterBen').on('click', function () {
         TesysColumnFilter.clearAll('#beneficiaryTable');
