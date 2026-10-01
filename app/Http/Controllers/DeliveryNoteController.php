@@ -99,7 +99,21 @@ class DeliveryNoteController extends Controller
             return back()->withInput()->with('error', 'Salah satu invoice yang dipilih sudah termasuk dalam Surat Jalan lain.');
         }
 
+        try {
         $deliveryNote = DB::transaction(function () use ($request, $invoices, $customerIds) {
+            /*
+            | Kunci invoice lalu periksa ulang: pemeriksaan "APPROVED" dan
+            | "belum ada di Surat Jalan lain" di atas berjalan tanpa kunci, jadi
+            | dua Surat Jalan yang dibuat bersamaan bisa memuat invoice yang sama.
+            */
+            $terkunci = Invoice::whereIn('id', $invoices->pluck('id'))
+                ->orderBy('id')->lockForUpdate()->get();
+
+            if ($terkunci->contains(fn ($inv) => $inv->status !== 'APPROVED')
+                || DeliveryNoteItem::whereIn('invoice_id', $terkunci->pluck('id'))->exists()) {
+                throw new \DomainException('Salah satu invoice baru saja diproses pengguna lain — muat ulang halaman.');
+            }
+
             $note = DeliveryNote::create([
                 'code'        => DeliveryNote::generateCode(),
                 'customer_id' => $customerIds->first(),
@@ -123,6 +137,9 @@ class DeliveryNoteController extends Controller
 
             return $note;
         });
+        } catch (\DomainException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
 
         return redirect('/delivery-note/' . $deliveryNote->id)
             ->with('success', 'Surat Jalan ' . $deliveryNote->code . ' berhasil dibuat. ' . $invoices->count() . ' invoice ditandai Sent.');
