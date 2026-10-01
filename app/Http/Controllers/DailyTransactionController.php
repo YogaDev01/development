@@ -692,13 +692,12 @@ class DailyTransactionController extends Controller
                     continue;
                 }
 
-                // Second Payment: status CR TIDAK diubah - kekurangan bayarnya
-                // tetap ada dan tetap PENDING, hanya gagal di batch ini lalu
-                // bisa dimasukkan ke batch berikutnya.
+                // Second Payment: kekurangan bayarnya tetap ada dan tetap
+                // PENDING, hanya gagal di batch ini - CR induk dikembalikan ke
+                // SECOND_APPROVED supaya bisa dimasukkan ke batch berikutnya.
                 if ($item->isSecondPayment()) {
-                    $crStatus = $item->budgetRequest?->status;
-                    $item->budgetRequest?->addLog(
-                        $crStatus, $crStatus, 'second_payment_batch_rejected',
+                    $this->releaseSecondPaymentParent(
+                        $item->budgetRequest, 'second_payment_batch_rejected',
                         'Batch ' . $batch->code . ' ditolak: ' . $request->notes
                     );
                     $item->update(['status' => 'REJECTED', 'notes' => $request->notes]);
@@ -733,6 +732,31 @@ class DailyTransactionController extends Controller
             ->with('success', $successMsg);
     }
 
+    /**
+     * Second Payment gagal di sebuah batch (batch ditolak / item dikeluarkan).
+     *
+     * Saat dibatch, CR induknya pindah SECOND_APPROVED -> QUEUED. Dulu status
+     * itu dibiarkan QUEUED, padahal availableForBatch() mensyaratkan induk
+     * SECOND_APPROVED - akibatnya Second Payment tidak pernah bisa dibatch
+     * ulang dan CR tertahan di QUEUED tanpa jalan keluar. Cerminan dari CR
+     * biasa yang dikembalikan ke APPROVED saat batch-nya ditolak.
+     */
+    private function releaseSecondPaymentParent(?BudgetRequest $cr, string $actionType, string $notes): void
+    {
+        if (! $cr) {
+            return;
+        }
+
+        if ($cr->status === 'QUEUED') {
+            $cr->update(['status' => 'SECOND_APPROVED']);
+            $cr->addLog('QUEUED', 'SECOND_APPROVED', $actionType, $notes);
+
+            return;
+        }
+
+        $cr->addLog($cr->status, $cr->status, $actionType, $notes);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | REJECT ITEM — CEO takeout 1 CR → CR kembali ke VERIFIED
@@ -765,10 +789,10 @@ class DailyTransactionController extends Controller
             } elseif ($item->isSecondPayment()) {
                 // Sama seperti Cost Register: yang dikeluarkan dari batch cuma
                 // barisnya. CR induk tidak boleh ikut REJECTED - Settlement-nya
-                // sudah diverifikasi, yang tertunda hanya pembayarannya.
-                $crStatus = $item->budgetRequest?->status;
-                $item->budgetRequest?->addLog(
-                    $crStatus, $crStatus, 'second_payment_takeout',
+                // sudah diverifikasi, yang tertunda hanya pembayarannya - dan
+                // dikembalikan ke SECOND_APPROVED supaya bisa dibatch ulang.
+                $this->releaseSecondPaymentParent(
+                    $item->budgetRequest, 'second_payment_takeout',
                     'Second Payment dikeluarkan dari batch ' . $batch->code . ': ' . $request->notes
                 );
             } else {
