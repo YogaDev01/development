@@ -2014,7 +2014,10 @@ class BudgetRequestController extends Controller
         $cr = $this->findVisibleCr($id);
         if ($cr->status !== 'REJECTED') return back()->with('error', 'Status tidak valid.');
 
-        DB::transaction(function () use ($cr, $request) {
+        // Transisi terkunci, sama seperti managerCancel(): tanpa kunci, Revise
+        // dan Cancel yang diklik bersamaan bisa menghidupkan lagi CR yang baru
+        // saja dibatalkan.
+        $cr = $this->transitionStatus(BudgetRequest::class, $id, 'REJECTED', ['status' => 'DRAFT'], function ($cr) use ($request) {
             // Reset semua item yang sempat di-takeout approval — CR yang direvisi
             // kembali utuh, Manager bebas mengedit lagi rinciannya.
             $cr->details()->where('status', 'TAKEOUT')->update([
@@ -2027,10 +2030,11 @@ class BudgetRequestController extends Controller
                 'takeout_at'      => null,
             ]);
 
-            $cr->update(['status' => 'DRAFT']);
             $cr->recalculateAmount();
             $cr->addLog('REJECTED', 'DRAFT', 'revised', $request->notes);
         });
+
+        if (! $cr) return back()->with('error', 'Status sudah berubah — muat ulang halaman.');
 
         return back()->with('success', 'CR dikembalikan ke Draft untuk direvisi.');
     }
@@ -2065,12 +2069,22 @@ class BudgetRequestController extends Controller
     |--------------------------------------------------------------------------
     */
 
+    /*
+    | Setiap perpindahan di bawah memakai transitionStatus() dengan status saat
+    | CR dimuat sebagai status yang diharapkan. Loop bulk bisa berjalan lama
+    | (notifikasi per CR); CR yang statusnya diubah orang lain di tengah loop
+    | kini DILEWATI, bukan ditimpa - dulu CR yang baru ditolak bisa kembali
+    | tersetujui (atau sebaliknya) karena penulis terakhir yang menang.
+    */
+
     /** @return bool true jika CR berhasil ditransisikan (status+role cocok). */
     private function applyReviewApprove(BudgetRequest $cr, User $user): bool
     {
         if ($cr->status === 'SUBMITTED' && $user->hasRole(['superadmin', 'head'])) {
-            $cr->update(['status' => 'CHECKED']);
-            $cr->addLog('SUBMITTED', 'CHECKED', 'head_approved', null);
+            if (! $this->transitionStatus(BudgetRequest::class, $cr->id, 'SUBMITTED', ['status' => 'CHECKED'],
+                fn ($c) => $c->addLog('SUBMITTED', 'CHECKED', 'head_approved', null))) {
+                return false;
+            }
             NotifyService::send(
                 $this->financeUsers(),
                 'Cost Request menunggu verifikasi Finance',
@@ -2082,15 +2096,13 @@ class BudgetRequestController extends Controller
         }
 
         if ($cr->status === 'CHECKED' && $user->hasRole(['superadmin', 'finance', 'finance_manager', 'cost_control'])) {
-            $cr->update(['status' => 'VERIFIED', 'approved_at' => now()]);
-            $cr->addLog('CHECKED', 'VERIFIED', 'finance_approved', null);
-            return true;
+            return (bool) $this->transitionStatus(BudgetRequest::class, $cr->id, 'CHECKED', ['status' => 'VERIFIED', 'approved_at' => now()],
+                fn ($c) => $c->addLog('CHECKED', 'VERIFIED', 'finance_approved', null));
         }
 
         if ($cr->status === 'VERIFIED' && $user->hasRole(['superadmin', 'approver'])) {
-            $cr->update(['status' => 'APPROVED']);
-            $cr->addLog('VERIFIED', 'APPROVED', 'cr_approved', null);
-            return true;
+            return (bool) $this->transitionStatus(BudgetRequest::class, $cr->id, 'VERIFIED', ['status' => 'APPROVED'],
+                fn ($c) => $c->addLog('VERIFIED', 'APPROVED', 'cr_approved', null));
         }
 
         return false;
@@ -2109,10 +2121,8 @@ class BudgetRequestController extends Controller
 
         if (!$actionType) return false;
 
-        $cr->update(['status' => 'REJECTED']);
-        $cr->addLog($fromStatus, 'REJECTED', $actionType, $notes);
-
-        return true;
+        return (bool) $this->transitionStatus(BudgetRequest::class, $cr->id, $fromStatus, ['status' => 'REJECTED'],
+            fn ($c) => $c->addLog($fromStatus, 'REJECTED', $actionType, $notes));
     }
 
     public function reviewBulkApprove(Request $request)
@@ -2121,8 +2131,12 @@ class BudgetRequestController extends Controller
         $user = Auth::user();
         $ids  = (array) $request->input('ids', []);
 
+        // Hanya CR yang memang boleh dilihat user ini - sama dengan aksi
+        // satuan (findVisibleCr) dan bulk settlement (visibleCrs()). Dulu id
+        // dimuat apa adanya, sehingga Head bisa memproses CR di luar Access
+        // Group-nya lewat POST yang dibuat sendiri.
         $count = 0;
-        foreach (BudgetRequest::whereIn('id', $ids)->get() as $cr) {
+        foreach ($this->visibleCrs($ids) as $cr) {
             if ($this->applyReviewApprove($cr, $user)) $count++;
         }
 
@@ -2137,7 +2151,7 @@ class BudgetRequestController extends Controller
         $ids = (array) $request->input('ids', []);
 
         $count = 0;
-        foreach (BudgetRequest::whereIn('id', $ids)->get() as $cr) {
+        foreach ($this->visibleCrs($ids) as $cr) {
             if ($this->applyReviewReject($cr, $user, $request->notes)) $count++;
         }
 
@@ -2176,7 +2190,21 @@ class BudgetRequestController extends Controller
         $stage      = $cr->status;
         $stageLabel = \App\Models\RequestDetail::STAGE_LABELS[$stage] ?? $stage;
 
+        try {
         DB::transaction(function () use ($cr, $detail, $user, $stage, $stageLabel, $request) {
+            /*
+            | Kunci CR, lalu pastikan tahap & hak moderasi masih sama dengan saat
+            | dibaca, dan item belum di-takeout orang lain. Tanpa ini dua takeout
+            | bersamaan atas dua item terakhir sama-sama melihat "masih ada sisa
+            | 1 item", sehingga CR tetap berjalan dengan nilai 0 tanpa
+            | auto-Rejected.
+            */
+            $locked = BudgetRequest::whereKey($cr->id)->lockForUpdate()->first();
+            if (! $locked || $locked->status !== $stage || ! $locked->canModerateItems($user)
+                || $detail->fresh()?->isTakenOut()) {
+                throw new \DomainException('Status sudah berubah — muat ulang halaman.');
+            }
+
             $detail->update([
                 'status'          => 'TAKEOUT',
                 'takeout_by'      => $user->id,
@@ -2204,6 +2232,9 @@ class BudgetRequestController extends Controller
                     . '. Alasan: ' . $request->notes);
             }
         });
+        } catch (\DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         $cr->refresh();
 
@@ -2243,7 +2274,15 @@ class BudgetRequestController extends Controller
         $stage      = $cr->status;
         $stageLabel = \App\Models\RequestDetail::STAGE_LABELS[$stage] ?? $stage;
 
-        DB::transaction(function () use ($cr, $detail, $stage, $stageLabel) {
+        try {
+        DB::transaction(function () use ($cr, $detail, $user, $stage, $stageLabel) {
+            // Kunci & periksa ulang, sama seperti takeoutDetail().
+            $locked = BudgetRequest::whereKey($cr->id)->lockForUpdate()->first();
+            if (! $locked || $locked->status !== $stage || ! $locked->canModerateItems($user)
+                || ! $detail->fresh()?->isTakenOut()) {
+                throw new \DomainException('Status sudah berubah — muat ulang halaman.');
+            }
+
             $itemLabel = $detail->description ?: ($detail->notes ?: 'item');
 
             $detail->update([
@@ -2260,6 +2299,9 @@ class BudgetRequestController extends Controller
             $cr->addLog($stage, $stage, 'item_restore',
                 'Item "' . $itemLabel . '" dikembalikan (di-restore) oleh ' . $stageLabel . '.');
         });
+        } catch (\DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         $cr->refresh();
 
