@@ -26,10 +26,36 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '2.5.4',
+    'current' => '2.5.5',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '2.5.5',
+            'date'    => '2026-10-02',
+            'title'   => 'Expense Claim di View Budget Sesuai Daftar Worklist',
+            'summary' => 'Angka Expense Claim pada modal View Budget kini cocok dengan kolom Expense '
+                       . 'Claim di daftar Todo List, dan baris yang memunculkannya ditandai langsung '
+                       . 'di tempat angkanya.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Penanda New Claim dan Claim Approved muncul tepat di baris yang memunculkannya di modal View Budget, tidak hanya di ringkasan Chart of Account-nya.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Modal View Budget: angka Expense Claim kini sama dengan kolom Expense Claim di daftar worklist - kelebihan tiap baris dibagi sebanding terhadap selisih bersih satu Cost Request, bukan dijumlah mentah sehingga baris yang hemat terabaikan.',
+                        'Rincian Cash Advance di modal View Budget diambil dari baris Settlement bila settlement-nya sudah ada, dan ditandai Settlement; selama belum ada, baris pengajuan yang dipakai.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '2.5.4',

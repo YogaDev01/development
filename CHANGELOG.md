@@ -4,6 +4,19 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [2.5.5] - 2026-10-02 — Expense Claim di View Budget Sesuai Daftar Worklist
+
+Angka Expense Claim pada modal View Budget kini cocok dengan kolom Expense
+Claim di daftar Todo List, dan baris yang memunculkannya ditandai langsung
+di tempat angkanya.
+
+### Baru
+- Penanda New Claim dan Claim Approved muncul tepat di baris yang memunculkannya di modal View Budget, tidak hanya di ringkasan Chart of Account-nya.
+
+### Berubah
+- Modal View Budget: angka Expense Claim kini sama dengan kolom Expense Claim di daftar worklist - kelebihan tiap baris dibagi sebanding terhadap selisih bersih satu Cost Request, bukan dijumlah mentah sehingga baris yang hemat terabaikan.
+- Rincian Cash Advance di modal View Budget diambil dari baris Settlement bila settlement-nya sudah ada, dan ditandai Settlement; selama belum ada, baris pengajuan yang dipakai.
+
 ## [2.5.4] - 2026-10-02 — Keandalan Transaksi Saat Diproses Bersamaan
 
 Rilis perbaikan: transaksi keuangan yang diproses dua orang (atau dua tab) pada

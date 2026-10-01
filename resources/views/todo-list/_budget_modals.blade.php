@@ -57,6 +57,7 @@
                                 @if($coa['has_nob'])<span class="badge badge-danger ml-1" style="font-size:9px;">NOB</span>@endif
                                 @if($coa['approved'] > 0)<span class="badge badge-success ml-1" style="font-size:9px;">Approved</span>@endif
                                 @if($coa['request'] > 0)<span class="badge badge-warning ml-1" style="font-size:9px;">New Request</span>@endif
+                                @if(($coa['expense_claim'] ?? 0) > 0)<span class="badge badge-danger ml-1" style="font-size:9px;">New Claim</span>@endif
                             </td>
                             <td class="text-right text-nowrap {{ $coaNobClass }}" style="font-weight:700;">{{ $fmt($coa['budget']) }}</td>
                             <td class="text-right text-nowrap {{ $coaNobClass }}" style="font-weight:700;">{{ $fmt($coa['used']) }}</td>
@@ -82,6 +83,9 @@
                                 @endif
                                 @if($sub['request_amount'] > 0)
                                 <span class="badge badge-warning ml-1" style="font-size:9px;">New Request</span>
+                                @endif
+                                @if(($sub['expense_claim'] ?? 0) > 0)
+                                <span class="badge badge-danger ml-1" style="font-size:9px;">New Claim</span>
                                 @endif
                                 @if($sub['request_amount'] > 0 || $sub['approved_amount'] > 0 || ($sub['expense_claim'] ?? 0) > 0)
                                 @if(count($sub['cr_items']))
@@ -141,6 +145,16 @@
                                                 <span class="badge badge-warning" style="font-size:8px;">New Request</span>
                                                 @elseif($cri['stage'] === 'approved')
                                                 <span class="badge badge-success" style="font-size:8px;">Approved</span>
+                                                @endif
+                                                {{-- Baris settlement yang memunculkan Expense Claim: ditandai di
+                                                     tempat angkanya muncul, bukan hanya di ringkasan di atas. --}}
+                                                @if(($cri['claim_amount'] ?? 0) > 0)
+                                                <span class="badge badge-danger ml-1" style="font-size:8px;">New Claim</span>
+                                                @elseif(($cri['approved_claim_amount'] ?? 0) > 0)
+                                                <span class="badge badge-success ml-1" style="font-size:8px;">Claim Approved</span>
+                                                @endif
+                                                @if($cri['is_settlement'] ?? false)
+                                                <span class="badge badge-light border ml-1" style="font-size:8px;" title="Rincian diambil dari Settlement (Cash Advance)">Settlement</span>
                                                 @endif
                                                 @if($criNobClass === 'text-danger')<span class="badge badge-danger ml-1" style="font-size:8px;">NOB</span>@endif
                                                 @if($criTakeout && $cri['takeout_notes'])
