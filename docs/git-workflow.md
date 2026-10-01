@@ -26,7 +26,7 @@ develop  ──push──▶  origin/develop-v2  ──PR + review + UAT──�
 | Remote branches removed (2026-10-02) | `origin/feature`, `origin/new-update`, `origin/newdata` (0 unique commits, already in `main`); `origin/develop` and `origin/master` (old initial snapshots, history unrelated to `main`). |
 | Archive tags | `archive/old-develop` (`75974df`) and `archive/old-master` (`9e06274`) keep the old `develop`/`master` commits. Restore with `git switch -c <name> archive/old-develop`. |
 | Local branches | `develop` (→ `origin/develop-v2`), `main`, `feature/effective-amount` (unreleased "Nilai Efektif" calculation change — needs tests + Finance review), `master` (old, tracks `development/develop`), `release/v2.3.1` (release marker, merged). |
-| Remotes | `origin` = `github.com/YogaDev01/tesys.git`; `tesys` = duplicate of `origin`; `development` = separate repo `github.com/YogaDev01/development.git` (not managed here). |
+| Remotes | `origin` = `github.com/YogaDev01/tesys.git`; `development` = separate repo `github.com/YogaDev01/development.git` (used only by local `master`, not managed here). The duplicate remote `tesys` (same URL as `origin`) was removed from local config on 2026-10-02. |
 | Local working tree | `.claude/launch.json` has a local change for another project — intentionally never committed. |
 | Deployment | Manual upload to Hostinger shared hosting (files listed per change and uploaded by hand). No CI/CD config in repo. |
 
@@ -35,10 +35,9 @@ develop  ──push──▶  origin/develop-v2  ──PR + review + UAT──�
 1. `develop-v2` is not yet merged to `main` (PR, review, UAT pending).
 2. No branch protection on `main` in GitHub (PR + review required) — set in
    GitHub settings.
-3. Duplicate remote `tesys` (optional cleanup: `git remote remove tesys`).
-4. Local `master` and the `development` remote are leftovers from the old
+3. Local `master` and the `development` remote are leftovers from the old
    repository setup; decide whether to keep them.
-5. The integration branch name `develop-v2` is temporary; optionally rename it
+4. The integration branch name `develop-v2` is temporary; optionally rename it
    to `develop` once the team agrees (old `origin/develop` is gone and archived).
 
 ## Before running tests
