@@ -92,7 +92,14 @@ bypass — superadmin passes because it is listed in each route gate; only
    check found no occurrence). `markPaid` without lock only duplicates logs and
    attachments (MEDIUM, no duplicate money rows). Invoice status transitions
    are unlocked but `storeCashReceipt`/`destroyCashReceipt` are locked (LOW).
-   Fix status: see branches `fix/h1-*`, `fix/h2-*`, `fix/h3-*`.
+   Fix status: H1, H2, H3 and M1 (`markPaid`) are fixed on `develop`
+   (pushed as `origin/develop-v2`), not yet released.
+   - **M2 reclassified (2026-10-02): FALSE POSITIVE / LOW.** The Cash Advance
+     per-PIC limit cannot be bypassed by concurrent submits. The nominal limit
+     counts every CR not CLOSED/CANCELLED, including DRAFT, and `submit`
+     re-checks it against committed rows, so drafts created concurrently over
+     the limit are stopped at submit. The count limit only counts PAID →
+     SETTLE_APPROVED CRs, which submit does not change. No code change.
 7. Cash Receipt delete is allowed for `approver`, `collection`, `treasury` —
    a reversal of received money. Logged per `docs/DEPLOYMENT.md`, but scope
    Needs confirmation.

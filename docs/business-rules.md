@@ -119,3 +119,8 @@ Closing ← ClosingService reads Treasury, Invoice, Collection, Cash Receipt…
 - Whether a CLOSED period must block edits in other modules.
 - Exact meaning of PO "Purchase" vs procurement (no procurement module found).
 - Production role assignments.
+- Cash Advance count limit (`master_pics.token`) only counts CRs in
+  `CA_COUNTED_STATUSES` (PAID → SETTLE_APPROVED), so a PIC can have more CAs
+  submitted/in approval than the limit; once all are paid the count exceeds
+  it. The code comment says this is intentional ("dihitung mulai CR mencapai
+  tahap PAID"). Confirm with Finance.
