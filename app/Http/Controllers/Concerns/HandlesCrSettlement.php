@@ -129,8 +129,16 @@ trait HandlesCrSettlement
             return back()->with('error', 'Status tidak valid.');
         }
 
-        DB::transaction(function () use ($cr, $request) {
-            $cr->update(['status' => 'SETTLE_VERIFIED']);
+        /*
+        | Transisi terkunci (Concerns\TransitionsStatus), sama seperti aksi
+        | settlement lain di trait ini. Pemeriksaan di atas berjalan tanpa
+        | kunci: dua verifikasi bersamaan (dua staf Finance, bulk Todo List +
+        | klik satuan, dua tab) dulu sama-sama lolos dan masing-masing membuat
+        | satu baris Second Payment - kekurangan bayar yang sama bisa dibatch
+        | dan dibayar dua kali. Pembuatan Second Payment sekarang ikut di
+        | dalam kunci yang sama dengan perubahan status.
+        */
+        $cr = $this->transitionStatus(BudgetRequest::class, $id, 'SETTLE_CHECKED', ['status' => 'SETTLE_VERIFIED'], function ($cr) use ($request) {
             $cr->addLog('SETTLE_CHECKED', 'SETTLE_VERIFIED', 'settlement_verified', $request->notes);
 
             /*
@@ -147,6 +155,10 @@ trait HandlesCrSettlement
                 ]);
             }
         });
+
+        if (! $cr) {
+            return back()->with('error', 'Status sudah berubah — muat ulang halaman.');
+        }
 
         // CR dengan Expense Claim belum boleh ditutup: masih harus lewat
         // Settle Approved (Finance Manager) lalu 2nd Approved (Approver).
