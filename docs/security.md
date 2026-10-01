@@ -92,8 +92,14 @@ bypass — superadmin passes because it is listed in each route gate; only
    check found no occurrence). `markPaid` without lock only duplicates logs and
    attachments (MEDIUM, no duplicate money rows). Invoice status transitions
    are unlocked but `storeCashReceipt`/`destroyCashReceipt` are locked (LOW).
-   Fix status: H1, H2, H3 and M1 (`markPaid`) are fixed on `develop`
-   (pushed as `origin/develop-v2`), not yet released.
+   Fix status: H1, H2, H3, M1 (`markPaid`) and M3 (`managerRevise`, bulk
+   review, `takeoutDetail`/`restoreDetail` now use locked transitions) are
+   fixed on `develop` (pushed as `origin/develop-v2`), not yet released.
+   - **Bulk review Access Group gap (found 2026-10-02, fixed with M3):**
+     `reviewBulkApprove`/`reviewBulkReject` loaded CRs by id without
+     `canViewCr()`, so a Head could approve/reject CRs outside their Access
+     Group via a crafted POST. Now filtered through `visibleCrs()`, like the
+     single actions and bulk settlement.
    - **M2 reclassified (2026-10-02): FALSE POSITIVE / LOW.** The Cash Advance
      per-PIC limit cannot be bypassed by concurrent submits. The nominal limit
      counts every CR not CLOSED/CANCELLED, including DRAFT, and `submit`
