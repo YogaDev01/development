@@ -182,6 +182,63 @@ class CashReceiptAllocateLockTest extends TestCase
         $this->assertSame(0, CashReceipt::where('cash_receipt_header_id', $header->id)->count());
     }
 
+    private function storeReceipt(User $user, array $nominalPerInvoice)
+    {
+        return $this->actingAs($user)->post('/cash-receipt', [
+            'received_date' => now()->toDateString(),
+            'customer_id'   => $this->customerId,
+            'invoice_ids'   => array_keys($nominalPerInvoice),
+            'amounts'       => $nominalPerInvoice,
+        ]);
+    }
+
+    public function test_penerimaan_banyak_invoice_tercatat_sesuai_nominal(): void
+    {
+        $a = $this->invoice();
+        $b = $this->invoice();
+
+        // Urutan request sengaja terbalik (B dulu) - nominal harus tetap
+        // menempel ke invoice yang benar.
+        $this->storeReceipt($this->userWithRole('finance'), [$b->id => '3.000.000', $a->id => '7.000.000'])
+            ->assertSessionMissing('error');
+
+        $header = CashReceiptHeader::latest('id')->firstOrFail();
+        $this->assertSame(10_000_000, (int) $header->total_amount);
+        $this->assertSame(7_000_000, (int) CashReceipt::where('invoice_id', $a->id)->value('amount'));
+        $this->assertSame(3_000_000, (int) CashReceipt::where('invoice_id', $b->id)->value('amount'));
+    }
+
+    public function test_penerimaan_mengunci_semua_invoice_sekaligus_urut_id(): void
+    {
+        $a = $this->invoice();
+        $b = $this->invoice();
+
+        $kunci = [];
+        DB::listen(function ($query) use (&$kunci) {
+            if (str_contains($query->sql, 'for update') && str_contains($query->sql, 'from `invoices`')) {
+                $kunci[] = $query->sql;
+            }
+        });
+
+        $this->storeReceipt($this->userWithRole('finance'), [$b->id => '3.000.000', $a->id => '7.000.000'])
+            ->assertSessionMissing('error');
+
+        // Satu kunci untuk semua invoice, berurutan id - bukan satu per satu
+        // mengikuti urutan request (rawan deadlock & snapshot basi).
+        $this->assertCount(1, $kunci);
+        $this->assertStringContainsString('order by `id`', $kunci[0]);
+    }
+
+    public function test_penerimaan_melebihi_sisa_tagihan_tetap_ditolak(): void
+    {
+        $a = $this->invoice();
+
+        $this->storeReceipt($this->userWithRole('finance'), [$a->id => '12.000.000'])
+            ->assertSessionHas('error', fn ($pesan) => str_contains($pesan, 'melebihi sisa tagihannya'));
+
+        $this->assertSame(0, CashReceiptHeader::count());
+    }
+
     public function test_pembatalan_kedua_ditolak(): void
     {
         $user   = $this->userWithRole('finance');
