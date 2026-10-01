@@ -67,6 +67,15 @@ TESYS is **not** textbook Laravel. Respect the real pattern:
   real data.
 - Tests use `RefreshDatabase` on `tesys_test`. Confirm `phpunit.xml` still
   points to `tesys_test` before running tests.
+- **Before EVERY test run, `bootstrap/cache/config.php` must NOT exist.** A
+  cached config makes Laravel ignore `phpunit.xml`; `RefreshDatabase` then
+  wipes whatever DB the cache points to (locally the dev DB `laravel`, because
+  `.env` leaves `DB_DATABASE` commented). This happened on 2026-10-02 and the
+  dev DB had to be restored from `C:\laragon\backup\mysql`. Check with
+  `ls bootstrap/cache/config.php` and
+  `APP_ENV=testing DB_DATABASE=tesys_test php artisan config:show database.connections.mysql.database`
+  (must print `tesys_test`). Never run `config:cache`/`optimize` locally
+  without clearing it before tests.
 - Never commit `.env`, credentials, tokens (`EXPORT_API_TOKEN`, `FONNTE_TOKEN`).
 
 ## 5. Database rules
