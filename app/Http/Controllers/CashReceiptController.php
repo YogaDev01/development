@@ -140,6 +140,26 @@ class CashReceiptController extends Controller
             $baris = [];
             $total = 0;
 
+            /*
+            | Semua invoice yang diisi nominalnya dikunci SEKALIGUS, urut id,
+            | sebelum ada pembacaan lain. Dulu dikunci satu per satu mengikuti
+            | urutan request, sehingga:
+            |  - dua penerimaan [A, B] dan [B, A] bersamaan bisa deadlock;
+            |  - invoice kedua dst. dikunci setelah ada baca biasa (relasi po,
+            |    remainingBalance) - di REPEATABLE READ baca biasa pertama
+            |    menetapkan snapshot, jadi sisa tagihan invoice berikutnya bisa
+            |    terbaca dari snapshot lama dan pembayaran yang baru masuk
+            |    terlewat.
+            | Pemeriksaan & pesan tetap mengikuti urutan request.
+            */
+            $berisi = collect($invoiceIds)
+                ->filter(fn ($id) => $this->normalizeMoney($amounts[$id] ?? 0)
+                    + $this->normalizeMoney($withholding[$id] ?? 0) > 0)
+                ->unique()->values();
+
+            $terkunci = Invoice::whereIn('id', $berisi)
+                ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+
             foreach ($invoiceIds as $id) {
                 $nominal = $this->normalizeMoney($amounts[$id] ?? 0);
                 $pph     = $this->normalizeMoney($withholding[$id] ?? 0);
@@ -149,7 +169,7 @@ class CashReceiptController extends Controller
                     continue;
                 }
 
-                $invoice = Invoice::where('id', $id)->lockForUpdate()->first();
+                $invoice = $terkunci[$id] ?? null;
 
                 if (!$invoice) {
                     return ['error' => 'Invoice tidak ditemukan.'];
@@ -286,10 +306,30 @@ class CashReceiptController extends Controller
         // sama bisa sama-sama lolos pengecekan sisa tagihan kalau dibaca di
         // luar kunci, dan invoice jadi terbayar melebihi tagihannya.
         $error = DB::transaction(function () use ($request, $header, $amount, $withholding) {
+            /*
+            | Invoice dikunci dulu, lalu HEADER. Sebelumnya hanya invoice yang
+            | dikunci, jadi dua alokasi dari bukti terima yang sama ke dua
+            | invoice BERBEDA tidak saling menunggu: keduanya membaca sisa uang
+            | yang sama dan sama-sama lolos - total alokasi melebihi uang yang
+            | benar-benar diterima. Dengan header ikut terkunci, alokasi
+            | berikutnya antre dan melihat sisa yang sudah berkurang.
+            |
+            | Urutan invoice -> header WAJIB sama di semua jalur: hapus/settle
+            | receipt (removeAllocation, destroyCashReceipt, settleCashReceipt)
+            | mengunci invoice lalu header lewat hook CashReceipt::saved/deleted,
+            | dan cancel() mengikuti urutan yang sama. Urutan terbalik membuat
+            | dua jalur itu bisa saling deadlock.
+            */
             $invoice = Invoice::where('id', $request->invoice_id)->lockForUpdate()->first();
 
             if (!$invoice) {
                 return 'Invoice tidak ditemukan.';
+            }
+
+            $fresh = CashReceiptHeader::whereKey($header->id)->lockForUpdate()->first();
+
+            if (! $fresh || $fresh->isCancelled()) {
+                return 'Penerimaan yang sudah dibatalkan tidak bisa dialokasikan.';
             }
 
             if ($invoice->po?->customer_id !== $header->customer_id) {
@@ -305,7 +345,7 @@ class CashReceiptController extends Controller
                     number_format($invoice->remainingBalance(), 0, ',', '.') . ').';
             }
 
-            $fresh = $header->fresh()->load('details');
+            $fresh->load('details');
             if ($amount + $withholding > $fresh->unallocatedAmount()) {
                 return 'Alokasi melebihi sisa uang yang belum dialokasikan (' .
                     number_format($fresh->unallocatedAmount(), 0, ',', '.') . ').';
@@ -357,6 +397,29 @@ class CashReceiptController extends Controller
         }
 
         DB::transaction(function () use ($header, $request) {
+            /*
+            | Urutan kunci sama dengan allocate(): invoice-invoice alokasinya
+            | dulu (id naik), lalu header. Tanpa kunci header, alokasi yang
+            | sedang berjalan bisa tetap tercatat pada bukti terima yang di
+            | saat bersamaan dibatalkan. Daftar alokasi dibaca dengan kunci
+            | (bukan baca biasa) supaya alokasi yang baru saja masuk ikut
+            | terbaca dan ikut dibatalkan. Bila sudah dibatalkan request lain,
+            | tidak ada yang perlu dikerjakan lagi.
+            */
+            $invoiceIds = CashReceipt::where('cash_receipt_header_id', $header->id)
+                ->lockForUpdate()->pluck('invoice_id')->unique()->sort()->values();
+
+            Invoice::whereIn('id', $invoiceIds)->orderBy('id')->lockForUpdate()->get();
+
+            $header = CashReceiptHeader::whereKey($header->id)->lockForUpdate()->first();
+
+            if (! $header || $header->isCancelled()) {
+                return;
+            }
+
+            $header->setRelation('details',
+                CashReceipt::where('cash_receipt_header_id', $header->id)->lockForUpdate()->get());
+
             // Seluruh alokasinya ikut dibatalkan — kalau tidak, invoice akan
             // tetap terlihat terbayar dari uang yang pembuktiannya dianulir.
             foreach ($header->details as $detail) {

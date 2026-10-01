@@ -289,9 +289,56 @@ class DailyTransactionController extends Controller
         }
 
         $code = DailyTransaction::generateCode(count($crIds) + count($registerIds) + count($secondPayIds));
-        $crs  = BudgetRequest::whereIn('id', $crIds)->get()->keyBy('id');
 
-        DB::transaction(function () use ($request, $crIds, $registerIds, $secondPayIds, $code, $crs) {
+        try {
+        DB::transaction(function () use ($request, $crIds, $registerIds, $secondPayIds, $code) {
+            /*
+            | Kunci dulu, baru tulis. Pemeriksaan di atas berjalan tanpa kunci,
+            | jadi dua Treasury yang membuat batch bersamaan dari antrean yang
+            | sama bisa sama-sama lolos dan satu CR masuk dua batch (dibayar dua
+            | kali). Baris yang akan diubah dikunci FOR UPDATE lalu statusnya
+            | diperiksa ulang dari hasil kunci: request kedua menunggu, melihat
+            | status yang sudah berubah, dan seluruh transaksinya dibatalkan.
+            |
+            | Urutan kunci tetap (budget_request -> second payment -> cost
+            | register, masing-masing id naik) supaya dua batch tidak deadlock.
+            */
+            $spParentIds = \App\Models\BudgetRequestSecondPayment::whereIn('id', $secondPayIds)
+                ->pluck('budget_request_id')->all();
+
+            $locked = BudgetRequest::whereIn('id', array_unique(array_merge($crIds, $spParentIds)))
+                ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+
+            $berubah = collect($crIds)
+                ->reject(fn ($id) => ($locked[$id]->status ?? null) === 'APPROVED')
+                ->map(fn ($id) => $locked[$id]->code ?? '#' . $id);
+
+            $secondPayments = \App\Models\BudgetRequestSecondPayment::whereIn('id', $secondPayIds)
+                ->orderBy('id')->lockForUpdate()->get();
+
+            foreach ($secondPayments as $sp) {
+                $induk = $locked[$sp->budget_request_id] ?? null;
+                if ($sp->status !== 'PENDING' || $induk?->status !== 'SECOND_APPROVED') {
+                    $berubah->push('Second Payment #' . $sp->id);
+                }
+            }
+
+            $registers = \App\Models\CostRegister::whereIn('id', $registerIds)
+                ->orderBy('id')->lockForUpdate()->get();
+
+            foreach ($registers as $register) {
+                if ($register->status !== \App\Models\CostRegister::TREASURY_READY_STATUS) {
+                    $berubah->push('Cost Register #' . $register->id);
+                }
+            }
+
+            if ($berubah->isNotEmpty()) {
+                throw new \DomainException(
+                    'Batch dibatalkan — baris berikut baru saja diproses pengguna lain: '
+                    . $berubah->implode(', ') . '. Muat ulang halaman.'
+                );
+            }
+
             $batch = DailyTransaction::create([
                 'code'            => $code,
                 'date'            => now()->toDateString(),
@@ -312,7 +359,7 @@ class DailyTransactionController extends Controller
                 // CR langsung QUEUED begitu batch DIBUAT/di-submit oleh Treasury —
                 // tidak lagi menunggu approve CEO. Approve CEO cuma menyetujui
                 // batch-nya (buat pembayaran), tidak lagi mengubah status CR.
-                $cr = $crs[$crId];
+                $cr = $locked[$crId];
                 $cr->update(['status' => 'QUEUED']);
                 $cr->addLog('APPROVED', 'QUEUED', 'batched', $request->notes);
             }
@@ -336,7 +383,6 @@ class DailyTransactionController extends Controller
             | budget_request_id ikut diisi supaya baris ini punya Budget Plan,
             | penerima, dan rekening tujuan yang sama dengan CR induknya.
             */
-            $secondPayments = \App\Models\BudgetRequestSecondPayment::with('budgetRequest')->whereIn('id', $secondPayIds)->get();
             foreach ($secondPayments as $sp) {
                 /*
                 | Kaki pembayaran Expense Claim: CR induknya sedang
@@ -344,7 +390,7 @@ class DailyTransactionController extends Controller
                 | ia jadi QUEUED (Process) — sama seperti CR biasa yang
                 | dibatch — dan akan CLOSED saat batch ditandai PAID.
                 */
-                $indukCr = $sp->budgetRequest;
+                $indukCr = $locked[$sp->budget_request_id] ?? null;
                 $statusAwal = $indukCr?->status;
 
                 if ($indukCr && $indukCr->status === 'SECOND_APPROVED') {
@@ -373,6 +419,9 @@ class DailyTransactionController extends Controller
 
             $batch->recalculateCapturedAmount();
         });
+        } catch (\DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         NotifyService::send(
             $this->approverUsers(),
@@ -643,13 +692,12 @@ class DailyTransactionController extends Controller
                     continue;
                 }
 
-                // Second Payment: status CR TIDAK diubah - kekurangan bayarnya
-                // tetap ada dan tetap PENDING, hanya gagal di batch ini lalu
-                // bisa dimasukkan ke batch berikutnya.
+                // Second Payment: kekurangan bayarnya tetap ada dan tetap
+                // PENDING, hanya gagal di batch ini - CR induk dikembalikan ke
+                // SECOND_APPROVED supaya bisa dimasukkan ke batch berikutnya.
                 if ($item->isSecondPayment()) {
-                    $crStatus = $item->budgetRequest?->status;
-                    $item->budgetRequest?->addLog(
-                        $crStatus, $crStatus, 'second_payment_batch_rejected',
+                    $this->releaseSecondPaymentParent(
+                        $item->budgetRequest, 'second_payment_batch_rejected',
                         'Batch ' . $batch->code . ' ditolak: ' . $request->notes
                     );
                     $item->update(['status' => 'REJECTED', 'notes' => $request->notes]);
@@ -684,6 +732,31 @@ class DailyTransactionController extends Controller
             ->with('success', $successMsg);
     }
 
+    /**
+     * Second Payment gagal di sebuah batch (batch ditolak / item dikeluarkan).
+     *
+     * Saat dibatch, CR induknya pindah SECOND_APPROVED -> QUEUED. Dulu status
+     * itu dibiarkan QUEUED, padahal availableForBatch() mensyaratkan induk
+     * SECOND_APPROVED - akibatnya Second Payment tidak pernah bisa dibatch
+     * ulang dan CR tertahan di QUEUED tanpa jalan keluar. Cerminan dari CR
+     * biasa yang dikembalikan ke APPROVED saat batch-nya ditolak.
+     */
+    private function releaseSecondPaymentParent(?BudgetRequest $cr, string $actionType, string $notes): void
+    {
+        if (! $cr) {
+            return;
+        }
+
+        if ($cr->status === 'QUEUED') {
+            $cr->update(['status' => 'SECOND_APPROVED']);
+            $cr->addLog('QUEUED', 'SECOND_APPROVED', $actionType, $notes);
+
+            return;
+        }
+
+        $cr->addLog($cr->status, $cr->status, $actionType, $notes);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | REJECT ITEM — CEO takeout 1 CR → CR kembali ke VERIFIED
@@ -716,10 +789,10 @@ class DailyTransactionController extends Controller
             } elseif ($item->isSecondPayment()) {
                 // Sama seperti Cost Register: yang dikeluarkan dari batch cuma
                 // barisnya. CR induk tidak boleh ikut REJECTED - Settlement-nya
-                // sudah diverifikasi, yang tertunda hanya pembayarannya.
-                $crStatus = $item->budgetRequest?->status;
-                $item->budgetRequest?->addLog(
-                    $crStatus, $crStatus, 'second_payment_takeout',
+                // sudah diverifikasi, yang tertunda hanya pembayarannya - dan
+                // dikembalikan ke SECOND_APPROVED supaya bisa dibatch ulang.
+                $this->releaseSecondPaymentParent(
+                    $item->budgetRequest, 'second_payment_takeout',
                     'Second Payment dikeluarkan dari batch ' . $batch->code . ': ' . $request->notes
                 );
             } else {
@@ -770,8 +843,22 @@ class DailyTransactionController extends Controller
         }
 
         $added = 0;
+        $ditolak = false;
 
-        DB::transaction(function () use ($request, $batch, &$added) {
+        DB::transaction(function () use ($request, $batch, &$added, &$ditolak) {
+            /*
+            | Batch dan kandidatnya dikunci FOR UPDATE (lihat catatan di
+            | storeCashOut): tanpa kunci, dua Treasury yang menambah CR yang
+            | sama bersamaan bisa sama-sama lolos dan CR masuk dua batch. Batch
+            | ikut dikunci supaya item tidak masuk ke batch yang statusnya baru
+            | saja berubah. Aturan "lewati yang tidak layak" tidak berubah.
+            */
+            $terkunci = DailyTransaction::whereKey($batch->id)->lockForUpdate()->first();
+            if (! $terkunci || ! $terkunci->isPendingApprover()) {
+                $ditolak = true;
+                return;
+            }
+
             /*
             | Dua pemuatan MASSAL sebelum loop, bukan dua query per baris.
             |
@@ -794,10 +881,16 @@ class DailyTransactionController extends Controller
                 ->unique()
                 ->values();
 
-            $kandidat = BudgetRequest::whereIn('id', $crIds)
-                ->where('status', 'APPROVED')
-                ->get()
-                ->keyBy('id');
+            $spIds       = (array) $request->input('second_payment_ids', []);
+            $spParentIds = \App\Models\BudgetRequestSecondPayment::whereIn('id', $spIds)
+                ->pluck('budget_request_id')->map(fn ($v) => (int) $v);
+
+            // Satu kunci untuk CR pilihan + CR induk Second Payment (id naik,
+            // urutan sama dengan storeCashOut). Status dibaca dari hasil kunci.
+            $locked = BudgetRequest::whereIn('id', $crIds->merge($spParentIds)->unique())
+                ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+
+            $kandidat = $locked->only($crIds->all())->where('status', 'APPROVED');
 
             $sudahMasukBatch = DailyTransactionItem::whereIn('budget_request_id', $crIds)
                 ->where('status', 'INCLUDED')
@@ -828,9 +921,13 @@ class DailyTransactionController extends Controller
 
             // Second Payment menyusul ke batch yang sama - aturannya identik
             // dengan saat batch dibuat (lihat storeCashOut).
-            $secondPayments = \App\Models\BudgetRequestSecondPayment::availableForBatch()
-                ->whereIn('id', (array) $request->input('second_payment_ids', []))
-                ->get();
+            // Syarat setara availableForBatch() (PENDING + induk SECOND_APPROVED),
+            // tetapi dibaca dari baris terkunci: begitu SP masuk batch, induknya
+            // jadi QUEUED sehingga request kedua otomatis melewatinya.
+            $secondPayments = \App\Models\BudgetRequestSecondPayment::whereIn('id', $spIds)
+                ->orderBy('id')->lockForUpdate()->get()
+                ->filter(fn ($sp) => $sp->status === 'PENDING'
+                    && ($locked[$sp->budget_request_id]->status ?? null) === 'SECOND_APPROVED');
 
             foreach ($secondPayments as $sp) {
                 $batch->items()->create([
@@ -841,7 +938,7 @@ class DailyTransactionController extends Controller
 
                 // Sama seperti saat batch dibuat: CR induk Expense Claim ikut
                 // jadi QUEUED (Process) begitu masuk batch.
-                $indukCr  = $sp->budgetRequest;
+                $indukCr  = $locked[$sp->budget_request_id] ?? null;
                 $crStatus = $indukCr?->status;
                 if ($indukCr && $indukCr->status === 'SECOND_APPROVED') {
                     $indukCr->update(['status' => 'QUEUED']);
@@ -858,6 +955,10 @@ class DailyTransactionController extends Controller
             $batch->refreshCode();
             $batch->recalculateCapturedAmount();
         });
+
+        if ($ditolak) {
+            return back()->with('error', 'Hanya batch PENDING_APPROVER yang bisa ditambah item.');
+        }
 
         return back()->with('success', $added . ' baris berhasil ditambahkan ke batch.');
     }
@@ -889,7 +990,25 @@ class DailyTransactionController extends Controller
 
         $charge = $this->normalizeMoney($request->charge);
 
-        DB::transaction(function () use ($request, $batch, $charge) {
+        try {
+        DB::transaction(function () use ($request, &$batch, $charge) {
+            /*
+            | Kunci batch dulu, baru simpan apa pun. Pemeriksaan isDone() di
+            | atas berjalan tanpa kunci: dua klik Mark Paid bersamaan (dua tab
+            | atau dua staf Treasury) dulu sama-sama lolos, sehingga lampiran
+            | bukti transfer dan log status CR tercatat dua kali, dan charge /
+            | paid_by yang diisi pertama tertimpa. Request kedua sekarang
+            | menunggu, melihat batch sudah PAID, dan mundur sebelum menyimpan
+            | lampiran. Item dimuat ulang dari batch yang terkunci supaya
+            | pemeriksaan status CR di bawah memakai data terbaru.
+            */
+            $batch = DailyTransaction::whereKey($batch->id)->lockForUpdate()->first();
+
+            if (! $batch || ! $batch->isDone()) {
+                throw new \DomainException('Batch ini baru saja ditandai PAID oleh pengguna lain — muat ulang halaman.');
+            }
+
+            $batch->load(['includedItems.budgetRequest', 'includedItems.costRegister']);
 
             // Simpan lampiran ke daily_transaction_attachments
             foreach ($request->file('attachments', []) as $file) {
@@ -988,6 +1107,9 @@ class DailyTransactionController extends Controller
 
             $batch->recalculateCapturedAmount();
         });
+        } catch (\DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         return redirect('/daily-transaction/' . $id)
             ->with('success', 'Batch ' . $batch->code . ' berhasil ditandai PAID.');

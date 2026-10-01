@@ -82,23 +82,33 @@ class BeneficiaryPicViewTest extends TestCase
 
     /* ------------------------------------------------- REKENING PIC SENDIRI */
 
-    public function test_rekening_pic_ikut_terkirim_ke_panel_detail(): void
+    public function test_rekening_hanya_milik_beneficiary_bukan_pic(): void
     {
+        /*
+         | Sejak v2.5.0 Master PIC tidak lagi menyimpan bank & nomor rekening
+         | (migrasi 2026_10_01_000020 menghapus master_pics.bank_id dan
+         | account_number): rekening cukup dipegang Beneficiary supaya tidak
+         | ada dua sumber yang bisa berbeda. Uji ini menggantikan uji lama yang
+         | masih mengharapkan rekening PIC ikut tampil.
+         */
         $bank = Bank::create(['name' => 'BRI', 'code' => '002']);
 
-        $pic = $this->pic('RANI FEBRIANDINI', 'Vendor Management Senior Manager', [
-            'bank_id'        => $bank->id,
-            'account_number' => '0817604612345',
-        ]);
-        $this->beneficiary($pic, 'ZULBAIDHA');
+        $pic = $this->pic('RANI FEBRIANDINI', 'Vendor Management Senior Manager');
+        $this->beneficiary($pic, 'ZULBAIDHA')
+            ->update(['bank_id' => $bank->id, 'account_number' => '0817604612345']);
 
-        $html = $this->actingAs($this->userWithRole('superadmin'))
-            ->get('/beneficiaries')->assertOk()->getContent();
+        $groups = $this->actingAs($this->userWithRole('superadmin'))
+            ->get('/beneficiaries')->assertOk()->viewData('picGroups');
 
-        // Rekening PIC-nya SENDIRI — sebelumnya tidak ada kolomnya sama sekali
-        // di master_pics, jadi panel detail tidak bisa menampilkannya.
-        $this->assertStringContainsString('"account_number":"0817604612345"', $html);
-        $this->assertStringContainsString('"bank":"BRI"', $html);
+        $group = collect($groups)->firstWhere('pic', 'RANI FEBRIANDINI');
+
+        $this->assertNotNull($group);
+        $this->assertArrayNotHasKey('bank', $group);
+        $this->assertArrayNotHasKey('account_number', $group);
+
+        // Rekening tetap terlihat - sebagai milik beneficiary-nya.
+        $this->assertSame('0817604612345', $group['items'][0]['account_number']);
+        $this->assertSame('BRI', $group['items'][0]['bank']);
     }
 
     /* -------------------------------------------------------- HAPUS PIC */

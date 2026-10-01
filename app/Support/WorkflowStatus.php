@@ -232,12 +232,15 @@ class WorkflowStatus
         */
         'invoice' => [
             'SUBMITTED' => [
-                'description' => 'Menunggu verifikasi Finance Manager',
+                // Route invoice-cash-receipt.verify: finance_manager & accounting.
+                'description' => 'Menunggu verifikasi Accounting / Finance Manager',
                 'tone'        => 'attention',
                 'icon'        => 'fa-hourglass-half',
             ],
             'VERIFIED' => [
-                'description' => 'Menunggu persetujuan CEO',
+                // Route invoice-cash-receipt.approve: finance_manager saja
+                // (bukan Approver/CEO - lihat InvoiceApprovalOwnerTest).
+                'description' => 'Menunggu persetujuan Finance Manager',
                 'tone'        => 'attention',
                 'icon'        => 'fa-hourglass-half',
             ],

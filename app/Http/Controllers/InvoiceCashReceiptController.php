@@ -26,6 +26,9 @@ class InvoiceCashReceiptController extends Controller
 {
     use Concerns\ScopesInvoiceVisibility;
 
+    // Transisi status terkunci - lihat Concerns\TransitionsStatus.
+    use Concerns\TransitionsStatus;
+
     use \App\Http\Controllers\Concerns\CapsLargeLists;
 
     /** Role — penerima notifikasi tiap tahap workflow invoice. */
@@ -554,11 +557,15 @@ class InvoiceCashReceiptController extends Controller
             return back()->with('error', 'Hanya invoice berstatus DRAFT yang dapat disubmit.');
         }
 
-        $invoice->update([
+        // Transisi terkunci: klik ganda / dua pengguna tidak lagi menggandakan
+        // notifikasi atau menimpa submitted_by.
+        if (! $this->transitionStatus(Invoice::class, $invoice->id, 'DRAFT', [
             'status'       => 'SUBMITTED',
             'submitted_by' => Auth::id(),
             'submitted_at' => now(),
-        ]);
+        ])) {
+            return back()->with('error', 'Status sudah berubah — muat ulang halaman.');
+        }
 
         NotifyService::send(
             $this->usersWithRole('accounting', 'finance_manager'),
@@ -585,11 +592,13 @@ class InvoiceCashReceiptController extends Controller
             return back()->with('error', 'Hanya invoice berstatus SUBMITTED yang dapat diverifikasi.');
         }
 
-        $invoice->update([
+        if (! $this->transitionStatus(Invoice::class, $invoice->id, 'SUBMITTED', [
             'status'      => 'VERIFIED',
             'verified_by' => Auth::id(),
             'verified_at' => now(),
-        ]);
+        ])) {
+            return back()->with('error', 'Status sudah berubah — muat ulang halaman.');
+        }
 
         NotifyService::send(
             // Approval invoice milik Finance Manager; Approver tidak lagi
@@ -618,11 +627,13 @@ class InvoiceCashReceiptController extends Controller
             return back()->with('error', 'Hanya invoice berstatus VERIFIED yang dapat di-approve.');
         }
 
-        $invoice->update([
+        if (! $this->transitionStatus(Invoice::class, $invoice->id, 'VERIFIED', [
             'status'      => 'APPROVED',
             'approved_by' => Auth::id(),
             'approved_at' => now(),
-        ]);
+        ])) {
+            return back()->with('error', 'Status sudah berubah — muat ulang halaman.');
+        }
 
         if ($invoice->submittedBy) {
             NotifyService::send(
@@ -670,10 +681,12 @@ class InvoiceCashReceiptController extends Controller
 
         $oldStatus = $invoice->status;
 
-        $invoice->update([
-            'status' => $map[$invoice->status],
+        if (! $this->transitionStatus(Invoice::class, $invoice->id, $oldStatus, [
+            'status' => $map[$oldStatus],
             'remark' => trim(($invoice->remark ? $invoice->remark . "\n\n" : '') . '[REVISI] ' . $request->notes),
-        ]);
+        ])) {
+            return back()->with('error', 'Status sudah berubah — muat ulang halaman.');
+        }
 
         // SUBMITTED->DRAFT: kembalikan ke yang submit. VERIFIED->SUBMITTED: kembalikan ke yang verifikasi.
         // CANCELLED->DRAFT: kembalikan ke yang cancel.
@@ -766,7 +779,19 @@ class InvoiceCashReceiptController extends Controller
             }
         }
 
+        try {
         DB::transaction(function () use ($invoice, $request, $revise) {
+            /*
+            | Kunci invoice dulu (urutan sama dengan storeCashReceipt): tanpa
+            | ini pembayaran yang dicatat bersamaan bisa tetap masuk ke invoice
+            | yang baru saja dibatalkan.
+            */
+            $terkunci = Invoice::whereKey($invoice->id)->lockForUpdate()->first();
+            if (! $terkunci || in_array($terkunci->status, ['PAID', 'CANCELLED'], true)
+                || ($revise && $terkunci->status !== 'SENT')) {
+                throw new \DomainException('Status sudah berubah — muat ulang halaman.');
+            }
+
             $invoice->update([
                 'status'        => 'CANCELLED',
                 'cancelled_by'  => Auth::id(),
@@ -789,6 +814,9 @@ class InvoiceCashReceiptController extends Controller
                 $invoice->update(['status' => 'DRAFT']);
             }
         });
+        } catch (\DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         $message = $revise
             ? 'Invoice ' . $invoice->code . ' dibatalkan dan dikembalikan ke DRAFT untuk direvisi.'
@@ -841,11 +869,17 @@ class InvoiceCashReceiptController extends Controller
         | nilainya sendiri - lalu statusnya melompat ke PAID dengan angka yang
         | tidak bisa dijelaskan.
         */
-        $berhasil = DB::transaction(function () use ($invoice, $amount, $request, $proofPath) {
+        $gagal = DB::transaction(function () use ($invoice, $amount, $request, $proofPath) {
             $terkunci = Invoice::whereKey($invoice->id)->lockForUpdate()->first();
 
+            // Status diperiksa ulang di dalam kunci: invoice bisa saja baru
+            // dibatalkan sejak pemeriksaan di atas.
+            if (! in_array($terkunci->status, ['SENT', 'RECEIVED', 'PARTIALLY_PAID'], true)) {
+                return 'Cash Receipt hanya bisa ditambahkan untuk invoice berstatus SENT, RECEIVED, atau PARTIALLY PAID.';
+            }
+
             if ($amount > $terkunci->remainingBalance()) {
-                return false;
+                return 'Nominal melebihi sisa tagihan (' . number_format($terkunci->remainingBalance(), 0, ',', '.') . ').';
             }
 
             CashReceipt::create([
@@ -858,19 +892,17 @@ class InvoiceCashReceiptController extends Controller
                 'input_by'        => Auth::id(),
             ]);
 
-            return true;
+            return null;
         });
 
-        if (! $berhasil) {
+        if ($gagal) {
             // Berkas bukti yang terlanjur tersimpan ikut dibersihkan supaya
             // tidak menumpuk sebagai berkas yatim.
             if ($proofPath) {
                 Storage::disk('secure')->delete($proofPath);
             }
 
-            return back()->with('error',
-                'Nominal melebihi sisa tagihan (' . number_format($invoice->fresh()->remainingBalance(), 0, ',', '.') . ').'
-            );
+            return back()->with('error', $gagal);
         }
 
         return back()->with('success', 'Cash Receipt berhasil dicatat.');
@@ -896,16 +928,34 @@ class InvoiceCashReceiptController extends Controller
 
         $tax = $this->normalizeMoney($request->withholding_tax);
 
-        $otherReceived = $invoice->totalReceived() - $cr->amount - $cr->withholding_tax;
-        $maxTax = max(0, $invoice->captured_total - $otherReceived - $cr->amount);
+        /*
+        | Dihitung di dalam kunci invoice: dua settle PPh bersamaan pada receipt
+        | berbeda dulu sama-sama lolos batas maxTax, sehingga total diterima
+        | bisa melampaui tagihan. Rumus dan pesan tidak berubah.
+        */
+        $error = DB::transaction(function () use ($invoice, $cr, $tax) {
+            $terkunci = Invoice::whereKey($invoice->id)->lockForUpdate()->first();
 
-        if ($tax > $maxTax) {
-            return back()->with('error',
-                'Nominal PPh melebihi sisa tagihan (maks ' . number_format($maxTax, 0, ',', '.') . ').'
-            );
+            if (! in_array($terkunci->status, ['SENT', 'RECEIVED', 'PARTIALLY_PAID'], true)) {
+                return 'Settle PPh hanya bisa dilakukan untuk invoice yang belum lunas.';
+            }
+
+            $cr->refresh();
+            $otherReceived = $terkunci->totalReceived() - $cr->amount - $cr->withholding_tax;
+            $maxTax = max(0, $terkunci->captured_total - $otherReceived - $cr->amount);
+
+            if ($tax > $maxTax) {
+                return 'Nominal PPh melebihi sisa tagihan (maks ' . number_format($maxTax, 0, ',', '.') . ').';
+            }
+
+            $cr->update(['withholding_tax' => $tax]);
+
+            return null;
+        });
+
+        if ($error) {
+            return back()->with('error', $error);
         }
-
-        $cr->update(['withholding_tax' => $tax]);
 
         return back()->with('success', 'PPh Pasal 4(2) berhasil di-settle.');
     }

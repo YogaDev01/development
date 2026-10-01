@@ -1089,7 +1089,7 @@ $(function () {
     /* CONFIRMATIONS */
     $(document).on('submit', '.frmSubmitInv', function (e) {
         e.preventDefault(); var form = this;
-        Swal.fire({ title:'Submit Invoice?', text:'Invoice akan dikirim untuk diverifikasi Finance Manager.', icon:'question', showCancelButton:true, confirmButtonColor:'#42627d', cancelButtonColor:'#55595e', confirmButtonText:'Ya, Submit', cancelButtonText:'Batal' })
+        Swal.fire({ title:'Submit Invoice?', text:'Invoice akan dikirim untuk diverifikasi Accounting / Finance Manager.', icon:'question', showCancelButton:true, confirmButtonColor:'#42627d', cancelButtonColor:'#55595e', confirmButtonText:'Ya, Submit', cancelButtonText:'Batal' })
         .then(function(r){ if(r.isConfirmed) form.submit(); });
     });
 
