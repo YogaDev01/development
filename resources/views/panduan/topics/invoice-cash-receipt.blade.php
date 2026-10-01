@@ -7,8 +7,9 @@
 <h2>Siapa yang mengakses</h2>
 <div class="pnd-roles">
     <span class="pnd-role">Superadmin</span>
-    <span class="pnd-role">Finance / Finance Manager</span>
-    <span class="pnd-role">Approver / CEO (verify / approve)</span>
+    <span class="pnd-role">Admin / Finance / Collection (buat &amp; submit)</span>
+    <span class="pnd-role">Accounting / Finance Manager (verify)</span>
+    <span class="pnd-role">Finance Manager (approve)</span>
 </div>
 
 <h2>Status invoice</h2>
