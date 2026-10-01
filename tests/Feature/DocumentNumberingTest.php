@@ -77,6 +77,36 @@ class DocumentNumberingTest extends TestCase
         $this->assertCount(25, array_unique($angka));
     }
 
+    public function test_rangkaian_baru_disemai_lalu_berlanjut(): void
+    {
+        $this->assertSame(42, DocumentSequence::next('uji:baru', fn () => 41));
+        $this->assertSame(43, DocumentSequence::next('uji:baru', fn () => 999));
+    }
+
+    public function test_rangkaian_yang_baru_dibuat_pihak_lain_tidak_menimbulkan_galat(): void
+    {
+        /*
+         | Tepat setelah pemeriksaan "baris sudah ada?", permintaan lain lebih
+         | dulu membuat baris penghitung (counter 100). Penyisipan kita harus
+         | diabaikan tanpa galat, dan nomor melanjutkan dari baris itu.
+         | Deadlock gap-lock yang sesungguhnya butuh dua koneksi - diuji lewat
+         | UAT konkurensi, bukan di sini.
+         */
+        $sudah = false;
+        \Illuminate\Support\Facades\DB::listen(function ($query) use (&$sudah) {
+            if ($sudah || ! str_contains($query->sql, 'from `document_sequences`')) {
+                return;
+            }
+            $sudah = true;
+            \Illuminate\Support\Facades\DB::table('document_sequences')->insert([
+                'key' => 'uji:balapan', 'counter' => 100, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        });
+
+        $this->assertSame(101, DocumentSequence::next('uji:balapan', fn () => 0));
+        $this->assertSame(1, \Illuminate\Support\Facades\DB::table('document_sequences')->where('key', 'uji:balapan')->count());
+    }
+
     public function test_nomor_cost_request_dan_surat_jalan_juga_berurut(): void
     {
         $satu = BudgetRequest::generateCode('0001');
