@@ -107,8 +107,8 @@ Closing ← ClosingService reads Treasury, Invoice, Collection, Cash Receipt…
 3. Refund comment block says settlement stages are "SETTLE_CHECKED →
    SETTLE_VERIFIED → CLOSED"; `SETTLED_STATUSES` also includes SETTLE_APPROVED
    and SECOND_APPROVED.
-4. Invoice VERIFIED shown as "awaiting CEO" but only finance_manager (and
-   superadmin) can approve. See `docs/security.md`.
+4. ~~Invoice VERIFIED shown as "awaiting CEO"~~ — text fixed on `develop`
+   (now "Menunggu persetujuan Finance Manager"). See `docs/security.md`.
 5. Route `ceo-close-settlement` is gated to finance_manager.
 6. Project memory notes say non-CA goes QUEUED→CLOSED "on mark-paid" — matches code.
 
