@@ -537,6 +537,29 @@ class BudgetRequestController extends Controller
         }
     }
 
+    /**
+     * Label satu baris rincian CR untuk tampilan: nama Chart of Account dibuang
+     * dari depan deskripsi (karena sudah jadi judul grup), lalu catatan barisnya
+     * ditempelkan - mis. "Tim penarikan kabel — REJECT".
+     */
+    private function itemLabel(RequestDetail $detail): string
+    {
+        $desc = trim((string) $detail->description);
+        $akun = trim((string) ($detail->account?->name ?? ''));
+
+        if ($akun !== '') {
+            // Pemisah yang dipakai saat pembuatan bisa "-" biasa maupun em dash.
+            $desc = preg_replace('/^' . preg_quote($akun, '/') . '\s*[-\x{2013}\x{2014}]\s*/u', '', $desc) ?? $desc;
+        }
+
+        $desc = trim($desc);
+        $note = trim((string) $detail->notes);
+
+        if ($desc === '') $desc = $akun !== '' ? $akun : '-';
+
+        return $note !== '' ? $desc . ' — ' . $note : $desc;
+    }
+
     private function syncRealizations(BudgetRequest $cr, Request $request): void
     {
         /*
@@ -597,6 +620,7 @@ class BudgetRequestController extends Controller
                 'qty'               => 1,
                 'total'             => $amount,
                 'notes'             => $row['notes'] ?? null,
+                'change_note'       => $row['change_note'] ?? null,
             ]);
 
             // Lampiran lama milik item yang sama dibuat ulang di baris baru.
@@ -1197,7 +1221,7 @@ class BudgetRequestController extends Controller
             'applicant', 'beneficiary.bank',
             'details.account', 'details.budgetDetail', 'details.attachments',
             'attachments',
-            'realizations.account', 'realizations.requestDetail', 'realizations.attachments',
+            'realizations.account', 'realizations.requestDetail.account', 'realizations.attachments',
             'realizationAttachments',
             'secondPayments.dailyTransactionItems.dailyTransaction',
             'statusLogs',
@@ -1289,6 +1313,9 @@ class BudgetRequestController extends Controller
                     'budget_detail_id'    => $d->budget_detail_id,
                     'description'         => $d->description,
                     'account'             => $d->account?->name ?? '-',
+                    // Label baris untuk tampilan: nama akun dibuang (sudah jadi
+                    // judul grup) lalu digabung dengan catatan barisnya.
+                    'item_label'          => $this->itemLabel($d),
                     'amount'              => $d->amount,
                     'amount_formatted'    => number_format($d->amount, 0, ',', '.'),
                     'qty'                 => $d->qty,
@@ -1324,11 +1351,18 @@ class BudgetRequestController extends Controller
             'realizations' => $cr->realizations->map(fn($r) => [
                 'request_detail_id' => $r->request_detail_id,
                 'cr_item'           => $r->requestDetail?->description ?? ($r->description ?? '-'),
+                // Sama dengan yang dibaca pengaju di form Settlement:
+                // nama akun + catatan baris pengajuan.
+                'des_request'       => $r->requestDetail
+                                        ? $this->itemLabel($r->requestDetail)
+                                        : ($r->description ?? '-'),
                 'total_cr'          => $r->requestDetail?->total ?? 0,
                 'total_cr_formatted'=> number_format($r->requestDetail?->total ?? 0, 0, ',', '.'),
                 'actual'            => $r->amount,
                 'actual_formatted'  => number_format($r->amount, 0, ',', '.'),
                 'notes'             => $r->notes,
+                // Alasan perubahan dari Description Request ke Description Settle.
+                'change_note'       => $r->change_note,
                 // Kolom lama dipertahankan agar kompatibel bila ada kode lain yang masih memakainya
                 'description'       => $r->description,
                 'account'           => $r->account?->name ?? '-',
@@ -2358,6 +2392,7 @@ class BudgetRequestController extends Controller
             'realizations.*.amount'            => 'nullable',
             // Sejalan dengan maxlength input di form settlement.
             'realizations.*.notes'             => 'nullable|string|max:255',
+            'realizations.*.change_note'       => 'nullable|string|max:500',
             'realizations.*.attachments'       => 'nullable|array',
             'realizations.*.attachments.*'     => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
             'realization_attachments'          => 'nullable|array',
@@ -2386,13 +2421,26 @@ class BudgetRequestController extends Controller
 
         // CR yang sudah cair (PAID) wajib melampirkan bukti per item di tiap
         // baris Rincian Settlement; lampiran global di sini hanya opsional.
-        $missingAtt = [];
-        $no         = 0;
+        $missingAtt  = [];
+        $missingNote = [];
+        $no          = 0;
         foreach ((array) $request->input('realizations', []) as $i => $row) {
             if (! $this->normalizeMoney($row['amount'] ?? null) && blank($row['request_detail_id'] ?? null)) {
                 continue;
             }
             $no++;
+
+            /*
+            | Settle yang melebihi nilai Request berarti ada perubahan yang
+            | harus dipertanggungjawabkan (jadi Second Payment), karena itu
+            | "Note" per baris wajib diisi di kasus ini.
+            */
+            $detailRow = RequestDetail::find((int) ($row['request_detail_id'] ?? 0));
+            if ($detailRow
+                && $this->normalizeMoney($row['amount'] ?? null) > (int) $detailRow->total
+                && blank($row['change_note'] ?? null)) {
+                $missingNote[] = $no;
+            }
 
             // Baris dengan Settle 0 tidak wajib berlampiran.
             if (! $this->normalizeMoney($row['amount'] ?? null)) {
@@ -2424,6 +2472,14 @@ class BudgetRequestController extends Controller
                 'error',
                 'Setiap baris Rincian Settlement wajib punya "Lampiran Item". Baris yang belum berlampiran: no. '
                 . implode(', ', $missingAtt) . '.'
+            );
+        }
+
+        if ($missingNote) {
+            return back()->withInput()->with(
+                'error',
+                'Baris dengan nilai Settle melebihi Request wajib diisi "Note". Baris yang belum berisi: no. '
+                . implode(', ', $missingNote) . '.'
             );
         }
 

@@ -583,6 +583,9 @@
 <script src="{{ asset('plugins/datatables-responsive/js/dataTables.responsive.min.js') }}"></script>
 <script src="{{ asset('plugins/datatables-responsive/js/responsive.bootstrap4.min.js') }}"></script>
 
+<!-- TESYS MONEY SORT (kolom nominal diurutkan sebagai angka, bukan teks) -->
+<script src="@aset('js/tesys-money-sort.js')"></script>
+
 <!-- TESYS TABLE (kendali daftar: Page Size masuk ke bilah kendali) -->
 
 <!-- TESYS COLUMN FILTER (filter header ala Excel untuk DataTables) -->

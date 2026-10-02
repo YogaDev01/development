@@ -4,6 +4,22 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [2.5.6] - 2026-10-02 — Catatan Perubahan Settlement, Urutan Nominal & Rincian per Chart of Account
+
+Baris Settlement yang melebihi nilai pengajuan kini wajib disertai catatan
+perubahan, kolom nominal diurutkan sebagai angka di seluruh tabel, dan
+rincian Cost Request dikelompokkan per Chart of Account.
+
+### Baru
+- Catatan perubahan per baris Settlement: alasan kenapa Description Settle atau nilainya berbeda dari pengajuan, dan wajib diisi bila nilai Settle melebihi nilai Request.
+- Kolom Bank di Daftar PIC menandai In-House untuk PIC yang sudah punya beneficiary terhubung, menggantikan rekening yang dulu disimpan di PIC.
+
+### Berubah
+- Kolom nominal di seluruh tabel kini diurutkan sebagai angka, bukan teks - 900.000 tidak lagi dianggap lebih besar dari 1.000.000.
+- Rincian Cost Request pada tab Request dan Settlement dikelompokkan per Chart of Account, mengikuti tampilan modal Budgeting.
+- Lampiran per baris dibuka lewat satu tombol view di kolom Action, bukan digelar sebagai grid thumbnail; PDF dan dokumen ikut dalam viewer sebagai kartu nama berkas.
+- Tab Settlement hanya tampil untuk Cash Advance, dan kembali ke tab Info bila CR yang dibuka tidak memilikinya.
+
 ## [2.5.5] - 2026-10-02 — Expense Claim di View Budget Sesuai Daftar Worklist
 
 Angka Expense Claim pada modal View Budget kini cocok dengan kolom Expense
