@@ -86,6 +86,7 @@
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Settle</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Variance</th>
                                 <th scope="col" class="text-center text-nowrap" style="width:1%;">Lampiran Item <span class="badge badge-danger" title="Wajib jika nilai Settle lebih dari 0">Wajib*</span></th>
+                                <th scope="col" class="text-center text-nowrap" style="width:1%;">Note <span class="badge badge-danger" title="Wajib jika nilai Settle melebihi Request">Wajib*</span></th>
                             </tr>
                         </thead>
                         <tbody id="realizeBody">
@@ -152,10 +153,21 @@
                                     @endif
                                     <div class="detail-att-list mt-1" style="font-size:10px;line-height:1.5;"></div>
                                 </td>
+                                {{-- Catatan perubahan Description Request → Description Settle.
+                                     Ikon saja supaya kolomnya tidak melebar; isinya dibuka di pop-up.
+                                     Wajib diisi kalau Settle melebihi Request (lihat validasi submit). --}}
+                                <td class="text-center align-middle realize-note-cell">
+                                    <input type="hidden" name="realizations[{{ $i }}][change_note]"
+                                           class="realize-change-note" value="{{ $existing->change_note ?? '' }}">
+                                    <button type="button" class="btn btn-sm btn-primary btn-note-item" title="Isi catatan perubahan">
+                                        <i class="fas fa-sticky-note mr-1"></i> Note
+                                    </button>
+                                    <div class="note-item-preview text-muted mt-1" style="font-size:9px;line-height:1.3;"></div>
+                                </td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="7" class="text-center text-muted py-4">Tidak ada detail</td>
+                                <td colspan="8" class="text-center text-muted py-4">Tidak ada detail</td>
                             </tr>
                             @endforelse
                         </tbody>
@@ -165,6 +177,7 @@
                                 <th class="text-right" id="footRequestTotal">0</th>
                                 <th class="text-right" id="footSettleTotal">0</th>
                                 <th class="text-right" id="footVarianceTotal">0</th>
+                                <th></th>
                                 <th></th>
                             </tr>
                         </tfoot>
@@ -920,6 +933,71 @@ $(function () {
         });
     });
 
+    /* ── CATATAN PERUBAHAN PER BARIS (ikon Note) ─────────────────────────
+       Nilainya disimpan di hidden input, ditampilkan sebagai cuplikan kecil di
+       bawah ikon supaya terlihat baris mana yang sudah diisi tanpa membuka
+       pop-up satu per satu. */
+    var CHANGE_NOTE_MAX = 500;
+
+    function refreshNoteItem($cell) {
+        var val  = ($cell.find('.realize-change-note').val() || '').trim();
+        var $btn = $cell.find('.btn-note-item');
+        $btn.toggleClass('has-note', !!val);
+        $cell.find('.note-item-preview').text(val ? (val.length > 28 ? val.slice(0, 28) + '…' : val) : '');
+    }
+
+    $('#realizeBody .realize-note-cell').each(function () { refreshNoteItem($(this)); });
+
+    $(document).on('click', '.btn-note-item', function () {
+        var $cell = $(this).closest('.realize-note-cell');
+        var $inp  = $cell.find('.realize-change-note');
+        var $row  = $cell.closest('tr');
+        var req   = parseInt($row.find('.realize-request-cell').data('raw'), 10) || 0;
+        var settle = parseRp($row.find('.realize-amount-input').val());
+        var wajib = settle > req;
+
+        Swal.fire({
+            title: 'Catatan Perubahan',
+            html: (wajib
+                    ? '<div class="text-danger mb-2" style="font-size:12px;text-align:left;">'
+                      + 'Nilai Settle melebihi Request — catatan ini wajib diisi.</div>'
+                    : '')
+                + '<textarea id="noteItemInput" class="form-control" rows="5" maxlength="' + CHANGE_NOTE_MAX + '" '
+                + 'placeholder="Alasan perubahan dari Description Request ke Description Settle..." '
+                + 'style="font-size:13px;width:100%;resize:vertical;">'
+                + $('<div>').text($inp.val() || '').html() + '</textarea>'
+                + '<small id="noteItemCount" class="d-block mt-1 text-muted" style="font-size:11px;text-align:left;"></small>',
+            width: '560px',
+            showCancelButton: true,
+            confirmButtonText: 'Simpan',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#42627d',
+            cancelButtonColor: '#55595e',
+            didOpen: function (popup) {
+                var ta  = popup.querySelector('#noteItemInput');
+                var inf = popup.querySelector('#noteItemCount');
+                if (!ta) return;
+                function hitung() { inf.textContent = 'Sisa ' + (CHANGE_NOTE_MAX - ta.value.length) + ' karakter.'; }
+                ta.addEventListener('input', hitung);
+                hitung();
+                ta.focus();
+            },
+            preConfirm: function () {
+                var ta = Swal.getPopup().querySelector('#noteItemInput');
+                var v  = (ta.value || '').trim();
+                if (wajib && !v) {
+                    Swal.showValidationMessage('Catatan wajib diisi karena Settle melebihi Request.');
+                    return false;
+                }
+                return v;
+            }
+        }).then(function (res) {
+            if (!res.isConfirmed) return;
+            $inp.val(res.value || '');
+            refreshNoteItem($cell);
+        });
+    });
+
     /* SUBMIT */
     form.on('submit', function (e) {
         e.preventDefault();
@@ -933,11 +1011,31 @@ $(function () {
             var lama = $(this).find('.del-realize-att').filter(function () { return !this.checked; }).length;
             if (!baru && !lama) missAtt.push(idx + 1);
         });
+        // Settle melebihi Request wajib disertai catatan perubahan.
+        var missNote = [];
+        $('#realizeBody tr[data-detail-id]').each(function (idx) {
+            var req    = parseInt($(this).find('.realize-request-cell').data('raw'), 10) || 0;
+            var settle = parseRp($(this).find('.realize-amount-input').val());
+            if (settle > req && !($(this).find('.realize-change-note').val() || '').trim()) {
+                missNote.push(idx + 1);
+            }
+        });
+
         if (missAtt.length) {
             Swal.fire({
                 icon: 'warning',
                 title: 'Lampiran Item belum lengkap',
                 text: 'Setiap baris Rincian Settlement wajib punya Lampiran Item. Baris belum berlampiran: no. ' + missAtt.join(', ') + '.',
+                confirmButtonColor: '#92232b'
+            });
+            return;
+        }
+
+        if (missNote.length) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Note belum diisi',
+                text: 'Baris dengan nilai Settle melebihi Request wajib diisi Note. Baris: no. ' + missNote.join(', ') + '.',
                 confirmButtonColor: '#92232b'
             });
             return;
@@ -1012,6 +1110,14 @@ $(function () {
     line-height: 1; color: var(--text-faint); cursor: pointer; font-size: 11px; z-index: 2;
 }
 .desc-wrap .desc-expand:hover { color: var(--accent); }
+
+/* ── Ikon catatan perubahan per baris ── */
+/* Tombol Note mengikuti tombol aksi lain (mis. "Tambah Lampiran"): ikon +
+   tulisan, bukan ikon telanjang. Baris yang catatannya sudah terisi diberi
+   cincin tipis; isinya terlihat lewat cuplikan teks di bawah tombol. */
+.btn-note-item { white-space: nowrap; }
+.btn-note-item.has-note { box-shadow: 0 0 0 3px var(--accent-ring); }
+.note-item-preview { max-width: 120px; margin-left: auto; margin-right: auto; }
 
 /* Lampiran lama yang ditandai untuk dibuang saat submit. */
 .att-lama-dibuang { text-decoration: line-through; opacity: .55; }

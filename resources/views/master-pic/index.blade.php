@@ -132,8 +132,9 @@
                                 <th scope="col" width="20%" class="all">Nama PIC</th>
                                 <th scope="col" width="15%">Jabatan</th>
                                 <th scope="col" width="14%">Phone</th>
-                                <th scope="col" width="15%">Email</th>
-                                <th scope="col" width="9%">Token</th>
+                                <th scope="col" width="14%">Email</th>
+                                <th scope="col" width="8%">Bank</th>
+                                <th scope="col" width="8%">Token</th>
                                 <th scope="col" width="9%" class="text-right">Nominal</th>
                                 <th scope="col" width="7%">Status</th>
                                 <th scope="col" width="10%" class="text-center all action-column">Action</th>
@@ -160,6 +161,22 @@
                                 <td>{{ $pic->position ?? '-' }}</td>
                                 <td>{{ $pic->phone ?? '-' }}</td>
                                 <td>{{ $pic->email ?? '-' }}</td>
+                                {{-- Bank. PIC tidak lagi menyimpan rekeningnya sendiri
+                                     (kolom bank_id sudah dilepas, lihat migrasi
+                                     2026_10_01_000020); yang ada rekening adalah
+                                     beneficiary yang ia tangani. Jadi selama PIC ini
+                                     punya beneficiary, pembayarannya lewat rekening
+                                     yang sudah terdaftar di sistem — ditandai In-House. --}}
+                                <td data-order="{{ $pic->beneficiaries_count > 0 ? 1 : 0 }}">
+                                    @if($pic->beneficiaries_count > 0)
+                                        <span class="badge badge-info px-2 py-1" style="font-size:10px;"
+                                              title="{{ $pic->beneficiaries_count }} beneficiary terhubung ke PIC ini">
+                                            In-House
+                                        </span>
+                                    @else
+                                        <span class="text-muted">-</span>
+                                    @endif
+                                </td>
                                 {{-- Hanya dibaca di sini. Mengubahnya lewat modal Edit,
                                      sejalan dengan kolom lain di baris ini. --}}
                                 <td>{{ $pic->token ?: '-' }}</td>
@@ -212,7 +229,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="9">
+                                <td colspan="10">
                                     <x-empty title="Belum ada data PIC" icon="fas fa-folder-open" compact />
                                 </td>
                             </tr>
@@ -847,12 +864,11 @@ $(function () {
         autoWidth: false, pageLength: 10, lengthChange: true,
         searching: true, ordering: true, orderCellsTop: true,
         columnDefs: [
-            // Indeks setelah kolom No & Terhubung Ke dibuang:
-            // 0 Type, 1 Nama PIC, 2 Jabatan, 3 Phone, 4 Email, 5 Token,
-            // 6 Nominal, 7 Status, 8 Action.
+            // Indeks kolom: 0 Type, 1 Nama PIC, 2 Jabatan, 3 Phone, 4 Email,
+            // 5 Bank, 6 Token, 7 Nominal, 8 Status, 9 Action.
             { responsivePriority: 1,   targets: [0, 1, -1] },
-            { responsivePriority: 3,   targets: [5, 6] },
-            { responsivePriority: 100, targets: [2, 3, 4, 7] }
+            { responsivePriority: 3,   targets: [5, 6, 7] },
+            { responsivePriority: 100, targets: [2, 3, 4, 8] }
         ],
         dom:
             'rt' +

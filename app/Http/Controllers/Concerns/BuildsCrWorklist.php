@@ -294,17 +294,72 @@ trait BuildsCrWorklist
         $lebih  = $real === null ? 0 : max(0, (int) $real - $base);
         $dalam  = $real === null ? $base : min((int) $real, $base);
 
+        /*
+         | Expense Claim adalah selisih di tingkat CR (total settlement -
+         | total pengajuan), BUKAN jumlah kelebihan tiap baris.
+         |
+         | Satu CR biasanya berisi baris yang melebihi pagu DAN baris yang
+         | hemat; yang ditagihkan ke perusahaan hanya selisih bersihnya.
+         | Menjumlahkan kelebihan per baris mengabaikan baris yang hemat,
+         | sehingga modal View Budget menampilkan angka lebih besar daripada
+         | kolom Expense Claim di daftar worklist untuk CR yang sama.
+         |
+         | Kelebihan tiap baris karena itu diperkecil sebanding (lihat
+         | crClaimFactor()): jumlah seluruh bagiannya kembali sama dengan
+         | expense claim CR, tapi tetap menempel pada baris yang memang
+         | menyebabkannya.
+         */
+        $tahapKlaim = in_array($status, self::COA_CLAIM_REVIEW_STATUSES, true)
+            || $status === 'SECOND_APPROVED';
+
+        // Faktornya memuat relasi CR, jadi hanya dihitung untuk baris yang
+        // memang memakainya — CR PAID/QUEUED/CLOSED tidak perlu.
+        $bagianKlaim = ($lebih > 0 && $tahapKlaim)
+            ? (int) round($lebih * $this->crClaimFactor($row->budgetRequest))
+            : 0;
+
         return match (true) {
             // Batch Treasury: leg pertama (pencairan awal) atau leg kedua (expense claim).
             $status === 'QUEUED'  => [$isClaimLeg($row->budgetRequest) ? $dalam + $lebih : $base, 0, 0],
             $status === 'PAID'    => [$base, 0, 0],
             // Settlement berjalan: kelebihannya adalah pengajuan ke-2 yang sedang direview.
-            in_array($status, self::COA_CLAIM_REVIEW_STATUSES, true) => [$dalam, $lebih, 0],
+            in_array($status, self::COA_CLAIM_REVIEW_STATUSES, true) => [$dalam + $lebih - $bagianKlaim, $bagianKlaim, 0],
             // Expense claim sudah di-approve, belum diproses ke Treasury.
-            $status === 'SECOND_APPROVED' => [$dalam, 0, $lebih],
+            $status === 'SECOND_APPROVED' => [$dalam + $lebih - $bagianKlaim, 0, $bagianKlaim],
             // CLOSED: seluruh settlement (termasuk kelebihan yang sudah dibayar).
             default => [(int) ($real ?? $base), 0, 0],
         };
+    }
+
+    /** Memo faktor klaim per CR — satu CR dipakai berkali-kali per halaman. */
+    private array $crClaimFactorMemo = [];
+
+    /**
+     * Pembagi untuk menurunkan kelebihan per baris menjadi bagian dari Expense
+     * Claim CR: expense_claim CR / total kelebihan seluruh barisnya.
+     *
+     * Nilainya 0 kalau CR tidak punya kelebihan sama sekali, dan dibatasi 1
+     * supaya tidak pernah membesarkan angka (bisa terjadi kalau header amount
+     * dan jumlah baris tidak sinkron pada data lama).
+     */
+    private function crClaimFactor(\App\Models\BudgetRequest $cr): float
+    {
+        if (array_key_exists($cr->id, $this->crClaimFactorMemo)) {
+            return $this->crClaimFactorMemo[$cr->id];
+        }
+
+        $cr->loadMissing(['details', 'realizations']);
+
+        $kelebihanBaris = $cr->details
+            ->where('status', '!=', 'TAKEOUT')
+            ->sum(function ($d) use ($cr) {
+                $real = $cr->realizations->firstWhere('request_detail_id', $d->id)?->total;
+                return $real === null ? 0 : max(0, (int) $real - (int) $d->total);
+            });
+
+        return $this->crClaimFactorMemo[$cr->id] = $kelebihanBaris > 0
+            ? min(1.0, $cr->expense_claim / $kelebihanBaris)
+            : 0.0;
     }
 
     private function queryCoaRows(\Illuminate\Support\Collection $detailIds): array
@@ -335,7 +390,9 @@ trait BuildsCrWorklist
         $disbursed = \App\Models\RequestDetail::whereIn('budget_detail_id', $detailIds)
             ->where('request_detail.status', '!=', 'TAKEOUT')
             ->whereHas('budgetRequest', fn ($q) => $q->whereIn('status', self::COA_SETTLED_ROW_STATUSES))
-            ->with(['budgetRequest.beneficiary', 'realization'])
+            // type: dipakai menentukan Cash Advance, yang menentukan rincian
+            // mana yang ditampilkan (settlement atau pengajuan).
+            ->with(['budgetRequest.beneficiary', 'budgetRequest.type', 'realization'])
             ->get()
             ->groupBy('budget_detail_id');
 
@@ -405,6 +462,9 @@ trait BuildsCrWorklist
             'price_formatted'  => number_format((int) $p->amount, 0, ',', '.'),
             'qty'              => $p->qty,
             'amount_formatted' => number_format((int) $p->total, 0, ',', '.'),
+            'is_settlement'    => false,
+            'claim_amount'     => 0,
+            'approved_claim_amount' => 0,
             'is_history'       => false,
         ];
 
@@ -415,9 +475,14 @@ trait BuildsCrWorklist
                     $disbursedRows = $disbursedByDetailId->get($d->id, collect());
 
                     $used = 0; $expenseClaim = 0; $approvedClaim = 0;
+                    // Bagian klaim per BARIS disimpan supaya daftar CR di modal
+                    // bisa menandai baris mana yang memunculkan Expense Claim —
+                    // tanpa menghitung ulang pembagiannya di Blade.
+                    $klaimPerBaris = [];
                     foreach ($disbursedRows as $r) {
                         [$u, $e, $a] = $this->coaSettledSplit($r, $isClaimLeg);
                         $used += $u; $expenseClaim += $e; $approvedClaim += $a;
+                        $klaimPerBaris[$r->id] = ['claim' => $e, 'approved_claim' => $a];
                     }
 
                     $pipelineRows = $pipelineByDetailId->get($d->id, collect());
@@ -440,9 +505,22 @@ trait BuildsCrWorklist
                     // modal juga menunjukkan dari mana nilai "Used" berasal.
                     $historyItems = $disbursedRows
                         ->whereNotIn('id', $pipelineRows->pluck('id')->all())
-                        ->map(function ($od) {
+                        ->map(function ($od) use ($klaimPerBaris) {
                             $cr     = $od->budgetRequest;
-                            $amount = (int) ($od->realization?->total ?? $od->total);
+                            $real   = $od->realization;
+                            $amount = (int) ($real?->total ?? $od->total);
+
+                            /*
+                             | Cash Advance baru diketahui rinciannya setelah
+                             | settlement — yang berlaku di situ adalah baris
+                             | settlement, bukan baris pengajuan. Kalau
+                             | settlement-nya belum ada, baris pengajuan yang
+                             | masih mewakili. Non Cash Advance selalu memakai
+                             | baris pengajuan.
+                             */
+                            $dariSettlement = $real && $cr->isCashAdvance();
+
+                            $klaim = $klaimPerBaris[$od->id] ?? ['claim' => 0, 'approved_claim' => 0];
 
                             return [
                                 'detail_id'        => $od->id,
@@ -453,12 +531,17 @@ trait BuildsCrWorklist
                                 'cr_code'          => $cr->code,
                                 'status'           => $cr->status,
                                 'stage'            => 'history',
+                                'is_settlement'    => $dariSettlement,
+                                'claim_amount'     => (int) $klaim['claim'],
+                                'approved_claim_amount' => (int) $klaim['approved_claim'],
                                 'date_raw'         => $cr->created_at,
                                 'date_formatted'   => $cr->created_at?->format('d M Y H:i') ?? '-',
-                                'description'      => $od->notes ?: ($od->description ?: '-'),
+                                'description'      => $dariSettlement
+                                    ? ($real->notes ?: ($real->description ?: ($od->notes ?: ($od->description ?: '-'))))
+                                    : ($od->notes ?: ($od->description ?: '-')),
                                 'beneficiary'      => $cr->beneficiary?->nickname ?? '-',
-                                'price_formatted'  => number_format((int) $od->amount, 0, ',', '.'),
-                                'qty'              => $od->qty,
+                                'price_formatted'  => number_format((int) ($dariSettlement ? $real->amount : $od->amount), 0, ',', '.'),
+                                'qty'              => $dariSettlement ? $real->qty : $od->qty,
                                 'amount_formatted' => number_format($amount, 0, ',', '.'),
                                 'is_history'       => true,
                             ];

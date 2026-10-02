@@ -2035,6 +2035,15 @@ body.todo-drawer-open .modal-backdrop { z-index:1070; }
     padding:3px 10px;font-size:11.5px;font-weight:700;line-height:1.3;
 }
 .todo-drw-label { font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);font-weight:700;margin-bottom:3px; }
+
+/* Grup per Chart of Account di tab Request & Settlement drawer (pola sama
+   dengan tab Budget di Budget Plan). */
+tr.td-grp-row { cursor:pointer; }
+tr.td-grp-row, tr.td-grp-row td { background:var(--info-bg) !important; }
+tr.td-grp-row:hover, tr.td-grp-row:hover td { background:var(--surface-3) !important; }
+.td-grp-caret { font-size:10px; color:var(--text-faint); transition:transform .15s ease; display:inline-block; }
+.td-grp-caret.rotated { transform:rotate(90deg); }
+td.td-grp-indent { padding-left:28px !important; }
 .todo-drw-value { font-size:13px;color:var(--text); }
 .todo-timeline { list-style:none;margin:0;padding:0; }
 .todo-timeline li { position:relative;padding-left:24px;padding-bottom:16px;font-size:12px;color:var(--text-faint); }
@@ -3320,61 +3329,85 @@ $(function () {
             /* ── BAR AKSI WORKFLOW ── */
             renderDrawerActions(d);
 
-            /* ── TAB REQUEST (rincian item pengajuan + attachment) ── */
+            /* -- TAB REQUEST (rincian item pengajuan + attachment) --
+               Barisnya dikelompokkan per Chart of Account seperti tab Budget
+               di Budget Plan: baris grup (klik untuk buka/tutup) + sub-item. */
             var reqHtml = '';
             var canModerate = !!d.can_moderate_items;
             window.__crDetailAtt = {};
             var anyAtt = (d.details || []).some(function (x) { return x.attachments && x.attachments.length; });
             var showAksi = canModerate || anyAtt;
             if (d.details && d.details.length) {
+                var reqGroups = groupByAccount(d.details);
+                reqHtml += '<div class="d-flex justify-content-end mb-2">' +
+                    '<button type="button" class="btn btn-xs btn-outline-secondary td-grp-expand" data-body="todoReqBody"><i class="fas fa-angle-double-down mr-1"></i>Expand All</button>&nbsp;' +
+                    '<button type="button" class="btn btn-xs btn-outline-secondary td-grp-collapse" data-body="todoReqBody"><i class="fas fa-angle-double-up mr-1"></i>Collapse All</button>' +
+                    '</div>';
                 reqHtml += '<div class="table-responsive"><table class="table table-sm table-bordered mb-0" style="font-size:11.5px;">' +
                     '<thead class="bg-light"><tr>' +
-                        '<th scope="col">Deskripsi</th>' +
+                        '<th scope="col">Chart of Account</th>' +
                         '<th scope="col" class="text-right text-nowrap">Qty</th><th scope="col" class="text-right text-nowrap">Total</th>' +
                         (showAksi ? '<th scope="col" class="text-center text-nowrap" style="width:1%;">Aksi</th>' : '') +
-                    '</tr></thead><tbody>';
+                    '</tr></thead><tbody id="todoReqBody">';
                 var reqTotal = 0, reqQty = 0;
-                d.details.forEach(function (item) {
-                    var isTakeout = !!item.is_takeout;
-                    // Item yang di-takeout tidak ikut dibawa proses, jadi tidak
-                    // ikut dijumlah — kalau ikut, grand total di sini berbeda
-                    // dengan nilai CR yang di-approve.
-                    if (!isTakeout) {
-                        reqTotal += parseFloat(item.total) || 0;
-                        reqQty   += parseFloat(item.qty) || 0;
-                    }
-                    var strike = isTakeout ? 'text-decoration:line-through;color:var(--text-faint);' : '';
-                    var badge = isTakeout
-                        ? ' <span class="badge badge-warning" style="font-size:8px;" title="' + escAttr(item.takeout_notes || '') + '">Takeout &middot; ' + esc(item.takeout_stage_label || '-') + '</span>'
-                        : '';
+                reqGroups.forEach(function (grp, gi) {
+                    var gClass = 'td-req-grp-' + gi;
+                    var gTotal = 0, gQty = 0;
+                    grp.items.forEach(function (it) {
+                        if (it.is_takeout) return;
+                        gTotal += parseFloat(it.total) || 0;
+                        gQty   += parseFloat(it.qty) || 0;
+                    });
+                    reqTotal += gTotal; reqQty += gQty;
 
-                    var atts = item.attachments || [];
-                    window.__crDetailAtt[item.id] = atts;
-                    var attBadge = atts.length
-                        ? ' <span class="badge badge-light border text-muted" style="font-size:8px;"><i class="fas fa-paperclip mr-1"></i>' + atts.length + '</span>'
-                        : '';
-
-                    var tdBtnStyle = 'white-space:nowrap;padding:2px 8px;font-size:11px;line-height:1.4;';
-                    var actInner = '';
-                    if (atts.length) {
-                        actInner += '<button type="button" class="btn btn-info btn-view-detail-att mr-1" style="' + tdBtnStyle + '" data-detail="' + item.id + '" title="Lihat lampiran"><i class="fas fa-eye"></i> View</button>';
-                    }
-                    if (canModerate) {
-                        actInner += isTakeout
-                            ? '<button type="button" class="btn btn-outline-secondary td-restore-detail" style="' + tdBtnStyle + '" data-cr="' + d.id + '" data-detail="' + item.id + '" title="Kembalikan"><i class="fas fa-undo"></i> Restore</button>'
-                            : '<button type="button" class="btn btn-outline-danger td-takeout-detail" style="' + tdBtnStyle + '" data-cr="' + d.id + '" data-detail="' + item.id + '" data-desc="' + escAttr(item.description || '') + '" title="Takeout"><i class="fas fa-cut"></i> Takeout</button>';
-                    }
-                    var act = showAksi ? '<td class="text-center text-nowrap">' + actInner + '</td>' : '';
-
-                    reqHtml += '<tr>' +
-                        '<td style="' + strike + '">' + esc(item.description || '-') + badge + attBadge +
-                            (item.notes ? '<br><small class="text-muted" style="text-decoration:none;">' + esc(item.notes) + '</small>' : '') +
-                            (isTakeout && item.takeout_notes ? '<br><small class="text-muted" style="text-decoration:none;">Alasan: ' + esc(item.takeout_notes) + '</small>' : '') +
+                    reqHtml += '<tr class="td-grp-row" data-target="' + gClass + '">' +
+                        '<td style="font-weight:700;">' +
+                            '<i class="fas fa-chevron-right mr-2 td-grp-caret"></i>' +
+                            esc(grp.account) + ' <span class="badge badge-secondary ml-1" style="font-size:9px;">' + grp.items.length + '</span>' +
                         '</td>' +
-                        '<td class="text-right text-nowrap" style="' + strike + '">' + esc(item.qty) + '</td>' +
-                        '<td class="text-right text-nowrap" style="' + strike + '"><strong>' + esc(item.total_formatted) + '</strong></td>' +
-                        act +
+                        '<td class="text-right text-nowrap" style="font-weight:700;">' + esc(gQty.toLocaleString('id-ID')) + '</td>' +
+                        '<td class="text-right text-nowrap" style="font-weight:700;">' + esc(Math.round(gTotal).toLocaleString('id-ID')) + '</td>' +
+                        (showAksi ? '<td></td>' : '') +
                     '</tr>';
+
+                    grp.items.forEach(function (item) {
+                        var isTakeout = !!item.is_takeout;
+                        var strike = isTakeout ? 'text-decoration:line-through;color:var(--text-faint);' : '';
+                        var badge = isTakeout
+                            ? ' <span class="badge badge-warning" style="font-size:8px;" title="' + escAttr(item.takeout_notes || '') + '">Takeout &middot; ' + esc(item.takeout_stage_label || '-') + '</span>'
+                            : '';
+
+                        var atts = item.attachments || [];
+                        window.__crDetailAtt[item.id] = atts;
+                        var attBadge = atts.length
+                            ? ' <span class="badge badge-light border text-muted" style="font-size:8px;"><i class="fas fa-paperclip mr-1"></i>' + atts.length + '</span>'
+                            : '';
+
+                        var tdBtnStyle = 'white-space:nowrap;padding:2px 8px;font-size:11px;line-height:1.4;';
+                        var actInner = '';
+                        // Dua tombol sekaligus bikin kolom Aksi melebar dan menekan
+                        // kolom deskripsi - kalau keduanya muncul, pakai ikon saja.
+                        var iconOnly = atts.length && canModerate;
+                        if (atts.length) {
+                            actInner += '<button type="button" class="btn btn-info btn-view-detail-att mr-1" style="' + tdBtnStyle + '" data-detail="' + item.id + '" title="Lihat lampiran"><i class="fas fa-eye"></i>' + (iconOnly ? '' : ' View') + '</button>';
+                        }
+                        if (canModerate) {
+                            actInner += isTakeout
+                                ? '<button type="button" class="btn btn-outline-secondary td-restore-detail" style="' + tdBtnStyle + '" data-cr="' + d.id + '" data-detail="' + item.id + '" title="Kembalikan"><i class="fas fa-undo"></i>' + (iconOnly ? '' : ' Restore') + '</button>'
+                                : '<button type="button" class="btn btn-outline-danger td-takeout-detail" style="' + tdBtnStyle + '" data-cr="' + d.id + '" data-detail="' + item.id + '" data-desc="' + escAttr(item.description || '') + '" title="Takeout"><i class="fas fa-cut"></i>' + (iconOnly ? '' : ' Takeout') + '</button>';
+                        }
+                        var act = showAksi ? '<td class="text-center text-nowrap">' + actInner + '</td>' : '';
+
+                        reqHtml += '<tr class="' + gClass + '" style="display:none;">' +
+                            '<td class="td-grp-indent" style="' + strike + '">' + esc(stripAccount(item.description, grp.account)) + badge + attBadge +
+                                (item.notes ? '<br><small class="text-muted" style="text-decoration:none;">' + esc(item.notes) + '</small>' : '') +
+                                (isTakeout && item.takeout_notes ? '<br><small class="text-muted" style="text-decoration:none;">Alasan: ' + esc(item.takeout_notes) + '</small>' : '') +
+                            '</td>' +
+                            '<td class="text-right text-nowrap" style="' + strike + '">' + esc(item.qty) + '</td>' +
+                            '<td class="text-right text-nowrap" style="' + strike + '"><strong>' + esc(item.total_formatted) + '</strong></td>' +
+                            act +
+                        '</tr>';
+                    });
                 });
                 reqHtml += '</tbody>' +
                     '<tfoot><tr style="background:var(--surface-2);">' +
@@ -3397,30 +3430,70 @@ $(function () {
             $('#todoTabRealisasiLi').toggle(!!hasRealisasi);
             if (hasRealisasi) {
                 var realHtml = '';
+                // Lampiran per item tidak lagi digelar inline di kolom Deskripsi -
+                // dipindah ke kolom Aksi (tombol View) seperti tab Request.
+                window.__crRealAtt = {};
+                var anyRealAtt = (d.realizations || []).some(function (x) { return x.attachments && x.attachments.length; });
                 if (d.realizations && d.realizations.length) {
+                    // Pengelompokan per Chart of Account, sama dengan tab Request.
+                    var realGroups = groupByAccount(d.realizations);
+                    var realIdx = 0;
+                    realHtml += '<div class="d-flex justify-content-end mb-2">' +
+                        '<button type="button" class="btn btn-xs btn-outline-secondary td-grp-expand" data-body="todoRealBody"><i class="fas fa-angle-double-down mr-1"></i>Expand All</button>&nbsp;' +
+                        '<button type="button" class="btn btn-xs btn-outline-secondary td-grp-collapse" data-body="todoRealBody"><i class="fas fa-angle-double-up mr-1"></i>Collapse All</button>' +
+                        '</div>';
                     realHtml += '<div class="table-responsive"><table class="table table-sm table-bordered mb-0" style="font-size:11.5px;">' +
                         '<thead class="bg-light"><tr>' +
-                            '<th scope="col">Deskripsi</th>' +
+                            '<th scope="col">Chart of Account</th>' +
                             '<th scope="col" class="text-right text-nowrap">Nilai CR</th><th scope="col" class="text-right text-nowrap">Settlement</th>' +
-                        '</tr></thead><tbody>';
-                    d.realizations.forEach(function (r) {
-                        var itemAtts = r.attachments || [];
-                        var attBadge = itemAtts.length
-                            ? ' <span class="badge badge-light border text-muted" style="font-size:8px;"><i class="fas fa-paperclip mr-1"></i>' + itemAtts.length + '</span>'
-                            : '';
-                        realHtml += '<tr>' +
-                            '<td>' + esc(r.cr_item || '-') + attBadge +
-                                (r.notes ? '<br><small class="text-muted">' + esc(r.notes) + '</small>' : '') +
-                                (itemAtts.length ? '<div class="mt-1">' + renderAttGrid(itemAtts) + '</div>' : '') +
+                            (anyRealAtt ? '<th scope="col" class="text-center text-nowrap" style="width:1%;">Aksi</th>' : '') +
+                        '</tr></thead><tbody id="todoRealBody">';
+                    realGroups.forEach(function (grp, gi) {
+                        var gClass = 'td-real-grp-' + gi;
+                        var gCr = 0, gSettle = 0;
+                        grp.items.forEach(function (r) {
+                            gCr     += parseFloat(r.total_cr) || 0;
+                            gSettle += parseFloat(r.actual) || 0;
+                        });
+
+                        realHtml += '<tr class="td-grp-row" data-target="' + gClass + '">' +
+                            '<td style="font-weight:700;">' +
+                                '<i class="fas fa-chevron-right mr-2 td-grp-caret"></i>' +
+                                esc(grp.account) + ' <span class="badge badge-secondary ml-1" style="font-size:9px;">' + grp.items.length + '</span>' +
                             '</td>' +
-                            '<td class="text-right text-nowrap">' + esc(r.total_cr_formatted) + '</td>' +
-                            '<td class="text-right text-nowrap"><strong>' + esc(r.actual_formatted) + '</strong></td>' +
+                            '<td class="text-right text-nowrap" style="font-weight:700;">' + esc(Math.round(gCr).toLocaleString('id-ID')) + '</td>' +
+                            '<td class="text-right text-nowrap" style="font-weight:700;">' + esc(Math.round(gSettle).toLocaleString('id-ID')) + '</td>' +
+                            (anyRealAtt ? '<td></td>' : '') +
                         '</tr>';
+
+                        grp.items.forEach(function (r) {
+                            var ri = realIdx++;
+                            var itemAtts = r.attachments || [];
+                            window.__crRealAtt[ri] = itemAtts;
+                            var attBadge = itemAtts.length
+                                ? ' <span class="badge badge-light border text-muted" style="font-size:8px;"><i class="fas fa-paperclip mr-1"></i>' + itemAtts.length + '</span>'
+                                : '';
+                            realHtml += '<tr class="' + gClass + '" style="display:none;">' +
+                                '<td class="td-grp-indent">' + esc(stripAccount(r.cr_item, grp.account)) + attBadge +
+                                    (r.notes ? '<br><small class="text-muted">' + esc(r.notes) + '</small>' : '') +
+                                    // Alasan perubahan Description Request -> Settle (kolom Note di form Settlement).
+                                    (r.change_note ? '<br><small class="text-muted" style="font-style:italic;"><i class="fas fa-sticky-note mr-1"></i>' + esc(r.change_note) + '</small>' : '') +
+                                '</td>' +
+                                '<td class="text-right text-nowrap">' + esc(r.total_cr_formatted) + '</td>' +
+                                '<td class="text-right text-nowrap"><strong>' + esc(r.actual_formatted) + '</strong></td>' +
+                                (anyRealAtt
+                                    ? '<td class="text-center text-nowrap">' + (itemAtts.length
+                                        ? '<button type="button" class="btn btn-info btn-view-real-att" style="white-space:nowrap;padding:2px 8px;font-size:11px;line-height:1.4;" data-row="' + ri + '" title="Lihat lampiran (' + itemAtts.length + ')"><i class="fas fa-eye"></i></button>'
+                                        : '<span class="text-muted">-</span>') + '</td>'
+                                    : '') +
+                            '</tr>';
+                        });
                     });
                     realHtml += '</tbody><tfoot><tr style="background:var(--surface-2);">' +
                         '<th class="text-right">Total</th>' +
                         '<th class="text-right">' + esc(d.amount_formatted) + '</th>' +
                         '<th class="text-right">' + esc(d.total_realization_formatted) + '</th>' +
+                        (anyRealAtt ? '<th></th>' : '') +
                         '</tr></tfoot></table></div>';
                 } else {
                     realHtml += '<p class="text-muted py-2 mb-0" style="font-size:12px;">Belum ada rincian realisasi.</p>';
@@ -3477,6 +3550,30 @@ $(function () {
         }).fail(function () {
             $('#todoPaneInfo, #todoPaneRequest, #todoPaneLog').html('<div class="text-center text-danger py-5">Gagal memuat detail CR.</div>');
         });
+    }
+
+    /* Kelompokkan baris (detail CR / realisasi) per Chart of Account, urutan
+       kemunculan pertama dipertahankan supaya sama dengan urutan input. */
+    function groupByAccount(rows) {
+        var order = [], map = {};
+        (rows || []).forEach(function (r) {
+            var acc = r.account || '-';
+            if (!map[acc]) { map[acc] = []; order.push(acc); }
+            map[acc].push(r);
+        });
+        return order.map(function (acc) { return { account: acc, items: map[acc] }; });
+    }
+
+    /* Nama akun sudah jadi judul grup - buang prefiksnya dari deskripsi baris
+       supaya tidak terbaca dua kali ("Akomodasi - Akomodasi tim lapangan"). */
+    function stripAccount(desc, acc) {
+        desc = (desc == null ? '' : String(desc)).trim();
+        acc  = (acc == null ? '' : String(acc)).trim();
+        if (acc && desc.toLowerCase().indexOf(acc.toLowerCase()) === 0) {
+            var rest = desc.slice(acc.length).replace(/^\s*[-\u2013\u2014]\s*/, '').trim();
+            if (rest) return rest;
+        }
+        return desc || '-';
     }
 
     function esc(s) { return $(document.createElement('span')).text(s == null ? '' : s).html(); }
@@ -3748,6 +3845,34 @@ $(function () {
             } else if (atts.length) {
                 window.open('/storage/' + atts[0].path, '_blank', 'noopener');
             }
+        });
+
+        // Tombol View lampiran per item (kolom Aksi tab Settlement)
+        $(document).on('click', '.btn-view-real-att', function () {
+            var atts = (window.__crRealAtt && window.__crRealAtt[$(this).data('row')]) || [];
+            var imgs = atts.filter(function (a) { return a.is_image; })
+                           .map(function (a) { return { full: '/storage/' + a.path, name: a.original_name }; });
+            if (imgs.length) {
+                openViewer(imgs, 0);
+            } else if (atts.length) {
+                window.open('/storage/' + atts[0].path, '_blank', 'noopener');
+            }
+        });
+
+        /* Buka/tutup grup Chart of Account di tab Request & Settlement. */
+        $(document).on('click', '.td-grp-row', function () {
+            var $sub = $(this).closest('tbody').find('.' + $(this).data('target'));
+            var expanding = $sub.first().is(':hidden');
+            $sub.toggle(expanding);
+            $(this).find('.td-grp-caret').toggleClass('rotated', expanding);
+        });
+        $(document).on('click', '.td-grp-expand, .td-grp-collapse', function () {
+            var expand = $(this).hasClass('td-grp-expand');
+            var $body  = $('#' + $(this).data('body'));
+            $body.find('.td-grp-row').each(function () {
+                $body.find('.' + $(this).data('target')).toggle(expand);
+                $(this).find('.td-grp-caret').toggleClass('rotated', expand);
+            });
         });
 
         $('#imgViewerClose').on('click', closeViewer);

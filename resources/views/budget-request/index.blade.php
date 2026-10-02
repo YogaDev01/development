@@ -261,13 +261,18 @@
                                     </div>
                                 </div>
                                 <div class="tab-pane fade" id="crPaneDetails">
+                                    {{-- Rincian dikelompokkan per Chart of Account, pola yang sama
+                                         dengan tab Budget di modal Budgeting. --}}
+                                    <div class="d-flex justify-content-end mb-2">
+                                        <button type="button" class="btn btn-xs btn-outline-secondary" id="btnExpandAllCrDetail"><i class="fas fa-angle-double-down mr-1"></i>Expand All</button>&nbsp;
+                                        <button type="button" class="btn btn-xs btn-outline-secondary" id="btnCollapseAllCrDetail"><i class="fas fa-angle-double-up mr-1"></i>Collapse All</button>
+                                    </div>
                                     <div class="table-responsive">
                                         <table class="table table-bordered mb-0" style="font-size:12px;">
                                             <thead style="background:var(--surface-2);">
                                                 <tr>
                                                     <th scope="col" style="color:var(--text-faint);font-size:11px;width:4%;">No</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;">Description</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;">Notes</th>
+                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;">Chart of Account / Description</th>
                                                     <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:13%;">Price</th>
                                                     <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:center;width:6%;">Qty</th>
                                                     <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:14%;">Total</th>
@@ -275,7 +280,7 @@
                                                 </tr>
                                             </thead>
                                             <tbody id="crDetailBody"></tbody>
-                                            <tfoot><tr style="background:var(--surface-2);"><th colspan="5" class="text-right">Total (item aktif)</th><th class="text-right" id="crDetailTotal" style="color:var(--info);"></th><th class="crDetailActionCell d-none"></th></tr></tfoot>
+                                            <tfoot><tr style="background:var(--surface-2);"><th colspan="4" class="text-right">Total (item aktif)</th><th class="text-right" id="crDetailTotal" style="color:var(--info);"></th><th class="crDetailActionCell d-none"></th></tr></tfoot>
                                         </table>
                                     </div>
                                     <div class="mt-3">
@@ -290,20 +295,26 @@
                                         <i class="fas fa-receipt d-block mb-2"></i> No settlement data yet.
                                     </div>
                                     <div id="crRealizationWrapper">
+                                        {{-- Dikelompokkan per Chart of Account, sama dengan tab Request & Budgeting. --}}
+                                        <div class="d-flex justify-content-end mb-2">
+                                            <button type="button" class="btn btn-xs btn-outline-secondary" id="btnExpandAllCrReal"><i class="fas fa-angle-double-down mr-1"></i>Expand All</button>&nbsp;
+                                            <button type="button" class="btn btn-xs btn-outline-secondary" id="btnCollapseAllCrReal"><i class="fas fa-angle-double-up mr-1"></i>Collapse All</button>
+                                        </div>
                                         <div class="table-responsive">
                                             <table class="table table-bordered mb-0" style="font-size:12px;">
                                                 <thead style="background:var(--surface-2);">
                                                     <tr>
                                                         <th scope="col" style="color:var(--text-faint);font-size:11px;width:4%;">No</th>
-                                                        <th scope="col" style="color:var(--text-faint);font-size:11px;">CR Detail Item</th>
-                                                        <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:16%;">Total CR</th>
-                                                        <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:16%;">Actual Used</th>
-                                                        <th scope="col" style="color:var(--text-faint);font-size:11px;width:16%;">Notes</th>
-                                                        <th scope="col" style="color:var(--text-faint);font-size:11px;width:16%;">Lampiran Item</th>
+                                                        <th scope="col" style="color:var(--text-faint);font-size:11px;">Chart of Account / Des. Request</th>
+                                                        <th scope="col" style="color:var(--text-faint);font-size:11px;">Des. Settle</th>
+                                                        <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:14%;">Request</th>
+                                                        <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:14%;">Settlement</th>
+                                                        <th scope="col" style="color:var(--text-faint);font-size:11px;width:18%;">Note</th>
+                                                        <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:center;width:1%;">Action</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="crRealizationBody"></tbody>
-                                                <tfoot><tr style="background:var(--surface-2);"><th colspan="3" class="text-right">Total Settlement</th><th class="text-right" id="crRealizationTotal" style="color:var(--success);"></th><th></th><th></th></tr></tfoot>
+                                                <tfoot><tr style="background:var(--surface-2);"><th colspan="4" class="text-right">Total Settlement</th><th class="text-right" id="crRealizationTotal" style="color:var(--success);"></th><th colspan="2"></th></tr></tfoot>
                                             </table>
                                         </div>
                                         <div class="mt-3">
@@ -452,6 +463,13 @@
     <div id="imgViewerStage">
         <button aria-label="Previous" type="button" class="imgViewerNav" id="imgViewerPrev" title="Previous"><i class="fas fa-chevron-left"></i></button>
         <img id="imgViewerImg" src="" alt="">
+        {{-- File non-gambar (PDF/dokumen) tetap ikut urutan carousel, tapi
+             ditampilkan sebagai kartu logo + nama file yang bisa diklik. --}}
+        <a id="imgViewerFile" href="#" target="_blank" rel="noopener" style="display:none;">
+            <i class="fas fa-file-pdf" id="imgViewerFileIcon"></i>
+            <span id="imgViewerFileName"></span>
+            <small>Klik untuk membuka di tab baru</small>
+        </a>
         <button aria-label="Next" type="button" class="imgViewerNav" id="imgViewerNext" title="Next"><i class="fas fa-chevron-right"></i></button>
     </div>
     <div id="imgViewerCounter"></div>
@@ -605,6 +623,14 @@
 
 /* TAB REQUEST & REALIZATION — thumbnail grid lampiran */
 .cr-att-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:12px; margin-top:8px; }
+
+/* Grup Chart of Account pada tab Request — mengikuti tampilan grup di modal Budgeting. */
+#crDetailBody tr.cr-group-row, #crRealizationBody tr.cr-group-row,
+#crDetailBody tr.cr-group-row td, #crRealizationBody tr.cr-group-row td { background:var(--info-bg) !important; }
+#crDetailBody tr.cr-group-row:hover, #crRealizationBody tr.cr-group-row:hover,
+#crDetailBody tr.cr-group-row:hover td, #crRealizationBody tr.cr-group-row:hover td { background:var(--surface-3) !important; }
+#crDetailBody .cr-caret.rotated, #crRealizationBody .cr-caret.rotated { transform:rotate(90deg); }
+#crDetailBody td.cr-indent, #crRealizationBody td.cr-indent { padding-left:32px !important; }
 .cr-att-card { border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; background:var(--surface); }
 .cr-att-thumb { width:100%; height:120px; object-fit:cover; display:block; cursor:pointer; background:var(--surface-2); }
 .cr-att-icon { width:100%; height:120px; display:flex; align-items:center; justify-content:center; background:var(--surface-2); color:var(--text-faint); font-size:30px; }
@@ -703,6 +729,15 @@
     max-width:90vw; max-height:82vh; object-fit:contain; cursor:zoom-in;
     transition:transform .15s ease; transform-origin:center center; user-select:none; -webkit-user-drag:none;
 }
+#imgViewerFile {
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+    background:#fff; color:var(--text); border-radius:var(--radius-lg);
+    padding:40px 48px; max-width:80vw; text-decoration:none;
+}
+#imgViewerFile:hover { background:var(--surface-2); }
+#imgViewerFile i { font-size:72px; color:var(--danger); }
+#imgViewerFile span { font-size:14px; font-weight:600; word-break:break-all; text-align:center; }
+#imgViewerFile small { font-size:11px; color:var(--text-faint); }
 #imgViewerImg.zoomed { cursor:grab; }
 #imgViewerImg.dragging { cursor:grabbing; transition:none; }
 #imgViewerClose {
@@ -1374,7 +1409,20 @@ $(function () {
             var item = images[idx];
             if (!item) return;
             resetZoom();
-            stageImg.src = item.full;
+
+            /* Lampiran non-gambar tidak bisa digambar di <img>; slide-nya diganti
+               kartu logo + nama file, posisinya tetap sesuai urutan unggahan. */
+            if (item.is_image === false) {
+                stageImg.style.display = 'none';
+                $('#imgViewerFile').css('display', 'flex').attr('href', item.full);
+                $('#imgViewerFileIcon').attr('class', 'fas ' + (item.is_pdf ? 'fa-file-pdf' : 'fa-file-alt'));
+                $('#imgViewerFileName').text(item.name || '');
+            } else {
+                $('#imgViewerFile').hide();
+                stageImg.style.display = '';
+                stageImg.src = item.full;
+            }
+
             $('#imgViewerName').text(item.name || '');
             counter.textContent = (idx + 1) + ' / ' + images.length;
             /* Panah hanya ada kalau memang ada tujuannya: tidak tampil untuk
@@ -1433,18 +1481,68 @@ $(function () {
         // Dipakai tombol "View" pada kolom Aksi tab Request (lampiran per item).
         window.__crOpenImgViewer = openViewer;
 
-        // Tombol View lampiran per item — buka carousel untuk gambar; file non-gambar
-        // (pdf/doc) dibuka di tab baru sebagai fallback.
+        /* Membuka lampiran satu baris. Gambar masuk carousel; PDF dan dokumen lain
+           TIDAK bisa ditampilkan di carousel, jadi begitu ada file non-gambar
+           seluruh lampiran dirinci dalam satu daftar: gambar membuka carousel,
+           PDF/dokumen dibuka di tab baru. Sebelumnya file non-gambar ikut hilang
+           kalau baris itu juga punya gambar. */
+        function bukaLampiran(atts) {
+            atts = atts || [];
+            if (!atts.length) return;
+
+            // Semua lampiran masuk satu carousel dengan urutan seperti saat
+            // diunggah; yang bukan gambar dirender sebagai kartu logo + nama file.
+            openViewer(atts.map(function (a) {
+                return {
+                    full:     '/storage/' + a.path,
+                    name:     a.original_name,
+                    is_image: !!a.is_image,
+                    is_pdf:   !!a.is_pdf
+                };
+            }), 0);
+        }
+
+        // Tombol View lampiran per item pada tab Request.
         $(document).on('click', '.btn-view-detail-att', function () {
-            var id   = $(this).data('detail');
-            var atts = (window.__crDetailAtt && window.__crDetailAtt[id]) || [];
-            var imgs = atts.filter(function (a) { return a.is_image; })
-                           .map(function (a) { return { full: '/storage/' + a.path, name: a.original_name }; });
-            if (imgs.length) {
-                openViewer(imgs, 0);
-            } else if (atts.length) {
-                window.open('/storage/' + atts[0].path, '_blank', 'noopener');
-            }
+            var id = $(this).data('detail');
+            bukaLampiran((window.__crDetailAtt && window.__crDetailAtt[id]) || []);
+        });
+
+        /* Buka/tutup grup Chart of Account pada tab Request. */
+        $(document).on('click', '#crDetailBody .cr-group-row', function () {
+            var $sub = $('#crDetailBody .' + $(this).data('target'));
+            var buka = $sub.first().is(':hidden');
+            $sub.toggle(buka);
+            $(this).find('.cr-caret').toggleClass('rotated', buka);
+        });
+        $(document).on('click', '#btnExpandAllCrDetail', function () {
+            $('#crDetailBody .cr-group-item').show();
+            $('#crDetailBody .cr-caret').addClass('rotated');
+        });
+        $(document).on('click', '#btnCollapseAllCrDetail', function () {
+            $('#crDetailBody .cr-group-item').hide();
+            $('#crDetailBody .cr-caret').removeClass('rotated');
+        });
+
+        /* Grup yang sama untuk tab Settlement. */
+        $(document).on('click', '#crRealizationBody .cr-group-row', function () {
+            var $sub = $('#crRealizationBody .' + $(this).data('target'));
+            var buka = $sub.first().is(':hidden');
+            $sub.toggle(buka);
+            $(this).find('.cr-caret').toggleClass('rotated', buka);
+        });
+        $(document).on('click', '#btnExpandAllCrReal', function () {
+            $('#crRealizationBody .cr-group-item').show();
+            $('#crRealizationBody .cr-caret').addClass('rotated');
+        });
+        $(document).on('click', '#btnCollapseAllCrReal', function () {
+            $('#crRealizationBody .cr-group-item').hide();
+            $('#crRealizationBody .cr-caret').removeClass('rotated');
+        });
+
+        // Tombol View lampiran baris Settlement — pola sama dengan tab Request.
+        $(document).on('click', '.btn-view-real-att', function () {
+            bukaLampiran((window.__crRealAtt && window.__crRealAtt[$(this).data('row')]) || []);
         });
 
         $('#imgViewerClose').on('click', closeViewer);
@@ -1626,15 +1724,44 @@ $(function () {
             var anyAtt = d.details.some(function (x) { return x.attachments && x.attachments.length; });
             var showActionCol = canModerate || anyAtt;
             $('#crDetailActionTh, .crDetailActionCell').toggleClass('d-none', !showActionCol);
-            var dHtml = '', grand = 0;
-            d.details.forEach(function(det, i) {
+            /* Rincian dikelompokkan per Chart of Account (pola tab Budget di
+               Budgeting): satu baris grup berisi nama akun + totalnya, baris
+               itemnya disembunyikan sampai grupnya dibuka. Urutan grup mengikuti
+               kemunculan pertama akun pada data, jadi tidak mengacak urutan asli. */
+            var dHtml = '', grand = 0, nomor = 0, grupIdx = 0;
+            var urutanAkun = [], perAkun = {};
+            d.details.forEach(function (det) {
+                var acc = det.account || '-';
+                if (!perAkun[acc]) { perAkun[acc] = []; urutanAkun.push(acc); }
+                perAkun[acc].push(det);
+            });
+
+            urutanAkun.forEach(function (acc) {
+              var items = perAkun[acc];
+              var grupClass = 'cr-dgrp-' + (grupIdx++);
+              var grupTotal = items.reduce(function (t, x) { return t + (x.is_takeout ? 0 : x.total); }, 0);
+
+              dHtml += '<tr class="cr-group-row" data-target="' + grupClass + '" style="cursor:pointer;">' +
+                  '<td colspan="2" style="font-weight:700;">' +
+                      '<i class="fas fa-chevron-right mr-2 cr-caret" style="font-size:10px;transition:transform .15s;display:inline-block;"></i>' +
+                      esc(acc) + ' <span class="badge badge-secondary ml-1" style="font-size:9px;">' + items.length + '</span>' +
+                  '</td>' +
+                  '<td></td><td></td>' +
+                  '<td class="text-right" style="font-weight:700;">' + grupTotal.toLocaleString('id-ID') + '</td>' +
+                  (showActionCol ? '<td></td>' : '') +
+              '</tr>';
+
+              items.forEach(function(det) {
+                var i = nomor++;
                 var isNob    = !!det.is_nob; // kolom, bukan tebakan dari teks catatan
                 var isTakeout = !!det.is_takeout;
                 if (!isTakeout) grand += det.total;
 
+                // Hanya isi CSS-nya (tanpa atribut), karena baris item juga perlu
+                // display:none saat grupnya tertutup.
                 var rowStyle = isTakeout
-                    ? ' style="color:var(--text-faint);background:var(--surface-2);"'
-                    : (isNob ? ' style="color:var(--danger);"' : '');
+                    ? 'color:var(--text-faint);background:var(--surface-2);'
+                    : (isNob ? 'color:var(--danger);' : '');
                 var strike = isTakeout ? 'text-decoration:line-through;' : '';
 
                 var takeoutBadge = isTakeout
@@ -1659,19 +1786,19 @@ $(function () {
                 }
                 var actionCell = showActionCol ? '<td class="text-center text-nowrap">' + actionInner + '</td>' : '';
 
-                dHtml += '<tr' + rowStyle + '>' +
+                dHtml += '<tr class="' + grupClass + ' cr-group-item" style="display:none;' + rowStyle + '">' +
                     '<td class="text-center" style="' + strike + '">' + (i+1) + '</td>' +
-                    '<td style="' + strike + '">' + esc(det.description || '-') + takeoutBadge + attBadge +
+                    '<td class="cr-indent" style="' + strike + '">' + esc(det.item_label || det.description || '-') + takeoutBadge + attBadge +
                         (isTakeout && det.takeout_notes ? '<br><small class="text-muted" style="text-decoration:none;">Alasan: ' + esc(det.takeout_notes) + '</small>' : '') +
                     '</td>' +
-                    '<td style="' + strike + '">' + esc(det.notes || '-') + '</td>' +
                     '<td class="text-right" style="' + strike + '">' + det.amount_formatted + '</td>' +
                     '<td class="text-center" style="' + strike + '">' + det.qty + '</td>' +
                     '<td class="text-right" style="' + strike + '"><strong>' + det.total_formatted + '</strong></td>' +
                     actionCell +
                 '</tr>';
+              });
             });
-            $('#crDetailBody').html(dHtml || '<tr><td colspan="7" class="text-center text-muted py-3">No item detail yet.</td></tr>');
+            $('#crDetailBody').html(dHtml || '<tr><td colspan="6" class="text-center text-muted py-3">No item detail yet.</td></tr>');
             $('#crDetailTotal').text(grand.toLocaleString('id-ID'));
 
             // Helper: render grid thumbnail untuk attachments (dipakai tab Request & Realization)
@@ -1696,16 +1823,74 @@ $(function () {
                 return html;
             }
 
+            /* Tab Settlement hanya berlaku untuk Cash Advance — jenis pengajuan
+               lain (Cost Payment) tidak punya tahap settlement sama sekali, jadi
+               tabnya disembunyikan, bukan ditampilkan kosong. */
+            var $tabSettle = $('#crDetailTabs a[href="#crPaneRealization"]').closest('li');
+            if (d.is_cash_advance) {
+                $tabSettle.show();
+            } else {
+                $tabSettle.hide();
+                // Kalau tab ini sedang aktif dari CR sebelumnya, balik ke Info.
+                if ($('#crPaneRealization').hasClass('active')) {
+                    $('#crDetailTabs a[href="#crPaneInfo"]').tab('show');
+                }
+            }
+
             // Realization tab
             setTabCount('#crRealizationCount', d.realizations.length);
-            if (d.realizations.length) {
+            if (d.is_cash_advance && d.realizations.length) {
                 $('#crNoRealization').hide();
                 $('#crRealizationWrapper').show();
-                var rHtml = '', rGrand = 0;
-                d.realizations.forEach(function(r, i) {
+                var rHtml = '', rGrand = 0, rNomor = 0, rGrupIdx = 0;
+                // Lampiran per baris tidak lagi digelar sebagai grid thumbnail —
+                // cukup satu ikon "view" di kolom Action yang membuka viewer.
+                window.__crRealAtt = {};
+
+                // Dikelompokkan per Chart of Account, pola yang sama dengan tab Request.
+                var rUrutan = [], rPerAkun = {};
+                d.realizations.forEach(function (r) {
+                    var acc = r.account || '-';
+                    if (!rPerAkun[acc]) { rPerAkun[acc] = []; rUrutan.push(acc); }
+                    rPerAkun[acc].push(r);
+                });
+
+                rUrutan.forEach(function (acc) {
+                  var items = rPerAkun[acc];
+                  var grupClass = 'cr-rgrp-' + (rGrupIdx++);
+                  var grupTotal = items.reduce(function (t, x) { return t + x.total; }, 0);
+
+                  rHtml += '<tr class="cr-group-row" data-target="' + grupClass + '" style="cursor:pointer;">'
+                      + '<td colspan="2" style="font-weight:700;">'
+                          + '<i class="fas fa-chevron-right mr-2 cr-caret" style="font-size:10px;transition:transform .15s;display:inline-block;"></i>'
+                          + esc(acc) + ' <span class="badge badge-secondary ml-1" style="font-size:9px;">' + items.length + '</span>'
+                      + '</td>'
+                      + '<td></td><td></td>'
+                      + '<td class="text-right" style="font-weight:700;">' + grupTotal.toLocaleString('id-ID') + '</td>'
+                      + '<td></td><td></td>'
+                      + '</tr>';
+
+                  items.forEach(function (r) {
+                    var i = rNomor++;
                     rGrand += r.total;
                     var itemAtts = r.attachments || [];
-                    rHtml += '<tr><td class="text-center">' + (i+1) + '</td><td>' + r.cr_item + '</td><td class="text-right">' + r.total_cr_formatted + '</td><td class="text-right"><strong>' + r.actual_formatted + '</strong></td><td>' + (r.notes || '-') + '</td><td>' + (itemAtts.length ? '<div class="cr-att-grid">' + renderAttGrid(itemAtts) + '</div>' : '<span class="text-muted" style="font-size:11px;">-</span>') + '</td></tr>';
+                    window.__crRealAtt[i] = itemAtts;
+                    var aksi = itemAtts.length
+                        ? '<button type="button" class="btn btn-info btn-view-real-att" '
+                          + 'style="white-space:nowrap;padding:2px 8px;font-size:11px;line-height:1.4;" '
+                          + 'data-row="' + i + '" title="Lihat lampiran item (' + itemAtts.length + ')">'
+                          + '<i class="fas fa-eye"></i></button>'
+                        : '<span class="text-muted" style="font-size:11px;">-</span>';
+                    rHtml += '<tr class="' + grupClass + ' cr-group-item" style="display:none;">'
+                        + '<td class="text-center">' + (i+1) + '</td>'
+                        + '<td class="cr-indent">' + esc(r.des_request || r.cr_item || '-') + '</td>'
+                        + '<td>' + esc(r.notes || '-') + '</td>'
+                        + '<td class="text-right">' + r.total_cr_formatted + '</td>'
+                        + '<td class="text-right"><strong>' + r.actual_formatted + '</strong></td>'
+                        + '<td>' + esc(r.change_note || '-') + '</td>'
+                        + '<td class="text-center">' + aksi + '</td>'
+                        + '</tr>';
+                  });
                 });
                 $('#crRealizationBody').html(rHtml);
                 $('#crRealizationTotal').text(rGrand.toLocaleString('id-ID'));

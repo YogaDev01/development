@@ -26,10 +26,65 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '2.5.4',
+    'current' => '2.5.6',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '2.5.6',
+            'date'    => '2026-10-02',
+            'title'   => 'Catatan Perubahan Settlement, Urutan Nominal & Rincian per Chart of Account',
+            'summary' => 'Baris Settlement yang melebihi nilai pengajuan kini wajib disertai catatan '
+                       . 'perubahan, kolom nominal diurutkan sebagai angka di seluruh tabel, dan '
+                       . 'rincian Cost Request dikelompokkan per Chart of Account.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Catatan perubahan per baris Settlement: alasan kenapa Description Settle atau nilainya berbeda dari pengajuan, dan wajib diisi bila nilai Settle melebihi nilai Request.',
+                        'Kolom Bank di Daftar PIC menandai In-House untuk PIC yang sudah punya beneficiary terhubung, menggantikan rekening yang dulu disimpan di PIC.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Kolom nominal di seluruh tabel kini diurutkan sebagai angka, bukan teks - 900.000 tidak lagi dianggap lebih besar dari 1.000.000.',
+                        'Rincian Cost Request pada tab Request dan Settlement dikelompokkan per Chart of Account, mengikuti tampilan modal Budgeting.',
+                        'Lampiran per baris dibuka lewat satu tombol view di kolom Action, bukan digelar sebagai grid thumbnail; PDF dan dokumen ikut dalam viewer sebagai kartu nama berkas.',
+                        'Tab Settlement hanya tampil untuk Cash Advance, dan kembali ke tab Info bila CR yang dibuka tidak memilikinya.',
+                    ],
+                ],
+            ],
+        ],
+
+        [
+            'version' => '2.5.5',
+            'date'    => '2026-10-02',
+            'title'   => 'Expense Claim di View Budget Sesuai Daftar Worklist',
+            'summary' => 'Angka Expense Claim pada modal View Budget kini cocok dengan kolom Expense '
+                       . 'Claim di daftar Todo List, dan baris yang memunculkannya ditandai langsung '
+                       . 'di tempat angkanya.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Penanda New Claim dan Claim Approved muncul tepat di baris yang memunculkannya di modal View Budget, tidak hanya di ringkasan Chart of Account-nya.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Modal View Budget: angka Expense Claim kini sama dengan kolom Expense Claim di daftar worklist - kelebihan tiap baris dibagi sebanding terhadap selisih bersih satu Cost Request, bukan dijumlah mentah sehingga baris yang hemat terabaikan.',
+                        'Rincian Cash Advance di modal View Budget diambil dari baris Settlement bila settlement-nya sudah ada, dan ditandai Settlement; selama belum ada, baris pengajuan yang dipakai.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '2.5.4',

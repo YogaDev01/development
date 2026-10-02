@@ -17,6 +17,7 @@ class BudgetRequestRealization extends Model
         'qty',
         'total',
         'notes',
+        'change_note',
     ];
 
     protected $casts = [
