@@ -29,11 +29,24 @@ use Illuminate\Support\Facades\DB;
  *     SETTLE_CHECKED -> SETTLE_VERIFIED -> CLOSED); tipe lain QUEUED -> CLOSED.
  *   - Second Payment cuma ada kalau Settlement melebihi nilai pengajuan, dan
  *     harus sudah PAID sebelum CR boleh CLOSED.
+ *   - Cabang Expense Claim (selisih > 0) lewat SETTLE_VERIFIED ->
+ *     SETTLE_APPROVED -> SECOND_APPROVED; selisihnya masih PENDING di situ.
+ *     Karena itu CLOSED_SETTLED sengaja dibuat TANPA selisih - dengan klaim
+ *     > 0, SETTLE_VERIFIED -> CLOSED bukan transisi yang sah.
+ *
+ * Bersifat MENAMBAH dan aman dijalankan berulang: jumlah CR yang dibuat =
+ * target CR_TARGET per TIPE x status dikurangi yang sudah ada di DB (minimal
+ * MIN_PER_COMBINATION per kombinasi), dan nomor urut kode melanjutkan kode
+ * yang sudah ada (existingCodeSeq()).
  */
 class DummyCostSeeder extends Seeder
 {
     private Carbon $today;
     private string $now;
+
+    /** Rentang tanggal yang dipaksakan untuk pass kedua (bulan berjalan). */
+    private ?Carbon $windowFrom = null;
+    private ?Carbon $windowTo   = null;
 
     private array $actors = [];
     private array $userNames = [];
@@ -118,13 +131,166 @@ class DummyCostSeeder extends Seeder
         DB::transaction(function () {
             $this->loadMaster();
 
-            $plans = $this->seedBudgetPlans();
-            $crs   = $this->seedCostRequests($plans);
-            $this->seedTreasury($crs);
+            /*
+            | Daftar kerja dihitung LEBIH DULU supaya run yang tidak perlu
+            | menambah CR tidak ikut membuat Budget Plan dan batch Top Up baru
+            | - dulu keduanya selalu dibuat, jadi seeder ini menggandakan ratusan
+            | Budget Plan tanpa CR setiap kali dijalankan ulang.
+            */
+            $workload = $this->costRequestWorkload();
+            $topUps   = $this->topUpWorkload();
+
+            if ($workload === [] && $topUps === 0) {
+                $this->command?->info('Target data dummy biaya sudah terpenuhi, tidak ada yang ditambahkan.');
+
+                return;
+            }
+
+            $crs = [];
+
+            if ($workload !== []) {
+                $plans = $this->seedBudgetPlans();
+                $crs   = $this->seedCostRequests($plans, $workload);
+            }
+
+            $this->seedTreasury($crs, $topUps);
             $this->syncSequences();
+
+            $this->command?->info(
+                'Dibuat ' . count($crs) . ' Cost Request dan ' . $topUps . ' batch Top Up.'
+            );
         });
+
+        $this->seedCurrentMonth();
     }
 
+    /**
+     * Pass kedua: Cost Request bertanggal BULAN BERJALAN (1 s/d akhir bulan).
+     *
+     * Pass pertama menyusun riwayat berbulan-bulan ke belakang, jadi tidak ada
+     * satu pun CR di bulan berjalan - padahal daftar Cost Request default-nya
+     * memfilter bulan berjalan, sehingga halamannya tampak kosong. Di sini tiap
+     * kombinasi tipe x status ditambah sampai minimal MIN_PER_COMBINATION CR
+     * yang tanggalnya masuk rentang itu.
+     *
+     * Budget Plan TIDAK dibuat lagi - memakai yang sudah ada di DB, lengkap
+     * dengan akumulasi committed/used-nya supaya penanda NOB tetap benar.
+     *
+     * Catatan: rantai approval sampai settlement normalnya makan belasan
+     * minggu. Dipaksa muat dalam satu bulan, jadi beberapa tahap bisa jatuh di
+     * tanggal yang berdekatan - wajar untuk data contoh, bukan data nyata.
+     */
+    private function seedCurrentMonth(): void
+    {
+        mt_srand(20261004);
+
+        $this->windowFrom = Carbon::now()->startOfMonth()->startOfDay();
+        $this->windowTo   = Carbon::now()->endOfMonth()->startOfDay();
+        $this->today      = $this->windowTo->copy();
+
+        DB::transaction(function () {
+            $this->loadMaster();
+
+            $workload = $this->costRequestWorkload($this->windowFrom, $this->windowTo);
+
+            if ($workload === []) {
+                $this->command?->info('Data dummy bulan berjalan sudah terpenuhi.');
+
+                return;
+            }
+
+            $plans = $this->loadExistingPlans();
+
+            if ($plans === []) {
+                $this->command?->warn('Tidak ada Budget Plan aktif, CR bulan berjalan dilewati.');
+
+                return;
+            }
+
+            $crs = $this->seedCostRequests($plans, $workload);
+            $this->seedTreasury($crs);
+            $this->syncSequences();
+
+            $this->command?->info(
+                'Dibuat ' . count($crs) . ' Cost Request bertanggal '
+                . $this->windowFrom->format('d/m/Y') . ' - ' . $this->windowTo->format('d/m/Y') . '.'
+            );
+        });
+
+        $this->windowFrom = null;
+        $this->windowTo   = null;
+    }
+
+    /**
+     * Budget Plan yang SUDAH ada di DB, dibentuk ulang jadi struktur yang
+     * dipakai buildCostRequest(). committed & used dihitung dari CR yang ada
+     * memakai konstanta BudgetConsumption yang sama dengan aplikasi.
+     */
+    private function loadExistingPlans(): array
+    {
+        $rows = DB::table('budget_plans')
+            ->whereIn('status', ['ACTIVE', 'CLOSING', 'CLOSED'])
+            ->get(['id', 'code', 'amount', 'project_id', 'cost_center_id', 'approved_at', 'created_at']);
+
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
+        $ids = $rows->pluck('id')->all();
+
+        // committed per budget = SUM(amount) CR berstatus COMMITTED.
+        $committed = DB::table('budget_request')->whereNull('deleted_at')
+            ->whereIn('budget_plan_id', $ids)
+            ->whereIn('status', BudgetConsumption::COMMITTED)
+            ->selectRaw('budget_plan_id, SUM(amount) AS total')
+            ->groupBy('budget_plan_id')->pluck('total', 'budget_plan_id');
+
+        // used per sub-item = SUM(total) rincian CR yang sudah cair.
+        $used = DB::table('request_detail')
+            ->join('budget_request', 'budget_request.id', '=', 'request_detail.budget_request_id')
+            ->whereNull('budget_request.deleted_at')
+            ->whereIn('budget_request.status', BudgetConsumption::DISBURSED)
+            ->where('request_detail.status', '!=', 'TAKEOUT')
+            ->whereNotNull('request_detail.budget_detail_id')
+            ->selectRaw('request_detail.budget_detail_id, SUM(request_detail.total) AS total')
+            ->groupBy('request_detail.budget_detail_id')->pluck('total', 'budget_detail_id');
+
+        $details = [];
+        foreach (DB::table('budget_plan_details')->whereIn('budget_plan_id', $ids)
+            ->get(['id', 'budget_plan_id', 'total', 'account_id', 'deskripsi']) as $d) {
+            $details[(int) $d->budget_plan_id][] = [
+                'id'         => (int) $d->id,
+                'total'      => (int) $d->total,
+                'account_id' => (int) $d->account_id,
+                'deskripsi'  => (string) $d->deskripsi,
+                'used'       => (int) ($used[$d->id] ?? 0),
+            ];
+        }
+
+        $out = [];
+
+        foreach ($rows as $p) {
+            if (empty($details[(int) $p->id])) {
+                continue;
+            }
+
+            $out[] = [
+                'id'         => (int) $p->id,
+                'amount'     => (int) $p->amount,
+                'details'    => $details[(int) $p->id],
+                'projectId'  => $p->project_id ? (int) $p->project_id : null,
+                'isProject'  => $p->project_id !== null,
+                'sourceCode' => $this->planSourceCode([
+                    'project_id'     => $p->project_id,
+                    'cost_center_id' => $p->cost_center_id,
+                ]),
+                'from'       => Carbon::parse($p->approved_at ?? $p->created_at),
+                'committed'  => (int) ($committed[$p->id] ?? 0),
+            ];
+        }
+
+        return $out;
+    }
     /*
     |--------------------------------------------------------------------------
     | MASTER
@@ -235,6 +401,40 @@ class DummyCostSeeder extends Seeder
         return $out;
     }
 
+    /**
+     * Nomor urut terakhir per prefix kode yang SUDAH ada di DB.
+     *
+     * Kode dokumen di sini dibentuk prefix + 4 digit urut, dan $codeSeq yang
+     * dulu selalu mulai dari 0 membuat seeder ini bentrok dengan datanya
+     * sendiri begitu dijalankan dua kali (unique budget_plans.code /
+     * budget_request.code). Dibaca dari DB supaya seeder benar-benar bersifat
+     * MENAMBAH seperti DummyChainSeeder, bukan sekali pakai.
+     */
+    private function existingCodeSeq(string $table, int $seqLength = 4, ?int $prefixLength = null): array
+    {
+        $out = [];
+
+        foreach (DB::table($table)->pluck('code') as $code) {
+            $code = (string) $code;
+            if (strlen($code) <= $seqLength) {
+                continue;
+            }
+
+            // Kode batch Treasury memakai prefix pendek (Ym) yang BUKAN seluruh
+            // sisa kode - di antaranya masih ada jumlah item 3 digit.
+            $prefix = $prefixLength === null
+                ? substr($code, 0, -$seqLength)
+                : substr($code, 0, $prefixLength);
+            $seq    = (int) substr($code, -$seqLength);
+
+            if ($seq > ($out[$prefix] ?? 0)) {
+                $out[$prefix] = $seq;
+            }
+        }
+
+        return $out;
+    }
+
     /** Pecah $total jadi qty x harga satuan bulat. */
     private function unitize(int $total): array
     {
@@ -257,7 +457,7 @@ class DummyCostSeeder extends Seeder
     private function seedBudgetPlans(): array
     {
         $plans   = [];
-        $codeSeq = [];
+        $codeSeq = $this->existingCodeSeq("budget_plans");
 
         // --- Budget proyek -------------------------------------------------
         $projects = DB::table('projects')->where('id', '>', 26)
@@ -550,46 +750,187 @@ class DummyCostSeeder extends Seeder
     |--------------------------------------------------------------------------
     */
 
-    /** Sebaran status CR. CLOSED dipecah dua: lewat settlement (Cash Advance) & langsung dari batch. */
-    private const CR_PLAN = [
-        'DRAFT'           => 14,
-        'SUBMITTED'       => 14,
-        'CHECKED'         => 12,
-        'VERIFIED'        => 12,
-        'APPROVED'        => 14,
-        'QUEUED'          => 20,
-        'PAID'            => 16,
-        'REALIZED'        => 14,
-        'SETTLE_CHECKED'  => 12,
-        'SETTLE_VERIFIED' => 16,
-        'CLOSED_SETTLED'  => 30,
-        'CLOSED_DIRECT'   => 18,
-        'REJECTED'        => 12,
-        'CANCELLED'       => 8,
+    /**
+     * Target jumlah CR per TIPE PENGAJUAN x status, bukan per status saja.
+     *
+     * Status yang bisa dicapai berbeda per tipe (BudgetRequest::
+     * getAllowedNextStatuses()): hanya Cash Advance yang punya tahap realisasi
+     * dan settlement, sedangkan tipe lain berhenti di QUEUED -> CLOSED. Dulu
+     * tipe dipilih acak, jadi Payment/Reimbursement bisa kosong di banyak
+     * status; sekarang tiap kombinasi dijamin terisi.
+     *
+     * CLOSED dipecah dua karena jalannya beda: CLOSED_SETTLED lewat settlement
+     * (Cash Advance), CLOSED_DIRECT langsung dari batch Treasury (tipe lain).
+     *
+     * Angkanya TARGET, bukan jumlah yang selalu dibuat: seedCostRequests()
+     * mengurangi jumlah yang sudah ada di DB, jadi seeder ini aman dijalankan
+     * berulang dan tidak akan menggandakan data.
+     */
+    private const MIN_PER_COMBINATION = 3;
+
+    private const CR_TARGET = [
+        // Cash Advance - alur penuh sampai settlement & Expense Claim.
+        'Cash Advance' => [
+            'DRAFT'           => 6,
+            'SUBMITTED'       => 6,
+            'CHECKED'         => 5,
+            'VERIFIED'        => 5,
+            'APPROVED'        => 6,
+            'QUEUED'          => 8,
+            'PAID'            => 16,
+            'REALIZED'        => 14,
+            'SETTLE_CHECKED'  => 12,
+            'SETTLE_VERIFIED' => 16,
+            'SETTLE_APPROVED' => 6,
+            'SECOND_APPROVED' => 6,
+            'CLOSED_SETTLED'  => 30,
+            'REJECTED'        => 5,
+            'CANCELLED'       => 4,
+        ],
+        // Payment & Reimbursement - tanpa realisasi, QUEUED -> CLOSED.
+        'Payment' => [
+            'DRAFT'         => 4,
+            'SUBMITTED'     => 4,
+            'CHECKED'       => 4,
+            'VERIFIED'      => 4,
+            'APPROVED'      => 4,
+            'QUEUED'        => 6,
+            'CLOSED_DIRECT' => 10,
+            'REJECTED'      => 4,
+            'CANCELLED'     => 3,
+        ],
+        'Reimbursement' => [
+            'DRAFT'         => 4,
+            'SUBMITTED'     => 4,
+            'CHECKED'       => 4,
+            'VERIFIED'      => 4,
+            'APPROVED'      => 4,
+            'QUEUED'        => 6,
+            'CLOSED_DIRECT' => 10,
+            'REJECTED'      => 4,
+            'CANCELLED'     => 3,
+        ],
     ];
 
-    private function seedCostRequests(array $plans): array
+    /** Status akhir di DB untuk tiap kunci rencana di CR_TARGET. */
+    private const PLAN_TO_STATUS = [
+        'CLOSED_SETTLED' => 'CLOSED',
+        'CLOSED_DIRECT'  => 'CLOSED',
+    ];
+
+    /**
+     * Kunci rencana yang uangnya sudah cair (CR lewat batch Treasury yang
+     * sudah PAID) dan karena itu masuk alur realisasi/settlement.
+     */
+    private const SETTLEMENT_PLAN_STATUSES = [
+        'PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED',
+        'SETTLE_APPROVED', 'SECOND_APPROVED', 'CLOSED_SETTLED',
+    ];
+
+    /**
+     * Kunci rencana pada cabang Expense Claim — realisasi MELEBIHI nilai
+     * pengajuan, jadi kekurangannya wajib lewat approve Finance Manager
+     * (SETTLE_APPROVED) lalu Approver (SECOND_APPROVED) sebelum Treasury
+     * membayarnya. Lihat BudgetRequest::getAllowedNextStatuses().
+     */
+    private const CLAIM_PLAN_STATUSES = ['SETTLE_APPROVED', 'SECOND_APPROVED'];
+
+    /**
+     * Daftar kerja CR: [typeId, kunci rencana] sebanyak KEKURANGAN tiap
+     * kombinasi tipe x status terhadap CR_TARGET (minimal MIN_PER_COMBINATION).
+     *
+     * Dihitung dari DB supaya seeder bersifat MENAMBAH dan idempotent: kalau
+     * sebuah kombinasi sudah memenuhi target, tidak ada CR baru yang dibuat.
+     * CLOSED_SETTLED vs CLOSED_DIRECT dibedakan dari tipenya, karena di DB
+     * keduanya tersimpan sebagai status CLOSED yang sama.
+     */
+    /** Target jumlah batch Top Up (daily_transactions bertipe TOP_UP). */
+    private const TOP_UP_TARGET = 22;
+
+    /** Kekurangan batch Top Up terhadap TOP_UP_TARGET. */
+    private function topUpWorkload(): int
+    {
+        $have = (int) DB::table('daily_transactions')->where('type', 'TOP_UP')->count();
+
+        return max(0, self::TOP_UP_TARGET - $have);
+    }
+    /**
+     * id RequestType "Cash Advance". Dicocokkan dari NAMA, sama seperti
+     * BudgetRequest::CASH_ADVANCE_TYPE_NAMES - bukan id yang dipaku.
+     */
+    private function cashAdvanceTypeId(): int
+    {
+        return (int) (array_search('Cash Advance', $this->types, true) ?: 1);
+    }
+    private function costRequestWorkload(?Carbon $from = null, ?Carbon $to = null): array
+    {
+        // Dengan rentang tanggal, yang dihitung hanya CR di rentang itu -
+        // dipakai pass bulan berjalan supaya riwayat lama tidak ikut menutupi
+        // kekurangan di bulan ini.
+        $query = DB::table('budget_request')->whereNull('deleted_at');
+
+        if ($from && $to) {
+            $query->whereBetween('created_at', [
+                $from->copy()->startOfDay(),
+                $to->copy()->endOfDay(),
+            ]);
+        }
+
+        $existing = [];
+        foreach ($query->selectRaw('type_id, status, COUNT(*) AS n')
+            ->groupBy('type_id', 'status')->get() as $row) {
+            $existing[(int) $row->type_id][$row->status] = (int) $row->n;
+        }
+
+        // Di dalam satu bulan target volume penuh tidak masuk akal; yang
+        // dijaga cuma minimal per kombinasi.
+        $windowed = $from !== null;
+
+        $work = [];
+
+        foreach (self::CR_TARGET as $typeName => $targets) {
+            $typeId = (int) (array_search($typeName, $this->types, true) ?: 0);
+
+            // Tipe yang tidak ada di master dilewati, jangan ditempel ke tipe
+            // lain - nama RequestType yang menentukan perilaku Cash Advance.
+            if ($typeId === 0) {
+                $this->command?->warn("RequestType \"{$typeName}\" tidak ada, dilewati.");
+                continue;
+            }
+
+            foreach ($targets as $plannedStatus => $target) {
+                $status = self::PLAN_TO_STATUS[$plannedStatus] ?? $plannedStatus;
+                $have   = $existing[$typeId][$status] ?? 0;
+                $need   = ($windowed ? self::MIN_PER_COMBINATION : max(self::MIN_PER_COMBINATION, $target)) - $have;
+
+                for ($i = 0; $i < $need; $i++) {
+                    $work[] = [$typeId, $plannedStatus];
+                }
+            }
+        }
+
+        return $work;
+    }
+
+    private function seedCostRequests(array $plans, array $workload): array
     {
         if (empty($plans)) {
             return [];
         }
 
-        $statuses = [];
-        foreach (self::CR_PLAN as $status => $count) {
-            $statuses = array_merge($statuses, array_fill(0, $count, $status));
-        }
+        $statuses = $workload;
         shuffle($statuses);
 
         $crs     = [];
-        $codeSeq = [];
+        $codeSeq = $this->existingCodeSeq("budget_request");
 
-        foreach ($statuses as $plannedStatus) {
+        foreach ($statuses as [$typeId, $plannedStatus]) {
             // Budget yang baru aktif kemarin tidak punya ruang untuk rantai
             // approval -> batch -> settlement; coba budget lain, jangan
             // diam-diam membuang CR-nya.
             for ($try = 0; $try < 12; $try++) {
                 $planIdx = array_rand($plans);
-                $cr      = $this->buildCostRequest($plans[$planIdx], $plannedStatus, $codeSeq);
+                $cr      = $this->buildCostRequest($plans[$planIdx], $plannedStatus, $typeId, $codeSeq);
 
                 if ($cr === null) {
                     continue;
@@ -618,27 +959,13 @@ class DummyCostSeeder extends Seeder
         return $crs;
     }
 
-    private function buildCostRequest(array $plan, string $plannedStatus, array &$codeSeq): ?array
+    private function buildCostRequest(array $plan, string $plannedStatus, int $typeId, array &$codeSeq): ?array
     {
-        $settlementFlow = in_array($plannedStatus, [
-            'PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED_SETTLED',
-        ]);
+        // Tipe sudah ditentukan pemanggil (CR_TARGET), bukan diundi di sini:
+        // kombinasi tipe x status yang sah ikut aturan getAllowedNextStatuses().
+        $settlementFlow = in_array($plannedStatus, self::SETTLEMENT_PLAN_STATUSES, true);
 
-        // Hanya Cash Advance yang punya tahap realisasi; CLOSED_DIRECT justru
-        // harus tipe SELAIN Cash Advance (QUEUED -> CLOSED lewat Treasury).
-        $cashAdvanceId = array_search('Cash Advance', $this->types, true) ?: 1;
-        $otherTypeIds  = array_values(array_diff(array_keys($this->types), [$cashAdvanceId]));
-
-        if ($settlementFlow) {
-            $typeId = $cashAdvanceId;
-        } elseif ($plannedStatus === 'CLOSED_DIRECT') {
-            $typeId = $this->pick($otherTypeIds);
-        } else {
-            $typeId = $this->chance(40) ? $cashAdvanceId : $this->pick($otherTypeIds);
-        }
-
-        $status  = $plannedStatus === 'CLOSED_SETTLED' || $plannedStatus === 'CLOSED_DIRECT'
-            ? 'CLOSED' : $plannedStatus;
+        $status = self::PLAN_TO_STATUS[$plannedStatus] ?? $plannedStatus;
 
         /*
         | Rentang tanggal dibatasi sisa umur budget-nya, bukan dipangkas
@@ -648,19 +975,43 @@ class DummyCostSeeder extends Seeder
         */
         $runway = (int) $plan['from']->copy()->startOfDay()->diffInDays($this->today);
 
-        // Rantai settlement butuh belasan minggu (approval -> batch -> bayar ->
-        // realisasi -> 3 tahap settle); budget yang baru jalan sebulan tidak
-        // mungkin punya CR yang sudah selesai settle.
-        if ($runway < ($settlementFlow ? 70 : 3)) {
-            return null;
+        if ($this->windowFrom && $this->windowTo) {
+            /*
+            | Pass bulan berjalan: tanggal dipaksa masuk rentang window, dan
+            | syarat runway tidak dipakai - budget-nya memang sudah lama aktif,
+            | yang dipendekkan justru rantai approval-nya.
+            |
+            | Rantai settlement dapat jatah hari lebih banyak (dibuat di awal
+            | bulan) supaya tahap-tahapnya tidak menumpuk di tanggal terakhir.
+            */
+            $start = $this->maxTs($this->windowFrom, $plan['from']->copy()->startOfDay());
+
+            if ($start->gt($this->windowTo)) {
+                return null;
+            }
+
+            $span  = (int) $start->copy()->startOfDay()->diffInDays($this->windowTo);
+            $limit = $settlementFlow ? (int) floor($span * 0.3) : (int) floor($span * 0.8);
+
+            $created = $this->atTimeAfter(
+                $start->copy()->startOfDay()->addDays(mt_rand(0, max(0, $limit))),
+                $plan['from']
+            );
+        } else {
+            // Rantai settlement butuh belasan minggu (approval -> batch -> bayar ->
+            // realisasi -> 3 tahap settle); budget yang baru jalan sebulan tidak
+            // mungkin punya CR yang sudah selesai settle.
+            if ($runway < ($settlementFlow ? 70 : 3)) {
+                return null;
+            }
+
+            $maxOffset = max(2, min(220, $runway - ($settlementFlow ? 60 : 0)));
+
+            $created = $this->atTimeAfter(
+                $plan['from']->copy()->startOfDay()->addDays(mt_rand(2, $maxOffset)),
+                $plan['from']
+            );
         }
-
-        $maxOffset = max(2, min(220, $runway - ($settlementFlow ? 60 : 0)));
-
-        $created = $this->atTimeAfter(
-            $plan['from']->copy()->startOfDay()->addDays(mt_rand(2, $maxOffset)),
-            $plan['from']
-        );
 
         // --- rincian pengajuan, dipetakan ke sub-item budget ----------------
         $lineCount = min(count($plan['details']), mt_rand(1, 4));
@@ -749,7 +1100,7 @@ class DummyCostSeeder extends Seeder
             }
         }
 
-        $isCashAdvance = $typeId === $cashAdvanceId;
+        $isCashAdvance = $typeId === $this->cashAdvanceTypeId();
         $applicant     = $isCashAdvance ? $this->actor('manager') : $this->actor('manager', 'staff', 'head');
 
         $row = [
@@ -819,7 +1170,7 @@ class DummyCostSeeder extends Seeder
     | tanggal lanjutan CR diturunkan darinya.
     */
 
-    private function seedTreasury(array $crs): void
+    private function seedTreasury(array $crs, int $topUps = 0): void
     {
         // 1) Garis waktu sampai APPROVED (belum menyentuh batch).
         foreach ($crs as $i => $cr) {
@@ -831,7 +1182,8 @@ class DummyCostSeeder extends Seeder
 
         foreach ($crs as $i => $cr) {
             $target = match (true) {
-                in_array($cr['plannedStatus'], ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED_SETTLED', 'CLOSED_DIRECT']) => 'PAID',
+                in_array($cr['plannedStatus'], self::SETTLEMENT_PLAN_STATUSES, true)
+                || $cr['plannedStatus'] === 'CLOSED_DIRECT'                          => 'PAID',
                 $cr['plannedStatus'] === 'QUEUED'                                   => 'ACTIVE',
                 $cr['plannedStatus'] === 'APPROVED' && $this->chance(45)            => 'REJECTED',
                 $cr['plannedStatus'] === 'REJECTED' && $this->chance(35)            => 'TAKEOUT',
@@ -894,7 +1246,7 @@ class DummyCostSeeder extends Seeder
 
         // 4) Tulis CR (+ rincian + log), lalu batch (+ item).
         $ids = $this->persistCostRequests($crs, $batches);
-        $this->persistBatches($batches, $crs, $ids);
+        $this->persistBatches($batches, $crs, $ids, $topUps);
     }
 
     /**
@@ -1062,9 +1414,25 @@ class DummyCostSeeder extends Seeder
             $realizations = [];
             $secondPayment = null;
 
-            if (in_array($cr['plannedStatus'], ['REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED_SETTLED'])) {
+            if (in_array($cr['plannedStatus'], self::SETTLEMENT_PLAN_STATUSES, true)
+                && $cr['plannedStatus'] !== 'PAID') {
                 $realizedAt   = $this->step($paidAt, 3, 30);
-                $overage      = $this->chance(55);
+                /*
+                | Cabang Expense Claim WAJIB realisasi melebihi pengajuan -
+                | tanpa selisih, SETTLE_APPROVED/SECOND_APPROVED tidak pernah
+                | bisa dicapai (BudgetRequest::getAllowedNextStatuses() hanya
+                | membuka cabang itu kalau expenseClaimAmount() > 0).
+                |
+                | Sebaliknya CLOSED_SETTLED harus TIDAK melebihi: dengan klaim
+                | > 0, jalan sahnya SETTLE_VERIFIED -> SETTLE_APPROVED, bukan
+                | langsung CLOSED.
+                */
+                $claimFlow = in_array($cr['plannedStatus'], self::CLAIM_PLAN_STATUSES, true);
+                $overage   = match (true) {
+                    $claimFlow                                 => true,
+                    $cr['plannedStatus'] === 'CLOSED_SETTLED'  => false,
+                    default                                    => $this->chance(55),
+                };
                 $realizations = $this->buildRealizations($cr, $overage);
                 $totalReal    = array_sum(array_column($realizations, 'total'));
 
@@ -1074,11 +1442,11 @@ class DummyCostSeeder extends Seeder
 
                 $cursor = $realizedAt;
 
-                if (in_array($cr['plannedStatus'], ['SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED_SETTLED'])) {
+                if ($cr['plannedStatus'] !== 'REALIZED') {
                     $cursor = $this->step($cursor, 1, 7);
                     $log('REALIZED', 'SETTLE_CHECKED', 'settlement_checked', null, $this->actor('head'), $cursor);
                 }
-                if (in_array($cr['plannedStatus'], ['SETTLE_VERIFIED', 'CLOSED_SETTLED'])) {
+                if (! in_array($cr['plannedStatus'], ['REALIZED', 'SETTLE_CHECKED'], true)) {
                     $cursor = $this->step($cursor, 1, 7);
                     $verifiedAt = $cursor;
                     $log('SETTLE_CHECKED', 'SETTLE_VERIFIED', 'settlement_verified', null,
@@ -1086,10 +1454,13 @@ class DummyCostSeeder extends Seeder
 
                     // Selisih di atas nilai pengajuan jadi Second Payment.
                     if ($totalReal > $cr['amount']) {
-                        $isClosed = $cr['plannedStatus'] === 'CLOSED_SETTLED';
-                        // CR tidak boleh CLOSED selama Second Payment masih PENDING
-                        // (BudgetRequestController::ceoCloseSettlement()).
-                        $paid = $isClosed || $this->chance(35);
+                        /*
+                        | Pada cabang klaim, selisihnya BELUM dibayar: CR masih
+                        | menunggu approve (SETTLE_APPROVED) atau menunggu
+                        | Treasury membuat batch (SECOND_APPROVED), jadi
+                        | Second Payment-nya tetap PENDING.
+                        */
+                        $paid     = $claimFlow ? false : $this->chance(35);
                         $spPaidAt = $paid ? $this->step($verifiedAt, 1, 10) : null;
 
                         $secondPayment = [
@@ -1105,6 +1476,20 @@ class DummyCostSeeder extends Seeder
                         if ($spPaidAt) {
                             $cursor = $spPaidAt;
                         }
+                    }
+
+                    // Approve klaim dua lapis: Finance Manager lalu Approver.
+                    if ($claimFlow) {
+                        $cursor = $this->step($cursor, 1, 6);
+                        $log('SETTLE_VERIFIED', 'SETTLE_APPROVED', 'settlement_approved',
+                            'Expense Claim disetujui Finance Manager.',
+                            $this->actor('finance_manager'), $cursor);
+                    }
+                    if ($cr['plannedStatus'] === 'SECOND_APPROVED') {
+                        $cursor = $this->step($cursor, 1, 6);
+                        $log('SETTLE_APPROVED', 'SECOND_APPROVED', 'second_approved',
+                            'Pembayaran selisih settlement disetujui Approver.',
+                            $this->actor('approver'), $cursor);
                     }
                 }
                 if ($cr['plannedStatus'] === 'CLOSED_SETTLED') {
@@ -1207,10 +1592,11 @@ class DummyCostSeeder extends Seeder
     |--------------------------------------------------------------------------
     */
 
-    private function persistBatches(array $batches, array $crs, array $ids): void
+    private function persistBatches(array $batches, array $crs, array $ids, int $topUps = 0): void
     {
         // Top Up tidak punya CR — batch transfer antar rekening sendiri.
-        foreach (range(1, 22) as $i) {
+        // Jumlahnya KEKURANGAN terhadap TOP_UP_TARGET, bukan selalu 22.
+        for ($i = 1; $i <= $topUps; $i++) {
             $batches[] = [
                 'kind'      => 'TOP_UP',
                 'members'   => [],
@@ -1222,7 +1608,9 @@ class DummyCostSeeder extends Seeder
 
         usort($batches, fn ($a, $b) => $a['createdTs']->timestamp <=> $b['createdTs']->timestamp);
 
-        $seq = [];
+        // Nomor urut per bulan dilanjutkan dari batch yang sudah ada, bukan
+        // dari 0 - kode daily_transactions unique.
+        $seq = $this->existingCodeSeq('daily_transactions', 4, 6);
 
         foreach ($batches as $batch) {
             $createdTs = $batch['createdTs'];

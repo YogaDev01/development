@@ -4,6 +4,18 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [2.5.7] - 2026-10-04 — Rincian Todo List Seragam & Total Tanpa Item Takeout
+
+Tabel rincian di Todo List kini sama persis dengan drawer Cost Request, dan
+item yang di-takeout tidak lagi ikut dijumlah di subtotal maupun total.
+
+### Berubah
+- Tabel rincian di Todo List disamakan dengan drawer Cost Request: kolomnya sejajar dan pengelompokan per Chart of Account memakai susunan yang sama.
+- Lampiran per baris di Todo List dibuka lewat satu ikon view di kolom Action, tidak lagi digelar inline; PDF dan dokumen ikut dalam viewer sebagai kartu nama berkas.
+
+### Perbaikan
+- Item yang di-takeout tidak lagi ikut dijumlah di subtotal grup maupun total bawah, sehingga angkanya konsisten dengan nilai Cost Request yang benar-benar diproses.
+
 ## [2.5.6] - 2026-10-02 — Catatan Perubahan Settlement, Urutan Nominal & Rincian per Chart of Account
 
 Baris Settlement yang melebihi nilai pengajuan kini wajib disertai catatan

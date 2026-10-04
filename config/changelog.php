@@ -26,10 +26,35 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '2.5.6',
+    'current' => '2.5.7',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '2.5.7',
+            'date'    => '2026-10-04',
+            'title'   => 'Rincian Todo List Seragam & Total Tanpa Item Takeout',
+            'summary' => 'Tabel rincian di Todo List kini sama persis dengan drawer Cost Request, dan '
+                       . 'item yang di-takeout tidak lagi ikut dijumlah di subtotal maupun total.',
+            'sections' => [
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Tabel rincian di Todo List disamakan dengan drawer Cost Request: kolomnya sejajar dan pengelompokan per Chart of Account memakai susunan yang sama.',
+                        'Lampiran per baris di Todo List dibuka lewat satu ikon view di kolom Action, tidak lagi digelar inline; PDF dan dokumen ikut dalam viewer sebagai kartu nama berkas.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Item yang di-takeout tidak lagi ikut dijumlah di subtotal grup maupun total bawah, sehingga angkanya konsisten dengan nilai Cost Request yang benar-benar diproses.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '2.5.6',
