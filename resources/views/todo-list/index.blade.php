@@ -1200,7 +1200,6 @@
                                     </td>
                                     <td class="text-nowrap">
                                         <button type="button" class="cr-number-btn todo-open-drawer" data-id="{{ $sp->budget_request_id }}">{{ $sp->cr_code }}</button>
-                                        <span class="badge badge-warning ml-1" style="font-size:9px;">2nd</span>
                                     </td>
                                     <td>{{ Str::limit($sp->cr_desc, 150) }}</td>
                                     <td class="text-nowrap">{{ $sp->beneficiary_label }}</td>
@@ -1914,6 +1913,13 @@
     <div id="imgViewerStage">
         <button aria-label="Previous" type="button" class="imgViewerNav" id="imgViewerPrev" title="Previous"><i class="fas fa-chevron-left"></i></button>
         <img id="imgViewerImg" src="" alt="">
+        {{-- File non-gambar (PDF/dokumen) tetap ikut urutan carousel, tapi
+             ditampilkan sebagai kartu logo + nama file yang bisa diklik. --}}
+        <a id="imgViewerFile" href="#" target="_blank" rel="noopener" style="display:none;">
+            <i class="fas fa-file-pdf" id="imgViewerFileIcon"></i>
+            <span id="imgViewerFileName"></span>
+            <small>Klik untuk membuka di tab baru</small>
+        </a>
         <button aria-label="Next" type="button" class="imgViewerNav" id="imgViewerNext" title="Next"><i class="fas fa-chevron-right"></i></button>
     </div>
     <div id="imgViewerCounter"></div>
@@ -2043,7 +2049,7 @@ tr.td-grp-row, tr.td-grp-row td { background:var(--info-bg) !important; }
 tr.td-grp-row:hover, tr.td-grp-row:hover td { background:var(--surface-3) !important; }
 .td-grp-caret { font-size:10px; color:var(--text-faint); transition:transform .15s ease; display:inline-block; }
 .td-grp-caret.rotated { transform:rotate(90deg); }
-td.td-grp-indent { padding-left:28px !important; }
+td.td-grp-indent { padding-left:32px !important; }
 .todo-drw-value { font-size:13px;color:var(--text); }
 .todo-timeline { list-style:none;margin:0;padding:0; }
 .todo-timeline li { position:relative;padding-left:24px;padding-bottom:16px;font-size:12px;color:var(--text-faint); }
@@ -2074,6 +2080,15 @@ td.td-grp-indent { padding-left:28px !important; }
     max-width:90vw; max-height:82vh; object-fit:contain; cursor:zoom-in;
     transition:transform .15s ease; transform-origin:center center; user-select:none; -webkit-user-drag:none;
 }
+#imgViewerFile {
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+    background:#fff; color:var(--text); border-radius:var(--radius-lg);
+    padding:40px 48px; max-width:80vw; text-decoration:none;
+}
+#imgViewerFile:hover { background:var(--surface-2); }
+#imgViewerFile i { font-size:72px; color:var(--danger); }
+#imgViewerFile span { font-size:14px; font-weight:600; word-break:break-all; text-align:center; }
+#imgViewerFile small { font-size:11px; color:var(--text-faint); }
 #imgViewerImg.zoomed { cursor:grab; }
 #imgViewerImg.dragging { cursor:grabbing; transition:none; }
 #imgViewerClose {
@@ -3330,8 +3345,8 @@ $(function () {
             renderDrawerActions(d);
 
             /* -- TAB REQUEST (rincian item pengajuan + attachment) --
-               Barisnya dikelompokkan per Chart of Account seperti tab Budget
-               di Budget Plan: baris grup (klik untuk buka/tutup) + sub-item. */
+               Susunan kolom & pengelompokan per Chart of Account dibuat sama
+               persis dengan drawer di modul Cost Request. */
             var reqHtml = '';
             var canModerate = !!d.can_moderate_items;
             window.__crDetailAtt = {};
@@ -3345,42 +3360,57 @@ $(function () {
                     '</div>';
                 reqHtml += '<div class="table-responsive"><table class="table table-sm table-bordered mb-0" style="font-size:11.5px;">' +
                     '<thead class="bg-light"><tr>' +
-                        '<th scope="col">Chart of Account</th>' +
-                        '<th scope="col" class="text-right text-nowrap">Qty</th><th scope="col" class="text-right text-nowrap">Total</th>' +
+                        '<th scope="col" style="width:4%;">No</th>' +
+                        '<th scope="col">Chart of Account / Description</th>' +
+                        '<th scope="col" class="text-right text-nowrap" style="width:14%;">Price</th>' +
+                        '<th scope="col" class="text-center text-nowrap" style="width:7%;">Qty</th>' +
+                        '<th scope="col" class="text-right text-nowrap" style="width:16%;">Total</th>' +
                         (showAksi ? '<th scope="col" class="text-center text-nowrap" style="width:1%;">Aksi</th>' : '') +
                     '</tr></thead><tbody id="todoReqBody">';
-                var reqTotal = 0, reqQty = 0;
+                var reqTotal = 0, reqPrice = 0, reqQty = 0, reqNo = 0;
                 reqGroups.forEach(function (grp, gi) {
                     var gClass = 'td-req-grp-' + gi;
-                    var gTotal = 0, gQty = 0;
-                    grp.items.forEach(function (it) {
-                        if (it.is_takeout) return;
-                        gTotal += parseFloat(it.total) || 0;
-                        gQty   += parseFloat(it.qty) || 0;
+                    // Item takeout tidak ikut dijumlah di mana pun supaya subtotal
+                    // grup dan total bawah konsisten dengan nilai CR yang diproses.
+                    var gTotal = 0, gPrice = 0, gQty = 0;
+                    grp.items.forEach(function (x) {
+                        if (x.is_takeout) return;
+                        gTotal += parseFloat(x.total) || 0;
+                        gPrice += parseFloat(x.amount) || 0;
+                        gQty   += parseFloat(x.qty) || 0;
                     });
-                    reqTotal += gTotal; reqQty += gQty;
+                    reqPrice += gPrice; reqQty += gQty;
 
                     reqHtml += '<tr class="td-grp-row" data-target="' + gClass + '">' +
-                        '<td style="font-weight:700;">' +
+                        '<td colspan="2" style="font-weight:700;">' +
                             '<i class="fas fa-chevron-right mr-2 td-grp-caret"></i>' +
                             esc(grp.account) + ' <span class="badge badge-secondary ml-1" style="font-size:9px;">' + grp.items.length + '</span>' +
                         '</td>' +
-                        '<td class="text-right text-nowrap" style="font-weight:700;">' + esc(gQty.toLocaleString('id-ID')) + '</td>' +
+                        '<td class="text-right text-nowrap" style="font-weight:700;">' + esc(Math.round(gPrice).toLocaleString('id-ID')) + '</td>' +
+                        '<td class="text-center" style="font-weight:700;">' + esc(gQty.toLocaleString('id-ID')) + '</td>' +
                         '<td class="text-right text-nowrap" style="font-weight:700;">' + esc(Math.round(gTotal).toLocaleString('id-ID')) + '</td>' +
                         (showAksi ? '<td></td>' : '') +
                     '</tr>';
 
                     grp.items.forEach(function (item) {
+                        var no = ++reqNo;
                         var isTakeout = !!item.is_takeout;
-                        var strike = isTakeout ? 'text-decoration:line-through;color:var(--text-faint);' : '';
+                        // Item yang di-takeout tidak ikut dibawa proses, jadi tidak
+                        // ikut dijumlah di total.
+                        if (!isTakeout) reqTotal += parseFloat(item.total) || 0;
+
+                        var rowStyle = isTakeout
+                            ? 'color:var(--text-faint);background:var(--surface-2);'
+                            : (item.is_nob ? 'color:var(--danger);' : '');
+                        var strike = isTakeout ? 'text-decoration:line-through;' : '';
                         var badge = isTakeout
-                            ? ' <span class="badge badge-warning" style="font-size:8px;" title="' + escAttr(item.takeout_notes || '') + '">Takeout &middot; ' + esc(item.takeout_stage_label || '-') + '</span>'
+                            ? ' <span class="badge badge-warning" style="font-size:9px;" title="' + escAttr(item.takeout_notes || '') + '">Takeout &middot; ' + esc(item.takeout_stage_label || '-') + '</span>'
                             : '';
 
                         var atts = item.attachments || [];
                         window.__crDetailAtt[item.id] = atts;
                         var attBadge = atts.length
-                            ? ' <span class="badge badge-light border text-muted" style="font-size:8px;"><i class="fas fa-paperclip mr-1"></i>' + atts.length + '</span>'
+                            ? ' <span class="badge badge-light border text-muted" style="font-size:9px;"><i class="fas fa-paperclip mr-1"></i>' + atts.length + '</span>'
                             : '';
 
                         var tdBtnStyle = 'white-space:nowrap;padding:2px 8px;font-size:11px;line-height:1.4;';
@@ -3398,12 +3428,13 @@ $(function () {
                         }
                         var act = showAksi ? '<td class="text-center text-nowrap">' + actInner + '</td>' : '';
 
-                        reqHtml += '<tr class="' + gClass + '" style="display:none;">' +
-                            '<td class="td-grp-indent" style="' + strike + '">' + esc(stripAccount(item.description, grp.account)) + badge + attBadge +
-                                (item.notes ? '<br><small class="text-muted" style="text-decoration:none;">' + esc(item.notes) + '</small>' : '') +
+                        reqHtml += '<tr class="' + gClass + '" style="display:none;' + rowStyle + '">' +
+                            '<td class="text-center" style="' + strike + '">' + no + '</td>' +
+                            '<td class="td-grp-indent" style="' + strike + '">' + esc(item.item_label || item.description || '-') + badge + attBadge +
                                 (isTakeout && item.takeout_notes ? '<br><small class="text-muted" style="text-decoration:none;">Alasan: ' + esc(item.takeout_notes) + '</small>' : '') +
                             '</td>' +
-                            '<td class="text-right text-nowrap" style="' + strike + '">' + esc(item.qty) + '</td>' +
+                            '<td class="text-right text-nowrap" style="' + strike + '">' + esc(item.amount_formatted) + '</td>' +
+                            '<td class="text-center" style="' + strike + '">' + esc(item.qty) + '</td>' +
                             '<td class="text-right text-nowrap" style="' + strike + '"><strong>' + esc(item.total_formatted) + '</strong></td>' +
                             act +
                         '</tr>';
@@ -3411,8 +3442,9 @@ $(function () {
                 });
                 reqHtml += '</tbody>' +
                     '<tfoot><tr style="background:var(--surface-2);">' +
-                        '<th class="text-right">Grand Total</th>' +
-                        '<th class="text-right text-nowrap">' + esc(reqQty.toLocaleString('id-ID')) + '</th>' +
+                        '<th colspan="2" class="text-right">Total (item aktif)</th>' +
+                        '<th class="text-right text-nowrap">' + esc(Math.round(reqPrice).toLocaleString('id-ID')) + '</th>' +
+                        '<th class="text-center">' + esc(reqQty.toLocaleString('id-ID')) + '</th>' +
                         '<th class="text-right text-nowrap">' + esc(Math.round(reqTotal).toLocaleString('id-ID')) + '</th>' +
                         (showAksi ? '<th></th>' : '') +
                     '</tr></tfoot>' +
@@ -3430,70 +3462,69 @@ $(function () {
             $('#todoTabRealisasiLi').toggle(!!hasRealisasi);
             if (hasRealisasi) {
                 var realHtml = '';
-                // Lampiran per item tidak lagi digelar inline di kolom Deskripsi -
-                // dipindah ke kolom Aksi (tombol View) seperti tab Request.
+                // Lampiran per item tidak digelar inline - cukup satu ikon view
+                // di kolom Action, sama dengan drawer Cost Request.
                 window.__crRealAtt = {};
-                var anyRealAtt = (d.realizations || []).some(function (x) { return x.attachments && x.attachments.length; });
                 if (d.realizations && d.realizations.length) {
-                    // Pengelompokan per Chart of Account, sama dengan tab Request.
                     var realGroups = groupByAccount(d.realizations);
-                    var realIdx = 0;
+                    var realNo = 0, realReq = 0, realSettle = 0;
                     realHtml += '<div class="d-flex justify-content-end mb-2">' +
                         '<button type="button" class="btn btn-xs btn-outline-secondary td-grp-expand" data-body="todoRealBody"><i class="fas fa-angle-double-down mr-1"></i>Expand All</button>&nbsp;' +
                         '<button type="button" class="btn btn-xs btn-outline-secondary td-grp-collapse" data-body="todoRealBody"><i class="fas fa-angle-double-up mr-1"></i>Collapse All</button>' +
                         '</div>';
                     realHtml += '<div class="table-responsive"><table class="table table-sm table-bordered mb-0" style="font-size:11.5px;">' +
                         '<thead class="bg-light"><tr>' +
-                            '<th scope="col">Chart of Account</th>' +
-                            '<th scope="col" class="text-right text-nowrap">Nilai CR</th><th scope="col" class="text-right text-nowrap">Settlement</th>' +
-                            (anyRealAtt ? '<th scope="col" class="text-center text-nowrap" style="width:1%;">Aksi</th>' : '') +
+                            '<th scope="col" style="width:4%;">No</th>' +
+                            '<th scope="col">Chart of Account / Des. Request</th>' +
+                            '<th scope="col">Des. Settle</th>' +
+                            '<th scope="col" class="text-right text-nowrap" style="width:14%;">Request</th>' +
+                            '<th scope="col" class="text-right text-nowrap" style="width:14%;">Settlement</th>' +
+                            '<th scope="col" style="width:18%;">Note</th>' +
+                            '<th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>' +
                         '</tr></thead><tbody id="todoRealBody">';
                     realGroups.forEach(function (grp, gi) {
                         var gClass = 'td-real-grp-' + gi;
-                        var gCr = 0, gSettle = 0;
-                        grp.items.forEach(function (r) {
-                            gCr     += parseFloat(r.total_cr) || 0;
-                            gSettle += parseFloat(r.actual) || 0;
+                        var gReq = 0, gSettle = 0;
+                        grp.items.forEach(function (x) {
+                            gReq    += parseFloat(x.total_cr) || 0;
+                            gSettle += parseFloat(x.actual) || 0;
                         });
+                        realReq += gReq; realSettle += gSettle;
 
                         realHtml += '<tr class="td-grp-row" data-target="' + gClass + '">' +
-                            '<td style="font-weight:700;">' +
+                            '<td colspan="2" style="font-weight:700;">' +
                                 '<i class="fas fa-chevron-right mr-2 td-grp-caret"></i>' +
                                 esc(grp.account) + ' <span class="badge badge-secondary ml-1" style="font-size:9px;">' + grp.items.length + '</span>' +
                             '</td>' +
-                            '<td class="text-right text-nowrap" style="font-weight:700;">' + esc(Math.round(gCr).toLocaleString('id-ID')) + '</td>' +
+                            '<td></td>' +
+                            '<td class="text-right text-nowrap" style="font-weight:700;">' + esc(Math.round(gReq).toLocaleString('id-ID')) + '</td>' +
                             '<td class="text-right text-nowrap" style="font-weight:700;">' + esc(Math.round(gSettle).toLocaleString('id-ID')) + '</td>' +
-                            (anyRealAtt ? '<td></td>' : '') +
+                            '<td></td><td></td>' +
                         '</tr>';
 
                         grp.items.forEach(function (r) {
-                            var ri = realIdx++;
+                            var ri = realNo++;
                             var itemAtts = r.attachments || [];
                             window.__crRealAtt[ri] = itemAtts;
-                            var attBadge = itemAtts.length
-                                ? ' <span class="badge badge-light border text-muted" style="font-size:8px;"><i class="fas fa-paperclip mr-1"></i>' + itemAtts.length + '</span>'
-                                : '';
+                            var aksi = itemAtts.length
+                                ? '<button type="button" class="btn btn-info btn-view-real-att" style="white-space:nowrap;padding:2px 8px;font-size:11px;line-height:1.4;" data-row="' + ri + '" title="Lihat lampiran item (' + itemAtts.length + ')"><i class="fas fa-eye"></i></button>'
+                                : '<span class="text-muted">-</span>';
                             realHtml += '<tr class="' + gClass + '" style="display:none;">' +
-                                '<td class="td-grp-indent">' + esc(stripAccount(r.cr_item, grp.account)) + attBadge +
-                                    (r.notes ? '<br><small class="text-muted">' + esc(r.notes) + '</small>' : '') +
-                                    // Alasan perubahan Description Request -> Settle (kolom Note di form Settlement).
-                                    (r.change_note ? '<br><small class="text-muted" style="font-style:italic;"><i class="fas fa-sticky-note mr-1"></i>' + esc(r.change_note) + '</small>' : '') +
-                                '</td>' +
+                                '<td class="text-center">' + (ri + 1) + '</td>' +
+                                '<td class="td-grp-indent">' + esc(r.des_request || r.cr_item || '-') + '</td>' +
+                                '<td>' + esc(r.notes || '-') + '</td>' +
                                 '<td class="text-right text-nowrap">' + esc(r.total_cr_formatted) + '</td>' +
                                 '<td class="text-right text-nowrap"><strong>' + esc(r.actual_formatted) + '</strong></td>' +
-                                (anyRealAtt
-                                    ? '<td class="text-center text-nowrap">' + (itemAtts.length
-                                        ? '<button type="button" class="btn btn-info btn-view-real-att" style="white-space:nowrap;padding:2px 8px;font-size:11px;line-height:1.4;" data-row="' + ri + '" title="Lihat lampiran (' + itemAtts.length + ')"><i class="fas fa-eye"></i></button>'
-                                        : '<span class="text-muted">-</span>') + '</td>'
-                                    : '') +
+                                '<td>' + esc(r.change_note || '-') + '</td>' +
+                                '<td class="text-center text-nowrap">' + aksi + '</td>' +
                             '</tr>';
                         });
                     });
                     realHtml += '</tbody><tfoot><tr style="background:var(--surface-2);">' +
-                        '<th class="text-right">Total</th>' +
-                        '<th class="text-right">' + esc(d.amount_formatted) + '</th>' +
-                        '<th class="text-right">' + esc(d.total_realization_formatted) + '</th>' +
-                        (anyRealAtt ? '<th></th>' : '') +
+                        '<th colspan="3" class="text-right">Total</th>' +
+                        '<th class="text-right text-nowrap">' + esc(Math.round(realReq).toLocaleString('id-ID')) + '</th>' +
+                        '<th class="text-right text-nowrap">' + esc(Math.round(realSettle).toLocaleString('id-ID')) + '</th>' +
+                        '<th colspan="2"></th>' +
                         '</tr></tfoot></table></div>';
                 } else {
                     realHtml += '<p class="text-muted py-2 mb-0" style="font-size:12px;">Belum ada rincian realisasi.</p>';
@@ -3562,18 +3593,6 @@ $(function () {
             map[acc].push(r);
         });
         return order.map(function (acc) { return { account: acc, items: map[acc] }; });
-    }
-
-    /* Nama akun sudah jadi judul grup - buang prefiksnya dari deskripsi baris
-       supaya tidak terbaca dua kali ("Akomodasi - Akomodasi tim lapangan"). */
-    function stripAccount(desc, acc) {
-        desc = (desc == null ? '' : String(desc)).trim();
-        acc  = (acc == null ? '' : String(acc)).trim();
-        if (acc && desc.toLowerCase().indexOf(acc.toLowerCase()) === 0) {
-            var rest = desc.slice(acc.length).replace(/^\s*[-\u2013\u2014]\s*/, '').trim();
-            if (rest) return rest;
-        }
-        return desc || '-';
     }
 
     function esc(s) { return $(document.createElement('span')).text(s == null ? '' : s).html(); }
@@ -3786,7 +3805,20 @@ $(function () {
             var item = images[idx];
             if (!item) return;
             resetZoom();
-            stageImg.src = item.full;
+
+            /* Lampiran non-gambar tidak bisa digambar di <img>; slide-nya diganti
+               kartu logo + nama file, posisinya tetap sesuai urutan unggahan. */
+            if (item.is_image === false) {
+                stageImg.style.display = 'none';
+                $('#imgViewerFile').css('display', 'flex').attr('href', item.full);
+                $('#imgViewerFileIcon').attr('class', 'fas ' + (item.is_pdf ? 'fa-file-pdf' : 'fa-file-alt'));
+                $('#imgViewerFileName').text(item.name || '');
+            } else {
+                $('#imgViewerFile').hide();
+                stageImg.style.display = '';
+                stageImg.src = item.full;
+            }
+
             $('#imgViewerName').text(item.name || '');
             counter.textContent = (idx + 1) + ' / ' + images.length;
             /* Panah hanya ada kalau memang ada tujuannya: tidak tampil untuk
@@ -3834,29 +3866,32 @@ $(function () {
             openViewer(groupImages, startIndex < 0 ? 0 : startIndex);
         });
 
+        /* Semua lampiran satu baris masuk ke carousel dengan urutan seperti saat
+           diunggah. Sebelumnya file non-gambar disaring keluar, sehingga PDF
+           tidak pernah muncul di baris yang juga punya gambar. */
+        function bukaLampiran(atts) {
+            atts = atts || [];
+            if (!atts.length) return;
+
+            openViewer(atts.map(function (a) {
+                return {
+                    full:     '/storage/' + a.path,
+                    name:     a.original_name,
+                    is_image: !!a.is_image,
+                    is_pdf:   !!a.is_pdf
+                };
+            }), 0);
+        }
+
         // Tombol View lampiran per item (kolom Aksi tab Request)
         $(document).on('click', '.btn-view-detail-att', function () {
-            var id   = $(this).data('detail');
-            var atts = (window.__crDetailAtt && window.__crDetailAtt[id]) || [];
-            var imgs = atts.filter(function (a) { return a.is_image; })
-                           .map(function (a) { return { full: '/storage/' + a.path, name: a.original_name }; });
-            if (imgs.length) {
-                openViewer(imgs, 0);
-            } else if (atts.length) {
-                window.open('/storage/' + atts[0].path, '_blank', 'noopener');
-            }
+            var id = $(this).data('detail');
+            bukaLampiran((window.__crDetailAtt && window.__crDetailAtt[id]) || []);
         });
 
         // Tombol View lampiran per item (kolom Aksi tab Settlement)
         $(document).on('click', '.btn-view-real-att', function () {
-            var atts = (window.__crRealAtt && window.__crRealAtt[$(this).data('row')]) || [];
-            var imgs = atts.filter(function (a) { return a.is_image; })
-                           .map(function (a) { return { full: '/storage/' + a.path, name: a.original_name }; });
-            if (imgs.length) {
-                openViewer(imgs, 0);
-            } else if (atts.length) {
-                window.open('/storage/' + atts[0].path, '_blank', 'noopener');
-            }
+            bukaLampiran((window.__crRealAtt && window.__crRealAtt[$(this).data('row')]) || []);
         });
 
         /* Buka/tutup grup Chart of Account di tab Request & Settlement. */
