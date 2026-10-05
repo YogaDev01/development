@@ -121,6 +121,27 @@
                                 <td><small class="text-muted">{{ $cr->inputBy->name ?? '-' }}</small></td>
                                 <td class="text-nowrap fit-col">{{ $cr->created_at->format('d/m/Y') }}</td>
                                 <td class="text-center action-column fit-col">
+                                    {{-- Keterangan status (Di Treasury / Dalam Batch /
+                                         tanggal bayar) sengaja DI LUAR .ts-actions.
+                                         Slot .ts-actions lebarnya tetap 36px per kendali
+                                         (lihat tesys-ui-luxe.css); teks selebar apa pun
+                                         yang ditaruh di dalamnya akan meluber dan
+                                         menabrak tombol titik tiga di sebelahnya. --}}
+                                    <div class="ts-action-cell">
+                                        @if($cr->isSubmitted())
+                                            <span class="badge badge-warning px-2 py-1 ts-action-note" title="Menunggu dimasukkan ke batch Treasury">
+                                                <i class="fas fa-hourglass-half mr-1"></i>Di Treasury
+                                            </span>
+                                        @elseif($cr->status === 'QUEUED')
+                                            <span class="badge badge-info px-2 py-1 ts-action-note" title="Sudah masuk batch Treasury aktif">
+                                                <i class="fas fa-layer-group mr-1"></i>Dalam Batch
+                                            </span>
+                                        @elseif($cr->isPaid())
+                                            <span class="text-muted ts-action-note" style="font-size:11px;">
+                                                {{ $cr->paid_at?->format('d/m/Y') }}
+                                            </span>
+                                        @endif
+
                                     <div class="action-buttons ts-actions">
                                         @if($cr->isDraft())
                                             {{-- Aksi utama saat DRAFT: mengajukannya ke
@@ -134,18 +155,11 @@
                                                     <i class="fas fa-paper-plane" aria-hidden="true"></i><span class="ts-al">Ajukan</span>
                                                 </button>
                                             </form>
-                                        @elseif($cr->isSubmitted())
-                                            <span class="badge badge-warning px-2 py-1" title="Menunggu dimasukkan ke batch Treasury">
-                                                <i class="fas fa-hourglass-half mr-1"></i>Di Treasury
-                                            </span>
-                                        @elseif($cr->status === 'QUEUED')
-                                            <span class="badge badge-info px-2 py-1" title="Sudah masuk batch Treasury aktif">
-                                                <i class="fas fa-layer-group mr-1"></i>Dalam Batch
-                                            </span>
-                                        @elseif($cr->isPaid())
-                                            <span class="text-muted" style="font-size:11px;">
-                                                {{ $cr->paid_at?->format('d/m/Y') }}
-                                            </span>
+                                        @else
+                                            {{-- Slot aksi utama dibiarkan kosong supaya
+                                                 tombol titik tiga tetap berdiri di kolom
+                                                 yang sama dengan baris DRAFT. --}}
+                                            <span aria-hidden="true"></span>
                                         @endif
 
                                         @if($cr->isEditable())
@@ -165,6 +179,7 @@
                                             </form>
                                         </div>
                                         @endif
+                                    </div>
                                     </div>
                                 </td>
                             </tr>

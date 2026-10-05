@@ -57,16 +57,22 @@ class CashFlowService
         // Filter sisa diterapkan SETELAH penggabungan supaya satu definisi
         // filter berlaku sama untuk semua sumber (tidak ada sumber yang diam-
         // diam lolos karena kolomnya bernama lain).
-        if (!empty($filters['direction'])) {
-            $rows = $rows->where('direction', $filters['direction']);
+        // Arah, rekening dan sumber boleh berisi lebih dari satu pilihan
+        // (filter checklist di halaman) — nilai tunggal tetap diterima supaya
+        // tautan lama tidak rusak.
+        $direction = array_filter((array) ($filters['direction'] ?? []), fn ($v) => $v !== '' && $v !== null);
+        if ($direction) {
+            $rows = $rows->whereIn('direction', $direction);
         }
 
-        if (!empty($filters['source_fund_id'])) {
-            $rows = $rows->where('source_fund_id', (int) $filters['source_fund_id']);
+        $funds = array_map('intval', array_filter((array) ($filters['source_fund_id'] ?? []), fn ($v) => $v !== '' && $v !== null));
+        if ($funds) {
+            $rows = $rows->whereIn('source_fund_id', $funds);
         }
 
-        if (!empty($filters['module'])) {
-            $rows = $rows->where('source_module', $filters['module']);
+        $modules = array_filter((array) ($filters['module'] ?? []), fn ($v) => $v !== '' && $v !== null);
+        if ($modules) {
+            $rows = $rows->whereIn('source_module', $modules);
         }
 
         if (!empty($filters['q'])) {

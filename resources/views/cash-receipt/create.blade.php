@@ -41,29 +41,39 @@
                 <h3 class="card-title"><i class="fas fa-building mr-1"></i> 1. Pilih Customer</h3>
             </div>
             <div class="card-body">
-                <form method="GET" action="{{ route('cash-receipt.create') }}" class="form-row align-items-end">
+                {{-- Tidak lagi di dalam form GET: memilih customer cukup mengambil
+                     daftar invoice-nya lewat JSON, halaman tidak dimuat ulang. --}}
+                <div class="form-row align-items-end">
                     <div class="form-group col-lg-5 col-md-8 mb-0">
-                        <label class="font-weight-600">Customer <span class="text-danger">*</span></label>
-                        <select name="customer_id" class="form-control form-control-sm" onchange="this.form.submit()">
+                        <label class="font-weight-600" for="crCustomer">Customer <span class="text-danger">*</span></label>
+                        <select id="crCustomer" class="form-control form-control-sm">
                             <option value="">— Pilih Customer —</option>
                             @foreach($customers as $c)
                                 <option value="{{ $c->id }}" @selected((string) $customerId === (string) $c->id)>{{ $c->name }}</option>
                             @endforeach
                         </select>
                     </div>
-                </form>
+                    <div class="form-group col-lg-3 col-md-4 mb-0">
+                        <span id="crLoading" class="text-muted" style="font-size:12px;display:none;">
+                            <i class="fas fa-circle-notch fa-spin mr-1"></i> Memuat invoice…
+                        </span>
+                    </div>
+                </div>
             </div>
         </div>
 
-        @if($customerId)
-        <form action="{{ route('cash-receipt.store') }}" method="POST" enctype="multipart/form-data" id="formCr">
+        {{-- Langkah 2 & 3 ikut keadaan pilihan customer, disembunyikan sampai ada
+             yang dipilih. Dulu bagian ini hanya dicetak kalau ?customer_id= ada —
+             itulah yang memaksa halaman dimuat ulang. --}}
+        <form action="{{ route('cash-receipt.store') }}" method="POST" enctype="multipart/form-data"
+              id="formCr" style="display:none;">
             @csrf
-            <input type="hidden" name="customer_id" value="{{ $customerId }}">
+            <input type="hidden" name="customer_id" id="crCustomerId" value="{{ $customerId }}">
 
             {{-- LANGKAH 2 — pilih invoice yang ditutup penerimaan ini. --}}
             <div class="card card-primary card-outline shadow-sm">
                 <div class="card-header d-flex align-items-center flex-wrap" style="gap:8px;">
-                    <h3 class="card-title"><i class="fas fa-file-invoice-dollar mr-1"></i> 2. Pilih Invoice ({{ $invoices->count() }})</h3>
+                    <h3 class="card-title"><i class="fas fa-file-invoice-dollar mr-1"></i> 2. Pilih Invoice (<span id="crInvCount">0</span>)</h3>
                     <div class="ml-auto d-flex align-items-center" style="gap:6px;">
                         <input type="search" id="crSearch" class="form-control form-control-sm"
                                placeholder="Cari invoice / no. PO" style="width:220px;font-size:11.5px;">
@@ -77,14 +87,13 @@
                 </div>
 
                 <div class="card-body p-0">
-                    @if($invoices->isEmpty())
-                        <div class="p-3">
-                            <x-empty title="Tidak ada invoice terbuka untuk customer ini"
-                                     subtitle="Semua invoice-nya sudah lunas, atau belum sampai tahap penagihan."
-                                     icon="fas fa-check-circle" compact />
-                        </div>
-                    @else
-                    <div class="table-responsive">
+                    <div class="p-3" id="crEmptyState" style="display:none;">
+                        <x-empty title="Tidak ada invoice terbuka untuk customer ini"
+                                 subtitle="Semua invoice-nya sudah lunas, atau belum sampai tahap penagihan."
+                                 icon="fas fa-check-circle" compact />
+                    </div>
+
+                    <div class="table-responsive" id="crTableWrap" style="display:none;">
                         <table class="table table-bordered table-hover mb-0" id="tblCrInvoices" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
@@ -99,53 +108,8 @@
                                     <th scope="col" class="text-right text-nowrap" style="width:14%;">PPh</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                @foreach($invoices as $inv)
-                                @php $overdue = $inv->isOverdue(); @endphp
-                                <tr class="cr-inv-row"
-                                    data-search="{{ strtolower($inv->code . ' ' . ($inv->poNumber->po_number ?? '') . ' ' . ($inv->po->name ?? '')) }}">
-                                    <td>
-                                        <input type="checkbox" name="invoice_ids[]" value="{{ $inv->id }}"
-                                               class="cr-check" data-balance="{{ $inv->computed_balance }}">
-                                    </td>
-                                    <td>
-                                        <strong>{{ $inv->code }}</strong>
-                                        <div class="text-muted" style="font-size:10px;">
-                                            {{ $inv->poNumber->po_number ?? '-' }} &middot; {{ Str::limit($inv->po->name ?? '-', 40) }}
-                                        </div>
-                                    </td>
-                                    <td class="text-nowrap">
-                                        {{ ($inv->actual_due_date ?? $inv->due_date)?->format('d M Y') }}
-                                        @if($overdue)
-                                            <span class="badge badge-danger ml-1" style="font-size:9px;">OVERDUE</span>
-                                        @endif
-                                    </td>
-                                    <td class="text-center">
-                                        <span class="badge badge-secondary px-2 py-1" style="font-size:9.5px;">{{ $inv->status }}</span>
-                                    </td>
-                                    <td class="text-right text-nowrap cr-balance" data-value="{{ $inv->computed_balance }}">
-                                        <strong>{{ number_format($inv->computed_balance, 0, ',', '.') }}</strong>
-                                    </td>
-                                    <td>
-                                        {{-- Nominal diisi otomatis dengan sisa tagihan saat
-                                             invoice dicentang — pelunasan penuh adalah kasus
-                                             yang paling sering, dan angkanya tetap bisa
-                                             dikurangi untuk pembayaran sebagian. --}}
-                                        <input type="text" name="amounts[{{ $inv->id }}]"
-                                               class="form-control form-control-sm text-right cr-amount"
-                                               placeholder="0" disabled>
-                                    </td>
-                                    <td>
-                                        <input type="text" name="withholding[{{ $inv->id }}]"
-                                               class="form-control form-control-sm text-right cr-wht"
-                                               placeholder="0" disabled>
-                                    </td>
-                                </tr>
-                                @endforeach
-                                <tr id="crNoMatch" style="display:none;">
-                                    <td colspan="7" class="text-center text-muted py-3">Tidak ada invoice yang cocok dengan pencarian.</td>
-                                </tr>
-                            </tbody>
+                            {{-- Baris diisi JS dari cash-receipt.open-invoices. --}}
+                            <tbody id="crInvBody"></tbody>
                             <tfoot>
                                 <tr style="background:var(--surface-2);font-weight:700;">
                                     <th colspan="5" class="text-right">Total Penerimaan</th>
@@ -155,11 +119,9 @@
                             </tfoot>
                         </table>
                     </div>
-                    @endif
                 </div>
             </div>
 
-            @if($invoices->isNotEmpty())
             {{-- LANGKAH 3 — informasi bukti terimanya. --}}
             <div class="card card-primary card-outline shadow-sm">
                 <div class="card-header">
@@ -217,9 +179,7 @@
                     </div>
                 </div>
             </div>
-            @endif
         </form>
-        @endif
 
     </div>
 </div>
@@ -322,6 +282,90 @@ $(function () {
     $('#crClearAll').on('click', function () {
         $('#crCheckAll').prop('checked', false).trigger('change');
     });
+
+    /*
+     |--------------------------------------------------------------------------
+     | MEMUAT INVOICE SAAT CUSTOMER DIPILIH
+     |--------------------------------------------------------------------------
+     | Hanya isi tabel yang diganti; isian Langkah 3 (tanggal, rekening, catatan)
+     | yang sudah diketik tetap utuh. Itu bedanya dengan versi lama yang memuat
+     | ulang halaman dan membuang semuanya.
+     |
+     | Daftar yang dipakai TETAP datang dari server lewat
+     | cash-receipt.open-invoices — bukan dicetak sekaligus untuk semua customer
+     | di halaman, supaya invoice customer lain tidak pernah ikut terkirim.
+     */
+    var URL_INVOICE = '{{ route('cash-receipt.open-invoices') }}';
+    var permintaan  = null;
+
+    function esc(t) {
+        return $('<div>').text(t == null ? '' : t).html();
+    }
+
+    function barisInvoice(inv) {
+        var cari = (inv.code + ' ' + inv.po_number + ' ' + inv.project).toLowerCase();
+
+        return '<tr class="cr-inv-row" data-search="' + esc(cari) + '">'
+            + '<td><input type="checkbox" name="invoice_ids[]" value="' + inv.id + '" class="cr-check" data-balance="' + inv.balance + '"></td>'
+            + '<td><strong>' + esc(inv.code) + '</strong>'
+            +     '<div class="text-muted" style="font-size:10px;">' + esc(inv.po_number) + ' &middot; ' + esc(inv.project) + '</div></td>'
+            + '<td class="text-nowrap">' + esc(inv.due_date || '-')
+            +     (inv.overdue ? ' <span class="badge badge-danger ml-1" style="font-size:9px;">OVERDUE</span>' : '') + '</td>'
+            + '<td class="text-center"><span class="badge badge-secondary px-2 py-1" style="font-size:9.5px;">' + esc(inv.status) + '</span></td>'
+            + '<td class="text-right text-nowrap cr-balance" data-value="' + inv.balance + '"><strong>' + rp(inv.balance) + '</strong></td>'
+            + '<td><input type="text" name="amounts[' + inv.id + ']" class="form-control form-control-sm text-right cr-amount" placeholder="0" disabled></td>'
+            + '<td><input type="text" name="withholding[' + inv.id + ']" class="form-control form-control-sm text-right cr-wht" placeholder="0" disabled></td>'
+            + '</tr>';
+    }
+
+    function gambarInvoice(list) {
+        var html = list.map(barisInvoice).join('');
+        html += '<tr id="crNoMatch" style="display:none;"><td colspan="7" class="text-center text-muted py-3">'
+             +  'Tidak ada invoice yang cocok dengan pencarian.</td></tr>';
+
+        $('#crInvBody').html(html);
+        $('#crInvCount').text(list.length);
+        $('#crCheckAll').prop('checked', false);
+        $('#crSearch').val('');
+        $('#crTableWrap').toggle(list.length > 0);
+        $('#crEmptyState').toggle(list.length === 0);
+        hitungUlang();
+    }
+
+    function muatInvoice(customerId) {
+        $('#crCustomerId').val(customerId || '');
+
+        if (!customerId) {
+            $('#formCr').hide();
+            gambarInvoice([]);
+            $('#crEmptyState').hide();
+            return;
+        }
+
+        // Permintaan sebelumnya dibatalkan: kalau customer diganti cepat, jawaban
+        // yang datang belakangan bisa milik pilihan yang sudah tidak aktif.
+        if (permintaan) permintaan.abort();
+
+        $('#crLoading').show();
+
+        permintaan = $.getJSON(URL_INVOICE, { customer_id: customerId })
+            .done(function (res) {
+                $('#formCr').show();
+                gambarInvoice((res && res.invoices) || []);
+            })
+            .fail(function (xhr, status) {
+                if (status === 'abort') return;
+                $('#formCr').hide();
+                Swal.fire({ icon: 'error', title: 'Gagal memuat invoice',
+                            text: 'Coba pilih ulang customer-nya.', confirmButtonColor: '#92232b' });
+            })
+            .always(function () { $('#crLoading').hide(); permintaan = null; });
+    }
+
+    $('#crCustomer').on('change', function () { muatInvoice($(this).val()); });
+
+    // ?customer_id= dari tautan lama tetap dilayani.
+    if ($('#crCustomer').val()) muatInvoice($('#crCustomer').val());
 
     var cariTimer = null;
     $('#crSearch').on('input', function () {

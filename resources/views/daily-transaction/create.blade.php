@@ -110,8 +110,13 @@
 
                         <!-- PILIH CR -->
                         <div class="col-md-8 batch-col-right">
-                            <div class="d-flex align-items-center mb-2">
+                            <div class="d-flex align-items-center flex-wrap mb-2" style="gap:6px;">
                                 <h3 class="cr-section-title mb-0"><i class="fas fa-tasks mr-1"></i> Pilih CR</h3>
+                                {{-- Cari manager (PM Internal) — menyaring grup CR di bawah. --}}
+                                <input type="text" id="inpFilterManager" class="form-control form-control-sm"
+                                       placeholder="Cari manager..." autocomplete="off"
+                                       style="width:170px;height:26px;font-size:12px;">
+                                <button type="button" class="btn btn-xs btn-secondary" id="btnClearFilter" title="Clear filter"><i class="fas fa-eraser"></i></button>
                                 <div class="ml-auto d-flex" style="gap:6px;">
                                     <button type="button" class="btn btn-xs btn-secondary" id="btnSelectAll">Semua</button>
                                     <button type="button" class="btn btn-xs btn-secondary" id="btnClearAll">Reset</button>
@@ -134,7 +139,7 @@
                                 /* CR APPROVED dan Second Payment (Expense Claim yang
                                    sudah di-Second Approve) digabung dalam satu daftar
                                    per PM Internal. Second Payment dibedakan lewat
-                                   badge "2nd Payment" dan nominalnya = selisihnya saja. */
+                                   badge "Second Approved" dan nominalnya = selisihnya saja. */
                                 $crGroups = collect()
                                     ->concat($availableCRs->map(fn ($cr) => ['kind' => 'cr', 'row' => $cr, 'pm' => $cr->pm_internal_name]))
                                     ->concat($availableSecondPayments->map(fn ($sp) => ['kind' => 'sp', 'row' => $sp, 'pm' => $sp->budgetRequest->pm_internal_name ?? '-']))
@@ -187,7 +192,7 @@
                                         <div class="cr-item-body">
                                             <div class="cr-item-row">
                                                 <span class="cr-item-desc">
-                                                    <span class="badge badge-warning mr-1" style="font-size:9px;">2nd Payment</span>
+                                                    <span class="badge badge-warning mr-1" style="font-size:9px;">Second Approved</span>
                                                     {{ Str::limit($sp->budgetRequest->description ?? '-', 60) }}
                                                 </span>
                                                 <span class="cr-item-amount">{{ $sp->amount_formatted }}</span>
@@ -206,6 +211,9 @@
                                     </div>
                                 </div>
                                 @endforeach
+                            </div>
+                            <div id="crFilterEmpty" class="alert alert-light py-2 mb-0" style="display:none;font-size:12px;">
+                                Tidak ada manager yang cocok dengan pencarian.
                             </div>
                             {{-- MN-09 — biaya Non-CR. Bentuknya sengaja sama persis
                                  dengan daftar CR di atas, dan checkbox-nya memakai
@@ -484,8 +492,35 @@ $(function () {
         updateCalc();
     });
 
+    // ── FILTER MANAGER (PM Internal) ──
+    // Hanya menyembunyikan grup yang tidak cocok; item yang sudah tercentang
+    // tetap ikut ter-submit walau grupnya tersembunyi.
+    function applyManagerFilter() {
+        var q = ($('#inpFilterManager').val() || '').toLowerCase().trim();
+        var visible = 0;
+        $('#crCheckList .cr-group').each(function () {
+            var name = $(this).find('.cr-group-header > span').first().text().toLowerCase();
+            var match = q === '' || name.indexOf(q) !== -1;
+            $(this).toggle(match);
+            if (match) visible++;
+        });
+        $('#crFilterEmpty').toggle(q !== '' && visible === 0);
+    }
+
+    $('#inpFilterManager').on('input', applyManagerFilter);
+    $('#btnClearFilter').on('click', function () {
+        $('#inpFilterManager').val('');
+        applyManagerFilter();
+    });
+
+    // "Semua" hanya memilih item yang sedang tampil — saat filter manager
+    // aktif, grup yang tersembunyi tidak ikut tercentang.
     $('#btnSelectAll').on('click', function () {
-        $('.cr-checkbox').prop('checked', true).closest('.cr-check-item').addClass('selected');
+        var filtering = ($('#inpFilterManager').val() || '').trim() !== '';
+        $('.cr-checkbox').filter(function () {
+            var $g = $(this).closest('.cr-group');
+            return $g.length ? $g.is(':visible') : !filtering;
+        }).prop('checked', true).closest('.cr-check-item').addClass('selected');
         updateCalc();
     });
 

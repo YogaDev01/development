@@ -1556,7 +1556,6 @@ $(function () {
                         groups[acc].push(det);
                     });
                 });
-                groupOrder.sort(function (a, b) { return a.localeCompare(b); });
                 var totalVar = totalBudget - totalUsed;
                 var totalVarColor = totalVar < 0 ? NOB_RED : OK_GREEN;
 
@@ -1566,15 +1565,49 @@ $(function () {
                     '<span class="text-muted">Var:</span> <strong style="color:' + totalVarColor + ';">' + moneyFmt(totalVar) + '</strong>' +
                 '</div>';
 
-                var rows = '';
-                if (groupOrder.length) {
-                    groupOrder.forEach(function (acc, gi) {
-                        var items = groups[acc];
-                        var gBudget = 0, gUsed = 0, gRemaining = 0, anyItemNob = false;
-                        items.forEach(function (det) {
-                            gBudget += det.total; gUsed += det.used; gRemaining += det.remaining;
-                            if (det.used > det.total) anyItemNob = true;
-                        });
+                /*
+                | Agregat per Chart of Account dihitung sekali, lalu dipakai
+                | ulang tiap kali urutan berubah — mengurutkan tidak perlu
+                | menjumlah ulang seluruh detail.
+                */
+                var agg = groupOrder.map(function (acc) {
+                    var items = groups[acc];
+                    var gBudget = 0, gUsed = 0, gRemaining = 0, anyItemNob = false;
+                    items.forEach(function (det) {
+                        gBudget += det.total; gUsed += det.used; gRemaining += det.remaining;
+                        if (det.used > det.total) anyItemNob = true;
+                    });
+                    return { acc: acc, items: items, budget: gBudget, used: gUsed,
+                             variance: gRemaining, anyItemNob: anyItemNob };
+                });
+
+                /*
+                | Sortir bekerja di tingkat GRUP, bukan baris: sub-item selalu
+                | ikut induknya, kalau tidak baris detail akan terlepas dari
+                | Chart of Account-nya dan angkanya jadi tak berarti. Price &
+                | Qty sengaja tidak bisa diurutkan — keduanya milik sub-item,
+                | grupnya tidak punya satu nilai pun untuk dibandingkan.
+                */
+                var sortKey = 'acc', sortAsc = true;
+
+                function urutkanGrup() {
+                    var arah = sortAsc ? 1 : -1;
+                    agg.sort(function (a, b) {
+                        if (sortKey === 'acc') return a.acc.localeCompare(b.acc) * arah;
+                        return (a[sortKey] - b[sortKey]) * arah;
+                    });
+                }
+
+                function susunBaris() {
+                    var rows = '';
+                    if (!agg.length) {
+                        return '<tr><td colspan="6" class="text-center text-muted py-3">Belum ada detail budget.</td></tr>';
+                    }
+
+                    agg.forEach(function (grp, gi) {
+                        var acc = grp.acc, items = grp.items;
+                        var gBudget = grp.budget, gUsed = grp.used, gRemaining = grp.variance;
+                        var anyItemNob = grp.anyItemNob;
 
                         var groupClass = 'prj-budget-grp-' + gi;
                         var isNobCategoryFull = gUsed > gBudget;
@@ -1650,21 +1683,54 @@ $(function () {
                             }
                         });
                     });
-                } else {
-                    rows = '<tr><td colspan="6" class="text-center text-muted py-3">Belum ada detail budget.</td></tr>';
+
+                    return rows;
                 }
 
-                var tableHtml = '<div class="table-responsive"><table class="table table-bordered prj-tab-table mb-0">' +
-                    '<thead style="background:var(--surface-2);"><tr>' +
-                        '<th scope="col" class="prj-col-wide">Chart of Account</th>' +
-                        '<th scope="col" class="text-right">Price</th>' +
-                        '<th scope="col" class="text-center">Qty</th>' +
-                        '<th scope="col" class="text-right">Budget</th>' +
-                        '<th scope="col" class="text-right">Used</th>' +
-                        '<th scope="col" class="text-right">Variance</th>' +
-                    '</tr></thead><tbody>' + rows + '</tbody></table></div>';
+                function kepala(key, label, kelas) {
+                    var aktif = sortKey === key;
+                    var ikon = aktif
+                        ? (sortAsc ? 'fa-sort-up' : 'fa-sort-down')
+                        : 'fa-sort';
+                    return '<th scope="col" class="' + kelas + ' prj-budget-sort" data-sort="' + key + '"' +
+                           ' style="cursor:pointer;user-select:none;" title="Urutkan menurut ' + label + '">' +
+                           label + ' <i class="fas ' + ikon + ' ml-1"' +
+                           ' style="font-size:10px;opacity:' + (aktif ? '1' : '.45') + ';"></i></th>';
+                }
 
-                $('#prjBudgetBody').html(summaryHtml + tableHtml);
+                function gambar() {
+                    urutkanGrup();
+
+                    var tableHtml = '<div class="table-responsive"><table class="table table-bordered prj-tab-table mb-0">' +
+                        '<thead style="background:var(--surface-2);"><tr>' +
+                            kepala('acc', 'Chart of Account', 'prj-col-wide') +
+                            '<th scope="col" class="text-right">Price</th>' +
+                            '<th scope="col" class="text-center">Qty</th>' +
+                            kepala('budget', 'Budget', 'text-right') +
+                            kepala('used', 'Used', 'text-right') +
+                            kepala('variance', 'Variance', 'text-right') +
+                        '</tr></thead><tbody>' + susunBaris() + '</tbody></table></div>';
+
+                    $('#prjBudgetBody').html(summaryHtml + tableHtml);
+                }
+
+                // Satu handler per render; dipasang di kontainer supaya tabel
+                // boleh digambar ulang tanpa menumpuk handler.
+                $('#prjBudgetBody').off('click.prjBudgetSort')
+                    .on('click.prjBudgetSort', '.prj-budget-sort', function () {
+                        var key = $(this).data('sort');
+                        if (sortKey === key) {
+                            sortAsc = !sortAsc;
+                        } else {
+                            sortKey = key;
+                            // Nama naik A-Z, angka turun dulu: yang dicari dari
+                            // kolom uang hampir selalu yang terbesar.
+                            sortAsc = key === 'acc';
+                        }
+                        gambar();
+                    });
+
+                gambar();
             })();
 
             // Tab Access — bagan organisasi (head → manager → supervisor saja)
@@ -1830,14 +1896,23 @@ $(function () {
     (function () {
         var params = new URLSearchParams(window.location.search);
         var openId = params.get('open');
-        if (!openId) return;
+        var cari   = params.get('q');
+        if (!openId && !cari) return;
 
         params.delete('open');
+        params.delete('q');
         var sisa = params.toString();
         window.history.replaceState({}, '',
             window.location.pathname + (sisa ? '?' + sisa : '') + window.location.hash);
 
-        openProjectDetail(openId);
+        // ?q=<kode> mengisi kotak pencarian DataTables, supaya PO yang dituju
+        // juga tersaring di daftar belakang modal (dipakai dari To Do List).
+        if (cari) {
+            table.search(cari).draw();
+            $('#projectTable_filter input').val(cari);
+        }
+
+        if (openId) openProjectDetail(openId);
     })();
 
 });
