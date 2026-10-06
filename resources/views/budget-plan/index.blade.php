@@ -1770,8 +1770,9 @@ $(function () {
             var reqHtml = '', reqTotalAmount = 0, reqTotalRealization = 0, reqTotalRefund = 0, reqTotalClaim = 0;
             if (d.requests.length) {
                 d.requests.forEach(function (cr, ri) {
-                    var isFinal = cr.status === 'REALIZED' || cr.status === 'CLOSED';
-                    var refundVal = isFinal ? (cr.refund || 0) : 0;
+                    // Refund mengikuti nilai dari backend (BudgetRequest::refundAmount),
+                    // yang sudah nyata begitu settlement diisi — bukan digerbang status.
+                    var refundVal = cr.refund || 0;
                     reqTotalAmount += cr.amount || 0;
                     reqTotalRealization += cr.realization || 0;
                     reqTotalRefund += refundVal;
@@ -1788,7 +1789,7 @@ $(function () {
                             '<div><small class="text-muted">' + (cr.beneficiary || '-') + '</small></div>' +
                         '</td>' +
                         '<td class="text-right text-nowrap">' + cr.realization_formatted + '</td>' +
-                        '<td class="text-right text-nowrap">' + (isFinal ? cr.refund_formatted : '<span class="text-muted">-</span>') + '</td>' +
+                        '<td class="text-right text-nowrap">' + (refundVal > 0 ? cr.refund_formatted : '<span class="text-muted">-</span>') + '</td>' +
                         '<td class="text-right text-nowrap">' + ((cr.expense_claim || 0) > 0 ? cr.expense_claim_formatted : '<span class="text-muted">-</span>') + '</td>' +
                         '<td class="text-nowrap">' + cr.date + '</td>' +
                         '<td><span class="badge badge-' + (crStatusColors[cr.status] || 'secondary') + ' px-2 py-1" style="font-size:10px;">' + cr.status + '</span></td>' +

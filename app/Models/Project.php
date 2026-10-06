@@ -556,7 +556,7 @@ class Project extends Model
 
         $crByPlan = BudgetRequest::whereIn('budget_plan_id', $projects->flatMap(fn ($p) => $p->budgetPlans->pluck('id'))->unique()->values())
             ->whereNotIn('status', ['DRAFT', 'REJECTED'])
-            ->with('realizations')
+            ->with(['type', 'realizations'])
             ->get()
             ->groupBy('budget_plan_id');
 
@@ -621,10 +621,9 @@ class Project extends Model
 
     /**
      * Variable Cost atas Cost Request yang sudah jadi biaya nyata
-     * (PAID/REALIZED/CLOSED). Per pengajuan:
-     *   - kalau sudah ada realisasinya (REALIZED/CLOSED + punya baris realisasi) →
-     *     pakai nilai realisasi;
-     *   - kalau belum ada realisasinya → pakai nilai pengajuannya.
+     * (PAID/REALIZED/CLOSED). Nilai per pengajuan mengikuti aturan settlement
+     * tunggal di BudgetRequest::realizedCostValue(): Cash Advance + settlement
+     * sudah diisi → nilai settlement; selainnya → nilai pengajuan.
      * Dipakai kolom "Variable Cost" index & tab Cost modal.
      */
     public function variableCostTotal(): int
@@ -633,14 +632,10 @@ class Project extends Model
             ? $this->crCache->filter(fn ($c) => $c->isDisbursed())
             : BudgetRequest::whereIn('budget_plan_id', $this->budgetPlans->pluck('id'))
                 ->disbursed()
-                ->with('realizations')
+                ->with(['type', 'realizations'])
                 ->get();
 
-        return (int) $crs->sum(function ($c) {
-            $hasRealization = $c->status !== 'PAID' && $c->realizations->isNotEmpty();
-
-            return $hasRealization ? (int) $c->total_realization : (int) $c->amount;
-        });
+        return (int) $crs->sum(fn ($c) => $c->realizedCostValue());
     }
 
     /**

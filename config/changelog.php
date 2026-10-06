@@ -26,10 +26,34 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '2.5.8',
+    'current' => '2.5.9',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '2.5.9',
+            'date'    => '2026-10-06',
+            'title'   => 'Refund & Biaya Terpakai Langsung Mengikuti Settlement',
+            'summary' => 'Refund Cash Advance dan nilai biaya terpakai kini langsung mengikuti settlement begitu settlement diisi, tidak lagi menunggu settlement disetujui — sejalan dengan Expense Claim yang sudah lebih dulu tampil sejak realisasi diinput.',
+            'sections' => [
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Refund Cash Advance (Pengajuan - Settlement) kini tampil begitu settlement diisi, tidak lagi menunggu settlement disetujui; berlaku di detail CR, modal Budget Plan, Purchase Order, dan export.',
+                        'Nilai biaya terpakai per CR (kolom realisasi di modal Budget Plan dan Variable Cost di Purchase Order) memakai nilai settlement begitu settlement Cash Advance diisi; tipe selain Cash Advance tetap memakai nilai pengajuan.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Variable Cost di Purchase Order kini memakai aturan yang sama dengan rincian Cost Request, sehingga kedua angka tidak lagi bisa berbeda untuk CR yang sama.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '2.5.8',

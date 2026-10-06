@@ -389,21 +389,26 @@ class BudgetRequest extends Model
     }
 
     /**
-     * Refund final. 0 selama CR belum settle — berapa pun realisasi yang sudah
-     * terinput. Negatif tidak mungkin: kelebihan realisasi ditangani lewat
-     * Second Payment, bukan refund negatif.
+     * Refund = Pengajuan - Settlement. Nyata begitu settlement DIISI (ada
+     * realisasi), bukan menunggu settlement disetujui — simetris dengan
+     * expenseClaimAmount() yang juga sudah muncul sejak realisasi diinput.
+     * Negatif tidak mungkin: kelebihan realisasi ditangani lewat Second
+     * Payment, bukan refund negatif.
      */
     public function refundAmount(): int
     {
         /*
-        | Tipe selain Cash Advance TIDAK punya tahap settlement: dananya cair
-        | sesuai pengajuan lalu langsung Closed, jadi tidak pernah ada sisa
-        | yang dikembalikan. Tanpa penjagaan ini CR non-CA yang Closed terbaca
-        | refund = SELURUH nominalnya, karena total_realization-nya memang 0 —
-        | angka itu lalu ikut mengalir ke detail CR, Budget Plan, Project, dan
-        | export.
+        | Dua penjagaan, bukan lagi isSettled():
+        |   - Tipe selain Cash Advance TIDAK punya tahap settlement: dananya
+        |     cair sesuai pengajuan lalu langsung Closed, tidak ada sisa yang
+        |     dikembalikan. Tanpa isCashAdvance() CR non-CA yang Closed terbaca
+        |     refund = SELURUH nominalnya (total_realization-nya memang 0).
+        |   - Cash Advance yang settlement-nya masih 0 (belum diisi): belum ada
+        |     dasar refund, jadi 0 sampai realisasi masuk.
+        | Sebelumnya dijaga !isSettled() sehingga refund baru muncul SETELAH
+        | settlement disetujui — tidak simetris dengan expenseClaimAmount().
         */
-        if (!$this->isCashAdvance() || !$this->isSettled()) {
+        if (!$this->isCashAdvance() || $this->total_realization <= 0) {
             return 0;
         }
 
@@ -474,21 +479,23 @@ class BudgetRequest extends Model
     }
 
     /**
-     * Nilai biaya yang benar-benar terpakai. Selama belum settle, nilai
-     * pengajuan penuh yang dipakai (konsisten dengan refund = 0).
+     * Nilai biaya yang benar-benar terpakai, mengikuti aturan settlement yang
+     * sama dengan refundAmount():
+     *   - Cash Advance + settlement sudah diisi (total_realization > 0) ->
+     *     nilai settlement (biaya aktual), bukan menunggu settlement disetujui;
+     *   - selainnya (tipe lain, atau CA yang settlement-nya masih 0) -> nilai
+     *     pengajuan penuh.
+     * Dipakai kolom "realisasi/used" per CR di modal Budget Plan & Variable
+     * Cost PO (Project::variableCostTotal()).
      */
     public function realizedCostValue(): int
     {
-        return $this->isSettled() && $this->relationLoadedRealizationsNotEmpty()
+        // Deteksi CA memakai isCashAdvance() (nama tipe), sama dengan
+        // refundAmount() — relasi `type` perlu di-eager-load oleh pemanggil
+        // yang mengagregasi banyak baris (lihat Project::preloadFinancials()).
+        return $this->isCashAdvance() && $this->total_realization > 0
             ? (int) $this->total_realization
             : (int) $this->amount;
-    }
-
-    private function relationLoadedRealizationsNotEmpty(): bool
-    {
-        return $this->relationLoaded('realizations')
-            ? $this->realizations->isNotEmpty()
-            : $this->realizations()->exists();
     }
 
     /** Selisih = Settlement (total realisasi) - Original Approved Amount. Dasar

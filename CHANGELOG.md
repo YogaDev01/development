@@ -4,6 +4,19 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [2.5.9] - 2026-10-06 — Refund & Biaya Terpakai Langsung Mengikuti Settlement
+
+Refund Cash Advance dan nilai biaya terpakai kini langsung mengikuti settlement
+begitu settlement diisi, tidak lagi menunggu settlement disetujui — sejalan dengan
+Expense Claim yang sudah lebih dulu tampil sejak realisasi diinput.
+
+### Berubah
+- Refund Cash Advance (Pengajuan - Settlement) kini tampil begitu settlement diisi, tidak lagi menunggu settlement disetujui; berlaku di detail CR, modal Budget Plan, Purchase Order, dan export.
+- Nilai biaya terpakai per CR (kolom realisasi di modal Budget Plan dan Variable Cost di Purchase Order) memakai nilai settlement begitu settlement Cash Advance diisi; tipe selain Cash Advance tetap memakai nilai pengajuan.
+
+### Perbaikan
+- Variable Cost di Purchase Order kini memakai aturan yang sama dengan rincian Cost Request, sehingga kedua angka tidak lagi bisa berbeda untuk CR yang sama.
+
 ## [2.5.8] - 2026-10-05 — Catat Penerimaan Tanpa Muat Ulang, Filter Checklist & Penyaring Daftar Panjang
 
 Memilih customer di Catat Penerimaan tidak lagi membuang isian yang sudah
