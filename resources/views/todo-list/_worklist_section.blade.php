@@ -50,12 +50,12 @@
             <table class="table table-bordered mb-0 todo-tbl" style="font-size:12.5px;">
                 <thead class="bg-light">
                     <tr>
-                        <th scope="col" style="width:1%;"><input type="checkbox" class="todo-check-all"></th>
-                        <th scope="col" class="text-nowrap" style="width:1%;">CR Number</th>
+                        <th scope="col" style="width:36px;"><input type="checkbox" class="todo-check-all"></th>
+                        <th scope="col" class="text-nowrap" style="width:235px;">CR Number</th>
                         <th scope="col">Description</th>
-                        <th scope="col" class="text-nowrap" style="width:1%;">Beneficiary</th>
-                        <th scope="col" class="text-right text-nowrap" style="width:1%;">Amount</th>
-                        <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
+                        <th scope="col" class="text-nowrap" style="width:140px;">Beneficiary</th>
+                        <th scope="col" class="text-right text-nowrap" style="width:130px;">Amount</th>
+                        <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -156,8 +156,11 @@
                     <tr class="{{ $indukBarisCr }} {{ $kelasSemuaCr }} todo-row {{ $crNobClass }}" style="display:none;"
                         data-pm="{{ $group['pm'] }}" data-po="{{ $poGroup['po'] }}" data-search="{{ $crSearch }}">
                         <td><input type="checkbox" class="todo-check" value="{{ $cr->id }}" data-amount="{{ $cr->amount }}"></td>
-                        <td class="text-nowrap">
-                            <button type="button" class="cr-number-btn todo-open-drawer" data-id="{{ $cr->id }}">{{ $cr->code }}</button>
+                        {{-- Jangan nowrap: nomor CR plus badge NOB bisa melebihi lebar
+                             kolom, dan dengan table-layout:fixed sisanya menimpa kolom
+                             Description. Badge dibiarkan turun ke baris berikutnya. --}}
+                        <td>
+                            <button type="button" class="cr-number-btn todo-open-drawer text-nowrap" data-id="{{ $cr->id }}">{{ $cr->code }}</button>
                             @if($crNob['full'] ?? false)<span class="badge badge-danger ml-1" style="font-size:9px;">NOB</span>@endif
                         </td>
                         <td class="{{ $crNobClass }}">{{ Str::limit($cr->description, 150) }}</td>

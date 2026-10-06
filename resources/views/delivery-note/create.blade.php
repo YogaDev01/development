@@ -48,9 +48,38 @@
                         <div class="card-header">
                             <h3 class="card-title"><i class="fas fa-file-invoice mr-1"></i> Pilih Invoice (status APPROVED)</h3>
                         </div>
+
+                        {{-- Daftar ini dikelompokkan per customer dan bisa panjang,
+                             sementara satu Surat Jalan toh hanya boleh memuat satu
+                             customer. Jadi penyaring customer dipasang di atasnya:
+                             dropdown dengan kotak cari (TesysSearchableSelect) plus
+                             tombol penghapus, bentuk yang sama dengan halaman lain.
+                             Menyaring hanya menyembunyikan grup lain — pilihan yang
+                             sudah dicentang tidak ikut terhapus. --}}
+                        <div class="card-body pb-0">
+                            <div class="custom-toolbar d-flex align-items-center justify-content-start flex-wrap" style="gap:8px;">
+                                <div class="toolbar-row">
+                                    <span class="toolbar-label">Customer :</span>
+                                    <div class="toolbar-input">
+                                        <select id="dnFilterCustomer" class="form-control form-control-sm">
+                                            <option value="">Semua Customer</option>
+                                            @foreach($groupedByCustomer as $customerId => $invoices)
+                                                <option value="{{ $customerId }}">{{ $invoices->first()->po->customer->name ?? '-' }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <button type="button" id="btnClearFilterDn" class="btn btn-outline-secondary btn-sm"
+                                        title="Clear Filter" aria-label="Clear Filter">
+                                    <i class="fas fa-eraser"></i>
+                                </button>
+                            </div>
+                        </div>
+
                         <div class="card-body p-0">
                             @forelse($groupedByCustomer as $customerId => $invoices)
-                            <div class="dn-customer-group">
+                            <div class="dn-customer-group" data-customer="{{ $customerId }}">
                                 <div class="dn-group-header">{{ $invoices->first()->po->customer->name ?? '-' }}</div>
                                 @foreach($invoices as $inv)
                                 <label class="dn-invoice-item d-flex align-items-start">
@@ -72,6 +101,13 @@
                                 Tidak ada invoice berstatus APPROVED yang tersedia.
                             </div>
                             @endforelse
+
+                            {{-- Hanya muncul kalau penyaring tidak menemukan grup
+                                 apa pun — bukan keadaan "memang belum ada data". --}}
+                            <div id="dnNoMatch" class="text-center text-muted py-5 d-none">
+                                <i class="fas fa-search d-block mb-2" style="font-size:28px;"></i>
+                                Tidak ada invoice untuk customer yang dipilih.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -132,6 +168,19 @@
     text-transform:uppercase; color:var(--text-faint);
 }
 
+/* .toolbar-row/.toolbar-input belum punya definisi global; tanpa ini label
+   "Customer :" jatuh ke baris sendiri di atas dropdown. Nilainya disamakan
+   dengan index lain (Surat Jalan, Cash Receipt, Account). */
+.toolbar-row   { display:flex; align-items:center; gap:8px; }
+.toolbar-label { min-width:50px; font-weight:600; color:var(--text-dim); white-space:nowrap; margin-bottom:0; }
+.toolbar-input { min-width:260px; }
+.custom-toolbar .toolbar-input .tss-btn { width:100%; }
+
+@media (max-width: 575.98px) {
+    .toolbar-row   { width:100%; }
+    .toolbar-input { flex:1; min-width:0; }
+}
+
 .dn-customer-group { border-bottom:1px solid var(--border); }
 .dn-customer-group:last-child { border-bottom:none; }
 .dn-group-header {
@@ -186,6 +235,40 @@ $(function () {
 
     $(document).on('change', '.dn-checkbox', recalc);
     recalc();
+
+    /*
+     | Penyaring customer. Hanya menyembunyikan grup lain dari layar —
+     | centang yang sudah dibuat sengaja TIDAK dilepas, supaya menyaring
+     | tidak pernah diam-diam membatalkan pilihan orang. Karena satu Surat
+     | Jalan toh hanya boleh satu customer, grup lain memang sudah terkunci
+     | oleh recalc() begitu ada satu invoice dicentang.
+     */
+    TesysSearchableSelect.init('#dnFilterCustomer', {
+        placeholder: 'Semua Customer',
+        searchPlaceholder: 'Cari customer...'
+    });
+
+    function applyCustomerFilter() {
+        var pilih = $('#dnFilterCustomer').val();
+        var tampil = 0;
+
+        $('.dn-customer-group').each(function () {
+            var cocok = !pilih || String($(this).data('customer')) === String(pilih);
+            $(this).toggleClass('d-none', !cocok);
+            if (cocok) { tampil++; }
+        });
+
+        $('#dnNoMatch').toggleClass('d-none', tampil > 0 || $('.dn-customer-group').length === 0);
+    }
+
+    $('#dnFilterCustomer').on('change', applyCustomerFilter);
+
+    /* Panel dropdown tidak memuat opsi kosong, jadi "kembali ke semua
+       customer" memang jalurnya lewat tombol ini. 'tss:sync' dipakai supaya
+       teks tombolnya ikut kembali ke placeholder. */
+    $('#btnClearFilterDn').on('click', function () {
+        $('#dnFilterCustomer').val('').trigger('tss:sync').trigger('change');
+    });
 
     $('#frmDeliveryNote').on('submit', function (e) {
         e.preventDefault();

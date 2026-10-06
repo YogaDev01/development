@@ -44,9 +44,11 @@ class CashManagementController extends Controller
         $filters = [
             'from'           => $from,
             'to'             => $to,
-            'direction'      => $request->query('direction'),
-            'source_fund_id' => $request->query('source_fund_id'),
-            'module'         => $request->query('module'),
+            // Tiga filter ini checklist (boleh lebih dari satu). Nilai tunggal
+            // dari tautan lama tetap dibungkus jadi array.
+            'direction'      => $this->filterList($request->query('direction')),
+            'source_fund_id' => $this->filterList($request->query('source_fund_id')),
+            'module'         => $this->filterList($request->query('module')),
             'q'              => $request->query('q'),
         ];
 
@@ -82,6 +84,15 @@ class CashManagementController extends Controller
                 CashFlowService::MODULE_MANUAL       => 'Entri Manual',
             ],
         ]);
+    }
+
+    /** Normalisasi nilai filter checklist menjadi array string tanpa nilai kosong. */
+    private function filterList($value): array
+    {
+        return array_values(array_filter(
+            array_map('strval', (array) ($value ?? [])),
+            fn ($v) => $v !== '',
+        ));
     }
 
     /*

@@ -171,12 +171,12 @@
                         <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">CR Number</th>
-                                    <th scope="col">Description</th>
-                                    <th scope="col">Alasan Ditolak</th>
-                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:1%;">Amount</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Batch Treasury</th>
+                                    <th scope="col" class="text-nowrap" style="width:190px;">CR Number</th>
+                                    <th scope="col" style="width:32%;">Description</th>
+                                    <th scope="col" style="width:30%;">Alasan Ditolak</th>
+                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:130px;">Amount</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:130px;">Batch Treasury</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -262,12 +262,12 @@
                         <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">CR Number</th>
+                                    <th scope="col" class="text-nowrap" style="width:190px;">CR Number</th>
                                     <th scope="col">Description</th>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">Beneficiary</th>
-                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:1%;">Amount</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
+                                    <th scope="col" class="text-nowrap" style="width:140px;">Beneficiary</th>
+                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:130px;">Amount</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:100px;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -333,14 +333,14 @@
                         <table class="table table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
-                                    <th scope="col" style="width:1%;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">CR Number</th>
+                                    <th scope="col" style="width:36px;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
+                                    <th scope="col" class="text-nowrap" style="width:190px;">CR Number</th>
                                     <th scope="col">Description</th>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">Beneficiary</th>
-                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Amount</th>
-                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Refund</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
+                                    <th scope="col" class="text-nowrap" style="width:140px;">Beneficiary</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:130px;">Amount</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:130px;">Refund</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:100px;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -506,15 +506,15 @@
                         <table class="table todo-po-group table-sm table-hover mb-0" style="font-size:12px;">
                             <thead class="bg-light">
                                 <tr>
-                                    <th scope="col" style="width:1%;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
-                                    <th scope="col">Code</th>
+                                    <th scope="col" style="width:36px;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
+                                    <th scope="col" class="text-nowrap" style="width:180px;">Code</th>
                                     <th scope="col">Deskripsi</th>
-                                    <th scope="col" class="text-nowrap">Beneficiary</th>
-                                    <th scope="col" class="text-right text-nowrap">Request</th>
-                                    <th scope="col" class="text-right text-nowrap">Settlement</th>
-                                    <th scope="col" data-po-amount class="text-right text-nowrap">Expense Claim</th>
-                                    <th scope="col" class="text-center text-nowrap">Aging</th>
-                                    <th scope="col" class="text-center text-nowrap">Aksi</th>
+                                    <th scope="col" class="text-nowrap" style="width:140px;">Beneficiary</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:130px;">Request</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:135px;">Settlement</th>
+                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:135px;">Expense Claim</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:100px;">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -608,15 +608,15 @@
                         <table class="table table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
-                                    <th scope="col" style="width:1%;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">CR Number</th>
+                                    <th scope="col" style="width:36px;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
+                                    <th scope="col" class="text-nowrap" style="width:190px;">CR Number</th>
                                     <th scope="col">Description</th>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">Beneficiary</th>
-                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Amount</th>
-                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Refund</th>
-                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Expense Claim</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
+                                    <th scope="col" class="text-nowrap" style="width:140px;">Beneficiary</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:130px;">Amount</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:130px;">Refund</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:135px;">Expense Claim</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:100px;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -806,11 +806,11 @@
                         <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">CR Number</th>
+                                    <th scope="col" class="text-nowrap" style="width:190px;">CR Number</th>
                                     <th scope="col">Description</th>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">Beneficiary</th>
-                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:1%;">Second Approval</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
+                                    <th scope="col" class="text-nowrap" style="width:140px;">Beneficiary</th>
+                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:140px;">Second Approval</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:100px;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -885,13 +885,13 @@
                         <table class="table table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
-                                    <th scope="col" style="width:1%;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">Code</th>
-                                    <th scope="col">Description</th>
-                                    <th scope="col">PO</th>
-                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Budget</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
+                                    <th scope="col" style="width:36px;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
+                                    <th scope="col" class="text-nowrap" style="width:180px;">Code</th>
+                                    <th scope="col" style="width:40%;">Description</th>
+                                    <th scope="col" style="width:26%;">PO</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:130px;">Budget</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:100px;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -922,9 +922,6 @@
                                                 </button>
                                             </form>
 
-                                            <button aria-label="Detail" type="button" class="ts-action-primary is-neutral todo-bp-detail" data-id="{{ $bp->id }}" title="Detail Budget">
-                                                <i class="fas fa-info-circle" aria-hidden="true"></i><span class="ts-al">Detail</span>
-                                            </button>
                                             <button type="button" class="ts-action-more"
                                                     aria-haspopup="true" aria-expanded="false"
                                                     title="Aksi lain" aria-label="Aksi lain untuk {{ $bp->code }}">
@@ -963,13 +960,13 @@
                         <table class="table table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">Code</th>
-                                    <th scope="col">Description</th>
-                                    <th scope="col">PO</th>
-                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Budget</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Plan Finish</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
+                                    <th scope="col" class="text-nowrap" style="width:180px;">Code</th>
+                                    <th scope="col" style="width:40%;">Description</th>
+                                    <th scope="col" style="width:26%;">PO</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:130px;">Budget</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:110px;">Plan Finish</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:100px;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -994,9 +991,6 @@
                                                title="Ajukan Closing di halaman Budgeting">
                                                 <i class="fas fa-flag-checkered" aria-hidden="true"></i><span class="ts-al">Ajukan Closing</span>
                                             </a>
-                                            <button aria-label="Detail" type="button" class="ts-action-primary is-neutral todo-bp-detail" data-id="{{ $bp->id }}" title="Detail Budget">
-                                                <i class="fas fa-info-circle" aria-hidden="true"></i><span class="ts-al">Detail</span>
-                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -1022,13 +1016,13 @@
                         <table class="table table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">Code</th>
-                                    <th scope="col">Description</th>
-                                    <th scope="col">PO</th>
-                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Budget</th>
-                                    <th scope="col">Alasan Ditolak</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
+                                    <th scope="col" class="text-nowrap" style="width:180px;">Code</th>
+                                    <th scope="col" style="width:28%;">Description</th>
+                                    <th scope="col" style="width:18%;">PO</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:130px;">Budget</th>
+                                    <th scope="col" style="width:24%;">Alasan Ditolak</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:100px;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1054,9 +1048,6 @@
                                                     data-id="{{ $bp->id }}" data-action="{{ route('budget-plan.manager-revise', $bp->id) }}"
                                                     title="Revise → Draft">
                                                 <i class="fas fa-undo" aria-hidden="true"></i><span class="ts-al">Revise</span>
-                                            </button>
-                                            <button aria-label="Detail" type="button" class="ts-action-primary is-neutral todo-bp-detail" data-id="{{ $bp->id }}" title="Detail Budget">
-                                                <i class="fas fa-info-circle" aria-hidden="true"></i><span class="ts-al">Detail</span>
                                             </button>
                                         </div>
                                     </td>
@@ -1099,14 +1090,14 @@
                         <table class="table table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
-                                    <th scope="col" style="width:1%;">
+                                    <th scope="col" style="width:36px;">
                                         <input type="checkbox" id="tlBatchCheckAll" title="Pilih semua">
                                     </th>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">CR Number</th>
+                                    <th scope="col" class="text-nowrap" style="width:190px;">CR Number</th>
                                     <th scope="col">Description</th>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">Beneficiary</th>
-                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Amount</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
+                                    <th scope="col" class="text-nowrap" style="width:140px;">Beneficiary</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:130px;">Amount</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1115,10 +1106,10 @@
                                      batch bisa disusun per PO tanpa memungut CR satu-satu dari
                                      daftar panjang.
 
-                                     Berbeda dari worklist, baris CR di sini dirender TERBUKA:
-                                     tlBatchRefresh() hanya menghitung baris yang :visible, jadi
-                                     kalau grupnya tertutup, "pilih semua" dan hitungan nominal
-                                     akan berbohong soal apa yang benar-benar ikut terbatch. --}}
+                                     Grupnya dirender TERTUTUP seperti worklist lain. Supaya
+                                     hitungan batch tetap jujur: mencentang grup yang tertutup
+                                     membukanya dulu, dan menutup grup melepas centang isinya
+                                     (lihat handler .tl-batch-check-group / .todo-po-row). --}}
                                 @foreach($treasuryBatchGroups as $poi => $poGroup)
                                 <tr class="todo-po-row" data-target="tlbatch-po-{{ $poi }}">
                                     <td>
@@ -1126,7 +1117,7 @@
                                                data-group="tlbatch-po-{{ $poi }}" title="Pilih semua CR pada PO ini">
                                     </td>
                                     <td colspan="3">
-                                        <i class="fas fa-chevron-right todo-caret rotated mr-2"></i>
+                                        <i class="fas fa-chevron-right todo-caret mr-2"></i>
                                         <strong>{{ $poGroup['po'] }}</strong>
                                         {{-- Manager hanya ikut ditulis kalau ada. Budget cost center (Overhead/
                                                  Payroll) tidak punya PM, dan "(NAMA - -)" cuma menambah
@@ -1149,7 +1140,7 @@
                                     $crAging = $cr->aging_days;
                                     $crAgingClass = $crAging >= 3 ? 'text-danger' : ($crAging >= 1 ? 'rv-nob-item' : 'text-muted');
                                 @endphp
-                                <tr class="todo-row tlbatch-po-{{ $poi }}" data-po="{{ $poGroup['po'] }}" data-search="{{ $crSearch }}">
+                                <tr class="todo-row tlbatch-po-{{ $poi }}" style="display:none;" data-po="{{ $poGroup['po'] }}" data-search="{{ $crSearch }}">
                                     <td>
                                         <input type="checkbox" class="tl-batch-check"
                                                value="{{ $cr->id }}" data-amount="{{ $cr->amount }}">
@@ -1179,7 +1170,7 @@
                                                data-group="tlbatch-second" title="Pilih semua Second Approval">
                                     </td>
                                     <td colspan="3">
-                                        <i class="fas fa-chevron-right todo-caret rotated mr-2"></i>
+                                        <i class="fas fa-chevron-right todo-caret mr-2"></i>
                                         <strong>Second Approval</strong>
                                         <span class="text-muted" style="font-size:11px;">(sudah Second Approve)</span>
                                         <span class="badge badge-secondary ml-1">{{ $treasuryBatchSecond->count() }}</span>
@@ -1193,7 +1184,7 @@
                                 @php
                                     $spSearch = strtolower($sp->cr_code . ' ' . $sp->cr_desc . ' ' . $sp->beneficiary_label);
                                 @endphp
-                                <tr class="todo-row tlbatch-second" data-po="{{ $sp->po_label }}" data-search="{{ $spSearch }}">
+                                <tr class="todo-row tlbatch-second" style="display:none;" data-po="{{ $sp->po_label }}" data-search="{{ $spSearch }}">
                                     <td>
                                         <input type="checkbox" class="tl-batch-check" data-kind="second"
                                                value="{{ $sp->id }}" data-amount="{{ $sp->amount }}">
@@ -1236,7 +1227,7 @@
                         <table class="table table-bordered mb-0 todo-fit-table" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
-                                    <th scope="col" style="width:1%;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
+                                    <th scope="col" style="width:36px;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
                                     <th scope="col" class="todo-col-fit">Batch Code</th>
                                     <th scope="col" class="todo-col-desc">Deskripsi</th>
                                     <th scope="col" class="todo-col-fit">Tanggal</th>
@@ -1382,11 +1373,11 @@
                         <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">No. PO</th>
+                                    <th scope="col" class="text-nowrap" style="width:150px;">No. PO</th>
                                     <th scope="col">PO / Customer</th>
-                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:1%;">Sisa Ditagih</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
+                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:135px;">Sisa Ditagih</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:100px;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1445,13 +1436,13 @@
                         <table class="table table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">PO</th>
+                                    <th scope="col" class="text-nowrap" style="width:150px;">PO</th>
                                     <th scope="col">Scope of Work / Customer</th>
                                     <th scope="col" class="text-nowrap">Manager</th>
-                                    <th scope="col" class="text-right text-nowrap" style="width:1%;">Nilai PO</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">No. PO</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:135px;">Nilai PO</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:90px;">No. PO</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:100px;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1459,7 +1450,10 @@
                                 @php $poAgingClass = $po->aging_days >= 3 ? 'text-danger' : ($po->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
                                 <tr class="todo-row" data-search="{{ strtolower($po->code . ' ' . $po->name . ' ' . ($po->customer?->name ?? '') . ' ' . ($po->manager?->name ?? '')) }}">
                                     <td class="text-nowrap">
-                                        <a href="{{ route('project.index') }}?open={{ $po->id }}" class="cr-number-btn">{{ $po->code }}</a>
+                                        {{-- q= mengisi pencarian di halaman Purchase Order, open=
+                                             membuka modal detailnya — PO yang dituju langsung
+                                             terlihat, bukan tenggelam di daftar. --}}
+                                        <a href="{{ route('project.index') }}?q={{ urlencode($po->code) }}&open={{ $po->id }}" class="cr-number-btn">{{ $po->code }}</a>
                                     </td>
                                     <td>{{ $po->name }} <span class="text-muted">({{ $po->customer?->name ?? '-' }})</span></td>
                                     {{-- Username, bukan nama lengkap: kolom ini cuma penanda
@@ -1480,7 +1474,7 @@
                                     <td class="text-center text-nowrap {{ $poAgingClass }}">{{ $po->aging_label }}</td>
                                     <td class="text-center text-nowrap">
                                         <div class="action-buttons ts-actions">
-                                            <a href="{{ route('project.index') }}?open={{ $po->id }}"
+                                            <a href="{{ route('project.index') }}?q={{ urlencode($po->code) }}&open={{ $po->id }}"
                                                class="ts-action-primary" title="Review PO">
                                                 <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Review</span>
                                             </a>
@@ -1509,12 +1503,12 @@
                         <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
-                                    <th scope="col" style="width:1%;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">Invoice</th>
+                                    <th scope="col" style="width:36px;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
+                                    <th scope="col" class="text-nowrap" style="width:155px;">Invoice</th>
                                     <th scope="col">PO / Customer</th>
-                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:1%;">Amount</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
+                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:130px;">Amount</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:100px;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1574,12 +1568,12 @@
                         <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
-                                    <th scope="col" style="width:1%;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">Invoice</th>
+                                    <th scope="col" style="width:36px;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
+                                    <th scope="col" class="text-nowrap" style="width:155px;">Invoice</th>
                                     <th scope="col">PO / Customer</th>
-                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:1%;">Amount</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
+                                    <th scope="col" data-po-amount class="text-right text-nowrap" style="width:130px;">Amount</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:100px;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1638,11 +1632,11 @@
                         <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
-                                    <th scope="col" class="text-nowrap" style="width:1%;">PO</th>
+                                    <th scope="col" class="text-nowrap" style="width:150px;">PO</th>
                                     <th scope="col">Milestone</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Target Selesai</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Terlambat</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:110px;">Target Selesai</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Terlambat</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:100px;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1793,7 +1787,7 @@
                                             <th scope="col">Keterangan</th>
                                             <th scope="col" class="text-right text-nowrap" style="width:1%;">Satuan</th>
                                             <th scope="col" class="text-center text-nowrap" style="width:1%;">Qty</th>
-                                            <th scope="col" class="text-right text-nowrap" style="width:1%;">Budget</th>
+                                            <th scope="col" class="text-right text-nowrap" style="width:130px;">Budget</th>
                                         </tr>
                                     </thead>
                                     <tbody id="todoBpDetails"></tbody>
@@ -2029,7 +2023,28 @@
    Modal konfirmasi yang dipanggil DARI drawer karena itu perlu dinaikkan,
    berikut backdrop-nya, kalau tidak ia muncul di belakang panel. */
 #mdlDrwAction { z-index:1080; }
+/* Berlaku untuk SEMUA modal yang dibuka selagi drawer terbuka (View Budget,
+   Detail Budget, konfirmasi aksi) — bukan cuma #mdlDrwAction, kalau tidak
+   modalnya tertutup panel drawer. */
+body.todo-drawer-open .modal { z-index:1080; }
 body.todo-drawer-open .modal-backdrop { z-index:1070; }
+/* Kebalikannya juga terjadi: drawer CR bisa dibuka DARI dalam modal View
+   Budget (tombol view per CR). Yang terakhir dibuka harus menang, jadi drawer
+   naik di atas modal selama kelas ini terpasang. */
+body.todo-drawer-top .todo-drawer { z-index:1091; }
+body.todo-drawer-top .todo-drawer-overlay { z-index:1090; }
+/* Lebar kolom dikunci: dengan layout otomatis, baris grup ber-colspan dan
+   baris anak yang muncul/hilang membuat kolom bergeser tiap kali grup dibuka. */
+.todo-flat-section .card-body table,
+.todo-worklist .card-body table { table-layout:fixed; }
+.todo-flat-section .card-body table td,
+.todo-worklist .card-body table td { overflow-wrap:anywhere; }
+
+/* Header kolom yang bisa diurutkan (tabel di modal View Budget). */
+.todo-sort-th { cursor:pointer; user-select:none; }
+.todo-sort-th:hover { color:var(--accent); }
+.todo-sort-ic { font-size:9px; opacity:.35; margin-left:2px; }
+.todo-sort-th[data-dir] .todo-sort-ic { opacity:1; color:var(--accent); }
 .todo-drw-row { margin-bottom:14px; }
 /* Chip Chart of Account pada tab Info drawer — bentuknya mengikuti badge
    status yang sudah dipakai di tab Log: pil lembut, bukan kotak tabel. */
@@ -2192,11 +2207,28 @@ $(function () {
     $(document).on('click', '.tl-batch-check-group', function (e) { e.stopPropagation(); });
     $(document).on('change', '.tl-batch-check-group', function (e) {
         e.stopPropagation();
-        var pilih = $(this).is(':checked');
-        $('.' + $(this).data('group')).find('.tl-batch-check')
+        var pilih  = $(this).is(':checked');
+        var $baris = $('.' + $(this).data('group'));
+        // Grup yang masih tertutup dibuka dulu: batch tidak boleh berisi CR
+        // yang tidak pernah terlihat oleh yang mencentangnya.
+        if (pilih && !$baris.filter(':visible').length) {
+            $baris.show();
+            $(this).closest('tr').find('.todo-caret').addClass('rotated');
+        }
+        $baris.find('.tl-batch-check')
             .filter(function () { return $(this).closest('tr').is(':visible'); })
             .prop('checked', pilih);
         tlBatchRefresh();
+    });
+
+    // Menutup grup PO di section Treasury melepas centang isinya — kalau tidak,
+    // CR yang tersembunyi tetap ikut terbatch tanpa terlihat.
+    $(document).on('click', '.todo-po-row', function () {
+        var $baris = $('.' + $(this).data('target'));
+        if (!$baris.filter(':visible').length) {
+            $baris.find('.tl-batch-check:checked').prop('checked', false);
+            tlBatchRefresh();
+        }
     });
 
     $(document).on('change', '#tlBatchCheckAll', function () {
@@ -2617,6 +2649,155 @@ $(function () {
                 $tbody.append(html + '</tr>');
                 g.rows.forEach(function (r) { $(r).addClass(cls).hide(); $tbody.append(r); });
             });
+        });
+    })();
+
+    /* ── SORTIR KOLOM TABEL TODO LIST ──────────────────────────────────────
+       Dipasang SETELAH grouping PO dibuat, supaya baris grup ikut terurut.
+       Sortirnya berjenjang dan hanya menata ulang baris yang sudah ada di
+       halaman (tidak memanggil server): baris induk diurutkan terhadap sesama
+       induk, baris anak diurutkan di dalam induknya masing-masing — kalau
+       tidak, CR akan berpindah PO. Status buka/tutup tiap grup tidak diubah. */
+    (function sortirTabelTodo() {
+        // Nilai sel: nominal rupiah, aging ("3 hari" / "-120 menit"), tanggal
+        // d-m-Y, selebihnya teks. Aging disetarakan ke menit supaya "2 hari"
+        // tidak kalah dari "90 menit".
+        function nilaiSel(teks) {
+            var t = $.trim(teks).replace(/\s+/g, ' ');
+            if (t === '' || t === '-') return { n: null, s: '' };
+
+            var aging = t.match(/^(-?[\d.]+)\s*(menit|jam|hari)$/i);
+            if (aging) {
+                var a = parseFloat(aging[1].replace(/\./g, '')) || 0;
+                var k = aging[2].toLowerCase();
+                return { n: k === 'hari' ? a * 1440 : (k === 'jam' ? a * 60 : a), s: t };
+            }
+
+            var tgl = t.match(/^(\d{2})[-\/](\d{2})[-\/](\d{4})$/);
+            if (tgl) return { n: parseInt(tgl[3] + tgl[2] + tgl[1], 10), s: t };
+
+            if (/^\(?\s*-?\s*(Rp\.?\s*)?\d{1,3}(\.\d{3})*(,\d+)?\s*\)?$/.test(t)) {
+                var neg = /^\(/.test(t) || t.indexOf('-') === 0;
+                var n = parseFloat(t.replace(/[()\s]/g, '').replace(/^-/, '')
+                        .replace(/Rp\.?/i, '').replace(/\./g, '').replace(/,/g, '.'));
+                if (!isNaN(n)) return { n: neg ? -n : n, s: t };
+            }
+            if (/^-?\d+$/.test(t)) return { n: parseInt(t, 10), s: t };
+
+            return { n: null, s: t.toLowerCase() };
+        }
+
+        // Kolom ke-i bisa tertutup colspan di baris grup — sel yang dipakai
+        // adalah sel yang rentang kolomnya mencakup i.
+        function selKolom(tr, idx) {
+            var pos = 0, hasil = null;
+            $(tr).children('td,th').each(function () {
+                var span = parseInt($(this).attr('colspan'), 10) || 1;
+                if (idx >= pos && idx < pos + span) { hasil = this; return false; }
+                pos += span;
+            });
+            return hasil;
+        }
+
+        function bandingkan(a, b, naik) {
+            var arah = naik ? 1 : -1;
+            if (a.n !== null && b.n !== null) return (a.n - b.n) * arah;
+            if (a.n !== null) return -1;          // baris berisi angka di atas
+            if (b.n !== null) return 1;
+            if (a.s === b.s) return 0;
+            if (a.s === '') return 1;             // sel kosong selalu di bawah
+            if (b.s === '') return -1;
+            return a.s.localeCompare(b.s, 'id') * arah;
+        }
+
+        // Hanya tabel di dalam modal View Budget — daftar worklist di luar
+        // sengaja mempertahankan urutan aging dari server.
+        window.todoPasangSortir = function ($scope) {
+            $scope.find('table').filter(function () {
+                var $t = $(this);
+                if ($t.data('todoSortReady')) return false;
+                return $t.find('thead th').length > 0 && $t.children('tbody').children('tr').length > 1;
+            }).each(pasang);
+        };
+
+        function pasang() {
+            var $table = $(this).data('todoSortReady', true);
+            var $tbody = $table.children('tbody').first();
+            var $ths   = $table.find('thead tr').first().children('th');
+
+            $ths.each(function (i) {
+                var $th = $(this);
+                // Kolom centang dan kolom tombol tidak punya isi yang bisa diurutkan.
+                if ($th.find('input[type=checkbox]').length) return;
+                if (/^(action|aksi)$/i.test($.trim($th.text()))) return;
+
+                $th.addClass('todo-sort-th').attr('data-col', i)
+                   .append(' <i class="fas fa-sort todo-sort-ic"></i>');
+            });
+
+            $table.on('click', '.todo-sort-th', function (e) {
+                var $th = $(this);
+                // Modal View Budget punya tabel daftar CR DI DALAM selnya —
+                // klik di tabel anak tidak boleh ikut mengurutkan induknya.
+                if ($th.closest('table')[0] !== $table[0]) return;
+                e.stopPropagation();
+
+                var idx  = parseInt($th.attr('data-col'), 10);
+                var naik = $th.attr('data-dir') !== 'asc';
+
+                $ths.filter('.todo-sort-th').removeAttr('data-dir')
+                    .find('.todo-sort-ic').attr('class', 'fas fa-sort todo-sort-ic');
+                $th.attr('data-dir', naik ? 'asc' : 'desc')
+                   .find('.todo-sort-ic').attr('class', 'fas fa-sort-' + (naik ? 'up' : 'down') + ' todo-sort-ic');
+
+                var semua = $tbody.children('tr').toArray();
+
+                // Baris anak dikenali dari class yang sama dengan data-target
+                // induknya — pola yang sudah dipakai buka/tutup grup.
+                var kelasAnak = {};
+                semua.forEach(function (tr) {
+                    var t = $(tr).attr('data-target');
+                    if (t) kelasAnak[t] = true;
+                });
+
+                function anakDari(tr) {
+                    var t = $(tr).attr('data-target');
+                    if (!t) return [];
+                    return semua.filter(function (x) { return x !== tr && $(x).hasClass(t); });
+                }
+                function induk(tr) {
+                    var ada = false;
+                    $.each(($(tr).attr('class') || '').split(/\s+/), function (_, c) {
+                        if (c && kelasAnak[c]) { ada = true; return false; }
+                    });
+                    return ada;
+                }
+
+                function urut(daftar) {
+                    daftar.sort(function (x, y) {
+                        return bandingkan(nilaiSel($(selKolom(x, idx)).text()),
+                                          nilaiSel($(selKolom(y, idx)).text()), naik);
+                    });
+                    var keluar = [];
+                    daftar.forEach(function (tr) {
+                        keluar.push(tr);
+                        var anak = anakDari(tr);
+                        if (anak.length) keluar = keluar.concat(urut(anak));
+                    });
+                    return keluar;
+                }
+
+                var puncak = semua.filter(function (tr) { return !induk(tr); });
+                urut(puncak).forEach(function (tr) { $tbody.append(tr); });
+            });
+        }
+
+        // Modal gabungan mengkloning isinya saat dibuka, jadi pemasangan
+        // dilakukan setiap modal tampil, bukan sekali saat halaman dimuat.
+        $(document).on('shown.bs.modal', function (e) {
+            var $m = $(e.target);
+            if (!/^mdlTodoCoa/.test($m.attr('id') || '')) return;
+            window.todoPasangSortir($m);
         });
     })();
 
@@ -3281,7 +3462,9 @@ $(function () {
         $('#todoDrwCode').text('CR-...');
         $('#todoDrwStatusWrap').html('');
         $('#todoDrwActions').hide().empty();
-        $('body').addClass('todo-drawer-open');
+        $('body').addClass('todo-drawer-open')
+                 // Dibuka dari dalam modal -> drawer harus menimpa modalnya.
+                 .toggleClass('todo-drawer-top', $('.modal.show').length > 0);
 
         $.get('/budget-request/' + id + '/detail-json', function (d) {
             $('#todoDrwCode').text(d.code);
@@ -3365,7 +3548,7 @@ $(function () {
                         '<th scope="col" class="text-right text-nowrap" style="width:14%;">Price</th>' +
                         '<th scope="col" class="text-center text-nowrap" style="width:7%;">Qty</th>' +
                         '<th scope="col" class="text-right text-nowrap" style="width:16%;">Total</th>' +
-                        (showAksi ? '<th scope="col" class="text-center text-nowrap" style="width:1%;">Aksi</th>' : '') +
+                        (showAksi ? '<th scope="col" class="text-center text-nowrap" style="width:100px;">Aksi</th>' : '') +
                     '</tr></thead><tbody id="todoReqBody">';
                 var reqTotal = 0, reqPrice = 0, reqQty = 0, reqNo = 0;
                 reqGroups.forEach(function (grp, gi) {
@@ -3480,7 +3663,7 @@ $(function () {
                             '<th scope="col" class="text-right text-nowrap" style="width:14%;">Request</th>' +
                             '<th scope="col" class="text-right text-nowrap" style="width:14%;">Settlement</th>' +
                             '<th scope="col" style="width:18%;">Note</th>' +
-                            '<th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>' +
+                            '<th scope="col" class="text-center text-nowrap" style="width:100px;">Action</th>' +
                         '</tr></thead><tbody id="todoRealBody">';
                     realGroups.forEach(function (grp, gi) {
                         var gClass = 'td-real-grp-' + gi;
@@ -3736,6 +3919,9 @@ $(function () {
     });
     $('#drwActionNotes').on('input', function () { $(this).removeClass('is-invalid'); });
 
+    // Modal yang dibuka belakangan kembali menang atas drawer.
+    $(document).on('show.bs.modal', function () { $('body').removeClass('todo-drawer-top'); });
+
     $(document).on('click', '.todo-open-drawer', function () {
         $todoDrwCheck = $(this).closest('tr').find('.todo-check').first();
         openCrDrawer($(this).data('id'));
@@ -3747,11 +3933,11 @@ $(function () {
         if (!$todoDrwCheck.length) return;
         $todoDrwCheck.prop('checked', !$todoDrwCheck.is(':checked')).trigger('change');
         $('#todoDrawerOverlay, #todoDrawer').fadeOut(150);
-        $('body').removeClass('todo-drawer-open');
+        $('body').removeClass('todo-drawer-open todo-drawer-top');
     });
     $('#todoDrwClose, #todoDrawerOverlay').on('click', function () {
         $('#todoDrawerOverlay, #todoDrawer').fadeOut(150);
-        $('body').removeClass('todo-drawer-open');
+        $('body').removeClass('todo-drawer-open todo-drawer-top');
     });
 
     /* ── TAKEOUT / RESTORE SUB-ITEM (dari drawer approval) ── */

@@ -31,65 +31,65 @@
              (CashFlowService::summarize menerima ledger yang sudah difilter),
              jadi filter apa pun yang dipakai, kartu dan tabel tidak akan pernah
              bercerita lain. --}}
+        <div id="cmSummary">
         <x-stat-cards :cards="[
             ['Cash Inflow', 'Rp ' . number_format($summary['total_in'], 0, ',', '.'), 'success', 'fas fa-arrow-down'],
             ['Cash Outflow', 'Rp ' . number_format($summary['total_out'], 0, ',', '.'), 'danger', 'fas fa-arrow-up'],
             ['Net Cash Flow', 'Rp ' . number_format($summary['net'], 0, ',', '.'), $summary['net'] >= 0 ? 'primary' : 'warning', 'fas fa-balance-scale'],
             ['Transaksi', $summary['count'] . ' (' . $summary['count_in'] . ' in / ' . $summary['count_out'] . ' out)', 'secondary', 'fas fa-exchange-alt'],
         ]" />
+        </div>
 
-        {{-- FILTER — satu form, satu konteks untuk seluruh halaman. --}}
+        {{-- FILTER
+
+             Tata letaknya tetap seperti semula: satu kotak per field. Yang
+             berubah hanya mesinnya — Arah / Sumber / Rekening memakai daftar
+             centang TesysColumnFilter (mekanisme yang sama dengan Cost
+             Request), yang membaca atribut data- pada tiap baris dan menyaring
+             di halaman. Tidak ada muat ulang, jadi daftar centangnya tidak
+             pernah menutup sendiri. Rentang tanggal tetap disaring di server
+             karena rentang menentukan dataset-nya, dan kartu ringkasan
+             dihitung ulang dari baris yang lolos filter. --}}
         <div class="card shadow-sm mt-3">
             <div class="card-body py-3">
-                <form method="GET" action="{{ url('/cash-management') }}" class="form-row align-items-end" style="gap:0;">
-                    <div class="form-group col-lg-2 col-md-4 col-6 mb-2">
-                        <label class="font-weight-600" style="font-size:11px;">Dari Tanggal</label>
-                        <input type="date" name="from" class="form-control form-control-sm" value="{{ $filters['from'] }}">
-                    </div>
-                    <div class="form-group col-lg-2 col-md-4 col-6 mb-2">
-                        <label class="font-weight-600" style="font-size:11px;">Sampai Tanggal</label>
-                        <input type="date" name="to" class="form-control form-control-sm" value="{{ $filters['to'] }}">
-                    </div>
+                <div class="form-row align-items-end">
+                    <form method="GET" action="{{ url('/cash-management') }}" id="formFilterKas" class="form-row col-lg-4 col-md-8 col-12 p-0 m-0">
+                        <div class="form-group col-6 mb-2">
+                            <label class="font-weight-600" style="font-size:11px;">Dari Tanggal</label>
+                            <input type="date" name="from" class="form-control form-control-sm" value="{{ $filters['from'] }}">
+                        </div>
+                        <div class="form-group col-6 mb-2">
+                            <label class="font-weight-600" style="font-size:11px;">Sampai Tanggal</label>
+                            <input type="date" name="to" class="form-control form-control-sm" value="{{ $filters['to'] }}">
+                        </div>
+                    </form>
+
+                    {{-- Tombol + daftar centang ketiga filter ini dibuat
+                         TesysColumnFilter ke dalam wadah kosong di bawah. --}}
                     <div class="form-group col-lg-2 col-md-4 col-6 mb-2">
                         <label class="font-weight-600" style="font-size:11px;">Arah</label>
-                        <select name="direction" class="form-control form-control-sm">
-                            <option value="">Semua</option>
-                            <option value="IN" @selected($filters['direction'] === 'IN')>Cash In</option>
-                            <option value="OUT" @selected($filters['direction'] === 'OUT')>Cash Out</option>
-                        </select>
+                        <div id="cmFilterDirection" class="cm-row-filters"></div>
                     </div>
                     <div class="form-group col-lg-2 col-md-4 col-6 mb-2">
                         <label class="font-weight-600" style="font-size:11px;">Sumber</label>
-                        <select name="module" class="form-control form-control-sm">
-                            <option value="">Semua Modul</option>
-                            @foreach($modules as $key => $label)
-                                <option value="{{ $key }}" @selected($filters['module'] === $key)>{{ $label }}</option>
-                            @endforeach
-                        </select>
+                        <div id="cmFilterModule" class="cm-row-filters"></div>
                     </div>
                     <div class="form-group col-lg-2 col-md-4 col-6 mb-2">
                         <label class="font-weight-600" style="font-size:11px;">Rekening</label>
-                        <select name="source_fund_id" class="form-control form-control-sm">
-                            <option value="">Semua Rekening</option>
-                            @foreach($sourceFunds as $sf)
-                                <option value="{{ $sf->id }}" @selected((string) $filters['source_fund_id'] === (string) $sf->id)>{{ $sf->name }}</option>
-                            @endforeach
-                        </select>
+                        <div id="cmFilterFund" class="cm-row-filters"></div>
                     </div>
                     <div class="form-group col-lg-2 col-md-4 col-12 mb-2">
                         <label class="font-weight-600" style="font-size:11px;">Cari</label>
                         <div class="d-flex" style="gap:6px;">
-                            <input type="search" name="q" class="form-control form-control-sm"
-                                   value="{{ $filters['q'] }}" placeholder="Deskripsi / referensi">
-                            <button type="submit" class="btn btn-primary btn-sm text-nowrap">
-                                <i class="fas fa-filter"></i>
-                            </button>
-                            <a href="{{ url('/cash-management') }}" class="btn btn-outline-secondary btn-sm text-nowrap" title="Reset filter">
+                            <input type="search" id="cmSearch" class="form-control form-control-sm"
+                                   placeholder="Deskripsi / referensi">
+                            <button type="button" id="cmClearFilter" class="btn btn-outline-secondary btn-sm text-nowrap"
+                                    title="Hapus filter (periode tetap)">
                                 <i class="fas fa-eraser"></i>
-                            </a>
+                            </button>
                         </div>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
 
@@ -133,7 +133,10 @@
                                 </thead>
                                 <tbody>
                                     @forelse($ledger as $row)
-                                    <tr>
+                                    <tr data-direction="{{ $row['direction'] }}"
+                                        data-module="{{ $row['source_module'] }}"
+                                        data-fund="{{ $row['source_fund'] }}"
+                                        data-amount="{{ $row['amount'] }}">
                                         <td class="text-nowrap">{{ $row['date']?->format('d M Y') ?? '-' }}</td>
                                         <td>
                                             @php
@@ -174,12 +177,12 @@
                                 <tfoot>
                                     <tr style="background:var(--surface-2);font-weight:700;">
                                         <th colspan="6" class="text-right">Total</th>
-                                        <th class="text-right text-success">{{ number_format($summary['total_in'], 0, ',', '.') }}</th>
-                                        <th class="text-right text-danger">{{ number_format($summary['total_out'], 0, ',', '.') }}</th>
+                                        <th class="text-right text-success" id="cmFootIn">{{ number_format($summary['total_in'], 0, ',', '.') }}</th>
+                                        <th class="text-right text-danger" id="cmFootOut">{{ number_format($summary['total_out'], 0, ',', '.') }}</th>
                                     </tr>
                                     <tr style="background:var(--surface-2);font-weight:700;">
                                         <th colspan="6" class="text-right">Net Cash Flow</th>
-                                        <th colspan="2" class="text-right {{ $summary['net'] >= 0 ? 'text-success' : 'text-danger' }}">
+                                        <th colspan="2" id="cmFootNet" class="text-right {{ $summary['net'] >= 0 ? 'text-success' : 'text-danger' }}">
                                             {{ number_format($summary['net'], 0, ',', '.') }}
                                         </th>
                                     </tr>
@@ -337,18 +340,29 @@
 .font-weight-600 { font-weight:600; }
 .table td, .table th { vertical-align:middle !important; }
 #tblLedger, #tblManual { width:100% !important; }
+/* Tombol filter dibuat TesysColumnFilter; disamakan tingginya dengan kotak
+   isian lain di bilah ini supaya satu baris terlihat rata. */
+.cm-row-filters .tcf-row-btn {
+    width:100%; display:flex; align-items:center; justify-content:space-between;
+    height:calc(1.5em + .5rem + 2px); font-size:13px; text-align:left; overflow:hidden;
+}
 </style>
 @endpush
 
 @push('scripts')
 <script>
 $(function () {
-    /* DataTable dipakai hanya sebagai mesin sort + paging. Pencarian &
-       penyaringan dikerjakan server (lihat CashManagementController::index),
-       supaya kartu ringkasan di atas dan isi tabel selalu satu dataset. */
+    /* DataTable = mesin sort, paging, pencarian, dan penyaringan baris.
+       Server hanya menentukan rentang tanggal (dataset-nya); sisanya disaring
+       di halaman supaya daftar centang tidak tertutup tiap kali dipakai.
+       Kartu ringkasan ikut dihitung ulang dari baris yang lolos filter. */
     var common = {
         responsive: true, autoWidth: false, pageLength: 25, lengthChange: true,
-        searching: false, ordering: true,
+        // searching: true wajib — kotak Cari dan filter baris TesysColumnFilter
+        // keduanya lewat mesin pencarian DataTables. Kotak bawaannya tidak
+        // ditampilkan karena 'f' tidak ada di dom.
+        searching: true, ordering: true,
+        dom: 'rt<"row mt-3 align-items-center"<"col-md-6 col-12 mb-2 mb-md-0"i><"col-md-6 col-12 d-flex justify-content-end"lp>>',
         language: {
             zeroRecords: 'Data tidak ditemukan',
             info: 'Menampilkan _START_ sampai _END_ dari _TOTAL_ data',
@@ -358,11 +372,98 @@ $(function () {
         }
     };
 
-    if ($('#tblLedger tbody tr').length && !$('#tblLedger tbody .empty-state').length) {
-        $('#tblLedger').DataTable($.extend({}, common, { order: [[0, 'desc']] }));
+    /* Penjaga keadaan kosong memakai kelas .ts-empty — itulah kelas yang
+       benar-benar dipakai komponen x-empty. Sebelumnya dicari .empty-state,
+       yang tidak pernah ada, sehingga tabel kosong (satu sel colspan) tetap
+       dipasangi DataTables; DataTables melempar "Incorrect column count" dan
+       seluruh skrip halaman ini mati di situ — itu sebab filter dan dropdown
+       tidak pernah bereaksi. */
+    function pasangTabel() {
+        if ($('#tblLedger tbody tr').length && !$('#tblLedger tbody .ts-empty').length) {
+            $('#tblLedger').DataTable($.extend({}, common, { order: [[0, 'desc']] }));
+        }
+        if ($('#tblManual tbody tr').length && !$('#tblManual tbody .ts-empty').length) {
+            $('#tblManual').DataTable($.extend({}, common, { order: [[1, 'desc']] }));
+        }
     }
-    if ($('#tblManual tbody tr').length && !$('#tblManual tbody .empty-state').length) {
-        $('#tblManual').DataTable($.extend({}, common, { order: [[1, 'desc']] }));
+    // Kalau satu tabel gagal dipasang, sisa halaman (filter, pencarian,
+    // ringkasan) tetap harus hidup.
+    try { pasangTabel(); } catch (e) { if (window.console) console.error(e); }
+
+    var $formFilter = $('#formFilterKas');
+
+    /* ── FILTER ────────────────────────────────────────────────────────────
+    | Mekanismenya sama dengan Cost Request: TesysColumnFilter membuat tombol
+    | "Filter" berisi daftar centang per field (lengkap dengan kotak cari, chip
+    | filter aktif, dan Reset), membaca nilainya dari atribut data- pada tiap
+    | <tr>, lalu menyaring di halaman. Tidak ada muat ulang, jadi daftar
+    | centangnya tidak pernah tertutup sendiri.
+    |
+    | Rentang tanggal tetap di server: ia menentukan dataset-nya, bukan sekadar
+    | menyembunyikan baris. */
+    $('#formFilterKas').on('change', 'input[type="date"]', function () {
+        $('#formFilterKas').trigger('submit');
+    });
+
+    var tabelLedger = $.fn.dataTable.isDataTable('#tblLedger') ? $('#tblLedger').DataTable() : null;
+
+    if (tabelLedger && window.TesysColumnFilter) {
+        /* Satu panggilan per field, masing-masing ke wadahnya sendiri: dengan
+           begitu tiap filter tetap jadi kotak terpisah di bilah ini. Kalau
+           ketiganya dikirim sekaligus, TesysColumnFilter melipatnya jadi satu
+           tombol "Filter" seperti di Cost Request — di sini tata letak per
+           field yang dipertahankan. */
+        TesysColumnFilter.initRowFilters('#tblLedger', $('#cmFilterDirection'), [
+            { key: 'direction', label: 'Semua Arah', valueLabels: { IN: 'Cash In', OUT: 'Cash Out' }, search: false },
+        ]);
+        TesysColumnFilter.initRowFilters('#tblLedger', $('#cmFilterModule'), [
+            { key: 'module', label: 'Semua Modul', valueLabels: @json($modules), search: false },
+        ]);
+        TesysColumnFilter.initRowFilters('#tblLedger', $('#cmFilterFund'), [
+            { key: 'fund', label: 'Semua Rekening' },
+        ]);
+
+        $('#cmSearch').on('input', function () {
+            tabelLedger.search(this.value).draw();
+        });
+
+        $('#cmClearFilter').on('click', function () {
+            $('#cmSearch').val('');
+            tabelLedger.search('');
+            TesysColumnFilter.clearAll('#tblLedger');
+        });
+
+        /* Kartu ringkasan & baris Total dihitung ulang dari baris yang lolos
+           filter. Tanpa ini, angka di atas akan bercerita lain dari tabel di
+           bawahnya begitu filter dipakai — persis bug yang dihindari di
+           Collection Summary. */
+        function rupiah(n) { return Math.round(n).toLocaleString('id-ID'); }
+
+        function hitungUlangRingkasan() {
+            var masuk = 0, keluar = 0, nIn = 0, nOut = 0;
+
+            tabelLedger.rows({ search: 'applied' }).nodes().each(function (tr) {
+                var nilai = parseInt(tr.getAttribute('data-amount'), 10) || 0;
+                if (tr.getAttribute('data-direction') === 'IN') { masuk += nilai; nIn++; }
+                else { keluar += nilai; nOut++; }
+            });
+
+            var bersih  = masuk - keluar;
+            var $nilai  = $('#cmSummary .ts-kpi-value');
+
+            $nilai.eq(0).text('Rp ' + rupiah(masuk));
+            $nilai.eq(1).text('Rp ' + rupiah(keluar));
+            $nilai.eq(2).text('Rp ' + rupiah(bersih));
+            $nilai.eq(3).text((nIn + nOut) + ' (' + nIn + ' in / ' + nOut + ' out)');
+
+            $('#cmFootIn').text(rupiah(masuk));
+            $('#cmFootOut').text(rupiah(keluar));
+            $('#cmFootNet').text(rupiah(bersih))
+                .toggleClass('text-success', bersih >= 0)
+                .toggleClass('text-danger', bersih < 0);
+        }
+
+        tabelLedger.on('draw', hitungUlangRingkasan);
     }
 
     // DataTables salah menghitung lebar kolom kalau tabelnya masih tersembunyi

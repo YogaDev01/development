@@ -78,32 +78,62 @@ class CashReceiptController extends Controller
      */
     public function create(Request $request)
     {
-        $customerId = $request->query('customer_id');
-
-        $invoices = collect();
-
-        if ($customerId) {
-            $invoices = Invoice::with(['cashReceipts', 'poNumber:id,po_number', 'po:id,code,name'])
-                ->whereIn('status', ['SENT', 'RECEIVED', 'PARTIALLY_PAID'])
-                ->whereHas('po', fn ($q) => $q->where('customer_id', $customerId))
-                ->orderBy('due_date')
-                ->get()
-                ->map(function ($inv) {
-                    $received = (int) $inv->cashReceipts->sum('amount') + (int) $inv->cashReceipts->sum('withholding_tax');
-                    $inv->computed_received = $received;
-                    $inv->computed_balance  = max(0, (int) $inv->captured_total - $received);
-                    return $inv;
-                })
-                ->filter(fn ($inv) => $inv->computed_balance > 0)
-                ->values();
-        }
-
+        /*
+        | Daftar invoice TIDAK lagi disiapkan di sini. Dulu halaman ini dimuat
+        | ulang setiap kali customer dipilih (form GET + onchange submit), jadi
+        | langkah pertama selalu memutus pekerjaan yang sedang berjalan. Sekarang
+        | daftarnya diambil halaman lewat openInvoices() di bawah, dan hanya
+        | bagian tabelnya yang berubah.
+        |
+        | ?customer_id= tetap dilayani supaya tautan lama/bookmark masih jalan —
+        | nilainya dipakai untuk memilih opsi awal, lalu daftarnya diambil JS.
+        */
         return view('cash-receipt.create', [
             'customers'   => Customer::orderBy('name')->get(['id', 'name']),
             'sourceFunds' => SourceFund::where('status', 'ACTIVE')->orderBy('name')->get(['id', 'name']),
-            'invoices'    => $invoices,
-            'customerId'  => $customerId,
+            'customerId'  => $request->query('customer_id'),
         ]);
+    }
+
+    /**
+     * Invoice terbuka milik satu customer — sumber data tabel "2. Pilih Invoice".
+     *
+     * Dipisah jadi endpoint sendiri supaya pemilihan customer tidak perlu memuat
+     * ulang halaman. Isinya PERSIS query yang dulu dipakai create(), termasuk
+     * penyaringan berdasarkan sisa tagihan: invoice yang nominalnya sudah tertutup
+     * tidak boleh muncul walau statusnya belum PAID (M-03 — lunas disimpulkan dari
+     * nominal, bukan dari label status).
+     */
+    public function openInvoices(Request $request)
+    {
+        $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+        ]);
+
+        $invoices = Invoice::with(['cashReceipts', 'poNumber:id,po_number', 'po:id,code,name'])
+            ->whereIn('status', ['SENT', 'RECEIVED', 'PARTIALLY_PAID'])
+            ->whereHas('po', fn ($q) => $q->where('customer_id', $request->query('customer_id')))
+            ->orderBy('due_date')
+            ->get()
+            ->map(function ($inv) {
+                $received = (int) $inv->cashReceipts->sum('amount') + (int) $inv->cashReceipts->sum('withholding_tax');
+                $inv->computed_balance = max(0, (int) $inv->captured_total - $received);
+                return $inv;
+            })
+            ->filter(fn ($inv) => $inv->computed_balance > 0)
+            ->values()
+            ->map(fn ($inv) => [
+                'id'        => $inv->id,
+                'code'      => $inv->code,
+                'po_number' => $inv->poNumber->po_number ?? '-',
+                'project'   => $inv->po->name ?? '-',
+                'due_date'  => ($inv->actual_due_date ?? $inv->due_date)?->format('d M Y'),
+                'overdue'   => $inv->isOverdue(),
+                'status'    => $inv->status,
+                'balance'   => (int) $inv->computed_balance,
+            ]);
+
+        return response()->json(['invoices' => $invoices]);
     }
 
     public function store(Request $request)

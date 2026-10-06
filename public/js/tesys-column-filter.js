@@ -478,21 +478,36 @@
               '<div class="ts-pop-menu p-3" style="min-width:420px;">' +
                 '<div class="tcf-pop-title">FILTER</div>' +
                 '<div class="tcf-pop-body"></div>' +
-                '<div class="tcf-pop-foot">' +
-                  '<button type="button" class="btn btn-primary btn-sm tcf-filter-reset">' +
-                    '<i class="fas fa-undo mr-1"></i>Reset' +
-                  '</button>' +
-                '</div>' +
               '</div>' +
             '</div>'
         );
 
         $container.before($pop);
         $pop.find('.tcf-pop-body').append($container.addClass('tcf-pop-grid'));
-        // Tanpa "Terapkan": filter berlaku begitu nilainya dicentang.
-        $pop.find('.tcf-filter-reset').on('click', function () {
-            Api.clearAll(tableSelector);
-        });
+
+        /*
+        | Tanpa "Terapkan": filter berlaku begitu nilainya dicentang.
+        |
+        | Tanpa "Reset" juga. Halaman yang memakai popover ini sudah punya
+        | tombol hapus-filter (ikon penghapus) berdiri sendiri di bilah
+        | kendali; tombol Reset di dalam popover mengerjakan hal yang sama
+        | persis, hanya saja tersembunyi di balik satu klik pembuka. Kalau
+        | tombol itu TIDAK ada, Reset tetap dipasang supaya filter yang sudah
+        | menumpuk tidak kehilangan satu-satunya jalan bersih-bersihnya.
+        */
+        var adaTombolHapus = $pop.closest('.custom-toolbar').find('.fa-eraser').length > 0;
+        if (!adaTombolHapus) {
+            $pop.find('.ts-pop-menu').append(
+                '<div class="tcf-pop-foot">' +
+                  '<button type="button" class="btn btn-primary btn-sm tcf-filter-reset">' +
+                    '<i class="fas fa-undo mr-1"></i>Reset' +
+                  '</button>' +
+                '</div>'
+            );
+            $pop.find('.tcf-filter-reset').on('click', function () {
+                Api.clearAll(tableSelector);
+            });
+        }
 
         pindahkanTombolKolom($pop);
     }

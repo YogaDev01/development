@@ -4,6 +4,28 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [2.5.8] - 2026-10-05 — Catat Penerimaan Tanpa Muat Ulang, Filter Checklist & Penyaring Daftar Panjang
+
+Memilih customer di Catat Penerimaan tidak lagi membuang isian yang sudah
+diketik, filter Cash Management bisa dipilih lebih dari satu, dan daftar
+panjang di form batch Treasury, Surat Jalan, serta Cash Management kini
+punya penyaringnya sendiri.
+
+### Baru
+- Catat Penerimaan: pencarian customer di halaman Cash Management, dan penyaring manager (PM Internal) di form batch Treasury maupun penyaring customer di form Surat Jalan - menyaring hanya menyembunyikan grup lain, pilihan yang sudah dicentang tidak ikut terlepas.
+- Kolom di modal View Budget bisa diurutkan; pengurutan bekerja di tingkat grup Chart of Account sehingga sub-itemnya selalu ikut induknya.
+- Kode Cost Request di worklist bisa diklik untuk membuka drawer detailnya, dan kode PO membuka modul Purchase Order langsung pada data yang dituju.
+
+### Berubah
+- Memilih customer di Catat Penerimaan tidak lagi memuat ulang halaman - hanya tabel invoice yang berubah, sehingga tanggal, rekening, dan catatan yang sudah diisi tetap utuh.
+- Filter Arah, Rekening, dan Sumber di Cash Management kini berupa checklist yang bisa dipilih lebih dari satu; tautan lama dengan satu nilai tetap bekerja.
+- Popover filter tidak lagi memuat tombol Reset di halaman yang sudah punya tombol hapus filter tersendiri di bilah kendali.
+- Cost Register menampilkan keterangan status pengajuan di Treasury (Di Treasury / Dalam Batch) pada barisnya.
+
+### Perbaikan
+- Modal yang dibuka dari dalam drawer tidak lagi tertutup panel drawer, dan drawer yang dibuka dari dalam modal tampil di atasnya.
+- Centang di section Treasury Todo List dilepas saat grup PO-nya ditutup, dan grup yang masih tertutup dibuka lebih dulu saat memilih semua - batch tidak lagi bisa berisi Cost Request yang tidak pernah terlihat.
+
 ## [2.5.7] - 2026-10-04 — Rincian Todo List Seragam & Total Tanpa Item Takeout
 
 Tabel rincian di Todo List kini sama persis dengan drawer Cost Request, dan

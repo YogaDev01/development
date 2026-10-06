@@ -894,6 +894,10 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:superadmin,finance,finance_manager,treasury,approver,collection')->group(function () {
         Route::get('cash-receipt', [\App\Http\Controllers\CashReceiptController::class, 'index'])->name('cash-receipt.index');
         Route::get('cash-receipt/create', [\App\Http\Controllers\CashReceiptController::class, 'create'])->name('cash-receipt.create');
+        // Harus di ATAS 'cash-receipt/{id}', kalau tidak 'open-invoices' ditangkap
+        // sebagai id. Dipakai halaman Catat Penerimaan untuk mengambil daftar
+        // invoice saat customer dipilih — tanpa memuat ulang halaman.
+        Route::get('cash-receipt/open-invoices', [\App\Http\Controllers\CashReceiptController::class, 'openInvoices'])->name('cash-receipt.open-invoices');
         Route::post('cash-receipt', [\App\Http\Controllers\CashReceiptController::class, 'store'])->name('cash-receipt.store');
         Route::get('cash-receipt/{id}', [\App\Http\Controllers\CashReceiptController::class, 'show'])->name('cash-receipt.show');
         Route::post('cash-receipt/{id}/allocate', [\App\Http\Controllers\CashReceiptController::class, 'allocate'])->name('cash-receipt.allocate');
