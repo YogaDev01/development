@@ -4,6 +4,23 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [2.5.10] - 2026-10-07 — Rekap Collection di Daftar Purchase Order
+
+Daftar Purchase Order kini menampilkan Invoice, PPN, PPH, dan Total per PO
+dengan rumus yang sama dengan Daftar Invoice, dan angkanya bisa diklik untuk
+membuka Collection yang sudah tersaring.
+
+### Baru
+- Daftar Purchase Order menampilkan rekap Collection per PO: Invoice, PPN, PPH, dan Total - memakai nama dan rumus yang sama persis dengan Daftar Invoice, dijumlahkan dari seluruh invoice PO tersebut.
+- Keempat angka itu bisa diklik untuk membuka Collection di tab baru dengan daftar yang sudah tersaring ke PO bersangkutan.
+
+### Berubah
+- Kolom Received Payment di Daftar Purchase Order digantikan rekap Collection yang lebih rinci.
+- Pencarian dari tautan luar mengisi kotak Cari di Collection, bukan menyaring diam-diam, sehingga terlihat kenapa daftarnya terpotong dan bisa dihapus.
+
+### Perbaikan
+- Invoice berstatus Cancelled tidak ikut dijumlah dalam rekap Collection per PO, agar nilai tagihannya tidak terlalu besar.
+
 ## [2.5.9] - 2026-10-06 — Refund & Biaya Terpakai Langsung Mengikuti Settlement
 
 Refund Cash Advance dan nilai biaya terpakai kini langsung mengikuti settlement

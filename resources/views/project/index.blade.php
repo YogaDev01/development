@@ -100,7 +100,10 @@
                                         'povalue'    => 'PO Value',
                                         'budget'     => 'Budget',
                                         'varcost'    => 'Variable Cost',
-                                        'payment'    => 'Received Payment',
+                                        'invoice'    => 'Invoice',
+                                        'tax'        => 'PPN',
+                                        'wht'        => 'PPH',
+                                        'invtotal'   => 'Total',
                                         'profit'     => 'Gross Profit',
                                         'overhead'   => 'Overhead',
                                         'fixedcost'  => 'Fixed Cost',
@@ -146,7 +149,14 @@
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">PO Value</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Budget</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Variable Cost</th>
-                                <th scope="col" class="text-right text-nowrap" style="width:1%;">Received Payment</th>
+                                {{-- Empat kolom di bawah dibaca dari Collection (invoices):
+                                     Invoice = billed_amount, PPN = tax_amount, PPH = withholding_tax,
+                                     Total = captured_total — nama & rumus yang sama persis dengan
+                                     Daftar Invoice, dijumlahkan untuk seluruh invoice PO ini. --}}
+                                <th scope="col" class="text-right text-nowrap" style="width:1%;">Invoice</th>
+                                <th scope="col" class="text-right text-nowrap" style="width:1%;">PPN</th>
+                                <th scope="col" class="text-right text-nowrap" style="width:1%;" title="PPh yang dipotong di muka — mengurangi Total">PPH</th>
+                                <th scope="col" class="text-right text-nowrap" style="width:1%;" title="Invoice + PPN &minus; PPH">Total</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Gross Profit</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Overhead</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Fixed Cost</th>
@@ -170,6 +180,23 @@
                                 $waitingInvoiceCount = $project->waitingInvoicePoCount();
                                 $waitingBudget = $project->isWaitingBudget();
                                 $poActual = $project->poNumbers->count();
+
+                                /*
+                                | Rekap Collection untuk PO ini. Invoice CANCELLED
+                                | dikeluarkan: nilainya sudah dibatalkan, jadi ikut
+                                | menjumlahkannya akan melebih-lebihkan tagihan PO.
+                                | relasi invoices sudah di-eager-load di
+                                | ProjectController::index(), jadi tidak ada query
+                                | tambahan per baris.
+                                */
+                                $invoiceAktif = $project->invoices->where('status', '!=', 'CANCELLED');
+                                $invBilled = (int) $invoiceAktif->sum('billed_amount');
+                                $invTax    = (int) $invoiceAktif->sum('tax_amount');
+                                $invWht    = (int) $invoiceAktif->sum('withholding_tax');
+                                $invTotal  = (int) $invoiceAktif->sum('captured_total');
+                                // Collection disaring lewat kotak carinya sendiri (?q=),
+                                // yang mencocokkan kolom Purchase Order berisi kode PO.
+                                $invLink = route('invoice-cash-receipt.index', ['q' => $project->code]);
                                 $marginBadge = fn ($v) => $v >= 20 ? 'success' : ($v >= 0 ? 'warning' : 'danger');
 
                                 /*
@@ -301,9 +328,22 @@
                                     <button type="button" class="po-cell-link po-cost-link" data-id="{{ $project->id }}" title="Lihat Cost">{{ $poNilai(number_format($costTotal, 0, ',', '.')) }}</button>
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-payment" data-raw="{{ $poRaw($paymentTotal) }}">
-                                    <button type="button" class="po-cell-link po-invoice-link" data-id="{{ $project->id }}" title="Lihat Invoice">{{ $poNilai(number_format($paymentTotal, 0, ',', '.')) }}</button>
-                                </td>
+                                {{-- Angkanya menautkan ke Daftar Invoice yang sudah tersaring
+                                     ke kode PO ini, dibuka di tab baru supaya daftar PO yang
+                                     sedang difilter user tidak hilang. --}}
+                                @php
+                                    $selInv = function ($kelas, $raw, $isi, $judul) use ($poRaw, $poNilai, $invLink, $canSeePoValue) {
+                                        $angka = $poNilai(number_format($isi, 0, ',', '.'));
+                                        $isiHtml = $canSeePoValue
+                                            ? '<a href="' . e($invLink) . '" target="_blank" rel="noopener" class="po-cell-link" title="' . e($judul) . '">' . $angka . '</a>'
+                                            : '<span class="po-cell-link">' . $angka . '</span>';
+                                        return '<td class="text-right text-nowrap ' . $kelas . '" data-raw="' . $poRaw($raw) . '">' . $isiHtml . '</td>';
+                                    };
+                                @endphp
+                                {!! $selInv('col-raw-invoice', $invBilled, $invBilled, 'Lihat Invoice PO ini di Collection') !!}
+                                {!! $selInv('col-raw-tax',     $invTax,    $invTax,    'PPN seluruh invoice PO ini') !!}
+                                {!! $selInv('col-raw-wht',     $invWht,    $invWht,    'PPh dipotong di muka') !!}
+                                {!! $selInv('col-raw-invtotal', $invTotal, $invTotal,  'Invoice + PPN − PPH') !!}
 
                                 <td class="text-right text-nowrap col-raw-profit" data-raw="{{ $poRaw($grossProfitTotal) }}">
                                     <button type="button" class="po-cell-link po-summary-link {{ $grossProfitTotal < 0 ? 'po-neg' : '' }}" data-id="{{ $project->id }}" title="Lihat Summary">{{ $poNilai(($grossProfitTotal < 0 ? '-' : '') . number_format(abs($grossProfitTotal), 0, ',', '.')) }}</button>
@@ -544,7 +584,10 @@
                                 <th class="text-right text-nowrap" id="poFooterValue" style="font-size:12px;color:var(--info);"></th>
                                 <th class="text-right text-nowrap" id="poFooterBp" style="font-size:12px;color:var(--text-faint);"></th>
                                 <th class="text-right text-nowrap" id="poFooterCr" style="font-size:12px;color:var(--warning);"></th>
-                                <th class="text-right text-nowrap" id="poFooterPayment" style="font-size:12px;color:var(--success);"></th>
+                                <th class="text-right text-nowrap" id="poFooterInvoice" style="font-size:12px;color:var(--info);"></th>
+                                <th class="text-right text-nowrap" id="poFooterTax" style="font-size:12px;color:var(--text-faint);"></th>
+                                <th class="text-right text-nowrap" id="poFooterWht" style="font-size:12px;color:var(--text-faint);"></th>
+                                <th class="text-right text-nowrap" id="poFooterInvTotal" style="font-size:12px;color:var(--success);"></th>
                                 <th class="text-right text-nowrap" id="poFooterProfit" style="font-size:12px;color:var(--success);"></th>
                                 <th></th>
                                 <th></th>
