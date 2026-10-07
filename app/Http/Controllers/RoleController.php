@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\Role;
 use App\Models\MenuItem;
+use App\Models\UserActivityLog;
 use App\Support\Navigation;
 
 class RoleController extends Controller
@@ -116,6 +117,8 @@ class RoleController extends Controller
                 'oleh'       => Auth::user()?->username,
             ]);
         }
+
+        UserActivityLog::record('user_access', 'update', 'Mengubah akses menu role ' . $role->name, $role);
 
         return redirect()->route('role.index')
             ->with('success', 'Menu access untuk role ' . $role->name . ' berhasil diupdate.');

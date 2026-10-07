@@ -11,6 +11,7 @@ use App\Models\BudgetPlan;
 use App\Models\BudgetPlanDetail;
 use App\Models\BudgetPlanAttachment;
 use App\Models\BudgetRequest;
+use App\Models\RequestDetail;
 use App\Models\Account;
 use App\Models\Project;
 use App\Models\CostCenter;
@@ -668,6 +669,211 @@ class BudgetPlanController extends Controller
         ]);
     }
 
+    /** Style baris header tabel pada sebuah sheet (biru gelap, teks putih, bold). */
+    private function styleSheetHeader(Worksheet $sheet, array $headers): void
+    {
+        foreach ($headers as $i => $label) {
+            $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1);
+            $sheet->setCellValue($col . '1', $label);
+            $sheet->getStyle($col . '1')->getFont()->setBold(true);
+            $sheet->getStyle($col . '1')->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('0D1B2A');
+            $sheet->getStyle($col . '1')->getFont()->getColor()->setRGB('FFFFFF');
+        }
+    }
+
+    /**
+     * Effective cost per item CR (aturan sama dengan realizedCostValue, per baris):
+     * Cash Advance + settle terisi -> nilai settle; selainnya -> pengajuan;
+     * item takeout -> 0.
+     */
+    private function effectiveDetailCost(RequestDetail $d, bool $isCashAdvance): int
+    {
+        if ($d->isTakenOut()) {
+            return 0;
+        }
+        $settleTotal = (int) ($d->realization->total ?? 0);
+        return ($isCashAdvance && $settleTotal > 0) ? $settleTotal : (int) $d->total;
+    }
+
+    /**
+     * EXPORT COST — 1 file, 2 sheet:
+     *   Header : satu baris per Cost Request (ringkasan + effective cost)
+     *   Detail : satu baris per item CR, dikelompokkan CoA / Sub CoA, nilai effective
+     */
+    public function exportCost($id)
+    {
+        $bp = BudgetPlan::with(['project.customer', 'costCenter'])->findOrFail($id);
+        abort_unless($this->canViewBudgetPlan($bp), 403);
+
+        $crs = BudgetRequest::where('budget_plan_id', $bp->id)
+            ->disbursed()
+            ->with([
+                'type', 'beneficiary',
+                'details', 'details.realization', 'details.budgetDetail.account', 'details.account',
+            ])
+            ->latest()
+            ->get();
+
+        $spreadsheet = new Spreadsheet();
+
+        // ── SHEET 1: HEADER (per Cost Request) ──────────────────────
+        $header = $spreadsheet->getActiveSheet();
+        $header->setTitle('Header');
+        $this->styleSheetHeader($header, [
+            'Kode CR', 'Deskripsi', 'Tipe', 'Beneficiary', 'Request',
+            'Settlement', 'Refund', 'Expense Claim', 'Effective', 'Status', 'Tanggal',
+        ]);
+
+        $r = 2;
+        foreach ($crs as $cr) {
+            $isCa = $cr->isCashAdvance();
+            $eff  = (int) $cr->details->sum(fn ($d) => $this->effectiveDetailCost($d, $isCa));
+
+            $header->setCellValue('A' . $r, $cr->code);
+            $header->setCellValue('B' . $r, $cr->description);
+            $header->setCellValue('C' . $r, $cr->type->name ?? '-');
+            $header->setCellValue('D' . $r, $cr->beneficiary->nickname ?? '-');
+            $header->setCellValue('E' . $r, (int) $cr->amount);
+            $header->setCellValue('F' . $r, (int) $cr->realizedCostValue());
+            $header->setCellValue('G' . $r, (int) $cr->refundAmount());
+            $header->setCellValue('H' . $r, (int) $cr->expenseClaimAmount());
+            $header->setCellValue('I' . $r, $eff);
+            $header->setCellValue('J' . $r, $cr->status);
+            $header->setCellValue('K' . $r, $cr->created_at?->format('d-m-Y'));
+            $r++;
+        }
+        foreach (['A'=>18,'B'=>36,'C'=>16,'D'=>18,'E'=>16,'F'=>16,'G'=>14,'H'=>16,'I'=>16,'J'=>14,'K'=>12] as $col => $w) {
+            $header->getColumnDimension($col)->setWidth($w);
+        }
+
+        // ── SHEET 2: DETAIL (per item CR) ───────────────────────────
+        $detail = $spreadsheet->createSheet();
+        $detail->setTitle('Detail');
+        $this->styleSheetHeader($detail, [
+            'Kode CR', 'CoA', 'Sub CoA', 'Deskripsi', 'Effective', 'Keterangan',
+        ]);
+
+        $r = 2;
+        foreach ($crs as $cr) {
+            $isCa = $cr->isCashAdvance();
+            foreach ($cr->details as $d) {
+                $detail->setCellValue('A' . $r, $cr->code);
+                $detail->setCellValue('B' . $r, $d->account->name ?? $d->budgetDetail->account->name ?? '-');
+                $detail->setCellValue('C' . $r, $d->budgetDetail->deskripsi ?? '-');
+                $detail->setCellValue('D' . $r, $d->description ?: '-');
+                $detail->setCellValue('E' . $r, $this->effectiveDetailCost($d, $isCa));
+                $detail->setCellValue('F' . $r, $d->isTakenOut() ? ('Takeout · ' . $d->takeout_stage_label) : '');
+                $r++;
+            }
+        }
+        foreach (['A'=>18,'B'=>20,'C'=>30,'D'=>40,'E'=>16,'F'=>20] as $col => $w) {
+            $detail->getColumnDimension($col)->setWidth($w);
+        }
+
+        $spreadsheet->setActiveSheetIndex(0);
+        $filename = 'budget-plan-' . $bp->code . '-cost.xlsx';
+        $writer   = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    /**
+     * EXPORT BUDGET — 1 file, 2 sheet:
+     *   Header : satu baris per sub-item Budget Plan (Account/Sub CoA + Budget/Used/Variance)
+     *   Detail : satu baris per item CR di balik tiap sub-item (deskripsi settle-aware, nilai effective)
+     */
+    public function exportBudget($id)
+    {
+        $bp = BudgetPlan::with(['details.account'])->findOrFail($id);
+        abort_unless($this->canViewBudgetPlan($bp), 403);
+
+        $details = $bp->details->sortBy(fn ($d) => $d->account->name ?? '-')->values();
+        $hasBudgetDetailLink = \Illuminate\Support\Facades\Schema::hasColumn('request_detail', 'budget_detail_id');
+
+        $spreadsheet = new Spreadsheet();
+
+        // ── SHEET 1: HEADER (per sub-item Budget Plan) ──────────────
+        $header = $spreadsheet->getActiveSheet();
+        $header->setTitle('Header');
+        $this->styleSheetHeader($header, [
+            'Account', 'Sub CoA', 'Harga Satuan', 'Qty', 'Unit', 'Budget', 'Used', 'Variance',
+        ]);
+
+        $r = 2;
+        foreach ($details as $d) {
+            $header->setCellValue('A' . $r, $d->account->name ?? '-');
+            $header->setCellValue('B' . $r, $d->deskripsi);
+            $header->setCellValue('C' . $r, (int) $d->amount);
+            $header->setCellValue('D' . $r, (float) $d->qty);
+            $header->setCellValue('E' . $r, $d->unit);
+            $header->setCellValue('F' . $r, (int) $d->total);
+            $header->setCellValue('G' . $r, $d->usedAmount());
+            $header->setCellValue('H' . $r, $d->remainingAmount());
+            $r++;
+        }
+        foreach (['A'=>20,'B'=>32,'C'=>16,'D'=>8,'E'=>10,'F'=>16,'G'=>16,'H'=>16] as $col => $w) {
+            $header->getColumnDimension($col)->setWidth($w);
+        }
+
+        // ── SHEET 2: DETAIL (item CR di balik tiap sub-item) ────────
+        $detail = $spreadsheet->createSheet();
+        $detail->setTitle('Detail');
+        $this->styleSheetHeader($detail, [
+            'Account', 'Sub CoA', 'Tanggal', 'Kode CR', 'Beneficiary', 'Deskripsi', 'Harga Satuan', 'Qty', 'Amount',
+        ]);
+
+        $r = 2;
+        if ($hasBudgetDetailLink) {
+            foreach ($details as $d) {
+                $rds = $d->costRequestDetails()
+                    ->whereHas('budgetRequest', fn ($q) => $q->disbursed())
+                    ->with(['budgetRequest.type', 'budgetRequest.beneficiary:id,nickname', 'realization'])
+                    ->get();
+
+                foreach ($rds as $rd) {
+                    $isCa      = (bool) $rd->budgetRequest?->isCashAdvance();
+                    $settle    = $rd->realization;
+                    $useSettle = $isCa && (int) ($settle->total ?? 0) > 0;
+
+                    $amount = $useSettle ? (int) $settle->total : (int) $rd->total;
+                    $price  = $useSettle ? (int) $settle->amount : (int) $rd->amount;
+                    $qty    = $useSettle ? (float) $settle->qty : (float) $rd->qty;
+                    $desc   = $useSettle
+                        ? ($settle->description ?: ($rd->description ?: ($rd->notes ?: '-')))
+                        : ($rd->notes ?: ($rd->description ?: '-'));
+
+                    $detail->setCellValue('A' . $r, $d->account->name ?? '-');
+                    $detail->setCellValue('B' . $r, $d->deskripsi);
+                    $detail->setCellValue('C' . $r, $rd->budgetRequest->created_at?->format('d-m-Y') ?? '-');
+                    $detail->setCellValue('D' . $r, $rd->budgetRequest->code ?? '-');
+                    $detail->setCellValue('E' . $r, $rd->budgetRequest->beneficiary->nickname ?? '-');
+                    $detail->setCellValue('F' . $r, $desc);
+                    $detail->setCellValue('G' . $r, $price);
+                    $detail->setCellValue('H' . $r, $qty);
+                    $detail->setCellValue('I' . $r, $amount);
+                    $r++;
+                }
+            }
+        }
+        foreach (['A'=>20,'B'=>30,'C'=>12,'D'=>18,'E'=>18,'F'=>40,'G'=>14,'H'=>8,'I'=>16] as $col => $w) {
+            $detail->getColumnDimension($col)->setWidth($w);
+        }
+
+        $spreadsheet->setActiveSheetIndex(0);
+        $filename = 'budget-plan-' . $bp->code . '-budget.xlsx';
+        $writer   = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | SHOW JSON — AJAX
@@ -691,7 +897,10 @@ class BudgetPlanController extends Controller
 
         $costRequests = BudgetRequest::where('budget_plan_id', $bp->id)
             ->disbursed()
-            ->with(['type', 'applicant', 'beneficiary', 'details', 'realizations'])
+            ->with([
+                'type', 'applicant', 'beneficiary', 'realizations',
+                'details', 'details.realization', 'details.budgetDetail.account', 'details.account',
+            ])
             ->latest()
             ->get();
 
@@ -707,7 +916,7 @@ class BudgetPlanController extends Controller
         ];
         $crStatusLabel = [
             'DRAFT' => 'Draft', 'SUBMITTED' => 'Submitted', 'CHECKED' => 'Checked', 'VERIFIED' => 'Verified',
-            'APPROVED' => 'Approved', 'QUEUED' => 'Queued', 'PAID' => 'Paid', 'REALIZED' => 'Realized',
+            'APPROVED' => 'Approved', 'QUEUED' => 'Queued', 'PAID' => 'Paid', 'REALIZED' => 'Settle',
             'CLOSED' => 'Closed', 'REJECTED' => 'Rejected', 'CANCELLED' => 'Cancelled',
         ];
 
@@ -734,7 +943,10 @@ class BudgetPlanController extends Controller
 
         $sumRequest = (int) $costRequests->sum('amount');
         $sumRefund  = (int) $costRequests->sum($refundOf);
-        $actualUsed = $sumRequest - $sumRefund;
+        $sumClaim   = (int) $costRequests->sum(fn ($cr) => $cr->expenseClaimAmount());
+        // Actual Used = Request - Refund (pengurang) + Expense Claim (tambahan
+        // bayar kekurangan settlement). Setara nilai settlement aktual.
+        $actualUsed = $sumRequest - $sumRefund + $sumClaim;
 
         // Tab Cash Advance — CR bertipe Cash Advance yang terhubung ke budget plan
         // ini, dikelompokkan per PIC (bukan per beneficiary — satu PIC bisa
@@ -818,10 +1030,11 @@ class BudgetPlanController extends Controller
                 'type_counts'   => $typeCounts,
                 'request_total' => $allRequests->count(),
                 'budget' => [
-                    'budget_value_formatted' => $rp($bp->amount ?? 0),
-                    'request_formatted'      => $rp($sumRequest),
-                    'refund_formatted'       => $rp($sumRefund),
-                    'actual_used_formatted'  => $rp($actualUsed),
+                    'budget_value_formatted'   => $rp($bp->amount ?? 0),
+                    'request_formatted'        => $rp($sumRequest),
+                    'refund_formatted'         => $rp($sumRefund),
+                    'expense_claim_formatted'  => $rp($sumClaim),
+                    'actual_used_formatted'    => $rp($actualUsed),
                 ],
             ],
             'cash_advance' => [
@@ -854,17 +1067,30 @@ class BudgetPlanController extends Controller
                 if (\Illuminate\Support\Facades\Schema::hasColumn('request_detail', 'budget_detail_id')) {
                     $crDetails = $d->costRequestDetails()
                         ->whereHas('budgetRequest', fn ($q) => $q->disbursed())
-                        ->with(['budgetRequest:id,code,description,beneficiary_id,created_at', 'budgetRequest.beneficiary:id,nickname', 'realization'])
+                        ->with(['budgetRequest.type', 'budgetRequest.beneficiary:id,nickname', 'realization'])
                         ->get()
                         ->map(function ($rd) {
-                            $amount = (int) ($rd->realization->total ?? $rd->total);
+                            // Effective: Cash Advance dengan settle terisi -> ambil
+                            // baris settle (nominal & DESKRIPSI), selain itu pengajuan.
+                            $isCa    = (bool) $rd->budgetRequest?->isCashAdvance();
+                            $settle  = $rd->realization;
+                            $useSettle = $isCa && (int) ($settle->total ?? 0) > 0;
+
+                            $amount = $useSettle ? (int) $settle->total : (int) $rd->total;
+                            $price  = $useSettle ? (int) $settle->amount : (int) $rd->amount;
+                            $qty    = $useSettle ? (float) $settle->qty : (float) $rd->qty;
+                            $desc   = $useSettle
+                                ? ($settle->description ?: ($rd->description ?: ($rd->notes ?: '-')))
+                                : ($rd->notes ?: ($rd->description ?: '-'));
+
                             return [
                                 'cr_id'                => $rd->budgetRequest->id ?? null,
                                 'cr_date_formatted'    => $rd->budgetRequest->created_at?->format('d M Y') ?? '-',
                                 'beneficiary'          => $rd->budgetRequest->beneficiary->nickname ?? '-',
-                                'notes'                => $rd->notes ?: '-',
-                                'unit_price_formatted' => number_format((int) $rd->amount, 0, ',', '.'),
-                                'qty'                  => (float) $rd->qty,
+                                'notes'                => $desc,
+                                'is_settle'            => $useSettle,
+                                'unit_price_formatted' => number_format($price, 0, ',', '.'),
+                                'qty'                  => $qty,
                                 'amount'               => $amount,
                                 'amount_formatted'     => number_format($amount, 0, ',', '.'),
                             ];
@@ -914,12 +1140,56 @@ class BudgetPlanController extends Controller
                 $realisasi = $realizedValueOf($cr);
                 $refund    = $refundOf($cr);
 
+                // Effective cost per item (aturan sama dengan realizedCostValue,
+                // tapi diterapkan per baris):
+                //   - Cash Advance + ada settle (realization.total > 0) -> nilai settle
+                //   - Cash Advance tanpa settle, atau tipe lain -> nilai pengajuan
+                // Item takeout tidak dihitung sebagai biaya (effective = 0).
+                $isCa = $cr->isCashAdvance();
+                $effectiveOf = function ($d) use ($isCa) {
+                    if ($d->isTakenOut()) {
+                        return 0;
+                    }
+                    $settleTotal = (int) ($d->realization->total ?? 0);
+                    return ($isCa && $settleTotal > 0) ? $settleTotal : (int) $d->total;
+                };
+
+                // Grouping tab Cost: CR -> CoA (Account) -> Sub CoA (deskripsi
+                // Budget Plan Detail) + Detail Deskripsi. Nilai = effective cost.
+                $coaGroups = $cr->details
+                    ->groupBy(fn ($d) => $d->account->name
+                        ?? $d->budgetDetail->account->name
+                        ?? '-')
+                    ->map(function ($items, $accName) use ($effectiveOf) {
+                        $rows = $items->map(function ($d) use ($effectiveOf) {
+                            $eff = $effectiveOf($d);
+                            return [
+                                'sub_coa'     => $d->budgetDetail->deskripsi ?? '-',
+                                'description' => $d->description ?: '-',
+                                'notes'       => $d->notes ?: null,
+                                'effective'   => $eff,
+                                'effective_formatted' => number_format($eff, 0, ',', '.'),
+                                'is_takeout'  => $d->isTakenOut(),
+                                'takeout_stage_label' => $d->isTakenOut() ? $d->takeout_stage_label : null,
+                            ];
+                        })->values();
+
+                        return [
+                            'account'   => $accName,
+                            'effective' => (int) $rows->sum('effective'),
+                            'effective_formatted' => number_format($rows->sum('effective'), 0, ',', '.'),
+                            'rows'      => $rows,
+                        ];
+                    })
+                    ->sortByDesc('effective')
+                    ->values();
+
                 return [
                     'id'                  => $cr->id,
                     'code'                => $cr->code,
                     'description'         => $cr->description,
                     'type'                => $cr->type->name ?? '-',
-                    'applicant'           => $cr->applicant->name ?? '-',
+                    'is_cash_advance'     => $isCa,
                     'beneficiary'         => $cr->beneficiary->nickname ?? '-',
                     'amount'              => (int) $cr->amount,
                     'amount_formatted'    => $cr->amount_formatted,
@@ -929,18 +1199,13 @@ class BudgetPlanController extends Controller
                     'refund_formatted'    => number_format($refund, 0, ',', '.'),
                     'expense_claim'           => $cr->expenseClaimAmount(),
                     'expense_claim_formatted' => number_format($cr->expenseClaimAmount(), 0, ',', '.'),
+                    'effective'           => (int) $coaGroups->sum('effective'),
+                    'effective_formatted' => number_format($coaGroups->sum('effective'), 0, ',', '.'),
                     'status'              => $cr->status,
+                    'status_label'        => $cr->status_label,
                     'status_color'        => $cr->status_color,
                     'date'                => $cr->created_at->format('d M Y'),
-                    'details' => $cr->details->map(fn ($d) => [
-                        'description'      => $d->description,
-                        'amount_formatted' => $d->amount_formatted ?? (number_format($d->amount, 0, ',', '.')),
-                        'qty'              => (float) $d->qty,
-                        'total_formatted'  => $d->total_formatted ?? (number_format($d->total, 0, ',', '.')),
-                        'notes'            => $d->notes,
-                        'is_takeout'       => $d->isTakenOut(),
-                        'takeout_stage_label' => $d->isTakenOut() ? $d->takeout_stage_label : null,
-                    ]),
+                    'coa_groups'          => $coaGroups,
                 ];
             }),
         ]);

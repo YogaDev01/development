@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 
 use App\Models\Employee;
 use App\Models\Bank;
+use App\Models\UserActivityLog;
 
 class EmployeeController extends Controller
 {
@@ -91,7 +92,9 @@ class EmployeeController extends Controller
         $data['status']         = 'ACTIVE';
         $data['input_by']       = Auth::id();
 
-        Employee::create($data);
+        $employee = Employee::create($data);
+
+        UserActivityLog::record('master_data', 'create', 'Menambah Karyawan ' . $employee->name, $employee);
 
         return redirect('/employee')
             ->with('success', 'Karyawan berhasil ditambahkan.');
@@ -132,6 +135,8 @@ class EmployeeController extends Controller
 
         $employee->update($data);
 
+        UserActivityLog::record('master_data', 'update', 'Mengubah Karyawan ' . $employee->name, $employee);
+
         return redirect('/employee')
             ->with('success', 'Data karyawan berhasil diupdate.');
     }
@@ -156,7 +161,10 @@ class EmployeeController extends Controller
             );
         }
 
+        $employeeName = $employee->name;
         $employee->delete();
+
+        UserActivityLog::record('master_data', 'delete', 'Menghapus Karyawan ' . $employeeName);
 
         return redirect('/employee')
             ->with('success', 'Karyawan berhasil dihapus.');

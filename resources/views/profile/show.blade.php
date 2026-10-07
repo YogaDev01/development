@@ -79,6 +79,12 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" data-toggle="tab" href="#paneActivityLog">
+                            <i class="fas fa-stream mr-1"></i> Activity Log
+                            <span class="badge badge-secondary ml-1">{{ $activityLogs->total() }}</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" data-toggle="tab" href="#paneTeam">
                             <i class="fas fa-user-friends mr-1"></i> Team
                             <span class="badge badge-secondary ml-1">{{ $team->count() }}</span>
@@ -287,6 +293,11 @@
                         @endif
                     </div>
 
+                    <!-- TAB ACTIVITY LOG -->
+                    <div class="tab-pane fade" id="paneActivityLog">
+                        @include('profile._activity_log')
+                    </div>
+
                     <!-- TAB TEAM -->
                     <div class="tab-pane fade" id="paneTeam">
                         <p class="text-muted" style="font-size:12px;">
@@ -340,6 +351,19 @@
 
 @push('scripts')
 <script>
+// Setelah submit filter / pindah halaman Activity Log, URL membawa param
+// (alog / module / action / q / tanggal). Aktifkan kembali tab Activity Log
+// supaya user tidak terlempar balik ke tab Informasi.
+(function () {
+    var p = new URLSearchParams(window.location.search);
+    var keys = ['alog', 'module', 'action', 'date_from', 'date_to', 'q'];
+    var onActivity = keys.some(function (k) { return p.has(k); });
+    if (onActivity) {
+        var trigger = document.querySelector('a[href="#paneActivityLog"]');
+        if (trigger && window.jQuery) { window.jQuery(trigger).tab('show'); }
+    }
+})();
+
 document.getElementById('avatarInput').addEventListener('change', function () {
     if (!this.files || !this.files[0]) return;
 

@@ -799,5 +799,49 @@ class BudgetRequest extends Model
             'actor_role'       => $user?->role?->name,
             'request_snapshot' => $snapshot,
         ]);
+
+        /*
+        | Audit trail terpusat (UserActivityLog).
+        |
+        | addLog() adalah titik tunggal yang dilewati hampir semua transisi
+        | status Cost Request, jadi mencatat di sini sekaligus menutup seluruh
+        | jalur CR tanpa menyentuh tiap method controller. Gagal-aman: record()
+        | sudah dibungkus try/catch, tidak akan menggagalkan transaksi CR.
+        */
+        $label = RequestStatusLog::ACTION_TYPES[$actionType] ?? $actionType;
+        UserActivityLog::record(
+            'cost_request',
+            self::activityActionKey($actionType),
+            trim($label) . ' — Cost Request #' . ($this->code ?? $this->id),
+            $this,
+            $notes
+        );
+    }
+
+    /**
+     * Pemetaan action_type CR (RequestStatusLog) → action key generik
+     * UserActivityLog, supaya filter/warna di Activity Log konsisten.
+     */
+    protected static function activityActionKey(string $actionType): string
+    {
+        return match ($actionType) {
+            'created'                                               => 'create',
+            'submitted', 'realization_submitted'                    => 'submit',
+            'head_approved', 'settlement_checked'                   => 'check',
+            'finance_approved', 'settlement_verified'               => 'verify',
+            'ceo_approved', 'cr_approved', 'settlement_approved',
+            'second_payment_approved', 'second_payment_ceo_approved' => 'approve',
+            'head_rejected', 'finance_rejected', 'ceo_rejected',
+            'cr_rejected', 'realization_rejected', 'settlement_rejected',
+            'second_payment_batch_rejected'                         => 'reject',
+            'head_revised', 'finance_revised', 'revised'            => 'revise',
+            'cancelled'                                             => 'cancel',
+            'paid', 'second_payment_paid'                           => 'pay',
+            'realization_approved', 'settlement_closed', 'closed'   => 'close',
+            'item_takeout', 'all_items_takeout', 'second_payment_takeout' => 'takeout',
+            'item_restore'                                          => 'restore',
+            'batched', 'second_payment_batched', 'realized'         => 'process',
+            default                                                 => 'update',
+        };
     }
 }

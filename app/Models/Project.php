@@ -947,5 +947,42 @@ class Project extends Model
             'user_name'   => $user?->name ?? 'System',
             'role'        => $user?->role?->name,
         ]);
+
+        /*
+        | Audit trail terpusat (UserActivityLog). Titik tunggal semua transisi
+        | status Project/PO. Gagal-aman (record() dibungkus try/catch).
+        */
+        $labels = [
+            'created'           => 'Membuat',
+            'submitted'         => 'Mengajukan',
+            'revised'           => 'Merevisi',
+            'waiting_to_active' => 'Mengaktifkan',
+            'bast_submitted'    => 'Mengajukan BAST',
+            'bast_completed'    => 'Menyelesaikan BAST',
+            'closing_submitted' => 'Mengajukan closing',
+            'closing_approved'  => 'Menyetujui closing',
+            'closing_rejected'  => 'Menolak closing',
+            'finance_closed'    => 'Menutup (Finance)',
+            'closed'            => 'Menutup',
+        ];
+        $actionKey = match ($action) {
+            'created'                            => 'create',
+            'submitted', 'bast_submitted',
+            'closing_submitted'                  => 'submit',
+            'closing_approved'                   => 'approve',
+            'closing_rejected'                   => 'reject',
+            'revised'                            => 'revise',
+            'finance_closed', 'closed'           => 'close',
+            'waiting_to_active', 'bast_completed' => 'process',
+            default                              => 'update',
+        };
+        $verb = $labels[$action] ?? ucfirst($action);
+        UserActivityLog::record(
+            'purchase_order',
+            $actionKey,
+            $verb . ' Purchase Order #' . ($this->code ?? $this->id),
+            $this,
+            $notes
+        );
     }
 }

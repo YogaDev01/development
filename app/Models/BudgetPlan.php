@@ -271,5 +271,45 @@ class BudgetPlan extends Model
             'user_name'      => $user?->name ?? 'System',
             'role'           => $user?->role?->name,
         ]);
+
+        /*
+        | Audit trail terpusat (UserActivityLog). Titik tunggal semua transisi
+        | status Budget Plan. Gagal-aman (record() dibungkus try/catch).
+        */
+        $labels = [
+            'created'           => 'Membuat',
+            'submitted'         => 'Mengajukan',
+            'head_approved'     => 'Menyetujui (Head)',
+            'head_rejected'     => 'Menolak (Head)',
+            'finance_verified'  => 'Memverifikasi (Finance)',
+            'finance_rejected'  => 'Menolak (Finance)',
+            'ceo_approved'      => 'Menyetujui (CEO)',
+            'ceo_rejected'      => 'Menolak (CEO)',
+            'revised'           => 'Merevisi',
+            'closing_submitted' => 'Mengajukan closing',
+            'closing_approved'  => 'Menyetujui closing',
+            'closing_rejected'  => 'Menolak closing',
+            'finance_closed'    => 'Menutup',
+        ];
+        $actionKey = match ($action) {
+            'created'                          => 'create',
+            'submitted', 'closing_submitted'   => 'submit',
+            'head_approved'                    => 'check',
+            'finance_verified'                 => 'verify',
+            'ceo_approved', 'closing_approved' => 'approve',
+            'head_rejected', 'finance_rejected',
+            'ceo_rejected', 'closing_rejected' => 'reject',
+            'revised'                          => 'revise',
+            'finance_closed'                   => 'close',
+            default                            => 'update',
+        };
+        $verb = $labels[$action] ?? ucfirst($action);
+        UserActivityLog::record(
+            'budget_plan',
+            $actionKey,
+            $verb . ' Budget Plan: ' . ($this->description ?? '#' . $this->id),
+            $this,
+            $notes
+        );
     }
 }

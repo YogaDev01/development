@@ -95,7 +95,7 @@
 
                             <li class="list-group-item">
 
-                                <b>Applicant</b>
+                                <b>Requestor</b>
 
                                 <span class="float-right">
 

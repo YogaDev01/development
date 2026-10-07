@@ -460,6 +460,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('menu:user-access')->group(function () {
         Route::get('user',                  [UserController::class, 'index'])->name('user.index');
         Route::get('user/{id}/detail-json', [UserController::class, 'showJson'])->name('user.show-json');
+        Route::get('user/{id}/activity-log', [UserController::class, 'activityLog'])->name('user.activity-log');
         Route::get('user/{id}',             [UserController::class, 'show'])->name('user.show');
 
         Route::get('accessgroup',                    [AccessGroupController::class, 'index'])->name('accessgroup.index');
@@ -514,6 +515,8 @@ Route::middleware('auth')->group(function () {
     // PAYROLL) dijaga di BudgetPlanController::canViewBudgetPlan().
     Route::get('budget-plan/{id}/detail-json',    [BudgetPlanController::class, 'showJson'])->name('budget-plan.show-json');
     Route::get('budget-plan/{id}/export-report',  [BudgetPlanController::class, 'exportReport'])->name('budget-plan.export-report');
+    Route::get('budget-plan/{id}/export-cost',    [BudgetPlanController::class, 'exportCost'])->name('budget-plan.export-cost');
+    Route::get('budget-plan/{id}/export-budget',  [BudgetPlanController::class, 'exportBudget'])->name('budget-plan.export-budget');
 
     Route::middleware('menu:finance-budgeting,project-budgeting')
         ->get('budget-plan/accounts-json', [BudgetPlanController::class, 'getAccounts'])->name('budget-plan.accounts-json');

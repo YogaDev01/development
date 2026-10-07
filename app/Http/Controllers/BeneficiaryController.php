@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Bank;
 use App\Models\Beneficiary;
 use App\Models\MasterPic;
+use App\Models\UserActivityLog;
 
 class BeneficiaryController extends Controller
 {
@@ -319,7 +320,7 @@ class BeneficiaryController extends Controller
             'status'         => 'required|in:ACTIVE,INACTIVE',
         ]);
 
-        Beneficiary::create([
+        $beneficiary = Beneficiary::create([
             'nickname'       => strtoupper($request->nickname),
             'complete_name'  => strtoupper($request->complete_name),
             'category'       => $request->category,
@@ -330,6 +331,8 @@ class BeneficiaryController extends Controller
             'status'         => $request->status,
             'input_by'       => Auth::id(),
         ]);
+
+        UserActivityLog::record('master_data', 'create', 'Menambah Beneficiary ' . $beneficiary->nickname, $beneficiary);
 
         return redirect('/beneficiaries')
             ->with('success', 'Beneficiary berhasil ditambahkan');
@@ -392,6 +395,8 @@ class BeneficiaryController extends Controller
             'status'         => $request->status,
         ]);
 
+        UserActivityLog::record('master_data', 'update', 'Mengubah Beneficiary ' . $beneficiary->nickname, $beneficiary);
+
         return redirect('/beneficiaries')
             ->with('success', 'Beneficiary berhasil diupdate');
     }
@@ -414,7 +419,10 @@ class BeneficiaryController extends Controller
             return back()->with('error', 'Beneficiary tidak bisa dihapus karena sudah dipakai pada Cost Request.');
         }
 
+        $nickname = $beneficiary->nickname;
         $beneficiary->delete();
+
+        UserActivityLog::record('master_data', 'delete', 'Menghapus Beneficiary ' . $nickname);
 
         return redirect('/beneficiaries')
             ->with('success', 'Beneficiary berhasil dihapus');

@@ -100,12 +100,28 @@ class DeliveryNote extends Model
     {
         $user = auth::user();
 
-        return $this->logs()->create([
+        $log = $this->logs()->create([
             'action'     => $action,
             'actor_id'   => $user?->id,
             'actor_name' => $user?->name,
             'notes'      => $notes,
         ]);
+
+        // Audit trail terpusat — gagal-aman.
+        $map = [
+            'SENT'     => ['create', 'Mengirim'],
+            'RECEIVED' => ['process', 'Menerima'],
+        ];
+        [$actionKey, $verb] = $map[$action] ?? ['update', ucfirst(strtolower($action))];
+        UserActivityLog::record(
+            'delivery_note',
+            $actionKey,
+            $verb . ' Delivery Note #' . ($this->code ?? $this->id),
+            $this,
+            $notes
+        );
+
+        return $log;
     }
 
     /*

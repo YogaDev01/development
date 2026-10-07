@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Stage;
+use App\Models\UserActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -111,12 +112,14 @@ class StageController extends Controller
             'status' => 'required|in:ACTIVE,INACTIVE',
         ]);
 
-        Stage::create([
+        $stage = Stage::create([
             'code'       => $code,
             'name'       => $request->name,
             'status'     => $request->status,
             'created_by' => Auth::id(),
         ]);
+
+        UserActivityLog::record('master_data', 'create', 'Menambah Stage ' . $stage->name . ' (' . $code . ')', $stage);
 
         return redirect()
             ->route('stage.index')
@@ -160,6 +163,8 @@ class StageController extends Controller
             'status' => $request->status,
         ]);
 
+        UserActivityLog::record('master_data', 'update', 'Mengubah Stage ' . $stage->name, $stage);
+
         return redirect()
             ->route('stage.index')
             ->with('success', 'Stage berhasil diperbarui.');
@@ -176,7 +181,10 @@ class StageController extends Controller
             return back()->with('error', 'Stage tidak bisa dihapus karena sudah dipakai pada Project Detail.');
         }
 
+        $stageName = $stage->name;
         $stage->delete();
+
+        UserActivityLog::record('master_data', 'delete', 'Menghapus Stage ' . $stageName);
 
         return redirect()
             ->route('stage.index')

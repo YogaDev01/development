@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 
 use App\Models\SourceFund;
 use App\Models\Bank;
+use App\Models\UserActivityLog;
 
 class SourceFundController extends Controller
 {
@@ -39,7 +40,7 @@ class SourceFundController extends Controller
             SourceFund::where('is_main_account', true)->update(['is_main_account' => false]);
         }
 
-        SourceFund::create([
+        $sf = SourceFund::create([
             'name'            => strtoupper($request->name),
             'no_account'      => $request->no_account,
             'bank_id'         => $request->bank_id,
@@ -47,6 +48,8 @@ class SourceFundController extends Controller
             'is_main_account' => $isMain,
             'input_by'        => Auth::id(),
         ]);
+
+        UserActivityLog::record('master_data', 'create', 'Menambah Source Fund ' . $sf->name, $sf);
 
         return redirect('/source-fund')->with('success', 'Source Fund berhasil ditambahkan');
     }
@@ -90,6 +93,8 @@ class SourceFundController extends Controller
             'is_main_account' => $isMain,
         ]);
 
+        UserActivityLog::record('master_data', 'update', 'Mengubah Source Fund ' . $sf->name, $sf);
+
         return redirect('/source-fund')->with('success', 'Source Fund berhasil diupdate');
     }
 
@@ -111,7 +116,10 @@ class SourceFundController extends Controller
             return back()->with('error', 'Source Fund tidak bisa dihapus karena sudah dipakai pada Invoice.');
         }
 
+        $sfName = $sf->name;
         $sf->delete();
+
+        UserActivityLog::record('master_data', 'delete', 'Menghapus Source Fund ' . $sfName);
 
         return redirect('/source-fund')->with('success', 'Source Fund berhasil dihapus');
     }

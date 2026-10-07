@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 
 use App\Models\Department;
+use App\Models\UserActivityLog;
 
 class DepartmentController extends Controller
 {
@@ -28,11 +29,13 @@ class DepartmentController extends Controller
 
         $code = 'DEPT-' . str_pad((string) (Department::max('id') + 1), 3, '0', STR_PAD_LEFT);
 
-        Department::create([
+        $department = Department::create([
             'code'   => $code,
             'name'   => strtoupper(trim($validated['name'])),
             'status' => 'ACTIVE',
         ]);
+
+        UserActivityLog::record('master_data', 'create', 'Menambah Department ' . $department->name, $department);
 
         return redirect('/department')->with('success', 'Department berhasil ditambahkan.');
     }
@@ -51,6 +54,8 @@ class DepartmentController extends Controller
             'status' => $validated['status'],
         ]);
 
+        UserActivityLog::record('master_data', 'update', 'Mengubah Department ' . $department->name, $department);
+
         return redirect('/department')->with('success', 'Department berhasil diupdate.');
     }
 
@@ -65,7 +70,10 @@ class DepartmentController extends Controller
             );
         }
 
+        $departmentName = $department->name;
         $department->delete();
+
+        UserActivityLog::record('master_data', 'delete', 'Menghapus Department ' . $departmentName);
 
         return redirect('/department')->with('success', 'Department berhasil dihapus.');
     }

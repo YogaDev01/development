@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use App\Models\User;
+use App\Models\UserActivityLog;
 
 class AuthController extends Controller
 {
@@ -116,6 +117,9 @@ class AuthController extends Controller
             // Regenerate session untuk security
             $request->session()->regenerate();
 
+            // Audit trail: catat login (actor dari session yang baru terbentuk).
+            UserActivityLog::record('auth', 'login', 'Login ke aplikasi');
+
             // Redirect ke halaman yang dituju atau dashboard
             return redirect()
                 ->intended('/')
@@ -168,6 +172,9 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        // Catat dulu selagi actor masih ada di session.
+        UserActivityLog::record('auth', 'logout', 'Logout dari aplikasi');
+
         Auth::logout();
 
         $request->session()->invalidate();

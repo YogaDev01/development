@@ -1873,8 +1873,9 @@
     <div class="todo-drawer-header">
         <div class="d-flex justify-content-between align-items-start">
             <div>
-                <div id="todoDrwCode" class="text-white" style="font-size:15px;font-weight:700;">CR-0000</div>
-                <div id="todoDrwStatusWrap" style="margin-top:6px;"></div>
+                <div id="todoDrwMeta" class="text-white" style="font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;opacity:.72;">CR-0000</div>
+                <div id="todoDrwCode" class="text-white" style="font-size:16px;font-weight:700;margin-top:3px;line-height:1.3;">—</div>
+                <div id="todoDrwStatusWrap" style="display:none;"></div>
             </div>
             <button type="button" id="todoDrwClose" class="close text-white"><span>&times;</span></button>
         </div>
@@ -2003,17 +2004,6 @@
 /* Bar aksi drawer — menempel di dasar panel, tidak ikut tergulir bersama isi
    tab, supaya tombol Approve/Reject tetap terjangkau pada CR berisi banyak
    rincian. */
-/* Riwayat pengajuan beneficiary — subtotal + header dibekukan */
-.todo-benhist-wrap { max-height:300px; overflow:auto; border:1px solid var(--border); border-radius:var(--radius-md); }
-.todo-benhist-table { border-collapse:separate; border-spacing:0; width:100%; }
-.todo-benhist-table th, .todo-benhist-table td { border-bottom:1px solid var(--border); padding:6px 10px; vertical-align:middle; }
-.todo-benhist-table thead th { position:sticky; z-index:2; }
-/* Semua kolom selebar isinya; Description mengambil sisa lebar. */
-.todo-benhist-table th, .todo-benhist-table td { width:1%; white-space:nowrap; }
-.todo-benhist-table .todo-benhist-desc { width:auto; white-space:normal; }
-.todo-benhist-sub th { top:0; background:var(--surface-3); font-weight:700; color:var(--text); }
-.todo-benhist-head th { top:30px; background:var(--surface-2); font-size:10.5px; letter-spacing:.04em; text-transform:uppercase; color:var(--text-faint); cursor:pointer; user-select:none; white-space:nowrap; }
-.todo-benhist-head th:hover { color:var(--text); }
 .todo-drawer-actions {
     flex-shrink:0;padding:12px 22px;background:var(--surface-2);border-top:1px solid var(--border);
     display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;
@@ -2056,6 +2046,30 @@ body.todo-drawer-top .todo-drawer-overlay { z-index:1090; }
     padding:3px 10px;font-size:11.5px;font-weight:700;line-height:1.3;
 }
 .todo-drw-label { font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);font-weight:700;margin-bottom:3px; }
+
+/* Kartu NILAI PENGAJUAN di puncak tab Info (meniru modal detail Cost Request). */
+.todo-drw-amount-card { border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface-2);padding:16px 18px;margin-bottom:18px; }
+.todo-drw-amount-label { font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);font-weight:700;margin-bottom:6px; }
+.todo-drw-amount-val { font-size:26px;font-weight:800;color:var(--text);line-height:1.05; }
+.todo-drw-amount-badges { display:flex;flex-wrap:wrap;gap:6px;margin-top:10px; }
+
+/* Section Info (Chart of Account / Informasi Pengajuan / Tanggal). */
+.todo-drw-section { margin-bottom:18px; }
+.todo-drw-section-title { font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);font-weight:700;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border); }
+.todo-drw-section .todo-coa-chips { margin-top:0; }
+/* Baris key-value dua kolom di dalam section (label kiri, nilai kanan). */
+.todo-drw-section .todo-drw-row { display:flex;gap:14px;align-items:baseline;margin-bottom:9px; }
+.todo-drw-section .todo-drw-row:last-child { margin-bottom:0; }
+.todo-drw-section .todo-drw-label { flex:0 0 120px;margin-bottom:0;text-transform:none;letter-spacing:0;font-weight:400;font-size:12px;color:var(--text-faint); }
+.todo-drw-section .todo-drw-value { flex:1;min-width:0;font-size:12.5px;word-break:break-word; }
+
+/* Riwayat pengajuan PIC — pohon COA/Sub COA/item di tab Info. */
+.todo-pichist-wrap { max-height:320px; overflow:auto; border:1px solid var(--border); border-radius:var(--radius-md); margin-top:6px; }
+.todo-pichist-table { width:100%; margin-bottom:0; }
+.todo-pichist-table th, .todo-pichist-table td { padding:6px 10px; vertical-align:middle; }
+.todo-pichist-table thead th, .todo-pichist-table tfoot th { position:sticky; z-index:2; background:var(--surface-2); }
+.todo-pichist-table thead th { top:0; }
+.todo-pichist-table tfoot th { bottom:0; }
 
 /* Grup per Chart of Account di tab Request & Settlement drawer (pola sama
    dengan tab Budget di Budget Plan). */
@@ -3459,7 +3473,8 @@ $(function () {
         $('#todoPaneInfo, #todoPaneRequest, #todoPaneRealisasi, #todoPaneLog').html('<div class="text-center text-muted py-5"><i class="fas fa-spinner fa-spin mr-1"></i> Memuat...</div>');
         $('.todo-drawer-body .nav-link[href="#todoPaneInfo"]').tab('show');
         $('#todoTabRealisasiLi').hide();
-        $('#todoDrwCode').text('CR-...');
+        $('#todoDrwMeta').text('CR-...');
+        $('#todoDrwCode').text('Memuat...');
         $('#todoDrwStatusWrap').html('');
         $('#todoDrwActions').hide().empty();
         $('body').addClass('todo-drawer-open')
@@ -3467,21 +3482,26 @@ $(function () {
                  .toggleClass('todo-drawer-top', $('.modal.show').length > 0);
 
         $.get('/budget-request/' + id + '/detail-json', function (d) {
-            $('#todoDrwCode').text(d.code);
-            $('#todoDrwStatusWrap').html('<span class="badge badge-' + (todoStatusColors[d.status] || 'secondary') + ' px-2 py-1">' + (d.status_label || d.status) + '</span>');
+            // Top bar: baris kecil "{CR code} · {TIPE}" lalu judul besar =
+            // deskripsi pengajuan (meniru modal detail Cost Request).
+            $('#todoDrwMeta').text(d.code + ' · ' + (d.type || '-').toUpperCase());
+            $('#todoDrwCode').text(d.description || d.code);
+            $('#todoDrwStatusWrap').html('');
 
             /* ── TAB INFO ── */
-            // "PO & Budget Reference" = "{PO code} - {nama Budget Plan}" — nama Budget
-            // Plan diambil dari d.budget_plan ("[kode] deskripsi"), kode bracket-nya dibuang.
-            var bpName = (d.budget_plan || '').replace(/^\[[^\]]*\]\s*/, '');
-            var poBudgetRef = (d.code_reference || '-') + ' - ' + (bpName || '-');
-
             var info = '';
 
-            /* Chart of Account yang dipotong CR ini — nama akunnya saja, tanpa
-               keterangan baris anggaran: yang dicari di sini adalah pos mana
-               yang dipakai, rinciannya sudah ada di tab Request & modal View
-               Budget. Akun yang sama digabung jadi satu chip. */
+            /* NILAI PENGAJUAN — kartu amount berlabel, dengan badge tipe & status. */
+            info += '<div class="todo-drw-amount-card">' +
+                '<div class="todo-drw-amount-label">Nilai Pengajuan</div>' +
+                '<div class="todo-drw-amount-val">' + esc(d.amount_formatted) + '</div>' +
+                '<div class="todo-drw-amount-badges">' +
+                    '<span class="badge badge-light border" style="font-size:10.5px;">' + esc(d.type) + '</span>' +
+                    '<span class="badge badge-' + (todoStatusColors[d.status] || 'secondary') + '" style="font-size:10.5px;">' + esc(d.status_label || d.status) + '</span>' +
+                '</div>' +
+            '</div>';
+
+            /* CHART OF ACCOUNT — daftar akun unik yang dipotong CR ini. */
             var coaChips = [], coaSeen = {};
             (d.details || []).forEach(function (it) {
                 var akun = it.account || '-';
@@ -3489,40 +3509,62 @@ $(function () {
                 coaSeen[akun] = true;
                 coaChips.push('<span class="todo-coa-chip">' + esc(akun) + '</span>');
             });
-            /* Tanpa label: chip-nya sudah menerangkan dirinya sendiri, dan
-               label "Chart of Account" di atasnya hanya menambah satu baris
-               teks sebelum isi drawer yang sebenarnya. */
             if (coaChips.length) {
-                info += '<div class="todo-coa-chips" style="margin-bottom:14px;">' + coaChips.join('') + '</div>';
+                info += '<div class="todo-drw-section">' +
+                    '<div class="todo-drw-section-title">Chart of Account</div>' +
+                    '<div class="todo-coa-chips">' + coaChips.join('') + '</div>' +
+                '</div>';
             }
 
-            info += todoDrwRow('Description', esc(d.description));
-            info += todoDrwRow('Request Type', esc(d.type));
-            info += todoDrwRow('PO & Budget Reference', esc(poBudgetRef));
-            info += todoDrwRow('Beneficiary', esc(d.beneficiary) + (d.bank ? ' <span class="text-muted">(' + esc(d.bank) + (d.account_number ? ' — ' + esc(d.account_number) : '') + ')</span>' : ''));
-            info += todoDrwRow('Amount', '<strong style="font-size:15px;color:var(--text);">' + esc(d.amount_formatted) + '</strong>');
-            info += todoDrwRow('Requester', esc(d.applicant));
-            info += todoDrwRow('Request Date', esc(d.created_at));
+            /* INFORMASI PENGAJUAN — Beneficiary menampilkan PIC-nya; Bank Account
+               memuat nama beneficiary + bank & no. rekening; PO/Budget dilebur
+               jadi satu baris Reference (Kode - Scope of Work). */
+            var referensi = (d.code_reference && d.code_reference !== '-')
+                ? d.code_reference + (d.reference_scope && d.reference_scope !== '-' ? ' - ' + d.reference_scope : '')
+                : (d.reference_scope || '-');
+            var bankAccount = (d.beneficiary && d.bank && d.bank !== '-')
+                ? esc(d.beneficiary) + ' <span class="text-muted">(' + esc(d.bank) + (d.account_number && d.account_number !== '-' ? ' - ' + esc(d.account_number) : '') + ')</span>'
+                : esc(d.beneficiary || '-');
+            info += '<div class="todo-drw-section">' +
+                '<div class="todo-drw-section-title">Informasi Pengajuan</div>';
+            info += todoDrwRow('Requestor', esc(d.applicant));
+            info += todoDrwRow('Beneficiary', esc(d.pic));
+            info += todoDrwRow('Bank Account', bankAccount);
+            info += todoDrwRow('Reference', esc(referensi));
+            if (d.email) info += todoDrwRow('Email', esc(d.email));
             if (d.notes) info += todoDrwRow('Notes', esc(d.notes));
+            info += '</div>';
 
-            /* Riwayat pengajuan beneficiary yang sama — kolom Cost sudah
-               dihitung server (Cash Advance memakai settlement, jatuh balik ke
-               nilai pengajuan saat settlement masih 0). */
-            var hist = d.beneficiary_history || [];
+            /* TANGGAL — dipisah supaya mudah dipindai sendiri. */
+            info += '<div class="todo-drw-section">' +
+                '<div class="todo-drw-section-title">Tanggal</div>';
+            info += todoDrwRow('Dibuat', esc(d.created_at));
+            if (d.submitted_at) info += todoDrwRow('Diajukan', esc(d.submitted_at));
+            if (d.approved_at) info += todoDrwRow('Disetujui', esc(d.approved_at));
+            if (d.paid_at) info += todoDrwRow('Dibayar', esc(d.paid_at));
+            info += '</div>';
+
+            /* Riwayat pengajuan PIC ini di PO ini — satu PIC bisa punya banyak
+               beneficiary. Disusun pohon COA → Sub COA → item (lihat
+               picHistory() di server); nilai & sumber baris sudah dihitung di
+               sana (Cash Advance dari settlement, non-CA dari pengajuan). */
+            var ph = d.pic_history || {};
+            var phItems = ph.items || [];
             info += '<div class="todo-drw-row" style="margin-top:18px;">' +
-                '<div class="todo-drw-label">Riwayat Pengajuan Beneficiary Ini di PO Ini</div>';
-            if (hist.length) {
-                // Tabel dibangun ulang oleh renderBenHist() setiap kali diurutkan.
-                window.__benHist = { rows: hist.slice(), key: 'paid_at_raw', dir: 'desc' };
-                info += '<div class="todo-benhist-wrap" id="todoBenHist"></div>';
+                '<div class="todo-drw-label">Riwayat Pengajuan PIC Ini di PO Ini' +
+                    (ph.pic_name ? ' <span class="text-muted" style="font-weight:400;text-transform:none;letter-spacing:0;">— ' + esc(ph.pic_name) + '</span>' : '') +
+                '</div>';
+            if (phItems.length) {
+                window.__picHist = ph;
+                info += '<div class="todo-pichist-wrap" id="todoPicHist"></div>';
             } else {
-                window.__benHist = null;
-                info += '<div class="text-muted" style="font-size:12px;">Belum ada pengajuan lain yang sudah dibayar untuk beneficiary ini.</div>';
+                window.__picHist = null;
+                info += '<div class="text-muted" style="font-size:12px;">Belum ada pengajuan lain yang sudah dibayar untuk PIC ini di PO ini.</div>';
             }
             info += '</div>';
 
             $('#todoPaneInfo').html(info);
-            renderBenHist();
+            renderPicHist();
 
             /* ── BAR AKSI WORKFLOW ── */
             renderDrawerActions(d);
@@ -3543,14 +3585,13 @@ $(function () {
                     '</div>';
                 reqHtml += '<div class="table-responsive"><table class="table table-sm table-bordered mb-0" style="font-size:11.5px;">' +
                     '<thead class="bg-light"><tr>' +
-                        '<th scope="col" style="width:4%;">No</th>' +
                         '<th scope="col">Chart of Account / Description</th>' +
                         '<th scope="col" class="text-right text-nowrap" style="width:14%;">Price</th>' +
                         '<th scope="col" class="text-center text-nowrap" style="width:7%;">Qty</th>' +
                         '<th scope="col" class="text-right text-nowrap" style="width:16%;">Total</th>' +
                         (showAksi ? '<th scope="col" class="text-center text-nowrap" style="width:100px;">Aksi</th>' : '') +
                     '</tr></thead><tbody id="todoReqBody">';
-                var reqTotal = 0, reqPrice = 0, reqQty = 0, reqNo = 0;
+                var reqTotal = 0, reqPrice = 0, reqQty = 0;
                 reqGroups.forEach(function (grp, gi) {
                     var gClass = 'td-req-grp-' + gi;
                     // Item takeout tidak ikut dijumlah di mana pun supaya subtotal
@@ -3565,7 +3606,7 @@ $(function () {
                     reqPrice += gPrice; reqQty += gQty;
 
                     reqHtml += '<tr class="td-grp-row" data-target="' + gClass + '">' +
-                        '<td colspan="2" style="font-weight:700;">' +
+                        '<td style="font-weight:700;">' +
                             '<i class="fas fa-chevron-right mr-2 td-grp-caret"></i>' +
                             esc(grp.account) + ' <span class="badge badge-secondary ml-1" style="font-size:9px;">' + grp.items.length + '</span>' +
                         '</td>' +
@@ -3576,7 +3617,6 @@ $(function () {
                     '</tr>';
 
                     grp.items.forEach(function (item) {
-                        var no = ++reqNo;
                         var isTakeout = !!item.is_takeout;
                         // Item yang di-takeout tidak ikut dibawa proses, jadi tidak
                         // ikut dijumlah di total.
@@ -3592,15 +3632,23 @@ $(function () {
 
                         var atts = item.attachments || [];
                         window.__crDetailAtt[item.id] = atts;
-                        var attBadge = atts.length
+                        // Jumlah evidence (lampiran) ditempel di sebelah Sub COA.
+                        var evi = atts.length
                             ? ' <span class="badge badge-light border text-muted" style="font-size:9px;"><i class="fas fa-paperclip mr-1"></i>' + atts.length + '</span>'
+                            : '';
+                        var subCoa = item.sub_coa || item.item_label || item.description || '-';
+                        // Catatan baris tampil sebagai deskripsi di bawah Sub COA —
+                        // hanya kalau Sub COA memang dari budget detail (item_label
+                        // sudah memuat catatan di dalamnya).
+                        var noteLine = (item.sub_coa && item.notes)
+                            ? '<div class="text-muted" style="font-size:11px;' + strike + '">' + esc(item.notes) + '</div>'
                             : '';
 
                         var tdBtnStyle = 'white-space:nowrap;padding:2px 8px;font-size:11px;line-height:1.4;';
                         var actInner = '';
-                        // Dua tombol sekaligus bikin kolom Aksi melebar dan menekan
-                        // kolom deskripsi - kalau keduanya muncul, pakai ikon saja.
-                        var iconOnly = atts.length && canModerate;
+                        // Tombol aksi selalu ikon saja (tanpa teks) supaya kolom
+                        // Aksi ringkas dan seragam dengan tab Settlement.
+                        var iconOnly = true;
                         if (atts.length) {
                             actInner += '<button type="button" class="btn btn-info btn-view-detail-att mr-1" style="' + tdBtnStyle + '" data-detail="' + item.id + '" title="Lihat lampiran"><i class="fas fa-eye"></i>' + (iconOnly ? '' : ' View') + '</button>';
                         }
@@ -3612,9 +3660,10 @@ $(function () {
                         var act = showAksi ? '<td class="text-center text-nowrap">' + actInner + '</td>' : '';
 
                         reqHtml += '<tr class="' + gClass + '" style="display:none;' + rowStyle + '">' +
-                            '<td class="text-center" style="' + strike + '">' + no + '</td>' +
-                            '<td class="td-grp-indent" style="' + strike + '">' + esc(item.item_label || item.description || '-') + badge + attBadge +
-                                (isTakeout && item.takeout_notes ? '<br><small class="text-muted" style="text-decoration:none;">Alasan: ' + esc(item.takeout_notes) + '</small>' : '') +
+                            '<td class="td-grp-indent" style="' + strike + '">' +
+                                '<div style="font-weight:600;">' + esc(subCoa) + evi + badge + '</div>' +
+                                noteLine +
+                                (isTakeout && item.takeout_notes ? '<small class="text-muted" style="text-decoration:none;">Alasan: ' + esc(item.takeout_notes) + '</small>' : '') +
                             '</td>' +
                             '<td class="text-right text-nowrap" style="' + strike + '">' + esc(item.amount_formatted) + '</td>' +
                             '<td class="text-center" style="' + strike + '">' + esc(item.qty) + '</td>' +
@@ -3625,7 +3674,7 @@ $(function () {
                 });
                 reqHtml += '</tbody>' +
                     '<tfoot><tr style="background:var(--surface-2);">' +
-                        '<th colspan="2" class="text-right">Total (item aktif)</th>' +
+                        '<th class="text-right">Total (item aktif)</th>' +
                         '<th class="text-right text-nowrap">' + esc(Math.round(reqPrice).toLocaleString('id-ID')) + '</th>' +
                         '<th class="text-center">' + esc(reqQty.toLocaleString('id-ID')) + '</th>' +
                         '<th class="text-right text-nowrap">' + esc(Math.round(reqTotal).toLocaleString('id-ID')) + '</th>' +
@@ -3657,9 +3706,7 @@ $(function () {
                         '</div>';
                     realHtml += '<div class="table-responsive"><table class="table table-sm table-bordered mb-0" style="font-size:11.5px;">' +
                         '<thead class="bg-light"><tr>' +
-                            '<th scope="col" style="width:4%;">No</th>' +
-                            '<th scope="col">Chart of Account / Des. Request</th>' +
-                            '<th scope="col">Des. Settle</th>' +
+                            '<th scope="col">Chart of Account / Description</th>' +
                             '<th scope="col" class="text-right text-nowrap" style="width:14%;">Request</th>' +
                             '<th scope="col" class="text-right text-nowrap" style="width:14%;">Settlement</th>' +
                             '<th scope="col" style="width:18%;">Note</th>' +
@@ -3675,11 +3722,10 @@ $(function () {
                         realReq += gReq; realSettle += gSettle;
 
                         realHtml += '<tr class="td-grp-row" data-target="' + gClass + '">' +
-                            '<td colspan="2" style="font-weight:700;">' +
+                            '<td style="font-weight:700;">' +
                                 '<i class="fas fa-chevron-right mr-2 td-grp-caret"></i>' +
                                 esc(grp.account) + ' <span class="badge badge-secondary ml-1" style="font-size:9px;">' + grp.items.length + '</span>' +
                             '</td>' +
-                            '<td></td>' +
                             '<td class="text-right text-nowrap" style="font-weight:700;">' + esc(Math.round(gReq).toLocaleString('id-ID')) + '</td>' +
                             '<td class="text-right text-nowrap" style="font-weight:700;">' + esc(Math.round(gSettle).toLocaleString('id-ID')) + '</td>' +
                             '<td></td><td></td>' +
@@ -3692,10 +3738,20 @@ $(function () {
                             var aksi = itemAtts.length
                                 ? '<button type="button" class="btn btn-info btn-view-real-att" style="white-space:nowrap;padding:2px 8px;font-size:11px;line-height:1.4;" data-row="' + ri + '" title="Lihat lampiran item (' + itemAtts.length + ')"><i class="fas fa-eye"></i></button>'
                                 : '<span class="text-muted">-</span>';
+                            // Evidence (lampiran) ditempel di sebelah Sub COA.
+                            var evi = itemAtts.length
+                                ? ' <span class="badge badge-light border text-muted" style="font-size:9px;"><i class="fas fa-paperclip mr-1"></i>' + itemAtts.length + '</span>'
+                                : '';
+                            var subCoa = r.sub_coa || r.des_request || r.cr_item || '-';
+                            // Tiga baris: Sub COA (tebal), lalu rincian pengajuan
+                            // (Request) & rincian settlement (Settle) yang bisa beda.
+                            var desSettle = r.description || r.notes || '-';
                             realHtml += '<tr class="' + gClass + '" style="display:none;">' +
-                                '<td class="text-center">' + (ri + 1) + '</td>' +
-                                '<td class="td-grp-indent">' + esc(r.des_request || r.cr_item || '-') + '</td>' +
-                                '<td>' + esc(r.notes || '-') + '</td>' +
+                                '<td class="td-grp-indent">' +
+                                    '<div style="font-weight:600;">' + esc(subCoa) + evi + '</div>' +
+                                    '<div class="text-muted" style="font-size:11px;"><span style="font-size:10px;font-weight:700;">Request:</span> ' + esc(r.des_request || r.cr_item || '-') + '</div>' +
+                                    '<div class="text-muted" style="font-size:11px;"><span style="font-size:10px;font-weight:700;">Settle:</span> ' + esc(desSettle) + '</div>' +
+                                '</td>' +
                                 '<td class="text-right text-nowrap">' + esc(r.total_cr_formatted) + '</td>' +
                                 '<td class="text-right text-nowrap"><strong>' + esc(r.actual_formatted) + '</strong></td>' +
                                 '<td>' + esc(r.change_note || '-') + '</td>' +
@@ -3704,7 +3760,7 @@ $(function () {
                         });
                     });
                     realHtml += '</tbody><tfoot><tr style="background:var(--surface-2);">' +
-                        '<th colspan="3" class="text-right">Total</th>' +
+                        '<th class="text-right">Total</th>' +
                         '<th class="text-right text-nowrap">' + esc(Math.round(realReq).toLocaleString('id-ID')) + '</th>' +
                         '<th class="text-right text-nowrap">' + esc(Math.round(realSettle).toLocaleString('id-ID')) + '</th>' +
                         '<th colspan="2"></th>' +
@@ -3799,78 +3855,79 @@ $(function () {
             (on ? 'Batal Pilih' : 'Pilih') + '</button>';
     }
 
-    /* ── RIWAYAT PENGAJUAN BENEFICIARY (drawer tab Info) ──
-       Bisa diurutkan per kolom. Baris subtotal + header dibekukan (sticky) di
-       atas area scroll-nya sendiri, jadi total tetap terlihat saat daftar
-       panjang digulir. */
-    var benHistCols = [
-        { key: 'description',  label: 'Description',  type: 'text', cls: 'todo-benhist-desc' },
-        { key: 'status_label', label: 'Status',       type: 'text', cls: 'text-nowrap text-center' },
-        { key: 'cost',         label: 'Cost',         type: 'num',  cls: 'text-nowrap text-right' },
-        { key: 'paid_at_raw',  label: 'Tanggal Paid', type: 'text', cls: 'text-nowrap' }
-    ];
+    /* ── RIWAYAT PENGAJUAN PIC (drawer tab Info) ──
+       Disusun seperti View Budget: pohon COA → Sub COA → item. Tiap baris item
+       memuat deskripsi, nilai, status CR, tanggal, dan tombol yang membuka CR
+       asalnya. Data (termasuk sumber baris CA/non-CA & nilainya) sudah dihitung
+       server di picHistory(); di sini hanya penyusunan pohon + collapse.
+       Baris grup memakai kelas .td-grp-row yang sama dengan tab Request/
+       Settlement, jadi toggle-nya ikut handler yang sudah ada. */
+    function renderPicHist() {
+        var ph = window.__picHist;
+        var $wrap = $('#todoPicHist');
+        if (!ph || !$wrap.length) return;
+        var items = ph.items || [];
 
-    function renderBenHist() {
-        var st = window.__benHist;
-        var $wrap = $('#todoBenHist');
-        if (!st || !$wrap.length) return;
-
-        var rows = st.rows.slice().sort(function (a, b) {
-            var col = benHistCols.filter(function (c) { return c.key === st.key; })[0];
-            var x = a[st.key], y = b[st.key];
-            var r;
-            if (col && col.type === 'num') r = (parseFloat(x) || 0) - (parseFloat(y) || 0);
-            else r = String(x == null ? '' : x).localeCompare(String(y == null ? '' : y), 'id', { numeric: true });
-            return st.dir === 'asc' ? r : -r;
+        var coaOrder = [], coaMap = {};
+        items.forEach(function (it) {
+            var coa = it.account || '-';
+            if (!coaMap[coa]) { coaMap[coa] = { subOrder: [], sub: {}, total: 0 }; coaOrder.push(coa); }
+            var g = coaMap[coa];
+            g.total += parseFloat(it.value) || 0;
+            var sc = it.sub_coa || '-';
+            if (!g.sub[sc]) { g.sub[sc] = { rows: [], total: 0 }; g.subOrder.push(sc); }
+            g.sub[sc].rows.push(it);
+            g.sub[sc].total += parseFloat(it.value) || 0;
         });
+        var grand = items.reduce(function (t, x) { return t + (parseFloat(x.value) || 0); }, 0);
 
-        var total = rows.reduce(function (t, h) { return t + (parseFloat(h.cost) || 0); }, 0);
+        var html = '<table class="table table-sm table-bordered mb-0 todo-pichist-table" style="font-size:11.5px;">' +
+            '<thead class="bg-light"><tr>' +
+                '<th scope="col">COA / Sub COA / Item</th>' +
+                '<th scope="col" class="text-right text-nowrap" style="width:110px;">Nilai</th>' +
+                '<th scope="col" class="text-center text-nowrap" style="width:84px;">Status</th>' +
+                '<th scope="col" class="text-nowrap" style="width:82px;">Tanggal</th>' +
+                '<th scope="col" class="text-center" style="width:44px;">Aksi</th>' +
+            '</tr></thead><tbody>';
 
-        var head = '<tr class="todo-benhist-sub">' +
-                '<th colspan="2" class="text-right">Subtotal (' + rows.length + ' CR)</th>' +
-                '<th class="text-right text-nowrap">' + Math.round(total).toLocaleString('id-ID') + '</th>' +
-                '<th colspan="2"></th>' +
-            '</tr><tr class="todo-benhist-head">';
-        benHistCols.forEach(function (c) {
-            var aktif = st.key === c.key;
-            var ikon = aktif ? (st.dir === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort';
-            head += '<th scope="col" class="todo-benhist-sort ' + c.cls + '" data-key="' + c.key + '" role="button" tabindex="0"' +
-                ' aria-sort="' + (aktif ? (st.dir === 'asc' ? 'ascending' : 'descending') : 'none') + '">' +
-                c.label + ' <i class="fas ' + ikon + '" style="opacity:' + (aktif ? '1' : '.35') + ';font-size:10px;"></i></th>';
-        });
-        head += '<th scope="col" class="text-center text-nowrap">Action</th></tr>';
-
-        var body = rows.map(function (h) {
-            return '<tr>' +
-                '<td class="todo-benhist-desc">' + esc(h.description || '-') + '</td>' +
-                '<td class="text-center text-nowrap"><span class="badge badge-' + esc(h.status_color || 'secondary') + '" style="font-size:9.5px;">' + esc(h.status_label || h.status || '-') + '</span></td>' +
-                '<td class="text-right text-nowrap"><strong>' + esc(h.cost_formatted) + '</strong></td>' +
-                '<td class="text-nowrap">' + esc(h.paid_at) + '</td>' +
-                // Buka halaman Cost Request dengan modal detail CR ini langsung terbuka (?open=).
-                '<td class="text-center text-nowrap"><a href="{{ url('/budget-request') }}?open=' + encodeURIComponent(h.id) + '"' +
-                    ' target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm" style="padding:1px 8px;font-size:10.5px;"' +
-                    ' title="Lihat ' + escAttr(h.code) + ' di halaman Cost Request" aria-label="Lihat ' + escAttr(h.code) + '"><i class="fas fa-eye"></i></a></td>' +
+        coaOrder.forEach(function (coa, ci) {
+            var coaCls = 'pic-coa-' + ci;
+            html += '<tr class="td-grp-row" data-target="' + coaCls + '">' +
+                '<td style="font-weight:700;"><i class="fas fa-chevron-right mr-2 td-grp-caret"></i>' + esc(coa) + '</td>' +
+                '<td class="text-right text-nowrap" style="font-weight:700;">' + Math.round(coaMap[coa].total).toLocaleString('id-ID') + '</td>' +
+                '<td colspan="3"></td>' +
             '</tr>';
-        }).join('');
+            coaMap[coa].subOrder.forEach(function (sc, si) {
+                var subCls = coaCls + '-sub-' + si;
+                var s = coaMap[coa].sub[sc];
+                html += '<tr class="td-grp-row ' + coaCls + '" style="display:none;" data-target="' + subCls + '">' +
+                    '<td style="padding-left:24px;font-weight:600;"><i class="fas fa-chevron-right mr-2 td-grp-caret"></i>' + esc(sc) +
+                        ' <span class="badge badge-secondary" style="font-size:9px;">' + s.rows.length + '</span></td>' +
+                    '<td class="text-right text-nowrap" style="font-weight:600;">' + Math.round(s.total).toLocaleString('id-ID') + '</td>' +
+                    '<td colspan="3"></td>' +
+                '</tr>';
+                s.rows.forEach(function (r) {
+                    html += '<tr class="' + subCls + '" style="display:none;">' +
+                        '<td style="padding-left:44px;">' + esc(r.description || '-') + '</td>' +
+                        '<td class="text-right text-nowrap">' + esc(r.value_formatted) + '</td>' +
+                        '<td class="text-center text-nowrap"><span class="badge badge-' + esc(r.cr_status_color || 'secondary') + '" style="font-size:9px;">' + esc(r.cr_status_label || r.cr_status || '-') + '</span></td>' +
+                        '<td class="text-nowrap">' + esc(r.cr_date) + '</td>' +
+                        '<td class="text-center"><a href="{{ url('/budget-request') }}?open=' + encodeURIComponent(r.cr_id) + '"' +
+                            ' target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm" style="padding:1px 7px;font-size:10px;"' +
+                            ' title="Lihat ' + escAttr(r.cr_code) + '" aria-label="Lihat ' + escAttr(r.cr_code) + '"><i class="fas fa-eye"></i></a></td>' +
+                    '</tr>';
+                });
+            });
+        });
 
-        $wrap.html('<table class="table table-sm mb-0 todo-benhist-table" style="font-size:11.5px;">' +
-            '<thead>' + head + '</thead><tbody>' + body + '</tbody></table>');
+        html += '</tbody><tfoot><tr style="background:var(--surface-2);">' +
+            '<th class="text-right">Subtotal (' + items.length + ' item)</th>' +
+            '<th class="text-right text-nowrap">' + Math.round(grand).toLocaleString('id-ID') + '</th>' +
+            '<th colspan="3"></th>' +
+        '</tr></tfoot></table>';
 
-        // Header kolom menempel tepat di bawah baris subtotal, berapa pun tingginya.
-        var h1 = $wrap.find('.todo-benhist-sub').outerHeight() || 0;
-        $wrap.find('.todo-benhist-head th').css('top', h1 + 'px');
+        $wrap.html(html);
     }
-
-    $(document).on('click keydown', '.todo-benhist-sort', function (e) {
-        if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
-        e.preventDefault();
-        var st = window.__benHist;
-        if (!st) return;
-        var key = $(this).data('key');
-        st.dir = (st.key === key && st.dir === 'desc') ? 'asc' : (st.key === key ? 'desc' : (key === 'cost' || key === 'paid_at_raw' ? 'desc' : 'asc'));
-        st.key = key;
-        renderBenHist();
-    });
 
     function renderDrawerActions(d) {
         var list = d.workflow_actions || [];

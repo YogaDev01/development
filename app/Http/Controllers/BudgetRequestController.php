@@ -560,6 +560,25 @@ class BudgetRequestController extends Controller
         return $note !== '' ? $desc . ' — ' . $note : $desc;
     }
 
+    /**
+     * Sub COA satu baris rincian untuk tampilan: deskripsi tanpa nama akun
+     * (judul grup) DAN tanpa catatan barisnya — catatan ditampilkan terpisah.
+     * Dipakai saat baris tidak tertaut budget plan detail (budgetDetail null).
+     */
+    private function subCoaLabel(RequestDetail $detail): string
+    {
+        $desc = trim((string) $detail->description);
+        $akun = trim((string) ($detail->account?->name ?? ''));
+
+        if ($akun !== '') {
+            $desc = preg_replace('/^' . preg_quote($akun, '/') . '\s*[-\x{2013}\x{2014}]\s*/u', '', $desc) ?? $desc;
+        }
+
+        $desc = trim($desc);
+
+        return $desc !== '' ? $desc : ($akun !== '' ? $akun : '-');
+    }
+
     private function syncRealizations(BudgetRequest $cr, Request $request): void
     {
         /*
@@ -1218,10 +1237,10 @@ class BudgetRequestController extends Controller
         $cr = BudgetRequest::with([
             'type', 'cluster', 'budgetPlan.project.customer', 'budgetPlan.costCenter',
             'budgetPlan.details.account',
-            'applicant', 'beneficiary.bank',
+            'applicant', 'beneficiary.bank', 'beneficiary.pic',
             'details.account', 'details.budgetDetail', 'details.attachments',
             'attachments',
-            'realizations.account', 'realizations.requestDetail.account', 'realizations.attachments',
+            'realizations.account', 'realizations.requestDetail.account', 'realizations.requestDetail.budgetDetail', 'realizations.attachments',
             'realizationAttachments',
             'secondPayments.dailyTransactionItems.dailyTransaction',
             'statusLogs',
@@ -1264,8 +1283,21 @@ class BudgetRequestController extends Controller
                 ? ($bp->isProjectBudget() ? ($bp->project?->code ?? '-') : ($bp->costCenter?->code ?? '-'))
                 : '-',
             'project'          => $cr->budgetPlan?->project?->name ?? '-',
+            // Scope of Work untuk baris "Reference": nama Project kalau budget
+            // berbasis Project/PO, selain itu deskripsi Budget Plan (budget
+            // Cost Center tidak punya Project). Kodenya ada di code_reference.
+            'reference_scope'  => $bp
+                ? ($bp->isProjectBudget()
+                    ? ($bp->project?->name ?? '-')
+                    : ($bp->description ?? '-'))
+                : '-',
             'applicant'        => $cr->applicant?->name ?? '-',
             'beneficiary'      => $cr->beneficiary?->complete_name ?? '-',
+            // Penerima yang ditampilkan di layar detail = PIC pemegang
+            // beneficiary (Master PIC). Kalau beneficiary belum punya PIC,
+            // jatuh ke nama lengkap beneficiary-nya sendiri supaya tidak kosong.
+            'pic'              => $cr->beneficiary?->pic?->pic
+                                    ?: ($cr->beneficiary?->complete_name ?? '-'),
             'bank'             => $cr->beneficiary?->bank?->name ?? '-',
             'account_number'   => $cr->beneficiary?->account_number ?? '-',
             // P-01: refund hanya dihitung setelah settlement (lihat
@@ -1289,18 +1321,14 @@ class BudgetRequestController extends Controller
             'paid_at'          => $cr->paid_at?->format('d M Y H:i'),
 
             /*
-             | Riwayat pengajuan BENEFICIARY yang sama — dipakai panel Info di
-             | Todo List supaya approver bisa melihat apa saja yang pernah
-             | dibayarkan ke orang ini tanpa pindah halaman.
-             |
-             | Kolom "cost" sengaja TIDAK selalu diambil dari nilai pengajuan:
-             | Cash Advance baru diketahui biayanya setelah settlement, jadi
-             | yang berlaku adalah total realisasinya. Settlement 0 berarti
-             | belum ada realisasi sama sekali — di situ nilai pengajuan yang
-             | masih mewakili biayanya. Non Cash Advance selalu memakai nilai
-             | pengajuan.
+             | Riwayat pengajuan PIC yang sama (satu PIC bisa punya banyak
+             | beneficiary) di PO yang sama — dipakai panel Info di Todo List
+             | supaya approver melihat apa saja yang pernah cair ke PIC ini,
+             | disusun jadi pohon COA → Sub COA → item di layar. Sumber baris
+             | per CR: Cash Advance dari settlement (fallback pengajuan), non
+             | Cash Advance dari pengajuan. Lihat picHistory().
              */
-            'beneficiary_history' => $this->beneficiaryHistory($cr),
+            'pic_history' => $this->picHistory($cr),
 
             'details' => $cr->details->map(function ($d) {
                 $bd        = $d->budgetDetail;
@@ -1316,6 +1344,10 @@ class BudgetRequestController extends Controller
                     // Label baris untuk tampilan: nama akun dibuang (sudah jadi
                     // judul grup) lalu digabung dengan catatan barisnya.
                     'item_label'          => $this->itemLabel($d),
+                    // Sub COA = deskripsi baris Budget Plan (tanpa nama akun);
+                    // dipakai sebagai judul tebal item di drawer. Catatan baris
+                    // (notes) tampil sebagai deskripsi di bawahnya.
+                    'sub_coa'             => $bd?->deskripsi ?: $this->subCoaLabel($d),
                     'amount'              => $d->amount,
                     'amount_formatted'    => number_format($d->amount, 0, ',', '.'),
                     'qty'                 => $d->qty,
@@ -1356,6 +1388,10 @@ class BudgetRequestController extends Controller
                 'des_request'       => $r->requestDetail
                                         ? $this->itemLabel($r->requestDetail)
                                         : ($r->description ?? '-'),
+                // Sub COA (deskripsi budget plan detail dari baris pengajuan yang
+                // ditautkan) — judul tebal item di tab Settlement drawer.
+                'sub_coa'           => $r->requestDetail?->budgetDetail?->deskripsi
+                                        ?: ($r->requestDetail ? $this->subCoaLabel($r->requestDetail) : null),
                 'total_cr'          => $r->requestDetail?->total ?? 0,
                 'total_cr_formatted'=> number_format($r->requestDetail?->total ?? 0, 0, ',', '.'),
                 'actual'            => $r->amount,
@@ -1497,43 +1533,53 @@ class BudgetRequestController extends Controller
     }
 
     /**
-     * Riwayat pengajuan Cost Request untuk beneficiary yang sama, DI PO
-     * (atau cost center) yang sama dengan CR ini.
+     * Riwayat pengajuan Cost Request untuk PIC yang sama (pemegang beneficiary),
+     * DI PO (atau cost center) yang sama dengan CR ini.
      *
-     * Hanya CR yang sudah benar-benar dibayar yang masuk (paid_at terisi) —
-     * yang dicari pemakainya adalah "apa saja yang pernah cair ke orang ini",
-     * bukan daftar pengajuan yang masih bisa batal di tengah jalan. CR yang
-     * sedang dibuka sendiri dikeluarkan supaya tidak terhitung dua kali.
+     * Satu PIC bisa memegang BANYAK beneficiary, jadi cakupannya PIC — bukan
+     * satu beneficiary. Tetap dibatasi sumber anggaran yang sama (PO/cost
+     * center) dengan CR yang dibuka.
      *
-     * Nilai "cost": Cash Advance dinilai dari settlement-nya, dan baru jatuh
-     * balik ke nilai pengajuan kalau settlement-nya masih 0 (belum ada
-     * realisasi). Non Cash Advance selalu memakai nilai pengajuan.
+     * Hanya CR yang sudah dibayar atau setelahnya yang masuk (paid_at terisi —
+     * paid_at tetap melekat sepanjang leg settlement, jadi REALIZED/SETTLE/
+     * SECOND/CLOSED ikut masuk). CR yang sedang dibuka sendiri dikeluarkan.
+     *
+     * Hasilnya daftar DATAR baris item lintas CR; penyusunan pohon
+     * COA → Sub COA → item dikerjakan di layar (drawer Todo List). Sumber
+     * baris per CR mengikuti aturan yang sama dengan View Budget:
+     *   - Cash Advance    : dari rincian SETTLEMENT (budget_request_realizations);
+     *                       bila settlement masih kosong, jatuh balik ke
+     *                       rincian pengajuan.
+     *   - Non Cash Advance: selalu dari rincian pengajuan.
+     * Nilai per baris = nilai settlement (CA) atau total pengajuan (non-CA /
+     * CA tanpa settlement). Item takeout tidak ikut.
      */
-    private function beneficiaryHistory(BudgetRequest $cr): \Illuminate\Support\Collection
+    private function picHistory(BudgetRequest $cr): \Illuminate\Support\Collection
     {
-        if (! $cr->beneficiary_id) {
-            return collect();
+        $bp  = $cr->budgetPlan;
+        $ben = $cr->beneficiary;
+        if (! $bp || ! $ben) {
+            return collect(['pic_name' => '-', 'items' => collect(), 'total' => 0]);
         }
 
         /*
-         | Riwayat dibatasi pada SUMBER ANGGARAN YANG SAMA dengan CR yang
-         | sedang dibuka: PO (project) yang sama untuk budget proyek, cost
-         | center yang sama untuk budget overhead/payroll.
-         |
-         | Yang dicari pemeriksa saat approval adalah "apa lagi yang pernah
-         | cair ke orang ini DI PO INI" — riwayat lintas PO membawa masuk
-         | pengajuan dari pekerjaan lain yang tidak ada hubungannya dengan
-         | keputusan yang sedang diambil, dan subtotalnya ikut menyesatkan.
-         | Kalau CR ini sendiri tidak punya budget plan, riwayatnya kosong
-         | daripada melebar ke seluruh pengajuan beneficiary.
+         | Cakupan PIC: semua beneficiary di bawah PIC yang sama. Kalau
+         | beneficiary CR ini belum punya PIC, mundur ke beneficiary itu
+         | sendiri supaya riwayatnya tidak melebar ke seluruh master.
          */
-        $bp = $cr->budgetPlan;
-        if (! $bp) {
-            return collect();
-        }
+        $picName        = $ben->pic?->pic;
+        $beneficiaryIds = $ben->pic_id
+            ? Beneficiary::where('pic_id', $ben->pic_id)->pluck('id')
+            : collect([$ben->id]);
 
-        return BudgetRequest::with(['type', 'realizations'])
-            ->where('beneficiary_id', $cr->beneficiary_id)
+        $history = BudgetRequest::with([
+                'type',
+                'details.account', 'details.budgetDetail',
+                'realizations.account',
+                'realizations.requestDetail.account',
+                'realizations.requestDetail.budgetDetail',
+            ])
+            ->whereIn('beneficiary_id', $beneficiaryIds)
             ->where('id', '!=', $cr->id)
             ->whereHas('budgetPlan', function ($q) use ($bp) {
                 if ($bp->project_id) {
@@ -1547,27 +1593,54 @@ class BudgetRequestController extends Controller
             ->whereNotNull('paid_at')
             ->orderByDesc('paid_at')
             ->limit(50)
-            ->get()
-            ->map(function ($h) {
-                $cost = $h->isCashAdvance()
-                    ? ((int) $h->total_realization ?: (int) $h->amount)
-                    : (int) $h->amount;
+            ->get();
 
-                return [
-                    'id'             => $h->id,
-                    'code'           => $h->code,
-                    'description'    => $h->description,
-                    'type'           => $h->type?->name ?? '-',
-                    'cost'           => $cost,
-                    'cost_formatted' => number_format($cost, 0, ',', '.'),
-                    'status'         => $h->status,
-                    'status_label'   => BudgetRequest::statusLabelFor($h->status),
-                    'status_color'   => $h->status_color,
-                    'paid_at'        => $h->paid_at?->format('d M Y') ?? '-',
-                    'paid_at_raw'    => $h->paid_at?->format('Y-m-d H:i:s'),
-                ];
-            })
-            ->values();
+        $items = collect();
+
+        foreach ($history as $h) {
+            $meta = [
+                'cr_id'           => $h->id,
+                'cr_code'         => $h->code,
+                'cr_type'         => $h->type?->name ?? '-',
+                'cr_status'       => $h->status,
+                'cr_status_label' => BudgetRequest::statusLabelFor($h->status),
+                'cr_status_color' => $h->status_color,
+                'cr_date'         => $h->paid_at?->format('d M Y') ?? '-',
+                'cr_date_raw'     => $h->paid_at?->format('Y-m-d H:i:s'),
+            ];
+
+            $useSettlement = $h->isCashAdvance() && $h->realizations->isNotEmpty();
+
+            if ($useSettlement) {
+                foreach ($h->realizations as $r) {
+                    $rd = $r->requestDetail;
+                    $items->push($meta + [
+                        'account'         => $r->account?->name ?? ($rd?->account?->name ?? '-'),
+                        'sub_coa'         => $rd?->budgetDetail?->deskripsi ?? '-',
+                        'description'     => $r->description ?: ($rd ? $this->itemLabel($rd) : '-'),
+                        'value'           => (int) $r->amount,
+                        'value_formatted' => number_format((int) $r->amount, 0, ',', '.'),
+                    ]);
+                }
+            } else {
+                foreach ($h->details as $d) {
+                    if ($d->isTakenOut()) continue;
+                    $items->push($meta + [
+                        'account'         => $d->account?->name ?? '-',
+                        'sub_coa'         => $d->budgetDetail?->deskripsi ?? '-',
+                        'description'     => $this->itemLabel($d),
+                        'value'           => (int) $d->total,
+                        'value_formatted' => number_format((int) $d->total, 0, ',', '.'),
+                    ]);
+                }
+            }
+        }
+
+        return collect([
+            'pic_name' => $picName ?: ($ben->complete_name ?? '-'),
+            'items'    => $items->values(),
+            'total'    => (int) $items->sum('value'),
+        ]);
     }
 
 

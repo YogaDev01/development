@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 
 use App\Models\Project;
 use App\Models\ProjectAttachment;
+use App\Models\UserActivityLog;
 use App\Models\Customer;
 use App\Models\MasterPic;
 use App\Models\Cluster;
@@ -107,32 +108,64 @@ class ProjectController extends Controller
             ->get(['id', 'name']);
     }
 
+    /**
+     * Milestone disimpan dengan UPSERT BY ID, bukan hapus-lalu-buat-ulang.
+     *
+     * Versi lama menjalankan $project->details()->delete() tiap kali form Edit
+     * PO disimpan — termasuk saat yang diubah cuma Nilai Kontrak. Baris yang
+     * "sama" lahir kembali dengan id baru, dan itu menghancurkan semua yang
+     * menempel pada id tersebut:
+     *
+     *  - project_monitoring_logs.project_detail_id (nullOnDelete) → NULL, jadi
+     *    seluruh percakapan milestone terlepas dan tidak tampil di mana pun;
+     *  - status, weight, submitted_done_by/at ikut ter-reset ke nilai default
+     *    (hanya actual_start/actual_end yang dulu diselamatkan, itu pun lewat
+     *    kunci cluster_id-stage_id yang menimpa dirinya sendiri kalau satu PO
+     *    punya dua milestone dengan kombinasi sama).
+     *
+     * Sekarang baris lama di-update di tempat sehingga id-nya stabil, dan
+     * kolom milik Project Monitoring (status/weight/actual/submitted_done_*)
+     * sengaja TIDAK disentuh dari sini — form ini memang tidak mengeditnya.
+     * Pola keepIds -> hapus sisa -> upsert menyalin
+     * BudgetRequestController::syncDetails().
+     */
     private function syncDetails(Project $project, Request $request): void
     {
-        // Simpan actual_start/actual_end lama — form ini TIDAK mengedit kolom itu lagi
-        // (akan ada form terpisah untuk itu), jadi nilainya harus dipertahankan supaya
-        // tidak ke-reset null tiap kali Project & Milestone di-generate ulang di sini.
-        $oldActuals = $project->details()->get()->keyBy(
-            fn($d) => ($d->cluster_id ?? 'x') . '-' . ($d->stage_id ?? 'x')
-        );
+        $rows = (array) $request->input('details', []);
 
-        $project->details()->delete();
+        $existing = $project->details()->get()->keyBy('id');
 
-        foreach ((array) $request->input('details', []) as $row) {
+        // Hanya id milik PO ini yang diakui — id dari PO lain diperlakukan
+        // sebagai baris baru, bukan dipindah-tangankan.
+        $keepIds = collect($rows)
+            ->pluck('id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $existing->has($id))
+            ->all();
+
+        // Sisanya = milestone yang memang dibuang user dari form.
+        $project->details()->whereNotIn('id', $keepIds ?: [0])->delete();
+
+        foreach ($rows as $row) {
             if (blank($row['cluster_id'] ?? null) && blank($row['stage_id'] ?? null)) continue;
 
-            $key = ($row['cluster_id'] ?: 'x') . '-' . ($row['stage_id'] ?: 'x');
-            $old = $oldActuals->get($key);
+            $payload = [
+                'cluster_id' => ($row['cluster_id'] ?? null) ?: null,
+                'stage_id'   => ($row['stage_id']   ?? null) ?: null,
+                'plan_start' => ($row['plan_start'] ?? null) ?: null,
+                'plan_end'   => ($row['plan_end']   ?? null) ?: null,
+                'notes'      => $row['notes'] ?? null,
+            ];
 
-            $project->details()->create([
-                'cluster_id'   => $row['cluster_id']   ?: null,
-                'stage_id'     => $row['stage_id']     ?: null,
-                'plan_start'   => $row['plan_start']   ?: null,
-                'plan_end'     => $row['plan_end']     ?: null,
-                'actual_start' => $old->actual_start ?? null,
-                'actual_end'   => $old->actual_end   ?? null,
-                'notes'        => $row['notes']        ?? null,
-            ]);
+            $rowId  = (int) ($row['id'] ?? 0);
+            $detail = $rowId && $existing->has($rowId) ? $existing->get($rowId) : null;
+
+            if ($detail) {
+                $detail->update($payload);
+            } else {
+                $project->details()->create($payload);
+            }
         }
     }
 
@@ -971,6 +1004,8 @@ class ProjectController extends Controller
             $this->logProjectEdit($project, $sebelum);
         });
 
+        UserActivityLog::record('purchase_order', 'update', 'Memperbarui Purchase Order #' . ($project->code ?? $project->id), $project);
+
         return redirect('/project')->with('success', 'PO berhasil diupdate.');
     }
 
@@ -1806,12 +1841,16 @@ class ProjectController extends Controller
                 ->with('error', 'Hanya PO berstatus DRAFT yang dapat dihapus.');
         }
 
+        $projectCode = $project->code ?? $project->id;
+
         DB::transaction(function () use ($project) {
             foreach ($project->attachments as $att) {
                 Storage::disk('secure')->delete($att->file_path);
             }
             $project->delete();
         });
+
+        UserActivityLog::record('purchase_order', 'delete', 'Menghapus Purchase Order #' . $projectCode);
 
         return redirect('/project')->with('success', 'PO berhasil dihapus.');
     }

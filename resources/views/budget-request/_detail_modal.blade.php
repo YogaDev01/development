@@ -31,7 +31,7 @@
                             <div class="mb-2"><span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Total Pengajuan</span><div id="crAmount" style="color:var(--accent);font-size:18px;font-weight:700;margin-top:4px;"></div></div>
                             <div class="mb-2"><span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Total Realisasi</span><div id="crRealizationAmount" style="color:var(--success);font-size:14px;font-weight:700;margin-top:4px;"></div></div>
                             <div class="mb-2"><span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Beneficiary</span><div id="crBeneficiary" class="text-white mt-1" style="font-size:12px;"></div><div id="crBank" style="color:var(--text-faint);font-size:11px;"></div></div>
-                            <div class="mb-2"><span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Pemohon</span><div id="crApplicant" class="text-white mt-1" style="font-size:12px;"></div></div>
+                            <div class="mb-2"><span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Requestor</span><div id="crApplicant" class="text-white mt-1" style="font-size:12px;"></div></div>
                         </div>
                         <div class="col-md-9" style="padding:20px;">
                             <ul class="nav nav-tabs mb-3" id="crDetailTabs" style="border-bottom:2px solid var(--border);flex-wrap:wrap;">

@@ -9,6 +9,7 @@ use App\Models\AccessGroup;
 use App\Models\Project;
 use App\Models\CostCenter;
 use App\Models\Team;
+use App\Models\UserActivityLog;
 
 class AccessGroupController extends Controller
 {
@@ -164,7 +165,9 @@ class AccessGroupController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        DB::transaction(function () use ($validated) {
+        $accessGroup = null;
+
+        DB::transaction(function () use ($validated, &$accessGroup) {
 
             /*
             |--------------------------------------------------------------------------
@@ -234,6 +237,8 @@ class AccessGroupController extends Controller
         | REDIRECT
         |--------------------------------------------------------------------------
         */
+
+        UserActivityLog::record('user_access', 'create', 'Menambah Access Group ' . ($accessGroup?->name ?? ''), $accessGroup);
 
         return redirect('/accessgroup')
             ->with(
@@ -544,6 +549,8 @@ class AccessGroupController extends Controller
         |--------------------------------------------------------------------------
         */
 
+        UserActivityLog::record('user_access', 'update', 'Mengubah Access Group ' . $accessGroup->name, $accessGroup);
+
         return redirect('/accessgroup')
             ->with(
 
@@ -572,6 +579,8 @@ class AccessGroupController extends Controller
         if (\App\Models\User::where('access_group_id', $accessGroup->id)->exists()) {
             return back()->with('error', 'Access Group tidak bisa dihapus karena masih dipakai oleh user.');
         }
+
+        $accessGroupName = $accessGroup->name;
 
         /*
         |--------------------------------------------------------------------------
@@ -609,6 +618,8 @@ class AccessGroupController extends Controller
         | REDIRECT
         |--------------------------------------------------------------------------
         */
+
+        UserActivityLog::record('user_access', 'delete', 'Menghapus Access Group ' . $accessGroupName);
 
         return redirect('/accessgroup')
             ->with(

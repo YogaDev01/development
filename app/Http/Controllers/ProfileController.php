@@ -11,12 +11,13 @@ use App\Models\User;
 use App\Models\Role;
 use App\Models\ProjectMonitoringLog;
 use App\Models\RequestStatusLog;
+use App\Models\UserActivityLog;
 
 class ProfileController extends Controller
 {
     private const LOG_LIMIT = 50;
 
-    public function show()
+    public function show(Request $request)
     {
         /** @var User $user */
         $user = Auth::user();
@@ -38,6 +39,11 @@ class ProfileController extends Controller
             ->limit(self::LOG_LIMIT)
             ->get();
 
+        // Activity Log — audit trail lintas module, paginasi server-side.
+        $activityFilters = $request->only(['module', 'action', 'date_from', 'date_to', 'q']);
+        $activityLogs = UserActivityLog::feedFor($user->id, $activityFilters)
+            ->appends($activityFilters);
+
         $team = $user->access_group_id
             ? User::where('access_group_id', $user->access_group_id)
                 ->where('id', '!=', $user->id)
@@ -47,7 +53,8 @@ class ProfileController extends Controller
             : collect();
 
         return view('profile.show', compact(
-            'user', 'accessibleProjects', 'projectLogs', 'requestLogs', 'team'
+            'user', 'accessibleProjects', 'projectLogs', 'requestLogs', 'team',
+            'activityLogs', 'activityFilters'
         ));
     }
 
@@ -83,6 +90,14 @@ class ProfileController extends Controller
 
         $user->update($data);
 
+        UserActivityLog::record(
+            'profile',
+            'update',
+            'Memperbarui informasi profil',
+            null,
+            $request->filled('password') ? 'Password diubah' : null
+        );
+
         return back()->with('success', 'Profil berhasil diperbarui.');
     }
 
@@ -113,6 +128,8 @@ class ProfileController extends Controller
         $path = $file->store('avatars', 'secure');
 
         $user->update(['avatar' => $path]);
+
+        UserActivityLog::record('profile', 'upload', 'Memperbarui foto profil');
 
         return back()->with('success', 'Foto profil berhasil diperbarui.');
     }

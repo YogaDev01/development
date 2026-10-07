@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Customer;
 use App\Models\CustomerType;
+use App\Models\UserActivityLog;
 use App\Models\CustomerAttachment;
 use App\Models\Project;
 use App\Models\BudgetPlan;
@@ -149,6 +150,8 @@ class CustomerController extends Controller
 
             $this->syncPics($customer, $request);
             $this->storeAttachments($customer, $request);
+
+            UserActivityLog::record('master_data', 'create', 'Menambah Customer ' . $customer->name, $customer);
         });
 
         return redirect('/customer')
@@ -290,6 +293,8 @@ class CustomerController extends Controller
             $this->storeAttachments($customer, $request);
         });
 
+        UserActivityLog::record('master_data', 'update', 'Mengubah Customer ' . $customer->name, $customer);
+
         return redirect('/customer')
             ->with('success', 'Customer berhasil diupdate');
     }
@@ -323,7 +328,10 @@ class CustomerController extends Controller
             Storage::disk('secure')->delete($att->file_path);
         }
 
+        $customerName = $customer->name;
         $customer->delete();
+
+        UserActivityLog::record('master_data', 'delete', 'Menghapus Customer ' . $customerName);
 
         return redirect('/customer')
             ->with('success', 'Customer berhasil dihapus');

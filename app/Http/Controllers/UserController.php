@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 
 use App\Models\User;
 use App\Models\Role;
 use App\Models\AccessGroup;
+use App\Models\UserActivityLog;
 
 class UserController extends Controller
 {
@@ -163,7 +165,7 @@ class UserController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        User::create([
+        $newUser = User::create([
 
             'name' => strtoupper($request->name),
 
@@ -182,6 +184,8 @@ class UserController extends Controller
             'status' => $request->status,
 
         ]);
+
+        UserActivityLog::record('user_access', 'create', 'Menambah user ' . $newUser->name . ' (@' . $newUser->username . ')', $newUser);
 
         /*
         |--------------------------------------------------------------------------
@@ -224,6 +228,32 @@ class UserController extends Controller
             'user'
 
         ));
+    }
+
+    /**
+     * --------------------------------------------------------------------------
+     * ACTIVITY LOG — audit trail aktivitas user. Hanya superadmin yang boleh
+     * melihat log user LAIN (keputusan otorisasi; log diri sendiri dilihat di
+     * halaman Profil masing-masing). Halaman ini read-only.
+     * --------------------------------------------------------------------------
+     */
+    public function activityLog(Request $request, $id)
+    {
+        /** @var User $actor */
+        $actor = Auth::user();
+
+        // Boleh: superadmin (lihat siapa pun), atau user melihat lognya sendiri.
+        if (!$actor->isRealSuperadmin() && (int) $actor->id !== (int) $id) {
+            abort(403, 'Hanya superadmin yang dapat melihat activity log user lain.');
+        }
+
+        $user = User::with('role')->findOrFail($id);
+
+        $activityFilters = $request->only(['module', 'action', 'date_from', 'date_to', 'q']);
+        $activityLogs = UserActivityLog::feedFor($user->id, $activityFilters)
+            ->appends($activityFilters);
+
+        return view('user.activity-log', compact('user', 'activityLogs', 'activityFilters'));
     }
 
     /**
@@ -369,6 +399,8 @@ class UserController extends Controller
 
         $user->update($data);
 
+        UserActivityLog::record('user_access', 'update', 'Mengubah user ' . $user->name . ' (@' . $user->username . ')', $user);
+
         /*
         |--------------------------------------------------------------------------
         | REDIRECT
@@ -458,7 +490,10 @@ class UserController extends Controller
         |--------------------------------------------------------------------------
         */
 
+        $deletedName = $user->name . ' (@' . $user->username . ')';
         $user->delete();
+
+        UserActivityLog::record('user_access', 'delete', 'Menghapus user ' . $deletedName);
 
         /*
         |--------------------------------------------------------------------------

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CashFlow;
 use App\Models\SourceFund;
+use App\Models\UserActivityLog;
 use App\Services\CashFlowService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -133,6 +134,8 @@ class CashManagementController extends Controller
             return $cashFlow;
         });
 
+        UserActivityLog::record('cash_management', 'create', 'Membuat Cash Flow #' . $cashFlow->code, $cashFlow);
+
         return redirect('/cash-management/' . $cashFlow->id)
             ->with('success', 'Cash Flow ' . $cashFlow->code . ' berhasil dibuat sebagai DRAFT.');
     }
@@ -196,6 +199,8 @@ class CashManagementController extends Controller
             $cashFlow->recalculateTotals();
         });
 
+        UserActivityLog::record('cash_management', 'update', 'Memperbarui Cash Flow #' . $cashFlow->code, $cashFlow);
+
         return redirect('/cash-management/' . $cashFlow->id)
             ->with('success', 'Cash Flow ' . $cashFlow->code . ' berhasil diperbarui.');
     }
@@ -228,6 +233,8 @@ class CashManagementController extends Controller
             'posted_at' => now(),
         ]);
 
+        UserActivityLog::record('cash_management', 'process', 'Posting Cash Flow #' . $cashFlow->code . ' ke buku kas', $cashFlow);
+
         return back()->with('success', 'Cash Flow ' . $cashFlow->code . ' masuk buku kas.');
     }
 
@@ -248,6 +255,8 @@ class CashManagementController extends Controller
             'cancel_reason' => $request->cancel_reason,
         ]);
 
+        UserActivityLog::record('cash_management', 'cancel', 'Membatalkan Cash Flow #' . $cashFlow->code, $cashFlow, $request->reason ?? $request->notes);
+
         return back()->with('success', 'Cash Flow ' . $cashFlow->code . ' dibatalkan.');
     }
 
@@ -260,6 +269,8 @@ class CashManagementController extends Controller
         }
 
         $cashFlow->delete(); // soft delete
+
+        UserActivityLog::record('cash_management', 'delete', 'Menghapus Cash Flow #' . $cashFlow->code, $cashFlow);
 
         return redirect('/cash-management')
             ->with('success', 'Cash Flow ' . $cashFlow->code . ' dihapus.');

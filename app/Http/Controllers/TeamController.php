@@ -10,6 +10,7 @@ use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\Department;
 use App\Models\User;
+use App\Models\UserActivityLog;
 
 class TeamController extends Controller
 {
@@ -100,6 +101,8 @@ class TeamController extends Controller
             ]);
 
             $this->syncMembers($team, $validated['members']);
+
+            UserActivityLog::record('master_data', 'create', 'Menambah Team ' . $team->name, $team);
         });
 
         return redirect('/team')->with('success', 'Team berhasil dibuat.');
@@ -160,6 +163,8 @@ class TeamController extends Controller
             $this->syncMembers($team, $validated['members']);
         });
 
+        UserActivityLog::record('master_data', 'update', 'Mengubah Team ' . $team->name, $team);
+
         return redirect('/team')->with('success', 'Team berhasil diupdate.');
     }
 
@@ -180,7 +185,10 @@ class TeamController extends Controller
             );
         }
 
+        $teamName = $team->name;
         $team->delete();
+
+        UserActivityLog::record('master_data', 'delete', 'Menghapus Team ' . $teamName);
 
         return redirect('/team')->with('success', 'Team berhasil dihapus.');
     }

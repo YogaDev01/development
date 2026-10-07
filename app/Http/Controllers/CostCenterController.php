@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 use App\Models\CostCenter;
 use App\Models\BudgetPlan;
+use App\Models\UserActivityLog;
 
 class CostCenterController extends Controller
 {
@@ -48,7 +49,7 @@ class CostCenterController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        CostCenter::create([
+        $costCenter = CostCenter::create([
             'code'     => CostCenter::generateNextCode($validated['type']),
             'name'     => strtoupper(trim($validated['name'])),
             'type'     => $validated['type'],
@@ -56,6 +57,8 @@ class CostCenterController extends Controller
             'notes'    => $validated['notes'] ?? null,
             'input_by' => Auth::id(),
         ]);
+
+        UserActivityLog::record('master_data', 'create', 'Menambah Cost Center ' . $costCenter->name, $costCenter);
 
         return redirect('/cost-center')
             ->with('success', 'Cost center berhasil ditambahkan.');
@@ -86,6 +89,8 @@ class CostCenterController extends Controller
             'notes'  => $validated['notes'] ?? null,
         ]);
 
+        UserActivityLog::record('master_data', 'update', 'Mengubah Cost Center ' . $costCenter->name, $costCenter);
+
         return redirect('/cost-center')
             ->with('success', 'Cost center berhasil diupdate.');
     }
@@ -110,7 +115,10 @@ class CostCenterController extends Controller
             );
         }
 
+        $costCenterName = $costCenter->name;
         $costCenter->delete();
+
+        UserActivityLog::record('master_data', 'delete', 'Menghapus Cost Center ' . $costCenterName);
 
         return redirect('/cost-center')
             ->with('success', 'Cost center berhasil dihapus.');
