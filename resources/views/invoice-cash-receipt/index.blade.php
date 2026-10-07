@@ -731,6 +731,19 @@ $(function () {
     $('#invSearch').html('<input type="search" id="invSearchInput" class="form-control form-control-sm" placeholder="Cari data...">');
     $('#invSearchInput').on('keyup', function () { table.search(this.value).draw(); });
 
+    /*
+    | Pencarian awal dari URL (?q=...), dipakai kolom Invoice/PPN/PPH/Total di
+    | Daftar Purchase Order yang menautkan ke sini dengan kode PO-nya. Diisikan
+    | ke kotak cari, bukan disaring diam-diam, supaya user melihat kenapa
+    | daftarnya terpotong dan bisa menghapusnya.
+    */
+    (function applySearchFromUrl() {
+        var q = new URLSearchParams(window.location.search).get('q');
+        if (!q) return;
+        $('#invSearchInput').val(q);
+        table.search(q).draw();
+    })();
+
     // Bungkus HANYA tabelnya dengan scroller horizontal, kolom No Invoice & Action beku.
     $('#tblInvoice').wrap('<div class="inv-hscroll table-responsive"></div>');
 
