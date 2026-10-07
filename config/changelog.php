@@ -26,10 +26,44 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '2.5.9',
+    'current' => '2.5.10',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '2.5.10',
+            'date'    => '2026-10-07',
+            'title'   => 'Rekap Collection di Daftar Purchase Order',
+            'summary' => 'Daftar Purchase Order kini menampilkan Invoice, PPN, PPH, dan Total per PO '
+                       . 'dengan rumus yang sama dengan Daftar Invoice, dan angkanya bisa diklik untuk '
+                       . 'membuka Collection yang sudah tersaring.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Daftar Purchase Order menampilkan rekap Collection per PO: Invoice, PPN, PPH, dan Total - memakai nama dan rumus yang sama persis dengan Daftar Invoice, dijumlahkan dari seluruh invoice PO tersebut.',
+                        'Keempat angka itu bisa diklik untuk membuka Collection di tab baru dengan daftar yang sudah tersaring ke PO bersangkutan.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Kolom Received Payment di Daftar Purchase Order digantikan rekap Collection yang lebih rinci.',
+                        'Pencarian dari tautan luar mengisi kotak Cari di Collection, bukan menyaring diam-diam, sehingga terlihat kenapa daftarnya terpotong dan bisa dihapus.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Invoice berstatus Cancelled tidak ikut dijumlah dalam rekap Collection per PO, agar nilai tagihannya tidak terlalu besar.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '2.5.9',
