@@ -11,6 +11,7 @@ use App\Models\ForecastActualEntry;
 use App\Models\ForecastDetail;
 use App\Models\ForecastLog;
 use App\Models\SourceFund;
+use App\Models\UserActivityLog;
 
 class ForecastController extends Controller
 {
@@ -94,7 +95,9 @@ class ForecastController extends Controller
     {
         $validated = $this->validateForecast($request);
 
-        DB::transaction(function () use ($validated) {
+        $forecast = null;
+
+        DB::transaction(function () use ($validated, &$forecast) {
             $forecast = Forecast::create([
                 'notes'      => isset($validated['notes']) ? strtoupper(trim($validated['notes'])) : null,
                 'date_start' => $validated['date_start'],
@@ -107,6 +110,8 @@ class ForecastController extends Controller
 
             ForecastLog::record($forecast->id, 'CREATED', $forecast->label);
         });
+
+        UserActivityLog::record('forecast', 'create', 'Membuat Forecast: ' . ($forecast?->label ?? '#' . $forecast?->id), $forecast);
 
         return redirect('/forecast')->with('success', 'Forecast berhasil dibuat.');
     }
@@ -313,6 +318,8 @@ class ForecastController extends Controller
             ForecastLog::record($forecast->id, 'UPDATED', 'Rencana diubah.');
         });
 
+        UserActivityLog::record('forecast', 'update', 'Memperbarui Forecast: ' . ($forecast->label ?? '#' . $forecast->id), $forecast);
+
         return redirect('/forecast')->with('success', 'Forecast berhasil diupdate.');
     }
 
@@ -330,7 +337,10 @@ class ForecastController extends Controller
             return back()->with('error', 'Forecast yang sudah CLOSED tidak dapat dihapus.');
         }
 
+        $forecastLabel = $forecast->label ?? '#' . $forecast->id;
         $forecast->delete();
+
+        UserActivityLog::record('forecast', 'delete', 'Menghapus Forecast: ' . $forecastLabel);
 
         return redirect('/forecast')->with('success', 'Forecast berhasil dihapus.');
     }
@@ -355,6 +365,8 @@ class ForecastController extends Controller
         $forecast->update(['status' => 'ACTIVE', 'activated_at' => now()]);
 
         ForecastLog::record($forecast->id, 'ACTIVATED');
+
+        UserActivityLog::record('forecast', 'process', 'Mengaktifkan Forecast: ' . ($forecast->label ?? '#' . $forecast->id), $forecast);
 
         return back()->with('success', 'Forecast diaktifkan. Actual Amount sekarang bisa diisi per item.');
     }
@@ -429,6 +441,8 @@ class ForecastController extends Controller
             return response()->json(['message' => 'Realisasi ditambahkan.']);
         }
 
+        UserActivityLog::record('forecast', 'update', 'Menambah realisasi Forecast: ' . ($forecast->label ?? '#' . $forecast->id), $forecast);
+
         return redirect('/forecast?open=' . $forecast->id)->with('success', 'Realisasi ditambahkan.');
     }
 
@@ -464,6 +478,8 @@ class ForecastController extends Controller
             return response()->json(['message' => 'Realisasi dihapus.']);
         }
 
+        UserActivityLog::record('forecast', 'update', 'Menghapus realisasi Forecast: ' . ($forecast->label ?? '#' . $forecast->id), $forecast, $request->reason ?? $request->notes);
+
         return redirect('/forecast?open=' . $forecast->id)->with('success', 'Realisasi dihapus.');
     }
 
@@ -484,6 +500,8 @@ class ForecastController extends Controller
         $forecast->update(['status' => 'CLOSED', 'closed_at' => now()]);
 
         ForecastLog::record($forecast->id, 'CLOSED');
+
+        UserActivityLog::record('forecast', 'close', 'Menutup Forecast: ' . ($forecast->label ?? '#' . $forecast->id), $forecast);
 
         return back()->with('success', 'Forecast di-Close.');
     }

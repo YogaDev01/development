@@ -48,8 +48,8 @@ trait HandlesCrSettlement
     /*
     |--------------------------------------------------------------------------
     | SETTLEMENT — Cash Advance: REALIZED (Settle) -> SETTLE_CHECKED (Head) ->
-    | SETTLE_VERIFIED (Finance) -> CLOSED (CEO). Reject di tiap tahap balik ke
-    | PAID (manager mengajukan ulang Settlement).
+    | SETTLE_VERIFIED (Finance) -> CLOSED (CEO). Reject di tiap tahap berhenti
+    | di SETTLE_REJECTED (manager merevisi lalu mengajukan ulang Settlement).
     |--------------------------------------------------------------------------
     */
 
@@ -95,8 +95,8 @@ trait HandlesCrSettlement
         $this->findVisibleCr($id);
 
         // Transisi terkunci: lihat Concerns\TransitionsStatus.
-        $cr = $this->transitionStatus(BudgetRequest::class, $id, 'REALIZED', ['status' => 'PAID'], function ($cr) use ($request) {
-            $cr->addLog('REALIZED', 'PAID', 'settlement_rejected', $request->notes);
+        $cr = $this->transitionStatus(BudgetRequest::class, $id, 'REALIZED', ['status' => 'SETTLE_REJECTED'], function ($cr) use ($request) {
+            $cr->addLog('REALIZED', 'SETTLE_REJECTED', 'settlement_rejected', $request->notes);
         });
 
         if (! $cr) {
@@ -113,7 +113,7 @@ trait HandlesCrSettlement
             );
         }
 
-        return back()->with('success', 'Settlement ditolak. CR dikembalikan ke status PAID.');
+        return back()->with('success', 'Settlement ditolak. Silakan revisi dan ajukan ulang.');
     }
 
     public function financeVerifySettlement(Request $request, $id)
@@ -189,8 +189,8 @@ trait HandlesCrSettlement
         $this->findVisibleCr($id);
 
         // Transisi terkunci: lihat Concerns\TransitionsStatus.
-        $cr = $this->transitionStatus(BudgetRequest::class, $id, 'SETTLE_CHECKED', ['status' => 'PAID'], function ($cr) use ($request) {
-            $cr->addLog('SETTLE_CHECKED', 'PAID', 'settlement_rejected', $request->notes);
+        $cr = $this->transitionStatus(BudgetRequest::class, $id, 'SETTLE_CHECKED', ['status' => 'SETTLE_REJECTED'], function ($cr) use ($request) {
+            $cr->addLog('SETTLE_CHECKED', 'SETTLE_REJECTED', 'settlement_rejected', $request->notes);
         });
 
         if (! $cr) {
@@ -207,7 +207,7 @@ trait HandlesCrSettlement
             );
         }
 
-        return back()->with('success', 'Settlement ditolak. CR dikembalikan ke status PAID.');
+        return back()->with('success', 'Settlement ditolak. Silakan revisi dan ajukan ulang.');
     }
 
     /*
@@ -292,7 +292,7 @@ trait HandlesCrSettlement
         return back()->with('success', 'Expense Claim disetujui. Masuk antrean Buat Batch Baru Treasury — CR akan CLOSED setelah dibayar.');
     }
 
-    /** Finance Manager — reject Expense Claim di tahap Settle Approve: CR kembali ke PAID. */
+    /** Finance Manager — reject Expense Claim di tahap Settle Approve: CR berhenti di SETTLE_REJECTED. */
     public function settleReject(Request $request, $id)
     {
         /** @var User $user */
@@ -309,10 +309,10 @@ trait HandlesCrSettlement
             return back()->with('error', $error);
         }
 
-        return back()->with('success', 'Expense Claim ditolak. CR dikembalikan ke status PAID untuk disettle ulang.');
+        return back()->with('success', 'Expense Claim ditolak. Silakan revisi settlement dan ajukan ulang.');
     }
 
-    /** Approver — reject Expense Claim di tahap Second Approve: CR kembali ke PAID. */
+    /** Approver — reject Expense Claim di tahap Second Approve: CR berhenti di SETTLE_REJECTED. */
     public function secondReject(Request $request, $id)
     {
         /** @var User $user */
@@ -329,7 +329,7 @@ trait HandlesCrSettlement
             return back()->with('error', $error);
         }
 
-        return back()->with('success', 'Expense Claim ditolak. CR dikembalikan ke status PAID untuk disettle ulang.');
+        return back()->with('success', 'Expense Claim ditolak. Silakan revisi settlement dan ajukan ulang.');
     }
 
     /** Penerima notifikasi tahap Finance Manager. */
@@ -413,11 +413,12 @@ trait HandlesCrSettlement
     }
 
     /**
-     * Inti Reject tahap Close: SETTLE_VERIFIED -> PAID, sama seperti reject
-     * Head/Finance pada tahap sebelumnya. Second Payment PENDING yang lahir
-     * saat verify ikut dihapus — selisihnya belum tentu sama lagi setelah
-     * settlement diperbaiki. Kalau baris itu sudah masuk batch Treasury
-     * (apalagi sudah PAID), reject ditolak: uangnya sudah bergerak.
+     * Inti Reject tahap Close: SETTLE_VERIFIED -> SETTLE_REJECTED, sama
+     * seperti reject Head/Finance pada tahap sebelumnya. Second Payment
+     * PENDING yang lahir saat verify ikut dihapus — selisihnya belum tentu
+     * sama lagi setelah settlement diperbaiki. Kalau baris itu sudah masuk
+     * batch Treasury (apalagi sudah PAID), reject ditolak: uangnya sudah
+     * bergerak.
      */
     /**
      * @param string[] $dariStatus status yang boleh ditolak dari tahap ini.
@@ -444,8 +445,8 @@ trait HandlesCrSettlement
                 $sp->delete();
             }
             $dari = $cr->status;
-            $cr->update(['status' => 'PAID']);
-            $cr->addLog($dari, 'PAID', 'settlement_rejected', $notes);
+            $cr->update(['status' => 'SETTLE_REJECTED']);
+            $cr->addLog($dari, 'SETTLE_REJECTED', 'settlement_rejected', $notes);
         });
 
         if ($cr->applicant) {
@@ -475,7 +476,7 @@ trait HandlesCrSettlement
             return back()->with('error', $error);
         }
 
-        return back()->with('success', 'Settlement ditolak. CR dikembalikan ke status PAID.');
+        return back()->with('success', 'Settlement ditolak. Silakan revisi dan ajukan ulang.');
     }
 
     /** CR terpilih yang benar-benar boleh diakses user ini (bulk). */

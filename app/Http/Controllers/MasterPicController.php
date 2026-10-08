@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 use App\Models\MasterPic;
+use App\Models\UserActivityLog;
 
 class MasterPicController extends Controller
 {
@@ -126,7 +127,7 @@ class MasterPicController extends Controller
             'employee_id' => 'nullable|exists:employees,id',
         ]);
 
-        MasterPic::create([
+        $pic = MasterPic::create([
             'type'        => $request->type,
             'pic'         => strtoupper($request->pic),
             'position'    => $request->position,
@@ -139,6 +140,8 @@ class MasterPicController extends Controller
             'employee_id' => $request->employee_id ?: null,
             'input_by' => Auth::id(),
         ]);
+
+        UserActivityLog::record('master_data', 'create', 'Menambah PIC ' . $pic->pic, $pic);
 
         return redirect('/master-pic')
             ->with('success', 'PIC berhasil ditambahkan');
@@ -205,6 +208,8 @@ class MasterPicController extends Controller
             'employee_id' => $request->employee_id ?: null,
         ]);
 
+        UserActivityLog::record('master_data', 'update', 'Mengubah PIC ' . $pic->pic, $pic);
+
         return redirect('/master-pic')
             ->with('success', 'PIC berhasil diupdate');
     }
@@ -223,7 +228,10 @@ class MasterPicController extends Controller
             return back()->with('error', 'PIC tidak bisa dihapus karena sudah dipakai pada Project.');
         }
 
+        $picName = $pic->pic;
         $pic->delete();
+
+        UserActivityLog::record('master_data', 'delete', 'Menghapus PIC ' . $picName);
 
         return redirect('/master-pic')
             ->with('success', 'PIC berhasil dihapus');

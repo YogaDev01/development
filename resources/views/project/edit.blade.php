@@ -298,6 +298,12 @@
                                 <tr>
                                     <td class="text-center align-middle row-no-detail">{{ $i + 1 }}</td>
                                     <td>
+                                        {{-- Identitas baris: tanpa ini controller tidak bisa membedakan
+                                             milestone lama dari baru dan terpaksa hapus-buat-ulang — yang
+                                             memutus log monitoring & me-reset status/bobot milestone.
+                                             Sengaja TIDAK diletakkan di sel No: renumberDetail() menimpa
+                                             isi sel itu dengan textContent, input ini akan ikut terhapus. --}}
+                                        <input type="hidden" name="details[{{ $i }}][id]" value="{{ $det->id }}">
                                         <select name="details[{{ $i }}][cluster_id]" class="form-control form-control-sm select-cluster">
                                             <option value="">— Pilih Cluster —</option>
                                             @foreach($clusters as $cluster)

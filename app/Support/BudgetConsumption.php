@@ -45,6 +45,9 @@ final class BudgetConsumption
         'SETTLE_APPROVED',
         'SECOND_APPROVED',
         'CLOSED',
+        // Settlement ditolak: dananya belum balik, tetap mengikat anggaran
+        // sama seperti PAID.
+        'SETTLE_REJECTED',
     ];
 
     /**
@@ -62,6 +65,9 @@ final class BudgetConsumption
         'SETTLE_APPROVED',
         'SECOND_APPROVED',
         'CLOSED',
+        // Sama seperti PAID: uang sudah keluar, settlement-nya tinggal
+        // direvisi dan diajukan ulang.
+        'SETTLE_REJECTED',
     ];
 
     /**
@@ -80,6 +86,7 @@ final class BudgetConsumption
         'SETTLE_APPROVED',
         'SECOND_APPROVED',
         'CLOSED',
+        'SETTLE_REJECTED',
     ];
 
     /** Tidak pernah memakai budget. */

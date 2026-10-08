@@ -15,6 +15,7 @@ use App\Models\CashReceipt;
 use App\Models\Project;
 use App\Models\SourceFund;
 use App\Models\User;
+use App\Models\UserActivityLog;
 use App\Services\NotifyService;
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -248,6 +249,8 @@ class InvoiceCashReceiptController extends Controller
             return $invoice;
         });
 
+        UserActivityLog::record('invoice', 'create', 'Membuat Invoice #' . $invoice->code, $invoice);
+
         return redirect('/invoice-cash-receipt/' . $invoice->id)
             ->with('success', 'Invoice ' . $invoice->code . ' berhasil dibuat sebagai Draft.');
     }
@@ -364,6 +367,8 @@ class InvoiceCashReceiptController extends Controller
             }
             $newPoNumber->syncInvoiceStatus();
         });
+
+        UserActivityLog::record('invoice', 'update', 'Memperbarui Invoice #' . $invoice->code, $invoice);
 
         return redirect('/invoice-cash-receipt/' . $invoice->id)
             ->with('success', 'Invoice ' . $invoice->code . ' berhasil diperbarui.');
@@ -525,6 +530,8 @@ class InvoiceCashReceiptController extends Controller
             return back()->with('error', 'Hanya invoice berstatus DRAFT yang dapat dihapus.');
         }
 
+        $invoiceCode = $invoice->code;
+
         DB::transaction(function () use ($invoice) {
             foreach ($invoice->attachments as $att) {
                 Storage::disk('secure')->delete($att->file_path);
@@ -539,6 +546,8 @@ class InvoiceCashReceiptController extends Controller
                 \App\Models\ProjectPoNumber::find($poNumberId)?->syncInvoiceStatus();
             }
         });
+
+        UserActivityLog::record('invoice', 'delete', 'Menghapus Invoice #' . $invoiceCode);
 
         return redirect('/invoice-cash-receipt')->with('success', 'Invoice berhasil dihapus.');
     }
@@ -575,6 +584,8 @@ class InvoiceCashReceiptController extends Controller
             'workflow'
         );
 
+        UserActivityLog::record('invoice', 'submit', 'Mengajukan Invoice #' . $invoice->code, $invoice);
+
         return back()->with('success', 'Invoice ' . $invoice->code . ' berhasil disubmit.');
     }
 
@@ -610,6 +621,8 @@ class InvoiceCashReceiptController extends Controller
             'workflow'
         );
 
+        UserActivityLog::record('invoice', 'verify', 'Memverifikasi Invoice #' . $invoice->code, $invoice);
+
         return back()->with('success', 'Invoice ' . $invoice->code . ' berhasil diverifikasi.');
     }
 
@@ -644,6 +657,8 @@ class InvoiceCashReceiptController extends Controller
                 'workflow'
             );
         }
+
+        UserActivityLog::record('invoice', 'approve', 'Menyetujui Invoice #' . $invoice->code, $invoice);
 
         return back()->with('success', 'Invoice ' . $invoice->code . ' berhasil di-approve.');
     }
@@ -706,6 +721,8 @@ class InvoiceCashReceiptController extends Controller
             );
         }
 
+        UserActivityLog::record('invoice', 'revise', 'Meminta revisi Invoice #' . $invoice->code, $invoice, $request->notes);
+
         return back()->with('success', 'Invoice ' . $invoice->code . ' dikembalikan untuk direvisi.');
     }
 
@@ -736,6 +753,8 @@ class InvoiceCashReceiptController extends Controller
             'received_by' => Auth::id(),
             'received_at' => now(),
         ]);
+
+        UserActivityLog::record('invoice', 'process', 'Menandai Invoice #' . $invoice->code . ' diterima pelanggan', $invoice);
 
         return back()->with('success', 'Invoice ' . $invoice->code . ' ditandai diterima. Jatuh tempo aktual dihitung otomatis.');
     }
@@ -822,6 +841,8 @@ class InvoiceCashReceiptController extends Controller
             ? 'Invoice ' . $invoice->code . ' dibatalkan dan dikembalikan ke DRAFT untuk direvisi.'
             : 'Invoice ' . $invoice->code . ' dibatalkan.';
 
+        UserActivityLog::record('invoice', 'cancel', 'Membatalkan Invoice #' . $invoice->code, $invoice, $request->notes);
+
         return back()->with('success', $message);
     }
 
@@ -905,6 +926,8 @@ class InvoiceCashReceiptController extends Controller
             return back()->with('error', $gagal);
         }
 
+        UserActivityLog::record('cash_receipt', 'pay', 'Mencatat Cash Receipt untuk Invoice #' . $invoice->code, $invoice);
+
         return back()->with('success', 'Cash Receipt berhasil dicatat.');
     }
 
@@ -957,6 +980,8 @@ class InvoiceCashReceiptController extends Controller
             return back()->with('error', $error);
         }
 
+        UserActivityLog::record('cash_receipt', 'settle', 'Settle PPh Pasal 4(2) Cash Receipt Invoice #' . $invoice->code, $invoice);
+
         return back()->with('success', 'PPh Pasal 4(2) berhasil di-settle.');
     }
 
@@ -1003,6 +1028,8 @@ class InvoiceCashReceiptController extends Controller
             'user_id'         => Auth::id(),
             'reason'          => $request->input('reason'),
         ]);
+
+        UserActivityLog::record('cash_receipt', 'delete', 'Menghapus Cash Receipt Invoice #' . $invoice->code, $invoice, $request->reason);
 
         return back()->with('success', 'Cash Receipt dihapus dan alasannya dicatat.');
     }

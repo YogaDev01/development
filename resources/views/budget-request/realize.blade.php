@@ -25,6 +25,19 @@
             $existingByDetail = $budgetRequest->realizations->keyBy('request_detail_id');
         @endphp
 
+        {{-- Alasan reject terakhir — hanya tampil kalau CR ini sedang
+             SETTLE_REJECTED, supaya pengaju langsung tahu apa yang harus
+             direvisi tanpa harus membuka tab Log. --}}
+        @if($budgetRequest->status === 'SETTLE_REJECTED' && $rejectReason)
+        <div class="alert alert-danger shadow-sm mb-3">
+            <strong><i class="fas fa-exclamation-triangle mr-1"></i> Settlement ini ditolak.</strong>
+            <div class="mt-1">{{ $rejectReason->notes }}</div>
+            <div class="mt-1" style="font-size:11px;color:var(--text-faint);">
+                {{ $rejectReason->actor_name ?? 'System' }} · {{ $rejectReason->created_at->format('d M Y H:i') }}
+            </div>
+        </div>
+        @endif
+
         <!-- REQUEST SUMMARY — strip horizontal, lebar sama dengan card di bawahnya -->
         <div class="card card-primary card-outline shadow-sm mb-3">
             <div class="card-body py-3">
@@ -291,6 +304,13 @@
                     <button type="submit" id="submitBtn" class="btn btn-secondary" disabled>
                         <i class="fas fa-paper-plane mr-1"></i> Submit Settlement
                     </button>
+                    {{-- Simpan draft — data tersimpan TANPA mengajukan, status CR
+                         tetap PAID/SETTLE_REJECTED. Validasinya sama persis dengan
+                         Submit (lampiran per item, Note wajib bila Settle > Request). --}}
+                    <button type="button" id="saveDraftBtn" class="btn btn-outline-secondary" disabled
+                            data-action="{{ route('budget-request.save-realization-draft', $budgetRequest->id) }}">
+                        <i class="fas fa-save mr-1"></i> Simpan
+                    </button>
                     <a href="{{ url('/budget-request?open=' . $budgetRequest->id) }}" class="btn btn-secondary">
                         <i class="fas fa-times mr-1"></i> Cancel
                     </a>
@@ -465,11 +485,14 @@ $(function () {
         var siap = reasons.length === 0;
 
         // Abu-abu selama belum lengkap, merah (warna aksi utama TESYS) begitu
-        // settlement benar-benar siap dikirim.
+        // settlement benar-benar siap dikirim. "Simpan" ikut gerbang yang
+        // sama — validasinya memang dibuat identik dengan Submit.
         $('#submitBtn')
             .prop('disabled', !siap)
             .toggleClass('btn-primary', siap)
             .toggleClass('btn-secondary', !siap);
+
+        $('#saveDraftBtn').prop('disabled', !siap);
 
         $('#submitHint')
             .text(siap ? '' : 'Lengkapi: ' + reasons.join('; '))
@@ -998,11 +1021,11 @@ $(function () {
         });
     });
 
-    /* SUBMIT */
-    form.on('submit', function (e) {
-        e.preventDefault();
-
-        // CR yang sudah PAID: tiap baris settlement wajib punya Lampiran Item.
+    /* Kelengkapan baris — dipakai SAMA PERSIS oleh Submit maupun Simpan
+       (draft), supaya data yang tersimpan tidak pernah setengah lengkap. */
+    function cekKelengkapanBaris() {
+        // CR yang sudah PAID/SETTLE_REJECTED: tiap baris settlement wajib
+        // punya Lampiran Item.
         var missAtt = [];
         $('#realizeBody tr[data-detail-id]').each(function (idx) {
             if (parseRp($(this).find('.realize-amount-input').val()) <= 0) return;
@@ -1020,26 +1043,37 @@ $(function () {
                 missNote.push(idx + 1);
             }
         });
+        return { missAtt: missAtt, missNote: missNote };
+    }
 
-        if (missAtt.length) {
+    /** true kalau ada yang kurang (dan sudah ditampilkan pop-up-nya). */
+    function peringatkanKelengkapan(cek) {
+        if (cek.missAtt.length) {
             Swal.fire({
                 icon: 'warning',
                 title: 'Lampiran Item belum lengkap',
-                text: 'Setiap baris Rincian Settlement wajib punya Lampiran Item. Baris belum berlampiran: no. ' + missAtt.join(', ') + '.',
+                text: 'Setiap baris Rincian Settlement wajib punya Lampiran Item. Baris belum berlampiran: no. ' + cek.missAtt.join(', ') + '.',
                 confirmButtonColor: '#92232b'
             });
-            return;
+            return true;
         }
-
-        if (missNote.length) {
+        if (cek.missNote.length) {
             Swal.fire({
                 icon: 'warning',
                 title: 'Note belum diisi',
-                text: 'Baris dengan nilai Settle melebihi Request wajib diisi Note. Baris: no. ' + missNote.join(', ') + '.',
+                text: 'Baris dengan nilai Settle melebihi Request wajib diisi Note. Baris: no. ' + cek.missNote.join(', ') + '.',
                 confirmButtonColor: '#92232b'
             });
-            return;
+            return true;
         }
+        return false;
+    }
+
+    /* SUBMIT — mengajukan settlement, CR pindah ke REALIZED. */
+    form.on('submit', function (e) {
+        e.preventDefault();
+
+        if (peringatkanKelengkapan(cekKelengkapanBaris())) return;
 
         Swal.fire({
             title: 'Submit Settlement?',
@@ -1052,6 +1086,28 @@ $(function () {
             cancelButtonText: 'Batal'
         }).then((result) => {
             if (result.isConfirmed) form.unbind('submit').submit();
+        });
+    });
+
+    /* SIMPAN — menyimpan draft, status CR TIDAK berubah. Validasinya sama
+       dengan Submit; bedanya cuma form di-arahkan ke route simpan-draft
+       sebelum dikirim, dan tanpa dialog konfirmasi "akan mengajukan". */
+    $('#saveDraftBtn').on('click', function () {
+        if (peringatkanKelengkapan(cekKelengkapanBaris())) return;
+
+        Swal.fire({
+            title: 'Simpan Draft Settlement?',
+            text: 'Data tersimpan tanpa mengajukan — status CR belum berubah.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#42627d',
+            cancelButtonColor: '#55595e',
+            confirmButtonText: 'Ya, Simpan',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (!result.isConfirmed) return;
+            form.attr('action', $('#saveDraftBtn').data('action'));
+            form.unbind('submit').get(0).submit();
         });
     });
 });

@@ -1029,7 +1029,12 @@ body.tesys-ui.sidebar-rail .sidebar .nav-label {
     margin: var(--sp-2) calc(var(--sp-2) * -1);
     border-top: 1px solid var(--border);
 }
-body.tesys-ui.sidebar-rail .sidebar .nav-label:first-child { border-top: none; margin-top: 0; }
+/* :first-of-type, bukan :first-child — Todo List (nav-item, tidak berlabel)
+   kini selalu ada di depan setiap seksi label pertama. Dengan :first-child
+   label PERTAMA itu bukan lagi anak pertama .nav, jadi border-nya muncul di
+   mode rail sebagai garis nyasar persis di bawah Todo List. :first-of-type
+   mengabaikan jenis elemen lain (Todo List-nya <a>, label-nya <div>). */
+body.tesys-ui.sidebar-rail .sidebar .nav-label:first-of-type { border-top: none; margin-top: 0; }
 body.tesys-ui.sidebar-rail .sidebar .nav-label::after { display: none; }
 
 /* Nama menu di mode rail — tooltip sendiri, bukan bawaan browser.
@@ -1039,6 +1044,83 @@ body.tesys-ui.sidebar-rail .sidebar .nav-label::after { display: none; }
    dibuat sekali di <body> oleh tesys-shell.js lalu diposisikan mengikuti
    ikon yang disentuh, sehingga bebas dari pemotongan itu. */
 body.tesys-ui.sidebar-rail .sidebar .nav-item { overflow: hidden; }
+
+/* ------------------------------------------------- 2b. SIDEBAR GROUPS
+   Dropdown di dalam satu seksi (mis. "Cost Management" di Workflow).
+   Tertutup secara default; nav.blade.php membuka yang memuat menu aktif.
+   Warna & hover SENGAJA disamakan persis dengan .nav-item (bukan nav-label
+   yang redup) supaya dropdown terbaca sebagai menu, bukan teks pasif. */
+body.tesys-ui .sidebar .nav-group-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 10px;
+    padding: 7px var(--sp-2) 7px 10px;
+    border: none;
+    background: none;
+    border-radius: var(--radius-sm);
+    font-size: 12.5px;
+    font-weight: var(--fw-label, 500);
+    line-height: 1.35;
+    color: var(--sidebar-text);
+    cursor: pointer;
+}
+body.tesys-ui .sidebar .nav-group-toggle-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+body.tesys-ui .sidebar .nav-group-toggle .ic {
+    width: 16px;
+    height: 16px;
+    font-size: 13px;
+    text-align: center;
+    color: var(--text-faint);
+    flex: none;
+}
+body.tesys-ui .sidebar .nav-group-toggle:hover { background: var(--surface-2); color: var(--text); }
+body.tesys-ui .sidebar .nav-group-toggle:hover .ic { color: var(--text); }
+body.tesys-ui .sidebar .nav-group-caret {
+    font-size: 10px;
+    color: var(--text-faint);
+    transition: transform var(--dur, .18s) var(--ease, ease);
+}
+body.tesys-ui .sidebar .nav-group.open > .nav-group-toggle .nav-group-caret { transform: rotate(90deg); }
+body.tesys-ui .sidebar .nav-group-items {
+    display: none;
+    flex-direction: column;
+    gap: 2px;
+    padding-left: 14px;
+}
+body.tesys-ui .sidebar .nav-group.open > .nav-group-items { display: flex; }
+
+/* Mode rail: dropdown dilebur jadi daftar ikon rata, sama seperti sebelum
+   ada grup — toggle & labelnya disembunyikan, bukan ikut mengecil. */
+body.tesys-ui.sidebar-rail .sidebar .nav-group { display: contents; }
+body.tesys-ui.sidebar-rail .sidebar .nav-group-toggle { display: none; }
+body.tesys-ui.sidebar-rail .sidebar .nav-group-items {
+    display: contents;
+    padding-left: 0;
+}
+
+/* --------------------------------------------- BADGE TITIK (Todo List)
+   Titik kuning kecil menempel di sudut ikon, menandakan ada todo baru yang
+   belum dibuka user — lihat initTodoBadge() di tesys-shell.js (polling
+   /todo-list/has-pending tiap 5 menit). Native title="" dipakai sebagai
+   tooltip, sengaja tanpa .ts-tip supaya tidak tergantung mode rail. */
+body.tesys-ui .sidebar .nav-badge-dot {
+    position: absolute;
+    top: 6px;
+    left: 20px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--warning, #f59e0b);
+    border: 1.5px solid var(--sidebar, var(--surface));
+}
+body.tesys-ui.sidebar-rail .sidebar .nav-badge-dot { top: 4px; left: 34px; }
 
 .ts-tip {
     position: fixed;

@@ -201,6 +201,8 @@ class FinanceSummaryController extends Controller
             'total_value'   => (int) $poAgg['sums']->sum(),
             'draft'         => $poAgg['counts']['DRAFT'] ?? 0,
             'submitted'     => $poAgg['counts']['SUBMITTED'] ?? 0,
+            'verified'      => $poAgg['counts']['VERIFIED'] ?? 0,
+            'early_start'   => $poAgg['counts']['EARLY_START'] ?? 0,
             'waiting_po'    => $poAgg['counts']['WAITING_PO'] ?? 0,
             'active'        => $poAgg['counts']['ACTIVE'] ?? 0,
             'progress_done' => $poAgg['counts']['PROGRESS_DONE'] ?? 0,

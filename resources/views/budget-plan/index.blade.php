@@ -375,7 +375,7 @@
                             </div>
                             <hr style="border-color:rgba(255,255,255,0.08);">
                             <div class="mb-3">
-                                <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Source Fund</span>
+                                <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">PO Reference</span>
                                 <div id="bpProject" class="text-white mt-1" style="font-size:12px;font-weight:600;"></div>
                             </div>
                             <div class="mb-3" id="bpCustomerBox">
@@ -487,7 +487,7 @@
                                             <span id="infoDesc" class="ts-deflist-value"></span>
                                         </div>
                                         <div class="ts-deflist-row">
-                                            <span class="ts-deflist-label">Source Fund</span>
+                                            <span class="ts-deflist-label">PO Reference</span>
                                             <span id="infoPO" class="ts-deflist-value"></span>
                                         </div>
                                         <div class="ts-deflist-row">
@@ -533,20 +533,26 @@
 
                                 <!-- TAB BUDGET — Account | Price | Qty | Unit | Total | Used | Variance | Notes -->
                                 <div class="tab-pane fade" id="bpPaneDetails">
-                                    <div class="d-flex justify-content-end mb-2">
-                                        <button type="button" class="btn btn-xs btn-outline-secondary" id="btnExpandAllBpDetail"><i class="fas fa-angle-double-down mr-1"></i>Expand All</button>&nbsp;
-                                        <button type="button" class="btn btn-xs btn-outline-secondary" id="btnCollapseAllBpDetail"><i class="fas fa-angle-double-up mr-1"></i>Collapse All</button>
+                                    <div class="d-flex justify-content-between align-items-center mb-2" style="gap:8px;">
+                                        <div class="input-group input-group-sm" style="max-width:280px;">
+                                            <div class="input-group-prepend"><span class="input-group-text" style="font-size:11px;"><i class="fas fa-search"></i></span></div>
+                                            <input type="text" id="bpBudgetSearch" class="form-control" placeholder="Cari CoA / deskripsi..." style="font-size:12px;">
+                                        </div>
+                                        <div>
+                                            <button type="button" class="btn btn-xs btn-outline-secondary" id="btnToggleAllBpDetail"><i class="fas fa-angle-double-down mr-1"></i>Expand All</button>
+                                            <a id="bpExportBudgetBtn" href="#" target="_blank" class="btn btn-xs btn-outline-primary ml-1"><i class="fas fa-file-excel mr-1"></i>Export</a>
+                                        </div>
                                     </div>
                                     <div class="table-responsive">
                                         <table class="table table-bordered mb-0" style="font-size:12px;">
                                             <thead style="background:var(--surface-2);">
                                                 <tr>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;">Chart of Account</th>
+                                                    <th scope="col" class="bp-bsort" data-sort="account" style="color:var(--text-faint);font-size:11px;cursor:pointer;">Chart of Account <i class="fas fa-sort bp-bsort-ic"></i></th>
                                                     <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:14%;">Unit Price</th>
                                                     <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:center;width:10%;">Qty</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:14%;">Budget</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:14%;">Used</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:14%;">Variance</th>
+                                                    <th scope="col" class="bp-bsort" data-sort="budget" style="color:var(--text-faint);font-size:11px;text-align:right;width:14%;cursor:pointer;">Budget <i class="fas fa-sort bp-bsort-ic"></i></th>
+                                                    <th scope="col" class="bp-bsort" data-sort="used" style="color:var(--text-faint);font-size:11px;text-align:right;width:14%;cursor:pointer;">Used <i class="fas fa-sort bp-bsort-ic"></i></th>
+                                                    <th scope="col" class="bp-bsort" data-sort="variance" style="color:var(--text-faint);font-size:11px;text-align:right;width:14%;cursor:pointer;">Variance <i class="fas fa-sort bp-bsort-ic"></i></th>
                                                 </tr>
                                             </thead>
                                             <tbody id="bpDetailBody"></tbody>
@@ -564,18 +570,27 @@
 
                                 <!-- TAB COST -->
                                 <div class="tab-pane fade" id="bpPaneRequests">
+                                    <div class="d-flex justify-content-between align-items-center mb-2" style="gap:8px;">
+                                        <div class="input-group input-group-sm" style="max-width:280px;">
+                                            <div class="input-group-prepend"><span class="input-group-text" style="font-size:11px;"><i class="fas fa-search"></i></span></div>
+                                            <input type="text" id="bpCostSearch" class="form-control" placeholder="Cari kode / deskripsi / CoA..." style="font-size:12px;">
+                                        </div>
+                                        <a id="bpExportCostBtn" href="#" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-file-excel mr-1"></i> Export
+                                        </a>
+                                    </div>
                                     <div class="table-responsive">
-                                        <table class="table table-bordered mb-0" style="font-size:12px;">
+                                        <table class="table table-bordered mb-0 bp-sortable" style="font-size:12px;">
                                             <thead style="background:var(--surface-2);">
                                                 <tr>
                                                     <th scope="col" style="color:var(--text-faint);font-size:11px;width:1%;"></th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;">Description</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:1%;white-space:nowrap;">Request</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:1%;white-space:nowrap;">Settlement</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:1%;white-space:nowrap;">Refund</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:1%;white-space:nowrap;">Expense Claim</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;width:1%;white-space:nowrap;">Date</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;width:1%;white-space:nowrap;">Status</th>
+                                                    <th scope="col" class="bp-sort" data-sort="description" data-type="text" style="color:var(--text-faint);font-size:11px;cursor:pointer;">Description <i class="fas fa-sort bp-sort-ic"></i></th>
+                                                    <th scope="col" class="bp-sort" data-sort="amount" data-type="num" style="color:var(--text-faint);font-size:11px;text-align:right;width:1%;white-space:nowrap;cursor:pointer;">Request <i class="fas fa-sort bp-sort-ic"></i></th>
+                                                    <th scope="col" class="bp-sort" data-sort="refund" data-type="num" style="color:var(--text-faint);font-size:11px;text-align:right;width:1%;white-space:nowrap;cursor:pointer;">Refund <i class="fas fa-sort bp-sort-ic"></i></th>
+                                                    <th scope="col" class="bp-sort" data-sort="expense_claim" data-type="num" style="color:var(--text-faint);font-size:11px;text-align:right;width:1%;white-space:nowrap;cursor:pointer;">Expense Claim <i class="fas fa-sort bp-sort-ic"></i></th>
+                                                    <th scope="col" class="bp-sort" data-sort="effective" data-type="num" style="color:var(--text-faint);font-size:11px;text-align:right;width:1%;white-space:nowrap;cursor:pointer;">Effective <i class="fas fa-sort bp-sort-ic"></i></th>
+                                                    <th scope="col" class="bp-sort" data-sort="date" data-type="idx" style="color:var(--text-faint);font-size:11px;width:1%;white-space:nowrap;cursor:pointer;">Date <i class="fas fa-sort bp-sort-ic"></i></th>
+                                                    <th scope="col" class="bp-sort" data-sort="status" data-type="text" style="color:var(--text-faint);font-size:11px;width:1%;white-space:nowrap;cursor:pointer;">Status <i class="fas fa-sort bp-sort-ic"></i></th>
                                                 </tr>
                                             </thead>
                                             <tbody id="bpRequestBody"></tbody>
@@ -584,9 +599,9 @@
                                                     <th></th>
                                                     <th class="text-right">Total</th>
                                                     <th class="text-right" id="bpRequestTotal" style="color:var(--info);"></th>
-                                                    <th class="text-right" id="bpRealizationTotal" style="color:var(--success);"></th>
                                                     <th class="text-right" id="bpRefundTotal" style="color:var(--warning);"></th>
                                                     <th class="text-right" id="bpClaimTotal" style="color:var(--danger);"></th>
+                                                    <th class="text-right" id="bpEffectiveTotal" style="color:var(--success);"></th>
                                                     <th colspan="2"></th>
                                                 </tr>
                                             </tfoot>
@@ -955,6 +970,25 @@
 #bpDetailBody tr.bp-group-row:hover td { background:var(--surface-3) !important; }
 .bp-caret.rotated { transform:rotate(90deg); }
 #bpDetailBody td.bp-indent { padding-left:48px !important; }
+/* Semua sel tabel Budget rata tengah secara vertikal (sebelumnya teks
+   menempel di atas saat baris lebih tinggi dari isinya). */
+#bpDetailBody td, #bpDetailBody th { vertical-align:middle; }
+
+/* Deskripsi panjang: biar membungkus 2-3 baris dan tetap muat di modal,
+   bukan memaksa tabel melebar. */
+.bp-wrap {
+    white-space:normal; word-break:break-word; overflow-wrap:anywhere;
+    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;
+    overflow:hidden; line-height:1.3;
+}
+#bpDetailBody td.bp-indent { max-width:0; }
+#bpDetailBody td.bp-indent .bp-wrap { max-width:100%; }
+/* Inner table grup CoA pada tab Cost */
+.bp-cost-inner td.bp-leaf { white-space:normal; word-break:break-word; overflow-wrap:anywhere; }
+.bp-cost-inner tr.bp-coa-grp { cursor:pointer; }
+.bp-cost-inner tr.bp-coa-grp td { background:var(--info-bg); }
+.bp-cost-inner tr.bp-coa-grp:hover td { background:var(--surface-3); }
+.bp-coa-caret.rotated { transform:rotate(90deg); }
 
 /* TAB INFORMATION — clean grid layout */
 .bp-info-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px 18px; }
@@ -1142,41 +1176,195 @@ $(function () {
         }
         $(this).find('.bp-caret').toggleClass('rotated', expanding);
     });
-    $(document).on('click', '#btnExpandAllBpDetail', function () {
+    /* Expand All / Collapse All — satu tombol toggle (B.1). Label & ikon
+       mengikuti keadaan: kalau masih ada grup tertutup -> aksi "Expand All". */
+    $(document).on('click', '#btnToggleAllBpDetail', function () {
+        var $btn = $(this);
+        var anyCollapsed = $('#bpDetailBody .bp-group-row').toArray().some(function (row) {
+            var target = $(row).data('target');
+            return $('#bpDetailBody .' + target).first().is(':hidden');
+        });
         $('#bpDetailBody .bp-group-row').each(function () {
             var target = $(this).data('target');
-            $('#bpDetailBody .' + target).show();
-            $(this).find('.bp-crctrl').show();
-            $(this).find('.bp-caret').addClass('rotated');
+            if (anyCollapsed) {
+                $('#bpDetailBody .' + target).show();
+                $(this).find('.bp-crctrl').show();
+                $(this).find('.bp-caret').addClass('rotated');
+            } else {
+                $('#bpDetailBody .' + target).hide();
+                $('#bpDetailBody .' + target + '-crall').hide();
+                $(this).find('.bp-crctrl').hide();
+                $(this).find('.bp-caret').removeClass('rotated');
+            }
         });
-    });
-    $(document).on('click', '#btnCollapseAllBpDetail', function () {
-        $('#bpDetailBody .bp-group-row').each(function () {
-            var target = $(this).data('target');
-            $('#bpDetailBody .' + target).hide();
-            $('#bpDetailBody .' + target + '-crall').hide();
-            $(this).find('.bp-crctrl').hide();
-            $(this).find('.bp-caret').removeClass('rotated');
-        });
-        resetBpGroupCrState($('#bpDetailBody'));
-    });
-    $(document).on('click', '.bp-cr-expand-all', function (e) {
-        e.stopPropagation();
-        var grp = $(this).data('group');
-        $('#bpDetailBody .' + grp + '-crall').show();
-        $('#bpDetailBody .' + grp + ' .bp-cr-toggle i').removeClass('fa-chevron-down').addClass('fa-chevron-up');
-    });
-    $(document).on('click', '.bp-cr-collapse-all', function (e) {
-        e.stopPropagation();
-        var grp = $(this).data('group');
-        $('#bpDetailBody .' + grp + '-crall').hide();
-        $('#bpDetailBody .' + grp + ' .bp-cr-toggle i').removeClass('fa-chevron-up').addClass('fa-chevron-down');
+        if (!anyCollapsed) resetBpGroupCrState($('#bpDetailBody'));
+        $btn.html(anyCollapsed
+            ? '<i class="fas fa-angle-double-up mr-1"></i>Collapse All'
+            : '<i class="fas fa-angle-double-down mr-1"></i>Expand All');
     });
     $(document).on('click', '.bp-cr-toggle', function (e) {
         e.stopPropagation();
         var target = $(this).data('target');
         $('#bpDetailBody .' + target).toggle();
         $(this).find('i').toggleClass('fa-chevron-down fa-chevron-up');
+    });
+
+    /* Tab Budget — renderer pivot (grup per CoA), dipanggil ulang saat
+       pencarian/sortir berubah. */
+    window.renderBpBudget = function () {
+        var st = window._bpBudget; if (!st) return;
+        var moneyFmt = function (v) { return Math.round(v || 0).toLocaleString('id-ID'); };
+        var q = (st.search || '').toLowerCase().trim();
+        var NOB_RED = 'var(--danger)', NOB_YELLOW = 'var(--warning)', OK_GREEN = 'var(--success)';
+        var nobBadge = '<span class="badge badge-danger ml-1" style="font-size:9px;">NOB</span>';
+
+        function matchDet(det) {
+            if (!q) return true;
+            var hay = (det.account || '') + ' ' + (det.deskripsi || '');
+            (det.cr_details || []).forEach(function (cr) {
+                hay += ' ' + (cr.notes || '') + ' ' + (cr.beneficiary || '');
+            });
+            return hay.toLowerCase().indexOf(q) !== -1;
+        }
+
+        // Kelompokkan per Account
+        var groups = {}, groupOrder = [];
+        (st.rows || []).filter(matchDet).forEach(function (det) {
+            var acc = det.account || '-';
+            if (!groups[acc]) { groups[acc] = []; groupOrder.push(acc); }
+            groups[acc].push(det);
+        });
+
+        // Agregat per grup untuk sortir
+        var aggr = {};
+        groupOrder.forEach(function (acc) {
+            var b = 0, u = 0, r = 0;
+            groups[acc].forEach(function (det) { b += det.total; u += det.used; r += det.remaining; });
+            aggr[acc] = { budget: b, used: u, variance: r };
+        });
+        var sk = st.sort.key, dir = st.sort.dir === 'desc' ? -1 : 1;
+        groupOrder.sort(function (a, b) {
+            if (sk === 'account') return a.localeCompare(b) * dir;
+            return (aggr[a][sk] - aggr[b][sk]) * dir;
+        });
+
+        var detHtml = '', totalBudget = 0, totalUsed = 0, totalRemaining = 0;
+        if (groupOrder.length) {
+            groupOrder.forEach(function (acc, gi) {
+                var items = groups[acc];
+                var gBudget = aggr[acc].budget, gUsed = aggr[acc].used, gRemaining = aggr[acc].variance;
+                var anyItemNob = items.some(function (det) { return det.used > det.total; });
+                totalBudget += gBudget; totalUsed += gUsed; totalRemaining += gRemaining;
+
+                var groupClass = 'bp-grp-' + gi;
+                var isNobCategoryFull = gUsed > gBudget;
+                var isNobCategoryPartial = !isNobCategoryFull && anyItemNob;
+                var gColor = isNobCategoryFull ? NOB_RED : (isNobCategoryPartial ? NOB_YELLOW : (gRemaining >= 0 ? OK_GREEN : NOB_RED));
+                var gTextColor = isNobCategoryFull ? NOB_RED : (isNobCategoryPartial ? NOB_YELLOW : '');
+
+                detHtml += '<tr class="bp-group-row" data-target="' + groupClass + '" style="cursor:pointer;">' +
+                    '<td colspan="3" style="font-weight:700;' + (gTextColor ? 'color:' + gTextColor + ';' : '') + '">' +
+                        '<i class="fas fa-chevron-right mr-2 bp-caret" style="font-size:10px;transition:transform .15s;display:inline-block;"></i>' +
+                        acc + ' <span class="badge badge-secondary ml-1" style="font-size:9px;">' + items.length + '</span>' +
+                        (isNobCategoryFull ? nobBadge : '') +
+                    '</td>' +
+                    '<td class="text-right" style="font-weight:700;' + (gTextColor ? 'color:' + gTextColor + ';' : '') + '">' + moneyFmt(gBudget) + '</td>' +
+                    '<td class="text-right" style="font-weight:700;' + (gTextColor ? 'color:' + gTextColor + ';' : '') + '">' + moneyFmt(gUsed) + '</td>' +
+                    '<td class="text-right" style="font-weight:700;color:' + gColor + ';">' + moneyFmt(gRemaining) + '</td>' +
+                '</tr>';
+
+                items.forEach(function (det, ii) {
+                    var isNobItem = det.used > det.total;
+                    var remColor = isNobItem ? NOB_RED : (det.remaining >= 0 ? OK_GREEN : NOB_RED);
+                    var rowColor = isNobItem ? 'color:' + NOB_RED + ';' : '';
+                    var qtyUnit = det.qty + (det.unit ? ' ' + det.unit : '');
+                    var crDetails = det.cr_details || [];
+                    var crBlockClass = groupClass + '-cr-' + ii;
+
+                    var crToggleBtn = crDetails.length
+                        ? '<button type="button" class="btn btn-outline-secondary bp-cr-toggle" data-target="' + crBlockClass + '-row" style="font-size:10px;padding:0 9px;height:22px;line-height:20px;box-sizing:border-box;margin:-4px 0;white-space:nowrap;">' +
+                            crDetails.length + ' CR <i class="fas fa-chevron-down ml-1"></i></button>'
+                        : '';
+
+                    detHtml += '<tr class="bp-group-child ' + groupClass + '" style="display:none;' + rowColor + '">' +
+                        '<td class="bp-indent">' +
+                            '<div class="d-flex justify-content-between align-items-center" style="gap:8px;">' +
+                                '<span class="bp-wrap">' + (det.deskripsi || '-') + (isNobItem ? nobBadge : '') + '</span>' +
+                                crToggleBtn +
+                            '</div>' +
+                        '</td>' +
+                        '<td class="text-right">' + det.amount_formatted + '</td>' +
+                        '<td class="text-center">' + qtyUnit + '</td>' +
+                        '<td class="text-right"><strong>' + det.total_formatted + '</strong></td>' +
+                        '<td class="text-right">' + det.used_formatted + '</td>' +
+                        '<td class="text-right" style="color:' + remColor + ';">' + det.remaining_formatted + '</td>' +
+                    '</tr>';
+
+                    if (crDetails.length) {
+                        var crRows = crDetails.map(function (cr) {
+                            var viewBtn = cr.cr_id
+                                ? '<a href="/budget-request?open=' + cr.cr_id + '" target="_blank" class="btn btn-info" style="padding:1px 6px;font-size:10px;" title="View CR Detail"><i class="fas fa-eye"></i></a>'
+                                : '';
+                            var settleBadge = cr.is_settle ? ' <span class="badge badge-success" style="font-size:8px;">Settle</span>' : '';
+                            return '<tr>' +
+                                '<td class="text-nowrap">' + cr.cr_date_formatted + '</td>' +
+                                '<td><span class="bp-wrap">' + (cr.notes || '-') + settleBadge + '</span></td>' +
+                                '<td class="text-nowrap">' + cr.beneficiary + '</td>' +
+                                '<td class="text-right text-nowrap">' + cr.unit_price_formatted + '</td>' +
+                                '<td class="text-center text-nowrap">' + cr.qty + '</td>' +
+                                '<td class="text-right text-nowrap"><strong>' + cr.amount_formatted + '</strong></td>' +
+                                '<td class="text-center text-nowrap">' + viewBtn + '</td>' +
+                            '</tr>';
+                        }).join('');
+                        var crTableHtml = '<table class="table table-sm table-bordered mb-0" style="font-size:11px;">' +
+                            '<thead style="background:var(--surface-2);"><tr>' +
+                                '<th scope="col" class="text-nowrap" style="width:1%;">Date</th><th scope="col">Description</th><th scope="col" class="text-nowrap" style="width:1%;">Beneficiary</th>' +
+                                '<th scope="col" class="text-right text-nowrap" style="width:1%;">Price</th><th scope="col" class="text-center text-nowrap" style="width:1%;">Qty</th>' +
+                                '<th scope="col" class="text-right text-nowrap" style="width:1%;">Total</th><th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>' +
+                            '</tr></thead>' +
+                            '<tbody>' + crRows + '</tbody>' +
+                        '</table>';
+
+                        detHtml += '<tr class="' + crBlockClass + '-row ' + groupClass + '-crall" style="display:none;">' +
+                            '<td colspan="6" style="background:var(--surface-2);padding:10px 14px;">' + crTableHtml + '</td>' +
+                        '</tr>';
+                    }
+                });
+            });
+        } else {
+            detHtml = '<tr><td colspan="6" class="text-center text-muted py-3">' + (q ? 'Tidak ada yang cocok.' : 'No detail yet.') + '</td></tr>';
+        }
+        $('#bpDetailBody').html(detHtml);
+        $('#bpDetailTotal').text(moneyFmt(totalBudget));
+        $('#bpActualTotal').text(moneyFmt(totalUsed));
+        var remTotalColor = totalRemaining >= 0 ? 'var(--success)' : 'var(--danger)';
+        $('#bpGapTotal').html('<span style="color:' + remTotalColor + ';">' + moneyFmt(totalRemaining) + '</span>');
+
+        // reset tombol toggle-all (semua grup kembali tertutup setelah render)
+        $('#btnToggleAllBpDetail').html('<i class="fas fa-angle-double-down mr-1"></i>Expand All');
+
+        // indikator arah sortir
+        $('#bpPaneDetails .bp-bsort').each(function () {
+            var ic = $(this).find('.bp-bsort-ic');
+            if ($(this).data('sort') === st.sort.key) {
+                ic.removeClass('fa-sort fa-sort-up fa-sort-down').addClass(st.sort.dir === 'desc' ? 'fa-sort-down' : 'fa-sort-up');
+            } else {
+                ic.removeClass('fa-sort-up fa-sort-down').addClass('fa-sort');
+            }
+        });
+    };
+    $(document).on('input', '#bpBudgetSearch', function () {
+        if (!window._bpBudget) return;
+        window._bpBudget.search = $(this).val();
+        window.renderBpBudget();
+    });
+    $(document).on('click', '#bpPaneDetails .bp-bsort', function () {
+        if (!window._bpBudget) return;
+        var key = $(this).data('sort');
+        var st = window._bpBudget;
+        if (st.sort.key === key) { st.sort.dir = (st.sort.dir === 'asc') ? 'desc' : 'asc'; }
+        else { st.sort.key = key; st.sort.dir = 'asc'; }
+        window.renderBpBudget();
     });
 
     /* Tab Information: Notes & Approver Notes disembunyikan default (jarang diisi) */
@@ -1190,6 +1378,125 @@ $(function () {
         var target = $(this).data('target');
         $(this).find('.bp-req-caret').toggleClass('rotated');
         $('#bpRequestBody .' + target).toggle();
+    });
+    /* Cost: collapse/expand grup CoA di dalam rincian CR */
+    $(document).on('click', '#bpRequestBody .bp-coa-grp', function () {
+        var target = $(this).data('target');
+        $(this).find('.bp-coa-caret').toggleClass('rotated');
+        $(this).closest('table').find('tr.' + target).toggle();
+    });
+
+    /* Tab Cost: renderer (grup CR -> CoA -> leaf), dipanggil ulang saat
+       pencarian/sortir berubah. */
+    window.renderBpCost = function () {
+        var st = window._bpCost; if (!st) return;
+        var moneyFmt = function (v) { return Math.round(v || 0).toLocaleString('id-ID'); };
+        var q = (st.search || '').toLowerCase().trim();
+
+        var rows = st.rows.filter(function (cr) {
+            if (!q) return true;
+            var hay = (cr.code || '') + ' ' + (cr.description || '') + ' ' + (cr.type || '') + ' ' + (cr.beneficiary || '');
+            (cr.coa_groups || []).forEach(function (g) {
+                hay += ' ' + (g.account || '');
+                (g.rows || []).forEach(function (r) { hay += ' ' + (r.sub_coa || '') + ' ' + (r.description || ''); });
+            });
+            return hay.toLowerCase().indexOf(q) !== -1;
+        });
+
+        var sk = st.sort.key, dir = st.sort.dir === 'desc' ? -1 : 1;
+        rows = rows.slice().sort(function (a, b) {
+            if (sk === 'description' || sk === 'status') {
+                var sa = (a[sk] || '').toLowerCase(), sb = (b[sk] || '').toLowerCase();
+                return sa < sb ? -1 * dir : (sa > sb ? 1 * dir : 0);
+            }
+            var va = (sk === 'date') ? a._idx : (a[sk] || 0);
+            var vb = (sk === 'date') ? b._idx : (b[sk] || 0);
+            return (va - vb) * dir;
+        });
+
+        var html = '', tReq = 0, tReal = 0, tRef = 0, tClaim = 0, tEff = 0;
+        if (rows.length) {
+            rows.forEach(function (cr) {
+                tReq += cr.amount || 0; tReal += cr.realization || 0;
+                tRef += cr.refund || 0; tClaim += cr.expense_claim || 0; tEff += cr.effective || 0;
+                var reqClass = 'bp-req-' + cr._idx;
+                html += '<tr class="bp-req-row" data-target="' + reqClass + '">' +
+                    '<td><i class="fas fa-chevron-right bp-req-caret"></i></td>' +
+                    '<td><div style="font-weight:600;">' + (cr.description || '-') + '</div>' +
+                        '<small class="text-muted">' + (cr.code || '-') + ' &bull; ' + (cr.type || '-') + ' &bull; ' + (cr.beneficiary || '-') + '</small></td>' +
+                    '<td class="text-right text-nowrap"><strong>' + cr.amount_formatted + '</strong></td>' +
+                    '<td class="text-right text-nowrap">' + ((cr.refund || 0) > 0 ? cr.refund_formatted : '<span class="text-muted">-</span>') + '</td>' +
+                    '<td class="text-right text-nowrap">' + ((cr.expense_claim || 0) > 0 ? cr.expense_claim_formatted : '<span class="text-muted">-</span>') + '</td>' +
+                    '<td class="text-right text-nowrap"><strong>' + cr.effective_formatted + '</strong></td>' +
+                    '<td class="text-nowrap">' + cr.date + '</td>' +
+                    '<td><span class="badge badge-' + (st.statusColors[cr.status] || 'secondary') + ' px-2 py-1" style="font-size:10px;">' + (cr.status_label || cr.status) + '</span></td>' +
+                '</tr>';
+
+                var inner = '';
+                (cr.coa_groups || []).forEach(function (g, gi) {
+                    var leafClass = 'bp-ca-leaf-' + cr._idx + '-' + gi;
+                    inner += '<tr class="bp-coa-grp" data-target="' + leafClass + '" style="cursor:pointer;">' +
+                        '<td style="font-weight:700;">' +
+                            '<i class="fas fa-chevron-right mr-2 bp-coa-caret" style="font-size:9px;transition:transform .15s;display:inline-block;"></i>' +
+                            (g.account || '-') + ' <span class="badge badge-secondary ml-1" style="font-size:8px;">' + (g.rows || []).length + '</span>' +
+                        '</td>' +
+                        '<td></td>' +
+                        '<td class="text-right text-nowrap" style="font-weight:700;">' + g.effective_formatted + '</td></tr>';
+                    (g.rows || []).forEach(function (r) {
+                        var strike = r.is_takeout ? 'text-decoration:line-through;color:var(--text-faint);' : '';
+                        var tbadge = r.is_takeout ? ' <span class="badge badge-warning" style="font-size:8px;">Takeout &middot; ' + (r.takeout_stage_label || '-') + '</span>' : '';
+                        // Sub CoA & deskripsi sering identik -> tampilkan sekali saja.
+                        var subcoa = (r.sub_coa || '').trim();
+                        var desc   = (r.description || '').trim();
+                        var label  = (subcoa && desc && subcoa.toLowerCase() === desc.toLowerCase())
+                            ? (desc || '-')
+                            : ((subcoa ? '<span class="text-muted">' + subcoa + '</span> &mdash; ' : '') + (desc || '-'));
+                        inner += '<tr class="' + leafClass + '" style="display:none;"><td class="bp-leaf" style="' + strike + '">' +
+                            label + tbadge +
+                            (r.notes ? '<div><small class="text-muted" style="text-decoration:none;">' + r.notes + '</small></div>' : '') +
+                            '</td><td class="text-right text-nowrap" style="' + strike + '">' + r.effective_formatted + '</td>' +
+                            '<td></td></tr>';
+                    });
+                });
+                if (!inner) inner = '<tr><td colspan="3" class="text-muted">No item detail.</td></tr>';
+                html += '<tr class="' + reqClass + '" style="display:none;"><td></td>' +
+                    '<td colspan="7" style="background:var(--surface-2);padding:8px 12px;">' +
+                        '<table class="table table-sm table-bordered mb-0 bp-cost-inner" style="font-size:11px;">' +
+                            '<colgroup><col><col style="width:18%;"><col style="width:18%;"></colgroup>' +
+                            '<tbody>' + inner + '</tbody></table>' +
+                    '</td></tr>';
+            });
+        } else {
+            html = '<tr><td colspan="8" class="text-center text-muted py-3">' + (q ? 'Tidak ada yang cocok.' : 'No linked Cost Request yet.') + '</td></tr>';
+        }
+        $('#bpRequestBody').html(html);
+        $('#bpRequestTotal').text(moneyFmt(tReq));
+        $('#bpRefundTotal').text(moneyFmt(tRef));
+        $('#bpClaimTotal').text(moneyFmt(tClaim));
+        $('#bpEffectiveTotal').text(moneyFmt(tEff));
+
+        // indikator arah sortir pada header
+        $('#bpPaneRequests .bp-sort').each(function () {
+            var ic = $(this).find('.bp-sort-ic');
+            if ($(this).data('sort') === st.sort.key) {
+                ic.removeClass('fa-sort fa-sort-up fa-sort-down').addClass(st.sort.dir === 'desc' ? 'fa-sort-down' : 'fa-sort-up');
+            } else {
+                ic.removeClass('fa-sort-up fa-sort-down').addClass('fa-sort');
+            }
+        });
+    };
+    $(document).on('input', '#bpCostSearch', function () {
+        if (!window._bpCost) return;
+        window._bpCost.search = $(this).val();
+        window.renderBpCost();
+    });
+    $(document).on('click', '#bpPaneRequests .bp-sort', function () {
+        if (!window._bpCost) return;
+        var key = $(this).data('sort');
+        var st = window._bpCost;
+        if (st.sort.key === key) { st.sort.dir = (st.sort.dir === 'asc') ? 'desc' : 'asc'; }
+        else { st.sort.key = key; st.sort.dir = 'asc'; }
+        window.renderBpCost();
     });
 
     /* Cash Advance BP: expand/collapse per PIC untuk lihat rincian CA-nya */
@@ -1575,9 +1882,10 @@ $(function () {
                 // budget
                 var b = s.budget || {};
                 $('#bpSumBudget').html(
-                    line('Budget Value', b.budget_value_formatted || '0', 'var(--info)') +
+                    line('Budget', b.budget_value_formatted || '0', 'var(--info)') +
                     line('Request', b.request_formatted || '0') +
                     line('Refund', b.refund_formatted || '0', 'var(--warning)') +
+                    line('Expense Claim', b.expense_claim_formatted || '0', 'var(--danger)') +
                     line('Actual Used', b.actual_used_formatted || '0', 'var(--success)', true)
                 );
             })();
@@ -1644,182 +1952,39 @@ $(function () {
                 $('#bpCaValueTotal').text(Math.round(ca.total_value || 0).toLocaleString('id-ID'));
             })();
 
-            /* Tab Detail — pivot: grup per Account (expand/collapse), summary per grup.
-            | Deskripsi | Harga Satuan | Qty (gabung unit) | Budget | Terpakai | Saving | Notes */
-            $('#bpDetailCount').text(d.details.length);
-            var detHtml = '', totalBudget = 0, totalUsed = 0, totalRemaining = 0;
-            var moneyFmt = function (v) { return Math.round(v).toLocaleString('id-ID'); };
-
-            // Kelompokkan per Account, urutan grup alfabetis (urutan item di dalam grup tetap sesuai input asli)
-            var groups = {}, groupOrder = [];
-            (d.details || []).forEach(function (det) {
-                var acc = det.account || '-';
-                if (!groups[acc]) { groups[acc] = []; groupOrder.push(acc); }
-                groups[acc].push(det);
-            });
-            groupOrder.sort(function (a, b) { return a.localeCompare(b); });
-
-            var NOB_RED = 'var(--danger)', NOB_YELLOW = 'var(--warning)', OK_GREEN = 'var(--success)';
-            var nobBadge = '<span class="badge badge-danger ml-1" style="font-size:9px;">NOB</span>';
-
-            if (groupOrder.length) {
-                groupOrder.forEach(function (acc, gi) {
-                    var items = groups[acc];
-                    var gBudget = 0, gUsed = 0, gRemaining = 0;
-                    var anyItemNob = false;
-                    items.forEach(function (det) {
-                        gBudget += det.total; gUsed += det.used; gRemaining += det.remaining;
-                        if (det.used > det.total) anyItemNob = true;
-                    });
-                    totalBudget += gBudget; totalUsed += gUsed; totalRemaining += gRemaining;
-
-                    var groupClass = 'bp-grp-' + gi;
-                    var isNobCategoryFull = gUsed > gBudget;
-                    var isNobCategoryPartial = !isNobCategoryFull && anyItemNob;
-                    var gColor = isNobCategoryFull ? NOB_RED : (isNobCategoryPartial ? NOB_YELLOW : (gRemaining >= 0 ? OK_GREEN : NOB_RED));
-                    var gTextColor = isNobCategoryFull ? NOB_RED : (isNobCategoryPartial ? NOB_YELLOW : '');
-
-                    detHtml += '<tr class="bp-group-row" data-target="' + groupClass + '" style="cursor:pointer;">' +
-                        '<td colspan="3" style="font-weight:700;' + (gTextColor ? 'color:' + gTextColor + ';' : '') + '">' +
-                            '<i class="fas fa-chevron-right mr-2 bp-caret" style="font-size:10px;transition:transform .15s;display:inline-block;"></i>' +
-                            acc + ' <span class="badge badge-secondary ml-1" style="font-size:9px;">' + items.length + '</span>' +
-                            (isNobCategoryFull ? nobBadge : '') +
-                            ' <span class="bp-crctrl" style="display:none;margin-left:10px;">' +
-                                '<button type="button" class="btn btn-outline-secondary bp-cr-expand-all" data-group="' + groupClass + '" style="font-size:9px;padding:1px 7px;">Expand CR</button> ' +
-                                '<button type="button" class="btn btn-outline-secondary bp-cr-collapse-all" data-group="' + groupClass + '" style="font-size:9px;padding:1px 7px;">Collapse CR</button>' +
-                            '</span>' +
-                        '</td>' +
-                        '<td class="text-right" style="font-weight:700;' + (gTextColor ? 'color:' + gTextColor + ';' : '') + '">' + moneyFmt(gBudget) + '</td>' +
-                        '<td class="text-right" style="font-weight:700;' + (gTextColor ? 'color:' + gTextColor + ';' : '') + '">' + moneyFmt(gUsed) + '</td>' +
-                        '<td class="text-right" style="font-weight:700;color:' + gColor + ';">' + moneyFmt(gRemaining) + '</td>' +
-                    '</tr>';
-
-                    items.forEach(function (det, ii) {
-                        var isNobItem = det.used > det.total;
-                        var remColor = isNobItem ? NOB_RED : (det.remaining >= 0 ? OK_GREEN : NOB_RED);
-                        var rowColor = isNobItem ? 'color:' + NOB_RED + ';' : '';
-                        var qtyUnit = det.qty + (det.unit ? ' ' + det.unit : '');
-                        var crDetails = det.cr_details || [];
-                        var crBlockClass = groupClass + '-cr-' + ii;
-
-                        var crToggleBtn = crDetails.length
-                            ? '<button type="button" class="btn btn-outline-secondary bp-cr-toggle" data-target="' + crBlockClass + '-row" style="font-size:10px;padding:2px 8px;white-space:nowrap;">' +
-                                crDetails.length + ' CR <i class="fas fa-chevron-down ml-1"></i></button>'
-                            : '';
-
-                        detHtml += '<tr class="bp-group-child ' + groupClass + '" style="display:none;' + rowColor + '">' +
-                            '<td class="bp-indent">' +
-                                '<div class="d-flex justify-content-between align-items-center" style="gap:8px;">' +
-                                    '<span>' + (det.deskripsi || '-') + (isNobItem ? nobBadge : '') + '</span>' +
-                                    crToggleBtn +
-                                '</div>' +
-                            '</td>' +
-                            '<td class="text-right">' + det.amount_formatted + '</td>' +
-                            '<td class="text-center">' + qtyUnit + '</td>' +
-                            '<td class="text-right"><strong>' + det.total_formatted + '</strong></td>' +
-                            '<td class="text-right">' + det.used_formatted + '</td>' +
-                            '<td class="text-right" style="color:' + remColor + ';">' + det.remaining_formatted + '</td>' +
-                        '</tr>';
-
-                        if (crDetails.length) {
-                            var crRows = crDetails.map(function (cr) {
-                                var viewBtn = cr.cr_id
-                                    ? '<a href="/budget-request?open=' + cr.cr_id + '" target="_blank" class="btn btn-info" style="padding:1px 6px;font-size:10px;" title="View CR Detail"><i class="fas fa-eye"></i></a>'
-                                    : '';
-                                return '<tr>' +
-                                    '<td class="text-nowrap">' + cr.cr_date_formatted + '</td>' +
-                                    '<td>' + (cr.notes || '-') + '</td>' +
-                                    '<td class="text-nowrap">' + cr.beneficiary + '</td>' +
-                                    '<td class="text-right text-nowrap">' + cr.unit_price_formatted + '</td>' +
-                                    '<td class="text-center text-nowrap">' + cr.qty + '</td>' +
-                                    '<td class="text-right text-nowrap"><strong>' + cr.amount_formatted + '</strong></td>' +
-                                    '<td class="text-center text-nowrap">' + viewBtn + '</td>' +
-                                '</tr>';
-                            }).join('');
-                            var crTableHtml = '<table class="table table-sm table-bordered mb-0" style="font-size:11px;">' +
-                                '<thead style="background:var(--surface-2);"><tr>' +
-                                    '<th scope="col" class="text-nowrap" style="width:1%;">Date</th><th scope="col">Description</th><th scope="col" class="text-nowrap" style="width:1%;">Beneficiary</th>' +
-                                    '<th scope="col" class="text-right text-nowrap" style="width:1%;">Price</th><th scope="col" class="text-center text-nowrap" style="width:1%;">Qty</th>' +
-                                    '<th scope="col" class="text-right text-nowrap" style="width:1%;">Total</th><th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>' +
-                                '</tr></thead>' +
-                                '<tbody>' + crRows + '</tbody>' +
-                            '</table>';
-
-                            detHtml += '<tr class="' + crBlockClass + '-row ' + groupClass + '-crall" style="display:none;">' +
-                                '<td colspan="6" style="background:var(--surface-2);padding:10px 14px;">' + crTableHtml + '</td>' +
-                            '</tr>';
-                        }
-                    });
-                });
-            } else {
-                detHtml = '<tr><td colspan="6" class="text-center text-muted py-3">No detail yet.</td></tr>';
-            }
-            $('#bpDetailBody').html(detHtml);
-            $('#bpDetailTotal').text(moneyFmt(totalBudget));
-            $('#bpActualTotal').text(moneyFmt(totalUsed));
-            var remTotalColor = totalRemaining >= 0 ? 'var(--success)' : 'var(--danger)';
-            $('#bpGapTotal').html('<span style="color:' + remTotalColor + ';">' + moneyFmt(totalRemaining) + '</span>');
-
-            /* Tab Request — daftar Cost Request terhubung, expand/collapse per baris untuk rincian sub-item */
-            var crStatusColors = {
-                'DRAFT':'secondary','SUBMITTED':'warning','APPROVED':'info',
-                'VERIFIED':'primary','QUEUED':'warning','PAID':'success',
-                'REALIZED':'success','CLOSED':'dark','REJECTED':'danger'
+            /* Tab Budget — pivot grup per Account, expand/collapse + pencarian +
+               sortir grup. State di window agar handler bisa re-render. */
+            $('#bpDetailCount').text((d.details || []).length);
+            $('#bpExportBudgetBtn').attr('href', '/budget-plan/' + d.id + '/export-budget');
+            $('#bpBudgetSearch').val('');
+            window._bpBudget = {
+                rows: d.details || [],
+                sort: { key: 'account', dir: 'asc' },
+                search: ''
             };
-            $('#bpRequestCount').text(d.requests.length);
-            var reqHtml = '', reqTotalAmount = 0, reqTotalRealization = 0, reqTotalRefund = 0, reqTotalClaim = 0;
-            if (d.requests.length) {
-                d.requests.forEach(function (cr, ri) {
-                    // Refund mengikuti nilai dari backend (BudgetRequest::refundAmount),
-                    // yang sudah nyata begitu settlement diisi — bukan digerbang status.
-                    var refundVal = cr.refund || 0;
-                    reqTotalAmount += cr.amount || 0;
-                    reqTotalRealization += cr.realization || 0;
-                    reqTotalRefund += refundVal;
-                    reqTotalClaim += cr.expense_claim || 0;
-                    var reqClass = 'bp-req-' + ri;
-                    reqHtml += '<tr class="bp-req-row" data-target="' + reqClass + '">' +
-                        '<td><i class="fas fa-chevron-right bp-req-caret"></i></td>' +
-                        '<td>' +
-                            '<div style="font-weight:600;">' + cr.description + '</div>' +
-                            '<small class="text-muted">' + (cr.applicant || '-') + ' &bull; ' + (cr.type || '-') + '</small>' +
-                        '</td>' +
-                        '<td class="text-right text-nowrap">' +
-                            '<strong>' + cr.amount_formatted + '</strong>' +
-                            '<div><small class="text-muted">' + (cr.beneficiary || '-') + '</small></div>' +
-                        '</td>' +
-                        '<td class="text-right text-nowrap">' + cr.realization_formatted + '</td>' +
-                        '<td class="text-right text-nowrap">' + (refundVal > 0 ? cr.refund_formatted : '<span class="text-muted">-</span>') + '</td>' +
-                        '<td class="text-right text-nowrap">' + ((cr.expense_claim || 0) > 0 ? cr.expense_claim_formatted : '<span class="text-muted">-</span>') + '</td>' +
-                        '<td class="text-nowrap">' + cr.date + '</td>' +
-                        '<td><span class="badge badge-' + (crStatusColors[cr.status] || 'secondary') + ' px-2 py-1" style="font-size:10px;">' + cr.status + '</span></td>' +
-                    '</tr>';
+            window.renderBpBudget();
 
-                    if (cr.details && cr.details.length) {
-                        cr.details.forEach(function (det) {
-                            var strike = det.is_takeout ? 'text-decoration:line-through;color:var(--text-faint);' : '';
-                            var badge  = det.is_takeout ? ' <span class="badge badge-warning" style="font-size:8px;">Takeout &middot; ' + (det.takeout_stage_label || '-') + '</span>' : '';
-                            reqHtml += '<tr class="' + reqClass + '" style="display:none;">' +
-                                '<td></td>' +
-                                '<td class="bp-req-indent" colspan="2" style="' + strike + '">' + det.description + badge +
-                                    (det.notes ? '<div><small class="text-muted" style="text-decoration:none;">' + det.notes + '</small></div>' : '') +
-                                '</td>' +
-                                '<td class="text-right" colspan="4" style="' + strike + '">' + det.qty + ' &times; ' + det.amount_formatted + ' = <strong>' + det.total_formatted + '</strong></td>' +
-                                '<td></td>' +
-                            '</tr>';
-                        });
-                    } else {
-                        reqHtml += '<tr class="' + reqClass + '" style="display:none;"><td></td><td colspan="7" class="text-muted bp-req-indent">No item detail.</td></tr>';
-                    }
-                });
-            } else {
-                reqHtml = '<tr><td colspan="8" class="text-center text-muted py-3">No linked Cost Request yet.</td></tr>';
-            }
-            $('#bpRequestBody').html(reqHtml);
-            $('#bpRequestTotal').text(reqTotalAmount.toLocaleString('id-ID'));
-            $('#bpRealizationTotal').text(reqTotalRealization.toLocaleString('id-ID'));
-            $('#bpRefundTotal').text(reqTotalRefund.toLocaleString('id-ID'));
-            $('#bpClaimTotal').text(reqTotalClaim.toLocaleString('id-ID'));
+            /* Tab Cost — daftar Cost Request, grup CR -> CoA -> Sub CoA/Detail
+               dengan effective cost. Mendukung pencarian & sortir kolom; state
+               disimpan di window agar handler search/sort bisa re-render. */
+            var crStatusColors = {
+                'DRAFT':'secondary','SUBMITTED':'warning','CHECKED':'info','APPROVED':'info',
+                'VERIFIED':'primary','QUEUED':'warning','PAID':'success',
+                'REALIZED':'success','CLOSED':'dark','REJECTED':'danger','CANCELLED':'dark'
+            };
+            $('#bpRequestCount').text((d.requests || []).length);
+            $('#bpExportCostBtn').attr('href', '/budget-plan/' + d.id + '/export-cost');
+
+            // Index asli = urutan backend (tanggal terbaru dulu), dasar sort 'date'.
+            (d.requests || []).forEach(function (cr, i) { cr._idx = i; });
+            window._bpCost = {
+                rows: d.requests || [],
+                statusColors: crStatusColors,
+                sort: { key: 'date', dir: 'asc' },
+                search: ''
+            };
+            $('#bpCostSearch').val('');
+            window.renderBpCost();
 
             /* Tab Attachment — thumbnail gambar (medium), file lain pakai ikon; klik gambar buka carousel viewer */
             $('#bpAttCount').text(d.attachments.length);

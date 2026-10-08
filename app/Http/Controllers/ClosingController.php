@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Closing;
+use App\Models\UserActivityLog;
 use App\Services\ClosingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -118,6 +119,8 @@ class ClosingController extends Controller
             $closing->recalculateTotals();
         });
 
+        UserActivityLog::record('closing', 'process', 'Menyusun rekap closing periode ' . $period, $closing, null, $period);
+
         return redirect()->route('closing.index', ['periode' => $period])
             ->with('success', 'Rekap periode ' . $period . ' disusun: ' . number_format($closing->total_transaction) . ' transaksi.');
     }
@@ -147,6 +150,8 @@ class ClosingController extends Controller
             'notes'     => $request->input('notes', $closing->notes),
         ]);
 
+        UserActivityLog::record('closing', 'close', 'Menutup periode ' . $closing->period, $closing, null, $closing->period);
+
         return back()->with('success', 'Periode ' . $closing->period . ' ditutup.');
     }
 
@@ -166,6 +171,8 @@ class ClosingController extends Controller
             'reopened_at'   => now(),
             'reopen_reason' => $request->reopen_reason,
         ]);
+
+        UserActivityLog::record('closing', 'process', 'Membuka kembali periode ' . $closing->period, $closing, $request->reason ?? $request->notes, $closing->period);
 
         return back()->with('success', 'Periode ' . $closing->period . ' dibuka kembali.');
     }

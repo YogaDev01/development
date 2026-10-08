@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 
 use App\Models\Cluster;
 use App\Models\ClusterGroup;
+use App\Models\UserActivityLog;
 
 class ClusterController extends Controller
 {
@@ -141,13 +142,15 @@ class ClusterController extends Controller
             'status'   => 'required|in:ACTIVE,INACTIVE',
         ]);
 
-        Cluster::create([
+        $cluster = Cluster::create([
             'code'     => $code,
             'name'     => strtoupper(trim($request->name)),
             'group_id' => $request->group_id,
             'status'   => $request->status,
             'input_by' => Auth::id(),
         ]);
+
+        UserActivityLog::record('master_data', 'create', 'Menambah Cluster ' . $cluster->name . ' (' . $code . ')', $cluster);
 
         return redirect('/cluster')
             ->with('success', 'Project berhasil ditambahkan dengan kode ' . $code);
@@ -201,6 +204,8 @@ class ClusterController extends Controller
             'status'   => $request->status,
         ]);
 
+        UserActivityLog::record('master_data', 'update', 'Mengubah Cluster ' . $cluster->name, $cluster);
+
         return redirect('/cluster')
             ->with('success', 'Project berhasil diupdate');
     }
@@ -226,7 +231,10 @@ class ClusterController extends Controller
             return back()->with('error', 'Cluster tidak bisa dihapus karena sudah dipakai pada Cost Request.');
         }
 
+        $clusterName = $cluster->name;
         $cluster->delete();
+
+        UserActivityLog::record('master_data', 'delete', 'Menghapus Cluster ' . $clusterName);
 
         return redirect('/cluster')
             ->with('success', 'Project berhasil dihapus');

@@ -12,6 +12,7 @@ use App\Models\Employee;
 use App\Models\BudgetPlan;
 use App\Models\Project;
 use App\Models\User;
+use App\Models\UserActivityLog;
 use App\Services\NotifyService;
 
 class PayrollRunController extends Controller
@@ -107,7 +108,9 @@ class PayrollRunController extends Controller
 
         $validated = $this->validateRun($request);
 
-        DB::transaction(function () use ($request, $validated) {
+        $run = null;
+
+        DB::transaction(function () use ($request, $validated, &$run) {
             $run = PayrollRun::create([
                 'code'           => PayrollRun::generateCode(),
                 'period'         => $validated['period'],
@@ -122,6 +125,8 @@ class PayrollRunController extends Controller
             $this->syncLines($run, $request);
             $run->recalcTotal();
         });
+
+        UserActivityLog::record('payroll', 'create', 'Membuat Payroll Run #' . ($run->code ?? ''), $run);
 
         return redirect('/payroll-run')
             ->with('success', 'Payroll run berhasil dibuat.');
@@ -203,6 +208,8 @@ class PayrollRunController extends Controller
             $run->recalcTotal();
         });
 
+        UserActivityLog::record('payroll', 'update', 'Memperbarui Payroll Run #' . $run->code, $run);
+
         return redirect('/payroll-run')
             ->with('success', 'Payroll run berhasil diupdate.');
     }
@@ -249,6 +256,8 @@ class PayrollRunController extends Controller
             'workflow'
         );
 
+        UserActivityLog::record('payroll', 'submit', 'Mengajukan Payroll Run #' . $run->code, $run);
+
         return redirect('/payroll-run/' . $run->id)
             ->with('success', 'Payroll berhasil disubmit. Menunggu verifikasi Finance Manager.');
     }
@@ -288,6 +297,8 @@ class PayrollRunController extends Controller
             'workflow'
         );
 
+        UserActivityLog::record('payroll', 'verify', 'Memverifikasi Payroll Run #' . $run->code, $run);
+
         return redirect('/payroll-run/' . $run->id)
             ->with('success', 'Payroll terverifikasi. Menunggu persetujuan CEO.');
     }
@@ -319,6 +330,8 @@ class PayrollRunController extends Controller
                 'workflow'
             );
         }
+
+        UserActivityLog::record('payroll', 'approve', 'Menyetujui Payroll Run #' . $run->code, $run);
 
         // Catatan: pembentukan batch Daily Transaction dikerjakan di tahap 5d.
         return redirect('/payroll-run/' . $run->id)
@@ -354,6 +367,8 @@ class PayrollRunController extends Controller
             );
         }
 
+        UserActivityLog::record('payroll', 'reject', 'Menolak Payroll Run #' . $run->code, $run, $request->reject_notes);
+
         return redirect('/payroll-run/' . $run->id)
             ->with('success', 'Payroll ditolak.');
     }
@@ -377,6 +392,8 @@ class PayrollRunController extends Controller
             'verified_by'  => null, 'verified_at'  => null,
             'approved_by'  => null, 'approved_at'  => null,
         ]);
+
+        UserActivityLog::record('payroll', 'revise', 'Mengembalikan Payroll Run #' . $run->code . ' ke DRAFT', $run);
 
         return redirect('/payroll-run/' . $run->id)
             ->with('success', 'Payroll dikembalikan ke DRAFT untuk diperbaiki.');
@@ -474,6 +491,8 @@ class PayrollRunController extends Controller
 
         $run->update(['status' => 'PAID']);
 
+        UserActivityLog::record('payroll', 'pay', 'Menandai Payroll Run #' . $run->code . ' sudah dibayar', $run);
+
         return redirect('/payroll-run/' . $run->id)
             ->with('success', 'Payroll ditandai sudah dibayar.');
     }
@@ -491,6 +510,8 @@ class PayrollRunController extends Controller
         }
 
         $run->update(['status' => 'CLOSED']);
+
+        UserActivityLog::record('payroll', 'close', 'Menutup Payroll Run #' . $run->code, $run);
 
         return redirect('/payroll-run/' . $run->id)
             ->with('success', 'Payroll ditutup (CLOSED).');
@@ -523,8 +544,11 @@ class PayrollRunController extends Controller
                 ->with('error', 'Hanya payroll run berstatus DRAFT yang dapat dihapus.');
         }
 
+        $runCode = $run->code;
         $run->lines()->delete();
         $run->delete();
+
+        UserActivityLog::record('payroll', 'delete', 'Menghapus Payroll Run #' . $runCode);
 
         return redirect('/payroll-run')
             ->with('success', 'Payroll run berhasil dihapus.');

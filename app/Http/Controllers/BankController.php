@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Bank;
 use App\Models\Beneficiary;
+use App\Models\UserActivityLog;
 use Illuminate\Http\Request;
 
 class BankController extends Controller
@@ -47,13 +48,15 @@ class BankController extends Controller
 
         ]);
 
-        Bank::create([
+        $bank = Bank::create([
 
             'name'           => strtoupper($request->name),
             'code'           => $request->code ? strtoupper($request->code) : null,
             'default_method' => $request->default_method,
 
         ]);
+
+        UserActivityLog::record('master_data', 'create', 'Menambah Bank ' . $bank->name, $bank);
 
         return redirect('/bank')
             ->with('success', 'Bank berhasil ditambahkan');
@@ -94,6 +97,8 @@ class BankController extends Controller
 
         ]);
 
+        UserActivityLog::record('master_data', 'update', 'Mengubah Bank ' . $bank->name, $bank);
+
         return redirect('/bank')
             ->with('success', 'Bank berhasil diupdate');
     }
@@ -118,7 +123,10 @@ class BankController extends Controller
             return back()->with('error', 'Bank tidak bisa dihapus karena sudah dipakai pada Payroll.');
         }
 
+        $bankName = $bank->name;
         $bank->delete();
+
+        UserActivityLog::record('master_data', 'delete', 'Menghapus Bank ' . $bankName);
 
         return redirect('/bank')
             ->with('success', 'Bank berhasil dihapus');

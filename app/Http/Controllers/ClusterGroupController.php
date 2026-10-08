@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 
 use App\Models\ClusterGroup;
 use App\Models\Cluster;
+use App\Models\UserActivityLog;
 
 class ClusterGroupController extends Controller
 {
@@ -51,7 +52,7 @@ class ClusterGroupController extends Controller
 
         ]);
 
-        ClusterGroup::create([
+        $group = ClusterGroup::create([
 
             'code' => strtoupper($request->code),
 
@@ -60,6 +61,8 @@ class ClusterGroupController extends Controller
             'input_by' => Auth::id(),
 
         ]);
+
+        UserActivityLog::record('master_data', 'create', 'Menambah Cluster Group ' . $group->name, $group);
 
         return redirect('/groups')
             ->with('success', 'Group berhasil ditambahkan');
@@ -146,6 +149,8 @@ class ClusterGroupController extends Controller
 
         ]);
 
+        UserActivityLog::record('master_data', 'update', 'Mengubah Cluster Group ' . $group->name, $group);
+
         return redirect('/groups')
             ->with('success', 'Group berhasil diupdate');
     }
@@ -161,7 +166,10 @@ class ClusterGroupController extends Controller
             return back()->with('error', 'Group tidak bisa dihapus karena sudah memiliki cluster.');
         }
 
+        $groupName = $group->name;
         $group->delete();
+
+        UserActivityLog::record('master_data', 'delete', 'Menghapus Cluster Group ' . $groupName);
 
         return redirect('/groups')
             ->with('success', 'Group berhasil dihapus');

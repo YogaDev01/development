@@ -13,6 +13,7 @@ use App\Models\ProjectDetail;
 use App\Models\ProjectPoNumber;
 use App\Models\RequestStatusLog;
 use App\Models\User;
+use App\Services\TodoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -64,6 +65,28 @@ class TodoListController extends Controller
             $data = $this->emptyWorklistData();
             $data['loadError'] = true;
         }
+
+        // Assignment — penugasan bebas antar-user. Sumber data PERSISTEN
+        // pertama di halaman ini (section lain live-query status dokumen), jadi
+        // sengaja disusun terpisah lewat AssignmentController, bukan di
+        // buildWorklistData(), supaya tidak mengubah logika worklist yang ada.
+        try {
+            [$assignmentsAssignedToMe, $assignmentsCreatedByMe] =
+                app(AssignmentController::class)->listsFor($user);
+            $data['assignmentAssignees'] = User::where('status', 'ACTIVE')
+                ->where('id', '!=', $user->id)
+                ->orderBy('name')
+                ->get(['id', 'name']);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('TodoListController::index gagal memuat assignment', [
+                'user_id' => $user->id, 'error' => $e->getMessage(),
+            ]);
+            $assignmentsAssignedToMe = collect();
+            $assignmentsCreatedByMe  = collect();
+            $data['assignmentAssignees'] = collect();
+        }
+        $data['assignmentsAssignedToMe'] = $assignmentsAssignedToMe;
+        $data['assignmentsCreatedByMe']  = $assignmentsCreatedByMe;
 
         return view('todo-list.index', $data);
     }
@@ -217,7 +240,8 @@ class TodoListController extends Controller
             // view _summary_task_list membaca modules/rows/moduleTotals/
             // grandTotal. Kalau beda, fallback yang mestinya menyelamatkan
             // halaman justru ikut melempar "Undefined array key".
-            'summaryTable' => ['modules' => [], 'rows' => [], 'moduleTotals' => [], 'grandTotal' => 0],
+            'summaryTable' => ['modules' => [], 'rows' => [], 'moduleTotals' => [], 'grandTotal' => 0, 'grandAvgSeconds' => null],
+            'respontimeTable' => ['modules' => [], 'rows' => [], 'moduleAvg' => []],
             'allTasks' => collect(),
         ];
     }
@@ -287,14 +311,22 @@ class TodoListController extends Controller
                 })
                 ->sortBy('aging_since')->values();
 
+            // SETTLE_REJECTED ikut daftar yang sama dengan PAID: dua-duanya
+            // menunggu pengaju mengisi/mengajukan ulang Settlement lewat form
+            // yang sama (realize.blade.php).
             $paidQuery = BudgetRequest::with(array_merge(['type', 'beneficiary', 'statusLogs'], $budgetPlanRelations))
-                ->where('status', 'PAID');
+                ->whereIn('status', ['PAID', 'SETTLE_REJECTED']);
             $this->scopeByRole($paidQuery);
             $managerPaid = $paidQuery->latest()->get()
                 ->map(function ($cr) {
                     $cr->budget_plan_label = $this->budgetPlanLabel($cr->budgetPlan);
                     $cr->customer_label    = $this->customerLabel($cr->budgetPlan);
                     $cr->po_label          = $this->poLabel($cr->budgetPlan);
+                    // Alasan reject terakhir — ditampilkan sebagai badge supaya
+                    // manager langsung tahu CR mana yang perlu direvisi.
+                    $cr->settle_reject_log = $cr->status === 'SETTLE_REJECTED'
+                        ? $cr->statusLogs->firstWhere('action_type', 'settlement_rejected')
+                        : null;
                     return $cr;
                 })
                 ->sortBy('aging_since')->values();
@@ -615,9 +647,10 @@ class TodoListController extends Controller
             : collect();
 
         /*
-         | Purchase Order — Menunggu Approval Finance (SUBMITTED -> WAITING_PO
-         | atau ACTIVE lewat ProjectController::financeApprove(), atau balik ke
-         | DRAFT lewat financeRevise()).
+         | Purchase Order — Menunggu Verifikasi Finance (SUBMITTED -> VERIFIED
+         | lewat ProjectController::verify(), atau balik ke DRAFT lewat
+         | financeRevise()). Langkah approve berikutnya (VERIFIED -> Early Start
+         | / Waiting PO / Active) ada di tangan Approver.
          |
          | Definisi "siapa yang menangani PO SUBMITTED" sudah ada di
          | TodoService::build() (dipakai widget Todo di Dashboard): role
@@ -626,12 +659,8 @@ class TodoListController extends Controller
          | halaman Todo List tidak pernah menampilkan daftar yang berbeda.
          |
          | Ini reminder + link-out, bukan approve/reject inline seperti section
-         | Cost Request — sama alasannya dengan "Menunggu Invoice Ditagih" di
-         | bawah: financeApprove() menuntut pilihan approval_type (Waiting PO
-         | vs Active) dan menolak Active kalau No. PO masih kosong, sedangkan
-         | financeRevise() mewajibkan catatan. Tidak ada satu pun aksi yang bisa
-         | diputuskan tanpa melihat isi PO-nya, jadi tombolnya membuka PO itu
-         | sendiri, tidak menyalin form approval-nya ke sini.
+         | Cost Request: keputusan verify/revise tidak bisa diambil tanpa melihat
+         | isi PO-nya, jadi tombolnya membuka PO itu sendiri.
          */
         $poSubmitted = collect();
         if ($user->hasRole(['superadmin', 'finance', 'finance_manager'])) {
@@ -795,7 +824,8 @@ class TodoListController extends Controller
             || $invoiceVerify->isNotEmpty() || $invoiceApprove->isNotEmpty() || $milestoneOverdue->isNotEmpty()
             || $collectionWaitingInvoice->isNotEmpty();
 
-        $summaryTable = $this->buildSummaryTable();
+        $summaryTable    = $this->buildSummaryTable();
+        $respontimeTable = $this->buildRespontimeTable();
 
         return compact(
             'sections', 'managerRejected', 'managerPaid',
@@ -806,7 +836,7 @@ class TodoListController extends Controller
             'treasuryBatchCreate', 'treasuryBatchGroups', 'treasuryBatchSecond', 'batchSourceFunds', 'treasuryProcess', 'treasuryReadyToPay', 'poSubmitted',
             'invoiceVerify', 'invoiceApprove', 'milestoneOverdue', 'collectionWaitingInvoice',
             'comingSoonRoles', 'totalPending', 'maxAging', 'completedToday', 'hasAnyTask', 'hasAnySection',
-            'summaryTable', 'allTasks'
+            'summaryTable', 'respontimeTable', 'allTasks'
         );
     }
 
@@ -854,6 +884,18 @@ class TodoListController extends Controller
      * ini). Modul lain dihitung global karena memang tidak punya konsep
      * access-group per PO pada tahap yang dihitung di sini.
      */
+    /**
+     * GET /todo-list/summary-partial — matrix Summary Task sebagai HTML partial.
+     * Dipakai modal lazy-load di halaman Profil. Data sama dengan modal Summary
+     * Task di halaman Todo List (buildSummaryTable()).
+     */
+    public function summaryPartial()
+    {
+        return view('todo-list._summary_task_list', [
+            'summaryTable' => $this->buildSummaryTable(),
+        ]);
+    }
+
     private function buildSummaryTable(): array
     {
         $crCount = function (string $status): int {
@@ -861,6 +903,21 @@ class TodoListController extends Controller
             $this->scopeByRole($query);
             return $query->count();
         };
+
+        /*
+         | Tautan angka Cost Request pada Summary Task.
+         |
+         | $crCount() dihitung LINTAS TIPE (Cash Advance + Cost Payment) dan
+         | TANPA batas tanggal, sementara halaman Cost Request default membuka
+         | tab Cash Advance dengan rentang bulan berjalan dan menyaring status
+         | hanya pada tab aktif. Akibatnya angka yang diklik sering mendarat di
+         | daftar kosong (datanya Cost Payment, atau di luar bulan ini).
+         |
+         | Supaya daftar yang muncul persis sejumlah angkanya: arahkan ke tab
+         | Database (memuat kedua tipe), saring lewat ?statuses= (column filter
+         | yang berlaku di tab mana pun), dan lebarkan rentang tanggalnya.
+         */
+        $crLink = fn (string $status): string => url('/budget-request?tab=db&statuses=' . $status . '&all=1');
 
         // Angka Budgeting ikut aturan visibilitas yang sama dengan antrean di
         // atas — kalau tidak, ringkasan menghitung Budget Plan yang barisnya
@@ -874,85 +931,347 @@ class TodoListController extends Controller
         $modules = ['Purchase Order', 'Budgeting', 'Cost Request', 'Treasury', 'Invoice & Cash Receipt'];
 
         /*
+         | Rata-rata waktu per tahap ("Avg Time"), kolom paling kanan — berapa
+         | lama dokumen biasanya menunggu di tahap ini sebelum di-aksi oleh
+         | role yang bersangkutan.
+         |
+         | Sumbernya status_from pada tabel log transisi: baris log dengan
+         | status_from = X berarti dokumen itu BERPINDAH KELUAR dari status X —
+         | selisihnya dengan log SEBELUMNYA pada dokumen yang sama (LAG) adalah
+         | lama dokumen itu DIAM di status X, yaitu persis tahap yang sedang
+         | dihitung jumlahnya pada baris Summary Task ini.
+         |
+         | Treasury & Invoice tidak punya tabel log transisi — dipakai pasangan
+         | kolom timestamp yang sudah ada (created_at/approved_at/paid_at,
+         | submitted_at/verified_at/approved_at) yang persis menandai tahap yang
+         | sama dengan hitungan barisnya.
+         |
+         | Tahap yang tidak punya jejak waktu yang bisa dipercaya (mis. "Ajukan
+         | Closing" Budgeting — tidak ada log saat PO/BP MULAI layak diajukan
+         | closing, hanya log SAAT diajukan) sengaja dibiarkan null → tampil
+         | "-", daripada menebak.
+         */
+        $statusFromAvg = function (string $table, string $fk) {
+            $rows = \DB::select("
+                SELECT status_from AS st, SUM(diff) AS s, COUNT(*) AS n FROM (
+                    SELECT status_from,
+                           TIMESTAMPDIFF(SECOND,
+                               LAG(created_at) OVER (PARTITION BY {$fk} ORDER BY created_at, id),
+                               created_at) AS diff
+                    FROM {$table}
+                ) t
+                WHERE diff IS NOT NULL AND diff >= 0
+                GROUP BY status_from
+            ");
+            $map = [];
+            foreach ($rows as $r) {
+                $map[$r->st] = ['sum' => (int) $r->s, 'count' => (int) $r->n];
+            }
+            return $map;
+        };
+
+        // Aggregate tunggal (bukan per status) untuk pasangan timestamp Treasury/Invoice.
+        $pairAvg = function (string $table, string $fromCol, string $toCol, string $where = '') {
+            $row = \DB::selectOne("
+                SELECT SUM(TIMESTAMPDIFF(SECOND, {$fromCol}, {$toCol})) AS s, COUNT(*) AS n
+                FROM {$table}
+                WHERE {$toCol} IS NOT NULL AND {$fromCol} IS NOT NULL
+                  AND TIMESTAMPDIFF(SECOND, {$fromCol}, {$toCol}) >= 0 {$where}
+            ");
+            return ($row && $row->n > 0) ? ['sum' => (int) $row->s, 'count' => (int) $row->n] : null;
+        };
+
+        $poAvg = $statusFromAvg('project_logs', 'project_id');
+        $bpAvg = $statusFromAvg('budget_plan_logs', 'budget_plan_id');
+        $crAvg = $statusFromAvg('request_status_logs', 'budget_request_id');
+
+        $treasuryApproveAvg = $pairAvg('daily_transactions', 'created_at', 'approved_at', "AND type = 'CASH_OUT'");
+        $treasuryPaidAvg    = $pairAvg('daily_transactions', 'approved_at', 'paid_at',    "AND type = 'CASH_OUT'");
+        $invoiceVerifyAvg   = $pairAvg('invoices', 'submitted_at', 'verified_at');
+        $invoiceApproveAvg  = $pairAvg('invoices', 'verified_at', 'approved_at');
+
+        /*
          | Katalog tahap, ditulis mengikuti urutan alur kerja perusahaan —
          | dari pembuatan dokumen, approval, pembayaran, penagihan, sampai
          | settlement & closing. Urutan baris pada tabel mengikuti urutan
          | kemunculan pertama di daftar ini.
          |
-         | [role, tahap, modul, jumlah, url]
+         | [role, tahap, modul, jumlah, url, avg(['sum'=>detik,'count'=>n]|null)]
          */
         $stages = [
             // ---- Purchase Order
-            ['Head',            'Submit (Draft)',          'Purchase Order', Project::where('status', 'DRAFT')->count(),        url('/project?status=DRAFT')],
-            ['Finance',         'Approval Finance',        'Purchase Order', Project::where('status', 'SUBMITTED')->count(),    url('/project?status=SUBMITTED')],
-            ['Finance',         'Aktivasi PO',             'Purchase Order', Project::where('status', 'WAITING_PO')->count(),   url('/project?status=WAITING_PO')],
+            ['Head',            'Submit (Draft)',          'Purchase Order', Project::where('status', 'DRAFT')->count(),        url('/project?status=DRAFT'),      $poAvg['DRAFT'] ?? null],
+            ['Finance',         'Approval Finance',        'Purchase Order', Project::where('status', 'SUBMITTED')->count(),    url('/project?status=SUBMITTED'),  $poAvg['SUBMITTED'] ?? null],
+            ['Finance',         'Aktivasi PO',             'Purchase Order', Project::where('status', 'WAITING_PO')->count(),   url('/project?status=WAITING_PO'), $poAvg['WAITING_PO'] ?? null],
 
             // ---- Budgeting
-            ['Manager',         'Submit (Draft)',          'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'DRAFT')),     url('/budget-plan')],
-            ['Head',            'Approval Head',           'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'SUBMITTED')), url('/budget-plan')],
-            ['Cost Control',    'Verifikasi Cost Control', 'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'CHECKED')),   url('/budget-plan')],
-            ['CEO',             'Approval CEO',            'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'VERIFIED')),  url('/budget-plan')],
+            ['Manager',         'Submit (Draft)',          'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'DRAFT')),     url('/budget-plan'), $bpAvg['DRAFT'] ?? null],
+            ['Head',            'Approval Head',           'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'SUBMITTED')), url('/budget-plan'), $bpAvg['SUBMITTED'] ?? null],
+            ['Cost Control',    'Verifikasi Cost Control', 'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'CHECKED')),   url('/budget-plan'), $bpAvg['CHECKED'] ?? null],
+            ['CEO',             'Approval CEO',            'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'VERIFIED')),  url('/budget-plan'), $bpAvg['VERIFIED'] ?? null],
 
             // ---- Cost Request
-            ['Manager',         'Submit (Draft)',          'Cost Request',   $crCount('DRAFT'),     url('/budget-request?status=DRAFT')],
-            ['Head',            'Approval Head',           'Cost Request',   $crCount('SUBMITTED'), url('/budget-request?status=SUBMITTED')],
-            ['Cost Control',    'Verifikasi Cost Control', 'Cost Request',   $crCount('CHECKED'),   url('/budget-request?status=CHECKED')],
-            ['CEO',             'Approval CEO',            'Cost Request',   $crCount('VERIFIED'),  url('/budget-request?status=VERIFIED')],
+            ['Manager',         'Submit (Draft)',          'Cost Request',   $crCount('DRAFT'),     $crLink('DRAFT'),     $crAvg['DRAFT'] ?? null],
+            ['Head',            'Approval Head',           'Cost Request',   $crCount('SUBMITTED'), $crLink('SUBMITTED'), $crAvg['SUBMITTED'] ?? null],
+            ['Cost Control',    'Verifikasi Cost Control', 'Cost Request',   $crCount('CHECKED'),   $crLink('CHECKED'),   $crAvg['CHECKED'] ?? null],
+            ['CEO',             'Approval CEO',            'Cost Request',   $crCount('VERIFIED'),  $crLink('VERIFIED'),  $crAvg['VERIFIED'] ?? null],
 
             // ---- Treasury (pembayaran CR yang sudah lolos approval)
-            ['Treasury',        'Buat Batch Pembayaran',   'Treasury',       $crCount('APPROVED'),  url('/budget-request?status=APPROVED')],
-            ['CEO',             'Approval Batch',          'Treasury',       DailyTransaction::where('status', 'PENDING_APPROVER')->where('type', 'CASH_OUT')->count(), url('/daily-transaction')],
-            ['Treasury',        'Tandai Paid',             'Treasury',       DailyTransaction::where('status', 'DONE')->where('type', 'CASH_OUT')->count(),             url('/daily-transaction')],
+            ['Treasury',        'Buat Batch Pembayaran',   'Treasury',       $crCount('APPROVED'),  $crLink('APPROVED'),  $crAvg['APPROVED'] ?? null],
+            ['CEO',             'Approval Batch',          'Treasury',       DailyTransaction::where('status', 'PENDING_APPROVER')->where('type', 'CASH_OUT')->count(), url('/daily-transaction'), $treasuryApproveAvg],
+            ['Treasury',        'Tandai Paid',             'Treasury',       DailyTransaction::where('status', 'DONE')->where('type', 'CASH_OUT')->count(),             url('/daily-transaction'), $treasuryPaidAvg],
 
             // ---- Invoice & Cash Receipt
-            ['Collection',      'Buat Invoice',            'Invoice & Cash Receipt', ProjectPoNumber::whereIn('status', ['PARTIAL', 'BAST_SUBMITTED'])->count(), url('/invoice-cash-receipt')],
-            ['Finance Manager', 'Verifikasi Invoice',      'Invoice & Cash Receipt', Invoice::where('status', 'SUBMITTED')->count(), url('/invoice-cash-receipt?status=SUBMITTED')],
-            ['Finance Manager', 'Approval Invoice',        'Invoice & Cash Receipt', Invoice::where('status', 'VERIFIED')->count(),  url('/invoice-cash-receipt?status=VERIFIED')],
-            ['Collection',      'Catat Pembayaran',        'Invoice & Cash Receipt', Invoice::whereIn('status', Invoice::UNPAID_STATUSES)->count(), url('/invoice-cash-receipt?statuses=' . implode(',', Invoice::UNPAID_STATUSES))],
+            ['Collection',      'Buat Invoice',            'Invoice & Cash Receipt', ProjectPoNumber::whereIn('status', ['PARTIAL', 'BAST_SUBMITTED'])->count(), url('/invoice-cash-receipt'), null],
+            ['Finance Manager', 'Verifikasi Invoice',      'Invoice & Cash Receipt', Invoice::where('status', 'SUBMITTED')->count(), url('/invoice-cash-receipt?status=SUBMITTED'), $invoiceVerifyAvg],
+            ['Finance Manager', 'Approval Invoice',        'Invoice & Cash Receipt', Invoice::where('status', 'VERIFIED')->count(),  url('/invoice-cash-receipt?status=VERIFIED'),  $invoiceApproveAvg],
+            ['Collection',      'Catat Pembayaran',        'Invoice & Cash Receipt', Invoice::whereIn('status', Invoice::UNPAID_STATUSES)->count(), url('/invoice-cash-receipt?statuses=' . implode(',', Invoice::UNPAID_STATUSES)), null],
 
             // ---- Settlement (Cost Request) & Closing
-            ['Manager',         'Settlement',              'Cost Request',   $crCount('PAID'),            url('/budget-request?status=PAID')],
-            ['Head',            'Settlement Check',        'Cost Request',   $crCount('REALIZED'),        url('/budget-request?status=REALIZED')],
-            ['Cost Control',    'Settlement Verify',       'Cost Request',   $crCount('SETTLE_CHECKED'),  url('/budget-request?status=SETTLE_CHECKED')],
-            ['Finance Manager', 'Settlement Close',        'Cost Request',   $crCount('SETTLE_VERIFIED'), url('/budget-request?status=SETTLE_VERIFIED')],
+            ['Manager',         'Settlement',              'Cost Request',   $crCount('PAID'),            $crLink('PAID'),            $crAvg['PAID'] ?? null],
+            ['Manager',         'Settlement Ditolak',      'Cost Request',   $crCount('SETTLE_REJECTED'), $crLink('SETTLE_REJECTED'), $crAvg['SETTLE_REJECTED'] ?? null],
+            ['Head',            'Settlement Check',        'Cost Request',   $crCount('REALIZED'),        $crLink('REALIZED'),        $crAvg['REALIZED'] ?? null],
+            ['Cost Control',    'Settlement Verify',       'Cost Request',   $crCount('SETTLE_CHECKED'),  $crLink('SETTLE_CHECKED'),  $crAvg['SETTLE_CHECKED'] ?? null],
+            ['Finance Manager', 'Settlement Close',        'Cost Request',   $crCount('SETTLE_VERIFIED'), $crLink('SETTLE_VERIFIED'), $crAvg['SETTLE_VERIFIED'] ?? null],
 
-            ['Head',            'Submit Closing',          'Purchase Order', Project::where('status', 'PAID')->count(),     url('/project?status=PAID')],
-            ['Finance',         'Verifikasi Closing',      'Purchase Order', Project::where('status', 'CLOSING')->count(),  url('/project?status=CLOSING')],
-            ['Manager',         'Ajukan Closing',          'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'CLOSING')->whereNull('closing_submitted_at')),    url('/budget-plan')],
-            ['Finance',         'Verifikasi Closing',      'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'CLOSING')->whereNotNull('closing_submitted_at')), url('/budget-plan')],
+            ['Head',            'Submit Closing',          'Purchase Order', Project::where('status', 'PAID')->count(),     url('/project?status=PAID'),    $poAvg['PAID'] ?? null],
+            ['Finance',         'Verifikasi Closing',      'Purchase Order', Project::where('status', 'CLOSING')->count(),  url('/project?status=CLOSING'), $poAvg['CLOSING'] ?? null],
+            ['Manager',         'Ajukan Closing',          'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'CLOSING')->whereNull('closing_submitted_at')),    url('/budget-plan'), null],
+            ['Finance',         'Verifikasi Closing',      'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'CLOSING')->whereNotNull('closing_submitted_at')), url('/budget-plan'), $bpAvg['CLOSING'] ?? null],
         ];
 
         $rows = [];
-        foreach ($stages as [$role, $label, $module, $count, $url]) {
+        foreach ($stages as [$role, $label, $module, $count, $url, $avg]) {
             $key = $role . '|' . $label;
 
             if (!isset($rows[$key])) {
                 $rows[$key] = [
-                    'role'   => $role,
-                    'label'  => $label,
-                    'cells'  => array_fill_keys($modules, null),
-                    'total'  => 0,
+                    'role'     => $role,
+                    'label'    => $label,
+                    'cells'    => array_fill_keys($modules, null),
+                    'total'    => 0,
+                    'avg_sum'   => 0,
+                    'avg_count' => 0,
                 ];
             }
 
-            $rows[$key]['cells'][$module] = ['count' => (int) $count, 'url' => $url];
+            // avg_sum/avg_count ikut disimpan PER SEL (bukan cuma di-total ke level
+            // baris) supaya filter Modul di sisi klien bisa menghitung ulang rata-
+            // rata tertimbang hanya dari modul yang sedang terlihat — sama seperti
+            // kolom Total.
+            $rows[$key]['cells'][$module] = [
+                'count'     => (int) $count,
+                'url'       => $url,
+                'avg_sum'   => $avg['sum'] ?? 0,
+                'avg_count' => $avg['count'] ?? 0,
+            ];
             $rows[$key]['total'] += (int) $count;
+
+            // Baris gabungan (role+tahap yang sama muncul di beberapa modul, mis.
+            // "Head / Approval Head" pada Budgeting & Cost Request) menjumlahkan
+            // avg dari SEMUA modul penyusunnya — hasilnya rata-rata tertimbang
+            // (bobot = jumlah transisi), bukan rata-rata dari rata-rata.
+            if ($avg) {
+                $rows[$key]['avg_sum']   += $avg['sum'];
+                $rows[$key]['avg_count'] += $avg['count'];
+            }
         }
 
         $rows = array_values($rows);
 
         $moduleTotals = array_fill_keys($modules, 0);
-        foreach ($rows as $row) {
+        $grandAvgSum = 0; $grandAvgCount = 0;
+        foreach ($rows as &$row) {
             foreach ($row['cells'] as $module => $cell) {
                 if ($cell) $moduleTotals[$module] += $cell['count'];
             }
+            $row['avg_seconds'] = $row['avg_count'] > 0 ? (int) round($row['avg_sum'] / $row['avg_count']) : null;
+            $grandAvgSum   += $row['avg_sum'];
+            $grandAvgCount += $row['avg_count'];
         }
+        unset($row);
 
         return [
             'modules'      => $modules,
             'rows'         => $rows,
             'moduleTotals' => $moduleTotals,
             'grandTotal'   => array_sum($moduleTotals),
+            'grandAvgSeconds' => $grandAvgCount > 0 ? (int) round($grandAvgSum / $grandAvgCount) : null,
+        ];
+    }
+
+    /** Format durasi detik jadi ringkas (dtk/mnt/jam/hari) untuk tampilan Summary. */
+    public static function formatDuration(?int $seconds): ?string
+    {
+        if ($seconds === null) return null;
+        if ($seconds < 60) return $seconds . ' dtk';
+        $m = intdiv($seconds, 60);
+        if ($m < 60) return $m . ' mnt';
+        $h = intdiv($m, 60); $mm = $m % 60;
+        if ($h < 24) return $h . ' j' . ($mm ? ' ' . $mm . ' m' : '');
+        $d = intdiv($h, 24); $hh = $h % 24;
+        return $d . ' hr' . ($hh ? ' ' . $hh . ' j' : '');
+    }
+
+    /**
+     * Matrix "Summary Respontime": baris = USER, kolom = MODUL, sel = rata-rata
+     * waktu respon (detik) + jumlah aksi.
+     *
+     * Definisi response time = lama user menanggapi satu dokumen di tahapnya:
+     * jarak waktu sejak dokumen MASUK ke tahap itu (timestamp aksi/transisi
+     * SEBELUMNYA) sampai user mengaksikannya (timestamp aksi user). Durasi
+     * dihubungkan ke PELAKU aksi tersebut — orang yang "merespon".
+     *
+     * Sumber per modul:
+     *  - Purchase Order  : project_logs       (transisi berurut per project)
+     *  - Budgeting       : budget_plan_logs   (transisi berurut per budget plan)
+     *  - Cost Request    : request_status_logs(transisi berurut per CR)
+     *  - Treasury        : daily_transactions (created→approved oleh approver,
+     *                       approved→paid oleh treasury)
+     *  - Invoice & Cash Receipt : invoices     (submitted→verified→approved→
+     *                       sent→received, tiap tahap ke pelakunya)
+     *
+     * Dihitung MENYELURUH (bukan di-scope role): ini ringkasan kinerja lintas
+     * user untuk manajemen, bukan antrean milik user tertentu.
+     */
+    private function buildRespontimeTable(): array
+    {
+        $modules = ['Purchase Order', 'Budgeting', 'Cost Request', 'Treasury', 'Invoice & Cash Receipt'];
+
+        // $agg[uid][module] = ['sum' => detik, 'count' => n]
+        $agg = [];
+        $add = function (int $uid, string $module, $sumSeconds, $count) use (&$agg) {
+            $sumSeconds = (int) $sumSeconds;
+            $count      = (int) $count;
+            if (! $uid || $count <= 0) return;
+            $agg[$uid] ??= [];
+            $agg[$uid][$module] ??= ['sum' => 0, 'count' => 0];
+            $agg[$uid][$module]['sum']   += $sumSeconds;
+            $agg[$uid][$module]['count'] += $count;
+        };
+
+        /*
+         | Tabel log transisi (project_logs/budget_plan_logs/request_status_logs):
+         | selisih waktu tiap baris dengan baris SEBELUMNYA pada dokumen yang
+         | sama (LAG), lalu dijumlah per pelaku. Baris pertama tiap dokumen
+         | (LAG null) dan selisih negatif (anomali data) diabaikan.
+         */
+        $logStats = function (string $table, string $fk, string $actorCol) {
+            return \DB::select("
+                SELECT uid, SUM(diff) AS s, COUNT(*) AS n FROM (
+                    SELECT {$actorCol} AS uid,
+                           TIMESTAMPDIFF(SECOND,
+                               LAG(created_at) OVER (PARTITION BY {$fk} ORDER BY created_at, id),
+                               created_at) AS diff
+                    FROM {$table}
+                ) t
+                WHERE diff IS NOT NULL AND diff >= 0 AND uid IS NOT NULL
+                GROUP BY uid
+            ");
+        };
+
+        foreach ($logStats('project_logs', 'project_id', 'user_id') as $r) {
+            $add((int) $r->uid, 'Purchase Order', $r->s, $r->n);
+        }
+        foreach ($logStats('budget_plan_logs', 'budget_plan_id', 'user_id') as $r) {
+            $add((int) $r->uid, 'Budgeting', $r->s, $r->n);
+        }
+        foreach ($logStats('request_status_logs', 'budget_request_id', 'acted_by') as $r) {
+            $add((int) $r->uid, 'Cost Request', $r->s, $r->n);
+        }
+
+        /*
+         | Treasury: dua tahap bertimestamp pada daily_transactions.
+         |   dibuat → disetujui  (pelaku approved_by)
+         |   disetujui → dibayar (pelaku paid_by)
+         */
+        $treasury = \DB::select("
+            SELECT uid, SUM(diff) AS s, COUNT(*) AS n FROM (
+                SELECT approved_by AS uid, TIMESTAMPDIFF(SECOND, created_at, approved_at) AS diff
+                    FROM daily_transactions WHERE approved_at IS NOT NULL AND approved_by IS NOT NULL
+                UNION ALL
+                SELECT paid_by AS uid, TIMESTAMPDIFF(SECOND, approved_at, paid_at) AS diff
+                    FROM daily_transactions WHERE paid_at IS NOT NULL AND approved_at IS NOT NULL AND paid_by IS NOT NULL
+            ) t
+            WHERE diff IS NOT NULL AND diff >= 0 AND uid IS NOT NULL
+            GROUP BY uid
+        ");
+        foreach ($treasury as $r) {
+            $add((int) $r->uid, 'Treasury', $r->s, $r->n);
+        }
+
+        /*
+         | Invoice & Cash Receipt: rantai timestamp pada invoices, tiap tahap
+         | dihubungkan ke pelakunya.
+         */
+        $invoice = \DB::select("
+            SELECT uid, SUM(diff) AS s, COUNT(*) AS n FROM (
+                SELECT verified_by AS uid, TIMESTAMPDIFF(SECOND, submitted_at, verified_at) AS diff
+                    FROM invoices WHERE verified_at IS NOT NULL AND submitted_at IS NOT NULL AND verified_by IS NOT NULL
+                UNION ALL
+                SELECT approved_by AS uid, TIMESTAMPDIFF(SECOND, verified_at, approved_at) AS diff
+                    FROM invoices WHERE approved_at IS NOT NULL AND verified_at IS NOT NULL AND approved_by IS NOT NULL
+                UNION ALL
+                SELECT sent_by AS uid, TIMESTAMPDIFF(SECOND, approved_at, sent_at) AS diff
+                    FROM invoices WHERE sent_at IS NOT NULL AND approved_at IS NOT NULL AND sent_by IS NOT NULL
+                UNION ALL
+                SELECT received_by AS uid, TIMESTAMPDIFF(SECOND, sent_at, received_at) AS diff
+                    FROM invoices WHERE received_at IS NOT NULL AND sent_at IS NOT NULL AND received_by IS NOT NULL
+            ) t
+            WHERE diff IS NOT NULL AND diff >= 0 AND uid IS NOT NULL
+            GROUP BY uid
+        ");
+        foreach ($invoice as $r) {
+            $add((int) $r->uid, 'Invoice & Cash Receipt', $r->s, $r->n);
+        }
+
+        if (empty($agg)) {
+            return ['modules' => $modules, 'rows' => [], 'moduleAvg' => array_fill_keys($modules, null)];
+        }
+
+        // Nama user (sekali query untuk semua uid yang terpakai).
+        $names = User::whereIn('id', array_keys($agg))->pluck('name', 'id');
+
+        $rows = [];
+        foreach ($agg as $uid => $cells) {
+            $out       = array_fill_keys($modules, null);
+            $totalSum  = 0;
+            $totalCnt  = 0;
+            foreach ($modules as $m) {
+                if (empty($cells[$m])) continue;
+                $sum = (int) $cells[$m]['sum'];
+                $cnt = (int) $cells[$m]['count'];
+                $out[$m]   = ['avg_seconds' => (int) round($sum / max(1, $cnt)), 'count' => $cnt];
+                $totalSum += $sum;
+                $totalCnt += $cnt;
+            }
+            $rows[] = [
+                'user'        => $names[$uid] ?? ('User #' . $uid),
+                'cells'       => $out,
+                'avg_seconds' => $totalCnt ? (int) round($totalSum / $totalCnt) : null,
+                'count'       => $totalCnt,
+            ];
+        }
+
+        // Paling banyak merespon di atas — daftar kinerja yang paling ramai dulu.
+        usort($rows, fn ($a, $b) => $b['count'] <=> $a['count'] ?: strcmp($a['user'], $b['user']));
+
+        // Rata-rata per modul (gabungan semua user) untuk baris footer.
+        $moduleAvg = [];
+        foreach ($modules as $m) {
+            $s = 0; $n = 0;
+            foreach ($agg as $cells) {
+                if (empty($cells[$m])) continue;
+                $s += (int) $cells[$m]['sum'];
+                $n += (int) $cells[$m]['count'];
+            }
+            $moduleAvg[$m] = $n ? ['avg_seconds' => (int) round($s / $n), 'count' => $n] : null;
+        }
+
+        return [
+            'modules'   => $modules,
+            'rows'      => $rows,
+            'moduleAvg' => $moduleAvg,
         ];
     }
 
@@ -972,6 +1291,22 @@ class TodoListController extends Controller
         'invoice-verify' => ['invoice-cash-receipt.verify', null],
         'invoice-approve'=> ['invoice-cash-receipt.approve', null],
     ];
+
+    /**
+     * GET /todo-list/has-pending — dipanggil berkala oleh badge sidebar.
+     * Memakai TodoService::build() yang sama dengan widget Todo di Dashboard
+     * supaya badge tidak pernah menyala untuk antrean yang beda dengan yang
+     * sungguhan dilihat user saat membuka halaman ini.
+     */
+    public function hasPending()
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        return response()->json([
+            'has_pending' => count(TodoService::build($user)) > 0,
+        ]);
+    }
 
     /** POST /todo-list/bulk/{section}/{mode} — multi-select approve/reject. */
     public function bulk(Request $request, string $section, string $mode)
@@ -1067,6 +1402,7 @@ class TodoListController extends Controller
                 'VERIFIED'         => 'Menunggu Approval CEO',
                 'REJECTED'         => 'Reject Handling',
                 'PAID'             => 'Submit Settlement',
+                'SETTLE_REJECTED'  => 'Submit Settlement (Revisi)',
                 'REALIZED'         => 'Settlement — Head Check',
                 'SETTLE_CHECKED'   => 'Settlement — Finance Verify',
                 'SETTLE_VERIFIED'  => 'Settlement — Finance Manager Close',
@@ -1093,7 +1429,8 @@ class TodoListController extends Controller
             $this->scopeByRole($q1);
             $rows = $rows->concat($q1->get());
 
-            $q2 = BudgetRequest::with(['type', 'beneficiary', 'budgetPlan.project.manager', 'budgetPlan.costCenter', 'statusLogs'])->where('status', 'PAID');
+            $q2 = BudgetRequest::with(['type', 'beneficiary', 'budgetPlan.project.manager', 'budgetPlan.costCenter', 'statusLogs'])
+                ->whereIn('status', ['PAID', 'SETTLE_REJECTED']);
             $this->scopeByRole($q2);
             $rows = $rows->concat($q2->get());
         }

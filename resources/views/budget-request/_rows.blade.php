@@ -44,11 +44,11 @@
                                 </td>
 
                                 <td class="cr-col-desc">
-                                    <div style="font-size:13px;font-weight:600;">
+                                    <div style="font-size:13px;font-weight:600;" title="{{ $cr->description }}">
                                         @if($isNob)
                                             <span class="badge badge-danger px-1 py-1 mr-1" style="font-size:9px;">NOB</span>
                                         @endif
-                                        {{ Str::limit($cr->description, 200) }}
+                                        {{ Str::limit($cr->description, 60) }}
                                     </div>
                                     <div style="font-size:10px;color:var(--text-faint);margin-top:2px;">
                                         {{ $cr->po_code ?? '-' }} - {{ $cr->type?->name ?? '-' }}, {{ strtoupper($cr->pm_internal_name) }}
@@ -72,22 +72,22 @@
                                     <div style="font-size:10px;color:var(--text-faint);margin-top:2px;">{{ $cr->beneficiary?->nickname ?? '-' }}</div>
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-amount" data-raw="{{ $cr->amount }}">
+                                <td class="text-right text-nowrap col-raw-amount" data-raw="{{ $cr->amount }}" data-order="{{ $cr->amount }}">
                                     <button type="button" class="cr-cell-link btn-detail-cr" data-id="{{ $cr->id }}" data-tab="#crPaneDetails" title="Detail Request">{{ $cr->amount_formatted }}</button>
                                 </td>
 
                                 @if($mode === 'ca')
-                                <td class="text-right text-nowrap col-raw-realisasi" data-raw="{{ $realisasi }}">
+                                <td class="text-right text-nowrap col-raw-realisasi" data-raw="{{ $realisasi }}" data-order="{{ $realisasi }}">
                                     <button type="button" class="cr-cell-link btn-detail-cr" data-id="{{ $cr->id }}" data-tab="#crPaneRealization" title="Detail Settlement">{{ number_format($realisasi, 0, ',', '.') }}</button>
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-var {{ $refund > 0 ? 'text-var-pos' : '' }}" data-raw="{{ $refund }}">
+                                <td class="text-right text-nowrap col-raw-var {{ $refund > 0 ? 'text-var-pos' : '' }}" data-raw="{{ $refund }}" data-order="{{ $refund }}">
                                     {{ number_format($refund, 0, ',', '.') }}
                                 </td>
 
                                 {{-- Expense Claim lahir dari settlement juga, jadi selnya bisa
                                      diklik ke tab Settlement seperti kolom Request & Settlement. --}}
-                                <td class="text-right text-nowrap col-raw-claim" data-raw="{{ $claim }}">
+                                <td class="text-right text-nowrap col-raw-claim" data-raw="{{ $claim }}" data-order="{{ $claim }}">
                                     <button type="button" class="cr-cell-link btn-detail-cr"
                                             data-id="{{ $cr->id }}" data-tab="#crPaneRealization" title="Detail Settlement">{{ number_format($claim, 0, ',', '.') }}</button>
                                 </td>
@@ -131,7 +131,9 @@
                                         $bolehCeo       = $st === 'VERIFIED' && $u->hasRole($stageRoles('VERIFIED'));
                                         $bolehRevisi    = $st === 'REJECTED' && $u->hasRole(['superadmin','manager','supervisor']);
                                         $bolehBatal     = $st === 'REJECTED' && $u->hasRole(['superadmin','manager']);
-                                        $bolehSettle    = $st === 'PAID' && $u->hasRole(['superadmin','manager','supervisor']);
+                                        // SETTLE_REJECTED ikut tombol "Settle" yang sama dengan
+                                        // PAID — form realize.blade.php menangani keduanya.
+                                        $bolehSettle    = in_array($st, ['PAID', 'SETTLE_REJECTED'], true) && $u->hasRole(['superadmin','manager','supervisor']);
                                         $bolehHeadSet   = $st === 'REALIZED' && $u->hasRole(['superadmin','head']);
                                         $bolehFinSet    = $st === 'SETTLE_CHECKED' && $u->hasRole(['superadmin','finance','finance_manager','cost_control']);
                                         /* Cabang Expense Claim (settlement > pengajuan): CR wajib lewat

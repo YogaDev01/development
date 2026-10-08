@@ -7,6 +7,7 @@ use App\Models\CashReceiptHeader;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\SourceFund;
+use App\Models\UserActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -269,6 +270,8 @@ class CashReceiptController extends Controller
 
         $header = $hasil['header'];
 
+        UserActivityLog::record('cash_receipt', 'create', 'Mencatat penerimaan #' . $header->code, $header);
+
         return redirect()->route('cash-receipt.show', $header->id)
             ->with('success', 'Penerimaan ' . $header->code . ' tercatat: ' .
                 $header->details()->count() . ' invoice, Rp ' . number_format($header->total_amount, 0, ',', '.') . '.');
@@ -399,6 +402,8 @@ class CashReceiptController extends Controller
             return back()->with('error', $error);
         }
 
+        UserActivityLog::record('cash_receipt', 'process', 'Mengalokasikan pembayaran penerimaan #' . $header->code, $header);
+
         return back()->with('success', 'Alokasi pembayaran berhasil dicatat.');
     }
 
@@ -412,6 +417,8 @@ class CashReceiptController extends Controller
         // CashReceipt::booted(), dan jejak pembatalannya tetap ada.
         $detail->update(['deleted_by' => Auth::id(), 'delete_reason' => 'Alokasi dibatalkan dari bukti terima ' . $header->code]);
         $detail->delete();
+
+        UserActivityLog::record('cash_receipt', 'update', 'Membatalkan alokasi penerimaan #' . $header->code, $header);
 
         return back()->with('success', 'Alokasi dibatalkan.');
     }
@@ -468,6 +475,8 @@ class CashReceiptController extends Controller
             ]);
         });
 
+        UserActivityLog::record('cash_receipt', 'cancel', 'Membatalkan penerimaan #' . $header->code, $header, $request->reason ?? $request->notes);
+
         return back()->with('success', 'Penerimaan ' . $header->code . ' dibatalkan.');
     }
 
@@ -483,7 +492,10 @@ class CashReceiptController extends Controller
             Storage::disk('secure')->delete($header->proof_file);
         }
 
+        $headerCode = $header->code;
         $header->delete();
+
+        UserActivityLog::record('cash_receipt', 'delete', 'Menghapus penerimaan #' . $headerCode);
 
         return redirect()->route('cash-receipt.index')->with('success', 'Penerimaan dihapus.');
     }

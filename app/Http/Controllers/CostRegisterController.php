@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CostRegister;
 use App\Models\Project;
+use App\Models\UserActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -134,6 +135,8 @@ class CostRegisterController extends Controller
             return $cr;
         });
 
+        UserActivityLog::record('cost_register', 'create', 'Membuat Cost Register untuk PO #' . ($register->project->code ?? '-'), $register);
+
         return redirect(route('cost-register.index'))
             ->with('success', 'Cost Register berhasil disimpan untuk ' . ($register->project->code ?? '-') . '.');
     }
@@ -253,7 +256,10 @@ class CostRegisterController extends Controller
                 'Cost Register berstatus ' . $cr->status . ' tidak bisa dihapus.');
         }
 
+        $crId = $cr->id;
         $cr->delete(); // attachments dihapus cascade lewat FK
+
+        UserActivityLog::record('cost_register', 'delete', 'Menghapus Cost Register #' . $crId);
 
         return back()->with('success', 'Cost Register berhasil dihapus.');
     }
@@ -280,6 +286,8 @@ class CostRegisterController extends Controller
 
         $cr->update(['status' => 'SUBMITTED', 'submitted_at' => now()]);
 
+        UserActivityLog::record('cost_register', 'submit', 'Mengajukan Cost Register #' . $cr->id . ' ke Treasury', $cr);
+
         return back()->with('success', 'Cost Register diajukan ke Treasury.');
     }
 
@@ -293,6 +301,8 @@ class CostRegisterController extends Controller
         }
 
         $cr->update(['status' => 'CANCELLED']);
+
+        UserActivityLog::record('cost_register', 'cancel', 'Membatalkan Cost Register #' . $cr->id, $cr, $request->reason ?? $request->notes);
 
         return back()->with('success', 'Cost Register dibatalkan.');
     }

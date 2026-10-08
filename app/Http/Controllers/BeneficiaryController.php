@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Bank;
 use App\Models\Beneficiary;
 use App\Models\MasterPic;
+use App\Models\UserActivityLog;
 
 class BeneficiaryController extends Controller
 {
@@ -319,7 +320,7 @@ class BeneficiaryController extends Controller
             'status'         => 'required|in:ACTIVE,INACTIVE',
         ]);
 
-        Beneficiary::create([
+        $beneficiary = Beneficiary::create([
             'nickname'       => strtoupper($request->nickname),
             'complete_name'  => strtoupper($request->complete_name),
             'category'       => $request->category,
@@ -330,6 +331,8 @@ class BeneficiaryController extends Controller
             'status'         => $request->status,
             'input_by'       => Auth::id(),
         ]);
+
+        UserActivityLog::record('master_data', 'create', 'Menambah Beneficiary ' . $beneficiary->nickname, $beneficiary);
 
         return redirect('/beneficiaries')
             ->with('success', 'Beneficiary berhasil ditambahkan');
@@ -381,6 +384,9 @@ class BeneficiaryController extends Controller
 
         $beneficiary = Beneficiary::findOrFail($id);
 
+        // Dipotret sebelum update untuk rincian perubahan (credential).
+        $sebelum = $beneficiary->getOriginal();
+
         $beneficiary->update([
             'nickname'       => strtoupper($request->nickname),
             'complete_name'  => strtoupper($request->complete_name),
@@ -391,6 +397,25 @@ class BeneficiaryController extends Controller
             'account_number' => $request->account_number,
             'status'         => $request->status,
         ]);
+
+        $changes = UserActivityLog::changeSet($sebelum, $beneficiary, [
+            'nickname'       => 'Nama Panggilan',
+            'complete_name'  => 'Nama Lengkap',
+            'category'       => 'Kategori',
+            'account_number' => 'No. Rekening',
+            'bank_id'        => 'Bank (ID)',
+            'status'         => 'Status',
+        ]);
+
+        UserActivityLog::record(
+            'master_data',
+            'update',
+            'Mengubah Beneficiary ' . $beneficiary->nickname,
+            $beneficiary,
+            null,
+            null,
+            $changes
+        );
 
         return redirect('/beneficiaries')
             ->with('success', 'Beneficiary berhasil diupdate');
@@ -414,7 +439,10 @@ class BeneficiaryController extends Controller
             return back()->with('error', 'Beneficiary tidak bisa dihapus karena sudah dipakai pada Cost Request.');
         }
 
+        $nickname = $beneficiary->nickname;
         $beneficiary->delete();
+
+        UserActivityLog::record('master_data', 'delete', 'Menghapus Beneficiary ' . $nickname);
 
         return redirect('/beneficiaries')
             ->with('success', 'Beneficiary berhasil dihapus');

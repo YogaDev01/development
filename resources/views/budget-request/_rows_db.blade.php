@@ -28,11 +28,11 @@
         </td>
 
         <td class="cr-col-desc">
-            <div style="font-size:13px;font-weight:600;">
+            <div style="font-size:13px;font-weight:600;" title="{{ $cr->description }}">
                 @if($isNob)
                     <span class="badge badge-danger px-1 py-1 mr-1" style="font-size:9px;">NOB</span>
                 @endif
-                {{ Str::limit($cr->description, 200) }}
+                {{ Str::limit($cr->description, 60) }}
             </div>
             <div style="font-size:10px;color:var(--text-faint);margin-top:2px;">
                 {{ $cr->po_code ?? '-' }} - {{ $cr->type?->name ?? '-' }}, {{ strtoupper($cr->pm_internal_name) }}
@@ -62,7 +62,7 @@
             <div style="font-size:10px;color:var(--text-faint);margin-top:2px;">{{ $cr->beneficiary?->nickname ?? '-' }}</div>
         </td>
 
-        <td class="text-right text-nowrap col-raw-cost" data-raw="{{ $cost }}">
+        <td class="text-right text-nowrap col-raw-cost" data-raw="{{ $cost }}" data-order="{{ $cost }}">
             <button type="button" class="cr-cell-link btn-detail-cr" data-id="{{ $cr->id }}"
                     data-tab="{{ $isCa ? '#crPaneRealization' : '#crPaneDetails' }}"
                     title="{{ $isCa ? 'Detail Settlement' : 'Detail Request' }}">

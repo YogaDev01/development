@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Account;
+use App\Models\UserActivityLog;
 
 class AccountController extends Controller
 {
@@ -40,11 +41,13 @@ class AccountController extends Controller
             'category' => 'required|in:' . implode(',', Account::CATEGORIES),
         ]);
 
-        Account::create([
+        $account = Account::create([
             'name'     => $request->name,
             'category' => $request->category,
             'status'   => 'ACTIVE',
         ]);
+
+        UserActivityLog::record('master_data', 'create', 'Menambah Account ' . $account->name, $account);
 
         return redirect('/account')
             ->with('success', 'Account berhasil ditambahkan.');
@@ -90,6 +93,8 @@ class AccountController extends Controller
             'status'   => $request->status,
         ]);
 
+        UserActivityLog::record('master_data', 'update', 'Mengubah Account ' . $account->name, $account);
+
         return redirect('/account')
             ->with('success', 'Account berhasil diupdate.');
     }
@@ -110,7 +115,10 @@ class AccountController extends Controller
                 ->with('error', 'Account tidak dapat dihapus karena masih digunakan di Budget Plan.');
         }
 
+        $accountName = $account->name;
         $account->delete();
+
+        UserActivityLog::record('master_data', 'delete', 'Menghapus Account ' . $accountName);
 
         return redirect('/account')
             ->with('success', 'Account berhasil dihapus.');

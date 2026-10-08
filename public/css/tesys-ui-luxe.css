@@ -92,6 +92,11 @@ body.tesys-ui .sidebar .nav-item:hover .ic { color: #fff; }
 body.tesys-ui .sidebar .nav-item:hover  { background: var(--chrome-2); }
 body.tesys-ui .sidebar .nav-item:active { background: var(--chrome-3); }
 
+/* Dropdown disamakan warnanya dengan sub menu di bagian ini juga — hover
+   putih terang di atas disetel ulang jadi versi final di bagian E/E2. */
+body.tesys-ui .sidebar .nav-group-toggle { color: var(--chrome-text); }
+body.tesys-ui .sidebar .nav-group-toggle .ic { color: var(--chrome-dim); }
+
 /* Garis pemisah antar kelompok menu. */
 body.tesys-ui .sidebar .nav-label ~ .nav-label { border-top-color: var(--chrome-border); }
 
@@ -1702,6 +1707,10 @@ body.tesys-ui .sidebar .brand .brand-wordmark {
    itu ukuran yang sama dengan tombol lambang dan avatar, sehingga
    seluruh sasaran klik di bingkai jadi satu ukuran. */
 body.tesys-ui .sidebar .nav-item { padding-top: 10px; padding-bottom: 10px; }
+/* Header dropdown (mis. "Cost Management") ikut disamakan — sebelumnya
+   masih memakai padding lama dari tesys-ui-shell.css (7px) sehingga terasa
+   lebih rapat dibanding sub menu & menu biasa di sekitarnya. */
+body.tesys-ui .sidebar .nav-group-toggle { padding-top: 10px; padding-bottom: 10px; }
 
 /* -------- E. HOVER YANG TERBACA
    Sebelumnya --chrome-2 (#24171a) di atas sidebar #180d11: selisihnya
@@ -1714,6 +1723,15 @@ body.tesys-ui .sidebar .nav-item:hover {
 }
 body.tesys-ui .sidebar .nav-item:hover .ic { color: var(--chrome-text); }
 /* Keadaan hover baris AKTIF diatur di bagian F. */
+
+/* Header dropdown memakai hover yang SAMA PERSIS dengan sub menu di
+   bawahnya (bukan putih terang var(--surface-2) dari shell.css, yang
+   dirancang untuk latar terang, bukan sidebar gelap). */
+body.tesys-ui .sidebar .nav-group-toggle:hover {
+    background: rgba(255, 255, 255, .085);
+    color: var(--chrome-text);
+}
+body.tesys-ui .sidebar .nav-group-toggle:hover .ic { color: var(--chrome-text); }
 
 
 /* ============ PENYETELAN SIDEBAR — putaran lanjutan 2 ============ */

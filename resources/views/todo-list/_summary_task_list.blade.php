@@ -20,6 +20,10 @@
     // Urutan role mengikuti kemunculan pertama di tabel, bukan diurutkan abjad,
     // supaya daftar filternya terbaca searah dengan alur kerja.
     $stRoles = collect($summaryTable['rows'])->pluck('role')->unique()->values();
+
+    // Format durasi detik -> ringkas (dtk/mnt/jam/hari), sumber tunggal sama
+    // dengan yang dipakai controller (TodoListController::formatDuration()).
+    $stFmtDur = fn ($s) => $s === null ? null : \App\Http\Controllers\TodoListController::formatDuration($s);
 @endphp
 
 <style>
@@ -79,6 +83,7 @@
                 <th scope="col" class="text-center col-wrap-header" style="width:11%;" data-module="{{ $module }}">{{ $module }}</th>
                 @endforeach
                 <th scope="col" class="text-center text-nowrap" style="width:1%;">Total</th>
+                <th scope="col" class="text-center text-nowrap" style="width:1%;" title="Rata-rata lama dokumen menunggu di tahap ini sebelum diaksi">Avg Time</th>
             </tr>
         </thead>
         <tbody>
@@ -89,7 +94,7 @@
                 @foreach($summaryTable['modules'] as $module)
                 @php $cell = $row['cells'][$module] ?? null; @endphp
                 <td class="text-center text-nowrap" data-module="{{ $module }}"
-                    @if($cell) data-count="{{ $cell['count'] }}" @endif>
+                    @if($cell) data-count="{{ $cell['count'] }}" data-avg-sum="{{ $cell['avg_sum'] }}" data-avg-count="{{ $cell['avg_count'] }}" @endif>
                     @if(!$cell)
                         <span style="color:var(--text-faint);" title="Tahap ini tidak ada pada modul {{ $module }}">&middot;</span>
                     @elseif($cell['count'] <= 0)
@@ -101,10 +106,17 @@
                 @endforeach
                 <td class="text-center text-nowrap summary-total-cell {{ $row['total'] > 0 ? 'summary-total-pos' : 'summary-total-zero' }}"
                     data-total-cell>{{ $row['total'] }}</td>
+                <td class="text-center text-nowrap" data-avg-cell>
+                    @if($row['avg_seconds'] !== null)
+                        {{ $stFmtDur($row['avg_seconds']) }}
+                    @else
+                        <span class="text-muted">-</span>
+                    @endif
+                </td>
             </tr>
             @endforeach
             <tr id="stEmptyRow" style="display:none;">
-                <td colspan="{{ count($summaryTable['modules']) + 3 }}" class="text-center text-muted py-3">
+                <td colspan="{{ count($summaryTable['modules']) + 4 }}" class="text-center text-muted py-3">
                     Tidak ada tahap yang cocok dengan filter yang sedang aktif.
                 </td>
             </tr>
@@ -116,6 +128,7 @@
                 <th class="text-center text-nowrap" data-module="{{ $module }}" data-foot-module>{{ $summaryTable['moduleTotals'][$module] }}</th>
                 @endforeach
                 <th class="text-center text-nowrap" data-foot-grand>{{ $summaryTable['grandTotal'] }}</th>
+                <th class="text-center text-nowrap" data-foot-avg>{{ $stFmtDur($summaryTable['grandAvgSeconds']) ?? '-' }}</th>
             </tr>
         </tfoot>
     </table>

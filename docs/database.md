@@ -7,7 +7,7 @@ Read migrations, not memory, before changing anything.
 
 | Domain | Tables |
 |--------|--------|
-| Identity & access | `users`, `roles`, `menu_items`, `role_menu_items`, `access_groups`, `access_group_details` (project / cost center / team scope) |
+| Identity & access | `users` (incl. `notification_prefs` JSON — per-user notification opt-out, safe-by-default; `cover` — profile cover photo, like `avatar`; `default_app` — user's default app/sidebar at login, see `config/apps.php`), `roles`, `menu_items`, `role_menu_items`, `access_groups`, `access_group_details` (project / cost center / team scope) |
 | Org | `departments`, `teams`, `team_members`, `employees`, `master_pics` (linked to users/employees; CA limit `token`, `nominal`) |
 | Master | `customers`, `customer_types`, `customer_details`, `banks`, `beneficiaries`, `clusters`, `groups`, `accounts`, `cost_centers`, `source_funds`, `stages`, `request_type` |
 | Budget | `budget_plans`, `budget_plan_details`, `budget_plan_logs`, `budget_plan_attachments` |

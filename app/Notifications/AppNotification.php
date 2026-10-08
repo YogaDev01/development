@@ -66,9 +66,24 @@ class AppNotification extends Notification implements ShouldQueue
 
     public function via($notifiable): array
     {
-        $channels = ['database'];
+        // Preferensi notifikasi per-user (Profil > Settings). Aman-default:
+        // kalau notifiable bukan User atau belum pernah menyetel preferensi,
+        // wantsNotification() mengembalikan true, jadi perilaku tidak berubah.
+        $mauInApp    = ! method_exists($notifiable, 'wantsNotification')
+                       || $notifiable->wantsNotification($this->category, 'database');
+        $mauWhatsApp = ! method_exists($notifiable, 'wantsNotification')
+                       || $notifiable->wantsNotification($this->category, 'whatsapp');
 
-        if (config('services.fonnte.enabled') && ! blank($notifiable->phone) && ! blank(config('services.fonnte.token'))) {
+        $channels = [];
+
+        if ($mauInApp) {
+            $channels[] = 'database';
+        }
+
+        if ($mauWhatsApp
+            && config('services.fonnte.enabled')
+            && ! blank($notifiable->phone)
+            && ! blank(config('services.fonnte.token'))) {
             $channels[] = FonnteChannel::class;
         }
 

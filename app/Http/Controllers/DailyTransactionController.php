@@ -12,6 +12,7 @@ use App\Models\DailyTransactionItem;
 use App\Models\DailyTransactionAttachment;
 use App\Models\BudgetRequest;
 use App\Models\User;
+use App\Models\UserActivityLog;
 use App\Services\NotifyService;
 use App\Services\RoleDirectory;
 
@@ -435,6 +436,8 @@ class DailyTransactionController extends Controller
             'workflow'
         );
 
+        UserActivityLog::record('treasury', 'create', 'Membuat batch pembayaran #' . $code, null, null, $code);
+
         return redirect('/daily-transaction')
             ->with('success', 'Batch ' . $code . ' berhasil dibuat dengan '
                 . count($crIds) . ' CR'
@@ -659,6 +662,8 @@ class DailyTransactionController extends Controller
             ? 'Top Up disetujui dan siap ditransfer.'
             : 'Batch disetujui. ' . $batch->includedItems()->count() . ' CR siap dibayar.';
 
+        UserActivityLog::record('treasury', 'approve', 'Menyetujui batch pembayaran #' . $batch->code, $batch, $request->notes);
+
         return redirect('/daily-transaction/' . $id)
             ->with('success', $successMsg);
     }
@@ -727,6 +732,8 @@ class DailyTransactionController extends Controller
         $successMsg = $batch->isTopUp()
             ? 'Top Up ditolak.'
             : 'Batch ditolak. Semua CR dikembalikan ke APPROVED.';
+
+        UserActivityLog::record('treasury', 'reject', 'Menolak batch pembayaran #' . $batch->code, $batch, $request->notes);
 
         return redirect('/daily-transaction')
             ->with('success', $successMsg);
@@ -1110,6 +1117,8 @@ class DailyTransactionController extends Controller
         } catch (\DomainException $e) {
             return back()->with('error', $e->getMessage());
         }
+
+        UserActivityLog::record('treasury', 'pay', 'Menandai batch #' . $batch->code . ' telah dibayar (PAID)', $batch, $request->payment_notes);
 
         return redirect('/daily-transaction/' . $id)
             ->with('success', 'Batch ' . $batch->code . ' berhasil ditandai PAID.');

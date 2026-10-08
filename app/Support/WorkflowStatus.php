@@ -104,6 +104,11 @@ class WorkflowStatus
             'tone'        => 'danger',
             'icon'        => 'fa-undo',
         ],
+        'SETTLE_REJECTED' => [
+            'description' => 'Settlement ditolak — revisi lalu ajukan ulang',
+            'tone'        => 'danger',
+            'icon'        => 'fa-undo',
+        ],
         'CANCELLED' => [
             'description' => 'Dibatalkan',
             'tone'        => 'neutral',
@@ -126,9 +131,19 @@ class WorkflowStatus
     private const CONTEXT_MAP = [
         'project' => [
             'SUBMITTED' => [
-                'description' => 'Menunggu persetujuan Finance',
+                'description' => 'Menunggu verifikasi Finance',
                 'tone'        => 'attention',
                 'icon'        => 'fa-hourglass-half',
+            ],
+            'VERIFIED' => [
+                'description' => 'Terverifikasi; menunggu approval Approver',
+                'tone'        => 'attention',
+                'icon'        => 'fa-user-check',
+            ],
+            'EARLY_START' => [
+                'description' => 'Early Start — baru diketahui scope-nya; sah & bisa dibuatkan budget',
+                'tone'        => 'progress',
+                'icon'        => 'fa-seedling',
             ],
             'WAITING_PO' => [
                 'description' => 'Menunggu nomor PO dilengkapi lalu diaktifkan',
@@ -141,9 +156,9 @@ class WorkflowStatus
                 'icon'        => 'fa-play-circle',
             ],
             'PROGRESS_DONE' => [
-                'description' => 'BAST lengkap; menunggu pembayaran seluruh No. PO',
+                'description' => 'BAST lengkap; menunggu invoice & pembayaran seluruh No. PO',
                 'tone'        => 'progress',
-                'icon'        => 'fa-shipping-fast',
+                'icon'        => 'fa-file-invoice-dollar',
             ],
             'PAID' => [
                 'description' => 'Menunggu pengajuan MoM Closing oleh Head',
@@ -329,7 +344,7 @@ class WorkflowStatus
     ];
 
     /** Status yang menghentikan perjalanan dokumen, bukan salah satu tahapnya. */
-    private const OFF_FLOW = ['REJECTED', 'CANCELLED'];
+    private const OFF_FLOW = ['REJECTED', 'CANCELLED', 'SETTLE_REJECTED'];
 
     /** Daftar kode tahap sebuah modul, urut dari awal ke akhir. */
     public static function flow(string $context): array
