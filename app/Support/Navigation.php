@@ -22,31 +22,37 @@ class Navigation
     public const MASTER_DATA = 'Master Data';
 
     /**
-     * Seksi sidebar satu aplikasi: seksi dari 'apps.<key>' dengan Master Data
-     * bersama disisipkan tepat setelah Overview.
+     * Seksi sidebar satu aplikasi: Todo List dan Master Data disisipkan di
+     * depan (SEMUA aplikasi, urutan tetap), baru seksi dari 'apps.<key>'
+     * menyusul apa adanya.
      *
-     * @return array<string, string[]>  label seksi => kunci item navigasi
+     * @return array<string, array>  label seksi => kunci/grup item navigasi
      */
     public static function sections(string $app): array
     {
         $seksiApp = config('navigation.apps.' . $app, []);
         $master   = config('navigation.master_data', []);
 
-        if (empty($master)) {
-            return $seksiApp;
+        $hasil = [];
+
+        // Todo List: sama di semua aplikasi, selalu paling atas — bukan
+        // milik satu aplikasi tertentu, jadi tidak ditulis di 'apps'.
+        $hasil[''] = ['todo-list'];
+
+        // Seluruh Master Data dilebur jadi SATU dropdown ("Data Master"),
+        // tepat di bawah Todo List — bukan lagi daftar rata 11 baris, dan
+        // bukan lagi disisipkan setelah Overview.
+        if (! empty($master)) {
+            $hasil[self::MASTER_DATA] = [
+                'Data Master' => ['icon' => 'fas fa-database', 'items' => $master],
+            ];
         }
 
-        $hasil = [];
-        $sudah = false;
         foreach ($seksiApp as $label => $kunci) {
             $hasil[$label] = $kunci;
-            if ($label === 'Overview') {
-                $hasil[self::MASTER_DATA] = $master;
-                $sudah = true;
-            }
         }
 
-        return $sudah ? $hasil : [self::MASTER_DATA => $master] + $hasil;
+        return $hasil;
     }
 
     /**
@@ -73,7 +79,8 @@ class Navigation
     /**
      * Susunan checklist untuk modal menu access:
      *
-     *   shared : menu yang berlaku di semua aplikasi (Dashboard + Master Data)
+     *   shared : menu yang berlaku di semua aplikasi (Todo List, Dashboard,
+     *            Master Data)
      *   apps   : per aplikasi -> per seksi -> menu (Master Data tidak diulang)
      *   others : baris menu_items yang belum dipetakan ke aplikasi mana pun,
      *            supaya tidak ada hak akses yang diam-diam tak bisa diatur
@@ -86,6 +93,16 @@ class Navigation
         $menuItems = ($menuItems ?? MenuItem::ordered()->get())->keyBy('key');
         $navItems  = config('navigation.items', []);
         $dipakai   = [];
+
+        // Satu seksi boleh berisi dropdown (nama grup => ['icon'=>.., 'items'=>[..]]).
+        // Modal akses tidak membedakan grup, cukup daftar ratanya.
+        $ratakan = function (array $navKeys) use (&$ratakan): array {
+            $hasil = [];
+            foreach ($navKeys as $v) {
+                $hasil = is_array($v) ? array_merge($hasil, $ratakan($v['items'] ?? $v)) : [...$hasil, $v];
+            }
+            return $hasil;
+        };
 
         $petakan = function (array $navKeys) use ($menuItems, $navItems, &$dipakai): array {
             $hasil = [];
@@ -108,6 +125,10 @@ class Navigation
         };
 
         $shared = [];
+        $todoBersama = $petakan(['todo-list']);
+        if ($todoBersama) {
+            $shared[] = ['label' => 'Todo List', 'items' => $todoBersama];
+        }
         $overviewBersama = $petakan(['dashboard']);
         if ($overviewBersama) {
             $shared[] = ['label' => 'Overview', 'items' => $overviewBersama];
@@ -124,7 +145,7 @@ class Navigation
                 if ($label === self::MASTER_DATA) {
                     continue;
                 }
-                $navKeys = array_values(array_diff($navKeys, ['dashboard']));
+                $navKeys = array_values(array_diff($ratakan($navKeys), ['dashboard', 'todo-list']));
                 $items   = $petakan($navKeys);
                 if ($items) {
                     $seksi[] = ['label' => $label, 'items' => $items];

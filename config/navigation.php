@@ -21,8 +21,17 @@
 | Finance, Logistic, Operation, dan Project) — tidak ada route baru, halaman
 | yang dibuka tetap satu.
 |
-| Urutan seksi mengikuti urutan penulisan di sini:
-|     Overview -> Master Data -> Workflow -> Analysis
+| Urutan seksi: Todo List (tanpa label) -> Master Data -> lalu seksi 'apps'
+| sesuai urutan penulisan di bawah (mis. pada 'finance': Overview -> Workflow).
+| Todo List & Master Data TIDAK ditulis di 'apps' — keduanya disisipkan
+| otomatis oleh Navigation::sections() untuk SEMUA aplikasi.
+|
+| Dalam satu seksi, nilai 'apps.<app>.<seksi>' boleh campur: entri berindeks
+| angka = kunci item navigasi langsung (seperti sebelumnya), entri berkunci
+| string = dropdown — nilainya ['icon' => kelas FA, 'items' => daftar kunci
+| item di dalamnya]. Lihat 'finance.Workflow' di bawah untuk contohnya. Nama
+| grup (kunci string) HANYA label tampilan, dibaca nav.blade.php — bukan
+| kunci hak akses.
 |
 | Seksi 'General' sudah tidak ada: isinya (Panduan & General Feedback) pindah
 | ke dropdown user di pojok kanan atas.
@@ -68,6 +77,17 @@ return [
             'active' => ['todo-list*'],
             'menu'   => 'todo-list',
         ],
+        // Tanpa 'menu'/'roles': terlihat untuk semua user login (keputusan
+        // bisnis "semua user -> siapa saja"), seperti 'dashboard'. Sudah
+        // tidak dirujuk dari 'apps' manapun (dicabut dari sidebar) — pintu
+        // masuknya sekarang dari dalam halaman Todo List. Definisinya
+        // dipertahankan di sini karena route-nya masih aktif.
+        'assignment' => [
+            'label'  => 'Assignment',
+            'icon'   => 'fas fa-user-check',
+            'url'    => '/assignment',
+            'active' => ['assignment*'],
+        ],
         'cost-request' => [
             'label'  => 'Cost Request',
             'icon'   => 'fas fa-file-invoice-dollar',
@@ -86,7 +106,7 @@ return [
             'menu'   => 'invoice-cash-receipt',
         ],
         'delivery-note' => [
-            'label'  => 'Surat Jalan',
+            'label'  => 'Delivery Note',
             'icon'   => 'fas fa-truck',
             'url'    => '/delivery-note',
             'active' => ['delivery-note*'],
@@ -111,7 +131,7 @@ return [
          | pernah kelihatan.
          */
         'cash-management' => [
-            'label'  => 'Cash Management',
+            'label'  => 'Cashflow',
             'icon'   => 'fas fa-wallet',
             'url'    => '/cash-management',
             'active' => ['cash-management*'],
@@ -185,7 +205,7 @@ return [
             'menu'   => 'forecast',
         ],
         'reports' => [
-            'label'  => 'Reports',
+            'label'  => 'Project Report',
             'icon'   => 'fas fa-chart-bar',
             'url'    => '/reports',
             'active' => ['reports*'],
@@ -327,16 +347,42 @@ return [
     'apps' => [
 
         /*
-         | Urutan Workflow mengikuti perjalanan uang: rencana (Budgeting) ->
-         | pengajuan (Cost Request) -> pembayaran (Treasury) -> penagihan
-         | (Collection) -> pencatatan (Cost Register) -> penutupan (Closing).
-         | Surat Jalan dibiarkan menempel pada Collection karena keduanya satu
-         | berkas penagihan dan berbagi hak akses yang sama.
+         | Todo List TIDAK ditulis di sini — sama seperti Master Data, ia
+         | disisipkan otomatis ke SEMUA aplikasi oleh Navigation::sections(),
+         | selalu paling atas (di atas Overview, bahkan di atas Master Data).
+         | Satu tempat, bukan diulang di tiap 'apps.<app>'. Assignment TIDAK
+         | lagi di sidebar mana pun: halamannya tetap ada (route/menu access
+         | utuh), tapi pintu masuknya sekarang dari dalam halaman Todo List.
+         |
+         | Workflow dikelompokkan jadi dropdown per tahap perjalanan uang:
+         | pengajuan & pencatatan biaya (Cost Management) -> penagihan
+         | (Billing Management) -> arus & proyeksi kas (Cash Management) ->
+         | penutupan & laporan (Reports). Purchase Order & Budgeting tetap di
+         | luar grup karena jadi titik masuk tersendiri, bukan bagian tahapan
+         | itu. Nama grup (kunci string) HANYA label tampilan, dibaca
+         | nav.blade.php — bukan kunci hak akses.
          */
         'finance' => [
-            'Overview'    => ['dashboard'],
-            'Workflow'    => ['todo-list', 'purchase-order', 'budgeting', 'cost-request', 'treasury', 'invoice', 'cash-receipt', 'delivery-note', 'cost-register', 'cash-management', 'closing'],
-            'Analysis'    => ['finance-summary', 'forecast', 'reports'],
+            'Overview'    => ['dashboard', 'finance-summary'],
+            'Workflow'    => [
+                'purchase-order', 'budgeting',
+                'Cost Management' => [
+                    'icon'  => 'fas fa-coins',
+                    'items' => ['cost-request', 'cost-register', 'treasury'],
+                ],
+                'Billing Management' => [
+                    'icon'  => 'fas fa-file-invoice',
+                    'items' => ['delivery-note', 'invoice', 'cash-receipt'],
+                ],
+                'Cash Management' => [
+                    'icon'  => 'fas fa-money-bill-wave',
+                    'items' => ['cash-management', 'forecast'],
+                ],
+                'Reports' => [
+                    'icon'  => 'fas fa-chart-pie',
+                    'items' => ['closing', 'reports'],
+                ],
+            ],
         ],
 
         'hr' => [

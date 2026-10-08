@@ -150,4 +150,93 @@ class UserActivityLogTest extends TestCase
             'action' => 'logout',
         ]);
     }
+
+    public function test_changeset_membangun_rincian_perubahan_nilai_terformat(): void
+    {
+        $this->actingAs($this->userWithRole('finance'));
+
+        $cr = $this->makeCostRequest(['amount' => 12_000_000]);
+        $before = $cr->getOriginal();
+        $cr->update(['amount' => 13_000_000]);
+
+        $changes = UserActivityLog::changeSet($before, $cr, [
+            'amount' => ['label' => 'Nilai', 'money' => true],
+        ]);
+
+        $this->assertCount(1, $changes);
+        $this->assertSame('Nilai', $changes[0]['label']);
+        $this->assertSame('12.000.000', $changes[0]['from']);
+        $this->assertSame('13.000.000', $changes[0]['to']);
+    }
+
+    public function test_record_menyimpan_changes_sebagai_json(): void
+    {
+        $this->actingAs($this->userWithRole('finance'));
+
+        $log = UserActivityLog::record(
+            'purchase_order',
+            'update',
+            'Menyunting Purchase Order #PO-1',
+            null,
+            null,
+            null,
+            [['label' => 'Nilai Kontrak', 'from' => '12.000.000', 'to' => '13.000.000']]
+        );
+
+        $this->assertIsArray($log->changes);
+        $this->assertSame('Nilai Kontrak', $log->changes[0]['label']);
+        $this->assertSame('13.000.000', $log->changes[0]['to']);
+    }
+
+    public function test_rincian_perubahan_adalah_credential_digate_canSeeChanges(): void
+    {
+        $user = $this->userWithRole('finance');
+        $this->actingAs($user);
+
+        UserActivityLog::record(
+            'purchase_order',
+            'update',
+            'Menyunting Purchase Order #PO-9',
+            null,
+            null,
+            null,
+            [['label' => 'Nilai Kontrak', 'from' => '12.000.000', 'to' => '13.000.000']]
+        );
+
+        $logs = UserActivityLog::feedFor($user->id);
+        $data = ['activityLogs' => $logs, 'activityFilters' => [], 'canSeeChanges' => true];
+
+        // Owner/superadmin: rincian nilai tampak.
+        $boleh = view('profile._activity_log', $data)->render();
+        $this->assertStringContainsString('Nilai Kontrak', $boleh);
+        $this->assertStringContainsString('13.000.000', $boleh);
+
+        // Pengunjung lain (canSeeChanges=false): rincian nilai disembunyikan,
+        // deskripsi tetap terlihat.
+        $data['canSeeChanges'] = false;
+        $tidak = view('profile._activity_log', $data)->render();
+        $this->assertStringContainsString('Purchase Order #PO-9', $tidak);
+        $this->assertStringNotContainsString('13.000.000', $tidak);
+    }
+
+    public function test_profil_sendiri_menampilkan_rincian_perubahan(): void
+    {
+        $user = $this->userWithRole('finance');
+        $this->actingAs($user);
+
+        UserActivityLog::record(
+            'purchase_order',
+            'update',
+            'Menyunting Purchase Order #PO-7',
+            null,
+            null,
+            null,
+            [['label' => 'Nilai Kontrak', 'from' => '12.000.000', 'to' => '13.000.000']]
+        );
+
+        $this->get('/profile')
+            ->assertOk()
+            ->assertSee('Nilai Kontrak')
+            ->assertSee('13.000.000');
+    }
 }

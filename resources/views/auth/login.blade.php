@@ -14,6 +14,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Masuk — TESYS</title>
 
     <link rel="icon" href="{{ asset('dist/img/favicon16.ico') }}" type="image/x-icon">
@@ -978,6 +979,52 @@
                 transition-duration: .01ms !important;
             }
         }
+
+        /*
+        |--------------------------------------------------------------------
+        | LUPA SANDI — tautan + modal
+        |--------------------------------------------------------------------
+        */
+        .auth-forgot {
+            font-size: 12.5px; color: var(--accent-soft); text-decoration: none;
+            transition: color .16s ease;
+        }
+        .auth-forgot:hover { color: #fff; text-decoration: underline; }
+
+        .lupa-overlay {
+            position: fixed; inset: 0; z-index: 50;
+            background: rgba(0, 0, 0, .62);
+            display: none; align-items: center; justify-content: center; padding: 20px;
+        }
+        .lupa-overlay.show { display: flex; }
+        .lupa-modal {
+            width: 100%; max-width: 420px;
+            background: var(--lg-card); border: 1px solid var(--lg-card-border);
+            border-radius: 14px; padding: 26px 24px 22px;
+            box-shadow: 0 26px 64px rgba(0, 0, 0, .5);
+            animation: card-in .35s cubic-bezier(.16, 1, .3, 1) backwards;
+        }
+        .lupa-modal h2 {
+            font-family: var(--font-display); font-size: 19px; font-weight: 600;
+            color: #fff; margin: 0 0 4px;
+        }
+        .lupa-modal .lupa-sub { font-size: 12.5px; color: var(--ink-soft); margin: 0 0 18px; }
+        .lupa-close {
+            position: absolute; top: 14px; right: 16px; background: none; border: none;
+            color: var(--ink-mute); font-size: 22px; cursor: pointer; line-height: 1;
+        }
+        .lupa-close:hover { color: #fff; }
+        .lupa-status { font-size: 11.5px; margin-top: 6px; display: block; min-height: 15px; }
+        .lupa-status.ok { color: #a9cdb8; }
+        .lupa-status.err { color: #e6a8a8; }
+        .lupa-step2 { display: none; border-top: 1px solid var(--lg-card-border); margin-top: 18px; padding-top: 16px; }
+        .lupa-step2.show { display: block; }
+        .auth-btn.is-disabled { opacity: .5; pointer-events: none; }
+        .auth-btn.secondary {
+            background: transparent; color: #fff; border-color: var(--lg-input-border);
+            box-shadow: none;
+        }
+        .auth-btn.secondary:hover { background: var(--lg-input); border-color: var(--lg-input-hover); }
     </style>
 </head>
 
@@ -1135,6 +1182,7 @@
                         <input type="checkbox" id="remember" name="remember" {{ old('remember') ? 'checked' : '' }}>
                         Ingat saya
                     </label>
+                    <a href="#" class="auth-forgot" id="lupaSandiLink">Lupa Sandi?</a>
                 </div>
 
                 <button type="submit" class="auth-btn" id="loginBtn">
@@ -1149,6 +1197,67 @@
 
     </main>
 
+</div>
+
+{{-- ===================== MODAL LUPA SANDI ===================== --}}
+<div class="lupa-overlay" id="lupaOverlay" role="dialog" aria-modal="true" aria-labelledby="lupaTitle">
+    <div class="lupa-modal" style="position:relative;">
+        <button type="button" class="lupa-close" id="lupaClose" aria-label="Tutup">&times;</button>
+        <h2 id="lupaTitle">Lupa Sandi</h2>
+        <p class="lupa-sub">Masukkan Username &amp; Email terdaftar Anda. Bila cocok, kami kirim kode verifikasi ke email.</p>
+
+        {{-- STEP 1: identitas --}}
+        <div class="auth-field">
+            <label for="lupaUser">Username</label>
+            <div class="auth-input-wrap">
+                <span class="fld-ic"><i class="fas fa-user" aria-hidden="true"></i></span>
+                <input type="text" id="lupaUser" class="auth-input" placeholder="Username" autocomplete="username">
+            </div>
+        </div>
+        <div class="auth-field" style="margin-bottom:10px;">
+            <label for="lupaEmail">Email</label>
+            <div class="auth-input-wrap">
+                <span class="fld-ic"><i class="fas fa-envelope" aria-hidden="true"></i></span>
+                <input type="email" id="lupaEmail" class="auth-input" placeholder="email@terdaftar" autocomplete="email">
+            </div>
+            <small class="lupa-status" id="lupaStatus"></small>
+        </div>
+
+        <button type="button" class="auth-btn is-disabled" id="lupaSendBtn">
+            <span class="btn-spin" aria-hidden="true"></span>
+            <span class="btn-label">Kirim Kode ke Email</span>
+        </button>
+
+        {{-- STEP 2: kode + password baru --}}
+        <div class="lupa-step2" id="lupaStep2">
+            <div class="auth-field">
+                <label for="lupaCode">Kode Verifikasi</label>
+                <div class="auth-input-wrap">
+                    <span class="fld-ic"><i class="fas fa-key" aria-hidden="true"></i></span>
+                    <input type="text" id="lupaCode" class="auth-input" inputmode="numeric" placeholder="6 digit kode dari email" autocomplete="one-time-code">
+                </div>
+            </div>
+            <div class="auth-field">
+                <label for="lupaPass">Password Baru</label>
+                <div class="auth-input-wrap">
+                    <span class="fld-ic"><i class="fas fa-lock" aria-hidden="true"></i></span>
+                    <input type="password" id="lupaPass" class="auth-input" placeholder="Min. 10 karakter, huruf & angka" autocomplete="new-password">
+                </div>
+            </div>
+            <div class="auth-field" style="margin-bottom:12px;">
+                <label for="lupaPass2">Konfirmasi Password Baru</label>
+                <div class="auth-input-wrap">
+                    <span class="fld-ic"><i class="fas fa-lock" aria-hidden="true"></i></span>
+                    <input type="password" id="lupaPass2" class="auth-input" placeholder="Ulangi password baru" autocomplete="new-password">
+                </div>
+            </div>
+            <small class="lupa-status" id="lupaResetStatus"></small>
+            <button type="button" class="auth-btn" id="lupaResetBtn" style="margin-top:8px;">
+                <span class="btn-spin" aria-hidden="true"></span>
+                <span class="btn-label">Reset Password</span>
+            </button>
+        </div>
+    </div>
 </div>
 
 {{-- Kaki halaman. Di luar kerangka dua kolom supaya ia menempel ke tepi
@@ -1227,6 +1336,128 @@
 
         tombol.addEventListener('click', function () {
             terapkan(akar.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+        });
+    })();
+
+    /* =================================================================
+       LUPA SANDI — alur reset password tamu.
+       1) isi username+email -> dicek cocok (enable tombol Kirim Kode)
+       2) kirim kode ke email
+       3) isi kode + password baru -> reset
+       ================================================================= */
+    (function () {
+        var overlay = document.getElementById('lupaOverlay');
+        var link    = document.getElementById('lupaSandiLink');
+        if (!overlay || !link) return;
+
+        var CSRF = document.querySelector('meta[name="csrf-token"]').content;
+        var elUser   = document.getElementById('lupaUser');
+        var elEmail  = document.getElementById('lupaEmail');
+        var elStatus = document.getElementById('lupaStatus');
+        var sendBtn  = document.getElementById('lupaSendBtn');
+        var step2    = document.getElementById('lupaStep2');
+        var elCode   = document.getElementById('lupaCode');
+        var elPass   = document.getElementById('lupaPass');
+        var elPass2  = document.getElementById('lupaPass2');
+        var resetSt  = document.getElementById('lupaResetStatus');
+        var resetBtn = document.getElementById('lupaResetBtn');
+
+        var matched = false, verifyTimer = null, cooldown = 0, cdTimer = null;
+
+        function setStatus(el, msg, kind) {
+            el.textContent = msg || '';
+            el.className = 'lupa-status' + (kind ? ' ' + kind : '');
+        }
+        function busy(btn, on) {
+            btn.classList.toggle('is-busy', on);
+            btn.setAttribute('aria-busy', on ? 'true' : 'false');
+        }
+        function post(url, body) {
+            return fetch(url, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': CSRF, 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify(body)
+            }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, status: r.status, d: d }; }); });
+        }
+        function payload() { return { username: elUser.value.trim(), email: elEmail.value.trim() }; }
+
+        function open() { overlay.classList.add('show'); setTimeout(function(){ elUser.focus(); }, 50); }
+        function close() { overlay.classList.remove('show'); }
+
+        link.addEventListener('click', function (e) { e.preventDefault(); open(); });
+        document.getElementById('lupaClose').addEventListener('click', close);
+        overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+        document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+
+        // Cek kecocokan username+email (debounce) -> enable tombol Kirim Kode.
+        function verify() {
+            matched = false;
+            sendBtn.classList.add('is-disabled');
+            var p = payload();
+            if (!p.username || !p.email || p.email.indexOf('@') < 0) { setStatus(elStatus, ''); return; }
+            setStatus(elStatus, 'Memeriksa…');
+            post('{{ route('forgot.verify') }}', p).then(function (res) {
+                if (!payload().username) return;
+                if (res.d && res.d.match) {
+                    matched = true;
+                    sendBtn.classList.remove('is-disabled');
+                    setStatus(elStatus, 'Data cocok. Anda bisa mengirim kode.', 'ok');
+                } else {
+                    setStatus(elStatus, 'Username & email tidak cocok.', 'err');
+                }
+            }).catch(function () { setStatus(elStatus, 'Gagal memeriksa. Coba lagi.', 'err'); });
+        }
+        [elUser, elEmail].forEach(function (el) {
+            el.addEventListener('input', function () {
+                clearTimeout(verifyTimer);
+                verifyTimer = setTimeout(verify, 450);
+            });
+        });
+
+        // Kirim kode.
+        function tickCd() {
+            if (cooldown <= 0) { sendBtn.querySelector('.btn-label').textContent = 'Kirim Ulang Kode'; sendBtn.classList.remove('is-disabled'); clearInterval(cdTimer); return; }
+            sendBtn.querySelector('.btn-label').textContent = 'Kirim ulang (' + cooldown + ')';
+            cooldown--;
+        }
+        sendBtn.addEventListener('click', function () {
+            if (!matched) return;
+            busy(sendBtn, true);
+            post('{{ route('forgot.send') }}', payload()).then(function (res) {
+                busy(sendBtn, false);
+                if (res.ok && res.d.ok) {
+                    setStatus(elStatus, res.d.message, 'ok');
+                    step2.classList.add('show');
+                    elCode.focus();
+                    sendBtn.classList.add('is-disabled');
+                    cooldown = 60; cdTimer = setInterval(tickCd, 1000); tickCd();
+                } else {
+                    setStatus(elStatus, (res.d && res.d.message) || 'Gagal mengirim kode.', 'err');
+                }
+            }).catch(function () { busy(sendBtn, false); setStatus(elStatus, 'Gagal menghubungi server.', 'err'); });
+        });
+
+        // Reset password.
+        resetBtn.addEventListener('click', function () {
+            setStatus(resetSt, '');
+            if (elPass.value !== elPass2.value) { setStatus(resetSt, 'Konfirmasi password tidak sama.', 'err'); return; }
+            busy(resetBtn, true);
+            post('{{ route('forgot.reset') }}', {
+                username: elUser.value.trim(), email: elEmail.value.trim(),
+                code: elCode.value.trim(),
+                password: elPass.value, password_confirmation: elPass2.value
+            }).then(function (res) {
+                busy(resetBtn, false);
+                if (res.ok && res.d.ok) {
+                    setStatus(resetSt, res.d.message + ' Mengarahkan ke login…', 'ok');
+                    setTimeout(function () { window.location.href = '{{ url('/login') }}'; }, 1600);
+                } else {
+                    var msg = 'Gagal mereset password.';
+                    if (res.d && res.d.errors) { msg = Object.values(res.d.errors)[0][0]; }
+                    else if (res.d && res.d.message) { msg = res.d.message; }
+                    setStatus(resetSt, msg, 'err');
+                }
+            }).catch(function () { busy(resetBtn, false); setStatus(resetSt, 'Gagal menghubungi server.', 'err'); });
         });
     })();
 

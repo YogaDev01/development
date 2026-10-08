@@ -131,7 +131,9 @@
                                         $bolehCeo       = $st === 'VERIFIED' && $u->hasRole($stageRoles('VERIFIED'));
                                         $bolehRevisi    = $st === 'REJECTED' && $u->hasRole(['superadmin','manager','supervisor']);
                                         $bolehBatal     = $st === 'REJECTED' && $u->hasRole(['superadmin','manager']);
-                                        $bolehSettle    = $st === 'PAID' && $u->hasRole(['superadmin','manager','supervisor']);
+                                        // SETTLE_REJECTED ikut tombol "Settle" yang sama dengan
+                                        // PAID — form realize.blade.php menangani keduanya.
+                                        $bolehSettle    = in_array($st, ['PAID', 'SETTLE_REJECTED'], true) && $u->hasRole(['superadmin','manager','supervisor']);
                                         $bolehHeadSet   = $st === 'REALIZED' && $u->hasRole(['superadmin','head']);
                                         $bolehFinSet    = $st === 'SETTLE_CHECKED' && $u->hasRole(['superadmin','finance','finance_manager','cost_control']);
                                         /* Cabang Expense Claim (settlement > pengajuan): CR wajib lewat

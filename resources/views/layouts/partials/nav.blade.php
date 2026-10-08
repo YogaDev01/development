@@ -56,28 +56,84 @@
         }
         return $url;
     };
+
+    // Satu item navigasi: lolos hak akses (menu/roles) DAN punya tujuan.
+    $bisaTampil = function (array $item) use ($can, $navUrl): bool {
+        if (!empty($item['menu']))  return $can($item['menu']) && $navUrl($item) !== null;
+        if (!empty($item['roles'])) return Auth::user()->hasRole($item['roles']) && $navUrl($item) !== null;
+        return $navUrl($item) !== null;
+    };
 @endphp
 
 @foreach ($navSections as $labelSeksi => $kunciMenu)
     @php
-        $terlihat = collect($kunciMenu)
-            ->map(fn ($k) => $navItems[$k] ?? null)
-            ->filter()
-            ->filter(function ($item) use ($can) {
-                if (!empty($item['menu']))  return $can($item['menu']);
-                if (!empty($item['roles'])) return Auth::user()->hasRole($item['roles']);
-                return true;
-            })
-            ->filter(fn ($item) => $navUrl($item) !== null);
+        /*
+         | Satu seksi (mis. Workflow) boleh campur: entri berindeks angka =
+         | kunci item langsung, entri berkunci string = dropdown (nama grup
+         | => daftar kunci item di dalamnya). Dipetakan jadi daftar "baris"
+         | supaya markup di bawah tidak perlu tahu bedanya lagi, dan grup
+         | yang semua isinya tidak terlihat (hak akses) otomatis tidak
+         | dirender — termasuk labelnya.
+         */
+        $baris = collect($kunciMenu)->map(function ($v, $k) use ($navItems, $bisaTampil, $navAktif) {
+            if (is_array($v)) {
+                $items = collect($v['items'] ?? $v)
+                    ->map(fn ($kk) => $navItems[$kk] ?? null)
+                    ->filter()
+                    ->filter($bisaTampil)
+                    ->values();
+
+                return $items->isEmpty() ? null : [
+                    'type'   => 'group',
+                    'label'  => $k,
+                    'icon'   => $v['icon'] ?? 'fas fa-layer-group',
+                    'items'  => $items,
+                    'active' => $items->contains($navAktif),
+                ];
+            }
+
+            $item = $navItems[$v] ?? null;
+            if (!$item || !$bisaTampil($item)) {
+                return null;
+            }
+
+            return ['type' => 'item', 'item' => $item];
+        })->filter();
     @endphp
 
-    @if ($terlihat->isNotEmpty())
-        <div class="nav-label">{{ $labelSeksi }}</div>
+    @if ($baris->isNotEmpty())
+        @if ($labelSeksi !== '')
+            <div class="nav-label">{{ $labelSeksi }}</div>
+        @endif
 
-        @foreach ($terlihat as $item)
-            <a href="{{ $navUrl($item) }}" class="nav-item {{ $navAktif($item) ? 'active' : '' }}">
-                <i class="{{ $item['icon'] }} ic"></i>{{ $item['label'] }}
-            </a>
+        @foreach ($baris as $baris1)
+            @if ($baris1['type'] === 'item')
+                @php($item = $baris1['item'])
+                <a href="{{ $navUrl($item) }}" class="nav-item {{ $navAktif($item) ? 'active' : '' }}"
+                    @if (($item['menu'] ?? null) === 'todo-list') id="navTodoList" @endif>
+                    <i class="{{ $item['icon'] }} ic"></i>{{ $item['label'] }}
+                    @if (($item['menu'] ?? null) === 'todo-list')
+                        <span class="nav-badge-dot" id="navTodoBadge" title="New Task Assigned"
+                            data-url="{{ route('todo-list.has-pending') }}" style="display:none;"></span>
+                    @endif
+                </a>
+            @else
+                <div class="nav-group {{ $baris1['active'] ? 'open' : '' }}">
+                    <button type="button" class="nav-group-toggle" aria-expanded="{{ $baris1['active'] ? 'true' : 'false' }}">
+                        <span class="nav-group-toggle-main">
+                            <i class="{{ $baris1['icon'] }} ic"></i>{{ $baris1['label'] }}
+                        </span>
+                        <i class="fas fa-chevron-right nav-group-caret"></i>
+                    </button>
+                    <div class="nav-group-items">
+                        @foreach ($baris1['items'] as $item)
+                            <a href="{{ $navUrl($item) }}" class="nav-item {{ $navAktif($item) ? 'active' : '' }}">
+                                <i class="{{ $item['icon'] }} ic"></i>{{ $item['label'] }}
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
         @endforeach
     @endif
 @endforeach

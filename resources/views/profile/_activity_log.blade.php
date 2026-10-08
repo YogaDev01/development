@@ -15,6 +15,9 @@
 @php
     use App\Models\UserActivityLog;
     $activityFilters = $activityFilters ?? [];
+    // Rincian perubahan nilai = credential. Default aman: sembunyikan kecuali
+    // controller secara eksplisit mengizinkan (owner atau superadmin).
+    $canSeeChanges = $canSeeChanges ?? false;
 @endphp
 
 <p class="text-muted" style="font-size:12px;">
@@ -91,6 +94,22 @@
                     @if($log->notes)
                         <div style="font-size:11.5px;color:var(--text-dim);">
                             <i class="fas fa-sticky-note mr-1"></i>{{ $log->notes }}
+                        </div>
+                    @endif
+
+                    {{-- Rincian perubahan nilai (dari -> menjadi) bersifat CREDENTIAL:
+                         hanya ditampilkan ke pemilik log dan superadmin. --}}
+                    @if($canSeeChanges && !empty($log->changes))
+                        <div class="mt-1" style="font-size:11.5px;">
+                            @foreach($log->changes as $chg)
+                                <div style="color:var(--text-dim);">
+                                    <i class="fas fa-exchange-alt mr-1" style="font-size:10px;"></i>
+                                    <span class="font-weight-600">{{ $chg['label'] ?? '-' }}:</span>
+                                    <span class="text-danger">{{ $chg['from'] ?? '-' }}</span>
+                                    <i class="fas fa-long-arrow-alt-right mx-1"></i>
+                                    <span class="text-success">{{ $chg['to'] ?? '-' }}</span>
+                                </div>
+                            @endforeach
                         </div>
                     @endif
                 </div>

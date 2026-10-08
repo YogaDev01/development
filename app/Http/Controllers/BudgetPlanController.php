@@ -168,7 +168,7 @@ class BudgetPlanController extends Controller
 
         $query = Project::with('customer')
             ->leftJoin('customers', 'customers.id', '=', 'projects.customer_id')
-            ->whereIn('projects.status', ['WAITING_PO', 'ACTIVE'])
+            ->whereIn('projects.status', Project::BUDGETABLE_STATUSES)
             ->orderBy('customers.name')
             ->orderBy('projects.name')
             ->select('projects.*');

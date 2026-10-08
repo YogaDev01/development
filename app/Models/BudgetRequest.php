@@ -71,6 +71,10 @@ class BudgetRequest extends Model
         'CLOSED',
         'REJECTED',
         'CANCELLED',
+        // Reject settlement (Head/Finance/Finance Manager/Approver) berhenti
+        // di sini, bukan langsung ke PAID — lihat getAllowedNextStatuses()
+        // dan Concerns\HandlesCrSettlement.
+        'SETTLE_REJECTED',
     ];
 
     /*
@@ -101,6 +105,9 @@ class BudgetRequest extends Model
      */
     public const CA_COUNTED_STATUSES = [
         'PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'SETTLE_APPROVED',
+        // Settlement ditolak TETAP berjalan (dananya belum balik/ditutup),
+        // jadi tetap ikut terhitung — sama seperti PAID.
+        'SETTLE_REJECTED',
     ];
 
     /*
@@ -518,9 +525,10 @@ class BudgetRequest extends Model
             'QUEUED'    => $this->isCashAdvance() ? ['PAID'] : ['CLOSED'],
             'PAID'      => ['REALIZED'],
             // Settlement (Cash Advance only): Head check -> Finance verify -> CEO
-            // close. Reject di tiap tahap mengembalikan ke PAID untuk direvisi.
-            'REALIZED'         => ['SETTLE_CHECKED', 'PAID'],
-            'SETTLE_CHECKED'   => ['SETTLE_VERIFIED', 'PAID'],
+            // close. Reject di tiap tahap berhenti di SETTLE_REJECTED untuk
+            // direvisi (bukan langsung ke PAID — lihat SETTLE_REJECTED di bawah).
+            'REALIZED'         => ['SETTLE_CHECKED', 'SETTLE_REJECTED'],
+            'SETTLE_CHECKED'   => ['SETTLE_VERIFIED', 'SETTLE_REJECTED'],
             /*
             | Cabang Expense Claim: settlement melebihi pengajuan, jadi
             | kekurangannya harus disetujui dua lapis dulu.
@@ -530,10 +538,12 @@ class BudgetRequest extends Model
             |   QUEUED (Process) -> menunggu dibayar, lalu CLOSED otomatis
             | Tanpa klaim, alurnya tetap SETTLE_VERIFIED -> CLOSED.
             */
-            'SETTLE_VERIFIED'  => $this->expenseClaimAmount() > 0 ? ['SETTLE_APPROVED', 'PAID'] : ['CLOSED'],
-            'SETTLE_APPROVED'  => ['SECOND_APPROVED', 'PAID'],
+            'SETTLE_VERIFIED'  => $this->expenseClaimAmount() > 0 ? ['SETTLE_APPROVED', 'SETTLE_REJECTED'] : ['CLOSED'],
+            'SETTLE_APPROVED'  => ['SECOND_APPROVED', 'SETTLE_REJECTED'],
             'SECOND_APPROVED'  => ['QUEUED'],
             'REJECTED'  => ['DRAFT', 'CANCELLED'],     // Manager decision: Revise or Cancel
+            // Settlement ditolak: revisi lalu submit ulang, sama seperti PAID.
+            'SETTLE_REJECTED'  => ['REALIZED'],
             default     => [],
         };
     }
@@ -689,6 +699,7 @@ class BudgetRequest extends Model
             'CLOSED'    => 'Closed',
             'REJECTED'  => 'Rejected',
             'CANCELLED' => 'Cancelled',
+            'SETTLE_REJECTED' => 'Settle Rejected',
             default     => $status ?? '-',
         };
     }

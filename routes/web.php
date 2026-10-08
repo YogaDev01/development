@@ -28,6 +28,7 @@ use App\Http\Controllers\DeliveryNoteController;
 use App\Http\Controllers\CostRegisterController;
 use App\Http\Controllers\FeedbackController;
 use App\Http\Controllers\TodoListController;
+use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\StageController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\AccountController;
@@ -51,6 +52,12 @@ Route::middleware('guest')->group(function () {
     // AuthController::login() lewat RateLimiter supaya ikut menghitung username,
     // bukan IP saja (kantor yang berbagi satu IP publik tidak saling mengunci).
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:20,1');
+
+    // LUPA SANDI — reset password tamu lewat kode email. Di-throttle ketat
+    // per IP; endpoint "send" & "reset" punya rate-limit tambahan di controller.
+    Route::post('/forgot/verify', [AuthController::class, 'forgotVerify'])->middleware('throttle:15,1')->name('forgot.verify');
+    Route::post('/forgot/send',   [AuthController::class, 'forgotSendCode'])->middleware('throttle:10,1')->name('forgot.send');
+    Route::post('/forgot/reset',  [AuthController::class, 'forgotReset'])->middleware('throttle:15,1')->name('forgot.reset');
 });
 
 Route::post('/logout', [AuthController::class, 'logout'])
@@ -108,6 +115,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [ProfileController::class, 'show'])->name('show');
         Route::put('/', [ProfileController::class, 'update'])->name('update');
         Route::post('/avatar', [ProfileController::class, 'uploadAvatar'])->name('avatar');
+        Route::delete('/avatar', [ProfileController::class, 'deleteAvatar'])->name('avatar.delete');
+        Route::post('/cover', [ProfileController::class, 'uploadCover'])->name('cover');
+        Route::delete('/cover', [ProfileController::class, 'deleteCover'])->name('cover.delete');
+        Route::post('/notifications', [ProfileController::class, 'updateNotifications'])->name('notifications');
+        Route::post('/password/token', [ProfileController::class, 'requestPasswordToken'])->name('password.token');
+        Route::post('/password', [ProfileController::class, 'changePassword'])->name('password');
+        Route::get('/todo-summary', [ProfileController::class, 'todoSummary'])->name('todo-summary');
+        Route::get('/todo-matrix', [ProfileController::class, 'todoMatrix'])->name('todo-matrix');
     });
 
     // VIEW AS — superadmin mencoba UI/menu sebagai role lain (preview).
@@ -120,15 +135,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/{slug}', [\App\Http\Controllers\PanduanController::class, 'show'])->name('show');
     });
 
-    // Dashboard
-    Route::get('/', function () {
-        // Beranda Finance sekaligus menandai Finance sebagai aplikasi aktif —
-        // pasangan dari AppShellController yang menyimpan aplikasi lain.
-        session(['tesys.app' => 'finance']);
+    // Halaman utama aplikasi = Profil Saya (menggantikan Dashboard).
+    // Sekaligus menandai aplikasi aktif = App Default pilihan user, jadi
+    // sidebar/menu yang muncul mengikuti preferensi (lihat layouts/app.blade.php
+    // $currentApp & User::defaultApp()).
+    Route::get('/', function (\Illuminate\Http\Request $request) {
+        session(['tesys.app' => \Illuminate\Support\Facades\Auth::user()->defaultApp()]);
 
-        // Sementara hanya sapaan + info versi (lihat dashboard/index.blade.php).
-        // actionQueues() & activityFeed() sengaja tidak dipanggil lagi di sini.
-        return view('dashboard.index');
+        return app(ProfileController::class)->show($request);
     });
 
     // Muka aplikasi selain Finance (HR, Logistic, Operation, Project).
@@ -179,13 +193,24 @@ Route::middleware('auth')->group(function () {
         Route::post('project/{id}/submit-closing', [ProjectController::class, 'submitClosing'])->name('project.submit-closing');
     });
 
+    // Approval PO dua langkah: Finance VERIFY, lalu Approver APPROVE.
     Route::middleware('role:superadmin,finance,finance_manager')->group(function () {
-        Route::post('project/{id}/finance-approve', [ProjectController::class, 'financeApprove'])->name('project.finance-approve');
-        Route::post('project/{id}/finance-revise',  [ProjectController::class, 'financeRevise'])->name('project.finance-revise');
+        Route::post('project/{id}/verify',          [ProjectController::class, 'verify'])->name('project.verify');
         Route::post('project/{id}/verify-closing',  [ProjectController::class, 'verifyClosing'])->name('project.verify-closing');
         // Tutup langsung dari PAID, tanpa menunggu MoM Closing dari Head.
         Route::post('project/{id}/finance-close',    [ProjectController::class, 'financeClose'])->name('project.finance-close');
         Route::post('project/{id}/reject-closing',  [ProjectController::class, 'rejectClosing'])->name('project.reject-closing');
+    });
+
+    // APPROVE (VERIFIED → Early Start / Waiting PO / Active) — Approver.
+    Route::middleware('role:superadmin,approver')->group(function () {
+        Route::post('project/{id}/approve', [ProjectController::class, 'approve'])->name('project.approve');
+    });
+
+    // REVISE (SUBMITTED/VERIFIED → DRAFT) — Finance mengembalikan dari Submitted,
+    // Approver dari Verified. Gerbang status dicek di controller.
+    Route::middleware('role:superadmin,finance,finance_manager,approver')->group(function () {
+        Route::post('project/{id}/finance-revise',  [ProjectController::class, 'financeRevise'])->name('project.finance-revise');
     });
 
     // Aktivasi WAITING_PO → ACTIVE via form edit lengkap (Head/Finance)
@@ -614,6 +639,8 @@ Route::middleware('auth')->group(function () {
         // GET ke URL POST (mis. tombol Back / refresh peramban setelah submit):
         // jangan tampilkan 405, kembalikan saja ke form realisasi.
         Route::get('budget-request/{id}/submit-realization',  [BudgetRequestController::class, 'realizeForm']);
+        // "Simpan" — menyimpan draft Settlement tanpa mengajukan (status tetap).
+        Route::post('budget-request/{id}/save-realization-draft', [BudgetRequestController::class, 'saveRealizationDraft'])->name('budget-request.save-realization-draft');
     });
 
     // Tahap 1 - Head: check pengajuan & check settlement.
@@ -981,6 +1008,24 @@ Route::middleware('auth')->group(function () {
     Route::middleware('menu:todo-list')->match(['get', 'post'], 'todo-list/export', [TodoListController::class, 'exportList'])->name('todo-list.export');
     Route::middleware('menu:todo-list')->post('todo-list/bulk/{section}/{mode}', [TodoListController::class, 'bulk'])
         ->whereIn('mode', ['approve', 'reject'])->name('todo-list.bulk');
+    // Dipakai badge titik kuning di sidebar (polling ringan, lihat tesys-shell.js).
+    Route::middleware('menu:todo-list')->get('todo-list/has-pending', [TodoListController::class, 'hasPending'])->name('todo-list.has-pending');
+
+    /*
+    |--------------------------------------------------------------------------
+    | ASSIGNMENT — penugasan bebas antar-user
+    |
+    | Tanpa gerbang menu/role: keputusan bisnis "semua user -> siapa saja".
+    | Otorisasi per-aksi (pemberi vs penerima) dicek di dalam controller.
+    |--------------------------------------------------------------------------
+    */
+    Route::get('assignment',                     [AssignmentController::class, 'index'])->name('assignment.index');
+    Route::post('assignment',                    [AssignmentController::class, 'store'])->name('assignment.store');
+    Route::get('assignment/{assignment}/logs',   [AssignmentController::class, 'logs'])->name('assignment.logs');
+    Route::put('assignment/{assignment}',        [AssignmentController::class, 'update'])->name('assignment.update');
+    Route::post('assignment/{assignment}/done',  [AssignmentController::class, 'markDone'])->name('assignment.done');
+    Route::post('assignment/{assignment}/cancel',[AssignmentController::class, 'cancel'])->name('assignment.cancel');
+    Route::post('assignment/{assignment}/reopen',[AssignmentController::class, 'reopen'])->name('assignment.reopen');
 
     /*
     |--------------------------------------------------------------------------

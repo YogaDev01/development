@@ -466,6 +466,50 @@
         nav.scrollTop += (kotakMenu.top - kotakNav.top) - (nav.clientHeight / 2) + (kotakMenu.height / 2);
     }
 
+    /* ---------------------------------------------------------------
+       3c. Dropdown di dalam seksi sidebar (mis. "Cost Management").
+
+       Blade sudah menandai grup yang memuat menu aktif dengan class
+       "open" saat halaman dirender, jadi di sini cukup mengikat klik
+       untuk buka/tutup — tidak perlu mengingat state antar halaman.
+       --------------------------------------------------------------- */
+    function initNavGroups() {
+        document.querySelectorAll('.sidebar .nav-group').forEach(function (group) {
+            var toggle = group.querySelector('.nav-group-toggle');
+            if (!toggle) return;
+            toggle.addEventListener('click', function () {
+                var open = group.classList.toggle('open');
+                toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+        });
+    }
+
+    /* ---------------------------------------------------------------
+       3d. Badge titik kuning di menu Todo List.
+
+       Dicek tiap 5 menit lewat window.tesysPoll (sudah sadar tab — lihat
+       definisinya di app.blade.php, dimuat lebih dulu). Tidak menyalakan
+       apa pun kalau fetch gagal; badge diam-diam tetap pada keadaan
+       terakhir yang berhasil, bukan berkedip hilang.
+       --------------------------------------------------------------- */
+    function initTodoBadge() {
+        var badge = document.getElementById('navTodoBadge');
+        var url = badge && badge.getAttribute('data-url');
+        if (!badge || !url || typeof window.tesysPoll !== 'function') return;
+
+        function cek() {
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (res) { return res.ok ? res.json() : null; })
+                .then(function (data) {
+                    if (!data) return;
+                    badge.style.display = data.has_pending ? '' : 'none';
+                })
+                .catch(function () { /* diam — jangan ganggu sidebar kalau polling gagal */ });
+        }
+
+        window.tesysPoll(cek, 5 * 60 * 1000);
+    }
+
     applyStoredSidebarState();
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -476,6 +520,8 @@
         initScrollState();
         initBusyButtons();
         initSidebarToggle();
+        initNavGroups();
+        initTodoBadge();
         initQuickSearch();
         initAppSwitcher();
         revealActiveNav();

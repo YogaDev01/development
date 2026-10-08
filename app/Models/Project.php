@@ -47,6 +47,8 @@ class Project extends Model
         'status',
         'notes',
         'submitted_at',
+        'verified_at',
+        'verified_by',
         'approved_at',
         'closed_at',
         'approved_by',
@@ -65,6 +67,7 @@ class Project extends Model
         'overhead'         => 'integer',
         'fixed_cost'       => 'integer',
         'submitted_at'     => 'datetime',
+        'verified_at'      => 'datetime',
         'approved_at'      => 'datetime',
         'closed_at'        => 'datetime',
     ];
@@ -81,6 +84,8 @@ class Project extends Model
     public const STATUSES = [
         'DRAFT',
         'SUBMITTED',
+        'VERIFIED',
+        'EARLY_START',
         'WAITING_PO',
         'ACTIVE',
         'PROGRESS_DONE',
@@ -88,6 +93,16 @@ class Project extends Model
         'CLOSING',
         'CLOSED',
     ];
+
+    /**
+     * Status PO yang boleh dibuatkan Budget Plan di dalamnya. Sumber tunggal,
+     * dipakai BudgetPlanController saat menyusun pilihan PO — supaya "PO mana
+     * yang budget-able" tidak bercabang antara model dan controller.
+     *
+     * EARLY_START ikut: PO yang baru diketahui scope-nya pun sudah dianggap
+     * sah dan boleh menampung budget (lihat workflow Early Start).
+     */
+    public const BUDGETABLE_STATUSES = ['EARLY_START', 'WAITING_PO', 'ACTIVE'];
 
     /*
     |--------------------------------------------------------------------------
@@ -415,6 +430,8 @@ class Project extends Model
 
     public function isDraft(): bool        { return $this->status === 'DRAFT'; }
     public function isSubmitted(): bool    { return $this->status === 'SUBMITTED'; }
+    public function isVerified(): bool     { return $this->status === 'VERIFIED'; }
+    public function isEarlyStart(): bool   { return $this->status === 'EARLY_START'; }
     public function isWaitingPo(): bool    { return $this->status === 'WAITING_PO'; }
     public function isActive(): bool       { return $this->status === 'ACTIVE'; }
     public function isProgressDone(): bool { return $this->status === 'PROGRESS_DONE'; }
@@ -458,7 +475,22 @@ class Project extends Model
         return $user?->hasRole(\App\Support\AccessRoles::PO_FULL_EDIT) ?? false;
     }
 
-    public function isEditableByHead(): bool { return $this->status === 'DRAFT'; }
+    public function isEditableByHead(): bool { return in_array($this->status, ['DRAFT', 'EARLY_START']); }
+
+    /**
+     * Status hasil approve Approver bila PO BUKAN Early Start: ACTIVE kalau
+     * seluruh nominal No. PO sudah pas dengan nilai kontrak, selain itu
+     * WAITING_PO. Dihitung dari jumlah nominal No. PO yang nyata (bukan kolom
+     * `value` yang bisa tertinggal), dan ACTIVE hanya bila kontrak > 0 supaya
+     * PO tanpa nilai (0 == 0) tidak keliru dianggap lunas-kontrak.
+     */
+    public function approvalAutoStatus(): string
+    {
+        $contract = (int) ($this->contract ?? 0);
+        $poSum    = (int) $this->poNumbers()->sum('nominal');
+
+        return ($contract > 0 && $poSum === $contract) ? 'ACTIVE' : 'WAITING_PO';
+    }
 
     /** Finance bisa edit saat DRAFT, SUBMITTED, atau WAITING_PO */
     public function isEditableByFinance(): bool
@@ -716,9 +748,11 @@ class Project extends Model
         return match ($this->status) {
             'DRAFT'         => 'secondary',
             'SUBMITTED'     => 'warning',
+            'VERIFIED'      => 'info',
+            'EARLY_START'   => 'primary',
             'WAITING_PO'    => 'info',
             'ACTIVE'        => 'success',
-            'PROGRESS_DONE' => 'primary',
+            'PROGRESS_DONE' => 'warning',
             'PAID'          => 'success',
             'CLOSING'       => 'warning',
             'CLOSED'        => 'dark',
@@ -742,9 +776,11 @@ class Project extends Model
         return match ($status) {
             'DRAFT'         => 'Draft',
             'SUBMITTED'     => 'Submitted',
+            'VERIFIED'      => 'Verified',
+            'EARLY_START'   => 'Early Start',
             'WAITING_PO'    => 'Waiting PO',
             'ACTIVE'        => 'Active',
-            'PROGRESS_DONE' => 'Progress Done',
+            'PROGRESS_DONE' => 'Waiting Invoice',
             'PAID'          => 'Paid',
             'CLOSING'       => 'Closing',
             'CLOSED'        => 'Closed',
@@ -934,7 +970,8 @@ class Project extends Model
         string $from,
         string $to,
         string $action,
-        ?string $notes = null
+        ?string $notes = null,
+        ?array $activityChanges = null
     ): void {
         $user = Auth::user();
 
@@ -954,6 +991,7 @@ class Project extends Model
         */
         $labels = [
             'created'           => 'Membuat',
+            'edited'            => 'Menyunting',
             'submitted'         => 'Mengajukan',
             'revised'           => 'Merevisi',
             'waiting_to_active' => 'Mengaktifkan',
@@ -982,7 +1020,11 @@ class Project extends Model
             $actionKey,
             $verb . ' Purchase Order #' . ($this->code ?? $this->id),
             $this,
-            $notes
+            // Saat ada rincian perubahan terstruktur (credential), nilai lama->baru
+            // tidak ditaruh di notes (yang non-sensitif), melainkan di $changes.
+            $activityChanges ? null : $notes,
+            null,
+            $activityChanges
         );
     }
 }

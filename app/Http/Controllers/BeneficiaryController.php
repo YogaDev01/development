@@ -384,6 +384,9 @@ class BeneficiaryController extends Controller
 
         $beneficiary = Beneficiary::findOrFail($id);
 
+        // Dipotret sebelum update untuk rincian perubahan (credential).
+        $sebelum = $beneficiary->getOriginal();
+
         $beneficiary->update([
             'nickname'       => strtoupper($request->nickname),
             'complete_name'  => strtoupper($request->complete_name),
@@ -395,7 +398,24 @@ class BeneficiaryController extends Controller
             'status'         => $request->status,
         ]);
 
-        UserActivityLog::record('master_data', 'update', 'Mengubah Beneficiary ' . $beneficiary->nickname, $beneficiary);
+        $changes = UserActivityLog::changeSet($sebelum, $beneficiary, [
+            'nickname'       => 'Nama Panggilan',
+            'complete_name'  => 'Nama Lengkap',
+            'category'       => 'Kategori',
+            'account_number' => 'No. Rekening',
+            'bank_id'        => 'Bank (ID)',
+            'status'         => 'Status',
+        ]);
+
+        UserActivityLog::record(
+            'master_data',
+            'update',
+            'Mengubah Beneficiary ' . $beneficiary->nickname,
+            $beneficiary,
+            null,
+            null,
+            $changes
+        );
 
         return redirect('/beneficiaries')
             ->with('success', 'Beneficiary berhasil diupdate');

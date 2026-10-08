@@ -253,7 +253,12 @@ class UserController extends Controller
         $activityLogs = UserActivityLog::feedFor($user->id, $activityFilters)
             ->appends($activityFilters);
 
-        return view('user.activity-log', compact('user', 'activityLogs', 'activityFilters'));
+        // Rincian perubahan nilai = credential: hanya superadmin atau user itu
+        // sendiri. Halaman ini sudah dijaga sedemikian (lihat guard di atas),
+        // tapi flag tetap dihitung eksplisit agar aman bila aturan berubah.
+        $canSeeChanges = $actor->isRealSuperadmin() || (int) $actor->id === (int) $user->id;
+
+        return view('user.activity-log', compact('user', 'activityLogs', 'activityFilters', 'canSeeChanges'));
     }
 
     /**

@@ -373,7 +373,7 @@ $(function () {
     }
 
     $(document).on('submit',
-        '#frmFinanceApprove, #frmFinanceRevise, #frmSubmitClosing, #frmVerifyClosing,'
+        '#frmApprovePo, #frmFinanceRevise, #frmSubmitClosing, #frmVerifyClosing,'
         + ' #frmRejectClosing, #frmCloseProject',
         function () { sibukkan(this); });
 
@@ -548,8 +548,9 @@ $(function () {
 
     var poFilterColumns = [
         { key: 'status',   label: 'Status', valueLabels: {
-            DRAFT: 'Draft', SUBMITTED: 'Submitted', WAITING_PO: 'Waiting PO', ACTIVE: 'Active',
-            PROGRESS_DONE: 'Progress Done', PAID: 'Paid', CLOSING: 'Closing', CLOSED: 'Closed'
+            DRAFT: 'Draft', SUBMITTED: 'Submitted', VERIFIED: 'Verified', EARLY_START: 'Early Start',
+            WAITING_PO: 'Waiting PO', ACTIVE: 'Active',
+            PROGRESS_DONE: 'Waiting Invoice', PAID: 'Paid', CLOSING: 'Closing', CLOSED: 'Closed'
         } },
         { key: 'customer', label: 'Customer' },
         { key: 'pm',       label: 'Manager' },
@@ -640,28 +641,45 @@ $(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | FINANCE APPROVE
+    | VERIFY (Finance) — SUBMITTED -> VERIFIED
     |--------------------------------------------------------------------------
     */
-    $(document).on('click', '.btn-finance-approve', function () {
+    $(document).on('click', '.btn-verify-po', function () {
         var id   = $(this).data('id');
         var name = $(this).data('name');
-        $('#financeApproveText').text('Review PO: ' + name);
-        $('#frmFinanceApprove').attr('action', '/project/' + id + '/finance-approve');
-        $('#frmFinanceApprove')[0].reset();
-        $('#poNumberGroup').hide();
-        $('#mdlFinanceApprove').modal('show');
+        Swal.fire({
+            title: 'Verifikasi PO?',
+            text: 'PO "' + name + '" akan diteruskan ke Approver.',
+            icon: 'question', showCancelButton: true,
+            confirmButtonColor: WARNA_SETUJU, cancelButtonColor: WARNA_BATAL,
+            confirmButtonText: 'Ya, Verifikasi', cancelButtonText: 'Batal'
+        }).then(function (r) {
+            if (!r.isConfirmed) return;
+            var $f = $('<form method="POST" target="_blank" action="/project/' + id + '/verify"></form>')
+                .append('<input type="hidden" name="_token" value="{{ csrf_token() }}">');
+            $('body').append($f);
+            $f.trigger('submit');
+        });
     });
 
-    $('#approvalTypeSelect').on('change', function () {
-        if ($(this).val() === 'ACTIVE') {
-            $('#poNumberGroup').show();
-            $('#poNumberGroup input').prop('required', true);
-        } else {
-            $('#poNumberGroup').hide();
-            $('#poNumberGroup input').prop('required', false);
-        }
+    /*
+    |--------------------------------------------------------------------------
+    | APPROVE (Approver) — VERIFIED -> Early Start / Waiting PO / Active
+    |--------------------------------------------------------------------------
+    */
+    $(document).on('click', '.btn-approve-po', function () {
+        var id   = $(this).data('id');
+        var name = $(this).data('name');
+        $('#approvePoText').text('Review PO: ' + name);
+        $('#frmApprovePo').attr('action', '/project/' + id + '/approve');
+        $('#frmApprovePo')[0].reset();
+        $('#approveDecision').val('APPROVE');
+        $('#mdlApprovePo').modal('show');
     });
+
+    // Tombol mana yang ditekan menentukan keputusan yang dikirim.
+    $('#btnApproveAuto').on('click', function () { $('#approveDecision').val('APPROVE'); });
+    $('#btnApproveEarlyStart').on('click', function () { $('#approveDecision').val('EARLY_START'); });
 
     /*
     |--------------------------------------------------------------------------
@@ -844,8 +862,9 @@ $(function () {
     |--------------------------------------------------------------------------
     */
     var statusColors = {
-        'DRAFT':'secondary','SUBMITTED':'warning',
-        'WAITING_PO':'info','ACTIVE':'success','CLOSED':'dark'
+        'DRAFT':'secondary','SUBMITTED':'warning','VERIFIED':'info','EARLY_START':'primary',
+        'WAITING_PO':'info','ACTIVE':'success','PROGRESS_DONE':'warning','PAID':'success',
+        'CLOSING':'warning','CLOSED':'dark'
     };
 
     // Grouping/collapse tabel Milestone pada modal Detail PO (berdasarkan Project)
@@ -1798,7 +1817,7 @@ $(function () {
             })();
 
             // Edit button
-            var canEdit = (d.status === 'DRAFT' || d.status === 'SUBMITTED' || d.status === 'WAITING_PO');
+            var canEdit = (d.status === 'DRAFT' || d.status === 'SUBMITTED' || d.status === 'WAITING_PO' || d.status === 'EARLY_START');
             if (canEdit) {
                 $('#prjEditBtn').attr('href', '/project/' + d.id + '/edit').show();
             } else {

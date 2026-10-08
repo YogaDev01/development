@@ -29,6 +29,7 @@ class UserActivityLog extends Model
         'action',
         'description',
         'notes',
+        'changes',
         'subject_type',
         'subject_id',
         'reference',
@@ -38,6 +39,7 @@ class UserActivityLog extends Model
 
     protected $casts = [
         'created_at' => 'datetime',
+        'changes'    => 'array',
     ];
 
     /*
@@ -110,8 +112,10 @@ class UserActivityLog extends Model
      * @param  string  $action  salah satu key ACTIONS
      * @param  string  $description  human-readable (Bahasa Indonesia)
      * @param  Model|null  $subject  objek terkait (reference auto dari code/number)
-     * @param  string|null  $notes  catatan opsional
+     * @param  string|null  $notes  catatan opsional (non-sensitif)
      * @param  string|null  $reference  override nomor dokumen (kalau $subject tak punya)
+     * @param  array|null  $changes  rincian perubahan nilai dari->menjadi (CREDENTIAL),
+     *                                tiap elemen: ['label'=>, 'from'=>, 'to'=>]
      */
     public static function record(
         string $module,
@@ -119,7 +123,8 @@ class UserActivityLog extends Model
         string $description,
         ?Model $subject = null,
         ?string $notes = null,
-        ?string $reference = null
+        ?string $reference = null,
+        ?array $changes = null
     ): ?self {
         try {
             $user = Auth::user();
@@ -139,6 +144,7 @@ class UserActivityLog extends Model
                 'action' => $action,
                 'description' => mb_substr($description, 0, 500),
                 'notes' => $notes !== null ? mb_substr($notes, 0, 500) : null,
+                'changes' => ! empty($changes) ? array_values($changes) : null,
                 'subject_type' => $subjectType,
                 'subject_id' => $subjectId,
                 'reference' => $reference !== null ? mb_substr($reference, 0, 100) : null,
@@ -170,6 +176,58 @@ class UserActivityLog extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Bangun rincian perubahan (dari -> menjadi) dengan membandingkan snapshot
+     * nilai LAMA ($before, mis. $model->getOriginal() yang dipotret SEBELUM
+     * update) dengan nilai BARU pada $after.
+     *
+     * $map memetakan kolom => label tampilan, atau kolom => ['label'=>...,
+     * 'money'=>true] untuk memformat nominal rupiah (1234567 -> "1.234.567").
+     * Hanya kolom yang benar-benar berubah yang dikembalikan.
+     *
+     * Hasil cocok langsung untuk argumen $changes pada record().
+     *
+     * @return array<int, array{label:string, from:string, to:string}>
+     */
+    public static function changeSet(array $before, Model $after, array $map): array
+    {
+        $result = [];
+
+        foreach ($map as $field => $config) {
+            $label = is_array($config) ? ($config['label'] ?? $field) : $config;
+            $isMoney = is_array($config) && ! empty($config['money']);
+
+            $old = $before[$field] ?? null;
+            $new = $after->getAttribute($field);
+
+            if ((string) $old === (string) $new) {
+                continue;
+            }
+
+            $result[] = [
+                'label' => $label,
+                'from'  => self::formatValue($old, $isMoney),
+                'to'    => self::formatValue($new, $isMoney),
+            ];
+        }
+
+        return $result;
+    }
+
+    /** Format satu nilai untuk tampilan rincian perubahan. */
+    protected static function formatValue($value, bool $isMoney): string
+    {
+        if ($value === null || $value === '') {
+            return '-';
+        }
+
+        if ($isMoney) {
+            return number_format((float) $value, 0, ',', '.');
+        }
+
+        return (string) $value;
     }
 
     /*

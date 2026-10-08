@@ -75,6 +75,9 @@ class FileAccess
             // ---- Budget Plan: lampiran mengikuti CR-nya lewat budget plan
             'budget_plan_attachments'          => $this->allowsBudgetPlan($path),
 
+            // ---- Assignment: hanya pemberi/penerima tugas (atau superadmin)
+            'assignment_attachments'           => $this->allowsAssignment($path),
+
             /*
             | ---- Treasury, Cost Register, Customer, Surat Jalan, Monitoring
             |
@@ -106,6 +109,7 @@ class FileAccess
             // Foto profil. Sengaja terbuka untuk semua pengguna login: avatar
             // memang ditampilkan di navbar, daftar Team dan bubble chat.
             'avatars'                          => true,
+            'covers'                           => true,
 
             /*
             | ---- Sisanya DITOLAK.
@@ -249,6 +253,28 @@ class FileAccess
         }
 
         return $user->accessibleProjectIds()->contains($projectId);
+    }
+
+    /**
+     * Lampiran Assignment terlihat hanya oleh pemberi atau penerima tugas
+     * (atau superadmin) — sama dengan siapa yang boleh membuka tugasnya di
+     * AssignmentController. Berkas tanpa baris pemilik ditolak.
+     */
+    private function allowsAssignment(string $path): bool
+    {
+        $assignment = \App\Models\AssignmentAttachment::where('path', $path)
+            ->first()?->assignment;
+
+        if (! $assignment) {
+            return false;
+        }
+
+        /** @var User $user */
+        $user = Auth::user();
+
+        return $user->id === $assignment->assigner_id
+            || $user->id === $assignment->assignee_id
+            || $user->hasRole('superadmin');
     }
 
     /** Lampiran PO/BAST mengikuti Access Group proyek untuk manager & head. */

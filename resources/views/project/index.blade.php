@@ -19,12 +19,14 @@
         <!-- SUMMARY WORKFLOW (clickable, filter tabel Purchase Order) -->
         @php
             $poSteps = [
-                ['Draft',         $summary['draft'],         'secondary', 'DRAFT'],
-                ['Submitted',     $summary['submitted'],     'warning',   'SUBMITTED'],
-                ['Waiting PO',    $summary['waiting_po'],    'info',      'WAITING_PO'],
-                ['Active',        $summary['active'],        'success',   'ACTIVE'],
-                ['Progress Done', $summary['progress_done'], 'primary',   'PROGRESS_DONE'],
-                ['Paid',          $summary['paid'],          'success',   'PAID'],
+                ['Draft',           $summary['draft'],         'secondary', 'DRAFT'],
+                ['Submitted',       $summary['submitted'],     'warning',   'SUBMITTED'],
+                ['Verified',        $summary['verified'],      'info',      'VERIFIED'],
+                ['Early Start',     $summary['early_start'],   'primary',   'EARLY_START'],
+                ['Waiting PO',      $summary['waiting_po'],    'info',      'WAITING_PO'],
+                ['Active',          $summary['active'],        'success',   'ACTIVE'],
+                ['Waiting Invoice', $summary['progress_done'], 'warning',   'PROGRESS_DONE'],
+                ['Paid',            $summary['paid'],          'success',   'PAID'],
                 /*
                   Tahap "Closing" sengaja TIDAK ditampilkan di stepper ini —
                   penyembunyian visual saja. Statusnya tetap hidup di data,
@@ -376,10 +378,15 @@
                                         // (Project::FULL_EDIT_ROLES), peran lain tetap per-status.
                                         $bolehEditPenuh = $project->isFullyEditableBy($pengguna)
                                             || ($pengguna->hasRole(['finance']) && in_array($project->status, ['DRAFT','SUBMITTED']))
-                                            || ($pengguna->hasRole(['head']) && $project->status === 'DRAFT');
+                                            || ($pengguna->hasRole(['head']) && in_array($project->status, ['DRAFT','EARLY_START']));
                                         // Menambah No. PO dan mengaktifkan dijaga gerbang yang sama persis.
                                         $bolehWaitingPo = $project->status === 'WAITING_PO' && $pengguna->hasRole(['superadmin','finance','finance_manager','head']);
-                                        $bolehFinance   = $project->status === 'SUBMITTED' && $pengguna->hasRole(['superadmin','finance','finance_manager']);
+                                        // Approval PO dua langkah: Finance VERIFY (Submitted), Approver APPROVE (Verified).
+                                        $bolehVerify    = $project->status === 'SUBMITTED' && $pengguna->hasRole(['superadmin','finance','finance_manager']);
+                                        $bolehApprove   = $project->status === 'VERIFIED'  && $pengguna->hasRole(['superadmin','approver']);
+                                        // Revise balik ke Draft: Finance dari Submitted, Approver dari Verified.
+                                        $bolehRevise    = ($project->status === 'SUBMITTED' && $pengguna->hasRole(['superadmin','finance','finance_manager']))
+                                            || ($project->status === 'VERIFIED' && $pengguna->hasRole(['superadmin','approver']));
                                         $bolehClosing   = $project->status === 'PAID' && $pengguna->hasRole(['superadmin','head']);
                                         // Finance boleh menutup PO yang sudah PAID tanpa menunggu
                                         // MoM Closing dari Head (ProjectController::financeClose).
@@ -402,7 +409,7 @@
                                         $bolehBast = $pengguna->hasRole(['superadmin','head'])
                                             && $project->poNumbers->whereIn('status', ['RELEASED', 'PARTIAL'])->isNotEmpty();
 
-                                        $adaAksi = $bolehSubmit || $bolehEditPenuh || $bolehWaitingPo || $bolehFinance
+                                        $adaAksi = $bolehSubmit || $bolehEditPenuh || $bolehWaitingPo || $bolehVerify || $bolehApprove
                                             || $bolehClosing || $bolehVerClosing || $bolehFinanceClose || $bolehHapus;
                                     @endphp
 
@@ -427,11 +434,17 @@
                                                 <i class="fas fa-paper-plane"></i><span class="ts-al">Submit</span>
                                             </button>
                                         </form>
-                                        @elseif($bolehFinance)
-                                        <button type="button" class="ts-action-primary btn-finance-approve"
+                                        @elseif($bolehVerify)
+                                        <button type="button" class="ts-action-primary btn-verify-po"
+                                                data-id="{{ $project->id }}" data-name="{{ $project->name }}"
+                                                title="Verifikasi">
+                                            <i class="fas fa-check"></i><span class="ts-al">Verify</span>
+                                        </button>
+                                        @elseif($bolehApprove)
+                                        <button type="button" class="ts-action-primary btn-approve-po"
                                                 data-id="{{ $project->id }}" data-name="{{ $project->name }}"
                                                 title="Approve">
-                                            <i class="fas fa-check"></i><span class="ts-al">Approve</span>
+                                            <i class="fas fa-check-double"></i><span class="ts-al">Approve</span>
                                         </button>
                                         @elseif($bolehWaitingPo)
                                         <a href="{{ url('/project/' . $project->id . '/activate') }}"
@@ -478,19 +491,19 @@
                                             // boleh mengedit di semua status (Project::FULL_EDIT_ROLES)
                                             // kehilangan jalan masuknya begitu barisnya punya aksi
                                             // lain — mis. Aktifkan saat Waiting PO.
-                                            $editDiMenu     = $bolehEditPenuh && ($bolehSubmit || $bolehFinance
+                                            $editDiMenu     = $bolehEditPenuh && ($bolehSubmit || $bolehVerify || $bolehApprove
                                                 || $bolehWaitingPo || $bolehClosing || $bolehVerClosing);
                                             $tambahPoDiMenu = $bolehWaitingPo;
                                             // Submit BAST menempati slot aksi utama hanya kalau slot itu
                                             // masih kosong; bila sudah dipakai aksi yang lebih mendesak
                                             // (Approve Closing, dsb.) ia turun ke menu — tetap satu klik
                                             // lebih dekat daripada harus lewat modal detail.
-                                            $bastDiMenu = $bolehBast && ($bolehSubmit || $bolehFinance || $bolehWaitingPo
+                                            $bastDiMenu = $bolehBast && ($bolehSubmit || $bolehVerify || $bolehApprove || $bolehWaitingPo
                                                 || $bolehClosing || $bolehVerClosing || $bolehEditPenuh);
                                             // Close turun ke menu kalau slot utama sudah dipakai
                                             // Submit Closing (Head/Superadmin pada PO yang sama).
                                             $financeCloseDiMenu = $bolehFinanceClose && $bolehClosing;
-                                            $adaMenu = $editDiMenu || $tambahPoDiMenu || $bastDiMenu || $bolehFinance
+                                            $adaMenu = $editDiMenu || $tambahPoDiMenu || $bastDiMenu || $bolehRevise
                                                 || $bolehVerClosing || $financeCloseDiMenu || $bolehHapus;
                                         @endphp
 
@@ -531,7 +544,7 @@
                                             </a>
                                             @endif
 
-                                            @if($bolehFinance)
+                                            @if($bolehRevise)
                                             <div class="dropdown-divider"></div>
                                             <button type="button" class="dropdown-item is-danger btn-finance-revise"
                                                     data-id="{{ $project->id }}">
@@ -999,30 +1012,26 @@
 </div>
 
 <!-- MODAL FINANCE APPROVE -->
-<div class="modal fade" id="mdlFinanceApprove" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal fade" id="mdlApprovePo" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
             <div class="modal-header" style="background:var(--charcoal);border-bottom:3px solid var(--accent);">
                 <h5 class="modal-title text-white">
-                    <i class="fas fa-check mr-2" style="color:var(--accent);"></i> Approval Finance
+                    <i class="fas fa-check-double mr-2" style="color:var(--accent);"></i> Approval Purchase Order
                 </h5>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
-            <form id="frmFinanceApprove" method="POST" target="_blank">
+            <form id="frmApprovePo" method="POST" target="_blank">
                 @csrf
+                {{-- Diisi oleh tombol yang diklik: APPROVE (sistem pilih Waiting PO/Active otomatis) atau EARLY_START --}}
+                <input type="hidden" name="decision" id="approveDecision" value="APPROVE">
                 <div class="modal-body" style="padding:24px 28px;">
-                    <p id="financeApproveText" class="text-muted mb-3"></p>
-                    <div class="form-group">
-                        <label class="font-weight-600">Pilih Status <span class="text-danger">*</span></label>
-                        <select name="approval_type" class="form-control" id="approvalTypeSelect" required>
-                            <option value="">— Pilih —</option>
-                            <option value="WAITING_PO">Waiting PO (PO dari customer belum ada)</option>
-                            <option value="ACTIVE">Active (PO sudah diterima)</option>
-                        </select>
-                    </div>
-                    <div class="alert alert-warning py-2 px-3" id="poNumberGroup" style="display:none;font-size:12px;">
-                        <i class="fas fa-exclamation-triangle mr-1"></i>
-                        Pastikan minimal 1 No. PO sudah ditambahkan lewat Edit sebelum memilih Active — kalau belum ada, pilih Waiting PO dulu.
+                    <p id="approvePoText" class="text-muted mb-3"></p>
+                    <div class="alert alert-info py-2 px-3" style="font-size:12px;">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        <strong>Approve</strong>: status dipilih otomatis — <em>Active</em> bila total No. PO sudah pas dengan nilai kontrak, selain itu <em>Waiting PO</em>.
+                        <br>
+                        <strong>Early Start</strong>: untuk PO yang baru diketahui scope-nya (nilai/detail belum lengkap) — tetap sah &amp; bisa dibuatkan budget.
                     </div>
                     <div class="form-group mb-0">
                         <label class="font-weight-600">Catatan (opsional)</label>
@@ -1031,8 +1040,11 @@
                 </div>
                 <div class="modal-footer" style="background:var(--surface-2);">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-check mr-1"></i> Konfirmasi
+                    <button type="submit" class="btn btn-outline-primary" id="btnApproveEarlyStart">
+                        <i class="fas fa-seedling mr-1"></i> Early Start
+                    </button>
+                    <button type="submit" class="btn btn-success" id="btnApproveAuto">
+                        <i class="fas fa-check mr-1"></i> Approve
                     </button>
                 </div>
             </form>
@@ -1040,7 +1052,6 @@
     </div>
 </div>
 
-<!-- MODAL FINANCE REVISE -->
 <div class="modal fade" id="mdlFinanceRevise" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">

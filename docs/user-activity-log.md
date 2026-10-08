@@ -71,6 +71,39 @@ Lewat **`record()` inline di controller**:
 - Controller CRUD master biasa → tambahkan `record('master_data', 'create|update|delete', …)`
   di `store`/`update`/`destroy` (seperti `BeneficiaryController`).
 
+## Rincian perubahan nilai (dari → menjadi) — CREDENTIAL
+
+Kolom `changes` (JSON, migration `2026_10_08_000001`) menyimpan perubahan nilai
+terstruktur, mis. `[{"label":"Nilai Kontrak","from":"12.000.000","to":"13.000.000"}]`.
+Nominal diformat rupiah. Disimpan terpisah dari `notes` (catatan bebas non-sensitif).
+
+Membangun & mencatat:
+
+```php
+$sebelum = $model->getOriginal();      // potret SEBELUM update
+$model->update([...]);
+$changes = UserActivityLog::changeSet($sebelum, $model, [
+    'contract' => ['label' => 'Nilai Kontrak', 'money' => true],
+    'name'     => 'Scope of Work',
+]);
+UserActivityLog::record('purchase_order', 'update', $desc, $model, null, null, $changes);
+```
+
+Model ber-`addLog()` (mis. `Project`) meneruskan `$changes` lewat argumen ke-5
+`addLog(from, to, action, notes, $changes)`; saat `$changes` terisi, nilai
+lama→baru TIDAK ditaruh di `notes`, melainkan di `changes`.
+
+**Credential:** `changes` hanya ditampilkan ke **pemilik log atau superadmin**.
+Blade `_activity_log` memakai flag `$canSeeChanges` (default `false` — aman);
+controller mengisinya: `ProfileController` (profil sendiri) = `true`,
+`UserController@activityLog` = `isRealSuperadmin() || id sendiri`. Ini
+menyongsong rencana profil yang bisa dikunjungi user lain — deskripsi tetap
+terlihat, rincian nilai tersembunyi.
+
+Terpasang: **Purchase Order** (semua field edit via `logProjectEdit`, nominal
+diformat), **Beneficiary** (nama/kategori/rekening/bank/status). Modul lain bisa
+menyusul dengan pola `changeSet()` yang sama.
+
 ## Otorisasi
 
 - Setiap user melihat log-nya sendiri di halaman Profil.

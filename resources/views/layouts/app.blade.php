@@ -177,6 +177,87 @@
          sesudah @stack('styles') (yang ada di atas), supaya aturannya menang
          atas <style> per halaman tanpa perlu !important. --}}
     <link rel="stylesheet" href="@aset('css/tesys-ui-mobile.css')">
+
+    {{-- Warna aksen kustom per-perangkat (Profil > Settings > Preferensi
+         Tampilan). Disimpan di localStorage 'tesys-accent', sama polanya
+         dengan pengalih tema di atas. Diterapkan DI SINI, elemen terakhir di
+         <head> sesudah seluruh stylesheet, supaya override :root menang di
+         cascade tanpa !important dan sudah terpasang sebelum halaman dilukis
+         (tidak ada kedipan warna). Default = Burgundy TESYS (#92232b), dan
+         kalau belum pernah diset tidak ada satu pun aturan yang disuntikkan. --}}
+    <script>
+        (function () {
+            var DEFAULT = '#92232b';
+
+            // Turunan dari satu hex pakai color-mix — berlaku untuk terang &
+            // gelap. --accent/--accent-dark/--accent-text ikut ganti; tint &
+            // soft dibedakan per tema (campur putih di terang, hitam di gelap).
+            function css(hex) {
+                return ':root{'
+                    + '--accent:' + hex + ';'
+                    + '--accent-dark:color-mix(in srgb,' + hex + ' 82%, #000);'
+                    + '--accent-soft:color-mix(in srgb,' + hex + ' 52%, #fff);'
+                    + '--accent-tint:color-mix(in srgb,' + hex + ' 10%, #fff);'
+                    + '--accent-tint-2:color-mix(in srgb,' + hex + ' 22%, #fff);'
+                    + '--accent-text:color-mix(in srgb,' + hex + ' 88%, #000);'
+                    + '--accent-ring:color-mix(in srgb,' + hex + ' 22%, transparent);'
+                    + '--accent-on-chrome:color-mix(in srgb,' + hex + ' 60%, #fff);'
+                    + '--chrome-active:color-mix(in srgb,' + hex + ' 30%, #000);'
+                    + '--amber:' + hex + ';'
+                    + '--amber-dk:color-mix(in srgb,' + hex + ' 82%, #000);'
+                    + '--amber-tint:color-mix(in srgb,' + hex + ' 10%, #fff);'
+                    + '--amber-border:color-mix(in srgb,' + hex + ' 22%, #fff);'
+                    // Sidebar & topbar (chrome gelap) ikut mengambil warna
+                    // aksen — tetap gelap, hanya nadanya digeser ke aksen.
+                    + '--chrome:color-mix(in srgb,' + hex + ' 20%, #000);'
+                    + '--chrome-2:color-mix(in srgb,' + hex + ' 28%, #000);'
+                    + '--chrome-3:color-mix(in srgb,' + hex + ' 34%, #000);'
+                    + '--chrome-border:color-mix(in srgb,' + hex + ' 24%, #000);'
+                    + '--topbar:color-mix(in srgb,' + hex + ' 30%, #000);'
+                    + '--topbar-2:color-mix(in srgb,' + hex + ' 38%, #000);'
+                    + '--topbar-3:color-mix(in srgb,' + hex + ' 46%, #000);'
+                    + '}'
+                    + 'html[data-theme="dark"]{'
+                    + '--accent-soft:color-mix(in srgb,' + hex + ' 68%, #000);'
+                    + '--accent-tint:color-mix(in srgb,' + hex + ' 24%, #000);'
+                    + '--accent-tint-2:color-mix(in srgb,' + hex + ' 36%, #000);'
+                    + '--accent-text:color-mix(in srgb,' + hex + ' 55%, #fff);'
+                    + '--accent-on-chrome:color-mix(in srgb,' + hex + ' 60%, #fff);'
+                    + '--chrome-active:color-mix(in srgb,' + hex + ' 34%, #000);'
+                    + '--amber-tint:color-mix(in srgb,' + hex + ' 24%, #000);'
+                    + '--amber-border:color-mix(in srgb,' + hex + ' 36%, #000);'
+                    + '--chrome:color-mix(in srgb,' + hex + ' 15%, #000);'
+                    + '--chrome-2:color-mix(in srgb,' + hex + ' 23%, #000);'
+                    + '--chrome-3:color-mix(in srgb,' + hex + ' 29%, #000);'
+                    + '--chrome-border:color-mix(in srgb,' + hex + ' 19%, #000);'
+                    + '--topbar:color-mix(in srgb,' + hex + ' 24%, #000);'
+                    + '--topbar-2:color-mix(in srgb,' + hex + ' 32%, #000);'
+                    + '--topbar-3:color-mix(in srgb,' + hex + ' 40%, #000);'
+                    + '}';
+            }
+
+            function apply(hex) {
+                var el = document.getElementById('tesys-accent-style');
+                if (!hex || hex.toLowerCase() === DEFAULT) {
+                    if (el) el.textContent = '';   // kembali ke token bawaan
+                    return;
+                }
+                if (!el) {
+                    el = document.createElement('style');
+                    el.id = 'tesys-accent-style';
+                    document.head.appendChild(el);
+                }
+                el.textContent = css(hex);
+            }
+
+            window.TesysAccent = { apply: apply, DEFAULT: DEFAULT };
+
+            try {
+                var saved = localStorage.getItem('tesys-accent');
+                if (saved) apply(saved);
+            } catch (e) {}
+        })();
+    </script>
 </head>
 
 <body class="tesys-ui {{ request()->is('/') ? 'dashboard-page' : '' }}">

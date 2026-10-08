@@ -24,12 +24,107 @@ class User extends Authenticatable
         'email',
         'phone',
         'avatar',
+        'cover',
         'password',
         'role_id',
         'access_group_id',
         'status',
         'dismissed_changelog_version',
+        'notification_prefs',
+        'default_app',
     ];
+
+    /**
+     * Aplikasi default (kunci config/apps.php) yang aktif saat user login.
+     * Jatuh ke config('apps.default') bila belum disetel atau tidak valid lagi.
+     */
+    public function defaultApp(): string
+    {
+        $apps = array_keys(config('apps.items', []));
+
+        return in_array($this->default_app, $apps, true)
+            ? $this->default_app
+            : (string) config('apps.default', 'finance');
+    }
+
+    /**
+     * Kategori notifikasi yang bisa diatur user di Profil > Settings.
+     * Kunci = nilai $category pada NotifyService::send(); label untuk UI.
+     * 'general' sengaja TIDAK dicantumkan: ia notifikasi sistem umum yang
+     * tidak boleh dimatikan dari sini.
+     */
+    public const NOTIFICATION_CATEGORIES = [
+        'workflow'  => 'Alur Cost Request (pengajuan, approval, settlement)',
+        'milestone' => 'Project Monitoring (milestone, update)',
+        'mention'   => 'Mention / sebutan pada komentar',
+        'assignment' => 'Assignment (tugas yang diberikan/ditandai selesai)',
+    ];
+
+    /**
+     * Default pengaturan Reminder To-Do List. Dipakai saat user belum pernah
+     * menyetel preferensi (notification_prefs null / tanpa kunci todo_reminder).
+     *
+     * SAFE BY DEFAULT: lonceng in-app aktif pada jam kerja, WhatsApp MATI
+     * (user harus opt-in) agar tidak terjadi blast WA massal.
+     *
+     * mode 'fixed'    => reminder dikirim pada setiap jam di 'hours' (0-23).
+     * mode 'interval' => reminder dikirim tiap 'interval_hours' jam (now->hour % N == 0).
+     */
+    public const TODO_REMINDER_DEFAULTS = [
+        'enabled'        => true,
+        'mode'           => 'fixed',
+        'hours'          => [8, 13, 16],
+        'interval_hours' => 3,
+        'whatsapp'       => false,
+    ];
+
+    /**
+     * Pengaturan Reminder To-Do List yang sudah dinormalisasi (selalu lengkap).
+     * Dipakai oleh command todo:remind dan view Settings.
+     */
+    public function todoReminderPrefs(): array
+    {
+        $prefs = $this->notification_prefs;
+        $saved = (is_array($prefs) && is_array($prefs['todo_reminder'] ?? null))
+            ? $prefs['todo_reminder']
+            : [];
+
+        $out = array_merge(self::TODO_REMINDER_DEFAULTS, $saved);
+
+        $out['enabled']  = (bool) $out['enabled'];
+        $out['whatsapp'] = (bool) $out['whatsapp'];
+        $out['mode']     = $out['mode'] === 'interval' ? 'interval' : 'fixed';
+
+        $out['interval_hours'] = min(24, max(1, (int) $out['interval_hours']));
+
+        $hours = is_array($out['hours'] ?? null) ? $out['hours'] : [];
+        $hours = array_values(array_unique(array_filter(
+            array_map('intval', $hours),
+            fn ($h) => $h >= 0 && $h <= 23
+        )));
+        sort($hours);
+        $out['hours'] = $hours;
+
+        return $out;
+    }
+
+    /**
+     * Apakah reminder To-Do List jatuh tempo untuk JAM saat ini (zona waktu app)?
+     * Murni berdasarkan jadwal; belum mengecek ada/tidaknya item To-Do.
+     */
+    public function todoReminderDueNow(?\Carbon\Carbon $now = null): bool
+    {
+        $r = $this->todoReminderPrefs();
+        if (! $r['enabled']) {
+            return false;
+        }
+
+        $hour = ($now ?? now())->hour;
+
+        return $r['mode'] === 'interval'
+            ? ($hour % $r['interval_hours'] === 0)
+            : in_array($hour, $r['hours'], true);
+    }
 
     /**
      * Nomor tujuan notifikasi WhatsApp (dipakai channel Fonnte).
@@ -44,6 +139,11 @@ class User extends Authenticatable
         return $this->avatar ? asset('storage/' . $this->avatar) : null;
     }
 
+    public function getCoverUrlAttribute(): ?string
+    {
+        return $this->cover ? asset('storage/' . $this->cover) : null;
+    }
+
     protected $hidden = [
         'password',
         'remember_token',
@@ -52,9 +152,68 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'email_verified_at'  => 'datetime',
+            'password'           => 'hashed',
+            'notification_prefs' => 'array',
         ];
+    }
+
+    /**
+     * Apakah user mau menerima notifikasi kategori ini lewat channel tertentu?
+     *
+     * SAFE BY DEFAULT: selama preferensi belum pernah disetel (null) atau
+     * kunci kategori/channel belum ada, hasilnya true — jadi perilaku untuk
+     * semua user lama tidak berubah sama sekali. User harus secara eksplisit
+     * mematikan sesuatu agar bernilai false.
+     *
+     * @param  string  $category  Nilai $category dari NotifyService::send().
+     * @param  string  $channel   'database' (lonceng in-app) atau 'whatsapp'.
+     */
+    public function wantsNotification(string $category, string $channel = 'database'): bool
+    {
+        // Reminder To-Do List punya pengaturan tersendiri (todo_reminder) yang
+        // selalu dinormalisasi lewat todoReminderPrefs(), jadi ditangani lebih
+        // dulu — termasuk saat user belum pernah menyetel preferensi sama sekali
+        // (default: in-app ON, WhatsApp OFF) agar tidak ada blast WA tak terduga.
+        if ($category === 'todo') {
+            $r = $this->todoReminderPrefs();
+            if (! $r['enabled']) {
+                return false;
+            }
+            if ($channel === 'whatsapp') {
+                $prefs = $this->notification_prefs;
+                $waGlobalOff = is_array($prefs) && ($prefs['wa_enabled'] ?? true) === false;
+
+                return $r['whatsapp'] && ! $waGlobalOff;
+            }
+
+            return true;
+        }
+
+        $prefs = $this->notification_prefs;
+        if (!is_array($prefs)) {
+            return true;
+        }
+
+        // WhatsApp global switch — mematikan ini membungkam SELURUH WhatsApp,
+        // lonceng in-app tetap jalan.
+        if ($channel === 'whatsapp' && array_key_exists('wa_enabled', $prefs)
+            && $prefs['wa_enabled'] === false) {
+            return false;
+        }
+
+        // Kategori di luar daftar yang bisa diatur (mis. 'general') tidak
+        // pernah dibungkam.
+        if (!array_key_exists($category, self::NOTIFICATION_CATEGORIES)) {
+            return true;
+        }
+
+        $cat = $prefs['categories'][$category] ?? null;
+        if (!is_array($cat)) {
+            return true;
+        }
+
+        return ($cat[$channel] ?? true) !== false;
     }
 
     /**

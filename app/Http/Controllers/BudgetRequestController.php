@@ -850,6 +850,24 @@ class BudgetRequestController extends Controller
      */
     private function crDateRange(Request $request): array
     {
+        /*
+         | Deep-link dari Summary Task (?all=1): tampilkan SELURUH riwayat tanpa
+         | batas bulan, supaya jumlah yang diklik di Summary benar-benar muncul.
+         | Rentangnya dibuat mengikuti data NYATA — dari CR terawal yang boleh
+         | dilihat user s/d hari ini — bukan tanggal ekstrem (2000–2100) yang
+         | tampak janggal di datepicker.
+         */
+        if ($request->boolean('all') && ! $request->filled('date_from') && ! $request->filled('date_to')) {
+            $q = BudgetRequest::query();
+            $this->scopeByRole($q);
+            $earliest = $q->min('created_at');
+
+            return [
+                $earliest ? substr($earliest, 0, 10) : now()->startOfMonth()->format('Y-m-d'),
+                now()->format('Y-m-d'),
+            ];
+        }
+
         return [
             $request->filled('date_from') ? $request->date_from : now()->startOfMonth()->format('Y-m-d'),
             $request->filled('date_to')   ? $request->date_to   : now()->endOfMonth()->format('Y-m-d'),
@@ -2430,18 +2448,27 @@ class BudgetRequestController extends Controller
         }
 
         // 'realizations' di-eager-load supaya kalau settlement ini pernah
-        // ditolak (REALIZED -> PAID) & disubmit ulang, kolom "Description
-        // Settle" & "Settle" ke-prefill dari input sebelumnya (bukan reset).
+        // ditolak (REALIZED -> SETTLE_REJECTED) & disubmit ulang, kolom
+        // "Description Settle" & "Settle" ke-prefill dari input sebelumnya
+        // (bukan reset). 'statusLogs' dipakai menampilkan alasan reject
+        // terakhir di form (lihat $rejectReason di bawah).
         $budgetRequest = $this->findVisibleCr($id, [
-            'details.account', 'realizations.attachments', 'realizationAttachments',
+            'details.account', 'realizations.attachments', 'realizationAttachments', 'statusLogs',
         ]);
 
-        if ($budgetRequest->status !== 'PAID') {
+        if (! in_array($budgetRequest->status, ['PAID', 'SETTLE_REJECTED'], true)) {
             return redirect()->route('budget-request.index')
-                ->with('error', 'Hanya CR berstatus PAID yang dapat diajukan realisasi.');
+                ->with('error', 'Hanya CR berstatus PAID atau Settle Rejected yang dapat diajukan realisasi.');
         }
 
-        return view('budget-request.realize', compact('budgetRequest'));
+        // Alasan reject terakhir — ditampilkan menonjol di form supaya
+        // pengaju tahu persis apa yang harus direvisi sebelum submit ulang.
+        // statusLogs() sudah urut terbaru-dulu, jadi firstWhere cukup.
+        $rejectReason = $budgetRequest->status === 'SETTLE_REJECTED'
+            ? $budgetRequest->statusLogs->firstWhere('action_type', 'settlement_rejected')
+            : null;
+
+        return view('budget-request.realize', compact('budgetRequest', 'rejectReason'));
     }
 
     /*
@@ -2450,14 +2477,14 @@ class BudgetRequestController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function submitRealization(Request $request, $id)
+    /**
+     * Validasi input form Settlement, dipakai sama-sama oleh submit (PAID/
+     * SETTLE_REJECTED -> REALIZED) dan simpan draft (status tidak berubah).
+     * Mengembalikan response error siap-kirim kalau tidak valid, atau null
+     * kalau lolos — supaya kedua pemanggil menolak dengan aturan yang sama.
+     */
+    private function validateRealizationInput(Request $request, BudgetRequest $cr)
     {
-        /** @var User $user */
-        $user = Auth::user();
-        if (!$user->hasRole(['superadmin', 'manager', 'supervisor'])) {
-            abort(403, 'Anda tidak memiliki wewenang untuk mengajukan realisasi CR ini.');
-        }
-
         $request->validate([
             'realizations'                     => 'required|array|min:1',
             'realizations.*.request_detail_id' => 'required|exists:request_detail,id',
@@ -2477,12 +2504,6 @@ class BudgetRequestController extends Controller
             'settlement_notes'                      => 'nullable|string|max:1000',
         ]);
 
-        $cr = $this->findVisibleCr($id);
-
-        if ($cr->status !== 'PAID') {
-            return back()->with('error', 'Hanya CR berstatus PAID yang dapat diajukan realisasi.');
-        }
-
         $validDetailIds = $cr->details()->where('status', '!=', 'TAKEOUT')->pluck('id')->map(fn ($i) => (int) $i);
         $submittedIds   = collect((array) $request->input('realizations', []))
             ->pluck('request_detail_id')->filter()->map(fn ($i) => (int) $i);
@@ -2492,8 +2513,10 @@ class BudgetRequestController extends Controller
                 ->with('error', 'Item realisasi yang dipilih tidak sesuai dengan Cost Request ini.');
         }
 
-        // CR yang sudah cair (PAID) wajib melampirkan bukti per item di tiap
-        // baris Rincian Settlement; lampiran global di sini hanya opsional.
+        // CR yang sudah cair (PAID/SETTLE_REJECTED) wajib melampirkan bukti
+        // per item di tiap baris Rincian Settlement; lampiran global di sini
+        // hanya opsional. Berlaku sama untuk submit maupun simpan draft —
+        // supaya data yang tersimpan tidak pernah setengah lengkap.
         $missingAtt  = [];
         $missingNote = [];
         $no          = 0;
@@ -2556,24 +2579,56 @@ class BudgetRequestController extends Controller
             );
         }
 
+        return null;
+    }
+
+    /**
+     * Simpan data form Settlement (realisasi + lampiran) ke database. Status
+     * CR TIDAK disentuh di sini — pemanggil (submit atau simpan draft) yang
+     * memutuskan transisinya.
+     */
+    private function syncRealizationData(Request $request, BudgetRequest $cr): void
+    {
+        /*
+        | Lampiran global settlement TIDAK lagi dihapus borongan — kalau
+        | settlement pernah ditolak, bukti lama harus tetap ada. Yang
+        | dihapus hanya yang dicentang user.
+        */
+        $hapusGlobal = array_filter((array) $request->input('delete_realization_global_attachments', []));
+        if ($hapusGlobal) {
+            $cr->realizationAttachments()->whereIn('id', $hapusGlobal)->get()
+                ->each(function ($att) {
+                    Storage::disk('secure')->delete($att->path);
+                    $att->delete();
+                });
+        }
+
+        $this->syncRealizations($cr, $request);
+        $this->storeRealizationAttachments($cr, $request);
+    }
+
+    public function submitRealization(Request $request, $id)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        if (!$user->hasRole(['superadmin', 'manager', 'supervisor'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk mengajukan realisasi CR ini.');
+        }
+
+        $cr = $this->findVisibleCr($id);
+
+        if (! in_array($cr->status, ['PAID', 'SETTLE_REJECTED'], true)) {
+            return back()->with('error', 'Hanya CR berstatus PAID atau Settle Rejected yang dapat diajukan realisasi.');
+        }
+
+        if ($error = $this->validateRealizationInput($request, $cr)) {
+            return $error;
+        }
+
         DB::transaction(function () use ($request, $cr) {
-            /*
-            | Lampiran global settlement TIDAK lagi dihapus borongan — kalau
-            | settlement pernah ditolak, bukti lama harus tetap ada. Yang
-            | dihapus hanya yang dicentang user.
-            */
-            $hapusGlobal = array_filter((array) $request->input('delete_realization_global_attachments', []));
-            if ($hapusGlobal) {
-                $cr->realizationAttachments()->whereIn('id', $hapusGlobal)->get()
-                    ->each(function ($att) {
-                        Storage::disk('secure')->delete($att->path);
-                        $att->delete();
-                    });
-            }
+            $this->syncRealizationData($request, $cr);
 
-            $this->syncRealizations($cr, $request);
-            $this->storeRealizationAttachments($cr, $request);
-
+            $dariStatus = $cr->status;
             $cr->update([
                 'status'      => 'REALIZED',
                 'realized_at' => now(),
@@ -2590,7 +2645,7 @@ class BudgetRequestController extends Controller
                 $catatan .= ' — Keterangan: ' . $ket;
             }
 
-            $cr->addLog('PAID', 'REALIZED', 'realization_submitted', $catatan);
+            $cr->addLog($dariStatus, 'REALIZED', 'realization_submitted', $catatan);
         });
 
         NotifyService::send(
@@ -2605,6 +2660,40 @@ class BudgetRequestController extends Controller
         // yang bisa menunjuk ke URL POST submit-realization.
         return redirect()->route('budget-request.index')
             ->with('success', 'Realisasi berhasil diajukan. Status CR menjadi REALIZED.');
+    }
+
+    /**
+     * Simpan draft Settlement TANPA mengajukan — status CR tetap PAID atau
+     * SETTLE_REJECTED, pengaju bisa melanjutkan mengisi nanti lalu baru
+     * menekan "Ajukan" (submitRealization). Validasinya PERSIS sama dengan
+     * submit (lampiran per item, Note wajib bila Settle > Request) — supaya
+     * draft yang tersimpan tidak pernah data setengah jadi yang terlupa
+     * dilengkapi.
+     */
+    public function saveRealizationDraft(Request $request, $id)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+        if (!$user->hasRole(['superadmin', 'manager', 'supervisor'])) {
+            abort(403, 'Anda tidak memiliki wewenang untuk menyimpan realisasi CR ini.');
+        }
+
+        $cr = $this->findVisibleCr($id);
+
+        if (! in_array($cr->status, ['PAID', 'SETTLE_REJECTED'], true)) {
+            return back()->with('error', 'Hanya CR berstatus PAID atau Settle Rejected yang dapat disimpan.');
+        }
+
+        if ($error = $this->validateRealizationInput($request, $cr)) {
+            return $error;
+        }
+
+        DB::transaction(function () use ($request, $cr) {
+            $this->syncRealizationData($request, $cr);
+        });
+
+        return redirect()->route('budget-request.realize-form', $cr->id)
+            ->with('success', 'Draft Settlement tersimpan. Status CR belum berubah — tekan "Ajukan" saat sudah siap.');
     }
 
     /*

@@ -179,6 +179,7 @@
             </div>
             @endif
 
+            <div class="thanks">Mohon dilakukan pemotongan PPh Final Pasal 4 ayat (2) sebesar 2,65% dan penyampaian Bupot kepada PT TEREX paling lambat tanggal 20 bulan berikutnya.</div>
             <div class="thanks">Thank you for your business!</div>
         </div>
 

@@ -339,6 +339,8 @@ class ProjectController extends Controller
             'total'         => (int) $statusCounts->sum(),
             'draft'         => (int) ($statusCounts['DRAFT'] ?? 0),
             'submitted'     => (int) ($statusCounts['SUBMITTED'] ?? 0),
+            'verified'      => (int) ($statusCounts['VERIFIED'] ?? 0),
+            'early_start'   => (int) ($statusCounts['EARLY_START'] ?? 0),
             'waiting_po'    => (int) ($statusCounts['WAITING_PO'] ?? 0),
             'active'        => (int) ($statusCounts['ACTIVE'] ?? 0),
             'progress_done' => (int) ($statusCounts['PROGRESS_DONE'] ?? 0),
@@ -1001,10 +1003,25 @@ class ProjectController extends Controller
             $this->storeAttachments($project, $request, 'general');
             $this->storePoNumbers($project, $request);
 
+            // logProjectEdit() memanggil $project->addLog('edited', ...) yang
+            // sekaligus menulis UserActivityLog (lewat hook di model) berikut
+            // rincian perubahan nilai — jadi TIDAK ada record() tambahan di sini
+            // supaya satu edit = satu entri log.
             $this->logProjectEdit($project, $sebelum);
-        });
 
-        UserActivityLog::record('purchase_order', 'update', 'Memperbarui Purchase Order #' . ($project->code ?? $project->id), $project);
+            /*
+             | Early Start yang disunting kembali ke DRAFT (lihat workflow Early
+             | Start): PO ini sengaja di-approve dalam keadaan belum lengkap,
+             | jadi begitu datanya dilengkapi ia harus melewati submit → verify
+             | → approve lagi, bukan diam di Early Start. Pakai status ASLI
+             | sebelum update() ($sebelum), bukan $project->status yang sudah
+             | tertimpa data form.
+             */
+            if (($sebelum['status'] ?? null) === 'EARLY_START') {
+                $project->update(['status' => 'DRAFT']);
+                $project->addLog('EARLY_START', 'DRAFT', 'early_start_revised', 'Data Early Start dilengkapi — kembali ke Draft untuk disubmit ulang.');
+            }
+        });
 
         return redirect('/project')->with('success', 'PO berhasil diupdate.');
     }
@@ -1055,11 +1072,26 @@ class ProjectController extends Controller
                 . ' -> ' . ($baru === null || $baru === '' ? '-' : $baru);
         }
 
+        /*
+        | Rincian perubahan terstruktur untuk UserActivityLog (credential):
+        | nominal diformat rupiah (12.000.000 -> 13.000.000). Field uang
+        | ditandai 'money' supaya terbaca manusia, bukan angka mentah.
+        */
+        $changeMap = [];
+        foreach ($label as $kolom => $nama) {
+            $changeMap[$kolom] = [
+                'label' => $nama,
+                'money' => in_array($kolom, ['contract', 'overhead', 'fixed_cost'], true),
+            ];
+        }
+        $changes = \App\Models\UserActivityLog::changeSet($sebelum, $project, $changeMap);
+
         $project->addLog(
             $project->status,
             $project->status,
             'edited',
-            $ubahan ? implode('; ', $ubahan) : 'Disunting tanpa perubahan field PO.'
+            $ubahan ? implode('; ', $ubahan) : 'Disunting tanpa perubahan field PO.',
+            $changes
         );
     }
 
@@ -1254,54 +1286,102 @@ class ProjectController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | FINANCE APPROVE — SUBMITTED → WAITING_PO atau ACTIVE
-    | Finance memilih via dropdown
+    | VERIFY — SUBMITTED → VERIFIED (Finance)
+    |
+    | Langkah pertama dari dua tahap approval. Finance memverifikasi bahwa data
+    | PO sudah layak lanjut; keputusan status akhir (Waiting PO / Active / Early
+    | Start) ada di tangan Approver pada langkah berikutnya (approve()).
     |--------------------------------------------------------------------------
     */
 
-    public function financeApprove(Request $request, $id)
+    public function verify($id)
+    {
+        $project = Project::findOrFail($id);
+
+        if ($project->status !== 'SUBMITTED') {
+            return back()->with('error', 'Hanya PO berstatus Submitted yang dapat diverifikasi.');
+        }
+
+        $project->update([
+            'status'      => 'VERIFIED',
+            'verified_by' => Auth::id(),
+            'verified_at' => now(),
+        ]);
+        $project->addLog('SUBMITTED', 'VERIFIED', 'verified');
+
+        NotifyService::send(
+            app(RoleDirectory::class)->approvers(),
+            'Purchase Order menunggu approval',
+            Auth::user()->name . ' memverifikasi PO "' . $project->name . '" — menunggu approval.',
+            route('project.index'),
+            'workflow'
+        );
+
+        return redirect('/project')->with('success', 'PO ' . $project->code . ' berhasil diverifikasi.');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | APPROVE — VERIFIED → EARLY_START | WAITING_PO | ACTIVE (Approver)
+    |
+    | Approver memilih:
+    |   - decision=EARLY_START : PO baru diketahui scope-nya; sah & budget-able,
+    |     tapi belum lengkap. Nanti dilengkapi lewat Edit (yang otomatis
+    |     mengembalikannya ke Draft untuk disubmit ulang).
+    |   - decision=APPROVE     : status akhir dipilih OTOMATIS oleh sistem —
+    |     ACTIVE bila seluruh nominal No. PO sudah pas dengan kontrak, selain
+    |     itu WAITING_PO (lihat Project::approvalAutoStatus()).
+    |--------------------------------------------------------------------------
+    */
+
+    public function approve(Request $request, $id)
     {
         $request->validate([
-            'approval_type' => 'required|in:WAITING_PO,ACTIVE',
-            'notes'         => 'nullable|string|max:500',
+            'decision' => 'required|in:APPROVE,EARLY_START',
+            'notes'    => 'nullable|string|max:500',
         ]);
 
         $project = Project::findOrFail($id);
 
-        if ($project->status !== 'SUBMITTED') {
-            return back()->with('error', 'Status tidak valid.');
+        if ($project->status !== 'VERIFIED') {
+            return back()->with('error', 'Hanya PO berstatus Verified yang dapat di-approve.');
         }
 
-        $newStatus = $request->approval_type;
-
-        if ($newStatus === 'ACTIVE' && $project->poNumbers()->count() === 0) {
-            return back()->with('error', 'Tambahkan minimal 1 No. PO dulu sebelum langsung disetujui ke status Active. Pilih Waiting PO kalau No. PO belum ada.');
+        if ($request->decision === 'EARLY_START') {
+            $newStatus = 'EARLY_START';
+            $action    = 'approved_early_start';
+        } else {
+            $newStatus = $project->approvalAutoStatus();
+            $action    = $newStatus === 'ACTIVE' ? 'approved_active' : 'approved_waiting';
         }
 
-        $action = $newStatus === 'WAITING_PO' ? 'approved_waiting' : 'approved_active';
-
-        $updateData = [
+        $project->update([
             'status'      => $newStatus,
             'approved_by' => Auth::id(),
             'approved_at' => now(),
-        ];
+        ]);
+        $project->addLog('VERIFIED', $newStatus, $action, $request->notes);
 
-        $project->update($updateData);
-        $project->addLog('SUBMITTED', $newStatus, $action, $request->notes);
-
-        $msg = $newStatus === 'WAITING_PO'
-            ? 'PO disetujui dengan status Waiting PO.'
-            : 'PO disetujui dan sekarang ACTIVE.';
+        // Kalau langsung ACTIVE dan No. PO-nya kebetulan sudah BAST/Paid, teruskan.
+        if ($newStatus === 'ACTIVE') {
+            $project->syncStatusFromPoNumbers();
+        }
 
         if ($project->inputBy) {
             NotifyService::send(
                 [$project->inputBy],
                 'Purchase Order disetujui',
-                'PO "' . $project->name . '" disetujui Finance — status: ' . str_replace('_', ' ', $newStatus) . '.',
+                'PO "' . $project->name . '" disetujui — status: ' . Project::statusLabelFor($newStatus) . '.',
                 route('project.index'),
                 'workflow'
             );
         }
+
+        $msg = match ($newStatus) {
+            'EARLY_START' => 'PO disetujui sebagai Early Start.',
+            'ACTIVE'      => 'PO disetujui dan sekarang Active.',
+            default       => 'PO disetujui dengan status Waiting PO.',
+        };
 
         return redirect('/project')->with('success', $msg);
     }
@@ -1427,12 +1507,13 @@ class ProjectController extends Controller
 
         $project = Project::findOrFail($id);
 
-        if ($project->status !== 'SUBMITTED') {
-            return back()->with('error', 'Status tidak valid.');
+        if (!in_array($project->status, ['SUBMITTED', 'VERIFIED'], true)) {
+            return back()->with('error', 'Hanya PO berstatus Submitted atau Verified yang dapat dikembalikan untuk direvisi.');
         }
 
+        $dari = $project->status;
         $project->update(['status' => 'DRAFT']);
-        $project->addLog('SUBMITTED', 'DRAFT', 'revised', $request->notes);
+        $project->addLog($dari, 'DRAFT', 'revised', $request->notes);
 
         if ($project->inputBy) {
             NotifyService::send(

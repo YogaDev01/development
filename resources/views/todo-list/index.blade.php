@@ -122,6 +122,10 @@
             </div>
         </div>
 
+        {{-- ASSIGNMENT — penugasan bebas antar-user. Selalu dirender (di luar
+             cabang $hasAnySection) karena tidak terkait tahapan approval role. --}}
+        @include('todo-list._assignments')
+
         @if(!$hasAnySection)
         <div class="text-center card shadow-sm mt-3" style="border-radius:var(--radius-lg);padding:60px 20px;">
             <div style="font-size:48px;color:var(--text-faint);"><i class="fas fa-tasks"></i></div>
@@ -281,7 +285,13 @@
                                     <td class="text-nowrap">
                                         <button type="button" class="cr-number-btn todo-open-drawer" data-id="{{ $cr->id }}">{{ $cr->code }}</button>
                                     </td>
-                                    <td>{{ Str::limit($cr->description, 150) }}</td>
+                                    <td>
+                                        @if($cr->status === 'SETTLE_REJECTED')
+                                            <span class="badge badge-danger mr-1" style="font-size:9px;"
+                                                  title="{{ $cr->settle_reject_log?->notes }}">Settlement Ditolak</span>
+                                        @endif
+                                        {{ Str::limit($cr->description, 150) }}
+                                    </td>
                                     <td class="text-nowrap">{{ $cr->beneficiary?->nickname ?? '-' }}</td>
                                     <td class="text-right text-nowrap"><strong>{{ $cr->amount_formatted }}</strong></td>
                                     <td class="text-center text-nowrap {{ $crAgingClass }}">{{ $cr->aging_label }}</td>
@@ -1461,9 +1471,9 @@
                                          tanpa menambah informasi. --}}
                                     <td class="text-nowrap">{{ $po->manager?->username ?? '-' }}</td>
                                     <td class="text-right text-nowrap"><strong>{{ $po->value_formatted }}</strong></td>
-                                    {{-- financeApprove() menolak "Active" selama No. PO masih kosong, jadi
-                                         jumlahnya ditampilkan di sini: Finance tahu sebelum membuka apakah
-                                         PO ini bisa langsung Active atau baru bisa Waiting PO. --}}
+                                    {{-- Jumlah No. PO ditampilkan sebagai konteks: saat di-approve nanti,
+                                         status Active otomatis dipilih hanya bila total No. PO sudah pas
+                                         dengan kontrak, selain itu Waiting PO. --}}
                                     <td class="text-center text-nowrap">
                                         @if($po->po_numbers_count > 0)
                                             <span class="badge badge-info">{{ $po->po_numbers_count }}</span>
@@ -1840,7 +1850,24 @@
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <div class="modal-body" style="max-height:78vh;overflow-y:auto;">
-                @include('todo-list._summary_task_list')
+                <ul class="nav nav-tabs mb-3" id="summaryTabs" role="tablist" style="border-bottom:2px solid var(--border);">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="tabSummaryTask" data-toggle="tab" href="#paneSummaryTask" role="tab"
+                           style="font-size:12.5px;font-weight:600;"><i class="fas fa-tasks mr-1"></i>Summary Task</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="tabSummaryRespon" data-toggle="tab" href="#paneSummaryRespon" role="tab"
+                           style="font-size:12.5px;font-weight:600;"><i class="fas fa-stopwatch mr-1"></i>Summary Respontime</a>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="paneSummaryTask" role="tabpanel">
+                        @include('todo-list._summary_task_list')
+                    </div>
+                    <div class="tab-pane fade" id="paneSummaryRespon" role="tabpanel">
+                        @include('todo-list._summary_respontime')
+                    </div>
+                </div>
             </div>
             <div class="modal-footer" style="background:var(--surface-2);">
                 <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
@@ -2290,6 +2317,20 @@ $(function () {
     var modul = '';  // '' = semua
     var role  = '';
 
+    // Sama persis dengan TodoListController::formatDuration() — dipakai untuk
+    // menghitung ulang kolom Avg Time di klien saat filter Modul mempersempit
+    // modul mana saja yang ikut dirata-rata (tanpa reload).
+    function fmtDurasi(detik) {
+        if (detik === null) return null;
+        if (detik < 60) return detik + ' dtk';
+        var m = Math.floor(detik / 60);
+        if (m < 60) return m + ' mnt';
+        var h = Math.floor(m / 60), mm = m % 60;
+        if (h < 24) return h + ' j' + (mm ? ' ' + mm + ' m' : '');
+        var d = Math.floor(h / 24), hh = h % 24;
+        return d + ' hr' + (hh ? ' ' + hh + ' j' : '');
+    }
+
     function terapkan() {
         var $tbl = $('#summaryTaskTable');
 
@@ -2301,6 +2342,7 @@ $(function () {
         var totalPerModul = {};
         var grand = 0;
         var tampil = 0;
+        var grandAvgSum = 0, grandAvgCount = 0;
 
         $tbl.find('tbody tr[data-role]').each(function () {
             var $tr = $(this);
@@ -2318,26 +2360,36 @@ $(function () {
             if (!cocok) return;
             tampil++;
 
-            // Total baris = jumlah sel modul yang sedang TERLIHAT saja.
-            var subtotal = 0;
+            // Total baris = jumlah sel modul yang sedang TERLIHAT saja. Avg Time
+            // baris = rata-rata TERTIMBANG dari avg_sum/avg_count sel yang sama
+            // (bobot = jumlah transisi) — bukan rata-rata dari rata-rata, supaya
+            // menyaring ke satu Modul tetap menampilkan avg modul itu sendiri.
+            var subtotal = 0, avgSum = 0, avgCount = 0;
             $selModul.filter('[data-count]').each(function () {
                 var n = parseInt($(this).attr('data-count'), 10) || 0;
                 subtotal += n;
+                avgSum   += parseInt($(this).attr('data-avg-sum'), 10) || 0;
+                avgCount += parseInt($(this).attr('data-avg-count'), 10) || 0;
                 var m = $(this).data('module');
                 totalPerModul[m] = (totalPerModul[m] || 0) + n;
             });
 
             grand += subtotal;
+            grandAvgSum += avgSum; grandAvgCount += avgCount;
             $tr.find('[data-total-cell]')
                 .text(subtotal)
                 .toggleClass('summary-total-pos', subtotal > 0)
                 .toggleClass('summary-total-zero', subtotal <= 0);
+            $tr.find('[data-avg-cell]').html(avgCount > 0
+                ? fmtDurasi(Math.round(avgSum / avgCount))
+                : '<span class="text-muted">-</span>');
         });
 
         $tbl.find('[data-foot-module]').each(function () {
             $(this).text(totalPerModul[$(this).data('module')] || 0);
         });
         $tbl.find('[data-foot-grand]').text(grand);
+        $tbl.find('[data-foot-avg]').text(grandAvgCount > 0 ? fmtDurasi(Math.round(grandAvgSum / grandAvgCount)) : '-');
 
         $('#stEmptyRow').toggle(tampil === 0);
         $tbl.find('tfoot').toggle(tampil > 0);
