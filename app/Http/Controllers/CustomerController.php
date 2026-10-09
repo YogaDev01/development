@@ -323,6 +323,12 @@ class CustomerController extends Controller
             return back()->with('error', 'Customer tidak bisa dihapus karena sudah memiliki Purchase Order/Project.');
         }
 
+        if (\App\Models\Site::where('customer_id', $customer->id)->exists()
+            || \App\Models\MasterMaterial::where('customer_id', $customer->id)->exists()
+            || \App\Models\Accessory::where('customer_id', $customer->id)->exists()) {
+            return back()->with('error', 'Customer tidak bisa dihapus karena sudah memiliki Site, Material, atau Accessories.');
+        }
+
         // Bersihkan file lampiran dari storage sebelum hapus record.
         foreach ($customer->attachments as $att) {
             Storage::disk('secure')->delete($att->file_path);

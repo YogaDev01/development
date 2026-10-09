@@ -430,6 +430,84 @@ Route::middleware('auth')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
+    | MASTER DATA - SITE & MATERIAL
+    |--------------------------------------------------------------------------
+    | CRUD bersama (Concerns\ManagesMasterRecords). Kunci menu = prefix URL =
+    | prefix nama rute; harus sama dengan menu_items.key & config/navigation.php.
+    */
+    $masterModules = [
+        'category-item'   => \App\Http\Controllers\CategoryItemController::class,
+        'master-material' => \App\Http\Controllers\MasterMaterialController::class,
+        'accessories'     => \App\Http\Controllers\AccessoryController::class,
+        'site'            => \App\Http\Controllers\SiteController::class,
+        'network'         => \App\Http\Controllers\NetworkController::class,
+        'homebase'        => \App\Http\Controllers\HomebaseController::class,
+        'region'          => \App\Http\Controllers\RegionController::class,
+    ];
+
+    foreach ($masterModules as $key => $controller) {
+        Route::middleware('menu:' . $key)->group(function () use ($key, $controller) {
+            Route::get($key, [$controller, 'index'])->name($key . '.index');
+            Route::post($key, [$controller, 'store'])->name($key . '.store');
+            Route::get($key . '/{id}/edit-data', [$controller, 'editData'])->whereNumber('id')->name($key . '.edit-data');
+            Route::put($key . '/{id}', [$controller, 'update'])->whereNumber('id')->name($key . '.update');
+            Route::delete($key . '/{id}', [$controller, 'destroy'])->whereNumber('id')->name($key . '.destroy');
+
+            if (in_array(\App\Http\Controllers\Concerns\ImportsMasterRecords::class, class_uses($controller))) {
+                Route::get($key . '/import-template', [$controller, 'importTemplate'])->name($key . '.import-template');
+                Route::post($key . '/import', [$controller, 'import'])->name($key . '.import');
+            }
+        });
+    }
+
+    Route::middleware('menu:site')->group(function () {
+        Route::get('site/create', [\App\Http\Controllers\SiteController::class, 'create'])->name('site.create');
+        Route::get('site/{id}/edit', [\App\Http\Controllers\SiteController::class, 'edit'])->whereNumber('id')->name('site.edit');
+        Route::get('site/{id}/drawer', [\App\Http\Controllers\SiteController::class, 'drawer'])->whereNumber('id')->name('site.drawer');
+    });
+
+    // Relasi Site <-> Material / Accessories (site_material, site_accessories).
+    Route::middleware('menu:site')->prefix('site/{id}')->whereNumber('id')->group(function () {
+        Route::get('/', [\App\Http\Controllers\SiteController::class, 'show'])->name('site.show');
+        Route::post('material', [\App\Http\Controllers\SiteController::class, 'addMaterial'])->name('site.material.store');
+        Route::delete('material/{linkId}', [\App\Http\Controllers\SiteController::class, 'removeMaterial'])->whereNumber('linkId')->name('site.material.destroy');
+        Route::post('accessories', [\App\Http\Controllers\SiteController::class, 'addAccessory'])->name('site.accessories.store');
+        Route::put('accessories/{linkId}', [\App\Http\Controllers\SiteController::class, 'updateAccessory'])->whereNumber('linkId')->name('site.accessories.update');
+        Route::delete('accessories/{linkId}', [\App\Http\Controllers\SiteController::class, 'removeAccessory'])->whereNumber('linkId')->name('site.accessories.destroy');
+        Route::post('pic', [\App\Http\Controllers\SiteController::class, 'addPic'])->name('site.pic.store');
+        Route::delete('pic/{linkId}', [\App\Http\Controllers\SiteController::class, 'removePic'])->whereNumber('linkId')->name('site.pic.destroy');
+    });
+
+    // Relasi Homebase <-> PIC (homebase_detail).
+    Route::middleware('menu:homebase')->prefix('homebase/{id}')->whereNumber('id')->group(function () {
+        Route::get('/', [\App\Http\Controllers\HomebaseController::class, 'show'])->name('homebase.show');
+        Route::post('pic', [\App\Http\Controllers\HomebaseController::class, 'addPic'])->name('homebase.pic.store');
+        Route::delete('pic/{detailId}', [\App\Http\Controllers\HomebaseController::class, 'removePic'])->whereNumber('detailId')->name('homebase.pic.destroy');
+    });
+
+    // Wilayah: satu rute per jenjang (jenjang dibaca controller dari segmen URL).
+    Route::middleware('menu:wilayah')->group(function () {
+        Route::redirect('wilayah', '/wilayah/pulau')->name('wilayah.index');
+
+        foreach (array_keys(\App\Http\Controllers\WilayahController::LEVELS) as $level) {
+            $ctrl = \App\Http\Controllers\WilayahController::class;
+            Route::get('wilayah/' . $level, [$ctrl, 'index'])->name('wilayah.' . $level . '.index');
+            Route::post('wilayah/' . $level, [$ctrl, 'store'])->name('wilayah.' . $level . '.store');
+            Route::get('wilayah/' . $level . '/{id}/edit-data', [$ctrl, 'editData'])->whereNumber('id')->name('wilayah.' . $level . '.edit-data');
+            Route::put('wilayah/' . $level . '/{id}', [$ctrl, 'update'])->whereNumber('id')->name('wilayah.' . $level . '.update');
+            Route::delete('wilayah/' . $level . '/{id}', [$ctrl, 'destroy'])->whereNumber('id')->name('wilayah.' . $level . '.destroy');
+        }
+    });
+
+    // Dropdown berjenjang dipakai form Site juga.
+    Route::middleware('menu:wilayah,site')->group(function () {
+        foreach (array_keys(\App\Http\Controllers\WilayahController::LEVELS) as $level) {
+            Route::get('wilayah/' . $level . '/options', [\App\Http\Controllers\WilayahController::class, 'options'])->name('wilayah.' . $level . '.options');
+        }
+    });
+
+    /*
+    |--------------------------------------------------------------------------
     | MASTER DATA - SOURCE FUND
     |--------------------------------------------------------------------------
     */
@@ -1023,9 +1101,52 @@ Route::middleware('auth')->group(function () {
     Route::post('assignment',                    [AssignmentController::class, 'store'])->name('assignment.store');
     Route::get('assignment/{assignment}/logs',   [AssignmentController::class, 'logs'])->name('assignment.logs');
     Route::put('assignment/{assignment}',        [AssignmentController::class, 'update'])->name('assignment.update');
+    Route::post('assignment/{assignment}/start', [AssignmentController::class, 'startProgress'])->name('assignment.start');
+    Route::post('assignment/{assignment}/comment',[AssignmentController::class, 'comment'])->name('assignment.comment');
     Route::post('assignment/{assignment}/done',  [AssignmentController::class, 'markDone'])->name('assignment.done');
     Route::post('assignment/{assignment}/cancel',[AssignmentController::class, 'cancel'])->name('assignment.cancel');
     Route::post('assignment/{assignment}/reopen',[AssignmentController::class, 'reopen'])->name('assignment.reopen');
+
+    /*
+    |--------------------------------------------------------------------------
+    | TROUBLE TICKET (TESYS Operation)
+    |
+    | Gerbang menu:trouble-ticket. Keterlihatan per tiket (rantai site → PIC →
+    | team) dan hak per aksi (teknisi / leader team) diperiksa
+    | App\Services\TroubleTicketWorkflow — bukan oleh route. Pengaturan
+    | kategori & SLA: role sama persis dengan AccessRoles::TROUBLE_TICKET_SETTINGS.
+    |--------------------------------------------------------------------------
+    */
+    Route::middleware('menu:trouble-ticket')->prefix('trouble-ticket')->name('trouble-ticket.')
+        ->controller(\App\Http\Controllers\TroubleTicketController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('create', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::get('site/{site}/technicians', 'technicians')->whereNumber('site')->name('technicians');
+            Route::get('attachment/{attachment}', 'download')->whereNumber('attachment')->name('attachment');
+
+            Route::middleware('role:superadmin')->group(function () {
+                Route::get('settings', 'settings')->name('settings');
+                Route::post('settings/sla', 'storePolicy')->name('settings.sla.store');
+                Route::post('settings/sla/{policy}/toggle', 'togglePolicy')->whereNumber('policy')->name('settings.sla.toggle');
+            });
+
+            Route::prefix('{ticket}')->whereNumber('ticket')->group(function () {
+                Route::get('/', 'show')->name('show');
+                Route::get('messages', 'messages')->name('messages');
+                Route::post('messages', 'postMessage')->name('messages.store');
+                Route::post('decide', 'decide')->name('decide');
+                Route::post('decision/correct', 'correctDecision')->name('decision.correct');
+                Route::post('depart', 'depart')->name('depart');
+                Route::post('arrive', 'arrive')->name('arrive');
+                Route::post('start', 'startProgress')->name('start');
+                Route::post('closure', 'requestClosure')->name('closure.request');
+                Route::post('closure/approve', 'approveClosure')->name('closure.approve');
+                Route::post('closure/reject', 'rejectClosure')->name('closure.reject');
+                Route::post('reassign', 'reassign')->name('reassign');
+                Route::post('cancel', 'cancel')->name('cancel');
+            });
+        });
 
     /*
     |--------------------------------------------------------------------------

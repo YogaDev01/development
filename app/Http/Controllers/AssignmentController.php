@@ -10,13 +10,19 @@ use App\Services\NotifyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Modul Assignment — penugasan bebas antar-user. Setiap user yang login bisa
  * membuat tugas untuk user lain (keputusan bisnis: "semua user -> siapa saja").
- * Tugas muncul di Todo List penerimanya; bisa ditandai selesai, diubah, atau
- * dibatalkan. Riwayat tiap tugas dicatat di AssignmentLog.
+ * Tugas muncul di Todo List penerimanya. Riwayat tiap tugas (termasuk
+ * komentar) dicatat di AssignmentLog.
+ *
+ * Alur status — lihat App\Models\Assignment untuk diagramnya:
+ *   PENDING -> READ (otomatis saat penerima membuka detail, lihat logs())
+ *           -> ON_PROGRESS (penerima menekan "Mulai Dikerjakan")
+ *           -> CLOSED (penerima/pemberi/superadmin menandai selesai)
+ *   (PENDING/READ/ON_PROGRESS) -> CANCELLED (pemberi/superadmin)
+ *   CLOSED/CANCELLED -> PENDING (reopen, pemberi/superadmin)
  *
  * Tidak ada layer baru (Policy/FormRequest): otorisasi in-controller + validasi
  * inline, sama seperti controller lain di aplikasi ini.
@@ -60,15 +66,15 @@ class AssignmentController extends Controller
             return back()->withInput()->with('error', 'Penerima tugas tidak ditemukan atau tidak aktif.');
         }
 
-        $assignment = DB::transaction(function () use ($data, $user, $request) {
+        $assignment = DB::transaction(function () use ($data, $request) {
             $assignment = Assignment::create([
                 'title'       => $data['title'],
                 'description' => $data['description'] ?? null,
-                'assigner_id' => $user->id,
+                'assigner_id' => Auth::id(),
                 'assignee_id' => $data['assignee_id'],
                 'due_date'    => $data['due_date'] ?? null,
                 'priority'    => $data['priority'],
-                'status'      => 'OPEN',
+                'status'      => 'PENDING',
             ]);
 
             $this->saveAttachments($assignment, $request);
@@ -92,12 +98,12 @@ class AssignmentController extends Controller
         $user = Auth::user();
 
         // Hanya pemberi tugas (atau superadmin) yang boleh mengubah isinya,
-        // dan hanya selama tugas masih terbuka.
+        // dan hanya selama tugas belum berstatus akhir.
         if (! $this->canManage($assignment)) {
             abort(403);
         }
-        if ($assignment->status !== 'OPEN') {
-            return back()->with('error', 'Tugas yang sudah selesai/dibatalkan tidak bisa diubah.');
+        if (! in_array($assignment->status, Assignment::OPEN_STATUSES, true)) {
+            return back()->with('error', 'Tugas yang sudah closed/cancelled tidak bisa diubah.');
         }
 
         $data = $request->validate([
@@ -144,6 +150,29 @@ class AssignmentController extends Controller
         return back()->with('success', 'Tugas berhasil diperbarui.');
     }
 
+    /**
+     * Penerima tugas menekan "Mulai Dikerjakan": READ -> ON_PROGRESS.
+     * Hanya penerima yang boleh — makna statusnya adalah "sedang ia kerjakan".
+     */
+    public function startProgress(Assignment $assignment)
+    {
+        $user = Auth::user();
+
+        if (! $user || $user->id !== $assignment->assignee_id) {
+            abort(403);
+        }
+        if ($assignment->status !== 'READ') {
+            return back()->with('error', 'Tugas ini tidak sedang menunggu dikerjakan.');
+        }
+
+        $assignment->update(['status' => 'ON_PROGRESS', 'started_at' => now()]);
+        AssignmentLog::record($assignment, 'start_progress');
+
+        $this->notify($assignment->assigner, 'Tugas mulai dikerjakan', $user->name . ' mulai mengerjakan tugas: ' . $assignment->title);
+
+        return back()->with('success', 'Tugas ditandai sedang dikerjakan.');
+    }
+
     public function markDone(Request $request, Assignment $assignment)
     {
         $user = Auth::user();
@@ -152,14 +181,14 @@ class AssignmentController extends Controller
         if (! $this->canComplete($assignment)) {
             abort(403);
         }
-        if ($assignment->status !== 'OPEN') {
+        if (! in_array($assignment->status, Assignment::OPEN_STATUSES, true)) {
             return back()->with('error', 'Tugas ini sudah tidak terbuka.');
         }
 
         $notes = $request->validate(['notes' => 'nullable|string|max:500'])['notes'] ?? null;
 
-        $assignment->update(['status' => 'DONE', 'done_at' => now()]);
-        AssignmentLog::record($assignment, 'done', $notes);
+        $assignment->update(['status' => 'CLOSED', 'done_at' => now()]);
+        AssignmentLog::record($assignment, 'close', $notes);
 
         // Kabari pemberi tugas kalau yang menyelesaikan adalah penerima.
         if ($user->id !== $assignment->assigner_id) {
@@ -181,7 +210,7 @@ class AssignmentController extends Controller
         if (! $this->canManage($assignment)) {
             abort(403);
         }
-        if ($assignment->status !== 'OPEN') {
+        if (! in_array($assignment->status, Assignment::OPEN_STATUSES, true)) {
             return back()->with('error', 'Tugas ini sudah tidak terbuka.');
         }
 
@@ -203,15 +232,21 @@ class AssignmentController extends Controller
 
     public function reopen(Request $request, Assignment $assignment)
     {
-        // Membuka kembali tugas selesai/dibatalkan — hak pemberi tugas.
+        // Membuka kembali tugas closed/cancelled — hak pemberi tugas.
         if (! $this->canManage($assignment)) {
             abort(403);
         }
-        if ($assignment->status === 'OPEN') {
+        if (in_array($assignment->status, Assignment::OPEN_STATUSES, true)) {
             return back()->with('error', 'Tugas ini masih terbuka.');
         }
 
-        $assignment->update(['status' => 'OPEN', 'done_at' => null, 'cancelled_at' => null]);
+        $assignment->update([
+            'status'       => 'PENDING',
+            'read_at'      => null,
+            'started_at'   => null,
+            'done_at'      => null,
+            'cancelled_at' => null,
+        ]);
         AssignmentLog::record($assignment, 'reopen');
 
         $this->notify($assignment->assignee, 'Tugas dibuka kembali', 'Tugas "' . $assignment->title . '" dibuka kembali.');
@@ -219,11 +254,52 @@ class AssignmentController extends Controller
         return back()->with('success', 'Tugas dibuka kembali.');
     }
 
-    /** Timeline satu tugas (partial HTML untuk modal/drawer). */
-    public function logs(Assignment $assignment)
+    /**
+     * Tambah komentar pada timeline. Diizinkan untuk pemberi & penerima
+     * (atau superadmin) selama tugas belum berstatus akhir (CLOSED/CANCELLED).
+     */
+    public function comment(Request $request, Assignment $assignment)
     {
         if (! $this->canView($assignment)) {
             abort(403);
+        }
+        if (! $assignment->can_comment) {
+            return back()->with('error', 'Komentar tidak bisa ditambahkan pada tugas yang sudah closed/cancelled.');
+        }
+
+        $data = $request->validate(['body' => 'required|string|max:500']);
+
+        AssignmentLog::record($assignment, 'comment', $data['body']);
+
+        $lawan = Auth::id() === $assignment->assigner_id ? $assignment->assignee : $assignment->assigner;
+        $this->notify($lawan, 'Komentar baru', Auth::user()->name . ' berkomentar pada tugas: ' . $assignment->title);
+
+        // Dikirim via fetch AJAX dari modal detail (lihat assignment/_board.blade.php)
+        // — back() akan mengikuti redirect dan mengembalikan HTML halaman penuh,
+        // bukan yang diinginkan pemanggilnya.
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true]);
+        }
+
+        return back()->with('success', 'Komentar ditambahkan.');
+    }
+
+    /**
+     * Timeline satu tugas (partial HTML untuk modal/drawer). Saat penerima
+     * tugas membuka ini untuk pertama kali (status masih PENDING), transisi
+     * otomatis ke READ dicatat di sini — inilah yang dimaksud "dibaca".
+     */
+    public function logs(Assignment $assignment)
+    {
+        $user = Auth::user();
+
+        if (! $this->canView($assignment)) {
+            abort(403);
+        }
+
+        if ($assignment->status === 'PENDING' && $user->id === $assignment->assignee_id) {
+            $assignment->update(['status' => 'READ', 'read_at' => now()]);
+            AssignmentLog::record($assignment, 'read');
         }
 
         $assignment->load(['logs.actor', 'attachments', 'assigner', 'assignee']);
@@ -240,16 +316,18 @@ class AssignmentController extends Controller
     /** Daftar tugas untuk Todo List / halaman index: [ditugaskan ke saya, dibuat saya]. */
     public function listsFor(User $user): array
     {
+        $urutanStatus = "FIELD(status, 'ON_PROGRESS', 'READ', 'PENDING', 'CLOSED', 'CANCELLED')";
+
         $assignedToMe = Assignment::with(['assigner', 'assignee', 'attachments'])
             ->where('assignee_id', $user->id)
-            ->orderByRaw("FIELD(status, 'OPEN', 'DONE', 'CANCELLED')")
+            ->orderByRaw($urutanStatus)
             ->orderByRaw('due_date IS NULL, due_date ASC')
             ->orderByDesc('id')
             ->get();
 
         $createdByMe = Assignment::with(['assigner', 'assignee', 'attachments'])
             ->where('assigner_id', $user->id)
-            ->orderByRaw("FIELD(status, 'OPEN', 'DONE', 'CANCELLED')")
+            ->orderByRaw($urutanStatus)
             ->orderByRaw('due_date IS NULL, due_date ASC')
             ->orderByDesc('id')
             ->get();
@@ -310,7 +388,7 @@ class AssignmentController extends Controller
         );
     }
 
-    /** Boleh melihat detail: penerima, pemberi, atau superadmin. */
+    /** Boleh melihat detail & berkomentar: penerima, pemberi, atau superadmin. */
     private function canView(Assignment $assignment): bool
     {
         return $this->canComplete($assignment);

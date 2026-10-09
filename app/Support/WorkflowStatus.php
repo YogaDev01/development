@@ -313,6 +313,58 @@ class WorkflowStatus
                 'icon'        => 'fa-undo',
             ],
         ],
+
+        /*
+          Trouble Ticket. Transisinya milik App\Services\TroubleTicketWorkflow;
+          keterangan di sini mengikuti gerbang di sana.
+        */
+        'trouble-ticket' => [
+            'OPEN' => [
+                'description' => 'Menunggu teknisi membuka tiket',
+                'tone'        => 'attention',
+                'icon'        => 'fa-hourglass-half',
+            ],
+            'AWAITING_PLAN' => [
+                'description' => 'Menunggu teknisi memilih Visit / Non-Visit',
+                'tone'        => 'attention',
+                'icon'        => 'fa-route',
+            ],
+            'PLANNED' => [
+                'description' => 'Keputusan tercatat; menunggu berangkat / Start Progress',
+                'tone'        => 'progress',
+                'icon'        => 'fa-clipboard-check',
+            ],
+            'TRAVELING' => [
+                'description' => 'Teknisi dalam perjalanan ke site',
+                'tone'        => 'progress',
+                'icon'        => 'fa-car',
+            ],
+            'ON_SITE' => [
+                'description' => 'Teknisi di site; menunggu Start Progress',
+                'tone'        => 'progress',
+                'icon'        => 'fa-map-marker-alt',
+            ],
+            'IN_PROGRESS' => [
+                'description' => 'Troubleshooting berjalan',
+                'tone'        => 'progress',
+                'icon'        => 'fa-tools',
+            ],
+            'PENDING_CLOSURE' => [
+                'description' => 'Menunggu approval Closed oleh leader team',
+                'tone'        => 'attention',
+                'icon'        => 'fa-user-check',
+            ],
+            'CLOSED' => [
+                'description' => 'Closed disetujui',
+                'tone'        => 'done',
+                'icon'        => 'fa-check-circle',
+            ],
+            'CANCELLED' => [
+                'description' => 'Tiket dibatalkan',
+                'tone'        => 'neutral',
+                'icon'        => 'fa-ban',
+            ],
+        ],
     ];
 
     /**
@@ -340,6 +392,10 @@ class WorkflowStatus
         ],
         'daily-transaction' => [
             'PENDING_APPROVER', 'DONE', 'PAID',
+        ],
+        'trouble-ticket' => [
+            'OPEN', 'AWAITING_PLAN', 'PLANNED', 'TRAVELING', 'ON_SITE',
+            'IN_PROGRESS', 'PENDING_CLOSURE', 'CLOSED',
         ],
     ];
 

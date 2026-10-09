@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Support\AssetVersion;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
 
@@ -57,5 +58,16 @@ class AppServiceProvider extends ServiceProvider
         Blade::directive('rupiah', function (string $ekspresi) {
             return "<?php echo e(number_format((float) ({$ekspresi} ?: 0), 0, ',', '.')); ?>";
         });
+
+        /*
+        | Paginasi ({{ $items->links() }}) memakai view Bootstrap 4.
+        |
+        | Tanpa ini Laravel memakai view default-nya sendiri (berbasis Tailwind),
+        | yang di TESYS (Bootstrap 4.6, tanpa Tailwind) tampil sebagai teks
+        | "« Previous Next »" polos tanpa kotak/border sama sekali — bug yang
+        | sama berlaku pada SEMUA pemakaian ->links() di app ini (Team, User
+        | Activity Log, dll), bukan cuma satu halaman.
+        */
+        Paginator::useBootstrapFour();
     }
 }

@@ -102,6 +102,14 @@ class MenuItemSeeder extends Seeder
                 'section'    => 'master',
                 'sort_order' => 14,
             ],
+            ['key' => 'category-item',   'label' => 'Category Item',   'icon' => 'fas fa-tags',            'route' => '/category-item',   'section' => 'master', 'sort_order' => 60],
+            ['key' => 'master-material', 'label' => 'Master Material', 'icon' => 'fas fa-microchip',       'route' => '/master-material', 'section' => 'master', 'sort_order' => 61],
+            ['key' => 'accessories',     'label' => 'Accessories',     'icon' => 'fas fa-plug',            'route' => '/accessories',     'section' => 'master', 'sort_order' => 62],
+            ['key' => 'site',            'label' => 'Sites',           'icon' => 'fas fa-broadcast-tower', 'route' => '/site',            'section' => 'master', 'sort_order' => 63],
+            ['key' => 'network',         'label' => 'Network',         'icon' => 'fas fa-satellite-dish',  'route' => '/network',         'section' => 'master', 'sort_order' => 64],
+            ['key' => 'homebase',        'label' => 'Homebase',        'icon' => 'fas fa-warehouse',       'route' => '/homebase',        'section' => 'master', 'sort_order' => 65],
+            ['key' => 'region',          'label' => 'Region',          'icon' => 'fas fa-globe-asia',      'route' => '/region',          'section' => 'master', 'sort_order' => 66],
+            ['key' => 'wilayah',         'label' => 'Wilayah',         'icon' => 'fas fa-map-marked-alt',  'route' => '/wilayah',         'section' => 'master', 'sort_order' => 67],
 
             /*
             |------------------------------------------------------------------
@@ -216,6 +224,7 @@ class MenuItemSeeder extends Seeder
                 'section'    => 'project',
                 'sort_order' => 33,
             ],
+            ['key' => 'trouble-ticket', 'label' => 'Trouble Ticket', 'icon' => 'fas fa-ticket-alt', 'route' => '/trouble-ticket', 'section' => 'operation', 'sort_order' => 34],
 
         ];
 

@@ -542,17 +542,43 @@ class BudgetRequestController extends Controller
      * dari depan deskripsi (karena sudah jadi judul grup), lalu catatan barisnya
      * ditempelkan - mis. "Tim penarikan kabel — REJECT".
      */
-    private function itemLabel(RequestDetail $detail): string
+    /**
+     * Buang AWALAN label (nama akun, atau Sub COA/deskripsi budget detail) dari
+     * sebuah teks deskripsi, kalau teksnya memang diawali label itu diikuti
+     * "-" / em dash — pola yang dulu dipakai saat input manual CR ("Akun -
+     * detail sebenarnya"). Dicoba case-INSENSITIVE dan satu per satu sesuai
+     * urutan $labels; berhenti begitu satu label cocok.
+     *
+     * Tanpa ini, baris yang catatannya kosong dan deskripsinya hanya mengulang
+     * nama label sendiri (mis. "Dana Tidak Terduga - Dana Tidak Terduga")
+     * tampil berulang dua kali di layar — sekali sebagai judul grup/Sub COA,
+     * sekali lagi sebagai "teks" di baris Request/Settle.
+     */
+    private function stripLeadingLabel(string $desc, ?string ...$labels): string
     {
-        $desc = trim((string) $detail->description);
-        $akun = trim((string) ($detail->account?->name ?? ''));
+        $desc = trim($desc);
 
-        if ($akun !== '') {
-            // Pemisah yang dipakai saat pembuatan bisa "-" biasa maupun em dash.
-            $desc = preg_replace('/^' . preg_quote($akun, '/') . '\s*[-\x{2013}\x{2014}]\s*/u', '', $desc) ?? $desc;
+        foreach ($labels as $label) {
+            $label = trim((string) $label);
+            if ($label === '') continue;
+
+            $stripped = preg_replace('/^' . preg_quote($label, '/') . '\s*[-\x{2013}\x{2014}]\s*/iu', '', $desc);
+            if ($stripped !== null && $stripped !== $desc) {
+                return trim($stripped);
+            }
         }
 
-        $desc = trim($desc);
+        return $desc;
+    }
+
+    private function itemLabel(RequestDetail $detail): string
+    {
+        $akun = trim((string) ($detail->account?->name ?? ''));
+        $subCoa = trim((string) ($detail->budgetDetail?->deskripsi ?? ''));
+
+        // Pemisah yang dulu dipakai saat input manual bisa berbasis nama akun
+        // ATAU Sub COA — dicoba keduanya, bukan cuma akun.
+        $desc = $this->stripLeadingLabel((string) $detail->description, $akun, $subCoa);
         $note = trim((string) $detail->notes);
 
         if ($desc === '') $desc = $akun !== '' ? $akun : '-';
@@ -567,16 +593,35 @@ class BudgetRequestController extends Controller
      */
     private function subCoaLabel(RequestDetail $detail): string
     {
-        $desc = trim((string) $detail->description);
         $akun = trim((string) ($detail->account?->name ?? ''));
-
-        if ($akun !== '') {
-            $desc = preg_replace('/^' . preg_quote($akun, '/') . '\s*[-\x{2013}\x{2014}]\s*/u', '', $desc) ?? $desc;
-        }
-
-        $desc = trim($desc);
+        $desc = $this->stripLeadingLabel((string) $detail->description, $akun);
 
         return $desc !== '' ? $desc : ($akun !== '' ? $akun : '-');
+    }
+
+    /**
+     * Teks baris "Settle:" satu item di tab Settlement drawer — deskripsi
+     * settlement TANPA mengulang nama Sub COA/akunnya di depan.
+     *
+     * syncRealizations() menyalin description dari rincian pengajuan apa
+     * adanya (lihat method itu); kalau pengajuannya dulu ditulis sebagai
+     * "{Sub COA} - {Sub COA}" (user tidak menulis keterangan lain), hasilnya
+     * sama dengan nama Sub COA itu sendiri setelah dipotong — itu memang
+     * berarti belum ada keterangan tambahan, jadi fallback-nya nama Sub COA.
+     */
+    private function settleDescriptionLabel(\App\Models\BudgetRequestRealization $r): string
+    {
+        $akun   = trim((string) ($r->account?->name ?? ''));
+        $subCoa = trim((string) ($r->requestDetail?->budgetDetail?->deskripsi ?? ''));
+        $sumber = trim((string) ($r->description ?: ($r->notes ?: '')));
+
+        $desc = $this->stripLeadingLabel($sumber, $subCoa, $akun);
+
+        if ($desc === '') {
+            $desc = $subCoa !== '' ? $subCoa : ($akun !== '' ? $akun : '-');
+        }
+
+        return $desc;
     }
 
     private function syncRealizations(BudgetRequest $cr, Request $request): void
@@ -1046,8 +1091,13 @@ class BudgetRequestController extends Controller
             return back()->withInput()->with('error', $msg);
         }
 
-        // Limit Cash Advance per PIC (lewat beneficiary) — blokir kalau habis.
         if ($this->typeIsCashAdvance((int) $request->type_id)) {
+            $beneficiary = Beneficiary::find($request->beneficiary_id);
+            if ($beneficiary && $beneficiary->category !== 'INTERNAL') {
+                return back()->withInput()->with('error', 'Cash Advance hanya untuk beneficiary kategori Internal.');
+            }
+
+            // Limit Cash Advance per PIC (lewat beneficiary) — blokir kalau habis.
             $msg = $this->cashAdvanceQuotaError(
                 (int) $request->beneficiary_id,
                 $this->requestedDetailTotal($request)
@@ -1410,6 +1460,9 @@ class BudgetRequestController extends Controller
                 // ditautkan) — judul tebal item di tab Settlement drawer.
                 'sub_coa'           => $r->requestDetail?->budgetDetail?->deskripsi
                                         ?: ($r->requestDetail ? $this->subCoaLabel($r->requestDetail) : null),
+                // Teks baris "Settle:" di drawer — tanpa mengulang nama Sub COA/
+                // akun di depannya (lihat settleDescriptionLabel()).
+                'des_settle'        => $this->settleDescriptionLabel($r),
                 'total_cr'          => $r->requestDetail?->total ?? 0,
                 'total_cr_formatted'=> number_format($r->requestDetail?->total ?? 0, 0, ',', '.'),
                 'actual'            => $r->amount,
@@ -1577,7 +1630,7 @@ class BudgetRequestController extends Controller
         $bp  = $cr->budgetPlan;
         $ben = $cr->beneficiary;
         if (! $bp || ! $ben) {
-            return collect(['pic_name' => '-', 'items' => collect(), 'total' => 0]);
+            return collect(['pic_name' => '-', 'has_pic' => false, 'items' => collect(), 'total' => 0]);
         }
 
         /*
@@ -1656,6 +1709,10 @@ class BudgetRequestController extends Controller
 
         return collect([
             'pic_name' => $picName ?: ($ben->complete_name ?? '-'),
+            // Beneficiary ini belum punya PIC master -> judul panelnya di
+            // layar ikut menyesuaikan jadi "Riwayat Pengajuan BENEFICIARY",
+            // supaya tidak menyebut sebuah nama beneficiary sebagai "PIC".
+            'has_pic'  => (bool) $ben->pic_id,
             'items'    => $items->values(),
             'total'    => (int) $items->sum('value'),
         ]);
@@ -1761,9 +1818,14 @@ class BudgetRequestController extends Controller
             return back()->withInput()->with('error', $msg);
         }
 
-        // Limit Cash Advance per PIC — CR yang sedang diedit dikecualikan dari
-        // hitungan supaya nominal lamanya tidak dihitung dua kali.
         if ($this->typeIsCashAdvance((int) $request->type_id)) {
+            $beneficiary = Beneficiary::find($request->beneficiary_id);
+            if ($beneficiary && $beneficiary->category !== 'INTERNAL') {
+                return back()->withInput()->with('error', 'Cash Advance hanya untuk beneficiary kategori Internal.');
+            }
+
+            // Limit Cash Advance per PIC — CR yang sedang diedit dikecualikan dari
+            // hitungan supaya nominal lamanya tidak dihitung dua kali.
             $msg = $this->cashAdvanceQuotaError(
                 (int) $request->beneficiary_id,
                 $this->requestedDetailTotal($request),

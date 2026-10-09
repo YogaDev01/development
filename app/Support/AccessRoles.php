@@ -93,4 +93,24 @@ final class AccessRoles
      * ProjectMonitoringController::HEAD_ROLES.
      */
     public const MONITORING_HEAD = ['superadmin', 'approver'];
+
+    /**
+     * Trouble Ticket — melihat SEMUA tiket tanpa dibatasi rantai
+     * site → PIC → team (TroubleTicket::scopeVisibleTo()).
+     */
+    public const TROUBLE_TICKET_FULL_SCOPE = ['superadmin'];
+
+    /**
+     * Trouble Ticket — cadangan pengawas: approve/reject Closed, reassign,
+     * cancel, koreksi keputusan kunjungan, SELAIN leader team teknisinya
+     * (TroubleTicketWorkflow::canSupervise()). Peran ini tetap tidak boleh
+     * menyetujui pengajuan Closed miliknya sendiri.
+     */
+    public const TROUBLE_TICKET_SUPERVISE = ['superadmin'];
+
+    /**
+     * Trouble Ticket — kelola kategori & target SLA. Harus sama dengan
+     * gerbang role: pada route trouble-ticket/settings.
+     */
+    public const TROUBLE_TICKET_SETTINGS = ['superadmin'];
 }

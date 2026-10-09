@@ -54,6 +54,26 @@
 
     function positionDropdown($dd, $anchor) {
         $dd.data('tssOwner', $anchor.get(0));
+
+        /* Di dalam modal Bootstrap, panel harus ikut di dalam modal: panel di
+           <body> berada di luar focus-trap modal (_enforceFocus), sehingga
+           kotak cari tak bisa diketik dan klik pada panel ikut terganggu. */
+        var $modal = $anchor.closest('.modal');
+        if ($modal.length) {
+            $modal.append($dd);
+            var rect = $anchor.get(0).getBoundingClientRect();
+            var w = $dd.outerWidth();
+            var l = rect.left;
+            if (l + w > window.innerWidth - 10) l = Math.max(10, window.innerWidth - 10 - w);
+            var h = $dd.outerHeight();
+            var top = rect.bottom + 4;
+            if (top + h > window.innerHeight - 10 && rect.top - h - 4 > 10) top = rect.top - h - 4;
+            $dd.css({ position: 'fixed', top: top, left: l });
+            // Posisi fixed tidak ikut gulir modal: tutup panel saat modal digulir/ditutup.
+            $modal.one('scroll hide.bs.modal', closeAllTss);
+            return;
+        }
+
         $('body').append($dd);
         var offset = $anchor.offset();
         var ddWidth = $dd.outerWidth();

@@ -48,6 +48,16 @@ return [
     ],
 
     /*
+    | Google Maps Static API — peta kecil di drawer detail Site.
+    | Kunci terlihat di URL gambar (memang begitu cara Static API), jadi WAJIB
+    | dibatasi di Google Cloud Console: API = Maps Static API saja, dan HTTP
+    | referrer = domain TESYS. Kosong = drawer memakai peta OpenStreetMap.
+    */
+    'google_maps' => [
+        'key' => env('GOOGLE_MAPS_KEY'),
+    ],
+
+    /*
     | Kunci OpenAI / Gemini / Tavily DIHAPUS pada 26 Sep 2026, bersama modul
     | AI yang memakainya.
     |

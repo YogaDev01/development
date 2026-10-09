@@ -26,10 +26,43 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '2.5.10',
+    'current' => '3.0.0',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '3.0.0',
+            'date'    => '2026-10-09',
+            'title'   => 'Penugasan, Profil Baru, Jejak Aktivitas & Alur Proyek Dua Langkah',
+            'summary' => 'Rilis besar: modul Penugasan antar-pengguna, halaman Profil yang dirombak '
+                       . '(info, tim, pengaturan, jejak aktivitas), pencatatan jejak aktivitas pengguna, '
+                       . 'lupa sandi lewat kode email, serta alur persetujuan Purchase Order dua langkah '
+                       . '(Finance verifikasi, lalu Approver menyetujui) dengan status settlement baru.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Modul Penugasan: tugas bebas antar-pengguna (siapa pun bisa menugaskan siapa pun), lengkap dengan lampiran, linimasa perubahan, serta status Selesai/Batal/Buka lagi. Penugasan juga muncul di Todo List.',
+                        'Halaman Profil dirombak: tab Info, Tim, Pengaturan, Todo, dan Jejak Aktivitas; unggah foto profil & foto sampul, pilihan aplikasi default saat masuk, serta pengaturan notifikasi.',
+                        'Jejak Aktivitas Pengguna: catatan terpusat siapa melakukan apa dan kapan, bisa dilihat di tab Profil dan per-pengguna dari master User.',
+                        'Lupa Sandi di halaman masuk: reset sandi lewat kode yang dikirim ke email, dengan pembatasan percobaan agar aman.',
+                        'Pengingat Todo otomatis (dijalankan terjadwal) dan ringkasan waktu respon di Todo List.',
+                        'Budget Plan: ekspor terpisah untuk Biaya dan Budget, serta penyimpanan draft realisasi agar isian tidak hilang.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Persetujuan Purchase Order kini dua langkah: Finance memverifikasi dulu, lalu Approver menyetujui — dengan opsi Early Start, Waiting PO, dan Active, serta jalur revisi dari Finance.',
+                        'Alur settlement Cost Request menambah status Settle Rejected sehingga penolakan settlement punya keadaan tersendiri dan bisa ditindaklanjuti dengan jelas.',
+                        'Halaman masuk didesain ulang agar lebih rapi dan selaras dengan tampilan aplikasi.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '2.5.10',

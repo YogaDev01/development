@@ -71,6 +71,17 @@ Lewat **`record()` inline di controller**:
 - Controller CRUD master biasa → tambahkan `record('master_data', 'create|update|delete', …)`
   di `store`/`update`/`destroy` (seperti `BeneficiaryController`).
 
+## Tampilan di Profil
+
+Tab **User Log** (dulu "Activity Log") di halaman Profil berisi 3 sub-tab
+(`profile/_user_log.blade.php`): **Activity Log** (audit trail lintas module),
+**Request Log** (approval Cost Request), **Project Log** (Project Monitoring).
+Tab lama "Project Log" & "Request Log" di bar atas sudah dilebur ke sini.
+
+Tab **Access** disembunyikan untuk role yang bypass access group
+(`superadmin`, `approver`) — lihat `@unless($user->hasRole([...]))` di
+`profile/show.blade.php`.
+
 ## Rincian perubahan nilai (dari → menjadi) — CREDENTIAL
 
 Kolom `changes` (JSON, migration `2026_10_08_000001`) menyimpan perubahan nilai

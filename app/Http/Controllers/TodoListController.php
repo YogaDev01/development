@@ -991,6 +991,51 @@ class TodoListController extends Controller
         $invoiceApproveAvg  = $pairAvg('invoices', 'verified_at', 'approved_at');
 
         /*
+         | SETTLE_VERIFIED bercabang dua (lihat HandlesCrSettlement):
+         |   - TANPA Expense Claim -> langsung CLOSED ("Settlement Close").
+         |   - DENGAN Expense Claim -> SETTLE_APPROVED ("Settle Approved") lalu
+         |     SECOND_APPROVED ("Second Approval").
+         | $crAvg['SETTLE_VERIFIED'] (status_from saja) MENCAMPUR kedua cabang
+         | itu, jadi dipakai versi lebih presisi di sini: dikelompokkan juga per
+         | status_to, supaya tiap baris memakai rata-rata JALUR-nya sendiri.
+         */
+        $crPairAvg = function () {
+            $rows = \DB::select("
+                SELECT status_from AS sf, status_to AS st, SUM(diff) AS s, COUNT(*) AS n FROM (
+                    SELECT status_from, status_to,
+                           TIMESTAMPDIFF(SECOND,
+                               LAG(created_at) OVER (PARTITION BY budget_request_id ORDER BY created_at, id),
+                               created_at) AS diff
+                    FROM request_status_logs
+                ) t
+                WHERE diff IS NOT NULL AND diff >= 0
+                GROUP BY status_from, status_to
+            ");
+            $map = [];
+            foreach ($rows as $r) {
+                $map[$r->sf][$r->st] = ['sum' => (int) $r->s, 'count' => (int) $r->n];
+            }
+            return $map;
+        };
+        $crPair = $crPairAvg();
+        $settlementCloseAvg = $crPair['SETTLE_VERIFIED']['CLOSED']          ?? null;
+        $settleApprovedAvg  = $crPair['SETTLE_VERIFIED']['SETTLE_APPROVED'] ?? null;
+        $secondApprovalAvg  = $crPair['SETTLE_APPROVED']['SECOND_APPROVED'] ?? null;
+
+        /*
+         | Jumlah CR di SETTLE_VERIFIED juga dipecah per cabang yang sama (punya
+         | Expense Claim atau tidak) — kalau tidak, "Settlement Close" dan
+         | "Settle Approved" akan menghitung CR yang sama dua kali. Volumenya
+         | kecil (satu tahap workflow), jadi collection filter di sini aman;
+         | expenseClaimAmount() bukan kolom tersimpan (lihat BudgetRequest).
+         */
+        $crCountByClaim = function (string $status, bool $hasClaim) {
+            $query = BudgetRequest::where('status', $status)->with('realizations');
+            $this->scopeByRole($query);
+            return $query->get()->filter(fn ($cr) => $cr->hasExpenseClaim() === $hasClaim)->count();
+        };
+
+        /*
          | Katalog tahap, ditulis mengikuti urutan alur kerja perusahaan —
          | dari pembuatan dokumen, approval, pembayaran, penagihan, sampai
          | settlement & closing. Urutan baris pada tabel mengikuti urutan
@@ -1032,7 +1077,9 @@ class TodoListController extends Controller
             ['Manager',         'Settlement Ditolak',      'Cost Request',   $crCount('SETTLE_REJECTED'), $crLink('SETTLE_REJECTED'), $crAvg['SETTLE_REJECTED'] ?? null],
             ['Head',            'Settlement Check',        'Cost Request',   $crCount('REALIZED'),        $crLink('REALIZED'),        $crAvg['REALIZED'] ?? null],
             ['Cost Control',    'Settlement Verify',       'Cost Request',   $crCount('SETTLE_CHECKED'),  $crLink('SETTLE_CHECKED'),  $crAvg['SETTLE_CHECKED'] ?? null],
-            ['Finance Manager', 'Settlement Close',        'Cost Request',   $crCount('SETTLE_VERIFIED'), $crLink('SETTLE_VERIFIED'), $crAvg['SETTLE_VERIFIED'] ?? null],
+            ['Finance Manager', 'Settlement Close',        'Cost Request',   $crCountByClaim('SETTLE_VERIFIED', false), $crLink('SETTLE_VERIFIED'), $settlementCloseAvg],
+            ['Finance Manager', 'Settle Approved',         'Cost Request',   $crCountByClaim('SETTLE_VERIFIED', true),  $crLink('SETTLE_VERIFIED'), $settleApprovedAvg],
+            ['CEO',             'Second Approval',         'Cost Request',   $crCount('SETTLE_APPROVED'), $crLink('SETTLE_APPROVED'), $secondApprovalAvg],
 
             ['Head',            'Submit Closing',          'Purchase Order', Project::where('status', 'PAID')->count(),     url('/project?status=PAID'),    $poAvg['PAID'] ?? null],
             ['Finance',         'Verifikasi Closing',      'Purchase Order', Project::where('status', 'CLOSING')->count(),  url('/project?status=CLOSING'), $poAvg['CLOSING'] ?? null],
@@ -1229,8 +1276,15 @@ class TodoListController extends Controller
             return ['modules' => $modules, 'rows' => [], 'moduleAvg' => array_fill_keys($modules, null)];
         }
 
-        // Nama user (sekali query untuk semua uid yang terpakai).
-        $names = User::whereIn('id', array_keys($agg))->pluck('name', 'id');
+        // Hanya user AKTIF yang ditampilkan — user nonaktif/dihapus dikeluarkan
+        // dari $agg juga (bukan cuma disembunyikan), supaya rata-rata footer
+        // per modul tidak ikut ditarik oleh angka mereka.
+        $names = User::whereIn('id', array_keys($agg))->where('status', 'ACTIVE')->pluck('name', 'id');
+        $agg   = array_intersect_key($agg, $names->all());
+
+        if (empty($agg)) {
+            return ['modules' => $modules, 'rows' => [], 'moduleAvg' => array_fill_keys($modules, null)];
+        }
 
         $rows = [];
         foreach ($agg as $uid => $cells) {
@@ -1246,17 +1300,19 @@ class TodoListController extends Controller
                 $totalCnt += $cnt;
             }
             $rows[] = [
-                'user'        => $names[$uid] ?? ('User #' . $uid),
+                'user'        => $names[$uid],
                 'cells'       => $out,
                 'avg_seconds' => $totalCnt ? (int) round($totalSum / $totalCnt) : null,
                 'count'       => $totalCnt,
             ];
         }
 
-        // Paling banyak merespon di atas — daftar kinerja yang paling ramai dulu.
-        usort($rows, fn ($a, $b) => $b['count'] <=> $a['count'] ?: strcmp($a['user'], $b['user']));
+        // Default: rata-rata TERCEPAT di atas (ascending) — lihat permintaan
+        // "default sortir asc dari kolom rata-rata". Sortir lain (termasuk
+        // desc & per modul) dikerjakan di klien, lihat _summary_respontime.
+        usort($rows, fn ($a, $b) => $a['avg_seconds'] <=> $b['avg_seconds'] ?: strcmp($a['user'], $b['user']));
 
-        // Rata-rata per modul (gabungan semua user) untuk baris footer.
+        // Rata-rata per modul (gabungan semua user AKTIF) untuk baris footer.
         $moduleAvg = [];
         foreach ($modules as $m) {
             $s = 0; $n = 0;

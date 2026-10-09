@@ -227,6 +227,12 @@ class MasterPicController extends Controller
         if (\Illuminate\Support\Facades\DB::table('project_pic_links')->where('master_pic_id', $pic->id)->exists()) {
             return back()->with('error', 'PIC tidak bisa dihapus karena sudah dipakai pada Project.');
         }
+        if (\App\Models\HomebaseDetail::where('pic_id', $pic->id)->exists()) {
+            return back()->with('error', 'PIC tidak bisa dihapus karena sudah terdaftar di Homebase.');
+        }
+        if (\App\Models\SitePic::where('pic_id', $pic->id)->exists()) {
+            return back()->with('error', 'PIC tidak bisa dihapus karena sudah terhubung ke Site.');
+        }
 
         $picName = $pic->pic;
         $pic->delete();

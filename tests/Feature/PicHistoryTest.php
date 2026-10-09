@@ -76,6 +76,7 @@ class PicHistoryTest extends TestCase
             ->json('pic_history');
 
         $this->assertSame('PIC Uji', $res['pic_name']);
+        $this->assertTrue($res['has_pic']);
         $this->assertCount(1, $res['items']);
         $this->assertSame('Sub A', $res['items'][0]['sub_coa']);
         $this->assertSame(750_000, $res['items'][0]['value']);
@@ -151,5 +152,64 @@ class PicHistoryTest extends TestCase
         $this->assertSame('Pengiriman material ke site', $json['details'][0]['sub_coa']);
         $this->assertSame('Untuk kebutuhan 2 site sekaligus.', $json['details'][0]['notes']);
         $this->assertSame('Pengiriman material ke site', $json['realizations'][0]['sub_coa']);
+    }
+
+    public function test_beneficiary_tanpa_pic_memberi_has_pic_false_dan_nama_beneficiary(): void
+    {
+        $admin = $this->userWithRole('superadmin');
+        $plan  = $this->makeBudgetPlan();
+
+        // Beneficiary ini SENGAJA tidak ditautkan ke MasterPic manapun.
+        $ben = $this->makeBeneficiary();
+        $cr  = $this->makeCostRequest(['budget_plan' => $plan, 'beneficiary_id' => $ben->id]);
+
+        $ph = $this->actingAs($admin)
+            ->getJson('/budget-request/' . $cr->id . '/detail-json')
+            ->assertOk()
+            ->json('pic_history');
+
+        $this->assertFalse($ph['has_pic']);
+        $this->assertSame($ben->complete_name, $ph['pic_name']);
+    }
+
+    public function test_settlement_tidak_mengulang_nama_sub_coa_di_baris_request_dan_settle(): void
+    {
+        $admin = $this->userWithRole('superadmin');
+        $plan  = $this->makeBudgetPlan();
+        $bpd   = BudgetPlanDetail::create([
+            'budget_plan_id' => $plan->id, 'deskripsi' => 'Dana Tidak Terduga',
+            'amount' => 1_000_000, 'qty' => 1, 'total' => 1_000_000,
+        ]);
+
+        $cr = $this->makeCostRequest(['budget_plan' => $plan, 'type_id' => $this->makeRequestType('Cash Advance')->id]);
+
+        // Rincian pengajuan ditulis "{Sub COA} - {keterangan}" — pola input manual lama.
+        $rd = RequestDetail::create([
+            'budget_request_id' => $cr->id, 'budget_detail_id' => $bpd->id,
+            'description' => 'Dana Tidak Terduga - beli kabel dan colokan buat site al kautsar',
+            'amount' => 100_000, 'qty' => 1, 'total' => 100_000,
+        ]);
+
+        // Settlement-nya TIDAK pernah diberi keterangan tambahan — description
+        // yang tersimpan cuma mengulang nama Sub COA itu sendiri (lihat
+        // syncRealizations: description disalin apa adanya dari rincian
+        // pengajuan, dan di sini isinya kebetulan sama dengan nama Sub COA).
+        BudgetRequestRealization::create([
+            'budget_request_id' => $cr->id, 'request_detail_id' => $rd->id,
+            'description' => 'Dana Tidak Terduga - Dana Tidak Terduga',
+            'amount' => 0, 'qty' => 1, 'total' => 0,
+        ]);
+
+        $realization = $this->actingAs($admin)
+            ->getJson('/budget-request/' . $cr->id . '/detail-json')
+            ->assertOk()
+            ->json('realizations.0');
+
+        $this->assertSame('Dana Tidak Terduga', $realization['sub_coa']);
+        // "Sub COA - " di depan dibuang: yang tersisa hanya keterangan aslinya.
+        $this->assertSame('beli kabel dan colokan buat site al kautsar', $realization['des_request']);
+        // Settlement tanpa keterangan tambahan jatuh balik ke nama Sub COA —
+        // bukan "Dana Tidak Terduga - Dana Tidak Terduga" yang berulang.
+        $this->assertSame('Dana Tidak Terduga', $realization['des_settle']);
     }
 }

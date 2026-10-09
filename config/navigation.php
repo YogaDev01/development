@@ -173,6 +173,13 @@ return [
             'active' => ['project-monitoring*'],
             'menu'   => 'project-monitoring',
         ],
+        'trouble-ticket' => [
+            'label'  => 'Trouble Ticket',
+            'icon'   => 'fas fa-ticket-alt',
+            'url'    => '/trouble-ticket',
+            'active' => ['trouble-ticket*'],
+            'menu'   => 'trouble-ticket',
+        ],
 
         /* ---------------------------------------------------- ANALYSIS */
         'finance-summary' => [
@@ -254,6 +261,62 @@ return [
             'url'    => '/cluster',
             'active' => ['cluster*'],
             'menu'   => 'project',
+        ],
+        'category-item' => [
+            'label'  => 'Category Item',
+            'icon'   => 'fas fa-tags',
+            'url'    => '/category-item',
+            'active' => ['category-item*'],
+            'menu'   => 'category-item',
+        ],
+        'master-material' => [
+            'label'  => 'Master Material',
+            'icon'   => 'fas fa-microchip',
+            'url'    => '/master-material',
+            'active' => ['master-material*'],
+            'menu'   => 'master-material',
+        ],
+        'accessories' => [
+            'label'  => 'Accessories',
+            'icon'   => 'fas fa-plug',
+            'url'    => '/accessories',
+            'active' => ['accessories*'],
+            'menu'   => 'accessories',
+        ],
+        'site' => [
+            'label'  => 'Sites',
+            'icon'   => 'fas fa-broadcast-tower',
+            'url'    => '/site',
+            'active' => ['site', 'site/*'],
+            'menu'   => 'site',
+        ],
+        'network' => [
+            'label'  => 'Network',
+            'icon'   => 'fas fa-satellite-dish',
+            'url'    => '/network',
+            'active' => ['network*'],
+            'menu'   => 'network',
+        ],
+        'homebase' => [
+            'label'  => 'Homebase',
+            'icon'   => 'fas fa-warehouse',
+            'url'    => '/homebase',
+            'active' => ['homebase*'],
+            'menu'   => 'homebase',
+        ],
+        'region' => [
+            'label'  => 'Region',
+            'icon'   => 'fas fa-globe-asia',
+            'url'    => '/region',
+            'active' => ['region*'],
+            'menu'   => 'region',
+        ],
+        'wilayah' => [
+            'label'  => 'Wilayah',
+            'icon'   => 'fas fa-map-marked-alt',
+            'url'    => '/wilayah/pulau',
+            'active' => ['wilayah*'],
+            'menu'   => 'wilayah',
         ],
         'pic' => [
             'label'  => 'PIC',
@@ -337,6 +400,8 @@ return [
     'master_data' => [
         'customer', 'beneficiary', 'source-fund', 'cost-center', 'account',
         'project-master', 'milestone', 'pic', 'team', 'employee', 'user-access',
+        'category-item', 'master-material', 'accessories', 'site', 'network',
+        'homebase', 'region', 'wilayah',
     ],
 
     /*
@@ -408,7 +473,7 @@ return [
          */
         'operation' => [
             'Overview'    => ['dashboard'],
-            'Workflow'    => ['project-monitoring'],
+            'Workflow'    => ['project-monitoring', 'trouble-ticket'],
         ],
 
         'project' => [

@@ -2306,6 +2306,21 @@ $(function () {
     // perlu dinilai ulang terhadap baris yang tampil.
     $('#todoSearch').on('keyup', tlBatchRefresh);
 
+    // Format durasi detik -> ringkas (dtk/mnt/jam/hari) — sama persis dengan
+    // TodoListController::formatDuration(). Dipakai filter Summary Task (avg
+    // time ikut dihitung ulang saat modul dipersempit) dan sortir Summary
+    // Respontime (lihat IIFE masing-masing di bawah).
+    function fmtDurasi(detik) {
+        if (detik === null || detik === undefined) return null;
+        if (detik < 60) return detik + ' dtk';
+        var m = Math.floor(detik / 60);
+        if (m < 60) return m + ' mnt';
+        var h = Math.floor(m / 60), mm = m % 60;
+        if (h < 24) return h + ' j' + (mm ? ' ' + mm + ' m' : '');
+        var d = Math.floor(h / 24), hh = h % 24;
+        return d + ' hr' + (hh ? ' ' + hh + ' j' : '');
+    }
+
     /* ── SUMMARY TASK — filter Modul & Role ──
        Tabel statis di dalam modal (~20 baris), jadi disaring langsung di DOM:
        tanpa DataTable, tanpa reload. Markupnya di _summary_task_list.blade.php;
@@ -2316,20 +2331,6 @@ $(function () {
 
     var modul = '';  // '' = semua
     var role  = '';
-
-    // Sama persis dengan TodoListController::formatDuration() — dipakai untuk
-    // menghitung ulang kolom Avg Time di klien saat filter Modul mempersempit
-    // modul mana saja yang ikut dirata-rata (tanpa reload).
-    function fmtDurasi(detik) {
-        if (detik === null) return null;
-        if (detik < 60) return detik + ' dtk';
-        var m = Math.floor(detik / 60);
-        if (m < 60) return m + ' mnt';
-        var h = Math.floor(m / 60), mm = m % 60;
-        if (h < 24) return h + ' j' + (mm ? ' ' + mm + ' m' : '');
-        var d = Math.floor(h / 24), hh = h % 24;
-        return d + ' hr' + (hh ? ' ' + hh + ' j' : '');
-    }
 
     function terapkan() {
         var $tbl = $('#summaryTaskTable');
@@ -2423,6 +2424,86 @@ $(function () {
         $wrap.find('.st-module-opt[data-value=""], .st-role-opt[data-value=""]').addClass('active');
         terapkan();
     });
+    })();
+
+    /* ── SUMMARY RESPONTIME — tabel sortable (klik header) ──
+       Datanya window.__respontimeData (di-set inline oleh
+       _summary_respontime.blade.php). Baris dirender ulang oleh JS tiap kali
+       sortir berubah — tabelnya kecil (satu baris per user), jadi tanpa
+       DataTable. Default: Rata-rata ascending (dari server). */
+    (function () {
+    var data = window.__respontimeData;
+    if (!data || !data.rows || !data.rows.length) return;
+
+    var sortKey = 'avg_seconds'; // kolom "Rata-rata" — cocok dengan urutan awal dari server.
+    var sortDir = 'asc';
+
+    function cellOf(row, key) {
+        return (key === 'user' || key === 'avg_seconds') ? null : (row.cells[key] || null);
+    }
+
+    function sortValue(row, key) {
+        if (key === 'user') return row.user;
+        if (key === 'avg_seconds') return row.avg_seconds;
+        var c = cellOf(row, key);
+        return c ? c.avg_seconds : null;
+    }
+
+    function render() {
+        var rows = data.rows.slice().sort(function (a, b) {
+            var x = sortValue(a, sortKey), y = sortValue(b, sortKey);
+            // Baris tanpa data ("-") selalu ke bawah, berapa pun arah sortirnya —
+            // supaya "-" tidak terbaca seolah "paling cepat" saat ascending.
+            if (x === null && y === null) return 0;
+            if (x === null) return 1;
+            if (y === null) return -1;
+            var r = (sortKey === 'user')
+                ? String(x).localeCompare(String(y), 'id', { numeric: true })
+                : (x - y);
+            return sortDir === 'asc' ? r : -r;
+        });
+
+        var body = rows.map(function (row) {
+            var cells = data.modules.map(function (mod) {
+                var c = cellOf(row, mod);
+                return '<td class="text-center text-nowrap">' + (c
+                    ? '<div style="font-weight:600;">' + esc(fmtDurasi(c.avg_seconds)) + '</div>'
+                      + '<div class="text-muted" style="font-size:10px;">' + c.count + '&times;</div>'
+                    : '<span class="text-muted">-</span>') + '</td>';
+            }).join('');
+
+            var avgCell = row.avg_seconds !== null
+                ? '<div style="font-weight:700;">' + esc(fmtDurasi(row.avg_seconds)) + '</div>'
+                  + '<div class="text-muted" style="font-size:10px;">' + row.count + '&times;</div>'
+                : '<span class="text-muted">-</span>';
+
+            return '<tr>' +
+                '<td class="text-nowrap"><strong>' + esc(row.user) + '</strong></td>' +
+                cells +
+                '<td class="text-center text-nowrap">' + avgCell + '</td>' +
+            '</tr>';
+        }).join('');
+
+        $('#summaryResponBody').html(body);
+
+        $('#summaryResponTable thead .sr-sort').each(function () {
+            var aktif = $(this).data('key') === sortKey;
+            var $icon = $(this).find('i');
+            $icon.attr('class', 'fas ' + (aktif ? (sortDir === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort'))
+                 .css('opacity', aktif ? 1 : .35);
+        });
+    }
+
+    $(document).on('click keydown', '#summaryResponTable .sr-sort', function (e) {
+        if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        var key = $(this).data('key');
+        sortDir = (sortKey === key && sortDir === 'asc') ? 'desc' : 'asc';
+        sortKey = key;
+        render();
+    });
+
+    render();
     })();
 
     /* ── RINCIAN BUDGET PLAN (Todo #4) ──
@@ -3599,11 +3680,16 @@ $(function () {
             /* Riwayat pengajuan PIC ini di PO ini — satu PIC bisa punya banyak
                beneficiary. Disusun pohon COA → Sub COA → item (lihat
                picHistory() di server); nilai & sumber baris sudah dihitung di
-               sana (Cash Advance dari settlement, non-CA dari pengajuan). */
+               sana (Cash Advance dari settlement, non-CA dari pengajuan).
+               Beneficiary CR ini belum tentu punya PIC master (has_pic) —
+               kalau tidak, judul panel ikut berganti jadi "Beneficiary" supaya
+               tidak menyebut nama beneficiary sebagai "PIC". */
             var ph = d.pic_history || {};
             var phItems = ph.items || [];
+            var phJudul = ph.has_pic ? 'Riwayat Pengajuan PIC Ini di PO Ini' : 'Riwayat Pengajuan Beneficiary Ini di PO Ini';
+            var phKosong = ph.has_pic ? 'PIC ini' : 'beneficiary ini';
             info += '<div class="todo-drw-row" style="margin-top:18px;">' +
-                '<div class="todo-drw-label">Riwayat Pengajuan PIC Ini di PO Ini' +
+                '<div class="todo-drw-label">' + phJudul +
                     (ph.pic_name ? ' <span class="text-muted" style="font-weight:400;text-transform:none;letter-spacing:0;">— ' + esc(ph.pic_name) + '</span>' : '') +
                 '</div>';
             if (phItems.length) {
@@ -3611,7 +3697,7 @@ $(function () {
                 info += '<div class="todo-pichist-wrap" id="todoPicHist"></div>';
             } else {
                 window.__picHist = null;
-                info += '<div class="text-muted" style="font-size:12px;">Belum ada pengajuan lain yang sudah dibayar untuk PIC ini di PO ini.</div>';
+                info += '<div class="text-muted" style="font-size:12px;">Belum ada pengajuan lain yang sudah dibayar untuk ' + phKosong + ' di PO ini.</div>';
             }
             info += '</div>';
 
@@ -3797,7 +3883,9 @@ $(function () {
                             var subCoa = r.sub_coa || r.des_request || r.cr_item || '-';
                             // Tiga baris: Sub COA (tebal), lalu rincian pengajuan
                             // (Request) & rincian settlement (Settle) yang bisa beda.
-                            var desSettle = r.description || r.notes || '-';
+                            // des_settle sudah dibersihkan server dari pengulangan
+                            // nama Sub COA di depannya (lihat settleDescriptionLabel()).
+                            var desSettle = r.des_settle || '-';
                             realHtml += '<tr class="' + gClass + '" style="display:none;">' +
                                 '<td class="td-grp-indent">' +
                                     '<div style="font-weight:600;">' + esc(subCoa) + evi + '</div>' +

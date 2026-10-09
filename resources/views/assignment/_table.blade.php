@@ -25,6 +25,7 @@
                 @php
                     $canManage   = $isSuper || $me === $a->assigner_id;
                     $canComplete = $canManage || $me === $a->assignee_id;
+                    $isOpen      = in_array($a->status, \App\Models\Assignment::OPEN_STATUSES, true);
                 @endphp
                 <tr>
                     <td>
@@ -58,10 +59,20 @@
                             <i class="fas fa-info-circle"></i>
                         </button>
 
-                        @if ($a->status === 'OPEN')
+                        @if ($isOpen)
+                            {{-- Mulai Dikerjakan: hanya penerima, hanya saat status READ --}}
+                            @if ($me === $a->assignee_id && $a->status === 'READ')
+                                <form method="POST" action="{{ route('assignment.start', $a) }}" class="d-inline">
+                                    @csrf
+                                    <button type="submit" class="btn btn-outline-warning btn-xs" title="Mulai dikerjakan">
+                                        <i class="fas fa-play"></i>
+                                    </button>
+                                </form>
+                            @endif
+
                             @if ($canComplete)
-                                <form method="POST" action="{{ route('assignment.done', $a) }}" class="d-inline"
-                                      onsubmit="return confirm('Tandai tugas ini sebagai selesai?');">
+                                <form method="POST" action="{{ route('assignment.done', $a) }}" class="d-inline form-assignment-confirm"
+                                      data-title="Tandai tugas selesai?" data-text="Tugas &quot;{{ $a->title }}&quot; akan ditutup." data-confirm="Ya, Selesaikan">
                                     @csrf
                                     <button type="submit" class="btn btn-outline-success btn-xs" title="Tandai selesai">
                                         <i class="fas fa-check"></i>
@@ -79,8 +90,8 @@
                                         data-priority="{{ $a->priority }}" title="Ubah">
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <form method="POST" action="{{ route('assignment.cancel', $a) }}" class="d-inline"
-                                      onsubmit="return confirm('Batalkan tugas ini?');">
+                                <form method="POST" action="{{ route('assignment.cancel', $a) }}" class="d-inline form-assignment-confirm"
+                                      data-title="Batalkan tugas ini?" data-text="Tugas &quot;{{ $a->title }}&quot; akan dibatalkan." data-confirm="Ya, Batalkan" data-danger="1">
                                     @csrf
                                     <button type="submit" class="btn btn-outline-danger btn-xs" title="Batalkan">
                                         <i class="fas fa-times"></i>
@@ -88,8 +99,8 @@
                                 </form>
                             @endif
                         @elseif ($canManage)
-                            <form method="POST" action="{{ route('assignment.reopen', $a) }}" class="d-inline"
-                                  onsubmit="return confirm('Buka kembali tugas ini?');">
+                            <form method="POST" action="{{ route('assignment.reopen', $a) }}" class="d-inline form-assignment-confirm"
+                                  data-title="Buka kembali tugas ini?" data-text="Status akan kembali ke Pending." data-confirm="Ya, Buka Kembali">
                                 @csrf
                                 <button type="submit" class="btn btn-outline-warning btn-xs" title="Buka kembali">
                                     <i class="fas fa-undo"></i>

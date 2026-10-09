@@ -37,12 +37,12 @@
         <ul class="nav nav-tabs" id="assignmentTabs" style="font-size:13px;">
             <li class="nav-item">
                 <a class="nav-link active" data-toggle="tab" href="#asgToMe">
-                    Ditugaskan ke Saya <span class="badge badge-warning">{{ $assignedToMe->where('status', 'OPEN')->count() }}</span>
+                    Ditugaskan ke Saya <span class="badge badge-warning">{{ $assignedToMe->whereIn('status', \App\Models\Assignment::OPEN_STATUSES)->count() }}</span>
                 </a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" data-toggle="tab" href="#asgByMe">
-                    Dibuat oleh Saya <span class="badge badge-secondary">{{ $createdByMe->where('status', 'OPEN')->count() }}</span>
+                    Dibuat oleh Saya <span class="badge badge-secondary">{{ $createdByMe->whereIn('status', \App\Models\Assignment::OPEN_STATUSES)->count() }}</span>
                 </a>
             </li>
         </ul>
@@ -143,6 +143,54 @@
         background: rgba(0, 0, 0, .04); margin-top: 4px;
     }
     .assignment-dropzone .dz-remove { cursor: pointer; color: var(--danger); font-weight: 700; }
+
+    /* ===== Modal Detail — tampilan "email thread" ===== */
+    #assignmentDetailBody { max-height: 70vh; overflow-y: auto; }
+    /* Bootstrap 4 tidak punya utility ini (ditambah di BS5) — dibutuhkan supaya
+       anak flex (nama/subjek panjang) tidak melebarkan baris di luar modal. */
+    .min-w-0 { min-width: 0; }
+
+    .asg-chat-av {
+        width: 30px; height: 30px; border-radius: 50%;
+        background: var(--info-bg); color: var(--text-dim);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 11px; font-weight: 700; flex-shrink: 0;
+    }
+    .asg-av-lg { width: 38px; height: 38px; font-size: 13px; }
+
+    .asg-mail-head { display: flex; gap: 12px; align-items: flex-start; }
+    .asg-mail-body {
+        margin-top: 12px; font-size: 13px; line-height: 1.5; color: var(--text);
+        white-space: pre-line; background: var(--surface); border: 1px solid var(--border);
+        border-radius: var(--radius-lg); padding: 10px 12px;
+    }
+    .asg-mail-attachments { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .asg-attachment-chip {
+        display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+        background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+        padding: 4px 10px; max-width: 220px; color: var(--text);
+    }
+    .asg-attachment-chip:hover { border-color: var(--accent); text-decoration: none; color: var(--text); }
+
+    .asg-chat { display: flex; flex-direction: column; gap: 12px; padding: 2px; }
+    .asg-chat-row { display: flex; gap: 8px; max-width: 80%; }
+    .asg-chat-row.mine { align-self: flex-end; flex-direction: row-reverse; text-align: right; }
+    .asg-chat-row.mine .asg-chat-av { background: var(--charcoal); color: #fff; }
+    .asg-chat-bubble {
+        background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+        padding: 7px 11px; font-size: 12.5px; line-height: 1.4; color: var(--text);
+    }
+    .asg-chat-meta { font-size: 10px; color: var(--text-faint); margin-bottom: 3px; }
+
+    .asg-event-row { display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .asg-event-meta { font-size: 11px; color: var(--text-faint); }
+
+    .asg-composer {
+        display: flex; align-items: center; gap: 8px; margin-top: 14px;
+        padding-top: 12px; border-top: 1px solid var(--border);
+    }
+    .asg-composer-input { border-radius: 999px; }
+    .asg-composer-send { border-radius: 50%; width: 32px; height: 32px; padding: 0; flex-shrink: 0; }
 </style>
 @endpush
 @push('scripts')
@@ -171,15 +219,79 @@
         $(sel).trigger('tss:sync');
     });
 
-    // Muat detail + riwayat via AJAX.
-    $(document).on('click', '.btn-assignment-detail', function () {
-        var url  = $(this).data('logsUrl');
-        var body = document.getElementById('assignmentDetailBody');
-        body.innerHTML = '<div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin"></i> Memuat…</div>';
-        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    var detailBody = document.getElementById('assignmentDetailBody');
+    var detailUrlAktif = null; // url logs() tugas yang sedang dibuka di modal detail
+
+    function muatDetail(url) {
+        detailUrlAktif = url;
+        detailBody.innerHTML = '<div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin"></i> Memuat…</div>';
+        return fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(function (r) { return r.ok ? r.text() : Promise.reject(r.status); })
-            .then(function (html) { body.innerHTML = html; })
-            .catch(function () { body.innerHTML = '<div class="alert alert-danger m-0">Gagal memuat detail.</div>'; });
+            .then(function (html) { detailBody.innerHTML = html; })
+            .catch(function () { detailBody.innerHTML = '<div class="alert alert-danger m-0">Gagal memuat detail.</div>'; });
+    }
+
+    // Muat detail + riwayat via AJAX. Request pertama ke logs() oleh PENERIMA
+    // tugas yang statusnya masih Pending otomatis memicu transisi ke Read di
+    // server (AssignmentController::logs()) — badge status di tabel baru
+    // terlihat berubah setelah modal ditutup / halaman dimuat ulang lagi,
+    // jadi daftar tabel di-refresh juga begitu modal ini ditutup.
+    var perluRefreshTabel = false;
+    $(document).on('click', '.btn-assignment-detail', function () {
+        perluRefreshTabel = false;
+        muatDetail($(this).data('logsUrl'));
+    });
+    $('#mdlAssignmentDetail').on('hidden.bs.modal', function () {
+        if (perluRefreshTabel) window.location.reload();
+    });
+
+    // Kirim komentar via AJAX supaya modal tidak ikut tertutup/reload penuh.
+    $(document).on('submit', '.form-assignment-comment', function (e) {
+        e.preventDefault();
+        var form = this;
+        var input = form.querySelector('[name="body"]');
+        var btn = form.querySelector('button[type="submit"]');
+        btn.disabled = true;
+
+        fetch(form.action, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: new FormData(form),
+        })
+            .then(function (r) { return r.ok ? muatDetail(detailUrlAktif) : Promise.reject(r.status); })
+            .catch(function () {
+                Swal.fire({ icon: 'error', title: 'Gagal mengirim komentar', confirmButtonColor: tokenWarnaAssignment('--accent', '#92232b') });
+            })
+            .finally(function () { btn.disabled = false; });
+    });
+
+    // Konfirmasi SweetAlert untuk aksi yang mengubah status (selesai/batal/buka
+    // kembali) — pola sama dengan Budget Plan (Swal.fire + form.submit()).
+    function tokenWarnaAssignment(nama, cadangan) {
+        var v = getComputedStyle(document.documentElement).getPropertyValue(nama).trim();
+        return v || cadangan;
+    }
+    $(document).on('submit', '.form-assignment-confirm', function (e) {
+        var form = this;
+        if (form.dataset.confirmed === '1') return; // sudah dikonfirmasi, lanjutkan submit asli
+        e.preventDefault();
+
+        var danger = form.dataset.danger === '1';
+        Swal.fire({
+            title: form.dataset.title || 'Yakin?',
+            text: form.dataset.text || '',
+            icon: danger ? 'warning' : 'question',
+            showCancelButton: true,
+            confirmButtonColor: tokenWarnaAssignment(danger ? '--danger' : '--accent', danger ? '#9a3030' : '#92232b'),
+            cancelButtonColor: tokenWarnaAssignment('--text-muted', '#6a6e72'),
+            confirmButtonText: form.dataset.confirm || 'Ya',
+            cancelButtonText: 'Batal',
+        }).then(function (r) {
+            if (r.isConfirmed) {
+                form.dataset.confirmed = '1';
+                form.submit(); // full page submit -> redirect back, badge ikut ter-refresh
+            }
+        });
     });
 
     /* Dropzone lampiran: drag & drop + paste + klik. Tiap dropzone menyimpan

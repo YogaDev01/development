@@ -484,6 +484,15 @@ class UserController extends Controller
                 ->with('error', 'User tidak dapat dihapus karena memiliki riwayat General Feedback. Nonaktifkan saja.');
         }
 
+        // Trouble Ticket: FK ke users RESTRICT (jejak audit tiket tidak boleh
+        // kehilangan pelakunya). Setiap aksi tiket menulis timeline atas nama
+        // pelakunya, jadi cukup diperiksa di timeline + penugasan.
+        if (\App\Models\TroubleTicketMessage::where('user_id', $user->id)->exists()
+            || \App\Models\TroubleTicketAssignment::where('assigned_to', $user->id)->exists()) {
+            return redirect('/user')
+                ->with('error', 'User tidak dapat dihapus karena memiliki riwayat Trouble Ticket. Nonaktifkan saja.');
+        }
+
         if (\App\Models\TeamMember::where('user_id', $user->id)->exists()) {
             return redirect('/user')
                 ->with('error', 'User tidak dapat dihapus karena masih tercatat sebagai anggota Team. Keluarkan dari Team lebih dulu, atau nonaktifkan saja.');

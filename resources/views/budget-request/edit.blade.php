@@ -121,6 +121,7 @@
                                                 data-bank="{{ $ben->bank?->name ?? '-' }}"
                                                 data-account="{{ $ben->account_number ?? '-' }}"
                                                 data-email="{{ $ben->contact ?? '' }}"
+                                                data-category="{{ $ben->category }}"
                                                 data-label="{{ $benLabel }}"
                                                 {{ old('beneficiary_id', $cr->beneficiary_id) == $ben->id ? 'selected' : '' }}>
                                                 {{ $benLabel }}
@@ -641,6 +642,15 @@ document.addEventListener('DOMContentLoaded', function () {
         var email = opt.dataset.email || '';
         if (this.value && email) {
             window.__addNotifyEmail(email);
+        }
+
+        if (beneficiaryNotInternalForCashAdvance()) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Cash Advance hanya untuk Internal',
+                text: 'Beneficiary yang dipilih bukan kategori Internal. Pilih beneficiary Internal, atau ganti Tipe Request.',
+                confirmButtonColor: '#42627d'
+            });
         }
     });
 
@@ -1281,6 +1291,15 @@ document.addEventListener('DOMContentLoaded', function () {
         return CASH_ADVANCE_TYPES.indexOf(name) !== -1;
     }
 
+    /** Cash Advance hanya boleh ke beneficiary kategori INTERNAL. */
+    function beneficiaryNotInternalForCashAdvance() {
+        if (!typeIsCashAdvance()) return false;
+        var sel = document.getElementById('selectBeneficiary');
+        var opt = sel.options[sel.selectedIndex];
+        if (!opt || !opt.value) return false;
+        return (opt.dataset.category || '') !== 'INTERNAL';
+    }
+
     /** Lampiran global: file baru + existing yang tidak dicentang hapus. */
     function globalAttachmentCount() {
         var n = 0;
@@ -1320,6 +1339,16 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('selectType').addEventListener('change', refreshAttachmentRequiredUI);
     refreshAttachmentRequiredUI();
 
+    document.getElementById('selectType').addEventListener('change', function () {
+        if (beneficiaryNotInternalForCashAdvance()) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Cash Advance hanya untuk Internal',
+                text: 'Beneficiary yang sudah dipilih bukan kategori Internal. Pilih beneficiary Internal, atau ganti Tipe Request.',
+                confirmButtonColor: '#42627d'
+            });
+        }
+    });
 
     /* ── LIMIT CASH ADVANCE PER PIC ─────────────────────────────────────────
        Setiap beneficiary terhubung ke satu PIC. Semua Cash Advance milik PIC
@@ -1454,6 +1483,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!document.getElementById('selectBudgetPlan').value) reasons.push('Budget Plan');
         if (!document.getElementById('selectType').value)       reasons.push('Tipe Request');
         if (!document.getElementById('selectBeneficiary').value) reasons.push('Penerima Dana');
+        if (beneficiaryNotInternalForCashAdvance()) reasons.push('Cash Advance hanya untuk Internal');
         if (!document.querySelector('[name="description"]').value.trim()) reasons.push('Deskripsi');
 
         var clusterSel = document.getElementById('selectCluster');

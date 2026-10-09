@@ -78,6 +78,9 @@ class FileAccess
             // ---- Assignment: hanya pemberi/penerima tugas (atau superadmin)
             'assignment_attachments'           => $this->allowsAssignment($path),
 
+            // ---- Trouble Ticket: mengikuti keterlihatan tiketnya
+            'trouble_ticket_attachments'       => $this->allowsTroubleTicket($path),
+
             /*
             | ---- Treasury, Cost Register, Customer, Surat Jalan, Monitoring
             |
@@ -275,6 +278,22 @@ class FileAccess
         return $user->id === $assignment->assigner_id
             || $user->id === $assignment->assignee_id
             || $user->hasRole('superadmin');
+    }
+
+    /**
+     * Lampiran Trouble Ticket terlihat bila tiketnya terlihat — scope yang
+     * sama persis dengan daftar & detail tiket (TroubleTicket::scopeVisibleTo).
+     * Berkas tanpa baris pemilik ditolak.
+     */
+    private function allowsTroubleTicket(string $path): bool
+    {
+        $ticketId = \App\Models\TroubleTicketAttachment::where('storage_path', $path)->value('trouble_ticket_id');
+
+        if (! $ticketId) {
+            return false;
+        }
+
+        return \App\Models\TroubleTicket::visibleTo(Auth::user())->whereKey($ticketId)->exists();
     }
 
     /** Lampiran PO/BAST mengikuti Access Group proyek untuk manager & head. */

@@ -4,6 +4,26 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [3.0.0] - 2026-10-09 — Penugasan, Profil Baru, Jejak Aktivitas & Alur Proyek Dua Langkah
+
+Rilis besar: modul Penugasan antar-pengguna, halaman Profil yang dirombak
+(info, tim, pengaturan, jejak aktivitas), pencatatan jejak aktivitas pengguna,
+lupa sandi lewat kode email, serta alur persetujuan Purchase Order dua langkah
+(Finance verifikasi, lalu Approver menyetujui) dengan status settlement baru.
+
+### Baru
+- Modul Penugasan: tugas bebas antar-pengguna (siapa pun bisa menugaskan siapa pun), lengkap dengan lampiran, linimasa perubahan, serta status Selesai/Batal/Buka lagi. Penugasan juga muncul di Todo List.
+- Halaman Profil dirombak: tab Info, Tim, Pengaturan, Todo, dan Jejak Aktivitas; unggah foto profil & foto sampul, pilihan aplikasi default saat masuk, serta pengaturan notifikasi.
+- Jejak Aktivitas Pengguna: catatan terpusat siapa melakukan apa dan kapan, bisa dilihat di tab Profil dan per-pengguna dari master User.
+- Lupa Sandi di halaman masuk: reset sandi lewat kode yang dikirim ke email, dengan pembatasan percobaan agar aman.
+- Pengingat Todo otomatis (dijalankan terjadwal) dan ringkasan waktu respon di Todo List.
+- Budget Plan: ekspor terpisah untuk Biaya dan Budget, serta penyimpanan draft realisasi agar isian tidak hilang.
+
+### Berubah
+- Persetujuan Purchase Order kini dua langkah: Finance memverifikasi dulu, lalu Approver menyetujui — dengan opsi Early Start, Waiting PO, dan Active, serta jalur revisi dari Finance.
+- Alur settlement Cost Request menambah status Settle Rejected sehingga penolakan settlement punya keadaan tersendiri dan bisa ditindaklanjuti dengan jelas.
+- Halaman masuk didesain ulang agar lebih rapi dan selaras dengan tampilan aplikasi.
+
 ## [2.5.10] - 2026-10-07 — Rekap Collection di Daftar Purchase Order
 
 Daftar Purchase Order kini menampilkan Invoice, PPN, PPH, dan Total per PO

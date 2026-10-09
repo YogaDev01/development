@@ -33,12 +33,21 @@ class AssignmentLog extends Model
     ];
 
     public const ACTIONS = [
-        'create' => 'Dibuat',
-        'update' => 'Diubah',
-        'done'   => 'Ditandai Selesai',
-        'cancel' => 'Dibatalkan',
-        'reopen' => 'Dibuka Kembali',
+        'create'         => 'Dibuat',
+        'update'         => 'Diubah',
+        'read'           => 'Dibaca',
+        'start_progress' => 'Mulai Dikerjakan',
+        'comment'        => 'Komentar',
+        'close'          => 'Ditutup',
+        'cancel'         => 'Dibatalkan',
+        'reopen'         => 'Dibuka Kembali',
     ];
+
+    /** Dirender berbeda di timeline (bubble komentar, bukan badge status). */
+    public function getIsCommentAttribute(): bool
+    {
+        return $this->action === 'comment';
+    }
 
     /**
      * Catat satu kejadian. Gagal-aman: kalau pencatatan error, aksi bisnis
@@ -82,11 +91,14 @@ class AssignmentLog extends Model
     public function getActionColorAttribute(): string
     {
         return match ($this->action) {
-            'create' => 'info',
-            'done'   => 'success',
-            'cancel' => 'danger',
-            'reopen' => 'warning',
-            default  => 'secondary',
+            'create'         => 'info',
+            'read'           => 'secondary',
+            'start_progress' => 'warning',
+            'comment'        => 'light',
+            'close'          => 'success',
+            'cancel'         => 'danger',
+            'reopen'         => 'warning',
+            default          => 'secondary',
         };
     }
 }

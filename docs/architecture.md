@@ -31,7 +31,7 @@ Global web middleware: `SecurityHeaders`, `EnsureUserActive` (`bootstrap/app.php
 | `app/Http/Controllers/Concerns` | `TransitionsStatus` (locked status change), `HandlesCrSettlement`, `BuildsCrWorklist`, `ScopesBudgetPlanVisibility`, `ScopesInvoiceVisibility`, `CapsLargeLists` |
 | `app/Http/Middleware` | `CheckRole`, `CheckMenu`, `EnsureUserActive`, `SecurityHeaders` |
 | `app/Models` | 74 Eloquent models (see `docs/database.md`) |
-| `app/Services` | `NotifyService`, `RoleDirectory`, `FileAccess`, `ClosingService`, `CashFlowService`, `InvoiceCalculationService`, `TodoService` |
+| `app/Services` | `NotifyService`, `RoleDirectory`, `FileAccess`, `ClosingService`, `CashFlowService`, `InvoiceCalculationService`, `TodoService`, `TroubleTicketWorkflow` |
 | `app/Support` | `AccessRoles`, `WorkflowStatus`, `BudgetConsumption`, `DocumentSequence`, `InvoiceTimeline`, `Navigation`, `AssetVersion`, `Terbilang` |
 | `app/Notifications` | one queued notification + a WhatsApp (Fonnte) channel |
 | `app/Console/Commands` | `forecast:auto-close`, `budget-plan:auto-closing`, `todo:remind`, `queue:health`, `CheckUserRoles`, `MoveLegacyAttachments`, `ResyncProjectPoValue` |
@@ -159,18 +159,53 @@ the Todo List page (every other section is a live query over document status).
 Business rule: **any logged-in user may assign to any other active user** (no
 `menu:`/`role:` gate on the routes; per-action authorization is in-controller).
 
-- Tables (additive migrations `2026_10_08_000001..3`): `assignments`
-  (`assigner_id`, `assignee_id`, `due_date`, `priority` LOW/MEDIUM/HIGH, `status`
-  OPEN/DONE/CANCELLED), `assignment_attachments` (disk `secure`, served via
-  `SecureFileController`; `FileAccess::allowsAssignment()` = assigner/assignee/
-  superadmin only), `assignment_logs` (immutable timeline, `AssignmentLog::record()`,
-  pattern mirrors `RequestStatusLog`). **No SoftDeletes** — not a financial record.
-- Actions: assigner (or superadmin) may **update/cancel/reopen**; assignee,
-  assigner or superadmin may **mark done**. Each action writes an `assignment_logs`
-  row and notifies the counterpart via `NotifyService` (category `assignment`).
+- Tables: `assignments` (additive `2026_10_08_000001`, extended by additive
+  `2026_10_09_000001` which adds `read_at`/`started_at` — `2026_10_08_000001`
+  had already run before the status machine was redesigned, so per the
+  migration rules it was never edited, only extended), `assignment_attachments`
+  (disk `secure`, served via `SecureFileController`;
+  `FileAccess::allowsAssignment()` = assigner/assignee/superadmin only),
+  `assignment_logs` (immutable timeline **and comments** — `action='comment'`
+  rows use `notes` as the comment body — `AssignmentLog::record()`, pattern
+  mirrors `RequestStatusLog`). **No SoftDeletes** — not a financial record.
+- Status machine (`App\Models\Assignment::STATUSES`/`OPEN_STATUSES`), one-way
+  except `reopen`:
+  `PENDING` (created) → `READ` (assignee opens the detail modal — the first
+  `GET assignment/{id}/logs` by the assignee auto-transitions and logs
+  `action=read`, see `AssignmentController::logs()`) → `ON_PROGRESS` (assignee
+  only, via `POST assignment/{id}/start`) → `CLOSED` (assignee, assigner, or
+  superadmin, via `POST assignment/{id}/done`). `CANCELLED` is reachable from
+  any of `PENDING`/`READ`/`ON_PROGRESS` (assigner/superadmin only). Both
+  `CLOSED` and `CANCELLED` are terminal; `POST assignment/{id}/reopen`
+  (assigner/superadmin only) resets back to `PENDING` and clears
+  `read_at`/`started_at`/`done_at`/`cancelled_at`.
+- Comments (`POST assignment/{id}/comment`, assigner/assignee/superadmin only)
+  are disabled once the status is terminal (`Assignment::$can_comment`
+  accessor). Posted via `fetch()` from the detail modal (not a normal form
+  submit) so the modal stays open; the controller returns JSON when the
+  request is AJAX instead of `back()`'s redirect.
+- Each action writes an `assignment_logs` row and notifies the counterpart via
+  `NotifyService` (category `assignment`). Confirmation on done/cancel/reopen
+  uses SweetAlert2 (already loaded globally), same pattern as Budget Plan's
+  submit/delete confirms.
 - Surfaces: dedicated page `/assignment` and a "Tugas / Assignment" section on
   `/todo-list` — both render the shared `assignment/_board` partial. The Todo List
   section is injected outside the `$hasAnySection` branch and the worklist logic in
   `TodoListController::buildWorklistData()` is untouched; `index()` loads the two
   lists separately via `AssignmentController::listsFor()`. Users without
   `menu:todo-list` still reach tasks through `/assignment` (sidebar entry has no gate).
+- The assignee's picker (`<select name="assignee_id">`) is upgraded to
+  `TesysSearchableSelect` (`public/js/tesys-searchable-select.js`, same
+  component used by other searchable dropdowns). Its dropdown panel renders
+  into `<body>`, outside the Bootstrap `.modal`, so both assignment modals set
+  `data-focus="false"` to disable the modal's focus trap — without it the
+  search input inside the panel cannot receive focus/clicks.
+
+### Trouble Ticket (`TroubleTicketController` + `resources/views/trouble-ticket/`)
+
+TESYS Operation → Workflow. Gate `menu:trouble-ticket`; all status/timestamp
+changes and per-action authorization live in `App\Services\TroubleTicketWorkflow`
+(row lock + expected-status check + timeline event in one transaction). Row
+visibility = `TroubleTicket::scopeVisibleTo()` (site → site_pics → master_pics →
+user → team), reused by `FileAccess::allowsTroubleTicket()` and the Site master
+TT column/drawer tab. Full reference: `docs/modules/trouble-ticket.md`.
