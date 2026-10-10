@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Customer;
 use App\Models\Site;
 use App\Models\TroubleTicket;
 use App\Models\TroubleTicketAttachment;
@@ -26,18 +25,7 @@ use Illuminate\Support\Facades\Storage;
  */
 class TroubleTicketController extends Controller
 {
-    private const PER_PAGE = 25;
-
-    /** Kolom yang boleh dipakai mengurutkan daftar => ekspresi SQL. */
-    private const SORTS = [
-        'ticket_number' => 'trouble_tickets.id',
-        // Level dari tabel severity (1 = paling parah); kode tak dikenal di akhir.
-        'severity'   => '(SELECT COALESCE(MIN(s.level), 255) FROM trouble_ticket_severities s WHERE s.code = trouble_tickets.severity)',
-        'reported_at' => 'trouble_tickets.reported_at',
-        'status'     => "FIELD(trouble_tickets.status, 'OPEN', 'APPROVED', 'ON_PLAN', 'IN_PROGRESS', 'CLOSED')",
-        'created_at' => 'trouble_tickets.created_at',
-        'updated_at' => 'trouble_tickets.updated_at',
-    ];
+    use Concerns\CapsLargeLists;
 
     /** Jumlah item timeline per muat. */
     private const MESSAGE_PAGE = 30;
@@ -52,24 +40,15 @@ class TroubleTicketController extends Controller
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Daftar tiket. Pola sama dengan halaman indeks lain (DataTables di
+     * browser): sort semua kolom, pagination, pilih kolom, satu tombol Filter.
+     * Baris dibatasi CapsLargeLists (1.000 terbaru); filter & sort berjalan
+     * di atas baris itu, dan halaman memberi tahu bila ada yang terpotong.
+     */
     public function index(Request $request)
     {
         $user = Auth::user();
-
-        $filters = $request->validate([
-            'q'           => 'nullable|string|max:100',
-            'status'      => 'nullable|in:' . implode(',', TroubleTicket::STATUSES),
-            'severity'    => 'nullable|string|max:20',
-            'problem_id'  => 'nullable|integer',
-            'customer_id' => 'nullable|integer',
-            'site_id'     => 'nullable|integer',
-            'assigned_to' => 'nullable|integer',
-            'date_from'   => 'nullable|date',
-            'date_to'     => 'nullable|date',
-            'overdue'     => 'nullable|boolean',
-            'sort'        => 'nullable|in:' . implode(',', array_keys(self::SORTS)),
-            'dir'         => 'nullable|in:asc,desc',
-        ]);
 
         $query = TroubleTicket::visibleTo($user)
             ->with([
@@ -80,71 +59,111 @@ class TroubleTicketController extends Controller
                 'technician:id,name',
             ]);
 
-        if ($q = trim($filters['q'] ?? '')) {
-            $like = '%' . addcslashes($q, '%_\\') . '%';
-            $query->where(function ($w) use ($like) {
-                $w->where('trouble_tickets.ticket_number', 'like', $like)
-                  ->orWhere('trouble_tickets.external_ref', 'like', $like)
-                  ->orWhere('trouble_tickets.issue', 'like', $like)
-                  ->orWhere('trouble_tickets.device', 'like', $like)
-                  ->orWhere('trouble_tickets.flag_alarm', 'like', $like)
-                  ->orWhere('trouble_tickets.description', 'like', $like)
-                  ->orWhereHas('site', fn ($s) => $s->where('tid', 'like', $like)->orWhere('sitename', 'like', $like))
-                  ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', $like));
-            });
-        }
+        [$tickets, $terpotong, $total] = $this->cappedRows($query, 'trouble_tickets.created_at');
 
-        foreach (['status', 'severity', 'problem_id', 'customer_id', 'site_id', 'assigned_to'] as $kolom) {
-            if (! empty($filters[$kolom])) {
-                $query->where('trouble_tickets.' . $kolom, $filters[$kolom]);
-            }
-        }
-        if (! empty($filters['date_from'])) {
-            $query->whereDate('trouble_tickets.created_at', '>=', $filters['date_from']);
-        }
-        if (! empty($filters['date_to'])) {
-            $query->whereDate('trouble_tickets.created_at', '<=', $filters['date_to']);
-        }
-        if (! empty($filters['overdue'])) {
-            $query->overdue();
-        }
-
-        $sort = $filters['sort'] ?? 'created_at';
-        $dir  = $filters['dir'] ?? 'desc';
-        $query->orderByRaw(self::SORTS[$sort] . ' ' . $dir)->orderByDesc('trouble_tickets.id');
-
-        $tickets = $query->paginate(self::PER_PAGE)->withQueryString();
-
-        // Kartu ringkasan — satu query agregat + satu query overdue.
+        // Kartu ringkasan — satu query agregat + satu query overdue (dipakai juga per baris).
         $agregat = TroubleTicket::visibleTo($user)->toBase()
             ->selectRaw("SUM(status <> 'CLOSED') AS terbuka")
             ->selectRaw("SUM(status = 'APPROVED') AS menunggu_approval")
             ->selectRaw('SUM(closed_at >= ?) AS closed_bulan_ini', [now()->startOfMonth()])
             ->first();
-        $overdue = TroubleTicket::visibleTo($user)->overdue()->count();
-
-        $visibleIds = TroubleTicket::visibleTo($user)->toBase();
-        $options = [
-            'customers'   => Customer::whereIn('id', (clone $visibleIds)->select('customer_id'))->orderBy('name')->get(['id', 'name']),
-            'sites'       => Site::whereIn('id', (clone $visibleIds)->select('site_id'))->orderBy('tid')->get(['id', 'tid', 'sitename']),
-            'technicians' => User::whereIn('id', (clone $visibleIds)->select('assigned_to'))->orderBy('name')->get(['id', 'name']),
-            'severities'  => TroubleTicketSeverity::orderBy('level')->orderBy('name')->get(),
-            'problems'    => TroubleTicketProblem::orderBy('name')->get(['id', 'name']),
-        ];
+        $overdueIds = TroubleTicket::visibleTo($user)->overdue()->pluck('trouble_tickets.id')->flip();
 
         return view('trouble-ticket.index', [
-            'tickets'  => $tickets,
-            'filters'  => $filters,
-            'sort'     => $sort,
-            'dir'      => $dir,
-            'options'  => $options,
-            'stats'    => [
-                'terbuka'            => (int) ($agregat->terbuka ?? 0),
-                'overdue'            => $overdue,
-                'menunggu_approval'  => (int) ($agregat->menunggu_approval ?? 0),
-                'closed_bulan_ini'   => (int) ($agregat->closed_bulan_ini ?? 0),
+            'tickets'    => $tickets,
+            'terpotong'  => $terpotong,
+            'total'      => $total,
+            'overdueIds' => $overdueIds,
+            'stats'      => [
+                'terbuka'           => (int) ($agregat->terbuka ?? 0),
+                'overdue'           => $overdueIds->count(),
+                'menunggu_approval' => (int) ($agregat->menunggu_approval ?? 0),
+                'closed_bulan_ini'  => (int) ($agregat->closed_bulan_ini ?? 0),
             ],
             'canSettings' => $user->hasRole(\App\Support\AccessRoles::TROUBLE_TICKET_SETTINGS),
+        ]);
+    }
+
+    /**
+     * Export Excel daftar tiket. Mengikuti filter tabel: browser mem-POST id
+     * baris yang lolos (public/js/tesys-export-filtered.js); tanpa 'ids' =
+     * seluruh tiket yang terlihat user. Keterlihatan selalu lewat
+     * scopeVisibleTo() — id kiriman browser tidak bisa membuka tiket lain.
+     */
+    public function exportList(Request $request)
+    {
+        $ids = collect((array) $request->input('ids', []))
+            ->filter(fn ($v) => is_numeric($v))
+            ->map(fn ($v) => (int) $v);
+
+        $tickets = TroubleTicket::visibleTo(Auth::user())
+            ->with(['site:id,tid,sitename', 'customer:id,name', 'problem:id,name', 'severityRef', 'technician:id,name'])
+            ->when($ids->isNotEmpty(), fn ($q) => $q->whereIn('trouble_tickets.id', $ids))
+            ->orderByDesc('trouble_tickets.updated_at')
+            ->limit(5000)
+            ->get();
+
+        $kolom = [
+            'No. TT', 'Ref. Eksternal', 'Customer', 'Site ID', 'Nama Site', 'Problem', 'Severity',
+            'Issue', 'Device', 'Flag Alarm', 'Teknisi', 'Status', 'Plan', 'Target Online',
+            'Response (menit)', 'Travel (menit)', 'Resolution (menit)', 'Dilaporkan', 'Dibuat', 'Update',
+            'Closed', 'RCA', 'Sub RCA', 'Action',
+        ];
+        $menit = fn (array $m) => $m['seconds'] === null ? null : round($m['seconds'] / 60, 1);
+        $tgl = fn ($d) => $d?->format('Y-m-d H:i');
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Trouble Ticket');
+        $sheet->fromArray($kolom, null, 'A1');
+        $akhir = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($kolom));
+        $header = $sheet->getStyle('A1:' . $akhir . '1');
+        $header->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
+        $header->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('0D1B2A');
+
+        $baris = 2;
+        foreach ($tickets as $t) {
+            $sheet->fromArray([
+                $t->ticket_number, $t->external_ref, $t->customer?->name, $t->site?->tid, $t->site?->sitename,
+                $t->problem?->name, $t->severity_label, $t->issue, $t->device, $t->flag_alarm,
+                $t->technician?->name, \App\Support\WorkflowStatus::label($t->status, 'trouble-ticket'),
+                $t->visit_decision_label, $t->target_online?->format('Y-m-d'),
+                $menit($t->slaMetric('response')), $menit($t->slaMetric('travel')), $menit($t->slaMetric('resolution')),
+                $tgl($t->reported_at), $tgl($t->created_at), $tgl($t->updated_at), $tgl($t->closed_at),
+                $t->rca, $t->sub_rca, $t->action,
+            ], null, 'A' . $baris);
+            $baris++;
+        }
+        foreach (range(1, count($kolom)) as $i) {
+            $sheet->getColumnDimension(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i))->setAutoSize(true);
+        }
+        $sheet->freezePane('A2');
+
+        $nama = 'trouble-ticket-' . now()->format('Ymd-His') . '.xlsx';
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save('php://output');
+        }, $nama, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
+    }
+
+    /**
+     * Modal "info" dari daftar: ringkasan tiket TANPA membuka tiket. Sengaja
+     * tidak memanggil recordAccess(): melihat info dari daftar bukan respons
+     * teknisi, jadi timer Response tidak berhenti.
+     */
+    public function info(TroubleTicket $ticket)
+    {
+        abort_unless($this->workflow->canView(Auth::user(), $ticket), 403);
+
+        $ticket->load([
+            'site.customer:id,name', 'problem', 'severityRef', 'creator:id,name',
+            'technician:id,name,phone', 'acknowledger:id,name', 'decider:id,name',
+            'closer:id,name', 'planApprover:id,name',
+        ]);
+
+        return view('trouble-ticket._info', [
+            'ticket'      => $ticket,
+            'supervisors' => $this->workflow->supervisorsFor((int) $ticket->assigned_to),
         ]);
     }
 
@@ -235,6 +254,11 @@ class TroubleTicketController extends Controller
         return view('trouble-ticket.show', [
             'ticket'        => $ticket,
             'messages'      => $messages,
+            // Tab Log: seluruh kejadian workflow (tanpa pesan chat), terbaru di atas.
+            'statusLog'     => $ticket->messages()
+                ->where('type', \App\Models\TroubleTicketMessage::TYPE_EVENT)
+                ->orderByDesc('id')
+                ->get(['id', 'event', 'actor_name', 'body', 'metadata', 'created_at']),
             'ctx'           => $this->timelineContext($ticket),
             'hasOlder'      => $hasOlder,
             'isTechnician'  => $this->workflow->isTechnician($user, $ticket),

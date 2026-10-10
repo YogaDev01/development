@@ -235,7 +235,7 @@ return [
             'menu'   => 'beneficiaries',
         ],
         'source-fund' => [
-            'label'  => 'Source Fund',
+            'label'  => 'Source Funds',
             'icon'   => 'fas fa-coins',
             'url'    => '/source-fund',
             'active' => ['source-fund*'],
@@ -270,7 +270,7 @@ return [
             'menu'   => 'category-item',
         ],
         'master-material' => [
-            'label'  => 'Master Material',
+            'label'  => 'Material',
             'icon'   => 'fas fa-microchip',
             'url'    => '/master-material',
             'active' => ['master-material*'],
@@ -340,7 +340,7 @@ return [
             'menu'   => 'milestone',
         ],
         'employee' => [
-            'label'  => 'Karyawan',
+            'label'  => 'Employee',
             'icon'   => 'fas fa-id-card',
             'url'    => '/employee',
             'active' => ['employee*'],
@@ -398,10 +398,26 @@ return [
     | Lihat App\Support\Navigation::sections().
     */
     'master_data' => [
-        'customer', 'beneficiary', 'source-fund', 'cost-center', 'account',
-        'project-master', 'milestone', 'pic', 'team', 'employee', 'user-access',
-        'category-item', 'master-material', 'accessories', 'site', 'network',
-        'homebase', 'region', 'wilayah',
+        'Project Master' => [
+            'icon'  => 'fas fa-project-diagram',
+            'items' => ['milestone', 'project-master'],
+        ],
+        'Warehouse Master' => [
+            'icon'  => 'fas fa-boxes',
+            'items' => ['accessories', 'category-item', 'master-material'],
+        ],
+        'Personal Master' => [
+            'icon'  => 'fas fa-user-friends',
+            'items' => ['beneficiary', 'employee', 'pic', 'team', 'user-access'],
+        ],
+        'Operation Master' => [
+            'icon'  => 'fas fa-cogs',
+            'items' => ['homebase', 'network', 'region', 'site', 'wilayah'],
+        ],
+        'Finance Master' => [
+            'icon'  => 'fas fa-coins',
+            'items' => ['account', 'cost-center', 'customer', 'source-fund'],
+        ],
     ],
 
     /*

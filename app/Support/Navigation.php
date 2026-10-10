@@ -39,13 +39,10 @@ class Navigation
         // milik satu aplikasi tertentu, jadi tidak ditulis di 'apps'.
         $hasil[''] = ['todo-list'];
 
-        // Seluruh Master Data dilebur jadi SATU dropdown ("Data Master"),
-        // tepat di bawah Todo List — bukan lagi daftar rata 11 baris, dan
-        // bukan lagi disisipkan setelah Overview.
+        // Master Data = beberapa dropdown (Project/Warehouse/Personal/
+        // Operation/Finance Master), tepat di bawah Todo List.
         if (! empty($master)) {
-            $hasil[self::MASTER_DATA] = [
-                'Data Master' => ['icon' => 'fas fa-database', 'items' => $master],
-            ];
+            $hasil[self::MASTER_DATA] = $master;
         }
 
         foreach ($seksiApp as $label => $kunci) {
@@ -133,7 +130,7 @@ class Navigation
         if ($overviewBersama) {
             $shared[] = ['label' => 'Overview', 'items' => $overviewBersama];
         }
-        $master = $petakan(config('navigation.master_data', []));
+        $master = $petakan($ratakan(config('navigation.master_data', [])));
         if ($master) {
             $shared[] = ['label' => self::MASTER_DATA, 'items' => $master];
         }

@@ -1124,6 +1124,10 @@ Route::middleware('auth')->group(function () {
             Route::post('/', 'store')->name('store');
             Route::get('site/{site}/technicians', 'technicians')->whereNumber('site')->name('technicians');
             Route::get('attachment/{attachment}', 'download')->whereNumber('attachment')->name('attachment');
+            // Modal info dari daftar — tidak mencatat respons teknisi.
+            Route::get('{ticket}/info', 'info')->whereNumber('ticket')->name('info');
+            // GET = semua tiket terlihat; POST ids[] = baris yang lolos filter tabel.
+            Route::match(['get', 'post'], 'export', 'exportList')->name('export');
 
             Route::middleware('role:superadmin')->group(function () {
                 Route::get('settings', 'settings')->name('settings');

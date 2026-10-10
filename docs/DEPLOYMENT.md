@@ -108,6 +108,47 @@ SESSION_SECURE_COOKIE=true
 QUEUE_CONNECTION=database
 ```
 
+### Mail (SMTP)
+
+Sejak alur "Lupa Sandi" (halaman login) dan "Ubah Password terverifikasi
+email" (Profil > Settings) ditambahkan, aplikasi mengirim kode verifikasi
+lewat `Mail::raw()` — **synchronous**, tidak lewat antrean, jadi tidak
+tergantung status worker. Tanpa `MAIL_*` terisi benar, kedua fitur tetap
+melapor "berhasil" (tidak ada exception) padahal email tidak pernah
+benar-benar terkirim — `MAIL_MAILER` bawaan Laravel adalah `log`, yang hanya
+menulis isi email ke `storage/logs`, bukan mengirimkannya.
+
+```dotenv
+MAIL_MAILER=smtp
+MAIL_SCHEME=smtps        # atau 'tls' bila memakai port 587
+MAIL_HOST=<host SMTP>
+MAIL_PORT=465             # 587 bila 465 diblokir firewall hosting
+MAIL_USERNAME=<alamat pengirim>
+MAIL_PASSWORD=<password>
+MAIL_FROM_ADDRESS="<alamat pengirim>"
+MAIL_FROM_NAME="TESYS"
+```
+
+**Setiap kali `MAIL_*` diubah di `.env` produksi**, config cache HARUS
+disegarkan — kalau tidak, nilai lama (mis. `log`) tetap dipakai walau
+`.env`-nya sudah benar:
+
+```bash
+php artisan config:clear
+php artisan config:cache
+```
+
+Verifikasi cepat (di server, bukan lokal):
+
+```bash
+php artisan config:show mail.default   # harus 'smtp', bukan 'log'
+php artisan tinker --execute="Mail::raw('Test TESYS', fn(\$m) => \$m->to('alamat@anda.com')->subject('Test'));"
+```
+
+Bila `tinker` di atas melempar error koneksi (timeout / connection refused),
+port SMTP-nya kemungkinan diblokir firewall shared hosting — coba `MAIL_PORT=587`
+dengan `MAIL_SCHEME=tls`.
+
 `EXPORT_API_TOKEN` memberi akses baca ke SELURUH Cost Request tanpa sesi login.
 Perlakukan seperti kata sandi: acak minimal 32 karakter, hanya diberikan ke
 konsumen yang memang perlu, dan diganti bila ada yang pindah tugas. Token

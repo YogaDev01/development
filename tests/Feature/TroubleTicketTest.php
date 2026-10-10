@@ -556,7 +556,7 @@ class TroubleTicketTest extends TestCase
 
         $this->actingAs($this->leader)->get('/trouble-ticket?q=Link&status=IN_PROGRESS&sort=severity&dir=asc')
             ->assertOk()->assertSee($t->ticket_number);
-        $this->actingAs($this->leader)->get("/trouble-ticket/{$t->id}")->assertOk()->assertSee('Timeline');
+        $this->actingAs($this->leader)->get("/trouble-ticket/{$t->id}")->assertOk()->assertSee('id="ttChatList"', false);
         $this->actingAs($this->leader)->getJson("/trouble-ticket/{$t->id}/messages?after_id=0")->assertOk()->assertJsonStructure(['html', 'status']);
         $this->actingAs($this->creator)->get('/trouble-ticket/create')->assertOk();
 
@@ -565,5 +565,45 @@ class TroubleTicketTest extends TestCase
 
         // Tanpa menu akses: 403.
         $this->actingAs($this->userWithRole('finance'))->get('/trouble-ticket')->assertForbidden();
+    }
+
+    public function test_export_excel_mengikuti_filter_dan_keterlihatan(): void
+    {
+        $a = $this->createTicket(['issue' => 'Tiket A']);
+        $b = $this->createTicket(['issue' => 'Tiket B']);
+
+        $baca = function ($res) {
+            $file = tempnam(sys_get_temp_dir(), 'tt') . '.xlsx';
+            file_put_contents($file, $res->streamedContent());
+            $rows = \PhpOffice\PhpSpreadsheet\IOFactory::load($file)->getActiveSheet()->toArray();
+            @unlink($file);
+            return collect($rows)->skip(1)->pluck(0)->filter()->values()->all();
+        };
+
+        // Tanpa ids: semua tiket yang terlihat.
+        $semua = $baca($this->actingAs($this->leader)->get(route('trouble-ticket.export'))->assertOk());
+        $this->assertEqualsCanonicalizing([$a->ticket_number, $b->ticket_number], $semua);
+
+        // Dengan ids (baris lolos filter): hanya itu.
+        $this->assertSame([$a->ticket_number], $baca($this->post(route('trouble-ticket.export'), ['ids' => [$a->id]])->assertOk()));
+
+        // Orang di luar rantai team tidak mendapat tiket walau mengirim id-nya.
+        $this->assertSame([], $baca($this->actingAs($this->outsider)->post(route('trouble-ticket.export'), ['ids' => [$a->id, $b->id]])->assertOk()));
+    }
+
+    public function test_modal_info_tidak_mencatat_respons_dan_mengikuti_keterlihatan(): void
+    {
+        $t = $this->createTicket();
+
+        // Teknisi melihat info dari daftar: bukan "membuka tiket", timer Response tetap jalan.
+        $this->actingAs($this->tech)->get(route('trouble-ticket.info', $t))
+            ->assertOk()->assertSee($t->issue);
+        $this->assertNull($t->fresh()->acknowledged_at);
+
+        $this->actingAs($this->outsider)->get(route('trouble-ticket.info', $t))->assertForbidden();
+
+        // Daftar memuat tombol info & tautan No. TT.
+        $this->actingAs($this->leader)->get('/trouble-ticket')
+            ->assertOk()->assertSee(route('trouble-ticket.info', $t))->assertSee(route('trouble-ticket.show', $t));
     }
 }

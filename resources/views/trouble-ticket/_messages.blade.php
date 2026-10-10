@@ -63,16 +63,17 @@
         </div>
     @else
         <div class="tt-msg {{ (int) $msg->user_id === $me ? 'is-mine' : '' }} {{ $peran === 'Teknisi' ? 'is-tech' : '' }}" data-id="{{ $msg->id }}">
-            <div class="tt-bubble">
-                <div class="tt-bubble-head">
-                    <strong>{{ (int) $msg->user_id === $me ? 'Anda' : ($msg->actor_name ?? '-') }}</strong>
-                    @if($peran)<span>· {{ $peran }}</span>@endif
-                    <span>· {{ $msg->created_at?->format('d/m/Y H:i') }}</span>
+            <div class="tt-msg-col">
+                @unless((int) $msg->user_id === $me)
+                    <div class="tt-bubble-name">{{ $msg->actor_name ?? '-' }}</div>
+                @endunless
+                <div class="tt-bubble">
+                    @if($msg->body)
+                        <div class="tt-bubble-body">{{ $msg->body }}</div>
+                    @endif
+                    @include('trouble-ticket._attachments', ['items' => $msg->attachments])
                 </div>
-                @if($msg->body)
-                    <div class="tt-bubble-body">{{ $msg->body }}</div>
-                @endif
-                @include('trouble-ticket._attachments', ['items' => $msg->attachments])
+                <div class="tt-bubble-time" title="{{ $msg->created_at?->format('d/m/Y H:i:s') }}">{{ $msg->created_at?->format('d/m/Y H:i') }}</div>
             </div>
         </div>
     @endif
