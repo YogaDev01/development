@@ -320,49 +320,29 @@ class WorkflowStatus
         */
         'trouble-ticket' => [
             'OPEN' => [
-                'description' => 'Menunggu teknisi membuka tiket',
+                'description' => 'Menunggu teknisi mengajukan plan Visit / Non-Visit',
                 'tone'        => 'attention',
                 'icon'        => 'fa-hourglass-half',
             ],
-            'AWAITING_PLAN' => [
-                'description' => 'Menunggu teknisi memilih Visit / Non-Visit',
+            'APPROVED' => [
+                'description' => 'Plan diajukan; menunggu approval leader team',
                 'tone'        => 'attention',
-                'icon'        => 'fa-route',
+                'icon'        => 'fa-user-check',
             ],
-            'PLANNED' => [
-                'description' => 'Keputusan tercatat; menunggu berangkat / Start Progress',
+            'ON_PLAN' => [
+                'description' => 'Plan disetujui; menunggu Start Progress',
                 'tone'        => 'progress',
                 'icon'        => 'fa-clipboard-check',
-            ],
-            'TRAVELING' => [
-                'description' => 'Teknisi dalam perjalanan ke site',
-                'tone'        => 'progress',
-                'icon'        => 'fa-car',
-            ],
-            'ON_SITE' => [
-                'description' => 'Teknisi di site; menunggu Start Progress',
-                'tone'        => 'progress',
-                'icon'        => 'fa-map-marker-alt',
             ],
             'IN_PROGRESS' => [
                 'description' => 'Troubleshooting berjalan',
                 'tone'        => 'progress',
                 'icon'        => 'fa-tools',
             ],
-            'PENDING_CLOSURE' => [
-                'description' => 'Menunggu approval Closed oleh leader team',
-                'tone'        => 'attention',
-                'icon'        => 'fa-user-check',
-            ],
             'CLOSED' => [
-                'description' => 'Closed disetujui',
+                'description' => 'Tiket ditutup teknisi',
                 'tone'        => 'done',
                 'icon'        => 'fa-check-circle',
-            ],
-            'CANCELLED' => [
-                'description' => 'Tiket dibatalkan',
-                'tone'        => 'neutral',
-                'icon'        => 'fa-ban',
             ],
         ],
     ];
@@ -394,8 +374,7 @@ class WorkflowStatus
             'PENDING_APPROVER', 'DONE', 'PAID',
         ],
         'trouble-ticket' => [
-            'OPEN', 'AWAITING_PLAN', 'PLANNED', 'TRAVELING', 'ON_SITE',
-            'IN_PROGRESS', 'PENDING_CLOSURE', 'CLOSED',
+            'OPEN', 'APPROVED', 'ON_PLAN', 'IN_PROGRESS', 'CLOSED',
         ],
     ];
 

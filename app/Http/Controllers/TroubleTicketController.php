@@ -34,7 +34,7 @@ class TroubleTicketController extends Controller
         // Level dari tabel severity (1 = paling parah); kode tak dikenal di akhir.
         'severity'   => '(SELECT COALESCE(MIN(s.level), 255) FROM trouble_ticket_severities s WHERE s.code = trouble_tickets.severity)',
         'reported_at' => 'trouble_tickets.reported_at',
-        'status'     => "FIELD(trouble_tickets.status, 'OPEN', 'AWAITING_PLAN', 'PLANNED', 'TRAVELING', 'ON_SITE', 'IN_PROGRESS', 'PENDING_CLOSURE', 'CLOSED', 'CANCELLED')",
+        'status'     => "FIELD(trouble_tickets.status, 'OPEN', 'APPROVED', 'ON_PLAN', 'IN_PROGRESS', 'CLOSED')",
         'created_at' => 'trouble_tickets.created_at',
         'updated_at' => 'trouble_tickets.updated_at',
     ];
@@ -78,7 +78,6 @@ class TroubleTicketController extends Controller
                 'problem:id,name',
                 'severityRef',
                 'technician:id,name',
-                'latestVisit',
             ]);
 
         if ($q = trim($filters['q'] ?? '')) {
@@ -118,8 +117,8 @@ class TroubleTicketController extends Controller
 
         // Kartu ringkasan — satu query agregat + satu query overdue.
         $agregat = TroubleTicket::visibleTo($user)->toBase()
-            ->selectRaw("SUM(status NOT IN ('CLOSED','CANCELLED')) AS terbuka")
-            ->selectRaw("SUM(status = 'PENDING_CLOSURE') AS pending_closure")
+            ->selectRaw("SUM(status <> 'CLOSED') AS terbuka")
+            ->selectRaw("SUM(status = 'APPROVED') AS menunggu_approval")
             ->selectRaw('SUM(closed_at >= ?) AS closed_bulan_ini', [now()->startOfMonth()])
             ->first();
         $overdue = TroubleTicket::visibleTo($user)->overdue()->count();
@@ -140,10 +139,10 @@ class TroubleTicketController extends Controller
             'dir'      => $dir,
             'options'  => $options,
             'stats'    => [
-                'terbuka'          => (int) ($agregat->terbuka ?? 0),
-                'overdue'          => $overdue,
-                'pending_closure'  => (int) ($agregat->pending_closure ?? 0),
-                'closed_bulan_ini' => (int) ($agregat->closed_bulan_ini ?? 0),
+                'terbuka'            => (int) ($agregat->terbuka ?? 0),
+                'overdue'            => $overdue,
+                'menunggu_approval'  => (int) ($agregat->menunggu_approval ?? 0),
+                'closed_bulan_ini'   => (int) ($agregat->closed_bulan_ini ?? 0),
             ],
             'canSettings' => $user->hasRole(\App\Support\AccessRoles::TROUBLE_TICKET_SETTINGS),
         ]);
@@ -224,19 +223,14 @@ class TroubleTicketController extends Controller
             'acknowledger:id,name',
             'decider:id,name',
             'closer:id,name',
-            'canceller:id,name',
-            'visits.technician:id,name',
-            'latestVisit',
+            'planApprover:id,name',
             'assignments.technician:id,name',
             'assignments.assigner:id,name',
-            'closureReviews.requester:id,name',
-            'closureReviews.reviewer:id,name',
         ]);
 
         [$messages, $hasOlder] = $this->messagePage($ticket);
 
-        $pendingReview = $ticket->closureReviews->firstWhere('review_status', 'PENDING');
-        $canSupervise  = $this->workflow->canSupervise($user, $ticket);
+        $canSupervise = $this->workflow->canSupervise($user, $ticket);
 
         return view('trouble-ticket.show', [
             'ticket'        => $ticket,
@@ -246,9 +240,8 @@ class TroubleTicketController extends Controller
             'isTechnician'  => $this->workflow->isTechnician($user, $ticket),
             'mustDecide'    => $this->workflow->mustDecide($user, $ticket),
             'canSupervise'  => $canSupervise,
-            'canReview'     => $this->workflow->canReview($user, $ticket, $pendingReview),
+            'canReviewPlan' => $this->workflow->canReviewPlan($user, $ticket),
             'canMessage'    => $this->workflow->canMessage($user, $ticket),
-            'pendingReview' => $pendingReview,
             'supervisors'   => $this->workflow->supervisorsFor((int) $ticket->assigned_to),
             'reassignTo'    => $canSupervise && in_array($ticket->status, TroubleTicketWorkflow::REASSIGNABLE, true)
                 ? $this->workflow->eligibleTechnicians($ticket->site_id)->where('id', '!=', $ticket->assigned_to)->values()
@@ -349,7 +342,7 @@ class TroubleTicketController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function decide(Request $request, TroubleTicket $ticket)
+    public function submitPlan(Request $request, TroubleTicket $ticket)
     {
         $data = $request->validate([
             'decision' => 'required|in:' . implode(',', array_keys(TroubleTicket::VISIT_DECISIONS)),
@@ -358,12 +351,30 @@ class TroubleTicketController extends Controller
             'target_online' => 'nullable|date|after_or_equal:today',
         ]);
 
-        $this->workflow->decideVisit(
+        $this->workflow->submitPlan(
             $ticket, Auth::user(), $data['decision'], $data['reason'] ?? null,
             $data['visit_site'] ?? null, $data['target_online'] ?? null,
         );
 
-        return back()->with('success', 'Keputusan kunjungan dicatat.');
+        return back()->with('success', 'Plan diajukan ke leader team untuk approval.');
+    }
+
+    public function approvePlan(Request $request, TroubleTicket $ticket)
+    {
+        $data = $request->validate(['notes' => 'nullable|string|max:1000']);
+
+        $this->workflow->approvePlan($ticket, Auth::user(), $data['notes'] ?? null);
+
+        return back()->with('success', 'Plan disetujui. Tiket siap dikerjakan.');
+    }
+
+    public function rejectPlan(Request $request, TroubleTicket $ticket)
+    {
+        $data = $request->validate(['notes' => 'required|string|max:1000']);
+
+        $this->workflow->rejectPlan($ticket, Auth::user(), $data['notes']);
+
+        return back()->with('success', 'Plan ditolak. Tiket kembali Open.');
     }
 
     public function correctDecision(Request $request, TroubleTicket $ticket)
@@ -376,21 +387,7 @@ class TroubleTicketController extends Controller
 
         $this->workflow->correctDecision($ticket, Auth::user(), $data['decision'], $data['reason'], $data['visit_site'] ?? null);
 
-        return back()->with('success', 'Keputusan kunjungan dikoreksi.');
-    }
-
-    public function depart(TroubleTicket $ticket)
-    {
-        $this->workflow->depart($ticket, Auth::user());
-
-        return back()->with('success', 'Keberangkatan ke site dicatat.');
-    }
-
-    public function arrive(TroubleTicket $ticket)
-    {
-        $this->workflow->arrive($ticket, Auth::user());
-
-        return back()->with('success', 'Kedatangan di site dicatat.');
+        return back()->with('success', 'Plan dikoreksi.');
     }
 
     public function startProgress(TroubleTicket $ticket)
@@ -400,7 +397,7 @@ class TroubleTicketController extends Controller
         return back()->with('success', 'Troubleshooting dimulai.');
     }
 
-    public function requestClosure(Request $request, TroubleTicket $ticket)
+    public function close(Request $request, TroubleTicket $ticket)
     {
         $data = $request->validate([
             'rca'                => 'required|string|max:40',
@@ -411,27 +408,9 @@ class TroubleTicketController extends Controller
             'attachments.*'      => TroubleTicketAttachment::rules(),
         ], $this->fileMessages());
 
-        $this->workflow->requestClosure($ticket, Auth::user(), $data, $request->file('attachments', []));
+        $this->workflow->close($ticket, Auth::user(), $data, $request->file('attachments', []));
 
-        return back()->with('success', 'Pengajuan Closed dikirim ke leader team.');
-    }
-
-    public function approveClosure(Request $request, TroubleTicket $ticket)
-    {
-        $data = $request->validate(['notes' => 'nullable|string|max:1000']);
-
-        $this->workflow->approveClosure($ticket, Auth::user(), $data['notes'] ?? null);
-
-        return back()->with('success', 'Pengajuan Closed disetujui. Tiket ditutup.');
-    }
-
-    public function rejectClosure(Request $request, TroubleTicket $ticket)
-    {
-        $data = $request->validate(['notes' => 'required|string|max:1000']);
-
-        $this->workflow->rejectClosure($ticket, Auth::user(), $data['notes']);
-
-        return back()->with('success', 'Pengajuan Closed ditolak. Tiket kembali In Progress.');
+        return back()->with('success', 'Tiket ditutup.');
     }
 
     public function reassign(Request $request, TroubleTicket $ticket)
@@ -444,15 +423,6 @@ class TroubleTicketController extends Controller
         $this->workflow->reassign($ticket, Auth::user(), (int) $data['assigned_to'], $data['reason']);
 
         return back()->with('success', 'Teknisi dialihkan.');
-    }
-
-    public function cancel(Request $request, TroubleTicket $ticket)
-    {
-        $data = $request->validate(['reason' => 'required|string|max:500']);
-
-        $this->workflow->cancel($ticket, Auth::user(), $data['reason']);
-
-        return back()->with('success', 'Tiket dibatalkan.');
     }
 
     /*

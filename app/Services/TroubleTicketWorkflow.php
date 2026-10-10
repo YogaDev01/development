@@ -10,10 +10,8 @@ use App\Models\TroubleTicketAssignment;
 use App\Models\TroubleTicketAttachment;
 use App\Models\TroubleTicketProblem;
 use App\Models\TroubleTicketSeverity;
-use App\Models\TroubleTicketClosureReview;
 use App\Models\TroubleTicketMessage;
 use App\Models\TroubleTicketSlaPolicy;
-use App\Models\TroubleTicketVisit;
 use App\Models\User;
 use App\Support\AccessRoles;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -54,7 +52,7 @@ class TroubleTicketWorkflow
         return TroubleTicket::visibleTo($user)->whereKey($ticket->getKey())->exists();
     }
 
-    /** Aksi operasional (respon, kunjungan, progress, ajukan closed) — hanya teknisi aktif. */
+    /** Aksi operasional (respon, ajukan plan, progress, tutup tiket) — hanya teknisi aktif. */
     public function isTechnician(User $user, TroubleTicket $ticket): bool
     {
         return (int) $user->id === (int) $ticket->assigned_to;
@@ -70,13 +68,14 @@ class TroubleTicketWorkflow
             || $this->supervisorIdsFor((int) $ticket->assigned_to)->contains($user->id);
     }
 
-    /** Approve/reject Closed: pengawas, dan BUKAN pengaju pengajuan itu sendiri. */
-    public function canReview(User $user, TroubleTicket $ticket, ?TroubleTicketClosureReview $pending = null): bool
+    /**
+     * Approve/reject PLAN: pengawas, dan BUKAN teknisi yang mengajukan plan
+     * itu sendiri. Hanya saat tiket berstatus APPROVED (menunggu approval).
+     */
+    public function canReviewPlan(User $user, TroubleTicket $ticket): bool
     {
-        $pending ??= $ticket->closureReviews()->where('review_status', 'PENDING')->first();
-
-        return $pending !== null
-            && (int) $pending->requested_by !== (int) $user->id
+        return $ticket->status === 'APPROVED'
+            && (int) $ticket->visit_decided_by !== (int) $user->id
             && $this->canSupervise($user, $ticket);
     }
 
@@ -85,12 +84,11 @@ class TroubleTicketWorkflow
         return ! $ticket->isFinal() && $this->canView($user, $ticket);
     }
 
-    /** Teknisi wajib memilih Visit/Non-Visit sebelum bisa melakukan apa pun. */
+    /** Teknisi wajib mengajukan plan Visit/Non-Visit sebelum bisa melakukan apa pun. */
     public function mustDecide(User $user, TroubleTicket $ticket): bool
     {
         return $this->isTechnician($user, $ticket)
-            && $ticket->status === 'AWAITING_PLAN'
-            && $ticket->visit_decision === null;
+            && $ticket->status === 'OPEN';
     }
 
     /** Leader team ACTIVE dari teknisi (user ACTIVE). */
@@ -305,9 +303,6 @@ class TroubleTicketWorkflow
                 ];
                 $recorded = true;
             }
-            if ($t->status === 'OPEN') {
-                $changes['status'] = 'AWAITING_PLAN';
-            }
 
             if ($changes) {
                 $t->update($changes);
@@ -326,21 +321,23 @@ class TroubleTicketWorkflow
     }
 
     /**
+     * Teknisi mengajukan plan (Visit / Non-Visit). Tiket masuk APPROVED —
+     * MENUNGGU approval leader team; belum boleh dikerjakan.
+     *
+     * Plan boleh diajukan ulang setelah ditolak leader: penolakan
+     * mengosongkan keputusan lama, jadi tidak ada kunci permanen di sini.
+     *
      * @param  ?string  $visitSite     tanggal rencana kunjungan (Y-m-d) — wajib untuk Plan Visit
      * @param  ?string  $targetOnline  perkiraan site kembali online (Y-m-d), opsional
      */
-    public function decideVisit(TroubleTicket $ticket, User $user, string $decision, ?string $reason, ?string $visitSite = null, ?string $targetOnline = null): void
+    public function submitPlan(TroubleTicket $ticket, User $user, string $decision, ?string $reason, ?string $visitSite = null, ?string $targetOnline = null): void
     {
         $this->assertDecision($decision, $reason, false, $visitSite);
 
         DB::transaction(function () use ($ticket, $user, $decision, $reason, $visitSite, $targetOnline) {
             $t = $this->lock($ticket);
-            $this->authorizeIf($this->isTechnician($user, $t), 'Hanya teknisi yang ditugaskan yang dapat memilih Visit / Non-Visit.');
-
-            if ($t->visit_decision !== null) {
-                $this->fail('Keputusan kunjungan sudah dicatat dan terkunci. Hubungi leader team untuk koreksi.');
-            }
-            $this->expect($t, ['AWAITING_PLAN'], 'Tiket tidak sedang menunggu keputusan kunjungan.');
+            $this->authorizeIf($this->isTechnician($user, $t), 'Hanya teknisi yang ditugaskan yang dapat mengajukan plan.');
+            $this->expect($t, ['OPEN'], 'Plan hanya bisa diajukan saat tiket berstatus Open.');
 
             $t->update([
                 'visit_decision'        => $decision,
@@ -349,21 +346,104 @@ class TroubleTicketWorkflow
                 'visit_decision_reason' => $reason,
                 'visit_site'            => $decision === TroubleTicket::VISIT ? $visitSite : null,
                 'target_online'         => $targetOnline,
-                'status'                => 'PLANNED',
+                'approval'              => 'PENDING',
+                'plan_approved_at'      => null,
+                'plan_approved_by'      => null,
+                'status'                => 'APPROVED',
             ]);
 
-            $this->event($t, $user, 'visit_decided', $reason, [
+            $this->event($t, $user, 'plan_submitted', $reason, [
                 'decision'      => $decision,
                 'visit_site'    => $t->visit_site?->toDateString(),
                 'target_online' => $t->target_online?->toDateString(),
             ]);
         });
+
+        $ticket->refresh();
+        $penerima = $this->supervisorsFor((int) $ticket->assigned_to);
+        if ($penerima->isEmpty()) {
+            $penerima = app(RoleDirectory::class)->usersWithRoles(AccessRoles::TROUBLE_TICKET_SUPERVISE);
+        }
+
+        $this->notify(
+            $penerima->reject(fn ($u) => (int) $u->id === (int) $user->id),
+            $ticket,
+            'Plan Trouble Ticket menunggu approval',
+            "{$user->name} mengajukan plan {$ticket->ticket_number}: {$ticket->issue}"
+        );
+    }
+
+    /** Leader team menyetujui plan — tiket boleh dikerjakan. */
+    public function approvePlan(TroubleTicket $ticket, User $user, ?string $notes = null): void
+    {
+        DB::transaction(function () use ($ticket, $user, $notes) {
+            $t = $this->lock($ticket);
+            $this->expect($t, ['APPROVED'], 'Tiket tidak sedang menunggu approval plan.');
+            $this->authorizeIf($this->canReviewPlan($user, $t), 'Anda tidak berwenang menyetujui plan ini.');
+
+            $t->update([
+                'status'           => 'ON_PLAN',
+                'approval'         => 'APPROVED',
+                'plan_approved_at' => now(),
+                'plan_approved_by' => $user->id,
+            ]);
+
+            $this->event($t, $user, 'plan_approved', $notes);
+        });
+
+        $ticket->refresh();
+        $this->notify(
+            [$ticket->technician],
+            $ticket,
+            'Plan Trouble Ticket disetujui',
+            "Plan {$ticket->ticket_number} disetujui {$user->name}. Tiket siap dikerjakan."
+        );
     }
 
     /**
-     * Koreksi keputusan oleh pengawas — sebelum ada kunjungan/progress.
-     * Keputusan lama tidak hilang: tersimpan di metadata kejadiannya dan di
-     * kejadian 'visit_decided' semula.
+     * Leader team menolak plan — tiket kembali OPEN dan keputusan kunjungan
+     * dikosongkan supaya teknisi bisa mengajukan plan baru.
+     */
+    public function rejectPlan(TroubleTicket $ticket, User $user, string $notes): void
+    {
+        DB::transaction(function () use ($ticket, $user, $notes) {
+            $t = $this->lock($ticket);
+            $this->expect($t, ['APPROVED'], 'Tiket tidak sedang menunggu approval plan.');
+            $this->authorizeIf($this->canReviewPlan($user, $t), 'Anda tidak berwenang menolak plan ini.');
+
+            $lama = [
+                'decision'   => $t->visit_decision,
+                'visit_site' => $t->visit_site?->toDateString(),
+                'reason'     => $t->visit_decision_reason,
+            ];
+
+            $t->update([
+                'status'                => 'OPEN',
+                'approval'              => 'REJECTED',
+                'visit_decision'        => null,
+                'visit_decided_by'      => null,
+                'visit_decided_at'      => null,
+                'visit_decision_reason' => null,
+                'visit_site'            => null,
+                'target_online'         => null,
+            ]);
+
+            $this->event($t, $user, 'plan_rejected', $notes, ['previous' => $lama]);
+        });
+
+        $ticket->refresh();
+        $this->notify(
+            [$ticket->technician],
+            $ticket,
+            'Plan Trouble Ticket ditolak',
+            "Plan {$ticket->ticket_number} ditolak {$user->name}: {$notes}"
+        );
+    }
+
+    /**
+     * Koreksi plan oleh pengawas — sebelum pengerjaan dimulai. Plan lama
+     * tidak hilang: tersimpan di metadata kejadiannya dan di kejadian
+     * 'plan_submitted' semula.
      */
     public function correctDecision(TroubleTicket $ticket, User $user, string $decision, string $reason, ?string $visitSite = null): void
     {
@@ -371,8 +451,8 @@ class TroubleTicketWorkflow
 
         DB::transaction(function () use ($ticket, $user, $decision, $reason, $visitSite) {
             $t = $this->lock($ticket);
-            $this->authorizeIf($this->canSupervise($user, $t), 'Hanya leader team teknisi yang dapat mengoreksi keputusan kunjungan.');
-            $this->expect($t, ['PLANNED'], 'Keputusan hanya bisa dikoreksi sebelum teknisi berangkat atau memulai progress.');
+            $this->authorizeIf($this->canSupervise($user, $t), 'Hanya leader team teknisi yang dapat mengoreksi plan.');
+            $this->expect($t, ['APPROVED', 'ON_PLAN'], 'Plan hanya bisa dikoreksi sebelum pengerjaan dimulai.');
 
             if ($t->visit_decision === $decision) {
                 $this->fail('Keputusan baru sama dengan keputusan saat ini.', 'decision');
@@ -394,86 +474,22 @@ class TroubleTicketWorkflow
                 'visit_site'            => $decision === TroubleTicket::VISIT ? $visitSite : null,
             ]);
 
-            $this->event($t, $user, 'visit_corrected', $reason, ['decision' => $decision, 'previous' => $old]);
+            $this->event($t, $user, 'plan_corrected', $reason, ['decision' => $decision, 'previous' => $old]);
         });
     }
 
     /*
     |--------------------------------------------------------------------------
-    | KUNJUNGAN & PROGRESS
+    | PROGRESS
     |--------------------------------------------------------------------------
     */
-
-    public function depart(TroubleTicket $ticket, User $user): void
-    {
-        DB::transaction(function () use ($ticket, $user) {
-            $t = $this->lock($ticket);
-            $this->authorizeIf($this->isTechnician($user, $t), 'Hanya teknisi yang ditugaskan yang dapat berangkat ke site.');
-
-            if ($t->visit_decision !== TroubleTicket::VISIT) {
-                $this->fail('Berangkat ke site hanya untuk tiket dengan keputusan Plan Visit.');
-            }
-            $this->expect($t, ['PLANNED'], 'Tiket tidak dalam keadaan siap berangkat.');
-
-            // MVP: satu sesi kunjungan per tiket.
-            if (TroubleTicketVisit::where('trouble_ticket_id', $t->id)->exists()) {
-                $this->fail('Kunjungan untuk tiket ini sudah tercatat.');
-            }
-
-            $visit = TroubleTicketVisit::create([
-                'trouble_ticket_id' => $t->id,
-                'technician_id'     => $user->id,
-                'departed_at'       => now(),
-            ]);
-
-            $t->update(['status' => 'TRAVELING']);
-            $this->event($t, $user, 'departed', null, ['visit_id' => $visit->id]);
-        });
-    }
-
-    public function arrive(TroubleTicket $ticket, User $user): void
-    {
-        DB::transaction(function () use ($ticket, $user) {
-            $t = $this->lock($ticket);
-            $this->authorizeIf($this->isTechnician($user, $t), 'Hanya teknisi yang ditugaskan yang dapat mencatat tiba di site.');
-            $this->expect($t, ['TRAVELING'], 'Belum ada keberangkatan yang tercatat.');
-
-            $visit = TroubleTicketVisit::where('trouble_ticket_id', $t->id)
-                ->whereNull('arrived_at')
-                ->lockForUpdate()
-                ->first();
-
-            if (! $visit) {
-                $this->fail('Belum ada keberangkatan yang tercatat.');
-            }
-
-            $now = now();
-            if ($now->lt($visit->departed_at)) {
-                $this->fail('Waktu tiba tidak boleh sebelum waktu berangkat.');
-            }
-
-            $travel = $now->getTimestamp() - $visit->departed_at->getTimestamp();
-            $visit->update(['arrived_at' => $now, 'travel_seconds' => $travel]);
-
-            $t->update(['status' => 'ON_SITE']);
-            $this->event($t, $user, 'arrived', null, ['visit_id' => $visit->id, 'travel_seconds' => $travel]);
-        });
-    }
 
     public function startProgress(TroubleTicket $ticket, User $user): void
     {
         DB::transaction(function () use ($ticket, $user) {
             $t = $this->lock($ticket);
             $this->authorizeIf($this->isTechnician($user, $t), 'Hanya teknisi yang ditugaskan yang dapat memulai progress.');
-
-            $siap = ($t->visit_decision === TroubleTicket::VISIT && $t->status === 'ON_SITE')
-                || ($t->visit_decision === TroubleTicket::NON_VISIT && $t->status === 'PLANNED');
-
-            if (! $siap) {
-                $this->fail($t->visit_decision === TroubleTicket::VISIT
-                    ? 'Start Progress tersedia setelah teknisi tiba di site.'
-                    : 'Tiket tidak dalam keadaan siap memulai progress.');
-            }
+            $this->expect($t, ['ON_PLAN'], 'Start Progress tersedia setelah plan disetujui leader team.');
 
             // Timestamp troubleshooting tidak pernah ditimpa.
             $t->update([
@@ -491,26 +507,29 @@ class TroubleTicketWorkflow
     |--------------------------------------------------------------------------
     */
 
-    /** @param  UploadedFile[]  $files */
     /**
+     * Teknisi menutup tiket. Tidak ada approval Closed (keputusan 10 Okt
+     * 2026): hasil troubleshooting langsung final, jadi resolution_seconds
+     * dihitung di sini dan — karena CLOSED status akhir — tidak pernah
+     * ditimpa.
+     *
      * @param  array  $data  rca (wajib), sub_rca?, action (wajib), resolution_summary?
      * @param  UploadedFile[]  $files
      */
-    public function requestClosure(TroubleTicket $ticket, User $user, array $data, array $files = []): void
+    public function close(TroubleTicket $ticket, User $user, array $data, array $files = []): void
     {
         $stored = $this->storeFiles($files);
 
         $this->withStoredFiles($stored, function () use ($ticket, $user, $data, $stored) {
             $t = $this->lock($ticket);
-            $this->authorizeIf($this->isTechnician($user, $t), 'Hanya teknisi yang ditugaskan yang dapat mengajukan Closed.');
-            $this->expect($t, ['IN_PROGRESS'], 'Pengajuan Closed hanya bisa dari status In Progress.');
+            $this->authorizeIf($this->isTechnician($user, $t), 'Hanya teknisi yang ditugaskan yang dapat menutup tiket.');
+            $this->expect($t, ['IN_PROGRESS'], 'Tiket hanya bisa ditutup dari status In Progress.');
 
             if ($t->problem?->requires_evidence && empty($stored)) {
                 $this->fail('Problem ini mewajibkan lampiran bukti penyelesaian.', 'attachments');
             }
 
             $now = now();
-            $attempt = (int) TroubleTicketClosureReview::where('trouble_ticket_id', $t->id)->max('attempt_no') + 1;
             $hasil = [
                 'rca'                => $data['rca'],
                 'sub_rca'            => $data['sub_rca'] ?? null,
@@ -518,22 +537,15 @@ class TroubleTicketWorkflow
                 'resolution_summary' => $data['resolution_summary'] ?? null,
             ];
 
-            TroubleTicketClosureReview::create($hasil + [
-                'trouble_ticket_id' => $t->id,
-                'attempt_no'        => $attempt,
-                'requested_by'      => $user->id,
-                'requested_at'      => $now,
-                'review_status'     => 'PENDING',
-            ]);
-
             $t->update($hasil + [
-                'status'      => 'PENDING_CLOSURE',
-                'resolved_at' => $now,
-                'approval'    => 'PENDING',
+                'status'             => 'CLOSED',
+                'resolved_at'        => $now,
+                'closed_at'          => $now,
+                'closed_by'          => $user->id,
+                'resolution_seconds' => max(0, $now->getTimestamp() - $t->progress_started_at->getTimestamp()),
             ]);
 
-            $message = $this->event($t, $user, 'closure_requested', $hasil['resolution_summary'], [
-                'attempt' => $attempt,
+            $message = $this->event($t, $user, 'closed', $hasil['resolution_summary'], [
                 'rca'     => $hasil['rca'],
                 'sub_rca' => $hasil['sub_rca'],
                 'action'  => $hasil['action'],
@@ -542,99 +554,27 @@ class TroubleTicketWorkflow
         });
 
         $ticket->refresh();
-        $penerima = $this->supervisorsFor((int) $ticket->assigned_to);
-        if ($penerima->isEmpty()) {
-            $penerima = app(RoleDirectory::class)->usersWithRoles(AccessRoles::TROUBLE_TICKET_SUPERVISE);
-        }
+        $penerima = $this->supervisorsFor((int) $ticket->assigned_to)
+            ->push($ticket->creator)
+            ->filter()
+            ->reject(fn ($u) => (int) $u->id === (int) $user->id);
 
         $this->notify(
-            $penerima->reject(fn ($u) => (int) $u->id === (int) $user->id),
-            $ticket,
-            'Pengajuan Closed Trouble Ticket',
-            "{$user->name} mengajukan Closed {$ticket->ticket_number}: {$ticket->issue}"
-        );
-    }
-
-    public function approveClosure(TroubleTicket $ticket, User $user, ?string $notes = null): void
-    {
-        DB::transaction(function () use ($ticket, $user, $notes) {
-            $t = $this->lock($ticket);
-            $this->expect($t, ['PENDING_CLOSURE'], 'Tiket tidak sedang menunggu approval Closed.');
-
-            $review = $this->pendingReview($t);
-            $this->authorizeIf($this->canReview($user, $t, $review), 'Anda tidak berwenang menyetujui pengajuan Closed ini.');
-
-            $now = now();
-            $review->update([
-                'review_status' => 'APPROVED',
-                'reviewed_by'   => $user->id,
-                'reviewed_at'   => $now,
-                'review_notes'  => $notes,
-            ]);
-
-            $t->update([
-                'status'             => 'CLOSED',
-                'approval'           => 'APPROVED',
-                'closed_at'          => $now,
-                'closed_by'          => $user->id,
-                // Resolusi difinalkan HANYA di sini.
-                'resolution_seconds' => max(0, $now->getTimestamp() - $t->progress_started_at->getTimestamp()),
-            ]);
-
-            $this->event($t, $user, 'closure_approved', $notes, ['attempt' => $review->attempt_no]);
-        });
-
-        $ticket->refresh();
-        $this->notify(
-            [$ticket->technician, $ticket->creator],
+            $penerima,
             $ticket,
             'Trouble Ticket Closed',
-            "{$ticket->ticket_number} disetujui Closed oleh {$user->name}."
-        );
-    }
-
-    public function rejectClosure(TroubleTicket $ticket, User $user, string $notes): void
-    {
-        DB::transaction(function () use ($ticket, $user, $notes) {
-            $t = $this->lock($ticket);
-            $this->expect($t, ['PENDING_CLOSURE'], 'Tiket tidak sedang menunggu approval Closed.');
-
-            $review = $this->pendingReview($t);
-            $this->authorizeIf($this->canReview($user, $t, $review), 'Anda tidak berwenang menolak pengajuan Closed ini.');
-
-            $review->update([
-                'review_status' => 'REJECTED',
-                'reviewed_by'   => $user->id,
-                'reviewed_at'   => now(),
-                'review_notes'  => $notes,
-            ]);
-
-            // Kembali ke In Progress; progress_started_at TIDAK diubah.
-            $t->update(['status' => 'IN_PROGRESS', 'approval' => 'REJECTED']);
-
-            $this->event($t, $user, 'closure_rejected', $notes, ['attempt' => $review->attempt_no]);
-        });
-
-        $ticket->refresh();
-        $this->notify(
-            [$ticket->technician],
-            $ticket,
-            'Pengajuan Closed ditolak',
-            "{$ticket->ticket_number} ditolak oleh {$user->name}: {$notes}"
+            "{$ticket->ticket_number} ditutup oleh {$user->name}."
         );
     }
 
     /*
     |--------------------------------------------------------------------------
-    | REASSIGN & CANCEL
+    | REASSIGN
     |--------------------------------------------------------------------------
     */
 
-    /** Status yang boleh dialihkan teknisinya. */
-    public const REASSIGNABLE = ['OPEN', 'AWAITING_PLAN', 'PLANNED', 'ON_SITE', 'IN_PROGRESS'];
-
-    /** Status yang boleh dibatalkan (TRAVELING & PENDING_CLOSURE diselesaikan dulu). */
-    public const CANCELLABLE = ['OPEN', 'AWAITING_PLAN', 'PLANNED', 'ON_SITE', 'IN_PROGRESS'];
+    /** Status yang boleh dialihkan teknisinya — semua yang belum final. */
+    public const REASSIGNABLE = ['OPEN', 'APPROVED', 'ON_PLAN', 'IN_PROGRESS'];
 
     public function reassign(TroubleTicket $ticket, User $user, int $newTechnicianId, string $reason): void
     {
@@ -693,28 +633,6 @@ class TroubleTicketWorkflow
             "{$ticket->ticket_number} tidak lagi ditugaskan kepada Anda.");
     }
 
-    public function cancel(TroubleTicket $ticket, User $user, string $reason): void
-    {
-        DB::transaction(function () use ($ticket, $user, $reason) {
-            $t = $this->lock($ticket);
-            $this->authorizeIf($this->canSupervise($user, $t), 'Hanya leader team teknisi yang dapat membatalkan tiket.');
-            $this->expect($t, self::CANCELLABLE, 'Tiket pada status ini tidak bisa dibatalkan.');
-
-            $t->update([
-                'status'        => 'CANCELLED',
-                'cancelled_at'  => now(),
-                'cancelled_by'  => $user->id,
-                'cancel_reason' => $reason,
-            ]);
-
-            $this->event($t, $user, 'cancelled', $reason);
-        });
-
-        $ticket->refresh();
-        $this->notify([$ticket->technician, $ticket->creator], $ticket, 'Trouble Ticket dibatalkan',
-            "{$ticket->ticket_number} dibatalkan oleh {$user->name}.");
-    }
-
     /*
     |--------------------------------------------------------------------------
     | PESAN
@@ -739,7 +657,7 @@ class TroubleTicketWorkflow
             $this->fail('Tiket sudah ' . strtolower($ticket->status) . '; pesan baru tidak bisa ditambahkan.');
         }
         if ($this->mustDecide($user, $ticket)) {
-            $this->fail('Pilih Visit / Non-Visit terlebih dahulu.');
+            $this->fail('Ajukan plan Visit / Non-Visit terlebih dahulu.');
         }
 
         $body = $body !== null ? trim($body) : null;
@@ -791,20 +709,6 @@ class TroubleTicketWorkflow
     private function lock(TroubleTicket $ticket): TroubleTicket
     {
         return TroubleTicket::whereKey($ticket->getKey())->lockForUpdate()->firstOrFail();
-    }
-
-    private function pendingReview(TroubleTicket $t): TroubleTicketClosureReview
-    {
-        $review = TroubleTicketClosureReview::where('trouble_ticket_id', $t->id)
-            ->where('review_status', 'PENDING')
-            ->lockForUpdate()
-            ->first();
-
-        if (! $review) {
-            $this->fail('Tidak ada pengajuan Closed yang menunggu keputusan.');
-        }
-
-        return $review;
     }
 
     private function expect(TroubleTicket $t, array $statuses, string $message): void

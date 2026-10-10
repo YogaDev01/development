@@ -4,32 +4,42 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\ImportsMasterRecords;
 use App\Http\Controllers\Concerns\ManagesMasterRecords;
-use Illuminate\Support\Facades\DB;
 use App\Models\Accessory;
 use App\Models\Customer;
+use App\Models\Homebase;
+use App\Models\HomebaseDetail;
 use App\Models\MasterMaterial;
+use App\Models\MasterPic;
 use App\Models\Network;
 use App\Models\Pulau;
+use App\Models\Region;
 use App\Models\Site;
 use App\Models\SiteAccessory;
+use App\Models\SiteKeeper;
 use App\Models\SiteMaterial;
 use App\Models\SitePic;
-use App\Models\MasterPic;
+use App\Models\TroubleTicket;
 use App\Models\UserActivityLog;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class SiteController extends Controller
 {
-    use ManagesMasterRecords;
     use ImportsMasterRecords;
+    use ManagesMasterRecords;
 
     protected function importConfig(): array
     {
         $customers = Customer::get(['id', 'name', 'initial']);
-        $byName    = $customers->mapWithKeys(fn ($c) => [mb_strtolower($c->name) => $c->id]);
+        $byName = $customers->mapWithKeys(fn ($c) => [mb_strtolower($c->name) => $c->id]);
         $byInitial = $customers->filter(fn ($c) => $c->initial)->mapWithKeys(fn ($c) => [mb_strtolower($c->initial) => $c->id]);
+
+        // Cluster dicocokkan dari nama region; Homebase dari alamatnya.
+        $regions = Region::get(['id', 'region_name'])->mapWithKeys(fn ($r) => [mb_strtolower($r->region_name) => $r->id]);
+        $homebases = Homebase::get(['id', 'address', 'region_id'])->mapWithKeys(fn ($h) => [mb_strtolower(trim($h->address)) => $h]);
 
         // Cache per import: nama wilayah dicari di bawah induknya.
         $memo = [];
@@ -38,7 +48,7 @@ class SiteController extends Controller
             if ($name === '') {
                 return null;
             }
-            $key = $table . '|' . $parentId . '|' . mb_strtolower($name);
+            $key = $table.'|'.$parentId.'|'.mb_strtolower($name);
             if (! array_key_exists($key, $memo)) {
                 $q = DB::table($table)->where('name', $name);
                 if ($parentCol) {
@@ -54,29 +64,46 @@ class SiteController extends Controller
 
         return [
             'headers' => [
-                'Site ID'         => 'TID-0001',
-                'Nama Site'       => 'SD Negeri 1 Contoh',
-                'Customer'        => 'BTS',
-                'Tipe Bangunan'   => 'Pendidikan',
-                'Source Power'    => 'PLN',
-                'Program'         => 'Akses Internet',
-                'Network ID'      => '',
-                'Provinsi'        => 'Jawa Barat',
-                'Kota/Kabupaten'  => 'Kota Bandung',
-                'Kecamatan'       => '',
-                'Desa/Kelurahan'  => '',
-                'Alamat'          => 'Jl. Contoh No. 1',
-                'Latitude'        => '-6.9147440',
-                'Longitude'       => '107.6098100',
+                'Site ID' => 'TID-0001',
+                'Nama Site' => 'SD Negeri 1 Contoh',
+                'Customer' => 'BTS',
+                'Tipe Bangunan' => 'Pendidikan',
+                'Source Power' => 'PLN',
+                'Program' => 'Akses Internet',
+                'Homebase' => 'Jl. Homebase Bandung No. 10',
+                'Cluster' => 'JABAR-1',
+                'Network ID' => '',
+                'Provinsi' => 'Jawa Barat',
+                'Kota/Kabupaten' => 'Kota Bandung',
+                'Kecamatan' => '',
+                'Desa/Kelurahan' => '',
+                'Alamat' => 'Jl. Contoh No. 1',
+                'Latitude' => '-6.9147440',
+                'Longitude' => '107.6098100',
+                'Gateway' => '',
+                'Outroute ID' => '',
+                'Hub' => '',
+                'Spotbeam' => '',
+                'Polarisasi' => '',
             ],
             'unique' => ['tid'],
-            'map' => function (array $c) use ($byName, $byInitial, $find) {
+            'map' => function (array $c) use ($byName, $byInitial, $find, $regions, $homebases) {
                 $errors = [];
 
-                $cust       = mb_strtolower((string) $c['Customer']);
+                $cust = mb_strtolower((string) $c['Customer']);
                 $customerId = $byName[$cust] ?? $byInitial[$cust] ?? null;
                 if ($cust !== '' && ! $customerId) {
                     $errors['customer_id'] = "Customer '{$c['Customer']}' tidak ditemukan (isi nama atau inisial).";
+                }
+
+                // Homebase & Cluster wajib, sama seperti form Tambah Site.
+                $hb = $homebases[mb_strtolower(trim((string) $c['Homebase']))] ?? null;
+                if (! blank($c['Homebase']) && ! $hb) {
+                    $errors['hb_id'] = "Homebase '{$c['Homebase']}' tidak ditemukan (isi alamat persis seperti di menu Homebase).";
+                }
+                $regionId = $regions[mb_strtolower(trim((string) $c['Cluster']))] ?? null;
+                if (! blank($c['Cluster']) && ! $regionId) {
+                    $errors['region_id'] = "Cluster '{$c['Cluster']}' tidak ditemukan di master Region.";
                 }
 
                 $geo = ['pulau_id' => null, 'provinsi_id' => null, 'kota_id' => null, 'kecamatan_id' => null, 'desa_id' => null];
@@ -110,29 +137,41 @@ class SiteController extends Controller
                 }
 
                 return [array_merge([
-                    'tid'          => $c['Site ID'] === null ? null : (string) $c['Site ID'],
-                    'sitename'     => $c['Nama Site'],
-                    'customer_id'  => $customerId,
-                    'network_id'   => blank($c['Network ID']) ? null : $c['Network ID'],
-                    'type'         => self::matchOption(Site::TYPES, $c['Tipe Bangunan']),
+                    'tid' => $c['Site ID'] === null ? null : (string) $c['Site ID'],
+                    'sitename' => $c['Nama Site'],
+                    'customer_id' => $customerId,
+                    'network_id' => blank($c['Network ID']) ? null : $c['Network ID'],
+                    'hb_id' => $hb?->id,
+                    // Cluster boleh dikosongkan di Excel: diambil dari Homebase.
+                    'region_id' => $regionId ?: $hb?->region_id,
+                    'gateway' => blank($c['Gateway']) ? null : $c['Gateway'],
+                    'outroute_id' => blank($c['Outroute ID']) ? null : $c['Outroute ID'],
+                    'hub' => blank($c['Hub']) ? null : $c['Hub'],
+                    'spotbeam' => blank($c['Spotbeam']) ? null : $c['Spotbeam'],
+                    'polarization' => blank($c['Polarisasi']) ? null : self::matchOption(Site::POLARIZATIONS, $c['Polarisasi']),
+                    'type' => self::matchOption(Site::TYPES, $c['Tipe Bangunan']),
                     'source_power' => self::matchOption(Site::SOURCE_POWERS, $c['Source Power']),
-                    'program'      => self::matchOption(Site::PROGRAMS, $c['Program']),
-                    'address'      => blank($c['Alamat']) ? null : $c['Alamat'],
-                    'latitude'     => blank($c['Latitude']) ? null : $c['Latitude'],
-                    'longitude'    => blank($c['Longitude']) ? null : $c['Longitude'],
+                    'program' => self::matchOption(Site::PROGRAMS, $c['Program']),
+                    'address' => blank($c['Alamat']) ? null : $c['Alamat'],
+                    'latitude' => blank($c['Latitude']) ? null : $c['Latitude'],
+                    'longitude' => blank($c['Longitude']) ? null : $c['Longitude'],
                 ], $geo), $errors];
             },
             'reference' => fn () => [
-                'Customer (nama)'  => Customer::orderBy('name')->pluck('name')->all(),
-                'Tipe Bangunan'    => array_values(Site::TYPES),
-                'Source Power'     => array_values(Site::SOURCE_POWERS),
-                'Program'          => array_values(Site::PROGRAMS),
-                'Network ID | Nama' => Network::orderBy('id')->get()->map(fn ($n) => $n->id . ' | ' . $n->label)->all(),
-                'Catatan'          => [
+                'Customer (nama)' => Customer::orderBy('name')->pluck('name')->all(),
+                'Tipe Bangunan' => array_values(Site::TYPES),
+                'Source Power' => array_values(Site::SOURCE_POWERS),
+                'Program' => array_values(Site::PROGRAMS),
+                'Network ID | Nama' => Network::orderBy('id')->get()->map(fn ($n) => $n->id.' | '.$n->label)->all(),
+                'Homebase (alamat)' => Homebase::orderBy('address')->pluck('address')->all(),
+                'Cluster' => Region::orderBy('region_name')->pluck('region_name')->all(),
+                'Polarisasi' => array_values(Site::POLARIZATIONS),
+                'Catatan' => [
                     'Wilayah diisi dengan NAMA persis seperti di menu Wilayah.',
                     'Pulau terisi otomatis dari Provinsi.',
                     'Kolom wilayah boleh kosong dari bawah (mis. hanya Provinsi + Kota).',
                     'Latitude & Longitude diisi berpasangan atau dikosongkan keduanya.',
+                    'Homebase wajib; Cluster boleh kosong - otomatis mengikuti Homebase.',
                 ],
             ],
         ];
@@ -141,44 +180,65 @@ class SiteController extends Controller
     protected function master(): array
     {
         return [
-            'model'    => Site::class,
-            'url'      => '/site',
-            'title'    => 'Sites',
+            'model' => Site::class,
+            'url' => '/site',
+            'title' => 'Sites',
             'singular' => 'Site',
-            'icon'     => 'fas fa-broadcast-tower',
-            'with'     => ['customer:id,name', 'kota:id,name', 'provinsi:id,name', 'picLinks.pic:id,pic,type'],
+            'icon' => 'fas fa-broadcast-tower',
+            'with' => ['customer:id,name', 'kota:id,name', 'provinsi:id,name', 'picLinks.pic:id,pic,type,position', 'homebase.region:id,region_name', 'region:id,region_name'],
             'create_url' => '/site/create',
             'edit_url' => '/site/{id}/edit',
-            'drawer'   => true,
-            'import'   => true,
+            'drawer' => true,
+            'import' => true,
             'numbered' => false,
-            'compact'  => true,
+            'compact' => true,
             'column_picker' => 'site-index',
             'hide_inactive' => true,
-            'cards'    => fn () => [
-                ['Total TT', \App\Models\TroubleTicket::visibleTo(auth()->user())->count(), 'warning', 'fas fa-ticket-alt',
-                    array_sum(self::openTicketCounts()) . ' terbuka'],
+            'cards' => fn () => [
+                ['Total TT', TroubleTicket::visibleTo(auth()->user())->count(), 'warning', 'fas fa-ticket-alt',
+                    array_sum(self::openTicketCounts()).' terbuka'],
                 ['Total Technician', self::technicianCount(), 'info', 'fas fa-user-cog'],
             ],
-            'modal'    => 'modal-lg',
-            'fields'   => [
-                'tid'          => ['label' => 'Site ID', 'type' => 'text', 'required' => true, 'col' => 4, 'section' => 'Identitas Site'],
-                'sitename'     => ['label' => 'Nama Site', 'type' => 'text', 'required' => true, 'col' => 8],
-                'customer_id'  => ['label' => 'Customer', 'type' => 'select', 'options' => fn () => Customer::orderBy('name')->pluck('name', 'id')->all(), 'required' => true, 'searchable' => true, 'col' => 6],
-                'network_id'   => ['label' => 'Network', 'type' => 'select', 'options' => fn () => Network::orderBy('penyedia_lc')->get()->mapWithKeys(fn ($n) => [$n->id => $n->label])->all(), 'searchable' => true, 'col' => 6],
-                'type'         => ['label' => 'Tipe Bangunan', 'type' => 'select', 'options' => Site::TYPES, 'required' => true, 'searchable' => true, 'col' => 4, 'section' => 'Klasifikasi'],
-                'source_power' => ['label' => 'Source Power', 'type' => 'select', 'options' => Site::SOURCE_POWERS, 'required' => true, 'searchable' => true, 'col' => 4],
-                'program'      => ['label' => 'Program', 'type' => 'select', 'options' => Site::PROGRAMS, 'required' => true, 'searchable' => true, 'col' => 4],
+            'modal' => 'modal-lg',
+            /*
+            | Susunan dan isian field disamakan dengan form Tambah site SLAmeet
+            | (app/Support/Entities.php, entitas `sites`): tiga bagian
+            | Detail Site - Location - Network.
+            |
+            | `network_id` sengaja tidak lagi ada di form; data jaringan diisi
+            | per site di bagian Network. Kolomnya masih ada untuk site lama.
+            |
+            | spv_id & pic_id bukan kolom `sites` (lihat Site::getSpvIdAttribute)
+            | - disimpan sebagai baris `site_pics` lewat syncSitePics().
+            */
+            'fields' => [
+                'tid' => ['label' => 'Site ID', 'type' => 'text', 'required' => true, 'col' => 6, 'section' => 'Detail Site'],
+                'sitename' => ['label' => 'Site name', 'type' => 'text', 'required' => true, 'col' => 6],
+                'type' => ['label' => 'Tipe', 'type' => 'select', 'options' => Site::TYPES, 'required' => true, 'searchable' => true, 'col' => 6],
+                'source_power' => ['label' => 'Source Power', 'type' => 'select', 'options' => Site::SOURCE_POWERS, 'required' => true, 'searchable' => true, 'col' => 6],
+                'program' => ['label' => 'Program', 'type' => 'select', 'options' => Site::PROGRAMS, 'required' => true, 'searchable' => true, 'col' => 6],
                 // Site baru selalu ACTIVE (beforeCreate); status hanya bisa diubah saat edit.
-                'status'       => ['label' => 'Status', 'type' => 'select', 'options' => Site::STATUSES, 'required' => true, 'searchable' => true, 'col' => 4, 'edit_only' => true],
-                'pulau_id'     => ['label' => 'Pulau', 'type' => 'select', 'options' => fn () => Pulau::orderBy('name')->pluck('name', 'id')->all(), 'searchable' => true, 'col' => 4, 'cascade_child' => 'provinsi_id', 'section' => 'Lokasi'],
-                'provinsi_id'  => ['label' => 'Provinsi', 'type' => 'cascade', 'level' => 'provinsi', 'parent' => 'pulau_id', 'col' => 4, 'cascade_child' => 'kota_id'],
-                'kota_id'      => ['label' => 'Kota/Kabupaten', 'type' => 'cascade', 'level' => 'kota', 'parent' => 'provinsi_id', 'col' => 4, 'cascade_child' => 'kecamatan_id'],
+                'status' => ['label' => 'Status', 'type' => 'select', 'options' => Site::STATUSES, 'required' => true, 'searchable' => true, 'col' => 6, 'edit_only' => true],
+                'customer_id' => ['label' => 'Customer', 'type' => 'select', 'options' => fn () => Customer::orderBy('name')->pluck('name', 'id')->all(), 'required' => true, 'searchable' => true, 'col' => 6],
+                'hb_id' => ['label' => 'Homebase', 'type' => 'select', 'options' => fn () => self::homebaseOptions(), 'required' => true, 'searchable' => true, 'col' => 6],
+                'region_id' => ['label' => 'Cluster', 'type' => 'select', 'options' => fn () => Region::orderBy('region_name')->pluck('region_name', 'id')->all(), 'required' => true, 'searchable' => true, 'col' => 6],
+                'spv_id' => ['label' => 'Supervisor', 'type' => 'select', 'options' => fn () => self::picOptions(Site::SUPERVISOR_POSITION), 'searchable' => true, 'col' => 6, 'virtual' => true],
+                // Semua teknisi internal ditampilkan; keterikatan teknisi ke
+                // supervisornya diatur di master PIC, bukan lewat Homebase.
+                'pic_id' => ['label' => 'PIC Site', 'type' => 'select', 'options' => fn () => self::picOptions(Site::TECHNICIAN_POSITION), 'searchable' => true, 'col' => 6, 'virtual' => true],
+                'pulau_id' => ['label' => 'Island', 'type' => 'select', 'options' => fn () => Pulau::orderBy('name')->pluck('name', 'id')->all(), 'searchable' => true, 'col' => 6, 'cascade_child' => 'provinsi_id', 'section' => 'Location'],
+                'provinsi_id' => ['label' => 'Provinsi', 'type' => 'cascade', 'level' => 'provinsi', 'parent' => 'pulau_id', 'col' => 6, 'cascade_child' => 'kota_id'],
+                'kota_id' => ['label' => 'Kota / Kabupaten', 'type' => 'cascade', 'level' => 'kota', 'parent' => 'provinsi_id', 'col' => 6, 'cascade_child' => 'kecamatan_id'],
                 'kecamatan_id' => ['label' => 'Kecamatan', 'type' => 'cascade', 'level' => 'kecamatan', 'parent' => 'kota_id', 'col' => 6, 'cascade_child' => 'desa_id'],
-                'desa_id'      => ['label' => 'Desa/Kelurahan', 'type' => 'cascade', 'level' => 'desa', 'parent' => 'kecamatan_id', 'col' => 6],
-                'address'      => ['label' => 'Alamat', 'type' => 'textarea'],
-                'latitude'     => ['label' => 'Latitude', 'type' => 'decimal', 'col' => 6, 'placeholder' => '-6.2000000'],
-                'longitude'    => ['label' => 'Longitude', 'type' => 'decimal', 'col' => 6, 'placeholder' => '106.8166660'],
+                'desa_id' => ['label' => 'Desa', 'type' => 'cascade', 'level' => 'desa', 'parent' => 'kecamatan_id', 'col' => 6],
+                'latitude' => ['label' => 'Latitude', 'type' => 'decimal', 'col' => 6, 'placeholder' => '-6.2000000'],
+                'longitude' => ['label' => 'Longitude', 'type' => 'decimal', 'col' => 6, 'placeholder' => '106.8166660'],
+                'address' => ['label' => 'Address', 'type' => 'textarea'],
+                'gateway' => ['label' => 'Gateway', 'type' => 'text', 'col' => 6, 'section' => 'Network'],
+                'outroute_id' => ['label' => 'Outroute ID', 'type' => 'text', 'col' => 6],
+                'hub' => ['label' => 'Hub', 'type' => 'text', 'col' => 6],
+                'spotbeam' => ['label' => 'Spotbeam', 'type' => 'text', 'col' => 6],
+                'polarization' => ['label' => 'Polarisasi', 'type' => 'select', 'options' => Site::POLARIZATIONS, 'searchable' => true, 'col' => 6],
             ],
             'columns' => [
                 ['key' => 'tid', 'label' => 'Site ID', 'value' => fn ($r) => $r->tid, 'strong' => true],
@@ -203,12 +263,12 @@ class SiteController extends Controller
                 ['key' => 'status', 'label' => 'Status', 'value' => fn ($r) => Site::STATUSES[$r->status] ?? $r->status],
             ],
             'dependents' => [
-                'materialLinks'  => 'masih memiliki Material terpasang',
+                'materialLinks' => 'masih memiliki Material terpasang',
                 'accessoryLinks' => 'masih memiliki Accessories terpasang',
-                'picLinks'       => 'masih memiliki PIC terhubung',
+                'picLinks' => 'masih memiliki PIC terhubung',
                 'troubleTickets' => 'sudah memiliki Trouble Ticket',
             ],
-            'describe' => fn ($r) => $r->tid . ' - ' . $r->sitename,
+            'describe' => fn ($r) => $r->tid.' - '.$r->sitename,
         ];
     }
 
@@ -217,33 +277,130 @@ class SiteController extends Controller
         // Tiap jenjang wilayah wajib berada di bawah jenjang induk yang dipilih.
         $geo = fn (string $table, string $parent, ?string $child = null) => array_merge(
             ['nullable', 'integer'],
-            $child ? ['required_with:' . $child] : [],
+            $child ? ['required_with:'.$child] : [],
             [Rule::exists($table, 'id')->where($parent, $request->input($parent))]
         );
 
         return [
-            'tid'          => ['required', 'string', 'max:50', Rule::unique('sites', 'tid')->ignore($record?->id)],
-            'sitename'     => ['required', 'string', 'max:200'],
-            'customer_id'  => ['required', 'integer', 'exists:customers,id'],
-            'network_id'   => ['nullable', 'integer', 'exists:network,id'],
-            'type'         => ['required', Rule::in(array_keys(Site::TYPES))],
+            'tid' => ['required', 'string', 'max:50', Rule::unique('sites', 'tid')->ignore($record?->id)],
+            'sitename' => ['required', 'string', 'max:200'],
+            'customer_id' => ['required', 'integer', 'exists:customers,id'],
+            'hb_id' => ['required', 'integer', 'exists:homebase,id'],
+            'region_id' => ['required', 'integer', 'exists:region,id'],
+            'type' => ['required', Rule::in(array_keys(Site::TYPES))],
             'source_power' => ['required', Rule::in(array_keys(Site::SOURCE_POWERS))],
-            'program'      => ['required', Rule::in(array_keys(Site::PROGRAMS))],
-            'status'       => ['required', Rule::in(array_keys(Site::STATUSES))],
-            'pulau_id'     => ['nullable', 'integer', 'required_with:provinsi_id', 'exists:pulau,id'],
-            'provinsi_id'  => $geo('provinsi', 'pulau_id', 'kota_id'),
-            'kota_id'      => $geo('kota', 'provinsi_id', 'kecamatan_id'),
+            'program' => ['required', Rule::in(array_keys(Site::PROGRAMS))],
+            'status' => ['required', Rule::in(array_keys(Site::STATUSES))],
+            'pulau_id' => ['nullable', 'integer', 'required_with:provinsi_id', 'exists:pulau,id'],
+            'provinsi_id' => $geo('provinsi', 'pulau_id', 'kota_id'),
+            'kota_id' => $geo('kota', 'provinsi_id', 'kecamatan_id'),
             'kecamatan_id' => $geo('kecamatan', 'kota_id', 'desa_id'),
-            'desa_id'      => $geo('desa', 'kecamatan_id'),
-            'address'      => ['nullable', 'string', 'max:1000'],
-            'latitude'     => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
-            'longitude'    => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
+            'desa_id' => $geo('desa', 'kecamatan_id'),
+            'address' => ['nullable', 'string', 'max:1000'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
+            'gateway' => ['nullable', 'string', 'max:150'],
+            'outroute_id' => ['nullable', 'string', 'max:150'],
+            'hub' => ['nullable', 'string', 'max:150'],
+            'spotbeam' => ['nullable', 'string', 'max:150'],
+            'polarization' => ['nullable', Rule::in(array_keys(Site::POLARIZATIONS))],
+            // Field virtual: disimpan sebagai baris site_pics, bukan kolom sites.
+            'spv_id' => ['nullable', 'integer', Rule::exists('master_pics', 'id')->where('type', 'internal')],
+            'pic_id' => ['nullable', 'integer', Rule::exists('master_pics', 'id')->where('type', 'internal')],
         ];
     }
 
     protected function beforeCreate(Model $record, array $data): void
     {
         $record->status = 'ACTIVE';
+    }
+
+    /** Field form yang bukan kolom `sites` (lihat master()['fields']). */
+    public const VIRTUAL_FIELDS = ['spv_id', 'pic_id'];
+
+    /** Homebase ditampilkan sebagai "Region - alamat singkat", seperti di Homebase. */
+    protected static function homebaseOptions(): array
+    {
+        return Homebase::with('region:id,region_name')->get()
+            ->sortBy(fn ($h) => $h->region?->region_name.' '.$h->address)
+            ->mapWithKeys(fn ($h) => [$h->id => trim(($h->region?->region_name ?: '-').' - '.Str::limit($h->address, 50))])
+            ->all();
+    }
+
+    /** PIC internal yang jabatannya mengandung kata $position. */
+    protected static function picOptions(string $position): array
+    {
+        return MasterPic::where('type', 'internal')
+            ->where('status', 'ACTIVE')
+            ->where('position', 'like', '%'.$position.'%')
+            ->orderBy('pic')
+            ->get(['id', 'pic', 'position'])
+            ->mapWithKeys(fn ($p) => [$p->id => $p->pic.($p->position ? ' - '.$p->position : '')])
+            ->all();
+    }
+
+    /** Validasi baris Site Keeper (nama + no HP), boleh lebih dari satu. */
+    protected function keeperRules(): array
+    {
+        return [
+            'keepers' => ['nullable', 'array', 'max:20'],
+            'keepers.*.name' => ['nullable', 'string', 'max:150'],
+            'keepers.*.phone' => ['nullable', 'string', 'max:30', 'required_with:keepers.*.name'],
+        ];
+    }
+
+    /**
+     * Menyimpan daftar Site Keeper. Baris tanpa nama diabaikan; daftar yang
+     * dikirim menggantikan seluruh penjaga site. Form yang tidak mengirim
+     * `keepers` sama sekali tidak menyentuh data lama.
+     */
+    protected function syncSiteKeepers(Site $site, Request $request): void
+    {
+        if (! $request->has('keepers')) {
+            return;
+        }
+
+        $rows = collect($request->input('keepers', []))
+            ->map(fn ($k) => ['name' => trim((string) ($k['name'] ?? '')), 'phone' => trim((string) ($k['phone'] ?? ''))])
+            ->filter(fn ($k) => $k['name'] !== '')
+            ->values();
+
+        SiteKeeper::where('site_id', $site->id)->delete();
+        foreach ($rows as $row) {
+            SiteKeeper::create([
+                'site_id' => $site->id,
+                'name' => $row['name'],
+                'phone' => $row['phone'] ?: null,
+            ]);
+        }
+    }
+
+    /**
+     * Menyimpan Supervisor & PIC Site sebagai baris `site_pics`. Field yang
+     * tidak dikirim tidak diartikan sebagai "lepas PIC-nya".
+     */
+    protected function syncSitePics(Site $site, array $virtual): void
+    {
+        $roles = ['spv_id' => Site::SUPERVISOR_POSITION, 'pic_id' => Site::TECHNICIAN_POSITION];
+
+        foreach ($roles as $field => $position) {
+            if (! array_key_exists($field, $virtual)) {
+                continue;
+            }
+            $picId = $virtual[$field] ? (int) $virtual[$field] : null;
+
+            $site->load('picLinks.pic');
+            $current = $position === Site::SUPERVISOR_POSITION ? $site->supervisorPic() : $site->technicianPic();
+
+            if ($current && $current->id !== $picId) {
+                SitePic::where('site_id', $site->id)->where('pic_id', $current->id)->delete();
+            }
+            if ($picId && ! SitePic::where('site_id', $site->id)->where('pic_id', $picId)->exists()) {
+                SitePic::create(['site_id' => $site->id, 'pic_id' => $picId]);
+            }
+        }
+
+        $site->load('picLinks.pic');
     }
 
     /** Technician = PIC site bertipe Internal. */
@@ -263,7 +420,7 @@ class SiteController extends Controller
     {
         $attrs = request()->attributes;
         if (! $attrs->has('site_open_tt_map')) {
-            $attrs->set('site_open_tt_map', \App\Models\TroubleTicket::visibleTo(auth()->user())
+            $attrs->set('site_open_tt_map', TroubleTicket::visibleTo(auth()->user())
                 ->open()
                 ->toBase()
                 ->selectRaw('site_id, COUNT(*) AS jumlah')
@@ -294,7 +451,7 @@ class SiteController extends Controller
     {
         $attrs = request()->attributes;
         if (! $attrs->has('site_region_map')) {
-            $attrs->set('site_region_map', \App\Models\HomebaseDetail::with('homebase.region:id,region_name')->get()
+            $attrs->set('site_region_map', HomebaseDetail::with('homebase.region:id,region_name')->get()
                 ->groupBy('pic_id')
                 ->map(fn ($rows) => $rows->map(fn ($d) => $d->homebase?->region?->region_name)->filter()->all()));
         }
@@ -309,43 +466,27 @@ class SiteController extends Controller
 
     public function edit($id)
     {
-        $site = Site::with('picLinks')->findOrFail($id);
+        $site = Site::with(['picLinks.pic', 'keepers'])->findOrFail($id);
         $fields = $this->resolvedFields($this->formFields($site));
-        $pics = MasterPic::where('status', 'ACTIVE')
-            ->orWhereIn('id', $site->picLinks->pluck('pic_id'))
-            ->orderBy('pic')->get(['id', 'pic', 'type', 'position', 'status']);
 
-        return view('site.create', compact('fields', 'pics', 'site'));
+        return view('site.create', compact('fields', 'site'));
     }
 
     public function update(Request $request, $id)
     {
-        $site = Site::findOrFail($id);
+        $site = Site::with('picLinks.pic')->findOrFail($id);
         $data = $this->validatedData($request, $site);
+        $request->validate($this->keeperRules(), [], ['keepers.*.name' => 'Nama Site Keeper', 'keepers.*.phone' => 'No. HP Site Keeper']);
+        $virtual = array_intersect_key($data, array_flip(self::VIRTUAL_FIELDS));
+        $data = array_diff_key($data, $virtual);
 
-        // PIC yang sudah terhubung boleh tetap dipertahankan walau kini INACTIVE.
-        $kept = $site->picLinks()->pluck('pic_id')->all();
-        $picIds = $request->validate([
-            'pic_ids'   => ['nullable', 'array', 'max:50'],
-            'pic_ids.*' => ['integer', 'distinct', Rule::exists('master_pics', 'id')->where(
-                fn ($q) => $q->where('status', 'ACTIVE')->orWhereIn('id', $kept ?: [0])
-            )],
-        ], [], ['pic_ids' => 'PIC', 'pic_ids.*' => 'PIC'])['pic_ids'] ?? [];
-
-        DB::transaction(function () use ($site, $data, $picIds, $kept) {
+        DB::transaction(function () use ($site, $data, $virtual, $request) {
             $site->update($data);
-
-            if (! request()->boolean('pic_sync')) {
-                return;
-            }
-            $picIds = array_map('intval', array_unique($picIds));
-            SitePic::where('site_id', $site->id)->whereNotIn('pic_id', $picIds ?: [0])->delete();
-            foreach (array_diff($picIds, $kept) as $picId) {
-                SitePic::create(['site_id' => $site->id, 'pic_id' => $picId]);
-            }
+            $this->syncSitePics($site, $virtual);
+            $this->syncSiteKeepers($site, $request);
         });
 
-        UserActivityLog::record('master_data', 'update', 'Mengubah Site ' . $site->tid . ' - ' . $site->sitename, $site);
+        UserActivityLog::record('master_data', 'update', 'Mengubah Site '.$site->tid.' - '.$site->sitename, $site);
 
         return redirect('/site')->with('success', 'Site berhasil diperbarui');
     }
@@ -356,45 +497,37 @@ class SiteController extends Controller
             if (isset($f['options']) && $f['options'] instanceof \Closure) {
                 $f['options'] = ($f['options'])();
             }
+
             return $f;
         })->all();
     }
 
     public function create()
     {
-        $fields = collect($this->formFields(null))->map(function ($f) {
-            if (isset($f['options']) && $f['options'] instanceof \Closure) {
-                $f['options'] = ($f['options'])();
-            }
-            return $f;
-        })->all();
+        $fields = $this->resolvedFields($this->formFields(null));
 
-        $pics = MasterPic::where('status', 'ACTIVE')->orderBy('pic')->get(['id', 'pic', 'type', 'position']);
-
-        return view('site.create', compact('fields', 'pics'));
+        return view('site.create', compact('fields'));
     }
 
     public function store(Request $request)
     {
         $data = $this->validatedData($request, null);
-        $picIds = $request->validate([
-            'pic_ids'   => ['nullable', 'array', 'max:50'],
-            'pic_ids.*' => ['integer', 'distinct', Rule::exists('master_pics', 'id')->where('status', 'ACTIVE')],
-        ], [], ['pic_ids' => 'PIC', 'pic_ids.*' => 'PIC'])['pic_ids'] ?? [];
+        $request->validate($this->keeperRules(), [], ['keepers.*.name' => 'Nama Site Keeper', 'keepers.*.phone' => 'No. HP Site Keeper']);
+        $virtual = array_intersect_key($data, array_flip(self::VIRTUAL_FIELDS));
+        $data = array_diff_key($data, $virtual);
 
-        $site = DB::transaction(function () use ($data, $picIds) {
+        $site = DB::transaction(function () use ($data, $virtual, $request) {
             $site = new Site($data);
             $this->beforeCreate($site, $data);
             $site->save();
-
-            foreach (array_unique($picIds) as $picId) {
-                SitePic::create(['site_id' => $site->id, 'pic_id' => $picId]);
-            }
+            $site->setRelation('picLinks', collect());
+            $this->syncSitePics($site, $virtual);
+            $this->syncSiteKeepers($site, $request);
 
             return $site;
         });
 
-        UserActivityLog::record('master_data', 'create', 'Menambah Site ' . $site->tid . ' - ' . $site->sitename . ' (' . count($picIds) . ' PIC)', $site);
+        UserActivityLog::record('master_data', 'create', 'Menambah Site '.$site->tid.' - '.$site->sitename, $site);
 
         return redirect('/site')->with('success', 'Site berhasil ditambahkan');
     }
@@ -408,7 +541,7 @@ class SiteController extends Controller
         ])->findOrFail($id);
 
         // Tab TT: tiket terbaru site ini yang terlihat oleh user login.
-        $tickets = \App\Models\TroubleTicket::visibleTo(auth()->user())
+        $tickets = TroubleTicket::visibleTo(auth()->user())
             ->where('site_id', $site->id)
             ->with(['technician:id,name', 'severityRef'])
             ->orderByDesc('id')
@@ -460,9 +593,9 @@ class SiteController extends Controller
 
         $link = SitePic::create(['site_id' => $site->id, 'pic_id' => $data['pic_id']]);
 
-        UserActivityLog::record('master_data', 'create', 'Menghubungkan PIC #' . $link->pic_id . ' ke Site ' . $site->tid, $link);
+        UserActivityLog::record('master_data', 'create', 'Menghubungkan PIC #'.$link->pic_id.' ke Site '.$site->tid, $link);
 
-        return redirect('/site/' . $site->id)->with('success', 'PIC berhasil dihubungkan ke site');
+        return redirect('/site/'.$site->id)->with('success', 'PIC berhasil dihubungkan ke site');
     }
 
     public function removePic($id, $linkId)
@@ -470,9 +603,9 @@ class SiteController extends Controller
         $link = SitePic::where('site_id', $id)->findOrFail($linkId);
         $link->delete();
 
-        UserActivityLog::record('master_data', 'delete', 'Melepas PIC #' . $link->pic_id . ' dari Site #' . $id);
+        UserActivityLog::record('master_data', 'delete', 'Melepas PIC #'.$link->pic_id.' dari Site #'.$id);
 
-        return redirect('/site/' . $id)->with('success', 'PIC berhasil dilepas dari site');
+        return redirect('/site/'.$id)->with('success', 'PIC berhasil dilepas dari site');
     }
 
     public function addMaterial(Request $request, $id)
@@ -492,9 +625,9 @@ class SiteController extends Controller
 
         $link = SiteMaterial::create(['site_id' => $site->id, 'material_id' => $data['material_id']]);
 
-        UserActivityLog::record('master_data', 'create', 'Memasang Material #' . $link->material_id . ' ke Site ' . $site->tid, $link);
+        UserActivityLog::record('master_data', 'create', 'Memasang Material #'.$link->material_id.' ke Site '.$site->tid, $link);
 
-        return redirect('/site/' . $site->id)->with('success', 'Material berhasil ditambahkan ke site');
+        return redirect('/site/'.$site->id)->with('success', 'Material berhasil ditambahkan ke site');
     }
 
     public function removeMaterial($id, $linkId)
@@ -502,9 +635,9 @@ class SiteController extends Controller
         $link = SiteMaterial::where('site_id', $id)->findOrFail($linkId);
         $link->delete();
 
-        UserActivityLog::record('master_data', 'delete', 'Melepas Material #' . $link->material_id . ' dari Site #' . $id);
+        UserActivityLog::record('master_data', 'delete', 'Melepas Material #'.$link->material_id.' dari Site #'.$id);
 
-        return redirect('/site/' . $id)->with('success', 'Material berhasil dilepas dari site');
+        return redirect('/site/'.$id)->with('success', 'Material berhasil dilepas dari site');
     }
 
     public function addAccessory(Request $request, $id)
@@ -525,9 +658,9 @@ class SiteController extends Controller
 
         $link = SiteAccessory::create(['site_id' => $site->id] + $data);
 
-        UserActivityLog::record('master_data', 'create', 'Memasang Accessories #' . $link->accessories_id . ' (qty ' . $link->qty . ') ke Site ' . $site->tid, $link);
+        UserActivityLog::record('master_data', 'create', 'Memasang Accessories #'.$link->accessories_id.' (qty '.$link->qty.') ke Site '.$site->tid, $link);
 
-        return redirect('/site/' . $site->id)->with('success', 'Accessories berhasil ditambahkan ke site');
+        return redirect('/site/'.$site->id)->with('success', 'Accessories berhasil ditambahkan ke site');
     }
 
     public function updateAccessory(Request $request, $id, $linkId)
@@ -541,9 +674,9 @@ class SiteController extends Controller
         $old = $link->qty;
         $link->update(['qty' => $data['qty']]);
 
-        UserActivityLog::record('master_data', 'update', 'Mengubah qty Accessories #' . $link->accessories_id . ' di Site #' . $id . ' dari ' . $old . ' ke ' . $link->qty, $link);
+        UserActivityLog::record('master_data', 'update', 'Mengubah qty Accessories #'.$link->accessories_id.' di Site #'.$id.' dari '.$old.' ke '.$link->qty, $link);
 
-        return redirect('/site/' . $id)->with('success', 'Qty accessories berhasil diperbarui');
+        return redirect('/site/'.$id)->with('success', 'Qty accessories berhasil diperbarui');
     }
 
     public function removeAccessory($id, $linkId)
@@ -551,8 +684,8 @@ class SiteController extends Controller
         $link = SiteAccessory::where('site_id', $id)->findOrFail($linkId);
         $link->delete();
 
-        UserActivityLog::record('master_data', 'delete', 'Melepas Accessories #' . $link->accessories_id . ' dari Site #' . $id);
+        UserActivityLog::record('master_data', 'delete', 'Melepas Accessories #'.$link->accessories_id.' dari Site #'.$id);
 
-        return redirect('/site/' . $id)->with('success', 'Accessories berhasil dilepas dari site');
+        return redirect('/site/'.$id)->with('success', 'Accessories berhasil dilepas dari site');
     }
 }

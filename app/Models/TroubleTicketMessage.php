@@ -31,15 +31,12 @@ class TroubleTicketMessage extends Model
         'assigned'          => 'Teknisi ditugaskan',
         'reassigned'        => 'Teknisi dialihkan',
         'responded'         => 'Teknisi merespons',
-        'visit_decided'     => 'Keputusan kunjungan',
-        'visit_corrected'   => 'Keputusan kunjungan dikoreksi',
-        'departed'          => 'Berangkat ke site',
-        'arrived'           => 'Tiba di site',
+        'plan_submitted'    => 'Plan diajukan',
+        'plan_corrected'    => 'Plan dikoreksi',
+        'plan_approved'     => 'Plan disetujui',
+        'plan_rejected'     => 'Plan ditolak',
         'progress_started'  => 'Troubleshooting dimulai',
-        'closure_requested' => 'Pengajuan Closed',
-        'closure_approved'  => 'Closed disetujui',
-        'closure_rejected'  => 'Pengajuan Closed ditolak',
-        'cancelled'         => 'Tiket dibatalkan',
+        'closed'            => 'Tiket ditutup',
     ];
 
     protected $fillable = [

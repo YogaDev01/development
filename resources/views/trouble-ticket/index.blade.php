@@ -37,7 +37,7 @@
         <x-stat-cards :cards="[
             ['Terbuka', $stats['terbuka'], 'info', 'fas fa-ticket-alt'],
             ['Lewat SLA', $stats['overdue'], 'danger', 'fas fa-exclamation-triangle', 'hanya tiket ber-target SLA'],
-            ['Menunggu Approval', $stats['pending_closure'], 'warning', 'fas fa-user-check'],
+            ['Menunggu Approval Plan', $stats['menunggu_approval'], 'warning', 'fas fa-user-check'],
             ['Closed Bulan Ini', $stats['closed_bulan_ini'], 'success', 'fas fa-check-circle'],
         ]" />
 

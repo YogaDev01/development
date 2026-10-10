@@ -8,26 +8,30 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
  * Trouble Ticket — gangguan teknis di sebuah site.
  *
- * Alur status (transisi HANYA lewat App\Services\TroubleTicketWorkflow):
+ * Alur status — 5 tahap, disamakan dengan SLAmeet (keputusan 10 Okt 2026).
+ * Transisi HANYA lewat App\Services\TroubleTicketWorkflow:
  *
- *   OPEN ─(teknisi membuka tiket)→ AWAITING_PLAN ─(Visit/Non-Visit)→ PLANNED
- *   PLANNED ─Visit→ TRAVELING ─→ ON_SITE ─→ IN_PROGRESS
- *   PLANNED ─Non-Visit──────────────────→ IN_PROGRESS
- *   IN_PROGRESS ─(Ajukan Closed)→ PENDING_CLOSURE ─approve→ CLOSED
- *                                             └─reject─→ IN_PROGRESS
- *   status terbuka (kecuali TRAVELING/PENDING_CLOSURE) ─cancel→ CANCELLED
+ *   OPEN ─(teknisi mengajukan plan Visit/Non-Visit)→ APPROVED
+ *   APPROVED ─(leader team menyetujui plan)────────→ ON_PLAN
+ *            └─(leader team menolak plan)──────────→ OPEN
+ *   ON_PLAN ─(Start Progress)──────────────────────→ IN_PROGRESS
+ *   IN_PROGRESS ─(teknisi menutup tiket)───────────→ CLOSED
+ *
+ * APPROVED = plan MENUNGGU approval (bukan "sudah disetujui"); penamaannya
+ * mengikuti funnel SLAmeet. Tidak ada approval saat penutupan, dan tidak ada
+ * pembatalan tiket.
  *
  * SLA (lihat docs/modules/trouble-ticket.md):
  *   Response   = acknowledged_at − created_at (reported_at hanya informasi; keputusan 9 Okt 2026)
- *   Travel     = arrived_at − departed_at (per sesi kunjungan)
- *   Resolution = closed_at − progress_started_at (termasuk waktu tunggu approval)
+ *   Travel     = progress_started_at − assigned_at (definisi SLAmeet: dari
+ *                tiket di-assign sampai pengerjaan dimulai)
+ *   Resolution = closed_at − progress_started_at
  */
 class TroubleTicket extends Model
 {
@@ -40,10 +44,9 @@ class TroubleTicket extends Model
         'created_by', 'assigned_to', 'pic_id', 'assigned_at',
         'acknowledged_at', 'acknowledged_by', 'response_seconds',
         'visit_decision', 'visit_decided_by', 'visit_decided_at', 'visit_decision_reason',
-        'visit_site', 'target_online',
+        'visit_site', 'target_online', 'plan_approved_at', 'plan_approved_by',
         'progress_started_at', 'resolved_at', 'rca', 'sub_rca', 'action', 'approval',
         'resolution_summary', 'closed_at', 'closed_by', 'resolution_seconds',
-        'cancelled_at', 'cancelled_by', 'cancel_reason',
         'sla_policy_id', 'sla_response_minutes', 'sla_travel_minutes', 'sla_resolution_minutes',
     ];
 
@@ -54,10 +57,10 @@ class TroubleTicket extends Model
         'visit_decided_at'     => 'datetime',
         'visit_site'           => 'date',
         'target_online'        => 'date',
+        'plan_approved_at'     => 'datetime',
         'progress_started_at'  => 'datetime',
         'resolved_at'          => 'datetime',
         'closed_at'            => 'datetime',
-        'cancelled_at'         => 'datetime',
         'response_seconds'     => 'integer',
         'resolution_seconds'   => 'integer',
         'sla_response_minutes'   => 'integer',
@@ -65,15 +68,13 @@ class TroubleTicket extends Model
         'sla_resolution_minutes' => 'integer',
     ];
 
-    public const STATUSES = [
-        'OPEN', 'AWAITING_PLAN', 'PLANNED', 'TRAVELING', 'ON_SITE',
-        'IN_PROGRESS', 'PENDING_CLOSURE', 'CLOSED', 'CANCELLED',
-    ];
+    /** Lima tahap SLAmeet. APPROVED = plan menunggu approval leader team. */
+    public const STATUSES = ['OPEN', 'APPROVED', 'ON_PLAN', 'IN_PROGRESS', 'CLOSED'];
 
-    /** Status akhir — tidak ada transisi keluar pada MVP. */
-    public const FINAL_STATUSES = ['CLOSED', 'CANCELLED'];
+    /** Status akhir — tidak ada transisi keluar. */
+    public const FINAL_STATUSES = ['CLOSED'];
 
-    /** Status pengajuan Closed terakhir (kolom `approval`). */
+    /** Keadaan approval PLAN terakhir (kolom `approval`). */
     public const APPROVALS = ['PENDING', 'APPROVED', 'REJECTED'];
 
     public const VISIT = 'VISIT';
@@ -145,9 +146,10 @@ class TroubleTicket extends Model
         return $this->belongsTo(User::class, 'closed_by');
     }
 
-    public function canceller(): BelongsTo
+    /** Leader team yang menyetujui plan. */
+    public function planApprover(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'cancelled_by');
+        return $this->belongsTo(User::class, 'plan_approved_by');
     }
 
     public function messages(): HasMany
@@ -160,25 +162,9 @@ class TroubleTicket extends Model
         return $this->hasMany(TroubleTicketAttachment::class);
     }
 
-    public function visits(): HasMany
-    {
-        return $this->hasMany(TroubleTicketVisit::class)->orderBy('id');
-    }
-
-    /** Sesi kunjungan terakhir (MVP: paling banyak satu). */
-    public function latestVisit(): HasOne
-    {
-        return $this->hasOne(TroubleTicketVisit::class)->latestOfMany();
-    }
-
     public function assignments(): HasMany
     {
         return $this->hasMany(TroubleTicketAssignment::class)->orderBy('id');
-    }
-
-    public function closureReviews(): HasMany
-    {
-        return $this->hasMany(TroubleTicketClosureReview::class)->orderBy('attempt_no');
     }
 
     /*
@@ -259,14 +245,11 @@ class TroubleTicket extends Model
                   ->whereNotNull('sla_resolution_minutes')
                   ->whereRaw('TIMESTAMPDIFF(MINUTE, progress_started_at, NOW()) >= sla_resolution_minutes');
             })->orWhere(function ($q) {
-                $q->where('trouble_tickets.status', 'TRAVELING')
+                // Travel: dari tiket di-assign sampai pengerjaan dimulai.
+                $q->whereNull('progress_started_at')
+                  ->whereNotNull('assigned_at')
                   ->whereNotNull('sla_travel_minutes')
-                  ->whereExists(function ($v) {
-                      $v->selectRaw('1')->from('trouble_ticket_visits')
-                        ->whereColumn('trouble_ticket_visits.trouble_ticket_id', 'trouble_tickets.id')
-                        ->whereNull('trouble_ticket_visits.arrived_at')
-                        ->whereRaw('TIMESTAMPDIFF(MINUTE, trouble_ticket_visits.departed_at, NOW()) >= trouble_tickets.sla_travel_minutes');
-                  });
+                  ->whereRaw('TIMESTAMPDIFF(MINUTE, assigned_at, NOW()) >= sla_travel_minutes');
             });
         });
     }
@@ -317,7 +300,7 @@ class TroubleTicket extends Model
         [$start, $end, $final, $target] = match ($metric) {
             'response'   => [$this->created_at, $this->acknowledged_at, $this->response_seconds, $this->sla_response_minutes],
             'resolution' => [$this->progress_started_at, $this->closed_at, $this->resolution_seconds, $this->sla_resolution_minutes],
-            'travel'     => [$this->latestVisit?->departed_at, $this->latestVisit?->arrived_at, $this->latestVisit?->travel_seconds, $this->sla_travel_minutes],
+            'travel'     => [$this->assigned_at, $this->progress_started_at, null, $this->sla_travel_minutes],
         };
 
         if ($start === null) {
@@ -328,7 +311,7 @@ class TroubleTicket extends Model
             $seconds = $final ?? max(0, $end->getTimestamp() - $start->getTimestamp());
             $state = 'done';
         } elseif ($this->isFinal()) {
-            // Tiket dibatalkan sebelum ukuran ini selesai: tidak ada durasi final.
+            // Tiket ditutup sebelum ukuran ini selesai: tidak ada durasi final.
             return ['state' => 'na', 'seconds' => null, 'since' => null, 'target' => $target, 'level' => 'none'];
         } else {
             $seconds = max(0, $now->getTimestamp() - $start->getTimestamp());
@@ -359,16 +342,16 @@ class TroubleTicket extends Model
         return $state === 'running' && $ratio >= self::SLA_WARNING_RATIO ? 'warning' : 'ok';
     }
 
-    /** Lama menunggu approval closed (pengajuan terakhir → keputusan/sekarang). */
+    /** Lama menunggu approval plan (pengajuan plan → keputusan leader/sekarang). */
     public function approvalWaitSeconds(?Carbon $now = null): ?int
     {
-        if (! $this->resolved_at) {
+        if (! $this->visit_decided_at) {
             return null;
         }
 
-        $end = $this->closed_at ?? ($this->status === 'PENDING_CLOSURE' ? ($now ?? now()) : null);
+        $end = $this->plan_approved_at ?? ($this->status === 'APPROVED' ? ($now ?? now()) : null);
 
-        return $end ? max(0, $end->getTimestamp() - $this->resolved_at->getTimestamp()) : null;
+        return $end ? max(0, $end->getTimestamp() - $this->visit_decided_at->getTimestamp()) : null;
     }
 
     /** "1j 05m", "2h 3j", "45dtk" (hari/jam/menit/detik) — format ringkas durasi. */
