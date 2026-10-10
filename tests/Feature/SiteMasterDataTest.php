@@ -65,21 +65,13 @@ class SiteMasterDataTest extends TestCase
         return Customer::create(['name' => 'PT BTS', 'initial' => 'BTS', 'status' => 'ACTIVE']);
     }
 
-    /** Homebase + Cluster wajib di form site (lihat SiteController::rules). */
+    /** Homebase dipakai untuk menurunkan Cluster site lewat teknisinya. */
     private function homebase(): Homebase
     {
         return $this->homebase ??= Homebase::create([
             'region_id' => Region::create(['region_name' => 'Cluster Uji', 'pulau_id' => Pulau::create(['name' => 'Pulau Uji'])->id])->id,
             'address' => 'HB Uji',
         ]);
-    }
-
-    /** Isian wajib form site di luar data yang diuji. */
-    private function sitePayloadBase(): array
-    {
-        $hb = $this->homebase();
-
-        return ['hb_id' => $hb->id, 'region_id' => $hb->region_id];
     }
 
     private function site(Customer $customer, array $attr = []): Site
@@ -283,7 +275,7 @@ class SiteMasterDataTest extends TestCase
         $jabar = Provinsi::create(['pulau_id' => $jawa->id, 'name' => 'Jawa Barat']);
         $bandung = Kota::create(['provinsi_id' => $jabar->id, 'name' => 'Bandung']);
 
-        $base = $this->sitePayloadBase() + [
+        $base = [
             'tid' => 'TID-001', 'sitename' => 'SD Negeri 1', 'customer_id' => $customer->id,
             'type' => 'PENDIDIKAN', 'source_power' => 'SPS', 'program' => 'AKSES_INTERNET', 'status' => 'ACTIVE',
         ];
@@ -469,7 +461,7 @@ class SiteMasterDataTest extends TestCase
     {
         $customer = $this->customerBts();
 
-        $this->actingAs($this->admin)->post('/site', $this->sitePayloadBase() + [
+        $this->actingAs($this->admin)->post('/site', [
             'tid' => 'TID-NEW', 'sitename' => 'Site Baru', 'customer_id' => $customer->id,
             'type' => 'TOWER', 'source_power' => 'PLN', 'program' => 'TOWER_POWER',
             'status' => 'INACTIVE', // diabaikan saat tambah
@@ -478,30 +470,35 @@ class SiteMasterDataTest extends TestCase
         $site = Site::where('tid', 'TID-NEW')->firstOrFail();
         $this->assertSame('ACTIVE', $site->status);
 
-        $this->actingAs($this->admin)->put('/site/'.$site->id, $this->sitePayloadBase() + [
+        $this->actingAs($this->admin)->put('/site/'.$site->id, [
             'tid' => 'TID-NEW', 'sitename' => 'Site Baru', 'customer_id' => $customer->id,
             'type' => 'TOWER', 'source_power' => 'PLN', 'program' => 'TOWER_POWER', 'status' => 'INACTIVE',
         ])->assertRedirect('/site');
         $this->assertSame('INACTIVE', $site->fresh()->status);
 
-        $this->actingAs($this->admin)->from('/site')->put('/site/'.$site->id, $this->sitePayloadBase() + [
+        $this->actingAs($this->admin)->from('/site')->put('/site/'.$site->id, [
             'tid' => 'TID-NEW', 'sitename' => 'Site Baru', 'customer_id' => $customer->id,
             'type' => 'TOWER', 'source_power' => 'PLN', 'program' => 'TOWER_POWER',
         ])->assertSessionHasErrors('status');
     }
 
-    public function test_create_page_saves_supervisor_and_site_pic(): void
+    public function test_create_page_saves_site_pic_and_keepers(): void
     {
         $customer = $this->customerBts();
         $hb = $this->homebase();
-        $spv = MasterPic::create(['type' => 'internal', 'pic' => 'Sari Supervisor', 'position' => 'Supervisor', 'status' => 'ACTIVE']);
         $tech = MasterPic::create(['type' => 'internal', 'pic' => 'Budi Teknisi', 'position' => 'Teknisi', 'status' => 'ACTIVE']);
         HomebaseDetail::create(['hb_id' => $hb->id, 'pic_id' => $tech->id]);
 
-        $this->actingAs($this->admin)->get('/site/create')->assertOk()
-            ->assertSee('Sari Supervisor')->assertSee('Budi Teknisi')->assertSee('Gateway');
+        // Site Keeper dipilih dari user aktif.
+        $jaga = $this->userWithRole('staff', ['name' => 'Pak Jaga']);
+        $jaga2 = $this->userWithRole('staff', ['name' => 'Bu Jaga']);
 
-        $payload = $this->sitePayloadBase() + [
+        // Homebase, Cluster & Supervisor sudah tidak ada di form.
+        $this->actingAs($this->admin)->get('/site/create')->assertOk()
+            ->assertSee('Budi Teknisi')->assertSee('Gateway')->assertSee('Pak Jaga')
+            ->assertDontSee('Pilih Supervisor')->assertDontSee('Pilih Homebase');
+
+        $payload = [
             'tid' => 'TID-PIC', 'sitename' => 'Site PIC', 'customer_id' => $customer->id,
             'type' => 'TOWER', 'source_power' => 'PLN', 'program' => 'AKSES_INTERNET',
             'gateway' => 'GW-1', 'polarization' => 'R',
@@ -514,13 +511,18 @@ class SiteMasterDataTest extends TestCase
             ->assertRedirect('/site/create')->assertSessionHasErrors('pic_id');
         $this->assertDatabaseCount('sites', 0);
 
+        // Nama di luar daftar user ditolak.
+        $this->actingAs($this->admin)->from('/site/create')
+            ->post('/site', $payload + ['keepers' => [['name' => 'Orang Asing']]])
+            ->assertSessionHasErrors('keepers.0.name');
+
         $this->actingAs($this->admin)
             ->post('/site', $payload + [
-                'spv_id' => $spv->id, 'pic_id' => $tech->id,
+                'pic_id' => $tech->id,
                 'keepers' => [
-                    ['name' => 'Pak Jaga', 'phone' => '08123456789'],
-                    ['name' => '', 'phone' => ''],              // baris kosong diabaikan
-                    ['name' => 'Bu Jaga', 'phone' => '08987654321'],
+                    ['name' => $jaga->name],
+                    ['name' => ''],              // baris kosong diabaikan
+                    ['name' => $jaga2->name],
                 ],
             ])
             ->assertRedirect('/site');
@@ -529,20 +531,21 @@ class SiteMasterDataTest extends TestCase
         $this->assertSame('ACTIVE', $site->status);
         $this->assertSame('GW-1', $site->gateway);
         $this->assertSame('R', $site->polarization);
-        $this->assertSame($hb->id, $site->hb_id);
+        // Homebase & Cluster tidak lagi diisi dari form.
+        $this->assertNull($site->hb_id);
+        $this->assertNull($site->region_id);
         $site->load('picLinks.pic');
-        $this->assertSame($spv->id, $site->spv_id);
         $this->assertSame($tech->id, $site->pic_id);
 
-        $this->assertSame('Sari Supervisor, Budi Teknisi', SiteController::technicians($site));
+        $this->assertSame('Budi Teknisi', SiteController::technicians($site));
 
         $this->assertSame(
-            [['Pak Jaga', '08123456789'], ['Bu Jaga', '08987654321']],
-            $site->keepers()->orderBy('id')->get()->map(fn ($k) => [$k->name, $k->phone])->all()
+            ['Pak Jaga', 'Bu Jaga'],
+            $site->keepers()->orderBy('id')->pluck('name')->all()
         );
     }
 
-    public function test_edit_page_replaces_supervisor_and_site_pic(): void
+    public function test_edit_page_replaces_site_pic_and_keepers(): void
     {
         $site = $this->site($this->customerBts());
         $hb = $this->homebase();
@@ -555,7 +558,7 @@ class SiteMasterDataTest extends TestCase
         $this->actingAs($this->admin)->get('/site/'.$site->id.'/edit')
             ->assertOk()->assertSee('Edit Site '.$site->tid)->assertSee('value="'.$site->tid.'"', false);
 
-        $payload = $this->sitePayloadBase() + [
+        $payload = [
             'tid' => $site->tid, 'sitename' => 'Nama Baru', 'customer_id' => $site->customer_id,
             'type' => 'TOWER', 'source_power' => 'PLN', 'program' => 'AKSES_INTERNET', 'status' => 'ACTIVE',
         ];
@@ -574,16 +577,12 @@ class SiteMasterDataTest extends TestCase
         $this->assertSame(0, $site->picLinks()->count());
 
         // Site Keeper: daftar yang dikirim menggantikan isi lama.
-        SiteKeeper::create(['site_id' => $site->id, 'name' => 'Lama', 'phone' => '0811']);
+        $baru = $this->userWithRole('staff', ['name' => 'Jaga Baru']);
+        SiteKeeper::create(['site_id' => $site->id, 'name' => 'Lama']);
         $this->actingAs($this->admin)->put('/site/'.$site->id, $payload + [
-            'keepers' => [['name' => 'Baru', 'phone' => '0822']],
+            'keepers' => [['name' => $baru->name]],
         ])->assertRedirect('/site');
-        $this->assertSame([['Baru', '0822']], $site->keepers()->get()->map(fn ($k) => [$k->name, $k->phone])->all());
-
-        // No. HP wajib bila nama diisi.
-        $this->actingAs($this->admin)->from('/site/'.$site->id.'/edit')
-            ->put('/site/'.$site->id, $payload + ['keepers' => [['name' => 'Tanpa HP', 'phone' => '']]])
-            ->assertSessionHasErrors('keepers.0.phone');
+        $this->assertSame(['Jaga Baru'], $site->keepers()->pluck('name')->all());
     }
 
     public function test_index_region_technician_card_and_inactive_marker(): void

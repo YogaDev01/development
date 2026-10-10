@@ -48,8 +48,9 @@
             </div>
 
             @php
-                $keeperRows = old('keepers', $isEdit ? $site->keepers->map(fn ($k) => ['name' => $k->name, 'phone' => $k->phone])->all() : []);
-                $keeperRows = $keeperRows ?: [['name' => '', 'phone' => '']];
+                $keeperOptions = \App\Http\Controllers\SiteController::keeperOptions();
+                $keeperRows = old('keepers', $isEdit ? $site->keepers->map(fn ($k) => ['name' => $k->name])->all() : []);
+                $keeperRows = $keeperRows ?: [['name' => '']];
             @endphp
             <div class="card card-primary card-outline shadow-sm">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -57,32 +58,46 @@
                     <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddKeeper"><i class="fas fa-plus mr-1"></i> Tambah Site Keeper</button>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted mb-2" style="font-size:12px;">Penjaga site. Boleh lebih dari satu; baris tanpa nama diabaikan.</p>
+                    <p class="text-muted mb-2" style="font-size:12px;">Penjaga site, dipilih dari daftar user aktif. Boleh lebih dari satu; baris kosong diabaikan.</p>
                     <div id="keeperRows">
                         @foreach($keeperRows as $i => $row)
                             <div class="form-row align-items-start js-keeper-row">
-                                <div class="col-md-6">
+                                <div class="col-md-11">
                                     <div class="form-group">
-                                        <input type="text" name="keepers[{{ $i }}][name]" value="{{ $row['name'] ?? '' }}"
-                                               placeholder="Nama site keeper" autocomplete="off"
-                                               class="form-control @error('keepers.' . $i . '.name') is-invalid @enderror">
+                                        <select name="keepers[{{ $i }}][name]" data-searchable
+                                                class="form-control @error('keepers.' . $i . '.name') is-invalid @enderror">
+                                            <option value="">&mdash; Pilih Site Keeper &mdash;</option>
+                                            @foreach($keeperOptions as $opt)
+                                                <option value="{{ $opt }}" @selected(($row['name'] ?? '') === $opt)>{{ $opt }}</option>
+                                            @endforeach
+                                        </select>
                                         @error('keepers.' . $i . '.name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                     </div>
                                 </div>
-                                <div class="col-md-5">
-                                    <div class="form-group">
-                                        <input type="text" name="keepers[{{ $i }}][phone]" value="{{ $row['phone'] ?? '' }}"
-                                               placeholder="No. HP (08xxxxxxxxxx)" autocomplete="off"
-                                               class="form-control @error('keepers.' . $i . '.phone') is-invalid @enderror">
-                                        @error('keepers.' . $i . '.phone')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                    </div>
-                                </div>
                                 <div class="col-md-1">
-                                    <button type="button" class="btn btn-outline-danger btn-block js-keeper-remove" title="Hapus baris"><i class="fas fa-trash"></i></button>
+                                    <button type="button" class="btn btn-outline-danger js-keeper-remove" title="Hapus baris"><i class="fas fa-trash"></i></button>
                                 </div>
                             </div>
                         @endforeach
                     </div>
+                    {{-- Cetakan baris kosong (belum di-init searchable) untuk tombol Tambah. --}}
+                    <template id="keeperRowTemplate">
+                        <div class="form-row align-items-start js-keeper-row">
+                            <div class="col-md-11">
+                                <div class="form-group">
+                                    <select name="keepers[0][name]" data-searchable class="form-control">
+                                        <option value="">&mdash; Pilih Site Keeper &mdash;</option>
+                                        @foreach($keeperOptions as $opt)
+                                            <option value="{{ $opt }}">{{ $opt }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-1">
+                                <button type="button" class="btn btn-outline-danger js-keeper-remove" title="Hapus baris"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                    </template>
                 </div>
             </div>
 
@@ -107,6 +122,12 @@
 }
 .site-create-body .master-form-section:not(.is-first) { margin-top:10px; }
 .site-create-body .tss-btn, .master-page .tss-multi-btn { min-height:38px; }
+
+/* Tombol hapus baris Site Keeper: kotak kecil sejajar tinggi select. */
+.js-keeper-remove {
+    width:38px; height:38px; padding:0; line-height:1;
+    display:inline-flex; align-items:center; justify-content:center;
+}
 </style>
 @endpush
 
@@ -149,24 +170,22 @@ $(function () {
     */
     function reindexKeepers() {
         $('#keeperRows .js-keeper-row').each(function (i) {
-            $(this).find('input[name^="keepers["]').each(function () {
+            $(this).find('[name^="keepers["]').each(function () {
                 this.name = this.name.replace(/^keepers\[\d+\]/, 'keepers[' + i + ']');
             });
         });
     }
 
     $('#btnAddKeeper').on('click', function () {
-        var $row = $('#keeperRows .js-keeper-row').first().clone();
-        $row.find('input').val('').removeClass('is-invalid');
-        $row.find('.invalid-feedback').remove();
+        var $row = $($('#keeperRowTemplate').html()).filter('.js-keeper-row');
         $('#keeperRows').append($row);
         reindexKeepers();
-        $row.find('input').first().trigger('focus');
+        TesysSearchableSelect.init($row.find('select[data-searchable]'), {});
     });
 
     $('#keeperRows').on('click', '.js-keeper-remove', function () {
         if ($('#keeperRows .js-keeper-row').length === 1) {
-            $(this).closest('.js-keeper-row').find('input').val('');
+            $(this).closest('.js-keeper-row').find('select').val('').trigger('tss:sync');
 
             return;
         }

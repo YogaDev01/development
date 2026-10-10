@@ -31,6 +31,8 @@
 .master-compact th.col-trunc, .master-compact td.col-trunc { width:auto; }
 .master-compact .cell-trunc { display:inline-block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle; }
 .master-compact tbody tr:hover .cell-trunc { white-space:normal; overflow:visible; }
+/* Kolom ringkas yang rincian lengkapnya muncul saat disorot (title). */
+.cell-hint { border-bottom:1px dotted var(--border-strong); cursor:help; }
 .site-dw-tabs .nav-link { font-size:13px; font-weight:600; color:var(--text-dim); padding:6px 12px; }
 .site-dw-tabs .nav-link.active { color:var(--accent); }
 .site-dw-map { border:1px solid var(--border); border-radius:var(--radius-sm); overflow:hidden; height:220px; }

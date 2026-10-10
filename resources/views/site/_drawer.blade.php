@@ -45,8 +45,6 @@
         }
     }
 
-    $wilayah = collect([$site->desa?->name, $site->kecamatan?->name, $site->kota?->name, $site->provinsi?->name, $site->pulau?->name])
-        ->filter()->implode(', ');
     $kv = fn ($label, $value) => ['label' => $label, 'value' => ($value === null || $value === '') ? '-' : $value];
 @endphp
 
@@ -98,7 +96,8 @@
                     $kv('Tipe Bangunan', Site::TYPES[$site->type] ?? $site->type),
                     $kv('Source Power', Site::SOURCE_POWERS[$site->source_power] ?? $site->source_power),
                     $kv('Program', Site::PROGRAMS[$site->program] ?? $site->program),
-                    $kv('Technician', \App\Http\Controllers\SiteController::technicians($site)),
+                    $kv('Status', Site::STATUSES[$site->status] ?? $site->status),
+                    $kv('PIC Site', \App\Http\Controllers\SiteController::technicians($site)),
                     $kv('Region', \App\Http\Controllers\SiteController::regions($site)),
                 ] as $p)
                     <dt>{{ $p['label'] }}</dt><dd>{{ $p['value'] }}</dd>
@@ -107,12 +106,17 @@
         </div>
 
         <div class="ts-dw-section">
-            <p class="ts-dw-section-title">Lokasi</p>
+            <p class="ts-dw-section-title">Location</p>
             <dl class="ts-dw-kv">
                 @foreach([
-                    $kv('Alamat', $site->address),
-                    $kv('Wilayah', $wilayah),
-                    $kv('Koordinat', $hasCoord ? $site->latitude . ', ' . $site->longitude : null),
+                    $kv('Island', $site->pulau?->name),
+                    $kv('Provinsi', $site->provinsi?->name),
+                    $kv('Kota / Kabupaten', $site->kota?->name),
+                    $kv('Kecamatan', $site->kecamatan?->name),
+                    $kv('Desa', $site->desa?->name),
+                    $kv('Latitude', $site->latitude),
+                    $kv('Longitude', $site->longitude),
+                    $kv('Address', $site->address),
                 ] as $p)
                     <dt>{{ $p['label'] }}</dt><dd>{{ $p['value'] }}</dd>
                 @endforeach
@@ -123,15 +127,24 @@
             <p class="ts-dw-section-title">Network</p>
             <dl class="ts-dw-kv">
                 @foreach([
-                    $kv('Penyedia LC', $site->network?->penyedia_lc),
-                    $kv('Hub', $site->network?->hub),
-                    $kv('Satelit', $site->network?->satelit),
-                    $kv('Gateway', $site->network?->gateway),
-                    $kv('Spotbeam', $site->network?->spotbeam),
+                    $kv('Gateway', $site->gateway),
+                    $kv('Outroute ID', $site->outroute_id),
+                    $kv('Hub', $site->hub),
+                    $kv('Spotbeam', $site->spotbeam),
+                    $kv('Polarisasi', Site::POLARIZATIONS[$site->polarization] ?? $site->polarization),
                 ] as $p)
                     <dt>{{ $p['label'] }}</dt><dd>{{ $p['value'] }}</dd>
                 @endforeach
             </dl>
+        </div>
+
+        <div class="ts-dw-section">
+            <p class="ts-dw-section-title">Site Keeper</p>
+            @forelse($site->keepers as $keeper)
+                <div class="site-dw-pic">{{ $keeper->name }}</div>
+            @empty
+                <p class="text-muted mb-0" style="font-size:12px;">Belum ada site keeper.</p>
+            @endforelse
         </div>
     </div>
 
