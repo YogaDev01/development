@@ -176,10 +176,16 @@
                                         <td>{{ $loop->iteration }}</td>
                                     @endif
                                     @foreach($m['columns'] as $col)
-                                        @php $val = $col['value']($row); @endphp
+                                        @php
+                                            $val = $col['value']($row);
+                                            // `tooltip` = rincian lengkap kolom ringkas (mis. Location/Network).
+                                            $hint = !empty($col['tooltip']) ? $col['tooltip']($row) : null;
+                                        @endphp
                                         <td class="{{ !empty($col['truncate']) ? 'col-trunc' : '' }}">
                                             @if(!empty($col['truncate']))
-                                                <span class="cell-trunc" style="max-width:{{ (int) $col['truncate'] }}ch;" title="{{ $val }}">{{ $val ?? '-' }}</span>
+                                                <span class="cell-trunc" style="max-width:{{ (int) $col['truncate'] }}ch;" title="{{ $hint ?? $val }}">{{ $val ?? '-' }}</span>
+                                            @elseif($hint)
+                                                <span class="cell-hint" title="{{ $hint }}">{{ $val ?: '-' }}</span>
                                             @elseif(!empty($col['badge']))
                                                 <span class="badge badge-{{ $badgeColors[$val] ?? 'secondary' }} px-2 py-1">{{ $val }}</span>
                                             @elseif(!empty($col['strong']))

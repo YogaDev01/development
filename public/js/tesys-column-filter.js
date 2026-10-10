@@ -537,6 +537,7 @@
         var buka = !$pop.hasClass('show');
 
         $('.ts-pop').removeClass('show');
+        tutupDropdownBootstrap();
         $pop.toggleClass('show', buka);
         if (!buka) return;
 
@@ -556,6 +557,22 @@
 
     $(document).on('keydown', function (e) {
         if (e.key === 'Escape') $('.ts-pop').removeClass('show');
+    });
+
+    /*
+    | Popover Filter ini bukan dropdown Bootstrap, jadi keduanya tidak saling
+    | tahu: Bootstrap menghentikan perambatan klik di tombolnya sendiri, maka
+    | membuka "Kolom" tidak pernah menutup "Filter" (dan panelnya bertumpuk).
+    | Keduanya ditutup satu sama lain di sini.
+    */
+    function tutupDropdownBootstrap() {
+        $('.dropdown.show > [data-toggle="dropdown"], .dropdown.show > .dropdown-toggle').each(function () {
+            $(this).dropdown('toggle');
+        });
+    }
+
+    $(document).on('show.bs.dropdown', function () {
+        $('.ts-pop').removeClass('show');
     });
 
     Api.initRowFilters = function (tableSelector, containerSelector, fields) {

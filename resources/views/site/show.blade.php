@@ -38,6 +38,9 @@
                             <tr><th>Tipe Bangunan</th><td>{{ Site::TYPES[$site->type] ?? $site->type }}</td></tr>
                             <tr><th>Source Power</th><td>{{ Site::SOURCE_POWERS[$site->source_power] ?? $site->source_power }}</td></tr>
                             <tr><th>Program</th><td>{{ Site::PROGRAMS[$site->program] ?? $site->program }}</td></tr>
+                            <tr><th>PIC Site</th><td>{{ \App\Http\Controllers\SiteController::technicians($site) ?: '-' }}</td></tr>
+                            <tr><th>Region</th><td>{{ \App\Http\Controllers\SiteController::regions($site) ?: '-' }}</td></tr>
+                            <tr><th>Site Keeper</th><td>{{ $site->keepers->pluck('name')->implode(', ') ?: '-' }}</td></tr>
                             <tr><th>Status</th><td>
                                 <span class="badge badge-{{ $site->status === 'ACTIVE' ? 'success' : 'danger' }} px-2 py-1">{{ Site::STATUSES[$site->status] ?? $site->status }}</span>
                             </td></tr>
@@ -50,14 +53,18 @@
                     <div class="card-header"><h3 class="card-title"><i class="fas fa-map-marker-alt mr-1"></i> Lokasi & Network</h3></div>
                     <div class="card-body p-0">
                         <table class="table table-sm mb-0 detail-table">
-                            <tr><th>Alamat</th><td>{{ $site->address ?: '-' }}</td></tr>
-                            <tr><th>Wilayah</th><td>
-                                {{ collect([$site->desa?->name, $site->kecamatan?->name, $site->kota?->name, $site->provinsi?->name, $site->pulau?->name])->filter()->implode(', ') ?: '-' }}
-                            </td></tr>
+                            <tr><th>Island</th><td>{{ $site->pulau?->name ?: '-' }}</td></tr>
+                            <tr><th>Provinsi</th><td>{{ $site->provinsi?->name ?: '-' }}</td></tr>
+                            <tr><th>Kota / Kabupaten</th><td>{{ $site->kota?->name ?: '-' }}</td></tr>
+                            <tr><th>Kecamatan</th><td>{{ $site->kecamatan?->name ?: '-' }}</td></tr>
+                            <tr><th>Desa</th><td>{{ $site->desa?->name ?: '-' }}</td></tr>
                             <tr><th>Koordinat</th><td>{{ $site->latitude !== null ? $site->latitude . ', ' . $site->longitude : '-' }}</td></tr>
-                            <tr><th>Penyedia LC</th><td>{{ $site->network?->penyedia_lc ?? '-' }}</td></tr>
-                            <tr><th>Hub / Gateway</th><td>{{ $site->network ? (($site->network->hub ?? '-') . ' / ' . ($site->network->gateway ?? '-')) : '-' }}</td></tr>
-                            <tr><th>Satelit / Spotbeam</th><td>{{ $site->network ? (($site->network->satelit ?? '-') . ' / ' . ($site->network->spotbeam ?? '-')) : '-' }}</td></tr>
+                            <tr><th>Address</th><td>{{ $site->address ?: '-' }}</td></tr>
+                            <tr><th>Gateway</th><td>{{ $site->gateway ?: '-' }}</td></tr>
+                            <tr><th>Outroute ID</th><td>{{ $site->outroute_id ?: '-' }}</td></tr>
+                            <tr><th>Hub</th><td>{{ $site->hub ?: '-' }}</td></tr>
+                            <tr><th>Spotbeam</th><td>{{ $site->spotbeam ?: '-' }}</td></tr>
+                            <tr><th>Polarisasi</th><td>{{ Site::POLARIZATIONS[$site->polarization] ?? ($site->polarization ?: '-') }}</td></tr>
                         </table>
                     </div>
                 </div>
