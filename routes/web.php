@@ -1135,16 +1135,13 @@ Route::middleware('auth')->group(function () {
                 Route::get('/', 'show')->name('show');
                 Route::get('messages', 'messages')->name('messages');
                 Route::post('messages', 'postMessage')->name('messages.store');
-                Route::post('decide', 'decide')->name('decide');
-                Route::post('decision/correct', 'correctDecision')->name('decision.correct');
-                Route::post('depart', 'depart')->name('depart');
-                Route::post('arrive', 'arrive')->name('arrive');
+                Route::post('plan', 'submitPlan')->name('plan.submit');
+                Route::post('plan/approve', 'approvePlan')->name('plan.approve');
+                Route::post('plan/reject', 'rejectPlan')->name('plan.reject');
+                Route::post('plan/correct', 'correctDecision')->name('plan.correct');
                 Route::post('start', 'startProgress')->name('start');
-                Route::post('closure', 'requestClosure')->name('closure.request');
-                Route::post('closure/approve', 'approveClosure')->name('closure.approve');
-                Route::post('closure/reject', 'rejectClosure')->name('closure.reject');
+                Route::post('close', 'close')->name('close');
                 Route::post('reassign', 'reassign')->name('reassign');
-                Route::post('cancel', 'cancel')->name('cancel');
             });
         });
 

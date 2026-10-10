@@ -39,25 +39,54 @@ Homebase (+ PIC), dan Wilayah berjenjang.
   (site, accessories), `qty` ≥ 1. Item yang dipasang harus milik customer yang sama dengan site.
 - `homebase_detail` unik per (homebase, PIC); PIC = `master_pics` berstatus ACTIVE.
 - `site_pics` (migrasi `2026_10_09_100007`): PIC yang terhubung ke site, unik
-  per (site, PIC), PIC harus ACTIVE; dikelola di halaman Detail Site.
+  per (site, PIC), PIC harus ACTIVE; dikelola di halaman Detail Site dan lewat
+  field Supervisor / PIC Site di form site.
+- Migrasi `2026_10_10_000100`: `sites.hb_id` (Homebase) & `sites.region_id`
+  (Cluster) + kolom jaringan per site `gateway`, `outroute_id`, `hub`,
+  `spotbeam`, `polarization`. Isian form disamakan dengan form Tambah site
+  SLAmeet. `network_id` masih ada di tabel untuk site lama tetapi tidak lagi
+  tampil di form.
 - Site baru selalu `ACTIVE`; status hanya bisa diubah lewat Edit (field
   `edit_only`). Import Site tidak punya kolom Status. Label UI `tid` = "Site ID".
 - Semua FK `RESTRICT`; hapus diblok dengan pesan bila masih dipakai
   (termasuk Customer yang punya Site/Material/Accessories dan PIC yang terdaftar di Homebase).
 - Latitude −90..90, longitude −180..180, diisi berpasangan (boleh kosong).
+- Homebase & Cluster wajib diisi; jenjang wilayah tetap opsional (berbeda dengan
+  SLAmeet yang mewajibkan Island & Desa).
+- Template Import Site bertambah kolom `Homebase`, `Cluster`, `Gateway`,
+  `Outroute ID`, `Hub`, `Spotbeam`, `Polarisasi`. Homebase dicocokkan dari
+  alamatnya, Cluster dari nama region; Cluster boleh kosong — diambil dari
+  Homebase.
 
 ## Halaman Site
 
-- Tambah: halaman penuh `GET /site/create` (field site + multi-pilih PIC);
-  `POST /site` menyimpan site + `site_pics` dalam satu transaksi. Edit tetap modal.
+- Tambah: halaman penuh `GET /site/create`, tiga bagian seperti SLAmeet —
+  Detail Site (Site ID, Site name, Tipe, Source Power, Program, Status*,
+  Customer, Homebase, Cluster, Supervisor, PIC Site), Location (Island,
+  Provinsi, Kota/Kabupaten, Kecamatan, Desa, Latitude, Longitude, Address) dan
+  Network (Gateway, Outroute ID, Hub, Spotbeam, Polarisasi), ditambah kartu
+  Site Keeper berisi baris nama + no HP yang bisa ditambah/dihapus. *Status
+  hanya saat Edit. `POST /site` menyimpan site + `site_pics` dalam satu transaksi.
+- Supervisor & PIC Site adalah field virtual (`spv_id`, `pic_id`), bukan kolom
+  `sites`: dibaca lewat `Site::getSpvIdAttribute/getPicIdAttribute` (PIC internal
+  yang jabatannya mengandung "supervisor"/"teknisi") dan disimpan sebagai baris
+  `site_pics` oleh `SiteController::syncSitePics()`. Pilihan PIC Site = semua
+  teknisi internal, **tidak** disaring Homebase (keterikatan teknisi ke
+  supervisornya diatur di master PIC). Field yang tidak dikirim tidak melepas
+  PIC yang sudah terpasang.
+- Site Keeper (migrasi `2026_10_10_000300`, tabel `site_keepers`, model
+  `SiteKeeper`): nama + no HP diisi bebas di form, boleh lebih dari satu baris.
+  Baris tanpa nama diabaikan; no HP wajib bila nama diisi. Daftar yang dikirim
+  menggantikan seluruh isi lama (`syncSiteKeepers()`); form yang tidak mengirim
+  `keepers` tidak menyentuh data lama. FK `site_id` CASCADE — ikut terhapus
+  bersama site.
 - Detail: drawer (`GET /site/{id}/drawer`, partial `site/_drawer.blade.php`)
   dengan tab Informasi, PIC, TT, Assets, Document. Peta: Google Maps Static API
   bergaya bersih bila `GOOGLE_MAPS_KEY` diisi (kunci wajib dibatasi ke Maps
   Static API + HTTP referrer), selain itu embed OpenStreetMap. Koordinat
   dikirim ke penyedia peta saat drawer dibuka.
   Kelola PIC/material/accessories tetap di `GET /site/{id}`.
-- Edit: halaman penuh `GET /site/{id}/edit` (form sama dengan create, termasuk
-  PIC; PIC disinkronkan hanya bila form mengirim `pic_sync=1`).
+- Edit: halaman penuh `GET /site/{id}/edit` (form sama dengan create).
 - Daftar: tanpa kolom No; pemilih "Kolom" (preferensi di localStorage, kunci
   `tesys-colvis:site-index`); default Site ID, Nama Site, Customer, Power,
   Region, Technician, TT, Action; site INACTIVE disembunyikan kecuali sakelar

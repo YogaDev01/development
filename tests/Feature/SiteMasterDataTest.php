@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\SiteController;
 use App\Models\Accessory;
 use App\Models\CategoryItem;
 use App\Models\Customer;
@@ -10,12 +11,15 @@ use App\Models\HomebaseDetail;
 use App\Models\Kota;
 use App\Models\MasterMaterial;
 use App\Models\MasterPic;
+use App\Models\Network;
 use App\Models\Provinsi;
 use App\Models\Pulau;
 use App\Models\Region;
 use App\Models\Site;
 use App\Models\SiteAccessory;
+use App\Models\SiteKeeper;
 use App\Models\SiteMaterial;
+use App\Models\SitePic;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -28,10 +32,12 @@ use Tests\TestCase;
  */
 class SiteMasterDataTest extends TestCase
 {
-    use RefreshDatabase;
     use MakesTesysData;
+    use RefreshDatabase;
 
     private User $admin;
+
+    private ?Homebase $homebase = null;
 
     protected function setUp(): void
     {
@@ -51,12 +57,29 @@ class SiteMasterDataTest extends TestCase
         static $n = 0;
         $n++;
 
-        return CategoryItem::create(['type' => $type, 'category_name' => 'Kategori ' . $n, 'merk' => 'Merk']);
+        return CategoryItem::create(['type' => $type, 'category_name' => 'Kategori '.$n, 'merk' => 'Merk']);
     }
 
     private function customerBts(): Customer
     {
         return Customer::create(['name' => 'PT BTS', 'initial' => 'BTS', 'status' => 'ACTIVE']);
+    }
+
+    /** Homebase + Cluster wajib di form site (lihat SiteController::rules). */
+    private function homebase(): Homebase
+    {
+        return $this->homebase ??= Homebase::create([
+            'region_id' => Region::create(['region_name' => 'Cluster Uji', 'pulau_id' => Pulau::create(['name' => 'Pulau Uji'])->id])->id,
+            'address' => 'HB Uji',
+        ]);
+    }
+
+    /** Isian wajib form site di luar data yang diuji. */
+    private function sitePayloadBase(): array
+    {
+        $hb = $this->homebase();
+
+        return ['hb_id' => $hb->id, 'region_id' => $hb->region_id];
     }
 
     private function site(Customer $customer, array $attr = []): Site
@@ -65,7 +88,7 @@ class SiteMasterDataTest extends TestCase
         $n++;
 
         return Site::create(array_merge([
-            'tid' => 'TID' . $n, 'sitename' => 'Site ' . $n, 'type' => 'TOWER',
+            'tid' => 'TID'.$n, 'sitename' => 'Site '.$n, 'type' => 'TOWER',
             'source_power' => 'PLN', 'program' => 'AKSES_INTERNET', 'status' => 'ACTIVE',
             'customer_id' => $customer->id,
         ], $attr));
@@ -75,7 +98,7 @@ class SiteMasterDataTest extends TestCase
     {
         $m = new MasterMaterial([
             'customer_id' => $customer->id, 'category_id' => $this->category()->id,
-            'serial_number' => 'SN-' . uniqid(), 'status' => 'WAREHOUSE',
+            'serial_number' => 'SN-'.uniqid(), 'status' => 'WAREHOUSE',
         ]);
         $m->product_code = MasterMaterial::generateCode($customer);
         $m->save();
@@ -133,7 +156,7 @@ class SiteMasterDataTest extends TestCase
         $this->site($customer, ['sitename' => '<script>alert(1)</script>']);
 
         foreach (['/category-item', '/master-material', '/accessories', '/site', '/network', '/homebase', '/region',
-                  '/wilayah/pulau', '/wilayah/provinsi', '/wilayah/kota', '/wilayah/kecamatan', '/wilayah/desa'] as $url) {
+            '/wilayah/pulau', '/wilayah/provinsi', '/wilayah/kota', '/wilayah/kecamatan', '/wilayah/desa'] as $url) {
             $this->actingAs($this->admin)->get($url)->assertOk();
         }
 
@@ -175,7 +198,7 @@ class SiteMasterDataTest extends TestCase
         $material = $this->material($this->customerBts());
 
         $this->actingAs($this->admin)->from('/category-item')
-            ->delete('/category-item/' . $material->category_id)
+            ->delete('/category-item/'.$material->category_id)
             ->assertSessionHas('error');
 
         $this->assertDatabaseHas('category_item', ['id' => $material->category_id]);
@@ -226,7 +249,7 @@ class SiteMasterDataTest extends TestCase
         $material = $this->material($this->customerBts());
         $other = $this->makeCustomer();
 
-        $this->actingAs($this->admin)->put('/master-material/' . $material->id, [
+        $this->actingAs($this->admin)->put('/master-material/'.$material->id, [
             'customer_id' => $other->id, 'product_code' => 'GANTI',
             'category_id' => $material->category_id, 'serial_number' => 'SN-BARU', 'status' => 'FAULTY',
         ])->assertRedirect('/master-material');
@@ -260,7 +283,7 @@ class SiteMasterDataTest extends TestCase
         $jabar = Provinsi::create(['pulau_id' => $jawa->id, 'name' => 'Jawa Barat']);
         $bandung = Kota::create(['provinsi_id' => $jabar->id, 'name' => 'Bandung']);
 
-        $base = [
+        $base = $this->sitePayloadBase() + [
             'tid' => 'TID-001', 'sitename' => 'SD Negeri 1', 'customer_id' => $customer->id,
             'type' => 'PENDIDIKAN', 'source_power' => 'SPS', 'program' => 'AKSES_INTERNET', 'status' => 'ACTIVE',
         ];
@@ -298,7 +321,7 @@ class SiteMasterDataTest extends TestCase
         Provinsi::create(['pulau_id' => $jawa->id, 'name' => 'Jawa Barat']);
         Provinsi::create(['pulau_id' => $bali->id, 'name' => 'Bali']);
 
-        $this->actingAs($this->admin)->getJson('/wilayah/provinsi/options?parent_id=' . $jawa->id)
+        $this->actingAs($this->admin)->getJson('/wilayah/provinsi/options?parent_id='.$jawa->id)
             ->assertOk()->assertJsonCount(1)->assertJsonPath('0.name', 'Jawa Barat');
 
         $this->actingAs($this->admin)->getJson('/wilayah/provinsi/options')->assertOk()->assertJsonCount(0);
@@ -311,34 +334,34 @@ class SiteMasterDataTest extends TestCase
         $material = $this->material($customer);
         $foreign = $this->material(Customer::create(['name' => 'PT Lain', 'initial' => 'LAN', 'status' => 'ACTIVE']));
 
-        $this->actingAs($this->admin)->post('/site/' . $site->id . '/material', ['material_id' => $material->id])
-            ->assertRedirect('/site/' . $site->id);
+        $this->actingAs($this->admin)->post('/site/'.$site->id.'/material', ['material_id' => $material->id])
+            ->assertRedirect('/site/'.$site->id);
         $this->assertDatabaseHas('site_material', ['site_id' => $site->id, 'material_id' => $material->id]);
 
-        $this->actingAs($this->admin)->from('/site/' . $site->id)
-            ->post('/site/' . $site->id . '/material', ['material_id' => $material->id])
+        $this->actingAs($this->admin)->from('/site/'.$site->id)
+            ->post('/site/'.$site->id.'/material', ['material_id' => $material->id])
             ->assertSessionHasErrors('material_id');
 
-        $this->actingAs($this->admin)->from('/site/' . $site->id)
-            ->post('/site/' . $site->id . '/material', ['material_id' => $foreign->id])
+        $this->actingAs($this->admin)->from('/site/'.$site->id)
+            ->post('/site/'.$site->id.'/material', ['material_id' => $foreign->id])
             ->assertSessionHasErrors('material_id');
 
         $this->assertSame(1, SiteMaterial::count());
 
         // Material & site yang masih terhubung tidak bisa dihapus.
-        $this->actingAs($this->admin)->from('/master-material')->delete('/master-material/' . $material->id)->assertSessionHas('error');
-        $this->actingAs($this->admin)->from('/site')->delete('/site/' . $site->id)->assertSessionHas('error');
+        $this->actingAs($this->admin)->from('/master-material')->delete('/master-material/'.$material->id)->assertSessionHas('error');
+        $this->actingAs($this->admin)->from('/site')->delete('/site/'.$site->id)->assertSessionHas('error');
         $this->assertDatabaseHas('master_material', ['id' => $material->id]);
         $this->assertDatabaseHas('sites', ['id' => $site->id]);
 
-        $this->actingAs($this->admin)->get('/site/' . $site->id)->assertOk()->assertSee($material->product_code);
+        $this->actingAs($this->admin)->get('/site/'.$site->id)->assertOk()->assertSee($material->product_code);
 
         // Link milik site lain tidak bisa dihapus lewat URL site ini.
         $otherSite = $this->site($customer);
         $link = SiteMaterial::first();
-        $this->actingAs($this->admin)->delete('/site/' . $otherSite->id . '/material/' . $link->id)->assertNotFound();
+        $this->actingAs($this->admin)->delete('/site/'.$otherSite->id.'/material/'.$link->id)->assertNotFound();
 
-        $this->actingAs($this->admin)->delete('/site/' . $site->id . '/material/' . $link->id)->assertRedirect('/site/' . $site->id);
+        $this->actingAs($this->admin)->delete('/site/'.$site->id.'/material/'.$link->id)->assertRedirect('/site/'.$site->id);
         $this->assertSame(0, SiteMaterial::count());
         $this->assertDatabaseHas('master_material', ['id' => $material->id]);
     }
@@ -349,27 +372,27 @@ class SiteMasterDataTest extends TestCase
         $site = $this->site($customer);
         $acc = $this->accessory($customer);
 
-        $this->actingAs($this->admin)->from('/site/' . $site->id)
-            ->post('/site/' . $site->id . '/accessories', ['accessories_id' => $acc->id, 'qty' => 0])
+        $this->actingAs($this->admin)->from('/site/'.$site->id)
+            ->post('/site/'.$site->id.'/accessories', ['accessories_id' => $acc->id, 'qty' => 0])
             ->assertSessionHasErrors('qty');
 
-        $this->actingAs($this->admin)->post('/site/' . $site->id . '/accessories', ['accessories_id' => $acc->id, 'qty' => 3])
-            ->assertRedirect('/site/' . $site->id);
+        $this->actingAs($this->admin)->post('/site/'.$site->id.'/accessories', ['accessories_id' => $acc->id, 'qty' => 3])
+            ->assertRedirect('/site/'.$site->id);
 
-        $this->actingAs($this->admin)->from('/site/' . $site->id)
-            ->post('/site/' . $site->id . '/accessories', ['accessories_id' => $acc->id, 'qty' => 2])
+        $this->actingAs($this->admin)->from('/site/'.$site->id)
+            ->post('/site/'.$site->id.'/accessories', ['accessories_id' => $acc->id, 'qty' => 2])
             ->assertSessionHasErrors('accessories_id');
 
         $link = SiteAccessory::first();
-        $this->actingAs($this->admin)->put('/site/' . $site->id . '/accessories/' . $link->id, ['qty' => 7]);
+        $this->actingAs($this->admin)->put('/site/'.$site->id.'/accessories/'.$link->id, ['qty' => 7]);
         $this->assertSame(7, $link->fresh()->qty);
 
-        $this->actingAs($this->admin)->from('/site/' . $site->id)
-            ->put('/site/' . $site->id . '/accessories/' . $link->id, ['qty' => -1])
+        $this->actingAs($this->admin)->from('/site/'.$site->id)
+            ->put('/site/'.$site->id.'/accessories/'.$link->id, ['qty' => -1])
             ->assertSessionHasErrors('qty');
         $this->assertSame(7, $link->fresh()->qty);
 
-        $this->actingAs($this->admin)->from('/accessories')->delete('/accessories/' . $acc->id)->assertSessionHas('error');
+        $this->actingAs($this->admin)->from('/accessories')->delete('/accessories/'.$acc->id)->assertSessionHas('error');
         $this->assertDatabaseHas('accessories', ['id' => $acc->id]);
     }
 
@@ -390,20 +413,20 @@ class SiteMasterDataTest extends TestCase
 
         $pic = MasterPic::create(['type' => 'internal', 'pic' => 'Teknisi A', 'status' => 'ACTIVE']);
 
-        $this->actingAs($this->admin)->post('/homebase/' . $homebase->id . '/pic', ['pic_id' => $pic->id])
-            ->assertRedirect('/homebase/' . $homebase->id);
-        $this->actingAs($this->admin)->from('/homebase/' . $homebase->id)
-            ->post('/homebase/' . $homebase->id . '/pic', ['pic_id' => $pic->id])
+        $this->actingAs($this->admin)->post('/homebase/'.$homebase->id.'/pic', ['pic_id' => $pic->id])
+            ->assertRedirect('/homebase/'.$homebase->id);
+        $this->actingAs($this->admin)->from('/homebase/'.$homebase->id)
+            ->post('/homebase/'.$homebase->id.'/pic', ['pic_id' => $pic->id])
             ->assertSessionHasErrors('pic_id');
         $this->assertSame(1, HomebaseDetail::count());
 
-        $this->actingAs($this->admin)->get('/homebase/' . $homebase->id)->assertOk()->assertSee('Teknisi A');
+        $this->actingAs($this->admin)->get('/homebase/'.$homebase->id)->assertOk()->assertSee('Teknisi A');
 
         // Referensi aktif mencegah penghapusan.
-        $this->actingAs($this->admin)->from('/master-pic')->delete('/master-pic/' . $pic->id)->assertSessionHas('error');
-        $this->actingAs($this->admin)->from('/homebase')->delete('/homebase/' . $homebase->id)->assertSessionHas('error');
-        $this->actingAs($this->admin)->from('/region')->delete('/region/' . $region->id)->assertSessionHas('error');
-        $this->actingAs($this->admin)->from('/wilayah/pulau')->delete('/wilayah/pulau/' . $pulau->id)->assertSessionHas('error');
+        $this->actingAs($this->admin)->from('/master-pic')->delete('/master-pic/'.$pic->id)->assertSessionHas('error');
+        $this->actingAs($this->admin)->from('/homebase')->delete('/homebase/'.$homebase->id)->assertSessionHas('error');
+        $this->actingAs($this->admin)->from('/region')->delete('/region/'.$region->id)->assertSessionHas('error');
+        $this->actingAs($this->admin)->from('/wilayah/pulau')->delete('/wilayah/pulau/'.$pulau->id)->assertSessionHas('error');
 
         $this->assertDatabaseHas('master_pics', ['id' => $pic->id]);
         $this->assertDatabaseHas('homebase', ['id' => $homebase->id]);
@@ -411,8 +434,8 @@ class SiteMasterDataTest extends TestCase
         $this->assertDatabaseHas('pulau', ['id' => $pulau->id]);
 
         $detail = HomebaseDetail::first();
-        $this->actingAs($this->admin)->delete('/homebase/' . $homebase->id . '/pic/' . $detail->id);
-        $this->actingAs($this->admin)->delete('/homebase/' . $homebase->id)->assertRedirect('/homebase');
+        $this->actingAs($this->admin)->delete('/homebase/'.$homebase->id.'/pic/'.$detail->id);
+        $this->actingAs($this->admin)->delete('/homebase/'.$homebase->id)->assertRedirect('/homebase');
         $this->assertDatabaseMissing('homebase', ['id' => $homebase->id]);
     }
 
@@ -432,12 +455,12 @@ class SiteMasterDataTest extends TestCase
 
         $this->actingAs($this->admin)->post('/network', ['penyedia_lc' => 'Telkomsat', 'satelit' => 'Merah Putih'])
             ->assertRedirect('/network');
-        $id = \App\Models\Network::firstOrFail()->id;
+        $id = Network::firstOrFail()->id;
 
-        $this->actingAs($this->admin)->getJson('/network/' . $id . '/edit-data')
+        $this->actingAs($this->admin)->getJson('/network/'.$id.'/edit-data')
             ->assertOk()->assertJsonPath('penyedia_lc', 'Telkomsat');
 
-        $this->actingAs($this->admin)->put('/network/' . $id, ['penyedia_lc' => 'Telkomsat', 'hub' => 'HUB-1'])
+        $this->actingAs($this->admin)->put('/network/'.$id, ['penyedia_lc' => 'Telkomsat', 'hub' => 'HUB-1'])
             ->assertRedirect('/network');
         $this->assertDatabaseHas('network', ['id' => $id, 'hub' => 'HUB-1']);
     }
@@ -446,7 +469,7 @@ class SiteMasterDataTest extends TestCase
     {
         $customer = $this->customerBts();
 
-        $this->actingAs($this->admin)->post('/site', [
+        $this->actingAs($this->admin)->post('/site', $this->sitePayloadBase() + [
             'tid' => 'TID-NEW', 'sitename' => 'Site Baru', 'customer_id' => $customer->id,
             'type' => 'TOWER', 'source_power' => 'PLN', 'program' => 'TOWER_POWER',
             'status' => 'INACTIVE', // diabaikan saat tambah
@@ -455,76 +478,112 @@ class SiteMasterDataTest extends TestCase
         $site = Site::where('tid', 'TID-NEW')->firstOrFail();
         $this->assertSame('ACTIVE', $site->status);
 
-        $this->actingAs($this->admin)->put('/site/' . $site->id, [
+        $this->actingAs($this->admin)->put('/site/'.$site->id, $this->sitePayloadBase() + [
             'tid' => 'TID-NEW', 'sitename' => 'Site Baru', 'customer_id' => $customer->id,
             'type' => 'TOWER', 'source_power' => 'PLN', 'program' => 'TOWER_POWER', 'status' => 'INACTIVE',
         ])->assertRedirect('/site');
         $this->assertSame('INACTIVE', $site->fresh()->status);
 
-        $this->actingAs($this->admin)->from('/site')->put('/site/' . $site->id, [
+        $this->actingAs($this->admin)->from('/site')->put('/site/'.$site->id, $this->sitePayloadBase() + [
             'tid' => 'TID-NEW', 'sitename' => 'Site Baru', 'customer_id' => $customer->id,
             'type' => 'TOWER', 'source_power' => 'PLN', 'program' => 'TOWER_POWER',
         ])->assertSessionHasErrors('status');
     }
 
-    public function test_create_page_saves_site_with_pics_in_one_go(): void
+    public function test_create_page_saves_supervisor_and_site_pic(): void
     {
         $customer = $this->customerBts();
-        $tech = MasterPic::create(['type' => 'internal', 'pic' => 'Budi Teknisi', 'status' => 'ACTIVE']);
-        $keeper = MasterPic::create(['type' => 'site_keeper', 'pic' => 'Penjaga', 'status' => 'ACTIVE']);
-        $inactive = MasterPic::create(['type' => 'internal', 'pic' => 'Nonaktif', 'status' => 'INACTIVE']);
+        $hb = $this->homebase();
+        $spv = MasterPic::create(['type' => 'internal', 'pic' => 'Sari Supervisor', 'position' => 'Supervisor', 'status' => 'ACTIVE']);
+        $tech = MasterPic::create(['type' => 'internal', 'pic' => 'Budi Teknisi', 'position' => 'Teknisi', 'status' => 'ACTIVE']);
+        HomebaseDetail::create(['hb_id' => $hb->id, 'pic_id' => $tech->id]);
 
-        $this->actingAs($this->admin)->get('/site/create')->assertOk()->assertSee('Budi Teknisi')->assertDontSee('Nonaktif');
+        $this->actingAs($this->admin)->get('/site/create')->assertOk()
+            ->assertSee('Sari Supervisor')->assertSee('Budi Teknisi')->assertSee('Gateway');
 
-        $payload = [
+        $payload = $this->sitePayloadBase() + [
             'tid' => 'TID-PIC', 'sitename' => 'Site PIC', 'customer_id' => $customer->id,
             'type' => 'TOWER', 'source_power' => 'PLN', 'program' => 'AKSES_INTERNET',
+            'gateway' => 'GW-1', 'polarization' => 'R',
         ];
 
-        // PIC tidak sah -> tidak ada yang tersimpan.
+        // PIC non-internal ditolak; teknisi sendiri tidak terikat Homebase.
+        $outsider = MasterPic::create(['type' => 'site_keeper', 'pic' => 'Penjaga', 'position' => 'Teknisi', 'status' => 'ACTIVE']);
         $this->actingAs($this->admin)->from('/site/create')
-            ->post('/site', $payload + ['pic_ids' => [$tech->id, $inactive->id]])
-            ->assertRedirect('/site/create')->assertSessionHasErrors('pic_ids.1');
+            ->post('/site', $payload + ['pic_id' => $outsider->id])
+            ->assertRedirect('/site/create')->assertSessionHasErrors('pic_id');
         $this->assertDatabaseCount('sites', 0);
 
-        $this->actingAs($this->admin)->post('/site', $payload + ['pic_ids' => [$tech->id, $keeper->id]])
+        $this->actingAs($this->admin)
+            ->post('/site', $payload + [
+                'spv_id' => $spv->id, 'pic_id' => $tech->id,
+                'keepers' => [
+                    ['name' => 'Pak Jaga', 'phone' => '08123456789'],
+                    ['name' => '', 'phone' => ''],              // baris kosong diabaikan
+                    ['name' => 'Bu Jaga', 'phone' => '08987654321'],
+                ],
+            ])
             ->assertRedirect('/site');
 
         $site = Site::where('tid', 'TID-PIC')->firstOrFail();
         $this->assertSame('ACTIVE', $site->status);
-        $this->assertSame(2, $site->picLinks()->count());
+        $this->assertSame('GW-1', $site->gateway);
+        $this->assertSame('R', $site->polarization);
+        $this->assertSame($hb->id, $site->hb_id);
+        $site->load('picLinks.pic');
+        $this->assertSame($spv->id, $site->spv_id);
+        $this->assertSame($tech->id, $site->pic_id);
 
-        // Technician = PIC tipe internal saja.
-        $this->actingAs($this->admin)->get('/site')->assertOk()->assertSee('Budi Teknisi');
-        $this->assertSame('Budi Teknisi', \App\Http\Controllers\SiteController::technicians($site->load('picLinks.pic')));
+        $this->assertSame('Sari Supervisor, Budi Teknisi', SiteController::technicians($site));
+
+        $this->assertSame(
+            [['Pak Jaga', '08123456789'], ['Bu Jaga', '08987654321']],
+            $site->keepers()->orderBy('id')->get()->map(fn ($k) => [$k->name, $k->phone])->all()
+        );
     }
 
-    public function test_edit_page_updates_site_and_syncs_pics(): void
+    public function test_edit_page_replaces_supervisor_and_site_pic(): void
     {
         $site = $this->site($this->customerBts());
-        $a = MasterPic::create(['type' => 'internal', 'pic' => 'Teknisi A', 'status' => 'ACTIVE']);
-        $b = MasterPic::create(['type' => 'internal', 'pic' => 'Teknisi B', 'status' => 'ACTIVE']);
-        \App\Models\SitePic::create(['site_id' => $site->id, 'pic_id' => $a->id]);
+        $hb = $this->homebase();
+        $a = MasterPic::create(['type' => 'internal', 'pic' => 'Teknisi A', 'position' => 'Teknisi', 'status' => 'ACTIVE']);
+        $b = MasterPic::create(['type' => 'internal', 'pic' => 'Teknisi B', 'position' => 'Teknisi', 'status' => 'ACTIVE']);
+        HomebaseDetail::create(['hb_id' => $hb->id, 'pic_id' => $a->id]);
+        HomebaseDetail::create(['hb_id' => $hb->id, 'pic_id' => $b->id]);
+        SitePic::create(['site_id' => $site->id, 'pic_id' => $a->id]);
 
-        $this->actingAs($this->admin)->get('/site/' . $site->id . '/edit')
-            ->assertOk()->assertSee('Edit Site ' . $site->tid)->assertSee('value="' . $site->tid . '"', false);
+        $this->actingAs($this->admin)->get('/site/'.$site->id.'/edit')
+            ->assertOk()->assertSee('Edit Site '.$site->tid)->assertSee('value="'.$site->tid.'"', false);
 
-        $payload = [
+        $payload = $this->sitePayloadBase() + [
             'tid' => $site->tid, 'sitename' => 'Nama Baru', 'customer_id' => $site->customer_id,
             'type' => 'TOWER', 'source_power' => 'PLN', 'program' => 'AKSES_INTERNET', 'status' => 'ACTIVE',
         ];
 
-        // Tanpa penanda pic_sync, PIC tidak disentuh.
-        $this->actingAs($this->admin)->put('/site/' . $site->id, $payload)->assertRedirect('/site');
+        // Field PIC tidak dikirim: PIC terpasang tidak disentuh.
+        $this->actingAs($this->admin)->put('/site/'.$site->id, $payload)->assertRedirect('/site');
         $this->assertSame([$a->id], $site->picLinks()->pluck('pic_id')->all());
 
-        $this->actingAs($this->admin)->put('/site/' . $site->id, $payload + ['pic_sync' => 1, 'pic_ids' => [$b->id]])
+        $this->actingAs($this->admin)->put('/site/'.$site->id, $payload + ['pic_id' => $b->id])
             ->assertRedirect('/site');
         $this->assertSame('Nama Baru', $site->fresh()->sitename);
         $this->assertSame([$b->id], $site->picLinks()->pluck('pic_id')->all());
 
-        $this->actingAs($this->admin)->put('/site/' . $site->id, $payload + ['pic_sync' => 1]);
+        // Dikirim kosong = lepas PIC Site.
+        $this->actingAs($this->admin)->put('/site/'.$site->id, $payload + ['pic_id' => '']);
         $this->assertSame(0, $site->picLinks()->count());
+
+        // Site Keeper: daftar yang dikirim menggantikan isi lama.
+        SiteKeeper::create(['site_id' => $site->id, 'name' => 'Lama', 'phone' => '0811']);
+        $this->actingAs($this->admin)->put('/site/'.$site->id, $payload + [
+            'keepers' => [['name' => 'Baru', 'phone' => '0822']],
+        ])->assertRedirect('/site');
+        $this->assertSame([['Baru', '0822']], $site->keepers()->get()->map(fn ($k) => [$k->name, $k->phone])->all());
+
+        // No. HP wajib bila nama diisi.
+        $this->actingAs($this->admin)->from('/site/'.$site->id.'/edit')
+            ->put('/site/'.$site->id, $payload + ['keepers' => [['name' => 'Tanpa HP', 'phone' => '']]])
+            ->assertSessionHasErrors('keepers.0.phone');
     }
 
     public function test_index_region_technician_card_and_inactive_marker(): void
@@ -533,14 +592,14 @@ class SiteMasterDataTest extends TestCase
         $site = $this->site($customer, ['sitename' => 'Kantor Desa Sukamaju']);
         $this->site($customer, ['status' => 'INACTIVE']);
         $tech = MasterPic::create(['type' => 'internal', 'pic' => 'Hadi Teknisi', 'status' => 'ACTIVE']);
-        \App\Models\SitePic::create(['site_id' => $site->id, 'pic_id' => $tech->id]);
+        SitePic::create(['site_id' => $site->id, 'pic_id' => $tech->id]);
 
         $region = Region::create(['region_name' => 'Region Jabar', 'pulau_id' => Pulau::create(['name' => 'Jawa'])->id]);
         $hb = Homebase::create(['region_id' => $region->id, 'address' => 'HB Bandung']);
         HomebaseDetail::create(['hb_id' => $hb->id, 'pic_id' => $tech->id]);
 
-        $this->assertSame('Region Jabar', \App\Http\Controllers\SiteController::regions($site->load('picLinks.pic')));
-        $this->assertSame(1, \App\Http\Controllers\SiteController::technicianCount());
+        $this->assertSame('Region Jabar', SiteController::regions($site->load('picLinks.pic')));
+        $this->assertSame(1, SiteController::technicianCount());
 
         $this->actingAs($this->admin)->get('/site')->assertOk()
             ->assertSee('Total Technician')->assertSee('Total TT')
@@ -554,14 +613,14 @@ class SiteMasterDataTest extends TestCase
     {
         $site = $this->site($this->customerBts(), ['latitude' => '-6.9147440', 'longitude' => '107.6098100']);
 
-        $this->actingAs($this->admin)->get('/site/' . $site->id . '/drawer')
+        $this->actingAs($this->admin)->get('/site/'.$site->id.'/drawer')
             ->assertOk()
             ->assertSee($site->sitename)
             ->assertSee('openstreetmap.org/export/embed.html', false)
             ->assertSee('Informasi')->assertSee('Assets')->assertSee('Document');
 
         config(['services.google_maps.key' => 'KUNCI-UJI']);
-        $this->actingAs($this->admin)->get('/site/' . $site->id . '/drawer')
+        $this->actingAs($this->admin)->get('/site/'.$site->id.'/drawer')
             ->assertOk()
             ->assertSee('maps.googleapis.com/maps/api/staticmap', false)
             ->assertSee('feature%3Apoi%7Cvisibility%3Aoff', false)
@@ -569,11 +628,11 @@ class SiteMasterDataTest extends TestCase
         config(['services.google_maps.key' => null]);
 
         $noCoord = $this->site($this->customerBts2());
-        $this->actingAs($this->admin)->get('/site/' . $noCoord->id . '/drawer')
+        $this->actingAs($this->admin)->get('/site/'.$noCoord->id.'/drawer')
             ->assertOk()->assertSee('Koordinat belum diisi')->assertDontSee('export/embed.html', false);
 
         $this->actingAs($this->admin)->get('/site/999999/drawer')->assertNotFound();
-        $this->actingAs($this->userWithRole('staff'))->get('/site/' . $site->id . '/drawer')->assertForbidden();
+        $this->actingAs($this->userWithRole('staff'))->get('/site/'.$site->id.'/drawer')->assertForbidden();
     }
 
     private function customerBts2(): Customer
@@ -587,24 +646,24 @@ class SiteMasterDataTest extends TestCase
         $pic = MasterPic::create(['type' => 'site_keeper', 'pic' => 'Penjaga Site', 'status' => 'ACTIVE']);
         $inactive = MasterPic::create(['type' => 'internal', 'pic' => 'Nonaktif', 'status' => 'INACTIVE']);
 
-        $this->actingAs($this->admin)->post('/site/' . $site->id . '/pic', ['pic_id' => $pic->id])
-            ->assertRedirect('/site/' . $site->id);
-        $this->actingAs($this->admin)->from('/site/' . $site->id)
-            ->post('/site/' . $site->id . '/pic', ['pic_id' => $pic->id])->assertSessionHasErrors('pic_id');
-        $this->actingAs($this->admin)->from('/site/' . $site->id)
-            ->post('/site/' . $site->id . '/pic', ['pic_id' => $inactive->id])->assertSessionHasErrors('pic_id');
-        $this->assertSame(1, \App\Models\SitePic::count());
+        $this->actingAs($this->admin)->post('/site/'.$site->id.'/pic', ['pic_id' => $pic->id])
+            ->assertRedirect('/site/'.$site->id);
+        $this->actingAs($this->admin)->from('/site/'.$site->id)
+            ->post('/site/'.$site->id.'/pic', ['pic_id' => $pic->id])->assertSessionHasErrors('pic_id');
+        $this->actingAs($this->admin)->from('/site/'.$site->id)
+            ->post('/site/'.$site->id.'/pic', ['pic_id' => $inactive->id])->assertSessionHasErrors('pic_id');
+        $this->assertSame(1, SitePic::count());
 
-        $this->actingAs($this->admin)->get('/site/' . $site->id)->assertOk()->assertSee('Penjaga Site');
+        $this->actingAs($this->admin)->get('/site/'.$site->id)->assertOk()->assertSee('Penjaga Site');
 
-        $this->actingAs($this->admin)->from('/master-pic')->delete('/master-pic/' . $pic->id)->assertSessionHas('error');
-        $this->actingAs($this->admin)->from('/site')->delete('/site/' . $site->id)->assertSessionHas('error');
+        $this->actingAs($this->admin)->from('/master-pic')->delete('/master-pic/'.$pic->id)->assertSessionHas('error');
+        $this->actingAs($this->admin)->from('/site')->delete('/site/'.$site->id)->assertSessionHas('error');
         $this->assertDatabaseHas('master_pics', ['id' => $pic->id]);
 
-        $link = \App\Models\SitePic::first();
-        $this->actingAs($this->admin)->delete('/site/' . $site->id . '/pic/' . $link->id)->assertRedirect('/site/' . $site->id);
-        $this->assertSame(0, \App\Models\SitePic::count());
-        $this->actingAs($this->admin)->delete('/site/' . $site->id)->assertRedirect('/site');
+        $link = SitePic::first();
+        $this->actingAs($this->admin)->delete('/site/'.$site->id.'/pic/'.$link->id)->assertRedirect('/site/'.$site->id);
+        $this->assertSame(0, SitePic::count());
+        $this->actingAs($this->admin)->delete('/site/'.$site->id)->assertRedirect('/site');
     }
 
     /* ------------------------------------------- integrasi modul lama */
@@ -614,7 +673,7 @@ class SiteMasterDataTest extends TestCase
         $customer = $this->customerBts();
         $this->site($customer);
 
-        $this->actingAs($this->admin)->from('/customer')->delete('/customer/' . $customer->id)->assertSessionHas('error');
+        $this->actingAs($this->admin)->from('/customer')->delete('/customer/'.$customer->id)->assertSessionHas('error');
         $this->assertDatabaseHas('customers', ['id' => $customer->id]);
     }
 }

@@ -1,8 +1,11 @@
 # Module — Trouble Ticket (TESYS Operation)
 
 Trouble Ticket **telekomunikasi**: gangguan layanan di site (link down, perangkat, power, dll.): penugasan teknisi, respons pertama,
-keputusan Visit / Non-Visit, perjalanan, troubleshooting, pengajuan & approval
-Closed, diskusi + lampiran, dan SLA per tiket.
+pengajuan & approval plan (Visit / Non-Visit), troubleshooting, penutupan
+tiket, diskusi + lampiran, dan SLA per tiket.
+
+Sejak **10 Okt 2026** alur status diringkas menjadi **5 tahap**, disamakan
+dengan funnel SLAmeet.
 
 Menu: **TESYS Operation → Workflow → Trouble Ticket** (`config/navigation.php`,
 key `trouble-ticket`). URL `/trouble-ticket`.
@@ -36,7 +39,9 @@ trouble_tickets ──< trouble_ticket_messages     (MESSAGE | EVENT, immutable,
                 ──< trouble_ticket_closure_reviews (attempt_no; ≤1 PENDING: unique pending_ticket_id)
 ```
 
-- Semua FK `RESTRICT`; tiket tidak pernah dihapus (pembatalan = `CANCELLED`).
+- Semua FK `RESTRICT`; tiket tidak pernah dihapus. Tabel `trouble_ticket_visits`
+  dan `trouble_ticket_closure_reviews` tidak ditulis lagi sejak 10 Okt 2026
+  (dibiarkan untuk riwayat lama).
   `UserController::destroy` dan Site (dependents) menolak hapus dengan pesan.
 - Durasi disimpan detik (`response_seconds`, `travel_seconds`, `resolution_seconds`)
   saat difinalkan. Timestamp selalu dari jam server; zona tampilan `Asia/Jakarta`.
@@ -46,13 +51,16 @@ trouble_tickets ──< trouble_ticket_messages     (MESSAGE | EVENT, immutable,
 ## State machine
 
 ```
-OPEN ─(teknisi membuka tiket)→ AWAITING_PLAN ─(Visit/Non-Visit)→ PLANNED
-PLANNED ─Visit→ TRAVELING ─(Tiba)→ ON_SITE ─(Start Progress)→ IN_PROGRESS
-PLANNED ─Non-Visit─(Start Progress)──────────────────────→ IN_PROGRESS
-IN_PROGRESS ─(Ajukan Closed)→ PENDING_CLOSURE ─approve→ CLOSED
-                                         └─reject→ IN_PROGRESS
-OPEN/AWAITING_PLAN/PLANNED/ON_SITE/IN_PROGRESS ─cancel→ CANCELLED
+OPEN ─(teknisi mengajukan plan Visit/Non-Visit)→ APPROVED
+APPROVED ─(leader team menyetujui plan)────────→ ON_PLAN
+         └─(leader team menolak plan)──────────→ OPEN
+ON_PLAN ─(Start Progress)──────────────────────→ IN_PROGRESS
+IN_PROGRESS ─(teknisi menutup tiket)───────────→ CLOSED
 ```
+
+`APPROVED` berarti plan **menunggu** approval, bukan sudah disetujui —
+penamaannya mengikuti funnel SLAmeet. Tidak ada approval saat penutupan dan
+tidak ada pembatalan tiket (status `CANCELLED` dihapus 10 Okt 2026).
 
 Setiap transisi: transaksi + `lockForUpdate` baris tiket + cek ulang pelaku &
 status asal + kejadian timeline di transaksi yang sama (gagal = batal semua).
@@ -63,29 +71,31 @@ notifikasi tidak terkirim dua kali. Error keadaan = `ValidationException`
 - **Respons pertama**: dicatat saat **teknisi yang ditugaskan** membuka detail
   (`recordAccess`). User lain tidak mencatat apa pun. `first_responded_at`
   sekali seumur tiket; `trouble_ticket_assignments.responded_at` sekali per penugasan.
-- **Visit / Non-Visit**: modal wajib (tanpa tombol tutup, backdrop static, Esc
-  mati) selama status `AWAITING_PLAN` dan belum ada keputusan; server menolak
-  aksi lain dan pesan. Non-Visit wajib alasan. Keputusan terkunci; koreksi
-  hanya oleh pengawas saat `PLANNED`, wajib alasan, keputusan lama disimpan di
-  metadata kejadian `visit_corrected`.
-- **Kunjungan**: MVP satu sesi per tiket (skema mendukung banyak). Tiba tidak
-  boleh sebelum berangkat. Koordinat GPS belum dicatat (kolom disiapkan).
-- **Reassign**: status `OPEN..IN_PROGRESS` kecuali `TRAVELING`. Bila belum ada
-  keputusan kunjungan, status kembali `OPEN` (teknisi baru merespons & memilih);
+- **Ajukan plan**: modal wajib (tanpa tombol tutup, backdrop static, Esc mati)
+  selama status `OPEN`; server menolak aksi lain dan pesan. Non-Visit wajib
+  alasan, Plan Visit wajib tanggal kunjungan. Tiket masuk `APPROVED`
+  (`approval = PENDING`) dan belum boleh dikerjakan.
+- **Approval plan**: leader team teknisi (atau superadmin), **bukan** teknisi
+  pengaju. Approve → `ON_PLAN` + `plan_approved_at/by`. Reject wajib alasan →
+  kembali `OPEN` dan plan lama dikosongkan supaya teknisi bisa mengajukan plan
+  baru; plan lama tersimpan di metadata kejadian `plan_rejected`.
+- **Koreksi plan**: pengawas, saat `APPROVED` atau `ON_PLAN`, wajib alasan;
+  plan lama disimpan di metadata kejadian `plan_corrected`.
+- **Reassign**: status `OPEN..IN_PROGRESS` (semua yang belum final). Bila belum
+  ada plan, status kembali `OPEN` (teknisi baru merespons & mengajukan plan);
   bila sudah, status tetap.
-- **Closed**: teknisi tidak bisa menutup sendiri; RCA & Action wajib. Problem dengan
-  `requires_evidence` wajib lampiran saat mengajukan. Penolakan wajib alasan,
-  kembali `IN_PROGRESS` tanpa mengubah `progress_started_at`. Setiap pengajuan
-  baris baru di `trouble_ticket_closure_reviews`.
+- **Closed**: teknisi menutup sendiri, **tanpa approval**. RCA & Action wajib;
+  problem dengan `requires_evidence` wajib lampiran. `resolution_seconds`
+  difinalkan di sini.
 
 ## SLA
 
 | Ukuran | Rumus | Catatan |
 |---|---|---|
 | Response | `first_responded_at − created_at` | Penugasan wajib saat dibuat, jadi = waktu penugasan awal. Reassign tidak me-restart jam. |
-| Travel | `arrived_at − departed_at` | Hanya Plan Visit. |
-| Resolution | `closed_at − progress_started_at` | Final hanya saat approval; termasuk waktu tunggu approval. |
-| Tunggu approval | `closed_at (atau sekarang) − closure_requested_at` | Ditampilkan terpisah. |
+| Travel | `progress_started_at − assigned_at` | Definisi SLAmeet: dari tiket di-assign sampai pengerjaan dimulai (sejak 10 Okt 2026; sebelumnya `arrived_at − departed_at`). |
+| Resolution | `closed_at − progress_started_at` | Final saat tiket ditutup. |
+| Tunggu approval plan | `plan_approved_at (atau sekarang) − visit_decided_at` | Ditampilkan terpisah (`approvalWaitSeconds()`). |
 
 - Target per severity (opsional per problem) di `trouble_ticket_sla_policies`,
   dikelola superadmin di `/trouble-ticket/settings`. **Belum ada nilai** — diisi
@@ -101,9 +111,9 @@ notifikasi tidak terkirim dua kali. Error keadaan = `ValidationException`
 | Buka menu / buat tiket | pemegang menu `trouble-ticket` (route) |
 | Melihat tiket, pesan, lampiran | superadmin; pembuat; teknisi; siapa pun yang **satu team** (anggota ACTIVE atau leader team ACTIVE) dengan PIC site: `site → site_pics → master_pics(ACTIVE) → user → team_members` |
 | Teknisi yang bisa ditugaskan | akun ACTIVE milik PIC **internal** ACTIVE yang terdaftar di `site_pics` site itu |
-| Respons, Visit/Non-Visit, berangkat, tiba, Start Progress, Ajukan Closed | hanya teknisi yang sedang ditugaskan |
-| Approve/reject Closed | leader team ACTIVE tempat teknisi menjadi anggota ACTIVE, atau superadmin — **bukan** pengaju |
-| Reassign, cancel, koreksi keputusan | leader team teknisi atau superadmin |
+| Respons, ajukan plan, Start Progress, tutup tiket | hanya teknisi yang sedang ditugaskan |
+| Approve/reject plan | leader team ACTIVE tempat teknisi menjadi anggota ACTIVE, atau superadmin — **bukan** teknisi pengaju |
+| Reassign, koreksi plan | leader team teknisi atau superadmin |
 | Pengaturan SLA (Problem & Severity: langsung di DB) | superadmin (`role:superadmin` = `AccessRoles::TROUBLE_TICKET_SETTINGS`) |
 
 Keterlihatan dihitung **saat ini** (bukan snapshot): melepas PIC dari site atau
@@ -122,14 +132,14 @@ anggota dari team mengubah siapa yang melihat tiket lama.
 
 ## Timeline & notifikasi
 
-- Kejadian: created, assigned, reassigned, responded, visit_decided,
-  visit_corrected, departed, arrived, progress_started, closure_requested,
-  closure_approved, closure_rejected, cancelled. Pesan chat = `MESSAGE`.
+- Kejadian: created, assigned, reassigned, responded, plan_submitted,
+  plan_corrected, plan_approved, plan_rejected, progress_started, closed.
+  Pesan chat = `MESSAGE`.
 - Tidak ada route ubah/hapus pesan. Pesan idempoten per `client_token`.
 - Halaman detail mengambil pesan baru tiap 20 detik (hanya saat tab terlihat).
 - Notifikasi (`NotifyService`, kategori `trouble-ticket`): tiket baru/dialihkan
-  → teknisi; Ajukan Closed → leader team (fallback superadmin); approve/cancel →
-  teknisi + pembuat; reject → teknisi.
+  → teknisi; plan diajukan → leader team (fallback superadmin); plan
+  approve/reject → teknisi; tiket ditutup → leader team + pembuat.
 
 ## Integrasi Site
 
@@ -169,10 +179,11 @@ di dev, jadi perubahan ditulis sebagai migrasi baru (saat itu 0 tiket).
 | `reported_at` | buat tiket | default sekarang, tidak boleh di masa depan; **hanya informasi** — SLA Response tetap dari `created_at` (keputusan 9 Okt 2026) |
 | `pic_id` | buat tiket / reassign | baris `master_pics` teknisi; `assigned_to` (user) tetap dipakai untuk hak akses |
 | `acknowledged_at`/`_by` (dulu `first_responded_*`) | teknisi membuka tiket | |
-| `visit_site`, `target_online` | modal Visit/Non-Visit | `visit_site` wajib untuk Plan Visit (≥ hari ini); target online opsional |
-| `resolved_at` (dulu `closure_requested_at`) | Ajukan Closed | |
-| `rca` (40, wajib), `sub_rca` (150), `action` (150, wajib) | Ajukan Closed | teks bebas; juga disimpan per pengajuan di `trouble_ticket_closure_reviews`; `resolution_summary` jadi catatan opsional |
-| `approval` | Ajukan/approve/reject | PENDING / APPROVED / REJECTED (pengajuan terakhir) |
+| `visit_site`, `target_online` | modal Ajukan Plan | `visit_site` wajib untuk Plan Visit (≥ hari ini); target online opsional |
+| `resolved_at` (dulu `closure_requested_at`) | tutup tiket | sama dengan `closed_at` |
+| `plan_approved_at`/`_by` | approve plan | jejak approval plan (migrasi `2026_10_10_000200`) |
+| `rca` (40, wajib), `sub_rca` (150), `action` (150, wajib) | tutup tiket | teks bebas; `resolution_summary` jadi catatan opsional |
+| `approval` | ajukan/approve/reject **plan** | PENDING / APPROVED / REJECTED |
 
 **Master tanpa UI** (diisi langsung di basis data, tidak ada data awal):
 

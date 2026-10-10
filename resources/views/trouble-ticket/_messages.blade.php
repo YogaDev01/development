@@ -10,10 +10,9 @@
     $sup  = $ctx['sup'] ?? [];
     $ikonEvent = [
         'created' => 'fa-plus-circle', 'assigned' => 'fa-user-plus', 'reassigned' => 'fa-exchange-alt',
-        'responded' => 'fa-eye', 'visit_decided' => 'fa-route', 'visit_corrected' => 'fa-edit',
-        'departed' => 'fa-car', 'arrived' => 'fa-map-marker-alt', 'progress_started' => 'fa-tools',
-        'closure_requested' => 'fa-flag-checkered', 'closure_approved' => 'fa-check-circle',
-        'closure_rejected' => 'fa-times-circle', 'cancelled' => 'fa-ban',
+        'responded' => 'fa-eye', 'plan_submitted' => 'fa-route', 'plan_corrected' => 'fa-edit',
+        'plan_approved' => 'fa-check-circle', 'plan_rejected' => 'fa-times-circle',
+        'progress_started' => 'fa-tools', 'closed' => 'fa-flag-checkered',
     ];
 @endphp
 @foreach($messages as $msg)
@@ -34,8 +33,8 @@
                     @case('reassigned')
                         : {{ $meta['from_name'] ?? '-' }} → {{ $meta['to_name'] ?? '-' }}
                         @break
-                    @case('visit_decided')
-                    @case('visit_corrected')
+                    @case('plan_submitted')
+                    @case('plan_corrected')
                         : {{ TroubleTicket::VISIT_DECISIONS[$meta['decision'] ?? ''] ?? '-' }}
                         @if(! empty($meta['visit_site']))· kunjungan {{ \Illuminate\Support\Carbon::parse($meta['visit_site'])->format('d/m/Y') }}@endif
                         @if(! empty($meta['target_online']))· target online {{ \Illuminate\Support\Carbon::parse($meta['target_online'])->format('d/m/Y') }}@endif
@@ -43,16 +42,15 @@
                             (sebelumnya {{ TroubleTicket::VISIT_DECISIONS[$meta['previous']['decision']] ?? $meta['previous']['decision'] }})
                         @endif
                         @break
-                    @case('arrived')
-                        · travel {{ TroubleTicket::formatDuration($meta['travel_seconds'] ?? null) }}
-                        @break
                     @case('responded')
                         {{ ! empty($meta['first']) ? '(respons pertama)' : '' }}
                         @break
-                    @case('closure_requested')
-                    @case('closure_approved')
-                    @case('closure_rejected')
-                        · pengajuan #{{ $meta['attempt'] ?? '-' }}
+                    @case('plan_rejected')
+                        @if(! empty($meta['previous']['decision']))
+                            (plan sebelumnya {{ TroubleTicket::VISIT_DECISIONS[$meta['previous']['decision']] ?? $meta['previous']['decision'] }})
+                        @endif
+                        @break
+                    @case('closed')
                         @if(! empty($meta['rca']))<div class="tt-event-note">RCA: {{ $meta['rca'] }}{{ ! empty($meta['sub_rca']) ? ' / ' . $meta['sub_rca'] : '' }} · Action: {{ $meta['action'] ?? '-' }}</div>@endif
                         @break
                 @endswitch

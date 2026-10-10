@@ -22,6 +22,9 @@ class RoleSeeder extends Seeder
             'finance',
             'maker',
             'guest',
+            // Teknisi lapangan (Trouble Ticket): penugasan tiket per site, bukan PIC
+            // position 'teknisi' di master_pics — itu entitas lain.
+            'teknisi',
             // Tidak punya menu access apa pun secara default — cuma bisa akses
             // General Feedback (tidak digerbang menu permission, lihat layouts/app.blade.php).
             'staff',

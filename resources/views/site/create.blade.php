@@ -25,7 +25,6 @@
             @csrf
             @if($isEdit)
                 @method('PUT')
-                <input type="hidden" name="pic_sync" value="1">
             @endif
 
             @if($errors->any())
@@ -48,22 +47,41 @@
                 </div>
             </div>
 
+            @php
+                $keeperRows = old('keepers', $isEdit ? $site->keepers->map(fn ($k) => ['name' => $k->name, 'phone' => $k->phone])->all() : []);
+                $keeperRows = $keeperRows ?: [['name' => '', 'phone' => '']];
+            @endphp
             <div class="card card-primary card-outline shadow-sm">
-                <div class="card-header"><h3 class="card-title"><i class="fas fa-user-tag mr-1"></i> PIC Site</h3></div>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="card-title"><i class="fas fa-user-shield mr-1"></i> Site Keeper</h3>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddKeeper"><i class="fas fa-plus mr-1"></i> Tambah Site Keeper</button>
+                </div>
                 <div class="card-body">
-                    <div class="form-group mb-0">
-                        <label class="font-weight-bold" for="fldPics">PIC yang terhubung</label>
-                        @php $oldPics = array_map('strval', \Illuminate\Support\Arr::wrap(old('pic_ids', $isEdit ? $site->picLinks->pluck('pic_id')->all() : []))); @endphp
-                        <select name="pic_ids[]" id="fldPics" multiple class="form-control @error('pic_ids') is-invalid @enderror @error('pic_ids.*') is-invalid @enderror">
-                            @foreach($pics as $pic)
-                                <option value="{{ $pic->id }}" @selected(in_array((string) $pic->id, $oldPics, true))>
-                                    {{ $pic->pic }}{{ $pic->position ? ' — ' . $pic->position : '' }} ({{ \App\Models\MasterPic::TYPES[$pic->type] ?? $pic->type }})
-                                </option>
-                            @endforeach
-                        </select>
-                        <small class="form-text text-muted">Boleh lebih dari satu. PIC bertipe <strong>Internal</strong> tampil sebagai Technician. PIC bisa ditambah/dilepas lagi di halaman kelola site.</small>
-                        @error('pic_ids')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                        @error('pic_ids.*')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                    <p class="text-muted mb-2" style="font-size:12px;">Penjaga site. Boleh lebih dari satu; baris tanpa nama diabaikan.</p>
+                    <div id="keeperRows">
+                        @foreach($keeperRows as $i => $row)
+                            <div class="form-row align-items-start js-keeper-row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <input type="text" name="keepers[{{ $i }}][name]" value="{{ $row['name'] ?? '' }}"
+                                               placeholder="Nama site keeper" autocomplete="off"
+                                               class="form-control @error('keepers.' . $i . '.name') is-invalid @enderror">
+                                        @error('keepers.' . $i . '.name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-5">
+                                    <div class="form-group">
+                                        <input type="text" name="keepers[{{ $i }}][phone]" value="{{ $row['phone'] ?? '' }}"
+                                               placeholder="No. HP (08xxxxxxxxxx)" autocomplete="off"
+                                               class="form-control @error('keepers.' . $i . '.phone') is-invalid @enderror">
+                                        @error('keepers.' . $i . '.phone')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <button type="button" class="btn btn-outline-danger btn-block js-keeper-remove" title="Hapus baris"><i class="fas fa-trash"></i></button>
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
                 </div>
             </div>
@@ -98,7 +116,6 @@ $(function () {
     var $form = $('#frmSiteCreate');
 
     TesysSearchableSelect.init('#frmSiteCreate select[data-searchable]', {});
-    TesysSearchableSelect.init('#fldPics', { placeholder: '— Pilih PIC —', searchPlaceholder: 'Cari PIC...' });
 
     function loadCascade($sel, parentVal, selected) {
         $sel.find('option').not(':first').remove();
@@ -124,6 +141,37 @@ $(function () {
     $form.find('select[data-level]').each(function () {
         var $sel = $(this);
         chain = chain.then(function () { return loadCascade($sel, old[$sel.data('parent')], old[$sel.attr('name')]); });
+    });
+
+    /*
+    | Baris Site Keeper: indeks nama field ditulis ulang tiap kali baris
+    | ditambah/dihapus supaya tetap berurutan saat divalidasi.
+    */
+    function reindexKeepers() {
+        $('#keeperRows .js-keeper-row').each(function (i) {
+            $(this).find('input[name^="keepers["]').each(function () {
+                this.name = this.name.replace(/^keepers\[\d+\]/, 'keepers[' + i + ']');
+            });
+        });
+    }
+
+    $('#btnAddKeeper').on('click', function () {
+        var $row = $('#keeperRows .js-keeper-row').first().clone();
+        $row.find('input').val('').removeClass('is-invalid');
+        $row.find('.invalid-feedback').remove();
+        $('#keeperRows').append($row);
+        reindexKeepers();
+        $row.find('input').first().trigger('focus');
+    });
+
+    $('#keeperRows').on('click', '.js-keeper-remove', function () {
+        if ($('#keeperRows .js-keeper-row').length === 1) {
+            $(this).closest('.js-keeper-row').find('input').val('');
+
+            return;
+        }
+        $(this).closest('.js-keeper-row').remove();
+        reindexKeepers();
     });
 
     $form.on('submit', function () {
