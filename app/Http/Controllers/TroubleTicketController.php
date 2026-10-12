@@ -59,6 +59,9 @@ class TroubleTicketController extends Controller
     {
         $user = Auth::user();
 
+        // Plan yang tanggal visit-nya sudah tiba naik ke tahap Trip (tanpa penjadwal).
+        $this->workflow->promoteDueTrips();
+
         $query = TroubleTicket::visibleTo($user)
             ->with([
                 'site:id,tid,sitename',
@@ -71,10 +74,15 @@ class TroubleTicketController extends Controller
 
         [$tickets, $terpotong, $total] = $this->cappedRows($query, 'trouble_tickets.created_at');
 
-        // Kartu ringkasan — satu query agregat + satu query overdue (dipakai juga per baris).
+        // Kartu ringkasan = tahap alur (keputusan 12 Okt 2026): satu kartu per
+        // tahap, Closed dibatasi bulan berjalan. Satu query agregat.
         $agregat = TroubleTicket::visibleTo($user)->toBase()
-            ->selectRaw("SUM(status <> 'CLOSED') AS terbuka")
-            ->selectRaw("SUM(status = 'APPROVED') AS menunggu_approval")
+            ->selectRaw("SUM(status = 'OPEN') AS open")
+            ->selectRaw("SUM(status = 'REMOTE') AS remote")
+            ->selectRaw("SUM(status = 'PLAN') AS plan")
+            ->selectRaw("SUM(status = 'TRIP') AS trip")
+            ->selectRaw("SUM(status = 'IN_PROGRESS') AS in_progress")
+            ->selectRaw("SUM(status = 'PROGRESS_DONE') AS progress_done")
             ->selectRaw('SUM(closed_at >= ?) AS closed_bulan_ini', [now()->startOfMonth()])
             ->first();
         $overdueIds = TroubleTicket::visibleTo($user)->overdue()->pluck('trouble_tickets.id')->flip();
@@ -85,10 +93,13 @@ class TroubleTicketController extends Controller
             'total' => $total,
             'overdueIds' => $overdueIds,
             'stats' => [
-                'terbuka' => (int) ($agregat->terbuka ?? 0),
-                'overdue' => $overdueIds->count(),
-                'menunggu_approval' => (int) ($agregat->menunggu_approval ?? 0),
-                'closed_bulan_ini' => (int) ($agregat->closed_bulan_ini ?? 0),
+                'OPEN' => (int) ($agregat->open ?? 0),
+                'REMOTE' => (int) ($agregat->remote ?? 0),
+                'PLAN' => (int) ($agregat->plan ?? 0),
+                'TRIP' => (int) ($agregat->trip ?? 0),
+                'IN_PROGRESS' => (int) ($agregat->in_progress ?? 0),
+                'PROGRESS_DONE' => (int) ($agregat->progress_done ?? 0),
+                'CLOSED' => (int) ($agregat->closed_bulan_ini ?? 0),
             ],
             'canSettings' => $user->hasRole(AccessRoles::TROUBLE_TICKET_SETTINGS),
         ]);
@@ -249,6 +260,11 @@ class TroubleTicketController extends Controller
 
         // Respons pertama teknisi dicatat di server, sekali (lihat recordAccess()).
         $this->workflow->recordAccess($ticket, $user);
+        // Plan yang tanggalnya sudah tiba naik ke Trip sebelum halaman dirender.
+        if ($ticket->status === 'PLAN') {
+            $this->workflow->promoteDueTrips();
+            $ticket->refresh();
+        }
 
         $ticket->load([
             'site.customer:id,name',
@@ -265,6 +281,7 @@ class TroubleTicketController extends Controller
             'decider:id,name',
             'closer:id,name',
             'planApprover:id,name',
+            'approver:id,name',
             'assignments.technician:id,name',
             'assignments.assigner:id,name',
         ]);
@@ -275,6 +292,15 @@ class TroubleTicketController extends Controller
 
         return view('trouble-ticket.show', [
             'ticket' => $ticket,
+            // Evidence yang dikirim bersama form close — ditampilkan saat approval.
+            'closureFiles' => $ticket->messages()
+                ->where('event', 'progress_done')
+                ->with('attachments')
+                ->orderByDesc('id')
+                ->first()?->attachments ?? collect(),
+            // Dropdown RCA / Sub-RCA pada form close (Sub-RCA disaring di browser).
+            'rcas' => TroubleTicketRca::active(),
+            'subRcas' => TroubleTicketSubRca::where('status', 'ACTIVE')->orderBy('name')->get(['id', 'rca_id', 'name']),
             'messages' => $messages,
             // Tab Log: seluruh kejadian workflow (tanpa pesan chat), terbaru di atas.
             'statusLog' => $ticket->messages()
@@ -284,9 +310,11 @@ class TroubleTicketController extends Controller
             'ctx' => $this->timelineContext($ticket),
             'hasOlder' => $hasOlder,
             'isTechnician' => $this->workflow->isTechnician($user, $ticket),
+            // Tombol tahap: teknisi tiket ini, atau superadmin.
+            'canActAsTech' => $this->workflow->actsAsTechnician($user, $ticket),
             'mustDecide' => $this->workflow->mustDecide($user, $ticket),
             'canSupervise' => $canSupervise,
-            'canReviewPlan' => $this->workflow->canReviewPlan($user, $ticket),
+            'canApproveClose' => $this->workflow->canApproveClose($user, $ticket),
             'canMessage' => $this->workflow->canMessage($user, $ticket),
             'supervisors' => $this->workflow->supervisorsFor((int) $ticket->assigned_to),
             'reassignTo' => $canSupervise && in_array($ticket->status, TroubleTicketWorkflow::REASSIGNABLE, true)
@@ -388,75 +416,99 @@ class TroubleTicketController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function submitPlan(Request $request, TroubleTicket $ticket)
+    /** Teknisi memilih Remote (non-visit) — lanjut ke form close. */
+    public function remote(TroubleTicket $ticket)
+    {
+        $this->workflow->startRemote($ticket, Auth::user());
+
+        return back()->with('success', 'Tiket masuk tahap Remote. Lengkapi form close untuk menyelesaikannya.');
+    }
+
+    /** Teknisi membuat Plan Visit — tanpa approval; tiket menunggu tanggal plan. */
+    public function createPlan(Request $request, TroubleTicket $ticket)
     {
         $data = $request->validate([
-            'decision' => 'required|in:'.implode(',', array_keys(TroubleTicket::VISIT_DECISIONS)),
-            'reason' => 'nullable|string|max:1000',
-            'visit_site' => 'nullable|date|after_or_equal:today',
+            'visit_site' => 'required|date|after_or_equal:today',
             'target_online' => 'nullable|date|after_or_equal:today',
         ]);
 
-        $this->workflow->submitPlan(
-            $ticket, Auth::user(), $data['decision'], $data['reason'] ?? null,
-            $data['visit_site'] ?? null, $data['target_online'] ?? null,
+        $this->workflow->createPlan(
+            $ticket, Auth::user(), $data['visit_site'], $data['target_online'] ?? null,
         );
 
-        return back()->with('success', 'Plan diajukan ke leader team untuk approval.');
+        return back()->with('success', 'Plan visit dibuat.');
     }
 
-    public function approvePlan(Request $request, TroubleTicket $ticket)
+    /** Geser "mulai perjalanan" — SLA Travel mulai. */
+    public function startTravel(TroubleTicket $ticket)
     {
-        $data = $request->validate(['notes' => 'nullable|string|max:1000']);
+        $this->workflow->startTravel($ticket, Auth::user());
 
-        $this->workflow->approvePlan($ticket, Auth::user(), $data['notes'] ?? null);
-
-        return back()->with('success', 'Plan disetujui. Tiket siap dikerjakan.');
+        return back()->with('success', 'Perjalanan dimulai. SLA Travel berjalan.');
     }
 
-    public function rejectPlan(Request $request, TroubleTicket $ticket)
+    /** Batal visit di tengah perjalanan — SLA Travel dibatalkan, tiket tetap di Trip. */
+    public function cancelTravel(Request $request, TroubleTicket $ticket)
     {
-        $data = $request->validate(['notes' => 'required|string|max:1000']);
+        $data = $request->validate(['reason' => 'required|string|max:500']);
 
-        $this->workflow->rejectPlan($ticket, Auth::user(), $data['notes']);
+        $this->workflow->cancelTravel($ticket, Auth::user(), $data['reason']);
 
-        return back()->with('success', 'Plan ditolak. Tiket kembali Open.');
+        return back()->with('success', 'Perjalanan dibatalkan. SLA Travel tidak dihitung.');
     }
 
-    public function correctDecision(Request $request, TroubleTicket $ticket)
+    /** Konfirmasi site sudah benar — SLA Travel berhenti. */
+    public function arrive(TroubleTicket $ticket)
     {
-        $data = $request->validate([
-            'decision' => 'required|in:'.implode(',', array_keys(TroubleTicket::VISIT_DECISIONS)),
-            'reason' => 'required|string|max:1000',
-            'visit_site' => 'nullable|date|after_or_equal:today',
-        ]);
+        $this->workflow->arriveOnSite($ticket, Auth::user());
 
-        $this->workflow->correctDecision($ticket, Auth::user(), $data['decision'], $data['reason'], $data['visit_site'] ?? null);
-
-        return back()->with('success', 'Plan dikoreksi.');
+        return back()->with('success', 'Kedatangan dikonfirmasi. SLA Travel berhenti.');
     }
 
     public function startProgress(TroubleTicket $ticket)
     {
         $this->workflow->startProgress($ticket, Auth::user());
 
-        return back()->with('success', 'Troubleshooting dimulai.');
+        return back()->with('success', 'Progres dimulai. SLA Resolution berjalan.');
     }
 
     public function close(Request $request, TroubleTicket $ticket)
     {
         $data = $request->validate([
-            'rca' => 'required|string|max:40',
+            // Teks RCA/Sub-RCA hanya penyalin nama master; yang menentukan id-nya.
+            'rca' => 'nullable|string|max:40',
+            'rca_id' => 'required|integer|exists:trouble_ticket_rcas,id',
             'sub_rca' => 'nullable|string|max:150',
-            'action' => 'required|string|max:150',
-            'resolution_summary' => 'nullable|string|max:5000',
-            'attachments' => 'nullable|array|max:'.TroubleTicketAttachment::MAX_FILES,
+            'sub_rca_id' => 'nullable|integer|exists:trouble_ticket_sub_rcas,id',
+            // Keterangan & evidence wajib (keputusan 12 Okt 2026); kolom Action dihapus dari form.
+            'resolution_summary' => 'required|string|max:5000',
+            'attachments' => 'required|array|min:1|max:'.TroubleTicketAttachment::MAX_FILES,
             'attachments.*' => TroubleTicketAttachment::rules(),
         ], $this->fileMessages());
 
         $this->workflow->close($ticket, Auth::user(), $data, $request->file('attachments', []));
 
-        return back()->with('success', 'Tiket ditutup.');
+        return back()->with('success', 'Form close dikirim. Tiket menunggu approval supervisor.');
+    }
+
+    /** Supervisor menyetujui penutupan — tiket CLOSED. */
+    public function approveClose(Request $request, TroubleTicket $ticket)
+    {
+        $data = $request->validate(['notes' => 'nullable|string|max:1000']);
+
+        $this->workflow->approveClose($ticket, Auth::user(), $data['notes'] ?? null);
+
+        return back()->with('success', 'Tiket disetujui dan ditutup.');
+    }
+
+    /** Supervisor menolak penutupan — tiket kembali ke teknisi. */
+    public function rejectClose(Request $request, TroubleTicket $ticket)
+    {
+        $data = $request->validate(['notes' => 'required|string|max:1000']);
+
+        $this->workflow->rejectClose($ticket, Auth::user(), $data['notes']);
+
+        return back()->with('success', 'Penutupan ditolak; tiket dikembalikan ke teknisi.');
     }
 
     public function reassign(Request $request, TroubleTicket $ticket)

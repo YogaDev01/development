@@ -109,6 +109,13 @@ final class AccessRoles
     public const TROUBLE_TICKET_SUPERVISE = ['superadmin'];
 
     /**
+     * Trouble Ticket — approve/tolak penutupan tiket di tahap Progress Done
+     * (keputusan 12 Okt 2026: hanya atasan). Pelaku tidak boleh menyetujui
+     * penutupan yang ia kirim sendiri — diperiksa di TroubleTicketWorkflow.
+     */
+    public const TROUBLE_TICKET_APPROVE = ['superadmin', 'supervisor'];
+
+    /**
      * Trouble Ticket — kelola kategori & target SLA. Harus sama dengan
      * gerbang role: pada route trouble-ticket/settings.
      */

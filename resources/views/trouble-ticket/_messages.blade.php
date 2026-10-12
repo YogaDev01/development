@@ -10,9 +10,15 @@
     $sup  = $ctx['sup'] ?? [];
     $ikonEvent = [
         'created' => 'fa-plus-circle', 'assigned' => 'fa-user-plus', 'reassigned' => 'fa-exchange-alt',
-        'responded' => 'fa-eye', 'plan_submitted' => 'fa-route', 'plan_corrected' => 'fa-edit',
+        'responded' => 'fa-eye', 'remote_started' => 'fa-satellite-dish',
+        'plan_created' => 'fa-calendar-check', 'plan_updated' => 'fa-calendar-alt', 'trip_due' => 'fa-route',
+        'travel_started' => 'fa-car', 'travel_cancelled' => 'fa-ban',
+        'arrived_on_site' => 'fa-map-marker-alt', 'progress_started' => 'fa-tools',
+        'progress_done' => 'fa-clipboard-check', 'close_rejected' => 'fa-undo',
+        'closed' => 'fa-flag-checkered',
+        // Kejadian alur lama (sebelum 12 Okt 2026) — tetap terbaca di timeline.
+        'plan_submitted' => 'fa-route', 'plan_corrected' => 'fa-edit',
         'plan_approved' => 'fa-check-circle', 'plan_rejected' => 'fa-times-circle',
-        'progress_started' => 'fa-tools', 'closed' => 'fa-flag-checkered',
     ];
 @endphp
 @foreach($messages as $msg)
@@ -33,6 +39,7 @@
                     @case('reassigned')
                         : {{ $meta['from_name'] ?? '-' }} → {{ $meta['to_name'] ?? '-' }}
                         @break
+                    @case('plan_created')
                     @case('plan_submitted')
                     @case('plan_corrected')
                         : {{ TroubleTicket::VISIT_DECISIONS[$meta['decision'] ?? ''] ?? '-' }}
@@ -50,6 +57,7 @@
                             (plan sebelumnya {{ TroubleTicket::VISIT_DECISIONS[$meta['previous']['decision']] ?? $meta['previous']['decision'] }})
                         @endif
                         @break
+                    @case('progress_done')
                     @case('closed')
                         @if(! empty($meta['rca']))<div class="tt-event-note">RCA: {{ $meta['rca'] }}{{ ! empty($meta['sub_rca']) ? ' / ' . $meta['sub_rca'] : '' }} · Action: {{ $meta['action'] ?? '-' }}</div>@endif
                         @break

@@ -14,24 +14,25 @@ use Illuminate\Support\Collection;
 /**
  * Trouble Ticket — gangguan teknis di sebuah site.
  *
- * Alur status — 5 tahap, disamakan dengan SLAmeet (keputusan 10 Okt 2026).
- * Transisi HANYA lewat App\Services\TroubleTicketWorkflow:
+ * Alur status — 7 tahap (keputusan 12 Okt 2026). Transisi HANYA lewat
+ * App\Services\TroubleTicketWorkflow:
  *
- *   OPEN ─(teknisi mengajukan plan Visit/Non-Visit)→ APPROVED
- *   APPROVED ─(leader team menyetujui plan)────────→ ON_PLAN
- *            └─(leader team menolak plan)──────────→ OPEN
- *   ON_PLAN ─(Start Progress)──────────────────────→ IN_PROGRESS
- *   IN_PROGRESS ─(teknisi menutup tiket)───────────→ CLOSED
+ *   OPEN ─(teknisi pilih Remote)──────────────────→ REMOTE
+ *        └─(teknisi buat Plan Visit)──────────────→ PLAN
+ *   PLAN ─(tanggal plan visit tiba, otomatis)─────→ TRIP
+ *   TRIP ─(mulai perjalanan → on site → mulai progres)→ IN_PROGRESS
+ *   REMOTE / IN_PROGRESS ─(form close dikirim)────→ PROGRESS_DONE
+ *   PROGRESS_DONE ─(supervisor approve)───────────→ CLOSED
+ *                 └─(supervisor tolak)────────────→ REMOTE / IN_PROGRESS
  *
- * APPROVED = plan MENUNGGU approval (bukan "sudah disetujui"); penamaannya
- * mengikuti funnel SLAmeet. Tidak ada approval saat penutupan, dan tidak ada
- * pembatalan tiket.
+ * Tidak ada approval plan (dihapus 12 Okt 2026); satu-satunya approval ada
+ * di penutupan tiket, dan hanya supervisor yang boleh.
  *
  * SLA (lihat docs/modules/trouble-ticket.md):
- *   Response   = acknowledged_at − created_at (reported_at hanya informasi; keputusan 9 Okt 2026)
- *   Travel     = progress_started_at − assigned_at (definisi SLAmeet: dari
- *                tiket di-assign sampai pengerjaan dimulai)
- *   Resolution = closed_at − progress_started_at
+ *   Response   = acknowledged_at − created_at (berhenti saat teknisi membuka tiket)
+ *   Travel     = travel_arrived_at − travel_started_at (geser "mulai perjalanan"
+ *                sampai konfirmasi On Site; dibatalkan = jejaknya dikosongkan)
+ *   Resolution = closed_at − progress_started_at (berhenti saat supervisor approve)
  */
 class TroubleTicket extends Model
 {
@@ -45,7 +46,10 @@ class TroubleTicket extends Model
         'acknowledged_at', 'acknowledged_by', 'response_seconds',
         'visit_decision', 'visit_decided_by', 'visit_decided_at', 'visit_decision_reason',
         'visit_site', 'target_online', 'plan_approved_at', 'plan_approved_by',
-        'progress_started_at', 'resolved_at', 'rca_id', 'sub_rca_id',
+        'travel_started_at', 'travel_arrived_at', 'travel_seconds',
+        'travel_cancelled_at', 'travel_cancel_reason',
+        'progress_started_at', 'resolved_at', 'progress_done_at',
+        'approved_at', 'approved_by', 'rca_id', 'sub_rca_id',
         'rca', 'sub_rca', 'action', 'approval',
         'resolution_summary', 'closed_at', 'closed_by', 'resolution_seconds',
         'sla_policy_id', 'sla_response_minutes', 'sla_travel_minutes', 'sla_resolution_minutes',
@@ -59,8 +63,14 @@ class TroubleTicket extends Model
         'visit_site'           => 'date',
         'target_online'        => 'date',
         'plan_approved_at'     => 'datetime',
+        'travel_started_at'    => 'datetime',
+        'travel_arrived_at'    => 'datetime',
+        'travel_cancelled_at'  => 'datetime',
+        'travel_seconds'       => 'integer',
         'progress_started_at'  => 'datetime',
         'resolved_at'          => 'datetime',
+        'progress_done_at'     => 'datetime',
+        'approved_at'          => 'datetime',
         'closed_at'            => 'datetime',
         'response_seconds'     => 'integer',
         'resolution_seconds'   => 'integer',
@@ -69,13 +79,19 @@ class TroubleTicket extends Model
         'sla_resolution_minutes' => 'integer',
     ];
 
-    /** Lima tahap SLAmeet. APPROVED = plan menunggu approval leader team. */
-    public const STATUSES = ['OPEN', 'APPROVED', 'ON_PLAN', 'IN_PROGRESS', 'CLOSED'];
+    /** Tujuh tahap alur tiket. */
+    public const STATUSES = ['OPEN', 'REMOTE', 'PLAN', 'TRIP', 'IN_PROGRESS', 'PROGRESS_DONE', 'CLOSED'];
+
+    /**
+     * Tahap yang boleh mengirim form close. PLAN ikut (keputusan 12 Okt 2026):
+     * gangguan kadang beres sebelum tanggal kunjungan tiba.
+     */
+    public const CLOSABLE = ['REMOTE', 'PLAN', 'IN_PROGRESS'];
 
     /** Status akhir — tidak ada transisi keluar. */
     public const FINAL_STATUSES = ['CLOSED'];
 
-    /** Keadaan approval PLAN terakhir (kolom `approval`). */
+    /** Keadaan approval PENUTUPAN terakhir (kolom `approval`). */
     public const APPROVALS = ['PENDING', 'APPROVED', 'REJECTED'];
 
     public const VISIT = 'VISIT';
@@ -186,10 +202,16 @@ class TroubleTicket extends Model
         return $this->belongsTo(User::class, 'closed_by');
     }
 
-    /** Leader team yang menyetujui plan. */
+    /** Leader team yang menyetujui plan (alur lama, sebelum 12 Okt 2026). */
     public function planApprover(): BelongsTo
     {
         return $this->belongsTo(User::class, 'plan_approved_by');
+    }
+
+    /** Supervisor yang menyetujui penutupan tiket. */
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 
     public function messages(): HasMany
@@ -285,13 +307,25 @@ class TroubleTicket extends Model
                   ->whereNotNull('sla_resolution_minutes')
                   ->whereRaw('TIMESTAMPDIFF(MINUTE, progress_started_at, NOW()) >= sla_resolution_minutes');
             })->orWhere(function ($q) {
-                // Travel: dari tiket di-assign sampai pengerjaan dimulai.
-                $q->whereNull('progress_started_at')
-                  ->whereNotNull('assigned_at')
+                // Travel: dari geser "mulai perjalanan" sampai konfirmasi On Site.
+                $q->whereNull('travel_arrived_at')
+                  ->whereNotNull('travel_started_at')
                   ->whereNotNull('sla_travel_minutes')
-                  ->whereRaw('TIMESTAMPDIFF(MINUTE, assigned_at, NOW()) >= sla_travel_minutes');
+                  ->whereRaw('TIMESTAMPDIFF(MINUTE, travel_started_at, NOW()) >= sla_travel_minutes');
             });
         });
+    }
+
+    /**
+     * Tiket PLAN yang tanggal plan visit-nya sudah tiba — tahap Trip dimulai
+     * tanpa penjadwal: baris dipromosikan saat daftar/detail dibuka
+     * (TroubleTicketWorkflow::promoteDueTrips()).
+     */
+    public function scopeDueTrip(Builder $query): Builder
+    {
+        return $query->where('trouble_tickets.status', 'PLAN')
+            ->whereNotNull('visit_site')
+            ->whereDate('visit_site', '<=', now()->toDateString());
     }
 
     /*
@@ -340,7 +374,7 @@ class TroubleTicket extends Model
         [$start, $end, $final, $target] = match ($metric) {
             'response'   => [$this->created_at, $this->acknowledged_at, $this->response_seconds, $this->sla_response_minutes],
             'resolution' => [$this->progress_started_at, $this->closed_at, $this->resolution_seconds, $this->sla_resolution_minutes],
-            'travel'     => [$this->assigned_at, $this->progress_started_at, null, $this->sla_travel_minutes],
+            'travel'     => [$this->travel_started_at, $this->travel_arrived_at, $this->travel_seconds, $this->sla_travel_minutes],
         };
 
         if ($start === null) {

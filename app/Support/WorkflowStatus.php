@@ -320,27 +320,37 @@ class WorkflowStatus
         */
         'trouble-ticket' => [
             'OPEN' => [
-                'description' => 'Menunggu teknisi mengajukan plan Visit / Non-Visit',
+                'description' => 'Menunggu teknisi memilih Remote atau membuat Plan',
                 'tone'        => 'attention',
                 'icon'        => 'fa-hourglass-half',
             ],
-            'APPROVED' => [
-                'description' => 'Plan diajukan; menunggu approval leader team',
-                'tone'        => 'attention',
-                'icon'        => 'fa-user-check',
-            ],
-            'ON_PLAN' => [
-                'description' => 'Plan disetujui; menunggu Start Progress',
+            'REMOTE' => [
+                'description' => 'Diselesaikan tanpa kunjungan; menunggu form close',
                 'tone'        => 'progress',
-                'icon'        => 'fa-clipboard-check',
+                'icon'        => 'fa-satellite-dish',
+            ],
+            'PLAN' => [
+                'description' => 'Plan visit dibuat; menunggu tanggal plan visit',
+                'tone'        => 'attention',
+                'icon'        => 'fa-calendar-check',
+            ],
+            'TRIP' => [
+                'description' => 'Tanggal plan visit tiba; perjalanan menuju site',
+                'tone'        => 'progress',
+                'icon'        => 'fa-route',
             ],
             'IN_PROGRESS' => [
-                'description' => 'Troubleshooting berjalan',
+                'description' => 'Pengerjaan di site berjalan',
                 'tone'        => 'progress',
                 'icon'        => 'fa-tools',
             ],
+            'PROGRESS_DONE' => [
+                'description' => 'Form close dikirim; menunggu approval supervisor',
+                'tone'        => 'attention',
+                'icon'        => 'fa-user-check',
+            ],
             'CLOSED' => [
-                'description' => 'Tiket ditutup teknisi',
+                'description' => 'Disetujui supervisor; tiket selesai',
                 'tone'        => 'done',
                 'icon'        => 'fa-check-circle',
             ],
@@ -374,7 +384,7 @@ class WorkflowStatus
             'PENDING_APPROVER', 'DONE', 'PAID',
         ],
         'trouble-ticket' => [
-            'OPEN', 'APPROVED', 'ON_PLAN', 'IN_PROGRESS', 'CLOSED',
+            'OPEN', 'REMOTE', 'PLAN', 'TRIP', 'IN_PROGRESS', 'PROGRESS_DONE', 'CLOSED',
         ],
     ];
 

@@ -1,17 +1,17 @@
 {{-- Satu sel SLA. Variabel: $m (TroubleTicket::slaMetric()), $compact (bool, opsional).
-     Timer berjalan diperbarui tiap detik oleh JS halaman lewat data-since
-     (jam server, ISO 8601) — tampilan ini tidak pernah memulai/mengubah timer. --}}
+     Angkanya hasil perhitungan server saat halaman dibuka; tidak ada penghitung
+     yang berdetak di layar (keputusan 12 Okt 2026). --}}
 @php
+    // Target SLA tidak ditampilkan lagi (keputusan 12 Okt 2026) — hanya durasinya.
     $compact = $compact ?? false;
-    $judul = $m['target'] ? 'Target ' . \App\Models\TroubleTicket::formatDuration($m['target'] * 60) : 'Target belum diatur';
 @endphp
 @if($m['state'] === 'na')
     <span class="tt-sla tt-sla-na" title="Belum berjalan">—</span>
 @else
-    <span class="tt-sla tt-sla-{{ $m['level'] }} {{ $m['state'] === 'running' ? 'is-running' : '' }}"
-          @if($m['state'] === 'running') data-since="{{ $m['since']->toIso8601String() }}" data-target="{{ $m['target'] ? $m['target'] * 60 : '' }}" @endif
-          title="{{ $judul }}{{ $m['state'] === 'running' ? ' · berjalan' : '' }}">
-        @if($m['level'] === 'critical')<i class="fas fa-exclamation-circle" aria-hidden="true"></i>@elseif($m['state'] === 'running')<i class="far fa-clock" aria-hidden="true"></i>@endif
+    {{-- Tanpa penghitung berjalan (keputusan 12 Okt 2026): angkanya dihitung
+         server saat halaman dibuka, tidak berdetak di layar. --}}
+    <span class="tt-sla tt-sla-{{ $m['level'] }}" title="{{ $m['state'] === 'running' ? 'Masih berjalan' : 'Durasi final' }}">
+        @if($m['level'] === 'critical')<i class="fas fa-exclamation-circle" aria-hidden="true"></i>@endif
         <span class="tt-sla-val">{{ \App\Models\TroubleTicket::formatDuration($m['seconds']) }}</span>
         @if($m['level'] === 'critical' && ! $compact)<span class="tt-sla-tag">Terlambat</span>@endif
     </span>
