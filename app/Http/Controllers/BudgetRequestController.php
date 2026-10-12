@@ -599,31 +599,6 @@ class BudgetRequestController extends Controller
         return $desc !== '' ? $desc : ($akun !== '' ? $akun : '-');
     }
 
-    /**
-     * Teks baris "Settle:" satu item di tab Settlement drawer — deskripsi
-     * settlement TANPA mengulang nama Sub COA/akunnya di depan.
-     *
-     * syncRealizations() menyalin description dari rincian pengajuan apa
-     * adanya (lihat method itu); kalau pengajuannya dulu ditulis sebagai
-     * "{Sub COA} - {Sub COA}" (user tidak menulis keterangan lain), hasilnya
-     * sama dengan nama Sub COA itu sendiri setelah dipotong — itu memang
-     * berarti belum ada keterangan tambahan, jadi fallback-nya nama Sub COA.
-     */
-    private function settleDescriptionLabel(\App\Models\BudgetRequestRealization $r): string
-    {
-        $akun   = trim((string) ($r->account?->name ?? ''));
-        $subCoa = trim((string) ($r->requestDetail?->budgetDetail?->deskripsi ?? ''));
-        $sumber = trim((string) ($r->description ?: ($r->notes ?: '')));
-
-        $desc = $this->stripLeadingLabel($sumber, $subCoa, $akun);
-
-        if ($desc === '') {
-            $desc = $subCoa !== '' ? $subCoa : ($akun !== '' ? $akun : '-');
-        }
-
-        return $desc;
-    }
-
     private function syncRealizations(BudgetRequest $cr, Request $request): void
     {
         /*
@@ -1451,18 +1426,17 @@ class BudgetRequestController extends Controller
             'realizations' => $cr->realizations->map(fn($r) => [
                 'request_detail_id' => $r->request_detail_id,
                 'cr_item'           => $r->requestDetail?->description ?? ($r->description ?? '-'),
-                // Sama dengan yang dibaca pengaju di form Settlement:
-                // nama akun + catatan baris pengajuan.
-                'des_request'       => $r->requestDetail
-                                        ? $this->itemLabel($r->requestDetail)
-                                        : ($r->description ?? '-'),
+                // Deskripsi yang diketik pengaju di form Cost Request (kolom
+                // DESKRIPSI pada Rincian Pengajuan), bukan label akun.
+                'des_request'       => $r->requestDetail?->description
+                                        ?: ($r->description ?: '-'),
                 // Sub COA (deskripsi budget plan detail dari baris pengajuan yang
                 // ditautkan) — judul tebal item di tab Settlement drawer.
                 'sub_coa'           => $r->requestDetail?->budgetDetail?->deskripsi
                                         ?: ($r->requestDetail ? $this->subCoaLabel($r->requestDetail) : null),
-                // Teks baris "Settle:" di drawer — tanpa mengulang nama Sub COA/
-                // akun di depannya (lihat settleDescriptionLabel()).
-                'des_settle'        => $this->settleDescriptionLabel($r),
+                // Teks baris "Settle:" di drawer — isi kolom "Description Settle"
+                // di form Submit Settlement (disimpan ke kolom notes).
+                'des_settle'        => $r->notes ?: '-',
                 'total_cr'          => $r->requestDetail?->total ?? 0,
                 'total_cr_formatted'=> number_format($r->requestDetail?->total ?? 0, 0, ',', '.'),
                 'actual'            => $r->amount,

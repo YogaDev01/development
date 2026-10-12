@@ -32,9 +32,11 @@
                     @csrf
                     <div class="col-md-2 col-6 mb-2">
                         <label>Severity</label>
-                        <select name="severity" class="form-control form-control-sm" required>
+                        <select name="severity" class="form-control form-control-sm">
+                            <option value="">Semua</option>
                             @foreach($severities->where('status', 'ACTIVE') as $sv)<option value="{{ $sv->code }}">{{ $sv->name }}</option>@endforeach
                         </select>
+                        <small class="form-text text-muted">Tiket baru memilih kebijakan per Problem saja.</small>
                     </div>
                     <div class="col-md-3 col-6 mb-2">
                         <label>Problem</label>
@@ -57,7 +59,7 @@
                         <tbody>
                             @forelse($policies as $p)
                                 <tr style="cursor:default;">
-                                    <td><span class="tt-sev tt-sev-{{ $p->severityRef?->level ?? 9 }}">{{ $p->severityRef?->name ?? $p->severity }}</span></td>
+                                    <td><span class="tt-sev tt-sev-{{ $p->severityRef?->level ?? 9 }}">{{ $p->severityRef?->name ?? $p->severity ?? 'Semua' }}</span></td>
                                     <td>{{ $p->problem?->name ?? 'Semua' }}</td>
                                     <td>{{ $p->response_minutes ?? '—' }}</td>
                                     <td>{{ $p->travel_minutes ?? '—' }}</td>

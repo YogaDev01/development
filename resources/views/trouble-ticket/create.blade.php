@@ -35,69 +35,46 @@
                     <div class="card card-primary card-outline shadow-sm">
                         <div class="card-header"><h3 class="card-title"><i class="fas fa-exclamation-circle mr-1"></i> Gangguan</h3></div>
                         <div class="card-body">
-                            @if($problems->isEmpty() || $severities->isEmpty())
-                                <div class="alert alert-warning py-2" style="font-size:12.5px;">
-                                    <i class="fas fa-exclamation-triangle mr-1"></i>
-                                    Master {{ $problems->isEmpty() ? 'Problem' : '' }}{{ $problems->isEmpty() && $severities->isEmpty() ? ' dan ' : '' }}{{ $severities->isEmpty() ? 'Severity' : '' }}
-                                    belum diisi. Isi tabel <code>trouble_ticket_problems</code> / <code>trouble_ticket_severities</code> di basis data lebih dulu.
-                                </div>
-                            @endif
                             <div class="form-row">
                                 <div class="form-group col-md-6">
-                                    <label class="font-weight-bold" for="fldProblem">Problem <span class="text-danger">*</span></label>
-                                    <select name="problem_id" id="fldProblem" class="form-control @error('problem_id') is-invalid @enderror" required>
-                                        <option value="">— Pilih problem —</option>
-                                        @foreach($problems as $p)
-                                            <option value="{{ $p->id }}" @selected((string) old('problem_id') === (string) $p->id)>{{ $p->name }}{{ $p->requires_evidence ? ' (bukti wajib saat Closed)' : '' }}</option>
+                                    <label class="font-weight-bold" for="fldRca">RCA</label>
+                                    <select name="rca_id" id="fldRca" class="form-control @error('rca_id') is-invalid @enderror">
+                                        <option value="">&mdash; Pilih RCA &mdash;</option>
+                                        @foreach($rcas as $r)
+                                            <option value="{{ $r->id }}" @selected((string) old('rca_id') === (string) $r->id)>{{ $r->name }}</option>
                                         @endforeach
                                     </select>
-                                    @error('problem_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                    @error('rca_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                 </div>
-                                <div class="form-group col-md-3">
-                                    <label class="font-weight-bold" for="fldSeverity">Severity <span class="text-danger">*</span></label>
-                                    <select name="severity" id="fldSeverity" class="form-control @error('severity') is-invalid @enderror" required>
-                                        <option value="">— Pilih —</option>
-                                        @foreach($severities as $sv)
-                                            <option value="{{ $sv->code }}" @selected(old('severity') === $sv->code)>{{ $sv->name }}</option>
-                                        @endforeach
+                                <div class="form-group col-md-6">
+                                    <label class="font-weight-bold" for="fldSubRca">Sub-RCA</label>
+                                    <select name="sub_rca_id" id="fldSubRca" class="form-control @error('sub_rca_id') is-invalid @enderror">
+                                        <option value="">&mdash; Pilih sub-RCA &mdash;</option>
                                     </select>
-                                    @error('severity')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                </div>
-                                <div class="form-group col-md-3">
-                                    <label class="font-weight-bold" for="fldExtRef">Ref. Eksternal</label>
-                                    <input type="text" name="external_ref" id="fldExtRef" maxlength="40" value="{{ old('external_ref') }}"
-                                           class="form-control @error('external_ref') is-invalid @enderror" placeholder="No. tiket NOC/customer">
-                                    @error('external_ref')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                </div>
-                                <div class="form-group col-12">
-                                    <label class="font-weight-bold" for="fldIssue">Issue <span class="text-danger">*</span></label>
-                                    <input type="text" name="issue" id="fldIssue" maxlength="200" value="{{ old('issue') }}"
-                                           class="form-control @error('issue') is-invalid @enderror" placeholder="mis. Link down, modem tidak merespons sejak 08.00" required>
-                                    @error('issue')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                    <small class="form-text text-muted">Dugaan akar masalah; masih bisa diperbarui saat tiket ditutup.</small>
+                                    @error('sub_rca_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                 </div>
                                 <div class="form-group col-md-4">
                                     <label class="font-weight-bold" for="fldDevice">Device</label>
-                                    <input type="text" name="device" id="fldDevice" maxlength="40" value="{{ old('device') }}"
-                                           class="form-control @error('device') is-invalid @enderror" placeholder="mis. Modem / Router / ODU">
-                                    @error('device')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                    <select name="device_id" id="fldDevice" class="form-control @error('device_id') is-invalid @enderror">
+                                        <option value="">&mdash; Pilih device &mdash;</option>
+                                        @foreach($devices as $d)
+                                            <option value="{{ $d->id }}" @selected((string) old('device_id') === (string) $d->id)>{{ $d->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('device_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                 </div>
                                 <div class="form-group col-md-4">
-                                    <label class="font-weight-bold" for="fldAlarm">Flag Alarm</label>
-                                    <input type="text" name="flag_alarm" id="fldAlarm" maxlength="40" value="{{ old('flag_alarm') }}"
-                                           class="form-control @error('flag_alarm') is-invalid @enderror" placeholder="Alarm dari NMS (opsional)">
-                                    @error('flag_alarm')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                </div>
-                                <div class="form-group col-md-4">
-                                    <label class="font-weight-bold" for="fldReportedAt">Dilaporkan</label>
+                                    <label class="font-weight-bold" for="fldReportedAt">Date Open</label>
                                     <input type="datetime-local" name="reported_at" id="fldReportedAt" value="{{ old('reported_at', now()->format('Y-m-d\TH:i')) }}"
                                            max="{{ now()->format('Y-m-d\TH:i') }}" class="form-control @error('reported_at') is-invalid @enderror">
+                                    <small class="form-text text-muted">Bawaan hari ini; jadi titik awal perhitungan aging.</small>
                                     @error('reported_at')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
-                                <div class="form-group col-md-6">
-                                    <label class="font-weight-bold" for="fldReporter">Pelapor</label>
-                                    <input type="text" name="reporter_name" id="fldReporter" maxlength="150" value="{{ old('reporter_name') }}"
-                                           class="form-control @error('reporter_name') is-invalid @enderror" placeholder="Nama pelapor dari customer/NOC (opsional)">
-                                    @error('reporter_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                <div class="form-group col-md-4">
+                                    <label class="font-weight-bold">Date Update</label>
+                                    <input type="text" class="form-control" value="{{ now()->format('d/m/Y H:i') }}" readonly>
+                                    <small class="form-text text-muted">Terisi otomatis setiap tiket berubah.</small>
                                 </div>
                                 <div class="form-group col-12">
                                     <label class="font-weight-bold" for="fldDesc">Deskripsi <span class="text-danger">*</span></label>
@@ -142,14 +119,15 @@
                                     <option value="">— Pilih site dulu —</option>
                                 </select>
                                 @error('assigned_to')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                <small class="form-text text-muted" id="lblTechHint">Teknisi = PIC internal yang terdaftar di site tersebut.</small>
+                                <small class="form-text text-muted" id="lblTechHint">Teknisi = PIC internal site tersebut; leader team tidak termasuk.</small>
                             </div>
                         </div>
                     </div>
                     <div class="alert alert-light border" style="font-size:12px;">
                         <i class="fas fa-info-circle mr-1"></i>
                         Timer Response berjalan sejak tiket disimpan sampai teknisi pertama kali membuka tiket.
-                        Target SLA diambil dari kebijakan aktif untuk severity/problem ini saat tiket disimpan. Waktu "Dilaporkan" hanya informasi.
+                        Target SLA diambil dari kebijakan aktif yang berlaku saat tiket disimpan.
+                        Severity tidak diisi di sini: ia mengikuti aging tiket &mdash; 0 hari Rendah, 1&ndash;2 Minor, 3&ndash;7 Major, 8 hari ke atas Kritis.
                     </div>
                 </div>
             </div>
@@ -172,7 +150,31 @@ $(function () {
     var $site = $('#fldSite'), $tech = $('#fldTech');
 
     TesysSearchableSelect.init('#fldSite', { placeholder: '— Pilih site —', searchPlaceholder: 'Cari Site ID / nama...' });
-    TesysSearchableSelect.init('#fldProblem', { placeholder: '— Pilih problem —', searchPlaceholder: 'Cari problem...' });
+    TesysSearchableSelect.init('#fldDevice', { placeholder: '— Pilih device —', searchPlaceholder: 'Cari device...' });
+    TesysSearchableSelect.init('#fldRca', { placeholder: '— Pilih RCA —', searchPlaceholder: 'Cari RCA...' });
+    // Tanpa placeholder tetap: labelnya ikut opsi pertama ('Pilih RCA dulu' / 'Pilih sub-RCA').
+    TesysSearchableSelect.init('#fldSubRca', { searchPlaceholder: 'Cari sub-RCA...' });
+
+    // Sub-RCA mengikuti RCA; seluruh pasangannya sudah dikirim bersama halaman.
+    var SUB_RCA = @json($subRcas->map(fn ($x) => ['id' => $x->id, 'rca_id' => $x->rca_id, 'name' => $x->name])->values());
+    var oldSubRca = @json((string) old('sub_rca_id'));
+    var $rca = $('#fldRca'), $sub = $('#fldSubRca');
+
+    function loadSubRca(selected) {
+        var rcaId = String($rca.val() || '');
+        var daftar = rcaId ? SUB_RCA.filter(function (x) { return String(x.rca_id) === rcaId; }) : [];
+        $sub.find('option').remove();
+        $sub.append($('<option>').val('').text(rcaId ? '— Pilih sub-RCA —' : '— Pilih RCA dulu —'));
+        daftar.forEach(function (x) { $sub.append($('<option>').val(x.id).text(x.name)); });
+        // Nilai lama hanya dipakai bila masih ada di daftar RCA yang dipilih.
+        var tetap = selected && daftar.some(function (x) { return String(x.id) === String(selected); });
+        $sub.val(tetap ? selected : '');
+        // Tombol searchable select ikut digambar ulang (lihat tesys-searchable-select.js).
+        $sub.trigger('tss:sync');
+    }
+
+    $rca.on('change', function () { loadSubRca(null); });
+    loadSubRca(oldSubRca);
 
     function loadTechs(selected) {
         var id = $site.val();
@@ -186,17 +188,18 @@ $(function () {
         $.getJSON(techUrl.replace('__ID__', id)).done(function (res) {
             $tech.find('option').remove();
             if (!res.technicians.length) {
-                $tech.append('<option value="">Site ini belum punya PIC internal</option>');
-                $('#lblTechHint').html('Tambahkan PIC internal di <a href="' + @json(url('/site')) + '/' + id + '">halaman site</a> lebih dulu.');
+                $tech.append('<option value="">Site ini belum punya teknisi</option>');
+                $('#lblTechHint').html('Tambahkan PIC internal (bukan leader team) di <a href="' + @json(url('/site')) + '/' + id + '">halaman site</a> lebih dulu.');
                 return;
             }
-            $('#lblTechHint').text('Teknisi = PIC internal yang terdaftar di site tersebut.');
+            $('#lblTechHint').text('Teknisi = PIC internal site tersebut; leader team tidak termasuk.');
             $tech.append('<option value="">— Pilih teknisi —</option>');
             res.technicians.forEach(function (t) {
                 $tech.append($('<option>').val(t.id).text(t.name));
             });
-            if (res.technicians.length === 1 && !selected) selected = String(res.technicians[0].id);
-            $tech.val(selected || '').prop('disabled', false);
+            // Teknisi pertama langsung terpilih; tetap bisa diganti bila site punya beberapa.
+            var ada = selected && res.technicians.some(function (t) { return String(t.id) === String(selected); });
+            $tech.val(ada ? selected : String(res.technicians[0].id)).prop('disabled', false);
         }).fail(function () {
             $tech.find('option').remove();
             $tech.append('<option value="">Gagal memuat teknisi</option>');

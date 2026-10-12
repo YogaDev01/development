@@ -12,12 +12,12 @@
      */
     $kolom = [
         'no'         => ['No. TT', true],
-        'ref'        => ['Ref. Eksternal', false],
         'customer'   => ['Customer', false],
         'site'       => ['Site', true],
         'problem'    => ['Problem', true],
+        'aging'      => ['Aging', true],
         'severity'   => ['Severity', true],
-        'issue'      => ['Issue', false],
+        'issue'      => ['Initial Problem', false],
         'device'     => ['Device / Alarm', false],
         'teknisi'    => ['Teknisi', false],
         'status'     => ['Status', true],
@@ -25,9 +25,9 @@
         'response'   => ['Response', false],
         'travel'     => ['Travel', false],
         'resolution' => ['Resolution', false],
-        'reported'   => ['Dilaporkan', false],
+        'reported'   => ['Date Open', false],
         'created'    => ['Dibuat', false],
-        'updated'    => ['Update', true],
+        'updated'    => ['Date Update', true],
     ];
     $colIndex   = array_flip(array_keys($kolom));
     $colDefault = array_map(fn ($k) => $k[1], $kolom);
@@ -67,7 +67,7 @@
                     <div class="tt-toolbar-left">
                         <div class="tt-search">
                             <i class="fas fa-search" aria-hidden="true"></i>
-                            <input type="search" id="ttSearch" class="form-control form-control-sm" placeholder="Cari No. TT, site, issue, alarm..." aria-label="Cari">
+                            <input type="search" id="ttSearch" class="form-control form-control-sm" placeholder="Cari No. TT, site, initial problem, alarm..." aria-label="Cari">
                         </div>
                         <button type="button" id="btnTtClear" class="btn btn-outline-secondary btn-sm" title="Clear Filter" aria-label="Clear Filter"><i class="fas fa-eraser"></i></button>
                         {{-- TesysColumnFilter merender tombol "Filter" di sini; klik = daftar filter kolom. --}}
@@ -131,15 +131,15 @@
                                     <td class="col-fit" data-order="{{ $t->id }}">
                                         <a href="{{ route('trouble-ticket.show', $t) }}" class="tt-no-link" title="Buka tiket">{{ $t->ticket_number }}</a>
                                     </td>
-                                    <td class="col-fit">{{ $t->external_ref ?: '-' }}</td>
                                     <td class="col-fit">{{ $t->customer?->name ?? '-' }}</td>
                                     <td class="col-site">
                                         <span class="cell-trunc" style="max-width:60ch;" title="{{ $siteLabel }}">{{ Str::limit($siteLabel, 60, '...') ?: '-' }}</span>
                                     </td>
                                     <td class="col-fit">{{ $t->problem?->name ?? '-' }}</td>
-                                    <td class="col-fit" data-order="{{ $t->severity_level }}"><span class="ts-status ts-status-sm ts-status-{{ [1 => 'danger', 2 => 'attention', 3 => 'progress'][$t->severity_level] ?? 'neutral' }}">{{ $t->severity_label }}</span></td>
-                                    <td class="col-fit" title="{{ $t->issue }}">{{ Str::limit($t->issue, 50, '...') }}</td>
-                                    <td class="col-fit">{{ $t->device ?: '-' }}{{ $t->flag_alarm ? ' · ' . $t->flag_alarm : '' }}</td>
+                                    <td class="col-fit" data-order="{{ $t->aging_days }}">{{ $t->aging_days }} hari</td>
+                                    <td class="col-fit" data-order="{{ 9 - $t->severity_level }}"><span class="tt-sev tt-sev-{{ $t->severity_level }}">{{ $t->severity_label }}</span></td>
+                                    <td class="col-fit" title="{{ $t->issue_label }}">{{ Str::limit($t->issue_label, 50, '...') }}</td>
+                                    <td class="col-fit">{{ $t->device_label ?: '-' }}{{ $t->flag_alarm ? ' · ' . $t->flag_alarm : '' }}</td>
                                     <td class="col-fit">{{ $t->technician?->name ?? '-' }}</td>
                                     <td class="col-fit" data-order="{{ array_search($t->status, TroubleTicket::STATUSES, true) }}">
                                         <x-status :status="$t->status" context="trouble-ticket" />

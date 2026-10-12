@@ -470,13 +470,14 @@ class SiteController extends Controller
         return $open > 0 ? $open.' Terbuka' : 'Tidak ada';
     }
 
-    /** Technician = PIC site bertipe Internal. */
+    /**
+     * Kolom PIC Site: HANYA teknisi site, yaitu PIC internal berjabatan
+     * "teknisi" (field PIC Site di form). Supervisor & PIC internal lain yang
+     * terpasang di site_pics sengaja tidak ikut - lihat tab PIC di detail site.
+     */
     public static function technicians(Site $site): string
     {
-        return $site->picLinks
-            ->filter(fn ($l) => $l->pic?->type === 'internal')
-            ->map(fn ($l) => $l->pic->pic)
-            ->implode(', ');
+        return $site->technicianPic()?->pic ?? '';
     }
 
     /**

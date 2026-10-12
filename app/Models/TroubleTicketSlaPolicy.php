@@ -55,4 +55,22 @@ class TroubleTicketSlaPolicy extends Model
             ->orderByDesc('id')
             ->first();
     }
+
+    /**
+     * Kebijakan untuk tiket BARU (sejak 12 Okt 2026). Severity tidak lagi
+     * diisi saat tiket dibuat — ia dihitung dari aging — jadi pencarian
+     * kebijakan hanya memakai Problem: yang spesifik problem menang atas yang
+     * umum; di antara yang setara, yang paling baru efektif.
+     */
+    public static function applicableForProblem(?int $problemId): ?self
+    {
+        return static::query()
+            ->where('status', 'ACTIVE')
+            ->where(fn ($q) => $q->whereNull('effective_from')->orWhereDate('effective_from', '<=', now()->toDateString()))
+            ->where(fn ($q) => $q->whereNull('problem_id')->when($problemId, fn ($q) => $q->orWhere('problem_id', $problemId)))
+            ->orderByRaw('problem_id IS NULL')
+            ->orderByRaw('effective_from IS NULL, effective_from DESC')
+            ->orderByDesc('id')
+            ->first();
+    }
 }

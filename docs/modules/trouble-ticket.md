@@ -16,20 +16,23 @@ key `trouble-ticket`). URL `/trouble-ticket`.
 |---|---|
 | Controller | `TroubleTicketController` (validasi inline + pilih respons) |
 | Workflow | `App\Services\TroubleTicketWorkflow` — **satu-satunya** tempat status/timestamp berubah; juga aturan hak akses |
-| Model | `TroubleTicket`, `TroubleTicketMessage`, `TroubleTicketAttachment`, `TroubleTicketVisit`, `TroubleTicketAssignment`, `TroubleTicketClosureReview`, `TroubleTicketProblem`, `TroubleTicketSeverity`, `TroubleTicketSlaPolicy` |
+| Model | `TroubleTicket`, `TroubleTicketMessage`, `TroubleTicketAttachment`, `TroubleTicketVisit`, `TroubleTicketAssignment`, `TroubleTicketClosureReview`, `TroubleTicketProblem`, `TroubleTicketSeverity`, `TroubleTicketSlaPolicy`, `TroubleTicketRca`, `TroubleTicketSubRca`, `TroubleTicketIssue`, `TroubleTicketDevice` |
 | Presentasi status | `WorkflowStatus` context `trouble-ticket` (`<x-status>`, `<x-workflow-flow>`) |
 | Peran | `AccessRoles::TROUBLE_TICKET_FULL_SCOPE / _SUPERVISE / _SETTINGS` (semua `['superadmin']`) |
 | View | `resources/views/trouble-ticket/` (`index`, `create`, `show`, `settings` (SLA saja), `_messages`, `_attachments`, `_sla`, `_assets`) |
 | Test | `tests/Feature/TroubleTicketTest.php` |
 
-## Skema (migrasi `2026_10_09_200001..200004`)
+## Skema (migrasi `2026_10_09_200001..200004`, `2026_10_12_000100..000200`)
 
 ```
 sites ──< trouble_tickets >── users (created_by, assigned_to, first_responded_by,
  │                                    visit_decided_by, closed_by, cancelled_by)
  │   customer_id disalin dari site saat dibuat (filter/indeks)
 trouble_ticket_problems ──< trouble_tickets, trouble_ticket_sla_policies   (tanpa UI)
-trouble_ticket_severities ──< trouble_tickets.severity (kode), trouble_ticket_sla_policies   (tanpa UI)
+trouble_ticket_severities ──< trouble_ticket_sla_policies (opsional)   (tanpa UI, LEGACY)
+trouble_ticket_issues   ──< trouble_tickets.issue_id      (Initial Problem; seeder)
+trouble_ticket_devices  ──< trouble_tickets.device_id     (seeder)
+trouble_ticket_rcas     ──< trouble_ticket_sub_rcas ──< trouble_tickets.sub_rca_id   (seeder)
 trouble_ticket_sla_policies ──< trouble_tickets (sla_policy_id + snapshot menit)
 
 trouble_tickets ──< trouble_ticket_messages     (MESSAGE | EVENT, immutable, client_token)
@@ -97,9 +100,13 @@ notifikasi tidak terkirim dua kali. Error keadaan = `ValidationException`
 | Resolution | `closed_at − progress_started_at` | Final saat tiket ditutup. |
 | Tunggu approval plan | `plan_approved_at (atau sekarang) − visit_decided_at` | Ditampilkan terpisah (`approvalWaitSeconds()`). |
 
-- Target per severity (opsional per problem) di `trouble_ticket_sla_policies`,
-  dikelola superadmin di `/trouble-ticket/settings`. **Belum ada nilai** — diisi
-  perusahaan. Target disalin ke tiket saat dibuat (snapshot).
+- Target di `trouble_ticket_sla_policies`, dikelola superadmin di
+  `/trouble-ticket/settings`. **Belum ada nilai** — diisi perusahaan. Target
+  disalin ke tiket saat dibuat (snapshot).
+- Sejak 12 Okt 2026 kebijakan untuk tiket baru dicari **per Problem saja**
+  (`applicableForProblem()`), karena severity tidak lagi jadi masukan form.
+  Kolom `severity` pada kebijakan jadi opsional (kosong = semua severity);
+  `applicableFor()` yang lama masih ada untuk baris/riwayat lama.
 - Level: tanpa target = `none` (tidak pernah "terlambat"); berjalan ≥75% =
   warning; ≥100% = critical. Filter "Hanya lewat SLA" = `TroubleTicket::scopeOverdue()`.
 - Timer di layar dihitung dari jam server (offset jam perangkat dikoreksi).
@@ -110,11 +117,11 @@ notifikasi tidak terkirim dua kali. Error keadaan = `ValidationException`
 |---|---|
 | Buka menu / buat tiket | pemegang menu `trouble-ticket` (route) |
 | Melihat tiket, pesan, lampiran | superadmin; pembuat; teknisi; siapa pun yang **satu team** (anggota ACTIVE atau leader team ACTIVE) dengan PIC site: `site → site_pics → master_pics(ACTIVE) → user → team_members` |
-| Teknisi yang bisa ditugaskan | akun ACTIVE milik PIC **internal** ACTIVE yang terdaftar di `site_pics` site itu |
+| Teknisi yang bisa ditugaskan | akun ACTIVE milik PIC **internal** ACTIVE yang terdaftar di `site_pics` site itu, **kecuali leader team ACTIVE** (ia yang menyetujui plan). Berlaku untuk dropdown buat tiket maupun reassign — `TroubleTicketWorkflow::eligibleTechnicians()` |
 | Respons, ajukan plan, Start Progress, tutup tiket | hanya teknisi yang sedang ditugaskan |
 | Approve/reject plan | leader team ACTIVE tempat teknisi menjadi anggota ACTIVE, atau superadmin — **bukan** teknisi pengaju |
 | Reassign, koreksi plan | leader team teknisi atau superadmin |
-| Pengaturan SLA (Problem & Severity: langsung di DB) | superadmin (`role:superadmin` = `AccessRoles::TROUBLE_TICKET_SETTINGS`) |
+| Pengaturan SLA (Problem & master RCA: langsung di DB / seeder) | superadmin (`role:superadmin` = `AccessRoles::TROUBLE_TICKET_SETTINGS`) |
 
 Keterlihatan dihitung **saat ini** (bukan snapshot): melepas PIC dari site atau
 anggota dari team mengubah siapa yang melihat tiket lama.
@@ -172,12 +179,16 @@ di dev, jadi perubahan ditulis sebagai migrasi baru (saat itu 0 tiket).
 | Kolom | Diisi saat | Keterangan |
 |---|---|---|
 | `ticket_number` (dulu `tt_number`) | buat tiket | otomatis `TT-0001/10/26` |
-| `external_ref` | buat tiket | nomor tiket NOC/customer, unik, opsional |
-| `problem_id` (dulu kategori) | buat tiket | dropdown dari `trouble_ticket_problems` (wajib) |
-| `severity` (dulu `priority`) | buat tiket | kode dari `trouble_ticket_severities` (wajib, FK ON UPDATE CASCADE) |
-| `issue` (dulu `subject`), `device`, `flag_alarm` | buat tiket | issue wajib; device/alarm opsional |
-| `reported_at` | buat tiket | default sekarang, tidak boleh di masa depan; **hanya informasi** — SLA Response tetap dari `created_at` (keputusan 9 Okt 2026) |
-| `pic_id` | buat tiket / reassign | baris `master_pics` teknisi; `assigned_to` (user) tetap dipakai untuk hak akses |
+| `external_ref` | — | **tidak lagi diisi**; dihapus dari form, daftar, detail & export 12 Okt 2026. Kolom dipertahankan untuk 12 tiket lama |
+| `problem_id` (dulu kategori) | — | **tidak lagi diisi dari form buat tiket** (12 Okt 2026). Tetap diterima bila dikirim (integrasi) dan menentukan target SLA; tanpa Problem, SLA jatuh ke kebijakan umum (`problem_id` NULL) |
+| `issue_id` | — | **Initial Problem**. Dihapus dari form buat tiket (12 Okt 2026); kolom & master tetap ada, nilainya masih ditampilkan di daftar/detail/export untuk tiket lama |
+| `device_id` | buat tiket | dropdown `trouble_ticket_devices` (opsional); teks bebas `device` hanya untuk tiket lama |
+| `rca_id`, `sub_rca_id` | buat tiket | dropdown bertingkat; Sub-RCA wajib milik RCA yang dipilih. Opsional, masih bisa diperbarui saat penutupan (`rca`/`sub_rca` teks) |
+| `severity` | — | **tidak lagi diisi dari form** (nullable). Label & warna dihitung dari aging: 0 hari Rendah (level 4), 1–2 Minor (3), 3–7 Major (2), ≥8 Kritis (1) — `TroubleTicket::SEVERITY_AGING`, `severityFromAging()` |
+| `flag_alarm` | — | dihapus dari form buat tiket (12 Okt 2026); masih ditampilkan di detail & export untuk tiket lama |
+| `reported_at` | buat tiket | label layar **Date Open**: default sekarang, boleh diubah, tidak boleh di masa depan. Jadi titik awal **aging**; SLA Response tetap dari `created_at` (keputusan 9 Okt 2026) |
+| `updated_at` | otomatis | label layar **Date Update** |
+| `pic_id` | buat tiket / reassign | baris `master_pics` teknisi; `assigned_to` (user) tetap dipakai untuk hak akses. Di form buat tiket teknisi pertama site langsung terpilih (12 Okt 2026), masih bisa diganti |
 | `acknowledged_at`/`_by` (dulu `first_responded_*`) | teknisi membuka tiket | |
 | `visit_site`, `target_online` | modal Ajukan Plan | `visit_site` wajib untuk Plan Visit (≥ hari ini); target online opsional |
 | `resolved_at` (dulu `closure_requested_at`) | tutup tiket | sama dengan `closed_at` |
@@ -188,6 +199,21 @@ di dev, jadi perubahan ditulis sebagai migrasi baru (saat itu 0 tiket).
 **Master tanpa UI** (diisi langsung di basis data, tidak ada data awal):
 
 - `trouble_ticket_problems`: `name` (unik), `requires_evidence` (bukti wajib saat Closed), `status`.
-- `trouble_ticket_severities`: `code` (unik, disimpan di tiket), `name`, `level` (1 = paling parah; urutan & warna), `status`.
-- Form buat tiket tidak bisa disimpan sampai keduanya terisi (halaman menampilkan peringatan).
-- Kebijakan SLA kini per **severity** (+ opsional per problem). Halaman Pengaturan hanya SLA.
+- `trouble_ticket_severities`: LEGACY. Tidak lagi dipakai tiket baru; hanya
+  jadi label opsional pada kebijakan SLA lama.
+- Kebijakan SLA tiket baru dicari **per Problem**; tiket tanpa Problem memakai
+  kebijakan umum (`problem_id` NULL). Halaman Pengaturan hanya SLA.
+
+**Master RCA (seeder `TroubleTicketRcaSeeder`, 12 Okt 2026)**
+
+Sumber: "Daftar RCA Paramitra Iintimega" (77 kombinasi Action/Issue/Sub-RCA/RCA).
+
+- `trouble_ticket_rcas` — 5 baris: POWER, HARDWARE, TRANSMISSION, CONFIGURATION, OTHERS.
+- `trouble_ticket_sub_rcas` — 36 baris, masing-masing milik satu RCA.
+- `trouble_ticket_issues` — 55 Initial Problem. Catatan: sumbernya memuat
+  "VANDALISM / KEAMANAN" **dan** salah ketik "VANDALIMS / KEAMANAN"; keduanya
+  diseed apa adanya agar sesuai sumber. Perlu konfirmasi apakah digabung.
+- `trouble_ticket_devices` — 21 perangkat, **diturunkan** dari Sub-RCA yang
+  berupa perangkat (bukan daftar resmi dari Excel). Perlu konfirmasi.
+- Kolom "Action" pada sumber belum dijadikan master: penutupan tiket masih
+  memakai teks bebas `action`.

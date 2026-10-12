@@ -15,10 +15,10 @@
 
 /* Severity: kelas dari level (1 = paling parah) */
 .tt-sev { font-size:11px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; }
-.tt-sev-1 { color:var(--danger); }
-.tt-sev-2 { color:var(--warning); }
-.tt-sev-3 { color:var(--text-dim); }
-.tt-sev-4, .tt-sev-5, .tt-sev-6, .tt-sev-7, .tt-sev-8, .tt-sev-9 { color:var(--text-faint); }
+.tt-sev-1 { color:var(--danger); }   /* Kritis — aging >= 8 hari */
+.tt-sev-2 { color:var(--warning); }  /* Major  — aging 3-7 hari  */
+.tt-sev-3 { color:var(--info); }     /* Minor  — aging 1-2 hari  */
+.tt-sev-4, .tt-sev-5, .tt-sev-6, .tt-sev-7, .tt-sev-8, .tt-sev-9 { color:var(--text-dim); } /* Rendah */
 
 /* Daftar */
 .tt-table { font-size:12.5px; }

@@ -8,10 +8,13 @@ use App\Models\Team;
 use App\Models\TroubleTicket;
 use App\Models\TroubleTicketAssignment;
 use App\Models\TroubleTicketAttachment;
-use App\Models\TroubleTicketProblem;
-use App\Models\TroubleTicketSeverity;
+use App\Models\TroubleTicketDevice;
+use App\Models\TroubleTicketIssue;
 use App\Models\TroubleTicketMessage;
+use App\Models\TroubleTicketProblem;
+use App\Models\TroubleTicketRca;
 use App\Models\TroubleTicketSlaPolicy;
+use App\Models\TroubleTicketSubRca;
 use App\Models\User;
 use App\Support\AccessRoles;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -20,6 +23,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -123,6 +127,12 @@ class TroubleTicketWorkflow
     {
         return User::query()
             ->where('status', 'ACTIVE')
+            // Leader team bukan teknisi: ia yang menyetujui plan, jadi tidak
+            // boleh ditugaskan ke tiket walau terdaftar sebagai PIC site.
+            ->whereNotIn('id', Team::query()
+                ->where('status', 'ACTIVE')
+                ->whereNotNull('leader_id')
+                ->select('leader_id'))
             ->whereIn('id', SitePic::query()
                 ->join('master_pics', 'master_pics.id', '=', 'site_pics.pic_id')
                 ->where('site_pics.site_id', $siteId)
@@ -162,10 +172,16 @@ class TroubleTicketWorkflow
 
     /**
      * @param  array  $data  hasil validasi controller: site_id, assigned_to, problem_id,
-     *                       severity, issue, description, external_ref?, device?,
-     *                       flag_alarm?, reported_at?, reporter_name?
+     *                       issue_id, description, device_id?, rca_id?, sub_rca_id?,
+     *                       flag_alarm?, reported_at?
      * @param  UploadedFile[]  $files
      */
+    /** Ringkasan singkat tiket: Initial Problem bila ada, selain itu potongan deskripsi. */
+    private function summaryOf(TroubleTicket $ticket): string
+    {
+        return $ticket->issue_label ?: Str::limit((string) $ticket->description, 60);
+    }
+
     public function create(User $actor, array $data, array $files = []): TroubleTicket
     {
         // Referensi dari klien tidak dipercaya: site, problem, severity, dan
@@ -175,13 +191,37 @@ class TroubleTicketWorkflow
             $this->fail('Site tidak ditemukan atau tidak aktif.', 'site_id');
         }
 
-        $problemId = (int) $data['problem_id'];
-        if (! TroubleTicketProblem::where('status', 'ACTIVE')->whereKey($problemId)->exists()) {
+        // Problem & Initial Problem tidak lagi diisi di form buat tiket; keduanya
+        // tetap diterima (mis. integrasi) tapi opsional. Tanpa Problem, SLA jatuh
+        // ke kebijakan umum (problem_id NULL) — lihat SlaPolicy::applicableForProblem().
+        $problemId = $data['problem_id'] ?? null;
+        if ($problemId && ! TroubleTicketProblem::where('status', 'ACTIVE')->whereKey($problemId)->exists()) {
             $this->fail('Problem tidak ditemukan atau tidak aktif.', 'problem_id');
         }
 
-        if (! TroubleTicketSeverity::where('status', 'ACTIVE')->where('code', $data['severity'])->exists()) {
-            $this->fail('Severity tidak ditemukan atau tidak aktif.', 'severity');
+        $issueId = $data['issue_id'] ?? null;
+        if ($issueId && ! TroubleTicketIssue::where('status', 'ACTIVE')->whereKey($issueId)->exists()) {
+            $this->fail('Initial Problem tidak ditemukan atau tidak aktif.', 'issue_id');
+        }
+
+        $deviceId = $data['device_id'] ?? null;
+        if ($deviceId && ! TroubleTicketDevice::where('status', 'ACTIVE')->whereKey($deviceId)->exists()) {
+            $this->fail('Device tidak ditemukan atau tidak aktif.', 'device_id');
+        }
+
+        // Sub-RCA wajib milik RCA yang dipilih; RCA tanpa Sub-RCA diperbolehkan.
+        $rcaId = $data['rca_id'] ?? null;
+        $subRcaId = $data['sub_rca_id'] ?? null;
+        if ($rcaId && ! TroubleTicketRca::where('status', 'ACTIVE')->whereKey($rcaId)->exists()) {
+            $this->fail('RCA tidak ditemukan atau tidak aktif.', 'rca_id');
+        }
+        if ($subRcaId) {
+            if (! $rcaId) {
+                $this->fail('Pilih RCA lebih dulu sebelum Sub-RCA.', 'sub_rca_id');
+            }
+            if (! TroubleTicketSubRca::where('status', 'ACTIVE')->whereKey($subRcaId)->where('rca_id', $rcaId)->exists()) {
+                $this->fail('Sub-RCA tidak sesuai dengan RCA yang dipilih.', 'sub_rca_id');
+            }
         }
 
         $picId = $this->picIdFor($site->id, (int) $data['assigned_to']);
@@ -189,51 +229,52 @@ class TroubleTicketWorkflow
             $this->fail('Teknisi harus PIC internal aktif yang terdaftar di site ini.', 'assigned_to');
         }
 
-        $policy = TroubleTicketSlaPolicy::applicableFor($data['severity'], $problemId);
+        // Severity tidak lagi jadi masukan: kebijakan SLA dipilih per Problem.
+        $policy = TroubleTicketSlaPolicy::applicableForProblem($problemId ? (int) $problemId : null);
         $stored = $this->storeFiles($files);
 
-        $ticket = $this->withStoredFiles($stored, function () use ($actor, $data, $site, $problemId, $picId, $policy, $stored) {
+        $ticket = $this->withStoredFiles($stored, function () use ($actor, $data, $site, $problemId, $issueId, $deviceId, $rcaId, $subRcaId, $picId, $policy, $stored) {
             $now = now();
 
             $ticket = TroubleTicket::create([
-                'ticket_number'          => TroubleTicket::generateNumber($now),
-                'external_ref'           => $data['external_ref'] ?? null,
-                'site_id'                => $site->id,
-                'customer_id'            => $site->customer_id,
-                'problem_id'             => $problemId,
-                'severity'               => $data['severity'],
-                'issue'                  => $data['issue'],
-                'device'                 => $data['device'] ?? null,
-                'flag_alarm'             => $data['flag_alarm'] ?? null,
-                'description'            => $data['description'],
-                'reporter_name'          => $data['reporter_name'] ?? null,
-                'reported_at'            => $data['reported_at'] ?? $now,
-                'status'                 => 'OPEN',
-                'created_by'             => $actor->id,
-                'assigned_to'            => (int) $data['assigned_to'],
-                'pic_id'                 => $picId,
-                'assigned_at'            => $now,
-                'sla_policy_id'          => $policy?->id,
-                'sla_response_minutes'   => $policy?->response_minutes,
-                'sla_travel_minutes'     => $policy?->travel_minutes,
+                'ticket_number' => TroubleTicket::generateNumber($now),
+                'external_ref' => $data['external_ref'] ?? null,
+                'site_id' => $site->id,
+                'customer_id' => $site->customer_id,
+                'problem_id' => $problemId ? (int) $problemId : null,
+                'issue_id' => $issueId ? (int) $issueId : null,
+                'device_id' => $deviceId,
+                'rca_id' => $rcaId,
+                'sub_rca_id' => $subRcaId,
+                'flag_alarm' => $data['flag_alarm'] ?? null,
+                'description' => $data['description'],
+                // Date Open — boleh diubah pembuat, bawaan hari ini.
+                'reported_at' => $data['reported_at'] ?? $now,
+                'status' => 'OPEN',
+                'created_by' => $actor->id,
+                'assigned_to' => (int) $data['assigned_to'],
+                'pic_id' => $picId,
+                'assigned_at' => $now,
+                'sla_policy_id' => $policy?->id,
+                'sla_response_minutes' => $policy?->response_minutes,
+                'sla_travel_minutes' => $policy?->travel_minutes,
                 'sla_resolution_minutes' => $policy?->resolution_minutes,
             ]);
 
             TroubleTicketAssignment::create([
                 'trouble_ticket_id' => $ticket->id,
-                'assigned_to'       => $ticket->assigned_to,
-                'assigned_by'       => $actor->id,
-                'assigned_at'       => $now,
+                'assigned_to' => $ticket->assigned_to,
+                'assigned_by' => $actor->id,
+                'assigned_at' => $now,
             ]);
 
-            $created = $this->event($ticket, $actor, 'created', $ticket->issue, [
-                'severity' => $ticket->severity,
-                'site'     => $site->tid,
+            $created = $this->event($ticket, $actor, 'created', $this->summaryOf($ticket), [
+                'site' => $site->tid,
             ]);
             $this->attach($ticket, $created, $actor, $stored);
 
             $this->event($ticket, $actor, 'assigned', null, [
-                'to_id'   => $ticket->assigned_to,
+                'to_id' => $ticket->assigned_to,
                 'to_name' => User::whereKey($ticket->assigned_to)->value('name'),
             ]);
 
@@ -244,7 +285,7 @@ class TroubleTicketWorkflow
             [$ticket->technician],
             $ticket,
             'Trouble Ticket baru untuk Anda',
-            "{$ticket->ticket_number} — {$site->tid} {$site->sitename}: {$ticket->issue}"
+            "{$ticket->ticket_number} — {$site->tid} {$site->sitename}: ".$this->summaryOf($ticket)
         );
 
         return $ticket;
@@ -299,7 +340,7 @@ class TroubleTicketWorkflow
                 $changes += [
                     'acknowledged_at' => $now,
                     'acknowledged_by' => $user->id,
-                    'response_seconds'   => max(0, $now->getTimestamp() - $t->created_at->getTimestamp()),
+                    'response_seconds' => max(0, $now->getTimestamp() - $t->created_at->getTimestamp()),
                 ];
                 $recorded = true;
             }
@@ -327,7 +368,7 @@ class TroubleTicketWorkflow
      * Plan boleh diajukan ulang setelah ditolak leader: penolakan
      * mengosongkan keputusan lama, jadi tidak ada kunci permanen di sini.
      *
-     * @param  ?string  $visitSite     tanggal rencana kunjungan (Y-m-d) — wajib untuk Plan Visit
+     * @param  ?string  $visitSite  tanggal rencana kunjungan (Y-m-d) — wajib untuk Plan Visit
      * @param  ?string  $targetOnline  perkiraan site kembali online (Y-m-d), opsional
      */
     public function submitPlan(TroubleTicket $ticket, User $user, string $decision, ?string $reason, ?string $visitSite = null, ?string $targetOnline = null): void
@@ -340,21 +381,21 @@ class TroubleTicketWorkflow
             $this->expect($t, ['OPEN'], 'Plan hanya bisa diajukan saat tiket berstatus Open.');
 
             $t->update([
-                'visit_decision'        => $decision,
-                'visit_decided_by'      => $user->id,
-                'visit_decided_at'      => now(),
+                'visit_decision' => $decision,
+                'visit_decided_by' => $user->id,
+                'visit_decided_at' => now(),
                 'visit_decision_reason' => $reason,
-                'visit_site'            => $decision === TroubleTicket::VISIT ? $visitSite : null,
-                'target_online'         => $targetOnline,
-                'approval'              => 'PENDING',
-                'plan_approved_at'      => null,
-                'plan_approved_by'      => null,
-                'status'                => 'APPROVED',
+                'visit_site' => $decision === TroubleTicket::VISIT ? $visitSite : null,
+                'target_online' => $targetOnline,
+                'approval' => 'PENDING',
+                'plan_approved_at' => null,
+                'plan_approved_by' => null,
+                'status' => 'APPROVED',
             ]);
 
             $this->event($t, $user, 'plan_submitted', $reason, [
-                'decision'      => $decision,
-                'visit_site'    => $t->visit_site?->toDateString(),
+                'decision' => $decision,
+                'visit_site' => $t->visit_site?->toDateString(),
                 'target_online' => $t->target_online?->toDateString(),
             ]);
         });
@@ -369,7 +410,7 @@ class TroubleTicketWorkflow
             $penerima->reject(fn ($u) => (int) $u->id === (int) $user->id),
             $ticket,
             'Plan Trouble Ticket menunggu approval',
-            "{$user->name} mengajukan plan {$ticket->ticket_number}: {$ticket->issue}"
+            "{$user->name} mengajukan plan {$ticket->ticket_number}: {$ticket->issue_label}"
         );
     }
 
@@ -382,8 +423,8 @@ class TroubleTicketWorkflow
             $this->authorizeIf($this->canReviewPlan($user, $t), 'Anda tidak berwenang menyetujui plan ini.');
 
             $t->update([
-                'status'           => 'ON_PLAN',
-                'approval'         => 'APPROVED',
+                'status' => 'ON_PLAN',
+                'approval' => 'APPROVED',
                 'plan_approved_at' => now(),
                 'plan_approved_by' => $user->id,
             ]);
@@ -412,20 +453,20 @@ class TroubleTicketWorkflow
             $this->authorizeIf($this->canReviewPlan($user, $t), 'Anda tidak berwenang menolak plan ini.');
 
             $lama = [
-                'decision'   => $t->visit_decision,
+                'decision' => $t->visit_decision,
                 'visit_site' => $t->visit_site?->toDateString(),
-                'reason'     => $t->visit_decision_reason,
+                'reason' => $t->visit_decision_reason,
             ];
 
             $t->update([
-                'status'                => 'OPEN',
-                'approval'              => 'REJECTED',
-                'visit_decision'        => null,
-                'visit_decided_by'      => null,
-                'visit_decided_at'      => null,
+                'status' => 'OPEN',
+                'approval' => 'REJECTED',
+                'visit_decision' => null,
+                'visit_decided_by' => null,
+                'visit_decided_at' => null,
                 'visit_decision_reason' => null,
-                'visit_site'            => null,
-                'target_online'         => null,
+                'visit_site' => null,
+                'target_online' => null,
             ]);
 
             $this->event($t, $user, 'plan_rejected', $notes, ['previous' => $lama]);
@@ -459,19 +500,19 @@ class TroubleTicketWorkflow
             }
 
             $old = [
-                'decision'   => $t->visit_decision,
+                'decision' => $t->visit_decision,
                 'decided_by' => $t->visit_decided_by,
                 'decided_at' => $t->visit_decided_at?->toIso8601String(),
-                'reason'     => $t->visit_decision_reason,
+                'reason' => $t->visit_decision_reason,
                 'visit_site' => $t->visit_site?->toDateString(),
             ];
 
             $t->update([
-                'visit_decision'        => $decision,
-                'visit_decided_by'      => $user->id,
-                'visit_decided_at'      => now(),
+                'visit_decision' => $decision,
+                'visit_decided_by' => $user->id,
+                'visit_decided_at' => now(),
                 'visit_decision_reason' => $reason,
-                'visit_site'            => $decision === TroubleTicket::VISIT ? $visitSite : null,
+                'visit_site' => $decision === TroubleTicket::VISIT ? $visitSite : null,
             ]);
 
             $this->event($t, $user, 'plan_corrected', $reason, ['decision' => $decision, 'previous' => $old]);
@@ -493,7 +534,7 @@ class TroubleTicketWorkflow
 
             // Timestamp troubleshooting tidak pernah ditimpa.
             $t->update([
-                'status'              => 'IN_PROGRESS',
+                'status' => 'IN_PROGRESS',
                 'progress_started_at' => $t->progress_started_at ?? now(),
             ]);
 
@@ -531,24 +572,24 @@ class TroubleTicketWorkflow
 
             $now = now();
             $hasil = [
-                'rca'                => $data['rca'],
-                'sub_rca'            => $data['sub_rca'] ?? null,
-                'action'             => $data['action'],
+                'rca' => $data['rca'],
+                'sub_rca' => $data['sub_rca'] ?? null,
+                'action' => $data['action'],
                 'resolution_summary' => $data['resolution_summary'] ?? null,
             ];
 
             $t->update($hasil + [
-                'status'             => 'CLOSED',
-                'resolved_at'        => $now,
-                'closed_at'          => $now,
-                'closed_by'          => $user->id,
+                'status' => 'CLOSED',
+                'resolved_at' => $now,
+                'closed_at' => $now,
+                'closed_by' => $user->id,
                 'resolution_seconds' => max(0, $now->getTimestamp() - $t->progress_started_at->getTimestamp()),
             ]);
 
             $message = $this->event($t, $user, 'closed', $hasil['resolution_summary'], [
-                'rca'     => $hasil['rca'],
+                'rca' => $hasil['rca'],
                 'sub_rca' => $hasil['sub_rca'],
-                'action'  => $hasil['action'],
+                'action' => $hasil['action'],
             ]);
             $this->attach($t, $message, $user, $stored);
         });
@@ -601,15 +642,15 @@ class TroubleTicketWorkflow
 
             TroubleTicketAssignment::create([
                 'trouble_ticket_id' => $t->id,
-                'assigned_to'       => $newTechnicianId,
-                'assigned_by'       => $user->id,
-                'assigned_at'       => $now,
-                'reason'            => $reason,
+                'assigned_to' => $newTechnicianId,
+                'assigned_by' => $user->id,
+                'assigned_at' => $now,
+                'reason' => $reason,
             ]);
 
             $changes = [
                 'assigned_to' => $newTechnicianId,
-                'pic_id'      => $this->picIdFor($t->site_id, $newTechnicianId),
+                'pic_id' => $this->picIdFor($t->site_id, $newTechnicianId),
                 'assigned_at' => $now,
             ];
             // Belum ada keputusan kunjungan: teknisi baru yang merespons & memutuskan.
@@ -619,16 +660,16 @@ class TroubleTicketWorkflow
             $t->update($changes);
 
             $this->event($t, $user, 'reassigned', $reason, [
-                'from_id'   => $lama,
+                'from_id' => $lama,
                 'from_name' => User::whereKey($lama)->value('name'),
-                'to_id'     => $newTechnicianId,
-                'to_name'   => User::whereKey($newTechnicianId)->value('name'),
+                'to_id' => $newTechnicianId,
+                'to_name' => User::whereKey($newTechnicianId)->value('name'),
             ]);
         });
 
         $ticket->refresh();
         $this->notify([$ticket->technician], $ticket, 'Trouble Ticket dialihkan kepada Anda',
-            "{$ticket->ticket_number}: {$ticket->issue}");
+            "{$ticket->ticket_number}: {$ticket->issue_label}");
         $this->notify([User::find($lama)], $ticket, 'Trouble Ticket dialihkan',
             "{$ticket->ticket_number} tidak lagi ditugaskan kepada Anda.");
     }
@@ -654,7 +695,7 @@ class TroubleTicketWorkflow
         }
 
         if ($ticket->isFinal()) {
-            $this->fail('Tiket sudah ' . strtolower($ticket->status) . '; pesan baru tidak bisa ditambahkan.');
+            $this->fail('Tiket sudah '.strtolower($ticket->status).'; pesan baru tidak bisa ditambahkan.');
         }
         if ($this->mustDecide($user, $ticket)) {
             $this->fail('Ajukan plan Visit / Non-Visit terlebih dahulu.');
@@ -671,12 +712,12 @@ class TroubleTicketWorkflow
             return $this->withStoredFiles($stored, function () use ($ticket, $user, $body, $stored, $clientToken) {
                 $message = TroubleTicketMessage::create([
                     'trouble_ticket_id' => $ticket->id,
-                    'user_id'           => $user->id,
-                    'actor_name'        => $user->name,
-                    'actor_role'        => $user->role?->name,
-                    'type'              => TroubleTicketMessage::TYPE_MESSAGE,
-                    'body'              => $body !== '' ? $body : null,
-                    'client_token'      => $clientToken,
+                    'user_id' => $user->id,
+                    'actor_name' => $user->name,
+                    'actor_role' => $user->role?->name,
+                    'type' => TroubleTicketMessage::TYPE_MESSAGE,
+                    'body' => $body !== '' ? $body : null,
+                    'client_token' => $clientToken,
                 ]);
 
                 $this->attach($ticket, $message, $user, $stored);
@@ -748,13 +789,13 @@ class TroubleTicketWorkflow
     {
         return TroubleTicketMessage::create([
             'trouble_ticket_id' => $ticket->id,
-            'user_id'           => $user->id,
-            'actor_name'        => $user->name,
-            'actor_role'        => $user->role?->name,
-            'type'              => TroubleTicketMessage::TYPE_EVENT,
-            'event'             => $code,
-            'body'              => $body,
-            'metadata'          => $meta ?: null,
+            'user_id' => $user->id,
+            'actor_name' => $user->name,
+            'actor_role' => $user->role?->name,
+            'type' => TroubleTicketMessage::TYPE_EVENT,
+            'event' => $code,
+            'body' => $body,
+            'metadata' => $meta ?: null,
         ]);
     }
 
@@ -775,7 +816,7 @@ class TroubleTicketWorkflow
             $mimes[$i] = $finfo->file($file->getRealPath()) ?: 'application/octet-stream';
 
             if (! in_array($mimes[$i], TroubleTicketAttachment::DETECTED_MIME, true)) {
-                $this->fail('Isi berkas "' . $file->getClientOriginalName() . '" tidak sesuai jenis yang diizinkan.', 'attachments');
+                $this->fail('Isi berkas "'.$file->getClientOriginalName().'" tidak sesuai jenis yang diizinkan.', 'attachments');
             }
         }
 
@@ -813,13 +854,13 @@ class TroubleTicketWorkflow
         foreach ($stored as $s) {
             TroubleTicketAttachment::create([
                 'trouble_ticket_id' => $ticket->id,
-                'message_id'        => $message->id,
-                'uploaded_by'       => $user->id,
-                'original_name'     => $s['name'],
-                'storage_path'      => $s['path'],
-                'mime_type'         => $s['mime'],
-                'size_bytes'        => $s['size'],
-                'file_hash'         => $s['hash'],
+                'message_id' => $message->id,
+                'uploaded_by' => $user->id,
+                'original_name' => $s['name'],
+                'storage_path' => $s['path'],
+                'mime_type' => $s['mime'],
+                'size_bytes' => $s['size'],
+                'file_hash' => $s['hash'],
             ]);
         }
     }

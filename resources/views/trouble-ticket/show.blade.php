@@ -155,10 +155,11 @@
                             <div class="tt-chips">
                                 <span class="tt-chip"><i class="fas fa-bug"></i>{{ $t->problem?->name ?? 'Problem —' }}</span>
                                 <span class="tt-chip tt-sev tt-sev-{{ $t->severity_level }}">{{ $t->severity_label }}</span>
-                                @if($t->device)<span class="tt-chip"><i class="fas fa-hdd"></i>{{ $t->device }}</span>@endif
+                                <span class="tt-chip" title="Aging sejak Date Open"><i class="far fa-clock"></i>{{ $t->aging_days }} hari</span>
+                                @if($t->device_label)<span class="tt-chip"><i class="fas fa-hdd"></i>{{ $t->device_label }}</span>@endif
                                 @if($t->flag_alarm)<span class="tt-chip"><i class="fas fa-bell"></i>{{ $t->flag_alarm }}</span>@endif
                             </div>
-                            <div class="tt-issue">{{ $t->issue }}</div>
+                            <div class="tt-issue">{{ $t->issue_label }}</div>
 
                             <div class="tt-sum-sla">
                                 @foreach($slaRows as $key => [$label])
@@ -224,10 +225,8 @@
                                 <dl class="m-0">
                                     <div class="tt-kv"><dt>No. TT</dt><dd><strong>{{ $t->ticket_number }}</strong>
                                         <button type="button" class="tt-copy" data-copy="{{ $t->ticket_number }}" title="Salin"><i class="far fa-copy"></i></button></dd></div>
-                                    <div class="tt-kv"><dt>Ref. eksternal</dt><dd>{{ $t->external_ref ?: '—' }}
-                                        @if($t->external_ref)<button type="button" class="tt-copy" data-copy="{{ $t->external_ref }}" title="Salin"><i class="far fa-copy"></i></button>@endif</dd></div>
-                                    <div class="tt-kv"><dt>Pelapor</dt><dd>{{ $t->reporter_name ?: '—' }}</dd></div>
-                                    <div class="tt-kv"><dt>Dilaporkan</dt><dd>{{ $fmt($t->reported_at) }}</dd></div>
+                                    <div class="tt-kv"><dt>Date Open</dt><dd>{{ $fmt($t->reported_at) }}</dd></div>
+                                    <div class="tt-kv"><dt>Date Update</dt><dd>{{ $fmt($t->updated_at) }}</dd></div>
                                     <div class="tt-kv"><dt>Dibuat oleh</dt><dd>{{ $t->creator?->name }} · {{ $fmt($t->created_at) }}</dd></div>
                                 </dl>
                             </details>
@@ -235,9 +234,13 @@
                                 <summary>Gangguan</summary>
                                 <dl class="m-0">
                                     <div class="tt-kv"><dt>Problem</dt><dd>{{ $t->problem?->name ?? '—' }}</dd></div>
-                                    <div class="tt-kv"><dt>Severity</dt><dd><span class="tt-sev tt-sev-{{ $t->severity_level }}">{{ $t->severity_label }}</span></dd></div>
-                                    <div class="tt-kv"><dt>Issue</dt><dd>{{ $t->issue }}</dd></div>
-                                    <div class="tt-kv"><dt>Device</dt><dd>{{ $t->device ?: '—' }}</dd></div>
+                                    <div class="tt-kv"><dt>Aging</dt><dd>{{ $t->aging_days }} hari</dd></div>
+                                    <div class="tt-kv"><dt>Severity</dt><dd><span class="tt-sev tt-sev-{{ $t->severity_level }}">{{ $t->severity_label }}</span>
+                                        <small class="text-muted ml-1">otomatis dari aging</small></dd></div>
+                                    <div class="tt-kv"><dt>Initial Problem</dt><dd>{{ $t->issue_label ?: '—' }}</dd></div>
+                                    <div class="tt-kv"><dt>RCA</dt><dd>{{ $t->rca_label ?: '—' }}</dd></div>
+                                    <div class="tt-kv"><dt>Sub-RCA</dt><dd>{{ $t->sub_rca_label ?: '—' }}</dd></div>
+                                    <div class="tt-kv"><dt>Device</dt><dd>{{ $t->device_label ?: '—' }}</dd></div>
                                     <div class="tt-kv"><dt>Flag alarm</dt><dd>{{ $t->flag_alarm ?: '—' }}</dd></div>
                                     <div class="tt-kv"><dt>Deskripsi</dt><dd style="white-space:pre-wrap;">{{ $t->description }}</dd></div>
                                 </dl>

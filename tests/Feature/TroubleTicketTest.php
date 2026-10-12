@@ -9,15 +9,20 @@ use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\TroubleTicket;
 use App\Models\TroubleTicketAttachment;
+use App\Models\TroubleTicketDevice;
+use App\Models\TroubleTicketIssue;
 use App\Models\TroubleTicketMessage;
-use App\Models\TroubleTicketSlaPolicy;
 use App\Models\TroubleTicketProblem;
-use App\Models\TroubleTicketSeverity;
+use App\Models\TroubleTicketRca;
+use App\Models\TroubleTicketSlaPolicy;
+use App\Models\TroubleTicketSubRca;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\Support\MakesTesysData;
 use Tests\TestCase;
 
@@ -28,36 +33,48 @@ use Tests\TestCase;
  */
 class TroubleTicketTest extends TestCase
 {
-    use RefreshDatabase;
     use MakesTesysData;
+    use RefreshDatabase;
 
     private User $creator;
+
     private User $tech;
+
     private User $tech2;
+
     private User $leader;
+
     private User $outsider;
+
     private Site $site;
+
     private TroubleTicketProblem $problem;
+
+    private TroubleTicketIssue $issue;
+
+    private TroubleTicketRca $rca;
+
+    private TroubleTicketSubRca $subRca;
 
     protected function setUp(): void
     {
         parent::setUp();
         Storage::fake('secure');
 
-        // Master tanpa UI — di produksi diisi langsung di basis data.
-        TroubleTicketSeverity::create(['code' => 'CRITICAL', 'name' => 'Critical', 'level' => 1]);
-        TroubleTicketSeverity::create(['code' => 'MAJOR', 'name' => 'Major', 'level' => 2]);
-        TroubleTicketSeverity::create(['code' => 'MINOR', 'name' => 'Minor', 'level' => 3]);
+        // Master tanpa UI — di produksi diisi TroubleTicketRcaSeeder.
         $this->problem = TroubleTicketProblem::create(['name' => 'Link Down']);
+        $this->issue = TroubleTicketIssue::create(['name' => 'MODEM RUSAK']);
+        $this->rca = TroubleTicketRca::create(['name' => 'HARDWARE']);
+        $this->subRca = TroubleTicketSubRca::create(['rca_id' => $this->rca->id, 'name' => 'MODEM']);
 
         foreach (['staff', 'supervisor', 'manager'] as $r) {
             $this->giveMenuAccess($this->role($r), 'trouble-ticket');
         }
 
-        $this->creator  = $this->userWithRole('manager');
-        $this->tech     = $this->userWithRole('staff');
-        $this->tech2    = $this->userWithRole('staff');
-        $this->leader   = $this->userWithRole('supervisor');
+        $this->creator = $this->userWithRole('manager');
+        $this->tech = $this->userWithRole('staff');
+        $this->tech2 = $this->userWithRole('staff');
+        $this->leader = $this->userWithRole('supervisor');
         $this->outsider = $this->userWithRole('staff');
 
         $this->site = $this->makeSite();
@@ -79,7 +96,7 @@ class TroubleTicketTest extends TestCase
         $n++;
 
         return Site::create([
-            'tid' => 'TID-' . $n, 'sitename' => 'Site Uji ' . $n, 'type' => 'TOWER',
+            'tid' => 'TID-'.$n, 'sitename' => 'Site Uji '.$n, 'type' => 'TOWER',
             'source_power' => 'PLN', 'program' => 'AKSES_INTERNET', 'status' => 'ACTIVE',
             'customer_id' => $this->makeCustomer()->id,
         ]);
@@ -94,8 +111,9 @@ class TroubleTicketTest extends TestCase
     private function createTicket(array $extra = []): TroubleTicket
     {
         $this->actingAs($this->creator)->post('/trouble-ticket', array_merge([
-            'site_id' => $this->site->id, 'assigned_to' => $this->tech->id, 'severity' => 'MAJOR',
-            'problem_id' => $this->problem->id, 'issue' => 'Link down', 'description' => 'Modem mati sejak pagi',
+            'site_id' => $this->site->id, 'assigned_to' => $this->tech->id,
+            'problem_id' => $this->problem->id, 'issue_id' => $this->issue->id,
+            'description' => 'Modem mati sejak pagi',
         ], $extra))->assertRedirect();
 
         return TroubleTicket::latest('id')->firstOrFail();
@@ -141,11 +159,26 @@ class TroubleTicketTest extends TestCase
     public function test_teknisi_harus_pic_internal_site(): void
     {
         $this->actingAs($this->creator)->post('/trouble-ticket', [
-            'site_id' => $this->site->id, 'assigned_to' => $this->outsider->id, 'severity' => 'MINOR',
-            'problem_id' => $this->problem->id, 'issue' => 'X', 'description' => 'Y',
+            'site_id' => $this->site->id, 'assigned_to' => $this->outsider->id,
+            'problem_id' => $this->problem->id, 'issue_id' => $this->issue->id, 'description' => 'Y',
         ])->assertSessionHasErrors('assigned_to');
 
         $this->assertSame(0, TroubleTicket::count());
+    }
+
+    public function test_leader_team_tidak_bisa_jadi_teknisi(): void
+    {
+        // Leader didaftarkan sebagai PIC internal site; ia tetap bukan teknisi.
+        $this->linkTech($this->site, $this->leader);
+
+        $this->actingAs($this->creator)->getJson("/trouble-ticket/site/{$this->site->id}/technicians")
+            ->assertOk()
+            ->assertJsonMissing(['name' => $this->leader->name])
+            ->assertJsonFragment(['name' => $this->tech->name]);
+
+        $this->post('/trouble-ticket', [
+            'site_id' => $this->site->id, 'assigned_to' => $this->leader->id, 'description' => 'Y',
+        ])->assertSessionHasErrors('assigned_to');
     }
 
     public function test_nomor_tt_unik_pada_pembuatan_berulang(): void
@@ -155,7 +188,7 @@ class TroubleTicketTest extends TestCase
         }
 
         $this->assertSame(5, TroubleTicket::distinct()->count('ticket_number'));
-        $this->assertSame(5, (int) \DB::table('document_sequences')->where('key', 'trouble-ticket:' . now()->year)->value('counter'));
+        $this->assertSame(5, (int) \DB::table('document_sequences')->where('key', 'trouble-ticket:'.now()->year)->value('counter'));
     }
 
     public function test_user_di_luar_rantai_team_tidak_bisa_melihat_tiket(): void
@@ -343,32 +376,40 @@ class TroubleTicketTest extends TestCase
 
     public function test_field_referensi_telko_tersimpan_dan_tervalidasi(): void
     {
-        // Severity/problem tak dikenal ditolak.
+        // Problem / Initial Problem tak dikenal ditolak.
         $this->actingAs($this->creator)->post('/trouble-ticket', [
-            'site_id' => $this->site->id, 'assigned_to' => $this->tech->id, 'severity' => 'NGARANG',
-            'problem_id' => 999, 'issue' => 'X', 'description' => 'Y',
-        ])->assertSessionHasErrors(['severity', 'problem_id']);
+            'site_id' => $this->site->id, 'assigned_to' => $this->tech->id,
+            'problem_id' => 999, 'issue_id' => 999, 'description' => 'Y',
+        ])->assertSessionHasErrors(['issue_id', 'problem_id']);
 
-        // Waktu lapor di masa depan ditolak.
+        // Date Open di masa depan ditolak.
         $this->post('/trouble-ticket', [
-            'site_id' => $this->site->id, 'assigned_to' => $this->tech->id, 'severity' => 'MAJOR',
-            'problem_id' => $this->problem->id, 'issue' => 'X', 'description' => 'Y',
+            'site_id' => $this->site->id, 'assigned_to' => $this->tech->id,
+            'problem_id' => $this->problem->id, 'issue_id' => $this->issue->id, 'description' => 'Y',
             'reported_at' => now()->addHour()->format('Y-m-d H:i'),
         ])->assertSessionHasErrors('reported_at');
 
         $t = $this->createTicket([
-            'external_ref' => 'NOC-123', 'device' => 'Modem', 'flag_alarm' => 'LINK DOWN',
+            'device_id' => TroubleTicketDevice::create(['name' => 'MODEM'])->id,
+            'rca_id' => $this->rca->id, 'sub_rca_id' => $this->subRca->id,
+            'flag_alarm' => 'LINK DOWN',
             'reported_at' => now()->subHour()->format('Y-m-d H:i'),
         ]);
-        $this->assertSame(['NOC-123', 'Modem', 'LINK DOWN', 'MAJOR'], [$t->external_ref, $t->device, $t->flag_alarm, $t->severity]);
-        $this->assertSame($this->tech->id, \App\Models\MasterPic::whereKey($t->pic_id)->value('user_id'));
+        $this->assertSame(
+            ['MODEM RUSAK', 'MODEM', 'HARDWARE', 'MODEM', 'LINK DOWN'],
+            [$t->issue_label, $t->device_label, $t->rca_label, $t->sub_rca_label, $t->flag_alarm],
+        );
+        $this->assertNull($t->severity, 'severity tidak lagi diisi dari form');
+        $this->assertSame($this->tech->id, MasterPic::whereKey($t->pic_id)->value('user_id'));
         $this->assertNotNull($t->reported_at);
 
-        // Ref eksternal unik.
-        $this->post('/trouble-ticket', [
-            'site_id' => $this->site->id, 'assigned_to' => $this->tech->id, 'severity' => 'MAJOR',
-            'problem_id' => $this->problem->id, 'issue' => 'X', 'description' => 'Y', 'external_ref' => 'NOC-123',
-        ])->assertSessionHasErrors('external_ref');
+        // Sub-RCA harus milik RCA yang dipilih.
+        $rcaLain = TroubleTicketRca::create(['name' => 'POWER']);
+        $this->actingAs($this->creator)->post('/trouble-ticket', [
+            'site_id' => $this->site->id, 'assigned_to' => $this->tech->id,
+            'problem_id' => $this->problem->id, 'issue_id' => $this->issue->id, 'description' => 'Y',
+            'rca_id' => $rcaLain->id, 'sub_rca_id' => $this->subRca->id,
+        ])->assertSessionHasErrors('sub_rca_id');
 
         // Plan Visit wajib tanggal kunjungan; target online ikut tersimpan.
         $this->actingAs($this->tech)->get("/trouble-ticket/{$t->id}");
@@ -465,14 +506,14 @@ class TroubleTicketTest extends TestCase
         $this->assertSame(64, strlen($att->file_hash));
 
         $this->actingAs($this->outsider)->get(route('trouble-ticket.attachment', $att))->assertForbidden();
-        $this->actingAs($this->outsider)->get('/storage/' . $att->storage_path)->assertForbidden();
+        $this->actingAs($this->outsider)->get('/storage/'.$att->storage_path)->assertForbidden();
         $this->actingAs($this->tech2)->get(route('trouble-ticket.attachment', $att))->assertOk();
     }
 
     public function test_pesan_idempoten_per_token(): void
     {
         $t = $this->advance($this->createTicket(), 'NON_VISIT', 'IN_PROGRESS');
-        $token = (string) \Illuminate\Support\Str::uuid();
+        $token = (string) Str::uuid();
 
         $this->actingAs($this->tech)->postJson("/trouble-ticket/{$t->id}/messages", ['body' => 'cek', 'client_token' => $token])->assertOk();
         $this->postJson("/trouble-ticket/{$t->id}/messages", ['body' => 'cek', 'client_token' => $token])->assertOk();
@@ -535,7 +576,7 @@ class TroubleTicketTest extends TestCase
         $this->assertSame(0, TroubleTicket::overdue()->count());
         Carbon::setTestNow();
 
-        TroubleTicketSlaPolicy::create(['severity' => 'MAJOR', 'response_minutes' => 30, 'resolution_minutes' => 240, 'status' => 'ACTIVE']);
+        TroubleTicketSlaPolicy::create(['severity' => null, 'problem_id' => $this->problem->id, 'response_minutes' => 30, 'resolution_minutes' => 240, 'status' => 'ACTIVE']);
         $t = $this->createTicket();
         $this->assertSame(30, $t->sla_response_minutes);
 
@@ -558,7 +599,13 @@ class TroubleTicketTest extends TestCase
             ->assertOk()->assertSee($t->ticket_number);
         $this->actingAs($this->leader)->get("/trouble-ticket/{$t->id}")->assertOk()->assertSee('id="ttChatList"', false);
         $this->actingAs($this->leader)->getJson("/trouble-ticket/{$t->id}/messages?after_id=0")->assertOk()->assertJsonStructure(['html', 'status']);
-        $this->actingAs($this->creator)->get('/trouble-ticket/create')->assertOk();
+        // Form buat tiket: tanpa Problem, Initial Problem, Flag Alarm, dan Status TT.
+        $this->actingAs($this->creator)->get('/trouble-ticket/create')->assertOk()
+            ->assertSee('id="fldSubRca"', false)
+            ->assertDontSee('id="fldProblem"', false)
+            ->assertDontSee('id="fldIssue"', false)
+            ->assertDontSee('id="fldAlarm"', false)
+            ->assertDontSee('Status TT');
 
         $this->actingAs($this->leader)->get('/trouble-ticket/settings')->assertForbidden();
         $this->actingAs($this->userWithRole('superadmin'))->get('/trouble-ticket/settings')->assertOk();
@@ -567,16 +614,36 @@ class TroubleTicketTest extends TestCase
         $this->actingAs($this->userWithRole('finance'))->get('/trouble-ticket')->assertForbidden();
     }
 
+    public function test_severity_dihitung_dari_aging_tiket(): void
+    {
+        $t = $this->createTicket();
+
+        // Hari pembuatan: aging 0 → Rendah.
+        $this->assertSame([0, 'Rendah', 4], [$t->aging_days, $t->severity_label, $t->severity_level]);
+
+        // Titik awal dikunci di luar loop: now() di dalamnya sudah ikut bergeser.
+        $open = $t->reported_at->copy()->startOfDay();
+
+        foreach ([[1, 'Minor', 3], [2, 'Minor', 3], [3, 'Major', 2], [7, 'Major', 2], [8, 'Kritis', 1], [30, 'Kritis', 1]] as [$hari, $label, $level]) {
+            Carbon::setTestNow($open->copy()->addDays($hari)->addHours(2));
+            $segar = $t->fresh();
+            $this->assertSame([$hari, $label, $level], [$segar->aging_days, $segar->severity_label, $segar->severity_level]);
+        }
+
+        Carbon::setTestNow();
+    }
+
     public function test_export_excel_mengikuti_filter_dan_keterlihatan(): void
     {
-        $a = $this->createTicket(['issue' => 'Tiket A']);
-        $b = $this->createTicket(['issue' => 'Tiket B']);
+        $a = $this->createTicket();
+        $b = $this->createTicket();
 
         $baca = function ($res) {
-            $file = tempnam(sys_get_temp_dir(), 'tt') . '.xlsx';
+            $file = tempnam(sys_get_temp_dir(), 'tt').'.xlsx';
             file_put_contents($file, $res->streamedContent());
-            $rows = \PhpOffice\PhpSpreadsheet\IOFactory::load($file)->getActiveSheet()->toArray();
+            $rows = IOFactory::load($file)->getActiveSheet()->toArray();
             @unlink($file);
+
             return collect($rows)->skip(1)->pluck(0)->filter()->values()->all();
         };
 
@@ -597,7 +664,7 @@ class TroubleTicketTest extends TestCase
 
         // Teknisi melihat info dari daftar: bukan "membuka tiket", timer Response tetap jalan.
         $this->actingAs($this->tech)->get(route('trouble-ticket.info', $t))
-            ->assertOk()->assertSee($t->issue);
+            ->assertOk()->assertSee($t->issue_label);
         $this->assertNull($t->fresh()->acknowledged_at);
 
         $this->actingAs($this->outsider)->get(route('trouble-ticket.info', $t))->assertForbidden();

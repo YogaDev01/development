@@ -5,14 +5,25 @@ namespace App\Http\Controllers;
 use App\Models\Site;
 use App\Models\TroubleTicket;
 use App\Models\TroubleTicketAttachment;
+use App\Models\TroubleTicketDevice;
+use App\Models\TroubleTicketMessage;
 use App\Models\TroubleTicketProblem;
+use App\Models\TroubleTicketRca;
 use App\Models\TroubleTicketSeverity;
 use App\Models\TroubleTicketSlaPolicy;
+use App\Models\TroubleTicketSubRca;
 use App\Models\User;
 use App\Services\TroubleTicketWorkflow;
+use App\Support\AccessRoles;
+use App\Support\WorkflowStatus;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 /**
  * Trouble Ticket (TESYS Operation).
@@ -30,9 +41,7 @@ class TroubleTicketController extends Controller
     /** Jumlah item timeline per muat. */
     private const MESSAGE_PAGE = 30;
 
-    public function __construct(private TroubleTicketWorkflow $workflow)
-    {
-    }
+    public function __construct(private TroubleTicketWorkflow $workflow) {}
 
     /*
     |--------------------------------------------------------------------------
@@ -55,7 +64,8 @@ class TroubleTicketController extends Controller
                 'site:id,tid,sitename',
                 'customer:id,name',
                 'problem:id,name',
-                'severityRef',
+                'issueRef:id,name',
+                'deviceRef:id,name',
                 'technician:id,name',
             ]);
 
@@ -70,17 +80,17 @@ class TroubleTicketController extends Controller
         $overdueIds = TroubleTicket::visibleTo($user)->overdue()->pluck('trouble_tickets.id')->flip();
 
         return view('trouble-ticket.index', [
-            'tickets'    => $tickets,
-            'terpotong'  => $terpotong,
-            'total'      => $total,
+            'tickets' => $tickets,
+            'terpotong' => $terpotong,
+            'total' => $total,
             'overdueIds' => $overdueIds,
-            'stats'      => [
-                'terbuka'           => (int) ($agregat->terbuka ?? 0),
-                'overdue'           => $overdueIds->count(),
+            'stats' => [
+                'terbuka' => (int) ($agregat->terbuka ?? 0),
+                'overdue' => $overdueIds->count(),
                 'menunggu_approval' => (int) ($agregat->menunggu_approval ?? 0),
-                'closed_bulan_ini'  => (int) ($agregat->closed_bulan_ini ?? 0),
+                'closed_bulan_ini' => (int) ($agregat->closed_bulan_ini ?? 0),
             ],
-            'canSettings' => $user->hasRole(\App\Support\AccessRoles::TROUBLE_TICKET_SETTINGS),
+            'canSettings' => $user->hasRole(AccessRoles::TROUBLE_TICKET_SETTINGS),
         ]);
     }
 
@@ -97,52 +107,56 @@ class TroubleTicketController extends Controller
             ->map(fn ($v) => (int) $v);
 
         $tickets = TroubleTicket::visibleTo(Auth::user())
-            ->with(['site:id,tid,sitename', 'customer:id,name', 'problem:id,name', 'severityRef', 'technician:id,name'])
+            ->with([
+                'site:id,tid,sitename', 'customer:id,name', 'problem:id,name',
+                'issueRef:id,name', 'deviceRef:id,name', 'rcaRef:id,name', 'subRcaRef:id,name',
+                'technician:id,name',
+            ])
             ->when($ids->isNotEmpty(), fn ($q) => $q->whereIn('trouble_tickets.id', $ids))
             ->orderByDesc('trouble_tickets.updated_at')
             ->limit(5000)
             ->get();
 
         $kolom = [
-            'No. TT', 'Ref. Eksternal', 'Customer', 'Site ID', 'Nama Site', 'Problem', 'Severity',
-            'Issue', 'Device', 'Flag Alarm', 'Teknisi', 'Status', 'Plan', 'Target Online',
-            'Response (menit)', 'Travel (menit)', 'Resolution (menit)', 'Dilaporkan', 'Dibuat', 'Update',
+            'No. TT', 'Customer', 'Site ID', 'Nama Site', 'Problem', 'Aging (hari)', 'Severity',
+            'Initial Problem', 'Device', 'Flag Alarm', 'Teknisi', 'Status', 'Plan', 'Target Online',
+            'Response (menit)', 'Travel (menit)', 'Resolution (menit)', 'Date Open', 'Dibuat', 'Date Update',
             'Closed', 'RCA', 'Sub RCA', 'Action',
         ];
         $menit = fn (array $m) => $m['seconds'] === null ? null : round($m['seconds'] / 60, 1);
         $tgl = fn ($d) => $d?->format('Y-m-d H:i');
 
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Trouble Ticket');
         $sheet->fromArray($kolom, null, 'A1');
-        $akhir = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($kolom));
-        $header = $sheet->getStyle('A1:' . $akhir . '1');
+        $akhir = Coordinate::stringFromColumnIndex(count($kolom));
+        $header = $sheet->getStyle('A1:'.$akhir.'1');
         $header->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
-        $header->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('0D1B2A');
+        $header->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('0D1B2A');
 
         $baris = 2;
         foreach ($tickets as $t) {
             $sheet->fromArray([
-                $t->ticket_number, $t->external_ref, $t->customer?->name, $t->site?->tid, $t->site?->sitename,
-                $t->problem?->name, $t->severity_label, $t->issue, $t->device, $t->flag_alarm,
-                $t->technician?->name, \App\Support\WorkflowStatus::label($t->status, 'trouble-ticket'),
+                $t->ticket_number, $t->customer?->name, $t->site?->tid, $t->site?->sitename,
+                $t->problem?->name, $t->aging_days, $t->severity_label, $t->issue_label, $t->device_label, $t->flag_alarm,
+                $t->technician?->name, WorkflowStatus::label($t->status, 'trouble-ticket'),
                 $t->visit_decision_label, $t->target_online?->format('Y-m-d'),
                 $menit($t->slaMetric('response')), $menit($t->slaMetric('travel')), $menit($t->slaMetric('resolution')),
                 $tgl($t->reported_at), $tgl($t->created_at), $tgl($t->updated_at), $tgl($t->closed_at),
-                $t->rca, $t->sub_rca, $t->action,
-            ], null, 'A' . $baris);
+                $t->rca_label, $t->sub_rca_label, $t->action,
+            ], null, 'A'.$baris);
             $baris++;
         }
         foreach (range(1, count($kolom)) as $i) {
-            $sheet->getColumnDimension(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i))->setAutoSize(true);
+            $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($i))->setAutoSize(true);
         }
         $sheet->freezePane('A2');
 
-        $nama = 'trouble-ticket-' . now()->format('Ymd-His') . '.xlsx';
+        $nama = 'trouble-ticket-'.now()->format('Ymd-His').'.xlsx';
 
         return response()->streamDownload(function () use ($spreadsheet) {
-            (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save('php://output');
+            (new Xlsx($spreadsheet))->save('php://output');
         }, $nama, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
     }
 
@@ -156,13 +170,13 @@ class TroubleTicketController extends Controller
         abort_unless($this->workflow->canView(Auth::user(), $ticket), 403);
 
         $ticket->load([
-            'site.customer:id,name', 'problem', 'severityRef', 'creator:id,name',
+            'site.customer:id,name', 'problem', 'issueRef', 'deviceRef', 'rcaRef', 'subRcaRef', 'creator:id,name',
             'technician:id,name,phone', 'acknowledger:id,name', 'decider:id,name',
             'closer:id,name', 'planApprover:id,name',
         ]);
 
         return view('trouble-ticket._info', [
-            'ticket'      => $ticket,
+            'ticket' => $ticket,
             'supervisors' => $this->workflow->supervisorsFor((int) $ticket->assigned_to),
         ]);
     }
@@ -176,9 +190,11 @@ class TroubleTicketController extends Controller
     public function create()
     {
         return view('trouble-ticket.create', [
-            'sites'      => Site::with('customer:id,name')->where('status', 'ACTIVE')->orderBy('tid')->get(['id', 'tid', 'sitename', 'customer_id']),
-            'problems'   => TroubleTicketProblem::where('status', 'ACTIVE')->orderBy('name')->get(),
-            'severities' => TroubleTicketSeverity::active(),
+            'sites' => Site::with('customer:id,name')->where('status', 'ACTIVE')->orderBy('tid')->get(['id', 'tid', 'sitename', 'customer_id']),
+            'devices' => TroubleTicketDevice::active(),
+            'rcas' => TroubleTicketRca::active(),
+            // Dipakai dropdown Sub-RCA di browser (tanpa request tambahan).
+            'subRcas' => TroubleTicketSubRca::where('status', 'ACTIVE')->orderBy('name')->get(['id', 'rca_id', 'name']),
         ]);
     }
 
@@ -187,7 +203,7 @@ class TroubleTicketController extends Controller
     {
         return response()->json([
             'technicians' => $this->workflow->eligibleTechnicians($site->id)->map(fn ($u) => [
-                'id'   => $u->id,
+                'id' => $u->id,
                 'name' => $u->name,
             ])->values(),
         ]);
@@ -196,18 +212,21 @@ class TroubleTicketController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'site_id'       => 'required|integer|exists:sites,id',
-            'assigned_to'   => 'required|integer|exists:users,id',
-            'problem_id'    => 'required|integer|exists:trouble_ticket_problems,id',
-            'severity'      => 'required|string|max:20|exists:trouble_ticket_severities,code',
-            'issue'         => 'required|string|max:200',
-            'description'   => 'required|string|max:10000',
-            'external_ref'  => 'nullable|string|max:40|unique:trouble_tickets,external_ref',
-            'device'        => 'nullable|string|max:40',
-            'flag_alarm'    => 'nullable|string|max:40',
-            'reported_at'   => 'nullable|date|before_or_equal:now',
-            'reporter_name' => 'nullable|string|max:150',
-            'attachments'   => 'nullable|array|max:' . TroubleTicketAttachment::MAX_FILES,
+            'site_id' => 'required|integer|exists:sites,id',
+            'assigned_to' => 'required|integer|exists:users,id',
+            'description' => 'required|string|max:10000',
+            // Problem / Initial Problem / Flag Alarm tidak lagi ada di form buat
+            // tiket (diisi belakangan dari halaman detail atau integrasi), tapi
+            // tetap diterima dan divalidasi bila dikirim.
+            'problem_id' => 'nullable|integer|exists:trouble_ticket_problems,id',
+            'issue_id' => 'nullable|integer|exists:trouble_ticket_issues,id',
+            'flag_alarm' => 'nullable|string|max:40',
+            'device_id' => 'nullable|integer|exists:trouble_ticket_devices,id',
+            'rca_id' => 'nullable|integer|exists:trouble_ticket_rcas,id',
+            'sub_rca_id' => 'nullable|integer|exists:trouble_ticket_sub_rcas,id',
+            // Date Open — bawaan hari ini, boleh diubah, tidak boleh di masa depan.
+            'reported_at' => 'nullable|date|before_or_equal:now',
+            'attachments' => 'nullable|array|max:'.TroubleTicketAttachment::MAX_FILES,
             'attachments.*' => TroubleTicketAttachment::rules(),
         ], $this->fileMessages());
 
@@ -235,7 +254,10 @@ class TroubleTicketController extends Controller
             'site.customer:id,name',
             'site.picLinks.pic',
             'problem',
-            'severityRef',
+            'issueRef',
+            'deviceRef',
+            'rcaRef',
+            'subRcaRef',
             'pic',
             'creator:id,name',
             'technician:id,name,phone',
@@ -252,22 +274,22 @@ class TroubleTicketController extends Controller
         $canSupervise = $this->workflow->canSupervise($user, $ticket);
 
         return view('trouble-ticket.show', [
-            'ticket'        => $ticket,
-            'messages'      => $messages,
+            'ticket' => $ticket,
+            'messages' => $messages,
             // Tab Log: seluruh kejadian workflow (tanpa pesan chat), terbaru di atas.
-            'statusLog'     => $ticket->messages()
-                ->where('type', \App\Models\TroubleTicketMessage::TYPE_EVENT)
+            'statusLog' => $ticket->messages()
+                ->where('type', TroubleTicketMessage::TYPE_EVENT)
                 ->orderByDesc('id')
                 ->get(['id', 'event', 'actor_name', 'body', 'metadata', 'created_at']),
-            'ctx'           => $this->timelineContext($ticket),
-            'hasOlder'      => $hasOlder,
-            'isTechnician'  => $this->workflow->isTechnician($user, $ticket),
-            'mustDecide'    => $this->workflow->mustDecide($user, $ticket),
-            'canSupervise'  => $canSupervise,
+            'ctx' => $this->timelineContext($ticket),
+            'hasOlder' => $hasOlder,
+            'isTechnician' => $this->workflow->isTechnician($user, $ticket),
+            'mustDecide' => $this->workflow->mustDecide($user, $ticket),
+            'canSupervise' => $canSupervise,
             'canReviewPlan' => $this->workflow->canReviewPlan($user, $ticket),
-            'canMessage'    => $this->workflow->canMessage($user, $ticket),
-            'supervisors'   => $this->workflow->supervisorsFor((int) $ticket->assigned_to),
-            'reassignTo'    => $canSupervise && in_array($ticket->status, TroubleTicketWorkflow::REASSIGNABLE, true)
+            'canMessage' => $this->workflow->canMessage($user, $ticket),
+            'supervisors' => $this->workflow->supervisorsFor((int) $ticket->assigned_to),
+            'reassignTo' => $canSupervise && in_array($ticket->status, TroubleTicketWorkflow::REASSIGNABLE, true)
                 ? $this->workflow->eligibleTechnicians($ticket->site_id)->where('id', '!=', $ticket->assigned_to)->values()
                 : collect(),
         ]);
@@ -283,7 +305,7 @@ class TroubleTicketController extends Controller
 
         $data = $request->validate([
             'before_id' => 'nullable|integer|min:1',
-            'after_id'  => 'nullable|integer|min:0',
+            'after_id' => 'nullable|integer|min:0',
         ]);
 
         if (isset($data['after_id'])) {
@@ -299,23 +321,23 @@ class TroubleTicketController extends Controller
         }
 
         return response()->json([
-            'html'      => $messages->isEmpty() ? '' : view('trouble-ticket._messages', [
+            'html' => $messages->isEmpty() ? '' : view('trouble-ticket._messages', [
                 'messages' => $messages,
-                'ctx'      => $this->timelineContext($ticket),
+                'ctx' => $this->timelineContext($ticket),
             ])->render(),
             'oldest_id' => $messages->first()?->id,
             'newest_id' => $messages->last()?->id,
             'has_older' => $hasOlder,
-            'status'    => $ticket->fresh()->status,
+            'status' => $ticket->fresh()->status,
         ]);
     }
 
     public function postMessage(Request $request, TroubleTicket $ticket)
     {
         $data = $request->validate([
-            'body'          => 'nullable|string|max:5000',
-            'client_token'  => 'nullable|uuid',
-            'attachments'   => 'nullable|array|max:' . TroubleTicketAttachment::MAX_FILES,
+            'body' => 'nullable|string|max:5000',
+            'client_token' => 'nullable|uuid',
+            'attachments' => 'nullable|array|max:'.TroubleTicketAttachment::MAX_FILES,
             'attachments.*' => TroubleTicketAttachment::rules(),
         ], $this->fileMessages());
 
@@ -331,10 +353,10 @@ class TroubleTicketController extends Controller
             $message->load(['attachments', 'user:id,name']);
 
             return response()->json([
-                'id'   => $message->id,
+                'id' => $message->id,
                 'html' => view('trouble-ticket._messages', [
                     'messages' => collect([$message]),
-                    'ctx'      => $this->timelineContext($ticket),
+                    'ctx' => $this->timelineContext($ticket),
                 ])->render(),
             ]);
         }
@@ -354,9 +376,9 @@ class TroubleTicketController extends Controller
         $inline = $attachment->is_inline && request()->boolean('inline');
 
         return $disk->response($attachment->storage_path, $attachment->original_name, [
-            'Content-Type'           => $attachment->is_inline ? $attachment->mime_type : 'application/octet-stream',
+            'Content-Type' => $attachment->is_inline ? $attachment->mime_type : 'application/octet-stream',
             'X-Content-Type-Options' => 'nosniff',
-            'Cache-Control'          => 'private, max-age=604800',
+            'Cache-Control' => 'private, max-age=604800',
         ], $inline ? 'inline' : 'attachment');
     }
 
@@ -369,9 +391,9 @@ class TroubleTicketController extends Controller
     public function submitPlan(Request $request, TroubleTicket $ticket)
     {
         $data = $request->validate([
-            'decision' => 'required|in:' . implode(',', array_keys(TroubleTicket::VISIT_DECISIONS)),
-            'reason'        => 'nullable|string|max:1000',
-            'visit_site'    => 'nullable|date|after_or_equal:today',
+            'decision' => 'required|in:'.implode(',', array_keys(TroubleTicket::VISIT_DECISIONS)),
+            'reason' => 'nullable|string|max:1000',
+            'visit_site' => 'nullable|date|after_or_equal:today',
             'target_online' => 'nullable|date|after_or_equal:today',
         ]);
 
@@ -404,8 +426,8 @@ class TroubleTicketController extends Controller
     public function correctDecision(Request $request, TroubleTicket $ticket)
     {
         $data = $request->validate([
-            'decision' => 'required|in:' . implode(',', array_keys(TroubleTicket::VISIT_DECISIONS)),
-            'reason'     => 'required|string|max:1000',
+            'decision' => 'required|in:'.implode(',', array_keys(TroubleTicket::VISIT_DECISIONS)),
+            'reason' => 'required|string|max:1000',
             'visit_site' => 'nullable|date|after_or_equal:today',
         ]);
 
@@ -424,12 +446,12 @@ class TroubleTicketController extends Controller
     public function close(Request $request, TroubleTicket $ticket)
     {
         $data = $request->validate([
-            'rca'                => 'required|string|max:40',
-            'sub_rca'            => 'nullable|string|max:150',
-            'action'             => 'required|string|max:150',
+            'rca' => 'required|string|max:40',
+            'sub_rca' => 'nullable|string|max:150',
+            'action' => 'required|string|max:150',
             'resolution_summary' => 'nullable|string|max:5000',
-            'attachments'        => 'nullable|array|max:' . TroubleTicketAttachment::MAX_FILES,
-            'attachments.*'      => TroubleTicketAttachment::rules(),
+            'attachments' => 'nullable|array|max:'.TroubleTicketAttachment::MAX_FILES,
+            'attachments.*' => TroubleTicketAttachment::rules(),
         ], $this->fileMessages());
 
         $this->workflow->close($ticket, Auth::user(), $data, $request->file('attachments', []));
@@ -441,7 +463,7 @@ class TroubleTicketController extends Controller
     {
         $data = $request->validate([
             'assigned_to' => 'required|integer|exists:users,id',
-            'reason'      => 'required|string|max:500',
+            'reason' => 'required|string|max:500',
         ]);
 
         $this->workflow->reassign($ticket, Auth::user(), (int) $data['assigned_to'], $data['reason']);
@@ -460,8 +482,8 @@ class TroubleTicketController extends Controller
     {
         return view('trouble-ticket.settings', [
             'severities' => TroubleTicketSeverity::orderBy('level')->orderBy('name')->get(),
-            'problems'   => TroubleTicketProblem::orderBy('name')->get(),
-            'policies'   => TroubleTicketSlaPolicy::with(['problem:id,name', 'severityRef'])
+            'problems' => TroubleTicketProblem::orderBy('name')->get(),
+            'policies' => TroubleTicketSlaPolicy::with(['problem:id,name', 'severityRef'])
                 ->orderByRaw('(SELECT COALESCE(MIN(s.level), 255) FROM trouble_ticket_severities s WHERE s.code = trouble_ticket_sla_policies.severity)')
                 ->orderByDesc('id')
                 ->get(),
@@ -471,12 +493,12 @@ class TroubleTicketController extends Controller
     public function storePolicy(Request $request)
     {
         $data = $request->validate([
-            'severity'           => 'required|string|max:20|exists:trouble_ticket_severities,code',
-            'problem_id'         => 'nullable|integer|exists:trouble_ticket_problems,id',
-            'response_minutes'   => 'nullable|integer|min:1|max:525600',
-            'travel_minutes'     => 'nullable|integer|min:1|max:525600',
+            'severity' => 'nullable|string|max:20|exists:trouble_ticket_severities,code',
+            'problem_id' => 'nullable|integer|exists:trouble_ticket_problems,id',
+            'response_minutes' => 'nullable|integer|min:1|max:525600',
+            'travel_minutes' => 'nullable|integer|min:1|max:525600',
             'resolution_minutes' => 'nullable|integer|min:1|max:525600',
-            'effective_from'     => 'nullable|date',
+            'effective_from' => 'nullable|date',
         ]);
 
         if (empty($data['response_minutes']) && empty($data['travel_minutes']) && empty($data['resolution_minutes'])) {
@@ -505,7 +527,7 @@ class TroubleTicketController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    /** @return array{0: \Illuminate\Support\Collection, 1: bool} */
+    /** @return array{0: Collection, 1: bool} */
     private function messagePage(TroubleTicket $ticket, ?int $beforeId = null): array
     {
         $rows = $ticket->messages()
@@ -525,7 +547,7 @@ class TroubleTicketController extends Controller
     {
         return [
             'tech' => $ticket->assignments()->pluck('assigned_to')->map(fn ($id) => (int) $id)->unique()->values()->all(),
-            'sup'  => $this->workflow->supervisorIdsFor((int) $ticket->assigned_to)->all(),
+            'sup' => $this->workflow->supervisorIdsFor((int) $ticket->assigned_to)->all(),
         ];
     }
 
@@ -534,9 +556,9 @@ class TroubleTicketController extends Controller
         $ext = implode(', ', TroubleTicketAttachment::EXTENSIONS);
 
         return [
-            'attachments.max'          => 'Paling banyak ' . TroubleTicketAttachment::MAX_FILES . ' berkas sekali kirim.',
-            'attachments.*.max'        => 'Ukuran berkas maksimal 10 MB.',
-            'attachments.*.mimes'      => "Jenis berkas tidak diizinkan. Diterima: {$ext}.",
+            'attachments.max' => 'Paling banyak '.TroubleTicketAttachment::MAX_FILES.' berkas sekali kirim.',
+            'attachments.*.max' => 'Ukuran berkas maksimal 10 MB.',
+            'attachments.*.mimes' => "Jenis berkas tidak diizinkan. Diterima: {$ext}.",
             'attachments.*.extensions' => "Jenis berkas tidak diizinkan. Diterima: {$ext}.",
         ];
     }

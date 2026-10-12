@@ -62,7 +62,7 @@ Homebase (+ PIC), dan Wilayah berjenjang.
 
 - Tambah: halaman penuh `GET /site/create`, tiga bagian seperti SLAmeet —
   Detail Site (Site ID, Site name, Tipe, Source Power, Program, Status*,
-  Customer, Homebase, Cluster, Supervisor, PIC Site), Location (Island,
+  Customer, PIC Site), Location (Island,
   Provinsi, Kota/Kabupaten, Kecamatan, Desa, Latitude, Longitude, Address) dan
   Network (Gateway, Outroute ID, Hub, Spotbeam, Polarisasi), ditambah kartu
   Site Keeper berisi baris nama + no HP yang bisa ditambah/dihapus. *Status
@@ -94,7 +94,10 @@ Homebase (+ PIC), dan Wilayah berjenjang.
 - Region site (turunan, **Needs confirmation**) = region homebase tempat
   Technician site terdaftar (site_pics → homebase_detail → homebase → region).
 - Kartu: Total TT (placeholder), Total Technician = PIC internal unik di site_pics.
-- Kolom Technician = PIC site bertipe `internal`. Kolom TT & tab TT/Document
+- Kolom PIC Site (`SiteController::technicians()`) = HANYA teknisi site, yaitu
+  PIC internal berjabatan "teknisi" (`Site::technicianPic()`, isian field PIC
+  Site di form). Supervisor dan PIC internal lain yang terpasang di `site_pics`
+  tidak ikut tampil di kolom ini — lihat tab PIC di detail/drawer site. Kolom TT & tab TT/Document
   masih placeholder (tabel trouble ticket & dokumen site belum ada).
 
 ## Import Excel (Sites, Master Material)

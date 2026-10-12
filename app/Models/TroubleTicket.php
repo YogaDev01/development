@@ -39,13 +39,14 @@ class TroubleTicket extends Model
 
     protected $fillable = [
         'ticket_number', 'external_ref', 'site_id', 'customer_id', 'problem_id',
-        'issue', 'device', 'severity', 'flag_alarm', 'description', 'reporter_name',
-        'reported_at', 'status',
+        'issue_id', 'issue', 'device_id', 'device', 'severity', 'flag_alarm',
+        'description', 'reporter_name', 'reported_at', 'status',
         'created_by', 'assigned_to', 'pic_id', 'assigned_at',
         'acknowledged_at', 'acknowledged_by', 'response_seconds',
         'visit_decision', 'visit_decided_by', 'visit_decided_at', 'visit_decision_reason',
         'visit_site', 'target_online', 'plan_approved_at', 'plan_approved_by',
-        'progress_started_at', 'resolved_at', 'rca', 'sub_rca', 'action', 'approval',
+        'progress_started_at', 'resolved_at', 'rca_id', 'sub_rca_id',
+        'rca', 'sub_rca', 'action', 'approval',
         'resolution_summary', 'closed_at', 'closed_by', 'resolution_seconds',
         'sla_policy_id', 'sla_response_minutes', 'sla_travel_minutes', 'sla_resolution_minutes',
     ];
@@ -78,6 +79,7 @@ class TroubleTicket extends Model
     public const APPROVALS = ['PENDING', 'APPROVED', 'REJECTED'];
 
     public const VISIT = 'VISIT';
+
     public const NON_VISIT = 'NON_VISIT';
 
     public const VISIT_DECISIONS = [
@@ -87,6 +89,20 @@ class TroubleTicket extends Model
 
     /** Batas peringatan SLA: >= 75% target = warning, >= 100% = critical. */
     public const SLA_WARNING_RATIO = 0.75;
+
+    /**
+     * Severity dihitung dari AGING tiket, bukan diisi pelapor (keputusan
+     * 12 Okt 2026). Aging = hari penuh sejak Date Open sampai tiket ditutup
+     * (atau sampai sekarang bila masih terbuka).
+     *
+     *   [hari minimum, label, level]  — level 1 = paling parah (warna tt-sev-*)
+     */
+    public const SEVERITY_AGING = [
+        [8, 'Kritis', 1],
+        [3, 'Major',  2],
+        [1, 'Minor',  3],
+        [0, 'Rendah', 4],
+    ];
 
     /*
     |--------------------------------------------------------------------------
@@ -109,7 +125,31 @@ class TroubleTicket extends Model
         return $this->belongsTo(TroubleTicketProblem::class, 'problem_id');
     }
 
-    /** Severity disimpan sebagai kode (seperti skema referensi). */
+    /** Initial Problem — gejala awal yang dilaporkan. */
+    public function issueRef(): BelongsTo
+    {
+        return $this->belongsTo(TroubleTicketIssue::class, 'issue_id');
+    }
+
+    public function deviceRef(): BelongsTo
+    {
+        return $this->belongsTo(TroubleTicketDevice::class, 'device_id');
+    }
+
+    public function rcaRef(): BelongsTo
+    {
+        return $this->belongsTo(TroubleTicketRca::class, 'rca_id');
+    }
+
+    public function subRcaRef(): BelongsTo
+    {
+        return $this->belongsTo(TroubleTicketSubRca::class, 'sub_rca_id');
+    }
+
+    /**
+     * Severity lama (kode master). Tiket baru tidak mengisinya lagi — severity
+     * kini dihitung dari aging. Relasi dipertahankan untuk baris lama.
+     */
     public function severityRef(): BelongsTo
     {
         return $this->belongsTo(TroubleTicketSeverity::class, 'severity', 'code');
@@ -384,16 +424,67 @@ class TroubleTicket extends Model
     |--------------------------------------------------------------------------
     */
 
-    /** Nama severity dari tabelnya; jatuh ke kodenya bila baris master tidak ada. */
+    /**
+     * Aging tiket dalam hari penuh: Date Open → penutupan (atau sekarang).
+     * Date Open = reported_at bila diisi, selain itu created_at.
+     */
+    public function getAgingDaysAttribute(): int
+    {
+        $mulai = $this->reported_at ?? $this->created_at;
+
+        if (! $mulai) {
+            return 0;
+        }
+
+        $akhir = $this->closed_at ?? now();
+
+        return max(0, (int) $mulai->copy()->startOfDay()->diffInDays($akhir->copy()->startOfDay(), false));
+    }
+
+    /** [label, level] severity dari jumlah hari aging. */
+    public static function severityFromAging(int $hari): array
+    {
+        foreach (self::SEVERITY_AGING as [$minimal, $label, $level]) {
+            if ($hari >= $minimal) {
+                return [$label, $level];
+            }
+        }
+
+        return ['Rendah', 4];
+    }
+
+    /** Nama severity — dihitung dari aging tiket. */
     public function getSeverityLabelAttribute(): string
     {
-        return $this->severityRef?->name ?? (string) $this->severity;
+        return self::severityFromAging($this->aging_days)[0];
     }
 
     /** Level severity (1 = paling parah) untuk kelas warna tt-sev-*. */
     public function getSeverityLevelAttribute(): int
     {
-        return (int) ($this->severityRef?->level ?? 9);
+        return self::severityFromAging($this->aging_days)[1];
+    }
+
+    /** Teks Initial Problem: master bila ada, selain itu isian bebas lama. */
+    public function getIssueLabelAttribute(): ?string
+    {
+        return $this->issueRef?->name ?? $this->issue;
+    }
+
+    /** Teks Device: master bila ada, selain itu isian bebas lama. */
+    public function getDeviceLabelAttribute(): ?string
+    {
+        return $this->deviceRef?->name ?? $this->device;
+    }
+
+    public function getRcaLabelAttribute(): ?string
+    {
+        return $this->rcaRef?->name ?? $this->rca;
+    }
+
+    public function getSubRcaLabelAttribute(): ?string
+    {
+        return $this->subRcaRef?->name ?? $this->sub_rca;
     }
 
     public function getVisitDecisionLabelAttribute(): ?string

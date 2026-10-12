@@ -9,8 +9,8 @@
 <div class="tt-info-modal" data-title="{{ $t->ticket_number }}">
     <div class="d-flex align-items-center flex-wrap mb-2" style="gap:6px;">
         <x-status :status="$t->status" context="trouble-ticket" />
-        <span class="ts-status ts-status-sm ts-status-{{ [1 => 'danger', 2 => 'attention', 3 => 'progress'][$t->severity_level] ?? 'neutral' }}">{{ $t->severity_label }}</span>
-        @if($t->external_ref)<span class="tt-chip">Ref. {{ $t->external_ref }}</span>@endif
+        <span class="tt-chip tt-sev tt-sev-{{ $t->severity_level }}">{{ $t->severity_label }}</span>
+        <span class="tt-chip">Aging {{ $t->aging_days }} hari</span>
     </div>
     <div class="row">
         <div class="col-md-6">
@@ -20,10 +20,11 @@
                 <div class="tt-kv"><dt>Nama Site</dt><dd>{{ $t->site?->sitename ?? '—' }}</dd></div>
                 <div class="tt-kv"><dt>Customer</dt><dd>{{ $t->site?->customer?->name ?? '—' }}</dd></div>
                 <div class="tt-kv"><dt>Problem</dt><dd>{{ $t->problem?->name ?? '—' }}</dd></div>
-                <div class="tt-kv"><dt>Issue</dt><dd>{{ $t->issue }}</dd></div>
-                <div class="tt-kv"><dt>Device / Alarm</dt><dd>{{ $t->device ?: '—' }}{{ $t->flag_alarm ? ' · ' . $t->flag_alarm : '' }}</dd></div>
+                <div class="tt-kv"><dt>Initial Problem</dt><dd>{{ $t->issue_label ?: '—' }}</dd></div>
+                <div class="tt-kv"><dt>RCA / Sub-RCA</dt><dd>{{ $t->rca_label ?: '—' }}{{ $t->sub_rca_label ? ' · ' . $t->sub_rca_label : '' }}</dd></div>
+                <div class="tt-kv"><dt>Device / Alarm</dt><dd>{{ $t->device_label ?: '—' }}{{ $t->flag_alarm ? ' · ' . $t->flag_alarm : '' }}</dd></div>
                 <div class="tt-kv"><dt>Deskripsi</dt><dd style="white-space:pre-wrap;">{{ \Illuminate\Support\Str::limit($t->description, 400) }}</dd></div>
-                <div class="tt-kv"><dt>Dilaporkan</dt><dd>{{ $fmt($t->reported_at) }}{{ $t->reporter_name ? ' · ' . $t->reporter_name : '' }}</dd></div>
+                <div class="tt-kv"><dt>Date Open</dt><dd>{{ $fmt($t->reported_at) }}</dd></div>
                 <div class="tt-kv"><dt>Dibuat</dt><dd>{{ $t->creator?->name }} · {{ $fmt($t->created_at) }}</dd></div>
             </dl>
         </div>
