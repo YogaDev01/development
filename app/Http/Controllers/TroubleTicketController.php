@@ -7,7 +7,6 @@ use App\Models\TroubleTicket;
 use App\Models\TroubleTicketAttachment;
 use App\Models\TroubleTicketDevice;
 use App\Models\TroubleTicketMessage;
-use App\Models\TroubleTicketProblem;
 use App\Models\TroubleTicketRca;
 use App\Models\TroubleTicketSeverity;
 use App\Models\TroubleTicketSlaPolicy;
@@ -119,8 +118,8 @@ class TroubleTicketController extends Controller
 
         $tickets = TroubleTicket::visibleTo(Auth::user())
             ->with([
-                'site:id,tid,sitename', 'customer:id,name', 'problem:id,name',
-                'issueRef:id,name', 'deviceRef:id,name', 'rcaRef:id,name', 'subRcaRef:id,name',
+                'site:id,tid,sitename', 'customer:id,name',
+                'deviceRef:id,name', 'rcaRef:id,name', 'subRcaRef:id,name',
                 'technician:id,name',
             ])
             ->when($ids->isNotEmpty(), fn ($q) => $q->whereIn('trouble_tickets.id', $ids))
@@ -128,11 +127,14 @@ class TroubleTicketController extends Controller
             ->limit(5000)
             ->get();
 
+        // Kolom mengikuti data yang benar-benar dipakai sekarang (RCA/Sub-RCA,
+        // Device); Problem, Initial Problem dan Flag Alarm sudah tidak diisi
+        // dari form, jadi tidak lagi diekspor.
         $kolom = [
-            'No. TT', 'Customer', 'Site ID', 'Nama Site', 'Problem', 'Aging (hari)', 'Severity',
-            'Initial Problem', 'Device', 'Flag Alarm', 'Teknisi', 'Status', 'Plan', 'Target Online',
+            'No. TT', 'Customer', 'Site ID', 'Nama Site', 'RCA', 'Sub-RCA', 'Aging (hari)', 'Severity',
+            'Device', 'Keterangan', 'Teknisi', 'Status', 'Plan', 'Target Online',
             'Response (menit)', 'Travel (menit)', 'Resolution (menit)', 'Date Open', 'Dibuat', 'Date Update',
-            'Closed', 'RCA', 'Sub RCA', 'Action',
+            'Closed', 'RCA Penyelesaian', 'Sub-RCA Penyelesaian', 'Action',
         ];
         $menit = fn (array $m) => $m['seconds'] === null ? null : round($m['seconds'] / 60, 1);
         $tgl = fn ($d) => $d?->format('Y-m-d H:i');
@@ -150,12 +152,13 @@ class TroubleTicketController extends Controller
         foreach ($tickets as $t) {
             $sheet->fromArray([
                 $t->ticket_number, $t->customer?->name, $t->site?->tid, $t->site?->sitename,
-                $t->problem?->name, $t->aging_days, $t->severity_label, $t->issue_label, $t->device_label, $t->flag_alarm,
+                $t->rca_label, $t->sub_rca_label, $t->aging_days, $t->severity_label,
+                $t->device_label, $t->description,
                 $t->technician?->name, WorkflowStatus::label($t->status, 'trouble-ticket'),
                 $t->visit_decision_label, $t->target_online?->format('Y-m-d'),
                 $menit($t->slaMetric('response')), $menit($t->slaMetric('travel')), $menit($t->slaMetric('resolution')),
                 $tgl($t->reported_at), $tgl($t->created_at), $tgl($t->updated_at), $tgl($t->closed_at),
-                $t->rca_label, $t->sub_rca_label, $t->action,
+                $t->rca, $t->sub_rca, $t->action,
             ], null, 'A'.$baris);
             $baris++;
         }
@@ -316,7 +319,6 @@ class TroubleTicketController extends Controller
             'canSupervise' => $canSupervise,
             'canApproveClose' => $this->workflow->canApproveClose($user, $ticket),
             'canMessage' => $this->workflow->canMessage($user, $ticket),
-            'supervisors' => $this->workflow->supervisorsFor((int) $ticket->assigned_to),
             'reassignTo' => $canSupervise && in_array($ticket->status, TroubleTicketWorkflow::REASSIGNABLE, true)
                 ? $this->workflow->eligibleTechnicians($ticket->site_id)->where('id', '!=', $ticket->assigned_to)->values()
                 : collect(),
@@ -525,8 +527,9 @@ class TroubleTicketController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | PENGATURAN SLA — gerbang role: AccessRoles::TROUBLE_TICKET_SETTINGS.
-    | Problem & Severity TIDAK punya UI: diisi langsung di basis data.
+    | PENGATURAN — gerbang role: AccessRoles::TROUBLE_TICKET_SETTINGS.
+    | Satu halaman bertab: kebijakan SLA + master RCA, Sub-RCA dan Severity.
+    | Problem tidak punya layar (tidak lagi diisi dari form buat tiket).
     |--------------------------------------------------------------------------
     */
 
@@ -534,43 +537,182 @@ class TroubleTicketController extends Controller
     {
         return view('trouble-ticket.settings', [
             'severities' => TroubleTicketSeverity::orderBy('level')->orderBy('name')->get(),
-            'problems' => TroubleTicketProblem::orderBy('name')->get(),
-            'policies' => TroubleTicketSlaPolicy::with(['problem:id,name', 'severityRef'])
-                ->orderByRaw('(SELECT COALESCE(MIN(s.level), 255) FROM trouble_ticket_severities s WHERE s.code = trouble_ticket_sla_policies.severity)')
-                ->orderByDesc('id')
+            'rcas' => TroubleTicketRca::orderBy('name')->get(),
+            'subRcas' => TroubleTicketSubRca::with('rca:id,name')
+                ->join('trouble_ticket_rcas', 'trouble_ticket_rcas.id', '=', 'trouble_ticket_sub_rcas.rca_id')
+                ->orderBy('trouble_ticket_rcas.name')
+                ->orderBy('trouble_ticket_sub_rcas.name')
+                ->select('trouble_ticket_sub_rcas.*')
                 ->get(),
+            // Satu kebijakan saja yang ditampilkan: yang dipakai tiket baru.
+            // Bisa null kalau perusahaan belum pernah mengisi target.
+            'slaPolicy' => TroubleTicketSlaPolicy::applicableForProblem(null),
         ]);
     }
 
-    public function storePolicy(Request $request)
+    /*
+    | Master RCA / Sub-RCA / Severity. Pola sama dengan kebijakan SLA: hanya
+    | tambah dan aktif/nonaktif — tidak ada hapus, karena tiket lama menunjuk
+    | baris ini (FK RESTRICT) dan riwayatnya harus tetap terbaca.
+    */
+
+    public function storeRca(Request $request)
     {
         $data = $request->validate([
-            'severity' => 'nullable|string|max:20|exists:trouble_ticket_severities,code',
-            'problem_id' => 'nullable|integer|exists:trouble_ticket_problems,id',
-            'response_minutes' => 'nullable|integer|min:1|max:525600',
-            'travel_minutes' => 'nullable|integer|min:1|max:525600',
-            'resolution_minutes' => 'nullable|integer|min:1|max:525600',
-            'effective_from' => 'nullable|date',
+            'name' => 'required|string|max:60|unique:trouble_ticket_rcas,name',
         ]);
 
-        if (empty($data['response_minutes']) && empty($data['travel_minutes']) && empty($data['resolution_minutes'])) {
-            return back()->withInput()->with('error', 'Isi minimal satu target SLA.');
+        TroubleTicketRca::create($data + ['status' => 'ACTIVE']);
+
+        return back()->with('success', 'RCA ditambahkan.');
+    }
+
+    public function updateRca(Request $request, TroubleTicketRca $rca)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:60|unique:trouble_ticket_rcas,name,'.$rca->id,
+        ]);
+
+        $rca->update($data);
+
+        return back()->with('success', 'RCA diperbarui.');
+    }
+
+    public function toggleRca(TroubleTicketRca $rca)
+    {
+        $rca->update(['status' => $rca->status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE']);
+
+        return back()->with('success', 'Status RCA diperbarui.');
+    }
+
+    public function storeSubRca(Request $request)
+    {
+        $data = $request->validate([
+            'rca_id' => 'required|integer|exists:trouble_ticket_rcas,id',
+            'name' => 'required|string|max:150',
+        ]);
+
+        if (TroubleTicketSubRca::where('rca_id', $data['rca_id'])->where('name', $data['name'])->exists()) {
+            return back()->withInput()->with('error', 'Sub-RCA dengan nama itu sudah ada pada RCA tersebut.');
         }
 
-        TroubleTicketSlaPolicy::create($data + ['status' => 'ACTIVE', 'created_by' => Auth::id()]);
+        TroubleTicketSubRca::create($data + ['status' => 'ACTIVE']);
 
-        return back()->with('success', 'Kebijakan SLA ditambahkan. Berlaku untuk tiket yang dibuat setelah ini.');
+        return back()->with('success', 'Sub-RCA ditambahkan.');
+    }
+
+    public function updateSubRca(Request $request, TroubleTicketSubRca $subRca)
+    {
+        $data = $request->validate([
+            'rca_id' => 'required|integer|exists:trouble_ticket_rcas,id',
+            'name' => 'required|string|max:150',
+        ]);
+
+        $kembar = TroubleTicketSubRca::where('rca_id', $data['rca_id'])
+            ->where('name', $data['name'])
+            ->whereKeyNot($subRca->id)
+            ->exists();
+        if ($kembar) {
+            return back()->with('error', 'Sub-RCA dengan nama itu sudah ada pada RCA tersebut.');
+        }
+
+        $subRca->update($data);
+
+        return back()->with('success', 'Sub-RCA diperbarui.');
+    }
+
+    public function toggleSubRca(TroubleTicketSubRca $subRca)
+    {
+        $subRca->update(['status' => $subRca->status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE']);
+
+        return back()->with('success', 'Status Sub-RCA diperbarui.');
+    }
+
+    public function storeSeverity(Request $request)
+    {
+        $data = $request->validate([
+            'code' => 'required|string|max:20|regex:/^[A-Za-z0-9_-]+$/|unique:trouble_ticket_severities,code',
+            'name' => 'required|string|max:50',
+            // 1 = paling parah; menentukan urutan & warna di layar.
+            'level' => 'required|integer|min:1|max:9',
+            // Rentang umur tiket (hari) yang memakai severity ini; batas atas
+            // boleh kosong = tanpa batas. Lihat TroubleTicketSeverity::agingSteps().
+            'aging_from' => 'nullable|integer|min:0|max:3650',
+            'aging_to' => 'nullable|integer|min:0|max:3650|gte:aging_from',
+        ]);
+        $data['code'] = strtoupper($data['code']);
+
+        TroubleTicketSeverity::create($data + ['status' => 'ACTIVE']);
+        TroubleTicketSeverity::lupakanTangga();
+
+        return back()->with('success', 'Severity ditambahkan.');
     }
 
     /**
-     * Kebijakan tidak diubah angkanya (tiket lama menyimpan snapshot, tapi
-     * riwayat kebijakan tetap harus terbaca) — hanya diaktifkan/nonaktifkan.
+     * Kode severity dipakai tiket lama (`trouble_tickets.severity`, FK
+     * ON UPDATE CASCADE) — mengubahnya ikut memperbarui tiket yang memakainya.
      */
-    public function togglePolicy(TroubleTicketSlaPolicy $policy)
+    public function updateSeverity(Request $request, TroubleTicketSeverity $severity)
     {
-        $policy->update(['status' => $policy->status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE']);
+        $data = $request->validate([
+            'code' => 'required|string|max:20|regex:/^[A-Za-z0-9_-]+$/|unique:trouble_ticket_severities,code,'.$severity->id,
+            'name' => 'required|string|max:50',
+            'level' => 'required|integer|min:1|max:9',
+            'aging_from' => 'nullable|integer|min:0|max:3650',
+            'aging_to' => 'nullable|integer|min:0|max:3650|gte:aging_from',
+        ]);
+        $data['code'] = strtoupper($data['code']);
 
-        return back()->with('success', 'Status kebijakan SLA diperbarui.');
+        $severity->update($data);
+        TroubleTicketSeverity::lupakanTangga();
+
+        return back()->with('success', 'Severity diperbarui.');
+    }
+
+    public function toggleSeverity(TroubleTicketSeverity $severity)
+    {
+        $severity->update(['status' => $severity->status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE']);
+        TroubleTicketSeverity::lupakanTangga();
+
+        return back()->with('success', 'Status severity diperbarui.');
+    }
+
+    /**
+     * Limit SLA: Response / Travel / Resolution, dalam menit.
+     *
+     * Halaman Pengaturan hanya menampilkan tiga angka itu, jadi yang diubah
+     * selalu kebijakan yang MEMANG dipakai tiket baru
+     * (applicableForProblem(null)) — bukan baris sembarangan. Kalau belum ada
+     * satu pun, baris umum dibuat saat penyimpanan pertama.
+     *
+     * Tiket lama menyimpan snapshot targetnya sendiri, jadi perubahan di sini
+     * hanya berlaku untuk tiket yang dibuat sesudahnya.
+     */
+    public function updateSlaLimit(Request $request)
+    {
+        $kolom = [
+            'response' => 'response_minutes',
+            'travel' => 'travel_minutes',
+            'resolution' => 'resolution_minutes',
+        ];
+
+        $data = $request->validate([
+            'metric' => 'required|string|in:'.implode(',', array_keys($kolom)),
+            // 0 = tidak terhingga; disimpan NULL, sama artinya dengan tanpa target.
+            'minutes' => 'nullable|integer|min:0|max:525600',
+        ]);
+
+        $policy = TroubleTicketSlaPolicy::applicableForProblem(null)
+            ?? TroubleTicketSlaPolicy::create([
+                'severity' => null,
+                'problem_id' => null,
+                'status' => 'ACTIVE',
+                'created_by' => Auth::id(),
+            ]);
+
+        $policy->update([$kolom[$data['metric']] => $data['minutes'] ?: null]);
+
+        return back()->with('success', 'Limit SLA diperbarui. Tiket lama tetap memakai target lamanya.');
     }
 
     /*

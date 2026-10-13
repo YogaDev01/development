@@ -14,6 +14,7 @@ use App\Models\TroubleTicketIssue;
 use App\Models\TroubleTicketMessage;
 use App\Models\TroubleTicketProblem;
 use App\Models\TroubleTicketRca;
+use App\Models\TroubleTicketSeverity;
 use App\Models\TroubleTicketSlaPolicy;
 use App\Models\TroubleTicketSubRca;
 use App\Models\User;
@@ -712,6 +713,152 @@ class TroubleTicketTest extends TestCase
         $this->actingAs($this->userWithRole('finance'))->get('/trouble-ticket')->assertForbidden();
     }
 
+    public function test_master_rca_sub_rca_severity_hanya_bisa_diubah_superadmin(): void
+    {
+        $admin = $this->userWithRole('superadmin');
+
+        // Bukan superadmin: seluruh jalur master tertutup.
+        $this->actingAs($this->leader)->post('/trouble-ticket/settings/rca', ['name' => 'TRANSMISSION'])->assertForbidden();
+        $this->post('/trouble-ticket/settings/severity', ['code' => 'X', 'name' => 'X', 'level' => 1])->assertForbidden();
+
+        $this->actingAs($admin)->post('/trouble-ticket/settings/rca', ['name' => 'TRANSMISSION'])->assertRedirect();
+        $rca = TroubleTicketRca::where('name', 'TRANSMISSION')->firstOrFail();
+        $this->assertSame('ACTIVE', $rca->status);
+
+        // Nama RCA tidak boleh kembar.
+        $this->post('/trouble-ticket/settings/rca', ['name' => 'TRANSMISSION'])->assertSessionHasErrors('name');
+
+        $this->post('/trouble-ticket/settings/sub-rca', ['rca_id' => $rca->id, 'name' => 'FIBER PUTUS'])->assertRedirect();
+        $this->assertDatabaseHas('trouble_ticket_sub_rcas', ['rca_id' => $rca->id, 'name' => 'FIBER PUTUS', 'status' => 'ACTIVE']);
+        // Nama sama pada RCA yang sama ditolak; pada RCA lain boleh.
+        $this->post('/trouble-ticket/settings/sub-rca', ['rca_id' => $rca->id, 'name' => 'FIBER PUTUS'])->assertSessionHas('error');
+        $this->post('/trouble-ticket/settings/sub-rca', ['rca_id' => $this->rca->id, 'name' => 'FIBER PUTUS'])->assertRedirect();
+        $this->assertSame(2, TroubleTicketSubRca::where('name', 'FIBER PUTUS')->count());
+
+        $this->post('/trouble-ticket/settings/severity', ['code' => 'urgent', 'name' => 'Urgent', 'level' => 2])->assertRedirect();
+        $this->assertDatabaseHas('trouble_ticket_severities', ['code' => 'URGENT', 'level' => 2, 'status' => 'ACTIVE']);
+
+        // Nonaktif hanya mengubah status — barisnya tidak pernah dihapus.
+        $this->post("/trouble-ticket/settings/rca/{$rca->id}/toggle")->assertRedirect();
+        $this->assertSame('INACTIVE', $rca->fresh()->status);
+    }
+
+    public function test_log_tiket_baru_hanya_created_lalu_ticket_read(): void
+    {
+        $t = $this->createTicket();
+
+        // Penugasan awal tidak lagi ditulis ke log.
+        $this->assertDatabaseMissing('trouble_ticket_messages', ['trouble_ticket_id' => $t->id, 'event' => 'assigned']);
+        $this->assertDatabaseHas('trouble_ticket_messages', ['trouble_ticket_id' => $t->id, 'event' => 'created']);
+
+        // Dibuka orang lain: belum "read", jam Response masih berjalan.
+        $this->actingAs($this->leader)->get("/trouble-ticket/{$t->id}")->assertOk();
+        $this->assertNull($t->fresh()->acknowledged_at);
+        $this->assertDatabaseMissing('trouble_ticket_messages', ['trouble_ticket_id' => $t->id, 'event' => 'responded']);
+
+        // Teknisi membuka detail: masuk log sebagai Ticket read, Response berhenti.
+        $this->actingAs($this->tech)->get("/trouble-ticket/{$t->id}")->assertOk();
+        $t = $t->fresh();
+        $this->assertNotNull($t->acknowledged_at);
+        $this->assertSame($this->tech->id, $t->acknowledged_by);
+        $this->assertSame(1, TroubleTicketMessage::where('trouble_ticket_id', $t->id)->where('event', 'responded')->count());
+        $this->assertSame('Ticket read', TroubleTicketMessage::where('trouble_ticket_id', $t->id)
+            ->where('event', 'responded')->first()->event_label);
+
+        // Response = tiket dibuat → tiket dibaca.
+        $this->assertSame('done', $t->slaMetric('response')['state']);
+        $this->assertSame(
+            $t->acknowledged_at->getTimestamp() - $t->created_at->getTimestamp(),
+            $t->slaMetric('response')['seconds'],
+        );
+    }
+
+    public function test_master_pengaturan_bisa_diubah_superadmin(): void
+    {
+        $admin = $this->userWithRole('superadmin');
+        $sev = TroubleTicketSeverity::create(['code' => 'MAJOR', 'name' => 'Major', 'level' => 2]);
+        $policy = TroubleTicketSlaPolicy::create(['severity' => null, 'problem_id' => null, 'response_minutes' => 30, 'status' => 'ACTIVE']);
+
+        // Bukan superadmin: tertutup.
+        $this->actingAs($this->leader)->post("/trouble-ticket/settings/rca/{$this->rca->id}", ['name' => 'X'])->assertForbidden();
+
+        $this->actingAs($admin)->post("/trouble-ticket/settings/rca/{$this->rca->id}", ['name' => 'HARDWARE LAIN'])->assertRedirect();
+        $this->assertSame('HARDWARE LAIN', $this->rca->fresh()->name);
+
+        $lain = TroubleTicketRca::create(['name' => 'POWER']);
+        // Nama bentrok dengan RCA lain ditolak; nama sendiri boleh disimpan ulang.
+        $this->post("/trouble-ticket/settings/rca/{$this->rca->id}", ['name' => 'POWER'])->assertSessionHasErrors('name');
+        $this->post("/trouble-ticket/settings/rca/{$this->rca->id}", ['name' => 'HARDWARE LAIN'])->assertRedirect();
+
+        $this->post("/trouble-ticket/settings/sub-rca/{$this->subRca->id}", ['rca_id' => $lain->id, 'name' => 'ADAPTOR'])->assertRedirect();
+        $this->assertDatabaseHas('trouble_ticket_sub_rcas', ['id' => $this->subRca->id, 'rca_id' => $lain->id, 'name' => 'ADAPTOR']);
+        // Bentrok di RCA yang sama ditolak.
+        TroubleTicketSubRca::create(['rca_id' => $lain->id, 'name' => 'KABEL']);
+        $this->post("/trouble-ticket/settings/sub-rca/{$this->subRca->id}", ['rca_id' => $lain->id, 'name' => 'KABEL'])->assertSessionHas('error');
+
+        $this->post("/trouble-ticket/settings/severity/{$sev->id}", ['code' => 'major2', 'name' => 'Major 2', 'level' => 3])->assertRedirect();
+        $this->assertDatabaseHas('trouble_ticket_severities', ['id' => $sev->id, 'code' => 'MAJOR2', 'level' => 3]);
+
+        // Limit SLA: yang diubah adalah kebijakan yang dipakai tiket baru.
+        $this->post('/trouble-ticket/settings/sla', ['metric' => 'response', 'minutes' => 45])->assertRedirect();
+        $this->assertSame(45, $policy->fresh()->response_minutes);
+        $this->post('/trouble-ticket/settings/sla', ['metric' => 'resolution', 'minutes' => 600])->assertRedirect();
+        $this->assertSame(600, $policy->fresh()->resolution_minutes);
+        // 0 maupun kosong = tidak terhingga (tanpa target); ukuran lain tidak ikut berubah.
+        $this->post('/trouble-ticket/settings/sla', ['metric' => 'response', 'minutes' => 0])->assertRedirect();
+        $this->assertNull($policy->fresh()->response_minutes);
+        $this->post('/trouble-ticket/settings/sla', ['metric' => 'response', 'minutes' => 45])->assertRedirect();
+        $this->post('/trouble-ticket/settings/sla', ['metric' => 'response', 'minutes' => ''])->assertRedirect();
+        $this->assertNull($policy->fresh()->response_minutes);
+        $this->assertSame(600, $policy->fresh()->resolution_minutes);
+        // Ukuran yang tidak dikenal ditolak.
+        $this->post('/trouble-ticket/settings/sla', ['metric' => 'ngawur', 'minutes' => 5])->assertSessionHasErrors('metric');
+    }
+
+    public function test_tiket_baru_langsung_muncul_di_lonceng_teknisi(): void
+    {
+        $t = $this->createTicket();
+
+        // Lonceng tidak menunggu worker: barisnya ada begitu tiket disimpan.
+        $notif = $this->tech->notifications()->first();
+        $this->assertNotNull($notif, 'teknisi harus menerima notifikasi tiket baru');
+        $this->assertNull($notif->read_at);
+        $this->assertSame('trouble-ticket', $notif->data['category']);
+        $this->assertStringContainsString($t->ticket_number, $notif->data['message']);
+
+        // Tautannya mengarah ke detail tiket — membukanya = Ticket read.
+        $this->assertSame(route('trouble-ticket.show', $t), $notif->data['url']);
+        $this->actingAs($this->tech)->get($notif->data['url'])->assertOk();
+        $this->assertNotNull($t->fresh()->acknowledged_at);
+    }
+
+    public function test_tangga_severity_bisa_diatur_dari_master(): void
+    {
+        $t = $this->createTicket();
+        Carbon::setTestNow(now()->addDays(4));
+
+        // Belum ada rentang di master: tangga bawaan dipakai (3–7 hari = Major).
+        TroubleTicketSeverity::lupakanTangga();
+        $this->assertSame('Major', $t->fresh()->severity_label);
+
+        // Master mengambil alih begitu ada satu severity aktif ber-rentang.
+        $admin = $this->userWithRole('superadmin');
+        $this->actingAs($admin)
+            ->post('/trouble-ticket/settings/severity', ['code' => 'SANTAI', 'name' => 'Santai', 'level' => 4, 'aging_from' => 0, 'aging_to' => 30])
+            ->assertRedirect();
+        $this->assertDatabaseHas('trouble_ticket_severities', ['code' => 'SANTAI', 'aging_from' => 0, 'aging_to' => 30]);
+
+        TroubleTicketSeverity::lupakanTangga();
+        $this->assertSame('Santai', $t->fresh()->severity_label);
+
+        // Batas atas tidak boleh lebih kecil dari batas bawah.
+        $this->post('/trouble-ticket/settings/severity', ['code' => 'SALAH', 'name' => 'Salah', 'level' => 1, 'aging_from' => 10, 'aging_to' => 2])
+            ->assertSessionHasErrors('aging_to');
+
+        Carbon::setTestNow();
+        TroubleTicketSeverity::lupakanTangga();
+    }
+
     public function test_severity_dihitung_dari_aging_tiket(): void
     {
         $t = $this->createTicket();
@@ -762,7 +909,7 @@ class TroubleTicketTest extends TestCase
 
         // Teknisi melihat info dari daftar: bukan "membuka tiket", timer Response tetap jalan.
         $this->actingAs($this->tech)->get(route('trouble-ticket.info', $t))
-            ->assertOk()->assertSee($t->issue_label);
+            ->assertOk()->assertSee($t->ticket_number);
         $this->assertNull($t->fresh()->acknowledged_at);
 
         $this->actingAs($this->outsider)->get(route('trouble-ticket.info', $t))->assertForbidden();

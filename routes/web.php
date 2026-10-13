@@ -1131,8 +1131,18 @@ Route::middleware('auth')->group(function () {
 
             Route::middleware('role:superadmin')->group(function () {
                 Route::get('settings', 'settings')->name('settings');
-                Route::post('settings/sla', 'storePolicy')->name('settings.sla.store');
-                Route::post('settings/sla/{policy}/toggle', 'togglePolicy')->whereNumber('policy')->name('settings.sla.toggle');
+                // Hanya tiga limit (response/travel/resolution) yang diatur di layar.
+                Route::post('settings/sla', 'updateSlaLimit')->name('settings.sla.limit');
+                // Master RCA / Sub-RCA / Severity — tambah & aktif-nonaktif saja.
+                Route::post('settings/rca', 'storeRca')->name('settings.rca.store');
+                Route::post('settings/rca/{rca}', 'updateRca')->whereNumber('rca')->name('settings.rca.update');
+                Route::post('settings/rca/{rca}/toggle', 'toggleRca')->whereNumber('rca')->name('settings.rca.toggle');
+                Route::post('settings/sub-rca', 'storeSubRca')->name('settings.sub-rca.store');
+                Route::post('settings/sub-rca/{subRca}', 'updateSubRca')->whereNumber('subRca')->name('settings.sub-rca.update');
+                Route::post('settings/sub-rca/{subRca}/toggle', 'toggleSubRca')->whereNumber('subRca')->name('settings.sub-rca.toggle');
+                Route::post('settings/severity', 'storeSeverity')->name('settings.severity.store');
+                Route::post('settings/severity/{severity}', 'updateSeverity')->whereNumber('severity')->name('settings.severity.update');
+                Route::post('settings/severity/{severity}/toggle', 'toggleSeverity')->whereNumber('severity')->name('settings.severity.toggle');
             });
 
             Route::prefix('{ticket}')->whereNumber('ticket')->group(function () {

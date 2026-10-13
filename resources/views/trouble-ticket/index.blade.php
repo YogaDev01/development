@@ -14,11 +14,10 @@
         'no'         => ['No. TT', true],
         'customer'   => ['Customer', false],
         'site'       => ['Site', true],
-        'problem'    => ['Problem', true],
+        'rca'        => ['RCA / Sub-RCA', true],
         'aging'      => ['Aging', true],
         'severity'   => ['Severity', true],
-        'issue'      => ['Initial Problem', false],
-        'device'     => ['Device / Alarm', false],
+        'device'     => ['Device', false],
         'teknisi'    => ['Teknisi', false],
         'status'     => ['Status', true],
         'plan'       => ['Plan', false],
@@ -50,7 +49,7 @@
                 <div class="tt-mob-search">
                     <i class="fas fa-search" aria-hidden="true"></i>
                     <input type="search" id="ttMobSearch" class="form-control form-control-sm"
-                           placeholder="Cari No. TT, site, problem, teknisi…" aria-label="Cari tiket">
+                           placeholder="Cari No. TT, site, RCA, teknisi…" aria-label="Cari tiket">
                 </div>
                 <div class="tt-mob-chips" role="tablist" aria-label="Filter tahap">
                     <button type="button" class="tt-chip-f is-on" data-status="">Semua <span>{{ $tickets->count() }}</span></button>
@@ -67,14 +66,14 @@
                     @php $siteM = $t->site?->sitename ?? '-'; @endphp
                     <a href="{{ route('trouble-ticket.show', $t) }}" class="tt-mcard"
                        data-status="{{ $t->status }}"
-                       data-cari="{{ Str::lower($t->ticket_number.' '.$siteM.' '.($t->site?->tid ?? '').' '.($t->issue_label ?? '').' '.($t->problem?->name ?? '').' '.($t->technician?->name ?? '')) }}">
+                       data-cari="{{ Str::lower($t->ticket_number.' '.$siteM.' '.($t->site?->tid ?? '').' '.($t->rca_label ?? '').' '.($t->sub_rca_label ?? '').' '.($t->technician?->name ?? '')) }}">
                         <div class="tt-mcard-top">
                             <span class="tt-mcard-no">{{ $t->ticket_number }}</span>
                             <x-status :status="$t->status" context="trouble-ticket" />
                         </div>
                         <div class="tt-mcard-site">{{ $siteM }}</div>
                         <div class="tt-mcard-tid">{{ $t->site?->tid ?? '-' }}@if($t->customer?->name) · {{ $t->customer->name }}@endif</div>
-                        <div class="tt-mcard-issue">{{ $t->issue_label ?: ($t->problem?->name ?? '-') }}</div>
+                        <div class="tt-mcard-issue">{{ $t->rca_label ?: '-' }}{{ $t->sub_rca_label ? ' / ' . $t->sub_rca_label : '' }}</div>
                         <div class="tt-mcard-foot">
                             <span class="tt-mcard-tech"><i class="fas fa-user-hard-hat" aria-hidden="true"></i> {{ $t->technician?->name ?? 'Belum ada teknisi' }}</span>
                             <span class="tt-sev tt-sev-{{ $t->severity_level }}">{{ $t->severity_label }}</span>
@@ -131,7 +130,7 @@
                     <div class="tt-toolbar-left">
                         <div class="tt-search">
                             <i class="fas fa-search" aria-hidden="true"></i>
-                            <input type="search" id="ttSearch" class="form-control form-control-sm" placeholder="Cari No. TT, site, initial problem, alarm..." aria-label="Cari">
+                            <input type="search" id="ttSearch" class="form-control form-control-sm" placeholder="Cari No. TT, site, RCA, alarm..." aria-label="Cari">
                         </div>
                         <button type="button" id="btnTtClear" class="btn btn-outline-secondary btn-sm" title="Clear Filter" aria-label="Clear Filter"><i class="fas fa-eraser"></i></button>
                         {{-- TesysColumnFilter merender tombol "Filter" di sini; klik = daftar filter kolom. --}}
@@ -186,7 +185,9 @@
                                 @endphp
                                 <tr data-id="{{ $t->id }}" data-status="{{ $t->status }}"
                                     data-severity="{{ $t->severity_label }}"
-                                    data-problem="{{ $t->problem?->name ?? '-' }}"
+                                    data-rca="{{ $t->rca_label ?: '-' }}"
+                                    data-subrca="{{ $t->sub_rca_label ?: '-' }}"
+                                    data-device="{{ $t->device_label ?: '-' }}"
                                     data-customer="{{ $t->customer?->name ?? '-' }}"
                                     data-site="{{ $siteLabel ?: '-' }}"
                                     data-teknisi="{{ $t->technician?->name ?? '-' }}"
@@ -199,17 +200,20 @@
                                     <td class="col-site">
                                         <span class="cell-trunc" style="max-width:60ch;" title="{{ $siteLabel }}">{{ Str::limit($siteLabel, 60, '...') ?: '-' }}</span>
                                     </td>
-                                    <td class="col-fit">{{ $t->problem?->name ?? '-' }}</td>
+                                    <td class="col-fit" data-order="{{ $t->rca_label }} {{ $t->sub_rca_label }}">
+                                        <span class="tt-rca-main">{{ $t->rca_label ?: '-' }}</span>
+                                        <span class="tt-rca-sub">{{ $t->sub_rca_label ?: '-' }}</span>
+                                    </td>
                                     <td class="col-fit" data-order="{{ $t->aging_days }}">{{ $t->aging_days }} hari</td>
                                     <td class="col-fit" data-order="{{ 9 - $t->severity_level }}"><span class="tt-sev tt-sev-{{ $t->severity_level }}">{{ $t->severity_label }}</span></td>
-                                    <td class="col-fit" title="{{ $t->issue_label }}">{{ Str::limit($t->issue_label, 50, '...') }}</td>
-                                    <td class="col-fit">{{ $t->device_label ?: '-' }}{{ $t->flag_alarm ? ' · ' . $t->flag_alarm : '' }}</td>
+                                    <td class="col-fit">{{ $t->device_label ?: '-' }}</td>
                                     <td class="col-fit">{{ $t->technician?->name ?? '-' }}</td>
                                     <td class="col-fit" data-order="{{ array_search($t->status, TroubleTicket::STATUSES, true) }}">
                                         <x-status :status="$t->status" context="trouble-ticket" />
                                         @if(isset($overdueIds[$t->id]))<i class="fas fa-exclamation-circle text-danger ml-1" title="Lewat SLA"></i>@endif
                                     </td>
-                                    <td class="col-fit">{{ $t->visit_decision_label ?? '-' }}{{ $t->visit_site ? ' · ' . $t->visit_site->format('d/m/y') : '' }}</td>
+                                    {{-- Plan = tanggal kunjungan saja; tiket tanpa plan (termasuk Non-Visit) kosong. --}}
+                                    <td class="col-fit" data-order="{{ $t->visit_site?->format('Y-m-d') ?? '' }}">{{ $t->visit_site?->format('d/m/y') ?? '-' }}</td>
                                     <td class="col-fit" data-order="{{ $slaSort($mResp) }}">@include('trouble-ticket._sla', ['m' => $mResp, 'compact' => true])</td>
                                     <td class="col-fit" data-order="{{ $slaSort($mTrav) }}">@include('trouble-ticket._sla', ['m' => $mTrav, 'compact' => true])</td>
                                     <td class="col-fit" data-order="{{ $slaSort($mReso) }}">@include('trouble-ticket._sla', ['m' => $mReso, 'compact' => true])</td>
@@ -264,6 +268,8 @@
 .tt-dt th, .tt-dt td { vertical-align:middle; }
 .tt-dt .col-fit { white-space:nowrap; width:1%; }
 .tt-dt .col-site { white-space:nowrap; }
+.tt-dt .tt-rca-main { display:block; }
+.tt-dt .tt-rca-sub { display:block; font-size:11.5px; color:var(--text-muted); }
 .tt-dt .cell-trunc { display:inline-block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:bottom; }
 /* No. TT: hitam tebal; hover = pil gelap, sama dengan kode CR (.cr-number-btn). */
 .tt-no-link { display:inline-block; padding:2px 8px; margin-left:-8px; border-radius:var(--radius-sm); color:var(--text); font-weight:700;
@@ -306,15 +312,20 @@
     .tt-mob { display:block; padding-bottom:84px; }
 
     /* Pencarian + filter tahap menempel di atas saat daftar digulir. */
-    .tt-mob-bar { position:sticky; top:0; z-index:5; padding:10px 0 8px; background:var(--body-bg, var(--surface-2)); }
+    /* Latar dibuat melebar sampai tepi layar (kontainer punya padding 15px),
+       supaya kartu yang lewat di bawahnya tidak mengintip di sisi kiri/kanan. */
+    /* Ikut tergulir bersama daftar. Versi menempel menutupi kartu paling atas
+       saat halaman digulir — dan di layar sempit chip-nya memakan ruang baca. */
+    .tt-mob-bar { margin:0 -15px; padding:10px 15px 8px; border-bottom:1px solid var(--border); }
     .tt-mob-search { position:relative; }
     .tt-mob-search > i { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-faint); font-size:13px; }
     .tt-mob-search input.form-control { height:40px; padding-left:34px; border-radius:999px; font-size:13px; }
 
-    /* Chip tahap: digulir mendatar DI DALAM barisnya sendiri, sehingga
-       halaman tidak pernah ikut bergeser ke samping. */
-    .tt-mob-chips { display:flex; gap:6px; margin-top:8px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
-    .tt-mob-chips::-webkit-scrollbar { display:none; }
+    /* Chip tahap: TURUN BARIS, tidak digulir mendatar. Versi bergulir
+       menyisakan batang scroll yang digambar di atas chip (dan chip terakhir
+       terpotong di tepi kanan) di browser HP; dengan membungkus, seluruh
+       tahap terbaca sekaligus dan tidak ada yang tertimpa. */
+    .tt-mob-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
     .tt-chip-f { flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px;
         border:1px solid var(--border); background:var(--surface); color:var(--text-dim); font-size:12px; line-height:1.2; }
     .tt-chip-f span { font-weight:700; color:var(--text-faint); }
@@ -430,7 +441,8 @@ $(function () {
     /* ---------- Filter kolom: tombol "Filter" milik TesysColumnFilter ---------- */
     TesysColumnFilter.initRowFilters('#tblTt', '#ttRowFilters', [
         { key: 'status', label: 'Status' }, { key: 'severity', label: 'Severity' },
-        { key: 'problem', label: 'Problem' }, { key: 'customer', label: 'Customer' },
+        { key: 'rca', label: 'RCA' }, { key: 'subrca', label: 'Sub-RCA' },
+        { key: 'device', label: 'Device' }, { key: 'customer', label: 'Customer' },
         { key: 'site', label: 'Site' }, { key: 'teknisi', label: 'Teknisi' }
     ]);
 

@@ -321,3 +321,44 @@
     .att-dropzone, #attUploadArea { padding: 16px 12px; font-size: 12px; }
     .att-dropzone .fa-2x { font-size: 1.4em; }
 }
+
+/* ==========================================================================
+   10. POPUP BEL (notifikasi & todo) DI LAYAR SEMPIT
+   --------------------------------------------------------------------------
+   Di layar lebar panel digantung pada tombolnya: `right: 0` relatif terhadap
+   pembungkus tombol (.dropdown). Di HP itu meleset. Tombol bel bukan elemen
+   paling kanan (ada avatar di sebelahnya), jadi tepi kanan panel berhenti
+   ~70px dari tepi layar sementara lebarnya hampir selebar layar — sisanya
+   menjorok ke luar batas kiri dan judul "Notifikasi" terpotong jadi "asi".
+
+   Perbaikannya: pembungkusnya dibuat `static`, sehingga patokan panel naik
+   satu tingkat ke .topbar — yang `position: sticky`, jadi ia memang elemen
+   berposisi dan selebar layar. Panel lalu dibentangkan `left/right: 8px`.
+
+   Sengaja TIDAK memakai `position: fixed`: patokan elemen fixed di sini
+   bergantung pada backdrop-filter topbar (yang menjadikannya containing
+   block). Di peramban yang tidak mendukung backdrop-filter, topbar punya
+   aturan cadangan tanpa properti itu — patokannya berubah jadi viewport dan
+   `top: 100%` melempar panel ke bawah layar, sehingga lonceng tampak mati.
+   ========================================================================== */
+@media (max-width: 767.98px) {
+    body.tesys-ui .topbar .dropdown { position: static; }
+
+    body.tesys-ui .topbar .dropdown-menu.ts-pop,
+    body.tesys-ui .topbar #todoDropdown {
+        position: absolute;
+        top: 100%;
+        left: 8px;
+        right: 8px;
+        width: auto;
+        max-width: none;
+        margin-top: 6px;
+    }
+
+    /* Tinggi daftar mengikuti layar, bukan angka tetap 360px: di HP pendek
+       panel yang lebih tinggi dari layar tidak bisa digulir sampai habis. */
+    body.tesys-ui .ts-pop-body { max-height: calc(100vh - 140px); }
+
+    body.tesys-ui .ts-pop-head { padding: 10px 12px; }
+    body.tesys-ui .notif-row { padding: 10px 12px; }
+}

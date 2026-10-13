@@ -25,28 +25,35 @@ class TroubleTicketMessage extends Model
     public const TYPE_MESSAGE = 'MESSAGE';
     public const TYPE_EVENT = 'EVENT';
 
-    /** Kode kejadian => label timeline. */
+    /**
+     * Kode kejadian => label timeline.
+     *
+     * Label log sengaja berbahasa Inggris (permintaan 13 Okt 2026) — satu-satunya
+     * bagian antarmuka Trouble Ticket yang tidak berbahasa Indonesia.
+     */
     public const EVENTS = [
-        'created'           => 'Tiket dibuat',
-        'assigned'          => 'Teknisi ditugaskan',
-        'reassigned'        => 'Teknisi dialihkan',
-        'responded'         => 'Tiket dibaca teknisi',
-        'remote_started'    => 'Ditangani remote (Non-Visit)',
-        'plan_created'      => 'Plan visit dibuat',
-        'plan_updated'      => 'Tanggal plan visit diubah',
-        'trip_due'          => 'Masuk tahap Trip',
-        'travel_started'    => 'Perjalanan dimulai',
-        'travel_cancelled'  => 'Visit dibatalkan',
-        'arrived_on_site'   => 'Tiba di site',
-        'progress_started'  => 'Progres dimulai',
-        'progress_done'     => 'Form close dikirim',
-        'close_rejected'    => 'Penutupan ditolak',
-        'closed'            => 'Tiket ditutup (approved)',
-        // Alur lama (sebelum 12 Okt 2026) — label dipertahankan untuk riwayat.
-        'plan_submitted'    => 'Plan diajukan',
-        'plan_corrected'    => 'Plan dikoreksi',
-        'plan_approved'     => 'Plan disetujui',
-        'plan_rejected'     => 'Plan ditolak',
+        'created'           => 'Ticket created',
+        // Hanya dipakai riwayat lama: sejak 13 Okt 2026 penugasan awal tidak
+        // lagi ditulis ke log (teknisi sudah terbaca di kepala tiket).
+        'assigned'          => 'Technician assigned',
+        'reassigned'        => 'Technician reassigned',
+        'responded'         => 'Ticket read',
+        'remote_started'    => 'Handled remotely (Non-Visit)',
+        'plan_created'      => 'Plan visit created',
+        'plan_updated'      => 'Plan visit date changed',
+        'trip_due'          => 'Moved to Trip',
+        'travel_started'    => 'Travel started',
+        'travel_cancelled'  => 'Visit cancelled',
+        'arrived_on_site'   => 'Arrived on site',
+        'progress_started'  => 'Progress started',
+        'progress_done'     => 'Close form submitted',
+        'close_rejected'    => 'Close rejected',
+        'closed'            => 'Closed',
+        // Alur lama (sebelum 12 Okt 2026) — tetap terbaca di riwayat.
+        'plan_submitted'    => 'Plan submitted',
+        'plan_corrected'    => 'Plan corrected',
+        'plan_approved'     => 'Plan approved',
+        'plan_rejected'     => 'Plan rejected',
     ];
 
     protected $fillable = [

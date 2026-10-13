@@ -305,9 +305,9 @@
                         <i class="fas fa-paper-plane mr-1"></i> Submit Settlement
                     </button>
                     {{-- Simpan draft — data tersimpan TANPA mengajukan, status CR
-                         tetap PAID/SETTLE_REJECTED. Validasinya sama persis dengan
-                         Submit (lampiran per item, Note wajib bila Settle > Request). --}}
-                    <button type="button" id="saveDraftBtn" class="btn btn-outline-secondary" disabled
+                         tetap PAID/SETTLE_REJECTED. Boleh disimpan walau belum
+                         lengkap; kelengkapan baru wajib saat Submit. --}}
+                    <button type="button" id="saveDraftBtn" class="btn btn-outline-secondary"
                             data-action="{{ route('budget-request.save-realization-draft', $budgetRequest->id) }}">
                         <i class="fas fa-save mr-1"></i> Simpan
                     </button>
@@ -485,14 +485,12 @@ $(function () {
         var siap = reasons.length === 0;
 
         // Abu-abu selama belum lengkap, merah (warna aksi utama TESYS) begitu
-        // settlement benar-benar siap dikirim. "Simpan" ikut gerbang yang
-        // sama — validasinya memang dibuat identik dengan Submit.
+        // settlement benar-benar siap dikirim. "Simpan" TIDAK ikut gerbang ini:
+        // draft boleh disimpan setengah jalan.
         $('#submitBtn')
             .prop('disabled', !siap)
             .toggleClass('btn-primary', siap)
             .toggleClass('btn-secondary', !siap);
-
-        $('#saveDraftBtn').prop('disabled', !siap);
 
         $('#submitHint')
             .text(siap ? '' : 'Lengkapi: ' + reasons.join('; '))
@@ -1089,15 +1087,20 @@ $(function () {
         });
     });
 
-    /* SIMPAN — menyimpan draft, status CR TIDAK berubah. Validasinya sama
-       dengan Submit; bedanya cuma form di-arahkan ke route simpan-draft
-       sebelum dikirim, dan tanpa dialog konfirmasi "akan mengajukan". */
+    /* SIMPAN — menyimpan draft, status CR TIDAK berubah. Data boleh belum
+       lengkap (lampiran item / Note) — kelengkapannya baru diwajibkan saat
+       Submit. Form hanya diarahkan ke route simpan-draft sebelum dikirim. */
     $('#saveDraftBtn').on('click', function () {
-        if (peringatkanKelengkapan(cekKelengkapanBaris())) return;
+        var cek   = cekKelengkapanBaris();
+        var kurang = [];
+        if (cek.missAtt.length)  kurang.push('Lampiran Item baris no. ' + cek.missAtt.join(', '));
+        if (cek.missNote.length) kurang.push('Note baris no. ' + cek.missNote.join(', '));
 
         Swal.fire({
             title: 'Simpan Draft Settlement?',
-            text: 'Data tersimpan tanpa mengajukan — status CR belum berubah.',
+            text: kurang.length
+                ? 'Belum lengkap (' + kurang.join('; ') + '), tapi tetap bisa disimpan. Status CR belum berubah.'
+                : 'Data tersimpan tanpa mengajukan — status CR belum berubah.',
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#42627d',

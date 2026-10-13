@@ -142,6 +142,86 @@ notifikasi tidak terkirim dua kali. Error keadaan = `ValidationException`
   warning; ≥100% = critical. Filter "Hanya lewat SLA" = `TroubleTicket::scopeOverdue()`.
 - Timer di layar dihitung dari jam server (offset jam perangkat dikoreksi).
 
+## Tampilan halaman detail (13 Okt 2026)
+
+Tab **Tiket** sengaja ringkas; jejak waktu lengkap dibaca di tab **Log**, angka
+SLA di tab **SLA**.
+
+- **Identitas**: No. TT, Date Open, Dibuat oleh (nama saja), dan Plan visit
+  (tanggal kunjungan) bila jalurnya Visit. Tanpa jam, tanpa Date Update.
+- **Gangguan**: Aging, Severity (tanpa catatan "otomatis dari aging"),
+  RCA & Sub-RCA, Device, Keterangan. Problem, Initial Problem dan Flag alarm
+  tidak lagi ditampilkan; RCA/Sub-RCA disembunyikan setelah tiket Closed
+  supaya tidak dobel dengan Penyelesaian.
+- Bagian **Plan** dihapus (13 Okt 2026): jalur Visit/Non-Visit terbaca dari
+  status tiket dan tab Log; Plan visit (tanggal) ada di Identitas.
+- **Penyelesaian**: RCA, Sub-RCA, Keterangan, Close by, Date closed.
+- Bagian **Penugasan** dihapus — teknisi & PIC dibaca di tab Site/Summary.
+- Satu istilah saja untuk teks bebas tiket: **Keterangan** (bukan "Deskripsi").
+- Evidence dibuka sebagai lapisan di atas halaman (`#ttViewer`), bukan tab
+  baru: tombol tutup di kanan atas, panah/geser bila lebih dari satu gambar,
+  Esc & panah papan ketik. Penting untuk supervisor yang memeriksa bukti tanpa
+  menutup modal approval. Tombolnya bernama **Close** (dulu "Approve & Close").
+- Saat form dikirim, hanya tombol kirim yang berubah jadi pemutar; tombol lain
+  dimatikan tanpa pemutar.
+- Daftar di HP: bilah cari + chip tahap **ikut tergulir** (tidak menempel di
+  atas — versi menempel menutupi kartu teratas); chip tahap **turun baris**, tidak digulir mendatar — versi
+  bergulir menyisakan batang scroll yang menimpa chip di browser HP.
+- Penugasan awal **tidak** ditulis ke log (13 Okt 2026): baris sesudah
+  "Ticket created" adalah **"Ticket read"**, yaitu saat teknisi yang ditugaskan
+  membuka halaman detail — titik berhentinya jam Response
+  (`recordAccess()`, kejadian `responded`). Pengalihan teknisi sesudahnya tetap
+  dicatat sebagai `reassigned`.
+- Label kejadian di tab **Log** dan timeline berbahasa **Inggris**
+  (`TroubleTicketMessage::EVENTS`) — satu-satunya bagian modul ini yang tidak
+  berbahasa Indonesia; permintaan pengguna 13 Okt 2026.
+- Kolom **Problem** di daftar diganti **RCA** (isi `rca_label` / `sub_rca_label`);
+  filter kolomnya ikut berubah (`data-rca`).
+- Form buat tiket: tanpa Date Update; Teknisi bukan dropdown lagi melainkan
+  kotak baca-saja + `<input type="hidden" name="assigned_to">` yang diisi dari
+  endpoint teknisi site; tombol Batal/Simpan duduk di kolom kanan.
+
+## Halaman Pengaturan (`/trouble-ticket/settings`, superadmin)
+
+Satu halaman bertab, dulu hanya SLA:
+
+| Tab | Isi | Route (store / update / toggle) |
+|---|---|---|
+| SLA | tiga limit: Response / Travel / Resolution (menit) | `settings.sla.limit` |
+| RCA | master RCA | `settings.rca.*` |
+| Sub-RCA | master Sub-RCA (milik satu RCA; nama unik per RCA) | `settings.sub-rca.*` |
+| Severity | master severity (kode unik, level 1 = paling parah, rentang aging) | `settings.severity.*` |
+
+- Tab **SLA** tidak lagi mendaftar kebijakan: ia menampilkan **tiga baris**
+  (Response time, Travel time, Resolution time) dengan limitnya masing-masing,
+  bisa diubah satu per satu. Yang disimpan selalu kebijakan yang MEMANG dipakai
+  tiket baru (`applicableForProblem(null)`); kalau belum ada, satu baris umum
+  dibuat saat penyimpanan pertama. Limit **0 (atau kosong) = tidak terhingga**:
+  disimpan NULL, durasinya tetap dicatat tetapi tiket tidak pernah "Lewat SLA".
+  Tidak ada lagi tambah/nonaktifkan kebijakan,
+  tidak ada lagi target per Problem/Severity dari layar — baris lama tetap ada
+  di basis data. Kolom `name` masih ada tetapi tidak dipakai layar.
+- Kolom `slm_target_value` / `slm_target_unit` (jam atau hari) sudah ada di
+  `trouble_ticket_sla_policies` tetapi **belum dipakai dan belum ditampilkan**
+  di mana pun; semua barisnya kosong (migrasi `2026_10_13_000100`).
+- Tangga severity kini bisa diatur: kolom `aging_from`/`aging_to` di
+  `trouble_ticket_severities` (migrasi `2026_10_13_000200`). Selama belum ada
+  severity aktif yang mengisi `aging_from`, perhitungan tetap memakai tangga
+  bawaan `TroubleTicket::SEVERITY_AGING` — lihat
+  `TroubleTicketSeverity::agingSteps()` (di-cache per request).
+- Seluruh baris **bisa diubah** di tempat (13 Okt 2026): tombol Ubah menukar
+  baris baca dengan baris form, satu baris terbuka pada satu waktu.
+- Mengubah **kebijakan SLA** hanya berlaku untuk tiket yang dibuat sesudahnya
+  — tiket lama menyimpan snapshot targetnya sendiri.
+- Mengubah **kode severity** ikut memperbarui tiket lama yang memakainya
+  (`trouble_tickets.severity`, FK ON UPDATE CASCADE).
+- **Tidak ada hapus** pada master mana pun: tiket lama menunjuk barisnya
+  (FK RESTRICT) dan riwayatnya harus tetap terbaca. Yang tidak dipakai lagi
+  dinonaktifkan — hilang dari pilihan form, tetap tampil di tiket lama.
+- Severity master **bukan** sumber severity tiket (itu dihitung dari aging);
+  ia dipakai sebagai label kebijakan SLA dan untuk tiket lama.
+- Master Problem tetap tanpa layar — tidak lagi diisi dari form buat tiket.
+
 ## Hak akses (keputusan bisnis 9 Okt 2026)
 
 | Aksi | Siapa |
@@ -175,6 +255,13 @@ anggota dari team mengubah siapa yang melihat tiket lama.
   Pesan chat = `MESSAGE`.
 - Tidak ada route ubah/hapus pesan. Pesan idempoten per `client_token`.
 - Halaman detail mengambil pesan baru tiap 20 detik (hanya saat tab terlihat).
+- **Lonceng tidak menunggu worker** (13 Okt 2026): `AppNotification::viaConnections()`
+  menjalankan channel `database` pada koneksi `sync`, jadi notifikasi in-app
+  muncul begitu aksinya selesai; WhatsApp (Fonnte) tetap lewat antrean dan
+  tetap butuh `queue:work`. Berlaku untuk SEMUA modul yang memakai
+  `NotifyService`, bukan hanya Trouble Ticket.
+- Notifikasi tiket baru menautkan langsung ke halaman detail; teknisi yang
+  mengkliknya otomatis tercatat **Ticket read** (jam Response berhenti).
 - Notifikasi (`NotifyService`, kategori `trouble-ticket`): tiket baru/dialihkan
   → teknisi; plan diajukan → leader team (fallback superadmin); plan
   approve/reject → teknisi; tiket ditutup → leader team + pembuat.

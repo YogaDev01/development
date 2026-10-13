@@ -74,11 +74,33 @@
                 </li>
             </ul>
             <div class="d-flex align-items-center flex-wrap pb-1" style="gap:8px;">
-                <div class="d-flex align-items-center cr-date-range" style="gap:4px;">
-                    <input type="text" id="crDateFrom" class="form-control form-control-sm" value="{{ $dateFrom }}" readonly>
-                    <span class="text-muted" style="font-size:12px;">s/d</span>
-                    <input type="text" id="crDateTo" class="form-control form-control-sm" value="{{ $dateTo }}" readonly>
+                {{-- Filter tanggal: dropdown "Last Update" (12 jam s/d 1 tahun).
+                     Pilihan "Custom…" memunculkan dua date-picker di sebelah KIRI
+                     dropdown; pilihan lain menyembunyikannya kembali. Tanpa filter,
+                     rentangnya tetap bawaan: tanggal 1 s/d akhir bulan berjalan.
+                     Semua memuat ulang halaman dengan ?date_from=&date_to= —
+                     filternya tetap server-side. --}}
+                <div id="crCustomRange" class="d-none align-items-center flex-wrap" style="gap:6px;">
+                    <span class="text-muted" style="font-size:12px;">Dari</span>
+                    <div class="d-flex align-items-center cr-date-range" style="gap:4px;">
+                        <input type="text" id="crDateFrom" class="form-control form-control-sm" value="{{ substr($dateFrom, 0, 10) }}" readonly>
+                        <span class="text-muted" style="font-size:12px;">s/d</span>
+                        <input type="text" id="crDateTo" class="form-control form-control-sm" value="{{ substr($dateTo, 0, 10) }}" readonly>
+                    </div>
+                    <button id="btnApplyCustomRange" class="btn btn-primary btn-sm">
+                        <i class="fas fa-check mr-1"></i> Terapkan
+                    </button>
                 </div>
+                <select id="crQuickRange" class="form-control form-control-sm" style="width:auto;">
+                    <option value="">Last Update</option>
+                    <option value="12h">12 jam terakhir</option>
+                    <option value="1d">1 hari terakhir</option>
+                    <option value="3d">3 hari terakhir</option>
+                    <option value="7d">7 hari terakhir</option>
+                    <option value="30d">30 hari terakhir</option>
+                    <option value="1y">1 tahun terakhir</option>
+                    <option value="custom">Custom…</option>
+                </select>
                 <button id="btnRefreshCR" class="btn btn-secondary btn-sm">
                     <i class="fas fa-sync-alt mr-1"></i> Refresh
                 </button>
@@ -821,13 +843,13 @@ $(function () {
         if (typeof flatpickr === 'function') {
             flatpickr('#crDateFrom', {
                 dateFormat: 'Y-m-d', altInput: true, altFormat: 'd/m/Y',
-                defaultDate: '{{ $dateFrom }}',
-                onChange: function (selectedDates, dateStr) { reloadWithDateRange(dateStr, $('#crDateTo').val()); }
+                defaultDate: '{{ substr($dateFrom, 0, 10) }}',
+                onChange: function () { /* rentang baru dipakai saat "Terapkan" ditekan */ }
             });
             flatpickr('#crDateTo', {
                 dateFormat: 'Y-m-d', altInput: true, altFormat: 'd/m/Y',
-                defaultDate: '{{ $dateTo }}',
-                onChange: function (selectedDates, dateStr) { reloadWithDateRange($('#crDateFrom').val(), dateStr); }
+                defaultDate: '{{ substr($dateTo, 0, 10) }}',
+                onChange: function () { /* rentang baru dipakai saat "Terapkan" ditekan */ }
             });
         } else {
             throw new Error('flatpickr is not a function');
@@ -835,10 +857,65 @@ $(function () {
     } catch (err) {
         console.warn('Flatpickr gagal diinisialisasi — filter tanggal beralih ke mode input manual.', err);
         $('#crDateFrom, #crDateTo').removeAttr('readonly').attr('placeholder', 'YYYY-MM-DD');
-        $('#crDateFrom, #crDateTo').on('change', function () {
-            reloadWithDateRange($('#crDateFrom').val(), $('#crDateTo').val());
-        });
     }
+
+    /* ── RENTANG CEPAT ──────────────────────────────────────────────────────
+    | "12 jam terakhir" memakai presisi jam (YYYY-MM-DD HH:mm:ss); pilihan hari
+    | dan tahun memakai tanggal saja. Pilihan "Custom…" hanya membuka
+    | date-picker "dari" supaya user menentukan sendiri rentangnya. */
+    function fmtTanggal(d) {
+        var p = function (n) { return (n < 10 ? '0' : '') + n; };
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+    }
+    function fmtWaktu(d) {
+        var p = function (n) { return (n < 10 ? '0' : '') + n; };
+        return fmtTanggal(d) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+    }
+
+    // Pilihan aktif: dari ?range=, atau "Custom…" kalau halaman dibuka dengan
+    // rentang tanggal yang ditentukan sendiri.
+    var RANGE_AKTIF = '{{ request('range', '') }}';
+    if (!RANGE_AKTIF && @json(request()->filled('date_from') || request()->filled('date_to'))) {
+        RANGE_AKTIF = 'custom';
+    }
+    $('#crQuickRange').val(RANGE_AKTIF);
+    $('#crCustomRange').toggleClass('d-none', RANGE_AKTIF !== 'custom')
+                       .toggleClass('d-flex', RANGE_AKTIF === 'custom');
+
+    $('#btnApplyCustomRange').on('click', function () {
+        reloadWithDateRange($('#crDateFrom').val(), $('#crDateTo').val());
+    });
+
+    $('#crQuickRange').on('change', function () {
+        var v = $(this).val();
+        if (!v) return;
+
+        if (v === 'custom') {
+            $('#crCustomRange').removeClass('d-none').addClass('d-flex');
+            var fp = document.getElementById('crDateFrom')._flatpickr;
+            if (fp) { fp.open(); } else { $('#crDateFrom').focus(); }
+            return;
+        }
+        $('#crCustomRange').addClass('d-none').removeClass('d-flex');
+
+        var now  = new Date();
+        var mulai = new Date(now.getTime());
+        var pakaiJam = false;
+
+        if (v === '12h')      { mulai.setHours(mulai.getHours() - 12); pakaiJam = true; }
+        else if (v === '1d')  { mulai.setDate(mulai.getDate() - 1); }
+        else if (v === '3d')  { mulai.setDate(mulai.getDate() - 3); }
+        else if (v === '7d')  { mulai.setDate(mulai.getDate() - 7); }
+        else if (v === '30d') { mulai.setDate(mulai.getDate() - 30); }
+        else if (v === '1y')  { mulai.setFullYear(mulai.getFullYear() - 1); }
+
+        var url = new URL(window.location.href);
+        url.searchParams.set('range', v);
+        url.searchParams.delete('from');
+        url.searchParams.set('date_from', pakaiJam ? fmtWaktu(mulai) : fmtTanggal(mulai));
+        url.searchParams.set('date_to',   pakaiJam ? fmtWaktu(now)   : fmtTanggal(now));
+        window.location.href = url.toString();
+    });
 
     // (accounts holder lama sudah tidak diperlukan — realisasi sekarang pakai CR Detail Item)
 
@@ -1159,6 +1236,7 @@ $(function () {
     function reloadWithDateRange(from, to) {
         var url = new URL(window.location.href);
         url.searchParams.delete('from');
+        url.searchParams.delete('range');
         url.searchParams.set('date_from', from);
         url.searchParams.set('date_to', to);
         window.location.href = url.toString();
