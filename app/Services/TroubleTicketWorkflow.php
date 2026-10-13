@@ -304,10 +304,11 @@ class TroubleTicketWorkflow
             ]);
             $this->attach($ticket, $created, $actor, $stored);
 
-            $this->event($ticket, $actor, 'assigned', null, [
-                'to_id' => $ticket->assigned_to,
-                'to_name' => User::whereKey($ticket->assigned_to)->value('name'),
-            ]);
+            /* Penugasan awal TIDAK ditulis ke log (13 Okt 2026): teknisinya sudah
+               terbaca di kepala tiket, dan baris sesudah "Ticket created"
+               seharusnya "Ticket read" — saat teknisi membuka tiket dan jam
+               Response berhenti (lihat recordAccess()). Pengalihan teknisi
+               setelahnya tetap dicatat sebagai 'reassigned'. */
 
             return $ticket;
         });

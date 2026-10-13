@@ -446,7 +446,7 @@ return [
         'finance' => [
             'Overview'    => ['dashboard', 'finance-summary'],
             'Workflow'    => [
-                'purchase-order', 'budgeting',
+                'purchase-order', 'budgeting', 'trouble-ticket',
                 'Cost Management' => [
                     'icon'  => 'fas fa-coins',
                     'items' => ['cost-request', 'cost-register', 'treasury'],

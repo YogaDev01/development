@@ -43,18 +43,18 @@
                     @case('plan_submitted')
                     @case('plan_corrected')
                         : {{ TroubleTicket::VISIT_DECISIONS[$meta['decision'] ?? ''] ?? '-' }}
-                        @if(! empty($meta['visit_site']))· kunjungan {{ \Illuminate\Support\Carbon::parse($meta['visit_site'])->format('d/m/Y') }}@endif
+                        @if(! empty($meta['visit_site']))· visit {{ \Illuminate\Support\Carbon::parse($meta['visit_site'])->format('d/m/Y') }}@endif
                         @if(! empty($meta['target_online']))· target online {{ \Illuminate\Support\Carbon::parse($meta['target_online'])->format('d/m/Y') }}@endif
                         @if(! empty($meta['previous']['decision']))
-                            (sebelumnya {{ TroubleTicket::VISIT_DECISIONS[$meta['previous']['decision']] ?? $meta['previous']['decision'] }})
+                            (previously {{ TroubleTicket::VISIT_DECISIONS[$meta['previous']['decision']] ?? $meta['previous']['decision'] }})
                         @endif
                         @break
                     @case('responded')
-                        {{ ! empty($meta['first']) ? '(respons pertama)' : '' }}
+                        {{ ! empty($meta['first']) ? '(first response)' : '' }}
                         @break
                     @case('plan_rejected')
                         @if(! empty($meta['previous']['decision']))
-                            (plan sebelumnya {{ TroubleTicket::VISIT_DECISIONS[$meta['previous']['decision']] ?? $meta['previous']['decision'] }})
+                            (previous plan {{ TroubleTicket::VISIT_DECISIONS[$meta['previous']['decision']] ?? $meta['previous']['decision'] }})
                         @endif
                         @break
                     @case('progress_done')
@@ -62,7 +62,7 @@
                         @if(! empty($meta['rca']))<div class="tt-event-note">RCA: {{ $meta['rca'] }}{{ ! empty($meta['sub_rca']) ? ' / ' . $meta['sub_rca'] : '' }} · Action: {{ $meta['action'] ?? '-' }}</div>@endif
                         @break
                 @endswitch
-                <span class="text-muted">· {{ $msg->actor_name ?? 'Sistem' }} · {{ $msg->created_at?->format('d/m/Y H:i:s') }}</span>
+                <span class="text-muted">· {{ $msg->actor_name ?? 'System' }} · {{ $msg->created_at?->format('d/m/Y H:i:s') }}</span>
                 @if($msg->body)
                     <div class="tt-event-note">{{ $msg->body }}</div>
                 @endif

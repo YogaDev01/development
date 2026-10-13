@@ -199,7 +199,7 @@ class SettleRejectedStatusTest extends TestCase
 
         $this->actingAs($this->managerUser())
             ->post('/budget-request/' . $cr->id . '/save-realization-draft', $payload)
-            ->assertRedirect(route('budget-request.realize-form', $cr->id));
+            ->assertRedirect(route('budget-request.index'));
 
         // Status TIDAK berubah — ini inti dari "Simpan" vs "Ajukan".
         $this->assertSame('PAID', $cr->fresh()->status);
@@ -215,7 +215,7 @@ class SettleRejectedStatusTest extends TestCase
         ]);
     }
 
-    public function test_simpan_draft_tetap_wajib_lampiran(): void
+    public function test_simpan_draft_boleh_belum_lengkap(): void
     {
         $cr = $this->cr('PAID');
         $detail = RequestDetail::create([
@@ -227,7 +227,8 @@ class SettleRejectedStatusTest extends TestCase
             'status'            => 'INCLUDED',
         ]);
 
-        // Settle > 0 TANPA lampiran — harus ditolak, sama seperti submit.
+        // Settle > 0 TANPA lampiran — draft tetap tersimpan; kelengkapan
+        // lampiran baru diwajibkan saat Submit Settlement.
         $payload = [
             'realizations' => [
                 [
@@ -239,11 +240,13 @@ class SettleRejectedStatusTest extends TestCase
 
         $this->actingAs($this->managerUser())
             ->post('/budget-request/' . $cr->id . '/save-realization-draft', $payload)
-            ->assertRedirect();
+            ->assertRedirect(route('budget-request.index'));
 
         $this->assertSame('PAID', $cr->fresh()->status);
-        $this->assertDatabaseMissing('budget_request_realizations', [
+        $this->assertDatabaseHas('budget_request_realizations', [
             'budget_request_id' => $cr->id,
+            'request_detail_id' => $detail->id,
+            'total'             => 50_000,
         ]);
     }
 }

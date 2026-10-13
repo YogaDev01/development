@@ -40,7 +40,8 @@
 @if($bisaBerangkat)
     <div class="tt-stage">
         <form method="POST" action="{{ route('trouble-ticket.travel.start', $t) }}" id="frmTtTravel" class="tt-submit-once m-0">@csrf</form>
-        <div class="tt-swipe" data-form="frmTtTravel" data-confirm="Mulai perjalanan?" data-text="Perjalanan ke site dimulai.">
+        {{-- Swipe for travel langsung jalan: geser penuh sudah tindakan sengaja, dialog konfirmasi hanya menambah satu ketukan. --}}
+        <div class="tt-swipe" data-form="frmTtTravel" data-confirm="0">
             <span class="tt-swipe-knob" tabindex="0" role="button" aria-label="Geser untuk mulai perjalanan"><i class="fas fa-arrow-right"></i></span>
             <span class="tt-swipe-text">Swipe for travel</span>
         </div>
@@ -98,7 +99,7 @@
         <div class="tt-stage-title">Menunggu approval supervisor</div>
         @if($canApproveClose)
             <button type="button" class="btn btn-success btn-sm btn-block" data-toggle="modal" data-target="#mdlTtApprove">
-                <i class="fas fa-check mr-1"></i> Approve Close
+                <i class="fas fa-check mr-1"></i> Close
             </button>
             <button type="button" class="btn btn-outline-danger btn-sm btn-block mt-2" data-toggle="modal" data-target="#mdlTtReject">
                 <i class="fas fa-undo mr-1"></i> Reject Close

@@ -478,7 +478,9 @@ class TroubleTicket extends Model
     /** [label, level] severity dari jumlah hari aging. */
     public static function severityFromAging(int $hari): array
     {
-        foreach (self::SEVERITY_AGING as [$minimal, $label, $level]) {
+        // Tangga diambil dari master severity bila sudah diatur di Pengaturan;
+        // kalau belum, SEVERITY_AGING di atas yang dipakai.
+        foreach (TroubleTicketSeverity::agingSteps() as [$minimal, $label, $level]) {
             if ($hari >= $minimal) {
                 return [$label, $level];
             }

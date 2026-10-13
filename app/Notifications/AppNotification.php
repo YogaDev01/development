@@ -64,6 +64,23 @@ class AppNotification extends Notification implements ShouldQueue
         return $this->basi() ? now() : null;
     }
 
+    /**
+     * Lonceng TIDAK menunggu worker.
+     *
+     * Channel `database` hanya menulis satu baris; yang dulu membuat
+     * notifikasi perlu diantre adalah panggilan HTTP ke Fonnte. Dengan
+     * koneksi `sync` khusus untuk channel ini, notifikasi lonceng muncul
+     * begitu aksinya selesai (mis. teknisi langsung melihat tiket barunya),
+     * sementara WhatsApp tetap lewat antrean seperti sebelumnya.
+     *
+     * Sebelum ini, tanpa "php artisan queue:work" yang berjalan, SELURUH
+     * notifikasi lonceng menumpuk di tabel jobs dan tidak pernah sampai.
+     */
+    public function viaConnections(): array
+    {
+        return ['database' => 'sync'];
+    }
+
     public function via($notifiable): array
     {
         // Preferensi notifikasi per-user (Profil > Settings). Aman-default:

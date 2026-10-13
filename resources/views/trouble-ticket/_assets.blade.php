@@ -296,6 +296,31 @@
 .tt-eviz-item img { width:32px; height:32px; object-fit:cover; border-radius:3px; }
 .tt-eviz-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .tt-eviz-x { position:absolute; top:2px; right:4px; border:0; background:none; color:var(--text-muted); font-size:14px; line-height:1; cursor:pointer; }
+
+/* ======================================================================
+   PENAMPIL EVIDENCE
+   ----------------------------------------------------------------------
+   Gambar lampiran dibuka sebagai lapisan di atas halaman, bukan tab baru,
+   supaya supervisor tidak kehilangan modal approval saat memeriksa bukti.
+   z-index di atas modal Bootstrap (1050) dan backdrop-nya.
+   ====================================================================== */
+.tt-viewer { position:fixed; inset:0; z-index:1080; display:none; align-items:center; justify-content:center;
+    background:rgba(8,10,14,.92); padding:48px 16px; }
+.tt-viewer.is-on { display:flex; }
+.tt-viewer img { max-width:100%; max-height:100%; object-fit:contain; border-radius:var(--radius-sm); }
+.tt-viewer-x { position:absolute; top:10px; right:14px; width:36px; height:36px; border:0; border-radius:50%;
+    background:rgba(255,255,255,.12); color:#fff; font-size:24px; line-height:1; cursor:pointer; }
+.tt-viewer-x:hover { background:rgba(255,255,255,.22); }
+.tt-viewer-nav { position:absolute; top:50%; transform:translateY(-50%); width:40px; height:40px; border:0; border-radius:50%;
+    background:rgba(255,255,255,.12); color:#fff; font-size:16px; cursor:pointer; }
+.tt-viewer-nav:hover { background:rgba(255,255,255,.22); }
+.tt-viewer-prev { left:10px; }
+.tt-viewer-next { right:10px; }
+.tt-viewer-cap { position:absolute; left:0; right:0; bottom:12px; text-align:center; color:rgba(255,255,255,.8); font-size:12px;
+    padding:0 56px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+@media (max-width: 575.98px) {
+    .tt-viewer { padding:44px 8px; }
+    .tt-viewer-nav { width:34px; height:34px; }
+}
 </style>
 @endpush
-

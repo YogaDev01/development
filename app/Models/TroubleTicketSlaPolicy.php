@@ -16,9 +16,15 @@ class TroubleTicketSlaPolicy extends Model
 {
     protected $table = 'trouble_ticket_sla_policies';
 
+    /*
+     | slm_target_value / slm_target_unit: disiapkan 13 Okt 2026, BELUM dipakai
+     | — tidak dibaca kode mana pun dan tidak ditampilkan di layar. Kosongkan
+     | sampai aturan SLM-nya ditetapkan.
+     */
     protected $fillable = [
-        'severity', 'problem_id', 'response_minutes', 'travel_minutes',
-        'resolution_minutes', 'effective_from', 'status', 'created_by',
+        'name', 'severity', 'problem_id', 'response_minutes', 'travel_minutes',
+        'resolution_minutes', 'slm_target_value', 'slm_target_unit',
+        'effective_from', 'status', 'created_by',
     ];
 
     protected $casts = [
@@ -26,7 +32,28 @@ class TroubleTicketSlaPolicy extends Model
         'response_minutes'   => 'integer',
         'travel_minutes'     => 'integer',
         'resolution_minutes' => 'integer',
+        'slm_target_value'   => 'integer',
     ];
+
+    /** Satuan target SLM yang dikenal. Belum dipakai di layar. */
+    public const SLM_UNITS = ['HOUR' => 'Jam', 'DAY' => 'Hari'];
+
+    /**
+     * Nama yang ditampilkan di halaman Pengaturan. Baris lama belum punya
+     * nama, jadi dijatuhkan ke label turunannya supaya barisnya tetap bisa
+     * dikenali.
+     */
+    public function getDisplayNameAttribute(): string
+    {
+        if (filled($this->name)) {
+            return $this->name;
+        }
+
+        $sev = $this->severityRef?->name ?? $this->severity;
+        $prob = $this->problem?->name;
+
+        return collect([$sev, $prob])->filter()->implode(' · ') ?: 'Semua tiket';
+    }
 
     public function problem(): BelongsTo
     {

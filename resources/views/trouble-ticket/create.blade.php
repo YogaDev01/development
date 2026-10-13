@@ -54,7 +54,7 @@
                                     <small class="form-text text-muted">Dugaan akar masalah; masih bisa diperbarui saat tiket ditutup.</small>
                                     @error('sub_rca_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                 </div>
-                                <div class="form-group col-md-4">
+                                <div class="form-group col-md-6">
                                     <label class="font-weight-bold" for="fldDevice">Device</label>
                                     <select name="device_id" id="fldDevice" class="form-control @error('device_id') is-invalid @enderror">
                                         <option value="">&mdash; Pilih device &mdash;</option>
@@ -64,20 +64,15 @@
                                     </select>
                                     @error('device_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                 </div>
-                                <div class="form-group col-md-4">
+                                <div class="form-group col-md-6">
                                     <label class="font-weight-bold" for="fldReportedAt">Date Open</label>
                                     <input type="datetime-local" name="reported_at" id="fldReportedAt" value="{{ old('reported_at', now()->format('Y-m-d\TH:i')) }}"
                                            max="{{ now()->format('Y-m-d\TH:i') }}" class="form-control @error('reported_at') is-invalid @enderror">
                                     <small class="form-text text-muted">Bawaan hari ini; jadi titik awal perhitungan aging.</small>
                                     @error('reported_at')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
-                                <div class="form-group col-md-4">
-                                    <label class="font-weight-bold">Date Update</label>
-                                    <input type="text" class="form-control" value="{{ now()->format('d/m/Y H:i') }}" readonly>
-                                    <small class="form-text text-muted">Terisi otomatis setiap tiket berubah.</small>
-                                </div>
                                 <div class="form-group col-12">
-                                    <label class="font-weight-bold" for="fldDesc">Deskripsi <span class="text-danger">*</span></label>
+                                    <label class="font-weight-bold" for="fldDesc">Keterangan <span class="text-danger">*</span></label>
                                     <textarea name="description" id="fldDesc" rows="6" maxlength="10000"
                                               class="form-control @error('description') is-invalid @enderror" required>{{ old('description') }}</textarea>
                                     @error('description')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -113,11 +108,13 @@
                                 @error('site_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                 <small class="form-text text-muted">Customer: <strong id="lblCustomer">—</strong></small>
                             </div>
+                            {{-- Teknisi tidak dipilih: ia mengikuti site. Kotaknya baca-saja,
+                                 nilainya dikirim lewat input tersembunyi di bawahnya. --}}
                             <div class="form-group mb-0">
-                                <label class="font-weight-bold" for="fldTech">Teknisi <span class="text-danger">*</span></label>
-                                <select name="assigned_to" id="fldTech" class="form-control @error('assigned_to') is-invalid @enderror" required disabled>
-                                    <option value="">— Pilih site dulu —</option>
-                                </select>
+                                <label class="font-weight-bold" for="fldTechName">Teknisi <span class="text-danger">*</span></label>
+                                <input type="text" id="fldTechName" class="form-control @error('assigned_to') is-invalid @enderror"
+                                       value="" placeholder="— Pilih site dulu —" readonly>
+                                <input type="hidden" name="assigned_to" id="fldTech" value="{{ old('assigned_to') }}">
                                 @error('assigned_to')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                 <small class="form-text text-muted" id="lblTechHint">Teknisi = PIC internal site tersebut; leader team tidak termasuk.</small>
                             </div>
@@ -129,12 +126,13 @@
                         Target SLA diambil dari kebijakan aktif yang berlaku saat tiket disimpan.
                         Severity tidak diisi di sini: ia mengikuti aging tiket &mdash; 0 hari Rendah, 1&ndash;2 Minor, 3&ndash;7 Major, 8 hari ke atas Kritis.
                     </div>
+                    {{-- Tombol duduk di kolom kanan, tepat di bawah ringkasan penugasan:
+                         jalur baca form berakhir di sini, bukan melintas kembali ke kiri. --}}
+                    <div class="d-flex justify-content-end mb-4" style="gap:8px;">
+                        <a href="{{ route('trouble-ticket.index') }}" class="btn btn-secondary"><i class="fas fa-times mr-1"></i> Batal</a>
+                        <button type="submit" class="btn btn-success" id="btnTtSave"><i class="fas fa-save mr-1"></i> Simpan Tiket</button>
+                    </div>
                 </div>
-            </div>
-
-            <div class="d-flex justify-content-end mb-4" style="gap:8px;">
-                <a href="{{ route('trouble-ticket.index') }}" class="btn btn-secondary"><i class="fas fa-times mr-1"></i> Batal</a>
-                <button type="submit" class="btn btn-success" id="btnTtSave"><i class="fas fa-save mr-1"></i> Simpan Tiket</button>
             </div>
         </form>
     </div>
@@ -147,7 +145,7 @@ $(function () {
     var MAX_BYTES = {{ TroubleTicketAttachment::MAX_KB * 1024 }}, MAX_FILES = {{ TroubleTicketAttachment::MAX_FILES }};
     var techUrl = @json(url('trouble-ticket/site/__ID__/technicians'));
     var oldTech = @json((string) old('assigned_to'));
-    var $site = $('#fldSite'), $tech = $('#fldTech');
+    var $site = $('#fldSite'), $tech = $('#fldTech'), $techName = $('#fldTechName');
 
     TesysSearchableSelect.init('#fldSite', { placeholder: '— Pilih site —', searchPlaceholder: 'Cari Site ID / nama...' });
     TesysSearchableSelect.init('#fldDevice', { placeholder: '— Pilih device —', searchPlaceholder: 'Cari device...' });
@@ -176,33 +174,34 @@ $(function () {
     $rca.on('change', function () { loadSubRca(null); });
     loadSubRca(oldSubRca);
 
+    function setTech(id, nama) {
+        $tech.val(id || '');
+        $techName.val(nama || '');
+    }
+
     function loadTechs(selected) {
         var id = $site.val();
         $('#lblCustomer').text($site.find(':selected').data('customer') || '—');
-        $tech.prop('disabled', true).find('option').remove();
         if (!id) {
-            $tech.append('<option value="">— Pilih site dulu —</option>');
+            setTech('', '');
+            $techName.attr('placeholder', '— Pilih site dulu —');
             return;
         }
-        $tech.append('<option value="">Memuat...</option>');
+        setTech('', 'Memuat…');
         $.getJSON(techUrl.replace('__ID__', id)).done(function (res) {
-            $tech.find('option').remove();
             if (!res.technicians.length) {
-                $tech.append('<option value="">Site ini belum punya teknisi</option>');
+                setTech('', '');
+                $techName.attr('placeholder', 'Site ini belum punya teknisi');
                 $('#lblTechHint').html('Tambahkan PIC internal (bukan leader team) di <a href="' + @json(url('/site')) + '/' + id + '">halaman site</a> lebih dulu.');
                 return;
             }
             $('#lblTechHint').text('Teknisi = PIC internal site tersebut; leader team tidak termasuk.');
-            $tech.append('<option value="">— Pilih teknisi —</option>');
-            res.technicians.forEach(function (t) {
-                $tech.append($('<option>').val(t.id).text(t.name));
-            });
-            // Teknisi pertama langsung terpilih; tetap bisa diganti bila site punya beberapa.
-            var ada = selected && res.technicians.some(function (t) { return String(t.id) === String(selected); });
-            $tech.val(ada ? selected : String(res.technicians[0].id)).prop('disabled', false);
+            // Teknisi site langsung dipakai; tidak ada yang perlu dipilih.
+            var pakai = res.technicians.filter(function (t) { return String(t.id) === String(selected); })[0] || res.technicians[0];
+            setTech(pakai.id, pakai.name);
         }).fail(function () {
-            $tech.find('option').remove();
-            $tech.append('<option value="">Gagal memuat teknisi</option>');
+            setTech('', '');
+            $techName.attr('placeholder', 'Gagal memuat teknisi');
         });
     }
 

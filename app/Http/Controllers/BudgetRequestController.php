@@ -947,11 +947,21 @@ class BudgetRequestController extends Controller
      * memakai perbandingan langsung pada kolom, bukan whereDate() — fungsi di
      * sisi kolom membuat MySQL tidak bisa memakai indeks (scan seluruh tabel).
      */
+    private function crRangeStart(string $value): string
+    {
+        return strlen($value) > 10 ? substr($value, 0, 19) : $value . ' 00:00:00';
+    }
+
+    private function crRangeEnd(string $value): string
+    {
+        return strlen($value) > 10 ? substr($value, 0, 19) : $value . ' 23:59:59';
+    }
+
     private function crBaseQuery(string $dateFrom, string $dateTo)
     {
         $query = BudgetRequest::query()
-            ->where('created_at', '>=', $dateFrom . ' 00:00:00')
-            ->where('created_at', '<=', $dateTo . ' 23:59:59');
+            ->where('created_at', '>=', $this->crRangeStart($dateFrom))
+            ->where('created_at', '<=', $this->crRangeEnd($dateTo));
 
         $this->scopeByRole($query);
 
@@ -2578,7 +2588,7 @@ class BudgetRequestController extends Controller
      * Mengembalikan response error siap-kirim kalau tidak valid, atau null
      * kalau lolos — supaya kedua pemanggil menolak dengan aturan yang sama.
      */
-    private function validateRealizationInput(Request $request, BudgetRequest $cr)
+    private function validateRealizationInput(Request $request, BudgetRequest $cr, bool $strict = true)
     {
         $request->validate([
             'realizations'                     => 'required|array|min:1',
@@ -2612,6 +2622,13 @@ class BudgetRequestController extends Controller
         // per item di tiap baris Rincian Settlement; lampiran global di sini
         // hanya opsional. Berlaku sama untuk submit maupun simpan draft —
         // supaya data yang tersimpan tidak pernah setengah lengkap.
+        // Simpan draft ($strict = false) sengaja melewati pemeriksaan
+        // kelengkapan: draft memang boleh setengah jadi dan dilengkapi nanti
+        // sebelum ditekan "Submit Settlement".
+        if (! $strict) {
+            return null;
+        }
+
         $missingAtt  = [];
         $missingNote = [];
         $no          = 0;
@@ -2760,10 +2777,9 @@ class BudgetRequestController extends Controller
     /**
      * Simpan draft Settlement TANPA mengajukan — status CR tetap PAID atau
      * SETTLE_REJECTED, pengaju bisa melanjutkan mengisi nanti lalu baru
-     * menekan "Ajukan" (submitRealization). Validasinya PERSIS sama dengan
-     * submit (lampiran per item, Note wajib bila Settle > Request) — supaya
-     * draft yang tersimpan tidak pernah data setengah jadi yang terlupa
-     * dilengkapi.
+     * menekan "Ajukan" (submitRealization). Draft boleh belum lengkap:
+     * aturan lampiran per item & Note wajib (Settle > Request) baru ditegakkan
+     * saat Submit, bukan saat menyimpan.
      */
     public function saveRealizationDraft(Request $request, $id)
     {
@@ -2779,7 +2795,7 @@ class BudgetRequestController extends Controller
             return back()->with('error', 'Hanya CR berstatus PAID atau Settle Rejected yang dapat disimpan.');
         }
 
-        if ($error = $this->validateRealizationInput($request, $cr)) {
+        if ($error = $this->validateRealizationInput($request, $cr, false)) {
             return $error;
         }
 
@@ -2787,7 +2803,9 @@ class BudgetRequestController extends Controller
             $this->syncRealizationData($request, $cr);
         });
 
-        return redirect()->route('budget-request.realize-form', $cr->id)
+        // Kembali ke daftar Cost Request biasa (tanpa membuka drawer detail) —
+        // draft bisa dilanjutkan lagi kapan saja lewat aksi Settlement.
+        return redirect()->route('budget-request.index')
             ->with('success', 'Draft Settlement tersimpan. Status CR belum berubah — tekan "Ajukan" saat sudah siap.');
     }
 
