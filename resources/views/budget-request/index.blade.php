@@ -1925,23 +1925,23 @@ $(function () {
 
                     // Kolom pertama digabung: Sub COA (+lampiran), lalu deskripsi
                     // request dan deskripsi settlement masing-masing satu baris.
-                    var belahReq = splitCoaLabel(r.des_request || r.cr_item || '-');
-                    var setRaw   = r.description || r.notes || '';
-                    var setDesc  = splitCoaLabel(setRaw).rest || setRaw || '-';
+                    var subCoa   = r.sub_coa || r.des_request || r.cr_item || '-';
+                    var reqDesc  = r.des_request || r.cr_item || '-';
+                    var setDesc  = r.des_settle || '-';
                     var attR     = itemAtts.length
                         ? ' <span class="badge badge-light border text-muted" style="font-size:9px;"><i class="fas fa-paperclip mr-1"></i>' + itemAtts.length + '</span>'
                         : '';
 
                     rHtml += '<tr class="' + grupClass + ' cr-group-item" style="display:none;">'
                         + '<td class="cr-indent">'
-                            + '<div style="font-weight:600;">' + esc(belahReq.sub) + attR + '</div>'
-                            + '<div class="cr-clip" style="font-size:11px;"><span class="text-muted">Request:</span> ' + esc(belahReq.rest || belahReq.sub) + '</div>'
+                            + '<div style="font-weight:600;">' + esc(subCoa) + attR + '</div>'
+                            + '<div class="cr-clip" style="font-size:11px;"><span class="text-muted">Request:</span> ' + esc(reqDesc) + '</div>'
                             + '<div class="cr-clip" style="font-size:11px;"><span class="text-muted">Settle:</span> ' + esc(setDesc) + '</div>'
                         + '</td>'
                         + '<td class="text-right">' + r.total_cr_formatted + '</td>'
                         + '<td class="text-right"><strong>' + r.actual_formatted + '</strong></td>'
                         + '<td class="text-right">' + fmtVar((r.total_cr || 0) - (r.actual || 0)) + '</td>'
-                        + '<td><div class="cr-clip">' + esc(r.change_note || r.notes || '-') + '</div></td>'
+                        + '<td><div class="cr-clip">' + esc(r.change_note || '-') + '</div></td>'
                         + '<td class="text-center">' + aksi + '</td>'
                         + '</tr>';
                   });

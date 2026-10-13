@@ -3847,7 +3847,6 @@ $(function () {
                             '<th scope="col">Chart of Account / Description</th>' +
                             '<th scope="col" class="text-right text-nowrap" style="width:14%;">Request</th>' +
                             '<th scope="col" class="text-right text-nowrap" style="width:14%;">Settlement</th>' +
-                            '<th scope="col" style="width:18%;">Note</th>' +
                             '<th scope="col" class="text-center text-nowrap" style="width:100px;">Action</th>' +
                         '</tr></thead><tbody id="todoRealBody">';
                     realGroups.forEach(function (grp, gi) {
@@ -3866,7 +3865,7 @@ $(function () {
                             '</td>' +
                             '<td class="text-right text-nowrap" style="font-weight:700;">' + esc(Math.round(gReq).toLocaleString('id-ID')) + '</td>' +
                             '<td class="text-right text-nowrap" style="font-weight:700;">' + esc(Math.round(gSettle).toLocaleString('id-ID')) + '</td>' +
-                            '<td></td><td></td>' +
+                            '<td></td>' +
                         '</tr>';
 
                         grp.items.forEach(function (r) {
@@ -3881,20 +3880,20 @@ $(function () {
                                 ? ' <span class="badge badge-light border text-muted" style="font-size:9px;"><i class="fas fa-paperclip mr-1"></i>' + itemAtts.length + '</span>'
                                 : '';
                             var subCoa = r.sub_coa || r.des_request || r.cr_item || '-';
-                            // Tiga baris: Sub COA (tebal), lalu rincian pengajuan
-                            // (Request) & rincian settlement (Settle) yang bisa beda.
-                            // des_settle sudah dibersihkan server dari pengulangan
-                            // nama Sub COA di depannya (lihat settleDescriptionLabel()).
+                            // Empat baris: Sub COA (tebal) + jumlah lampiran, lalu
+                            // Deskripsi dari form pengajuan (Request), Description
+                            // Settle dari form Submit Settlement (Settle), dan
+                            // catatan perubahannya (Notes).
                             var desSettle = r.des_settle || '-';
                             realHtml += '<tr class="' + gClass + '" style="display:none;">' +
                                 '<td class="td-grp-indent">' +
                                     '<div style="font-weight:600;">' + esc(subCoa) + evi + '</div>' +
                                     '<div class="text-muted" style="font-size:11px;"><span style="font-size:10px;font-weight:700;">Request:</span> ' + esc(r.des_request || r.cr_item || '-') + '</div>' +
                                     '<div class="text-muted" style="font-size:11px;"><span style="font-size:10px;font-weight:700;">Settle:</span> ' + esc(desSettle) + '</div>' +
+                                    '<div class="text-muted" style="font-size:11px;"><span style="font-size:10px;font-weight:700;">Notes:</span> ' + esc(r.change_note || '-') + '</div>' +
                                 '</td>' +
                                 '<td class="text-right text-nowrap">' + esc(r.total_cr_formatted) + '</td>' +
                                 '<td class="text-right text-nowrap"><strong>' + esc(r.actual_formatted) + '</strong></td>' +
-                                '<td>' + esc(r.change_note || '-') + '</td>' +
                                 '<td class="text-center text-nowrap">' + aksi + '</td>' +
                             '</tr>';
                         });
@@ -3903,7 +3902,7 @@ $(function () {
                         '<th class="text-right">Total</th>' +
                         '<th class="text-right text-nowrap">' + esc(Math.round(realReq).toLocaleString('id-ID')) + '</th>' +
                         '<th class="text-right text-nowrap">' + esc(Math.round(realSettle).toLocaleString('id-ID')) + '</th>' +
-                        '<th colspan="2"></th>' +
+                        '<th></th>' +
                         '</tr></tfoot></table></div>';
                 } else {
                     realHtml += '<p class="text-muted py-2 mb-0" style="font-size:12px;">Belum ada rincian realisasi.</p>';

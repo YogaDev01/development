@@ -12,12 +12,12 @@
      */
     $kolom = [
         'no'         => ['No. TT', true],
-        'ref'        => ['Ref. Eksternal', false],
         'customer'   => ['Customer', false],
         'site'       => ['Site', true],
         'problem'    => ['Problem', true],
+        'aging'      => ['Aging', true],
         'severity'   => ['Severity', true],
-        'issue'      => ['Issue', false],
+        'issue'      => ['Initial Problem', false],
         'device'     => ['Device / Alarm', false],
         'teknisi'    => ['Teknisi', false],
         'status'     => ['Status', true],
@@ -25,9 +25,9 @@
         'response'   => ['Response', false],
         'travel'     => ['Travel', false],
         'resolution' => ['Resolution', false],
-        'reported'   => ['Dilaporkan', false],
+        'reported'   => ['Date Open', false],
         'created'    => ['Dibuat', false],
-        'updated'    => ['Update', true],
+        'updated'    => ['Date Update', true],
     ];
     $colIndex   = array_flip(array_keys($kolom));
     $colDefault = array_map(fn ($k) => $k[1], $kolom);
@@ -40,11 +40,75 @@
 @section('content')
 <div class="content tt-page">
     <div class="container-fluid">
-        <x-stat-cards :cards="[
-            ['Terbuka', $stats['terbuka'], 'info', 'fas fa-ticket-alt'],
-            ['Lewat SLA', $stats['overdue'], 'danger', 'fas fa-exclamation-triangle', 'hanya tiket ber-target SLA'],
-            ['Menunggu Approval Plan', $stats['menunggu_approval'], 'warning', 'fas fa-user-check'],
-            ['Closed Bulan Ini', $stats['closed_bulan_ini'], 'success', 'fas fa-check-circle'],
+        {{-- ============ TAMPILAN HP (< 900px) ============
+             Daftar kartu, bukan tabel yang dikecilkan: satu tiket satu kartu,
+             pencarian & filter tahap menempel di atas, tombol Buat Tiket
+             mengambang di jangkauan jempol. Tidak ada penghitung durasi di
+             sini — SLA dibaca di halaman detail. --}}
+        <div class="tt-mob">
+            <div class="tt-mob-bar">
+                <div class="tt-mob-search">
+                    <i class="fas fa-search" aria-hidden="true"></i>
+                    <input type="search" id="ttMobSearch" class="form-control form-control-sm"
+                           placeholder="Cari No. TT, site, problem, teknisi…" aria-label="Cari tiket">
+                </div>
+                <div class="tt-mob-chips" role="tablist" aria-label="Filter tahap">
+                    <button type="button" class="tt-chip-f is-on" data-status="">Semua <span>{{ $tickets->count() }}</span></button>
+                    @foreach(['OPEN' => 'TT Open', 'REMOTE' => 'Remote', 'PLAN' => 'Plan', 'TRIP' => 'Trip',
+                              'IN_PROGRESS' => 'Progress', 'PROGRESS_DONE' => 'Progress Done', 'CLOSED' => 'Closed'] as $kode => $label)
+                        <button type="button" class="tt-chip-f" data-status="{{ $kode }}">{{ $label }}
+                            <span>{{ $tickets->where('status', $kode)->count() }}</span></button>
+                    @endforeach
+                </div>
+            </div>
+
+            <div class="tt-mob-list" id="ttMobList">
+                @foreach($tickets as $t)
+                    @php $siteM = $t->site?->sitename ?? '-'; @endphp
+                    <a href="{{ route('trouble-ticket.show', $t) }}" class="tt-mcard"
+                       data-status="{{ $t->status }}"
+                       data-cari="{{ Str::lower($t->ticket_number.' '.$siteM.' '.($t->site?->tid ?? '').' '.($t->issue_label ?? '').' '.($t->problem?->name ?? '').' '.($t->technician?->name ?? '')) }}">
+                        <div class="tt-mcard-top">
+                            <span class="tt-mcard-no">{{ $t->ticket_number }}</span>
+                            <x-status :status="$t->status" context="trouble-ticket" />
+                        </div>
+                        <div class="tt-mcard-site">{{ $siteM }}</div>
+                        <div class="tt-mcard-tid">{{ $t->site?->tid ?? '-' }}@if($t->customer?->name) · {{ $t->customer->name }}@endif</div>
+                        <div class="tt-mcard-issue">{{ $t->issue_label ?: ($t->problem?->name ?? '-') }}</div>
+                        <div class="tt-mcard-foot">
+                            <span class="tt-mcard-tech"><i class="fas fa-user-hard-hat" aria-hidden="true"></i> {{ $t->technician?->name ?? 'Belum ada teknisi' }}</span>
+                            <span class="tt-sev tt-sev-{{ $t->severity_level }}">{{ $t->severity_label }}</span>
+                        </div>
+                        @if(isset($overdueIds[$t->id]))
+                            <span class="tt-mcard-flag" title="Lewat SLA"><i class="fas fa-exclamation-circle"></i> Lewat SLA</span>
+                        @endif
+                    </a>
+                @endforeach
+            </div>
+
+            <div class="tt-mob-empty" id="ttMobEmpty" hidden>
+                <x-empty title="Tidak ada tiket" message="Ubah kata pencarian atau filter tahap." icon="fas fa-ticket-alt" compact />
+            </div>
+
+            <a href="{{ route('trouble-ticket.create') }}" class="tt-fab" aria-label="Buat tiket">
+                <i class="fas fa-plus" aria-hidden="true"></i>
+            </a>
+        </div>
+
+        {{-- ============ TAMPILAN LAYAR LEBAR ============ --}}
+        <div class="tt-desk">
+
+        {{-- Strip tahap alur — pola sama dengan Cost Request (<x-workflow-stepper>):
+             angka per tahap, dan klik tahap memfilter tabel di bawahnya.
+             Closed dibatasi bulan berjalan supaya angkanya tetap berarti. --}}
+        <x-workflow-stepper :compact="true" table="tblTt" field="status" :steps="[
+            ['TT Open',       $stats['OPEN'],          'warning',   'OPEN'],
+            ['Remote',        $stats['REMOTE'],        'info',      'REMOTE'],
+            ['Plan',          $stats['PLAN'],          'warning',   'PLAN'],
+            ['Trip',          $stats['TRIP'],          'info',      'TRIP'],
+            ['Progress',      $stats['IN_PROGRESS'],   'primary',   'IN_PROGRESS'],
+            ['Progress Done', $stats['PROGRESS_DONE'], 'success',   'PROGRESS_DONE'],
+            ['Closed',        $stats['CLOSED'],        'dark',      'CLOSED'],
         ]" />
 
         <div class="card shadow-sm">
@@ -67,7 +131,7 @@
                     <div class="tt-toolbar-left">
                         <div class="tt-search">
                             <i class="fas fa-search" aria-hidden="true"></i>
-                            <input type="search" id="ttSearch" class="form-control form-control-sm" placeholder="Cari No. TT, site, issue, alarm..." aria-label="Cari">
+                            <input type="search" id="ttSearch" class="form-control form-control-sm" placeholder="Cari No. TT, site, initial problem, alarm..." aria-label="Cari">
                         </div>
                         <button type="button" id="btnTtClear" class="btn btn-outline-secondary btn-sm" title="Clear Filter" aria-label="Clear Filter"><i class="fas fa-eraser"></i></button>
                         {{-- TesysColumnFilter merender tombol "Filter" di sini; klik = daftar filter kolom. --}}
@@ -120,7 +184,7 @@
                                     $mReso = $t->slaMetric('resolution');
                                     $tglLapor = $t->reported_at ?? $t->created_at;
                                 @endphp
-                                <tr data-id="{{ $t->id }}" data-status="{{ \App\Support\WorkflowStatus::label($t->status, 'trouble-ticket') }}"
+                                <tr data-id="{{ $t->id }}" data-status="{{ $t->status }}"
                                     data-severity="{{ $t->severity_label }}"
                                     data-problem="{{ $t->problem?->name ?? '-' }}"
                                     data-customer="{{ $t->customer?->name ?? '-' }}"
@@ -131,15 +195,15 @@
                                     <td class="col-fit" data-order="{{ $t->id }}">
                                         <a href="{{ route('trouble-ticket.show', $t) }}" class="tt-no-link" title="Buka tiket">{{ $t->ticket_number }}</a>
                                     </td>
-                                    <td class="col-fit">{{ $t->external_ref ?: '-' }}</td>
                                     <td class="col-fit">{{ $t->customer?->name ?? '-' }}</td>
                                     <td class="col-site">
                                         <span class="cell-trunc" style="max-width:60ch;" title="{{ $siteLabel }}">{{ Str::limit($siteLabel, 60, '...') ?: '-' }}</span>
                                     </td>
                                     <td class="col-fit">{{ $t->problem?->name ?? '-' }}</td>
-                                    <td class="col-fit" data-order="{{ $t->severity_level }}"><span class="ts-status ts-status-sm ts-status-{{ [1 => 'danger', 2 => 'attention', 3 => 'progress'][$t->severity_level] ?? 'neutral' }}">{{ $t->severity_label }}</span></td>
-                                    <td class="col-fit" title="{{ $t->issue }}">{{ Str::limit($t->issue, 50, '...') }}</td>
-                                    <td class="col-fit">{{ $t->device ?: '-' }}{{ $t->flag_alarm ? ' · ' . $t->flag_alarm : '' }}</td>
+                                    <td class="col-fit" data-order="{{ $t->aging_days }}">{{ $t->aging_days }} hari</td>
+                                    <td class="col-fit" data-order="{{ 9 - $t->severity_level }}"><span class="tt-sev tt-sev-{{ $t->severity_level }}">{{ $t->severity_label }}</span></td>
+                                    <td class="col-fit" title="{{ $t->issue_label }}">{{ Str::limit($t->issue_label, 50, '...') }}</td>
+                                    <td class="col-fit">{{ $t->device_label ?: '-' }}{{ $t->flag_alarm ? ' · ' . $t->flag_alarm : '' }}</td>
                                     <td class="col-fit">{{ $t->technician?->name ?? '-' }}</td>
                                     <td class="col-fit" data-order="{{ array_search($t->status, TroubleTicket::STATUSES, true) }}">
                                         <x-status :status="$t->status" context="trouble-ticket" />
@@ -169,6 +233,8 @@
                 </div>
             </div>
         </div>
+
+        </div>{{-- /.tt-desk --}}
     </div>
 </div>
 
@@ -225,12 +291,97 @@
     .tt-toolbar-right { margin-left:0; }
     .tt-search { width:100%; }
 }
+
+/* =====================================================================
+   TAMPILAN HP — daftar kartu (< 900px)
+
+   Di lebar ini tabel 17 kolom tidak pernah terbaca tanpa gulir mendatar,
+   jadi daftarnya diganti kartu: satu tiket satu kartu, seluruh kartu jadi
+   tautan ke detail. Tampilan layar lebar tidak disentuh — keduanya hidup
+   berdampingan lewat .tt-mob / .tt-desk.
+   ===================================================================== */
+.tt-mob { display:none; }
+@media (max-width: 900px) {
+    .tt-desk { display:none; }
+    .tt-mob { display:block; padding-bottom:84px; }
+
+    /* Pencarian + filter tahap menempel di atas saat daftar digulir. */
+    .tt-mob-bar { position:sticky; top:0; z-index:5; padding:10px 0 8px; background:var(--body-bg, var(--surface-2)); }
+    .tt-mob-search { position:relative; }
+    .tt-mob-search > i { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-faint); font-size:13px; }
+    .tt-mob-search input.form-control { height:40px; padding-left:34px; border-radius:999px; font-size:13px; }
+
+    /* Chip tahap: digulir mendatar DI DALAM barisnya sendiri, sehingga
+       halaman tidak pernah ikut bergeser ke samping. */
+    .tt-mob-chips { display:flex; gap:6px; margin-top:8px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+    .tt-mob-chips::-webkit-scrollbar { display:none; }
+    .tt-chip-f { flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px;
+        border:1px solid var(--border); background:var(--surface); color:var(--text-dim); font-size:12px; line-height:1.2; }
+    .tt-chip-f span { font-weight:700; color:var(--text-faint); }
+    .tt-chip-f.is-on { background:var(--charcoal, #1c2128); border-color:transparent; color:#fff; }
+    .tt-chip-f.is-on span { color:rgba(255,255,255,.75); }
+
+    .tt-mob-list { display:flex; flex-direction:column; gap:8px; margin-top:10px; }
+    .tt-mcard { position:relative; display:block; padding:12px 14px; border:1px solid var(--border); border-radius:var(--radius-md);
+        background:var(--surface); color:var(--text); text-decoration:none; }
+    .tt-mcard:active { background:var(--surface-2); }
+    .tt-mcard:hover, .tt-mcard:focus { text-decoration:none; color:var(--text); }
+    .tt-mcard-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .tt-mcard-no { font-weight:700; font-size:13px; }
+    .tt-mcard-site { margin-top:6px; font-size:14px; font-weight:600; line-height:1.3; }
+    .tt-mcard-tid { font-size:11.5px; color:var(--text-muted); }
+    .tt-mcard-issue { margin-top:6px; font-size:12.5px; color:var(--text-dim); }
+    .tt-mcard-foot { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:10px;
+        padding-top:8px; border-top:1px dashed var(--border); font-size:12px; color:var(--text-muted); }
+    .tt-mcard-tech { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .tt-mcard-flag { display:inline-block; margin-top:8px; font-size:11px; color:var(--danger); }
+
+    /* Tombol utama di jangkauan jempol. */
+    .tt-fab { position:fixed; right:16px; bottom:18px; z-index:1030; display:flex; align-items:center; justify-content:center;
+        width:54px; height:54px; border-radius:50%; background:var(--danger); color:#fff; font-size:20px; box-shadow:var(--shadow-lg); }
+    .tt-fab:hover, .tt-fab:focus { color:#fff; text-decoration:none; }
+}
 </style>
 @endpush
 
 @push('scripts')
 <script>
 $(function () {
+
+    /* ---------- Daftar kartu HP: cari + filter tahap ----------
+       Berjalan di atas kartu yang sudah dirender server (baris yang sama
+       dengan tabel), jadi tidak ada permintaan tambahan. */
+    (function () {
+        var $kartu = $('#ttMobList .tt-mcard');
+        if (!$kartu.length && !$('#ttMobList').length) return;
+
+        var kata = '', tahap = '';
+
+        function terap() {
+            var tampil = 0;
+            $kartu.each(function () {
+                var $k = $(this);
+                var cocok = (!tahap || $k.data('status') === tahap)
+                    && (!kata || String($k.data('cari') || '').indexOf(kata) !== -1);
+                $k.toggle(cocok);
+                if (cocok) tampil++;
+            });
+            $('#ttMobEmpty').prop('hidden', tampil > 0);
+        }
+
+        $('#ttMobSearch').on('input', function () {
+            kata = $.trim(this.value).toLowerCase();
+            terap();
+        });
+
+        $('.tt-chip-f').on('click', function () {
+            $('.tt-chip-f').removeClass('is-on');
+            $(this).addClass('is-on');
+            tahap = this.dataset.status || '';
+            terap();
+        });
+    })();
+
     var colIndex   = @json($colIndex);
     var colDefault = @json($colDefault);
     var colKey     = 'tesys-colvis:trouble-ticket-index';
@@ -325,7 +476,6 @@ $(function () {
             .fail(function () { $('#mdlTtInfoBody').html('<p class="text-danger mb-0"><i class="fas fa-exclamation-triangle mr-1"></i>Data tidak dapat dimuat.</p>'); });
     });
 
-    TtTimers.start(@json(now()->toIso8601String()));
 });
 </script>
 @endpush

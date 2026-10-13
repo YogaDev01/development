@@ -8,17 +8,16 @@
 /* SLA */
 .tt-sla { display:inline-flex; align-items:center; gap:4px; font-size:12px; white-space:nowrap; font-variant-numeric:tabular-nums; }
 .tt-sla-na, .tt-sla-none, .tt-sla-ok { color:var(--text-dim); }
-.tt-sla.is-running { color:var(--text); font-weight:600; }
 .tt-sla-warning { color:var(--warning); font-weight:600; }
 .tt-sla-critical { color:var(--danger); font-weight:700; }
 .tt-sla-tag { font-size:10px; text-transform:uppercase; letter-spacing:.04em; padding:0 5px; border-radius:var(--radius-pill); background:var(--danger-bg); color:var(--danger); }
 
 /* Severity: kelas dari level (1 = paling parah) */
 .tt-sev { font-size:11px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; }
-.tt-sev-1 { color:var(--danger); }
-.tt-sev-2 { color:var(--warning); }
-.tt-sev-3 { color:var(--text-dim); }
-.tt-sev-4, .tt-sev-5, .tt-sev-6, .tt-sev-7, .tt-sev-8, .tt-sev-9 { color:var(--text-faint); }
+.tt-sev-1 { color:var(--danger); }   /* Kritis — aging >= 8 hari */
+.tt-sev-2 { color:var(--warning); }  /* Major  — aging 3-7 hari  */
+.tt-sev-3 { color:var(--info); }     /* Minor  — aging 1-2 hari  */
+.tt-sev-4, .tt-sev-5, .tt-sev-6, .tt-sev-7, .tt-sev-8, .tt-sev-9 { color:var(--text-dim); } /* Rendah */
 
 /* Daftar */
 .tt-table { font-size:12.5px; }
@@ -73,7 +72,8 @@
 .tt-msg.is-tech .tt-bubble { border-left:3px solid var(--info); }
 .tt-bubble-body { white-space:pre-wrap; overflow-wrap:anywhere; color:var(--text); }
 .tt-bubble-time { font-size:10.5px; color:var(--text-faint); margin:2px 4px 0; font-variant-numeric:tabular-nums; }
-.tt-event { text-align:center; margin:8px 0; font-size:11.5px; color:var(--text-dim); }
+/* Kejadian workflow rata KANAN (keputusan 12 Okt 2026), tidak lagi di tengah. */
+.tt-event { text-align:right; margin:8px 0; font-size:11.5px; color:var(--text-dim); }
 .tt-event-box { display:inline-block; max-width:90%; background:var(--card-bg); border:1px dashed var(--border-strong); border-radius:var(--radius-sm); padding:3px 10px; text-align:left; }
 .tt-event-box .tt-event-note { white-space:pre-wrap; color:var(--text); margin-top:2px; }
 .tt-flash .tt-bubble, .tt-flash .tt-event-box, .tt-flash.tt-event .tt-event-box { box-shadow:0 0 0 3px var(--accent-ring); }
@@ -189,10 +189,6 @@
 /* SLA */
 .tt-slab { padding:8px 0; border-bottom:1px solid var(--border-soft); }
 .tt-slab-head { display:flex; justify-content:space-between; align-items:center; font-size:13px; }
-.tt-bar { height:6px; border-radius:var(--radius-pill); background:var(--surface-2); margin:6px 0 4px; overflow:hidden; }
-.tt-bar-fill { display:block; height:100%; border-radius:inherit; background:var(--success); transition:width .3s; }
-.tt-bar-warning { background:var(--warning); }
-.tt-bar-critical { background:var(--danger); }
 .tt-slab-meta { display:flex; justify-content:space-between; gap:8px; font-size:11.5px; color:var(--text-faint); }
 
 /* Log: langkah vertikal */
@@ -241,56 +237,65 @@
 @media (max-width: 400px) {
     .tt-tabs .nav-link i { display:none; }
 }
+
+/* ---------- HP: satu irama untuk seluruh panel tahap ---------- */
+@media (max-width: 767.98px) {
+    .tt-page .container-fluid { padding-left:12px; padding-right:12px; }
+    .tt-info-card .card-body { padding:12px; }
+    .tt-stage { padding-top:12px; }
+    .tt-stage-acts { grid-template-columns:1fr; gap:8px; }
+    .tt-stage-title { margin-bottom:10px; }
+    .tt-stage .btn { height:42px; font-size:13.5px; display:inline-flex; align-items:center; justify-content:center; }
+    .tt-swipe { height:56px; }
+    .tt-swipe-knob { width:46px; height:46px; }
+    .tt-swipe-text { font-size:13.5px; padding-left:50px; }
+    .tt-hero-title { font-size:15px; }
+    .tt-kv dt { min-width:108px; }
+    .tt-chips { gap:6px; }
+    .modal-body { font-size:13px; }
+    .modal-footer .btn { min-width:96px; }
+}
+
+/* ---------- Panel tahap (Remote / Plan / Trip / Progres / Approval) ----------
+   Duduk di KAKI tab Summary: margin-top:auto mendorongnya ke bawah kartu,
+   jadi tombolnya selalu di tempat yang sama berapa pun isi ringkasannya. */
+#ttTabSummary.show { display:flex; flex-direction:column; min-height:100%; }
+#ttTabSummary .tt-stage:last-child { margin-top:auto; }
+/* Tanpa kotak luar (keputusan 12 Okt 2026): tombol tahap berdiri langsung
+   di atas kartu, dipisahkan garis tipis saja. */
+.tt-stage { margin-top:12px; padding-top:10px; border-top:1px solid var(--border-soft); }
+.tt-stage + .tt-stage { margin-top:8px; }
+.tt-stage-title { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px; }
+.tt-stage-acts { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.tt-stage-acts .btn-block { margin-top:0; }
+.tt-stage-note { margin-top:8px; font-size:11.5px; color:var(--text-muted); }
+
+/* ---------- Geser untuk konfirmasi ----------
+   Jalur gelap dengan tombol bundar merah; teks jalur meredup saat digeser,
+   dan jalurnya ikut menyala hijau begitu ambang 85% terlampaui. */
+.tt-swipe { position:relative; display:flex; align-items:center; height:52px; padding:5px;
+    border-radius:999px; background:var(--surface-2); border:1px solid var(--border); overflow:hidden; user-select:none; }
+.tt-swipe::after { content:""; position:absolute; inset:0; border-radius:999px; background:var(--positive, #1f9d55);
+    opacity:0; transition:opacity .2s ease; }
+.tt-swipe.is-done::after { opacity:.18; }
+.tt-swipe-knob { position:absolute; left:5px; z-index:2; display:flex; align-items:center; justify-content:center;
+    width:42px; height:42px; border-radius:50%; background:var(--danger); color:#fff; font-size:15px;
+    box-shadow:0 2px 8px rgba(0,0,0,.28); cursor:grab; touch-action:none; transition:transform .18s ease, background .2s ease; }
+.tt-swipe.is-dragging .tt-swipe-knob { cursor:grabbing; transition:background .2s ease; }
+.tt-swipe.is-done .tt-swipe-knob { background:var(--positive, #1f9d55); }
+.tt-swipe-text { position:relative; z-index:1; flex:1; padding-left:46px; text-align:center;
+    font-size:13px; font-weight:600; letter-spacing:.02em; color:var(--text-dim); }
+.tt-swipe.is-dragging .tt-swipe-text { opacity:.45; }
+
+/* ---------- Evidence pada form close ---------- */
+.tt-eviz-drop { display:flex; align-items:center; gap:8px; padding:10px; border:1px dashed var(--border); border-radius:var(--radius-sm); font-size:12px; color:var(--text-muted); background:var(--surface-2); }
+.tt-eviz-drop.is-over { border-color:var(--info); color:var(--text); }
+.tt-eviz-drop > i { font-size:16px; }
+.tt-eviz-list { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+.tt-eviz-item { position:relative; display:flex; align-items:center; gap:6px; max-width:220px; padding:4px 24px 4px 6px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); font-size:11.5px; }
+.tt-eviz-item img { width:32px; height:32px; object-fit:cover; border-radius:3px; }
+.tt-eviz-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tt-eviz-x { position:absolute; top:2px; right:4px; border:0; background:none; color:var(--text-muted); font-size:14px; line-height:1; cursor:pointer; }
 </style>
 @endpush
 
-@push('scripts')
-<script>
-/* Timer SLA: hitung dari jam SERVER. Selisih jam perangkat dikoreksi dengan
-   offset (waktu server saat halaman dirender − jam perangkat), jadi jam HP yang
-   salah tidak mengubah angka yang tampil. Tidak ada yang dikirim ke server. */
-window.TtTimers = (function () {
-    var offset = 0;
-
-    function fmt(s) {
-        var d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
-        if (d > 0) return d + 'h ' + h + 'j';
-        if (h > 0) return h + 'j ' + (m < 10 ? '0' : '') + m + 'm';
-        if (m > 0) return m + 'm';
-        return s + 'dtk';
-    }
-
-    function tick() {
-        var now = Date.now() + offset;
-        document.querySelectorAll('.tt-sla.is-running[data-since]').forEach(function (el) {
-            var s = Math.max(0, Math.floor((now - Date.parse(el.dataset.since)) / 1000));
-            var val = el.querySelector('.tt-sla-val');
-            if (val) val.textContent = fmt(s);
-            var t = parseInt(el.dataset.target || '0', 10);
-            if (t > 0) {
-                el.classList.toggle('tt-sla-warning', s >= t * 0.75 && s < t);
-                el.classList.toggle('tt-sla-critical', s >= t);
-                el.classList.toggle('tt-sla-ok', s < t * 0.75);
-            }
-        });
-        // Bar progres SLA (tab SLA) untuk timer yang masih berjalan.
-        document.querySelectorAll('.tt-bar-fill[data-since]').forEach(function (el) {
-            var s = Math.max(0, Math.floor((now - Date.parse(el.dataset.since)) / 1000));
-            var t = parseInt(el.dataset.target || '0', 10);
-            if (!t) return;
-            el.style.width = Math.min(100, s / t * 100) + '%';
-            el.classList.toggle('tt-bar-warning', s >= t * 0.75 && s < t);
-            el.classList.toggle('tt-bar-critical', s >= t);
-        });
-    }
-
-    return {
-        start: function (serverNowIso) {
-            offset = Date.parse(serverNowIso) - Date.now();
-            tick();
-            setInterval(tick, 1000);
-        }
-    };
-})();
-</script>
-@endpush

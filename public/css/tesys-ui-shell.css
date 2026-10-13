@@ -1608,6 +1608,16 @@ body.tesys-ui.app-switch-open::after {
    brand-nya diberi lapis sendiri supaya panel mengambang di atas menu. */
 body.tesys-ui.app-switch-open .sidebar { z-index: 1040; }
 body.tesys-ui.app-switch-open .sidebar .brand { position: relative; z-index: 1045; }
+
+/* Di lebar laci (≤900px) sidebar TIDAK boleh turun ke 1040: selubung laci
+   (.shell::after) juga 1040 dan, karena digambar belakangan, ia menutupi
+   tombol aplikasi — tombolnya terlihat tapi sentuhan jatuh ke selubung,
+   sehingga laci malah tertutup dan aplikasinya tidak pernah terbuka.
+   Harus berada SESUDAH aturan di atas: media query tidak menambah
+   kekhususan, jadi yang menang adalah yang ditulis belakangan. */
+@media (max-width: 900px) {
+    body.tesys-ui.app-switch-open .sidebar { z-index: 1042; }
+}
 body.tesys-ui .sidebar .nav {
     transition: filter var(--dur, .22s) var(--ease, ease), opacity var(--dur, .22s) var(--ease, ease);
 }

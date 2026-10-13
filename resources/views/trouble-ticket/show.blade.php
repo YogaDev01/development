@@ -14,10 +14,14 @@
     $targetLabel = fn ($menit) => $menit ? $dur($menit * 60) : 'Belum diatur';
 
     // Tombol teknisi — cermin gerbang di TroubleTicketWorkflow (server tetap memeriksa ulang).
-    $bisaMulai   = $isTechnician && $t->status === 'ON_PLAN';
-    $bisaTutup   = $isTechnician && $t->status === 'IN_PROGRESS';
-    $bisaAlihkan = $canSupervise && in_array($t->status, TroubleTicketWorkflow::REASSIGNABLE, true);
-    $bisaKoreksi = $canSupervise && in_array($t->status, ['APPROVED', 'ON_PLAN'], true);
+    $diTrip        = $canActAsTech && $t->status === 'TRIP';
+    $bisaRemote    = $canActAsTech && $t->status === 'OPEN';
+    $bisaPlan      = $canActAsTech && in_array($t->status, ['OPEN', 'REMOTE', 'PLAN'], true);
+    $bisaBerangkat = $diTrip && ! $t->travel_started_at && ! $t->travel_arrived_at;
+    $dalamJalan    = $diTrip && $t->travel_started_at && ! $t->travel_arrived_at;
+    $bisaMulai     = $diTrip && $t->travel_arrived_at;
+    $bisaTutup     = $canActAsTech && in_array($t->status, TroubleTicket::CLOSABLE, true);
+    $bisaAlihkan   = $canSupervise && in_array($t->status, TroubleTicketWorkflow::REASSIGNABLE, true);
     $acceptFiles = collect(TroubleTicketAttachment::EXTENSIONS)->map(fn ($e) => '.' . $e)->implode(',');
 @endphp
 
@@ -32,14 +36,18 @@
             <a href="{{ route('trouble-ticket.index') }}" class="btn btn-outline-secondary btn-xs" title="Kembali ke daftar"><i class="fas fa-arrow-left"></i></a>
             <div class="tt-title tt-head-site" title="{{ $site?->tid }} — {{ $site?->sitename }}">{{ $site?->tid }} — {{ $site?->sitename }}</div>
             <x-status :status="$t->status" context="trouble-ticket" size="md" />
-            <span class="tt-sev tt-sev-{{ $t->severity_level }}">{{ $t->severity_label }}</span>
         </div>
-        @php $actionVars = compact('t', 'bisaMulai', 'bisaTutup', 'canReviewPlan', 'bisaAlihkan', 'bisaKoreksi'); @endphp
+        @php $actionVars = compact('t', 'canActAsTech', 'bisaRemote', 'bisaPlan', 'bisaBerangkat', 'dalamJalan', 'bisaMulai', 'bisaTutup', 'canApproveClose', 'bisaAlihkan'); @endphp
 
         {{-- Desktop: chat kiri + satu kartu informasi bertab di kanan.
              Mobile (< 992px): satu panel tampil bergantian lewat bilah bawah
              Chat | Info | Action (lihat .tt-mbar). --}}
-        <div class="row tt-panes" id="ttPanes" data-pane="chat">
+        @php
+            // Di HP halaman detail selalu dibuka pada panel Info: ringkasan tiket
+            // sekaligus tombol tahapnya ada di sana.
+            $paneAwal = 'info';
+        @endphp
+        <div class="row tt-panes" id="ttPanes" data-pane="{{ $paneAwal }}">
             {{-- KIRI: timeline / chat; kepala kartu = tombol aksi (desktop) --}}
             <div class="col-lg-7 tt-pane tt-pane-chat">
                 <div class="card shadow-sm mb-0 tt-fill">
@@ -104,16 +112,22 @@
                             : null;
                         $slaRows = [
                             'response'   => ['Response', 'Tiket dibuat → acknowledged', $t->sla_response_minutes, $t->created_at, $t->acknowledged_at],
-                            // Sama dengan TroubleTicket::slaMetric('travel'): ditugaskan → start progress.
-                            'travel'     => ['Travel', 'Ditugaskan → start progress', $t->sla_travel_minutes, $t->assigned_at, $t->progress_started_at],
-                            'resolution' => ['Resolution', 'Start progress → closed', $t->sla_resolution_minutes, $t->progress_started_at, $t->closed_at],
+                            // Sama dengan TroubleTicket::slaMetric('travel'): mulai perjalanan → on site.
+                            'travel'     => ['Travel', 'Mulai perjalanan → on site', $t->sla_travel_minutes, $t->travel_started_at, $t->travel_arrived_at],
+                            'resolution' => ['Resolution', 'Mulai progres → approve supervisor', $t->sla_resolution_minutes, $t->progress_started_at, $t->closed_at],
                         ];
                         $nonVisit = $t->visit_decision === TroubleTicket::NON_VISIT;
                         $ikonLog = [
                             'created' => 'fa-plus', 'assigned' => 'fa-user-plus', 'reassigned' => 'fa-exchange-alt',
-                            'responded' => 'fa-eye', 'plan_submitted' => 'fa-route', 'plan_corrected' => 'fa-edit',
-                            'plan_approved' => 'fa-check', 'plan_rejected' => 'fa-times', 'progress_started' => 'fa-tools',
-                            'closed' => 'fa-flag-checkered', 'departed' => 'fa-car', 'arrived' => 'fa-map-marker-alt',
+                            'responded' => 'fa-eye', 'remote_started' => 'fa-satellite-dish',
+                            'plan_created' => 'fa-calendar-check', 'plan_updated' => 'fa-calendar-alt', 'trip_due' => 'fa-route',
+                            'travel_started' => 'fa-car', 'travel_cancelled' => 'fa-ban',
+                            'arrived_on_site' => 'fa-map-marker-alt', 'progress_started' => 'fa-tools',
+                            'progress_done' => 'fa-clipboard-check', 'close_rejected' => 'fa-undo',
+                            'closed' => 'fa-flag-checkered',
+                            // Kejadian alur lama (sebelum 12 Okt 2026) — tetap terbaca di log.
+                            'plan_submitted' => 'fa-route', 'plan_corrected' => 'fa-edit',
+                            'plan_approved' => 'fa-check', 'plan_rejected' => 'fa-times',
                         ];
                     @endphp
                     <div class="card-header p-0">
@@ -121,7 +135,9 @@
                             <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#ttTabSummary" role="tab"><i class="fas fa-th-large"></i><span>Summary</span></a></li>
                             <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#ttTabSite" role="tab"><i class="fas fa-broadcast-tower"></i><span>Site</span></a></li>
                             <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#ttTabTiket" role="tab"><i class="fas fa-ticket-alt"></i><span>Tiket</span></a></li>
-                            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#ttTabSla" role="tab"><i class="fas fa-stopwatch"></i><span>SLA</span></a></li>
+                            @if($canActAsTech)
+                                <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#ttTabSla" role="tab"><i class="fas fa-stopwatch"></i><span>SLA</span></a></li>
+                            @endif
                             <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#ttTabLog" role="tab"><i class="fas fa-history"></i><span>Log</span><span class="tt-tab-count">{{ $statusLog->count() }}</span></a></li>
                         </ul>
                     </div>
@@ -144,7 +160,7 @@
                                 <span class="tt-avatar">{{ mb_strtoupper(mb_substr($t->technician?->name ?? '?', 0, 1)) }}</span>
                                 <div class="tt-person-main">
                                     <div class="tt-person-name">{{ $t->technician?->name ?? '—' }}</div>
-                                    <div class="tt-person-sub">Teknisi · {{ $supervisors->pluck('name')->implode(', ') ?: 'leader belum ada' }}</div>
+                                    <div class="tt-person-sub">Teknisi</div>
                                 </div>
                                 @if($t->technician?->phone)
                                     <a href="tel:{{ $t->technician->phone }}" class="btn btn-outline-secondary btn-xs" title="Telepon"><i class="fas fa-phone"></i></a>
@@ -155,30 +171,14 @@
                             <div class="tt-chips">
                                 <span class="tt-chip"><i class="fas fa-bug"></i>{{ $t->problem?->name ?? 'Problem —' }}</span>
                                 <span class="tt-chip tt-sev tt-sev-{{ $t->severity_level }}">{{ $t->severity_label }}</span>
-                                @if($t->device)<span class="tt-chip"><i class="fas fa-hdd"></i>{{ $t->device }}</span>@endif
-                                @if($t->flag_alarm)<span class="tt-chip"><i class="fas fa-bell"></i>{{ $t->flag_alarm }}</span>@endif
-                            </div>
-                            <div class="tt-issue">{{ $t->issue }}</div>
-
-                            <div class="tt-sum-sla">
-                                @foreach($slaRows as $key => [$label])
-                                    <button type="button" class="tt-sla-card" data-tt-tab="#ttTabSla" title="Lihat detail SLA">
-                                        <span class="tt-sla-card-label">{{ $label }}</span>
-                                        @if($key === 'travel' && $nonVisit)
-                                            <span class="tt-sla tt-sla-na">n/a</span>
-                                        @else
-                                            @include('trouble-ticket._sla', ['m' => $t->slaMetric($key), 'compact' => true])
-                                        @endif
-                                    </button>
-                                @endforeach
+                                <span class="tt-chip" title="Aging sejak Date Open"><i class="far fa-clock"></i>{{ $t->aging_days }} hari</span>
+                                @if($t->device_label)<span class="tt-chip"><i class="fas fa-hdd"></i>{{ $t->device_label }}</span>@endif
                             </div>
 
-                            <div class="tt-next">
-                                <i class="fas fa-info-circle"></i>
-                                <span><strong>{{ $t->visit_decision_label ?? 'Plan belum diajukan' }}</strong>{{ $t->visit_site ? ' · kunjungan ' . $t->visit_site->format('d/m/Y') : '' }}{{ $t->target_online ? ' · target online ' . $t->target_online->format('d/m/Y') : '' }}
-                                    @if($ket = \App\Support\WorkflowStatus::description($t->status, 'trouble-ticket'))<br><span class="text-muted">{{ $ket }}</span>@endif
-                                </span>
-                            </div>
+                            {{-- Aksi tahap (Remote / Create Plan / perjalanan / form close /
+                                 approval) duduk di KAKI panel Summary — satu tempat, dan
+                                 paling dekat dengan jempol di layar kecil. --}}
+                            @include('trouble-ticket._stage', $actionVars)
                         </div>
 
                         {{-- ================= SITE ================= --}}
@@ -224,10 +224,8 @@
                                 <dl class="m-0">
                                     <div class="tt-kv"><dt>No. TT</dt><dd><strong>{{ $t->ticket_number }}</strong>
                                         <button type="button" class="tt-copy" data-copy="{{ $t->ticket_number }}" title="Salin"><i class="far fa-copy"></i></button></dd></div>
-                                    <div class="tt-kv"><dt>Ref. eksternal</dt><dd>{{ $t->external_ref ?: '—' }}
-                                        @if($t->external_ref)<button type="button" class="tt-copy" data-copy="{{ $t->external_ref }}" title="Salin"><i class="far fa-copy"></i></button>@endif</dd></div>
-                                    <div class="tt-kv"><dt>Pelapor</dt><dd>{{ $t->reporter_name ?: '—' }}</dd></div>
-                                    <div class="tt-kv"><dt>Dilaporkan</dt><dd>{{ $fmt($t->reported_at) }}</dd></div>
+                                    <div class="tt-kv"><dt>Date Open</dt><dd>{{ $fmt($t->reported_at) }}</dd></div>
+                                    <div class="tt-kv"><dt>Date Update</dt><dd>{{ $fmt($t->updated_at) }}</dd></div>
                                     <div class="tt-kv"><dt>Dibuat oleh</dt><dd>{{ $t->creator?->name }} · {{ $fmt($t->created_at) }}</dd></div>
                                 </dl>
                             </details>
@@ -235,9 +233,13 @@
                                 <summary>Gangguan</summary>
                                 <dl class="m-0">
                                     <div class="tt-kv"><dt>Problem</dt><dd>{{ $t->problem?->name ?? '—' }}</dd></div>
-                                    <div class="tt-kv"><dt>Severity</dt><dd><span class="tt-sev tt-sev-{{ $t->severity_level }}">{{ $t->severity_label }}</span></dd></div>
-                                    <div class="tt-kv"><dt>Issue</dt><dd>{{ $t->issue }}</dd></div>
-                                    <div class="tt-kv"><dt>Device</dt><dd>{{ $t->device ?: '—' }}</dd></div>
+                                    <div class="tt-kv"><dt>Aging</dt><dd>{{ $t->aging_days }} hari</dd></div>
+                                    <div class="tt-kv"><dt>Severity</dt><dd><span class="tt-sev tt-sev-{{ $t->severity_level }}">{{ $t->severity_label }}</span>
+                                        <small class="text-muted ml-1">otomatis dari aging</small></dd></div>
+                                    <div class="tt-kv"><dt>Initial Problem</dt><dd>{{ $t->issue_label ?: '—' }}</dd></div>
+                                    <div class="tt-kv"><dt>RCA</dt><dd>{{ $t->rca_label ?: '—' }}</dd></div>
+                                    <div class="tt-kv"><dt>Sub-RCA</dt><dd>{{ $t->sub_rca_label ?: '—' }}</dd></div>
+                                    <div class="tt-kv"><dt>Device</dt><dd>{{ $t->device_label ?: '—' }}</dd></div>
                                     <div class="tt-kv"><dt>Flag alarm</dt><dd>{{ $t->flag_alarm ?: '—' }}</dd></div>
                                     <div class="tt-kv"><dt>Deskripsi</dt><dd style="white-space:pre-wrap;">{{ $t->description }}</dd></div>
                                 </dl>
@@ -269,30 +271,36 @@
                                         <div class="tt-kv"><dt>Rencana kunjungan</dt><dd>{{ $t->visit_site?->format('d/m/Y') ?? '—' }}</dd></div>
                                     @endif
                                     <div class="tt-kv"><dt>Target online</dt><dd>{{ $t->target_online?->format('d/m/Y') ?? '—' }}</dd></div>
-                                    <div class="tt-kv"><dt>Approval</dt><dd>{{ $t->approval ? ucfirst(strtolower($t->approval)) : '—' }}
-                                        @if($t->plan_approved_at)<div class="text-muted" style="font-size:12px;">{{ $t->planApprover?->name }} · {{ $fmt($t->plan_approved_at) }}</div>@endif
+                                    <div class="tt-kv"><dt>Approval close</dt><dd>{{ $t->approval ? ucfirst(strtolower($t->approval)) : '—' }}
+                                        @if($t->approved_at)<div class="text-muted" style="font-size:12px;">{{ $t->approver?->name }} · {{ $fmt($t->approved_at) }}</div>@endif
                                     </dd></div>
                                 </dl>
                             </details>
                             <details class="tt-acc" @if($t->closed_at) open @endif>
                                 <summary>Penyelesaian</summary>
                                 <dl class="m-0">
-                                    <div class="tt-kv"><dt>Mulai progress</dt><dd>{{ $fmt($t->progress_started_at) }}</dd></div>
+                                    <div class="tt-kv"><dt>Mulai perjalanan</dt><dd>{{ $fmt($t->travel_started_at) }}</dd></div>
+                                    <div class="tt-kv"><dt>Tiba di site</dt><dd>{{ $fmt($t->travel_arrived_at) }}</dd></div>
+                                    @if($t->travel_cancelled_at)
+                                        <div class="tt-kv"><dt>Visit dibatalkan</dt><dd>{{ $fmt($t->travel_cancelled_at) }}
+                                            <div class="text-muted" style="font-size:12px;white-space:pre-wrap;">{{ $t->travel_cancel_reason }}</div></dd></div>
+                                    @endif
+                                    <div class="tt-kv"><dt>Mulai progres</dt><dd>{{ $fmt($t->progress_started_at) }}</dd></div>
+                                    <div class="tt-kv"><dt>Form close dikirim</dt><dd>{{ $fmt($t->progress_done_at) }}</dd></div>
                                     <div class="tt-kv"><dt>Closed</dt><dd>{{ $fmt($t->closed_at) }}{{ $t->closer ? ' · ' . $t->closer->name : '' }}</dd></div>
                                     <div class="tt-kv"><dt>RCA</dt><dd>{{ $t->rca ?: '—' }}{{ $t->sub_rca ? ' / ' . $t->sub_rca : '' }}</dd></div>
-                                    <div class="tt-kv"><dt>Action</dt><dd>{{ $t->action ?: '—' }}</dd></div>
-                                    <div class="tt-kv"><dt>Catatan</dt><dd style="white-space:pre-wrap;">{{ $t->resolution_summary ?: '—' }}</dd></div>
+                                    <div class="tt-kv"><dt>Keterangan</dt><dd style="white-space:pre-wrap;">{{ $t->resolution_summary ?: '—' }}</dd></div>
                                 </dl>
                             </details>
                         </div>
 
-                        {{-- ================= SLA ================= --}}
+                        {{-- ================= SLA — hanya teknisi tiket ini ================= --}}
+                        @if($canActAsTech)
                         <div class="tab-pane fade" id="ttTabSla" role="tabpanel">
+                            {{-- Tanpa target & bar (keputusan 12 Okt 2026): yang ditampilkan
+                                 hanya durasinya dan rentang waktunya. --}}
                             @foreach($slaRows as $key => [$label, $rumus, $target, $mulai, $selesai])
-                                @php
-                                    $m = $t->slaMetric($key);
-                                    $pct = ($target && $m['seconds'] !== null) ? min(100, round($m['seconds'] / ($target * 60) * 100)) : null;
-                                @endphp
+                                @php $m = $t->slaMetric($key); @endphp
                                 <div class="tt-slab">
                                     <div class="tt-slab-head">
                                         <strong>{{ $label }} time</strong>
@@ -303,25 +311,17 @@
                                         @endif
                                     </div>
                                     @unless($key === 'travel' && $nonVisit)
-                                        @if($pct !== null)
-                                            <div class="tt-bar"><span class="tt-bar-fill tt-bar-{{ $m['level'] }}" style="width:{{ $pct }}%"
-                                                @if($m['state'] === 'running') data-since="{{ $m['since']->toIso8601String() }}" data-target="{{ $target * 60 }}" @endif></span></div>
-                                        @endif
-                                        <div class="tt-slab-meta">
-                                            <span>{{ $rumus }}</span>
-                                            <span>Target: <strong>{{ $targetLabel($target) }}</strong></span>
-                                        </div>
                                         <div class="tt-slab-meta">
                                             <span>{{ $mulai ? $mulai->format('d/m H:i') : '—' }} → {{ $selesai ? $selesai->format('d/m H:i') : ($m['state'] === 'running' ? 'berjalan' : '—') }}</span>
                                         </div>
                                     @endunless
                                 </div>
                             @endforeach
-                            <div class="tt-slab-meta mt-1"><span>Tunggu approval</span><strong>{{ $dur($t->approvalWaitSeconds()) }}</strong></div>
-                            @unless($t->sla_response_minutes || $t->sla_travel_minutes || $t->sla_resolution_minutes)
-                                <div class="text-muted mt-2" style="font-size:11.5px;"><i class="fas fa-info-circle mr-1"></i>Belum ada target SLA saat tiket dibuat; durasi tetap dicatat, tanpa status terlambat.</div>
-                            @endunless
+                            @if($t->travel_cancelled_at && ! $t->travel_arrived_at)
+                                <div class="text-muted" style="font-size:11.5px;"><i class="fas fa-ban mr-1"></i>Perjalanan terakhir dibatalkan.</div>
+                            @endif
                         </div>
+                        @endif
 
                         {{-- ================= LOG ================= --}}
                         <div class="tab-pane fade" id="ttTabLog" role="tabpanel">
@@ -356,8 +356,8 @@
                         <div class="tt-actions tt-actions-stack">
                             @include('trouble-ticket._actions', $actionVars)
                         </div>
-                        @unless($bisaMulai || $bisaTutup || $canReviewPlan || $bisaAlihkan || $bisaKoreksi)
-                            <x-empty title="Tidak ada aksi untuk Anda" message="Aksi tersedia sesuai peran dan status tiket." icon="fas fa-hand-pointer" compact />
+                        @unless($bisaAlihkan)
+                            <x-empty title="Aksi tiket ada di tab Info" message="Tombol tahap (Remote, Create Plan, perjalanan, form close, approval) ada di kaki ringkasan tiket." icon="fas fa-hand-pointer" compact />
                         @endunless
                     </div>
                 </div>
@@ -366,8 +366,8 @@
 
         {{-- MOBILE: bilah navigasi bawah --}}
         <nav class="tt-mbar" aria-label="Panel tiket">
-            <button type="button" data-pane="chat" class="active"><i class="fas fa-comments"></i><span>Chat</span></button>
-            <button type="button" data-pane="info"><i class="fas fa-info-circle"></i><span>Info</span></button>
+            <button type="button" data-pane="chat"><i class="fas fa-comments"></i><span>Chat</span></button>
+            <button type="button" data-pane="info" class="{{ $paneAwal === 'info' ? 'active' : '' }}"><i class="fas fa-info-circle"></i><span>Info</span></button>
             <button type="button" data-pane="action"><i class="fas fa-bolt"></i><span>Action</span></button>
         </nav>
     </div>
@@ -375,46 +375,60 @@
 
 {{-- ===================== MODAL ===================== --}}
 
-@if($mustDecide)
-    {{-- Wajib: tidak bisa ditutup (tanpa tombol tutup, backdrop static, Esc mati).
-         Server menolak aksi lain selama plan belum diajukan. --}}
-    <div class="modal fade" id="mdlTtDecide" tabindex="-1" role="dialog" aria-labelledby="mdlTtDecideTitle" data-backdrop="static" data-keyboard="false">
+@if($bisaPlan)
+    {{-- Create Plan — site & teknisi terkunci (ikut tiket); teknisi hanya mengisi tanggal. --}}
+    <div class="modal fade" id="mdlTtPlan" tabindex="-1" role="dialog">
         <div class="modal-dialog" role="document">
-            <form class="modal-content" method="POST" action="{{ route('trouble-ticket.plan.submit', $t) }}" id="frmTtDecide">
+            <form class="modal-content tt-submit-once" method="POST" action="{{ route('trouble-ticket.plan.create', $t) }}">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title" id="mdlTtDecideTitle"><i class="fas fa-route mr-1"></i> Ajukan Plan Penanganan</h5>
+                    <h5 class="modal-title"><i class="fas fa-calendar-check mr-1"></i> {{ $t->status === 'PLAN' ? 'Ubah Tanggal Visit' : 'Create Plan' }}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body" style="font-size:13px;">
-                    <p class="mb-2">Respons Anda untuk <strong>{{ $t->ticket_number }}</strong> sudah tercatat. Ajukan rencana penanganan untuk disetujui leader team sebelum pengerjaan dimulai.</p>
-                    <div class="custom-control custom-radio mb-2">
-                        <input type="radio" class="custom-control-input" id="decVisit" name="decision" value="VISIT" @checked(old('decision') === 'VISIT')>
-                        <label class="custom-control-label" for="decVisit"><strong>Plan Visit</strong> — saya akan mengunjungi site.</label>
-                    </div>
-                    <div class="custom-control custom-radio mb-3">
-                        <input type="radio" class="custom-control-input" id="decNonVisit" name="decision" value="NON_VISIT" @checked(old('decision') === 'NON_VISIT')>
-                        <label class="custom-control-label" for="decNonVisit"><strong>Non-Visit</strong> — troubleshooting jarak jauh / tanpa kunjungan.</label>
-                    </div>
-                    <label for="decReason" class="font-weight-bold mb-1">Alasan / rencana awal <span class="text-danger" id="decReasonReq" style="display:none;">*</span></label>
-                    <textarea name="reason" id="decReason" class="form-control" rows="3" maxlength="1000">{{ old('reason') }}</textarea>
-                    <small class="text-muted">Wajib untuk Non-Visit.</small>
-                    <div class="form-row mt-2">
-                        <div class="col-6" id="decVisitSiteWrap" style="display:none;">
-                            <label for="decVisitSite" class="font-weight-bold mb-1">Rencana kunjungan <span class="text-danger">*</span></label>
-                            <input type="date" name="visit_site" id="decVisitSite" class="form-control" min="{{ now()->toDateString() }}" value="{{ old('visit_site') }}">
+                    <div class="form-row">
+                        <div class="form-group col-md-7 mb-2">
+                            <label class="font-weight-bold">Site / Tiket</label>
+                            <input type="text" class="form-control" value="{{ $site?->tid }} — {{ $site?->sitename }} ({{ $t->ticket_number }})" readonly>
                         </div>
-                        <div class="col-6">
-                            <label for="decTargetOnline" class="font-weight-bold mb-1">Target online</label>
-                            <input type="date" name="target_online" id="decTargetOnline" class="form-control" min="{{ now()->toDateString() }}" value="{{ old('target_online') }}">
+                        <div class="form-group col-md-5 mb-2">
+                            <label class="font-weight-bold">Pelaksana</label>
+                            <input type="text" class="form-control" value="{{ $t->technician?->name ?? '—' }}" readonly>
+                        </div>
+                        <div class="form-group col-12 mb-2">
+                            <label class="font-weight-bold" for="fldPlanVisit">Plan Visit <span class="text-danger">*</span></label>
+                            <input type="date" name="visit_site" id="fldPlanVisit" class="form-control" min="{{ now()->toDateString() }}"
+                                   value="{{ old('visit_site', $t->visit_site?->toDateString() ?? now()->toDateString()) }}" required>
                         </div>
                     </div>
-                    @error('decision')<div class="text-danger mt-1">{{ $message }}</div>@enderror
-                    @error('reason')<div class="text-danger mt-1">{{ $message }}</div>@enderror
-                    @error('visit_site')<div class="text-danger mt-1">{{ $message }}</div>@enderror
-                    @error('target_online')<div class="text-danger mt-1">{{ $message }}</div>@enderror
+                    <small class="text-muted">Tiket masuk tahap Trip saat tanggal plan visit tiba.</small>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary btn-sm" id="btnTtDecide" disabled><i class="fas fa-paper-plane mr-1"></i> Ajukan Plan</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-calendar-check mr-1"></i> Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+@endif
+
+@if($dalamJalan)
+    <div class="modal fade" id="mdlTtCancelTrip" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <form class="modal-content tt-submit-once" method="POST" action="{{ route('trouble-ticket.travel.cancel', $t) }}">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-ban mr-1"></i> Cancel Visit</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body" style="font-size:13px;">
+                    <label class="font-weight-bold" for="fldCancelTrip">Alasan cancel visit <span class="text-danger">*</span></label>
+                    <textarea name="reason" id="fldCancelTrip" class="form-control" rows="3" maxlength="500" required></textarea>
+                    <small class="text-muted">Pembatalan tetap tercatat di log; tiket tetap di tahap Trip.</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Kembali</button>
+                    <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-ban mr-1"></i> Cancel</button>
                 </div>
             </form>
         </div>
@@ -422,87 +436,110 @@
 @endif
 
 @if($bisaTutup)
+    {{-- Form close — dipakai jalur Remote maupun In Progress. Evidence bisa
+         dipilih dari galeri/berkas, ditempel (Ctrl+V) di keterangan, atau
+         diseret ke kotak evidence. --}}
     <div class="modal fade" id="mdlTtClosure" tabindex="-1" role="dialog">
-        <div class="modal-dialog" role="document">
-            <form class="modal-content tt-submit-once" method="POST" action="{{ route('trouble-ticket.close', $t) }}" enctype="multipart/form-data">
+        <div class="modal-dialog modal-lg" role="document">
+            <form class="modal-content tt-submit-once" method="POST" action="{{ route('trouble-ticket.close', $t) }}" enctype="multipart/form-data" id="frmTtClosure">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-flag-checkered mr-1"></i> Tutup Tiket</h5>
+                    <h5 class="modal-title"><i class="fas fa-flag-checkered mr-1"></i> Form Close{{ $t->status === 'REMOTE' ? ' — Remote (Non-Visit)' : '' }}</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body" style="font-size:13px;">
                     <div class="form-row">
-                        <div class="form-group col-md-5 mb-2">
+                        <div class="form-group col-md-6 mb-2">
                             <label class="font-weight-bold" for="fldRca">RCA <span class="text-danger">*</span></label>
-                            <input type="text" name="rca" id="fldRca" class="form-control" maxlength="40" required value="{{ old('rca') }}" placeholder="mis. Power, Transmisi">
+                            <select name="rca_id" id="fldRca" class="form-control" required>
+                                <option value="">— Pilih RCA —</option>
+                                @foreach($rcas as $r)
+                                    <option value="{{ $r->id }}" data-name="{{ $r->name }}" @selected((int) old('rca_id', $t->rca_id) === (int) $r->id)>{{ $r->name }}</option>
+                                @endforeach
+                            </select>
+                            <input type="hidden" name="rca" id="fldRcaName" value="{{ old('rca', $t->rca_label) }}">
                         </div>
-                        <div class="form-group col-md-7 mb-2">
-                            <label class="font-weight-bold" for="fldSubRca">Sub RCA</label>
-                            <input type="text" name="sub_rca" id="fldSubRca" class="form-control" maxlength="150" value="{{ old('sub_rca') }}">
-                        </div>
-                        <div class="form-group col-12 mb-2">
-                            <label class="font-weight-bold" for="fldAction">Action <span class="text-danger">*</span></label>
-                            <input type="text" name="action" id="fldAction" class="form-control" maxlength="150" required value="{{ old('action') }}" placeholder="Tindakan yang dilakukan">
+                        <div class="form-group col-md-6 mb-2">
+                            <label class="font-weight-bold" for="fldSubRca">Sub-RCA</label>
+                            <select name="sub_rca_id" id="fldSubRca" class="form-control">
+                                <option value="">— Pilih Sub-RCA —</option>
+                                @foreach($subRcas as $sr)
+                                    <option value="{{ $sr->id }}" data-rca="{{ $sr->rca_id }}" data-name="{{ $sr->name }}" @selected((int) old('sub_rca_id', $t->sub_rca_id) === (int) $sr->id)>{{ $sr->name }}</option>
+                                @endforeach
+                            </select>
+                            <input type="hidden" name="sub_rca" id="fldSubRcaName" value="{{ old('sub_rca', $t->sub_rca_label) }}">
                         </div>
                     </div>
-                    <label class="font-weight-bold" for="fldResolution">Catatan resolusi</label>
-                    <textarea name="resolution_summary" id="fldResolution" class="form-control" rows="3" maxlength="5000">{{ old('resolution_summary') }}</textarea>
-                    <label class="font-weight-bold mt-2" for="fldClosureFiles">Bukti penyelesaian @if($t->problem?->requires_evidence)<span class="text-danger">* (wajib untuk problem ini)</span>@endif</label>
-                    <input type="file" name="attachments[]" id="fldClosureFiles" class="form-control-file tt-file-check" multiple accept="{{ $acceptFiles }}" @if($t->problem?->requires_evidence) required @endif>
-                    <small class="text-muted">Maks. 10 MB per berkas. Tiket langsung berstatus Closed setelah disimpan; tidak ada approval.</small>
+                    <label class="font-weight-bold" for="fldResolution">Keterangan <span class="text-danger">*</span></label>
+                    <textarea name="resolution_summary" id="fldResolution" class="form-control" rows="3" maxlength="5000" required placeholder="Tulis keterangan penyelesaian">{{ old('resolution_summary') }}</textarea>
+                    <label class="font-weight-bold mt-2">Evidence <span class="text-danger">*</span></label>
+                    <div class="tt-eviz" id="ttEviz">
+                        <input type="file" name="attachments[]" id="fldClosureFiles" multiple accept="{{ $acceptFiles }}" hidden>
+                        <button type="button" class="btn btn-outline-secondary btn-sm btn-block" id="btnTtEviz">
+                            <i class="fas fa-paperclip mr-1"></i> Pilih evidence
+                        </button>
+                        <div class="tt-eviz-list" id="ttEvizList"></div>
+                    </div>
+                    <small class="text-muted">Maks. 10 MB per berkas. Setelah dikirim, tiket masuk tahap <strong>Progress Done</strong> dan menunggu approval supervisor.</small>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-flag-checkered mr-1"></i> Tutup Tiket</button>
+                    <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-paper-plane mr-1"></i> Kirim untuk Approval</button>
                 </div>
             </form>
         </div>
     </div>
 @endif
 
-@if($canReviewPlan)
+@if($canApproveClose)
     <div class="modal fade" id="mdlTtApprove" tabindex="-1" role="dialog">
         <div class="modal-dialog" role="document">
-            <form class="modal-content tt-submit-once" method="POST" action="{{ route('trouble-ticket.plan.approve', $t) }}">
+            <form class="modal-content tt-submit-once tt-confirm" method="POST" action="{{ route('trouble-ticket.close.approve', $t) }}"
+                  data-title="Approve close tiket ini?" data-text="Tiket {{ $t->ticket_number }} akan ditutup.">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-check mr-1"></i> Setujui Plan</h5>
+                    <h5 class="modal-title"><i class="fas fa-check mr-1"></i> Approve Close</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body" style="font-size:13px;">
-                    <div class="mb-2"><span class="text-muted">Plan diajukan {{ $t->decider?->name }}:</span>
-                        <div><strong>Keputusan:</strong> {{ $t->visit_decision_label }}</div>
-                        @if($t->visit_site)<div><strong>Rencana kunjungan:</strong> {{ $t->visit_site->format('d/m/Y') }}</div>@endif
-                        @if($t->target_online)<div><strong>Target online:</strong> {{ $t->target_online->format('d/m/Y') }}</div>@endif
-                        @if($t->visit_decision_reason)<div style="white-space:pre-wrap;">{{ $t->visit_decision_reason }}</div>@endif
+                    <div class="mb-2"><span class="text-muted">Close by {{ $t->technician?->name }}</span>
+                        <dl class="m-0 mt-1">
+                            <div class="tt-kv"><dt>RCA</dt><dd>{{ $t->rca_label ?: '—' }}</dd></div>
+                            <div class="tt-kv"><dt>Sub-RCA</dt><dd>{{ $t->sub_rca_label ?: '—' }}</dd></div>
+                            <div class="tt-kv"><dt>Keterangan</dt><dd style="white-space:pre-wrap;">{{ $t->resolution_summary ?: '—' }}</dd></div>
+                        </dl>
+                        @if($closureFiles->isNotEmpty())
+                            <div class="font-weight-bold mt-2" style="font-size:12px;">Evidence</div>
+                            @include('trouble-ticket._attachments', ['items' => $closureFiles])
+                        @endif
                     </div>
-                    <label for="fldApproveNotes" class="font-weight-bold">Catatan (opsional)</label>
+                    <label for="fldApproveNotes" class="font-weight-bold">Catatan approval (opsional)</label>
                     <textarea name="notes" id="fldApproveNotes" class="form-control" rows="2" maxlength="1000"></textarea>
-                    <small class="text-muted">Tiket menjadi On Plan dan teknisi boleh memulai pengerjaan.</small>
+                    <small class="text-muted">Tiket menjadi Closed setelah disetujui.</small>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-check mr-1"></i> Setujui</button>
+                    <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-check mr-1"></i> Approve &amp; Close</button>
                 </div>
             </form>
         </div>
     </div>
     <div class="modal fade" id="mdlTtReject" tabindex="-1" role="dialog">
         <div class="modal-dialog" role="document">
-            <form class="modal-content tt-submit-once" method="POST" action="{{ route('trouble-ticket.plan.reject', $t) }}">
+            <form class="modal-content tt-submit-once" method="POST" action="{{ route('trouble-ticket.close.reject', $t) }}">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-times mr-1"></i> Tolak Plan</h5>
+                    <h5 class="modal-title"><i class="fas fa-undo mr-1"></i> Reject Close</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body" style="font-size:13px;">
                     <label for="fldRejectNotes" class="font-weight-bold">Alasan penolakan <span class="text-danger">*</span></label>
                     <textarea name="notes" id="fldRejectNotes" class="form-control" rows="3" maxlength="1000" required></textarea>
-                    <small class="text-muted">Tiket kembali Open dan plan dikosongkan; teknisi mengajukan plan baru.</small>
+                    <small class="text-muted">Tiket kembali ke teknisi untuk diperbaiki.</small>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-times mr-1"></i> Tolak</button>
+                    <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-undo mr-1"></i> Reject Close</button>
                 </div>
             </form>
         </div>
@@ -541,37 +578,6 @@
     </div>
 @endif
 
-@if($bisaKoreksi)
-    <div class="modal fade" id="mdlTtCorrect" tabindex="-1" role="dialog">
-        <div class="modal-dialog" role="document">
-            <form class="modal-content tt-submit-once" method="POST" action="{{ route('trouble-ticket.plan.correct', $t) }}">
-                @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-edit mr-1"></i> Koreksi Plan</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
-                </div>
-                <div class="modal-body" style="font-size:13px;">
-                    <p class="mb-2">Saat ini: <strong>{{ $t->visit_decision_label }}</strong>. Keputusan lama tetap tersimpan di timeline.</p>
-                    <select name="decision" id="fldCorrectDecision" class="form-control mb-2" required>
-                        @foreach(TroubleTicket::VISIT_DECISIONS as $k => $v)
-                            <option value="{{ $k }}" @selected($k !== $t->visit_decision)>{{ $v }}</option>
-                        @endforeach
-                    </select>
-                    <div id="fldCorrectVisitWrap" class="mb-2" style="display:none;">
-                        <label for="fldCorrectVisit" class="font-weight-bold">Rencana kunjungan <span class="text-danger">*</span></label>
-                        <input type="date" name="visit_site" id="fldCorrectVisit" class="form-control" min="{{ now()->toDateString() }}">
-                    </div>
-                    <label for="fldCorrectReason" class="font-weight-bold">Alasan koreksi <span class="text-danger">*</span></label>
-                    <textarea name="reason" id="fldCorrectReason" class="form-control" rows="2" maxlength="1000" required></textarea>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary btn-sm">Simpan Koreksi</button>
-                </div>
-            </form>
-        </div>
-    </div>
-@endif
 @endsection
 
 @push('scripts')
@@ -582,7 +588,6 @@ $(function () {
     var messagesUrl = @json(route('trouble-ticket.messages', $t));
     var $list = $('#ttChatList'), $items = $('#ttChatItems');
 
-    TtTimers.start(@json(now()->toIso8601String()));
 
     /* ---------- Mobile: Chat | Info | Action ---------- */
     $('.tt-mbar').on('click', 'button[data-pane]', function () {
@@ -615,53 +620,123 @@ $(function () {
     }
     $(document).on('change', '.tt-file-check', function () { checkFiles(this); });
 
-    /* ---------- Modal keputusan wajib ---------- */
-    var $decide = $('#mdlTtDecide');
-    if ($decide.length) {
-        $decide.modal({ backdrop: 'static', keyboard: false, show: true });
-        // Jaga-jaga: bila ditutup oleh skrip lain, tampilkan lagi.
-        $decide.on('hidden.bs.modal', function () { if (!$decide.data('saved')) $decide.modal('show'); });
-        $decide.on('change', 'input[name=decision]', function () {
-            var nonVisit = this.value === 'NON_VISIT';
-            $('#decReasonReq').toggle(nonVisit);
-            $('#decReason').prop('required', nonVisit);
-            $('#decVisitSiteWrap').toggle(!nonVisit);
-            $('#decVisitSite').prop('required', !nonVisit);
-            $('#btnTtDecide').prop('disabled', false);
-        });
-        $decide.find('input[name=decision]:checked').trigger('change');
-        $('#frmTtDecide').on('submit', function (e) {
-            var v = $decide.find('input[name=decision]:checked').val();
-            if (v === 'NON_VISIT' && !$.trim($('#decReason').val())) {
-                e.preventDefault();
-                $('#decReason').addClass('is-invalid').trigger('focus');
-                return;
-            }
-            if (v === 'VISIT' && !$('#decVisitSite').val()) {
-                e.preventDefault();
-                $('#decVisitSite').addClass('is-invalid').trigger('focus');
-                return;
-            }
-            $decide.data('saved', true);
-            $('#btnTtDecide').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Menyimpan...');
-        });
-    }
+    /* ---------- Wajib pilih jalur: Remote atau Create Plan ---------- */
+    @if($mustDecide)
+        window.tsToast('info', 'Pilih jalur penanganan: Remote (non-visit) atau Create Plan.');
+    @endif
 
-    /* Koreksi keputusan: tanggal kunjungan hanya untuk Plan Visit. */
-    $('#fldCorrectDecision').on('change', function () {
-        var visit = this.value === 'VISIT';
-        $('#fldCorrectVisitWrap').toggle(visit);
-        $('#fldCorrectVisit').prop('required', visit);
-    }).trigger('change');
+    /* ---------- Form close: RCA → Sub-RCA & evidence ---------- */
+    (function () {
+        var $rca = $('#fldRca'), $sub = $('#fldSubRca');
+        if (!$rca.length) return;
 
-    /* ---------- Konfirmasi aksi & cegah kirim ganda ---------- */
+        function syncSub() {
+            var id = $rca.val();
+            $('#fldRcaName').val($rca.find('option:selected').data('name') || '');
+            $sub.find('option').each(function () {
+                var cocok = !this.value || String($(this).data('rca')) === String(id);
+                $(this).prop('hidden', !cocok).prop('disabled', !cocok);
+            });
+            if ($sub.find('option:selected').prop('disabled')) $sub.val('');
+            $('#fldSubRcaName').val($sub.find('option:selected').data('name') || '');
+        }
+        $rca.on('change', syncSub);
+        $sub.on('change', function () { $('#fldSubRcaName').val($(this).find('option:selected').data('name') || ''); });
+        syncSub();
+
+        /* Evidence: galeri/berkas, tempel di keterangan, seret ke kotak. */
+        var input = document.getElementById('fldClosureFiles');
+        var $list = $('#ttEvizList'), berkas = [];
+
+        function fmtSize(b) { return b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
+
+        function sync() {
+            var dt = new DataTransfer();
+            berkas.forEach(function (f) { dt.items.add(f); });
+            input.files = dt.files;
+            $list.empty();
+            berkas.forEach(function (f, i) {
+                var $c = $('<span class="tt-eviz-item"></span>');
+                if (/^image\//.test(f.type)) {
+                    var url = URL.createObjectURL(f);
+                    $c.append($('<img alt="">').attr('src', url).on('load', function () { URL.revokeObjectURL(url); }));
+                }
+                $c.append($('<span class="tt-eviz-name"></span>').text(f.name + ' · ' + fmtSize(f.size)));
+                $c.append($('<button type="button" class="tt-eviz-x" title="Hapus">&times;</button>').attr('data-i', i));
+                $list.append($c);
+            });
+        }
+
+        function tambah(daftar) {
+            Array.prototype.forEach.call(daftar, function (f) {
+                if (f.size > MAX_BYTES) { window.tsToast('error', f.name + ' melebihi 10 MB.'); return; }
+                if (berkas.length >= MAX_FILES) { window.tsToast('error', 'Paling banyak ' + MAX_FILES + ' berkas.'); return; }
+                berkas.push(f);
+            });
+            sync();
+        }
+
+        $('#btnTtEviz').on('click', function () { input.click(); });
+        $(input).on('change', function () { tambah(this.files); });
+        $list.on('click', '.tt-eviz-x', function () { berkas.splice(+this.dataset.i, 1); sync(); });
+
+        // Evidence wajib: form tidak dikirim bila kosong.
+        $('#frmTtClosure').on('submit', function (e) {
+            if (!berkas.length) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                window.tsToast('error', 'Evidence wajib dilampirkan.');
+            }
+        });
+    })();
+
+    /* ---------- Swipe: mulai perjalanan / mulai progres ---------- */
+    $('.tt-swipe').each(function () {
+        var el = this, $el = $(el), $knob = $el.find('.tt-swipe-knob'), geser = false, x0 = 0, maks = 0;
+
+        function lebar() { return el.clientWidth - $knob[0].offsetWidth - 8; }
+        function reset() { $knob.css('transform', 'translateX(0)'); $el.removeClass('is-dragging'); }
+
+        function selesai() {
+            $el.addClass('is-done');
+            var $form = $('#' + $el.data('form'));
+            Swal.fire({
+                title: $el.data('confirm') || 'Lanjutkan?',
+                text: $el.data('text') || '',
+                icon: 'question', showCancelButton: true,
+                confirmButtonText: 'Iya', cancelButtonText: 'Tidak',
+            }).then(function (r) {
+                if (r.isConfirmed) { $form.trigger('submit'); } else { $el.removeClass('is-done'); reset(); }
+            });
+        }
+
+        $knob.on('pointerdown', function (e) {
+            geser = true; x0 = e.clientX; maks = lebar();
+            $el.addClass('is-dragging');
+            $knob[0].setPointerCapture(e.pointerId);
+        });
+        $knob.on('pointermove', function (e) {
+            if (!geser) return;
+            var dx = Math.max(0, Math.min(maks, e.clientX - x0));
+            $knob.css('transform', 'translateX(' + dx + 'px)');
+        });
+        $knob.on('pointerup pointercancel', function (e) {
+            if (!geser) return;
+            geser = false;
+            var dx = Math.max(0, Math.min(maks, e.clientX - x0));
+            if (dx >= maks * 0.85) { selesai(); } else { reset(); }
+        });
+        // Papan ketik / aksesibilitas: Enter atau klik ganda = sama dengan geser penuh.
+        $knob.on('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selesai(); } });
+    });
+
     $('form.tt-confirm').on('submit', function (e) {
         var form = this;
         if (form.dataset.ok) return;
         e.preventDefault();
         Swal.fire({
             title: form.dataset.title, text: form.dataset.text, icon: 'question',
-            showCancelButton: true, confirmButtonText: 'Ya, lanjutkan', cancelButtonText: 'Batal',
+            showCancelButton: true, confirmButtonText: 'Iya', cancelButtonText: 'Tidak',
             confirmButtonColor: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || undefined
         }).then(function (r) {
             if (!r.isConfirmed) return;
@@ -844,6 +919,13 @@ $(function () {
     // Lompat ke tab lain (kartu SLA di Summary, tombol detail site).
     $(document).on('click', '[data-tt-tab]', function () {
         $('.tt-tabs a[href="' + this.dataset.ttTab + '"]').tab('show');
+    });
+    /* Kotak tab bisa digulir. Tanpa ini, gulir dari tab sebelumnya terbawa
+       sehingga isi tab berikutnya terlihat "mulai jauh di bawah". */
+    $('.tt-tabs a[data-toggle="tab"]').on('shown.bs.tab', function () {
+        var body = document.querySelector('.tt-tab-body');
+        if (body) body.scrollTop = 0;
+        window.scrollTo(0, 0);
     });
     // Salin ke clipboard.
     $(document).on('click', '[data-copy]', function () {
