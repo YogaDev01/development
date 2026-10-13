@@ -177,6 +177,15 @@ SLA di tab **SLA**.
   berbahasa Indonesia; permintaan pengguna 13 Okt 2026.
 - Kolom **Problem** di daftar diganti **RCA** (isi `rca_label` / `sub_rca_label`);
   filter kolomnya ikut berubah (`data-rca`).
+- Form buat tiket mengirim satu blok Gangguan sebagai `tickets[0][...]`.
+  Tombol **Tambah Tiket** (blok ganda di layar) sempat ada 13 Okt 2026 lalu
+  dicabut atas permintaan pengguna; **server tetap menerima banyak blok**
+  (maks. 20 per simpan, `MAX_TICKETS_PER_SUBMIT`) untuk integrasi. Bentuk datar
+  lama (field tanpa indeks) juga diterima dan dibungkus jadi `tickets[0]`.
+  Tiket dibuat berurutan, bukan satu transaksi: bila blok ke-N ditolak
+  workflow, tiket sebelumnya tetap tersimpan dan nomornya disebut di pesan
+  galat. Validasi bentuk (keterangan wajib, dll.) berjalan lebih dulu, jadi
+  isian cacat tidak pernah menyimpan sebagian.
 - Form buat tiket: tanpa Date Update; Teknisi bukan dropdown lagi melainkan
   kotak baca-saja + `<input type="hidden" name="assigned_to">` yang diisi dari
   endpoint teknisi site; tombol Batal/Simpan duduk di kolom kanan.

@@ -39,7 +39,7 @@
                             <tr><th>Source Power</th><td>{{ Site::SOURCE_POWERS[$site->source_power] ?? $site->source_power }}</td></tr>
                             <tr><th>Program</th><td>{{ Site::PROGRAMS[$site->program] ?? $site->program }}</td></tr>
                             <tr><th>PIC Site</th><td>{{ \App\Http\Controllers\SiteController::technicians($site) ?: '-' }}</td></tr>
-                            <tr><th>Region</th><td>{{ \App\Http\Controllers\SiteController::regions($site) ?: '-' }}</td></tr>
+                            <tr><th>Cluster</th><td>{{ \App\Http\Controllers\SiteController::regions($site) ?: '-' }}</td></tr>
                             <tr><th>Site Keeper</th><td>{{ $site->keepers->pluck('name')->implode(', ') ?: '-' }}</td></tr>
                             <tr><th>Status</th><td>
                                 <span class="badge badge-{{ $site->status === 'ACTIVE' ? 'success' : 'danger' }} px-2 py-1">{{ Site::STATUSES[$site->status] ?? $site->status }}</span>

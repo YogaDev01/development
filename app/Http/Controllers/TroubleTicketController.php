@@ -19,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -39,6 +40,9 @@ class TroubleTicketController extends Controller
 
     /** Jumlah item timeline per muat. */
     private const MESSAGE_PAGE = 30;
+
+    /** Batas tiket per sekali simpan dari form Buat Trouble Ticket. */
+    private const MAX_TICKETS_PER_SUBMIT = 20;
 
     public function __construct(private TroubleTicketWorkflow $workflow) {}
 
@@ -223,31 +227,88 @@ class TroubleTicketController extends Controller
         ]);
     }
 
+    /**
+     * Simpan satu atau beberapa tiket sekaligus.
+     *
+     * Form "Buat Trouble Ticket" mengirim satu blok gangguan per tiket
+     * (tickets[0], tickets[1], …) untuk Site & Teknisi yang sama. Bentuk lama
+     * (field datar, satu tiket) tetap diterima — dipakai integrasi dan tes —
+     * dan di sini dibungkus jadi satu item supaya jalurnya cuma satu.
+     */
     public function store(Request $request)
     {
+        if (! is_array($request->input('tickets'))) {
+            $request->merge(['tickets' => [$request->except(['site_id', 'assigned_to', '_token'])]]);
+            if ($request->hasFile('attachments')) {
+                $request->files->set('tickets', [['attachments' => $request->file('attachments')]]);
+            }
+        }
+
         $data = $request->validate([
             'site_id' => 'required|integer|exists:sites,id',
             'assigned_to' => 'required|integer|exists:users,id',
-            'description' => 'required|string|max:10000',
+            'tickets' => 'required|array|min:1|max:'.self::MAX_TICKETS_PER_SUBMIT,
+            'tickets.*.description' => 'required|string|max:10000',
             // Problem / Initial Problem / Flag Alarm tidak lagi ada di form buat
             // tiket (diisi belakangan dari halaman detail atau integrasi), tapi
             // tetap diterima dan divalidasi bila dikirim.
-            'problem_id' => 'nullable|integer|exists:trouble_ticket_problems,id',
-            'issue_id' => 'nullable|integer|exists:trouble_ticket_issues,id',
-            'flag_alarm' => 'nullable|string|max:40',
-            'device_id' => 'nullable|integer|exists:trouble_ticket_devices,id',
-            'rca_id' => 'nullable|integer|exists:trouble_ticket_rcas,id',
-            'sub_rca_id' => 'nullable|integer|exists:trouble_ticket_sub_rcas,id',
+            'tickets.*.problem_id' => 'nullable|integer|exists:trouble_ticket_problems,id',
+            'tickets.*.issue_id' => 'nullable|integer|exists:trouble_ticket_issues,id',
+            'tickets.*.flag_alarm' => 'nullable|string|max:40',
+            'tickets.*.device_id' => 'nullable|integer|exists:trouble_ticket_devices,id',
+            'tickets.*.rca_id' => 'nullable|integer|exists:trouble_ticket_rcas,id',
+            'tickets.*.sub_rca_id' => 'nullable|integer|exists:trouble_ticket_sub_rcas,id',
             // Date Open — bawaan hari ini, boleh diubah, tidak boleh di masa depan.
-            'reported_at' => 'nullable|date|before_or_equal:now',
-            'attachments' => 'nullable|array|max:'.TroubleTicketAttachment::MAX_FILES,
-            'attachments.*' => TroubleTicketAttachment::rules(),
+            'tickets.*.reported_at' => 'nullable|date|before_or_equal:now',
+            'tickets.*.attachments' => 'nullable|array|max:'.TroubleTicketAttachment::MAX_FILES,
+            'tickets.*.attachments.*' => TroubleTicketAttachment::rules(),
         ], $this->fileMessages());
 
-        $ticket = $this->workflow->create(Auth::user(), $data, $request->file('attachments', []));
+        $pokok = ['site_id' => $data['site_id'], 'assigned_to' => $data['assigned_to']];
+        $user = Auth::user();
 
-        return redirect()->route('trouble-ticket.show', $ticket)
-            ->with('success', "Trouble Ticket {$ticket->ticket_number} berhasil dibuat.");
+        /* Dibuat berurutan, bukan dalam satu transaksi: tiap tiket punya nomor,
+           lampiran dan notifikasinya sendiri, dan workflow->create() sudah
+           menjaga keutuhan per tiket. Bila satu gagal, tiket sebelumnya tetap
+           ada — pesan galat menyebut blok yang gagal. */
+        $dibuat = [];
+        foreach (array_values($data['tickets']) as $i => $item) {
+            try {
+                $dibuat[] = $this->workflow->create($user, $pokok + $item, $request->file("tickets.$i.attachments", []));
+            } catch (ValidationException $e) {
+                /* Galat dari workflow memakai kunci datar ('sub_rca_id'); form
+                   menamai isiannya per blok, jadi kuncinya diberi awalan supaya
+                   yang ditandai merah adalah blok yang benar. */
+                $pesan = [];
+                foreach ($e->errors() as $kunci => $isi) {
+                    // site_id & assigned_to milik seluruh form, bukan satu blok.
+                    $prefix = in_array($kunci, ['site_id', 'assigned_to'], true) ? '' : "tickets.$i.";
+                    $pesan[$prefix.$kunci] = $isi;
+                }
+                $lanjut = ValidationException::withMessages($pesan);
+
+                // Bila sudah ada tiket yang tersimpan, pemakai perlu tahu mana saja.
+                if ($dibuat) {
+                    $nomor = collect($dibuat)->map->ticket_number->implode(', ');
+                    $lanjut->response = back()->withInput()
+                        ->withErrors($pesan)
+                        ->with('error', 'Gangguan '.($i + 1).' gagal disimpan: '.$e->validator->errors()->first()
+                            .' Tiket yang sudah tersimpan: '.$nomor.'.');
+                }
+
+                throw $lanjut;
+            }
+        }
+
+        if (count($dibuat) === 1) {
+            return redirect()->route('trouble-ticket.show', $dibuat[0])
+                ->with('success', "Trouble Ticket {$dibuat[0]->ticket_number} berhasil dibuat.");
+        }
+
+        $nomor = collect($dibuat)->map->ticket_number->implode(', ');
+
+        return redirect()->route('trouble-ticket.index')
+            ->with('success', count($dibuat).' Trouble Ticket berhasil dibuat: '.$nomor.'.');
     }
 
     /*
