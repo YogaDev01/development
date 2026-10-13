@@ -58,25 +58,244 @@ TESYS is **not** textbook Laravel. Respect the real pattern:
 
 ## 4. Production safety rules
 
-- The working copy at `C:\laragon\www\tesys` is **local** (`APP_ENV=local`,
-  DB host defaults to 127.0.0.1). It is not production. Still: never point it
-  at production credentials.
+### 4.1 Definisi lingkungan
+
+Pisahkan tiga hal yang berbeda: **status lingkungan** (apa yang diketahui),
+**larangan operasi** (apa yang tidak boleh dilakukan), dan **klasifikasi**
+shared/produksi (hanya jika sudah terverifikasi). Jangan mengisi nilai
+"BELUM TERVERIFIKASI" dengan tebakan.
+
+| Lingkungan | Definisi | Status |
+|---|---|---|
+| Test | Database `tesys_test` di MySQL `127.0.0.1`, dipakai `RefreshDatabase`. Sumber: `phpunit.xml`. Dibuat ulang tiap suite dijalankan. | Dideklarasikan di `phpunit.xml` (dicek 2026-10-14); target efektif wajib diverifikasi melalui §4.3. |
+| Lokal (dev) | Working copy `C:\laragon\www\tesys`, `APP_ENV=local`, host DB default `127.0.0.1`. Nama database dev: **[PERLU KONFIRMASI MANUSIA]** | Nama DB BELUM TERVERIFIKASI. Claude tidak membaca `.env`. |
+| Shared / staging | Ada atau tidaknya DB bersama atau staging: **[PERLU KONFIRMASI MANUSIA]** | BELUM TERVERIFIKASI. `docs/DEPLOYMENT.md` tidak menyebut staging. |
+| Produksi | Hostinger shared hosting, deploy manual. Lihat `docs/DEPLOYMENT.md`. | Terverifikasi dari `docs/DEPLOYMENT.md` dan CLAUDE.md §2 |
+
+**Klasifikasi.** Sebuah database disebut "produksi" atau "shared" hanya jika sudah
+terverifikasi dari dokumen atau konfirmasi manusia. Database yang targetnya belum
+diketahui disebut **"target belum diketahui"**, bukan produksi.
+
+**Larangan operasi.** Selama target database belum dikonfirmasi (selain `tesys_test`
+yang lolos §4.3), Claude **berhenti sebelum operasi database yang berisiko**:
+migrasi, seeding, `RefreshDatabase`/test, tinker yang menulis, perintah artisan yang
+mengubah data, dan SQL yang mengubah data. Operasi baca-saja pada kode, file konfigurasi
+non-rahasia, dan dokumen tetap boleh.
+
+Jika lingkungan target tidak jelas, berhenti dan tanya. Claude tidak membaca atau
+menampilkan isi `.env`, token, password, atau kredensial, dan tidak meminta pengguna
+menempelkannya. Verifikasi memakai pemeriksaan per-kunci di §4.3.
+
+### 4.2 Larangan
+
 - NEVER: deploy, run `migrate:fresh` / `migrate:reset` / `db:wipe` /
   `migrate:rollback` on any shared DB, run `storage:link` (attachments are
   deliberately private), edit production `.env`, or run tinker writes against
   real data.
-- Tests use `RefreshDatabase` on `tesys_test`. Confirm `phpunit.xml` still
-  points to `tesys_test` before running tests.
-- **Before EVERY test run, `bootstrap/cache/config.php` must NOT exist.** A
-  cached config makes Laravel ignore `phpunit.xml`; `RefreshDatabase` then
-  wipes whatever DB the cache points to (locally the dev DB `laravel`, because
-  `.env` leaves `DB_DATABASE` commented). This happened on 2026-10-02 and the
-  dev DB had to be restored from `C:\laragon\backup\mysql`. Check with
-  `ls bootstrap/cache/config.php` and
-  `APP_ENV=testing DB_DATABASE=tesys_test php artisan config:show database.connections.mysql.database`
-  (must print `tesys_test`). Never run `config:cache`/`optimize` locally
-  without clearing it before tests.
+- Working copy lokal bukan produksi. Tetap jangan mengarahkannya ke kredensial produksi.
+- **Skrip Composer** (`composer.json` → `scripts`):
+  - `composer test` menjalankan `config:clear` lalu `artisan test`. Skrip ini hanya boleh
+    dijalankan jika pengguna secara eksplisit meminta test **dan** seluruh langkah §4.3
+    sudah terpenuhi. Jangan memakainya sebagai jalan pintas untuk melewati §4.3, termasuk
+    persetujuan sebelum menghapus config cache (§4.3 langkah 1).
+  - `composer setup` (menjalankan `migrate --force`) dan skrip Composer lain yang dapat
+    menjalankan migrasi atau seeder, mengubah konfigurasi, atau memodifikasi database
+    (termasuk skrip event yang menjalankan `migrate`) tidak boleh dijalankan tanpa
+    permintaan eksplisit pengguna dan target database yang sudah terverifikasi (§4.1).
+  - Jika target database atau dampak skrip belum jelas, berhenti dan minta konfirmasi.
+    Jangan menjalankan skrip hanya untuk mengetahui dampaknya.
+  - Membaca definisi skrip di `composer.json` secara read-only boleh, selama tidak membaca
+    `.env` atau menampilkan rahasia.
 - Never commit `.env`, credentials, tokens (`EXPORT_API_TOKEN`, `FONNTE_TOKEN`).
+
+### 4.3 Prosedur wajib sebelum `artisan test`
+
+Tests use `RefreshDatabase` on `tesys_test`. Config cache membuat Laravel mengabaikan
+`phpunit.xml`, lalu `RefreshDatabase` menghapus database yang ditunjuk cache. Ini terjadi
+pada 2026-10-02 (DB dev `laravel` dihapus dan dipulihkan dari `C:\laragon\backup\mysql`).
+
+Jalankan berurutan. **Jika satu langkah gagal atau tidak bisa diverifikasi dengan aman,
+BERHENTI dan minta konfirmasi manusia. Jangan menjalankan test.**
+Test hanya dijalankan atas permintaan pengguna. Claude tidak membaca atau menampilkan isi
+`.env`, password, token, atau kredensial, dan tidak menghapus config cache tanpa
+persetujuan manusia.
+
+1. **Cache konfigurasi harus tidak ada.** Jangan dihapus oleh Claude; jika ada, berhenti
+   dan minta persetujuan.
+   - PowerShell: `Test-Path bootstrap\cache\config.php` (harus `False`)
+   - Git Bash: `ls bootstrap/cache/config.php` (harus "No such file")
+
+2. **Tentukan executable PHP yang benar-benar tersedia** (pemeriksaan read-only; jangan
+   mengasumsikan path tertentu, termasuk path Laragon pada contoh di dokumen lain).
+   - PowerShell:
+     ```powershell
+     Get-Command php -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+     where.exe php
+     ```
+   - Git Bash:
+     ```bash
+     command -v php
+     ```
+   - Jika `php` tidak ada di PATH, cari kandidat di lokasi instalasi PHP lokal pengguna
+     (misalnya subfolder `bin\php` milik Laragon) dengan daftar direktori saja.
+   - Verifikasi kandidat: `<path-php> -v` (versi harus memenuhi `^8.3`) dan
+     `<path-php> -m` memuat `pdo_mysql`.
+   - Jika kandidat tidak ada, ada lebih dari satu kandidat yang sama-sama masuk akal,
+     atau versi tidak cocok, **berhenti dan minta manusia mengonfirmasi path PHP**.
+   - **`<PATH-PHP-TERVERIFIKASI>` di langkah berikutnya dan di §11 adalah placeholder
+     dokumentasi.** Placeholder ini **wajib diganti** dengan path executable PHP hasil
+     langkah ini sebelum perintah dijalankan. **Jangan pernah mengeksekusi placeholder
+     literal.** Contoh skrip di bawah menolak berjalan jika placeholder belum diganti.
+
+3. **Baca `phpunit.xml`** dan pastikan: `DB_CONNECTION=mysql`, `DB_DATABASE=tesys_test`,
+   `DB_URL` kosong (`value=""`), `DB_HOST` loopback (`127.0.0.1`/`localhost`),
+   `DB_PORT=3306`. Jangan menampilkan `DB_USERNAME`/`DB_PASSWORD`.
+   Pemeriksaan `DB_PORT` hanya memverifikasi nilai yang dideklarasikan di `phpunit.xml`,
+   bukan membuktikan port atau instance MySQL efektif yang dipakai PHPUnit.
+
+4. **Periksa koneksi tambahan.** Pencarian pola di `tests/` **bukan jaminan lengkap**:
+   - PowerShell:
+     `Get-ChildItem tests -Recurse -Filter *.php | Select-String -Pattern 'DB::connection|->connection\(|setDefaultConnection'`
+   - Periksa juga kode aplikasi, helper, dan konfigurasi (tanpa membuka `.env`):
+     `Get-ChildItem app,config,database,routes,tests -Recurse -Filter *.php | Select-String -Pattern 'DB::connection|Schema::connection|->connection\(|\$connection\s*=|setDefaultConnection'`
+     serta daftar koneksi di `config/database.php` dan konfigurasi lain yang memakai
+     `DB_*`/`*_URL`/host eksternal.
+   - Jika ada koneksi tambahan, **periksa targetnya sebelum testing**. Jika target tidak
+     bisa dipastikan aman, berhenti.
+
+5. **Pemeriksaan konfigurasi simulasi — PROSEDUR MANUAL (default).**
+
+   | Kunci | Nilai yang diharapkan | Cara verifikasi |
+   |---|---|---|
+   | `database.default` | `mysql` | `config:show`, output mentah (5c) |
+   | `database.connections.mysql.database` | `tesys_test` | `config:show`, output mentah (5c) |
+   | `database.connections.mysql.host` | `127.0.0.1` atau `localhost` | `config:show`, output mentah (5c) |
+   | `database.connections.mysql.url` | kosong atau `null` | **Tidak boleh lewat `config:show`** (5d) |
+
+   Jangan pernah menjalankan `config:show database`, `config:show database.connections.mysql`,
+   atau `config:show database.connections.mysql.url`; ketiganya dapat mencetak kredensial.
+   Tidak ada parser output otomatis: perbandingan dilakukan manual dan dikonfirmasi manusia.
+
+   **5a. Cari potensi override dari environment proses (nama saja, tanpa nilai).**
+   - PowerShell:
+     `Get-ChildItem Env: | Where-Object { $_.Name -like 'DB_*' -or $_.Name -in 'APP_ENV','DATABASE_URL' } | Select-Object -ExpandProperty Name`
+   - Git Bash: `compgen -e | grep -E '^(DB_.*|APP_ENV|DATABASE_URL)$'`
+   - Jangan pernah menampilkan nilai variabel tersebut.
+   - Jika ada nama yang muncul, berhenti dan tanya: variabel itu berpotensi mengalahkan
+     `phpunit.xml` (menurut dokumentasi PHPUnit, `<env>` tidak menimpa variabel yang sudah
+     ada kecuali `force="true"` [PERLU KONFIRMASI untuk PHPUnit 12]).
+   - **Batas:** pemeriksaan ini hanya mendeteksi potensi override di shell saat ini. Hasil
+     kosong **bukan bukti** konfigurasi efektif PHPUnit dan **tidak** berarti database aman.
+
+   **5b. Pastikan executable PHP benar-benar tersedia sebelum Artisan.**
+   `<PATH-PHP-TERVERIFIKASI>` adalah placeholder dokumentasi dan wajib diganti dengan
+   **path lengkap** hasil langkah 2; jangan pernah mengeksekusi placeholder literal dan
+   jangan mengasumsikan path instalasi tertentu. Contoh skrip di 5c menolak berjalan jika
+   placeholder belum diganti, path bukan path lengkap ke file yang ada, nama file bukan
+   `php`/`php.exe`, atau `<php> -v` gagal. Jika pemeriksaan ini gagal, hentikan prosedur.
+
+   **Batas:** pemeriksaan ini hanya memastikan file bernama `php`/`php.exe` pada path
+   lengkap tersebut ada dan keluar dengan kode 0 untuk `-v`. Ini tidak membuktikan bahwa
+   file itu benar-benar PHP, versi `^8.3`, ekstensi `pdo_mysql`, atau bahwa path berasal
+   dari langkah 2 — hal-hal tersebut tetap diverifikasi di langkah 2 — dan tidak
+   membuktikan lingkungan PHP aman secara keseluruhan.
+
+   **5c. Simulasi `config:show` untuk tiga kunci, output mentah, tanpa parsing.**
+   - PowerShell. Seluruh blok dibungkus `& { … }` sehingga diparse dan dijalankan sebagai
+     satu pernyataan, juga saat ditempel ke konsol interaktif; setiap `throw` menghentikan
+     seluruh blok. Sebelum setiap panggilan executable, `$global:LASTEXITCODE` diisi
+     sentinel `-1`, sehingga yang diperiksa selalu kode keluar baru (panggilan yang tidak
+     menghasilkan kode keluar tetap dianggap gagal). Variabel environment dipulihkan di
+     `finally`.
+     ```powershell
+     & {
+         $php = '<PATH-PHP-TERVERIFIKASI>'
+         if ($php -match '[<>]') { throw 'GAGAL: placeholder belum diganti.' }
+         if (-not [System.IO.Path]::IsPathRooted($php) -or
+             -not (Test-Path -LiteralPath $php -PathType Leaf) -or
+             [System.IO.Path]::GetFileName($php) -notmatch '^php(\.exe)?$') {
+             throw 'GAGAL: path PHP harus path lengkap ke executable php/php.exe yang ada.'
+         }
+         $global:LASTEXITCODE = -1
+         & $php -v | Out-Null
+         if ($global:LASTEXITCODE -ne 0) { throw "GAGAL: '$php -v' gagal (kode keluar $global:LASTEXITCODE)." }
+         $names = 'APP_ENV','DB_CONNECTION','DB_DATABASE','DB_HOST'
+         $saved = @{}
+         foreach ($n in $names) { $saved[$n] = [Environment]::GetEnvironmentVariable($n, 'Process') }
+         try {
+             $env:APP_ENV = 'testing'; $env:DB_CONNECTION = 'mysql'
+             $env:DB_DATABASE = 'tesys_test'; $env:DB_HOST = '127.0.0.1'
+             foreach ($k in 'database.default','database.connections.mysql.database','database.connections.mysql.host') {
+                 $global:LASTEXITCODE = -1
+                 & $php artisan config:show $k
+                 if ($global:LASTEXITCODE -ne 0) { throw "GAGAL: config:show $k (kode keluar $global:LASTEXITCODE)." }
+             }
+         }
+         finally {
+             foreach ($n in $names) { [Environment]::SetEnvironmentVariable($n, $saved[$n], 'Process') }
+         }
+     }
+     ```
+   - Git Bash. Seluruh pemeriksaan berada dalam subshell `( … )` yang diparse utuh
+     sebelum dijalankan; setiap kegagalan memanggil `exit 1` dan menghentikan subshell
+     dengan status gagal. Setiap panggilan executable diperiksa langsung lewat `||`.
+     Variabel hanya berlaku untuk proses anak lewat `env`, jadi tidak perlu pemulihan.
+     ```bash
+     PHP_BIN='<PATH-PHP-TERVERIFIKASI>'
+     (
+       case "$PHP_BIN" in *'<'*|*'>'*) echo "GAGAL: placeholder belum diganti." >&2; exit 1;; esac
+       case "$PHP_BIN" in /*|[A-Za-z]:[/\\]*) ;; *) echo "GAGAL: path PHP harus path lengkap." >&2; exit 1;; esac
+       [ -f "$PHP_BIN" ] || { echo "GAGAL: file PHP tidak ditemukan." >&2; exit 1; }
+       case "${PHP_BIN##*[/\\]}" in php|php.exe) ;; *) echo "GAGAL: file bukan php/php.exe." >&2; exit 1;; esac
+       "$PHP_BIN" -v >/dev/null || { echo "GAGAL: '$PHP_BIN -v' gagal." >&2; exit 1; }
+       for k in database.default database.connections.mysql.database database.connections.mysql.host; do
+         env APP_ENV=testing DB_CONNECTION=mysql DB_DATABASE=tesys_test DB_HOST=127.0.0.1 \
+           "$PHP_BIN" artisan config:show "$k" || { echo "GAGAL: config:show $k." >&2; exit 1; }
+       done
+     )
+     ```
+     Status keluar bukan 0 berarti pemeriksaan gagal: berhenti dan jangan menjalankan test.
+   - Output mentah ditampilkan apa adanya kepada pengguna, dan **manusia mengonfirmasi**
+     bahwa ketiga nilai sesuai tabel. Claude tidak menyimpulkan "sesuai" lewat parsing
+     otomatis. Jika output kosong, berisi baris tambahan, berformat asing, atau ambigu
+     sedikit pun, berhenti.
+
+   **5d. `DB_URL` tidak diperiksa lewat `config:show`.** Mencetaknya dapat menampilkan
+   kredensial. Yang diperiksa hanya: `phpunit.xml` memuat `DB_URL` dengan `value=""`
+   (langkah 3), dan 5a tidak menemukan `DB_URL`/`DATABASE_URL` di environment proses.
+   Ini **bukan bukti** bahwa `DB_URL` efektif di PHPUnit kosong; nyatakan keterbatasan ini
+   saat melapor dan jangan menyebut `DB_URL` "aman".
+   Dampak pada target koneksi: di Laravel, `url` digabung ke konfigurasi saat koneksi
+   dibuat dan bagian-bagiannya menimpa `database`/`host`. Karena itu nilai
+   `database`/`host` yang ditampilkan `config:show` di 5c **belum tentu target koneksi
+   sebenarnya** bila `DB_URL` efektif terisi. Simulasi juga tidak mengatur `DB_URL`,
+   sehingga tidak dapat menunjukkan apakah hal ini terjadi.
+
+   **Sifat hasil.** Langkah 5 adalah **simulasi, bukan bukti langsung** konfigurasi
+   efektif PHPUnit. Yang dibuktikan hanya ini: pada saat dijalankan, proses Artisan
+   tersebut — dengan `APP_ENV`, `DB_CONNECTION`, `DB_DATABASE`, dan `DB_HOST` yang diatur
+   oleh simulasi itu sendiri — menghasilkan nilai yang ditampilkan untuk tiga kunci di
+   atas. Simulasi **tidak** membuktikan asal nilai tersebut (env, file env lain seperti
+   `.env.testing`, atau nilai di file konfigurasi), **tidak** membuktikan target koneksi
+   aktual (lihat 5d), dan **tidak** membuktikan bahwa PHPUnit akan memakai konfigurasi
+   yang sama. Hasil yang sesuai **tidak mengizinkan test berjalan dengan sendirinya**:
+   test tetap hanya atas permintaan eksplisit pengguna dan setelah seluruh langkah §4.3
+   terpenuhi. Jika target database tidak dapat diverifikasi secara meyakinkan, berhenti
+   dan jangan jalankan test.
+
+   **Skrip parser otomatis: tidak dipakai.** Parser output `config:show` hanya boleh
+   diusulkan kembali setelah format output divalidasi manusia di lingkungan TESYS
+   [PERLU KONFIRMASI MANUSIA], dan tetap tidak boleh mencetak `...mysql.url`.
+
+6. **Evaluasi, bukan pernyataan aman.** Hasil langkah 1–5 yang sesuai berarti syarat
+   minimum terpenuhi, bukan bahwa test aman. Claude tidak boleh menyatakan test "aman"
+   sebelum semua langkah terpenuhi, dan pemeriksaan di atas tetap memiliki batas:
+   simulasi bukan bukti proses PHPUnit, dan pencarian koneksi tidak menjamin lengkap.
+   Jika ada keraguan (hasil tidak sesuai, host bukan loopback, `DB_URL` tidak dapat
+   dipastikan kosong sesuai langkah 5d, koneksi tambahan tidak jelas, path PHP tidak pasti), berhenti dan minta
+   konfirmasi manusia. Test baru dijalankan jika pengguna memintanya.
+
+7. Dilarang `config:cache` / `optimize` secara lokal tanpa membersihkannya lagi sebelum test.
 
 ## 5. Database rules
 
@@ -183,8 +402,11 @@ Target flow: `feature/*` → `develop` → review/UAT → `main` → production.
 - Any change to workflow, access, money, numbering or file access needs a
   feature test (follow `CostRequestWorkflowTest`, `CostRequestAccessTest`,
   `BudgetConsumptionTest`, `SecureFileAccessTest`).
-- Run: `C:/laragon/bin/php/php-8.3.30-Win32-vs16-x64/php.exe artisan test --filter=<Name>`
-  (requires MySQL `tesys_test`).
+- Run (hanya atas permintaan pengguna, dan hanya setelah seluruh prosedur §4.3 terpenuhi):
+  `<PATH-PHP-TERVERIFIKASI> artisan test --filter=<Name>` (requires MySQL `tesys_test`).
+  `<PATH-PHP-TERVERIFIKASI>` adalah placeholder dokumentasi: wajib diganti dengan executable
+  PHP terverifikasi (§4.3 langkah 2) sebelum perintah dijalankan; jangan pernah
+  mengeksekusi placeholder literal, dan jangan mengasumsikan path tertentu.
 - Report test results honestly, including failures and skipped runs.
 
 ## 12. Code quality requirements
@@ -262,7 +484,7 @@ A change is not done until each applicable item is checked:
 - [ ] Empty states handled
 - [ ] Existing workflow preserved
 - [ ] Tests added/updated
-- [ ] Relevant tests passed
+- [ ] Relevant tests passed (run only when explicitly requested by the user and after completing all safety checks in §4.3; if not run, report that they were not run).
 - [ ] Security implications reviewed
 - [ ] Performance implications reviewed
 - [ ] Regression risks reviewed
@@ -279,7 +501,7 @@ A change is not done until each applicable item is checked:
 5. **Identify risks** and classify (section 20).
 6. **Wait for approval** when HIGH or CRITICAL.
 7. **Implement the smallest safe change.**
-8. **Run tests.**
+8. **Run tests** — only when explicitly requested by the user and after completing all safety checks in §4.3. If tests are not run, report that they were not run.
 9. **Self-review** the diff.
 10. **Report changed files** (always list every new/changed file — the user uploads manually).
 11. **Report risks.**

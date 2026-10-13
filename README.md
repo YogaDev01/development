@@ -73,6 +73,8 @@ MySQL. Siapkan sekali:
 CREATE DATABASE tesys_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
+Sebelum menjalankan pengujian, ikuti seluruh prosedur keselamatan test di `CLAUDE.md` §4.3 (langkah 1–7). Jangan mengandalkan satu output `config:show` sebagai bukti bahwa target database PHPUnit sudah aman.
+
 ```bash
 php artisan test
 ```

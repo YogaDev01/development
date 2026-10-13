@@ -42,9 +42,7 @@ develop  ──push──▶  origin/develop-v2  ──PR + review + UAT──�
 
 ## Before running tests
 
-See `CLAUDE.md` §4: `bootstrap/cache/config.php` must not exist, and
-`APP_ENV=testing DB_DATABASE=tesys_test php artisan config:show
-database.connections.mysql.database` must print `tesys_test`.
+Follow the full test-safety procedure in `CLAUDE.md` §4.3 (steps 1–7). Do not use a shortened check: a `config:show` result is a simulation, not proof of the effective PHPUnit database target. Run tests only when explicitly requested and after completing the required safety checks.
 
 ## Rules for Claude
 
