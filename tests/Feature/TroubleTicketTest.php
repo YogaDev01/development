@@ -474,14 +474,14 @@ class TroubleTicketTest extends TestCase
         $this->actingAs($this->creator)->post('/trouble-ticket', [
             'site_id' => $this->site->id, 'assigned_to' => $this->tech->id,
             'problem_id' => 999, 'issue_id' => 999, 'description' => 'Y',
-        ])->assertSessionHasErrors(['issue_id', 'problem_id']);
+        ])->assertSessionHasErrors(['tickets.0.issue_id', 'tickets.0.problem_id']);
 
         // Date Open di masa depan ditolak.
         $this->post('/trouble-ticket', [
             'site_id' => $this->site->id, 'assigned_to' => $this->tech->id,
             'problem_id' => $this->problem->id, 'issue_id' => $this->issue->id, 'description' => 'Y',
             'reported_at' => now()->addHour()->format('Y-m-d H:i'),
-        ])->assertSessionHasErrors('reported_at');
+        ])->assertSessionHasErrors('tickets.0.reported_at');
 
         $t = $this->createTicket([
             'device_id' => TroubleTicketDevice::create(['name' => 'MODEM'])->id,
@@ -503,7 +503,7 @@ class TroubleTicketTest extends TestCase
             'site_id' => $this->site->id, 'assigned_to' => $this->tech->id,
             'problem_id' => $this->problem->id, 'issue_id' => $this->issue->id, 'description' => 'Y',
             'rca_id' => $rcaLain->id, 'sub_rca_id' => $this->subRca->id,
-        ])->assertSessionHasErrors('sub_rca_id');
+        ])->assertSessionHasErrors('tickets.0.sub_rca_id');
 
         // Create Plan wajib tanggal kunjungan; target online ikut tersimpan.
         $this->actingAs($this->tech)->get("/trouble-ticket/{$t->id}");
@@ -698,12 +698,13 @@ class TroubleTicketTest extends TestCase
             ->assertOk()->assertSee($t->ticket_number);
         $this->actingAs($this->leader)->get("/trouble-ticket/{$t->id}")->assertOk()->assertSee('id="ttChatList"', false);
         $this->actingAs($this->leader)->getJson("/trouble-ticket/{$t->id}/messages?after_id=0")->assertOk()->assertJsonStructure(['html', 'status']);
-        // Form buat tiket: tanpa Problem, Initial Problem, Flag Alarm, dan Status TT.
+        // Form buat tiket: blok gangguan berindeks + tombol tambah tiket,
+        // tanpa Problem, Initial Problem, Flag Alarm, dan Status TT.
         $this->actingAs($this->creator)->get('/trouble-ticket/create')->assertOk()
-            ->assertSee('id="fldSubRca"', false)
-            ->assertDontSee('id="fldProblem"', false)
-            ->assertDontSee('id="fldIssue"', false)
-            ->assertDontSee('id="fldAlarm"', false)
+            ->assertSee('name="tickets[0][sub_rca_id]"', false)
+            ->assertDontSee('name="problem_id"', false)
+            ->assertDontSee('name="issue_id"', false)
+            ->assertDontSee('name="flag_alarm"', false)
             ->assertDontSee('Status TT');
 
         $this->actingAs($this->leader)->get('/trouble-ticket/settings')->assertForbidden();
@@ -857,6 +858,38 @@ class TroubleTicketTest extends TestCase
 
         Carbon::setTestNow();
         TroubleTicketSeverity::lupakanTangga();
+    }
+
+    public function test_beberapa_tiket_sekaligus_untuk_teknisi_yang_sama(): void
+    {
+        $this->actingAs($this->creator)->post('/trouble-ticket', [
+            'site_id' => $this->site->id,
+            'assigned_to' => $this->tech->id,
+            'tickets' => [
+                ['description' => 'Modem mati', 'rca_id' => $this->rca->id, 'sub_rca_id' => $this->subRca->id],
+                ['description' => 'Antena miring'],
+            ],
+        ])->assertRedirect(route('trouble-ticket.index'));
+
+        $this->assertSame(2, TroubleTicket::count());
+        $tiket = TroubleTicket::orderBy('id')->get();
+        $this->assertSame(['Modem mati', 'Antena miring'], $tiket->pluck('description')->all());
+        // Semua ke teknisi yang sama, nomornya tetap unik.
+        $this->assertSame([$this->tech->id, $this->tech->id], $tiket->pluck('assigned_to')->all());
+        $this->assertSame(2, $tiket->pluck('ticket_number')->unique()->count());
+        $this->assertSame($this->rca->id, $tiket->first()->rca_id);
+        $this->assertNull($tiket->last()->rca_id);
+
+        // Satu blok cacat = tidak ada yang tersimpan (validasi berjalan lebih dulu).
+        $this->post('/trouble-ticket', [
+            'site_id' => $this->site->id,
+            'assigned_to' => $this->tech->id,
+            'tickets' => [
+                ['description' => 'Boleh'],
+                ['description' => ''],
+            ],
+        ])->assertSessionHasErrors('tickets.1.description');
+        $this->assertSame(2, TroubleTicket::count());
     }
 
     public function test_severity_dihitung_dari_aging_tiket(): void

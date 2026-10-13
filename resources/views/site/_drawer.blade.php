@@ -98,7 +98,7 @@
                     $kv('Program', Site::PROGRAMS[$site->program] ?? $site->program),
                     $kv('Status', Site::STATUSES[$site->status] ?? $site->status),
                     $kv('PIC Site', \App\Http\Controllers\SiteController::technicians($site)),
-                    $kv('Region', \App\Http\Controllers\SiteController::regions($site)),
+                    $kv('Cluster', \App\Http\Controllers\SiteController::regions($site)),
                 ] as $p)
                     <dt>{{ $p['label'] }}</dt><dd>{{ $p['value'] }}</dd>
                 @endforeach

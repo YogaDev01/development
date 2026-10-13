@@ -103,7 +103,7 @@ class SiteController extends Controller
                 }
                 $regionId = $regions[mb_strtolower(trim((string) $c['Cluster']))] ?? null;
                 if (! blank($c['Cluster']) && ! $regionId) {
-                    $errors['region_id'] = "Cluster '{$c['Cluster']}' tidak ditemukan di master Region.";
+                    $errors['region_id'] = "Cluster '{$c['Cluster']}' tidak ditemukan di master Cluster.";
                 }
 
                 $geo = ['pulau_id' => null, 'provinsi_id' => null, 'kota_id' => null, 'kecamatan_id' => null, 'desa_id' => null];
@@ -253,7 +253,7 @@ class SiteController extends Controller
                 ['key' => 'power', 'label' => 'Source Power', 'value' => fn ($r) => Site::SOURCE_POWERS[$r->source_power] ?? $r->source_power],
                 ['key' => 'program', 'label' => 'Program', 'value' => fn ($r) => Site::PROGRAMS[$r->program] ?? $r->program, 'default' => false],
                 ['key' => 'technician', 'label' => 'PIC Site', 'value' => fn ($r) => self::technicians($r) ?: '-'],
-                ['key' => 'region', 'label' => 'Region', 'value' => fn ($r) => self::regions($r) ?: '-'],
+                ['key' => 'region', 'label' => 'Cluster', 'value' => fn ($r) => self::regions($r) ?: '-'],
                 ['key' => 'location', 'label' => 'Location', 'value' => fn ($r) => self::locationSummary($r), 'tooltip' => fn ($r) => self::locationDetail($r)],
                 ['key' => 'network', 'label' => 'Network', 'value' => fn ($r) => $r->gateway ?: '-', 'tooltip' => fn ($r) => self::networkDetail($r), 'default' => false],
                 // Ringkasan Trouble Ticket terbuka yang terlihat oleh user ini.
@@ -265,7 +265,7 @@ class SiteController extends Controller
                 ['key' => 'type', 'label' => 'Tipe', 'value' => fn ($r) => Site::TYPES[$r->type] ?? $r->type],
                 ['key' => 'power', 'label' => 'Source Power', 'value' => fn ($r) => Site::SOURCE_POWERS[$r->source_power] ?? $r->source_power],
                 ['key' => 'program', 'label' => 'Program', 'value' => fn ($r) => Site::PROGRAMS[$r->program] ?? $r->program],
-                ['key' => 'region', 'label' => 'Region', 'value' => fn ($r) => self::regions($r) ?: '-'],
+                ['key' => 'region', 'label' => 'Cluster', 'value' => fn ($r) => self::regions($r) ?: '-'],
                 ['key' => 'pulau', 'label' => 'Island', 'value' => fn ($r) => $r->pulau?->name],
                 ['key' => 'provinsi', 'label' => 'Provinsi', 'value' => fn ($r) => $r->provinsi?->name],
                 ['key' => 'kota', 'label' => 'Kota / Kabupaten', 'value' => fn ($r) => $r->kota?->name],
@@ -512,8 +512,9 @@ class SiteController extends Controller
     }
 
     /**
-     * Region site = region homebase tempat Technician site (PIC internal) terdaftar.
-     * Peta pic_id => [region] dimuat sekali per request.
+     * Cluster site = `sites.region_id` bila sudah diisi; bila belum (site lama),
+     * jatuh ke turunan lama: cluster homebase tempat Technician site terdaftar.
+     * Peta pic_id => [cluster] dimuat sekali per request.
      */
     public static function regions(Site $site): string
     {
@@ -524,6 +525,10 @@ class SiteController extends Controller
                 ->map(fn ($rows) => $rows->map(fn ($d) => $d->homebase?->region?->region_name)->filter()->all()));
         }
         $map = $attrs->get('site_region_map');
+
+        if ($site->region_id) {
+            return (string) $site->region?->region_name;
+        }
 
         return $site->picLinks
             ->filter(fn ($l) => $l->pic?->type === 'internal')

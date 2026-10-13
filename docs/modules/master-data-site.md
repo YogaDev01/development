@@ -55,7 +55,7 @@ Homebase (+ PIC), dan Wilayah berjenjang.
   SLAmeet yang mewajibkan Island & Desa).
 - Template Import Site bertambah kolom `Homebase`, `Cluster`, `Gateway`,
   `Outroute ID`, `Hub`, `Spotbeam`, `Polarisasi`. Homebase dicocokkan dari
-  alamatnya, Cluster dari nama region; Cluster boleh kosong — diambil dari
+  alamatnya, Cluster dari nama cluster di master; Cluster boleh kosong — diambil dari
   Homebase.
 
 ## Halaman Site
@@ -89,10 +89,12 @@ Homebase (+ PIC), dan Wilayah berjenjang.
 - Edit: halaman penuh `GET /site/{id}/edit` (form sama dengan create).
 - Daftar: tanpa kolom No; pemilih "Kolom" (preferensi di localStorage, kunci
   `tesys-colvis:site-index`); default Site ID, Nama Site, Customer, Power,
-  Region, Technician, TT, Action; site INACTIVE disembunyikan kecuali sakelar
+  Cluster, Technician, TT, Action; site INACTIVE disembunyikan kecuali sakelar
   "Tampilkan Inactive"; Nama Site dipotong 60 karakter, penuh saat hover.
-- Region site (turunan, **Needs confirmation**) = region homebase tempat
-  Technician site terdaftar (site_pics → homebase_detail → homebase → region).
+- Cluster site = `sites.region_id` bila sudah diisi; bila kosong (site lama)
+  jatuh ke turunan: cluster homebase tempat Technician site terdaftar
+  (site_pics → homebase_detail → homebase → region). Di layar Site istilahnya "Cluster"
+  (master-nya sendiri masih bernama "Region"); kolom tetap `sites.region_id`.
 - Kartu: Total TT (placeholder), Total Technician = PIC internal unik di site_pics.
 - Kolom PIC Site (`SiteController::technicians()`) = HANYA teknisi site, yaitu
   PIC internal berjabatan "teknisi" (`Site::technicianPic()`, isian field PIC
