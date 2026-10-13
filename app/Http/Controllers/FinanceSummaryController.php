@@ -1448,8 +1448,17 @@ class FinanceSummaryController extends Controller
         // massal supaya tidak N+1 seperti Project::paymentTotal() kalau dipanggil
         // per project. Logikanya identik dengan method tersebut.
         $paidDppByProject = $this->paidDppByProject($scope['invoiceIds']);
+        $paidPoNumberIds  = $this->paidPoNumberIds($scope['invoiceIds']);
 
-        $buildRow = function ($group) use ($paidDppByProject) {
+        $buildRow = function ($group) use ($paidDppByProject, $paidPoNumberIds) {
+            // Qty = jumlah No. PO (project_po_numbers), BUKAN jumlah project/scope
+            // of work. Satu project bisa punya banyak No. PO; Qty mengikuti satuan
+            // yang diterbitkan/ditagih. Value tetap dihitung per project (lihat
+            // komentar di bawah), jadi Qty & Value di tiap tahap memakai basis
+            // yang sama dengan tahapnya, tidak dicampur.
+            $poNumbersOf = fn ($projects) => $projects->flatMap(fn ($p) => $p->poNumbers);
+            $allPoNumbers = $poNumbersOf($group);
+
             // Total PO = NILAI KONTRAK (projects.contract) — nilai yang
             // disepakati di kontrak, terlepas dari No. PO-nya sudah terbit atau
             // belum. PO Received = PO Value (projects.value = SUM nominal No.
@@ -1482,17 +1491,18 @@ class FinanceSummaryController extends Controller
             // dan Value menggambarkan himpunan yang sama.
             $paymentGroup = $group->filter(fn ($p) => ($paidDppByProject[$p->id] ?? 0) > 0);
             $paymentValue = (int) $paymentGroup->sum(fn ($p) => $paidDppByProject[$p->id] ?? 0);
+            $paymentQty   = $allPoNumbers->filter(fn ($pn) => isset($paidPoNumberIds[$pn->id]))->count();
             // Denominator = PO Received (PO Value), bukan nilai kontrak: uang cuma
             // bisa ditagih atas No. PO yang sudah terbit, jadi rate-nya mengukur
             // penerimaan terhadap PO yang benar-benar ada.
             $paymentRate  = $poValue > 0 ? round(($paymentValue / $poValue) * 100) : 0;
 
             return [
-                'po_qty'        => $group->count(),
+                'po_qty'        => $allPoNumbers->count(),
                 'po_value'      => $contractValue,
-                'receive_qty'   => $receiveGroup->count(),
+                'receive_qty'   => $poNumbersOf($receiveGroup)->count(),
                 'receive_value' => $poValue,
-                'payment_qty'   => $paymentGroup->count(),
+                'payment_qty'   => $paymentQty,
                 'payment_value' => $paymentValue,
                 'waiting_qty'   => $waitingGroup->count(),
                 // Selisih di level grup (bukan sum per-PO yang di-clamp), supaya
@@ -1836,6 +1846,30 @@ class FinanceSummaryController extends Controller
         }
 
         return $map;
+    }
+
+    /**
+     * [project_po_number_id => true] — No. PO yang sudah punya penerimaan (cash
+     * receipt > 0, atau invoice-nya berstatus PAID). Dipakai untuk Qty Payment
+     * di Summary PO. Invoice lama tanpa project_po_number_id tidak bisa dikaitkan
+     * ke No. PO, jadi tidak ikut dihitung di Qty (nilainya tetap ikut di Value).
+     */
+    private function paidPoNumberIds(?array $onlyInvoiceIds = null): array
+    {
+        $receivedInvoiceIds = CashReceipt::query()
+            ->when($onlyInvoiceIds !== null, fn ($q) => $q->whereIn('invoice_id', $onlyInvoiceIds))
+            ->groupBy('invoice_id')
+            ->havingRaw('SUM(amount) > 0')
+            ->pluck('invoice_id');
+
+        $ids = Invoice::query()
+            ->whereNotNull('project_po_number_id')
+            ->when($onlyInvoiceIds !== null, fn ($q) => $q->whereIn('id', $onlyInvoiceIds))
+            ->where(fn ($q) => $q->where('status', 'PAID')->orWhereIn('id', $receivedInvoiceIds))
+            ->pluck('project_po_number_id')
+            ->unique();
+
+        return array_fill_keys($ids->map(fn ($v) => (int) $v)->all(), true);
     }
 
     /**

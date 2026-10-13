@@ -167,9 +167,13 @@
         </tbody>
     </table>
 
+    @php
+        // Invoice tercetak = Invoice + Tax; PPh dipotong di muka (captured_total) tidak ikut dicetak.
+        $printTotal = (int) $invoice->billed_amount + (int) $invoice->tax_amount;
+    @endphp
     <div class="totals-row">
         <div class="totals-left">
-            <div class="terbilang">Terbilang: {{ \App\Support\Terbilang::rupiah((int) $invoice->captured_total) }}</div>
+            <div class="terbilang">Terbilang: {{ \App\Support\Terbilang::rupiah($printTotal) }}</div>
 
             @if($invoice->sourceFund)
             <div class="bank-box">
@@ -205,18 +209,9 @@
                     <td class="label">Tax</td>
                     <td class="val">{{ number_format($invoice->tax_amount, 0, ',', '.') }}</td>
                 </tr>
-                {{-- MN-07 — PPh dipotong di muka ikut dicetak, supaya angka
-                     Total Tagihan di kertas bisa direkonsiliasi baris per baris
-                     oleh customer. Baris ini hanya muncul kalau ada potongan. --}}
-                @if($invoice->withholding_tax > 0)
-                <tr>
-                    <td class="label">Withholding Tax (PPh)</td>
-                    <td class="val deduction">({{ number_format($invoice->withholding_tax, 0, ',', '.') }})</td>
-                </tr>
-                @endif
                 <tr class="total">
                     <td>Total Tagihan</td>
-                    <td class="val">{{ number_format($invoice->captured_total, 0, ',', '.') }}</td>
+                    <td class="val">{{ number_format($printTotal, 0, ',', '.') }}</td>
                 </tr>
             </table>
         </div>

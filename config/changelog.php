@@ -26,10 +26,46 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '3.0.0',
+    'current' => '3.0.1',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '3.0.1',
+            'date'    => '2026-10-13',
+            'title'   => 'Trouble Ticket Alur 7 Tahap, Site Master Lebih Ringkas & Perbaikan Settlement',
+            'summary' => 'Trouble Ticket kini memakai alur 7 tahap dengan SLA travel bertahap dan persetujuan penutupan, '
+                       . 'form Site dan alur statusnya disamakan dengan SLAmeet, serta beberapa perbaikan teks Settlement dan export Cost Request.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Trouble Ticket memakai alur 7 tahap, dengan persetujuan penutupan sebelum tiket ditutup.',
+                        'Master RCA berjenjang, dan severity tiket dihitung otomatis dari aging.',
+                        'SLA travel dihitung bertahap mengikuti tahap tiket.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Form dan tabel Site Master disederhanakan; form Site dan alur status tiket disamakan dengan SLAmeet.',
+                        'Teks baris Request dan Settle di tab Settlement kini memakai catatan yang diketik pengaju/penginput, bukan awalan "Akun - Sub COA" yang berulang.',
+                        'Invoice yang dicetak menampilkan Total = Invoice + PPN; baris PPh dipotong di muka tidak lagi dicetak.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Kolom Transaction ID dan Account di export Cost Request kini merujuk batch Treasury yang sama.',
+                        'Qty di Summary Purchase Order kini menghitung No. PO, bukan jumlah project; Qty Payment hanya menghitung No. PO yang sudah diterima pembayarannya.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '3.0.0',

@@ -311,12 +311,11 @@
                                                         <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:13%;">Request</th>
                                                         <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:13%;">Settlement</th>
                                                         <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:12%;">Var</th>
-                                                        <th scope="col" style="color:var(--text-faint);font-size:11px;width:16%;">Note</th>
                                                         <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:center;width:1%;">Action</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="crRealizationBody"></tbody>
-                                                <tfoot><tr style="background:var(--surface-2);"><th colspan="2" class="text-right">Total Settlement</th><th class="text-right" id="crRealizationTotal" style="color:var(--success);"></th><th colspan="3"></th></tr></tfoot>
+                                                <tfoot><tr style="background:var(--surface-2);"><th colspan="2" class="text-right">Total Settlement</th><th class="text-right" id="crRealizationTotal" style="color:var(--success);"></th><th colspan="2"></th></tr></tfoot>
                                             </table>
                                         </div>
                                         <div class="mt-3">
@@ -1908,7 +1907,7 @@ $(function () {
                       + '<td class="text-right" style="font-weight:700;">' + grupReq.toLocaleString('id-ID') + '</td>'
                       + '<td class="text-right" style="font-weight:700;">' + grupSettle.toLocaleString('id-ID') + '</td>'
                       + '<td class="text-right" style="font-weight:700;">' + fmtVar(grupReq - grupSettle) + '</td>'
-                      + '<td></td><td></td>'
+                      + '<td></td>'
                       + '</tr>';
 
                   items.forEach(function (r) {
@@ -1928,6 +1927,7 @@ $(function () {
                     var subCoa   = r.sub_coa || r.des_request || r.cr_item || '-';
                     var reqDesc  = r.des_request || r.cr_item || '-';
                     var setDesc  = r.des_settle || '-';
+                    var noteDesc = r.change_note || '-';
                     var attR     = itemAtts.length
                         ? ' <span class="badge badge-light border text-muted" style="font-size:9px;"><i class="fas fa-paperclip mr-1"></i>' + itemAtts.length + '</span>'
                         : '';
@@ -1937,11 +1937,11 @@ $(function () {
                             + '<div style="font-weight:600;">' + esc(subCoa) + attR + '</div>'
                             + '<div class="cr-clip" style="font-size:11px;"><span class="text-muted">Request:</span> ' + esc(reqDesc) + '</div>'
                             + '<div class="cr-clip" style="font-size:11px;"><span class="text-muted">Settle:</span> ' + esc(setDesc) + '</div>'
+                            + '<div class="cr-clip" style="font-size:11px;"><span class="text-muted">Note:</span> ' + esc(noteDesc) + '</div>'
                         + '</td>'
                         + '<td class="text-right">' + r.total_cr_formatted + '</td>'
                         + '<td class="text-right"><strong>' + r.actual_formatted + '</strong></td>'
                         + '<td class="text-right">' + fmtVar((r.total_cr || 0) - (r.actual || 0)) + '</td>'
-                        + '<td><div class="cr-clip">' + esc(r.change_note || '-') + '</div></td>'
                         + '<td class="text-center">' + aksi + '</td>'
                         + '</tr>';
                   });

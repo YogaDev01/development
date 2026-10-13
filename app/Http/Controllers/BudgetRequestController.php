@@ -18,6 +18,7 @@ use App\Models\BudgetPlan;
 use App\Models\Cluster;
 use App\Models\Beneficiary;
 use App\Models\Account;
+use App\Models\DailyTransactionItem;
 use App\Models\CostCenter;
 use App\Models\User;
 use App\Services\NotifyService;
@@ -564,7 +565,22 @@ class BudgetRequestController extends Controller
 
             $stripped = preg_replace('/^' . preg_quote($label, '/') . '\s*[-\x{2013}\x{2014}]\s*/iu', '', $desc);
             if ($stripped !== null && $stripped !== $desc) {
-                return trim($stripped);
+                $desc = trim($stripped);
+                break;
+            }
+        }
+
+        /*
+         | Sisa teks yang PERSIS sama dengan salah satu label (akun/Sub COA)
+         | berarti deskripsinya memang cuma mengulang nama itu sendiri —
+         | tidak ada keterangan nyata di baliknya. Kembalikan string kosong
+         | supaya pemanggil tidak menampilkannya lagi (informasi CoA/Sub COA
+         | sudah ada di judul grup/header, tidak perlu diulang di deskripsi).
+         */
+        foreach ($labels as $label) {
+            $label = trim((string) $label);
+            if ($label !== '' && mb_strtolower($desc) === mb_strtolower($label)) {
+                return '';
             }
         }
 
@@ -577,11 +593,16 @@ class BudgetRequestController extends Controller
         $subCoa = trim((string) ($detail->budgetDetail?->deskripsi ?? ''));
 
         // Pemisah yang dulu dipakai saat input manual bisa berbasis nama akun
-        // ATAU Sub COA — dicoba keduanya, bukan cuma akun.
+        // ATAU Sub COA — dicoba keduanya, bukan cuma akun. Sisa yang ternyata
+        // cuma mengulang salah satu nama itu (tanpa keterangan nyata) ikut
+        // dibuang oleh stripLeadingLabel() — fallback-nya "-", BUKAN nama akun,
+        // supaya tidak mengulang informasi yang sudah ada di judul grup/header.
         $desc = $this->stripLeadingLabel((string) $detail->description, $akun, $subCoa);
         $note = trim((string) $detail->notes);
 
-        if ($desc === '') $desc = $akun !== '' ? $akun : '-';
+        if ($desc === '') {
+            return $note !== '' ? $note : '-';
+        }
 
         return $note !== '' ? $desc . ' — ' . $note : $desc;
     }
@@ -597,6 +618,33 @@ class BudgetRequestController extends Controller
         $desc = $this->stripLeadingLabel((string) $detail->description, $akun);
 
         return $desc !== '' ? $desc : ($akun !== '' ? $akun : '-');
+    }
+
+    /**
+     * Keterangan rincian PENGAJUAN untuk baris "Request:" di tab Settlement —
+     * teks bebas yang ditulis pengaju, BUKAN kolom description-nya.
+     *
+     * description auto-terisi "{Akun} — {Sub COA}" saat baris tertaut budget
+     * detail (lihat syncDetails()); itu cuma mengulang info yang sudah ada di
+     * judul grup/item, jadi notes-lah yang dipakai duluan kalau ada. description
+     * tetap jadi fallback (habis dibuang awalan labelnya) untuk baris lama yang
+     * tidak tertaut budget detail, di mana ia memang bisa memuat teks bebas.
+     */
+    private function requestNoteLabel(?RequestDetail $rd, ?string $rawDescriptionFallback): string
+    {
+        if ($rd) {
+            $note = trim((string) $rd->notes);
+            if ($note !== '') return $note;
+
+            $desc = $this->stripLeadingLabel(
+                (string) $rd->description,
+                $rd->account?->name,
+                $rd->budgetDetail?->deskripsi
+            );
+            return $desc !== '' ? $desc : '-';
+        }
+
+        return $this->stripLeadingLabel((string) $rawDescriptionFallback) ?: '-';
     }
 
     private function syncRealizations(BudgetRequest $cr, Request $request): void
@@ -1426,17 +1474,28 @@ class BudgetRequestController extends Controller
             'realizations' => $cr->realizations->map(fn($r) => [
                 'request_detail_id' => $r->request_detail_id,
                 'cr_item'           => $r->requestDetail?->description ?? ($r->description ?? '-'),
-                // Deskripsi yang diketik pengaju di form Cost Request (kolom
-                // DESKRIPSI pada Rincian Pengajuan), bukan label akun.
-                'des_request'       => $r->requestDetail?->description
-                                        ?: ($r->description ?: '-'),
+                // Keterangan yang diketik pengaju di form Cost Request. Kolom
+                // DESKRIPSI rincian ($rd->description) auto-terisi "{Akun} —
+                // {Sub COA}" begitu baris tertaut budget detail (lihat
+                // syncDetails()) — BUKAN teks bebas, jadi tidak dipakai di
+                // sini kalau ada catatan ($rd->notes), persis seperti yang
+                // ditampilkan tab Request untuk baris yang sama. Kalaupun
+                // deskripsinya dipakai (baris lama tanpa budget detail),
+                // awalan "{Akun} - " / "{Sub COA} - " tetap dibuang — info itu
+                // sudah ada di judul grup & judul tebal item di atasnya.
+                'des_request'       => $this->requestNoteLabel($r->requestDetail, $r->description),
                 // Sub COA (deskripsi budget plan detail dari baris pengajuan yang
                 // ditautkan) — judul tebal item di tab Settlement drawer.
                 'sub_coa'           => $r->requestDetail?->budgetDetail?->deskripsi
                                         ?: ($r->requestDetail ? $this->subCoaLabel($r->requestDetail) : null),
                 // Teks baris "Settle:" di drawer — isi kolom "Description Settle"
-                // di form Submit Settlement (disimpan ke kolom notes).
-                'des_settle'        => $r->notes ?: '-',
+                // di form Submit Settlement (disimpan ke kolom notes), dengan
+                // awalan COA/Sub COA dibuang dengan alasan yang sama.
+                'des_settle'        => $this->stripLeadingLabel(
+                                            (string) ($r->notes ?: ''),
+                                            $r->account?->name,
+                                            $r->requestDetail?->budgetDetail?->deskripsi
+                                        ) ?: '-',
                 'total_cr'          => $r->requestDetail?->total ?? 0,
                 'total_cr_formatted'=> number_format($r->requestDetail?->total ?? 0, 0, ',', '.'),
                 'actual'            => $r->amount,
@@ -3025,12 +3084,26 @@ class BudgetRequestController extends Controller
         return response()->json($data->values());
     }
 
+    /**
+     * Item batch Treasury yang membayar pengajuan awal CR ini (Second Payment
+     * dikecualikan). Dipakai bersama oleh kolom export Transaction ID & Account
+     * supaya keduanya selalu merujuk batch yang sama.
+     */
+    private function payingTransactionItem(BudgetRequest $cr): ?DailyTransactionItem
+    {
+        return $cr->dailyTransactionItems
+            ->whereNull('second_payment_id')
+            ->where('status', 'INCLUDED')
+            ->sortByDesc('id')
+            ->first();
+    }
+
     public function export(Request $request)
     {
         $query = BudgetRequest::with([
             'type', 'cluster', 'budgetPlan.project', 'budgetPlan.costCenter',
             'applicant', 'beneficiary.pic', 'details.account', 'statusLogs', 'realizations',
-            'dailyTransactionItems.dailyTransaction',
+            'dailyTransactionItems.dailyTransaction.sourceFund',
         ]);
 
         $this->scopeByRole($query);
@@ -3117,20 +3190,17 @@ class BudgetRequestController extends Controller
             | Treasury kebetulan mengetik sesuatu — hasilnya hampir selalu
             | kosong. Baris Second Payment dikecualikan: yang dicari adalah
             | pembayaran pengajuan awalnya.
+            |
+            | Account = No. Rekening proses pembayaran (Treasury > Source Fund >
+            | No Account), bukan Chart of Account rincian — diambil dari batch
+            | Treasury yang sama dengan Transaction ID di atas.
             */
-            'account'   => ['Account',      28, fn ($cr) => $cr->details
-                ->where('status', '!=', 'TAKEOUT')
-                ->map(fn ($d) => $d->account?->name)
-                ->filter()->unique()->implode(', ') ?: '-'],
+            'account'   => ['Account',      28, fn ($cr) => $this->payingTransactionItem($cr)?->dailyTransaction?->sourceFund?->no_account ?? '-'],
             'costtype'  => ['Cost Type',    16, fn ($cr) => $cr->budgetPlan?->isProjectBudget()
                 ? 'Variable Cost'
                 : (self::ACCOUNT_CATEGORY[strtoupper($cr->budgetPlan?->costCenter?->type ?? '')] ?? 'Overhead')],
             'txid'      => ['Transaction ID', 22, function ($cr) {
-                $item = $cr->dailyTransactionItems
-                    ->whereNull('second_payment_id')
-                    ->where('status', 'INCLUDED')
-                    ->sortByDesc('id')
-                    ->first();
+                $item = $this->payingTransactionItem($cr);
 
                 return $item?->dailyTransaction?->code
                     ?? ($cr->statusLogs->firstWhere('action_type', 'paid')?->notes ?: '-');
@@ -3160,13 +3230,26 @@ class BudgetRequestController extends Controller
                 ->getStartColor()->setRGB('0D1B2A');
             $sheet->getStyle($col . '1')->getFont()->getColor()->setRGB('FFFFFF');
             $sheet->getColumnDimension($col)->setWidth($columnDefs[$key][1]);
+            // Transaction ID & No. Rekening berupa angka panjang (mis.
+            // 202609280010009) — kalau dibiarkan bertipe numerik, Excel
+            // menampilkannya sebagai notasi ilmiah (2,02607E+14). Kedua kolom
+            // diformat teks sejak header.
+            if (in_array($key, ['txid', 'account'], true)) {
+                $sheet->getStyle($col . ':' . $col)->getNumberFormat()
+                    ->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
+            }
         }
 
         $row = 2;
         foreach ($budgetRequests as $cr) {
             foreach ($activeCols as $i => $key) {
-                $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1);
-                $sheet->setCellValue($col . $row, $columnDefs[$key][2]($cr));
+                $col   = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1);
+                $value = $columnDefs[$key][2]($cr);
+                if (in_array($key, ['txid', 'account'], true)) {
+                    $sheet->setCellValueExplicit($col . $row, (string) $value, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+                } else {
+                    $sheet->setCellValue($col . $row, $value);
+                }
             }
             $row++;
         }

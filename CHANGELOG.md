@@ -4,6 +4,26 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [3.0.1] - 2026-10-13 — Trouble Ticket Alur 7 Tahap, Site Master Lebih Ringkas & Perbaikan Settlement
+
+Trouble Ticket kini memakai alur 7 tahap dengan SLA travel bertahap dan persetujuan
+penutupan, form Site dan alur statusnya disamakan dengan SLAmeet, serta beberapa
+perbaikan teks Settlement dan export Cost Request.
+
+### Baru
+- Trouble Ticket memakai alur 7 tahap, dengan persetujuan penutupan sebelum tiket ditutup.
+- Master RCA berjenjang, dan severity tiket dihitung otomatis dari aging.
+- SLA travel dihitung bertahap mengikuti tahap tiket.
+
+### Berubah
+- Form dan tabel Site Master disederhanakan; form Site dan alur status tiket disamakan dengan SLAmeet.
+- Teks baris Request dan Settle di tab Settlement kini memakai catatan yang diketik pengaju/penginput, bukan awalan "Akun - Sub COA" yang berulang.
+- Invoice yang dicetak menampilkan Total = Invoice + PPN; baris PPh dipotong di muka tidak lagi dicetak.
+
+### Perbaikan
+- Kolom Transaction ID dan Account di export Cost Request kini merujuk batch Treasury yang sama.
+- Qty di Summary Purchase Order kini menghitung No. PO, bukan jumlah project; Qty Payment hanya menghitung No. PO yang sudah diterima pembayarannya.
+
 ## [3.0.0] - 2026-10-09 — Penugasan, Profil Baru, Jejak Aktivitas & Alur Proyek Dua Langkah
 
 Rilis besar: modul Penugasan antar-pengguna, halaman Profil yang dirombak

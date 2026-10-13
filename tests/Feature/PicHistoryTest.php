@@ -190,13 +190,12 @@ class PicHistoryTest extends TestCase
             'amount' => 100_000, 'qty' => 1, 'total' => 100_000,
         ]);
 
-        // Settlement-nya TIDAK pernah diberi keterangan tambahan — description
-        // yang tersimpan cuma mengulang nama Sub COA itu sendiri (lihat
-        // syncRealizations: description disalin apa adanya dari rincian
-        // pengajuan, dan di sini isinya kebetulan sama dengan nama Sub COA).
+        // "Description Settle" pada form Submit Settlement disimpan di kolom
+        // notes (lihat 'des_settle' di showJson()). Di sini isinya cuma
+        // mengulang nama Sub COA tanpa keterangan nyata.
         BudgetRequestRealization::create([
             'budget_request_id' => $cr->id, 'request_detail_id' => $rd->id,
-            'description' => 'Dana Tidak Terduga - Dana Tidak Terduga',
+            'description' => '', 'notes' => 'Dana Tidak Terduga - Dana Tidak Terduga',
             'amount' => 0, 'qty' => 1, 'total' => 0,
         ]);
 
@@ -208,8 +207,80 @@ class PicHistoryTest extends TestCase
         $this->assertSame('Dana Tidak Terduga', $realization['sub_coa']);
         // "Sub COA - " di depan dibuang: yang tersisa hanya keterangan aslinya.
         $this->assertSame('beli kabel dan colokan buat site al kautsar', $realization['des_request']);
-        // Settlement tanpa keterangan tambahan jatuh balik ke nama Sub COA —
-        // bukan "Dana Tidak Terduga - Dana Tidak Terduga" yang berulang.
-        $this->assertSame('Dana Tidak Terduga', $realization['des_settle']);
+        // Settlement tanpa keterangan tambahan APA PUN -> "-", bukan mengulang
+        // nama Sub COA (info itu sudah ada di judul tebal item di atasnya).
+        $this->assertSame('-', $realization['des_settle']);
+    }
+
+    public function test_des_request_tidak_mengulang_nama_akun_saat_sisanya_hanya_nama_sub_coa(): void
+    {
+        $admin   = $this->userWithRole('superadmin');
+        $plan    = $this->makeBudgetPlan();
+        $account = \App\Models\Account::create(['name' => 'Transport Field', 'category' => 'Variable Cost', 'status' => 'ACTIVE']);
+        $bpd     = BudgetPlanDetail::create([
+            'budget_plan_id' => $plan->id, 'account_id' => $account->id, 'deskripsi' => 'Transport CM PM',
+            'amount' => 1_000_000, 'qty' => 1, 'total' => 1_000_000,
+        ]);
+
+        $cr = $this->makeCostRequest(['budget_plan' => $plan, 'type_id' => $this->makeRequestType('Cash Advance')->id]);
+
+        // Deskripsi ditulis "{Akun} - {Sub COA}" — cuma label, tanpa keterangan
+        // nyata (pola input lama yang dikeluhkan user: nama COA & Sub COA
+        // terbaca dobel di layar, padahal sudah ada di judul grup/header).
+        $rd = RequestDetail::create([
+            'budget_request_id' => $cr->id, 'budget_detail_id' => $bpd->id, 'account_id' => $account->id,
+            'description' => 'Transport Field - Transport CM PM',
+            'amount' => 50_000, 'qty' => 1, 'total' => 50_000,
+        ]);
+        BudgetRequestRealization::create([
+            'budget_request_id' => $cr->id, 'request_detail_id' => $rd->id, 'account_id' => $account->id,
+            'description' => '', 'amount' => 50_000, 'qty' => 1, 'total' => 50_000,
+        ]);
+
+        $realization = $this->actingAs($admin)
+            ->getJson('/budget-request/' . $cr->id . '/detail-json')
+            ->assertOk()
+            ->json('realizations.0');
+
+        $this->assertSame('Transport CM PM', $realization['sub_coa']);
+        $this->assertSame('-', $realization['des_request']);
+    }
+
+    public function test_des_request_memakai_notes_rincian_bukan_description_auto_terisi(): void
+    {
+        $admin   = $this->userWithRole('superadmin');
+        $plan    = $this->makeBudgetPlan();
+        $account = \App\Models\Account::create(['name' => 'Komunikasi', 'category' => 'Variable Cost', 'status' => 'ACTIVE']);
+        $bpd     = BudgetPlanDetail::create([
+            'budget_plan_id' => $plan->id, 'account_id' => $account->id, 'deskripsi' => 'Perizinan dan koordinasi warga',
+            'amount' => 500_000, 'qty' => 1, 'total' => 500_000,
+        ]);
+
+        $cr = $this->makeCostRequest(['budget_plan' => $plan, 'type_id' => $this->makeRequestType('Cash Advance')->id]);
+
+        // description auto-terisi "{Akun} — {Sub COA}" oleh syncDetails() saat
+        // baris tertaut budget detail — keterangan BEBAS yang ditulis pengaju
+        // ada di notes, bukan di sini. Tab Request sudah membaca notes untuk
+        // baris yang sama; tab Settlement wajib konsisten.
+        $rd = RequestDetail::create([
+            'budget_request_id' => $cr->id, 'budget_detail_id' => $bpd->id, 'account_id' => $account->id,
+            'description' => 'Komunikasi — Perizinan dan koordinasi warga',
+            'notes' => 'Untuk kebutuhan 2 site sekaligus.',
+            'amount' => 500_000, 'qty' => 1, 'total' => 500_000,
+        ]);
+        BudgetRequestRealization::create([
+            'budget_request_id' => $cr->id, 'request_detail_id' => $rd->id, 'account_id' => $account->id,
+            'description' => '', 'notes' => 'Ada tambahan biaya tak terduga di lokasi.',
+            'amount' => 500_000, 'qty' => 1, 'total' => 500_000,
+        ]);
+
+        $realization = $this->actingAs($admin)
+            ->getJson('/budget-request/' . $cr->id . '/detail-json')
+            ->assertOk()
+            ->json('realizations.0');
+
+        $this->assertSame('Perizinan dan koordinasi warga', $realization['sub_coa']);
+        $this->assertSame('Untuk kebutuhan 2 site sekaligus.', $realization['des_request']);
+        $this->assertSame('Ada tambahan biaya tak terduga di lokasi.', $realization['des_settle']);
     }
 }
