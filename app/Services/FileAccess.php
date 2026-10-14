@@ -103,6 +103,7 @@ class FileAccess
             'daily_transaction_attachments'    => $this->allowsMenu('finance-daily-transaction'),
             'cost_register_attachments'        => $this->allowsMenu('finance-daily-transaction'),
             'customer_attachments'             => $this->allowsMenu('customer'),
+            'site_documents'                   => $this->allowsMenu('site'),
             'delivery_note_evidence'           => $this->allowsMenu('delivery-note'),
 
             // Lampiran log Project Monitoring mengikuti Access Group proyek,

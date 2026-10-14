@@ -175,6 +175,12 @@ SLA di tab **SLA**.
 - Label kejadian di tab **Log** dan timeline berbahasa **Inggris**
   (`TroubleTicketMessage::EVENTS`) — satu-satunya bagian modul ini yang tidak
   berbahasa Indonesia; permintaan pengguna 13 Okt 2026.
+- Kolom **Action** di daftar punya tombol **Close** untuk tiket berstatus
+  `PROGRESS_DONE` (14 Okt 2026): hanya tampil bagi pemegang
+  `AccessRoles::TROUBLE_TICKET_APPROVE` yang bukan teknisi tiket itu, dan
+  server tetap memeriksa ulang lewat `canApproveClose()`. Konfirmasinya memakai
+  `data-confirm` bawaan tesys-ui.js. Evidence tidak ditampilkan di daftar —
+  pemeriksaannya tetap di halaman detail.
 - Kolom **Problem** di daftar diganti **RCA** (isi `rca_label` / `sub_rca_label`);
   filter kolomnya ikut berubah (`data-rca`).
 - Form buat tiket mengirim satu blok Gangguan sebagai `tickets[0][...]`.
@@ -305,7 +311,7 @@ di dev, jadi perubahan ditulis sebagai migrasi baru (saat itu 0 tiket).
 
 | Kolom | Diisi saat | Keterangan |
 |---|---|---|
-| `ticket_number` (dulu `tt_number`) | buat tiket | otomatis `TT-0001/10/26` |
+| `ticket_number` (dulu `tt_number`) | buat tiket | otomatis `T.0000011026` sejak 14 Okt 2026 = `T.` + 6 digit urutan + bulan (mm) + tahun (yy). Urutannya **berjalan terus** (tidak reset per bulan/tahun), satu rangkaian `DocumentSequence` bernama `trouble-ticket`, disemai dari jumlah tiket yang ada. Tiket lama tetap memakai format `TT-0001/10/26` dan tidak diubah |
 | `external_ref` | — | **tidak lagi diisi**; dihapus dari form, daftar, detail & export 12 Okt 2026. Kolom dipertahankan untuk 12 tiket lama |
 | `problem_id` (dulu kategori) | — | **tidak lagi diisi dari form buat tiket** (12 Okt 2026). Tetap diterima bila dikirim (integrasi) dan menentukan target SLA; tanpa Problem, SLA jatuh ke kebijakan umum (`problem_id` NULL) |
 | `issue_id` | — | **Initial Problem**. Dihapus dari form buat tiket (12 Okt 2026); kolom & master tetap ada, nilainya masih ditampilkan di daftar/detail/export untuk tiket lama |

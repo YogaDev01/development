@@ -38,7 +38,7 @@
                             <tr><th>Tipe Bangunan</th><td>{{ Site::TYPES[$site->type] ?? $site->type }}</td></tr>
                             <tr><th>Source Power</th><td>{{ Site::SOURCE_POWERS[$site->source_power] ?? $site->source_power }}</td></tr>
                             <tr><th>Program</th><td>{{ Site::PROGRAMS[$site->program] ?? $site->program }}</td></tr>
-                            <tr><th>PIC Site</th><td>{{ \App\Http\Controllers\SiteController::technicians($site) ?: '-' }}</td></tr>
+                            <tr><th>Teknisi</th><td>{{ \App\Http\Controllers\SiteController::technicians($site) ?: '-' }}</td></tr>
                             <tr><th>Cluster</th><td>{{ \App\Http\Controllers\SiteController::regions($site) ?: '-' }}</td></tr>
                             <tr><th>Site Keeper</th><td>{{ $site->keepers->pluck('name')->implode(', ') ?: '-' }}</td></tr>
                             <tr><th>Status</th><td>
@@ -181,6 +181,179 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+
+        {{-- Dokumen --}}
+        <div class="card card-primary card-outline shadow-sm">
+            <div class="card-header d-flex align-items-center">
+                <h3 class="card-title"><i class="fas fa-folder-open mr-1"></i> Dokumen Site ({{ $site->documents->count() }})</h3>
+            </div>
+            <div class="card-body">
+                <form action="{{ url('/site/' . $site->id . '/document') }}" method="POST" enctype="multipart/form-data" class="form-row align-items-start mb-3">
+                    @csrf
+                    <div class="col-md-5">
+                        <div class="form-group">
+                            <label class="font-weight-bold" for="docTitle">Judul Dokumen</label>
+                            <input type="text" name="title" id="docTitle" value="{{ old('title') }}" autocomplete="off"
+                                   placeholder="Kosongkan untuk memakai nama berkas"
+                                   class="form-control @error('title') is-invalid @enderror">
+                            @error('title')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="form-group">
+                            <label class="font-weight-bold" for="docFile">Berkas <span class="text-danger">*</span></label>
+                            <input type="file" name="file" id="docFile" class="form-control-file @error('file') is-invalid @enderror">
+                            <small class="form-text text-muted">PDF, gambar, Word, atau Excel. Maksimal 10 MB.</small>
+                            @error('file')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label class="font-weight-bold d-none d-md-block">&nbsp;</label>
+                            <button type="submit" class="btn btn-success btn-block"><i class="fas fa-upload mr-1"></i> Unggah</button>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead>
+                            <tr><th width="5%">No</th><th>Judul</th><th>Tipe</th><th>Diunggah</th><th class="text-center" width="90">Action</th></tr>
+                        </thead>
+                        <tbody>
+                            @forelse($site->documents as $i => $doc)
+                                <tr>
+                                    <td>{{ $i + 1 }}</td>
+                                    <td>
+                                        <a href="{{ url('storage/'.$doc->file_path) }}" target="_blank" rel="noopener">
+                                            <i class="fas fa-paperclip mr-1"></i>{{ $doc->title }}
+                                        </a>
+                                    </td>
+                                    <td>{{ $doc->file_type ?: '-' }}</td>
+                                    <td>
+                                        {{ $doc->inputBy?->name ?? '-' }}
+                                        <div class="text-muted" style="font-size:11px;">{{ $doc->created_at?->format('d/m/Y H:i') }}</div>
+                                    </td>
+                                    <td class="text-center">
+                                        <form action="{{ url('/site/' . $site->id . '/document/' . $doc->id) }}" method="POST" class="frmConfirmDelete d-inline" data-title="Hapus dokumen site?">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="ts-action-primary is-danger" title="Hapus" aria-label="Hapus dokumen">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr><td colspan="5"><x-empty title="Belum ada dokumen site" icon="fas fa-folder-open" compact /></td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {{-- Preventive Maintenance --}}
+        <div class="card card-primary card-outline shadow-sm">
+            <div class="card-header d-flex align-items-center">
+                <h3 class="card-title"><i class="fas fa-tools mr-1"></i> Preventive Maintenance ({{ $site->maintenances->count() }})</h3>
+            </div>
+            <div class="card-body">
+                @if($site->materialLinks->isEmpty())
+                    <x-empty title="Belum ada material terpasang" message="Pasang material dulu; baris perangkat Preventive Maintenance mengikuti material terpasang." icon="fas fa-microchip" compact />
+                @else
+                    <p class="text-muted mb-2" style="font-size:12px;">
+                        SN Sebelum diambil dari material terpasang. SN Sesudah yang diisi akan
+                        <strong>menggantikan</strong> serial number material tersebut di Assets.
+                    </p>
+                    <form action="{{ url('/site/' . $site->id . '/maintenance') }}" method="POST" class="mb-3">
+                        @csrf
+                        <div class="form-row">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label class="font-weight-bold" for="pmDate">Tanggal Maintenance <span class="text-danger">*</span></label>
+                                    <input type="date" name="performed_at" id="pmDate" value="{{ old('performed_at', now()->format('Y-m-d')) }}"
+                                           class="form-control @error('performed_at') is-invalid @enderror">
+                                    @error('performed_at')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label class="font-weight-bold" for="pmBy">Pelaksana</label>
+                                    <input type="text" name="performed_by" id="pmBy" value="{{ old('performed_by') }}" placeholder="Nama teknisi"
+                                           autocomplete="off" class="form-control @error('performed_by') is-invalid @enderror">
+                                    @error('performed_by')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="form-group">
+                                    <label class="font-weight-bold" for="pmNotes">Catatan</label>
+                                    <input type="text" name="notes" id="pmNotes" value="{{ old('notes') }}" placeholder="Opsional"
+                                           autocomplete="off" class="form-control @error('notes') is-invalid @enderror">
+                                    @error('notes')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered mb-2">
+                                <thead>
+                                    <tr><th width="5%">No</th><th>Perangkat</th><th>SN Sebelum</th><th>SN Sesudah</th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($site->materialLinks as $i => $link)
+                                        <tr>
+                                            <td>{{ $i + 1 }}</td>
+                                            <td>
+                                                <strong>{{ $link->material?->product_code }}</strong>
+                                                <div class="text-muted" style="font-size:11px;">{{ $link->material?->category?->label ?? '-' }}</div>
+                                                <input type="hidden" name="items[{{ $i }}][material_id]" value="{{ $link->material_id }}">
+                                            </td>
+                                            <td class="align-middle">{{ $link->material?->serial_number ?: '-' }}</td>
+                                            <td>
+                                                <input type="text" name="items[{{ $i }}][sn_after]" value="{{ old('items.' . $i . '.sn_after') }}"
+                                                       placeholder="Kosongkan bila tidak berubah" autocomplete="off"
+                                                       class="form-control form-control-sm @error('items.' . $i . '.sn_after') is-invalid @enderror">
+                                                @error('items.' . $i . '.sn_after')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="text-right">
+                            <button type="submit" class="btn btn-success"><i class="fas fa-save mr-1"></i> Simpan Maintenance</button>
+                        </div>
+                    </form>
+                @endif
+
+                @forelse($site->maintenances as $pm)
+                    <div class="border-top pt-2 mt-2">
+                        <strong style="font-size:13px;">{{ $pm->performed_at?->format('d/m/Y') }}</strong>
+                        <span class="text-muted" style="font-size:12px;">
+                            @if($pm->performed_by)· {{ $pm->performed_by }}@endif
+                            · dicatat {{ $pm->inputBy?->name ?? '-' }}
+                        </span>
+                        <table class="table table-sm table-bordered mt-2 mb-1" style="font-size:12px;">
+                            <thead class="bg-light"><tr><th>Perangkat</th><th>SN Sebelum</th><th>SN Sesudah</th></tr></thead>
+                            <tbody>
+                                @foreach($pm->items as $item)
+                                    <tr>
+                                        <td>{{ $item->device_name }}</td>
+                                        <td>{{ $item->sn_before ?: '-' }}</td>
+                                        <td>{{ $item->sn_after ?: '-' }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                        @if($pm->notes)<p class="text-muted mb-0" style="font-size:12px;">{{ $pm->notes }}</p>@endif
+                    </div>
+                @empty
+                    <x-empty title="Belum ada riwayat Preventive Maintenance" icon="fas fa-tools" compact />
+                @endforelse
             </div>
         </div>
 

@@ -15,7 +15,10 @@ use App\Models\Pulau;
 use App\Models\Region;
 use App\Models\Site;
 use App\Models\SiteAccessory;
+use App\Models\SiteDocument;
 use App\Models\SiteKeeper;
+use App\Models\SiteMaintenance;
+use App\Models\SiteMaintenanceItem;
 use App\Models\SiteMaterial;
 use App\Models\SitePic;
 use App\Models\TroubleTicket;
@@ -24,6 +27,7 @@ use App\Models\UserActivityLog;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class SiteController extends Controller
@@ -222,9 +226,9 @@ class SiteController extends Controller
                 'status' => ['label' => 'Status', 'type' => 'select', 'options' => Site::STATUSES, 'required' => true, 'searchable' => true, 'col' => 6, 'edit_only' => true],
                 'customer_id' => ['label' => 'Customer', 'type' => 'select', 'options' => fn () => Customer::orderBy('name')->pluck('name', 'id')->all(), 'required' => true, 'searchable' => true, 'col' => 6],
                 // Homebase, Cluster & Supervisor tidak lagi diisi di form: ketiganya
-                // diturunkan dari PIC Site (teknisi) yang dipilih - lihat
-                // self::regions() yang membaca homebase/region si teknisi.
-                'pic_id' => ['label' => 'PIC Site', 'type' => 'select', 'options' => fn () => self::picOptions(Site::TECHNICIAN_POSITION), 'searchable' => true, 'col' => 6, 'virtual' => true],
+                // diturunkan dari Teknisi yang dipilih - lihat self::regions()
+                // yang membaca homebase/region si teknisi.
+                'pic_id' => ['label' => 'Teknisi', 'type' => 'select', 'options' => fn () => self::picOptions(Site::TECHNICIAN_POSITION), 'searchable' => true, 'col' => 6, 'virtual' => true],
                 'pulau_id' => ['label' => 'Island', 'type' => 'select', 'options' => fn () => Pulau::orderBy('name')->pluck('name', 'id')->all(), 'searchable' => true, 'col' => 6, 'cascade_child' => 'provinsi_id', 'section' => 'Location'],
                 'provinsi_id' => ['label' => 'Provinsi', 'type' => 'cascade', 'level' => 'provinsi', 'parent' => 'pulau_id', 'col' => 6, 'cascade_child' => 'kota_id'],
                 'kota_id' => ['label' => 'Kota / Kabupaten', 'type' => 'cascade', 'level' => 'kota', 'parent' => 'provinsi_id', 'col' => 6, 'cascade_child' => 'kecamatan_id'],
@@ -246,15 +250,16 @@ class SiteController extends Controller
             | di resources/views/master-data/index.blade.php).
             */
             'columns' => [
-                ['key' => 'tid', 'label' => 'Site ID', 'value' => fn ($r) => $r->tid, 'strong' => true],
-                ['key' => 'sitename', 'label' => 'Nama Site', 'value' => fn ($r) => $r->sitename, 'truncate' => 60],
-                ['key' => 'customer', 'label' => 'Customer', 'value' => fn ($r) => $r->customer?->name],
+                ['key' => 'tid', 'label' => 'Site ID', 'value' => fn ($r) => $r->tid, 'strong' => true, 'drawer_link' => true],
+                ['key' => 'sitename', 'label' => 'Nama Site', 'value' => fn ($r) => $r->sitename, 'truncate' => 60,
+                    'sub' => fn ($r) => $r->customer?->name],
                 ['key' => 'type', 'label' => 'Tipe', 'value' => fn ($r) => Site::TYPES[$r->type] ?? $r->type, 'default' => false],
                 ['key' => 'power', 'label' => 'Source Power', 'value' => fn ($r) => Site::SOURCE_POWERS[$r->source_power] ?? $r->source_power],
                 ['key' => 'program', 'label' => 'Program', 'value' => fn ($r) => Site::PROGRAMS[$r->program] ?? $r->program, 'default' => false],
-                ['key' => 'technician', 'label' => 'PIC Site', 'value' => fn ($r) => self::technicians($r) ?: '-'],
+                ['key' => 'technician', 'label' => 'Teknisi', 'value' => fn ($r) => self::technicians($r) ?: '-'],
                 ['key' => 'region', 'label' => 'Cluster', 'value' => fn ($r) => self::regions($r) ?: '-'],
-                ['key' => 'location', 'label' => 'Location', 'value' => fn ($r) => self::locationSummary($r), 'tooltip' => fn ($r) => self::locationDetail($r)],
+                ['key' => 'location', 'label' => 'Location', 'value' => fn ($r) => $r->provinsi?->name ?: '-',
+                    'sub' => fn ($r) => $r->kota?->name, 'tooltip' => fn ($r) => self::locationDetail($r)],
                 ['key' => 'network', 'label' => 'Network', 'value' => fn ($r) => $r->gateway ?: '-', 'tooltip' => fn ($r) => self::networkDetail($r), 'default' => false],
                 // Ringkasan Trouble Ticket terbuka yang terlihat oleh user ini.
                 ['key' => 'tt', 'label' => 'TT Open', 'value' => fn ($r) => self::ticketStatusLabel($r)],
@@ -278,6 +283,7 @@ class SiteController extends Controller
                 'accessoryLinks' => 'masih memiliki Accessories terpasang',
                 'picLinks' => 'masih memiliki PIC terhubung',
                 'troubleTickets' => 'sudah memiliki Trouble Ticket',
+                'maintenances' => 'sudah memiliki catatan Preventive Maintenance',
             ],
             'describe' => fn ($r) => $r->tid.' - '.$r->sitename,
         ];
@@ -385,7 +391,7 @@ class SiteController extends Controller
     }
 
     /**
-     * Menyimpan Supervisor & PIC Site sebagai baris `site_pics`. Field yang
+     * Menyimpan Supervisor & Teknisi sebagai baris `site_pics`. Field yang
      * tidak dikirim tidak diartikan sebagai "lepas PIC-nya".
      */
     protected function syncSitePics(Site $site, array $virtual): void
@@ -410,13 +416,6 @@ class SiteController extends Controller
         }
 
         $site->load('picLinks.pic');
-    }
-
-    /** Kolom Location: hanya pulau / provinsi / kabupaten. */
-    public static function locationSummary(Site $site): string
-    {
-        return collect([$site->pulau?->name, $site->provinsi?->name, $site->kota?->name])
-            ->filter()->implode(' / ') ?: '-';
     }
 
     /** Tooltip kolom Location: seluruh isian bagian Location di form site. */
@@ -467,12 +466,12 @@ class SiteController extends Controller
     {
         $open = self::openTicketCounts()[$site->id] ?? 0;
 
-        return $open > 0 ? $open.' Terbuka' : 'Tidak ada';
+        return $open > 0 ? $open.' Tiket' : 'Tidak ada';
     }
 
     /**
-     * Kolom PIC Site: HANYA teknisi site, yaitu PIC internal berjabatan
-     * "teknisi" (field PIC Site di form). Supervisor & PIC internal lain yang
+     * Kolom Teknisi: HANYA teknisi site, yaitu PIC internal berjabatan
+     * "teknisi" (field Teknisi di form). Supervisor & PIC internal lain yang
      * terpasang di site_pics sengaja tidak ikut - lihat tab PIC di detail site.
      */
     public static function technicians(Site $site): string
@@ -502,13 +501,20 @@ class SiteController extends Controller
     }
 
     /** Jumlah PIC Internal unik yang terhubung ke site mana pun. */
+    /**
+     * Jumlah teknisi yang DIMILIKI perusahaan, bukan yang sudah terpasang di
+     * site: sumbernya master PIC internal aktif berjabatan "teknisi" — sama
+     * persis dengan daftar pada dropdown Teknisi di form Site
+     * (lihat picOptions()). Sebelum 14 Okt 2026 kartu ini menghitung PIC
+     * internal yang sudah tertaut ke site, sehingga angkanya lebih kecil dari
+     * isi dropdown dan kedua layar tampak bertentangan.
+     */
     public static function technicianCount(): int
     {
-        return (int) SitePic::query()
-            ->join('master_pics', 'master_pics.id', '=', 'site_pics.pic_id')
-            ->where('master_pics.type', 'internal')
-            ->distinct()
-            ->count('site_pics.pic_id');
+        return (int) MasterPic::where('type', 'internal')
+            ->where('status', 'ACTIVE')
+            ->where('position', 'like', '%'.Site::TECHNICIAN_POSITION.'%')
+            ->count();
     }
 
     /**
@@ -629,6 +635,7 @@ class SiteController extends Controller
         $site = Site::with([
             'customer:id,name', 'pulau', 'provinsi', 'kota', 'kecamatan', 'desa', 'keepers',
             'materialLinks.material.category', 'accessoryLinks.accessory.category', 'picLinks.pic',
+            'maintenances.items.material:id,product_code', 'documents.inputBy:id,name',
         ])->findOrFail($id);
 
         $availablePics = MasterPic::where('status', 'ACTIVE')
@@ -648,6 +655,115 @@ class SiteController extends Controller
             ->get(['id', 'accessories_code', 'accessories_name']);
 
         return view('site.show', compact('site', 'availableMaterials', 'availableAccessories', 'availablePics'));
+    }
+
+    /**
+     * Menyimpan satu catatan Preventive Maintenance.
+     *
+     * SN "sebelum" diambil dari material yang sedang terpasang (tab Assets),
+     * SN "sesudah" diisi sesuai perangkat aktual di lapangan. Setiap SN sesudah
+     * yang berbeda dari SN sekarang LANGSUNG MENGGANTI `master_material.serial_number`
+     * material tersebut, sehingga tab Assets ikut terbarui. SN lama tetap
+     * tersimpan sebagai `sn_before` di catatan ini.
+     */
+    public function storeMaintenance(Request $request, $id)
+    {
+        $site = Site::with('materialLinks.material')->findOrFail($id);
+        $materialIds = $site->materialLinks->pluck('material_id')->all();
+
+        $data = $request->validate([
+            'performed_at' => ['required', 'date'],
+            'performed_by' => ['nullable', 'string', 'max:150'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.material_id' => ['required', 'integer', Rule::in($materialIds)],
+            'items.*.sn_after' => ['nullable', 'string', 'max:150'],
+        ], [], [
+            'performed_at' => 'Tanggal Maintenance',
+            'performed_by' => 'Pelaksana',
+            'items.*.sn_after' => 'SN Sesudah',
+        ]);
+
+        $byId = $site->materialLinks->keyBy('material_id');
+
+        $maintenance = DB::transaction(function () use ($site, $data, $byId) {
+            $maintenance = SiteMaintenance::create([
+                'site_id' => $site->id,
+                'performed_at' => $data['performed_at'],
+                'performed_by' => $data['performed_by'] ?? null,
+                'notes' => $data['notes'] ?? null,
+                'input_by' => auth()->id(),
+            ]);
+
+            foreach ($data['items'] as $row) {
+                $material = $byId[(int) $row['material_id']]?->material;
+                $before = $material?->serial_number;
+                $after = trim((string) ($row['sn_after'] ?? '')) ?: null;
+
+                SiteMaintenanceItem::create([
+                    'maintenance_id' => $maintenance->id,
+                    'material_id' => $material?->id,
+                    'device_name' => $material?->product_code ?? '-',
+                    'sn_before' => $before,
+                    'sn_after' => $after,
+                ]);
+
+                // SN sesudah menggantikan SN material; yang kosong/sama dilewati.
+                if ($material && $after !== null && $after !== $before) {
+                    $material->update(['serial_number' => $after]);
+                }
+            }
+
+            return $maintenance;
+        });
+
+        $diganti = $maintenance->items()->whereNotNull('sn_after')->count();
+        UserActivityLog::record('master_data', 'create',
+            'Mencatat Preventive Maintenance Site '.$site->tid.' ('.$diganti.' SN diperbarui)', $maintenance);
+
+        return back()->with('success', 'Preventive Maintenance tersimpan'.($diganti ? '; '.$diganti.' serial number diperbarui' : ''));
+    }
+
+    /** Mengunggah dokumen site ke disk `secure` (bukan disk public). */
+    public function addDocument(Request $request, $id)
+    {
+        $site = Site::findOrFail($id);
+
+        $data = $request->validate([
+            'title' => ['nullable', 'string', 'max:200'],
+            'file' => ['required', 'file', 'max:10240', 'mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx'],
+        ], [], ['title' => 'Judul Dokumen', 'file' => 'Berkas']);
+
+        $file = $request->file('file');
+        $path = $file->store('site_documents', 'secure');
+
+        SiteDocument::create([
+            'site_id' => $site->id,
+            'title' => ($data['title'] ?? null) ?: $file->getClientOriginalName(),
+            'file_path' => $path,
+            'file_name' => basename($path),
+            'file_type' => $file->getClientMimeType(),
+            'input_by' => auth()->id(),
+        ]);
+
+        UserActivityLog::record('master_data', 'create', 'Menambah dokumen Site '.$site->tid, $site);
+
+        return back()->with('success', 'Dokumen berhasil diunggah');
+    }
+
+    public function removeDocument($id, $docId)
+    {
+        $site = Site::findOrFail($id);
+        $doc = SiteDocument::where('site_id', $site->id)->findOrFail($docId);
+
+        DB::transaction(function () use ($doc) {
+            Storage::disk('secure')->delete($doc->file_path);
+            $doc->delete();
+        });
+
+        UserActivityLog::record('master_data', 'delete', 'Menghapus dokumen Site '.$site->tid.' - '.$doc->title, $site);
+
+        return back()->with('success', 'Dokumen berhasil dihapus');
     }
 
     public function addPic(Request $request, $id)

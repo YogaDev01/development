@@ -476,6 +476,11 @@ Route::middleware('auth')->group(function () {
         Route::delete('accessories/{linkId}', [\App\Http\Controllers\SiteController::class, 'removeAccessory'])->whereNumber('linkId')->name('site.accessories.destroy');
         Route::post('pic', [\App\Http\Controllers\SiteController::class, 'addPic'])->name('site.pic.store');
         Route::delete('pic/{linkId}', [\App\Http\Controllers\SiteController::class, 'removePic'])->whereNumber('linkId')->name('site.pic.destroy');
+        // Dokumen site: berkas disimpan di disk `secure`, diunduh lewat SecureFileController.
+        Route::post('document', [\App\Http\Controllers\SiteController::class, 'addDocument'])->name('site.document.store');
+        Route::delete('document/{docId}', [\App\Http\Controllers\SiteController::class, 'removeDocument'])->whereNumber('docId')->name('site.document.destroy');
+        // Preventive Maintenance: catatan SN perangkat sebelum/sesudah kunjungan.
+        Route::post('maintenance', [\App\Http\Controllers\SiteController::class, 'storeMaintenance'])->name('site.maintenance.store');
     });
 
     // Relasi Homebase <-> PIC (homebase_detail).

@@ -193,7 +193,8 @@ class TroubleTicketTest extends TestCase
 
         $this->assertSame('OPEN', $t->status);
         $this->assertSame($this->site->customer_id, $t->customer_id);
-        $this->assertMatchesRegularExpression('#^TT-0001/\d{2}/\d{2}$#', $t->ticket_number);
+        // Format nomor: T. + 6 digit urutan berjalan + bulan (mm) + tahun (yy).
+        $this->assertSame('T.000001'.now()->format('my'), $t->ticket_number);
         $this->assertDatabaseHas('trouble_ticket_assignments', ['trouble_ticket_id' => $t->id, 'assigned_to' => $this->tech->id]);
         $this->assertDatabaseHas('trouble_ticket_messages', ['trouble_ticket_id' => $t->id, 'event' => 'created']);
     }
@@ -230,6 +231,11 @@ class TroubleTicketTest extends TestCase
         }
 
         $this->assertSame(5, TroubleTicket::distinct()->count('ticket_number'));
+        // Urutannya berjalan terus mengikuti jumlah tiket.
+        $this->assertSame(
+            ['T.000001', 'T.000002', 'T.000003', 'T.000004', 'T.000005'],
+            TroubleTicket::orderBy('id')->pluck('ticket_number')->map(fn ($n) => substr($n, 0, 8))->all(),
+        );
         $this->assertSame(5, (int) \DB::table('document_sequences')->where('key', 'trouble-ticket:'.now()->year)->value('counter'));
     }
 

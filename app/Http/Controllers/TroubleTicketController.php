@@ -105,6 +105,10 @@ class TroubleTicketController extends Controller
                 'CLOSED' => (int) ($agregat->closed_bulan_ini ?? 0),
             ],
             'canSettings' => $user->hasRole(AccessRoles::TROUBLE_TICKET_SETTINGS),
+            // Tombol Close di kolom Action baris Progress Done. Kelayakan per
+            // baris tetap diperiksa ulang server lewat canApproveClose().
+            'canApprove' => $user->hasRole(AccessRoles::TROUBLE_TICKET_APPROVE),
+            'userId' => (int) $user->id,
         ]);
     }
 

@@ -590,7 +590,9 @@ class SiteMasterDataTest extends TestCase
         $customer = $this->customerBts();
         $site = $this->site($customer, ['sitename' => 'Kantor Desa Sukamaju']);
         $this->site($customer, ['status' => 'INACTIVE']);
-        $tech = MasterPic::create(['type' => 'internal', 'pic' => 'Hadi Teknisi', 'status' => 'ACTIVE']);
+        // Kartu Total Technician menghitung teknisi yang dimiliki (master PIC
+        // internal ACTIVE berjabatan "teknisi"), bukan yang terpasang di site.
+        $tech = MasterPic::create(['type' => 'internal', 'pic' => 'Hadi Teknisi', 'position' => 'Teknisi', 'status' => 'ACTIVE']);
         SitePic::create(['site_id' => $site->id, 'pic_id' => $tech->id]);
 
         $region = Region::create(['region_name' => 'Region Jabar', 'pulau_id' => Pulau::create(['name' => 'Jawa'])->id]);

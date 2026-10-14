@@ -9,8 +9,11 @@ class Site extends Model
     protected $table = 'sites';
 
     public const TYPES = [
-        'PEMERINTAH' => 'Pemerintah',
-        'PENDIDIKAN' => 'Pendidikan',
+        'SEKOLAH' => 'Sekolah',
+        'KANTOR' => 'Kantor',
+        'KEAMANAN' => 'Keamanan',
+        'LAYANAN_KESEHATAN' => 'Layanan Kesehatan',
+        'TEMPAT_IBADAH' => 'Tempat Ibadah',
         'TOWER' => 'Tower',
     ];
 
@@ -109,6 +112,18 @@ class Site extends Model
     public function accessoryLinks()
     {
         return $this->hasMany(SiteAccessory::class, 'site_id');
+    }
+
+    /** Dokumen site (disk `secure`), terbaru lebih dulu. */
+    public function documents()
+    {
+        return $this->hasMany(SiteDocument::class, 'site_id')->orderByDesc('id');
+    }
+
+    /** Catatan Preventive Maintenance site, terbaru lebih dulu. */
+    public function maintenances()
+    {
+        return $this->hasMany(SiteMaintenance::class, 'site_id')->orderByDesc('performed_at')->orderByDesc('id');
     }
 
     /** Penjaga site (nama + no HP), diisi bebas di form site. */
