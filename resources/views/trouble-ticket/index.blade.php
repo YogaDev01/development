@@ -228,6 +228,18 @@
                                             <button type="button" class="ts-action-primary is-neutral btn-tt-info" data-url="{{ route('trouble-ticket.info', $t) }}" data-no="{{ $t->ticket_number }}" data-open="{{ route('trouble-ticket.show', $t) }}" title="Info" aria-label="Info">
                                                 <i class="fas fa-info" aria-hidden="true"></i><span class="ts-al">Info</span>
                                             </button>
+                                            {{-- Close langsung dari daftar, hanya untuk tiket Progress Done
+                                                 dan pemegang hak approve yang bukan teknisinya sendiri.
+                                                 Evidence-nya dibaca di halaman detail. --}}
+                                            @if($canApprove && $t->status === 'PROGRESS_DONE' && (int) $t->assigned_to !== $userId)
+                                                <form method="POST" action="{{ route('trouble-ticket.close.approve', $t) }}" class="d-inline"
+                                                      data-confirm="Close tiket {{ $t->ticket_number }}? Pastikan evidence sudah diperiksa di halaman detail.">
+                                                    @csrf
+                                                    <button type="submit" class="ts-action-primary" title="Close tiket" aria-label="Close tiket">
+                                                        <i class="fas fa-check" aria-hidden="true"></i><span class="ts-al">Close</span>
+                                                    </button>
+                                                </form>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>

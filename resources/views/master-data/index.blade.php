@@ -188,10 +188,21 @@
                                                 <span class="cell-hint" title="{{ $hint }}">{{ $val ?: '-' }}</span>
                                             @elseif(!empty($col['badge']))
                                                 <span class="badge badge-{{ $badgeColors[$val] ?? 'secondary' }} px-2 py-1">{{ $val }}</span>
+                                            @elseif(!empty($col['drawer_link']) && !empty($m['drawer']))
+                                                {{-- Nilainya jadi pemicu drawer, sama dengan tombol Detail. --}}
+                                                <button type="button" class="btn-drawer-master cell-link {{ !empty($col['strong']) ? 'font-weight-bold' : '' }}" data-id="{{ $row->id }}">{{ $val }}</button>
                                             @elseif(!empty($col['strong']))
                                                 <strong>{{ $val }}</strong>
                                             @else
                                                 {{ $val ?? '-' }}
+                                            @endif
+
+                                            {{-- `sub` = keterangan kecil di bawah nilai (mis. Customer di bawah Nama Site). --}}
+                                            @if(!empty($col['sub']))
+                                                @php $sub = $col['sub']($row); @endphp
+                                                @if($sub)
+                                                    <div class="cell-sub">{{ $sub }}</div>
+                                                @endif
                                             @endif
                                         </td>
                                     @endforeach

@@ -110,8 +110,11 @@
                             if (str_starts_with($d, '0')) $d = '62' . substr($d, 1);
                             return 'https://wa.me/' . $d;
                         };
+                        // Mode arah (bukan sekadar pin): origin sengaja dikosongkan supaya
+                        // Google Maps memakai posisi terkini teknisi, lalu menampilkan rute,
+                        // jarak tempuh lewat jalan, dan estimasi waktu ke site.
                         $mapUrl = ($site?->latitude !== null && $site?->longitude !== null)
-                            ? 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($site->latitude . ',' . $site->longitude)
+                            ? 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' . rawurlencode($site->latitude . ',' . $site->longitude)
                             : null;
                         $slaRows = [
                             'response'   => ['Response', 'Tiket dibuat → acknowledged', $t->sla_response_minutes, $t->created_at, $t->acknowledged_at],
@@ -154,7 +157,7 @@
                                     <div class="tt-hero-sub">{{ $site?->tid }} · {{ $site?->customer?->name ?? '—' }}</div>
                                 </div>
                                 <div class="tt-hero-act">
-                                    @if($mapUrl)<a href="{{ $mapUrl }}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-xs" title="Buka peta"><i class="fas fa-map-marked-alt"></i></a>@endif
+                                    @if($mapUrl)<a href="{{ $mapUrl }}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-xs" title="Rute ke site dari lokasi Anda"><i class="fas fa-map-marked-alt"></i></a>@endif
                                     <button type="button" class="btn btn-outline-secondary btn-xs" data-tt-tab="#ttTabSite" title="Detail site"><i class="fas fa-chevron-right"></i></button>
                                 </div>
                             </div>
@@ -196,7 +199,7 @@
                                     @if($mapUrl)
                                         {{ $site->latitude }}, {{ $site->longitude }}
                                         <button type="button" class="tt-copy" data-copy="{{ $site->latitude }}, {{ $site->longitude }}" title="Salin"><i class="far fa-copy"></i></button>
-                                        <a href="{{ $mapUrl }}" target="_blank" rel="noopener" class="tt-copy" title="Buka peta"><i class="fas fa-map-marked-alt"></i></a>
+                                        <a href="{{ $mapUrl }}" target="_blank" rel="noopener" class="tt-copy" title="Rute ke site dari lokasi Anda"><i class="fas fa-map-marked-alt"></i></a>
                                     @else
                                         —
                                     @endif

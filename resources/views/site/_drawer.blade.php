@@ -58,10 +58,11 @@
 
 <ul class="nav nav-tabs site-dw-tabs" role="tablist">
     <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#sdwInfo" role="tab">Informasi</a></li>
-    <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#sdwPic" role="tab">PIC <span class="badge badge-secondary">{{ $site->picLinks->count() }}</span></a></li>
+    <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#sdwPic" role="tab">PIC <span class="badge badge-secondary">{{ $site->picLinks->count() + $site->keepers->count() }}</span></a></li>
     <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#sdwTt" role="tab">TT</a></li>
     <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#sdwAssets" role="tab">Assets <span class="badge badge-secondary">{{ $site->materialLinks->count() + $site->accessoryLinks->count() }}</span></a></li>
-    <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#sdwDoc" role="tab">Document</a></li>
+    <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#sdwDoc" role="tab">Document <span class="badge badge-secondary">{{ $site->documents->count() }}</span></a></li>
+    <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#sdwPm" role="tab">Preventive Maintenance <span class="badge badge-secondary">{{ $site->maintenances->count() }}</span></a></li>
 </ul>
 
 <div class="tab-content pt-3">
@@ -97,7 +98,7 @@
                     $kv('Source Power', Site::SOURCE_POWERS[$site->source_power] ?? $site->source_power),
                     $kv('Program', Site::PROGRAMS[$site->program] ?? $site->program),
                     $kv('Status', Site::STATUSES[$site->status] ?? $site->status),
-                    $kv('PIC Site', \App\Http\Controllers\SiteController::technicians($site)),
+                    $kv('Teknisi', \App\Http\Controllers\SiteController::technicians($site)),
                     $kv('Cluster', \App\Http\Controllers\SiteController::regions($site)),
                 ] as $p)
                     <dt>{{ $p['label'] }}</dt><dd>{{ $p['value'] }}</dd>
@@ -137,15 +138,6 @@
                 @endforeach
             </dl>
         </div>
-
-        <div class="ts-dw-section">
-            <p class="ts-dw-section-title">Site Keeper</p>
-            @forelse($site->keepers as $keeper)
-                <div class="site-dw-pic">{{ $keeper->name }}</div>
-            @empty
-                <p class="text-muted mb-0" style="font-size:12px;">Belum ada site keeper.</p>
-            @endforelse
-        </div>
     </div>
 
     {{-- PIC --}}
@@ -164,6 +156,21 @@
             </div>
         @empty
             <x-empty title="Belum ada PIC terhubung" icon="fas fa-user-tag" compact />
+        @endforelse
+
+        <p class="ts-dw-section-title mt-3">Site Keeper ({{ $site->keepers->count() }})</p>
+        @forelse($site->keepers as $keeper)
+            <div class="site-dw-pic">
+                <div class="d-flex justify-content-between align-items-start">
+                    <strong>{{ $keeper->name }}</strong>
+                    <span class="badge badge-dark">Site Keeper</span>
+                </div>
+                <div class="text-muted" style="font-size:12px;">
+                    @if($keeper->phone)<i class="fas fa-phone-alt"></i> {{ $keeper->phone }}@else-@endif
+                </div>
+            </div>
+        @empty
+            <x-empty title="Belum ada Site Keeper" icon="fas fa-user-shield" compact />
         @endforelse
     </div>
 
@@ -230,15 +237,92 @@
         @endif
     </div>
 
+    {{-- PREVENTIVE MAINTENANCE --}}
+    <div class="tab-pane fade" id="sdwPm" role="tabpanel">
+        @forelse($site->maintenances as $pm)
+            <p class="ts-dw-section-title">
+                {{ $pm->performed_at?->format('d/m/Y') }}
+                @if($pm->performed_by)<span class="text-muted">· {{ $pm->performed_by }}</span>@endif
+            </p>
+            <table class="table table-sm table-bordered mb-3" style="font-size:12px;">
+                <thead class="bg-light"><tr><th>Perangkat</th><th>SN Sebelum</th><th>SN Sesudah</th></tr></thead>
+                <tbody>
+                    @foreach($pm->items as $item)
+                        <tr>
+                            <td>{{ $item->device_name }}</td>
+                            <td>{{ $item->sn_before ?: '-' }}</td>
+                            <td>{{ $item->sn_after ?: '-' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+            @if($pm->notes)
+                <p class="text-muted" style="font-size:12px;">{{ $pm->notes }}</p>
+            @endif
+        @empty
+            <x-empty title="Belum ada Preventive Maintenance" message="Catat maintenance lewat halaman Kelola PIC & Assets." icon="fas fa-tools" compact />
+        @endforelse
+    </div>
+
     {{-- DOCUMENT --}}
     <div class="tab-pane fade" id="sdwDoc" role="tabpanel">
-        <x-empty title="Dokumen site belum tersedia" icon="fas fa-folder-open" compact />
-        <p class="text-muted text-center" style="font-size:12px;">Lampiran dokumen site akan ditambahkan kemudian.</p>
+        @forelse($site->documents as $doc)
+            <div class="d-flex justify-content-between align-items-start py-2" style="border-bottom:1px solid var(--border-soft);font-size:12.5px;">
+                <div style="min-width:0;">
+                    <a href="{{ url('storage/'.$doc->file_path) }}" target="_blank" rel="noopener" style="font-weight:600;">
+                        <i class="fas fa-paperclip mr-1"></i>{{ $doc->title }}
+                    </a>
+                    <div class="text-muted" style="font-size:11px;">
+                        {{ $doc->inputBy?->name ?? '-' }} · {{ $doc->created_at?->format('d/m/Y H:i') }}
+                    </div>
+                </div>
+            </div>
+        @empty
+            <x-empty title="Belum ada dokumen site" message="Unggah lewat tombol di kaki panel ini." icon="fas fa-folder-open" compact />
+        @endforelse
     </div>
 </div>
 
-<div class="mt-3 pt-3 border-top text-right">
+<div class="mt-3 pt-3 border-top d-flex justify-content-between align-items-center" style="gap:8px;">
+    {{-- Unggah dokumen langsung dari drawer. Hanya tampil saat tab Document
+         dibuka — tombol ini memang hanya berlaku untuk dokumen site. --}}
+    <form action="{{ url('/site/' . $site->id . '/document') }}" method="POST" enctype="multipart/form-data"
+          class="mb-0 d-none" id="frmSiteDocDrawer">
+        @csrf
+        <input type="file" name="file" id="fldSiteDocDrawer" class="d-none"
+               accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
+        <button type="button" class="btn btn-success btn-sm" id="btnSiteDocDrawer">
+            <i class="fas fa-upload mr-1"></i> Unggah Dokumen
+        </button>
+    </form>
+
     <a href="{{ url('/site/' . $site->id) }}" class="btn btn-outline-secondary btn-sm">
         <i class="fas fa-cog mr-1"></i> Kelola PIC & Assets
     </a>
 </div>
+
+<script>
+(function () {
+    var btn = document.getElementById('btnSiteDocDrawer');
+    var inp = document.getElementById('fldSiteDocDrawer');
+    if (!btn || !inp) { return; }
+
+    /*
+    | Tombol mengikuti tab yang aktif: muncul di Document, sembunyi di tab lain.
+    | shown.bs.tab adalah event jQuery (Bootstrap 4), jadi harus didengar lewat
+    | jQuery — addEventListener tidak menangkapnya.
+    */
+    var frm = document.getElementById('frmSiteDocDrawer');
+    $('.site-dw-tabs a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+        frm.classList.toggle('d-none', $(e.target).attr('href') !== '#sdwDoc');
+    });
+
+    btn.addEventListener('click', function () { inp.click(); });
+    inp.addEventListener('change', function () {
+        if (!inp.files.length) { return; }
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Mengunggah...';
+        document.getElementById('frmSiteDocDrawer').submit();
+    });
+})();
+</script>

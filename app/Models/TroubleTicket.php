@@ -335,18 +335,25 @@ class TroubleTicket extends Model
     */
 
     /** TT-0001/10/26 — urut per tahun, pola sama dengan Delivery Note. */
+    /**
+     * Nomor tiket: `T.0000011026` — T, 6 digit urutan, bulan (mm), tahun (yy).
+     *
+     * Urutannya **berjalan terus**, tidak di-reset tiap bulan atau tahun:
+     * angkanya adalah nomor tiket ke berapa, sesuai permintaan 14 Okt 2026.
+     * Karena itu rangkaiannya satu (`trouble-ticket`), disemai dari jumlah
+     * tiket yang sudah ada supaya penomoran melanjutkan, bukan mengulang.
+     *
+     * Tiket lama memakai format `TT-0001/10/26`; keduanya tidak akan pernah
+     * bertabrakan karena bentuknya berbeda, dan nomor lama dibiarkan apa adanya.
+     */
     public static function generateNumber(?Carbon $date = null): string
     {
         $date ??= now();
-        $year = $date->format('Y');
 
-        $no = DocumentSequence::next(
-            "trouble-ticket:{$year}",
-            fn () => static::whereYear('created_at', $year)->count(),
-        );
+        $no = DocumentSequence::next('trouble-ticket', fn () => static::count());
 
-        return 'TT-' . str_pad((string) $no, 4, '0', STR_PAD_LEFT)
-            . '/' . $date->format('m') . '/' . $date->format('y');
+        return 'T.' . str_pad((string) $no, 6, '0', STR_PAD_LEFT)
+            . $date->format('m') . $date->format('y');
     }
 
     /*

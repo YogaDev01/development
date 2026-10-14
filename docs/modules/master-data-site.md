@@ -40,7 +40,7 @@ Homebase (+ PIC), dan Wilayah berjenjang.
 - `homebase_detail` unik per (homebase, PIC); PIC = `master_pics` berstatus ACTIVE.
 - `site_pics` (migrasi `2026_10_09_100007`): PIC yang terhubung ke site, unik
   per (site, PIC), PIC harus ACTIVE; dikelola di halaman Detail Site dan lewat
-  field Supervisor / PIC Site di form site.
+  field Supervisor / Teknisi di form site.
 - Migrasi `2026_10_10_000100`: `sites.hb_id` (Homebase) & `sites.region_id`
   (Cluster) + kolom jaringan per site `gateway`, `outroute_id`, `hub`,
   `spotbeam`, `polarization`. Isian form disamakan dengan form Tambah site
@@ -58,19 +58,50 @@ Homebase (+ PIC), dan Wilayah berjenjang.
   alamatnya, Cluster dari nama cluster di master; Cluster boleh kosong — diambil dari
   Homebase.
 
+## Dokumen Site
+
+- Migrasi `2026_10_14_000200`, tabel `site_documents` (`title`, `file_path`,
+  `file_name`, `file_type`, `input_by`), model `SiteDocument`. FK ke site
+  CASCADE.
+- Berkas disimpan di disk **`secure`** folder `site_documents` dan hanya keluar
+  lewat `SecureFileController`; `FileAccess` memakai gerbang `menu:site`
+  (bisa buka halaman Site = bisa buka dokumennya). Tidak pernah disk `public`.
+- Validasi: `pdf,jpg,jpeg,png,doc,docx,xls,xlsx`, maksimal 10 MB. Judul kosong
+  diisi nama berkas asli.
+- Unggah/hapus di halaman Kelola site (`POST /site/{id}/document`,
+  `DELETE /site/{id}/document/{docId}`); hapus juga menghapus berkas fisiknya.
+  Drawer tab Document hanya menampilkan daftar + tautan unduh.
+
+## Preventive Maintenance
+
+- Migrasi `2026_10_14_000100`: `site_maintenances` (header: site, `performed_at`,
+  `performed_by`, `notes`, `input_by`) + `site_maintenance_items`
+  (`material_id` nullable, `device_name`, `sn_before`, `sn_after`).
+  Item CASCADE ke headernya; header RESTRICT ke site (riwayat memblokir hapus site).
+- Baris perangkat **mengikuti material terpasang** di site (`site_material`);
+  `device_name` disalin dari `product_code` material saat dicatat.
+- `sn_before` = salinan `master_material.serial_number` saat catatan dibuat.
+  `sn_after` yang diisi dan berbeda **langsung menimpa**
+  `master_material.serial_number` material itu (`SiteController::storeMaintenance`,
+  satu transaksi), sehingga tab Assets ikut terbarui. SN lama hanya tersimpan
+  sebagai `sn_before`. Catatan: `master_material` dipakai lintas site, jadi
+  penggantian SN terlihat di mana pun material itu dipakai.
+- Input di halaman Kelola site (`POST /site/{id}/maintenance`, gate `menu:site`);
+  drawer hanya menampilkan riwayat.
+
 ## Halaman Site
 
 - Tambah: halaman penuh `GET /site/create`, tiga bagian seperti SLAmeet —
   Detail Site (Site ID, Site name, Tipe, Source Power, Program, Status*,
-  Customer, PIC Site), Location (Island,
+  Customer, Teknisi), Location (Island,
   Provinsi, Kota/Kabupaten, Kecamatan, Desa, Latitude, Longitude, Address) dan
   Network (Gateway, Outroute ID, Hub, Spotbeam, Polarisasi), ditambah kartu
   Site Keeper berisi baris nama + no HP yang bisa ditambah/dihapus. *Status
   hanya saat Edit. `POST /site` menyimpan site + `site_pics` dalam satu transaksi.
-- Supervisor & PIC Site adalah field virtual (`spv_id`, `pic_id`), bukan kolom
+- Supervisor & Teknisi adalah field virtual (`spv_id`, `pic_id`), bukan kolom
   `sites`: dibaca lewat `Site::getSpvIdAttribute/getPicIdAttribute` (PIC internal
   yang jabatannya mengandung "supervisor"/"teknisi") dan disimpan sebagai baris
-  `site_pics` oleh `SiteController::syncSitePics()`. Pilihan PIC Site = semua
+  `site_pics` oleh `SiteController::syncSitePics()`. Pilihan Teknisi = semua
   teknisi internal, **tidak** disaring Homebase (keterikatan teknisi ke
   supervisornya diatur di master PIC). Field yang tidak dikirim tidak melepas
   PIC yang sudah terpasang.
@@ -81,7 +112,8 @@ Homebase (+ PIC), dan Wilayah berjenjang.
   `keepers` tidak menyentuh data lama. FK `site_id` CASCADE — ikut terhapus
   bersama site.
 - Detail: drawer (`GET /site/{id}/drawer`, partial `site/_drawer.blade.php`)
-  dengan tab Informasi, PIC, TT, Assets, Document. Peta: Google Maps Static API
+  dengan tab Informasi, PIC (termasuk daftar Site Keeper; badge = PIC + keeper),
+  TT, Assets, Document (daftar dokumen site), Preventive Maintenance. Peta: Google Maps Static API
   bergaya bersih bila `GOOGLE_MAPS_KEY` diisi (kunci wajib dibatasi ke Maps
   Static API + HTTP referrer), selain itu embed OpenStreetMap. Koordinat
   dikirim ke penyedia peta saat drawer dibuka.
@@ -95,10 +127,14 @@ Homebase (+ PIC), dan Wilayah berjenjang.
   jatuh ke turunan: cluster homebase tempat Technician site terdaftar
   (site_pics → homebase_detail → homebase → region). Di layar Site istilahnya "Cluster"
   (master-nya sendiri masih bernama "Region"); kolom tetap `sites.region_id`.
-- Kartu: Total TT (placeholder), Total Technician = PIC internal unik di site_pics.
-- Kolom PIC Site (`SiteController::technicians()`) = HANYA teknisi site, yaitu
-  PIC internal berjabatan "teknisi" (`Site::technicianPic()`, isian field PIC
-  Site di form). Supervisor dan PIC internal lain yang terpasang di `site_pics`
+- Kartu: Total TT (placeholder), Total Technician = jumlah teknisi yang DIMILIKI
+  perusahaan, yaitu PIC internal ACTIVE berjabatan "teknisi" — sama dengan isi
+  dropdown Teknisi di form Site (`SiteController::technicianCount()`). Sampai
+  13 Okt 2026 kartu ini menghitung PIC internal unik di `site_pics` (teknisi yang
+  sudah terpasang di site), sehingga angkanya lebih kecil dari isi dropdown.
+- Kolom Teknisi (`SiteController::technicians()`) = HANYA teknisi site, yaitu
+  PIC internal berjabatan "teknisi" (`Site::technicianPic()`, isian field
+  Teknisi di form). Supervisor dan PIC internal lain yang terpasang di `site_pics`
   tidak ikut tampil di kolom ini — lihat tab PIC di detail/drawer site. Kolom TT & tab TT/Document
   masih placeholder (tabel trouble ticket & dokumen site belum ada).
 
