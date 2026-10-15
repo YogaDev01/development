@@ -4,6 +4,25 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [3.0.2] - 2026-10-15 — Preventive Maintenance Site, Change Teknisi Terdekat & Pemilih Rentang Tanggal
+
+Site mendapat tab Preventive Maintenance dan Document, Change Teknisi
+mengurutkan kandidat dari yang terdekat, dan filter tanggal di banyak modul
+memakai satu kotak rentang dengan dua kalender.
+
+### Baru
+- Site: tab Preventive Maintenance (satu catatan per kunjungan, lengkap dengan serial number perangkat sebelum dan sesudah) dan tab Document untuk berkas site.
+- Trouble Ticket: Change Teknisi menawarkan kandidat berurut dari yang terdekat - homebase sama dulu, lalu satu cluster, baru sisanya berdasarkan jarak.
+- Satu form Buat Trouble Ticket bisa menyimpan beberapa tiket sekaligus untuk site dan teknisi yang sama.
+- Detail invoice: Surat Jalan bisa dilihat lewat modal langsung dari tab Log, tanpa berpindah halaman dan kehilangan posisi.
+
+### Berubah
+- Filter tanggal memakai satu kotak rentang dengan dua kalender berdampingan dan pemilih bulan/tahun yang bisa dicari - dipakai di Cost Request, Cash Management, Daily Transaction, Reports, dan riwayat aktivitas di Profil.
+- Pengguna yang belum memilih aplikasi sendiri langsung dibawa ke aplikasi yang sesuai perannya, dan aplikasi yang sudah punya modul tidak lagi mampir ke halaman pemilih.
+
+### Perbaikan
+- Refund Cash Advance: pengajuan yang belum pernah disubmit settlement-nya tidak lagi tertukar dengan settlement bernilai 0 - yang pertama refundnya 0, yang kedua refundnya senilai penuh dana yang diterima.
+
 ## [3.0.1] - 2026-10-13 — Trouble Ticket Alur 7 Tahap, Site Master Lebih Ringkas & Perbaikan Settlement
 
 Trouble Ticket kini memakai alur 7 tahap dengan SLA travel bertahap dan persetujuan

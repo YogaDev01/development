@@ -26,10 +26,46 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '3.0.1',
+    'current' => '3.0.2',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '3.0.2',
+            'date'    => '2026-10-15',
+            'title'   => 'Preventive Maintenance Site, Change Teknisi Terdekat & Pemilih Rentang Tanggal',
+            'summary' => 'Site mendapat tab Preventive Maintenance dan Document, Change Teknisi '
+                       . 'mengurutkan kandidat dari yang terdekat, dan filter tanggal di banyak modul '
+                       . 'memakai satu kotak rentang dengan dua kalender.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Site: tab Preventive Maintenance (satu catatan per kunjungan, lengkap dengan serial number perangkat sebelum dan sesudah) dan tab Document untuk berkas site.',
+                        'Trouble Ticket: Change Teknisi menawarkan kandidat berurut dari yang terdekat - homebase sama dulu, lalu satu cluster, baru sisanya berdasarkan jarak.',
+                        'Satu form Buat Trouble Ticket bisa menyimpan beberapa tiket sekaligus untuk site dan teknisi yang sama.',
+                        'Detail invoice: Surat Jalan bisa dilihat lewat modal langsung dari tab Log, tanpa berpindah halaman dan kehilangan posisi.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Filter tanggal memakai satu kotak rentang dengan dua kalender berdampingan dan pemilih bulan/tahun yang bisa dicari - dipakai di Cost Request, Cash Management, Daily Transaction, Reports, dan riwayat aktivitas di Profil.',
+                        'Pengguna yang belum memilih aplikasi sendiri langsung dibawa ke aplikasi yang sesuai perannya, dan aplikasi yang sudah punya modul tidak lagi mampir ke halaman pemilih.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Refund Cash Advance: pengajuan yang belum pernah disubmit settlement-nya tidak lagi tertukar dengan settlement bernilai 0 - yang pertama refundnya 0, yang kedua refundnya senilai penuh dana yang diterima.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '3.0.1',
