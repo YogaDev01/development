@@ -67,6 +67,16 @@ final class InvoiceTimeline
             ['sent_at',      'sentBy',      'SENT',    'indigo'],
         ];
 
+        /*
+        | Catatan & lampiran yang ditulis di Surat Jalan ikut masuk ke log
+        | Invoice (permintaan Collection: setiap log yang menyangkut invoice ini
+        | harus terbaca dari halaman invoice, tanpa membuka modul Surat Jalan).
+        | Log Surat Jalan tidak ditambahkan sebagai peristiwa tersendiri supaya
+        | tidak menggandakan SENT/RECEIVED yang sudah dimiliki invoice; yang
+        | dipinjam hanya isinya.
+        */
+        $logSj = self::logSuratJalan($invoice);
+
         foreach ($tahap as [$kolom, $relasi, $badge, $warna]) {
             if (! $invoice->{$kolom}) {
                 continue;
@@ -76,7 +86,8 @@ final class InvoiceTimeline
                 $badge, $warna,
                 $invoice->{$relasi}->name ?? '-',
                 $invoice->{$kolom},
-                $invoice->{$kolom}->format('d/m/Y H:i')
+                $invoice->{$kolom}->format('d/m/Y H:i'),
+                $logSj[$badge] ?? []
             ));
         }
 
@@ -89,10 +100,15 @@ final class InvoiceTimeline
                 $lines[] = [
                     'teks'   => 'Via Surat Jalan',
                     'ikon'   => 'fas fa-truck',
-                    'tautan' => ['url' => route('delivery-note.show', $dn->id), 'label' => $dn->code],
-                    'sesudah' => '— lihat lampiran bukti terima di sana.',
+                    'tautan' => [
+                        'url'   => route('invoice-cash-receipt.delivery-note', [$invoice->id, $dn->id]),
+                        'label' => $dn->code,
+                        'modal' => true,
+                    ],
                 ];
             }
+
+            $lines = array_merge($lines, $logSj['RECEIVED'] ?? []);
 
             $peristiwa->push(self::baris(
                 'RECEIVED', 'purple',
@@ -168,9 +184,52 @@ final class InvoiceTimeline
     {
         return [
             'createdBy', 'submittedBy', 'verifiedBy', 'approvedBy', 'sentBy',
-            'receivedBy', 'cancelledBy', 'deliveryNote',
+            'receivedBy', 'cancelledBy',
+            'deliveryNote', 'deliveryNote.logs.attachments',
             'cashReceipts.sourceFund', 'cashReceipts.inputBy', 'comments.user',
         ];
+    }
+
+
+    /**
+     * Catatan & lampiran dari log Surat Jalan, dikelompokkan per tahap invoice
+     * yang sepadan ('SENT' / 'RECEIVED').
+     *
+     * @return array<string, array<int, array<string, mixed>>>
+     */
+    private static function logSuratJalan(Invoice $invoice): array
+    {
+        $dn = $invoice->deliveryNote;
+
+        if (! $dn) {
+            return [];
+        }
+
+        $hasil = [];
+
+        foreach ($dn->logs as $log) {
+            // CREATED tidak punya padanan di alur invoice, jadi dilewati.
+            if (! in_array($log->action, ['SENT', 'RECEIVED'], true)) {
+                continue;
+            }
+
+            if ($log->notes) {
+                $hasil[$log->action][] = ['teks' => $log->notes, 'ikon' => 'fas fa-truck'];
+            }
+
+            foreach ($log->attachments as $att) {
+                $hasil[$log->action][] = [
+                    'teks'   => '',
+                    'ikon'   => 'fas fa-paperclip',
+                    'tautan' => [
+                        'url'   => '/storage/' . $att->file_path,
+                        'label' => $att->title ?: 'Lampiran',
+                    ],
+                ];
+            }
+        }
+
+        return $hasil;
     }
 
     /** @param array<int, array<string, mixed>> $lines */

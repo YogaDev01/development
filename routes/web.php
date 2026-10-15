@@ -965,6 +965,18 @@ Route::middleware('auth')->group(function () {
             [InvoiceCashReceiptController::class, 'exportList']
         )->name('invoice-cash-receipt.export');
 
+        /*
+        | Isi modal Surat Jalan di tab Log detail invoice. Sengaja berada di
+        | gerbang menu invoice (bukan 'menu:delivery-note'): role Collection
+        | harus bisa melihat Surat Jalan yang menyangkut invoice-nya tanpa
+        | diberi akses modul Surat Jalan. Hanya baca, dan Surat Jalan yang
+        | dibuka wajib yang terpaut pada invoice itu (dicek di controller).
+        */
+        Route::get(
+            'invoice-cash-receipt/{id}/delivery-note/{dnId}',
+            [InvoiceCashReceiptController::class, 'deliveryNoteModal']
+        )->name('invoice-cash-receipt.delivery-note');
+
         Route::get(
             'invoice-cash-receipt/{id}',
             [InvoiceCashReceiptController::class, 'show']

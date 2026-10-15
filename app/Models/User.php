@@ -40,11 +40,29 @@ class User extends Authenticatable
      */
     public function defaultApp(): string
     {
-        $apps = array_keys(config('apps.items', []));
+        $apps = config('apps.items', []);
 
-        return in_array($this->default_app, $apps, true)
-            ? $this->default_app
-            : (string) config('apps.default', 'finance');
+        if (in_array($this->default_app, array_keys($apps), true)) {
+            return $this->default_app;
+        }
+
+        // Belum memilih sendiri: ikut aplikasi yang mencantumkan role ini
+        // ('roles' di config/apps.php) — mis. teknisi langsung ke Operations.
+        foreach ($apps as $key => $app) {
+            if (!empty($app['roles']) && $this->hasRole($app['roles'])) {
+                return (string) $key;
+            }
+        }
+
+        return (string) config('apps.default', 'finance');
+    }
+
+    /** Alamat muka aplikasi default user (dipakai sesudah login). */
+    public function defaultAppHome(): string
+    {
+        $app = $this->defaultApp();
+
+        return (string) (config("apps.items.$app.home") ?: '/');
     }
 
     /**

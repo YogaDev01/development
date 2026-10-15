@@ -6,6 +6,10 @@
     $canAdd = Auth::user()->hasRole(['superadmin','manager','supervisor']);
 @endphp
 
+{{-- Dibaca JS setelah tab dimuat ulang (ganti rentang tanggal tanpa reload halaman). --}}
+<div class="cr-tab-meta d-none" data-total="{{ (int) $total }}"
+     data-counts='@json($statusCounts ?? [])'></div>
+
 @if($truncated)
 <div class="alert alert-warning py-2 px-3 mb-3" style="font-size:12.5px;">
     <i class="fas fa-exclamation-triangle mr-1"></i>

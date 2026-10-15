@@ -81,11 +81,15 @@
                      Semua memuat ulang halaman dengan ?date_from=&date_to= —
                      filternya tetap server-side. --}}
                 <div id="crCustomRange" class="d-none align-items-center flex-wrap" style="gap:6px;">
-                    <span class="text-muted" style="font-size:12px;">Dari</span>
+                    <span class="text-muted" style="font-size:12px;">Periode</span>
+                    {{-- Satu input rentang: sekali klik, kalender "dari" dan "sampai"
+                         tampil berdampingan (dua bulan) dan user memilih dua tanggal
+                         berurutan. Nilainya disalin ke dua hidden input di bawah supaya
+                         alur "Terapkan" tetap sama. --}}
                     <div class="d-flex align-items-center cr-date-range" style="gap:4px;">
-                        <input type="text" id="crDateFrom" class="form-control form-control-sm" value="{{ substr($dateFrom, 0, 10) }}" readonly>
-                        <span class="text-muted" style="font-size:12px;">s/d</span>
-                        <input type="text" id="crDateTo" class="form-control form-control-sm" value="{{ substr($dateTo, 0, 10) }}" readonly>
+                        <input type="text" id="crDateRange" class="form-control form-control-sm tdr-input" readonly>
+                        <input type="hidden" id="crDateFrom" value="{{ substr($dateFrom, 0, 10) }}">
+                        <input type="hidden" id="crDateTo" value="{{ substr($dateTo, 0, 10) }}">
                     </div>
                     <button id="btnApplyCustomRange" class="btn btn-primary btn-sm">
                         <i class="fas fa-check mr-1"></i> Terapkan
@@ -502,8 +506,8 @@
 
 @push('styles')
 <style>
+
 .row-nob td      { color:var(--danger) !important; }
-.cr-date-range input.form-control { width:100px !important; padding:2px 6px !important; font-size:12px !important; }
 .row-nob-item td { color:var(--warning) !important; }
 .text-var-pos { color:var(--success); }
 .text-var-neg { color:var(--danger); }
@@ -832,31 +836,26 @@ $(function () {
     ]));
 
 
-    /* ── FILTER TANGGAL (flatpickr) — diinisialisasi PALING AWAL & dibungkus
-       try/catch supaya error di bagian script manapun (DataTable, dsb.) tidak
-       pernah bisa membuat date-picker ini gagal terpasang. Kalau library
-       flatpickr sendiri gagal termuat (CDN diblokir jaringan, atau file plugin
-       lokal belum ter-upload ke server), lepas readonly supaya user tetap bisa
-       mengetik tanggal manual (format YYYY-MM-DD) sebagai fallback. */
-    try {
-        if (typeof flatpickr === 'function') {
-            flatpickr('#crDateFrom', {
-                dateFormat: 'Y-m-d', altInput: true, altFormat: 'd/m/Y',
-                defaultDate: '{{ substr($dateFrom, 0, 10) }}',
-                onChange: function () { /* rentang baru dipakai saat "Terapkan" ditekan */ }
-            });
-            flatpickr('#crDateTo', {
-                dateFormat: 'Y-m-d', altInput: true, altFormat: 'd/m/Y',
-                defaultDate: '{{ substr($dateTo, 0, 10) }}',
-                onChange: function () { /* rentang baru dipakai saat "Terapkan" ditekan */ }
-            });
-        } else {
-            throw new Error('flatpickr is not a function');
-        }
-    } catch (err) {
-        console.warn('Flatpickr gagal diinisialisasi — filter tanggal beralih ke mode input manual.', err);
-        $('#crDateFrom, #crDateTo').removeAttr('readonly').attr('placeholder', 'YYYY-MM-DD');
+    /* ── FILTER TANGGAL ────────────────────────────────────────────────────
+    | Komponen bersama TesysDateRange (public/js/tesys-date-range.js): satu
+    | kotak teks yang membuka dua kalender "From / To". Nilainya ditulis ke
+    | #crDateFrom / #crDateTo, dan baru dipakai saat "Terapkan" ditekan.
+    | Kalau flatpickr gagal termuat, komponennya mengembalikan null dan filter
+    | turun ke dua input teks manual (YYYY-MM-DD). */
+    var crPeriode = (typeof TesysDateRange === 'object')
+        ? TesysDateRange.init({ input: '#crDateRange', from: '#crDateFrom', to: '#crDateTo' })
+        : null;
+
+    if (!crPeriode) {
+        console.warn('TesysDateRange tidak tersedia - filter tanggal beralih ke mode input manual.');
+        $('#crDateFrom, #crDateTo').attr('type', 'text')
+            .addClass('form-control form-control-sm')
+            .attr('placeholder', 'YYYY-MM-DD');
+        $('#crDateRange').remove();
     }
+
+    function crBukaPeriode() { if (crPeriode) { crPeriode.open(); } }
+    function crTutupPeriode() { if (crPeriode) { crPeriode.close(); } }
 
     /* ── RENTANG CEPAT ──────────────────────────────────────────────────────
     | "12 jam terakhir" memakai presisi jam (YYYY-MM-DD HH:mm:ss); pilihan hari
@@ -882,7 +881,8 @@ $(function () {
                        .toggleClass('d-flex', RANGE_AKTIF === 'custom');
 
     $('#btnApplyCustomRange').on('click', function () {
-        reloadWithDateRange($('#crDateFrom').val(), $('#crDateTo').val());
+        crTutupPeriode();
+        applyDateRange($('#crDateFrom').val(), $('#crDateTo').val());
     });
 
     $('#crQuickRange').on('change', function () {
@@ -891,8 +891,7 @@ $(function () {
 
         if (v === 'custom') {
             $('#crCustomRange').removeClass('d-none').addClass('d-flex');
-            var fp = document.getElementById('crDateFrom')._flatpickr;
-            if (fp) { fp.open(); } else { $('#crDateFrom').focus(); }
+            crBukaPeriode();
             return;
         }
         $('#crCustomRange').addClass('d-none').removeClass('d-flex');
@@ -908,12 +907,13 @@ $(function () {
         else if (v === '30d') { mulai.setDate(mulai.getDate() - 30); }
         else if (v === '1y')  { mulai.setFullYear(mulai.getFullYear() - 1); }
 
-        var url = new URL(window.location.href);
-        url.searchParams.set('range', v);
-        url.searchParams.delete('from');
-        url.searchParams.set('date_from', pakaiJam ? fmtWaktu(mulai) : fmtTanggal(mulai));
-        url.searchParams.set('date_to',   pakaiJam ? fmtWaktu(now)   : fmtTanggal(now));
-        window.location.href = url.toString();
+        /* Sama seperti "Terapkan": data diambil ulang lewat AJAX, halaman tidak
+           dimuat ulang. Pilihan rentangnya tetap disimpan di URL (?range=). */
+        applyDateRange(
+            pakaiJam ? fmtWaktu(mulai) : fmtTanggal(mulai),
+            pakaiJam ? fmtWaktu(now)   : fmtTanggal(now),
+            v
+        );
     });
 
     // (accounts holder lama sudah tidak diperlukan — realisasi sekarang pakai CR Detail Item)
@@ -1184,6 +1184,7 @@ $(function () {
                 $host.html(html);
                 cfg.loaded = true;
                 initCrTable(tab);
+                crSyncCounts(tab);
             })
             .fail(function () {
                 $host.html('<div class="text-center text-muted py-4">'
@@ -1220,7 +1221,13 @@ $(function () {
         window.history.replaceState({}, '', url.toString());
     });
 
-    $('#btnRefreshCR').on('click', function () { location.reload(); });
+    /* Refresh mengembalikan rentang tanggal ke bawaan (tanggal 1 s/d akhir bulan
+       berjalan), jadi kalender ikut kembali ke bulan default. */
+    $('#btnRefreshCR').on('click', function () {
+        var url = new URL(window.location.href);
+        ['date_from', 'date_to', 'from', 'range'].forEach(function (k) { url.searchParams.delete(k); });
+        window.location.href = url.toString();
+    });
 
     /* Tombol "Reset filter" pada keadaan kosong memakai ulang tombol Clear Filter tab-nya. */
     $(document).on('click', '.cr-empty-reset', function () {
@@ -1232,13 +1239,57 @@ $(function () {
     /* ── FILTER TANGGAL — server-side (reload halaman dengan ?date_from=&date_to=) ──
     | Berlaku untuk semua tab; ?tab= ikut terbawa di URL. Pakai "date_from"/"date_to"
     | (bukan "from"/"to") karena "from" sudah dipakai link sidebar (?from=finance). */
-    function reloadWithDateRange(from, to) {
+    /* Ganti rentang tanggal tanpa memuat ulang halaman: URL disinkronkan,
+       semua tab ditandai belum dimuat, lalu tab yang sedang terbuka diambil
+       ulang lewat AJAX. Stepper & badge tab ikut diperbarui dari data meta
+       yang dikirim server bersama tabelnya. */
+    function applyDateRange(from, to, range) {
+        if (!from || !to) { return; }
+        CR_DATE_FROM = from;
+        CR_DATE_TO   = to;
+
         var url = new URL(window.location.href);
         url.searchParams.delete('from');
-        url.searchParams.delete('range');
+        if (range) { url.searchParams.set('range', range); }
+        else       { url.searchParams.delete('range'); }
         url.searchParams.set('date_from', from);
         url.searchParams.set('date_to', to);
-        window.location.href = url.toString();
+        window.history.replaceState({}, '', url.toString());
+
+        Object.keys(CR_TABS).forEach(function (tab) {
+            var cfg = CR_TABS[tab];
+            if (cfg.table) {
+                try { cfg.table.destroy(); } catch (e) {}
+                cfg.table = null;
+            }
+            cfg.loaded  = false;
+            cfg.loading = false;
+            crPane(tab).find('.cr-tab-host').empty();
+        });
+
+        crLoadTab(crCurrentTab());
+    }
+
+    /* Perbarui angka stepper & badge tab dari meta yang ikut terkirim di
+       fragment tabel (jumlah per status untuk rentang tanggal baru). */
+    function crSyncCounts(tab) {
+        var $meta = crPane(tab).find('.cr-tab-meta').first();
+        if (!$meta.length) return;
+
+        var total  = parseInt($meta.attr('data-total'), 10) || 0;
+        var counts = {};
+        try { counts = JSON.parse($meta.attr('data-counts') || '{}') || {}; } catch (e) { counts = {}; }
+
+        crPane(tab).find('.wf-tl-step').each(function () {
+            var n = parseInt(counts[$(this).data('status')], 10) || 0;
+            var $node = $(this).find('.wf-tl-node');
+            var warna = 'badge-' + ($(this).data('wf-color') || 'secondary');
+            $node.text(n)
+                 .toggleClass('is-empty', n === 0)
+                 .toggleClass(warna, n > 0);
+        });
+
+        $('#crTabs .nav-link[data-crtab="' + tab + '"] .badge').text(total.toLocaleString('id-ID'));
     }
 
     // Export mengikuti filter yang SEDANG AKTIF di tabel tab tsb (search, dropdown, stepper).

@@ -34,10 +34,12 @@
                     <div class="card-header d-flex align-items-center flex-wrap" style="gap:8px;">
                         <h3 class="card-title"><i class="fas fa-layer-group mr-1"></i> Daftar Batch</h3>
                         <div class="ml-auto d-flex align-items-center flex-wrap" style="gap:8px;">
+                            {{-- Satu kotak rentang (TesysDateRange): klik membuka dua
+                                 kalender From/To. Nilainya tersimpan di input hidden. --}}
                             <div class="d-flex align-items-center batch-date-range" style="gap:4px;">
-                                <input type="text" id="batchDateFrom" class="form-control form-control-sm" value="{{ $dateFrom }}" readonly>
-                                <span class="text-muted" style="font-size:12px;">s/d</span>
-                                <input type="text" id="batchDateTo" class="form-control form-control-sm" value="{{ $dateTo }}" readonly>
+                                <input type="text" id="batchDateRange" class="form-control form-control-sm tdr-input" readonly>
+                                <input type="hidden" id="batchDateFrom" value="{{ substr($dateFrom, 0, 10) }}">
+                                <input type="hidden" id="batchDateTo" value="{{ substr($dateTo, 0, 10) }}">
                             </div>
                             <button id="btnRefresh" class="btn btn-secondary btn-sm">
                                 <i class="fas fa-sync-alt mr-1"></i> Refresh
@@ -265,7 +267,6 @@
 .btn-xs { padding:2px 8px; font-size:11px; border-radius:var(--radius-sm); }
 #tblBatch { width:100% !important; }
 
-.batch-date-range input.form-control { width:100px !important; padding:2px 6px !important; font-size:12px !important; }
 .custom-toolbar      { display:flex; align-items:flex-start; gap:15px; flex-wrap:wrap; }
 .custom-toolbar-left { display:flex; flex-direction:row; align-items:center; gap:12px; flex-wrap:wrap; }
 .toolbar-row         { display:flex; align-items:center; gap:8px; }
@@ -340,38 +341,41 @@
 <script>
 $(function () {
 
-    /* ── FILTER TANGGAL (flatpickr) — diinisialisasi PALING AWAL & dibungkus
-       try/catch supaya error di bagian script manapun (DataTable, dsb. — mis.
-       saat data kosong) tidak pernah bisa membuat date-picker ini gagal
-       terpasang. Kalau library flatpickr sendiri gagal termuat, lepas readonly
-       supaya user tetap bisa mengetik tanggal manual (format YYYY-MM-DD). */
-    function reloadWithDateRangeBatch(from, to) {
+    /* ── FILTER TANGGAL ────────────────────────────────────────────────────
+    | Komponen bersama TesysDateRange (public/js/tesys-date-range.js), sama
+    | seperti Cost Request: satu kotak teks yang membuka dua kalender From/To.
+    | Rentang baru langsung memuat ulang daftar batch (filternya server-side).
+    | Kalau flatpickr gagal termuat, filter turun ke dua input teks manual. */
+    function reloadWithDateRangeBatch(from, to, range) {
         var url = new URL(window.location.href);
         url.searchParams.set('date_from', from);
         url.searchParams.set('date_to', to);
+        if (range) { url.searchParams.set('range', range); }
+        else       { url.searchParams.delete('range'); }
         window.location.href = url.toString();
     }
-    try {
-        if (typeof flatpickr === 'function') {
-            flatpickr('#batchDateFrom', {
-                dateFormat: 'Y-m-d', altInput: true, altFormat: 'd/m/Y',
-                defaultDate: '{{ $dateFrom }}',
-                onChange: function (selectedDates, dateStr) { reloadWithDateRangeBatch(dateStr, $('#batchDateTo').val()); }
+
+    var batchPeriode = (typeof TesysDateRange === 'object')
+        ? TesysDateRange.init({
+            input: '#batchDateRange', from: '#batchDateFrom', to: '#batchDateTo',
+            quick: true,
+            onApply: function (from, to, range) {
+                /* Pemanggilan pertama hanya menuliskan nilai awal. */
+                if (from === '{{ substr($dateFrom, 0, 10) }}' && to === '{{ substr($dateTo, 0, 10) }}') return;
+                reloadWithDateRangeBatch(from, to, range);
+            }
+        })
+        : null;
+
+    if (!batchPeriode) {
+        console.warn('TesysDateRange tidak tersedia - filter tanggal beralih ke mode input manual.');
+        $('#batchDateRange').remove();
+        $('#batchDateFrom, #batchDateTo').attr('type', 'text')
+            .addClass('form-control form-control-sm')
+            .attr('placeholder', 'YYYY-MM-DD')
+            .on('change', function () {
+                reloadWithDateRangeBatch($('#batchDateFrom').val(), $('#batchDateTo').val());
             });
-            flatpickr('#batchDateTo', {
-                dateFormat: 'Y-m-d', altInput: true, altFormat: 'd/m/Y',
-                defaultDate: '{{ $dateTo }}',
-                onChange: function (selectedDates, dateStr) { reloadWithDateRangeBatch($('#batchDateFrom').val(), dateStr); }
-            });
-        } else {
-            throw new Error('flatpickr is not a function');
-        }
-    } catch (err) {
-        console.warn('Flatpickr gagal diinisialisasi — filter tanggal beralih ke mode input manual.', err);
-        $('#batchDateFrom, #batchDateTo').removeAttr('readonly').attr('placeholder', 'YYYY-MM-DD');
-        $('#batchDateFrom, #batchDateTo').on('change', function () {
-            reloadWithDateRangeBatch($('#batchDateFrom').val(), $('#batchDateTo').val());
-        });
     }
 
     /*

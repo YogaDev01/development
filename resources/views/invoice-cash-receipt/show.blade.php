@@ -678,28 +678,43 @@
                                      */
                                     $timelineEvents = \App\Support\InvoiceTimeline::untuk($invoice);
                                                                 @endphp
+                                {{-- Tiap peristiwa dirapikan jadi satu baris kepala
+                                     (lencana - pelaku - waktu) dengan keterangan di
+                                     bawahnya, bukan tumpukan teks lepas seperti
+                                     sebelumnya. Tautan Surat Jalan dibuka sebagai
+                                     modal (data-dn-url), sehingga pengguna tidak
+                                     kehilangan posisi di tab Log. --}}
                                 <div class="inv-timeline p-3">
                                     @forelse($timelineEvents as $ev)
                                     <div class="inv-timeline-item">
                                         <span class="inv-timeline-dot badge-{{ $ev['color'] }}"></span>
                                         <div class="inv-timeline-body">
-                                            <span class="badge badge-{{ $ev['color'] }} px-2 py-1 mr-2" style="font-size:9px;">{{ $ev['badge'] }}</span>
-                                            <strong>{{ $ev['actor'] }}</strong>
-                                            <div class="inv-timeline-date">{{ $ev['label'] }}</div>
+                                            <div class="inv-timeline-head">
+                                                <span class="badge badge-{{ $ev['color'] }} px-2 py-1" style="font-size:9px;">{{ $ev['badge'] }}</span>
+                                                <strong class="inv-timeline-actor">{{ $ev['actor'] }}</strong>
+                                                <span class="inv-timeline-date">{{ $ev['label'] }}</span>
+                                            </div>
                                             @if(!empty($ev['lines']))
-                                                <div style="font-size:12px;margin-top:2px;">
+                                                <div class="inv-timeline-lines">
                                                     @foreach($ev['lines'] as $baris)
-                                                        <div>
+                                                        <div class="inv-timeline-line">
                                                             @if(!empty($baris['ikon']))
-                                                                <i class="{{ $baris['ikon'] }} mr-1"></i>
+                                                                <i class="{{ $baris['ikon'] }} inv-timeline-ico"></i>
                                                             @endif
-                                                            {{ $baris['teks'] }}
-                                                            @if(!empty($baris['tautan']))
-                                                                <a href="{{ $baris['tautan']['url'] }}" target="_blank">{{ $baris['tautan']['label'] }}</a>
-                                                            @endif
-                                                            @if(!empty($baris['sesudah']))
-                                                                {{ $baris['sesudah'] }}
-                                                            @endif
+                                                            <span>
+                                                                {{ $baris['teks'] }}
+                                                                @if(!empty($baris['tautan']))
+                                                                    @if(!empty($baris['tautan']['modal']))
+                                                                        <a href="#" class="inv-dn-link"
+                                                                           data-dn-url="{{ $baris['tautan']['url'] }}">{{ $baris['tautan']['label'] }}</a>
+                                                                    @else
+                                                                        <a href="{{ $baris['tautan']['url'] }}" target="_blank">{{ $baris['tautan']['label'] }}</a>
+                                                                    @endif
+                                                                @endif
+                                                                @if(!empty($baris['sesudah']))
+                                                                    {{ $baris['sesudah'] }}
+                                                                @endif
+                                                            </span>
                                                         </div>
                                                     @endforeach
                                                 </div>
@@ -943,6 +958,24 @@
     </div>
 </div>
 
+{{-- MODAL: DETAIL SURAT JALAN (isi dimuat saat tautan di tab Log diklik) --}}
+<div class="modal fade" id="mdlDeliveryNote" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
+            <div class="modal-header" style="background:var(--charcoal);border-bottom:3px solid var(--accent);">
+                <h5 class="modal-title text-white"><i class="fas fa-truck mr-2" style="color:var(--accent);"></i> Detail Surat Jalan</h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <div class="modal-body" id="mdlDeliveryNoteBody" style="padding:20px 24px;max-height:70vh;overflow-y:auto;">
+                <div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin mr-1"></i> Memuat...</div>
+            </div>
+            <div class="modal-footer" style="background:var(--surface-2);">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('styles')
@@ -964,7 +997,13 @@
     border:3px solid var(--border); box-shadow:0 0 0 1px var(--border);
 }
 .inv-timeline-body { font-size:12px; }
-.inv-timeline-date { font-size:11px; color:var(--text-faint); margin-top:3px; }
+.inv-timeline-head { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+.inv-timeline-actor { font-size:12.5px; }
+.inv-timeline-date { font-size:11px; color:var(--text-faint); }
+.inv-timeline-lines { margin-top:6px; display:flex; flex-direction:column; gap:4px; }
+.inv-timeline-line { display:flex; align-items:flex-start; gap:6px; font-size:12px; color:var(--text-muted); }
+.inv-timeline-ico { color:var(--text-faint); margin-top:2px; }
+.inv-dn-link { font-weight:600; }
 
 .att-group-section { padding:14px 16px; border-bottom:1px solid var(--border); }
 .att-group-section:last-child { border-bottom:none; }
@@ -1148,4 +1187,77 @@ $(function () {
 
 });
 </script>
+@endpush
+@push('scripts')
+<script>
+/*
+ | Tautan Surat Jalan di tab Log dibuka sebagai modal, bukan halaman baru:
+ | yang dibutuhkan dari sana hanya informasi SJ, daftar invoice-nya, dan log
+ | serta lampirannya. Isi modal diambil saat diklik (bukan ikut dirender di
+ | halaman) supaya halaman detail invoice tidak bertambah berat untuk invoice
+ | yang Surat Jalannya tidak pernah dibuka.
+ */
+$(function () {
+    var $body = $('#mdlDeliveryNoteBody');
+
+    $(document).on('click', '.inv-dn-link', function (e) {
+        e.preventDefault();
+
+        var url = $(this).data('dn-url');
+        if (!url) return;
+
+        $body.html('<div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin mr-1"></i> Memuat...</div>');
+        $('#mdlDeliveryNote').modal('show');
+
+        $.get(url)
+            .done(function (html) { $body.html(html); })
+            .fail(function () {
+                $body.html('<div class="alert alert-danger mb-0" style="font-size:12px;">Surat Jalan tidak dapat dimuat.</div>');
+            });
+    });
+});
+</script>
+@endpush
+
+@push('styles')
+<style>
+/* Modal detail Surat Jalan — memakai token yang sama dengan halaman lain. */
+.dnm-head { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+.dnm-code { font-size:15px; font-weight:700; color:var(--text); }
+.dnm-section { margin-bottom:18px; }
+.dnm-section:last-child { margin-bottom:0; }
+.dnm-section-title {
+    font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.4px;
+    color:var(--text-faint); padding-bottom:6px; margin-bottom:10px; border-bottom:1px solid var(--border);
+}
+.dnm-grid { display:grid; grid-template-columns:140px 1fr; row-gap:6px; column-gap:12px; font-size:12.5px; }
+.dnm-label { color:var(--text-faint); font-weight:600; }
+.dnm-value { color:var(--text); }
+.dnm-table th { font-size:10.5px; text-transform:uppercase; letter-spacing:.3px; color:var(--text-faint); border-top:0; }
+.dnm-table td { font-size:12px; vertical-align:middle !important; }
+.dnm-row-current { background:var(--warning-bg); }
+.dnm-tag-ini { font-size:10px; color:var(--text-faint); margin-left:4px; }
+.dnm-timeline { position:relative; padding-left:26px; }
+.dnm-timeline::before { content:""; position:absolute; left:9px; top:6px; bottom:6px; width:2px; background:var(--surface-3); }
+.dnm-timeline-item { position:relative; padding-bottom:16px; }
+.dnm-timeline-item:last-child { padding-bottom:0; }
+.dnm-timeline-dot {
+    position:absolute; left:-26px; top:2px; width:16px; height:16px; border-radius:50%;
+    border:3px solid var(--border); box-shadow:0 0 0 1px var(--border);
+}
+.dnm-timeline-body { font-size:12px; }
+.dnm-timeline-date { font-size:11px; color:var(--text-faint); margin-top:3px; }
+.dnm-timeline-notes { font-size:12px; margin-top:6px; padding:8px 12px; background:var(--surface-2); border-radius:var(--radius-sm); border:1px solid var(--border); }
+.dnm-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.dnm-chip {
+    display:inline-flex; align-items:center; font-size:11px; padding:4px 8px;
+    background:var(--info-bg); border:1px solid var(--border); border-radius:var(--radius-sm);
+    color:var(--text); text-decoration:none;
+}
+.dnm-chip:hover { background:var(--info-bg); color:var(--text); }
+@media (max-width: 640px) {
+    .dnm-grid { grid-template-columns:1fr; row-gap:2px; }
+    .dnm-label { margin-top:6px; }
+}
+</style>
 @endpush

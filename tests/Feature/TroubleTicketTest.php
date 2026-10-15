@@ -193,8 +193,8 @@ class TroubleTicketTest extends TestCase
 
         $this->assertSame('OPEN', $t->status);
         $this->assertSame($this->site->customer_id, $t->customer_id);
-        // Format nomor: T. + 6 digit urutan berjalan + bulan (mm) + tahun (yy).
-        $this->assertSame('T.000001'.now()->format('my'), $t->ticket_number);
+        // Format nomor (15 Okt 2026): T. + bulan (mm) + tahun (yy) + urutan berjalan.
+        $this->assertSame('T.'.now()->format('my').'001', $t->ticket_number);
         $this->assertDatabaseHas('trouble_ticket_assignments', ['trouble_ticket_id' => $t->id, 'assigned_to' => $this->tech->id]);
         $this->assertDatabaseHas('trouble_ticket_messages', ['trouble_ticket_id' => $t->id, 'event' => 'created']);
     }
@@ -232,9 +232,10 @@ class TroubleTicketTest extends TestCase
 
         $this->assertSame(5, TroubleTicket::distinct()->count('ticket_number'));
         // Urutannya berjalan terus mengikuti jumlah tiket.
+        $awalan = 'T.'.now()->format('my');
         $this->assertSame(
-            ['T.000001', 'T.000002', 'T.000003', 'T.000004', 'T.000005'],
-            TroubleTicket::orderBy('id')->pluck('ticket_number')->map(fn ($n) => substr($n, 0, 8))->all(),
+            [$awalan.'001', $awalan.'002', $awalan.'003', $awalan.'004', $awalan.'005'],
+            TroubleTicket::orderBy('id')->pluck('ticket_number')->all(),
         );
         $this->assertSame(5, (int) \DB::table('document_sequences')->where('key', 'trouble-ticket:'.now()->year)->value('counter'));
     }
@@ -324,9 +325,14 @@ class TroubleTicketTest extends TestCase
         $this->assertNotNull($t->fresh()->travel_started_at);
         $this->assertSame('running', $t->fresh()->slaMetric('travel')['state']);
 
-        // Batal di tengah jalan: SLA Travel dibuang, tiket tetap di Trip, log tetap ada.
+        // Batal di tengah jalan: SLA Travel dibuang, log tetap ada. Alasan DAN
+        // tanggal plan berikutnya wajib (15 Okt 2026); tanggal hari ini =
+        // tiket tetap di Trip.
         $this->post("/trouble-ticket/{$t->id}/travel/cancel", ['reason' => ''])->assertSessionHasErrors('reason');
-        $this->post("/trouble-ticket/{$t->id}/travel/cancel", ['reason' => 'Jalan longsor'])->assertSessionHasNoErrors();
+        $this->post("/trouble-ticket/{$t->id}/travel/cancel", ['reason' => 'Jalan longsor'])->assertSessionHasErrors('visit_site');
+        $this->post("/trouble-ticket/{$t->id}/travel/cancel", [
+            'reason' => 'Jalan longsor', 'visit_site' => now()->toDateString(),
+        ])->assertSessionHasNoErrors();
         $t->refresh();
         $this->assertSame('TRIP', $t->status);
         $this->assertNull($t->travel_started_at);
@@ -655,13 +661,23 @@ class TroubleTicketTest extends TestCase
         $this->actingAs($this->tech)->get("/trouble-ticket/{$t->id}");
         $pertama = $t->fresh()->acknowledged_at;
 
-        $this->actingAs($this->tech)->post("/trouble-ticket/{$t->id}/reassign", ['assigned_to' => $this->tech2->id, 'reason' => 'x'])->assertForbidden();
+        // Tahap TT Open: Change Teknisi belum terbuka (15 Okt 2026).
         $this->actingAs($this->leader)->post("/trouble-ticket/{$t->id}/reassign", ['assigned_to' => $this->tech2->id, 'reason' => 'Tech1 cuti'])
-            ->assertSessionHasNoErrors();
+            ->assertSessionHasErrors('workflow');
+
+        $t = $this->advance($t, 'VISIT', 'PLAN');
+
+        $this->actingAs($this->tech)->post("/trouble-ticket/{$t->id}/reassign", ['assigned_to' => $this->tech2->id, 'reason' => 'x'])->assertForbidden();
+        $this->actingAs($this->leader)->post("/trouble-ticket/{$t->id}/reassign", [
+            'assigned_to' => $this->tech2->id, 'reason' => 'Tech1 cuti',
+            // Reschedule ikut di form Change Teknisi.
+            'visit_site' => now()->addDays(2)->toDateString(),
+        ])->assertSessionHasNoErrors();
 
         $t->refresh();
         $this->assertSame($this->tech2->id, $t->assigned_to);
-        $this->assertSame('OPEN', $t->status);
+        $this->assertSame('PLAN', $t->status);
+        $this->assertSame(now()->addDays(2)->toDateString(), $t->visit_site->toDateString());
         $this->assertTrue($pertama->equalTo($t->acknowledged_at));
         $this->assertSame($this->tech->id, $t->acknowledged_by);
         $this->assertSame(2, $t->assignments()->count());
@@ -669,7 +685,7 @@ class TroubleTicketTest extends TestCase
 
         // Teknisi lama tidak lagi bisa beraksi; teknisi baru merespons sendiri.
         $this->actingAs($this->tech2)->get("/trouble-ticket/{$t->id}")->assertOk();
-        $this->assertSame('OPEN', $t->fresh()->status);
+        $this->assertSame('PLAN', $t->fresh()->status);
         $this->assertNotNull($t->assignments()->whereNull('unassigned_at')->value('responded_at'));
     }
 

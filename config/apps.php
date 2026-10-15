@@ -67,14 +67,24 @@ return [
             'modules' => ['Gudang', 'Stok', 'Pengiriman', 'Penerimaan Barang'],
         ],
 
+        /*
+         | Operations sudah berisi modul (Project Monitoring & Trouble Ticket),
+         | jadi 'ready' => true. 'home' tetap /app/<key> supaya aplikasi yang
+         | sedang dibuka tercatat (AppShellController), lalu dilempar ke
+         | 'landing' — Trouble Ticket, pekerjaan harian orang lapangan.
+         | 'roles' = role yang dibawa ke sini saat login bila user belum
+         | memilih App Default sendiri (lihat
+         | User::defaultApp()); ini HANYA pintu masuk, bukan hak akses.
+         */
         'operation' => [
-            'label' => 'Operations',
-            'sub'   => 'Operations',
-            'icon'  => 'fas fa-cogs',
-            'home'  => '/app/operation',
-            'ready' => false,
+            'label'   => 'Operations',
+            'sub'     => 'Operations',
+            'icon'    => 'fas fa-cogs',
+            'home'    => '/app/operation',
+            'landing' => '/trouble-ticket',
+            'ready'   => true,
+            'roles'   => ['teknisi'],
             'desc'  => 'Jadwal kerja lapangan, tiket, dan pemeliharaan aset.',
-            'modules' => ['Jadwal Lapangan', 'Tiket', 'Pemeliharaan Aset'],
         ],
 
         'project' => [

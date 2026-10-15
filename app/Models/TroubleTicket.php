@@ -84,9 +84,11 @@ class TroubleTicket extends Model
 
     /**
      * Tahap yang boleh mengirim form close. PLAN ikut (keputusan 12 Okt 2026):
-     * gangguan kadang beres sebelum tanggal kunjungan tiba.
+     * gangguan kadang beres sebelum tanggal kunjungan tiba. TRIP ikut
+     * (keputusan 15 Okt 2026): gangguan bisa beres saat teknisi masih di
+     * jalan — perjalanan yang sedang berjalan dibatalkan otomatis.
      */
-    public const CLOSABLE = ['REMOTE', 'PLAN', 'IN_PROGRESS'];
+    public const CLOSABLE = ['REMOTE', 'PLAN', 'TRIP', 'IN_PROGRESS'];
 
     /** Status akhir — tidak ada transisi keluar. */
     public const FINAL_STATUSES = ['CLOSED'];
@@ -334,9 +336,10 @@ class TroubleTicket extends Model
     |--------------------------------------------------------------------------
     */
 
-    /** TT-0001/10/26 — urut per tahun, pola sama dengan Delivery Note. */
     /**
-     * Nomor tiket: `T.0000011026` — T, 6 digit urutan, bulan (mm), tahun (yy).
+     * Nomor tiket: `T.1026008` — T, bulan (mm), tahun (yy), lalu urutan
+     * (minimal 3 digit, melebar sendiri setelah 999). Format ini berlaku sejak
+     * 15 Okt 2026; sebelumnya `T.0000011026` (urutan di depan bulan/tahun).
      *
      * Urutannya **berjalan terus**, tidak di-reset tiap bulan atau tahun:
      * angkanya adalah nomor tiket ke berapa, sesuai permintaan 14 Okt 2026.
@@ -352,8 +355,11 @@ class TroubleTicket extends Model
 
         $no = DocumentSequence::next('trouble-ticket', fn () => static::count());
 
-        return 'T.' . str_pad((string) $no, 6, '0', STR_PAD_LEFT)
-            . $date->format('m') . $date->format('y');
+        // T.<bulan><tahun><urutan> — mis. T.1026008 (15 Okt 2026). Urutannya tetap
+        // BERJALAN TERUS (tidak reset per bulan/tahun, keputusan 14 Okt 2026) dan
+        // lebarnya minimal 3 digit, bertambah sendiri begitu melewati 999.
+        return 'T.' . $date->format('m') . $date->format('y')
+            . str_pad((string) $no, 3, '0', STR_PAD_LEFT);
     }
 
     /*

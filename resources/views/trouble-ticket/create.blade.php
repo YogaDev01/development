@@ -64,15 +64,14 @@
                                             <small class="form-text text-muted">Dugaan akar masalah; masih bisa diperbarui saat tiket ditutup.</small>
                                             @error("tickets.$i.sub_rca_id")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                         </div>
+                                        {{-- No. TT boleh ditentukan sendiri (mis. nomor tiket
+                                             dari customer). Dibiarkan kosong = nomor otomatis. --}}
                                         <div class="form-group col-md-6">
-                                            <label class="font-weight-bold">Device</label>
-                                            <select name="tickets[{{ $i }}][device_id]" class="form-control tt-device @error("tickets.$i.device_id") is-invalid @enderror">
-                                                <option value="">&mdash; Pilih device &mdash;</option>
-                                                @foreach($devices as $d)
-                                                    <option value="{{ $d->id }}" @selected((string) ($b['device_id'] ?? '') === (string) $d->id)>{{ $d->name }}</option>
-                                                @endforeach
-                                            </select>
-                                            @error("tickets.$i.device_id")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                            <label class="font-weight-bold">No. Tiket Custom</label>
+                                            <input type="text" name="tickets[{{ $i }}][ticket_number]" maxlength="50"
+                                                   value="{{ $b['ticket_number'] ?? '' }}" placeholder="Kosongkan = nomor otomatis"
+                                                   class="form-control @error("tickets.$i.ticket_number") is-invalid @enderror">
+                                            @error("tickets.$i.ticket_number")<div class="invalid-feedback">{{ $message }}</div>@enderror
                                         </div>
                                         <div class="form-group col-md-6">
                                             <label class="font-weight-bold">Date Open</label>
@@ -109,34 +108,37 @@
                     <div class="card card-primary card-outline shadow-sm">
                         <div class="card-header"><h3 class="card-title"><i class="fas fa-broadcast-tower mr-1"></i> Site & Penugasan</h3></div>
                         <div class="card-body">
+                            {{-- Customer dipilih lebih dulu: daftar site di bawahnya
+                                 hanya memuat site milik customer tersebut. --}}
+                            <div class="form-group">
+                                <label class="font-weight-bold" for="fldCustomer">Customer <span class="text-danger">*</span></label>
+                                @php $custLama = old('customer_id', $sites->firstWhere('id', old('site_id'))?->customer_id); @endphp
+                                <select id="fldCustomer" class="form-control">
+                                    <option value="">— Pilih customer —</option>
+                                    @foreach($customers as $c)
+                                        <option value="{{ $c->id }}" @selected((string) $custLama === (string) $c->id)>{{ $c->name }}</option>
+                                    @endforeach
+                                </select>
+                                <input type="hidden" name="customer_id" id="fldCustomerId" value="{{ $custLama }}">
+                            </div>
                             <div class="form-group">
                                 <label class="font-weight-bold" for="fldSite">Site <span class="text-danger">*</span></label>
                                 <select name="site_id" id="fldSite" class="form-control @error('site_id') is-invalid @enderror" required>
-                                    <option value="">— Pilih site —</option>
-                                    @foreach($sites as $s)
-                                        <option value="{{ $s->id }}" data-customer="{{ $s->customer?->name }}" @selected((string) old('site_id') === (string) $s->id)>{{ $s->tid }} — {{ $s->sitename }}</option>
-                                    @endforeach
+                                    <option value="">— Pilih customer dulu —</option>
                                 </select>
                                 @error('site_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                <small class="form-text text-muted">Customer: <strong id="lblCustomer">—</strong></small>
                             </div>
                             {{-- Teknisi tidak dipilih: ia mengikuti site. Kotaknya baca-saja,
                                  nilainya dikirim lewat input tersembunyi di bawahnya. --}}
                             <div class="form-group mb-0">
                                 <label class="font-weight-bold" for="fldTechName">Teknisi <span class="text-danger">*</span></label>
                                 <input type="text" id="fldTechName" class="form-control @error('assigned_to') is-invalid @enderror"
-                                       value="" placeholder="— Pilih site dulu —" readonly>
+                                       value="" placeholder="— Pilih customer dulu —" readonly>
                                 <input type="hidden" name="assigned_to" id="fldTech" value="{{ old('assigned_to') }}">
                                 @error('assigned_to')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
-                                <small class="form-text text-muted" id="lblTechHint">Teknisi = PIC internal site tersebut; leader team tidak termasuk.</small>
+                                <small class="form-text text-muted" id="lblTechHint"></small>
                             </div>
                         </div>
-                    </div>
-                    <div class="alert alert-light border" style="font-size:12px;">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        Timer Response berjalan sejak tiket disimpan sampai teknisi pertama kali membuka tiket.
-                        Target SLA diambil dari kebijakan aktif yang berlaku saat tiket disimpan.
-                        Severity tidak diisi di sini: ia mengikuti aging tiket &mdash; 0 hari Rendah, 1&ndash;2 Minor, 3&ndash;7 Major, 8 hari ke atas Kritis.
                     </div>
                     {{-- Tombol duduk di kolom kanan, tepat di bawah ringkasan penugasan:
                          jalur baca form berakhir di sini, bukan melintas kembali ke kiri. --}}
@@ -158,8 +160,32 @@ $(function () {
     var techUrl = @json(url('trouble-ticket/site/__ID__/technicians'));
     var oldTech = @json((string) old('assigned_to'));
     var $site = $('#fldSite'), $tech = $('#fldTech'), $techName = $('#fldTechName');
+    var $cust = $('#fldCustomer'), $custId = $('#fldCustomerId');
+    // Seluruh site aktif dikirim bersama halaman; penyaringan per customer
+    // dilakukan di browser, tanpa permintaan tambahan.
+    var SITES = @json($sites->map(fn ($s) => ['id' => $s->id, 'customer_id' => $s->customer_id, 'label' => $s->tid . ' — ' . $s->sitename])->values());
+    var oldSite = @json((string) old('site_id'));
 
-    TesysSearchableSelect.init('#fldSite', { placeholder: '— Pilih site —', searchPlaceholder: 'Cari Site ID / nama...' });
+    TesysSearchableSelect.init('#fldCustomer', { placeholder: '— Pilih customer —', searchPlaceholder: 'Cari customer...' });
+    TesysSearchableSelect.init('#fldSite', { searchPlaceholder: 'Cari Site ID / nama...' });
+
+    /* ---------- Customer → site ---------- */
+
+    function isiSite(terpilih) {
+        var custId = String($cust.val() || '');
+        var daftar = custId ? SITES.filter(function (x) { return String(x.customer_id) === custId; }) : [];
+        $custId.val(custId);
+        $site.find('option').remove();
+        $site.append($('<option>').val('').text(custId ? '— Pilih site —' : '— Pilih customer dulu —'));
+        daftar.forEach(function (x) { $site.append($('<option>').val(x.id).text(x.label)); });
+        // Site lama hanya dipertahankan bila masih milik customer yang dipilih.
+        var tetap = terpilih && daftar.some(function (x) { return String(x.id) === String(terpilih); });
+        $site.val(tetap ? terpilih : '');
+        $site.trigger('tss:sync');
+    }
+
+    $cust.on('change', function () { isiSite(null); loadTechs(null); });
+    isiSite(oldSite);
 
     /* ---------- Blok gangguan (satu blok = satu tiket) ---------- */
 
@@ -182,7 +208,6 @@ $(function () {
 
     function siapkanBlok($blok) {
         TesysSearchableSelect.initOne($blok.find('.tt-rca'), { placeholder: '— Pilih RCA —', searchPlaceholder: 'Cari RCA...' });
-        TesysSearchableSelect.initOne($blok.find('.tt-device'), { placeholder: '— Pilih device —', searchPlaceholder: 'Cari device...' });
         // Tanpa placeholder tetap: labelnya ikut opsi pertama.
         TesysSearchableSelect.initOne($blok.find('.tt-sub-rca'), { searchPlaceholder: 'Cari sub-RCA...' });
         isiSubRca($blok, $blok.find('.tt-sub-rca').attr('data-terpilih'));
@@ -203,10 +228,9 @@ $(function () {
 
     function loadTechs(selected) {
         var id = $site.val();
-        $('#lblCustomer').text($site.find(':selected').data('customer') || '—');
         if (!id) {
             setTech('', '');
-            $techName.attr('placeholder', '— Pilih site dulu —');
+            $techName.attr('placeholder', $cust.val() ? '— Pilih site dulu —' : '— Pilih customer dulu —');
             return;
         }
         setTech('', 'Memuat…');
@@ -217,7 +241,7 @@ $(function () {
                 $('#lblTechHint').html('Tambahkan PIC internal (bukan leader team) di <a href="' + @json(url('/site')) + '/' + id + '">halaman site</a> lebih dulu.');
                 return;
             }
-            $('#lblTechHint').text('Teknisi = PIC internal site tersebut; leader team tidak termasuk.');
+            $('#lblTechHint').text('');
             // Teknisi site langsung dipakai; tidak ada yang perlu dipilih.
             var pakai = res.technicians.filter(function (t) { return String(t.id) === String(selected); })[0] || res.technicians[0];
             setTech(pakai.id, pakai.name);

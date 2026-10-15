@@ -129,9 +129,10 @@ class AuthController extends Controller
             // bukan selalu Finance.
             session(['tesys.app' => Auth::user()->defaultApp()]);
 
-            // Redirect ke halaman yang dituju atau halaman utama (Profil).
+            // Redirect ke halaman yang dituju, atau muka aplikasi default user
+            // (bukan selalu Finance — teknisi mendarat di Operations).
             return redirect()
-                ->intended('/')
+                ->intended(Auth::user()->defaultAppHome())
                 ->with('success', 'Selamat datang, ' . Auth::user()->name . '!');
         }
 

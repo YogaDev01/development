@@ -180,6 +180,18 @@ return [
             'active' => ['trouble-ticket*'],
             'menu'   => 'trouble-ticket',
         ],
+        // Kebijakan SLA & master RCA/Sub-RCA/Severity Trouble Ticket. Halamannya
+        // tetap di route trouble-ticket.settings (gerbang menu:trouble-ticket +
+        // role:superadmin); di sidebar ia berdiri sebagai Master Data.
+        'trouble-ticket-rules' => [
+            'label'  => 'Custom Ruls',
+            'icon'   => 'fas fa-sliders-h',
+            'url'    => 'route:trouble-ticket.settings',
+            'active' => ['trouble-ticket/settings*'],
+            // Dijaga 'roles' (bukan 'menu') agar sama persis dengan route
+            // settings: role:superadmin — AccessRoles::TROUBLE_TICKET_SETTINGS.
+            'roles'  => ['superadmin'],
+        ],
 
         /* ---------------------------------------------------- ANALYSIS */
         'finance-summary' => [
@@ -412,7 +424,7 @@ return [
         ],
         'Operation Master' => [
             'icon'  => 'fas fa-cogs',
-            'items' => ['homebase', 'network', 'region', 'site', 'wilayah'],
+            'items' => ['homebase', 'network', 'region', 'site', 'wilayah', 'trouble-ticket-rules'],
         ],
         'Finance Master' => [
             'icon'  => 'fas fa-coins',
@@ -487,8 +499,10 @@ return [
          | urusan Operations sehari-hari, sementara Project memakainya dari sisi
          | perencanaan. Lihat keterangan 'apps' di kepala berkas ini.
          */
+        // Tanpa Overview: muka Operations adalah Trouble Ticket sendiri
+        // (config/apps.php 'landing'), jadi tidak ada halaman Dashboard
+        // terpisah yang bisa ditunjuk.
         'operation' => [
-            'Overview'    => ['dashboard'],
             'Workflow'    => ['project-monitoring', 'trouble-ticket'],
         ],
 

@@ -9,6 +9,6 @@
      persoalan itu sekaligus memangkas satu ketukan. --}}
                 @if($bisaAlihkan)
                     <button type="button" class="btn btn-outline-secondary btn-sm" data-toggle="modal" data-target="#mdlTtReassign">
-                        <i class="fas fa-exchange-alt mr-1"></i> Swap Teknisi
+                        <i class="fas fa-exchange-alt mr-1"></i> Change Teknisi
                     </button>
                 @endif
