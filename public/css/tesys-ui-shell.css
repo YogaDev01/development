@@ -32,6 +32,27 @@ body.tesys-ui .main > .content > .card:last-child { margin-bottom: 0; }
     body.tesys-ui .main > .content { padding: 14px 14px 48px !important; }
 }
 
+/* ------------------------------------------- KOTAK GULIR AREA KONTEN
+   Sebelumnya jendela yang menggulir, sehingga batang gulir membentang dari
+   tepi paling atas — melewati topbar — dan selalu tampil karena tinggi
+   dokumen selalu sedikit melebihi layar. Kini .main setinggi layar dan
+   .content yang menggulir: batangnya mulai di bawah topbar dan hanya
+   muncul saat isinya memang lebih tinggi (overflow-y: auto). */
+body.tesys-ui .shell { height: 100vh; min-height: 100vh; overflow: hidden; }
+body.tesys-ui .main {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+body.tesys-ui .main > .content {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+body.tesys-ui .topbar { flex: none; }
+
 /* ------------------------------------------------- PANEL KONTEN RATA
    Area kerja memenuhi sisa layar tanpa sudut membulat maupun garis batas;
    pemisah dari navigasi datang dari bayangan sidebar. */

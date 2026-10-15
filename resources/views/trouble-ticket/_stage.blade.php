@@ -5,17 +5,15 @@
 @if($bisaRemote)
     <div class="tt-stage">
         <div class="tt-stage-title">Pilih jalur penanganan</div>
-        <div class="tt-stage-acts">
-            <form method="POST" action="{{ route('trouble-ticket.remote', $t) }}" class="tt-confirm m-0"
-                  data-title="Tangani secara Remote?" data-text="Tiket diselesaikan tanpa kunjungan ke site.">
-                @csrf
-                <button class="btn btn-outline-primary btn-sm btn-block"><i class="fas fa-satellite-dish mr-1"></i> Remote</button>
-            </form>
-            <button type="button" class="btn btn-primary btn-sm btn-block mt-0" data-toggle="modal" data-target="#mdlTtPlan">
-                <i class="fas fa-calendar-check mr-1"></i> Create Plan
-            </button>
-        </div>
-        <div class="tt-stage-note">Remote = selesai tanpa kunjungan. Create Plan = jadwalkan kunjungan ke site.</div>
+        {{-- Satu tombol = satu baris penuh, seirama panel tahap lain. Dulu ia
+             duduk di grid dua kolom .tt-stage-acts, jadi lebarnya separuh.
+             Tanpa dialog konfirmasi: Remote tidak menutup tiket dan masih bisa
+             berbalik ke Create Plan, jadi satu ketukan cukup. --}}
+        <form method="POST" action="{{ route('trouble-ticket.remote', $t) }}" class="tt-submit-once m-0">
+            @csrf
+            <button class="btn btn-outline-primary btn-sm btn-block tt-btn-wide"><i class="fas fa-satellite-dish mr-1"></i> Remote</button>
+        </form>
+        <div class="tt-stage-note">Penanganan dimulai dari Remote. Bila gangguan tidak selesai dari jarak jauh, Create Plan tersedia di tahap Remote.</div>
     </div>
 @endif
 
@@ -39,12 +37,17 @@
 
 @if($bisaBerangkat)
     <div class="tt-stage">
-        <form method="POST" action="{{ route('trouble-ticket.travel.start', $t) }}" id="frmTtTravel" class="tt-submit-once m-0">@csrf</form>
-        {{-- Swipe for travel langsung jalan: geser penuh sudah tindakan sengaja, dialog konfirmasi hanya menambah satu ketukan. --}}
-        <div class="tt-swipe" data-form="frmTtTravel" data-confirm="0">
+        {{-- Geser penuh membuka modal evidence perjalanan: evidence wajib
+             (15 Okt 2026), jadi geser saja tidak langsung mengirim. --}}
+        <div class="tt-swipe" data-modal="#mdlTtTravel">
             <span class="tt-swipe-knob" tabindex="0" role="button" aria-label="Geser untuk mulai perjalanan"><i class="fas fa-arrow-right"></i></span>
             <span class="tt-swipe-text">Swipe for travel</span>
         </div>
+        {{-- Selebar panel (bukan separuh baris) tapi tetap ramping — tombol
+             setinggi swipe terasa terlalu besar. --}}
+        <button type="button" class="btn btn-success btn-sm btn-block tt-btn-wide mt-2" data-toggle="modal" data-target="#mdlTtClosure">
+            <i class="fas fa-flag-checkered mr-1"></i> Form Close
+        </button>
     </div>
 @endif
 
@@ -53,11 +56,15 @@
         <form method="POST" action="{{ route('trouble-ticket.arrive', $t) }}" class="tt-confirm m-0"
               data-title="Konfirmasi On Site?" data-text="Pastikan site yang Anda datangi sudah benar.">
             @csrf
-            <button class="btn btn-success btn-sm btn-block"><i class="fas fa-map-marker-alt mr-1"></i> On Site</button>
+            <button class="btn btn-success btn-sm btn-block tt-btn-wide"><i class="fas fa-map-marker-alt mr-1"></i> On Site</button>
         </form>
-        <button type="button" class="btn btn-outline-danger btn-sm btn-block mt-2" data-toggle="modal" data-target="#mdlTtCancelTrip">
+        <button type="button" class="btn btn-outline-danger btn-sm btn-block tt-btn-wide mt-2" data-toggle="modal" data-target="#mdlTtCancelTrip">
             <i class="fas fa-ban mr-1"></i> Cancel Visit
         </button>
+        <button type="button" class="btn btn-success btn-sm btn-block tt-btn-wide mt-2" data-toggle="modal" data-target="#mdlTtClosure">
+            <i class="fas fa-flag-checkered mr-1"></i> Form Close
+        </button>
+        <div class="tt-stage-note">Form close dari tahap Trip membatalkan perjalanan; SLA Travel tidak dihitung. Jadwal visit dijadwalkan ulang lewat Cancel Visit.</div>
     </div>
 @endif
 
@@ -71,8 +78,8 @@
     </div>
 @endif
 
-{{-- Tahap Plan punya panelnya sendiri di atas (Ubah Tanggal + Form Close). --}}
-@if($bisaTutup && $t->status !== 'PLAN')
+{{-- Tahap Plan & Trip punya panelnya sendiri di atas (jadwal + Form Close). --}}
+@if($bisaTutup && ! in_array($t->status, ['PLAN', 'TRIP'], true))
     <div class="tt-stage">
         <div class="tt-stage-title">{{ $t->status === 'REMOTE' ? 'Penanganan remote' : 'Pengerjaan di site' }}</div>
         @if($t->status === 'REMOTE')

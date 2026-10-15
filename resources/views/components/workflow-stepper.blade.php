@@ -163,7 +163,7 @@
 <div class="wf-compact" data-wf-table="{{ $table }}" data-wf-field="{{ $field }}">
     <div class="wf-tl-grid">
         @foreach($steps as $s)
-            <div class="wf-tl-step" role="button" tabindex="0" data-status="{{ $s[3] }}">
+            <div class="wf-tl-step" role="button" tabindex="0" data-status="{{ $s[3] }}" data-wf-color="{{ $s[2] }}">
                 <span class="badge wf-tl-node {{ $s[1] > 0 ? 'badge-' . $s[2] : 'is-empty' }}">{{ $s[1] }}</span>
                 <div class="wf-tl-label {{ $s[1] > 0 ? 'is-on' : 'is-off' }}">{!! $wfLabel($s[0]) !!}</div>
             </div>
@@ -192,7 +192,7 @@
 
         <div class="wf-tl-grid">
             @foreach($steps as $s)
-                <div class="wf-tl-step" role="button" tabindex="0" data-status="{{ $s[3] }}">
+                <div class="wf-tl-step" role="button" tabindex="0" data-status="{{ $s[3] }}" data-wf-color="{{ $s[2] }}">
                     <span class="badge wf-tl-node {{ $s[1] > 0 ? 'badge-' . $s[2] : 'is-empty' }}">{{ $s[1] }}</span>
                     <div class="wf-tl-label {{ $s[1] > 0 ? 'is-on' : 'is-off' }}">{!! $wfLabel($s[0]) !!}</div>
                 </div>

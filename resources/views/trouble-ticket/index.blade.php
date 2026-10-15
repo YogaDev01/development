@@ -65,6 +65,7 @@
                 @foreach($tickets as $t)
                     @php $siteM = $t->site?->sitename ?? '-'; @endphp
                     <a href="{{ route('trouble-ticket.show', $t) }}" class="tt-mcard"
+                       data-id="{{ $t->id }}"
                        data-status="{{ $t->status }}"
                        data-cari="{{ Str::lower($t->ticket_number.' '.$siteM.' '.($t->site?->tid ?? '').' '.($t->rca_label ?? '').' '.($t->sub_rca_label ?? '').' '.($t->technician?->name ?? '')) }}">
                         <div class="tt-mcard-top">
@@ -117,7 +118,7 @@
                 @endif
 
                 {{-- Toolbar. Kiri: cari · clear · Filter (filter kolom) · Kolom · lewat SLA.
-                     Kanan: Export · Pengaturan · Buat Tiket. --}}
+                     Kanan: Export · Buat Tiket. (Pengaturan pindah ke Master Data > Operation Master > Custom Ruls.) --}}
                 {{-- Rentang tanggal dilaporkan: di luar kotak toolbar, rata kanan (default bulan berjalan). --}}
                 <div class="d-flex justify-content-end mb-2">
                     <div class="tt-date-range" title="Tanggal dilaporkan">
@@ -157,9 +158,6 @@
                     </div>
                     <div class="tt-toolbar-right">
                         <a href="{{ route('trouble-ticket.export') }}" class="btn btn-outline-success btn-sm" id="btnTtExport"><i class="fas fa-file-excel mr-1"></i> Export</a>
-                        @if($canSettings)
-                            <a href="{{ route('trouble-ticket.settings') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-sliders-h mr-1"></i> Pengaturan</a>
-                        @endif
                         <a href="{{ route('trouble-ticket.create') }}" class="btn btn-success btn-sm"><i class="fas fa-plus mr-1"></i> Buat Tiket</a>
                     </div>
                 </div>
@@ -425,6 +423,23 @@ $(function () {
     });
 
     $('#ttSearch').on('keyup search', function () { table.search(this.value).draw(); });
+
+    /* ---------- Tiket yang baru dibuat ----------
+       Setelah simpan, daftar dibuka APA ADANYA (semua tahap, tanpa filter) dan
+       baris tiketnya distabilo merah yang memudar sendiri dalam 2 detik —
+       pengganti masuk ke halaman detail. */
+    (function () {
+        var baru = @json($baruIds ?? []);
+        if (!baru.length) return;
+
+        var pilih = baru.map(function (id) { return '[data-id="' + id + '"]'; }).join(',');
+        var $baris = $('#tblTt tbody tr').filter(pilih).add($('#ttMobList .tt-mcard').filter(pilih));
+        $baris.addClass('tt-row-baru');
+        if ($baris.length && $baris[0].scrollIntoView) {
+            $baris[0].scrollIntoView({ block: 'center' });
+        }
+        setTimeout(function () { $baris.removeClass('tt-row-baru'); }, 2000);
+    })();
 
     // Export mengikuti filter aktif (cari, filter kolom, tanggal, lewat SLA).
     if (window.TesysExportFiltered) {

@@ -85,11 +85,28 @@ class InvoiceCashReceiptController extends Controller
             ->groupBy('status')
             ->pluck('c', 'status');
 
-        $overdue = (clone $query)
+        /*
+        | Invoice yang lewat jatuh tempo ditampilkan sebagai OVERDUE (lihat
+        | Invoice::display_status) — kolom status di DB tidak berubah. Supaya
+        | angka stepper sama dengan isi tabel saat chip-nya diklik, jumlah
+        | overdue per status dikurangkan dari Sent/Unpaid/Partially Paid.
+        */
+        $overdueByStatus = (clone $query)
             ->whereIn('status', Invoice::UNPAID_STATUSES)
             ->whereNotNull('actual_due_date')
-            ->whereDate('actual_due_date', '<', now()->toDateString())
-            ->count();
+            // actual_due_date di-cast 'date' (jam 00:00), jadi isOverdue()
+            // sudah true sejak hari jatuh tempo itu sendiri — batasnya dibuat
+            // '<=' supaya hitungan ini persis sama dengan label di tabel.
+            ->whereDate('actual_due_date', '<=', now()->toDateString())
+            ->selectRaw('status, COUNT(*) as c')
+            ->groupBy('status')
+            ->pluck('c', 'status');
+
+        $overdue = (int) $overdueByStatus->sum();
+
+        $belumJatuhTempo = static function (string $status) use ($statusCounts, $overdueByStatus): int {
+            return (int) ($statusCounts[$status] ?? 0) - (int) ($overdueByStatus[$status] ?? 0);
+        };
 
         [$invoices, $truncated, $total] = $this->cappedRows($query, 'created_at');
         $maxRows = $this->maxRows;
@@ -100,9 +117,9 @@ class InvoiceCashReceiptController extends Controller
             'submitted'       => (int) ($statusCounts['SUBMITTED'] ?? 0),
             'verified'        => (int) ($statusCounts['VERIFIED'] ?? 0),
             'approved'        => (int) ($statusCounts['APPROVED'] ?? 0),
-            'sent'            => (int) ($statusCounts['SENT'] ?? 0),
-            'received'        => (int) ($statusCounts['RECEIVED'] ?? 0),
-            'partially_paid'  => (int) ($statusCounts['PARTIALLY_PAID'] ?? 0),
+            'sent'            => $belumJatuhTempo('SENT'),
+            'received'        => $belumJatuhTempo('RECEIVED'),
+            'partially_paid'  => $belumJatuhTempo('PARTIALLY_PAID'),
             'paid'            => (int) ($statusCounts['PAID'] ?? 0),
             'cancelled'       => (int) ($statusCounts['CANCELLED'] ?? 0),
             'overdue'         => $overdue,

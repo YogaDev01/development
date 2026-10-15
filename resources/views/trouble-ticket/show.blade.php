@@ -5,7 +5,6 @@
 @php
     use App\Models\TroubleTicket;
     use App\Models\TroubleTicketAttachment;
-    use App\Services\TroubleTicketWorkflow;
 
     $t = $ticket;
     $site = $t->site;
@@ -19,12 +18,14 @@
     // Tombol teknisi — cermin gerbang di TroubleTicketWorkflow (server tetap memeriksa ulang).
     $diTrip        = $canActAsTech && $t->status === 'TRIP';
     $bisaRemote    = $canActAsTech && $t->status === 'OPEN';
-    $bisaPlan      = $canActAsTech && in_array($t->status, ['OPEN', 'REMOTE', 'PLAN'], true);
+    $bisaPlan      = $canActAsTech && in_array($t->status, ['REMOTE', 'PLAN', 'TRIP'], true) && ! $t->travel_arrived_at;
     $bisaBerangkat = $diTrip && ! $t->travel_started_at && ! $t->travel_arrived_at;
     $dalamJalan    = $diTrip && $t->travel_started_at && ! $t->travel_arrived_at;
     $bisaMulai     = $diTrip && $t->travel_arrived_at;
     $bisaTutup     = $canActAsTech && in_array($t->status, TroubleTicket::CLOSABLE, true);
-    $bisaAlihkan   = $canSupervise && in_array($t->status, TroubleTicketWorkflow::REASSIGNABLE, true);
+    // Change Teknisi: sejak plan dibuat sampai sebelum swipe "mulai perjalanan"
+    // ($canReassign dari controller — TroubleTicketWorkflow::canReassign()).
+    $bisaAlihkan   = $canReassign;
     $acceptFiles = collect(TroubleTicketAttachment::EXTENSIONS)->map(fn ($e) => '.' . $e)->implode(',');
 @endphp
 
@@ -353,7 +354,7 @@
             <form class="modal-content tt-submit-once" method="POST" action="{{ route('trouble-ticket.plan.create', $t) }}">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-calendar-check mr-1"></i> {{ $t->status === 'PLAN' ? 'Ubah Tanggal Visit' : 'Create Plan' }}</h5>
+                    <h5 class="modal-title"><i class="fas fa-calendar-check mr-1"></i> {{ ['PLAN' => 'Ubah Tanggal Visit', 'TRIP' => 'Reschedule Visit'][$t->status] ?? 'Create Plan' }}</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body" style="font-size:13px;">
@@ -383,6 +384,35 @@
     </div>
 @endif
 
+@if($bisaBerangkat)
+    {{-- Mulai perjalanan — evidence perjalanan wajib (keputusan 15 Okt 2026). --}}
+    <div class="modal fade" id="mdlTtTravel" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <form class="modal-content tt-submit-once" method="POST" action="{{ route('trouble-ticket.travel.start', $t) }}"
+                  enctype="multipart/form-data" id="frmTtTravel">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-car mr-1"></i> Mulai Perjalanan</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
+                </div>
+                <div class="modal-body" style="font-size:13px;">
+                    <label class="font-weight-bold">Evidence perjalanan <span class="text-danger">*</span></label>
+                    <input type="file" name="attachments[]" id="fldTravelFiles" multiple accept="{{ $acceptFiles }}" hidden>
+                    <button type="button" class="btn btn-outline-secondary btn-sm btn-block" id="btnTtTravelFiles">
+                        <i class="fas fa-paperclip mr-1"></i> Pilih evidence
+                    </button>
+                    <div class="tt-eviz-list small text-muted mt-2" id="ttTravelFileList"></div>
+                    <small class="text-muted">Maks. 10 MB per berkas. SLA Travel mulai berjalan begitu dikirim.</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-car mr-1"></i> Mulai Perjalanan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+@endif
+
 @if($dalamJalan)
     <div class="modal fade" id="mdlTtCancelTrip" tabindex="-1" role="dialog">
         <div class="modal-dialog" role="document">
@@ -394,8 +424,13 @@
                 </div>
                 <div class="modal-body" style="font-size:13px;">
                     <label class="font-weight-bold" for="fldCancelTrip">Alasan cancel visit <span class="text-danger">*</span></label>
-                    <textarea name="reason" id="fldCancelTrip" class="form-control" rows="3" maxlength="500" required></textarea>
-                    <small class="text-muted">Pembatalan tetap tercatat di log; tiket tetap di tahap Trip.</small>
+                    <textarea name="reason" id="fldCancelTrip" class="form-control mb-2" rows="3" maxlength="500" required></textarea>
+                    {{-- Tanggal plan wajib diisi ulang: pembatalan selalu meninggalkan
+                         jadwal kunjungan berikutnya. --}}
+                    <label class="font-weight-bold" for="fldCancelVisit">Plan Visit baru <span class="text-danger">*</span></label>
+                    <input type="date" name="visit_site" id="fldCancelVisit" class="form-control"
+                           min="{{ now()->toDateString() }}" value="{{ now()->toDateString() }}" required>
+                    <small class="text-muted">Pembatalan tercatat di log dan SLA Travel kembali ke 0. Tanggal hari ini = tiket tetap di tahap Trip; tanggal lain = tiket kembali ke tahap Plan.</small>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Kembali</button>
@@ -523,26 +558,42 @@
             <form class="modal-content tt-submit-once" method="POST" action="{{ route('trouble-ticket.reassign', $t) }}">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-exchange-alt mr-1"></i> Alihkan Teknisi</h5>
+                    <h5 class="modal-title"><i class="fas fa-exchange-alt mr-1"></i> Change Teknisi</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body" style="font-size:13px;">
                     @if($reassignTo->isEmpty())
-                        <x-empty title="Tidak ada teknisi lain" message="Tambahkan PIC internal lain di site ini lebih dulu." icon="fas fa-user-cog" compact />
+                        <x-empty title="Tidak ada teknisi lain" message="Belum ada teknisi lain di homebase yang sama atau cluster terdekat. Daftarkan PIC internal ke homebase lebih dulu di Master Data." icon="fas fa-user-cog" compact />
                     @else
+                        {{-- Dikelompokkan dari yang paling dekat dengan teknisi PIC site
+                             sekarang: homebase sama → cluster sama → homebase lain. --}}
                         <label for="fldReassign" class="font-weight-bold">Teknisi baru <span class="text-danger">*</span></label>
                         <select name="assigned_to" id="fldReassign" class="form-control mb-2" required>
                             <option value="">— Pilih —</option>
-                            @foreach($reassignTo as $u)<option value="{{ $u->id }}">{{ $u->name }}</option>@endforeach
+                            @foreach($reassignTo->groupBy('group') as $grup => $daftar)
+                                <optgroup label="{{ $grup }}">
+                                    @foreach($daftar as $u)
+                                        <option value="{{ $u->id }}">{{ $u->name }}{{ $u->homebase ? ' — '.$u->homebase : '' }}{{ $u->distance_km ? ' (±'.$u->distance_km.' km)' : '' }}</option>
+                                    @endforeach
+                                </optgroup>
+                            @endforeach
                         </select>
+                        @if(in_array($t->status, ['PLAN', 'TRIP'], true) && ! $t->travel_arrived_at)
+                            {{-- Reschedule tahap Plan & Trip dilakukan dari sini: ganti
+                                 teknisi dan tanggal kunjungannya sekaligus, satu form. --}}
+                            <label for="fldReassignVisit" class="font-weight-bold">Plan Visit <span class="text-danger">*</span></label>
+                            <input type="date" name="visit_site" id="fldReassignVisit" class="form-control mb-2"
+                                   min="{{ now()->toDateString() }}"
+                                   value="{{ $t->visit_site?->toDateString() ?? now()->toDateString() }}" required>
+                        @endif
                         <label for="fldReassignReason" class="font-weight-bold">Alasan <span class="text-danger">*</span></label>
                         <textarea name="reason" id="fldReassignReason" class="form-control" rows="2" maxlength="500" required></textarea>
-                        <small class="text-muted">Respons pertama tiket tetap tercatat; penugasan lama disimpan di riwayat.</small>
+                        <small class="text-muted">Respons pertama tiket tetap tercatat; penugasan lama disimpan di riwayat.@if(in_array($t->status, ['PLAN', 'TRIP'], true) && ! $t->travel_arrived_at) Tiket kembali ke tahap Plan dengan tanggal di atas.@endif</small>
                     @endif
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary btn-sm" @disabled($reassignTo->isEmpty())>Alihkan</button>
+                    <button type="submit" class="btn btn-primary btn-sm" @disabled($reassignTo->isEmpty())>Simpan</button>
                 </div>
             </form>
         </div>
@@ -670,6 +721,24 @@ $(function () {
         });
     })();
 
+    /* ---------- Evidence perjalanan: wajib sebelum form dikirim ---------- */
+    (function () {
+        var input = document.getElementById('fldTravelFiles');
+        if (!input) return;
+        var $daftar = $('#ttTravelFileList');
+
+        $('#btnTtTravelFiles').on('click', function () { input.click(); });
+        $(input).on('change', function () { checkFiles(this, $daftar); });
+
+        $('#frmTtTravel').on('submit', function (e) {
+            if (!input.files.length) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                window.tsToast('error', 'Evidence perjalanan wajib dilampirkan.');
+            }
+        });
+    })();
+
     /* ---------- Swipe: mulai perjalanan / mulai progres ---------- */
     $('.tt-swipe').each(function () {
         var el = this, $el = $(el), $knob = $el.find('.tt-swipe-knob'), geser = false, x0 = 0, maks = 0;
@@ -678,6 +747,11 @@ $(function () {
         function reset() { $knob.css('transform', 'translateX(0)'); $el.removeClass('is-dragging'); }
 
         function selesai() {
+            // Swipe yang membuka modal (mis. evidence perjalanan): modal yang
+            // mengirim formnya, jadi swipe dikembalikan ke posisi semula.
+            var modal = $el.data('modal');
+            if (modal) { $(modal).modal('show'); reset(); return; }
+
             $el.addClass('is-done');
             var $form = $('#' + $el.data('form'));
             // data-confirm="0" = langsung kirim tanpa dialog (mis. Swipe for travel).

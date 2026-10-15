@@ -57,10 +57,11 @@ trouble_tickets ──< trouble_ticket_messages     (MESSAGE | EVENT, immutable,
 
 ```
 OPEN ─(teknisi pilih Remote)───────────────────→ REMOTE
-     └─(teknisi buat Plan Visit)───────────────→ PLAN
+REMOTE ─(teknisi buat Plan Visit)──────────────→ PLAN
 PLAN ─(tanggal plan visit tiba, otomatis)──────→ TRIP
 TRIP ─(mulai perjalanan → On Site → mulai progres)→ IN_PROGRESS
-REMOTE / IN_PROGRESS ─(form close dikirim)─────→ PROGRESS_DONE
+TRIP ─(reschedule, sebelum On Site)────────────→ PLAN
+REMOTE / PLAN / TRIP / IN_PROGRESS ─(form close dikirim)→ PROGRESS_DONE
 PROGRESS_DONE ─(supervisor approve)────────────→ CLOSED
               └─(supervisor tolak)─────────────→ REMOTE / IN_PROGRESS
 ```
@@ -84,17 +85,29 @@ notifikasi tidak terkirim dua kali. Error keadaan = `ValidationException`
 - **Remote** (`POST {ticket}/remote`): teknisi memilih penyelesaian tanpa
   kunjungan. Status `REMOTE`, `visit_decision = NON_VISIT`, dan
   `progress_started_at` diisi — **SLA Resolution mulai di sini**. Lanjut ke
-  form close.
+  form close. Tombolnya **tanpa dialog konfirmasi** (15 Okt 2026): Remote tidak
+  menutup tiket dan masih bisa berbalik ke Create Plan.
 - **Create Plan** (`POST {ticket}/plan`): teknisi mengisi tanggal plan visit
   (site & pelaksana mengikuti tiket, tidak bisa diubah di modal). Status
   `PLAN`, tanpa approval. Tanggal hari ini langsung naik ke `TRIP`.
-  Endpoint yang sama dipakai dari tahap `REMOTE` (berbalik jadi kunjungan —
-  SLA Resolution yang sempat berjalan dibatalkan) dan dari tahap `PLAN`
-  (ubah tanggal; kejadian `plan_updated`). Target online tidak lagi diisi
+  Hanya dari `REMOTE` (berbalik jadi kunjungan — SLA Resolution yang sempat
+  berjalan dibatalkan), `PLAN` (ubah tanggal; kejadian `plan_updated`), dan
+  `TRIP` (reschedule: jejak perjalanan dikosongkan supaya SLA Travel dihitung
+  ulang; ditolak bila teknisi sudah On Site). **Dari `OPEN` tidak bisa**
+  (15 Okt 2026) — teknisi memilih Remote dulu. Target online tidak lagi diisi
   dari form (12 Okt 2026).
+- **Cancel Visit** (`POST {ticket}/travel/cancel`): wajib **alasan** dan
+  **tanggal plan visit berikutnya** (15 Okt 2026). SLA Travel kembali ke 0
+  (`travel_started_at` & `travel_seconds` dikosongkan) tapi riwayatnya tetap:
+  `travel_cancelled_at`, `travel_cancel_reason`, dan kejadian `travel_cancelled`
+  yang memuat jam keberangkatan yang dibatalkan + tanggal plan baru. Tanggal
+  hari ini → tiket tetap `TRIP` (lewat `promoteIfDue`); tanggal lain → kembali
+  ke `PLAN`. **Inilah cara menjadwalkan ulang setelah perjalanan dimulai** —
+  Change Teknisi sudah tertutup di titik itu.
 - **Trip**: tiga aksi teknisi, semuanya tetap di status `TRIP`:
-  `POST {ticket}/travel` (geser "mulai perjalanan" → `travel_started_at`,
-  **SLA Travel mulai**), `POST {ticket}/travel/cancel` (wajib alasan →
+  `POST {ticket}/travel` (geser "mulai perjalanan" membuka modal evidence;
+  evidence perjalanan **wajib** (15 Okt 2026) dan menempel pada kejadian
+  `travel_started` → `travel_started_at`, **SLA Travel mulai**), `POST {ticket}/travel/cancel` (wajib alasan →
   `travel_started_at` dikosongkan sehingga SLA Travel tidak dihitung,
   `travel_cancelled_at` + alasan tetap tercatat di log; teknisi boleh
   berangkat lagi), dan `POST {ticket}/arrive` (konfirmasi On Site →
@@ -102,8 +115,10 @@ notifikasi tidak terkirim dua kali. Error keadaan = `ValidationException`
 - **Start Progress** (`POST {ticket}/start`): hanya dari `TRIP` dan hanya
   setelah On Site. Status `IN_PROGRESS`, `progress_started_at` diisi — **SLA
   Resolution mulai**.
-- **Form close** (`POST {ticket}/close`): dari `REMOTE`, `PLAN`, maupun
-  `IN_PROGRESS` (`TroubleTicket::CLOSABLE`). Wajib: RCA (dari master),
+- **Form close** (`POST {ticket}/close`): dari `REMOTE`, `PLAN`, `TRIP`,
+  maupun `IN_PROGRESS` (`TroubleTicket::CLOSABLE`). Dari `TRIP` sebelum On
+  Site, perjalanan yang sedang berjalan dibatalkan otomatis (kejadian
+  `travel_cancelled`, SLA Travel tidak dihitung). Wajib: RCA (dari master),
   keterangan, dan evidence — kolom Action tidak dipakai lagi. RCA/Sub-RCA
   tiket DIPERBARUI mengikuti isian form ini. Tiket yang ditutup langsung
   dari `PLAN` memakai waktu pengiriman form sebagai awal Resolution. Status `PROGRESS_DONE`, `approval = PENDING`,
@@ -114,8 +129,31 @@ notifikasi tidak terkirim dua kali. Error keadaan = `ValidationException`
   (`closed_by` tetap teknisi) dan `resolution_seconds` difinalkan.
   `POST {ticket}/close/reject` wajib alasan → kembali ke `IN_PROGRESS`
   (atau `REMOTE` untuk jalur non-visit); SLA Resolution tetap berjalan.
-- **Reassign**: semua status yang belum final. Bila belum ada keputusan jalur,
-  status kembali `OPEN`; bila sudah, status tetap.
+- **Reassign** (tombol **Change Teknisi**, dulu "Swap Teknisi"): jendelanya
+  **sejak plan visit dibuat sampai tepat sebelum swipe "mulai perjalanan"** —
+  `TroubleTicketWorkflow::canReassign()` = status `PLAN`/`TRIP` **dan**
+  `travel_started_at`/`travel_arrived_at` masih NULL (15 Okt 2026). Setelah
+  travel jalan, On Site, atau di tahap `OPEN`/`REMOTE`/`IN_PROGRESS`/
+  `PROGRESS_DONE`, tombolnya tidak ada dan server menolak. Kandidatnya **tidak
+  dibatasi PIC site itu**: `reassignCandidates()` mengambil seluruh PIC internal
+  ACTIVE (bukan leader team), lalu **hanya menyisakan** — **homebase sama →
+  cluster (region homebase) sama → satu cluster tetangga TERDEKAT**. Cluster
+  terdekat dipilih bertingkat: (1) jarak haversine koordinat homebase, (2) bila
+  koordinat kosong — kemiripan nama cluster (`ACEH 1` ↔ `ACEH 2`, angka urut di
+  belakang diabaikan), (3) bila itu pun tidak ketemu — cluster lain di **pulau
+  yang sama** (`region.pulau_id`). Cluster di luar itu tidak ditampilkan; bila
+  tidak ada acuan homebase sama sekali, daftar jatuh ke seluruh teknisi internal.
+  Homebase seorang kandidat dibaca dari `homebase_detail`, dan **bila PIC-nya
+  belum terdaftar di homebase** — kasus yang membuat daftar sempat kosong pada
+  15 Okt 2026 — dari homebase **site yang ia pegang** (`site_pics` → `sites.hb_id`). `reassign()` memeriksa teknisi baru memang ada di daftar kandidat
+  itu; `pic_id` jadi NULL bila teknisi baru bukan PIC site tersebut (tiket tetap
+  terlihat olehnya lewat `assigned_to`). Bila belum ada keputusan jalur, status kembali `OPEN`; bila
+  sudah, status tetap. Pada `PLAN` dan `TRIP` (sebelum On Site) modalnya juga
+  memuat **Plan Visit** (`visit_site`, wajib): tiket kembali ke `PLAN` dengan
+  tanggal baru, jejak perjalanan dikosongkan supaya SLA Travel dihitung ulang,
+  dan kejadian `plan_updated` dicatat selain `reassigned`. **Inilah satu-satunya
+  jalan reschedule di tahap Trip** (15 Okt 2026) — tombol Reschedule di panel
+  Trip dicabut; `POST {ticket}/plan` tetap menerima `TRIP` untuk integrasi.
 - **Notifikasi tiket baru**: teknisi yang ditugaskan **dan seluruh PIC internal
   site** (`sitePicUsers()`).
 
@@ -195,6 +233,32 @@ SLA di tab **SLA**.
 - Form buat tiket: tanpa Date Update; Teknisi bukan dropdown lagi melainkan
   kotak baca-saja + `<input type="hidden" name="assigned_to">` yang diisi dari
   endpoint teknisi site; tombol Batal/Simpan duduk di kolom kanan.
+- Form buat tiket: kolom **Device dicabut** dari layar (15 Okt 2026); kolom
+  `device_id` dan masternya tetap ada dan masih diterima dari integrasi.
+  Tempatnya dipakai **No. Tiket Custom** (`tickets[*][ticket_number]`, opsional,
+  maks. 50 karakter): bila diisi, `ticket_number` memakai nilai itu apa adanya;
+  bila kosong, nomor otomatis `DocumentSequence` seperti biasa. Keunikan dijaga
+  dua kali — `unique:trouble_tickets,ticket_number` + `distinct` antar blok di
+  controller, dan pemeriksaan ulang di `TroubleTicketWorkflow::create()`.
+- Setelah **Simpan Tiket**, pemakai kembali ke **daftar**, bukan ke halaman
+  detail (15 Okt 2026). Daftar dibuka **apa adanya** — semua tahap, tanpa
+  filter status — dan baris tiket baru diberi kelas `tt-row-baru`: stabilo
+  merah (`--danger-bg`) yang **memudar sendiri** lewat keyframes
+  `ttBaruLuntur` sepanjang **2 detik**, hanya latar tanpa garis tepi. Id
+  tiketnya dikirim lewat session `tt_baru` → view var `$baruIds`; baris tabel
+  dan kartu HP sama-sama dikenali lewat `data-id`.
+- Tombol **Remote** di tahap TT Open berdiri satu baris penuh (`tt-btn-wide`),
+  tidak lagi di grid dua kolom `.tt-stage-acts` yang membuatnya separuh lebar.
+- Panel tahap Trip: tombol **On Site / Cancel Visit / Form Close** memakai
+  `tt-btn-wide` — selebar panel (bukan separuh baris) tapi tetap ramping,
+  tinggi 38px (42px di HP). Sempat setinggi swipe (52px) pada 15 Okt 2026 dan
+  langsung dikecilkan lagi karena terlalu besar.
+- Form buat tiket: **Customer dipilih lebih dulu** (15 Okt 2026), tepat di atas
+  Site; dropdown Site hanya memuat site aktif milik customer itu. Penyaringannya
+  di browser (seluruh site aktif ikut dikirim bersama halaman), tanpa request
+  tambahan. `customer_id` dikirim hanya supaya pilihan kembali setelah validasi
+  gagal — server tetap memakai `site_id`. Catatan SLA/severity dan catatan
+  "Teknisi = PIC internal site" dicabut dari layar ini.
 
 ## Halaman Pengaturan (`/trouble-ticket/settings`, superadmin)
 
@@ -311,7 +375,7 @@ di dev, jadi perubahan ditulis sebagai migrasi baru (saat itu 0 tiket).
 
 | Kolom | Diisi saat | Keterangan |
 |---|---|---|
-| `ticket_number` (dulu `tt_number`) | buat tiket | otomatis `T.0000011026` sejak 14 Okt 2026 = `T.` + 6 digit urutan + bulan (mm) + tahun (yy). Urutannya **berjalan terus** (tidak reset per bulan/tahun), satu rangkaian `DocumentSequence` bernama `trouble-ticket`, disemai dari jumlah tiket yang ada. Tiket lama tetap memakai format `TT-0001/10/26` dan tidak diubah |
+| `ticket_number` (dulu `tt_number`) | buat tiket | otomatis `T.1026008` sejak **15 Okt 2026** = `T.` + bulan (mm) + tahun (yy) + urutan (minimal 3 digit, melebar sendiri setelah 999); sebelumnya `T.0000011026` (urutan di depan bulan/tahun, 14 Okt 2026) dan nomor yang sudah terbit tidak diubah. Urutannya **berjalan terus** (tidak reset per bulan/tahun), satu rangkaian `DocumentSequence` bernama `trouble-ticket`, disemai dari jumlah tiket yang ada. Tiket lama tetap memakai format `TT-0001/10/26` dan tidak diubah |
 | `external_ref` | — | **tidak lagi diisi**; dihapus dari form, daftar, detail & export 12 Okt 2026. Kolom dipertahankan untuk 12 tiket lama |
 | `problem_id` (dulu kategori) | — | **tidak lagi diisi dari form buat tiket** (12 Okt 2026). Tetap diterima bila dikirim (integrasi) dan menentukan target SLA; tanpa Problem, SLA jatuh ke kebijakan umum (`problem_id` NULL) |
 | `issue_id` | — | **Initial Problem**. Dihapus dari form buat tiket (12 Okt 2026); kolom & master tetap ada, nilainya masih ditampilkan di daftar/detail/export untuk tiket lama |

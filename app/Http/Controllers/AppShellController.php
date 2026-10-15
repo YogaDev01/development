@@ -27,9 +27,15 @@ class AppShellController extends Controller
 
         $request->session()->put('tesys.app', $app);
 
-        // Aplikasi yang sudah punya modul tidak memakai halaman ini.
+        // Aplikasi yang sudah punya modul tidak memakai halaman ini: langsung
+        // ke 'landing' (halaman muka modulnya), bukan ke 'home' yang justru
+        // menunjuk balik ke alamat ini.
         if ($config['ready'] ?? false) {
-            return Redirect::to($config['home']);
+            $tujuan = $config['landing'] ?? $config['home'];
+
+            return Redirect::to($tujuan === $request->path() || ltrim($tujuan, '/') === $request->path()
+                ? '/'
+                : $tujuan);
         }
 
         return view('app-shell.coming-soon', [

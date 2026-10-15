@@ -81,11 +81,15 @@
                      Semua memuat ulang halaman dengan ?date_from=&date_to= —
                      filternya tetap server-side. --}}
                 <div id="crCustomRange" class="d-none align-items-center flex-wrap" style="gap:6px;">
-                    <span class="text-muted" style="font-size:12px;">Dari</span>
+                    <span class="text-muted" style="font-size:12px;">Periode</span>
+                    {{-- Satu input rentang: sekali klik, kalender "dari" dan "sampai"
+                         tampil berdampingan (dua bulan) dan user memilih dua tanggal
+                         berurutan. Nilainya disalin ke dua hidden input di bawah supaya
+                         alur "Terapkan" tetap sama. --}}
                     <div class="d-flex align-items-center cr-date-range" style="gap:4px;">
-                        <input type="text" id="crDateFrom" class="form-control form-control-sm" value="{{ substr($dateFrom, 0, 10) }}" readonly>
-                        <span class="text-muted" style="font-size:12px;">s/d</span>
-                        <input type="text" id="crDateTo" class="form-control form-control-sm" value="{{ substr($dateTo, 0, 10) }}" readonly>
+                        <input type="text" id="crDateRange" class="form-control form-control-sm cr-date-range-input" readonly>
+                        <input type="hidden" id="crDateFrom" value="{{ substr($dateFrom, 0, 10) }}">
+                        <input type="hidden" id="crDateTo" value="{{ substr($dateTo, 0, 10) }}">
                     </div>
                     <button id="btnApplyCustomRange" class="btn btn-primary btn-sm">
                         <i class="fas fa-check mr-1"></i> Terapkan
@@ -502,6 +506,77 @@
 
 @push('styles')
 <style>
+    /* Input rentang memuat dua tanggal ("02/10/2026 s/d 25/11/2026"), jadi
+       lebarnya dipatok. altInput bikinan flatpickr menyalin class input asli,
+       karena itu lebarnya diatur lewat class, bukan style inline. */
+    #crDateRange.cr-date-range-input { width: 210px; min-width: 210px; text-align: center; }
+
+    /* Popup rentang: dua kalender inline berdampingan, masing-masing bernavigasi
+       sendiri. Dipusatkan terhadap input Periode. */
+    .cr-date-range { position: relative; }
+    .cr-range-pop {
+        position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+        z-index: 1060; display: flex; gap: 10px; padding: 10px;
+        background: var(--surface, #fff); border: 1px solid var(--border); border-radius: 8px;
+        box-shadow: 0 10px 28px rgba(0,0,0,.16);
+    }
+    .cr-range-pop.d-none { display: none; }
+    .cr-range-cal .flatpickr-calendar.inline { box-shadow: none; margin: 0; }
+    .cr-range-judul {
+        font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+        color: var(--muted, #6c757d); padding: 0 6px 4px;
+    }
+    /* Panah yang pasti tertahan: disembunyikan, tempatnya tetap dipakai. */
+    .cr-range-cal .flatpickr-prev-month.cr-panah-mati,
+    .cr-range-cal .flatpickr-next-month.cr-panah-mati { visibility: hidden; pointer-events: none; }
+    /* Input sumber tiap kalender hanya pemegang nilai, tidak perlu tampil. */
+    .cr-range-cal input.cr-range-src { display: none; }
+
+    @media (max-width: 760px) {
+        .cr-range-pop { flex-direction: column; }
+    }
+
+    /* Header kalender: label bulan & tahun jadi tombol pembuka panel cari. */
+    .cr-fp .flatpickr-current-month { display: flex; gap: 6px; justify-content: center; align-items: center; padding: 0; }
+    .cr-fp .cr-fp-pick {
+        background: transparent; border: 1px solid transparent; border-radius: 4px;
+        padding: 1px 6px; font-size: 15px; font-weight: 600; color: var(--text); cursor: pointer;
+    }
+    .cr-fp .cr-fp-pick:hover { border-color: var(--border); background: var(--surface-2, #f1f1f1); }
+    .cr-fp .cr-fp-panel {
+        position: absolute; z-index: 5; width: max-content; min-width: 88px; padding: 4px;
+        background: var(--surface, #fff); border: 1px solid var(--border); border-radius: 6px;
+        box-shadow: 0 6px 18px rgba(0,0,0,.14);
+    }
+    .cr-fp .cr-fp-cari { width: 100%; min-width: 0; margin-bottom: 5px; height: 26px; padding: 2px 6px; font-size: 12px; }
+    .cr-fp .cr-fp-list { max-height: 182px; overflow-y: auto; }
+    .cr-fp .cr-fp-item { padding: 2px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; white-space: nowrap; text-align: center; }
+    .cr-fp .cr-fp-item:hover { background: var(--surface-2, #f1f1f1); }
+    .cr-fp .cr-fp-item.is-active { font-weight: 600; color: var(--accent, #7a1620); }
+
+    /* Tiap kalender hanya menampilkan tanggal milik bulannya sendiri — sisa
+       kolom dari bulan sebelum/sesudahnya dikosongkan (tetap memegang tempat
+       supaya grid tidak bergeser). */
+    .cr-range-cal .flatpickr-day.prevMonthDay,
+    .cr-range-cal .flatpickr-day.nextMonthDay { visibility: hidden; pointer-events: none; }
+
+    /* Kalender rentang tanggal: hanya tanggal awal & akhir yang ditandai,
+       berbentuk lingkaran. Blok abu-abu di antara keduanya dihilangkan. */
+    .flatpickr-day.inRange,
+    .flatpickr-day.inRange:hover {
+        background: transparent; border-color: transparent; box-shadow: none; color: inherit;
+    }
+    .flatpickr-day.selected,
+    .flatpickr-day.startRange,
+    .flatpickr-day.endRange,
+    .flatpickr-day.selected:hover,
+    .flatpickr-day.startRange:hover,
+    .flatpickr-day.endRange:hover {
+        border-radius: 50%; box-shadow: none;
+    }
+    .flatpickr-day.startRange.startRange,
+    .flatpickr-day.endRange.endRange { border-radius: 50%; }
+
 .row-nob td      { color:var(--danger) !important; }
 .cr-date-range input.form-control { width:100px !important; padding:2px 6px !important; font-size:12px !important; }
 .row-nob-item td { color:var(--warning) !important; }
@@ -838,24 +913,248 @@ $(function () {
        flatpickr sendiri gagal termuat (CDN diblokir jaringan, atau file plugin
        lokal belum ter-upload ke server), lepas readonly supaya user tetap bisa
        mengetik tanggal manual (format YYYY-MM-DD) sebagai fallback. */
+    var crBukaPeriode = function () {};
+
     try {
         if (typeof flatpickr === 'function') {
-            flatpickr('#crDateFrom', {
-                dateFormat: 'Y-m-d', altInput: true, altFormat: 'd/m/Y',
-                defaultDate: '{{ substr($dateFrom, 0, 10) }}',
-                onChange: function () { /* rentang baru dipakai saat "Terapkan" ditekan */ }
+            /* Dua kalender inline berdampingan dalam satu popup. Masing-masing
+               punya navigasi sendiri (panah + pemilih bulan/tahun), jadi bulan
+               kiri dan kanan boleh tidak berurutan. Keduanya berbagi satu
+               rentang tanggal: memilih di kalender manapun langsung disalin ke
+               kalender lainnya tanpa mengubah bulan yang sedang ditampilkan.
+               Rentangnya baru dipakai saat "Terapkan" ditekan. */
+            var fmtIso = function (d) {
+                var p = function (n) { return (n < 10 ? '0' : '') + n; };
+                return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+            };
+            var fmtTampil = function (d) {
+                var p = function (n) { return (n < 10 ? '0' : '') + n; };
+                return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear();
+            };
+
+            /* Pemilih bulan/tahun: label di header kalender jadi tombol yang
+               membuka panel berisi kotak cari + daftar. Panel ditaruh DI DALAM
+               container kalender supaya kliknya tidak menutup popup. */
+            function crTutupPanel($cal) { $cal.find('.cr-fp-panel').remove(); }
+
+            function crSyncLabel(fp) {
+                var $cal = $(fp.calendarContainer);
+                crTutupPanel($cal);
+                crSyncPanah();
+                $cal.find('.flatpickr-current-month').html('')
+                    .append($('<button type="button" class="cr-fp-pick" data-jenis="bulan"></button>')
+                        .text(fp.l10n.months.longhand[fp.currentMonth]))
+                    .append($('<button type="button" class="cr-fp-pick" data-jenis="tahun"></button>')
+                        .text(fp.currentYear));
+            }
+
+            function crPasangPemilih(fp) {
+                var $cal = $(fp.calendarContainer);
+                if ($cal.data('crPicker')) { crSyncLabel(fp); return; }
+                $cal.data('crPicker', true).addClass('cr-fp');
+
+                $cal.on('click', '.cr-fp-pick', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var $btn  = $(this);
+                    var jenis = $btn.data('jenis');          // 'bulan' | 'tahun'
+
+                    if ($cal.find('.cr-fp-panel').data('owner') === this) { crTutupPanel($cal); return; }
+                    crTutupPanel($cal);
+
+                    var items = [];
+                    if (jenis === 'bulan') {
+                        fp.l10n.months.longhand.forEach(function (nama, i) {
+                            items.push({ label: nama, value: i, aktif: i === fp.currentMonth });
+                        });
+                    } else {
+                        for (var y = fp.currentYear - 12; y <= fp.currentYear + 12; y++) {
+                            items.push({ label: String(y), value: y, aktif: y === fp.currentYear });
+                        }
+                    }
+
+                    var $panel = $('<div class="cr-fp-panel"></div>').data('owner', this);
+                    var $cari  = $('<input type="text" class="form-control form-control-sm cr-fp-cari">')
+                        .attr('placeholder', jenis === 'bulan' ? 'Cari bulan...' : 'Cari tahun...');
+                    var $list  = $('<div class="cr-fp-list"></div>');
+
+                    items.forEach(function (it) {
+                        $('<div class="cr-fp-item"></div>')
+                            .toggleClass('is-active', it.aktif)
+                            .text(it.label)
+                            .data('value', it.value)
+                            .appendTo($list);
+                    });
+
+                    $cari.on('input', function () {
+                        var q = $(this).val().toLowerCase();
+                        $list.children('.cr-fp-item').each(function () {
+                            $(this).toggle($(this).text().toLowerCase().indexOf(q) > -1);
+                        });
+                    });
+                    $cari.on('keydown', function (e2) { e2.stopPropagation(); });
+
+                    $list.on('click', '.cr-fp-item', function () {
+                        var val = $(this).data('value');
+                        crTutupPanel($cal);
+                        if (jenis === 'bulan') { fp.changeMonth(val, false); }
+                        else                   { fp.changeYear(val); }
+                        crSyncLabel(fp);
+                    });
+
+                    $panel.append($cari, $list);
+                    $cal.append($panel);
+
+                    /* Posisi relatif container kalender (bukan offsetParent
+                       bawaan), lalu dijepit agar tidak keluar kotak. */
+                    var oBtn = $btn.offset(), oCal = $cal.offset();
+                    var kiri = oBtn.left - oCal.left;
+                    var maks = $cal.outerWidth() - $panel.outerWidth() - 6;
+                    $panel.css({
+                        top:  (oBtn.top - oCal.top + $btn.outerHeight() + 2) + 'px',
+                        left: Math.max(6, Math.min(kiri, maks)) + 'px'
+                    });
+                    $cari.trigger('focus');
+                });
+
+                /* Klik di mana pun selain panel itu sendiri menutupnya — termasuk
+                   pada tanggal, panah, di luar popup, atau pada kalender sebelah. */
+                $(document).off('mousedown.crFp').on('mousedown.crFp', function (e) {
+                    var $panelTarget = $(e.target).closest('.cr-fp-panel');
+                    var $pickTarget  = $(e.target).closest('.cr-fp-pick');
+                    /* Panel lain selalu ditutup, termasuk saat membuka panel di
+                       kalender sebelah — hanya satu panel yang boleh terbuka. */
+                    $('.cr-fp-panel').each(function () {
+                        if ($panelTarget.length && this === $panelTarget[0]) return;
+                        if ($pickTarget.length && $(this).data('owner') === $pickTarget[0]) return;
+                        $(this).remove();
+                    });
+                });
+
+                crSyncLabel(fp);
+            }
+
+            /* Popup dua kalender */
+            var $wrap  = $('#crDateRange').closest('.cr-date-range');
+            var $popup = $('<div class="cr-range-pop d-none"></div>');
+            var $sisiA = $('<div class="cr-range-cal"></div>');
+            var $sisiB = $('<div class="cr-range-cal"></div>');
+            $sisiA.append('<div class="cr-range-judul">From</div>');
+            $sisiB.append('<div class="cr-range-judul">To</div>');
+            $popup.append($sisiA, $sisiB).appendTo($wrap);
+
+            var tglAwal  = '{{ substr($dateFrom, 0, 10) }}';
+            var tglAkhir = '{{ substr($dateTo, 0, 10) }}';
+            var fpA, fpB;
+
+            /* Kalender kiri menentukan tanggal AWAL, kalender kanan tanggal
+               AKHIR — masing-masing satu tanggal saja, ditandai lingkaran. */
+            function crTulisRentang() {
+                var a = fpA && fpA.selectedDates[0];
+                var b = fpB && fpB.selectedDates[0];
+                if (!a || !b) return;
+                $('#crDateFrom').val(fmtIso(a));
+                $('#crDateTo').val(fmtIso(b));
+                $('#crDateRange').val(fmtTampil(a) + ' s/d ' + fmtTampil(b));
+            }
+
+            /* Panah yang pasti tertahan disembunyikan: saat kedua kalender berada
+               di bulan yang sama, panah "berikutnya" di kiri dan "sebelumnya" di
+               kanan tidak ada gunanya. */
+            function crSyncPanah() {
+                if (!fpA || !fpB) return;
+                var sama = crIdxBulan(fpA) === crIdxBulan(fpB);
+                $(fpA.calendarContainer).find('.flatpickr-next-month').toggleClass('cr-panah-mati', sama);
+                $(fpB.calendarContainer).find('.flatpickr-prev-month').toggleClass('cr-panah-mati', sama);
+            }
+
+            /* Bulan yang ditampilkan kalender kiri tidak boleh melewati kalender
+               kanan (dan sebaliknya). Sisi yang baru digeser ditarik kembali ke
+               posisi sisi lainnya. Flag "kunci" mencegah penyesuaian ini memicu
+               dirinya sendiri lewat onMonthChange/onYearChange. */
+            var kunci = false;
+            function crIdxBulan(fp) { return fp.currentYear * 12 + fp.currentMonth; }
+            function crJagaUrutan(sisi) {
+                if (kunci || !fpA || !fpB) return;
+                if (crIdxBulan(fpA) <= crIdxBulan(fpB)) return;
+
+                kunci = true;
+                var target = sisi === 'a' ? fpB : fpA;
+                var geser  = sisi === 'a' ? fpA : fpB;
+                geser.changeYear(target.currentYear);
+                geser.changeMonth(target.currentMonth, false);
+                crSyncLabel(geser);
+                kunci = false;
+            }
+
+            function crOpsi(bulanTampil, $sisi, tglTerpilih, sisi) {
+                return {
+                    inline: true, showMonths: 1,
+                    dateFormat: 'Y-m-d',
+                    appendTo: $sisi[0],
+                    defaultDate: tglTerpilih,
+                    onReady: function (sel, str, fp) {
+                        fp.changeMonth(bulanTampil.getMonth(), false);
+                        fp.changeYear(bulanTampil.getFullYear());
+                        crPasangPemilih(fp);
+                    },
+                    onMonthChange: function (sel, str, fp) { crSyncLabel(fp); crJagaUrutan(sisi); },
+                    onYearChange:  function (sel, str, fp) { crSyncLabel(fp); crJagaUrutan(sisi); },
+                    onChange: function (dates) {
+                        /* Tanggal awal tidak boleh melewati tanggal akhir. */
+                        if (dates[0]) {
+                            if (sisi === 'a' && fpB) { fpB.set('minDate', dates[0]); }
+                            if (sisi === 'b' && fpA) { fpA.set('maxDate', dates[0]); }
+                        }
+                        crTulisRentang();
+                    }
+                };
+            }
+
+            var dAwal  = new Date(tglAwal);
+            var dAkhir = new Date(tglAkhir);
+            /* Kalender kanan dibuka pada bulan tanggal akhir (tanpa filter = bulan
+               berjalan); kalender kiri satu bulan sebelumnya. */
+            var bulanKanan = dAkhir;
+            var bulanKiri  = new Date(dAkhir.getFullYear(), dAkhir.getMonth() - 1, 1);
+
+            fpA = flatpickr($('<input type="text" class="cr-range-src">').appendTo($sisiA)[0],
+                            crOpsi(bulanKiri, $sisiA, tglAwal, 'a'));
+            fpB = flatpickr($('<input type="text" class="cr-range-src">').appendTo($sisiB)[0],
+                            crOpsi(bulanKanan, $sisiB, tglAkhir, 'b'));
+            crSyncPanah();
+            fpA.set('maxDate', tglAkhir);
+            fpB.set('minDate', tglAwal);
+
+            $('#crDateRange').val(fmtTampil(dAwal) + ' s/d ' + fmtTampil(dAkhir));
+
+            crBukaPeriode = function () { $popup.removeClass('d-none'); };
+            window.crTutupPeriode = function () {
+                $popup.addClass('d-none');
+                crTutupPanel($(fpA.calendarContainer));
+                crTutupPanel($(fpB.calendarContainer));
+            };
+
+            $('#crDateRange').on('click', function () {
+                if ($popup.hasClass('d-none')) { crBukaPeriode(); } else { window.crTutupPeriode(); }
             });
-            flatpickr('#crDateTo', {
-                dateFormat: 'Y-m-d', altInput: true, altFormat: 'd/m/Y',
-                defaultDate: '{{ substr($dateTo, 0, 10) }}',
-                onChange: function () { /* rentang baru dipakai saat "Terapkan" ditekan */ }
+
+            /* Klik di luar popup menutup kalender. */
+            $(document).on('mousedown.crPeriode', function (e) {
+                if ($popup.hasClass('d-none')) return;
+                if ($(e.target).closest('.cr-range-pop, #crDateRange').length) return;
+                window.crTutupPeriode();
             });
         } else {
             throw new Error('flatpickr is not a function');
         }
     } catch (err) {
-        console.warn('Flatpickr gagal diinisialisasi — filter tanggal beralih ke mode input manual.', err);
-        $('#crDateFrom, #crDateTo').removeAttr('readonly').attr('placeholder', 'YYYY-MM-DD');
+        console.warn('Flatpickr gagal diinisialisasi - filter tanggal beralih ke mode input manual.', err);
+        /* Fallback: tampilkan kembali dua input teks biasa (YYYY-MM-DD). */
+        $('#crDateFrom, #crDateTo').attr('type', 'text')
+            .addClass('form-control form-control-sm')
+            .attr('placeholder', 'YYYY-MM-DD');
+        $('#crDateRange').remove();
     }
 
     /* ── RENTANG CEPAT ──────────────────────────────────────────────────────
@@ -882,7 +1181,8 @@ $(function () {
                        .toggleClass('d-flex', RANGE_AKTIF === 'custom');
 
     $('#btnApplyCustomRange').on('click', function () {
-        reloadWithDateRange($('#crDateFrom').val(), $('#crDateTo').val());
+        if (typeof window.crTutupPeriode === 'function') { window.crTutupPeriode(); }
+        applyDateRange($('#crDateFrom').val(), $('#crDateTo').val());
     });
 
     $('#crQuickRange').on('change', function () {
@@ -891,8 +1191,7 @@ $(function () {
 
         if (v === 'custom') {
             $('#crCustomRange').removeClass('d-none').addClass('d-flex');
-            var fp = document.getElementById('crDateFrom')._flatpickr;
-            if (fp) { fp.open(); } else { $('#crDateFrom').focus(); }
+            crBukaPeriode();
             return;
         }
         $('#crCustomRange').addClass('d-none').removeClass('d-flex');
@@ -908,12 +1207,13 @@ $(function () {
         else if (v === '30d') { mulai.setDate(mulai.getDate() - 30); }
         else if (v === '1y')  { mulai.setFullYear(mulai.getFullYear() - 1); }
 
-        var url = new URL(window.location.href);
-        url.searchParams.set('range', v);
-        url.searchParams.delete('from');
-        url.searchParams.set('date_from', pakaiJam ? fmtWaktu(mulai) : fmtTanggal(mulai));
-        url.searchParams.set('date_to',   pakaiJam ? fmtWaktu(now)   : fmtTanggal(now));
-        window.location.href = url.toString();
+        /* Sama seperti "Terapkan": data diambil ulang lewat AJAX, halaman tidak
+           dimuat ulang. Pilihan rentangnya tetap disimpan di URL (?range=). */
+        applyDateRange(
+            pakaiJam ? fmtWaktu(mulai) : fmtTanggal(mulai),
+            pakaiJam ? fmtWaktu(now)   : fmtTanggal(now),
+            v
+        );
     });
 
     // (accounts holder lama sudah tidak diperlukan — realisasi sekarang pakai CR Detail Item)
@@ -1184,6 +1484,7 @@ $(function () {
                 $host.html(html);
                 cfg.loaded = true;
                 initCrTable(tab);
+                crSyncCounts(tab);
             })
             .fail(function () {
                 $host.html('<div class="text-center text-muted py-4">'
@@ -1220,7 +1521,13 @@ $(function () {
         window.history.replaceState({}, '', url.toString());
     });
 
-    $('#btnRefreshCR').on('click', function () { location.reload(); });
+    /* Refresh mengembalikan rentang tanggal ke bawaan (tanggal 1 s/d akhir bulan
+       berjalan), jadi kalender ikut kembali ke bulan default. */
+    $('#btnRefreshCR').on('click', function () {
+        var url = new URL(window.location.href);
+        ['date_from', 'date_to', 'from', 'range'].forEach(function (k) { url.searchParams.delete(k); });
+        window.location.href = url.toString();
+    });
 
     /* Tombol "Reset filter" pada keadaan kosong memakai ulang tombol Clear Filter tab-nya. */
     $(document).on('click', '.cr-empty-reset', function () {
@@ -1232,13 +1539,57 @@ $(function () {
     /* ── FILTER TANGGAL — server-side (reload halaman dengan ?date_from=&date_to=) ──
     | Berlaku untuk semua tab; ?tab= ikut terbawa di URL. Pakai "date_from"/"date_to"
     | (bukan "from"/"to") karena "from" sudah dipakai link sidebar (?from=finance). */
-    function reloadWithDateRange(from, to) {
+    /* Ganti rentang tanggal tanpa memuat ulang halaman: URL disinkronkan,
+       semua tab ditandai belum dimuat, lalu tab yang sedang terbuka diambil
+       ulang lewat AJAX. Stepper & badge tab ikut diperbarui dari data meta
+       yang dikirim server bersama tabelnya. */
+    function applyDateRange(from, to, range) {
+        if (!from || !to) { return; }
+        CR_DATE_FROM = from;
+        CR_DATE_TO   = to;
+
         var url = new URL(window.location.href);
         url.searchParams.delete('from');
-        url.searchParams.delete('range');
+        if (range) { url.searchParams.set('range', range); }
+        else       { url.searchParams.delete('range'); }
         url.searchParams.set('date_from', from);
         url.searchParams.set('date_to', to);
-        window.location.href = url.toString();
+        window.history.replaceState({}, '', url.toString());
+
+        Object.keys(CR_TABS).forEach(function (tab) {
+            var cfg = CR_TABS[tab];
+            if (cfg.table) {
+                try { cfg.table.destroy(); } catch (e) {}
+                cfg.table = null;
+            }
+            cfg.loaded  = false;
+            cfg.loading = false;
+            crPane(tab).find('.cr-tab-host').empty();
+        });
+
+        crLoadTab(crCurrentTab());
+    }
+
+    /* Perbarui angka stepper & badge tab dari meta yang ikut terkirim di
+       fragment tabel (jumlah per status untuk rentang tanggal baru). */
+    function crSyncCounts(tab) {
+        var $meta = crPane(tab).find('.cr-tab-meta').first();
+        if (!$meta.length) return;
+
+        var total  = parseInt($meta.attr('data-total'), 10) || 0;
+        var counts = {};
+        try { counts = JSON.parse($meta.attr('data-counts') || '{}') || {}; } catch (e) { counts = {}; }
+
+        crPane(tab).find('.wf-tl-step').each(function () {
+            var n = parseInt(counts[$(this).data('status')], 10) || 0;
+            var $node = $(this).find('.wf-tl-node');
+            var warna = 'badge-' + ($(this).data('wf-color') || 'secondary');
+            $node.text(n)
+                 .toggleClass('is-empty', n === 0)
+                 .toggleClass(warna, n > 0);
+        });
+
+        $('#crTabs .nav-link[data-crtab="' + tab + '"] .badge').text(total.toLocaleString('id-ID'));
     }
 
     // Export mengikuti filter yang SEDANG AKTIF di tabel tab tsb (search, dropdown, stepper).

@@ -277,19 +277,26 @@
        --------------------------------------------------------------- */
     function initScrollState() {
         var menunggu = false;
+        // Yang menggulir kini area konten (lihat tesys-ui-shell.css); jendela
+        // tetap dibaca sebagai cadangan untuk halaman tanpa shell.
+        var kotak = document.querySelector('.main > .content');
 
         function terapkan() {
             menunggu = false;
             // Ambang 4px, bukan 0: sebagian peramban melaporkan pecahan
             // piksel saat halaman diam, dan garisnya jadi berkedip.
-            document.body.classList.toggle('page-scrolled', window.scrollY > 4);
+            var posisi = kotak ? kotak.scrollTop : window.scrollY;
+            document.body.classList.toggle('page-scrolled', posisi > 4);
         }
 
-        window.addEventListener('scroll', function () {
+        function saatGulir() {
             if (menunggu) return;
             menunggu = true;
             window.requestAnimationFrame(terapkan);
-        }, { passive: true });
+        }
+
+        window.addEventListener('scroll', saatGulir, { passive: true });
+        if (kotak) { kotak.addEventListener('scroll', saatGulir, { passive: true }); }
 
         // Halaman bisa dibuka dalam keadaan sudah tergulir (mis. kembali
         // dari halaman lain, atau tautan ber-anchor).

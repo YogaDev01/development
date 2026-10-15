@@ -246,6 +246,7 @@
     .tt-stage-acts { grid-template-columns:1fr; gap:8px; }
     .tt-stage-title { margin-bottom:10px; }
     .tt-stage .btn { height:42px; font-size:13.5px; display:inline-flex; align-items:center; justify-content:center; }
+    .tt-stage .btn.tt-btn-wide { height:42px; font-size:13px; }
     .tt-swipe { height:56px; }
     .tt-swipe-knob { width:46px; height:46px; }
     .tt-swipe-text { font-size:13.5px; padding-left:50px; }
@@ -269,6 +270,21 @@
 .tt-stage-acts { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .tt-stage-acts .btn-block { margin-top:0; }
 .tt-stage-note { margin-top:8px; font-size:11.5px; color:var(--text-muted); }
+
+/* Stabilo tiket yang baru dibuat di daftar: menyala lalu memudar sendiri
+   sepanjang 2 detik. Hanya latar — tanpa garis tepi, yang di baris tabel
+   muncul sebagai potongan merah di tiap sel. !important mengalahkan
+   table-striped; animasinya berhenti di latar bening (forwards). */
+.tt-row-baru > td, .tt-mcard.tt-row-baru { animation:ttBaruLuntur 2s ease-out forwards; }
+@keyframes ttBaruLuntur {
+    0%   { background-color:var(--danger-bg); }
+    60%  { background-color:var(--danger-bg); }
+    100% { background-color:transparent; }
+}
+/* Tombol tahap di bawah swipe: selebar panel supaya tidak duduk separuh baris,
+   tapi tetap ramping — tinggi penuh seperti swipe terasa terlalu besar. */
+.tt-stage .btn.tt-btn-wide { height:38px; border-radius:var(--radius-sm); font-size:12.5px; font-weight:600;
+    display:inline-flex; align-items:center; justify-content:center; }
 
 /* ---------- Geser untuk konfirmasi ----------
    Jalur gelap dengan tombol bundar merah; teks jalur meredup saat digeser,

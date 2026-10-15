@@ -1026,6 +1026,14 @@ class BudgetRequestController extends Controller
         $maxRows   = self::TAB_MAX_ROWS;
         $truncated = $total > $maxRows;
 
+        // Jumlah per status untuk tab ini — dipakai memperbarui stepper & badge
+        // tab saat rentang tanggal diganti tanpa memuat ulang halaman.
+        $statusCounts = (clone $query)->selectRaw('status, COUNT(*) as agg')
+            ->groupBy('status')
+            ->pluck('agg', 'status')
+            ->map(fn ($v) => (int) $v)
+            ->all();
+
         if ($tab === 'ca') {
             $query->with(['type', 'budgetPlan.project.manager', 'applicant', 'details', 'beneficiary.pic', 'realizations']);
         } elseif ($tab === 'cp') {
@@ -1039,7 +1047,7 @@ class BudgetRequestController extends Controller
 
         $rows = $query->latest()->limit($maxRows)->get();
 
-        return view('budget-request._table', compact('tab', 'rows', 'total', 'maxRows', 'truncated'));
+        return view('budget-request._table', compact('tab', 'rows', 'total', 'maxRows', 'truncated', 'statusCounts'));
     }
 
     /*

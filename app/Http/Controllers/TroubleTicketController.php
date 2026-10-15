@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Site;
 use App\Models\TroubleTicket;
 use App\Models\TroubleTicketAttachment;
-use App\Models\TroubleTicketDevice;
 use App\Models\TroubleTicketMessage;
 use App\Models\TroubleTicketRca;
 use App\Models\TroubleTicketSeverity;
@@ -104,7 +103,8 @@ class TroubleTicketController extends Controller
                 'PROGRESS_DONE' => (int) ($agregat->progress_done ?? 0),
                 'CLOSED' => (int) ($agregat->closed_bulan_ini ?? 0),
             ],
-            'canSettings' => $user->hasRole(AccessRoles::TROUBLE_TICKET_SETTINGS),
+            // Tiket yang baru saja dibuat — disorot sebentar di daftar.
+            'baruIds' => array_map('intval', (array) session('tt_baru', [])),
             // Tombol Close di kolom Action baris Progress Done. Kelayakan per
             // baris tetap diperiksa ulang server lewat canApproveClose().
             'canApprove' => $user->hasRole(AccessRoles::TROUBLE_TICKET_APPROVE),
@@ -211,9 +211,13 @@ class TroubleTicketController extends Controller
 
     public function create()
     {
+        $sites = Site::with('customer:id,name')->where('status', 'ACTIVE')->orderBy('tid')->get(['id', 'tid', 'sitename', 'customer_id']);
+
         return view('trouble-ticket.create', [
-            'sites' => Site::with('customer:id,name')->where('status', 'ACTIVE')->orderBy('tid')->get(['id', 'tid', 'sitename', 'customer_id']),
-            'devices' => TroubleTicketDevice::active(),
+            'sites' => $sites,
+            // Customer dipilih lebih dulu; daftarnya hanya customer yang punya
+            // site aktif, supaya tidak ada pilihan yang menghasilkan site kosong.
+            'customers' => $sites->pluck('customer')->filter()->unique('id')->sortBy('name')->values(),
             'rcas' => TroubleTicketRca::active(),
             // Dipakai dropdown Sub-RCA di browser (tanpa request tambahan).
             'subRcas' => TroubleTicketSubRca::where('status', 'ACTIVE')->orderBy('name')->get(['id', 'rca_id', 'name']),
@@ -260,13 +264,19 @@ class TroubleTicketController extends Controller
             'tickets.*.issue_id' => 'nullable|integer|exists:trouble_ticket_issues,id',
             'tickets.*.flag_alarm' => 'nullable|string|max:40',
             'tickets.*.device_id' => 'nullable|integer|exists:trouble_ticket_devices,id',
+            // No. TT custom — kosong berarti nomor otomatis (DocumentSequence).
+            // 'distinct' menjaga dua blok dalam satu simpan tidak memakai nomor sama.
+            'tickets.*.ticket_number' => 'nullable|string|max:50|distinct|unique:trouble_tickets,ticket_number',
             'tickets.*.rca_id' => 'nullable|integer|exists:trouble_ticket_rcas,id',
             'tickets.*.sub_rca_id' => 'nullable|integer|exists:trouble_ticket_sub_rcas,id',
             // Date Open — bawaan hari ini, boleh diubah, tidak boleh di masa depan.
             'tickets.*.reported_at' => 'nullable|date|before_or_equal:now',
             'tickets.*.attachments' => 'nullable|array|max:'.TroubleTicketAttachment::MAX_FILES,
             'tickets.*.attachments.*' => TroubleTicketAttachment::rules(),
-        ], $this->fileMessages());
+        ], $this->fileMessages() + [
+            'tickets.*.ticket_number.unique' => 'No. tiket itu sudah dipakai tiket lain.',
+            'tickets.*.ticket_number.distinct' => 'No. tiket custom tidak boleh sama antar gangguan.',
+        ]);
 
         $pokok = ['site_id' => $data['site_id'], 'assigned_to' => $data['assigned_to']];
         $user = Auth::user();
@@ -304,15 +314,16 @@ class TroubleTicketController extends Controller
             }
         }
 
-        if (count($dibuat) === 1) {
-            return redirect()->route('trouble-ticket.show', $dibuat[0])
-                ->with('success', "Trouble Ticket {$dibuat[0]->ticket_number} berhasil dibuat.");
-        }
-
+        /* Setelah simpan pemakai kembali ke DAFTAR, bukan ke detail tiket
+           (15 Okt 2026): daftar dibuka pada tahap TT Open dan baris tiket baru
+           disorot sebentar lewat session `tt_baru`. */
         $nomor = collect($dibuat)->map->ticket_number->implode(', ');
 
         return redirect()->route('trouble-ticket.index')
-            ->with('success', count($dibuat).' Trouble Ticket berhasil dibuat: '.$nomor.'.');
+            ->with('tt_baru', collect($dibuat)->pluck('id')->all())
+            ->with('success', count($dibuat) === 1
+                ? "Trouble Ticket {$nomor} berhasil dibuat."
+                : count($dibuat).' Trouble Ticket berhasil dibuat: '.$nomor.'.');
     }
 
     /*
@@ -384,8 +395,11 @@ class TroubleTicketController extends Controller
             'canSupervise' => $canSupervise,
             'canApproveClose' => $this->workflow->canApproveClose($user, $ticket),
             'canMessage' => $this->workflow->canMessage($user, $ticket),
-            'reassignTo' => $canSupervise && in_array($ticket->status, TroubleTicketWorkflow::REASSIGNABLE, true)
-                ? $this->workflow->eligibleTechnicians($ticket->site_id)->where('id', '!=', $ticket->assigned_to)->values()
+            // Change Teknisi: sejak plan dibuat sampai sebelum perjalanan mulai.
+            'canReassign' => $canSupervise && $this->workflow->canReassign($ticket),
+            // Kandidatnya: homebase sama, lalu cluster terdekat dari teknisi sekarang.
+            'reassignTo' => $canSupervise && $this->workflow->canReassign($ticket)
+                ? $this->workflow->reassignCandidates($ticket)
                 : collect(),
         ]);
     }
@@ -506,22 +520,31 @@ class TroubleTicketController extends Controller
         return back()->with('success', 'Plan visit dibuat.');
     }
 
-    /** Geser "mulai perjalanan" — SLA Travel mulai. */
-    public function startTravel(TroubleTicket $ticket)
+    /** Geser "mulai perjalanan" — SLA Travel mulai. Evidence perjalanan wajib. */
+    public function startTravel(Request $request, TroubleTicket $ticket)
     {
-        $this->workflow->startTravel($ticket, Auth::user());
+        $request->validate([
+            'attachments' => 'required|array|min:1|max:'.TroubleTicketAttachment::MAX_FILES,
+            'attachments.*' => TroubleTicketAttachment::rules(),
+        ], $this->fileMessages());
+
+        $this->workflow->startTravel($ticket, Auth::user(), $request->file('attachments', []));
 
         return back()->with('success', 'Perjalanan dimulai. SLA Travel berjalan.');
     }
 
-    /** Batal visit di tengah perjalanan — SLA Travel dibatalkan, tiket tetap di Trip. */
+    /** Batal visit di tengah perjalanan — SLA Travel kembali ke 0, jadwal plan diisi ulang. */
     public function cancelTravel(Request $request, TroubleTicket $ticket)
     {
-        $data = $request->validate(['reason' => 'required|string|max:500']);
+        $data = $request->validate([
+            'reason' => 'required|string|max:500',
+            // Jadwal kunjungan berikutnya wajib: tiket tidak ditinggalkan tanpa plan.
+            'visit_site' => 'required|date|after_or_equal:today',
+        ]);
 
-        $this->workflow->cancelTravel($ticket, Auth::user(), $data['reason']);
+        $this->workflow->cancelTravel($ticket, Auth::user(), $data['reason'], $data['visit_site']);
 
-        return back()->with('success', 'Perjalanan dibatalkan. SLA Travel tidak dihitung.');
+        return back()->with('success', 'Perjalanan dibatalkan. SLA Travel kembali ke 0.');
     }
 
     /** Konfirmasi site sudah benar — SLA Travel berhenti. */
@@ -583,9 +606,13 @@ class TroubleTicketController extends Controller
         $data = $request->validate([
             'assigned_to' => 'required|integer|exists:users,id',
             'reason' => 'required|string|max:500',
+            // Reschedule tahap Plan & Trip ikut di form ini; tahap lain tidak mengirimnya.
+            'visit_site' => 'nullable|date|after_or_equal:today',
         ]);
 
-        $this->workflow->reassign($ticket, Auth::user(), (int) $data['assigned_to'], $data['reason']);
+        $this->workflow->reassign(
+            $ticket, Auth::user(), (int) $data['assigned_to'], $data['reason'], $data['visit_site'] ?? null,
+        );
 
         return back()->with('success', 'Teknisi dialihkan.');
     }
