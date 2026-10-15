@@ -339,7 +339,7 @@ class BudgetPlanController extends Controller
         // "Actual" per baris (BudgetPlan::usedAmount) dihitung dalam query yang
         // sama, bukan satu query SUM per Budget Plan.
         $budgetPlans = $query
-            ->withSum(['costRequests as used_amount_sum' => fn ($q) => $q->disbursed()], 'amount')
+            ->withSum(['costRequests as used_amount_sum' => fn ($q) => $q->disbursed()], DB::raw(BudgetRequest::effectiveCostSql()))
             ->latest()->get();
 
         $summary = [
@@ -683,7 +683,8 @@ class BudgetPlanController extends Controller
 
     /**
      * Effective cost per item CR (aturan sama dengan realizedCostValue, per baris):
-     * Cash Advance + settle terisi -> nilai settle; selainnya -> pengajuan;
+     * Cash Advance + settle sudah diajukan (termasuk 0) -> nilai settle;
+     * selainnya -> pengajuan;
      * item takeout -> 0.
      */
     private function effectiveDetailCost(RequestDetail $d, bool $isCashAdvance): int
@@ -691,8 +692,11 @@ class BudgetPlanController extends Controller
         if ($d->isTakenOut()) {
             return 0;
         }
-        $settleTotal = (int) ($d->realization->total ?? 0);
-        return ($isCashAdvance && $settleTotal > 0) ? $settleTotal : (int) $d->total;
+        // Settle 0 tetap dipakai (dana dikembalikan utuh) — penentunya baris
+        // realisasi ada atau tidak, bukan nilainya > 0.
+        return ($isCashAdvance && $d->realization !== null)
+            ? (int) $d->realization->total
+            : (int) $d->total;
     }
 
     /**
@@ -1142,7 +1146,8 @@ class BudgetPlanController extends Controller
 
                 // Effective cost per item (aturan sama dengan realizedCostValue,
                 // tapi diterapkan per baris):
-                //   - Cash Advance + ada settle (realization.total > 0) -> nilai settle
+                //   - Cash Advance + settle sudah diajukan (baris realization ada,
+                //     termasuk Settle 0) -> nilai settle
                 //   - Cash Advance tanpa settle, atau tipe lain -> nilai pengajuan
                 // Item takeout tidak dihitung sebagai biaya (effective = 0).
                 $isCa = $cr->isCashAdvance();
@@ -1150,8 +1155,9 @@ class BudgetPlanController extends Controller
                     if ($d->isTakenOut()) {
                         return 0;
                     }
-                    $settleTotal = (int) ($d->realization->total ?? 0);
-                    return ($isCa && $settleTotal > 0) ? $settleTotal : (int) $d->total;
+                    return ($isCa && $d->realization !== null)
+                        ? (int) $d->realization->total
+                        : (int) $d->total;
                 };
 
                 // Grouping tab Cost: CR -> CoA (Account) -> Sub CoA (deskripsi

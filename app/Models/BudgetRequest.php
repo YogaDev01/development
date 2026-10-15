@@ -529,6 +529,29 @@ class BudgetRequest extends Model
             : (int) $this->amount;
     }
 
+    /**
+     * Padanan SQL realizedCostValue() untuk agregasi (SUM) tanpa memuat CR ke
+     * PHP — dipakai "Used" Budget Plan dan pengecekan NOB. Aturannya sama:
+     * Cash Advance yang settlement-nya sudah diajukan (baris realisasi ada)
+     * -> total settlement, termasuk bila 0 (dana dikembalikan utuh);
+     * selainnya -> nilai pengajuan. Ekspresi mengacu ke kolom tabel
+     * `budget_request` (tanpa alias).
+     */
+    public static function effectiveCostSql(): string
+    {
+        $caIds = self::cashAdvanceTypeIds();
+        if (empty($caIds)) {
+            return 'budget_request.amount';
+        }
+
+        $ids = implode(',', array_map('intval', $caIds));
+
+        return "CASE WHEN budget_request.type_id IN ($ids)"
+            . ' AND EXISTS (SELECT 1 FROM budget_request_realizations brr WHERE brr.budget_request_id = budget_request.id)'
+            . ' THEN (SELECT COALESCE(SUM(brr2.total), 0) FROM budget_request_realizations brr2 WHERE brr2.budget_request_id = budget_request.id)'
+            . ' ELSE budget_request.amount END';
+    }
+
     /** Selisih = Settlement (total realisasi) - Original Approved Amount. Dasar
      *  nilai Second Payment saat Settlement > nilai pengajuan awal. */
     public function getSettlementOverageAttribute(): int
