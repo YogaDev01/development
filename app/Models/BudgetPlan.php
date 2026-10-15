@@ -242,9 +242,11 @@ class BudgetPlan extends Model
             return (int) $this->attributes['used_amount_sum'];
         }
 
-        return $this->costRequests()
+        // Effective cost (BudgetRequest::effectiveCostSql()), bukan nilai
+        // pengajuan: CA yang di-settle 0 tidak lagi memakan budget.
+        return (int) $this->costRequests()
             ->disbursed()
-            ->sum('amount');
+            ->sum(\Illuminate\Support\Facades\DB::raw(BudgetRequest::effectiveCostSql()));
     }
 
     public function remainingAmount(): int

@@ -880,7 +880,7 @@ class BudgetRequestController extends Controller
         $used = BudgetRequest::where('budget_plan_id', $bp->id)
             ->whereIn('status', BudgetConsumption::COMMITTED)
             ->when($excludeCrId, fn($q) => $q->where('id', '!=', $excludeCrId))
-            ->sum('amount');
+            ->sum(DB::raw(BudgetRequest::effectiveCostSql()));
 
         return ($used + $amount) > ($bp->amount ?? 0);
     }
@@ -896,7 +896,7 @@ class BudgetRequestController extends Controller
         $used = BudgetRequest::where('budget_plan_id', $bp->id)
             ->whereIn('status', BudgetConsumption::COMMITTED)
             ->when($excludeCrId, fn ($q) => $q->where('id', '!=', $excludeCrId))
-            ->sum('amount');
+            ->sum(DB::raw(BudgetRequest::effectiveCostSql()));
 
         return (int) max(0, ($used + $amount) - ($bp->amount ?? 0));
     }
@@ -3193,15 +3193,12 @@ class BudgetRequestController extends Controller
             'pic'       => ['PIC',          20, fn ($cr) => $cr->beneficiary?->pic?->pic ?? '-'],
             /*
             | Cost = biaya yang benar-benar diakui:
-            |   Cash Advance -> nilai Settlement; kalau settlement masih 0
-            |                   (belum disettle), pakai nilai Request.
+            |   Cash Advance -> nilai Settlement bila settlement sudah diajukan
+            |                   (termasuk Settle 0); belum diajukan -> Request.
             |   Selain CA    -> selalu nilai Request.
+            | Sumber tunggal: BudgetRequest::realizedCostValue().
             */
-            'cost'      => ['Cost',         16, function ($cr) {
-                if (! $cr->isCashAdvance()) return (int) $cr->amount;
-                $settle = (int) $cr->total_realization;
-                return $settle > 0 ? $settle : (int) $cr->amount;
-            }],
+            'cost'      => ['Cost',         16, fn ($cr) => $cr->realizedCostValue()],
             'status'    => ['Status',       14, fn ($cr) => $cr->status],
             // Hanya untuk export tanpa cols (bentuk lengkap lama):
             'type'      => ['Tipe',         16, fn ($cr) => $cr->type?->name ?? '-'],
