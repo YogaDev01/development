@@ -54,13 +54,16 @@
             <div class="card-body py-3">
                 <div class="form-row align-items-end">
                     <form method="GET" action="{{ url('/cash-management') }}" id="formFilterKas" class="form-row col-lg-4 col-md-8 col-12 p-0 m-0">
-                        <div class="form-group col-6 mb-2">
-                            <label class="font-weight-600" style="font-size:11px;">Dari Tanggal</label>
-                            <input type="date" name="from" class="form-control form-control-sm" value="{{ $filters['from'] }}">
-                        </div>
-                        <div class="form-group col-6 mb-2">
-                            <label class="font-weight-600" style="font-size:11px;">Sampai Tanggal</label>
-                            <input type="date" name="to" class="form-control form-control-sm" value="{{ $filters['to'] }}">
+                        {{-- Satu kotak rentang (TesysDateRange): klik membuka dua
+                             kalender From/To; nilainya tetap dikirim sebagai
+                             from & to seperti sebelumnya. --}}
+                        <div class="form-group col-12 mb-2">
+                            <label class="font-weight-600" style="font-size:11px;">Periode</label>
+                            <div>
+                                <input type="text" id="cmDateRange" class="form-control form-control-sm tdr-input" readonly>
+                                <input type="hidden" name="from" id="cmDateFrom" value="{{ $filters['from'] }}">
+                                <input type="hidden" name="to" id="cmDateTo" value="{{ $filters['to'] }}">
+                            </div>
                         </div>
                     </form>
 
@@ -401,6 +404,23 @@ $(function () {
     |
     | Rentang tanggal tetap di server: ia menentukan dataset-nya, bukan sekadar
     | menyembunyikan baris. */
+    /* Rentang tanggal memakai komponen bersama TesysDateRange; form dikirim
+       begitu rentangnya berubah (perilaku lama: submit saat tanggal diganti). */
+    var cmNilaiAwal = '{{ $filters['from'] }}|{{ $filters['to'] }}';
+    if (typeof TesysDateRange === 'object') {
+        TesysDateRange.init({
+            input: '#cmDateRange', from: '#cmDateFrom', to: '#cmDateTo',
+            quick: true,
+            onApply: function (from, to) {
+                if (from + '|' + to === cmNilaiAwal) return;
+                $('#formFilterKas').submit();
+            }
+        });
+    } else {
+        $('#cmDateRange').remove();
+        $('#cmDateFrom, #cmDateTo').attr('type', 'date').addClass('form-control form-control-sm');
+    }
+
     $('#formFilterKas').on('change', 'input[type="date"]', function () {
         $('#formFilterKas').trigger('submit');
     });

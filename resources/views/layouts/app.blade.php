@@ -692,6 +692,7 @@
 
 <!-- TESYS SEARCHABLE SELECT (pengganti Tom Select) -->
 <script src="@aset('js/tesys-searchable-select.js')"></script>
+<script src="@aset('js/tesys-date-range.js')"></script>
 
 <!-- TOM SELECT -->
 <script src="@aset('plugins/tom-select/tom-select.complete.min.js')"></script>

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
+use App\Models\DeliveryNote;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
 use App\Models\InvoiceAttachment;
@@ -509,6 +510,44 @@ class InvoiceCashReceiptController extends Controller
             ->orderBy('name')->get();
 
         return view('invoice-cash-receipt.show', compact('invoice', 'sourceFunds'));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | MODAL SURAT JALAN (dibuka dari tab Log detail invoice)
+    |--------------------------------------------------------------------------
+    | Mengembalikan potongan HTML, bukan halaman penuh: dari detail invoice,
+    | Surat Jalan hanya perlu dilihat sekilas, dan pindah halaman membuat
+    | pengguna kehilangan posisi di tab Log.
+    |
+    | Dua pembatas yang tidak boleh dilepas:
+    |   1. Hak lihat invoice diperiksa dengan aturan yang sama seperti show().
+    |   2. Surat Jalan yang boleh dibuka hanya yang memang terpaut pada invoice
+    |      tersebut — bukan sembarang id Surat Jalan dari URL.
+    | Nilai tagihan sengaja tidak ditampilkan di modal ini.
+    */
+
+    public function deliveryNoteModal($id, $dnId)
+    {
+        $invoice = Invoice::with('deliveryNote')->findOrFail($id);
+
+        $this->assertCanViewInvoice($invoice);
+
+        if (! $invoice->deliveryNote || (string) $invoice->deliveryNote->id !== (string) $dnId) {
+            abort(404);
+        }
+
+        $deliveryNote = DeliveryNote::with([
+            'customer',
+            'items.invoice:id,code,status,project_po_number_id,po_id',
+            'items.invoice.po:id,code,name',
+            'items.invoice.poNumber:id,po_number,project_id',
+            'logs.attachments',
+            'createdBy',
+            'receivedBy',
+        ])->findOrFail($dnId);
+
+        return view('invoice-cash-receipt._delivery_note_modal', compact('deliveryNote', 'invoice'));
     }
 
     /*

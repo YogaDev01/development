@@ -43,15 +43,19 @@
                                     <option value="custom" {{ request('period') === 'custom' ? 'selected' : '' }}>Custom</option>
                                 </select>
                             </div>
+                            {{-- Satu kotak rentang (TesysDateRange): klik membuka dua
+                                 kalender From/To. Hanya aktif saat period = custom,
+                                 nilainya tetap dikirim sebagai date_from & date_to. --}}
                             <div class="form-group">
-                                <label class="field-label">Start date</label>
-                                <input type="date" name="date_from" id="reportStart" class="form-control form-control-sm"
-                                       value="{{ request('date_from') }}" {{ request('period') !== 'custom' ? 'disabled' : '' }}>
-                            </div>
-                            <div class="form-group">
-                                <label class="field-label">End date</label>
-                                <input type="date" name="date_to" id="reportEnd" class="form-control form-control-sm"
-                                       value="{{ request('date_to') }}" {{ request('period') !== 'custom' ? 'disabled' : '' }}>
+                                <label class="field-label">Periode</label>
+                                <div>
+                                    <input type="text" id="reportRange" class="form-control form-control-sm tdr-input" readonly
+                                           {{ request('period') !== 'custom' ? 'disabled' : '' }}>
+                                    <input type="hidden" name="date_from" id="reportStart"
+                                           value="{{ request('date_from') }}" {{ request('period') !== 'custom' ? 'disabled' : '' }}>
+                                    <input type="hidden" name="date_to" id="reportEnd"
+                                           value="{{ request('date_to') }}" {{ request('period') !== 'custom' ? 'disabled' : '' }}>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -953,10 +957,24 @@ $(function () {
     reportType.addEventListener('change', toggleFields);
     toggleFields();
 
+    /* Rentang tanggal memakai komponen bersama TesysDateRange (sama seperti
+       Cost Request); kotaknya hanya aktif saat periode "Custom". */
+    var reportRange = document.getElementById('reportRange');
+    if (typeof TesysDateRange === 'object') {
+        TesysDateRange.init({ input: '#reportRange', from: '#reportStart', to: '#reportEnd' });
+    } else if (reportRange) {
+        reportRange.remove();
+        reportStart.type = 'date';
+        reportEnd.type   = 'date';
+        reportStart.classList.add('form-control', 'form-control-sm');
+        reportEnd.classList.add('form-control', 'form-control-sm');
+    }
+
     reportPeriod.addEventListener('change', function () {
         var isCustom = reportPeriod.value === 'custom';
         reportStart.disabled = !isCustom;
         reportEnd.disabled = !isCustom;
+        if (reportRange) { reportRange.disabled = !isCustom; }
     });
 
     TesysSearchableSelect.init('#poSelect', { placeholder: '-- Pilih PO --', searchPlaceholder: 'Cari PO...' });

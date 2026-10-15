@@ -44,13 +44,15 @@
             @endforeach
         </select>
     </div>
-    <div class="col-md-2 pr-2">
-        <label class="font-weight-600" style="font-size:11px;">Dari Tanggal</label>
-        <input type="date" name="date_from" class="form-control form-control-sm" value="{{ $activityFilters['date_from'] ?? '' }}">
-    </div>
-    <div class="col-md-2 pr-2">
-        <label class="font-weight-600" style="font-size:11px;">Sampai Tanggal</label>
-        <input type="date" name="date_to" class="form-control form-control-sm" value="{{ $activityFilters['date_to'] ?? '' }}">
+    {{-- Satu kotak rentang (TesysDateRange): klik membuka dua kalender
+         From/To; nilainya tetap dikirim sebagai date_from & date_to. --}}
+    <div class="col-md-4 pr-2">
+        <label class="font-weight-600" style="font-size:11px;">Periode</label>
+        <div>
+            <input type="text" id="alogDateRange" class="form-control form-control-sm tdr-input" readonly>
+            <input type="hidden" name="date_from" id="alogDateFrom" value="{{ $activityFilters['date_from'] ?? '' }}">
+            <input type="hidden" name="date_to" id="alogDateTo" value="{{ $activityFilters['date_to'] ?? '' }}">
+        </div>
     </div>
     <div class="col-md-3">
         <label class="font-weight-600" style="font-size:11px;">Kata Kunci</label>
@@ -121,3 +123,20 @@
         {{ $activityLogs->links() }}
     </div>
 @endif
+
+@push('scripts')
+<script>
+$(function () {
+    /* Rentang tanggal log aktivitas memakai komponen bersama TesysDateRange
+       (sama seperti Cost Request); nilai tetap terkirim lewat input hidden. */
+    if (typeof TesysDateRange === 'object') {
+        TesysDateRange.init({
+            input: '#alogDateRange', from: '#alogDateFrom', to: '#alogDateTo', quick: true
+        });
+    } else {
+        $('#alogDateRange').remove();
+        $('#alogDateFrom, #alogDateTo').attr('type', 'date').addClass('form-control form-control-sm');
+    }
+});
+</script>
+@endpush
