@@ -94,6 +94,28 @@ Global web middleware: `SecurityHeaders`, `EnsureUserActive` (`bootstrap/app.php
   (`tesys-ui-compat.css`); rantai flex hanya mencakup satu pembungkus
   (`<form>` atau `<div>`) langsung di bawah `.modal-content`, pembungkus yang
   lebih dalam belum diaudit per modal.
+- Mobile (`tesys-ui-mobile.css`, dimuat terakhir): breakpoint 900 (sidebar
+  jadi laci) / 768 (modal detail ditumpuk) / **640 (handphone)** / 480. Aturan
+  baru memakai 640px dan dibatasi `max-width`; target sentuh 36px hanya di
+  `@media (pointer: coarse)` agar desktop tidak berubah. Bagian bawah
+  DataTables (info/length/pagination) ditengahkan di ≤640px untuk tiga bentuk
+  `dom` yang dipakai (`.row` + kolom `d-flex`, dan `d-flex justify-content-between`
+  tanpa `.row`); utilitas Bootstrap 4 itu `!important`, jadi override-nya juga.
+  Di tabel Cost Request hanya kolom Action yang beku di ≤640px (Code ikut
+  tergulir) — keputusan ini Needs confirmation dari pengguna. Verifikasi
+  browser per viewport: belum dilakukan.
+  - Inventaris audit mobile (ORC-20261017-002; semua berstatus COMPLETED di
+    kode, **NOT VERIFIED** di browser):
+
+    | Berkas:baris | Viewport | Severity | Sumber | Temuan → perbaikan |
+    |---|---|---|---|---|
+    | `tesys-ui-shell.css:643-655` | ≤900 | MAJOR | shared | laci `height:100vh` terpotong bilah alamat → `100dvh` (mobile §17) |
+    | `tesys-ui-shell.css:134,1198` | ≤380 | MINOR | shared | `.crumb` tanpa ellipsis, topbar sesak di 320px → ellipsis, gap/padding dirapatkan (§17) |
+    | `layouts/app.blade.php:424-443` | ≤900 | — | shared | struktur topbar (toggle, judul, aksi) sudah wrap-safe; hanya CSS yang disesuaikan |
+    | `cash-receipt/create:79`, `customer/show:123`, `delivery-note/show:115` | 320 | MINOR | halaman | input `width:220-260px` inline → `max-width:100%` global (§18) |
+    | `budget-request/_toolbar:31,50`, `todo-list/_summary_task_list:51,66` | 320 | MAJOR | halaman | `min-width` inline 180-420px melebihi layar → `max-width: calc(100vw - 16px)` (§18) |
+    | view non-index (payroll-run, assignment, todo-list, trouble-ticket/settings, daily-transaction/show, groups/bank/budget-plan show) | semua | — | halaman | tabel sudah dalam `.table-responsive`; **tidak ada temuan** |
+    | `tesys-ui-motion.css:212` | — | MINOR | shared | `prefers-reduced-motion` sudah mencakup `animation`/`transition`/pseudo-element; ditambah `html{scroll-behavior:auto}` |
 - Tom Select (`tesys-ui-compat.css`): border/ring ada di `.ts-control`, bukan
   wrapper (`.ts-wrapper.form-control` dikosongkan); `.is-invalid` diberi
   `border-color: var(--danger)` pada `.ts-control`. Tom Select hanya dipakai di

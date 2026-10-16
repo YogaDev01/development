@@ -210,6 +210,7 @@ body.tesys-ui .skeleton { animation-duration: 1.2s; }
    Pengguna yang mematikan animasi di OS tetap dapat UI yang sama, tanpa
    gerakan. Wajib: sebagian pengguna pusing oleh animasi (vestibular). */
 @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto !important; }
     body.tesys-ui *,
     body.tesys-ui *::before,
     body.tesys-ui *::after {
