@@ -2,9 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Homebase;
-use App\Models\Region;
 use App\Models\Site;
+use App\Models\SiteBackupTechnician;
 use App\Models\SitePic;
 use App\Models\Team;
 use App\Models\TroubleTicket;
@@ -88,6 +87,19 @@ class TroubleTicketWorkflow
     }
 
     /**
+     * Create / ubah Plan Visit: teknisi yang ditugaskan (atau superadmin lewat
+     * TROUBLE_TICKET_FULL_SCOPE) dan supervisor tiket ini — leader team-nya,
+     * cadangan pengawas, atau role penyetuju penutupan (keputusan 15 Okt 2026).
+     * Peran lain tidak boleh membuat plan.
+     */
+    public function canCreatePlan(User $user, TroubleTicket $ticket): bool
+    {
+        return $this->actsAsTechnician($user, $ticket)
+            || $this->canSupervise($user, $ticket)
+            || $user->hasRole(AccessRoles::TROUBLE_TICKET_APPROVE);
+    }
+
+    /**
      * Approve/tolak PENUTUPAN tiket: hanya role supervisor (keputusan 12 Okt
      * 2026) dan BUKAN teknisi yang mengerjakan tiket itu sendiri. Hanya saat
      * tiket berstatus PROGRESS_DONE.
@@ -163,167 +175,35 @@ class TroubleTicketWorkflow
     }
 
     /**
-     * Kandidat Change Teknisi, diurutkan dari yang paling dekat dengan teknisi
-     * PIC site saat ini (15 Okt 2026).
+     * Kandidat Change Teknisi: Teknisi Backup site ini (keputusan 16 Okt 2026).
      *
-     * Acuan jaraknya homebase teknisi yang sedang ditugaskan; bila PIC-nya tidak
-     * terdaftar di homebase mana pun, dipakai homebase site. Urutannya:
-     *   1. homebase sama,
-     *   2. cluster (region homebase) sama — yang terdekat lebih dulu,
-     *   3. sisanya, dari homebase terdekat.
-     * Jarak dihitung haversine dari koordinat homebase; homebase tanpa koordinat
-     * ikut di belakang kelompoknya, diurutkan nama.
+     * Daftarnya diisi manusia di Master Data > Site (tab Teknisi Backup), jadi
+     * tidak ada lagi penebakan lewat homebase/cluster terdekat. Yang disaring
+     * di sini hanya yang tidak mungkin ditugaskan: akun non-ACTIVE, leader team
+     * (ia yang menyetujui plan), dan teknisi tiket ini sendiri.
      *
-     * Berbeda dari eligibleTechnicians(): kandidat di sini TIDAK dibatasi PIC
-     * site tiket itu — justru gunanya mengambil teknisi homebase/cluster
-     * terdekat. Pemeriksaan "PIC internal site" di reassign() ikut dilonggarkan
-     * supaya keduanya sejalan.
-     *
-     * @return Collection<int, object{id:int, name:string, homebase:?string, cluster:?string, distance_km:?float, group:string}>
+     * @return Collection<int, object{id:int, name:string, group:string}>
      */
     public function reassignCandidates(TroubleTicket $ticket): Collection
     {
-        $homebases = Homebase::with('region:id,region_name')
-            ->get(['id', 'address', 'region_id', 'latitude', 'longitude'])
-            ->keyBy('id');
-
-        // Acuan: homebase teknisi sekarang, kalau tidak ada baru homebase site.
-        $acuanId = DB::table('homebase_detail')
-            ->join('master_pics', 'master_pics.id', '=', 'homebase_detail.pic_id')
-            ->where('master_pics.user_id', $ticket->assigned_to)
-            ->where('master_pics.type', 'internal')
-            ->value('homebase_detail.hb_id');
-        $acuan = $homebases->get((int) ($acuanId ?: Site::whereKey($ticket->site_id)->value('hb_id')));
-
-        $rows = User::query()
+        return User::query()
             ->where('users.status', 'ACTIVE')
             ->where('users.id', '!=', $ticket->assigned_to)
-            // Leader team tidak ditugaskan ke tiket — ia yang menyetujui.
             ->whereNotIn('users.id', Team::query()
                 ->where('status', 'ACTIVE')
                 ->whereNotNull('leader_id')
                 ->select('leader_id'))
-            ->join('master_pics', 'master_pics.user_id', '=', 'users.id')
-            ->where('master_pics.type', 'internal')
-            ->where('master_pics.status', 'ACTIVE')
-            ->leftJoin('homebase_detail', 'homebase_detail.pic_id', '=', 'master_pics.id')
-            // Banyak PIC belum didaftarkan di master Homebase. Supaya clusternya
-            // tetap ketahuan, homebase juga dibaca dari site yang ia pegang.
-            ->leftJoin('site_pics', 'site_pics.pic_id', '=', 'master_pics.id')
-            ->leftJoin('sites', 'sites.id', '=', 'site_pics.site_id')
-            // Satu akun bisa punya lebih dari satu baris PIC; diambil satu saja.
-            ->groupBy('users.id', 'users.name')
-            ->select('users.id', 'users.name',
-                DB::raw('MIN(homebase_detail.hb_id) AS hb_id'),
-                DB::raw('MIN(sites.hb_id) AS site_hb_id'))
-            ->get();
-
-        $kandidat = $rows->map(function ($u) use ($homebases, $acuan) {
-            $hbId = $u->hb_id ?: $u->site_hb_id;
-            $hb = $hbId ? $homebases->get((int) $hbId) : null;
-            $sama = $acuan && $hb && (int) $hb->id === (int) $acuan->id;
-            $seCluster = $acuan && $hb && $acuan->region_id && (int) $hb->region_id === (int) $acuan->region_id;
-
-            return (object) [
+            ->whereIn('users.id', SiteBackupTechnician::query()
+                ->where('site_id', $ticket->site_id)
+                ->select('user_id'))
+            ->orderBy('users.name')
+            ->get(['users.id', 'users.name'])
+            ->map(fn ($u) => (object) [
                 'id' => (int) $u->id,
                 'name' => $u->name,
-                'homebase' => $hb?->address,
-                'cluster' => $hb?->region?->region_name,
-                'region_id' => $hb?->region_id ? (int) $hb->region_id : null,
-                'distance_km' => $sama ? 0.0 : $this->distanceKm($acuan, $hb),
-                'group' => $sama ? 'Homebase sama' : ($seCluster ? 'Cluster sama' : 'Cluster terdekat'),
-                'rank' => $sama ? 0 : ($seCluster ? 1 : 2),
-            ];
-        });
-
-        // Tanpa acuan homebase sama sekali, tidak ada dasar mengurutkan: tampilkan
-        // apa adanya daripada mengosongkan daftar.
-        if (! $acuan) {
-            return $kandidat
-                ->each(function ($u) { $u->group = 'Teknisi internal'; $u->rank = 0; })
-                ->sortBy('name')->values();
-        }
-
-        // Hanya SATU cluster tetangga yang ikut — yang paling dekat. Sisanya
-        // dibuang supaya daftarnya tidak kembali berisi seluruh teknisi.
-        $clusterTerdekat = $this->nearestRegionId($kandidat, $acuan);
-        $kandidat = $kandidat->filter(
-            fn ($u) => $u->rank < 2 || ($clusterTerdekat !== null && $u->region_id === $clusterTerdekat)
-        );
-
-        return $kandidat->sortBy([
-            ['rank', 'asc'],
-            // Tanpa koordinat: jarak null, jatuh ke belakang kelompoknya.
-            fn ($a, $b) => ($a->distance_km ?? INF) <=> ($b->distance_km ?? INF),
-            ['name', 'asc'],
-        ])->values();
-    }
-
-    /**
-     * Cluster tetangga terdekat dari homebase acuan.
-     *
-     * Dasar utamanya jarak koordinat homebase. Bila koordinatnya belum diisi —
-     * yang masih sering terjadi di master Homebase — dipakai kemiripan nama
-     * cluster: "ACEH 1" dianggap bertetangga dengan "ACEH 2" karena nama
-     * dasarnya (tanpa angka urut di belakang) sama.
-     *
-     * @param  Collection<int, object>  $kandidat
-     */
-    private function nearestRegionId(Collection $kandidat, Homebase $acuan): ?int
-    {
-        $lain = $kandidat->filter(fn ($u) => $u->rank === 2 && $u->region_id !== null);
-        if ($lain->isEmpty()) {
-            return null;
-        }
-
-        $berjarak = $lain->filter(fn ($u) => $u->distance_km !== null);
-        if ($berjarak->isNotEmpty()) {
-            return (int) $berjarak->sortBy('distance_km')->first()->region_id;
-        }
-
-        $dasar = $this->regionBaseName($acuan->region?->region_name);
-        $serumpun = $dasar === '' ? collect() : $lain->filter(
-            fn ($u) => $this->regionBaseName($u->cluster) === $dasar
-        );
-        if ($serumpun->isNotEmpty()) {
-            return (int) $serumpun->sortBy('cluster')->first()->region_id;
-        }
-
-        // Tanpa koordinat dan tanpa nama serumpun, yang paling masuk akal
-        // tersisa: cluster lain di PULAU yang sama dengan cluster acuan.
-        $pulau = $acuan->region?->pulau_id;
-        if (! $pulau) {
-            return null;
-        }
-        $sePulau = Region::where('pulau_id', $pulau)
-            ->whereIn('id', $lain->pluck('region_id')->unique()->all())
-            ->orderBy('region_name')
-            ->value('id');
-
-        return $sePulau ? (int) $sePulau : null;
-    }
-
-    /** Nama dasar cluster tanpa angka urut di belakang: "ACEH 2" → "aceh". */
-    private function regionBaseName(?string $nama): string
-    {
-        return mb_strtolower(trim(preg_replace('/[\s\-_]*\d+$/', '', (string) $nama)));
-    }
-
-    /** Jarak haversine antar dua homebase (km); null bila salah satu tanpa koordinat. */
-    private function distanceKm(?Homebase $a, ?Homebase $b): ?float
-    {
-        if (! $a || ! $b || ! $a->latitude || ! $a->longitude || ! $b->latitude || ! $b->longitude) {
-            return null;
-        }
-
-        $lat1 = deg2rad((float) $a->latitude);
-        $lat2 = deg2rad((float) $b->latitude);
-        $dLat = $lat2 - $lat1;
-        $dLon = deg2rad((float) $b->longitude - (float) $a->longitude);
-
-        $h = sin($dLat / 2) ** 2 + cos($lat1) * cos($lat2) * sin($dLon / 2) ** 2;
-
-        return round(6371 * 2 * asin(min(1.0, sqrt($h))), 1);
+                'group' => 'Teknisi Backup',
+            ])
+            ->values();
     }
 
     public function isEligibleTechnician(int $siteId, int $userId): bool
@@ -615,7 +495,7 @@ class TroubleTicketWorkflow
 
         DB::transaction(function () use ($ticket, $user, $visitSite, $targetOnline, $reason) {
             $t = $this->lock($ticket);
-            $this->authorizeIf($this->actsAsTechnician($user, $t), 'Hanya teknisi yang ditugaskan atau superadmin yang dapat membuat plan.');
+            $this->authorizeIf($this->canCreatePlan($user, $t), 'Hanya teknisi yang ditugaskan atau supervisor yang dapat membuat plan.');
             // Remote (berbalik jadi kunjungan), Plan (ubah tanggal), Trip
             // (reschedule saat kunjungan batal). Dari Open tidak bisa:
             // teknisi memilih Remote dulu (keputusan 15 Okt 2026).
@@ -682,13 +562,44 @@ class TroubleTicketWorkflow
         }
 
         $jumlah = 0;
+        $naik = [];
 
         foreach ($ids as $id) {
-            $jumlah += DB::transaction(function () use ($id) {
+            $jumlah += DB::transaction(function () use ($id, &$naik) {
                 $t = TroubleTicket::whereKey($id)->lockForUpdate()->first();
 
-                return $t && $this->promoteIfDue($t) ? 1 : 0;
+                if ($t && $this->promoteIfDue($t)) {
+                    $naik[] = $t->id;
+
+                    return 1;
+                }
+
+                return 0;
             });
+        }
+
+        // Notifikasi dikirim setelah transaksi, seperti transisi lain. Hanya
+        // permintaan yang benar-benar menaikkan tiket yang mengirimnya, jadi
+        // teknisi tidak menerima pemberitahuan ganda.
+        if ($naik) {
+            foreach (TroubleTicket::with('technician')->whereKey($naik)->get() as $t) {
+                // Teknisi tiket + supervisor (leader team-nya): keduanya perlu
+                // tahu kunjungan hari ini dimulai.
+                $penerima = collect([$t->technician])->filter()
+                    ->merge($t->assigned_to ? $this->supervisorsFor((int) $t->assigned_to) : collect())
+                    ->unique('id');
+
+                if ($penerima->isEmpty()) {
+                    continue;
+                }
+
+                $this->notify(
+                    $penerima,
+                    $t,
+                    'Hari kunjungan tiba',
+                    "Tiket {$t->ticket_number} masuk tahap Trip: plan visit ".$t->visit_site?->format('d/m/Y').'.'
+                );
+            }
         }
 
         return $jumlah;
@@ -939,6 +850,10 @@ class TroubleTicketWorkflow
                 'resolved_at' => $now,
                 'progress_done_at' => $now,
                 'approval' => 'PENDING',
+                // "Close by" = pelaku yang mengisi & mengirim form close
+                // (keputusan 16 Okt 2026), bukan yang menyetujuinya; penyetuju
+                // tercatat terpisah di approved_by.
+                'closed_by' => $user->id,
             ]);
 
             $message = $this->event($t, $user, 'progress_done', $hasil['resolution_summary'], [
@@ -973,13 +888,17 @@ class TroubleTicketWorkflow
                 'approved_at' => $now,
                 'approved_by' => $user->id,
                 'closed_at' => $now,
-                'closed_by' => $t->assigned_to,
+                // closed_by tidak ditimpa: sudah diisi saat form close dikirim.
                 'resolution_seconds' => $t->progress_started_at
                     ? max(0, $now->getTimestamp() - $t->progress_started_at->getTimestamp())
                     : null,
             ]);
 
-            $this->event($t, $user, 'closed', $notes);
+            // Jalur penanganan ikut dicatat supaya label log bisa menulis
+            // "Closed - Remote" untuk tiket yang ditutup tanpa kunjungan.
+            $this->event($t, $user, 'closed', $notes, [
+                'visit_decision' => $t->visit_decision,
+            ]);
         });
 
         $ticket->refresh();
@@ -1012,6 +931,9 @@ class TroubleTicketWorkflow
                 'approval' => 'REJECTED',
                 'resolved_at' => null,
                 'progress_done_at' => null,
+                // Pengajuan close ditolak: penutupnya ikut dikosongkan, diisi
+                // lagi oleh siapa pun yang mengirim form close berikutnya.
+                'closed_by' => null,
             ]);
 
             $this->event($t, $user, 'close_rejected', $notes);
@@ -1065,11 +987,9 @@ class TroubleTicketWorkflow
             if ((int) $t->assigned_to === $newTechnicianId) {
                 $this->fail('Teknisi baru sama dengan teknisi saat ini.', 'assigned_to');
             }
-            // Kandidat Change Teknisi tidak dibatasi PIC site ini (15 Okt 2026):
-            // teknisi homebase/cluster terdekat justru yang didahulukan. Yang
-            // diperiksa: dia memang kandidat sah untuk tiket ini.
+            // Kandidat Change Teknisi = Teknisi Backup site ini (16 Okt 2026).
             if (! $this->reassignCandidates($t)->contains('id', $newTechnicianId)) {
-                $this->fail('Teknisi harus PIC internal aktif dan bukan leader team.', 'assigned_to');
+                $this->fail('Teknisi harus terdaftar sebagai Teknisi Backup site ini dan berstatus aktif.', 'assigned_to');
             }
 
             $now = now();
@@ -1114,18 +1034,20 @@ class TroubleTicketWorkflow
             }
             $t->update($changes);
 
-            $this->event($t, $user, 'reassigned', $reason, [
+            /* Jadwal ulang ikut masuk ke kejadian `reassigned` ini — bukan
+               kejadian `plan_updated` tersendiri (16 Okt 2026): satu aksi di
+               layar sebaiknya satu baris log dengan satu keterangan, tidak
+               terbaca seperti dua tindakan terpisah beralasan sama. */
+            $this->event($t, $user, 'reassigned', $reason, array_filter([
                 'from_id' => $lama,
                 'from_name' => User::whereKey($lama)->value('name'),
                 'to_id' => $newTechnicianId,
                 'to_name' => User::whereKey($newTechnicianId)->value('name'),
-            ]);
+                'visit_site' => $jadwalUlang ? $t->visit_site?->toDateString() : null,
+                'target_online' => $jadwalUlang ? $t->target_online?->toDateString() : null,
+            ], fn ($v) => $v !== null));
 
             if ($jadwalUlang) {
-                $this->event($t, $user, 'plan_updated', $reason, [
-                    'visit_site' => $t->visit_site?->toDateString(),
-                    'target_online' => $t->target_online?->toDateString(),
-                ]);
                 $this->promoteIfDue($t);
             }
         });
@@ -1160,9 +1082,8 @@ class TroubleTicketWorkflow
         if ($ticket->isFinal()) {
             $this->fail('Tiket sudah '.strtolower($ticket->status).'; pesan baru tidak bisa ditambahkan.');
         }
-        if ($this->mustDecide($user, $ticket)) {
-            $this->fail('Ajukan plan Visit / Non-Visit terlebih dahulu.');
-        }
+        // Chat TIDAK pernah dikunci oleh keputusan jalur penanganan (keputusan
+        // 15 Okt 2026): teknisi tetap bisa berdiskusi sebelum memilih Remote.
 
         $body = $body !== null ? trim($body) : null;
         if (($body === null || $body === '') && empty($files)) {

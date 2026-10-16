@@ -53,6 +53,7 @@
                                                     <option value="{{ $r->id }}" @selected((string) ($b['rca_id'] ?? '') === (string) $r->id)>{{ $r->name }}</option>
                                                 @endforeach
                                             </select>
+                                            <small class="form-text text-muted">Dugaan awal akar masalah.</small>
                                             @error("tickets.$i.rca_id")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                         </div>
                                         <div class="form-group col-md-6">
@@ -61,7 +62,7 @@
                                                     data-terpilih="{{ $b['sub_rca_id'] ?? '' }}">
                                                 <option value="">&mdash; Pilih sub-RCA &mdash;</option>
                                             </select>
-                                            <small class="form-text text-muted">Dugaan akar masalah; masih bisa diperbarui saat tiket ditutup.</small>
+                                            <small class="form-text text-muted">Rincian RCA.</small>
                                             @error("tickets.$i.sub_rca_id")<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                         </div>
                                         {{-- No. TT boleh ditentukan sendiri (mis. nomor tiket
@@ -69,8 +70,9 @@
                                         <div class="form-group col-md-6">
                                             <label class="font-weight-bold">No. Tiket Custom</label>
                                             <input type="text" name="tickets[{{ $i }}][ticket_number]" maxlength="50"
-                                                   value="{{ $b['ticket_number'] ?? '' }}" placeholder="Kosongkan = nomor otomatis"
+                                                   value="{{ $b['ticket_number'] ?? '' }}" placeholder="Contoh: INC-2026-00123"
                                                    class="form-control @error("tickets.$i.ticket_number") is-invalid @enderror">
+                                            <small class="form-text text-muted">Nomor dari customer/sistem lain. Kosong = otomatis (T.{{ now()->format('my') }}001).</small>
                                             @error("tickets.$i.ticket_number")<div class="invalid-feedback">{{ $message }}</div>@enderror
                                         </div>
                                         <div class="form-group col-md-6">
@@ -79,7 +81,7 @@
                                                    value="{{ $b['reported_at'] ?? now()->format('Y-m-d\TH:i') }}"
                                                    max="{{ now()->format('Y-m-d\TH:i') }}"
                                                    class="form-control @error("tickets.$i.reported_at") is-invalid @enderror">
-                                            <small class="form-text text-muted">Bawaan hari ini; jadi titik awal perhitungan aging.</small>
+                                            <small class="form-text text-muted">Waktu awal gangguan.</small>
                                             @error("tickets.$i.reported_at")<div class="invalid-feedback">{{ $message }}</div>@enderror
                                         </div>
                                         <div class="form-group col-12">

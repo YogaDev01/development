@@ -47,57 +47,115 @@
                 </div>
             </div>
 
-            @php
-                $keeperOptions = \App\Http\Controllers\SiteController::keeperOptions();
-                $keeperRows = old('keepers', $isEdit ? $site->keepers->map(fn ($k) => ['name' => $k->name])->all() : []);
-                $keeperRows = $keeperRows ?: [['name' => '']];
-            @endphp
-            <div class="card card-primary card-outline shadow-sm">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h3 class="card-title"><i class="fas fa-user-shield mr-1"></i> Site Keeper</h3>
-                    <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddKeeper"><i class="fas fa-plus mr-1"></i> Tambah Site Keeper</button>
-                </div>
-                <div class="card-body">
-                    <p class="text-muted mb-2" style="font-size:12px;">Penjaga site, dipilih dari daftar user aktif. Boleh lebih dari satu; baris kosong diabaikan.</p>
-                    <div id="keeperRows">
-                        @foreach($keeperRows as $i => $row)
+            <div class="row">
+                <div class="col-md-6 d-flex">
+                @php
+                    $keeperOptions = \App\Http\Controllers\SiteController::keeperOptions();
+                    $keeperRows = old('keepers', $isEdit ? $site->keepers->map(fn ($k) => ['name' => $k->name])->all() : []);
+                    $keeperRows = $keeperRows ?: [['name' => '']];
+                @endphp
+                <div class="card card-primary card-outline shadow-sm flex-fill">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="card-title"><i class="fas fa-user-shield mr-1"></i> Site Keeper</h3>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddKeeper"><i class="fas fa-plus mr-1"></i> Tambah Site Keeper</button>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-2" style="font-size:12px;">Penjaga site, dipilih dari daftar user aktif. Boleh lebih dari satu; baris kosong diabaikan.</p>
+                        <div id="keeperRows">
+                            @foreach($keeperRows as $i => $row)
+                                <div class="form-row align-items-start js-keeper-row">
+                                    <div class="col-md-11">
+                                        <div class="form-group">
+                                            <select name="keepers[{{ $i }}][name]" data-searchable
+                                                    class="form-control @error('keepers.' . $i . '.name') is-invalid @enderror">
+                                                <option value="">&mdash; Pilih Site Keeper &mdash;</option>
+                                                @foreach($keeperOptions as $opt)
+                                                    <option value="{{ $opt }}" @selected(($row['name'] ?? '') === $opt)>{{ $opt }}</option>
+                                                @endforeach
+                                            </select>
+                                            @error('keepers.' . $i . '.name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                        </div>
+                                    </div>
+                                    <div class="col-md-1">
+                                        <button type="button" class="btn btn-outline-danger js-keeper-remove" title="Hapus baris"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        {{-- Cetakan baris kosong (belum di-init searchable) untuk tombol Tambah. --}}
+                        <template id="keeperRowTemplate">
                             <div class="form-row align-items-start js-keeper-row">
                                 <div class="col-md-11">
                                     <div class="form-group">
-                                        <select name="keepers[{{ $i }}][name]" data-searchable
-                                                class="form-control @error('keepers.' . $i . '.name') is-invalid @enderror">
+                                        <select name="keepers[0][name]" data-searchable class="form-control">
                                             <option value="">&mdash; Pilih Site Keeper &mdash;</option>
                                             @foreach($keeperOptions as $opt)
-                                                <option value="{{ $opt }}" @selected(($row['name'] ?? '') === $opt)>{{ $opt }}</option>
+                                                <option value="{{ $opt }}">{{ $opt }}</option>
                                             @endforeach
                                         </select>
-                                        @error('keepers.' . $i . '.name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                     </div>
                                 </div>
                                 <div class="col-md-1">
                                     <button type="button" class="btn btn-outline-danger js-keeper-remove" title="Hapus baris"><i class="fas fa-trash"></i></button>
                                 </div>
                             </div>
-                        @endforeach
+                        </template>
                     </div>
-                    {{-- Cetakan baris kosong (belum di-init searchable) untuk tombol Tambah. --}}
-                    <template id="keeperRowTemplate">
-                        <div class="form-row align-items-start js-keeper-row">
-                            <div class="col-md-11">
-                                <div class="form-group">
-                                    <select name="keepers[0][name]" data-searchable class="form-control">
-                                        <option value="">&mdash; Pilih Site Keeper &mdash;</option>
-                                        @foreach($keeperOptions as $opt)
-                                            <option value="{{ $opt }}">{{ $opt }}</option>
-                                        @endforeach
-                                    </select>
+                </div>
+                </div>
+                <div class="col-md-6 d-flex">
+                @php
+                    $backupTechOptions = \App\Http\Controllers\SiteController::backupTechnicianOptions();
+                    $backupTechRows = old('backup_technicians', $isEdit ? $site->backupTechnicians->pluck('user_id')->all() : []);
+                    $backupTechRows = $backupTechRows ?: [''];
+                    $backupCustomerId = old('customer_id', $isEdit ? $site->customer_id : null);
+                @endphp
+                <div class="card card-primary card-outline shadow-sm flex-fill">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="card-title"><i class="fas fa-user-cog mr-1"></i> Teknisi Backup</h3>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddBackupTech"><i class="fas fa-plus mr-1"></i> Tambah Teknisi Backup</button>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-2" style="font-size:12px;">Teknisi cadangan yang ikut ditawarkan pada Change Teknisi. Pilih Customer dulu: daftarnya hanya teknisi customer tersebut. Boleh lebih dari satu; baris kosong diabaikan.</p>
+                        <div id="backupTechRows">
+                            @foreach($backupTechRows as $i => $uid)
+                                <div class="form-row align-items-start js-backup-tech-row">
+                                    <div class="col-md-11">
+                                        <div class="form-group">
+                                            <select name="backup_technicians[]" data-searchable
+                                                    class="form-control js-backup-tech @error('backup_technicians.' . $i) is-invalid @enderror">
+                                                <option value="">&mdash; Pilih Teknisi Backup &mdash;</option>
+                                                @foreach($backupTechOptions as $opt)
+                                                    @continue(! $backupCustomerId || ! in_array((int) $backupCustomerId, $opt['customers'], true))
+                                                    <option value="{{ $opt['id'] }}" @selected((string) $uid === (string) $opt['id'])>{{ $opt['name'] }}</option>
+                                                @endforeach
+                                            </select>
+                                            @error('backup_technicians.' . $i)<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                        </div>
+                                    </div>
+                                    <div class="col-md-1">
+                                        <button type="button" class="btn btn-outline-danger js-keeper-remove js-backup-tech-remove" title="Hapus baris"><i class="fas fa-trash"></i></button>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        {{-- Cetakan baris kosong (belum di-init searchable) untuk tombol Tambah. --}}
+                        <template id="backupTechRowTemplate">
+                            <div class="form-row align-items-start js-backup-tech-row">
+                                <div class="col-md-11">
+                                    <div class="form-group">
+                                        <select name="backup_technicians[]" data-searchable class="form-control js-backup-tech">
+                                            <option value="">&mdash; Pilih Teknisi Backup &mdash;</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                    <button type="button" class="btn btn-outline-danger js-keeper-remove js-backup-tech-remove" title="Hapus baris"><i class="fas fa-trash"></i></button>
                                 </div>
                             </div>
-                            <div class="col-md-1">
-                                <button type="button" class="btn btn-outline-danger js-keeper-remove" title="Hapus baris"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </div>
-                    </template>
+                        </template>
+                    </div>
+                </div>
                 </div>
             </div>
 
@@ -191,6 +249,55 @@ $(function () {
         }
         $(this).closest('.js-keeper-row').remove();
         reindexKeepers();
+    });
+
+    /*
+    | Baris Teknisi Backup: pilihannya dibatasi teknisi milik customer yang
+    | sedang dipilih, jadi <option> dibangun ulang tiap customer berubah.
+    */
+    var backupTechs = @json($backupTechOptions);
+
+    function backupTechOptionsFor(customerId) {
+        customerId = parseInt(customerId, 10);
+        if (!customerId) return [];
+
+        return backupTechs.filter(function (t) {
+            return (t.customers || []).indexOf(customerId) !== -1;
+        });
+    }
+
+    function fillBackupTechSelect($sel, customerId) {
+        var keep = $sel.val();
+        $sel.empty().append('<option value="">— Pilih Teknisi Backup —</option>');
+        backupTechOptionsFor(customerId).forEach(function (t) {
+            $sel.append($('<option></option>').attr('value', t.id).text(t.name));
+        });
+        $sel.val(keep);
+        if (!$sel.val()) $sel.val('');
+        $sel.trigger('tss:sync');
+    }
+
+    function refreshBackupTechs() {
+        var customerId = $('#fld_customer_id').val();
+        $('.js-backup-tech').each(function () { fillBackupTechSelect($(this), customerId); });
+    }
+
+    $('#fld_customer_id').on('change', refreshBackupTechs);
+
+    $('#btnAddBackupTech').on('click', function () {
+        var $row = $($('#backupTechRowTemplate').html()).filter('.js-backup-tech-row');
+        $('#backupTechRows').append($row);
+        fillBackupTechSelect($row.find('.js-backup-tech'), $('#fld_customer_id').val());
+        TesysSearchableSelect.init($row.find('select[data-searchable]'), {});
+    });
+
+    $('#backupTechRows').on('click', '.js-backup-tech-remove', function () {
+        if ($('#backupTechRows .js-backup-tech-row').length === 1) {
+            $(this).closest('.js-backup-tech-row').find('select').val('').trigger('tss:sync');
+
+            return;
+        }
+        $(this).closest('.js-backup-tech-row').remove();
     });
 
     $form.on('submit', function () {

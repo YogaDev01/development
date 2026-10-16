@@ -8,17 +8,20 @@
 
     $t = $ticket;
     $site = $t->site;
-    $fmt = fn ($dt) => $dt ? $dt->format('d/m/Y H:i:s') : '—';
+    $fmt = fn ($dt) => $dt ? $dt->format('d M Y H:i') : '—';
     // Tab Tiket memakai tanggal saja — jam dibaca di tab Log & SLA.
-    $tgl = fn ($dt) => $dt ? $dt->format('d/m/Y') : '—';
+    $tgl = fn ($dt) => $dt ? $dt->format('d M Y') : '—';
     $dur = fn ($s) => TroubleTicket::formatDuration($s);
     // Tanpa target (limit 0 di Pengaturan) = tidak terhingga.
     $targetLabel = fn ($menit) => $menit ? $dur($menit * 60) : 'Tidak terhingga';
 
+    // Teknisi tiket ini ($isTechnician dari controller): SLA dan jeda antar
+    // kejadian disembunyikan darinya (keputusan 15 Okt 2026) — ukuran waktu
+    // dipakai supervisor, bukan pelaksana.
     // Tombol teknisi — cermin gerbang di TroubleTicketWorkflow (server tetap memeriksa ulang).
     $diTrip        = $canActAsTech && $t->status === 'TRIP';
     $bisaRemote    = $canActAsTech && $t->status === 'OPEN';
-    $bisaPlan      = $canActAsTech && in_array($t->status, ['REMOTE', 'PLAN', 'TRIP'], true) && ! $t->travel_arrived_at;
+    $bisaPlan      = $canCreatePlan && in_array($t->status, ['REMOTE', 'PLAN', 'TRIP'], true) && ! $t->travel_arrived_at;
     $bisaBerangkat = $diTrip && ! $t->travel_started_at && ! $t->travel_arrived_at;
     $dalamJalan    = $diTrip && $t->travel_started_at && ! $t->travel_arrived_at;
     $bisaMulai     = $diTrip && $t->travel_arrived_at;
@@ -41,7 +44,7 @@
             <div class="tt-title tt-head-site" title="{{ $site?->tid }} — {{ $site?->sitename }}">{{ $site?->tid }} — {{ $site?->sitename }}</div>
             <x-status :status="$t->status" context="trouble-ticket" size="md" />
         </div>
-        @php $actionVars = compact('t', 'canActAsTech', 'bisaRemote', 'bisaPlan', 'bisaBerangkat', 'dalamJalan', 'bisaMulai', 'bisaTutup', 'canApproveClose', 'bisaAlihkan'); @endphp
+        @php $actionVars = compact('t', 'canActAsTech', 'isTechnician', 'bisaRemote', 'bisaPlan', 'bisaBerangkat', 'dalamJalan', 'bisaMulai', 'bisaTutup', 'canApproveClose', 'bisaAlihkan'); @endphp
 
         {{-- Desktop: chat kiri + satu kartu informasi bertab di kanan.
              Mobile (< 992px): satu panel tampil bergantian lewat bilah bawah
@@ -142,9 +145,9 @@
                             <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#ttTabSummary" role="tab"><i class="fas fa-th-large"></i><span>Summary</span></a></li>
                             <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#ttTabSite" role="tab"><i class="fas fa-broadcast-tower"></i><span>Site</span></a></li>
                             <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#ttTabTiket" role="tab"><i class="fas fa-ticket-alt"></i><span>Tiket</span></a></li>
-                            @if($canActAsTech)
+                            @unless($isTechnician)
                                 <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#ttTabSla" role="tab"><i class="fas fa-stopwatch"></i><span>SLA</span></a></li>
-                            @endif
+                            @endunless
                             <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#ttTabLog" role="tab"><i class="fas fa-history"></i><span>Log</span><span class="tt-tab-count">{{ $statusLog->count() }}</span></a></li>
                         </ul>
                     </div>
@@ -159,7 +162,6 @@
                                 </div>
                                 <div class="tt-hero-act">
                                     @if($mapUrl)<a href="{{ $mapUrl }}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-xs" title="Rute ke site dari lokasi Anda"><i class="fas fa-map-marked-alt"></i></a>@endif
-                                    <button type="button" class="btn btn-outline-secondary btn-xs" data-tt-tab="#ttTabSite" title="Detail site"><i class="fas fa-chevron-right"></i></button>
                                 </div>
                             </div>
 
@@ -244,17 +246,16 @@
                                     <div class="tt-kv"><dt>Aging</dt><dd>{{ $t->aging_days }} hari</dd></div>
                                     <div class="tt-kv"><dt>Severity</dt><dd><span class="tt-sev tt-sev-{{ $t->severity_level }}">{{ $t->severity_label }}</span></dd></div>
                                     {{-- Problem diwakili RCA & Sub-RCA. Begitu tiket ditutup keduanya
-                                         dibaca di Penyelesaian, jadi tidak ditampilkan dua kali. --}}
+                                         dibaca di Resolution, jadi tidak ditampilkan dua kali. --}}
                                     @unless($t->closed_at)
                                         <div class="tt-kv"><dt>RCA</dt><dd>{{ $t->rca_label ?: '—' }}</dd></div>
                                         <div class="tt-kv"><dt>Sub-RCA</dt><dd>{{ $t->sub_rca_label ?: '—' }}</dd></div>
                                     @endunless
-                                    <div class="tt-kv"><dt>Device</dt><dd>{{ $t->device_label ?: '—' }}</dd></div>
                                     <div class="tt-kv"><dt>Keterangan</dt><dd style="white-space:pre-wrap;">{{ $t->description }}</dd></div>
                                 </dl>
                             </details>
                             <details class="tt-acc" @if($t->closed_at) open @endif>
-                                <summary>Penyelesaian</summary>
+                                <summary>Resolution</summary>
                                 <dl class="m-0">
                                     {{-- Hanya hasil akhir; jejak waktu tiap tahap dibaca di tab Log. --}}
                                     <div class="tt-kv"><dt>RCA</dt><dd>{{ $t->rca ?: '—' }}</dd></div>
@@ -266,8 +267,8 @@
                             </details>
                         </div>
 
-                        {{-- ================= SLA — hanya teknisi tiket ini ================= --}}
-                        @if($canActAsTech)
+                        {{-- ================= SLA — tidak untuk teknisi tiket ini ================= --}}
+                        @unless($isTechnician)
                         <div class="tab-pane fade" id="ttTabSla" role="tabpanel">
                             {{-- Tanpa target & bar (keputusan 12 Okt 2026): yang ditampilkan
                                  hanya durasinya dan rentang waktunya. --}}
@@ -276,13 +277,13 @@
                                 <div class="tt-slab">
                                     <div class="tt-slab-head">
                                         <strong>{{ $label }} time</strong>
-                                        @if($key === 'travel' && $nonVisit)
+                                        @if(in_array($key, ['travel', 'resolution'], true) && $nonVisit)
                                             <span class="text-muted">Tidak berlaku (Non-Visit)</span>
                                         @else
                                             @include('trouble-ticket._sla', ['m' => $m])
                                         @endif
                                     </div>
-                                    @unless($key === 'travel' && $nonVisit)
+                                    @unless(in_array($key, ['travel', 'resolution'], true) && $nonVisit)
                                         <div class="tt-slab-meta">
                                             <span>{{ $mulai ? $mulai->format('d/m H:i') : '—' }} → {{ $selesai ? $selesai->format('d/m H:i') : ($m['state'] === 'running' ? 'berjalan' : '—') }}</span>
                                         </div>
@@ -293,7 +294,7 @@
                                 <div class="text-muted" style="font-size:11.5px;"><i class="fas fa-ban mr-1"></i>Perjalanan terakhir dibatalkan.</div>
                             @endif
                         </div>
-                        @endif
+                        @endunless
 
                         {{-- ================= LOG ================= --}}
                         <div class="tab-pane fade" id="ttTabLog" role="tabpanel">
@@ -305,10 +306,19 @@
                                         <div class="tt-step-body">
                                             <div class="tt-step-head">
                                                 <strong>{{ $ev->event_label }}</strong>
-                                                @php $lebihLama = $statusLog[$loop->index + 1] ?? null; @endphp
-                                                @if($lebihLama)<span class="tt-step-gap">+{{ $dur(max(0, $ev->created_at->getTimestamp() - $lebihLama->created_at->getTimestamp())) }}</span>@endif
+                                                @unless($isTechnician)
+                                                    @php $lebihLama = $statusLog[$loop->index + 1] ?? null; @endphp
+                                                    @if($lebihLama)<span class="tt-step-gap">+{{ $dur(max(0, $ev->created_at->getTimestamp() - $lebihLama->created_at->getTimestamp())) }}</span>@endif
+                                                @endunless
                                             </div>
-                                            <div class="tt-step-meta">{{ $ev->created_at?->format('d/m/Y H:i') }} · {{ $ev->actor_name ?? 'System' }}</div>
+                                            <div class="tt-step-meta">{{ $ev->actor_name ?? 'System' }} · {{ $ev->created_at?->format('d M Y H:i') }}</div>
+                                            @php $visitLog = in_array($ev->event, ['plan_created', 'plan_updated', 'reassigned'], true) ? ($ev->metadata['visit_site'] ?? null) : null; @endphp
+                                            @if($visitLog)
+                                                <div class="tt-step-note">Plan Date visit {{ \Illuminate\Support\Carbon::parse($visitLog)->format('d/m/Y') }}</div>
+                                            @endif
+                                            @if($ev->event === 'reassigned' && ($ev->metadata['to_name'] ?? null))
+                                                <div class="tt-step-note">{{ $ev->metadata['from_name'] ?? '—' }} &rarr; {{ $ev->metadata['to_name'] }}</div>
+                                            @endif
                                             @if($ev->body)<div class="tt-step-note">{{ \Illuminate\Support\Str::limit($ev->body, 140) }}</div>@endif
                                         </div>
                                     </li>
@@ -373,6 +383,14 @@
                                    value="{{ old('visit_site', $t->visit_site?->toDateString() ?? now()->toDateString()) }}" required>
                         </div>
                     </div>
+                    @if(in_array($t->status, ['PLAN', 'TRIP'], true))
+                        {{-- Mengubah tanggal yang sudah ada wajib beralasan; plan pertama tidak. --}}
+                        <div class="form-group mb-2">
+                            <label class="font-weight-bold" for="fldPlanReason">Keterangan <span class="text-danger">*</span></label>
+                            <textarea name="reason" id="fldPlanReason" class="form-control" rows="2" maxlength="500" required
+                                      placeholder="Alasan tanggal visit diubah">{{ old('reason') }}</textarea>
+                        </div>
+                    @endif
                     <small class="text-muted">Tiket masuk tahap Trip saat tanggal plan visit tiba.</small>
                 </div>
                 <div class="modal-footer">
@@ -402,7 +420,7 @@
                         <i class="fas fa-paperclip mr-1"></i> Pilih evidence
                     </button>
                     <div class="tt-eviz-list small text-muted mt-2" id="ttTravelFileList"></div>
-                    <small class="text-muted">Maks. 10 MB per berkas. SLA Travel mulai berjalan begitu dikirim.</small>
+                    <small class="text-muted">Maks. 10 MB per berkas.</small>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
@@ -450,29 +468,34 @@
             <form class="modal-content tt-submit-once" method="POST" action="{{ route('trouble-ticket.close', $t) }}" enctype="multipart/form-data" id="frmTtClosure">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-flag-checkered mr-1"></i> Form Close{{ $t->status === 'REMOTE' ? ' — Remote (Non-Visit)' : '' }}</h5>
+                    <h5 class="modal-title"><i class="fas fa-flag-checkered mr-1"></i> Form Close{{ $t->status === 'REMOTE' ? ' — Remote' : '' }}</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body" style="font-size:13px;">
                     <div class="form-row">
                         <div class="form-group col-md-6 mb-2">
-                            <label class="font-weight-bold" for="fldRca">RCA <span class="text-danger">*</span></label>
-                            <select name="rca_id" id="fldRca" class="form-control" required>
-                                <option value="">— Pilih RCA —</option>
+                            <label class="font-weight-bold" for="fldRca">RCA Resolution <span class="text-danger">*</span></label>
+                            {{-- Tanpa atribut required: select disembunyikan oleh searchable select,
+                                 kontrol tersembunyi yang required memblokir submit di browser.
+                                 Wajibnya tetap dijaga server (TroubleTicketController::close). --}}
+                            <select name="rca_id" id="fldRca" class="form-control">
+                                <option value="">— Pilih RCA Resolution —</option>
                                 @foreach($rcas as $r)
                                     <option value="{{ $r->id }}" data-name="{{ $r->name }}" @selected((int) old('rca_id', $t->rca_id) === (int) $r->id)>{{ $r->name }}</option>
                                 @endforeach
                             </select>
+                            <small class="form-text text-muted">RCA Resolution.</small>
                             <input type="hidden" name="rca" id="fldRcaName" value="{{ old('rca', $t->rca_label) }}">
                         </div>
                         <div class="form-group col-md-6 mb-2">
-                            <label class="font-weight-bold" for="fldSubRca">Sub-RCA</label>
+                            <label class="font-weight-bold" for="fldSubRca">Rincian RCA Resolution</label>
                             <select name="sub_rca_id" id="fldSubRca" class="form-control">
-                                <option value="">— Pilih Sub-RCA —</option>
+                                <option value="">— Pilih Rincian RCA Resolution —</option>
                                 @foreach($subRcas as $sr)
                                     <option value="{{ $sr->id }}" data-rca="{{ $sr->rca_id }}" data-name="{{ $sr->name }}" @selected((int) old('sub_rca_id', $t->sub_rca_id) === (int) $sr->id)>{{ $sr->name }}</option>
                                 @endforeach
                             </select>
+                            <small class="form-text text-muted">Rincian RCA Resolution.</small>
                             <input type="hidden" name="sub_rca" id="fldSubRcaName" value="{{ old('sub_rca', $t->sub_rca_label) }}">
                         </div>
                     </div>
@@ -486,11 +509,11 @@
                         </button>
                         <div class="tt-eviz-list" id="ttEvizList"></div>
                     </div>
-                    <small class="text-muted">Maks. 10 MB per berkas. Setelah dikirim, tiket masuk tahap <strong>Progress Done</strong> dan menunggu approval supervisor.</small>
+                    <small class="text-muted">Maks. 10 MB per berkas.</small>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-paper-plane mr-1"></i> Kirim untuk Approval</button>
+                    <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-paper-plane mr-1"></i> Submit</button>
                 </div>
             </form>
         </div>
@@ -508,7 +531,7 @@
                     <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body" style="font-size:13px;">
-                    <div class="mb-2"><span class="text-muted">Close by {{ $t->technician?->name }}</span>
+                    <div class="mb-2"><span class="text-muted">Close by {{ $t->closer?->name ?: $t->technician?->name }}</span>
                         <dl class="m-0 mt-1">
                             <div class="tt-kv"><dt>RCA</dt><dd>{{ $t->rca_label ?: '—' }}</dd></div>
                             <div class="tt-kv"><dt>Sub-RCA</dt><dd>{{ $t->sub_rca_label ?: '—' }}</dd></div>
@@ -563,19 +586,15 @@
                 </div>
                 <div class="modal-body" style="font-size:13px;">
                     @if($reassignTo->isEmpty())
-                        <x-empty title="Tidak ada teknisi lain" message="Belum ada teknisi lain di homebase yang sama atau cluster terdekat. Daftarkan PIC internal ke homebase lebih dulu di Master Data." icon="fas fa-user-cog" compact />
+                        <x-empty title="Belum ada teknisi backup" message="Site ini belum punya Teknisi Backup. Daftarkan lebih dulu di Master Data &rsaquo; Site, tab Teknisi Backup." icon="fas fa-user-cog" compact />
                     @else
-                        {{-- Dikelompokkan dari yang paling dekat dengan teknisi PIC site
-                             sekarang: homebase sama → cluster sama → homebase lain. --}}
+                        {{-- Pilihannya = Teknisi Backup site ini, diisi manusia
+                             di Master Data > Site (16 Okt 2026). --}}
                         <label for="fldReassign" class="font-weight-bold">Teknisi baru <span class="text-danger">*</span></label>
                         <select name="assigned_to" id="fldReassign" class="form-control mb-2" required>
                             <option value="">— Pilih —</option>
-                            @foreach($reassignTo->groupBy('group') as $grup => $daftar)
-                                <optgroup label="{{ $grup }}">
-                                    @foreach($daftar as $u)
-                                        <option value="{{ $u->id }}">{{ $u->name }}{{ $u->homebase ? ' — '.$u->homebase : '' }}{{ $u->distance_km ? ' (±'.$u->distance_km.' km)' : '' }}</option>
-                                    @endforeach
-                                </optgroup>
+                            @foreach($reassignTo as $u)
+                                <option value="{{ $u->id }}">{{ $u->name }}</option>
                             @endforeach
                         </select>
                         @if(in_array($t->status, ['PLAN', 'TRIP'], true) && ! $t->travel_arrived_at)
@@ -651,11 +670,6 @@ $(function () {
     }
     $(document).on('change', '.tt-file-check', function () { checkFiles(this); });
 
-    /* ---------- Wajib pilih jalur: Remote atau Create Plan ---------- */
-    @if($mustDecide)
-        window.tsToast('info', 'Pilih jalur penanganan: Remote (non-visit) atau Create Plan.');
-    @endif
-
     /* ---------- Form close: RCA → Sub-RCA & evidence ---------- */
     (function () {
         var $rca = $('#fldRca'), $sub = $('#fldSubRca');
@@ -674,6 +688,20 @@ $(function () {
         $rca.on('change', syncSub);
         $sub.on('change', function () { $('#fldSubRcaName').val($(this).find('option:selected').data('name') || ''); });
         syncSub();
+
+        /* Kedua dropdown dibungkus searchable select (kotak cari di panel).
+           <select> asli tetap sumber nilai; 'tss:sync' dipanggil setelah
+           daftar Sub-RCA disaring ulang supaya label tombol ikut diperbarui. */
+        if (window.TesysSearchableSelect) {
+            TesysSearchableSelect.init('#fldRca', {
+                placeholder: '— Pilih RCA Resolution —', searchPlaceholder: 'Cari RCA Resolution...',
+            });
+            TesysSearchableSelect.init('#fldSubRca', {
+                placeholder: '— Pilih Rincian RCA Resolution —', searchPlaceholder: 'Cari rincian...',
+            });
+            $rca.on('change', function () { $sub.trigger('tss:sync'); });
+            $sub.trigger('tss:sync');
+        }
 
         /* Evidence: galeri/berkas, tempel di keterangan, seret ke kotak. */
         var input = document.getElementById('fldClosureFiles');

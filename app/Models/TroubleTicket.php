@@ -246,6 +246,15 @@ class TroubleTicket extends Model
      * salah satu PIC site melihat tiket site tersebut. Ditambah pembuat tiket,
      * teknisi yang ditugaskan, dan AccessRoles::TROUBLE_TICKET_FULL_SCOPE.
      *
+     * KECUALI user biasa (bukan pengawas, keputusan 15 Okt 2026): hanya tiket
+     * yang DITUGASKAN ke dirinya. Tiket milik teknisi lain tidak pernah muncul,
+     * termasuk tiket yang ia buat sendiri lalu di-change ke teknisi lain —
+     * begitu di-change, tiket pindah ke daftar teknisi baru.
+     *
+     * Pengawas (leader team ACTIVE, AccessRoles::TROUBLE_TICKET_SUPERVISE, atau
+     * TROUBLE_TICKET_APPROVE) tetap memakai rantai site → PIC → team supaya
+     * approval penutupan dan reassign tidak macet.
+     *
      * Dipakai daftar, halaman detail, setiap aksi, DAN FileAccess — satu
      * aturan, supaya lampiran tidak pernah lebih terbuka dari tiketnya.
      */
@@ -253,6 +262,10 @@ class TroubleTicket extends Model
     {
         if ($user->hasRole(AccessRoles::TROUBLE_TICKET_FULL_SCOPE)) {
             return $query;
+        }
+
+        if (! self::supervises($user)) {
+            return $query->where('trouble_tickets.assigned_to', $user->id);
         }
 
         $teamIds = self::teamIdsOf($user);
@@ -273,6 +286,21 @@ class TroubleTicket extends Model
                 });
             }
         });
+    }
+
+    /**
+     * Pengawas tiket: leader team ACTIVE, atau pemegang role pengawas /
+     * penyetuju penutupan. Hanya mereka yang melihat tiket di luar tiket yang
+     * ditugaskan ke dirinya sendiri (keputusan 15 Okt 2026).
+     */
+    public static function supervises(User $user): bool
+    {
+        return $user->hasRole(AccessRoles::TROUBLE_TICKET_SUPERVISE)
+            || $user->hasRole(AccessRoles::TROUBLE_TICKET_APPROVE)
+            || Team::query()
+                ->where('status', 'ACTIVE')
+                ->where('leader_id', $user->id)
+                ->exists();
     }
 
     /** Team ACTIVE tempat user menjadi anggota ACTIVE atau leader. */
@@ -305,7 +333,10 @@ class TroubleTicket extends Model
                   ->whereNotNull('sla_response_minutes')
                   ->whereRaw('TIMESTAMPDIFF(MINUTE, trouble_tickets.created_at, NOW()) >= sla_response_minutes');
             })->orWhere(function ($q) {
+                // Remote (Non-Visit) tidak diukur Resolution-nya, jadi tidak
+                // pernah dihitung "Lewat SLA" karena ukuran itu.
                 $q->whereNotNull('progress_started_at')
+                  ->where(fn ($r) => $r->whereNull('visit_decision')->orWhere('visit_decision', '!=', self::NON_VISIT))
                   ->whereNotNull('sla_resolution_minutes')
                   ->whereRaw('TIMESTAMPDIFF(MINUTE, progress_started_at, NOW()) >= sla_resolution_minutes');
             })->orWhere(function ($q) {
@@ -390,7 +421,10 @@ class TroubleTicket extends Model
             'travel'     => [$this->travel_started_at, $this->travel_arrived_at, $this->travel_seconds, $this->sla_travel_minutes],
         };
 
-        if ($start === null) {
+        // Jalur Remote (Non-Visit) tidak diukur Resolution-nya: penanganan
+        // jarak jauh tidak melewati tahap pengerjaan di site, jadi durasinya
+        // tidak sebanding dengan tiket visit (keputusan 16 Okt 2026).
+        if ($start === null || ($metric === 'resolution' && $this->visit_decision === self::NON_VISIT)) {
             return ['state' => 'na', 'seconds' => null, 'since' => null, 'target' => $target, 'level' => 'none'];
         }
 

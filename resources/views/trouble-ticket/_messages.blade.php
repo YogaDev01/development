@@ -5,7 +5,6 @@
 @php
     use App\Models\TroubleTicket;
 
-    $me   = (int) auth()->id();
     $tech = $ctx['tech'] ?? [];
     $sup  = $ctx['sup'] ?? [];
     $ikonEvent = [
@@ -28,18 +27,40 @@
             : (in_array((int) $msg->user_id, $sup, true) ? 'Leader Team' : ($msg->actor_role ? ucwords(str_replace('_', ' ', $msg->actor_role)) : null));
     @endphp
     @if($msg->is_event)
-        <div class="tt-event" data-id="{{ $msg->id }}">
+        {{-- Sisi kejadian mengikuti peran pemicunya: teknisi di kanan. --}}
+        <div class="tt-event {{ $peran === 'Teknisi' ? 'is-tech' : '' }}" data-id="{{ $msg->id }}">
+            <span class="tt-event-av">{{ mb_strtoupper(mb_substr($msg->actor_name ?? 'S', 0, 1)) }}{{ mb_strtoupper(mb_substr(\Illuminate\Support\Str::after($msg->actor_name ?? '', ' '), 0, 1)) }}</span>
             <div class="tt-event-box">
+                <div class="tt-event-head">
+                    <strong>{{ $msg->actor_name ?? 'System' }}</strong>
+                    <span class="tt-event-time">· {{ $msg->created_at?->format('d M Y H:i') }}</span>
+                </div>
+                @php
+                    // Kotak hanya dipakai saat kejadian punya keterangan; tanpa
+                    // keterangan chip berdiri sendiri.
+                    $adaCatatan = filled($msg->body)
+                        || (in_array($msg->event, ['progress_done', 'closed'], true) && ! empty($meta['rca']));
+                @endphp
+                <div class="{{ $adaCatatan ? 'tt-event-card' : '' }}">
+                <span class="tt-event-chip">
                 <i class="fas {{ $ikonEvent[$msg->event] ?? 'fa-info-circle' }} mr-1" aria-hidden="true"></i>
-                <strong>{{ $msg->event_label }}</strong>
+                {{ $msg->event_label }}
                 @switch($msg->event)
                     @case('assigned')
                         → {{ $meta['to_name'] ?? '-' }}
                         @break
                     @case('reassigned')
                         : {{ $meta['from_name'] ?? '-' }} → {{ $meta['to_name'] ?? '-' }}
+                        @if(! empty($meta['visit_site']))
+                            — Date visit {{ \Illuminate\Support\Carbon::parse($meta['visit_site'])->format('d/m/Y') }}
+                        @endif
                         @break
                     @case('plan_created')
+                    @case('plan_updated')
+                        @if(! empty($meta['visit_site']))
+                            — Date visit {{ \Illuminate\Support\Carbon::parse($meta['visit_site'])->format('d/m/Y') }}
+                        @endif
+                        @break
                     @case('plan_submitted')
                     @case('plan_corrected')
                         : {{ TroubleTicket::VISIT_DECISIONS[$meta['decision'] ?? ''] ?? '-' }}
@@ -49,39 +70,40 @@
                             (previously {{ TroubleTicket::VISIT_DECISIONS[$meta['previous']['decision']] ?? $meta['previous']['decision'] }})
                         @endif
                         @break
-                    @case('responded')
-                        {{ ! empty($meta['first']) ? '(first response)' : '' }}
-                        @break
                     @case('plan_rejected')
                         @if(! empty($meta['previous']['decision']))
                             (previous plan {{ TroubleTicket::VISIT_DECISIONS[$meta['previous']['decision']] ?? $meta['previous']['decision'] }})
                         @endif
                         @break
-                    @case('progress_done')
-                    @case('closed')
-                        @if(! empty($meta['rca']))<div class="tt-event-note">RCA: {{ $meta['rca'] }}{{ ! empty($meta['sub_rca']) ? ' / ' . $meta['sub_rca'] : '' }} · Action: {{ $meta['action'] ?? '-' }}</div>@endif
-                        @break
                 @endswitch
-                <span class="text-muted">· {{ $msg->actor_name ?? 'System' }} · {{ $msg->created_at?->format('d/m/Y H:i:s') }}</span>
+                </span>
+                @if(in_array($msg->event, ['progress_done', 'closed'], true) && ! empty($meta['rca']))
+                    <div class="tt-event-note">RCA: {{ $meta['rca'] }}{{ ! empty($meta['sub_rca']) ? ' / ' . $meta['sub_rca'] : '' }}</div>
+                @endif
                 @if($msg->body)
                     <div class="tt-event-note">{{ $msg->body }}</div>
                 @endif
+                </div>
                 @include('trouble-ticket._attachments', ['items' => $msg->attachments])
             </div>
         </div>
     @else
-        <div class="tt-msg {{ (int) $msg->user_id === $me ? 'is-mine' : '' }} {{ $peran === 'Teknisi' ? 'is-tech' : '' }}" data-id="{{ $msg->id }}">
+        {{-- Sisi gelembung mengikuti PERAN, bukan siapa yang membuka halaman
+             (keputusan 15 Okt 2026): teknisi di kanan, peran lain di kiri. --}}
+        <div class="tt-msg {{ $peran === 'Teknisi' ? 'is-tech' : '' }}" data-id="{{ $msg->id }}">
+            <span class="tt-msg-av">{{ mb_strtoupper(mb_substr($msg->actor_name ?? '?', 0, 1)) }}{{ mb_strtoupper(mb_substr(\Illuminate\Support\Str::after($msg->actor_name ?? '', ' '), 0, 1)) }}</span>
             <div class="tt-msg-col">
-                @unless((int) $msg->user_id === $me)
-                    <div class="tt-bubble-name">{{ $msg->actor_name ?? '-' }}</div>
-                @endunless
-                <div class="tt-bubble">
+                <div class="tt-bubble-head">
+                    <span class="tt-bubble-name">{{ $msg->actor_name ?? '-' }}</span>
+                    <span class="tt-bubble-time">· {{ $msg->created_at?->format('d M Y H:i') }}</span>
+                </div>
+                {{-- Pesan teks polos tanpa lampiran tidak diberi kotak. --}}
+                <div class="tt-bubble {{ $msg->attachments->isEmpty() ? 'is-plain' : '' }}">
                     @if($msg->body)
                         <div class="tt-bubble-body">{{ $msg->body }}</div>
                     @endif
                     @include('trouble-ticket._attachments', ['items' => $msg->attachments])
                 </div>
-                <div class="tt-bubble-time" title="{{ $msg->created_at?->format('d/m/Y H:i:s') }}">{{ $msg->created_at?->format('d/m/Y H:i') }}</div>
             </div>
         </div>
     @endif

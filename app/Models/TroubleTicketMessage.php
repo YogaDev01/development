@@ -36,9 +36,11 @@ class TroubleTicketMessage extends Model
         // Hanya dipakai riwayat lama: sejak 13 Okt 2026 penugasan awal tidak
         // lagi ditulis ke log (teknisi sudah terbaca di kepala tiket).
         'assigned'          => 'Technician assigned',
-        'reassigned'        => 'Technician reassigned',
+        // Dinamai seperti tombolnya di layar (permintaan 16 Okt 2026), jadi
+        // satu-satunya label kejadian yang berbahasa Indonesia.
+        'reassigned'        => 'Change Teknisi',
         'responded'         => 'Ticket read',
-        'remote_started'    => 'Handled remotely (Non-Visit)',
+        'remote_started'    => 'Remote',
         'plan_created'      => 'Plan visit created',
         'plan_updated'      => 'Plan visit date changed',
         'trip_due'          => 'Moved to Trip',
@@ -85,8 +87,24 @@ class TroubleTicketMessage extends Model
         return $this->type === self::TYPE_EVENT;
     }
 
+    /**
+     * Label kejadian. Penutupan lewat jalur Remote ditulis "Closed - Remote":
+     * jalurnya dibaca dari metadata kejadian, dan untuk log lama (sebelum 16
+     * Okt 2026) dari tiketnya bila relasinya sudah dimuat.
+     */
     public function getEventLabelAttribute(): string
     {
-        return self::EVENTS[$this->event] ?? (string) $this->event;
+        $label = self::EVENTS[$this->event] ?? (string) $this->event;
+
+        if ($this->event === 'closed') {
+            $jalur = $this->metadata['visit_decision']
+                ?? ($this->relationLoaded('ticket') ? $this->ticket?->visit_decision : null);
+
+            if ($jalur === TroubleTicket::NON_VISIT) {
+                $label .= ' - Remote';
+            }
+        }
+
+        return $label;
     }
 }

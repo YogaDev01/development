@@ -61,31 +61,51 @@
 
 /* Chat */
 .tt-chat { position:relative; display:flex; flex-direction:column; flex:1 1 0; min-height:0; }
-.tt-chat-list { flex:1 1 0; min-height:0; overflow-y:auto; padding:10px 14px; background:var(--surface-2); }
-.tt-msg { display:flex; margin-bottom:8px; transition:background var(--dur-fast, .15s); }
-.tt-msg.is-mine { justify-content:flex-end; }
+.tt-chat-list { flex:1 1 0; min-height:0; overflow-y:auto; padding:10px 14px; background:var(--card-bg); border-radius:var(--radius-md); }
+.tt-msg { display:flex; gap:8px; margin-bottom:8px; transition:background var(--dur-fast, .15s); }
+/* Avatar selalu ada — di kiri untuk peran lain, di kanan untuk teknisi. */
+.tt-msg.is-tech { flex-direction:row-reverse; }
+.tt-msg-av { width:26px; height:26px; flex:0 0 26px; border-radius:50%; background:var(--surface-2); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:var(--text-dim); }
 .tt-msg-col { display:flex; flex-direction:column; max-width:78%; }
-.tt-msg.is-mine .tt-msg-col { align-items:flex-end; }
-.tt-bubble-name { font-size:11px; font-weight:600; color:var(--text-dim); margin:0 0 2px 2px; }
+.tt-msg.is-tech .tt-msg-col { align-items:flex-end; }
+.tt-bubble-head { display:flex; align-items:baseline; gap:4px; margin:0 2px 2px; }
+.tt-bubble-name { font-size:11px; font-weight:600; color:var(--text-dim); }
 .tt-bubble { background:var(--card-bg); border:1px solid var(--border); border-radius:var(--radius-md); padding:6px 10px; font-size:13px; }
-.tt-msg.is-mine .tt-bubble { background:var(--accent-tint); border-color:var(--accent-tint-2); }
-.tt-msg.is-tech .tt-bubble { border-left:3px solid var(--info); }
+.tt-bubble.is-plain { background:transparent; border:0; padding:2px 2px; }
 .tt-bubble-body { white-space:pre-wrap; overflow-wrap:anywhere; color:var(--text); }
-.tt-bubble-time { font-size:10.5px; color:var(--text-faint); margin:2px 4px 0; font-variant-numeric:tabular-nums; }
+.tt-bubble-time { font-size:10.5px; color:var(--text-faint); font-variant-numeric:tabular-nums; }
 /* Kejadian workflow rata KANAN (keputusan 12 Okt 2026), tidak lagi di tengah. */
-.tt-event { text-align:right; margin:8px 0; font-size:11.5px; color:var(--text-dim); }
-.tt-event-box { display:inline-block; max-width:90%; background:var(--card-bg); border:1px dashed var(--border-strong); border-radius:var(--radius-sm); padding:3px 10px; text-align:left; }
-.tt-event-box .tt-event-note { white-space:pre-wrap; color:var(--text); margin-top:2px; }
+/* Kejadian sistem: baris kiri — avatar, nama & waktu, lalu chip kejadian. */
+.tt-event { display:flex; gap:8px; margin:8px 0; font-size:11.5px; color:var(--text-dim); }
+.tt-event-av { width:26px; height:26px; flex:0 0 26px; border-radius:50%; background:var(--surface-2); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:var(--text-dim); }
+.tt-event-box { flex:1; min-width:0; }
+.tt-event-head { display:flex; align-items:baseline; gap:4px; font-size:12px; color:var(--text); }
+.tt-event-time { color:var(--text-faint); font-size:11px; font-variant-numeric:tabular-nums; }
+/* Satu kotak berisi chip kejadian dan keterangannya. */
+.tt-event-card { display:inline-block; margin-top:3px; padding:5px 8px; border-radius:var(--radius-sm);
+    background:var(--card-bg); border:1px solid var(--border); text-align:left; }
+.tt-event-chip { display:inline-block; padding:2px 10px; border-radius:999px; background:var(--surface-2);
+    border:1px solid var(--border); font-size:11.5px; font-weight:600; color:var(--text-dim); }
+/* Keterangan kejadian: teks polos di samping chip (seperti log Cost Request). */
+.tt-event-note { margin:4px 2px 0; color:var(--text); font-size:11.5px;
+    white-space:pre-wrap; overflow-wrap:anywhere; }
+/* Kejadian yang dipicu teknisi duduk di kanan, seirama gelembung pesannya. */
+.tt-event.is-tech { flex-direction:row-reverse; }
+.tt-event.is-tech .tt-event-box { text-align:right; }
+.tt-event.is-tech .tt-event-head { justify-content:flex-end; }
+.tt-event.is-tech .tt-att { align-items:flex-end; }
 .tt-flash .tt-bubble, .tt-flash .tt-event-box, .tt-flash.tt-event .tt-event-box { box-shadow:0 0 0 3px var(--accent-ring); }
 
 /* Lampiran di bubble: grid thumbnail persegi + baris berkas ringkas */
 .tt-att { display:flex; flex-direction:column; gap:4px; margin-top:6px; }
 .tt-bubble-body + .tt-att { margin-top:6px; }
 .tt-bubble > .tt-att:first-child { margin-top:0; }
-.tt-att-grid { display:grid; gap:4px; grid-template-columns:repeat(4, 84px); }
-.tt-att-grid.tt-att-n1 { grid-template-columns:200px; }
-.tt-att-grid.tt-att-n2 { grid-template-columns:repeat(2, 120px); }
-.tt-att-grid.tt-att-n3 { grid-template-columns:repeat(3, 96px); }
+.tt-att-grid { display:grid; gap:4px; grid-template-columns:repeat(4, 60px); }
+.tt-att-grid.tt-att-n1 { grid-template-columns:96px; }
+.tt-att-grid.tt-att-n2 { grid-template-columns:repeat(2, 76px); }
+.tt-att-grid.tt-att-n3 { grid-template-columns:repeat(3, 66px); }
 .tt-att-thumb { display:block; aspect-ratio:1 / 1; border-radius:var(--radius-sm); overflow:hidden; border:1px solid var(--border);
     background:var(--surface-2); position:relative; }
 .tt-att-n1 .tt-att-thumb { aspect-ratio:4 / 3; }
@@ -103,9 +123,9 @@
 .tt-att-size { color:var(--text-faint); flex:0 0 auto; }
 .tt-att-go { color:var(--text-faint); font-size:11px; flex:0 0 auto; }
 @media (max-width: 575.98px) {
-    .tt-att-grid { grid-template-columns:repeat(3, 72px); }
-    .tt-att-grid.tt-att-n1 { grid-template-columns:180px; }
-    .tt-att-grid.tt-att-n2 { grid-template-columns:repeat(2, 100px); }
+    .tt-att-grid { grid-template-columns:repeat(3, 56px); }
+    .tt-att-grid.tt-att-n1 { grid-template-columns:92px; }
+    .tt-att-grid.tt-att-n2 { grid-template-columns:repeat(2, 72px); }
 }
 
 /* Composer: satu baris, tumbuh sampai 4 baris (lihat autosize() di JS) */
@@ -261,6 +281,11 @@
    Duduk di KAKI tab Summary: margin-top:auto mendorongnya ke bawah kartu,
    jadi tombolnya selalu di tempat yang sama berapa pun isi ringkasannya. */
 #ttTabSummary.show { display:flex; flex-direction:column; min-height:100%; }
+/* Saat tab lain dipilih, Bootstrap melepas .show lebih dulu lalu .active setelah
+   transisi. Karena display ikut berubah, transitionend kadang tidak terpicu dan
+   .active tertinggal — panel tahap ikut terlihat samar di tab Site/Tiket/Log.
+   Keterlihatan dikunci ke .show saja. */
+#ttTabSummary:not(.show) { display:none !important; }
 #ttTabSummary .tt-stage:last-child { margin-top:auto; }
 /* Tanpa kotak luar (keputusan 12 Okt 2026): tombol tahap berdiri langsung
    di atas kartu, dipisahkan garis tipis saja. */

@@ -7,9 +7,9 @@
 @php
     use App\Models\TroubleTicket;
     $t = $ticket;
-    $fmt = fn ($dt) => $dt ? $dt->format('d/m/Y H:i') : '—';
-    $tgl = fn ($dt) => $dt ? $dt->format('d/m/Y') : '—';
-    $targetLabel = fn ($m) => $m ? TroubleTicket::formatDuration($m * 60) : 'Tidak terhingga';
+    $tgl = fn ($dt) => $dt ? $dt->format('d M Y') : '—';
+    // Target SLA kosong ditulis '—', bukan 'Tidak terhingga'.
+    $targetLabel = fn ($m) => $m ? TroubleTicket::formatDuration($m * 60) : '-';
 @endphp
 <div class="tt-info-modal" data-title="{{ $t->ticket_number }}">
     <div class="d-flex align-items-center flex-wrap mb-2" style="gap:6px;">
@@ -23,7 +23,7 @@
             <dl class="m-0">
                 <div class="tt-kv"><dt>No. TT</dt><dd><strong>{{ $t->ticket_number }}</strong></dd></div>
                 <div class="tt-kv"><dt>Site</dt><dd>{{ $t->site?->sitename ?? '—' }}</dd></div>
-                <div class="tt-kv"><dt>Date Open</dt><dd>{{ $fmt($t->reported_at) }}</dd></div>
+                <div class="tt-kv"><dt>Date Open</dt><dd>{{ $tgl($t->reported_at) }}</dd></div>
                 <div class="tt-kv"><dt>Dibuat oleh</dt><dd>{{ $t->creator?->name ?: '—' }}</dd></div>
                 @if($t->visit_decision === TroubleTicket::VISIT)
                     <div class="tt-kv"><dt>Plan visit</dt><dd>{{ $tgl($t->visit_site) }}</dd></div>
@@ -39,12 +39,11 @@
                     <div class="tt-kv"><dt>RCA</dt><dd>{{ $t->rca_label ?: '—' }}</dd></div>
                     <div class="tt-kv"><dt>Sub-RCA</dt><dd>{{ $t->sub_rca_label ?: '—' }}</dd></div>
                 @endunless
-                <div class="tt-kv"><dt>Device</dt><dd>{{ $t->device_label ?: '—' }}</dd></div>
                 <div class="tt-kv"><dt>Keterangan</dt><dd style="white-space:pre-wrap;">{{ \Illuminate\Support\Str::limit($t->description, 400) }}</dd></div>
             </dl>
         </div>
         <div class="col-md-6">
-            <div class="tt-sec-title mt-3 mt-md-0">Penyelesaian</div>
+            <div class="tt-sec-title mt-3 mt-md-0">Resolution</div>
             <dl class="m-0">
                 <div class="tt-kv"><dt>RCA</dt><dd>{{ $t->rca ?: '—' }}</dd></div>
                 <div class="tt-kv"><dt>Sub-RCA</dt><dd>{{ $t->sub_rca ?: '—' }}</dd></div>

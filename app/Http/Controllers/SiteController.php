@@ -15,12 +15,14 @@ use App\Models\Pulau;
 use App\Models\Region;
 use App\Models\Site;
 use App\Models\SiteAccessory;
+use App\Models\SiteBackupTechnician;
 use App\Models\SiteDocument;
 use App\Models\SiteKeeper;
 use App\Models\SiteMaintenance;
 use App\Models\SiteMaintenanceItem;
 use App\Models\SiteMaterial;
 use App\Models\SitePic;
+use App\Models\Team;
 use App\Models\TroubleTicket;
 use App\Models\User;
 use App\Models\UserActivityLog;
@@ -194,6 +196,9 @@ class SiteController extends Controller
             'create_url' => '/site/create',
             'edit_url' => '/site/{id}/edit',
             'drawer' => true,
+            // Tujuh tab (Informasi … Preventive Maintenance) tidak muat di
+            // lebar bawaan 640px.
+            'drawer_width' => '860px',
             'import' => true,
             'numbered' => false,
             'compact' => true,
@@ -353,6 +358,71 @@ class SiteController extends Controller
             ->unique()
             ->values()
             ->all();
+    }
+
+    /**
+     * Pilihan Teknisi Backup: akun ACTIVE milik PIC internal ACTIVE yang
+     * jabatannya Teknisi, lengkap dengan daftar customer tempat ia menjadi PIC
+     * site — dipakai form untuk menampilkan hanya teknisi customer yang sama
+     * dengan site. Supervisor, CSO, dan jabatan lain tidak ikut; begitu juga
+     * leader team: ia menyetujui plan, bukan ditugaskan ke tiket.
+     *
+     * @return array<int, array{id:int, name:string, customers:array<int,int>}>
+     */
+    public static function backupTechnicianOptions(): array
+    {
+        $rows = User::query()
+            ->where('users.status', 'ACTIVE')
+            ->whereNotIn('users.id', Team::query()
+                ->where('status', 'ACTIVE')
+                ->whereNotNull('leader_id')
+                ->select('leader_id'))
+            ->join('master_pics', 'master_pics.user_id', '=', 'users.id')
+            ->where('master_pics.type', 'internal')
+            ->where('master_pics.status', 'ACTIVE')
+            ->where('master_pics.position', 'like', '%'.Site::TECHNICIAN_POSITION.'%')
+            ->leftJoin('site_pics', 'site_pics.pic_id', '=', 'master_pics.id')
+            ->leftJoin('sites', 'sites.id', '=', 'site_pics.site_id')
+            ->orderBy('users.name')
+            ->get(['users.id', 'users.name', 'sites.customer_id']);
+
+        return $rows->groupBy('id')->map(fn ($g) => [
+            'id' => (int) $g->first()->id,
+            'name' => $g->first()->name,
+            'customers' => $g->pluck('customer_id')->filter()->map(fn ($c) => (int) $c)->unique()->values()->all(),
+        ])->values()->all();
+    }
+
+    /** Validasi baris Teknisi Backup (id user), boleh lebih dari satu. */
+    protected function backupTechnicianRules(): array
+    {
+        return [
+            'backup_technicians' => ['nullable', 'array', 'max:20'],
+            'backup_technicians.*' => ['nullable', 'integer', 'exists:users,id'],
+        ];
+    }
+
+    /**
+     * Menyimpan daftar Teknisi Backup. Baris kosong diabaikan; daftar yang
+     * dikirim menggantikan seluruh cadangan site. Form yang tidak mengirim
+     * `backup_technicians` sama sekali tidak menyentuh data lama.
+     */
+    protected function syncBackupTechnicians(Site $site, Request $request): void
+    {
+        if (! $request->has('backup_technicians')) {
+            return;
+        }
+
+        $ids = collect($request->input('backup_technicians', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        SiteBackupTechnician::where('site_id', $site->id)->delete();
+        foreach ($ids as $id) {
+            SiteBackupTechnician::create(['site_id' => $site->id, 'user_id' => $id]);
+        }
     }
 
     /** Validasi baris Site Keeper (nama user), boleh lebih dari satu. */
@@ -545,7 +615,7 @@ class SiteController extends Controller
 
     public function edit($id)
     {
-        $site = Site::with(['picLinks.pic', 'keepers'])->findOrFail($id);
+        $site = Site::with(['picLinks.pic', 'keepers', 'backupTechnicians'])->findOrFail($id);
         $fields = $this->resolvedFields($this->formFields($site));
 
         return view('site.create', compact('fields', 'site'));
@@ -556,6 +626,7 @@ class SiteController extends Controller
         $site = Site::with('picLinks.pic')->findOrFail($id);
         $data = $this->validatedData($request, $site);
         $request->validate($this->keeperRules(), [], ['keepers.*.name' => 'Site Keeper']);
+        $request->validate($this->backupTechnicianRules(), [], ['backup_technicians.*' => 'Teknisi Backup']);
         $virtual = array_intersect_key($data, array_flip(self::VIRTUAL_FIELDS));
         $data = array_diff_key($data, $virtual);
 
@@ -563,6 +634,7 @@ class SiteController extends Controller
             $site->update($data);
             $this->syncSitePics($site, $virtual);
             $this->syncSiteKeepers($site, $request);
+            $this->syncBackupTechnicians($site, $request);
         });
 
         UserActivityLog::record('master_data', 'update', 'Mengubah Site '.$site->tid.' - '.$site->sitename, $site);
@@ -592,6 +664,7 @@ class SiteController extends Controller
     {
         $data = $this->validatedData($request, null);
         $request->validate($this->keeperRules(), [], ['keepers.*.name' => 'Site Keeper']);
+        $request->validate($this->backupTechnicianRules(), [], ['backup_technicians.*' => 'Teknisi Backup']);
         $virtual = array_intersect_key($data, array_flip(self::VIRTUAL_FIELDS));
         $data = array_diff_key($data, $virtual);
 
@@ -602,6 +675,7 @@ class SiteController extends Controller
             $site->setRelation('picLinks', collect());
             $this->syncSitePics($site, $virtual);
             $this->syncSiteKeepers($site, $request);
+            $this->syncBackupTechnicians($site, $request);
 
             return $site;
         });
@@ -615,7 +689,8 @@ class SiteController extends Controller
     public function drawer($id)
     {
         $site = Site::with([
-            'customer:id,name', 'pulau', 'provinsi', 'kota', 'kecamatan', 'desa', 'keepers',
+            'customer:id,name', 'pulau', 'provinsi', 'kota', 'kecamatan', 'desa', 'keepers.user:id,name,phone,email',
+            'backupTechnicians.user:id,name,phone,email',
             'picLinks.pic', 'materialLinks.material.category', 'accessoryLinks.accessory.category',
         ])->findOrFail($id);
 
@@ -633,7 +708,8 @@ class SiteController extends Controller
     public function show($id)
     {
         $site = Site::with([
-            'customer:id,name', 'pulau', 'provinsi', 'kota', 'kecamatan', 'desa', 'keepers',
+            'customer:id,name', 'pulau', 'provinsi', 'kota', 'kecamatan', 'desa', 'keepers.user:id,name,phone,email',
+            'backupTechnicians.user:id,name,phone,email',
             'materialLinks.material.category', 'accessoryLinks.accessory.category', 'picLinks.pic',
             'maintenances.items.material:id,product_code', 'documents.inputBy:id,name',
         ])->findOrFail($id);

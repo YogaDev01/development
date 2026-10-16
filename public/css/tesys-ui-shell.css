@@ -38,6 +38,10 @@ body.tesys-ui .main > .content > .card:last-child { margin-bottom: 0; }
    dokumen selalu sedikit melebihi layar. Kini .main setinggi layar dan
    .content yang menggulir: batangnya mulai di bawah topbar dan hanya
    muncul saat isinya memang lebih tinggi (overflow-y: auto). */
+/* Batang gulir jendela tidak dipakai lagi: yang menggulir .main > .content.
+   Tanpa ini sisa tinggi beberapa piksel membuat batang gulir kedua muncul di
+   tepi kanan, berdampingan dengan batang gulir area konten. */
+body.tesys-ui { height: 100vh; overflow: hidden; }
 body.tesys-ui .shell { height: 100vh; min-height: 100vh; overflow: hidden; }
 body.tesys-ui .main {
     height: 100vh;

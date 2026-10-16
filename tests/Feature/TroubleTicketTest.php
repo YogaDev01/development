@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\MasterPic;
 use App\Models\Site;
+use App\Models\SiteBackupTechnician;
 use App\Models\SitePic;
 use App\Models\Team;
 use App\Models\TeamMember;
@@ -81,6 +82,8 @@ class TroubleTicketTest extends TestCase
         $this->site = $this->makeSite();
         $this->linkTech($this->site, $this->tech);
         $this->linkTech($this->site, $this->tech2);
+        // Kandidat Change Teknisi diambil dari Teknisi Backup site (16 Okt 2026).
+        SiteBackupTechnician::create(['site_id' => $this->site->id, 'user_id' => $this->tech2->id]);
 
         // Team: leader + kedua teknisi.
         $team = Team::create(['code' => 'TEAM-T1', 'name' => 'Field', 'leader_id' => $this->leader->id, 'status' => 'ACTIVE']);
@@ -399,7 +402,7 @@ class TroubleTicketTest extends TestCase
         $this->assertSame('CLOSED', $t->status);
         $this->assertSame('APPROVED', $t->approval);
         $this->assertSame($this->leader->id, $t->approved_by);
-        $this->assertSame($this->tech->id, $t->closed_by);
+        $this->assertSame($this->leader->id, $t->closed_by);
     }
 
     public function test_teknisi_lain_tidak_bisa_menjalankan_aksi_operasional(): void
@@ -477,7 +480,7 @@ class TroubleTicketTest extends TestCase
         $t->refresh();
         $this->assertSame('CLOSED', $t->status);
         $this->assertNotNull($t->closed_at);
-        $this->assertSame($this->tech->id, $t->closed_by);
+        $this->assertSame($this->leader->id, $t->closed_by);
     }
 
     public function test_field_referensi_telko_tersimpan_dan_tervalidasi(): void
@@ -557,7 +560,7 @@ class TroubleTicketTest extends TestCase
 
         $t->refresh();
         $this->assertSame('CLOSED', $t->status);
-        $this->assertSame($this->tech->id, $t->closed_by);
+        $this->assertSame($this->leader->id, $t->closed_by);
         // Resolusi = closed_at (approve) − progress_started_at.
         $this->assertEqualsWithDelta(3 * 3600, $t->resolution_seconds, 2);
         $this->assertSame('done', $t->slaMetric('resolution')['state']);

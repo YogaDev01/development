@@ -58,7 +58,7 @@
 
 <ul class="nav nav-tabs site-dw-tabs" role="tablist">
     <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#sdwInfo" role="tab">Informasi</a></li>
-    <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#sdwPic" role="tab">PIC <span class="badge badge-secondary">{{ $site->picLinks->count() + $site->keepers->count() }}</span></a></li>
+    <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#sdwPic" role="tab">PIC <span class="badge badge-secondary">{{ $site->picLinks->count() + $site->keepers->count() + $site->backupTechnicians->count() }}</span></a></li>
     <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#sdwTt" role="tab">TT</a></li>
     <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#sdwAssets" role="tab">Assets <span class="badge badge-secondary">{{ $site->materialLinks->count() + $site->accessoryLinks->count() }}</span></a></li>
     <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#sdwDoc" role="tab">Document <span class="badge badge-secondary">{{ $site->documents->count() }}</span></a></li>
@@ -161,16 +161,38 @@
         <p class="ts-dw-section-title mt-3">Site Keeper ({{ $site->keepers->count() }})</p>
         @forelse($site->keepers as $keeper)
             <div class="site-dw-pic">
-                <div class="d-flex justify-content-between align-items-start">
-                    <strong>{{ $keeper->name }}</strong>
-                    <span class="badge badge-dark">Site Keeper</span>
-                </div>
+                <strong>{{ $keeper->name }}</strong>
+                {{-- Telepon diambil dari isian keeper; bila kosong dipakai
+                     nomor akun user bernama sama. Email selalu dari akun itu. --}}
+                @php
+                    $kTelp  = $keeper->phone ?: $keeper->user?->phone;
+                    $kEmail = $keeper->user?->email;
+                @endphp
                 <div class="text-muted" style="font-size:12px;">
-                    @if($keeper->phone)<i class="fas fa-phone-alt"></i> {{ $keeper->phone }}@else-@endif
+                    @if($kTelp)<i class="fas fa-phone-alt"></i> {{ $kTelp }}@endif
+                    @if($kEmail) @if($kTelp) · @endif<i class="fas fa-envelope"></i> {{ $kEmail }}@endif
+                    @if(! $kTelp && ! $kEmail)-@endif
                 </div>
             </div>
         @empty
             <x-empty title="Belum ada Site Keeper" icon="fas fa-user-shield" compact />
+        @endforelse
+
+        <p class="ts-dw-section-title mt-3">Teknisi Backup ({{ $site->backupTechnicians->count() }})</p>
+        @forelse($site->backupTechnicians as $backup)
+            <div class="site-dw-pic">
+                <strong>{{ $backup->user?->name ?? '-' }}</strong>
+                {{-- Kontak teknisi backup ikut ditampilkan seperti PIC & Site
+                     Keeper: saat teknisi utama tak bisa dihubungi, nomornya
+                     harus ada di layar yang sama. --}}
+                <div class="text-muted" style="font-size:12px;">
+                    @if($backup->user?->phone)<i class="fas fa-phone-alt"></i> {{ $backup->user->phone }}@endif
+                    @if($backup->user?->email) @if($backup->user?->phone) · @endif<i class="fas fa-envelope"></i> {{ $backup->user->email }}@endif
+                    @if(! $backup->user?->phone && ! $backup->user?->email)-@endif
+                </div>
+            </div>
+        @empty
+            <x-empty title="Belum ada Teknisi Backup" icon="fas fa-user-cog" compact />
         @endforelse
     </div>
 
@@ -296,7 +318,9 @@
         </button>
     </form>
 
-    <a href="{{ url('/site/' . $site->id) }}" class="btn btn-outline-secondary btn-sm">
+    {{-- ml-auto: saat tombol unggah disembunyikan (tab selain Document),
+         tombol ini tetap menempel di kanan, bukan melompat ke kiri. --}}
+    <a href="{{ url('/site/' . $site->id) }}" class="btn btn-outline-secondary btn-sm ml-auto">
         <i class="fas fa-cog mr-1"></i> Kelola PIC & Assets
     </a>
 </div>
