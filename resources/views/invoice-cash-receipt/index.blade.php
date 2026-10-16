@@ -82,7 +82,7 @@
                             $invColRestricted = Auth::user()->hasRole(['manager', 'head']);
                         @endphp
                         <div class="dropdown" id="invColVisDropdown">
-                            <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown" @if($invColRestricted) disabled title="Kolom finansial tidak tersedia untuk role Anda" @endif>
+                            <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-boundary="viewport" @if($invColRestricted) disabled title="Kolom finansial tidak tersedia untuk role Anda" @endif>
                                 <i class="fas fa-columns mr-1"></i> Kolom
                             </button>
                             @unless($invColRestricted)

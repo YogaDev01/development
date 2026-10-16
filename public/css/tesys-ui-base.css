@@ -735,10 +735,10 @@ table.dataTable.no-footer {
     color: var(--amber-dk) !important;
 }
 
-/* ── Focus / click glow — orange instead of blue ── */
+/* ── Focus / click glow — memakai token aksen (var(--accent-ring)) ── */
 .dataTables_wrapper .pagination .page-link:focus,
 .dataTables_wrapper .page-link:focus {
-    box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.30) !important;
+    box-shadow: 0 0 0 3px var(--accent-ring, rgba(245, 166, 35, 0.30)) !important;
     outline: none !important;
 }
 

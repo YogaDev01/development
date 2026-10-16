@@ -45,7 +45,7 @@
                 <span class="ts-kpi-ic ts-tone-{{ $tone }}" aria-hidden="true"><i class="{{ $icon }}"></i></span>
             @endif
             <span class="ts-kpi-text">
-                <span class="ts-kpi-label">{{ $label }}</span>
+                <span class="ts-kpi-label" title="{{ $label }}">{{ $label }}</span>
                 <span class="ts-kpi-value">{{ $value }}</span>
                 @if($sub)
                     <span class="ts-kpi-sub">{{ $sub }}</span>
