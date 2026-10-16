@@ -26,10 +26,44 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '3.0.2',
+    'current' => '3.0.3',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '3.0.3',
+            'date'    => '2026-10-16',
+            'title'   => 'Teknisi Backup per Site & Pemakaian Anggaran Mengikuti Settlement',
+            'summary' => 'Kandidat Change Teknisi kini diambil dari daftar Teknisi Backup yang '
+                       . 'ditetapkan per site, dan pemakaian anggaran mengikuti nilai settlement '
+                       . 'untuk Cash Advance yang sudah disettle.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Site punya tab Teknisi Backup: daftar teknisi cadangan per site, dipilih dari teknisi milik customer yang sama dan boleh lebih dari satu.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Change Teknisi mengambil kandidat dari daftar Teknisi Backup site - diisi manusia di Master Data > Site, menggantikan penentuan otomatis berdasarkan homebase/cluster terdekat.',
+                        'Plan Visit hanya boleh dibuat atau diubah oleh teknisi yang ditugaskan, supervisor tiket, atau peran penyetuju penutupan.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Pemakaian anggaran (kolom Used di Budgeting dan pengecekan NOB) memakai nilai settlement untuk Cash Advance yang sudah diajukan settlement-nya - termasuk settlement bernilai 0 saat dana dikembalikan utuh - dan nilai pengajuan untuk selainnya.',
+                        'Tombol pada panel Filter tidak lagi berlipat ganda setelah tabel dimuat ulang, misalnya saat rentang tanggal di Cost Request diganti.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '3.0.2',
