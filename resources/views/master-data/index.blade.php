@@ -327,7 +327,9 @@
 
 @if(!empty($m['drawer']))
     @push('scripts')
-    <x-drawer id="masterDrawer" label="Detail {{ $m['singular'] }}" width="640px">
+    {{-- Lebar bisa dinaikkan per modul (master()['drawer_width']) — Site punya
+         tujuh tab yang tidak muat di 640px dan jadi menggulir mendatar. --}}
+    <x-drawer id="masterDrawer" label="Detail {{ $m['singular'] }}" width="{{ $m['drawer_width'] ?? '640px' }}">
         <div id="masterDrawerLoading" class="text-center py-5 text-muted">
             <i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2 mb-0">Memuat data...</p>
         </div>

@@ -4,7 +4,7 @@
 
 @if($bisaRemote)
     <div class="tt-stage">
-        <div class="tt-stage-title">Pilih jalur penanganan</div>
+        <div class="tt-stage-title">Jalur Penanganan</div>
         {{-- Satu tombol = satu baris penuh, seirama panel tahap lain. Dulu ia
              duduk di grid dua kolom .tt-stage-acts, jadi lebarnya separuh.
              Tanpa dialog konfirmasi: Remote tidak menutup tiket dan masih bisa
@@ -13,7 +13,7 @@
             @csrf
             <button class="btn btn-outline-primary btn-sm btn-block tt-btn-wide"><i class="fas fa-satellite-dish mr-1"></i> Remote</button>
         </form>
-        <div class="tt-stage-note">Penanganan dimulai dari Remote. Bila gangguan tidak selesai dari jarak jauh, Create Plan tersedia di tahap Remote.</div>
+        <div class="tt-stage-note">Remote = penanganan jarak jauh tanpa kunjungan. Bila belum Solved, Create Plan untuk visit.</div>
     </div>
 @endif
 
@@ -29,6 +29,7 @@
                     <i class="fas fa-flag-checkered mr-1"></i> Form Close
                 </button>
             </div>
+            <div class="tt-stage-note">Ubah Tanggal untuk mengganti tanggal visit.</div>
         @else
             <div class="tt-stage-note">Tiket masuk tahap Trip saat tanggal plan visit tiba.</div>
         @endif
@@ -61,10 +62,15 @@
         <button type="button" class="btn btn-outline-danger btn-sm btn-block tt-btn-wide mt-2" data-toggle="modal" data-target="#mdlTtCancelTrip">
             <i class="fas fa-ban mr-1"></i> Cancel Visit
         </button>
-        <button type="button" class="btn btn-success btn-sm btn-block tt-btn-wide mt-2" data-toggle="modal" data-target="#mdlTtClosure">
-            <i class="fas fa-flag-checkered mr-1"></i> Form Close
-        </button>
-        <div class="tt-stage-note">Form close dari tahap Trip membatalkan perjalanan; SLA Travel tidak dihitung. Jadwal visit dijadwalkan ulang lewat Cancel Visit.</div>
+        {{-- Form close disembunyikan dari TEKNISI selama perjalanan dan
+             setelah On Site (keputusan 15 Okt 2026); peran lain tetap bisa
+             menutup tiket dari tahap ini. --}}
+        @unless($isTechnician)
+            <button type="button" class="btn btn-success btn-sm btn-block tt-btn-wide mt-2" data-toggle="modal" data-target="#mdlTtClosure">
+                <i class="fas fa-flag-checkered mr-1"></i> Form Close
+            </button>
+        @endunless
+        <div class="tt-stage-note">Cancel Visit membatalkan perjalanan dan menjadwalkan ulang tanggal visit.</div>
     </div>
 @endif
 
@@ -75,13 +81,21 @@
             <span class="tt-swipe-knob" tabindex="0" role="button" aria-label="Geser untuk mulai progres"><i class="fas fa-arrow-right"></i></span>
             <span class="tt-swipe-text">Ready Progress</span>
         </div>
+        {{-- Form close disembunyikan dari TEKNISI selama perjalanan dan
+             setelah On Site (keputusan 15 Okt 2026); peran lain tetap bisa
+             menutup tiket dari tahap ini. --}}
+        @unless($isTechnician)
+            <button type="button" class="btn btn-success btn-sm btn-block tt-btn-wide mt-2" data-toggle="modal" data-target="#mdlTtClosure">
+                <i class="fas fa-flag-checkered mr-1"></i> Form Close
+            </button>
+        @endunless
     </div>
 @endif
 
 {{-- Tahap Plan & Trip punya panelnya sendiri di atas (jadwal + Form Close). --}}
 @if($bisaTutup && ! in_array($t->status, ['PLAN', 'TRIP'], true))
     <div class="tt-stage">
-        <div class="tt-stage-title">{{ $t->status === 'REMOTE' ? 'Penanganan remote' : 'Pengerjaan di site' }}</div>
+        <div class="tt-stage-title">{{ $t->status === 'REMOTE' ? 'Jalur penanganan' : 'Pengerjaan di site' }}</div>
         @if($t->status === 'REMOTE')
             {{-- Di tahap Remote teknisi masih boleh berbalik menjadwalkan kunjungan. --}}
             <div class="tt-stage-acts">
@@ -92,12 +106,24 @@
                     <i class="fas fa-calendar-check mr-1"></i> Create Plan
                 </button>
             </div>
+        <div class="tt-stage-note">Create Plan untuk menentukan tanggal visit.</div>
         @else
             <button type="button" class="btn btn-success btn-sm btn-block" data-toggle="modal" data-target="#mdlTtClosure">
                 <i class="fas fa-flag-checkered mr-1"></i> Form Close
             </button>
         @endif
-        <div class="tt-stage-note">RCA, Sub-RCA, keterangan &amp; evidence. Setelah dikirim, tiket menunggu approval supervisor.</div>
+    </div>
+@endif
+
+{{-- Supervisor boleh membuat/mengubah plan juga (keputusan 15 Okt 2026).
+     Panel tahap lain milik teknisi, jadi ia dapat panelnya sendiri. --}}
+@if($bisaPlan && ! $canActAsTech)
+    <div class="tt-stage">
+        <div class="tt-stage-title">{{ $t->status === 'PLAN' ? 'Plan visit ' . ($t->visit_site?->format('d/m/Y') ?? '—') : 'Plan visit' }}</div>
+        <button type="button" class="btn btn-outline-primary btn-sm btn-block" data-toggle="modal" data-target="#mdlTtPlan">
+            <i class="fas fa-calendar-check mr-1"></i> {{ $t->status === 'PLAN' ? 'Ubah Tanggal' : 'Create Plan' }}
+        </button>
+        <div class="tt-stage-note">{{ $t->status === 'PLAN' ? 'Ubah Tanggal untuk mengganti tanggal visit.' : 'Create Plan untuk menentukan tanggal visit.' }}</div>
     </div>
 @endif
 

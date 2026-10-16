@@ -41,6 +41,7 @@
                             <tr><th>Teknisi</th><td>{{ \App\Http\Controllers\SiteController::technicians($site) ?: '-' }}</td></tr>
                             <tr><th>Cluster</th><td>{{ \App\Http\Controllers\SiteController::regions($site) ?: '-' }}</td></tr>
                             <tr><th>Site Keeper</th><td>{{ $site->keepers->pluck('name')->implode(', ') ?: '-' }}</td></tr>
+                            <tr><th>Teknisi Backup</th><td>{{ $site->backupTechnicians->pluck('user.name')->filter()->implode(', ') ?: '-' }}</td></tr>
                             <tr><th>Status</th><td>
                                 <span class="badge badge-{{ $site->status === 'ACTIVE' ? 'success' : 'danger' }} px-2 py-1">{{ Site::STATUSES[$site->status] ?? $site->status }}</span>
                             </td></tr>

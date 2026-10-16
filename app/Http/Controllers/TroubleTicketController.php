@@ -391,13 +391,14 @@ class TroubleTicketController extends Controller
             'isTechnician' => $this->workflow->isTechnician($user, $ticket),
             // Tombol tahap: teknisi tiket ini, atau superadmin.
             'canActAsTech' => $this->workflow->actsAsTechnician($user, $ticket),
-            'mustDecide' => $this->workflow->mustDecide($user, $ticket),
             'canSupervise' => $canSupervise,
+            // Create Plan: teknisi tiket ini atau supervisor (bukan peran lain).
+            'canCreatePlan' => $this->workflow->canCreatePlan($user, $ticket),
             'canApproveClose' => $this->workflow->canApproveClose($user, $ticket),
             'canMessage' => $this->workflow->canMessage($user, $ticket),
             // Change Teknisi: sejak plan dibuat sampai sebelum perjalanan mulai.
             'canReassign' => $canSupervise && $this->workflow->canReassign($ticket),
-            // Kandidatnya: homebase sama, lalu cluster terdekat dari teknisi sekarang.
+            // Kandidatnya: Teknisi Backup site ini (Master Data > Site).
             'reassignTo' => $canSupervise && $this->workflow->canReassign($ticket)
                 ? $this->workflow->reassignCandidates($ticket)
                 : collect(),
@@ -511,10 +512,14 @@ class TroubleTicketController extends Controller
         $data = $request->validate([
             'visit_site' => 'required|date|after_or_equal:today',
             'target_online' => 'nullable|date|after_or_equal:today',
-        ]);
+            // Plan pertama tidak perlu alasan; mengubah tanggal yang sudah ada wajib.
+            'reason' => in_array($ticket->status, ['PLAN', 'TRIP'], true)
+                ? 'required|string|max:500'
+                : 'nullable|string|max:500',
+        ], ['reason.required' => 'Keterangan perubahan tanggal visit wajib diisi.']);
 
         $this->workflow->createPlan(
-            $ticket, Auth::user(), $data['visit_site'], $data['target_online'] ?? null,
+            $ticket, Auth::user(), $data['visit_site'], $data['target_online'] ?? null, $data['reason'] ?? null,
         );
 
         return back()->with('success', 'Plan visit dibuat.');
@@ -530,7 +535,7 @@ class TroubleTicketController extends Controller
 
         $this->workflow->startTravel($ticket, Auth::user(), $request->file('attachments', []));
 
-        return back()->with('success', 'Perjalanan dimulai. SLA Travel berjalan.');
+        return back()->with('success', 'Perjalanan dimulai.');
     }
 
     /** Batal visit di tengah perjalanan — SLA Travel kembali ke 0, jadwal plan diisi ulang. */
@@ -544,7 +549,7 @@ class TroubleTicketController extends Controller
 
         $this->workflow->cancelTravel($ticket, Auth::user(), $data['reason'], $data['visit_site']);
 
-        return back()->with('success', 'Perjalanan dibatalkan. SLA Travel kembali ke 0.');
+        return back()->with('success', 'Perjalanan dibatalkan.');
     }
 
     /** Konfirmasi site sudah benar — SLA Travel berhenti. */
@@ -552,14 +557,14 @@ class TroubleTicketController extends Controller
     {
         $this->workflow->arriveOnSite($ticket, Auth::user());
 
-        return back()->with('success', 'Kedatangan dikonfirmasi. SLA Travel berhenti.');
+        return back()->with('success', 'Kedatangan dikonfirmasi.');
     }
 
     public function startProgress(TroubleTicket $ticket)
     {
         $this->workflow->startProgress($ticket, Auth::user());
 
-        return back()->with('success', 'Progres dimulai. SLA Resolution berjalan.');
+        return back()->with('success', 'Progres dimulai.');
     }
 
     public function close(Request $request, TroubleTicket $ticket)

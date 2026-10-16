@@ -111,7 +111,22 @@ Homebase (+ PIC), dan Wilayah berjenjang.
   menggantikan seluruh isi lama (`syncSiteKeepers()`); form yang tidak mengirim
   `keepers` tidak menyentuh data lama. FK `site_id` CASCADE — ikut terhapus
   bersama site.
-- Detail: drawer (`GET /site/{id}/drawer`, partial `site/_drawer.blade.php`)
+- Teknisi Backup (migrasi `2026_10_16_000100`, tabel `site_backup_technicians`,
+  model `SiteBackupTechnician`): daftar teknisi cadangan site, dipilih dari akun
+  ACTIVE milik PIC internal ACTIVE berjabatan Teknisi (`position like %teknisi%`,
+  jadi Supervisor/CSO tidak ikut) yang bukan leader team
+  (`SiteController::backupTechnicianOptions()`), dibatasi teknisi yang menjadi
+  PIC di site milik **customer yang sama** dengan site ini — penyaringan di form
+  mengikuti pilihan Customer; sebelum Customer dipilih daftarnya kosong. Boleh lebih dari satu; baris kosong diabaikan.
+  Daftar yang dikirim menggantikan isi lama (`syncBackupTechnicians()`); form
+  yang tidak mengirim `backup_technicians` tidak menyentuh data lama. FK
+  `site_id` CASCADE, `user_id` RESTRICT. **Tidak** ditampilkan sebagai kolom di
+  tabel Site List. Status integrasi ke Change Teknisi tiket: BELUM — untuk
+  sekarang baru input dan penyimpanannya; `TroubleTicketWorkflow::reassignCandidates()`
+  masih memakai aturan cluster terdekat dan belum membaca tabel ini.
+- Detail: drawer selebar 860px (`master()['drawer_width']`; bawaan modul master
+  lain 640px, dinaikkan 16 Okt 2026 supaya tujuh tabnya tidak menggulir
+  mendatar) — `GET /site/{id}/drawer`, partial `site/_drawer.blade.php`,
   dengan tab Informasi, PIC (termasuk daftar Site Keeper; badge = PIC + keeper),
   TT, Assets, Document (daftar dokumen site), Preventive Maintenance. Peta: Google Maps Static API
   bergaya bersih bila `GOOGLE_MAPS_KEY` diisi (kunci wajib dibatasi ke Maps

@@ -246,6 +246,15 @@ class TroubleTicket extends Model
      * salah satu PIC site melihat tiket site tersebut. Ditambah pembuat tiket,
      * teknisi yang ditugaskan, dan AccessRoles::TROUBLE_TICKET_FULL_SCOPE.
      *
+     * KECUALI user biasa (bukan pengawas, keputusan 15 Okt 2026): hanya tiket
+     * yang DITUGASKAN ke dirinya. Tiket milik teknisi lain tidak pernah muncul,
+     * termasuk tiket yang ia buat sendiri lalu di-change ke teknisi lain —
+     * begitu di-change, tiket pindah ke daftar teknisi baru.
+     *
+     * Pengawas (leader team ACTIVE, AccessRoles::TROUBLE_TICKET_SUPERVISE, atau
+     * TROUBLE_TICKET_APPROVE) tetap memakai rantai site → PIC → team supaya
+     * approval penutupan dan reassign tidak macet.
+     *
      * Dipakai daftar, halaman detail, setiap aksi, DAN FileAccess — satu
      * aturan, supaya lampiran tidak pernah lebih terbuka dari tiketnya.
      */
@@ -253,6 +262,10 @@ class TroubleTicket extends Model
     {
         if ($user->hasRole(AccessRoles::TROUBLE_TICKET_FULL_SCOPE)) {
             return $query;
+        }
+
+        if (! self::supervises($user)) {
+            return $query->where('trouble_tickets.assigned_to', $user->id);
         }
 
         $teamIds = self::teamIdsOf($user);
@@ -273,6 +286,21 @@ class TroubleTicket extends Model
                 });
             }
         });
+    }
+
+    /**
+     * Pengawas tiket: leader team ACTIVE, atau pemegang role pengawas /
+     * penyetuju penutupan. Hanya mereka yang melihat tiket di luar tiket yang
+     * ditugaskan ke dirinya sendiri (keputusan 15 Okt 2026).
+     */
+    public static function supervises(User $user): bool
+    {
+        return $user->hasRole(AccessRoles::TROUBLE_TICKET_SUPERVISE)
+            || $user->hasRole(AccessRoles::TROUBLE_TICKET_APPROVE)
+            || Team::query()
+                ->where('status', 'ACTIVE')
+                ->where('leader_id', $user->id)
+                ->exists();
     }
 
     /** Team ACTIVE tempat user menjadi anggota ACTIVE atau leader. */

@@ -132,6 +132,12 @@ class Site extends Model
         return $this->hasMany(SiteKeeper::class, 'site_id');
     }
 
+    /** Teknisi backup site: cadangan untuk pilihan Change Teknisi. */
+    public function backupTechnicians()
+    {
+        return $this->hasMany(SiteBackupTechnician::class, 'site_id');
+    }
+
     public function picLinks()
     {
         return $this->hasMany(SitePic::class, 'site_id');

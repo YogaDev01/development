@@ -71,7 +71,10 @@ dan `ON_PLAN` dipetakan ke `PLAN` oleh migrasi `2026_10_12_000300`.
 
 `PLAN → TRIP` berjalan tanpa penjadwal: `promoteDueTrips()` dipanggil saat
 daftar/detail dibuka dan menaikkan semua tiket `PLAN` yang `visit_site`-nya
-sudah tiba (idempoten, satu transaksi + row lock per tiket).
+sudah tiba (idempoten, satu transaksi + row lock per tiket). Teknisi tiket yang
+naik menerima notifikasi "Hari kunjungan tiba" (dikirim setelah transaksi, 16 Okt
+2026). Di daftar, tiket `PLAN`/`TRIP` yang `visit_site`-nya sudah lewat diberi
+tanda seru merah di kolom Site dan tanggal Plan ditulis merah tebal.
 
 Setiap transisi: transaksi + `lockForUpdate` baris tiket + cek ulang pelaku &
 status asal + kejadian timeline di transaksi yang sama (gagal = batal semua).
@@ -134,24 +137,22 @@ notifikasi tidak terkirim dua kali. Error keadaan = `ValidationException`
   `TroubleTicketWorkflow::canReassign()` = status `PLAN`/`TRIP` **dan**
   `travel_started_at`/`travel_arrived_at` masih NULL (15 Okt 2026). Setelah
   travel jalan, On Site, atau di tahap `OPEN`/`REMOTE`/`IN_PROGRESS`/
-  `PROGRESS_DONE`, tombolnya tidak ada dan server menolak. Kandidatnya **tidak
-  dibatasi PIC site itu**: `reassignCandidates()` mengambil seluruh PIC internal
-  ACTIVE (bukan leader team), lalu **hanya menyisakan** — **homebase sama →
-  cluster (region homebase) sama → satu cluster tetangga TERDEKAT**. Cluster
-  terdekat dipilih bertingkat: (1) jarak haversine koordinat homebase, (2) bila
-  koordinat kosong — kemiripan nama cluster (`ACEH 1` ↔ `ACEH 2`, angka urut di
-  belakang diabaikan), (3) bila itu pun tidak ketemu — cluster lain di **pulau
-  yang sama** (`region.pulau_id`). Cluster di luar itu tidak ditampilkan; bila
-  tidak ada acuan homebase sama sekali, daftar jatuh ke seluruh teknisi internal.
-  Homebase seorang kandidat dibaca dari `homebase_detail`, dan **bila PIC-nya
-  belum terdaftar di homebase** — kasus yang membuat daftar sempat kosong pada
-  15 Okt 2026 — dari homebase **site yang ia pegang** (`site_pics` → `sites.hb_id`). `reassign()` memeriksa teknisi baru memang ada di daftar kandidat
+  `PROGRESS_DONE`, tombolnya tidak ada dan server menolak. Kandidatnya =
+  **Teknisi Backup site itu** (16 Okt 2026): baris `site_backup_technicians`
+  yang diisi manusia di Master Data › Site, disaring akun ACTIVE, bukan leader
+  team, dan bukan teknisi tiket itu sendiri. Pemilihan otomatis lewat
+  homebase/cluster terdekat (15 Okt 2026) sudah **tidak dipakai lagi**; bila
+  daftar backup kosong, modalnya menampilkan empty state dan tombol Simpan mati.
+  `reassign()` memeriksa teknisi baru memang ada di daftar kandidat
   itu; `pic_id` jadi NULL bila teknisi baru bukan PIC site tersebut (tiket tetap
   terlihat olehnya lewat `assigned_to`). Bila belum ada keputusan jalur, status kembali `OPEN`; bila
   sudah, status tetap. Pada `PLAN` dan `TRIP` (sebelum On Site) modalnya juga
   memuat **Plan Visit** (`visit_site`, wajib): tiket kembali ke `PLAN` dengan
-  tanggal baru, jejak perjalanan dikosongkan supaya SLA Travel dihitung ulang,
-  dan kejadian `plan_updated` dicatat selain `reassigned`. **Inilah satu-satunya
+  tanggal baru, jejak perjalanan dikosongkan supaya SLA Travel dihitung ulang.
+  Sejak 16 Okt 2026 tidak ada kejadian `plan_updated` tersendiri: tanggal baru
+  ikut di metadata (`visit_site`, `target_online`) kejadian `reassigned`, jadi
+  satu aksi = satu baris log dengan satu keterangan. Riwayat lama yang punya
+  dua baris tetap terbaca apa adanya. **Inilah satu-satunya
   jalan reschedule di tahap Trip** (15 Okt 2026) — tombol Reschedule di panel
   Trip dicabut; `POST {ticket}/plan` tetap menerima `TRIP` untuk integrasi.
 - **Notifikasi tiket baru**: teknisi yang ditugaskan **dan seluruh PIC internal
@@ -210,9 +211,14 @@ SLA di tab **SLA**.
   membuka halaman detail — titik berhentinya jam Response
   (`recordAccess()`, kejadian `responded`). Pengalihan teknisi sesudahnya tetap
   dicatat sebagai `reassigned`.
+- Baris `reassigned` di tab **Log** menampilkan perpindahannya
+  (`from_name` &rarr; `to_name` dari metadata kejadian), sama seperti gelembung
+  di timeline chat.
 - Label kejadian di tab **Log** dan timeline berbahasa **Inggris**
   (`TroubleTicketMessage::EVENTS`) — satu-satunya bagian modul ini yang tidak
-  berbahasa Indonesia; permintaan pengguna 13 Okt 2026.
+  berbahasa Indonesia; permintaan pengguna 13 Okt 2026. Pengecualian:
+  `reassigned` berlabel **Change Teknisi** mengikuti nama tombolnya
+  (16 Okt 2026).
 - Kolom **Action** di daftar punya tombol **Close** untuk tiket berstatus
   `PROGRESS_DONE` (14 Okt 2026): hanya tampil bagi pemegang
   `AccessRoles::TROUBLE_TICKET_APPROVE` yang bukan teknisi tiket itu, dan
@@ -306,7 +312,7 @@ Satu halaman bertab, dulu hanya SLA:
 | Aksi | Siapa |
 |---|---|
 | Buka menu / buat tiket | pemegang menu `trouble-ticket` (route) |
-| Melihat tiket, pesan, lampiran | superadmin; pembuat; teknisi; siapa pun yang **satu team** (anggota ACTIVE atau leader team ACTIVE) dengan PIC site: `site → site_pics → master_pics(ACTIVE) → user → team_members` |
+| Melihat tiket, pesan, lampiran | superadmin (`TROUBLE_TICKET_FULL_SCOPE`): semua tiket. **User biasa: hanya tiket yang ditugaskan ke dirinya** — tiket teknisi lain tidak muncul, termasuk tiket yang ia buat sendiri lalu di-change ke teknisi lain (keputusan 15 Okt 2026). Pengawas (leader team ACTIVE, `TROUBLE_TICKET_SUPERVISE`, `TROUBLE_TICKET_APPROVE` — `TroubleTicket::supervises()`): pembuat, tiket yang ditugaskan, dan siapa pun yang **satu team** (anggota ACTIVE atau leader team ACTIVE) dengan PIC site: `site → site_pics → master_pics(ACTIVE) → user → team_members` |
 | Teknisi yang bisa ditugaskan | akun ACTIVE milik PIC **internal** ACTIVE yang terdaftar di `site_pics` site itu, **kecuali leader team ACTIVE** (ia yang menyetujui plan). Berlaku untuk dropdown buat tiket maupun reassign — `TroubleTicketWorkflow::eligibleTechnicians()` |
 | Respons, ajukan plan, Start Progress, tutup tiket | hanya teknisi yang sedang ditugaskan |
 | Approve/reject plan | leader team ACTIVE tempat teknisi menjadi anggota ACTIVE, atau superadmin — **bukan** teknisi pengaju |
@@ -315,6 +321,8 @@ Satu halaman bertab, dulu hanya SLA:
 
 Keterlihatan dihitung **saat ini** (bukan snapshot): melepas PIC dari site atau
 anggota dari team mengubah siapa yang melihat tiket lama.
+Untuk user biasa ini berarti reassign tiket langsung memindahkan tiket itu dari
+daftar teknisi lama ke teknisi baru.
 
 ## Lampiran
 
@@ -379,12 +387,12 @@ di dev, jadi perubahan ditulis sebagai migrasi baru (saat itu 0 tiket).
 | `external_ref` | — | **tidak lagi diisi**; dihapus dari form, daftar, detail & export 12 Okt 2026. Kolom dipertahankan untuk 12 tiket lama |
 | `problem_id` (dulu kategori) | — | **tidak lagi diisi dari form buat tiket** (12 Okt 2026). Tetap diterima bila dikirim (integrasi) dan menentukan target SLA; tanpa Problem, SLA jatuh ke kebijakan umum (`problem_id` NULL) |
 | `issue_id` | — | **Initial Problem**. Dihapus dari form buat tiket (12 Okt 2026); kolom & master tetap ada, nilainya masih ditampilkan di daftar/detail/export untuk tiket lama |
-| `device_id` | buat tiket | dropdown `trouble_ticket_devices` (opsional); teks bebas `device` hanya untuk tiket lama |
+| `device_id` | buat tiket | Kolom **Device** dicabut dari daftar & modal Info (16 Okt 2026); dropdown `trouble_ticket_devices` (opsional); teks bebas `device` hanya untuk tiket lama |
 | `rca_id`, `sub_rca_id` | buat tiket | dropdown bertingkat; Sub-RCA wajib milik RCA yang dipilih. Opsional, masih bisa diperbarui saat penutupan (`rca`/`sub_rca` teks) |
 | `severity` | — | **tidak lagi diisi dari form** (nullable). Label & warna dihitung dari aging: 0 hari Rendah (level 4), 1–2 Minor (3), 3–7 Major (2), ≥8 Kritis (1) — `TroubleTicket::SEVERITY_AGING`, `severityFromAging()` |
 | `flag_alarm` | — | dihapus dari form buat tiket (12 Okt 2026); masih ditampilkan di detail & export untuk tiket lama |
 | `reported_at` | buat tiket | label layar **Date Open**: default sekarang, boleh diubah, tidak boleh di masa depan. Jadi titik awal **aging**; SLA Response tetap dari `created_at` (keputusan 9 Okt 2026) |
-| `updated_at` | otomatis | label layar **Date Update** |
+| `updated_at` | otomatis | hanya internal/export; kolom **Date Update** dan **Dibuat** (`created_at`) dicabut dari daftar 16 Okt 2026, urutan default daftar jadi Date Open terbaru |
 | `pic_id` | buat tiket / reassign | baris `master_pics` teknisi; `assigned_to` (user) tetap dipakai untuk hak akses. Di form buat tiket teknisi pertama site langsung terpilih (12 Okt 2026), masih bisa diganti |
 | `acknowledged_at`/`_by` (dulu `first_responded_*`) | teknisi membuka tiket | |
 | `visit_site`, `target_online` | modal Create Plan | `visit_site` wajib (≥ hari ini); target online opsional |

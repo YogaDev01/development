@@ -11,22 +11,21 @@
      | sini; kolom Action (terakhir) selalu tampil dan dibekukan di kanan.
      */
     $kolom = [
+        // Tujuh kolom pertama = tampilan bawaan, berurutan seperti di layar
+        // (keputusan 16 Okt 2026). Sisanya menyusul di belakang saat dinyalakan.
         'no'         => ['No. TT', true],
-        'customer'   => ['Customer', false],
         'site'       => ['Site', true],
-        'rca'        => ['RCA / Sub-RCA', true],
+        'teknisi'    => ['Teknisi', true],
         'aging'      => ['Aging', true],
         'severity'   => ['Severity', true],
-        'device'     => ['Device', false],
-        'teknisi'    => ['Teknisi', false],
+        'rca'        => ['RCA / Sub-RCA', true],
         'status'     => ['Status', true],
-        'plan'       => ['Plan', false],
+        'plan'       => ['Date Plan', true],
+        'reported'   => ['Date Open', false],
+        'customer'   => ['Customer', false],
         'response'   => ['Response', false],
         'travel'     => ['Travel', false],
         'resolution' => ['Resolution', false],
-        'reported'   => ['Date Open', false],
-        'created'    => ['Dibuat', false],
-        'updated'    => ['Date Update', true],
     ];
     $colIndex   = array_flip(array_keys($kolom));
     $colDefault = array_map(fn ($k) => $k[1], $kolom);
@@ -102,7 +101,7 @@
              angka per tahap, dan klik tahap memfilter tabel di bawahnya.
              Closed dibatasi bulan berjalan supaya angkanya tetap berarti. --}}
         <x-workflow-stepper :compact="true" table="tblTt" field="status" :steps="[
-            ['TT Open',       $stats['OPEN'],          'warning',   'OPEN'],
+            ['Open',          $stats['OPEN'],          'warning',   'OPEN'],
             ['Remote',        $stats['REMOTE'],        'info',      'REMOTE'],
             ['Plan',          $stats['PLAN'],          'warning',   'PLAN'],
             ['Trip',          $stats['TRIP'],          'info',      'TRIP'],
@@ -120,12 +119,36 @@
                 {{-- Toolbar. Kiri: cari · clear · Filter (filter kolom) · Kolom · lewat SLA.
                      Kanan: Export · Buat Tiket. (Pengaturan pindah ke Master Data > Operation Master > Custom Ruls.) --}}
                 {{-- Rentang tanggal dilaporkan: di luar kotak toolbar, rata kanan (default bulan berjalan). --}}
-                <div class="d-flex justify-content-end mb-2">
-                    <div class="tt-date-range" title="Tanggal dilaporkan">
-                        <input type="text" id="ttDateFrom" class="form-control form-control-sm" placeholder="Dari">
-                        <span class="text-muted">s/d</span>
-                        <input type="text" id="ttDateTo" class="form-control form-control-sm" placeholder="Sampai">
+                {{-- Filter tanggal: pola yang sama dengan Cost Request — dropdown
+                     rentang cepat, dan pilihan "Custom…" memunculkan kotak rentang
+                     (dua kalender berdampingan) beserta tombol Terapkan di
+                     sebelah kirinya. Bawaannya tanggal 1 s/d akhir bulan berjalan.
+                     Penyaringan di sini client-side (DataTables), jadi tidak ada
+                     muat ulang halaman. --}}
+                <div class="d-flex align-items-center flex-wrap justify-content-end mb-2" style="gap:8px;">
+                    <div id="ttCustomRange" class="d-none align-items-center flex-wrap" style="gap:6px;">
+                        <span class="text-muted" style="font-size:12px;">Periode</span>
+                        <div class="tt-date-range" title="Tanggal dilaporkan">
+                            <input type="text" id="ttDateRange" class="form-control form-control-sm tdr-input" readonly>
+                            <input type="hidden" id="ttDateFrom" value="{{ now()->startOfMonth()->toDateString() }}">
+                            <input type="hidden" id="ttDateTo" value="{{ now()->endOfMonth()->toDateString() }}">
+                        </div>
+                        <button type="button" id="btnTtApplyRange" class="btn btn-primary btn-sm">
+                            <i class="fas fa-check mr-1"></i> Terapkan
+                        </button>
                     </div>
+                    <select id="ttQuickRange" class="form-control form-control-sm" style="width:auto;">
+                        <option value="">Last Update Time</option>
+                        <option value="1d">1 hari terakhir</option>
+                        <option value="3d">3 hari terakhir</option>
+                        <option value="7d">7 hari terakhir</option>
+                        <option value="30d">30 hari terakhir</option>
+                        <option value="1y">1 tahun terakhir</option>
+                        <option value="custom">Custom…</option>
+                    </select>
+                    <button type="button" id="btnTtRefresh" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-sync-alt mr-1"></i> Refresh
+                    </button>
                 </div>
                 <div class="tt-toolbar mb-3">
                     <div class="tt-toolbar-left">
@@ -180,12 +203,17 @@
                                     $mTrav = $t->slaMetric('travel');
                                     $mReso = $t->slaMetric('resolution');
                                     $tglLapor = $t->reported_at ?? $t->created_at;
+                                    /* Visit terlewat: tanggal plan sudah lewat sementara tiket masih
+                                       menunggu kunjungan (Plan/Trip). Begitu teknisi On Site tiketnya
+                                       pindah tahap, jadi tandanya hilang sendiri. */
+                                    $visitLewat = $t->visit_site
+                                        && in_array($t->status, ['PLAN', 'TRIP'], true)
+                                        && $t->visit_site->copy()->startOfDay()->isBefore(today());
                                 @endphp
                                 <tr data-id="{{ $t->id }}" data-status="{{ $t->status }}"
                                     data-severity="{{ $t->severity_label }}"
                                     data-rca="{{ $t->rca_label ?: '-' }}"
                                     data-subrca="{{ $t->sub_rca_label ?: '-' }}"
-                                    data-device="{{ $t->device_label ?: '-' }}"
                                     data-customer="{{ $t->customer?->name ?? '-' }}"
                                     data-site="{{ $siteLabel ?: '-' }}"
                                     data-teknisi="{{ $t->technician?->name ?? '-' }}"
@@ -194,30 +222,28 @@
                                     <td class="col-fit" data-order="{{ $t->id }}">
                                         <a href="{{ route('trouble-ticket.show', $t) }}" class="tt-no-link" title="Buka tiket">{{ $t->ticket_number }}</a>
                                     </td>
-                                    <td class="col-fit">{{ $t->customer?->name ?? '-' }}</td>
                                     <td class="col-site">
                                         <span class="cell-trunc" style="max-width:60ch;" title="{{ $siteLabel }}">{{ Str::limit($siteLabel, 60, '...') ?: '-' }}</span>
+                                        @if($visitLewat)<i class="fas fa-exclamation-circle text-danger ml-1" title="Tanggal visit terlewat"></i>@endif
                                     </td>
+                                    <td class="col-fit">{{ $t->technician?->name ?? '-' }}</td>
+                                    <td class="col-fit" data-order="{{ $t->aging_days }}">{{ $t->aging_days }} hari</td>
+                                    <td class="col-fit" data-order="{{ 9 - $t->severity_level }}"><span class="tt-sev tt-sev-{{ $t->severity_level }}">{{ $t->severity_label }}</span></td>
                                     <td class="col-fit" data-order="{{ $t->rca_label }} {{ $t->sub_rca_label }}">
                                         <span class="tt-rca-main">{{ $t->rca_label ?: '-' }}</span>
                                         <span class="tt-rca-sub">{{ $t->sub_rca_label ?: '-' }}</span>
                                     </td>
-                                    <td class="col-fit" data-order="{{ $t->aging_days }}">{{ $t->aging_days }} hari</td>
-                                    <td class="col-fit" data-order="{{ 9 - $t->severity_level }}"><span class="tt-sev tt-sev-{{ $t->severity_level }}">{{ $t->severity_label }}</span></td>
-                                    <td class="col-fit">{{ $t->device_label ?: '-' }}</td>
-                                    <td class="col-fit">{{ $t->technician?->name ?? '-' }}</td>
                                     <td class="col-fit" data-order="{{ array_search($t->status, TroubleTicket::STATUSES, true) }}">
                                         <x-status :status="$t->status" context="trouble-ticket" />
                                         @if(isset($overdueIds[$t->id]))<i class="fas fa-exclamation-circle text-danger ml-1" title="Lewat SLA"></i>@endif
                                     </td>
                                     {{-- Plan = tanggal kunjungan saja; tiket tanpa plan (termasuk Non-Visit) kosong. --}}
-                                    <td class="col-fit" data-order="{{ $t->visit_site?->format('Y-m-d') ?? '' }}">{{ $t->visit_site?->format('d/m/y') ?? '-' }}</td>
+                                    <td class="col-fit {{ $visitLewat ? 'text-danger font-weight-bold' : '' }}" data-order="{{ $t->visit_site?->format('Y-m-d') ?? '' }}">{{ $t->visit_site?->format('d M Y') ?? '-' }}</td>
+                                    <td class="col-fit" data-order="{{ $tglLapor->timestamp }}">{{ $tglLapor->format('d M Y') }}</td>
+                                    <td class="col-fit">{{ $t->customer?->name ?? '-' }}</td>
                                     <td class="col-fit" data-order="{{ $slaSort($mResp) }}">@include('trouble-ticket._sla', ['m' => $mResp, 'compact' => true])</td>
                                     <td class="col-fit" data-order="{{ $slaSort($mTrav) }}">@include('trouble-ticket._sla', ['m' => $mTrav, 'compact' => true])</td>
                                     <td class="col-fit" data-order="{{ $slaSort($mReso) }}">@include('trouble-ticket._sla', ['m' => $mReso, 'compact' => true])</td>
-                                    <td class="col-fit" data-order="{{ $tglLapor->timestamp }}">{{ $tglLapor->format('d/m/y H:i') }}</td>
-                                    <td class="col-fit" data-order="{{ $t->created_at->timestamp }}">{{ $t->created_at->format('d/m/y H:i') }}</td>
-                                    <td class="col-fit" data-order="{{ $t->updated_at->timestamp }}">{{ $t->updated_at->format('d/m/y H:i') }}</td>
                                     <td class="text-center action-column tt-freeze">
                                         <div class="action-buttons ts-actions">
                                             <a href="{{ route('trouble-ticket.show', $t) }}" class="ts-action-primary is-neutral" title="Buka tiket" aria-label="Buka tiket">
@@ -302,7 +328,9 @@
 .tt-search input.form-control { padding-left:32px !important; }
 .tt-search > i { z-index:2; }
 .tt-date-range { display:flex; align-items:center; gap:6px; }
-.tt-date-range .form-control, .tt-date-range input.flatpickr-input + input { width:118px; }
+.tt-date-range .form-control { width:118px; }
+/* Kotak rentang bersama (.tdr-input) punya lebarnya sendiri. */
+.tt-date-range .form-control.tdr-input { width:210px; }
 @media (max-width: 767.98px) {
     .tt-toolbar-right { margin-left:0; }
     .tt-search { width:100%; }
@@ -410,7 +438,7 @@ $(function () {
     var table = $('#tblTt').DataTable({
         responsive: false, autoWidth: false, pageLength: 25, ordering: true,
         lengthMenu: [10, 25, 50, 100],
-        order: [[colIndex.updated, 'desc']],
+        order: [[colIndex.reported, 'desc']],
         columnDefs: [{ orderable: false, targets: -1 }],
         dom: 'rt<"row mt-3 align-items-center"<"col-md-6 col-12 mb-2 mb-md-0"i><"col-md-6 col-12 d-flex flex-wrap justify-content-between justify-content-md-end align-items-center gap-2"lp>>',
         language: {
@@ -469,7 +497,7 @@ $(function () {
     TesysColumnFilter.initRowFilters('#tblTt', '#ttRowFilters', [
         { key: 'status', label: 'Status' }, { key: 'severity', label: 'Severity' },
         { key: 'rca', label: 'RCA' }, { key: 'subrca', label: 'Sub-RCA' },
-        { key: 'device', label: 'Device' }, { key: 'customer', label: 'Customer' },
+        { key: 'customer', label: 'Customer' },
         { key: 'site', label: 'Site' }, { key: 'teknisi', label: 'Teknisi' }
     ]);
 
@@ -487,9 +515,61 @@ $(function () {
         if ($('#ttOnlyOverdue').is(':checked') && tr.getAttribute('data-overdue') !== '1') return false;
         return true;
     });
-    var fpOpt = { dateFormat: 'Y-m-d', altInput: true, altFormat: 'd/m/Y', locale: (window.flatpickr && flatpickr.l10ns && flatpickr.l10ns.id) || 'default' };
-    var fpDari = flatpickr('#ttDateFrom', $.extend({}, fpOpt, { defaultDate: awalBulan, onChange: function (s, str) { dari = str; table.draw(); } }));
-    var fpSampai = flatpickr('#ttDateTo', $.extend({}, fpOpt, { defaultDate: akhirBulan, onChange: function (s, str) { sampai = str; table.draw(); } }));
+    /* Komponen bersama TesysDateRange (public/js/tesys-date-range.js) — pola
+       yang sama dengan Cost Request. Tanpa flatpickr komponennya mengembalikan
+       null; filter turun ke dua input teks manual (YYYY-MM-DD). */
+    var ttPeriode = (typeof TesysDateRange === 'object')
+        ? TesysDateRange.init({
+            input: '#ttDateRange', from: '#ttDateFrom', to: '#ttDateTo',
+            onApply: function (a, b) { dari = a; sampai = b; table.draw(); },
+        })
+        : null;
+
+    if (!ttPeriode) {
+        $('#ttDateRange').remove();
+        $('#ttDateFrom, #ttDateTo').attr('type', 'text')
+            .addClass('form-control form-control-sm')
+            .attr('placeholder', 'YYYY-MM-DD')
+            .on('change', function () {
+                dari = $('#ttDateFrom').val(); sampai = $('#ttDateTo').val(); table.draw();
+            });
+    }
+
+    /* ---------- Rentang cepat ----------
+       Pilihan hari/tahun menghitung mundur dari hari ini; "Custom…" membuka
+       kotak rentang. Nilainya tetap ditulis ke input tersembunyi supaya satu
+       jalur dengan pilihan manual. */
+    function ttFmt(d) {
+        var p = function (n) { return (n < 10 ? '0' : '') + n; };
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+    }
+    function ttSetRentang(a, b) {
+        dari = a; sampai = b;
+        if (ttPeriode) { ttPeriode.setRange(a, b); }
+        else { $('#ttDateFrom').val(a); $('#ttDateTo').val(b); }
+        table.draw();
+    }
+    var TT_HARI = { '1d': 1, '3d': 3, '7d': 7, '30d': 30, '1y': 365 };
+
+    $('#ttQuickRange').on('change', function () {
+        var pilih = $(this).val();
+        $('#ttCustomRange').toggleClass('d-none', pilih !== 'custom').toggleClass('d-flex', pilih === 'custom');
+
+        if (pilih === 'custom') { if (ttPeriode) { ttPeriode.open(); } return; }
+        if (!pilih) { ttSetRentang(awalBulan, akhirBulan); return; }
+
+        var kini = new Date();
+        var mulai = new Date(kini.getFullYear(), kini.getMonth(), kini.getDate() - TT_HARI[pilih]);
+        ttSetRentang(ttFmt(mulai), ttFmt(kini));
+    });
+
+    $('#btnTtApplyRange').on('click', function () {
+        dari = $('#ttDateFrom').val(); sampai = $('#ttDateTo').val();
+        table.draw();
+        if (ttPeriode) { ttPeriode.close(); }
+    });
+
+    $('#btnTtRefresh').on('click', function () { window.location.reload(); });
     $('#ttOnlyOverdue').on('change', function () { table.draw(); });
     table.draw();
 
@@ -497,7 +577,10 @@ $(function () {
     $('#btnTtClear').on('click', function () {
         TesysColumnFilter.clearAll('#tblTt');
         dari = awalBulan; sampai = akhirBulan;
-        fpDari.setDate(awalBulan, false); fpSampai.setDate(akhirBulan, false);
+        if (ttPeriode) { ttPeriode.setRange(awalBulan, akhirBulan); }
+        else { $('#ttDateFrom').val(awalBulan); $('#ttDateTo').val(akhirBulan); }
+        $('#ttQuickRange').val('');
+        $('#ttCustomRange').addClass('d-none').removeClass('d-flex');
         $('#ttOnlyOverdue').prop('checked', false);
         $('#ttSearch').val('');
         table.search('').draw();

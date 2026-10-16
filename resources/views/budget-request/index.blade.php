@@ -74,7 +74,7 @@
                 </li>
             </ul>
             <div class="d-flex align-items-center flex-wrap pb-1" style="gap:8px;">
-                {{-- Filter tanggal: dropdown "Last Update" (12 jam s/d 1 tahun).
+                {{-- Filter tanggal: dropdown "Last Update Time" (12 jam s/d 1 tahun).
                      Pilihan "Custom…" memunculkan dua date-picker di sebelah KIRI
                      dropdown; pilihan lain menyembunyikannya kembali. Tanpa filter,
                      rentangnya tetap bawaan: tanggal 1 s/d akhir bulan berjalan.
@@ -96,7 +96,7 @@
                     </button>
                 </div>
                 <select id="crQuickRange" class="form-control form-control-sm" style="width:auto;">
-                    <option value="">Last Update</option>
+                    <option value="">Last Update Time</option>
                     <option value="12h">12 jam terakhir</option>
                     <option value="1d">1 hari terakhir</option>
                     <option value="3d">3 hari terakhir</option>
