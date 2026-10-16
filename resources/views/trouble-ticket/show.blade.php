@@ -277,13 +277,13 @@
                                 <div class="tt-slab">
                                     <div class="tt-slab-head">
                                         <strong>{{ $label }} time</strong>
-                                        @if($key === 'travel' && $nonVisit)
+                                        @if(in_array($key, ['travel', 'resolution'], true) && $nonVisit)
                                             <span class="text-muted">Tidak berlaku (Non-Visit)</span>
                                         @else
                                             @include('trouble-ticket._sla', ['m' => $m])
                                         @endif
                                     </div>
-                                    @unless($key === 'travel' && $nonVisit)
+                                    @unless(in_array($key, ['travel', 'resolution'], true) && $nonVisit)
                                         <div class="tt-slab-meta">
                                             <span>{{ $mulai ? $mulai->format('d/m H:i') : '—' }} → {{ $selesai ? $selesai->format('d/m H:i') : ($m['state'] === 'running' ? 'berjalan' : '—') }}</span>
                                         </div>

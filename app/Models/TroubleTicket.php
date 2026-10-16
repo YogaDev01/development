@@ -333,7 +333,10 @@ class TroubleTicket extends Model
                   ->whereNotNull('sla_response_minutes')
                   ->whereRaw('TIMESTAMPDIFF(MINUTE, trouble_tickets.created_at, NOW()) >= sla_response_minutes');
             })->orWhere(function ($q) {
+                // Remote (Non-Visit) tidak diukur Resolution-nya, jadi tidak
+                // pernah dihitung "Lewat SLA" karena ukuran itu.
                 $q->whereNotNull('progress_started_at')
+                  ->where(fn ($r) => $r->whereNull('visit_decision')->orWhere('visit_decision', '!=', self::NON_VISIT))
                   ->whereNotNull('sla_resolution_minutes')
                   ->whereRaw('TIMESTAMPDIFF(MINUTE, progress_started_at, NOW()) >= sla_resolution_minutes');
             })->orWhere(function ($q) {
@@ -418,7 +421,10 @@ class TroubleTicket extends Model
             'travel'     => [$this->travel_started_at, $this->travel_arrived_at, $this->travel_seconds, $this->sla_travel_minutes],
         };
 
-        if ($start === null) {
+        // Jalur Remote (Non-Visit) tidak diukur Resolution-nya: penanganan
+        // jarak jauh tidak melewati tahap pengerjaan di site, jadi durasinya
+        // tidak sebanding dengan tiket visit (keputusan 16 Okt 2026).
+        if ($start === null || ($metric === 'resolution' && $this->visit_decision === self::NON_VISIT)) {
             return ['state' => 'na', 'seconds' => null, 'since' => null, 'target' => $target, 'level' => 'none'];
         }
 

@@ -894,7 +894,11 @@ class TroubleTicketWorkflow
                     : null,
             ]);
 
-            $this->event($t, $user, 'closed', $notes);
+            // Jalur penanganan ikut dicatat supaya label log bisa menulis
+            // "Closed - Remote" untuk tiket yang ditutup tanpa kunjungan.
+            $this->event($t, $user, 'closed', $notes, [
+                'visit_decision' => $t->visit_decision,
+            ]);
         });
 
         $ticket->refresh();

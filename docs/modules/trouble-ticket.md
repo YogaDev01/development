@@ -50,6 +50,10 @@ trouble_tickets ──< trouble_ticket_messages     (MESSAGE | EVENT, immutable,
   `UserController::destroy` dan Site (dependents) menolak hapus dengan pesan.
 - Durasi disimpan detik (`response_seconds`, `travel_seconds`, `resolution_seconds`)
   saat difinalkan. Timestamp selalu dari jam server; zona tampilan `Asia/Jakarta`.
+  Tiket jalur **Remote (Non-Visit)** tidak diukur Travel maupun **Resolution**
+  (16 Okt 2026): `slaMetric('resolution')` mengembalikan `na`, layar menulis
+  "Tidak berlaku (Non-Visit)", dan `scopeOverdue()` tidak lagi menghitungnya
+  Lewat SLA. Kolom `resolution_seconds` tetap diisi saat close untuk riwayat.
 - Tanpa kolom `deleted_at` (tidak ada fitur hapus pada MVP).
 - Menu `trouble-ticket` didaftarkan migrasi `200003` **tanpa** diberikan ke role.
 

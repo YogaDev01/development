@@ -87,8 +87,24 @@ class TroubleTicketMessage extends Model
         return $this->type === self::TYPE_EVENT;
     }
 
+    /**
+     * Label kejadian. Penutupan lewat jalur Remote ditulis "Closed - Remote":
+     * jalurnya dibaca dari metadata kejadian, dan untuk log lama (sebelum 16
+     * Okt 2026) dari tiketnya bila relasinya sudah dimuat.
+     */
     public function getEventLabelAttribute(): string
     {
-        return self::EVENTS[$this->event] ?? (string) $this->event;
+        $label = self::EVENTS[$this->event] ?? (string) $this->event;
+
+        if ($this->event === 'closed') {
+            $jalur = $this->metadata['visit_decision']
+                ?? ($this->relationLoaded('ticket') ? $this->ticket?->visit_decision : null);
+
+            if ($jalur === TroubleTicket::NON_VISIT) {
+                $label .= ' - Remote';
+            }
+        }
+
+        return $label;
     }
 }
