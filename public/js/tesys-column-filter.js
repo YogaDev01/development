@@ -283,6 +283,7 @@
      | mencentangnya pasti menghasilkan tabel kosong.
      */
     var rowScope = {}; // { tableId: function (tr) -> bool }
+    var rowHooked = {}; // { tableId: true } — handler global sudah terpasang
 
     function rowInScope(tr, tableId) {
         var fn = rowScope[tableId];
@@ -586,6 +587,21 @@
         rowFieldLabels[tableId] = rowFieldLabels[tableId] || {};
         rowFieldButtons[tableId] = rowFieldButtons[tableId] || {};
 
+        /*
+        | Inisialisasi ulang pada kontainer yang SAMA (mis. Cost Request yang
+        | memuat ulang tabelnya setelah periode diganti) dulu menambah satu set
+        | tombol baru di samping yang lama, sehingga panel Filter menampilkan
+        | tiap field dua kali. Tombol lama milik kontainer ini dibuang dulu,
+        | berikut filter tersimpan untuk field-nya — tabelnya sudah dibangun
+        | ulang, jadi pilihan lama tidak lagi berlaku.
+        */
+        $container.find('.tcf-row-btn').remove();
+        fields.forEach(function (f) {
+            if (rowFilterState[tableId]) delete rowFilterState[tableId][f.key];
+            delete rowFieldButtons[tableId][f.key];
+        });
+        renderChips(tableId, tableEl, null);
+
         fields.forEach(function (f) {
             rowFieldLabels[tableId][f.key] = { label: f.label, valueLabels: f.valueLabels };
 
@@ -606,33 +622,38 @@
         // Lebih dari satu field: deretan tombolnya dilipat ke satu popover "Filter".
         if (fields.length > 1) bungkusFilterKePopover($container, tableSelector);
 
-        $(document).on('click', '.tcf-chip-clear', function () {
-            var $chip = $(this).closest('.tcf-chip');
-            if ($chip.data('type') !== 'row') return;
-            var field = $chip.data('field');
-            if (rowFilterState[tableId]) delete rowFilterState[tableId][field];
-            var $btn = rowFieldButtons[tableId] && rowFieldButtons[tableId][field];
-            if ($btn) $btn.removeClass('tcf-row-active');
-            table.draw();
-            renderChips(tableId, tableEl, null);
-        });
+        // Handler global hanya dipasang sekali per tabel: tanpa penjaga ini,
+        // tiap inisialisasi ulang menambah satu salinan lagi.
+        if (!rowHooked[tableId]) {
+            rowHooked[tableId] = true;
+            $(document).on('click', '.tcf-chip-clear', function () {
+                var $chip = $(this).closest('.tcf-chip');
+                if ($chip.data('type') !== 'row') return;
+                var field = $chip.data('field');
+                if (rowFilterState[tableId]) delete rowFilterState[tableId][field];
+                var $btn = rowFieldButtons[tableId] && rowFieldButtons[tableId][field];
+                if ($btn) $btn.removeClass('tcf-row-active');
+                table.draw();
+                renderChips(tableId, tableEl, null);
+            });
 
-        $.fn.dataTable.ext.search.push(function (settings, searchData, index, rowData, counter) {
-            if (settings.nTable.id !== tableId) return true;
-            var tableState = rowFilterState[tableId];
-            if (!tableState) return true;
+            $.fn.dataTable.ext.search.push(function (settings, searchData, index, rowData, counter) {
+                if (settings.nTable.id !== tableId) return true;
+                var tableState = rowFilterState[tableId];
+                if (!tableState) return true;
 
-            var row = settings.aoData[index].nTr;
-            if (!row) return true;
+                var row = settings.aoData[index].nTr;
+                if (!row) return true;
 
-            for (var field in tableState) {
-                if (!tableState.hasOwnProperty(field)) continue;
-                var selected = tableState[field];
-                var raw = (row.getAttribute('data-' + field) || '').toString();
-                if (!selected.has(raw)) return false;
-            }
-            return true;
-        });
+                for (var field in tableState) {
+                    if (!tableState.hasOwnProperty(field)) continue;
+                    var selected = tableState[field];
+                    var raw = (row.getAttribute('data-' + field) || '').toString();
+                    if (!selected.has(raw)) return false;
+                }
+                return true;
+            });
+        }
     };
 
     // Reset semua filter (header kolom + row-attribute) untuk 1 tabel, tanpa reload halaman.
