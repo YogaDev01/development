@@ -1089,7 +1089,7 @@ $(function () {
 
         // Pencarian (debounce — hindari full-scan tabel pada tiap ketukan)
         $('#' + cfg.id + '_filter').hide();
-        $pane.find('.cr-search-box').html('<input type="search" class="form-control form-control-sm cr-search-input" placeholder="Cari data...">');
+        $pane.find('.cr-search-box').html('<input type="search" class="form-control form-control-sm cr-search-input" aria-label="Cari data" placeholder="Cari data...">');
         var searchTimer = null;
         $pane.find('.cr-search-input').on('keyup search', function () {
             var val = this.value;
