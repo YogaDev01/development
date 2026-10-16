@@ -410,16 +410,38 @@ class BudgetRequest extends Model
         |     cair sesuai pengajuan lalu langsung Closed, tidak ada sisa yang
         |     dikembalikan. Tanpa isCashAdvance() CR non-CA yang Closed terbaca
         |     refund = SELURUH nominalnya (total_realization-nya memang 0).
-        |   - Cash Advance yang settlement-nya masih 0 (belum diisi): belum ada
-        |     dasar refund, jadi 0 sampai realisasi masuk.
+        |   - Cash Advance yang BELUM pernah diajukan settlement-nya (realize
+        |     form belum pernah disubmit): belum ada dasar refund, jadi 0.
+        |     INI BUKAN hal yang sama dengan "settlement diisi 0" — Settle
+        |     boleh 0 (dana sama sekali tidak dipakai / dikembalikan utuh),
+        |     dan dalam kasus itu refund justru harus senilai penuh amount.
+        |     Pembedanya pakai hasSettlementSubmitted() (baris realisasi ada
+        |     atau tidak), bukan total_realization <= 0 — sum 0 tidak bisa
+        |     dibedakan dari "belum ada baris" sama sekali.
         | Sebelumnya dijaga !isSettled() sehingga refund baru muncul SETELAH
         | settlement disetujui — tidak simetris dengan expenseClaimAmount().
         */
-        if (!$this->isCashAdvance() || $this->total_realization <= 0) {
+        if (!$this->isCashAdvance() || !$this->hasSettlementSubmitted()) {
             return 0;
         }
 
         return max(0, (int) $this->amount - $this->total_realization);
+    }
+
+    /**
+     * Settlement sudah pernah diajukan (minimal sekali submit realize form),
+     * terlepas dari totalnya. Dipakai refundAmount() untuk membedakan
+     * "belum pernah settle" (realizations masih kosong) dari "sudah settle
+     * dengan Settle = 0" (total_realization kebetulan 0 juga, tapi baris
+     * realisasi tetap tercatat — lihat syncRealizations()).
+     */
+    public function hasSettlementSubmitted(): bool
+    {
+        if ($this->relationLoaded('realizations')) {
+            return $this->realizations->isNotEmpty();
+        }
+
+        return $this->realizations()->exists();
     }
 
     /**
@@ -488,21 +510,46 @@ class BudgetRequest extends Model
     /**
      * Nilai biaya yang benar-benar terpakai, mengikuti aturan settlement yang
      * sama dengan refundAmount():
-     *   - Cash Advance + settlement sudah diisi (total_realization > 0) ->
-     *     nilai settlement (biaya aktual), bukan menunggu settlement disetujui;
-     *   - selainnya (tipe lain, atau CA yang settlement-nya masih 0) -> nilai
-     *     pengajuan penuh.
+     *   - Cash Advance + settlement sudah pernah diajukan -> nilai settlement
+     *     (biaya aktual, termasuk 0 kalau dana sepenuhnya dikembalikan/tidak
+     *     dipakai), bukan menunggu settlement disetujui;
+     *   - selainnya (tipe lain, atau CA yang settlement-nya belum pernah
+     *     diajukan sama sekali) -> nilai pengajuan penuh.
      * Dipakai kolom "realisasi/used" per CR di modal Budget Plan & Variable
      * Cost PO (Project::variableCostTotal()).
      */
     public function realizedCostValue(): int
     {
         // Deteksi CA memakai isCashAdvance() (nama tipe), sama dengan
-        // refundAmount() — relasi `type` perlu di-eager-load oleh pemanggil
-        // yang mengagregasi banyak baris (lihat Project::preloadFinancials()).
-        return $this->isCashAdvance() && $this->total_realization > 0
+        // refundAmount() — relasi `type` (dan `realizations` untuk
+        // hasSettlementSubmitted()) perlu di-eager-load oleh pemanggil yang
+        // mengagregasi banyak baris (lihat Project::preloadFinancials()).
+        return $this->isCashAdvance() && $this->hasSettlementSubmitted()
             ? (int) $this->total_realization
             : (int) $this->amount;
+    }
+
+    /**
+     * Padanan SQL realizedCostValue() untuk agregasi (SUM) tanpa memuat CR ke
+     * PHP — dipakai "Used" Budget Plan dan pengecekan NOB. Aturannya sama:
+     * Cash Advance yang settlement-nya sudah diajukan (baris realisasi ada)
+     * -> total settlement, termasuk bila 0 (dana dikembalikan utuh);
+     * selainnya -> nilai pengajuan. Ekspresi mengacu ke kolom tabel
+     * `budget_request` (tanpa alias).
+     */
+    public static function effectiveCostSql(): string
+    {
+        $caIds = self::cashAdvanceTypeIds();
+        if (empty($caIds)) {
+            return 'budget_request.amount';
+        }
+
+        $ids = implode(',', array_map('intval', $caIds));
+
+        return "CASE WHEN budget_request.type_id IN ($ids)"
+            . ' AND EXISTS (SELECT 1 FROM budget_request_realizations brr WHERE brr.budget_request_id = budget_request.id)'
+            . ' THEN (SELECT COALESCE(SUM(brr2.total), 0) FROM budget_request_realizations brr2 WHERE brr2.budget_request_id = budget_request.id)'
+            . ' ELSE budget_request.amount END';
     }
 
     /** Selisih = Settlement (total realisasi) - Original Approved Amount. Dasar

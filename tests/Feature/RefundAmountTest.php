@@ -85,6 +85,25 @@ class RefundAmountTest extends TestCase
         $this->assertSame(0, BudgetRequest::findOrFail($cr->id)->refundAmount());
     }
 
+    /**
+     * Settlement sudah diajukan TAPI nilainya 0 (dana sepenuhnya dikembalikan /
+     * tidak dipakai) → refund harus senilai PENUH amount, bukan 0. Beda dengan
+     * kasus di atas (belum ada baris realisasi sama sekali).
+     */
+    public function test_refund_penuh_saat_settlement_diisi_nol(): void
+    {
+        $cr = $this->makeCostRequest([
+            'type_id' => $this->makeRequestType('Cash Advance')->id,
+            'amount'  => 3_500_000,
+            'status'  => 'REALIZED',
+        ]);
+        $this->addSettlement($cr, 0);
+
+        $cr = BudgetRequest::findOrFail($cr->id);
+        $this->assertTrue($cr->hasSettlementSubmitted());
+        $this->assertSame(3_500_000, $cr->refundAmount());
+    }
+
     /** Tipe selain Cash Advance → refund selalu 0 (tidak punya tahap settlement). */
     public function test_refund_nol_untuk_non_cash_advance(): void
     {
@@ -127,6 +146,19 @@ class RefundAmountTest extends TestCase
         $this->addSettlement($cr, 1_250_000);
 
         $this->assertSame(1_250_000, BudgetRequest::findOrFail($cr->id)->realizedCostValue());
+    }
+
+    /** CA dengan settlement diisi 0 (dana tidak dipakai) → biaya aktual = 0, bukan nilai pengajuan. */
+    public function test_realized_cost_nol_saat_settlement_diisi_nol(): void
+    {
+        $cr = $this->makeCostRequest([
+            'type_id' => $this->makeRequestType('Cash Advance')->id,
+            'amount'  => 3_500_000,
+            'status'  => 'REALIZED',
+        ]);
+        $this->addSettlement($cr, 0);
+
+        $this->assertSame(0, BudgetRequest::findOrFail($cr->id)->realizedCostValue());
     }
 
     /** CA tanpa settlement → pakai nilai pengajuan. */
