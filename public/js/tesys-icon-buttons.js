@@ -40,12 +40,43 @@
 
         if (teks === '' && punyaIkon) {
             tombol.classList.add('ts-icon-only');
+            /* Pembaca layar butuh nama; pakai title bila ada. Tidak menimpa
+               aria-label yang sudah ditulis halaman. */
+            var judul = tombol.getAttribute('title');
+            if (judul && !tombol.hasAttribute('aria-label') && !tombol.hasAttribute('aria-labelledby')) {
+                tombol.setAttribute('aria-label', judul);
+            }
+        }
+    }
+
+    /* Kontrol ikon-saja di luar sel tabel (topbar, toolbar, modal, drawer).
+       Hanya menambah aria-label; ukurannya tidak disentuh. Bootstrap tooltip
+       memindahkan title ke data-original-title, jadi keduanya dibaca. */
+    var PEMILIH_LUAR = '.navbar a, .navbar button, .toolbar a, .toolbar button, ' +
+        '.modal-header .close, .modal-footer .btn, .modal-body .btn, .card-header .btn, ' +
+        '.card-tools .btn, .dataTables_wrapper .btn, [data-toggle="tooltip"]';
+
+    function labelLuar(el) {
+        if (el.hasAttribute('data-ts-al')) return;
+        if (el.hasAttribute('aria-label') || el.hasAttribute('aria-labelledby')) return;
+        if ((el.textContent || '').replace(/ /g, ' ').trim() !== '') return;
+        if (!el.querySelector('i, svg') && !el.classList.contains('close')) return;
+        var nama = el.getAttribute('title') || el.getAttribute('data-original-title');
+        if (!nama && el.classList.contains('close')) nama = 'Tutup';
+        /* Ditandai hanya setelah label terpasang; elemen yang title-nya
+           baru muncul belakangan tetap bisa dilabeli pada sapuan berikutnya. */
+        if (nama) {
+            el.setAttribute('aria-label', nama);
+            el.setAttribute('data-ts-al', '');
         }
     }
 
     function sapu(akar) {
-        var simpul = (akar || document).querySelectorAll(PEMILIH);
+        var induk = akar || document;
+        var simpul = induk.querySelectorAll(PEMILIH);
         for (var i = 0; i < simpul.length; i++) periksa(simpul[i]);
+        var luar = induk.querySelectorAll(PEMILIH_LUAR);
+        for (var k = 0; k < luar.length; k++) labelLuar(luar[k]);
     }
 
     sapu(document);

@@ -417,8 +417,22 @@ body.tesys-ui .inv-account {
    terlihat bergerigi dan selisih besaran jadi sulit ditangkap sekilas.
    tabular-nums membuat setiap digit selebar sama.
    ===================================================================== */
+/* Cakupan: sel rata kanan lewat .text-right/.text-end/.num/.ts-num atau
+   style inline "text-align:right" / "text-align: right" (termasuk yang
+   diikuti !important — selektor atribut mencocokkan potongan string, tanpa
+   memedulikan huruf besar/kecil). BATAS: spasi ganda di dalam style inline
+   dan kolom uang yang rata kanan lewat kelas halaman sendiri tidak
+   tertangkap; yang itu perlu .ts-num di markup. */
 body.tesys-ui table td.text-right,
 body.tesys-ui table th.text-right,
+body.tesys-ui table td.text-end,
+body.tesys-ui table th.text-end,
+body.tesys-ui table td.num,
+body.tesys-ui table td.ts-num,
+body.tesys-ui table td[style*="text-align:right" i],
+body.tesys-ui table td[style*="text-align: right" i],
+body.tesys-ui table th[style*="text-align:right" i],
+body.tesys-ui table th[style*="text-align: right" i],
 body.tesys-ui .inv-money-num,
 body.tesys-ui .inv-sum-row strong,
 body.tesys-ui .ts-stat-value {

@@ -74,6 +74,42 @@ Global web middleware: `SecurityHeaders`, `EnsureUserActive` (`bootstrap/app.php
 - Tables: DataTables with per-column filters; lists capped at 1,000 rows;
   CR index uses lazy-loaded tabs.
 - Detail views: modals/drawers fed by `*/detail-json` endpoints.
+- Accessibility: fokus keyboard tab & dropdown-item diatur di
+  `tesys-ui-motion.css`; menu sidebar (`.sidebar .nav-item`, `.nav-group-toggle`)
+  memakai cincin warna `--chrome-text` (latar gelap); `.custom-select` dan
+  centang kustom memakai `box-shadow` `--accent-ring`. Fokus `.page-link`
+  DataTables dimiliki `tesys-ui-base.css` (box-shadow `--accent-ring`, tanpa
+  outline). Menu aktif diberi `aria-current="page"` (`nav.blade.php`).
+  Kontrol ikon-saja (sel tabel, topbar, toolbar, modal) mendapat `aria-label`
+  dari `title`/`data-original-title` lewat `tesys-icon-buttons.js`; `<label>`
+  tanpa `for` dihubungkan ke satu-satunya kontrol di `.form-group` oleh
+  `tesys-ui.js` (juga label hasil `.clone()` yang `for`-nya menunjuk kontrol
+  di luar `.form-group` yang sama; `id` hanya diganti bila terduplikasi).
+  Angka rata kanan memakai `tabular-nums` (`tesys-ui-pages.css`): sel/th
+  `.text-right`, `.text-end`, `.num`, `.ts-num` (td saja), dan style inline
+  `text-align:right` / `text-align: right`. Batas: spasi ganda di style inline
+  dan kolom uang yang rata kanan lewat kelas halaman sendiri tidak tertangkap
+  (pasang `.ts-num`).
+  Modal panjang menggulir di badannya pada layar pendek/sempit
+  (`tesys-ui-compat.css`); rantai flex hanya mencakup satu pembungkus
+  (`<form>` atau `<div>`) langsung di bawah `.modal-content`, pembungkus yang
+  lebih dalam belum diaudit per modal.
+- Tom Select (`tesys-ui-compat.css`): border/ring ada di `.ts-control`, bukan
+  wrapper (`.ts-wrapper.form-control` dikosongkan); `.is-invalid` diberi
+  `border-color: var(--danger)` pada `.ts-control`. Tom Select hanya dipakai di
+  toolbar accessgroup dan form customer (tidak di dalam modal), sehingga
+  `dropdownParent` tidak diperlukan; bila nanti dipakai di modal, set
+  `dropdownParent: 'body'`.
+- Dropdown di tabel/kontainer ber-overflow memakai `data-display="static"` atau
+  `data-boundary="viewport"` agar menu tidak terpotong. Inventaris 14
+  `data-toggle="dropdown"` di `resources/views`: semua sudah memakai salah
+  satunya (terakhir ditambah di `project-monitoring/show`). Dropdown baru wajib
+  mengikuti.
+- Pekerjaan lanjutan: aturan `.tsys-link` di `tesys-ui-base.css` dan
+  `tesys-ui-chrome.css` tidak dipakai di view, belum dibersihkan.
+  `.ts-kpi-label` (10.5px, `--text-dim`) belum diverifikasi di mode gelap.
+- `tesys-ui-chrome.css`: tidak direferensikan di layout; belum dikonfirmasi
+  pengguna apakah dipakai — tidak diubah/dihapus.
 - Empty/loading: `x-empty`, `x-skeleton`. Status: `x-status`.
 - Reference pattern for index pages: Budget Plan (modal sizing, sidebar, tabs,
   NOB colors, sort, filters).

@@ -262,4 +262,44 @@
             form.submit();
         }
     });
+
+    /* ---------------- Label ↔ kontrol (aksesibilitas) ----------------
+       Ratusan <label> di view tidak punya for=. Di sini dihubungkan ke
+       kontrol bila .form-group label itu hanya memuat SATU kontrol; yang
+       ambigu (termasuk label tanpa .form-group) dibiarkan. Input internal
+       Tom Select/Flatpickr (.ts-wrapper, .flatpickr-calendar) tidak dihitung,
+       jadi hasilnya tidak bergantung pada urutan inisialisasi widget.
+       id hanya ditambahkan bila kontrol belum punya, atau bila id-nya
+       terduplikasi (baris hasil .clone()); name/value/payload tidak disentuh. */
+    var nomorLabel = 0;
+    function hubungkanLabel(akar) {
+        var daftar = (akar || document).querySelectorAll('label');
+        for (var i = 0; i < daftar.length; i++) {
+            var lb = daftar[i];
+            if (lb.querySelector('input, select, textarea') || lb.closest('.custom-control')) continue;
+            var wadah = lb.closest('.form-group');
+            if (!wadah) continue;
+            /* for= yang sudah ada dibiarkan, kecuali menunjuk kontrol di luar
+               .form-group ini (label hasil .clone() masih menunjuk id aslinya). */
+            if (lb.hasAttribute('for')) {
+                var tujuan = document.getElementById(lb.getAttribute('for'));
+                if (!tujuan || wadah.contains(tujuan)) continue;
+            }
+            var semua = wadah.querySelectorAll('input:not([type=hidden]):not([type=checkbox]):not([type=radio]), select, textarea');
+            var kontrol = [];
+            for (var k = 0; k < semua.length; k++) {
+                if (!semua[k].closest('.ts-wrapper, .flatpickr-calendar')) kontrol.push(semua[k]);
+            }
+            if (kontrol.length !== 1) continue;
+            var el = kontrol[0];
+            if (!el.id || document.getElementById(el.id) !== el) el.id = 'ts-fld-' + (++nomorLabel);
+            lb.setAttribute('for', el.id);
+        }
+    }
+    document.addEventListener('DOMContentLoaded', function () { hubungkanLabel(document); });
+    /* Modal/form yang diisi lewat JS: sapu saat modal dibuka. Bootstrap 4
+       hanya memicu event jQuery, jadi tidak ada listener native. */
+    if (window.jQuery) {
+        window.jQuery(document).on('shown.bs.modal', '.modal', function () { hubungkanLabel(this); });
+    }
 })();

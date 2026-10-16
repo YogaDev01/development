@@ -828,11 +828,11 @@ body.tesys-ui .btn.is-busy { color: transparent !important; }
 .ts-kpi-value,
 .ts-kpi-sub { display: block; }
 .ts-kpi-label {
-    font-size: 9.5px;
+    font-size: 10.5px;
     font-weight: var(--fw-section, 600);
-    letter-spacing: .07em;
+    letter-spacing: .06em;
     text-transform: uppercase;
-    color: var(--text-faint);
+    color: var(--text-dim);
     line-height: 1.25;
     /* Label panjang dipotong satu baris: membiarkannya membungkus membuat
        tinggi kartu dalam satu baris jadi tidak seragam. */

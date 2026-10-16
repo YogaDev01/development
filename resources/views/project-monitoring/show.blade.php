@@ -221,7 +221,7 @@
                                 <input type="file" name="attachments[]" id="inpAttachments" multiple style="display:none;">
 
                                 <div class="dropdown dropup">
-                                    <button aria-label="Menu" type="button" class="btn btn-outline-secondary btn-sm mb-0" id="btnMilestoneMenu" data-toggle="dropdown" title="Menu">
+                                    <button aria-label="Menu" type="button" class="btn btn-outline-secondary btn-sm mb-0" id="btnMilestoneMenu" data-toggle="dropdown" data-boundary="viewport" title="Menu">
                                         <i class="fas fa-ellipsis-v"></i>
                                     </button>
                                     <div class="dropdown-menu dropdown-menu-left" id="milestoneActionsMenu"></div>
