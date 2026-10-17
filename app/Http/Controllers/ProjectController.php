@@ -494,6 +494,7 @@ class ProjectController extends Controller
             'manager_id'     => 'nullable|exists:users,id',
             'po_quantity'    => 'nullable|integer|min:0',
             'contract'       => 'nullable',
+            'restitusi'      => 'nullable',
             'overhead'       => 'nullable',
             'fixed_cost'     => 'nullable',
             'term_of_payment' => 'nullable|string|max:255',
@@ -522,6 +523,7 @@ class ProjectController extends Controller
                 'manager_id'     => $request->manager_id,
                 'po_quantity'    => $request->filled('po_quantity') ? (int) $request->po_quantity : null,
                 'contract'       => $this->normalizeMoney($request->contract),
+                'restitusi'      => $this->normalizeMoney($request->restitusi),
                 'overhead'       => $this->normalizeMoney($request->overhead),
                 'fixed_cost'     => $this->normalizeMoney($request->fixed_cost),
                 'term_of_payment'     => $request->term_of_payment,
@@ -794,6 +796,8 @@ class ProjectController extends Controller
                     'payment_term'      => $inv->payment_term_label,
                     'invoice_date'      => $inv->invoice_date?->format('d M Y'),
                     'due_date'          => $inv->due_date?->format('d M Y'),
+                    'billed_amount'     => (int) $inv->billed_amount,
+                    'billed_amount_formatted' => $rp($inv->billed_amount),
                     'captured_total'    => (int) $inv->captured_total,
                     'captured_total_formatted' => $inv->captured_total_formatted,
                     'received'          => $received,
@@ -946,6 +950,7 @@ class ProjectController extends Controller
             'manager_id'             => 'nullable|exists:users,id',
             'po_quantity'            => 'nullable|integer|min:0',
             'contract'               => 'nullable',
+            'restitusi'              => 'nullable',
             'overhead'               => 'nullable',
             'fixed_cost'             => 'nullable',
             'term_of_payment'         => 'nullable|string|max:255',
@@ -976,6 +981,7 @@ class ProjectController extends Controller
                 'manager_id'     => $request->manager_id,
                 'po_quantity'    => $request->filled('po_quantity') ? (int) $request->po_quantity : null,
                 'contract'       => $this->normalizeMoney($request->contract),
+                'restitusi'      => $this->normalizeMoney($request->restitusi),
                 'overhead'       => $this->normalizeMoney($request->overhead),
                 'fixed_cost'     => $this->normalizeMoney($request->fixed_cost),
                 'term_of_payment'     => $request->term_of_payment,
@@ -1052,6 +1058,7 @@ class ProjectController extends Controller
             'manager_id'      => 'Manager',
             'po_quantity'     => 'PO Quantity',
             'contract'        => 'Contract',
+            'restitusi'       => 'Restitusi',
             'overhead'        => 'Overhead',
             'fixed_cost'      => 'Fixed Cost',
             'term_of_payment' => 'Term of Payment',
@@ -1081,7 +1088,7 @@ class ProjectController extends Controller
         foreach ($label as $kolom => $nama) {
             $changeMap[$kolom] = [
                 'label' => $nama,
-                'money' => in_array($kolom, ['contract', 'overhead', 'fixed_cost'], true),
+                'money' => in_array($kolom, ['contract', 'restitusi', 'overhead', 'fixed_cost'], true),
             ];
         }
         $changes = \App\Models\UserActivityLog::changeSet($sebelum, $project, $changeMap);
@@ -1534,6 +1541,26 @@ class ProjectController extends Controller
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * PO ditutup → Budget Plan ACTIVE/CLOSING miliknya ikut CLOSED. Dipanggil
+     * di dalam transaksi penutupan PO dari ketiga jalur close.
+     */
+    private function closeBudgetPlans(Project $project, string $notes): void
+    {
+        $project->budgetPlans()
+            ->whereIn('status', ['ACTIVE', 'CLOSING'])
+            ->get()
+            ->each(function ($bp) use ($notes) {
+                $dari = $bp->status;
+                $bp->update([
+                    'status'      => 'CLOSED',
+                    'approved_by' => Auth::id(),
+                    'approved_at' => now(),
+                ]);
+                $bp->addLog($dari, 'CLOSED', 'closed_with_po', $notes);
+            });
+    }
+
     public function close(Request $request, $id)
     {
         $request->validate([
@@ -1559,6 +1586,7 @@ class ProjectController extends Controller
 
             $this->storeAttachments($project, $request, 'closing');
             $project->addLog('ACTIVE', 'CLOSED', 'closed', $request->closing_notes);
+            $this->closeBudgetPlans($project, 'Otomatis: PO ' . $project->code . ' ditutup.');
         });
 
         return redirect('/project')->with('success', 'PO berhasil ditutup.');
@@ -1601,6 +1629,7 @@ class ProjectController extends Controller
             ]);
 
             $project->addLog('PAID', 'CLOSED', 'finance_closed', $request->notes);
+            $this->closeBudgetPlans($project, 'Otomatis: PO ' . $project->code . ' ditutup.');
         });
 
         return redirect('/project')->with('success', 'PO berhasil ditutup.');
@@ -1663,12 +1692,15 @@ class ProjectController extends Controller
             return back()->with('error', 'Status tidak valid.');
         }
 
-        $project->update([
-            'status'    => 'CLOSED',
-            'closed_by' => Auth::id(),
-            'closed_at' => now(),
-        ]);
-        $project->addLog('CLOSING', 'CLOSED', 'closing_approved', $request->notes);
+        DB::transaction(function () use ($request, $project) {
+            $project->update([
+                'status'    => 'CLOSED',
+                'closed_by' => Auth::id(),
+                'closed_at' => now(),
+            ]);
+            $project->addLog('CLOSING', 'CLOSED', 'closing_approved', $request->notes);
+            $this->closeBudgetPlans($project, 'Otomatis: PO ' . $project->code . ' ditutup.');
+        });
 
         if ($project->inputBy) {
             NotifyService::send(
