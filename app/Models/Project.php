@@ -38,6 +38,7 @@ class Project extends Model
         'value',
         'po_quantity',
         'contract',
+        'restitusi',
         'overhead',
         'fixed_cost',
         'term_of_payment',
@@ -64,6 +65,7 @@ class Project extends Model
         'value'            => 'integer',
         'po_quantity'      => 'integer',
         'contract'         => 'integer',
+        'restitusi'        => 'integer',
         'overhead'         => 'integer',
         'fixed_cost'       => 'integer',
         'submitted_at'     => 'datetime',
@@ -509,6 +511,11 @@ class Project extends Model
         return number_format($this->value ?? 0, 0, ',', '.');
     }
 
+    public function getRestitusiFormattedAttribute(): string
+    {
+        return number_format($this->restitusi ?? 0, 0, ',', '.');
+    }
+
     public function getContractFormattedAttribute(): string
     {
         return number_format($this->contract ?? 0, 0, ',', '.');
@@ -549,7 +556,7 @@ class Project extends Model
     public function budgetPlanTotal(): int
     {
         return (int) $this->budgetPlans
-            ->whereIn('status', ['ACTIVE', 'CLOSED'])
+            ->whereIn('status', ['ACTIVE', 'CLOSING', 'CLOSED'])
             ->sum('amount');
     }
 

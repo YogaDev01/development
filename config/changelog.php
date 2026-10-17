@@ -26,10 +26,42 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '3.0.3',
+    'current' => '3.0.4',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '3.0.4',
+            'date'    => '2026-10-17',
+            'title'   => 'Restitusi PO, Invoice tanpa PPN & Budget Otomatis Closed',
+            'summary' => 'Purchase Order mendapat kolom Restitusi, modal detail menampilkan nilai '
+                       . 'Invoice sebelum PPN, dan Budget Plan ikut CLOSED saat PO ditutup.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Purchase Order punya kolom Restitusi (input nominal di form Tambah/Edit PO, tampil di antara Contract dan PO Value pada daftar PO).',
+                        'Tab Invoice pada modal detail PO punya kolom Invoice berisi nilai sebelum PPN, beserta totalnya.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Saat PO CLOSED, Budget Plan berstatus ACTIVE atau CLOSING miliknya otomatis menjadi CLOSED.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Nilai Budget pada daftar PO kini ikut menghitung Budget Plan berstatus CLOSING, tidak hanya ACTIVE dan CLOSED.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '3.0.3',

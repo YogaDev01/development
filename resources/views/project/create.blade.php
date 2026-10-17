@@ -118,7 +118,7 @@
                             </div>
 
                             <!-- NILAI KONTRAK -->
-                            <div class="form-group mb-0">
+                            <div class="form-group">
                                 <label class="font-weight-600">Nilai Kontrak</label>
                                 <div class="input-group">
                                     <div class="input-group-prepend">
@@ -131,6 +131,21 @@
                                 </div>
                                 <small class="text-muted">Nilai kontrak yang ditandatangani (bisa berbeda dari Nilai PO).</small>
                                 @error('contract')<small class="text-danger d-block">{{ $message }}</small>@enderror
+                            </div>
+
+                            <!-- RESTITUSI -->
+                            <div class="form-group mb-0">
+                                <label class="font-weight-600">Restitusi</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text">Rp</span>
+                                    </div>
+                                    <input type="text" name="restitusi"
+                                           class="form-control text-right inp-money @error('restitusi') is-invalid @enderror"
+                                           value="{{ old('restitusi') }}"
+                                           placeholder="0" autocomplete="off">
+                                </div>
+                                @error('restitusi')<small class="text-danger d-block">{{ $message }}</small>@enderror
                             </div>
 
                         </div>

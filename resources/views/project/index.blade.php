@@ -99,6 +99,7 @@
                                         'uploaded'   => 'Uploaded',
                                         'margin'     => 'Margin',
                                         'contract'   => 'Contract',
+                                        'restitusi'  => 'Restitusi',
                                         'povalue'    => 'PO Value',
                                         'budget'     => 'Budget',
                                         'varcost'    => 'Variable Cost',
@@ -148,6 +149,7 @@
                                 <th scope="col" class="text-center col-wrap-header" style="width:110px;" title="Lingkaran isi = status Upload dokumen (No. PO). Cincin luar = status Progress milestone (Project Monitoring).">Uploaded</th>
                                 <th scope="col" class="text-center col-wrap-header" style="width:80px;">Margin</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Contract</th>
+                                <th scope="col" class="text-right text-nowrap" style="width:1%;">Restitusi</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">PO Value</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Budget</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Variable Cost</th>
@@ -312,7 +314,11 @@
                                     <button type="button" class="po-cell-link po-summary-link" data-id="{{ $project->id }}" title="Lihat Summary">{{ $poNilai($project->contract_formatted) }}</button>
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-value" data-raw="{{ $poRaw($project->value ?? 0) }}">
+                                <td class="text-right text-nowrap col-raw-restitusi" data-raw="{{ $poRaw($project->restitusi ?? 0) }}">
+                                    {{ $poNilai($project->restitusi_formatted) }}
+                                </td>
+
+                                <td class="text-right text-nowrap col-raw-value"data-raw="{{ $poRaw($project->value ?? 0) }}">
                                     <button type="button" class="po-cell-link po-value-link" data-id="{{ $project->id }}" title="Lihat No. PO">{{ $poNilai($project->value_formatted) }}</button>
                                     {{-- PO Quantity = ekspektasi manual; angka kiri = No. PO yang benar-benar
                                          sudah dientri. Ditandai kuning kalau tidak cocok (poAdjustmentRequired). --}}
@@ -594,7 +600,8 @@
                                 <th></th>
                                 <th></th>
                                 <th class="text-right text-nowrap" id="poFooterContract" style="font-size:12px;color:var(--info);"></th>
-                                <th class="text-right text-nowrap" id="poFooterValue" style="font-size:12px;color:var(--info);"></th>
+                                <th class="text-right text-nowrap" id="poFooterRestitusi" style="font-size:12px;color:var(--info);"></th>
+                                <th class="text-right text-nowrap" id="poFooterValue"style="font-size:12px;color:var(--info);"></th>
                                 <th class="text-right text-nowrap" id="poFooterBp" style="font-size:12px;color:var(--text-faint);"></th>
                                 <th class="text-right text-nowrap" id="poFooterCr" style="font-size:12px;color:var(--warning);"></th>
                                 <th class="text-right text-nowrap" id="poFooterInvoice" style="font-size:12px;color:var(--info);"></th>
@@ -970,6 +977,7 @@
                                                     <th scope="col">Payment Term</th>
                                                     <th scope="col">Tgl Invoice</th>
                                                     <th scope="col">Due Date</th>
+                                                    <th scope="col" class="text-right prj-money-col" title="Nilai invoice sebelum PPN">Invoice</th>
                                                     <th scope="col" class="text-right prj-money-col">Nilai</th>
                                                     <th scope="col" class="prj-money-col">Tgl Diterima</th>
                                                     <th scope="col">Status</th>
@@ -980,6 +988,7 @@
                                             <tfoot>
                                                 <tr style="background:var(--surface-2);">
                                                     <th colspan="5" class="text-right">Total</th>
+                                                    <th class="text-right prj-money-col" id="prjInvoiceFootBilled" style="color:var(--info);"></th>
                                                     <th class="text-right prj-money-col" id="prjInvoiceFootValue" style="color:var(--info);"></th>
                                                     <th colspan="3"></th>
                                                 </tr>

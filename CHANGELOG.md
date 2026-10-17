@@ -4,6 +4,21 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [3.0.4] - 2026-10-17 — Restitusi PO, Invoice tanpa PPN & Budget Otomatis Closed
+
+Purchase Order mendapat kolom Restitusi, modal detail menampilkan nilai
+Invoice sebelum PPN, dan Budget Plan ikut CLOSED saat PO ditutup.
+
+### Baru
+- Purchase Order punya kolom Restitusi (input nominal di form Tambah/Edit PO, tampil di antara Contract dan PO Value pada daftar PO).
+- Tab Invoice pada modal detail PO punya kolom Invoice berisi nilai sebelum PPN, beserta totalnya.
+
+### Berubah
+- Saat PO CLOSED, Budget Plan berstatus ACTIVE atau CLOSING miliknya otomatis menjadi CLOSED.
+
+### Perbaikan
+- Nilai Budget pada daftar PO kini ikut menghitung Budget Plan berstatus CLOSING, tidak hanya ACTIVE dan CLOSED.
+
 ## [3.0.3] - 2026-10-16 — Teknisi Backup per Site & Pemakaian Anggaran Mengikuti Settlement
 
 Kandidat Change Teknisi kini diambil dari daftar Teknisi Backup yang
