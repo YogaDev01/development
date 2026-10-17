@@ -4,6 +4,19 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [3.0.5] - 2026-10-17 — Status Partially Invoiced & Partially Paid pada Purchase Order
+
+Workflow Purchase Order mendapat dua status baru yang mengikuti progres
+penagihan dan pembayaran No. PO, dan kolom uang di daftar PO kini bisa
+diurutkan menurut angka.
+
+### Baru
+- Status PO Partially Invoiced (sebagian No. PO sudah ditagih) dan Partially Paid (sebagian No. PO sudah Paid), dihitung otomatis dari status No. PO, berlaku dari Active maupun Waiting Invoice, dan menjadi Paid saat seluruh No. PO Paid.
+- Kedua status tampil di stepper, filter, dan label status di daftar PO.
+
+### Perbaikan
+- Kolom uang di daftar PO (Contract sampai Net Profit) kini diurutkan menurut nilai angka, bukan menurut teks (9.000.000 tidak lagi mendahului 175.700.000).
+
 ## [3.0.4] - 2026-10-17 — Restitusi PO, Invoice tanpa PPN & Budget Otomatis Closed
 
 Purchase Order mendapat kolom Restitusi, modal detail menampilkan nilai

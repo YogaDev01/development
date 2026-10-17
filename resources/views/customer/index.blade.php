@@ -359,6 +359,8 @@ $(function () {
             'WAITING_PO':    { color: 'info',      label: 'Waiting PO' },
             'ACTIVE':        { color: 'success',   label: 'Active' },
             'PROGRESS_DONE': { color: 'primary',   label: 'Progress Done' },
+            'PARTIALLY_INVOICED': { color: 'warning', label: 'Partially Invoiced' },
+            'PARTIALLY_PAID':     { color: 'info',    label: 'Partially Paid' },
             'BILLED':        { color: 'info',      label: 'Billed' },
             'PAID':          { color: 'success',   label: 'Paid' },
             'CLOSING':       { color: 'warning',   label: 'Closing' },

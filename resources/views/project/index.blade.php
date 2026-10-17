@@ -26,6 +26,8 @@
                 ['Waiting PO',      $summary['waiting_po'],    'info',      'WAITING_PO'],
                 ['Active',          $summary['active'],        'success',   'ACTIVE'],
                 ['Waiting Invoice', $summary['progress_done'], 'warning',   'PROGRESS_DONE'],
+                ['Partially Invoiced', $summary['partially_invoiced'], 'warning', 'PARTIALLY_INVOICED'],
+                ['Partially Paid',  $summary['partially_paid'], 'info',     'PARTIALLY_PAID'],
                 ['Paid',            $summary['paid'],          'success',   'PAID'],
                 /*
                   Tahap "Closing" sengaja TIDAK ditampilkan di stepper ini —
@@ -247,7 +249,7 @@
                                 <td>
                                     <div style="font-size:13px;font-weight:600;">
                                         {{ $project->name }}
-                                        @if(in_array($project->status, ['WAITING_PO', 'ACTIVE']))
+                                        @if(in_array($project->status, array_merge(['WAITING_PO', 'ACTIVE'], \App\Models\Project::PARTIAL_STATUSES)))
                                             @if($project->status === 'WAITING_PO' && $project->monitoring_po_received_status === 'DONE')
                                                 <span class="badge badge-warning ml-1" style="font-size:9px;">Waiting Upload PO</span>
                                             @elseif($project->monitoring_bast_status === 'DONE')
@@ -318,7 +320,7 @@
                                     {{ $poNilai($project->restitusi_formatted) }}
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-value"data-raw="{{ $poRaw($project->value ?? 0) }}">
+                                <td class="text-right text-nowrap col-raw-value" data-raw="{{ $poRaw($project->value ?? 0) }}">
                                     <button type="button" class="po-cell-link po-value-link" data-id="{{ $project->id }}" title="Lihat No. PO">{{ $poNilai($project->value_formatted) }}</button>
                                     {{-- PO Quantity = ekspektasi manual; angka kiri = No. PO yang benar-benar
                                          sudah dientri. Ditandai kuning kalau tidak cocok (poAdjustmentRequired). --}}
