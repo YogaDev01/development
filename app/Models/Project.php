@@ -261,9 +261,23 @@ class Project extends Model
     }
 
     /**
-     * Status berjalan yang seharusnya, dihitung dari agregat status No. PO.
-     * Prioritas: PAID (semua Paid) > PARTIALLY_PAID (ada yang Paid) >
-     * PARTIALLY_INVOICED (sebagian ditagih) > PROGRESS_DONE (semua BAST) > ACTIVE.
+     * Sudah ada tagihan (invoice tidak Cancelled, nilai > 0) pada salah satu
+     * No. PO PO ini. Status No. PO baru INVOICED bila tertagih penuh, jadi
+     * penagihan sebagian (mis. 90% sesuai nilai BAST Partial) hanya terlihat dari sini.
+     */
+    private function hasInvoicedAmount(): bool
+    {
+        return Invoice::whereIn('project_po_number_id', $this->poNumbers()->select('id'))
+            ->where('status', '!=', 'CANCELLED')
+            ->where('billed_amount', '>', 0)
+            ->exists();
+    }
+
+    /**
+     * Status berjalan yang seharusnya, dihitung dari agregat status No. PO
+     * dan penagihan yang sudah ada. Prioritas: PAID (semua Paid) >
+     * PARTIALLY_PAID (ada yang Paid) > PARTIALLY_INVOICED (sudah ada tagihan
+     * tapi belum semua No. PO tertagih penuh) > PROGRESS_DONE (semua BAST) > ACTIVE.
      */
     public function operationalStatus(): string
     {
@@ -277,7 +291,7 @@ class Project extends Model
         if ($payment !== 'NOT_STARTED') {
             return 'PARTIALLY_PAID';
         }
-        if ($billing === 'PARTIAL') {
+        if ($billing === 'PARTIAL' || ($billing === 'NOT_STARTED' && $this->hasInvoicedAmount())) {
             return 'PARTIALLY_INVOICED';
         }
 

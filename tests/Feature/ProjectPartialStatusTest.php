@@ -81,6 +81,28 @@ class ProjectPartialStatusTest extends TestCase
         $this->assertSame('CLOSING', $po->fresh()->status);
     }
 
+    public function test_tagihan_sebagian_pada_no_po_bast_partial_menjadi_partially_invoiced(): void
+    {
+        $po    = $this->makeProject(['status' => 'PROGRESS_DONE']);
+        $noPo  = $this->makePoNumber($po, ['status' => 'PARTIAL', 'nominal' => 100_000_000]);
+        $this->makeInvoice($noPo, ['billed_amount' => 90_000_000, 'status' => 'SENT']);
+
+        $po->fresh()->syncStatusFromPoNumbers();
+
+        $this->assertSame('PARTIALLY_INVOICED', $po->fresh()->status);
+    }
+
+    public function test_invoice_cancelled_tidak_dihitung_sebagai_tagihan(): void
+    {
+        $po    = $this->makeProject(['status' => 'ACTIVE']);
+        $noPo  = $this->makePoNumber($po, ['status' => 'PARTIAL', 'nominal' => 100_000_000]);
+        $this->makeInvoice($noPo, ['billed_amount' => 90_000_000, 'status' => 'CANCELLED']);
+
+        $po->fresh()->syncStatusFromPoNumbers();
+
+        $this->assertSame('ACTIVE', $po->fresh()->status);
+    }
+
     public function test_label_status_baru(): void
     {
         $this->assertSame('Partially Invoiced', Project::statusLabelFor('PARTIALLY_INVOICED'));

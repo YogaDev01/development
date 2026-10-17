@@ -131,12 +131,14 @@ class ProjectPoNumber extends Model
 
         if ($newStatus !== $this->status) {
             $this->update(['status' => $newStatus]);
-            // Agregat No. PO berubah -> status header PO (Partially Invoiced dst.) ikut dihitung ulang.
-            // poNumbers dibuang dulu supaya agregat dibaca dari status terbaru, bukan relasi yang sudah termuat.
-            $project = $this->project;
-            $project?->unsetRelation('poNumbers');
-            $project?->syncStatusFromPoNumbers();
         }
+
+        // Tagihan berubah (termasuk penagihan sebagian yang tidak mengubah status No. PO)
+        // -> status header PO ikut dihitung ulang. poNumbers dibuang dulu supaya
+        // agregat dibaca dari status terbaru, bukan relasi yang sudah termuat.
+        $project = $this->project;
+        $project?->unsetRelation('poNumbers');
+        $project?->syncStatusFromPoNumbers();
     }
 
     /*
