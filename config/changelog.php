@@ -43,7 +43,7 @@ return [
                     'type'  => 'added',
                     'label' => 'Baru',
                     'items' => [
-                        'Status PO Partially Invoiced (sebagian No. PO sudah ditagih) dan Partially Paid (sebagian No. PO sudah Paid), dihitung otomatis dari status No. PO, berlaku dari Active maupun Waiting Invoice, dan menjadi Paid saat seluruh No. PO Paid.',
+                        'Status PO Partially Invoiced (sudah ada tagihan, termasuk penagihan sebagian atas BAST Partial, tetapi belum semua No. PO tertagih penuh) dan Partially Paid (sebagian No. PO sudah Paid), dihitung otomatis dari status No. PO, berlaku dari Active maupun Waiting Invoice, dan menjadi Paid saat seluruh No. PO Paid.',
                         'Kedua status tampil di stepper, filter, dan label status di daftar PO.',
                     ],
                 ],
