@@ -427,6 +427,13 @@ $(function () {
     | DATATABLE
     |--------------------------------------------------------------------------
     */
+    // Kolom uang diurutkan menurut angka mentahnya (data-raw), bukan teks
+    // berformat "99.000.000" yang bila disortir sebagai string menaruh
+    // "9.000.000" di atas "175.700.000".
+    $('#projectTable tbody td[data-raw]').each(function () {
+        this.setAttribute('data-order', this.getAttribute('data-raw'));
+    });
+
     var table = $('#projectTable').DataTable({
         autoWidth: false, pageLength: 10, lengthChange: true, searching: true,
         order: [], // pertahankan urutan asli dari server (input terbaru di atas)
@@ -553,7 +560,8 @@ $(function () {
         { key: 'status',   label: 'Status', valueLabels: {
             DRAFT: 'Draft', SUBMITTED: 'Submitted', VERIFIED: 'Verified', EARLY_START: 'Early Start',
             WAITING_PO: 'Waiting PO', ACTIVE: 'Active',
-            PROGRESS_DONE: 'Waiting Invoice', PAID: 'Paid', CLOSING: 'Closing', CLOSED: 'Closed'
+            PROGRESS_DONE: 'Waiting Invoice', PARTIALLY_INVOICED: 'Partially Invoiced',
+            PARTIALLY_PAID: 'Partially Paid', PAID: 'Paid', CLOSING: 'Closing', CLOSED: 'Closed'
         } },
         { key: 'customer', label: 'Customer' },
         { key: 'pm',       label: 'Manager' },
@@ -866,7 +874,7 @@ $(function () {
     */
     var statusColors = {
         'DRAFT':'secondary','SUBMITTED':'warning','VERIFIED':'info','EARLY_START':'primary',
-        'WAITING_PO':'info','ACTIVE':'success','PROGRESS_DONE':'warning','PAID':'success',
+        'WAITING_PO':'info','ACTIVE':'success','PROGRESS_DONE':'warning','PARTIALLY_INVOICED':'warning','PARTIALLY_PAID':'info','PAID':'success',
         'CLOSING':'warning','CLOSED':'dark'
     };
 

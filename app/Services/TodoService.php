@@ -141,7 +141,7 @@ class TodoService
             ));
 
             $items = array_merge($items, self::monitoringItems(
-                Project::whereIn('status', ['WAITING_PO', 'ACTIVE'])->where('monitoring_bast_status', 'DONE'),
+                Project::whereIn('status', array_merge(['WAITING_PO', 'ACTIVE'], Project::PARTIAL_STATUSES))->where('monitoring_bast_status', 'DONE'),
                 'BAST selesai — submit BAST',
                 'mon-waiting-bast',
                 'warning'
@@ -151,7 +151,7 @@ class TodoService
         // Payment selesai tapi PO belum diajukan Closing
         if (in_array($role, ['superadmin', 'finance', 'finance_manager', 'head'])) {
             $items = array_merge($items, self::monitoringItems(
-                Project::whereIn('status', ['WAITING_PO', 'ACTIVE'])->where('monitoring_payment_status', 'DONE'),
+                Project::whereIn('status', array_merge(['WAITING_PO', 'ACTIVE'], Project::PARTIAL_STATUSES))->where('monitoring_payment_status', 'DONE'),
                 'Payment selesai — ajukan Closing',
                 'mon-waiting-closed',
                 'success'

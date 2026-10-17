@@ -26,10 +26,36 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '3.0.4',
+    'current' => '3.0.5',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '3.0.5',
+            'date'    => '2026-10-17',
+            'title'   => 'Status Partially Invoiced & Partially Paid pada Purchase Order',
+            'summary' => 'Workflow Purchase Order mendapat dua status baru yang mengikuti progres '
+                       . 'penagihan dan pembayaran No. PO, dan kolom uang di daftar PO kini bisa '
+                       . 'diurutkan menurut angka.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Status PO Partially Invoiced (sebagian No. PO sudah ditagih) dan Partially Paid (sebagian No. PO sudah Paid), dihitung otomatis dari status No. PO, berlaku dari Active maupun Waiting Invoice, dan menjadi Paid saat seluruh No. PO Paid.',
+                        'Kedua status tampil di stepper, filter, dan label status di daftar PO.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Kolom uang di daftar PO (Contract sampai Net Profit) kini diurutkan menurut nilai angka, bukan menurut teks (9.000.000 tidak lagi mendahului 175.700.000).',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '3.0.4',

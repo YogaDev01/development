@@ -344,6 +344,8 @@ class ProjectController extends Controller
             'waiting_po'    => (int) ($statusCounts['WAITING_PO'] ?? 0),
             'active'        => (int) ($statusCounts['ACTIVE'] ?? 0),
             'progress_done' => (int) ($statusCounts['PROGRESS_DONE'] ?? 0),
+            'partially_invoiced' => (int) ($statusCounts['PARTIALLY_INVOICED'] ?? 0),
+            'partially_paid'     => (int) ($statusCounts['PARTIALLY_PAID'] ?? 0),
             'paid'          => (int) ($statusCounts['PAID'] ?? 0),
             'closing'       => (int) ($statusCounts['CLOSING'] ?? 0),
             'closed'        => (int) ($statusCounts['CLOSED'] ?? 0),
@@ -895,8 +897,8 @@ class ProjectController extends Controller
                     ->with('error', 'PO tidak dapat diedit pada status ini.');
             }
 
-            // ACTIVE & CLOSED tidak bisa diedit siapapun
-            if (in_array($project->status, ['ACTIVE', 'CLOSED']) && !in_array($role, ['superadmin'])) {
+            // ACTIVE (termasuk Partially Invoiced/Paid) & CLOSED tidak bisa diedit siapapun
+            if (in_array($project->status, array_merge(['ACTIVE', 'CLOSED'], Project::PARTIAL_STATUSES)) && !in_array($role, ['superadmin'])) {
                 return redirect('/project')
                     ->with('error', 'PO berstatus ACTIVE atau CLOSED tidak dapat diedit.');
             }

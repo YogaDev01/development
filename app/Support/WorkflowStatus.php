@@ -160,6 +160,16 @@ class WorkflowStatus
                 'tone'        => 'progress',
                 'icon'        => 'fa-file-invoice-dollar',
             ],
+            'PARTIALLY_INVOICED' => [
+                'description' => 'Sebagian No. PO sudah ditagih; menunggu invoice & pembayaran sisanya',
+                'tone'        => 'progress',
+                'icon'        => 'fa-file-invoice',
+            ],
+            'PARTIALLY_PAID' => [
+                'description' => 'Sebagian No. PO sudah Paid; menunggu pembayaran sisanya',
+                'tone'        => 'progress',
+                'icon'        => 'fa-coins',
+            ],
             'PAID' => [
                 'description' => 'Menunggu pengajuan MoM Closing oleh Head',
                 'tone'        => 'attention',
