@@ -69,6 +69,8 @@
               id="formCr" style="display:none;">
             @csrf
             <input type="hidden" name="customer_id" id="crCustomerId" value="{{ $customerId }}">
+            {{-- Diisi lewat dialog konfirmasi saat ada invoice yang dibayar tidak penuh. --}}
+            <input type="hidden" name="partial_note" id="crPartialNote" value="">
 
             {{-- LANGKAH 2 — pilih invoice yang ditutup penerimaan ini. --}}
             <div class="card card-primary card-outline shadow-sm">
@@ -153,7 +155,21 @@
 
                         <div class="form-group col-lg-3 col-md-6">
                             <label class="font-weight-600">Bukti Transfer</label>
-                            <input type="file" name="proof_file" class="form-control-file" accept=".pdf,.jpg,.jpeg,.png">
+                            {{-- Input file asli tetap sumber nilai (name=proof_file); zona ini hanya mengisinya
+                                 dari klik, drag & drop, atau paste (Ctrl+V). --}}
+                            <div id="crProofZone" class="cr-dropzone" tabindex="0">
+                                <input type="file" name="proof_file" id="crProofInput" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+                                <div id="crProofEmpty">
+                                    <i class="fas fa-cloud-upload-alt mr-1"></i>
+                                    Drop, paste (Ctrl+V), atau <span class="text-primary" style="text-decoration:underline;">klik</span>
+                                </div>
+                                <div id="crProofFile" style="display:none;">
+                                    <i class="fas fa-paperclip mr-1"></i><span id="crProofName"></span>
+                                    <button type="button" id="crProofRemove" class="btn btn-link btn-sm text-danger p-0 ml-1" title="Hapus berkas">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
                             <small class="form-text text-muted">PDF/JPG/PNG, maks 10 MB.</small>
                         </div>
 
@@ -190,6 +206,10 @@
 <style>
 .font-weight-600 { font-weight:600; }
 .table td, .table th { vertical-align:middle !important; }
+
+.cr-dropzone { border:1px dashed var(--border, #ced4da); border-radius:4px; padding:7px 10px; font-size:12px;
+               color:var(--text-dim); cursor:pointer; background:var(--surface, #fff); outline:none; }
+.cr-dropzone:hover, .cr-dropzone:focus, .cr-dropzone.dragover { border-color:var(--accent); background:var(--warning-bg); }
 </style>
 @endpush
 
@@ -225,6 +245,7 @@ $(function () {
             $amount.val('');
             $wht.val('');
         }
+        $row.removeClass('table-danger');
     }
 
     function hitungUlang() {
@@ -241,7 +262,11 @@ $(function () {
         $('#crTotalAmount').text(rp(totalAmount));
         $('#crTotalWht').text(rp(totalWht));
         $('#crGrandTotal').text('Rp ' + rp(totalAmount + totalWht));
-        $('#crSubmit').prop('disabled', jumlah === 0 || (totalAmount + totalWht) <= 0);
+        // Diterima + PPh tidak boleh melebihi sisa tagihan baris mana pun.
+        var melebihi = $('.cr-inv-row.table-danger').filter(function () {
+            return $('.cr-check', this).is(':checked');
+        }).length > 0;
+        $('#crSubmit').prop('disabled', jumlah === 0 || (totalAmount + totalWht) <= 0 || melebihi);
 
         var $tampil = $('.cr-inv-row:visible .cr-check');
         $('#crCheckAll').prop('checked', $tampil.length > 0 && $tampil.filter(':checked').length === $tampil.length);
@@ -362,6 +387,11 @@ $(function () {
             .always(function () { $('#crLoading').hide(); permintaan = null; });
     }
 
+    TesysSearchableSelect.init('#crCustomer', {
+        placeholder: '— Pilih Customer —',
+        searchPlaceholder: 'Cari customer...'
+    });
+
     $('#crCustomer').on('change', function () { muatInvoice($(this).val()); });
 
     // ?customer_id= dari tautan lama tetap dilayani.
@@ -383,11 +413,122 @@ $(function () {
         }, 150);
     });
 
-    // Cegah kiriman kosong walau tombolnya sempat aktif.
+    /*
+     | Bukti transfer: klik, drag & drop, atau paste. File dimasukkan ke input
+     | asli lewat DataTransfer, jadi form tetap terkirim apa adanya.
+     */
+    (function () {
+        var zone  = document.getElementById('crProofZone');
+        var input = document.getElementById('crProofInput');
+        var BOLEH = /\.(pdf|jpe?g|png)$/i;
+
+        function tampil() {
+            var f = input.files && input.files[0];
+            $('#crProofEmpty').toggle(!f);
+            $('#crProofFile').toggle(!!f);
+            $('#crProofName').text(f ? f.name : '');
+        }
+
+        function pasang(file) {
+            if (!file) return;
+            if (!BOLEH.test(file.name) && !/^(image\/(png|jpe?g)|application\/pdf)$/.test(file.type)) {
+                Swal.fire({ icon: 'warning', title: 'Format tidak didukung', text: 'Gunakan PDF, JPG, atau PNG.', confirmButtonColor: '#92232b' });
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) {
+                Swal.fire({ icon: 'warning', title: 'Berkas terlalu besar', text: 'Maksimal 10 MB.', confirmButtonColor: '#92232b' });
+                return;
+            }
+            // Gambar hasil paste biasanya bernama generik ("image.png"); beri nama yang jelas.
+            if (!file.name || /^image\.\w+$/i.test(file.name)) {
+                var ext = (file.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+                file = new File([file], 'bukti-transfer.' + ext, { type: file.type });
+            }
+            var dt = new DataTransfer();
+            dt.items.add(file);
+            input.files = dt.files;
+            tampil();
+        }
+
+        zone.addEventListener('click', function (e) {
+            if ($(e.target).closest('#crProofRemove').length) return;
+            input.click();
+        });
+        input.addEventListener('click', function (e) { e.stopPropagation(); });
+        input.addEventListener('change', tampil);
+
+        $('#crProofRemove').on('click', function (e) {
+            e.stopPropagation();
+            input.value = '';
+            tampil();
+        });
+
+        ['dragenter', 'dragover'].forEach(function (evt) {
+            zone.addEventListener(evt, function (e) { e.preventDefault(); e.stopPropagation(); zone.classList.add('dragover'); });
+        });
+        ['dragleave', 'drop'].forEach(function (evt) {
+            zone.addEventListener(evt, function (e) { e.preventDefault(); e.stopPropagation(); zone.classList.remove('dragover'); });
+        });
+        zone.addEventListener('drop', function (e) {
+            var files = e.dataTransfer ? e.dataTransfer.files : null;
+            if (files && files.length) pasang(files[0]);
+        });
+
+        // Paste di mana saja pada halaman ini, kecuali saat mengetik di kolom teks.
+        document.addEventListener('paste', function (e) {
+            var t = e.target;
+            if (t && /^(input|textarea|select)$/i.test(t.tagName)) return;
+            var files = (e.clipboardData && e.clipboardData.files) || [];
+            if (files.length) { e.preventDefault(); pasang(files[0]); }
+        });
+    })();
+
+    /*
+     | Simpan: kiriman kosong dicegah; kalau ada invoice yang dibayar tidak
+     | penuh (Diterima + PPh < Sisa Tagihan), minta konfirmasi plus komentar yang
+     | disimpan ke Log & Approval tiap invoice terkait. Backend memeriksa ulang.
+     */
     $('#formCr').on('submit', function (e) {
         if ($('.cr-check:checked').length === 0) {
             e.preventDefault();
             Swal.fire({ icon: 'warning', title: 'Pilih minimal satu invoice', confirmButtonColor: '#92232b' });
+            return;
+        }
+
+        var form = this, parsial = 0, melebihi = 0;
+        $('.cr-inv-row').each(function () {
+            if (!$('.cr-check', this).is(':checked')) return;
+            var sisa   = parseInt($('.cr-balance', this).data('value'), 10) || 0;
+            var terisi = angka($('.cr-amount', this)) + angka($('.cr-wht', this));
+            if (terisi > sisa) melebihi++;
+            else if (terisi < sisa) parsial++;
+        });
+
+        if (melebihi > 0) {
+            e.preventDefault();
+            Swal.fire({ icon: 'error', title: 'Nominal melebihi sisa tagihan',
+                        text: 'Diterima + PPh tidak boleh lebih besar dari Sisa Tagihan.', confirmButtonColor: '#92232b' });
+            return;
+        }
+
+        if (parsial > 0 && !form.dataset.konfirmasi) {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'warning',
+                title: 'Apakah anda yakin, pembayaran yang diterima tidak penuh?',
+                text: parsial + ' invoice dibayar kurang dari sisa tagihannya. Komentar ini masuk ke Log & Approval invoice terkait.',
+                input: 'textarea',
+                inputPlaceholder: 'Komentar / alasan pembayaran tidak penuh (wajib)',
+                inputValidator: function (v) { return (v && v.trim()) ? undefined : 'Komentar wajib diisi'; },
+                showCancelButton: true,
+                confirmButtonColor: '#92232b', cancelButtonColor: '#55595e',
+                confirmButtonText: 'Ya, Simpan', cancelButtonText: 'Batal'
+            }).then(function (r) {
+                if (!r.isConfirmed) return;
+                $('#crPartialNote').val(r.value.trim());
+                form.dataset.konfirmasi = '1';
+                form.submit();
+            });
         }
     });
 

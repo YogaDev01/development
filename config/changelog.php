@@ -46,6 +46,9 @@ return [
                         'Status No. PO mengikuti BAST dan Invoice: PARTIAL, BAST_SUBMITTED (Tandai Lengkap), INVOICED saat semua BAST tertagih, dan PAID saat semua Invoice-nya Paid. Invoice lama tanpa BAST tetap memakai alur lama.',
                         'Perintah migrasi data lama (default dry run, hasil CSV, dapat di-rollback): invoice:link-bast, bast:mark-backfill, invoice:split-synthetic-bast, dan invoice:report-po-paid-drop.',
                         'Tampilan Invoice (daftar, detail, cetak) menampilkan No. BAST; Modal Detail PO menampilkan selisih Contract terhadap BAST + Restitusi.',
+                        'Cost Request: badge Rejected dan Settle Rejected di awal stepper; lampiran di side modal dibuka dalam carousel; tombol Terapkan periode custom kini ada di dalam datepicker.',
+                        'Cash Receipt: tombol Hapus untuk bukti terima Draft yang belum teralokasi, dropdown customer bisa dicari, dan bukti transfer bisa di-drag & drop atau di-paste.',
+                        'Perintah budget:close-by-closed-po (default dry run) untuk menutup Budget Plan Active milik PO yang sudah Closed.',
                     ],
                 ],
                 [
@@ -54,6 +57,15 @@ return [
                     'items' => [
                         'Submit BAST yang membuat total BAST melebihi nominal No. PO kini diblokir.',
                         'Pembuatan, perubahan, pembatalan, dan pembayaran Invoice serta Cash Receipt memakai penguncian baris No. PO, BAST, dan Invoice dengan urutan tetap agar tidak terjadi penagihan ganda.',
+                        'Collection: kolom Payment kini hanya menampilkan nilai cash receipt, tanpa settle PPh.',
+                        'Catat Penerimaan: Diterima + PPh tidak boleh melebihi Sisa Tagihan; bila kurang dari Sisa Tagihan, wajib konfirmasi dan komentar yang tersimpan di Log & Approval invoice terkait.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Kolom alasan pada dialog Hapus BAST kini bisa diklik dan diisi.',
                     ],
                 ],
             ],

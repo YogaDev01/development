@@ -24,6 +24,10 @@
 |       onApply: function (from, to) { ... }   // opsional
 |   });
 |
+| applyButton (opsional): { label, onClick(from, to) } — menambah tombol di dalam
+| popup (di bawah kedua kalender). Klik menutup popup lalu memanggil onClick.
+| Dipakai halaman yang menerapkan filter lewat tombol, bukan tiap tanggal berubah.
+|
 | onApply dipanggil tiap kali kedua tanggal berubah. Modul yang punya tombol
 | "Terapkan" sendiri cukup mengabaikannya dan membaca input hidden-nya.
 |
@@ -189,6 +193,18 @@
         var $sisiA = $('<div class="tdr-cal"><div class="tdr-judul">From</div></div>');
         var $sisiB = $('<div class="tdr-cal"><div class="tdr-judul">To</div></div>');
         $popup.append($sisiA, $sisiB).appendTo($wrap);
+
+        if (opts.applyButton && typeof opts.applyButton.onClick === 'function') {
+            var $tombol = $('<button type="button" class="btn btn-primary btn-sm"></button>')
+                .append('<i class="fas fa-check mr-1"></i>')
+                .append(document.createTextNode(opts.applyButton.label || 'Terapkan'));
+            $popup.addClass('tdr-pop-has-foot')
+                  .append($('<div class="tdr-foot"></div>').append($tombol));
+            $tombol.on('click', function () {
+                tutup();
+                opts.applyButton.onClick($from.val(), $to.val());
+            });
+        }
 
         var tglAwal  = $from.val();
         var tglAkhir = $to.val();
