@@ -26,10 +26,42 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '3.0.6',
+    'current' => '3.0.7',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '3.0.7',
+            'date'    => '2026-10-19',
+            'title'   => 'Tampilan Kartu Mobile pada Daftar Data',
+            'summary' => 'Daftar data (tabel) kini tampil sebagai kartu di layar ponsel, tampilan listing di desktop dan mobile lebih rapi tanpa bingkai ganda, dan tersedia perintah untuk membuat BAST dari invoice lama.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Daftar data di layar 640px ke bawah tampil sebagai kartu: setiap nilai diberi label kolom, status di baris judul, tombol aksi tetap terjangkau, dan baris total menjadi kartu ringkasan di atas daftar. Tabel pivot Finance Summary dan Trouble Ticket (punya tampilan kartu sendiri) tidak ikut.',
+                        'Perintah bast:create-from-invoice (default dry run, dapat di-rollback) untuk membuat BAST dari invoice lama bagi No. PO yang belum punya BAST; nilai dan status Invoice serta status No. PO tidak berubah.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Kartu pembungkus daftar data dilepas bingkainya sehingga tabel langsung berada di margin halaman, baik di desktop maupun mobile.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Popup periode custom (datepicker) dengan tombol Terapkan kini tetap berbentuk landscape.',
+                        'Perintah invoice:split-synthetic-bast dan rollback-nya tidak lagi berakhir dengan galat palsu pada pemeriksaan akhir run walaupun pemecahan BAST berhasil.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '3.0.6',

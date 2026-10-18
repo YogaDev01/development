@@ -73,6 +73,27 @@ Global web middleware: `SecurityHeaders`, `EnsureUserActive` (`bootstrap/app.php
   palette (`tesys-command.js`), session keep-alive.
 - Tables: DataTables with per-column filters; lists capped at 1,000 rows;
   CR index uses lazy-loaded tabs.
+- Listing DataTable & mode card mobile: `public/js/tesys-table.js` +
+  `public/css/tesys-ui-datatable.css` (dimuat setelah `components` dan `mobile`;
+  file terpisah agar mudah ditinjau/ditarik, boleh dilipat atas keputusan pemilik).
+  - Struktur listing (desktop & mobile) = margin halaman → tabel: `.card` di
+    `.main > .content` yang berisi `.dataTables_wrapper` dilepas bingkainya
+    (border/latar/padding card-body). Pengecualian: kartu di modal/drawer,
+    `.ts-keep-card`, dan kartu berisi `.col-pic-table` (pivot Finance Summary).
+  - Mode card ≤640px otomatis untuk tabel layak (thead satu baris tanpa
+    colspan/rowspan > 1, tanpa baris grup); semua listing ikut, termasuk CR
+    (`#tblCA/#tblCP/#tblDB`), Invoice, Project. Dikecualikan: pivot/grup (Finance
+    Summary) dan `data-ts-card="off"` (Trouble Ticket, punya card sendiri).
+    Label mengikuti kolom terlihat; pemicu `init/draw/column-visibility/
+    responsive-display.dt` dan `shown.bs.tab`; kolom sticky dinetralkan; status di
+    baris judul; tfoot jadi kartu ringkasan di atas. `<table>` tidak pernah
+    `display:none` (pencarian topbar `tesys-shell.js`); teks sel tidak diubah
+    (`tesys-money-sort.js`).
+  - Spesifisitas: aturan card diawali `body.tesys-ui table.ts-card-table:not(#ts-card)`
+    (`:not(#id)` = spesifisitas ID tanpa menambah `!important` berserakan).
+  - Atribut opsional: `data-ts-card="off"`, `data-short`, `data-card="title|hide|show"`.
+  - Batasan: sel `tbody` ber-`colspan` di tengah baris tidak didukung.
+  - Bottom tab (Fase 3) ditahan; lihat `docs/ui/datatable-inventory.md`.
 - Detail views: modals/drawers fed by `*/detail-json` endpoints.
 - Accessibility: fokus keyboard tab & dropdown-item diatur di
   `tesys-ui-motion.css`; menu sidebar (`.sidebar .nav-item`, `.nav-group-toggle`)
