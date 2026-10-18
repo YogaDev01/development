@@ -64,6 +64,11 @@ class ProjectPoNumber extends Model
         return $this->hasMany(ProjectAttachment::class, 'project_po_number_id')->orderBy('id');
     }
 
+    public function basts()
+    {
+        return $this->hasMany(ProjectPoBast::class, 'project_po_number_id')->orderBy('tanggal_bast')->orderBy('id');
+    }
+
     public function bastAttachments()
     {
         return $this->attachments()->where('type', 'po_number_bast');
@@ -115,30 +120,138 @@ class ProjectPoNumber extends Model
     }
 
     /**
-     * Sinkron status "sudah ditagih penuh?" No. PO ini berdasarkan remainingValue().
-     * Satu No. PO bisa punya beberapa invoice (Termin 1, 2, 3, ...) — statusnya
-     * baru pindah ke INVOICED kalau seluruh nominal sudah tertagih, dan turun
-     * lagi ke BAST_SUBMITTED kalau ada invoice yang dibatalkan/dihapus sehingga
-     * masih ada sisa. Tidak menyentuh status di luar tahap penagihan (RELEASED/PAID).
+     * Sinkron status No. PO dari BAST aktif (belum di-soft-delete) — satu method
+     * untuk semua jalur (submit/hapus BAST, buat/ubah/batal/hapus invoice, bayar):
+     *
+     *  - tanpa BAST aktif                          -> RELEASED
+     *  - ada BAST, belum "Tandai Lengkap"          -> PARTIAL
+     *  - sudah ditandai lengkap (BAST_SUBMITTED)   -> BAST_SUBMITTED
+     *      semua BAST punya invoice aktif          -> INVOICED
+     *      + semua invoice aktif itu PAID          -> PAID
+     *
+     * "Lengkap" tidak disimpan di kolom tersendiri: ia melekat pada status
+     * BAST_SUBMITTED/INVOICED/PAID (hanya tombol Tandai Lengkap yang menaikkannya).
+     * Invoice CANCELLED tidak dihitung. No. PO lama yang sama sekali tidak punya
+     * baris BAST tetap memakai perhitungan lama (sisa nominal) agar tidak berubah.
      */
     public function syncInvoiceStatus(): void
+    {
+        if (!$this->usesBastBilling()) {
+            $this->syncInvoiceStatusLegacy();
+
+            return;
+        }
+
+        $this->refresh();
+        $basts   = $this->basts()->get();
+        $lengkap = in_array($this->status, ['BAST_SUBMITTED', 'INVOICED', 'PAID'], true);
+
+        // Pembacaan invoice hanya dilakukan bila memang menentukan hasil.
+        $semuaTertagih = $lengkap && $basts->isNotEmpty() && $basts->every(fn ($b) => $b->isBilled());
+        $semuaPaid     = $semuaTertagih && $basts->every(
+            fn ($b) => $b->activeInvoices()->get()->every(fn ($i) => $i->status === 'PAID')
+        );
+
+        $baru = self::tentukanStatus($this->status, $basts->count(), $semuaTertagih, $semuaPaid);
+
+        if ($baru !== $this->status) {
+            $this->update(['status' => $baru]);
+        }
+
+        $this->syncProjectStatus();
+    }
+
+    /**
+     * Aturan status berbasis BAST sebagai fungsi murni (tanpa baca/tulis DB), dipakai
+     * syncInvoiceStatus() dan laporan perkiraan status (invoice:split-synthetic-bast).
+     * "Lengkap" diturunkan dari $statusSaatIni (BAST_SUBMITTED/INVOICED/PAID).
+     */
+    public static function tentukanStatus(string $statusSaatIni, int $jumlahBast, bool $semuaTertagih, bool $semuaPaid): string
+    {
+        $lengkap = in_array($statusSaatIni, ['BAST_SUBMITTED', 'INVOICED', 'PAID'], true);
+
+        if ($jumlahBast === 0) {
+            return 'RELEASED';
+        }
+        if (!$lengkap) {
+            return 'PARTIAL';
+        }
+        if (!$semuaTertagih) {
+            return 'BAST_SUBMITTED';
+        }
+
+        return $semuaPaid ? 'PAID' : 'INVOICED';
+    }
+
+    /**
+     * Ada invoice lama yang masih aktif (bukan CANCELLED, bukan soft-deleted) pada No. PO ini
+     * tetapi belum tertaut ke BAST apa pun? BAST pada No. PO seperti itu adalah BAST sintetis
+     * hasil backfill (satu baris agregat), jadi belum bisa dijadikan dasar status maupun
+     * penagihan baru sampai invoice lamanya ditautkan (invoice:link-bast).
+     * $kecualiInvoiceId: abaikan satu invoice (mis. draft lama yang sedang diedit).
+     */
+    public function punyaInvoiceLamaBelumTertaut(?int $kecualiInvoiceId = null): bool
+    {
+        return $this->invoices()
+            ->where('status', '!=', 'CANCELLED')
+            ->whereNull('project_po_bast_id')
+            ->when($kecualiInvoiceId, fn ($q) => $q->where('id', '!=', $kecualiInvoiceId))
+            ->exists();
+    }
+
+    /**
+     * Status dihitung dari BAST? Hanya bila No. PO pernah punya baris BAST (termasuk yang sudah
+     * dihapus) DAN tidak ada invoice lama aktif yang belum tertaut; selain itu alur lama dipakai
+     * (status tidak diturunkan dari BAST sintetis).
+     */
+    public function usesBastBilling(): bool
+    {
+        if ($this->punyaInvoiceLamaBelumTertaut()) {
+            return false;
+        }
+
+        return ProjectPoBast::withTrashed()->where('project_po_number_id', $this->id)->exists();
+    }
+
+    /** Perhitungan lama (sisa nominal) untuk No. PO tanpa baris BAST. */
+    private function syncInvoiceStatusLegacy(): void
     {
         if (!in_array($this->status, ['PARTIAL', 'BAST_SUBMITTED', 'INVOICED'], true)) {
             return;
         }
 
-        $newStatus = $this->remainingValue() <= 0 ? 'INVOICED' : 'BAST_SUBMITTED';
+        $baru = $this->remainingValue() <= 0 ? 'INVOICED' : 'BAST_SUBMITTED';
 
-        if ($newStatus !== $this->status) {
-            $this->update(['status' => $newStatus]);
+        if ($baru !== $this->status) {
+            $this->update(['status' => $baru]);
         }
 
-        // Tagihan berubah (termasuk penagihan sebagian yang tidak mengubah status No. PO)
-        // -> status header PO ikut dihitung ulang. poNumbers dibuang dulu supaya
-        // agregat dibaca dari status terbaru, bukan relasi yang sudah termuat.
+        $this->syncProjectStatus();
+    }
+
+    private function syncProjectStatus(): void
+    {
+        // poNumbers dibuang dulu supaya agregat dibaca dari status terbaru,
+        // bukan relasi yang sudah termuat.
         $project = $this->project;
         $project?->unsetRelation('poNumbers');
         $project?->syncStatusFromPoNumbers();
+    }
+
+    /**
+     * Agregat kolom lama (dipakai invoice/laporan) dari BAST aktif: nilai_bast =
+     * jumlah, no_bast/tanggal_bast = BAST aktif terakhir atau NULL bila tak ada.
+     */
+    public function recalculateBastAggregate(): void
+    {
+        $basts = $this->basts()->get();
+        $akhir = $basts->sortBy([['tanggal_bast', 'asc'], ['id', 'asc']])->last();
+
+        $this->update([
+            'nilai_bast'   => (int) $basts->sum('nilai_bast'),
+            'no_bast'      => $akhir?->no_bast,
+            'tanggal_bast' => $akhir?->tanggal_bast,
+        ]);
     }
 
     /*

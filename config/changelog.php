@@ -26,10 +26,38 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '3.0.5',
+    'current' => '3.0.6',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '3.0.6',
+            'date'    => '2026-10-19',
+            'title'   => 'Penagihan Invoice per BAST',
+            'summary' => 'Invoice kini ditagih per BAST (1 Invoice = 1 BAST), satu No. PO bisa memiliki banyak BAST, dan tersedia perintah migrasi data lama beserta pengaman dan rollback.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'No. PO kini bisa memiliki banyak BAST; setiap submission BAST menjadi satu baris BAST beserta lampirannya, dan Superadmin dapat menghapus BAST yang belum ditagih (soft delete dengan alasan).',
+                        'Form Invoice memilih BAST yang ditagih: nilai Invoice sebelum PPN harus sama persis dengan nilai BAST, dengan pengecekan langsung di form create/edit.',
+                        'Status No. PO mengikuti BAST dan Invoice: PARTIAL, BAST_SUBMITTED (Tandai Lengkap), INVOICED saat semua BAST tertagih, dan PAID saat semua Invoice-nya Paid. Invoice lama tanpa BAST tetap memakai alur lama.',
+                        'Perintah migrasi data lama (default dry run, hasil CSV, dapat di-rollback): invoice:link-bast, bast:mark-backfill, invoice:split-synthetic-bast, dan invoice:report-po-paid-drop.',
+                        'Tampilan Invoice (daftar, detail, cetak) menampilkan No. BAST; Modal Detail PO menampilkan selisih Contract terhadap BAST + Restitusi.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Submit BAST yang membuat total BAST melebihi nominal No. PO kini diblokir.',
+                        'Pembuatan, perubahan, pembatalan, dan pembayaran Invoice serta Cash Receipt memakai penguncian baris No. PO, BAST, dan Invoice dengan urutan tetap agar tidak terjadi penagihan ganda.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '3.0.5',

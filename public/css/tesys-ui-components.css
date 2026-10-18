@@ -584,6 +584,12 @@ body.tesys-ui .btn.is-busy { color: transparent !important; }
 .ts-deflist-row.is-total .ts-deflist-label,
 .ts-deflist-row.is-total .ts-deflist-value { font-weight: 700; color: var(--text); }
 
+/* Varian rata kiri untuk blok teks (Identitas & Administrasi): label lebar
+   tetap, nilai mengikuti tepat di sampingnya. Kartu angka tetap rata kanan. */
+.ts-deflist--left .ts-deflist-row { justify-content: flex-start; }
+.ts-deflist--left .ts-deflist-label { flex: 0 0 140px; }
+.ts-deflist--left .ts-deflist-value { text-align: left; }
+
 /* Keterangan kecil di bawah sebuah baris (mis. rentang tanggal). */
 .ts-deflist-sub {
     font-size: 11px;

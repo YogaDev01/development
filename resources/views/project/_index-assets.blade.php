@@ -150,6 +150,11 @@ body.tesys-ui a.po-cell-link:focus { background:var(--charcoal); color:#fff; }
 #prjDetailBody .prj-caret { transition:transform .15s ease; font-size:11px; color:var(--text-faint); }
 #prjDetailBody .prj-caret.rotated { transform:rotate(90deg); }
 #prjDetailBody td.prj-indent { padding-left:28px !important; }
+#prjPoNumberBody tr.prj-po-row { cursor:pointer; background:var(--info-bg) !important; }
+#prjPoNumberBody tr.prj-po-row td { background:transparent !important; }
+#prjPoNumberBody .prj-caret { transition:transform .15s ease; font-size:11px; color:var(--text-faint); }
+#prjPoNumberBody .prj-caret.rotated { transform:rotate(90deg); }
+#prjPoNumberBody td.prj-indent { padding-left:28px !important; }
 .prj-late { color:var(--danger) !important; font-weight:700; }
 
 /* Modal detail PO — ukuran & style disamakan dengan modal Budget Plan / Cost Request. */
@@ -757,6 +762,33 @@ $(function () {
         });
     });
 
+    // Hapus BAST (superadmin, belum ditagih) — alasan wajib; BAST ditandai terhapus, bukan dilenyapkan.
+    $(document).on('click', '.btn-delete-bast', function () {
+        var id = $(this).data('id');
+        var bast = $(this).data('bast');
+        function kirim(alasan) {
+            $('#frmDeleteBast').attr('action', '/project/po-bast/' + id);
+            $('#frmDeleteBastReason').val(alasan);
+            $('#frmDeleteBast').submit();
+        }
+        if (typeof Swal === 'undefined') {
+            var a = prompt('Alasan menghapus BAST ' + bast + ':');
+            if (a && a.trim()) kirim(a.trim());
+            return;
+        }
+        Swal.fire({
+            title: 'Hapus BAST?',
+            text: 'BAST ' + bast + ' akan ditandai terhapus. Tulis alasannya.',
+            icon: 'warning', input: 'textarea', inputPlaceholder: 'Alasan penghapusan (wajib)',
+            inputValidator: function (v) { return (v && v.trim()) ? undefined : 'Alasan wajib diisi'; },
+            showCancelButton: true,
+            confirmButtonColor: WARNA_BAHAYA, cancelButtonColor: WARNA_BATAL,
+            confirmButtonText: 'Ya, Hapus', cancelButtonText: 'Batal'
+        }).then(function (r) {
+            if (r.isConfirmed) kirim(r.value.trim());
+        });
+    });
+
     /*
     |--------------------------------------------------------------------------
     | SUBMIT CLOSING
@@ -883,6 +915,23 @@ $(function () {
         var target = $(this).data('target');
         $('#prjDetailBody .' + target).toggle();
         $(this).find('.prj-caret').toggleClass('rotated');
+    });
+
+    // Grouping/collapse tabel No. PO (header) -> BAST (detail)
+    $(document).on('click', '#prjPoNumberBody .prj-po-row', function (e) {
+        if ($(e.target).closest('a, button').length) return;
+        $('#prjPoNumberBody .' + $(this).data('target')).toggle();
+        $(this).find('.prj-caret').toggleClass('rotated');
+    });
+
+    // Expand / Collapse semua BAST di tab No. PO
+    $(document).on('click', '#btnTogglePoBast', function () {
+        var expand = !$(this).data('expanded');
+        $('#prjPoNumberBody .prj-bast-row').toggle(expand);
+        $('#prjPoNumberBody .prj-caret').toggleClass('rotated', expand);
+        $(this).data('expanded', expand).html(expand
+            ? '<i class="fas fa-angle-double-up mr-1"></i> Collapse semua'
+            : '<i class="fas fa-angle-double-down mr-1"></i> Expand semua');
     });
 
     // Grouping/collapse tabel PIC & Access (pivot generik berdasarkan tipe/role)
@@ -1197,9 +1246,6 @@ $(function () {
             (function renderSummaryKpi() {
                 var c = d.cost_summary || {};
                 var rpf = function (v) { return Math.round(v || 0).toLocaleString('id-ID'); };
-                var contractN = parseInt(d.contract || 0);
-                var poAccum = (d.po_numbers || []).reduce(function (s, p) { return s + (parseFloat(p.nominal) || 0); }, 0);
-                var valueDiff = contractN - poAccum;
                 var budgetVar = (totalBudgetAmt || 0) - (totalUsedAmt || 0);
 
                 /* Satu informasi satu baris (.ts-deflist di tesys-ui-components.css).
@@ -1228,8 +1274,9 @@ $(function () {
 
                 var valueCard = card('Value',
                     row('Contract', d.contract_formatted) +
-                    row('PO Value', rpf(poAccum)) +
-                    (valueDiff !== 0 ? row('Selisih', (valueDiff < 0 ? '-' : '') + rpf(Math.abs(valueDiff)), 'total') : ''));
+                    row('BAST', d.bast_total_formatted) +
+                    row('Restitusi', d.restitusi_formatted) +
+                    (parseInt(d.contract_selisih || 0) !== 0 ? row('Selisih', d.contract_selisih_formatted, 'total') : ''));
 
                 var budgetCard = card('Budget',
                     row('Budget', rpf(totalBudgetAmt)) +
@@ -1245,6 +1292,8 @@ $(function () {
                 var profitCard = card('Profitability',
                     row('Received Payment', c.payment_total_formatted) +
                     row('Gross Profit', c.gross_profit_formatted) +
+                    row('(-) Overhead', c.overhead_formatted) +
+                    row('(-) Fixed Cost', c.fixed_cost_formatted) +
                     row('Net Profit', c.net_profit_formatted, 'total'));
 
                 // Timeline: estimate (plan) vs actual, dari rentang milestone
@@ -1466,54 +1515,90 @@ $(function () {
             };
             $('#prjPoNumberCount').text((d.po_numbers || []).length);
             var poNumHtml = '';
-            var poNumGrandTotal = 0;
+            var poNumGrandTotal = 0, poNumBastTotal = 0;
             (d.po_numbers || []).forEach(function (p) {
                 poNumGrandTotal += parseFloat(p.nominal) || 0;
+                poNumBastTotal += parseInt(p.bast_total || 0);
                 var attHtml = (p.attachments || []).length
                     ? p.attachments.map(function (a) {
                         return '<a href="/storage/' + a.path + '" target="_blank" class="d-block"><i class="fas fa-paperclip mr-1"></i>' + (a.title || 'File') + '</a>';
                     }).join('')
                     : '<span class="text-muted">-</span>';
 
-                var noBastHtml, nilaiBastHtml;
-                if (p.status === 'RELEASED') {
-                    noBastHtml = '<span class="badge badge-secondary px-2 py-1" style="font-size:10px;">Waiting BAST</span>';
-                    nilaiBastHtml = '<span class="text-muted">-</span>';
-                } else {
-                    var bastAttHtml = (p.bast_attachments || []).length
-                        ? p.bast_attachments.map(function (a) {
-                            return '<a href="/storage/' + a.path + '" target="_blank" class="d-block"><i class="fas fa-paperclip mr-1"></i>' + (a.title || 'File') + '</a>';
-                        }).join('')
-                        : '';
-                    noBastHtml = '<div>' + (p.no_bast || '-') + '</div>' +
-                        '<div class="text-muted" style="font-size:10px;">' + (p.tanggal_bast || '-') + '</div>' +
-                        bastAttHtml;
-                    nilaiBastHtml = (p.nilai_bast_formatted || '-');
+                // Baris induk = No. PO (header); baris anak = tiap BAST (detail).
+                var basts = p.basts || [];
+                var grpKey = 'prj-po-' + p.id;
+                var completeBtn = (p.status === 'PARTIAL' && canSubmitBast)
+                    ? '<button type="button" class="btn btn-outline-success btn-xs btn-complete-po-bast mr-1" ' +
+                        'data-id="' + p.id + '" data-po="' + (p.po_number || '') + '">' +
+                        '<i class="fas fa-check-double mr-1"></i>Tandai Lengkap</button>'
+                    : '';
+                var delBtn = p.status === 'RELEASED'
+                    ? '<button type="button" class="btn btn-outline-danger btn-xs btn-delete-po-number" data-id="' + p.id + '" data-po="' + (p.po_number || '') + '"><i class="fas fa-trash"></i></button>'
+                    : '';
 
-                    if (p.status === 'PARTIAL' && canSubmitBast) {
-                        noBastHtml += '<button type="button" class="btn btn-outline-success btn-xs mt-1 btn-complete-po-bast" ' +
-                            'data-id="' + p.id + '" data-po="' + (p.po_number || '') + '">' +
-                            '<i class="fas fa-check-double mr-1"></i>Tandai Lengkap</button>';
-                    }
-                }
-
-                poNumHtml += '<tr>' +
-                    '<td class="prj-col-wide">' + (p.po_number || '-') + '</td>' +
+                poNumHtml += '<tr class="prj-po-row" data-target="' + grpKey + '">' +
+                    '<td class="prj-col-wide"><i class="fas fa-chevron-right prj-caret rotated mr-2"></i>' + (p.po_number || '-') +
+                        ' <span class="text-muted" style="font-size:11px;">(' + basts.length + ' BAST)</span></td>' +
                     '<td class="text-right">' + (p.nominal_formatted || '-') + '</td>' +
+                    '<td class="text-right">' + maskMoney(p.bast_total_formatted) + '</td>' +
                     '<td>' + (p.release_date || '-') + '</td>' +
                     '<td><span class="badge badge-' + (p.status_color || 'secondary') + ' px-2 py-1" style="font-size:10px;">' + (poNumStageLabel[p.status] || p.status_label || p.status) + '</span></td>' +
-                    '<td>' + noBastHtml + '</td>' +
-                    '<td class="text-right">' + nilaiBastHtml + '</td>' +
                     '<td>' + attHtml + '</td>' +
-                    '<td class="text-center">' +
-                        (p.status === 'RELEASED'
-                            ? '<button type="button" class="btn btn-outline-danger btn-xs btn-delete-po-number" data-id="' + p.id + '" data-po="' + (p.po_number || '') + '"><i class="fas fa-trash"></i></button>'
-                            : '-') +
-                    '</td>' +
+                    '<td class="text-center">' + ((completeBtn + delBtn) || '-') + '</td>' +
                 '</tr>';
+
+                if (!basts.length) {
+                    poNumHtml += '<tr class="prj-bast-row ' + grpKey + '">' +
+                        '<td class="prj-indent" colspan="7"><span class="badge badge-secondary px-2 py-1" style="font-size:10px;">Waiting BAST</span></td>' +
+                    '</tr>';
+                }
+                basts.forEach(function (b) {
+                    var bAtt = (b.attachments || []).length
+                        ? b.attachments.map(function (a) {
+                            return '<a href="/storage/' + a.path + '" target="_blank" class="d-block"><i class="fas fa-paperclip mr-1"></i>' + (a.title || 'File') + '</a>';
+                        }).join('')
+                        : '<span class="text-muted">-</span>';
+                    poNumHtml += '<tr class="prj-bast-row ' + grpKey + '">' +
+                        '<td class="prj-indent">' + (b.no_bast || '-') +
+                            (b.split_from_no ? ' <span class="badge badge-secondary px-2 py-1" style="font-size:9px;" title="BAST sintetis hasil backfill dipecah per invoice">Pecahan dari ' + b.split_from_no + '</span>' : '') +
+                        '</td>' +
+                        '<td></td>' +
+                        '<td class="text-right">' + maskMoney(b.nilai_bast_formatted) + '</td>' +
+                        '<td>' + (b.tanggal_bast || '-') + '</td>' +
+                        '<td colspan="3">' + bAtt +
+                            (b.is_billed
+                                ? '<div class="mt-1"><span class="badge badge-info px-2 py-1" style="font-size:10px;">Sudah ditagih: ' + (b.billed_invoices || []).join(', ') + '</span></div>'
+                                : '') +
+                            ((currentUserRole === 'superadmin' && !b.is_billed)
+                                ? '<button type="button" class="btn btn-outline-danger btn-xs btn-delete-bast mt-1" data-id="' + b.id + '" data-bast="' + (b.no_bast || '') + '" title="Hapus BAST"><i class="fas fa-trash mr-1"></i>Hapus BAST</button>'
+                                : '') +
+                        '</td>' +
+                    '</tr>';
+                });
             });
-            $('#prjPoNumberBody').html(poNumHtml || '<tr><td colspan="8" class="text-center text-muted py-3">Belum ada No. PO.</td></tr>');
+            $('#prjPoNumberBody').html(poNumHtml || '<tr><td colspan="7" class="text-center text-muted py-3">Belum ada No. PO.</td></tr>');
             $('#prjPoNumberGrandTotal').text(Math.round(poNumGrandTotal).toLocaleString('id-ID'));
+            $('#prjPoNumberBastTotal').text(maskMoney(poNumBastTotal.toLocaleString('id-ID')));
+
+            // Ringkasan di atas tabel: Nilai PO (jumlah Nominal), Nilai BAST, Selisih.
+            (function renderPoNumberSummary() {
+                var selisih = Math.round(poNumGrandTotal) - poNumBastTotal;
+                function r(label, val, cls) {
+                    return '<div class="ts-deflist-row ' + (cls || '') + '">'
+                         + '<span class="ts-deflist-label">' + label + '</span>'
+                         + '<span class="ts-deflist-value">' + maskMoney(val) + '</span></div>';
+                }
+                $('#prjPoNumberSummary').html((d.po_numbers || []).length
+                    ? '<div class="ts-deflist">'
+                        + r('Nilai PO', Math.round(poNumGrandTotal).toLocaleString('id-ID'))
+                        + r('Nilai BAST', poNumBastTotal.toLocaleString('id-ID'))
+                        + r('Selisih', (selisih < 0 ? '-' : '') + Math.abs(selisih).toLocaleString('id-ID'), 'is-total')
+                      + '</div>'
+                    : '');
+                $('#btnTogglePoBast').toggle((d.po_numbers || []).length > 0)
+                    .html('<i class="fas fa-angle-double-up mr-1"></i> Collapse semua').data('expanded', true);
+            })();
 
             // ── Tab Cost ───────────────────────────────────────────────
             (function renderPrjCostTab() {
@@ -1539,6 +1624,26 @@ $(function () {
                     '</div>'
                 );
 
+                // Jumlah CR & total nominal request per status (Process/QUEUED tidak ikut —
+                // hanya yang sudah dibayar dan sesudahnya). Dari d.cost_requests, tanpa query tambahan.
+                var statusSum = {}, statusOrder = [];
+                crs.forEach(function (cr) {
+                    if (cr.status === 'QUEUED') return;
+                    var k = cr.status_label || cr.status;
+                    if (!statusSum[k]) { statusSum[k] = { n: 0, amt: 0 }; statusOrder.push(k); }
+                    statusSum[k].n += 1;
+                    statusSum[k].amt += parseInt(cr.request || 0);
+                });
+                $('#prjCostStatusSummary').html(statusOrder.length
+                    ? '<div class="ts-deflist"><div class="ts-deflist-head">Cost Request per Status</div>'
+                        + statusOrder.map(function (k) {
+                            return '<div class="ts-deflist-row">'
+                                 + '<span class="ts-deflist-label">' + k + ' (' + statusSum[k].n + ' CR)</span>'
+                                 + '<span class="ts-deflist-value">' + maskMoney(statusSum[k].amt.toLocaleString('id-ID')) + '</span></div>';
+                        }).join('')
+                        + '</div>'
+                    : '');
+
                 var crStatusColor = {
                     'PAID':'success','REALIZED':'success','CLOSED':'dark',
                 };
@@ -1560,13 +1665,15 @@ $(function () {
             (function renderPrjInvoiceTab() {
                 var invs = d.invoices || [];
                 $('#prjInvoiceCount').text(invs.length);
-                var totVal = 0, totBilled = 0;
+                var totVal = 0, totBilled = 0, totTax = 0, totWht = 0;
                 var rows = invs.map(function (inv) {
                     totVal += parseInt(inv.captured_total || 0);
                     totBilled += parseInt(inv.billed_amount || 0);
+                    totTax += parseInt(inv.tax_amount || 0);
+                    totWht += parseInt(inv.withholding_tax || 0);
                     var ds = inv.display_status || inv.status;
                     var viewBtn = inv.id
-                        ? '<a href="/invoice-cash-receipt?open=' + inv.id + '" target="_blank" class="btn btn-info btn-xs" title="View"><i class="fas fa-eye"></i></a>'
+                        ? '<a href="/invoice-cash-receipt?open=' + inv.id + '&q=' + encodeURIComponent(inv.code || '') + '" target="_blank" class="btn btn-info btn-xs" title="View"><i class="fas fa-eye"></i></a>'
                         : '-';
                     return '<tr>' +
                         '<td>' + (inv.code || '-') + '</td>' +
@@ -1575,14 +1682,18 @@ $(function () {
                         '<td>' + (inv.invoice_date || '-') + '</td>' +
                         '<td class="' + (inv.is_overdue ? 'prj-late' : '') + '">' + (inv.due_date || '-') + '</td>' +
                         '<td class="text-right prj-money-col">' + maskMoney(inv.billed_amount_formatted) + '</td>' +
+                        '<td class="text-right prj-money-col">' + maskMoney(inv.tax_amount_formatted) + '</td>' +
+                        '<td class="text-right prj-money-col">' + (parseInt(inv.withholding_tax || 0) > 0 ? '(' + maskMoney(inv.withholding_tax_formatted) + ')' : maskMoney(inv.withholding_tax_formatted)) + '</td>' +
                         '<td class="text-right prj-money-col">' + maskMoney(inv.captured_total_formatted) + '</td>' +
                         '<td class="prj-money-col">' + (inv.received_date || '<span class="text-muted">-</span>') + '</td>' +
                         '<td><span class="badge badge-' + (invStatusColors[ds] || 'secondary') + ' px-2 py-1" style="font-size:9px;">' + ds + '</span></td>' +
                         '<td class="text-center">' + viewBtn + '</td>' +
                     '</tr>';
                 }).join('');
-                $('#prjInvoiceBody').html(rows || '<tr><td colspan="10" class="text-center text-muted py-3">Belum ada Invoice.</td></tr>');
+                $('#prjInvoiceBody').html(rows || '<tr><td colspan="12" class="text-center text-muted py-3">Belum ada Invoice.</td></tr>');
                 $('#prjInvoiceFootBilled').text(maskMoney(totBilled.toLocaleString('id-ID')));
+                $('#prjInvoiceFootTax').text(maskMoney(totTax.toLocaleString('id-ID')));
+                $('#prjInvoiceFootWht').text(totWht > 0 ? '(' + maskMoney(totWht.toLocaleString('id-ID')) + ')' : maskMoney('0'));
                 $('#prjInvoiceFootValue').text(maskMoney(totVal.toLocaleString('id-ID')));
             })();
 

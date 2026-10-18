@@ -229,10 +229,27 @@ trait MakesTesysData
         ], $attributes));
     }
 
-    protected function makeInvoice(ProjectPoNumber $poNumber, array $attributes = []): Invoice
+    protected function makeBast(ProjectPoNumber $poNumber, int $nilai, string $tanggal = '2026-10-01', ?string $noBast = null, array $extra = []): \App\Models\ProjectPoBast
     {
         static $n = 0;
         $n++;
+
+        return \App\Models\ProjectPoBast::create(array_merge([
+            'project_po_number_id' => $poNumber->id,
+            'no_bast'              => $noBast ?? 'BAST-UJI-' . str_pad((string) $n, 4, '0', STR_PAD_LEFT),
+            'tanggal_bast'         => $tanggal,
+            'nilai_bast'           => $nilai,
+        ], $extra));
+    }
+
+    protected function makeInvoice(ProjectPoNumber $poNumber, array $attributes = [], ?\App\Models\ProjectPoBast $bast = null): Invoice
+    {
+        static $n = 0;
+        $n++;
+
+        if ($bast) {
+            $attributes['project_po_bast_id'] = $bast->id;
+        }
 
         return Invoice::create(array_merge([
             'code'                 => 'INV-UJI-' . str_pad((string) $n, 4, '0', STR_PAD_LEFT),

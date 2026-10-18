@@ -22,6 +22,7 @@ class Invoice extends Model
         'faktur_number',
         'po_id',
         'project_po_number_id',
+        'project_po_bast_id',
         'source_fund_id',
         'payment_term_type',
         'termin_number',
@@ -119,6 +120,11 @@ class Invoice extends Model
     public function po()
     {
         return $this->belongsTo(Project::class, 'po_id');
+    }
+
+    public function bast()
+    {
+        return $this->belongsTo(ProjectPoBast::class, 'project_po_bast_id')->withTrashed();
     }
 
     public function poNumber()
@@ -258,7 +264,11 @@ class Invoice extends Model
         // sebelum PPN) — bukan subtotal — supaya invoice bertermin (1, 2, 3, ...) pada No. PO
         // yang sama tidak saling dianggap "Additional" walau baris detailnya merujuk scope
         // penuh yang sama tiap kali.
-        if ($this->project_po_number_id) {
+        // Invoice ber-BAST (1 invoice = 1 BAST) tidak pernah "Additional": nilainya
+        // dikunci sama dengan nilai BAST oleh controller. Invoice lama tetap memakai logika di bawah.
+        if ($this->project_po_bast_id) {
+            $remainingContract = PHP_INT_MAX;
+        } elseif ($this->project_po_number_id) {
             $poNumber = $this->poNumber ?? ProjectPoNumber::find($this->project_po_number_id);
             $remainingContract = $poNumber->remainingValue($this->id);
         } else {
@@ -305,6 +315,7 @@ class Invoice extends Model
         }
 
         $received = $this->totalReceived();
+        $statusLama = $this->status;
 
         // Kalau belum ada Cash Receipt sama sekali, jangan turunkan status kembali
         // ke SENT — pertahankan RECEIVED (evidence surat jalan) bila sudah ada.
@@ -321,16 +332,22 @@ class Invoice extends Model
             $this->update(['status' => $newStatus]);
         }
 
-        if ($newStatus === 'PAID') {
-            if ($this->project_po_number_id) {
-                // Invoice terhubung ke No. PO spesifik — No. PO itu yang jadi Paid,
-                // lalu status header Project disinkron dari agregat semua No. PO.
-                $poNumber = $this->poNumber ?? ProjectPoNumber::find($this->project_po_number_id);
-                if ($poNumber && $poNumber->status !== 'PAID') {
-                    $poNumber->update(['status' => 'PAID']);
-                    $poNumber->project?->syncStatusFromPoNumbers();
+        if ($this->project_po_number_id) {
+            $poNumber = $this->poNumber ?? ProjectPoNumber::find($this->project_po_number_id);
+            if ($poNumber && $poNumber->usesBastBilling()) {
+                // Penagihan per BAST: satu termin Paid TIDAK membuat No. PO Paid —
+                // status dihitung dari seluruh BAST (ProjectPoNumber::syncInvoiceStatus()).
+                if ($newStatus !== $statusLama) {
+                    $poNumber->syncInvoiceStatus();
                 }
-            } elseif (in_array($this->payment_term_type, ['Full Payment', 'Final Payment'])) {
+            } elseif ($newStatus === 'PAID' && $poNumber && $poNumber->status !== 'PAID') {
+                // No. PO lama tanpa BAST — perilaku lama: No. PO jadi Paid,
+                // lalu status header Project disinkron dari agregat semua No. PO.
+                $poNumber->update(['status' => 'PAID']);
+                $poNumber->project?->syncStatusFromPoNumbers();
+            }
+        } elseif ($newStatus === 'PAID') {
+            if (in_array($this->payment_term_type, ['Full Payment', 'Final Payment'])) {
                 // Invoice lama tanpa No. PO — perilaku lama dipertahankan.
                 $po = $this->po ?? Project::find($this->po_id);
                 if ($po && $po->status !== 'PAID') {
