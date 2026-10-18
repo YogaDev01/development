@@ -1190,9 +1190,12 @@ a.ts-feed-row:hover { background: var(--surface-2); text-decoration: none; color
     box-shadow: 0 10px 28px rgba(0,0,0,.16);
 }
 .tdr-pop.d-none { display: none; }
-/* Tombol terapkan opsional: baris sendiri di bawah kedua kalender. */
-.tdr-pop.tdr-pop-has-foot { flex-wrap: wrap; }
-.tdr-pop .tdr-foot { flex: 0 0 100%; display: flex; justify-content: flex-end; padding-top: 4px; border-top: 1px solid var(--border); }
+/* Tombol terapkan opsional: baris sendiri di bawah kedua kalender. Grid (bukan
+   flex-wrap) supaya kalender tetap berdampingan: lebar popup mengikuti isi
+   (max-content), tidak terjepit oleh sisa lebar induknya. */
+.tdr-pop.tdr-pop-has-foot { display: grid; grid-template-columns: auto auto; width: max-content; }
+.tdr-pop.tdr-pop-has-foot.d-none { display: none; }
+.tdr-pop .tdr-foot { grid-column: 1 / -1; display: flex; justify-content: flex-end; padding-top: 6px; border-top: 1px solid var(--border); }
 .tdr-cal .flatpickr-calendar.inline { box-shadow: none; margin: 0; }
 /* Input sumber tiap kalender hanya pemegang nilai, tidak perlu tampil. */
 .tdr-cal input.tdr-src { display: none; }
@@ -1234,4 +1237,5 @@ a.ts-feed-row:hover { background: var(--surface-2); text-decoration: none; color
 
 @media (max-width: 760px) {
     .tdr-pop { flex-direction: column; }
+    .tdr-pop.tdr-pop-has-foot { grid-template-columns: auto; }
 }
