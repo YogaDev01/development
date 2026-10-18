@@ -141,6 +141,14 @@ Urutan kunci: No. PO (pernyataan pertama) -> BAST induk -> invoice id naik. Roll
 memulihkan induk, dan melewati No. PO yang pecahan/sisanya sudah dipakai invoice lain; log memakai `rolled_back_at`, tidak dihapus.
 Jalankan di luar jam submit BAST/invoice: kontrol invarian run membandingkan total seluruh invoice & BAST.
 
+**BAST dari invoice (No. PO tanpa BAST).** `php artisan bast:create-from-invoice` (default dry run; `--apply` wajib `--po=<id,...>`;
+`--rollback=<run_id> [--apply]`) membuat satu BAST per invoice aktif untuk No. PO yang tidak punya baris BAST sama sekali: `no_bast` =
+`TANPA-BAST/<kode invoice>`, `tanggal_bast` = `invoice_date`, `nilai_bast` = `billed_amount`, `origin` = `FROM_INVOICE`, invoice ditautkan,
+agregat No. PO dihitung ulang (`recalculateBastAggregate()`). Nilai/status invoice dan status No. PO tidak berubah (dijaga kontrol invarian,
+sinkron status tidak dipanggil); invoice CANCELLED/terhapus tidak ditautkan. Dilewati: `INVOICE_NILAI_NOL`, `MELEBIHI_NOMINAL`,
+`BERUBAH_SEJAK_DRYRUN`. Jejak di `invoice_bast_links_log` (rule `FROM_INVOICE`, `flag` = agregat lama untuk rollback). Nomor BAST placeholder
+tidak bisa diedit dari UI; koreksi ke nomor asli butuh command/SQL tersendiri (Needs confirmation).
+
 **Urutan deploy (langkah manusia):** backup DB + baseline (COUNT/SUM invoice per status, Σ `nilai_bast` per No. PO, status No. PO & header)
 -> upload + `migrate` + `config:clear` -> `bast:mark-backfill` dry run -> `--apply` -> `invoice:split-synthetic-bast` dry run -> review CSV oleh
 pemilik -> `--apply --po=<1-2 id>` -> cek UI -> `--apply` sisanya -> bandingkan baseline -> `--sync-po` dry run -> review -> `--sync-po --apply`
