@@ -178,6 +178,9 @@
          atas <style> per halaman tanpa perlu !important. --}}
     <link rel="stylesheet" href="@aset('css/tesys-ui-mobile.css')">
 
+    {{-- Daftar data (DataTable) + mode card mobile. Sesudah components & mobile. --}}
+    <link rel="stylesheet" href="@aset('css/tesys-ui-datatable.css')">
+
     {{-- Warna aksen kustom per-perangkat (Profil > Settings > Preferensi
          Tampilan). Disimpan di localStorage 'tesys-accent', sama polanya
          dengan pengalih tema di atas. Diterapkan DI SINI, elemen terakhir di
@@ -689,6 +692,9 @@
 
 <!-- TESYS ROW ACTIONS (menu aksi pada kolom tabel) -->
 <script src="@aset('js/tesys-row-actions.js')"></script>
+
+<!-- TESYS TABLE (mode card DataTable di layar <= 640px) -->
+<script src="@aset('js/tesys-table.js')"></script>
 
 <!-- TESYS SEARCHABLE SELECT (pengganti Tom Select) -->
 <script src="@aset('js/tesys-searchable-select.js')"></script>

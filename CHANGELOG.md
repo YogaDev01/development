@@ -4,6 +4,21 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [3.0.7] - 2026-10-19 — Tampilan Kartu Mobile pada Daftar Data
+
+Daftar data (tabel) kini tampil sebagai kartu di layar ponsel, tampilan listing di desktop dan mobile lebih rapi tanpa bingkai ganda, dan tersedia perintah untuk membuat BAST dari invoice lama.
+
+### Baru
+- Daftar data di layar 640px ke bawah tampil sebagai kartu: setiap nilai diberi label kolom, status di baris judul, tombol aksi tetap terjangkau, dan baris total menjadi kartu ringkasan di atas daftar. Tabel pivot Finance Summary dan Trouble Ticket (punya tampilan kartu sendiri) tidak ikut.
+- Perintah bast:create-from-invoice (default dry run, dapat di-rollback) untuk membuat BAST dari invoice lama bagi No. PO yang belum punya BAST; nilai dan status Invoice serta status No. PO tidak berubah.
+
+### Berubah
+- Kartu pembungkus daftar data dilepas bingkainya sehingga tabel langsung berada di margin halaman, baik di desktop maupun mobile.
+
+### Perbaikan
+- Popup periode custom (datepicker) dengan tombol Terapkan kini tetap berbentuk landscape.
+- Perintah invoice:split-synthetic-bast dan rollback-nya tidak lagi berakhir dengan galat palsu pada pemeriksaan akhir run walaupun pemecahan BAST berhasil.
+
 ## [3.0.6] - 2026-10-19 — Penagihan Invoice per BAST
 
 Invoice kini ditagih per BAST (1 Invoice = 1 BAST), satu No. PO bisa memiliki banyak BAST, dan tersedia perintah migrasi data lama beserta pengaman dan rollback.

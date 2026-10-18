@@ -186,7 +186,7 @@
                 </div>
 
                 <div class="table-responsive tt-dt-wrap">
-                    <table id="tblTt" class="table table-bordered table-hover table-striped mb-0 tt-dt">
+                    <table id="tblTt" data-ts-card="off" class="table table-bordered table-hover table-striped mb-0 tt-dt">
                         <thead class="bg-light">
                             <tr>
                                 @foreach($kolom as $key => [$label])
