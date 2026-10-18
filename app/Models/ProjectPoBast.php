@@ -32,6 +32,8 @@ class ProjectPoBast extends Model
     public const ORIGIN_BACKFILL      = 'BACKFILL';
     public const ORIGIN_SPLIT_INVOICE = 'SPLIT_INVOICE';
     public const ORIGIN_SPLIT_SISA    = 'SPLIT_SISA';
+    /** BAST dibuat dari invoice lama untuk No. PO tanpa BAST (bast:create-from-invoice). */
+    public const ORIGIN_FROM_INVOICE  = 'FROM_INVOICE';
 
     protected $casts = [
         'tanggal_bast' => 'date',
