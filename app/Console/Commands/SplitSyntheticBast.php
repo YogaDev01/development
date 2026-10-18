@@ -79,7 +79,7 @@ class SplitSyntheticBast extends Command
                 $r = $this->terapkan($rencana, $runId);
             } catch (\Throwable $e) {
                 $this->error("GAGAL pada No. PO {$rencana['po']->po_number}, transaksinya dibatalkan dan run berhenti: " . $e->getMessage());
-                $this->writeLaporan($hasil, $baris, $runId);
+                $this->writeLaporan($hasil, $baris, $runId, true, $ditulis, $dilewatiBerubah);
 
                 return self::FAILURE;
             }
@@ -97,7 +97,7 @@ class SplitSyntheticBast extends Command
         if ($apply && ($sebelumInvoice !== $this->invarian() || $sebelumBast !== $this->bastAktifTotal())) {
             $this->error("Kontrol invarian RUN gagal (invoice atau total BAST aktif berubah). Jalankan --rollback={$runId} --apply dan periksa; "
                 . 'pastikan tidak ada submit BAST/invoice bersamaan selama run.');
-            $this->writeLaporan($hasil, $baris, $runId);
+            $this->writeLaporan($hasil, $baris, $runId, true, $ditulis, $dilewatiBerubah);
 
             return self::FAILURE;
         }
@@ -306,9 +306,10 @@ class SplitSyntheticBast extends Command
         ];
     }
 
+    /** Hanya Σ nilai: jumlah baris BAST aktif memang berubah pada pemecahan dan rollback. */
     private function bastAktifTotal(): array
     {
-        $r = DB::table('project_po_basts')->whereNull('deleted_at')->selectRaw('COUNT(*) AS n, COALESCE(SUM(nilai_bast),0) AS nilai')->first();
+        $r = DB::table('project_po_basts')->whereNull('deleted_at')->selectRaw('COALESCE(SUM(nilai_bast),0) AS nilai')->first();
 
         return array_map('intval', (array) $r);
     }
