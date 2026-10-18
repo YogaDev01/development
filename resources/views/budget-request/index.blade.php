@@ -20,6 +20,8 @@
 
             // Cash Advance: alur penuh sampai Settlement.
             $caSteps = [
+                ['Rejected',        $n($caCounts, 'REJECTED'),        'danger',    'REJECTED'],
+                ['Settle Rejected', $n($caCounts, 'SETTLE_REJECTED'), 'danger',    'SETTLE_REJECTED'],
                 ['Draft',           $n($caCounts, 'DRAFT'),           'secondary', 'DRAFT'],
                 ['Submitted',       $n($caCounts, 'SUBMITTED'),       'warning',   'SUBMITTED'],
                 ['Checked',         $n($caCounts, 'CHECKED'),         'info',      'CHECKED'],
@@ -37,6 +39,7 @@
 
             // Cost Payment: setelah Process langsung Closed (tanpa Settlement).
             $cpSteps = [
+                ['Rejected',  $n($cpCounts, 'REJECTED'),  'danger',    'REJECTED'],
                 ['Draft',     $n($cpCounts, 'DRAFT'),     'secondary', 'DRAFT'],
                 ['Submitted', $n($cpCounts, 'SUBMITTED'), 'warning',   'SUBMITTED'],
                 ['Checked',   $n($cpCounts, 'CHECKED'),   'info',      'CHECKED'],
@@ -85,15 +88,12 @@
                     {{-- Satu input rentang: sekali klik, kalender "dari" dan "sampai"
                          tampil berdampingan (dua bulan) dan user memilih dua tanggal
                          berurutan. Nilainya disalin ke dua hidden input di bawah supaya
-                         alur "Terapkan" tetap sama. --}}
+                         tombol "Terapkan" ada di dalam popup kalender. --}}
                     <div class="d-flex align-items-center cr-date-range" style="gap:4px;">
                         <input type="text" id="crDateRange" class="form-control form-control-sm tdr-input" readonly>
                         <input type="hidden" id="crDateFrom" value="{{ substr($dateFrom, 0, 10) }}">
                         <input type="hidden" id="crDateTo" value="{{ substr($dateTo, 0, 10) }}">
                     </div>
-                    <button id="btnApplyCustomRange" class="btn btn-primary btn-sm">
-                        <i class="fas fa-check mr-1"></i> Terapkan
-                    </button>
                 </div>
                 <select id="crQuickRange" class="form-control form-control-sm" style="width:auto;">
                     <option value="">Last Update Time</option>
@@ -843,7 +843,10 @@ $(function () {
     | Kalau flatpickr gagal termuat, komponennya mengembalikan null dan filter
     | turun ke dua input teks manual (YYYY-MM-DD). */
     var crPeriode = (typeof TesysDateRange === 'object')
-        ? TesysDateRange.init({ input: '#crDateRange', from: '#crDateFrom', to: '#crDateTo' })
+        ? TesysDateRange.init({
+            input: '#crDateRange', from: '#crDateFrom', to: '#crDateTo',
+            applyButton: { label: 'Terapkan', onClick: function (dari, sampai) { applyDateRange(dari, sampai); } }
+        })
         : null;
 
     if (!crPeriode) {
@@ -852,6 +855,10 @@ $(function () {
             .addClass('form-control form-control-sm')
             .attr('placeholder', 'YYYY-MM-DD');
         $('#crDateRange').remove();
+        // Tanpa popup kalender, tombol Terapkan perlu tampil di samping input manual.
+        $('<button type="button" class="btn btn-primary btn-sm"><i class="fas fa-check mr-1"></i> Terapkan</button>')
+            .on('click', function () { applyDateRange($('#crDateFrom').val(), $('#crDateTo').val()); })
+            .appendTo('.cr-date-range');
     }
 
     function crBukaPeriode() { if (crPeriode) { crPeriode.open(); } }
@@ -879,11 +886,6 @@ $(function () {
     $('#crQuickRange').val(RANGE_AKTIF);
     $('#crCustomRange').toggleClass('d-none', RANGE_AKTIF !== 'custom')
                        .toggleClass('d-flex', RANGE_AKTIF === 'custom');
-
-    $('#btnApplyCustomRange').on('click', function () {
-        crTutupPeriode();
-        applyDateRange($('#crDateFrom').val(), $('#crDateTo').val());
-    });
 
     $('#crQuickRange').on('change', function () {
         var v = $(this).val();
@@ -2344,10 +2346,13 @@ $(function () {
                 html += '<div class="ts-dw-section"><p class="ts-dw-section-title">Lampiran'
                      + (d.attachments_count ? ' (' + d.attachments_count + ')' : '') + '</p>';
                 if (d.attachments && d.attachments.length) {
+                    // Klik membuka carousel (viewer yang sama dengan modal rincian), bukan tab baru;
+                    // href tetap ada sebagai cadangan (klik tengah / buka di tab baru).
+                    window.__crDrawerAtt = d.attachments;
                     html += '<div class="ts-dw-files">';
-                    d.attachments.forEach(function (a) {
+                    d.attachments.forEach(function (a, i) {
                         var ikon = a.is_image ? 'fa-image' : (a.is_pdf ? 'fa-file-pdf' : 'fa-paperclip');
-                        html += '<a class="ts-dw-file" href="/storage/' + esc(a.path) + '" target="_blank" rel="noopener">'
+                        html += '<a class="ts-dw-file js-drawer-att" data-idx="' + i + '" href="/storage/' + esc(a.path) + '" target="_blank" rel="noopener">'
                              +    '<i class="fas ' + ikon + '"></i>'
                              +    '<span>' + esc(a.original_name) + '</span>'
                              +    (a.size_formatted ? '<small>' + esc(a.size_formatted) + '</small>' : '')
@@ -2367,6 +2372,16 @@ $(function () {
                 tampilkanGagal('Sambungan ke server terputus atau data sedang tidak tersedia.');
             });
     }
+
+    $(document).on('click', '.js-drawer-att', function (e) {
+        if (e.ctrlKey || e.metaKey || e.shiftKey || e.which === 2) return; // biarkan buka di tab baru
+        var atts = window.__crDrawerAtt || [];
+        if (!atts.length || !window.__crOpenImgViewer) return;
+        e.preventDefault();
+        window.__crOpenImgViewer(atts.map(function (a) {
+            return { full: '/storage/' + a.path, name: a.original_name, is_image: !!a.is_image, is_pdf: !!a.is_pdf };
+        }), parseInt($(this).data('idx'), 10) || 0);
+    });
 
     $(document).on('click', '.btn-review-cr', function () {
         openCRDrawer($(this).data('id'), this);

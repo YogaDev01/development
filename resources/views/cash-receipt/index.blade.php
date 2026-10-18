@@ -134,6 +134,17 @@
                                     <a href="{{ route('cash-receipt.show', $h->id) }}" class="btn btn-sm btn-outline-primary" title="Detail">
                                         <i class="fas fa-eye"></i>
                                     </a>
+                                    {{-- Sama dengan tombol Hapus di halaman detail: hanya DRAFT yang belum punya alokasi
+                                         (CashReceiptController::destroy menolak yang sudah teralokasi). --}}
+                                    @if($h->status === 'DRAFT' && $h->details->isEmpty())
+                                    <form action="{{ route('cash-receipt.destroy', $h->id) }}" method="POST" class="js-confirm-delete d-inline"
+                                          data-title="Hapus penerimaan {{ $h->code }}?" data-text="Belum ada alokasi, jadi aman dihapus.">
+                                        @csrf @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                    @endif
                                 </td>
                             </tr>
                             @endforeach
@@ -195,6 +206,22 @@ $(function () {
             infoEmpty: 'Tidak ada data',
             paginate: { previous: 'Previous', next: 'Next' }
         }
+    });
+
+    /* Hapus draft — delegasi, karena baris bisa dipindah/dirender ulang oleh DataTables (mode responsive). */
+    $('#tblCashReceipt').on('submit', '.js-confirm-delete', function (e) {
+        e.preventDefault();
+        var form = this;
+        Swal.fire({
+            title: $(form).data('title') || 'Hapus penerimaan?',
+            text: $(form).data('text') || '',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#9a3030',
+            cancelButtonColor: '#55595e',
+            confirmButtonText: 'Ya, Hapus',
+            cancelButtonText: 'Batal'
+        }).then(function (r) { if (r.isConfirmed) form.submit(); });
     });
 
     /* Kotak cari sendiri (kotak bawaan DataTables disembunyikan lewat dom). */

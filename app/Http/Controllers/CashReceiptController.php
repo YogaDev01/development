@@ -149,6 +149,7 @@ class CashReceiptController extends Controller
             'reference_number'    => 'nullable|string|max:255',
             'proof_file'          => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png',
             'notes'               => 'nullable|string|max:1000',
+            'partial_note'        => 'nullable|string|max:1000',
             'invoice_ids'         => 'required|array|min:1',
             'invoice_ids.*'       => 'exists:invoices,id',
             'amounts'             => 'required|array',
@@ -180,6 +181,7 @@ class CashReceiptController extends Controller
         $hasil = DB::transaction(function () use ($request, $invoiceIds, $amounts, $withholding, $proofPath, $berisi, $poIds) {
             $baris = [];
             $total = 0;
+            $parsial = [];
 
             // Urutan kunci: No. PO (id naik) -> BAST -> invoice (id naik) -> header. Pembayaran memicu
             // sinkron status No. PO (Invoice::syncPaymentStatus), jadi No. PO harus dikunci lebih dulu.
@@ -228,12 +230,23 @@ class CashReceiptController extends Controller
                         number_format($invoice->remainingBalance(), 0, ',', '.') . ').'];
                 }
 
+                $sisa = $invoice->remainingBalance();
+                if ($nominal + $pph < $sisa) {
+                    $parsial[] = ['invoice' => $invoice, 'sisa' => $sisa, 'amount' => $nominal, 'withholding' => $pph];
+                }
+
                 $baris[] = ['invoice' => $invoice, 'amount' => $nominal, 'withholding' => $pph];
                 $total  += $nominal + $pph;
             }
 
             if (!$baris) {
                 return ['error' => 'Isi nominal untuk minimal satu invoice.'];
+            }
+
+            // Pembayaran tidak penuh wajib disertai komentar; komentarnya masuk ke Log & Approval invoice terkait.
+            $catatanParsial = trim((string) $request->partial_note);
+            if ($parsial && $catatanParsial === '') {
+                return ['error' => 'Ada invoice yang dibayar tidak penuh. Tulis komentar alasannya.'];
             }
 
             $header = CashReceiptHeader::create([
@@ -261,6 +274,15 @@ class CashReceiptController extends Controller
                     'withholding_tax'        => $b['withholding'],
                     'source_fund_id'         => $request->source_fund_id,
                     'input_by'               => Auth::id(),
+                ]);
+            }
+
+            foreach ($parsial as $p) {
+                $p['invoice']->comments()->create([
+                    'user_id' => Auth::id(),
+                    'comment' => 'Penerimaan ' . $header->code . ' tidak penuh (diterima Rp ' . number_format($p['amount'], 0, ',', '.')
+                        . ' + PPh Rp ' . number_format($p['withholding'], 0, ',', '.')
+                        . ' dari sisa tagihan Rp ' . number_format($p['sisa'], 0, ',', '.') . '): ' . $catatanParsial,
                 ]);
             }
 
