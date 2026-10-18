@@ -194,7 +194,10 @@
 
                     <div class="inv-fact">
                         <span class="inv-fact-label">No. BAST</span>
-                        <span class="inv-fact-value">{{ $invoice->poNumber->no_bast ?? '-' }}</span>
+                        <span class="inv-fact-value">{{ $invoice->bast->no_bast ?? $invoice->poNumber->no_bast ?? ('No. PO: ' . ($invoice->poNumber->po_number ?? '-') . ' · BAST: belum tertaut') }}
+                            @if($invoice->bast?->parent)
+                                <span class="badge badge-secondary" style="font-size:9px;" title="BAST sintetis hasil backfill dipecah per invoice">Pecahan dari {{ $invoice->bast->parent->no_bast }}</span>
+                            @endif</span>
                     </div>
 
                     <div class="inv-fact">

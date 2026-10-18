@@ -1077,6 +1077,7 @@ class Project extends Model
             'waiting_to_active' => 'Mengaktifkan',
             'bast_submitted'    => 'Mengajukan BAST',
             'bast_completed'    => 'Menyelesaikan BAST',
+            'bast_deleted'      => 'Menghapus BAST',
             'closing_submitted' => 'Mengajukan closing',
             'closing_approved'  => 'Menyetujui closing',
             'closing_rejected'  => 'Menolak closing',

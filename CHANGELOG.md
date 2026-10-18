@@ -4,6 +4,21 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [3.0.6] - 2026-10-19 — Penagihan Invoice per BAST
+
+Invoice kini ditagih per BAST (1 Invoice = 1 BAST), satu No. PO bisa memiliki banyak BAST, dan tersedia perintah migrasi data lama beserta pengaman dan rollback.
+
+### Baru
+- No. PO kini bisa memiliki banyak BAST; setiap submission BAST menjadi satu baris BAST beserta lampirannya, dan Superadmin dapat menghapus BAST yang belum ditagih (soft delete dengan alasan).
+- Form Invoice memilih BAST yang ditagih: nilai Invoice sebelum PPN harus sama persis dengan nilai BAST, dengan pengecekan langsung di form create/edit.
+- Status No. PO mengikuti BAST dan Invoice: PARTIAL, BAST_SUBMITTED (Tandai Lengkap), INVOICED saat semua BAST tertagih, dan PAID saat semua Invoice-nya Paid. Invoice lama tanpa BAST tetap memakai alur lama.
+- Perintah migrasi data lama (default dry run, hasil CSV, dapat di-rollback): invoice:link-bast, bast:mark-backfill, invoice:split-synthetic-bast, dan invoice:report-po-paid-drop.
+- Tampilan Invoice (daftar, detail, cetak) menampilkan No. BAST; Modal Detail PO menampilkan selisih Contract terhadap BAST + Restitusi.
+
+### Berubah
+- Submit BAST yang membuat total BAST melebihi nominal No. PO kini diblokir.
+- Pembuatan, perubahan, pembatalan, dan pembayaran Invoice serta Cash Receipt memakai penguncian baris No. PO, BAST, dan Invoice dengan urutan tetap agar tidak terjadi penagihan ganda.
+
 ## [3.0.5] - 2026-10-17 — Status Partially Invoiced & Partially Paid pada Purchase Order
 
 Workflow Purchase Order mendapat dua status baru yang mengikuti progres

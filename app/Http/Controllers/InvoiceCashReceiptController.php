@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 use App\Models\DeliveryNote;
 use App\Models\Invoice;
@@ -14,6 +15,7 @@ use App\Models\InvoiceDetail;
 use App\Models\InvoiceAttachment;
 use App\Models\CashReceipt;
 use App\Models\Project;
+use App\Models\ProjectPoBast;
 use App\Models\SourceFund;
 use App\Models\User;
 use App\Models\UserActivityLog;
@@ -30,6 +32,9 @@ class InvoiceCashReceiptController extends Controller
 
     // Transisi status terkunci - lihat Concerns\TransitionsStatus.
     use Concerns\TransitionsStatus;
+
+    // Urutan kunci No. PO -> BAST -> invoice - lihat Concerns\LocksPoNumbers.
+    use Concerns\LocksPoNumbers;
 
     use \App\Http\Controllers\Concerns\CapsLargeLists;
 
@@ -70,7 +75,7 @@ class InvoiceCashReceiptController extends Controller
         // Group mereka (pola sama seperti scopeByRole() di Cost Request /
         // BuildsCrWorklist) — role finance/approval lain tetap lihat semua
         // invoice seperti sebelumnya.
-        $query = Invoice::with(['po.customer', 'po.manager', 'poNumber', 'cashReceipts']);
+        $query = Invoice::with(['po.customer', 'po.manager', 'poNumber', 'bast', 'cashReceipts']);
         $this->scopeInvoiceVisibleTo($query);
 
         /*
@@ -135,18 +140,18 @@ class InvoiceCashReceiptController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    /** Status No. PO yang boleh dipilih untuk invoice — BAST lengkap ATAU partial (sudah ada BAST, belum ditandai lengkap). */
-    private const INVOICEABLE_PO_STATUSES = ['PARTIAL', 'BAST_SUBMITTED'];
+    /**
+     * Selisih maksimum (rupiah) antara billed_amount invoice dan nilai BAST yang diterima form: 0 = harus
+     * persis sama (keputusan bisnis P1). Toleransi Rp 1.000 hanya dipakai converter (invoice:link-bast,
+     * invoice:split-synthetic-bast) untuk klasifikasi data lama, bukan oleh form.
+     */
+    private const BAST_TOLERANCE = 0;
 
     public function create()
     {
-        // No. PO yang sudah ada BAST (Partial atau lengkap), siap ditagih & belum diinvoice
-        $availablePoNumbers = \App\Models\ProjectPoNumber::with(['project.customer', 'project.attachments', 'attachments'])
-            ->whereIn('status', self::INVOICEABLE_PO_STATUSES)
-            ->orderBy('po_number')
-            ->get();
-
-        $poPayload = $this->buildPoPayload($availablePoNumbers);
+        // 1 Invoice = 1 BAST: daftar BAST yang belum punya invoice aktif (CANCELLED tidak dihitung).
+        $availableBasts = $this->availableBasts();
+        $poPayload      = $this->buildBastPayload($availableBasts);
         // Hanya Source Fund rekening PT (bukan rekening pribadi/lain) yang boleh
         // dipakai di Invoice/Cash Receipt — difilter di query, bukan disembunyikan
         // di frontend setelah data termuat.
@@ -154,33 +159,81 @@ class InvoiceCashReceiptController extends Controller
             ->whereRaw('LOWER(name) LIKE ?', ['%pt%'])
             ->orderBy('name')->get();
 
-        return view('invoice-cash-receipt.create', compact('availablePoNumbers', 'poPayload', 'sourceFunds'));
+        return view('invoice-cash-receipt.create', compact('availableBasts', 'poPayload', 'sourceFunds'));
     }
 
     /**
-     * Payload JSON per No. PO: info customer/PO, sisa nominal yang belum
-     * ditagih, & lampiran PO (dipakai JS form create/edit tanpa AJAX
-     * round-trip terpisah).
+     * BAST yang bisa ditagih: belum punya invoice aktif, tidak bergantung status
+     * No. PO. $sertakanBastId dipakai saat edit supaya BAST milik invoice itu
+     * sendiri tetap muncul. Diurutkan per No. PO (dikelompokkan di dropdown).
      */
-    private function buildPoPayload($poNumbers, ?int $excludeInvoiceId = null): array
+    private function availableBasts(?int $sertakanBastId = null, ?int $kecualiInvoiceId = null)
+    {
+        return ProjectPoBast::with(['poNumber.project.customer', 'poNumber.project.attachments', 'poNumber.attachments', 'attachments'])
+            ->where(function ($q) use ($sertakanBastId) {
+                $q->whereDoesntHave('invoices', fn ($i) => $i->where('status', '!=', 'CANCELLED'));
+                if ($sertakanBastId) {
+                    $q->orWhere('id', $sertakanBastId);
+                }
+            })
+            // BAST pada No. PO yang masih punya invoice lama aktif yang belum tertaut adalah BAST
+            // sintetis hasil backfill: belum boleh ditagih (lihat ProjectPoNumber::punyaInvoiceLamaBelumTertaut()).
+            // Draft lama yang sedang diedit dikecualikan supaya bisa memilih BAST No. PO-nya sendiri.
+            ->whereDoesntHave('poNumber', fn ($po) => $po->whereHas('invoices', fn ($i) => $i
+                ->where('status', '!=', 'CANCELLED')
+                ->whereNull('project_po_bast_id')
+                ->when($kecualiInvoiceId, fn ($q) => $q->where('id', '!=', $kecualiInvoiceId))))
+            ->get()
+            ->sortBy(fn ($b) => [$b->poNumber->po_number ?? '', $b->tanggal_bast, $b->id])
+            ->values();
+    }
+
+    /**
+     * Payload JSON per BAST (kunci = id BAST): info customer/PO, nilai BAST, &
+     * lampiran PO/BAST (dipakai JS form create/edit tanpa AJAX round-trip terpisah).
+     */
+    private function buildBastPayload($basts): array
+    {
+        $poPayload = $this->buildPoPayload($basts->pluck('poNumber')->filter()->unique('id'));
+
+        $payload = [];
+        foreach ($basts as $bast) {
+            $po = $poPayload[$bast->project_po_number_id] ?? null;
+            if (!$po) {
+                continue;
+            }
+            $payload[$bast->id] = array_merge($po, [
+                'no_bast'              => $bast->no_bast,
+                'nilai_bast'           => (int) $bast->nilai_bast,
+                'nilai_bast_formatted' => number_format((int) $bast->nilai_bast, 0, ',', '.'),
+                'bast_attachments'     => $bast->attachments->map(fn ($a) => [
+                    'title' => $a->title ?? $a->file_name,
+                    'path'  => $a->file_path,
+                ])->values(),
+            ]);
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Payload JSON per No. PO: info customer/PO & lampiran PO.
+     */
+    private function buildPoPayload($poNumbers): array
     {
         $payload = [];
         foreach ($poNumbers as $poNumber) {
-            $project   = $poNumber->project;
-            $remaining = $poNumber->remainingValue($excludeInvoiceId);
+            $project = $poNumber->project;
             $payload[$poNumber->id] = [
                 'po_number'         => $poNumber->po_number,
                 'project_code'      => $project->code ?? '-',
                 'project_name'      => $project->name ?? '-',
                 'customer'          => $project->customer->name ?? '-',
                 'customer_initial'  => $project->customer->initial ?? '-',
-                'no_bast'           => $poNumber->no_bast ?? '-',
                 'term_of_payment'   => $project->term_of_payment ?: '-',
                 'nominal'           => (int) $poNumber->nominal,
                 'nominal_formatted' => $poNumber->nominal_formatted,
-                'remaining'         => $remaining,
-                'remaining_formatted' => number_format($remaining, 0, ',', '.'),
-                // 3 lampiran terpisah: (a) PO header/project-level, (b) No. PO (non-BAST), (c) BAST.
+                // Lampiran terpisah: (a) PO header/project-level, (b) No. PO (non-BAST).
                 'po_attachments'    => $project?->attachments->where('type', 'general')->values()->map(fn ($a) => [
                     'title' => $a->title ?? $a->file_name,
                     'path'  => $a->file_path,
@@ -190,19 +243,71 @@ class InvoiceCashReceiptController extends Controller
                     'title' => $a->title ?? $a->file_name,
                     'path'  => $a->file_path,
                 ]),
-                'bast_attachments'  => $poNumber->attachments->where('type', 'po_number_bast')->values()->map(fn ($a) => [
-                    'title' => $a->title ?? $a->file_name,
-                    'path'  => $a->file_path,
-                ]),
             ];
         }
         return $payload;
     }
 
+    /**
+     * Urutan kunci di SEMUA jalur penagihan/penghapusan BAST: (1) baris No. PO, (2) baris BAST,
+     * (3) baru invoice (hanya per id, tidak pernah range/gap lock). Urutan yang sama mencegah deadlock.
+     *
+     * Harus dipanggil sebagai pernyataan PERTAMA di DB::transaction(): snapshot pembacaan MySQL baru
+     * terbentuk pada pembacaan biasa pertama, sehingga cek invoice di bawah (pembacaan biasa) melihat
+     * invoice yang baru di-commit transaksi lain yang tadi kita tunggu kuncinya. Karena itu $poNumberId
+     * dicari SEBELUM transaksi (poIdDariBast) atau diambil dari invoice yang sudah dimuat.
+     *
+     * Memastikan BAST belum dipakai invoice aktif lain (kecuali $kecualiInvoiceId) dan No. PO-nya tidak
+     * punya invoice lama aktif yang belum tertaut.
+     */
+    private function kunciBastUntukTagihan(int $poNumberId, int $bastId, ?int $kecualiInvoiceId = null): ProjectPoBast
+    {
+        $poNumber = \App\Models\ProjectPoNumber::whereKey($poNumberId)->lockForUpdate()->first();   // 1) No. PO
+        $bast     = ProjectPoBast::whereKey($bastId)->lockForUpdate()->first();                       // 2) BAST
+        if (!$poNumber || !$bast || (int) $bast->project_po_number_id !== (int) $poNumber->id) {
+            throw new \DomainException('BAST tidak ditemukan atau sudah dihapus.');
+        }
+
+        if ($poNumber->punyaInvoiceLamaBelumTertaut($kecualiInvoiceId)) {
+            throw new \DomainException(
+                'No. PO ' . $poNumber->po_number . ' masih punya invoice lama yang belum tertaut ke BAST. '
+                . 'Tautkan dulu (invoice:link-bast) sebelum membuat invoice per BAST.'
+            );
+        }
+
+        $lain = $bast->activeInvoices()
+            ->when($kecualiInvoiceId, fn ($q) => $q->where('id', '!=', $kecualiInvoiceId))
+            ->first();
+        if ($lain) {
+            throw new \DomainException('BAST ' . $bast->no_bast . ' sudah ditagih pada invoice ' . $lain->code . '.');
+        }
+
+        return $bast;
+    }
+
+    /** No. PO milik sebuah BAST — dibaca SEBELUM transaksi dimulai (lihat kunciBastUntukTagihan). */
+    private function poIdDariBast(int $bastId): ?int
+    {
+        return ProjectPoBast::whereKey($bastId)->value('project_po_number_id');
+    }
+
+    /** Nilai ditagih (billed_amount, tanpa PPN) harus sama dengan nilai BAST, toleransi kecil. */
+    private function pastikanSesuaiBast(Invoice $invoice, ProjectPoBast $bast): void
+    {
+        $selisih = abs((int) $invoice->billed_amount - (int) $bast->nilai_bast);
+        if ($selisih > self::BAST_TOLERANCE) {
+            throw new \DomainException(
+                'Nilai ditagih Rp ' . number_format((int) $invoice->billed_amount, 0, ',', '.')
+                . ' tidak sesuai nilai BAST ' . $bast->no_bast . ' Rp ' . number_format((int) $bast->nilai_bast, 0, ',', '.')
+                . ' (selisih Rp ' . number_format($selisih, 0, ',', '.') . '). Nilai ditagih harus sama persis dengan nilai BAST.'
+            );
+        }
+    }
+
     public function store(Request $request)
     {
         $request->validate([
-            'project_po_number_id' => 'required|exists:project_po_numbers,id',
+            'project_po_bast_id' => ['required', Rule::exists('project_po_basts', 'id')->whereNull('deleted_at')],
             'source_fund_id'     => 'required|exists:source_funds,id',
             'faktur_number'      => 'required|string|max:255',
             'payment_term_type'  => 'required|in:' . implode(',', Invoice::PAYMENT_TERM_TYPES),
@@ -227,45 +332,52 @@ class InvoiceCashReceiptController extends Controller
             'attachments.*.file'         => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
         ]);
 
-        $poNumber = \App\Models\ProjectPoNumber::findOrFail($request->project_po_number_id);
-
-        if (!in_array($poNumber->status, self::INVOICEABLE_PO_STATUSES, true)) {
-            return back()->withInput()
-                ->with('error', 'No. PO ' . $poNumber->po_number . ' belum ada BAST atau sudah pernah ditagihkan.');
+        $poId = $this->poIdDariBast((int) $request->project_po_bast_id);
+        if (!$poId) {
+            return back()->withInput()->with('error', 'BAST tidak ditemukan atau sudah dihapus.');
         }
 
-        $invoice = DB::transaction(function () use ($request, $poNumber) {
-            $code = Invoice::generateCode((int) $poNumber->project_id, \Carbon\Carbon::parse($request->invoice_date));
+        try {
+            $invoice = DB::transaction(function () use ($request, $poId) {
+                $bast     = $this->kunciBastUntukTagihan($poId, (int) $request->project_po_bast_id);
+                $poNumber = $bast->poNumber;
 
-            $invoice = Invoice::create([
-                'code'                 => $code,
-                'faktur_number'        => $request->faktur_number,
-                'po_id'                => $poNumber->project_id,
-                'project_po_number_id' => $poNumber->id,
-                'source_fund_id'       => $request->source_fund_id,
-                'payment_term_type'    => $request->payment_term_type,
-                'termin_number'        => $request->payment_term_type === 'Termin' ? $request->termin_number : null,
-                'invoice_date'         => $request->invoice_date,
-                'due_date'             => $request->due_date,
-                'tax_rate'             => $request->tax_rate ?? 11,
-                'withholding_tax'      => $this->normalizeMoney($request->withholding_tax),
-                'billing_percentage'   => $request->billing_percentage,
-                'remark'               => $request->remark,
-                'status'               => 'DRAFT',
-                'created_by'           => Auth::id(),
-            ]);
+                $code = Invoice::generateCode((int) $poNumber->project_id, \Carbon\Carbon::parse($request->invoice_date));
 
-            $this->syncDetails($invoice, $request);
-            $this->storeAttachments($invoice, $request);
+                $invoice = Invoice::create([
+                    'code'                 => $code,
+                    'faktur_number'        => $request->faktur_number,
+                    'po_id'                => $poNumber->project_id,
+                    'project_po_number_id' => $poNumber->id,
+                    'project_po_bast_id'   => $bast->id,
+                    'source_fund_id'       => $request->source_fund_id,
+                    'payment_term_type'    => $request->payment_term_type,
+                    'termin_number'        => $request->payment_term_type === 'Termin' ? $request->termin_number : null,
+                    'invoice_date'         => $request->invoice_date,
+                    'due_date'             => $request->due_date,
+                    'tax_rate'             => $request->tax_rate ?? 11,
+                    'withholding_tax'      => $this->normalizeMoney($request->withholding_tax),
+                    'billing_percentage'   => $request->billing_percentage,
+                    'remark'               => $request->remark,
+                    'status'               => 'DRAFT',
+                    'created_by'           => Auth::id(),
+                ]);
 
-            $invoice->recalculateTotals();
+                $this->syncDetails($invoice, $request);
+                $invoice->recalculateTotals();
 
-            // No. PO ini bisa punya beberapa invoice (Termin 1, 2, 3, ...) — hanya
-            // pindah ke INVOICED kalau seluruh nominalnya sudah tertagih habis.
-            $poNumber->syncInvoiceStatus();
+                // Dicek sebelum lampiran disimpan ke disk, supaya penolakan tidak meninggalkan file yatim.
+                $this->pastikanSesuaiBast($invoice, $bast);
+                $this->storeAttachments($invoice, $request);
 
-            return $invoice;
-        });
+                // Status No. PO dihitung dari seluruh BAST-nya (bukan sisa nominal).
+                $poNumber->syncInvoiceStatus();
+
+                return $invoice;
+            });
+        } catch (\DomainException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
 
         UserActivityLog::record('invoice', 'create', 'Membuat Invoice #' . $invoice->code, $invoice);
 
@@ -288,11 +400,9 @@ class InvoiceCashReceiptController extends Controller
                 ->with('error', 'Hanya invoice berstatus DRAFT yang dapat diedit.');
         }
 
-        $availablePoNumbers = \App\Models\ProjectPoNumber::with(['project.customer', 'project.attachments', 'attachments'])
-            ->where(fn ($q) => $q->whereIn('status', self::INVOICEABLE_PO_STATUSES)->orWhere('id', $invoice->project_po_number_id))
-            ->orderBy('po_number')->get();
-
-        $poPayload = $this->buildPoPayload($availablePoNumbers, $invoice->id);
+        // BAST yang belum ditagih + BAST milik invoice ini sendiri.
+        $availableBasts = $this->availableBasts($invoice->project_po_bast_id, $invoice->id);
+        $poPayload      = $this->buildBastPayload($availableBasts);
         // Hanya Source Fund rekening PT (bukan rekening pribadi/lain) yang boleh
         // dipakai di Invoice/Cash Receipt — difilter di query, bukan disembunyikan
         // di frontend setelah data termuat.
@@ -300,7 +410,7 @@ class InvoiceCashReceiptController extends Controller
             ->whereRaw('LOWER(name) LIKE ?', ['%pt%'])
             ->orderBy('name')->get();
 
-        return view('invoice-cash-receipt.edit', compact('invoice', 'availablePoNumbers', 'poPayload', 'sourceFunds'));
+        return view('invoice-cash-receipt.edit', compact('invoice', 'availableBasts', 'poPayload', 'sourceFunds'));
     }
 
     public function update(Request $request, $id)
@@ -312,7 +422,7 @@ class InvoiceCashReceiptController extends Controller
         }
 
         $request->validate([
-            'project_po_number_id' => 'required|exists:project_po_numbers,id',
+            'project_po_bast_id' => ['required', Rule::exists('project_po_basts', 'id')->whereNull('deleted_at')],
             'source_fund_id'     => 'required|exists:source_funds,id',
             'faktur_number'      => 'required|string|max:255',
             'payment_term_type'  => 'required|in:' . implode(',', Invoice::PAYMENT_TERM_TYPES),
@@ -338,53 +448,61 @@ class InvoiceCashReceiptController extends Controller
             'delete_attachments'         => 'nullable|array',
         ]);
 
-        $newPoNumber = \App\Models\ProjectPoNumber::findOrFail($request->project_po_number_id);
-
-        if ($newPoNumber->id !== $invoice->project_po_number_id && !in_array($newPoNumber->status, self::INVOICEABLE_PO_STATUSES, true)) {
-            return back()->withInput()
-                ->with('error', 'No. PO ' . $newPoNumber->po_number . ' belum ada BAST atau sudah pernah ditagihkan.');
+        $poId = $this->poIdDariBast((int) $request->project_po_bast_id);
+        if (!$poId) {
+            return back()->withInput()->with('error', 'BAST tidak ditemukan atau sudah dihapus.');
         }
 
-        DB::transaction(function () use ($request, $invoice, $newPoNumber) {
-            $oldPoNumberId = $invoice->project_po_number_id;
+        try {
+            DB::transaction(function () use ($request, $invoice, $poId) {
+                // Update lintas No. PO: kunci No. PO asal dan tujuan berurutan id naik (mencegah deadlock silang),
+                // baru BAST tujuan (kunciBastUntukTagihan mengunci ulang No. PO tujuan — aman dalam transaksi yang sama).
+                $this->kunciNoPo($invoice->project_po_number_id, $poId);
+                $bast          = $this->kunciBastUntukTagihan($poId, (int) $request->project_po_bast_id, $invoice->id);
+                $newPoNumber   = $bast->poNumber;
+                $oldPoNumberId = $invoice->project_po_number_id;
 
-            $invoice->update([
-                'faktur_number'        => $request->faktur_number,
-                'po_id'                => $newPoNumber->project_id,
-                'project_po_number_id' => $newPoNumber->id,
-                'source_fund_id'       => $request->source_fund_id,
-                'payment_term_type'    => $request->payment_term_type,
-                'termin_number'        => $request->payment_term_type === 'Termin' ? $request->termin_number : null,
-                'invoice_date'         => $request->invoice_date,
-                'due_date'             => $request->due_date,
-                'tax_rate'             => $request->tax_rate ?? 11,
-                'withholding_tax'      => $this->normalizeMoney($request->withholding_tax),
-                'billing_percentage'   => $request->billing_percentage,
-                'remark'               => $request->remark,
-            ]);
+                $invoice->update([
+                    'faktur_number'        => $request->faktur_number,
+                    'po_id'                => $newPoNumber->project_id,
+                    'project_po_number_id' => $newPoNumber->id,
+                    'project_po_bast_id'   => $bast->id,
+                    'source_fund_id'       => $request->source_fund_id,
+                    'payment_term_type'    => $request->payment_term_type,
+                    'termin_number'        => $request->payment_term_type === 'Termin' ? $request->termin_number : null,
+                    'invoice_date'         => $request->invoice_date,
+                    'due_date'             => $request->due_date,
+                    'tax_rate'             => $request->tax_rate ?? 11,
+                    'withholding_tax'      => $this->normalizeMoney($request->withholding_tax),
+                    'billing_percentage'   => $request->billing_percentage,
+                    'remark'               => $request->remark,
+                ]);
 
-            foreach ((array) $request->input('delete_attachments', []) as $attId) {
-                $att = InvoiceAttachment::where('invoice_id', $invoice->id)->find($attId);
-                if ($att) {
-                    Storage::disk('secure')->delete($att->file_path);
-                    $att->delete();
+                $invoice->details()->delete();
+                $this->syncDetails($invoice, $request);
+                $invoice->recalculateTotals();
+
+                // Dicek sebelum berkas di disk disentuh, supaya penolakan membatalkan semuanya.
+                $this->pastikanSesuaiBast($invoice, $bast);
+
+                foreach ((array) $request->input('delete_attachments', []) as $attId) {
+                    $att = InvoiceAttachment::where('invoice_id', $invoice->id)->find($attId);
+                    if ($att) {
+                        Storage::disk('secure')->delete($att->file_path);
+                        $att->delete();
+                    }
                 }
-            }
+                $this->storeAttachments($invoice, $request);
 
-            $invoice->details()->delete();
-            $this->syncDetails($invoice, $request);
-            $this->storeAttachments($invoice, $request);
-
-            $invoice->recalculateTotals();
-
-            // Sinkron status kedua No. PO (lama & baru) berdasarkan sisa nominal
-            // yang belum tertagih — bukan blind-set, supaya invoice bertermin
-            // (1, 2, 3, ...) pada No. PO yang sama tidak saling menimpa.
-            if ($oldPoNumberId && $oldPoNumberId !== $newPoNumber->id) {
-                \App\Models\ProjectPoNumber::find($oldPoNumberId)?->syncInvoiceStatus();
-            }
-            $newPoNumber->syncInvoiceStatus();
-        });
+                // Sinkron status kedua No. PO (lama & baru) dari BAST-nya.
+                if ($oldPoNumberId && $oldPoNumberId !== $newPoNumber->id) {
+                    \App\Models\ProjectPoNumber::find($oldPoNumberId)?->syncInvoiceStatus();
+                }
+                $newPoNumber->syncInvoiceStatus();
+            });
+        } catch (\DomainException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
 
         UserActivityLog::record('invoice', 'update', 'Memperbarui Invoice #' . $invoice->code, $invoice);
 
@@ -589,6 +707,8 @@ class InvoiceCashReceiptController extends Controller
         $invoiceCode = $invoice->code;
 
         DB::transaction(function () use ($invoice) {
+            $this->kunciNoPo($invoice->project_po_number_id);
+
             foreach ($invoice->attachments as $att) {
                 Storage::disk('secure')->delete($att->file_path);
             }
@@ -623,12 +743,24 @@ class InvoiceCashReceiptController extends Controller
         }
 
         // Transisi terkunci: klik ganda / dua pengguna tidak lagi menggandakan
-        // notifikasi atau menimpa submitted_by.
-        if (! $this->transitionStatus(Invoice::class, $invoice->id, 'DRAFT', [
-            'status'       => 'SUBMITTED',
-            'submitted_by' => Auth::id(),
-            'submitted_at' => now(),
-        ])) {
+        // notifikasi atau menimpa submitted_by. BAST dicek lagi: jangan sampai
+        // sudah dipakai invoice aktif lain atau sudah dihapus.
+        try {
+            $berhasil = DB::transaction(function () use ($invoice) {
+                if ($invoice->project_po_bast_id) {
+                    $this->kunciBastUntukTagihan((int) $invoice->project_po_number_id, (int) $invoice->project_po_bast_id, $invoice->id);
+                }
+
+                return $this->transitionStatus(Invoice::class, $invoice->id, 'DRAFT', [
+                    'status'       => 'SUBMITTED',
+                    'submitted_by' => Auth::id(),
+                    'submitted_at' => now(),
+                ]);
+            });
+        } catch (\DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+        if (! $berhasil) {
             return back()->with('error', 'Status sudah berubah — muat ulang halaman.');
         }
 
@@ -752,10 +884,42 @@ class InvoiceCashReceiptController extends Controller
 
         $oldStatus = $invoice->status;
 
-        if (! $this->transitionStatus(Invoice::class, $invoice->id, $oldStatus, [
-            'status' => $map[$oldStatus],
-            'remark' => trim(($invoice->remark ? $invoice->remark . "\n\n" : '') . '[REVISI] ' . $request->notes),
-        ])) {
+        try {
+            $berhasil = DB::transaction(function () use ($invoice, $map, $oldStatus, $request) {
+                if ($oldStatus === 'CANCELLED' && $invoice->project_po_bast_id) {
+                    // CANCELLED -> DRAFT mengambil kembali BAST-nya: pastikan belum dipakai invoice aktif lain.
+                    $this->kunciBastUntukTagihan((int) $invoice->project_po_number_id, (int) $invoice->project_po_bast_id, $invoice->id);
+                } elseif ($oldStatus === 'CANCELLED' && $invoice->project_po_number_id) {
+                    // Invoice lama yang belum tertaut ke BAST: kunci No. PO dulu, lalu tolak bila No. PO ini
+                    // sudah punya BAST yang ditagih invoice aktif lain (penagihan per BAST sudah berjalan di sana).
+                    $this->kunciNoPo($invoice->project_po_number_id);
+                    $dipakai = Invoice::whereIn('project_po_bast_id', ProjectPoBast::where('project_po_number_id', $invoice->project_po_number_id)->select('id'))
+                        ->where('status', '!=', 'CANCELLED')
+                        ->where('id', '!=', $invoice->id)
+                        ->first();
+                    if ($dipakai) {
+                        throw new \DomainException(
+                            'Invoice ini tidak dapat dikembalikan ke DRAFT: No. PO-nya sudah punya BAST yang ditagih pada invoice '
+                            . $dipakai->code . '. Buat invoice baru atas BAST yang belum ditagih.'
+                        );
+                    }
+                }
+
+                $hasil = $this->transitionStatus(Invoice::class, $invoice->id, $oldStatus, [
+                    'status' => $map[$oldStatus],
+                    'remark' => trim(($invoice->remark ? $invoice->remark . "\n\n" : '') . '[REVISI] ' . $request->notes),
+                ]);
+
+                if ($hasil && $oldStatus === 'CANCELLED') {
+                    $invoice->poNumber?->syncInvoiceStatus();
+                }
+
+                return $hasil;
+            });
+        } catch (\DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+        if (! $berhasil) {
             return back()->with('error', 'Status sudah berubah — muat ulang halaman.');
         }
 
@@ -857,10 +1021,13 @@ class InvoiceCashReceiptController extends Controller
         try {
         DB::transaction(function () use ($invoice, $request, $revise) {
             /*
-            | Kunci invoice dulu (urutan sama dengan storeCashReceipt): tanpa
-            | ini pembayaran yang dicatat bersamaan bisa tetap masuk ke invoice
+            | Kunci No. PO dulu, baru invoice (per id) - urutan yang sama dengan
+            | storeCashReceipt/settleCashReceipt/destroyCashReceipt dan semua jalur
+            | BAST (lihat kunciNoPo). Penguncian invoice itu sendiri tetap perlu:
+            | tanpanya pembayaran yang dicatat bersamaan bisa tetap masuk ke invoice
             | yang baru saja dibatalkan.
             */
+            $this->kunciNoPo($invoice->project_po_number_id);
             $terkunci = Invoice::whereKey($invoice->id)->lockForUpdate()->first();
             if (! $terkunci || in_array($terkunci->status, ['PAID', 'CANCELLED'], true)
                 || ($revise && $terkunci->status !== 'SENT')) {
@@ -878,15 +1045,17 @@ class InvoiceCashReceiptController extends Controller
             // Jalannya, cukup lepas tautannya ke invoice yang dibatalkan ini.
             \App\Models\DeliveryNoteItem::where('invoice_id', $invoice->id)->delete();
 
-            if ($invoice->project_po_number_id) {
-                \App\Models\ProjectPoNumber::find($invoice->project_po_number_id)?->syncInvoiceStatus();
-            }
-
             if ($revise) {
                 // SENT -> CANCELLED -> DRAFT: histori cancel (cancelled_by/at/
                 // cancel_reason) DIPERTAHANKAN sebagai jejak kenapa invoice ini
                 // direvisi, statusnya balik ke DRAFT supaya bisa diedit & terbit ulang.
                 $invoice->update(['status' => 'DRAFT']);
+            }
+
+            // Sinkron SETELAH status akhir invoice (CANCELLED atau DRAFT) — pada
+            // Cancel & Revise BAST-nya masih dipegang invoice ini.
+            if ($invoice->project_po_number_id) {
+                \App\Models\ProjectPoNumber::find($invoice->project_po_number_id)?->syncInvoiceStatus();
             }
         });
         } catch (\DomainException $e) {
@@ -947,6 +1116,9 @@ class InvoiceCashReceiptController extends Controller
         | tidak bisa dijelaskan.
         */
         $gagal = DB::transaction(function () use ($invoice, $amount, $request, $proofPath) {
+            // No. PO dulu, baru invoice: pembayaran memicu sinkron status No. PO (syncPaymentStatus),
+            // jadi urutannya harus sama dengan jalur BAST/cancel agar tidak berpapasan.
+            $this->kunciNoPo($invoice->project_po_number_id);
             $terkunci = Invoice::whereKey($invoice->id)->lockForUpdate()->first();
 
             // Status diperiksa ulang di dalam kunci: invoice bisa saja baru
@@ -1013,6 +1185,7 @@ class InvoiceCashReceiptController extends Controller
         | bisa melampaui tagihan. Rumus dan pesan tidak berubah.
         */
         $error = DB::transaction(function () use ($invoice, $cr, $tax) {
+            $this->kunciNoPo($invoice->project_po_number_id); // No. PO dulu, baru invoice (urutan global)
             $terkunci = Invoice::whereKey($invoice->id)->lockForUpdate()->first();
 
             if (! in_array($terkunci->status, ['SENT', 'RECEIVED', 'PARTIALLY_PAID'], true)) {
@@ -1067,6 +1240,7 @@ class InvoiceCashReceiptController extends Controller
         ]);
 
         DB::transaction(function () use ($cr, $invoice, $request) {
+            $this->kunciNoPo($invoice->project_po_number_id); // No. PO dulu, baru invoice (urutan global)
             Invoice::whereKey($invoice->id)->lockForUpdate()->first();
 
             $cr->update([

@@ -225,6 +225,11 @@ Route::middleware('auth')->group(function () {
         Route::delete('project/po-number/{poNumberId}',             [ProjectController::class, 'destroyPoNumber'])->name('project.po-number.destroy');
     });
 
+    // Hapus BAST (soft delete) — superadmin saja; syarat "belum ditagih" dicek di controller.
+    Route::middleware('role:superadmin')->group(function () {
+        Route::delete('project/po-bast/{bastId}', [ProjectController::class, 'destroyBast'])->name('project.po-bast.destroy');
+    });
+
     // Submit BAST — halaman terpisah, bisa banyak No. PO sekaligus per project
     Route::middleware('role:superadmin,head')->group(function () {
         Route::get('project/{id}/submit-bast',  [ProjectController::class, 'showBastPage'])->name('project.submit-bast');

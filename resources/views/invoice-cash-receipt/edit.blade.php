@@ -56,16 +56,19 @@
                 <div class="card-body form-clean">
 
                     <div class="form-group">
-                        <label class="font-weight-600">No. PO <span class="text-danger">*</span></label>
+                        <label class="font-weight-600">No. PO / BAST <span class="text-danger">*</span></label>
                         <button type="button" id="btnPoPicker" class="btn btn-outline-secondary btn-block form-control-sm d-flex justify-content-between align-items-center">
-                            <span id="btnPoPickerLabel" class="text-truncate">— Pilih No. PO (sudah ada BAST) —</span>
+                            <span id="btnPoPickerLabel" class="text-truncate">— Pilih BAST yang akan ditagih —</span>
                             <i class="fas fa-caret-down ml-2 text-muted"></i>
                         </button>
-                        <select name="project_po_number_id" id="selPo" style="display:none;">
-                            <option value="">— Pilih No. PO (sudah ada BAST) —</option>
-                            @foreach($availablePoNumbers as $pn)
-                                @php $poLabel = ($pn->project->customer->initial ?? '-') . ' - [' . $pn->po_number . '] ' . ($pn->project->name ?? '-') . ' - ' . $pn->nominal_formatted; @endphp
-                                <option value="{{ $pn->id }}" data-label="{{ $poLabel }}" {{ old('project_po_number_id', $invoice->project_po_number_id) == $pn->id ? 'selected' : '' }}>
+                        <select name="project_po_bast_id" id="selPo" style="display:none;">
+                            <option value="">— Pilih BAST yang akan ditagih —</option>
+                            @foreach($availableBasts as $bast)
+                                @php
+                                    $pn = $bast->poNumber;
+                                    $poLabel = ($pn->project->customer->initial ?? '-') . ' - [' . $pn->po_number . '] ' . $bast->no_bast . ' - ' . number_format((int) $bast->nilai_bast, 0, ',', '.');
+                                @endphp
+                                <option value="{{ $bast->id }}" data-group="{{ $pn->po_number }}" data-label="{{ $poLabel }}" {{ old('project_po_bast_id', $invoice->project_po_bast_id) == $bast->id ? 'selected' : '' }}>
                                     {{ $poLabel }}
                                 </option>
                             @endforeach
@@ -82,7 +85,7 @@
                         <div class="inv-po-item"><span class="inv-po-label">No. BAST</span><span class="inv-po-value" id="poInfoBast"></span></div>
                         <div class="inv-po-item"><span class="inv-po-label">Term of Payment</span><span class="inv-po-value" id="poInfoTop"></span></div>
                         <div class="inv-po-item"><span class="inv-po-label">Nominal No. PO</span><span class="inv-po-value" id="poInfoValue"></span></div>
-                        <div class="inv-po-item"><span class="inv-po-label">Sisa Belum Ditagih</span><span class="inv-po-value" id="poInfoRemaining"></span></div>
+                        <div class="inv-po-item"><span class="inv-po-label">Nilai BAST</span><span class="inv-po-value" id="poInfoRemaining"></span></div>
                     </div>
 
                     {{-- Kolom isian berjajar: identitas penagihan, lalu termin &
@@ -265,10 +268,8 @@
                             <strong id="calcGrandTotal" class="text-success">0</strong>
                         </div>
                     </div>
-                    <div id="calcAdditionalWarning" class="alert alert-warning mt-2 mb-0 py-2 inv-sum-warning" style="display:none;">
-                        <i class="fas fa-exclamation-triangle mr-1"></i>
-                        <strong>ADDITIONAL</strong> — melebihi sisa kontrak PO sebesar <span id="calcAdditionalAmount"></span>.
-                        Wajib jelaskan alasan di Remark.
+                    <div id="calcBastCheck" class="alert mt-2 mb-0 py-2 inv-sum-warning" style="display:none;">
+                        <i id="calcBastCheckIcon" class="fas mr-1"></i><span id="calcBastCheckText"></span>
                     </div>
                 </div>
             </div>
@@ -454,7 +455,7 @@ $(function () {
 
         function syncButtonLabel() {
             var $opt = $select.find('option:selected');
-            $('#btnPoPickerLabel').text($opt.val() ? $opt.data('label') : '— Pilih No. PO (sudah ada BAST) —');
+            $('#btnPoPickerLabel').text($opt.val() ? $opt.data('label') : '— Pilih BAST yang akan ditagih —');
         }
         syncButtonLabel();
 
@@ -471,12 +472,19 @@ $(function () {
             closePoPicker();
 
             var $dd = $('<div class="po-picker-dropdown"></div>').css({ maxHeight: '380px' });
-            var $search = $('<input type="text" class="form-control form-control-sm mb-2" placeholder="Cari No. PO / customer / scope of work...">');
+            var $search = $('<input type="text" class="form-control form-control-sm mb-2" placeholder="Cari No. PO / BAST / customer / scope of work...">');
             var $list = $('<div class="po-picker-list" style="overflow-y:auto;max-height:300px;"></div>');
 
+            var lastGroup = null;
             $select.find('option').each(function () {
                 var val = $(this).val();
                 if (!val) return;
+                var grp = $(this).data('group');
+                if (grp && grp !== lastGroup) {
+                    $list.append($('<div class="po-picker-group"></div>').text('No. PO ' + grp)
+                        .css({ fontSize: '11px', fontWeight: 700, padding: '6px 8px 2px', color: 'var(--text-faint)' }));
+                    lastGroup = grp;
+                }
                 var $item = $('<div class="po-picker-item"></div>')
                     .text($(this).data('label'))
                     .attr('data-value', val);
@@ -484,7 +492,7 @@ $(function () {
             });
 
             if ($list.children().length === 0) {
-                $list.append('<div class="text-muted p-2" style="font-size:12px;">Tidak ada No. PO tersedia.</div>');
+                $list.append('<div class="text-muted p-2" style="font-size:12px;">Tidak ada BAST yang belum ditagih.</div>');
             }
 
             $dd.append($search, $list);
@@ -524,7 +532,7 @@ $(function () {
         $('#frmInvoice').on('submit', function (e) {
             if (!$select.val()) {
                 e.preventDefault();
-                Swal.fire({ icon: 'warning', title: 'Pilih No. PO terlebih dahulu', confirmButtonColor: '#92232b' });
+                Swal.fire({ icon: 'warning', title: 'Pilih BAST terlebih dahulu', confirmButtonColor: '#92232b' });
                 $btn.trigger('click');
             }
         });
@@ -567,7 +575,7 @@ $(function () {
         $('#poInfoBast').text(po.no_bast);
         $('#poInfoTop').text(po.term_of_payment);
         $('#poInfoValue').text(po.nominal_formatted);
-        $('#poInfoRemaining').text(po.remaining_formatted);
+        $('#poInfoRemaining').text(po.nilai_bast_formatted);
         $('#poInfoBox').show();
 
         renderAttachmentList('#poAttachmentList', po.po_attachments, 'PO ini belum punya lampiran.');
@@ -762,12 +770,19 @@ $(function () {
             $('#calcBilledRow').hide();
         }
 
+        // 1 Invoice = 1 BAST: nilai ditagih (sebelum PPN) harus sama persis dengan nilai BAST.
         var po = poPayload[$('#selPo').val()];
-        if (po && billedAmount > po.remaining) {
-            $('#calcAdditionalAmount').text(rp(billedAmount - po.remaining));
-            $('#calcAdditionalWarning').show();
+        if (po) {
+            var selisihBast = Math.abs(billedAmount - po.nilai_bast);
+            var sesuai = selisihBast === 0;
+            $('#calcBastCheck').removeClass('alert-success alert-danger').addClass(sesuai ? 'alert-success' : 'alert-danger').show();
+            $('#calcBastCheckIcon').attr('class', 'fas mr-1 ' + (sesuai ? 'fa-check-circle' : 'fa-exclamation-triangle'));
+            $('#calcBastCheckText').text(sesuai
+                ? 'Nilai ditagih sesuai nilai BAST (' + po.nilai_bast_formatted + ').'
+                : 'Nilai ditagih ' + rp(billedAmount) + ' tidak sesuai nilai BAST ' + po.nilai_bast_formatted
+                  + ' (selisih ' + rp(selisihBast) + '). Nilai harus sama persis, invoice akan ditolak.');
         } else {
-            $('#calcAdditionalWarning').hide();
+            $('#calcBastCheck').hide();
         }
     }
 
