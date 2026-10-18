@@ -783,7 +783,9 @@ $(function () {
             inputValidator: function (v) { return (v && v.trim()) ? undefined : 'Alasan wajib diisi'; },
             showCancelButton: true,
             confirmButtonColor: WARNA_BAHAYA, cancelButtonColor: WARNA_BATAL,
-            confirmButtonText: 'Ya, Hapus', cancelButtonText: 'Batal'
+            confirmButtonText: 'Ya, Hapus', cancelButtonText: 'Batal',
+            // Tombol ini ada di dalam modal Bootstrap; focus-trap modal merebut fokus dari textarea SweetAlert.
+            didOpen: function () { $(document).off('focusin.bs.modal'); }
         }).then(function (r) {
             if (r.isConfirmed) kirim(r.value.trim());
         });
