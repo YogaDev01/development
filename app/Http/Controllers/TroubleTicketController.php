@@ -202,6 +202,9 @@ class TroubleTicketController extends Controller
         return view('trouble-ticket._info', [
             'ticket' => $ticket,
             'supervisors' => $this->workflow->supervisorsFor((int) $ticket->assigned_to),
+            // SLA disembunyikan dari teknisi tiket ini — sama dengan halaman
+            // detail (ukuran waktu dipakai supervisor, bukan pelaksana).
+            'isTechnician' => $this->workflow->isTechnician(Auth::user(), $ticket),
         ]);
     }
 
