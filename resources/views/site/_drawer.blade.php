@@ -52,7 +52,8 @@
 
 <div class="d-flex flex-wrap align-items-center mb-3" style="gap:6px;">
     <span class="badge badge-{{ $site->status === 'ACTIVE' ? 'success' : 'danger' }} px-2 py-1">{{ Site::STATUSES[$site->status] ?? $site->status }}</span>
-    <span class="badge badge-light border px-2 py-1">{{ Site::PROGRAMS[$site->program] ?? $site->program }}</span>
+    {{-- Program kosong tetap tampil sebagai "-" supaya badge-nya tidak melompong. --}}
+    <span class="badge badge-light border px-2 py-1">{{ Site::PROGRAMS[$site->program] ?? ($site->program ?: '-') }}</span>
     <span class="badge badge-light border px-2 py-1">{{ $site->customer?->name ?? '-' }}</span>
 </div>
 
@@ -282,7 +283,7 @@
                 <p class="text-muted" style="font-size:12px;">{{ $pm->notes }}</p>
             @endif
         @empty
-            <x-empty title="Belum ada Preventive Maintenance" message="Catat maintenance lewat halaman Kelola PIC & Assets." icon="fas fa-tools" compact />
+            <x-empty title="Belum ada Preventive Maintenance" :message="empty($readonly) ? 'Catat maintenance lewat halaman Kelola PIC & Assets.' : 'Belum ada catatan maintenance untuk site ini.'" icon="fas fa-tools" compact />
         @endforelse
     </div>
 
@@ -321,10 +322,14 @@
     @endif
 
     {{-- ml-auto: saat tombol unggah disembunyikan (tab selain Document),
-         tombol ini tetap menempel di kanan, bukan melompat ke kiri. --}}
-    <a href="{{ url('/site/' . $site->id) }}" class="btn btn-outline-secondary btn-sm ml-auto">
-        <i class="fas fa-cog mr-1"></i> Kelola PIC & Assets
-    </a>
+         tombol ini tetap menempel di kanan, bukan melompat ke kiri.
+         Role lihat-saja (teknisi) tidak boleh mengelola PIC & Assets, jadi
+         pintunya ikut disembunyikan - gerbang aslinya tetap di controller. --}}
+    @if(empty($readonly))
+        <a href="{{ url('/site/' . $site->id) }}" class="btn btn-outline-secondary btn-sm ml-auto">
+            <i class="fas fa-cog mr-1"></i> Kelola PIC & Assets
+        </a>
+    @endif
 </div>
 
 <script>

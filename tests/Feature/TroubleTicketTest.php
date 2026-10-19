@@ -352,6 +352,13 @@ class TroubleTicketTest extends TestCase
         $this->assertEqualsWithDelta(2400, $t->travel_seconds, 2);
         $this->assertSame('done', $t->slaMetric('travel')['state']);
 
+        // Sudah On Site: form close ditutup (19 Okt 2026) — progres dulu.
+        $this->post("/trouble-ticket/{$t->id}/close", [
+            'rca_id' => $this->rca->id, 'resolution_summary' => 'Selesai',
+            'attachments' => [UploadedFile::fake()->image('evidence.jpg')],
+        ])->assertSessionHasErrors('workflow');
+        $this->assertSame('TRIP', $t->fresh()->status);
+
         // Progres hanya boleh setelah On Site.
         $this->post("/trouble-ticket/{$t->id}/start")->assertSessionHasNoErrors();
         $this->assertSame('IN_PROGRESS', $t->fresh()->status);
@@ -622,6 +629,34 @@ class TroubleTicketTest extends TestCase
         $this->actingAs($this->outsider)->get(route('trouble-ticket.attachment', $att))->assertForbidden();
         $this->actingAs($this->outsider)->get('/storage/'.$att->storage_path)->assertForbidden();
         $this->actingAs($this->tech2)->get(route('trouble-ticket.attachment', $att))->assertOk();
+    }
+
+    public function test_tiket_closed_tetap_bisa_chat_sampai_superadmin_stop_chat(): void
+    {
+        $t = $this->advance($this->createTicket(), 'NON_VISIT', 'REMOTE');
+        $this->actingAs($this->tech)->post("/trouble-ticket/{$t->id}/close", $this->closePayload())->assertSessionHasNoErrors();
+        $this->actingAs($this->leader)->post("/trouble-ticket/{$t->id}/close/approve")->assertSessionHasNoErrors();
+        $this->assertSame('CLOSED', $t->fresh()->status);
+
+        // Tiket sudah CLOSED: diskusi TETAP terbuka (keputusan 19 Okt 2026).
+        $this->actingAs($this->tech)->postJson("/trouble-ticket/{$t->id}/messages", ['body' => 'masih diskusi'])->assertOk();
+
+        // Stop Chat hanya superadmin.
+        $this->post("/trouble-ticket/{$t->id}/chat-lock", ['lock' => 1])->assertForbidden();
+        $this->actingAs($this->leader)->post("/trouble-ticket/{$t->id}/chat-lock", ['lock' => 1])->assertForbidden();
+
+        $admin = $this->userWithRole('superadmin');
+        $this->actingAs($admin)->post("/trouble-ticket/{$t->id}/chat-lock", ['lock' => 1])->assertSessionHasNoErrors();
+        $t->refresh();
+        $this->assertNotNull($t->chat_locked_at);
+        $this->assertSame($admin->id, $t->chat_locked_by);
+        $this->assertSame(1, TroubleTicketMessage::where('trouble_ticket_id', $t->id)->where('event', 'chat_stopped')->count());
+
+        // Diskusi dihentikan: pesan baru ditolak, lalu dibuka kembali.
+        $this->actingAs($this->tech)->postJson("/trouble-ticket/{$t->id}/messages", ['body' => 'masih?'])->assertStatus(422);
+        $this->actingAs($admin)->post("/trouble-ticket/{$t->id}/chat-lock", ['lock' => 0])->assertSessionHasNoErrors();
+        $this->assertNull($t->fresh()->chat_locked_at);
+        $this->actingAs($this->tech)->postJson("/trouble-ticket/{$t->id}/messages", ['body' => 'lanjut'])->assertOk();
     }
 
     public function test_pesan_idempoten_per_token(): void

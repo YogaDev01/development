@@ -42,16 +42,18 @@ class User extends Authenticatable
     {
         $apps = config('apps.items', []);
 
-        if (in_array($this->default_app, array_keys($apps), true)) {
-            return $this->default_app;
-        }
-
-        // Belum memilih sendiri: ikut aplikasi yang mencantumkan role ini
-        // ('roles' di config/apps.php) — mis. teknisi langsung ke Operations.
+        // Aplikasi yang mencantumkan role ini ('roles' di config/apps.php)
+        // MENANG atas pilihan App Default user (keputusan 19 Okt 2026): role
+        // lapangan seperti teknisi harus selalu mendarat di Operations, bukan
+        // di Finance yang tidak ada pekerjaannya.
         foreach ($apps as $key => $app) {
             if (!empty($app['roles']) && $this->hasRole($app['roles'])) {
                 return (string) $key;
             }
+        }
+
+        if (in_array($this->default_app, array_keys($apps), true)) {
+            return $this->default_app;
         }
 
         return (string) config('apps.default', 'finance');
@@ -63,6 +65,18 @@ class User extends Authenticatable
         $app = $this->defaultApp();
 
         return (string) (config("apps.items.$app.home") ?: '/');
+    }
+
+    /**
+     * Halaman yang benar-benar dibuka sesudah login: 'landing' modul bila
+     * aplikasinya punya ('operation' → /trouble-ticket), selain itu 'home'.
+     * Tanpa ini teknisi mampir dulu di /app/operation lalu dialihkan.
+     */
+    public function defaultAppLanding(): string
+    {
+        $app = $this->defaultApp();
+
+        return (string) (config("apps.items.$app.landing") ?: $this->defaultAppHome());
     }
 
     /**

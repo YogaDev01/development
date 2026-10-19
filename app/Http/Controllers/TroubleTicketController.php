@@ -375,6 +375,7 @@ class TroubleTicketController extends Controller
             'closer:id,name',
             'planApprover:id,name',
             'approver:id,name',
+            'chatLocker:id,name',
             'assignments.technician:id,name',
             'assignments.assigner:id,name',
         ]);
@@ -410,6 +411,8 @@ class TroubleTicketController extends Controller
             'canCreatePlan' => $this->workflow->canCreatePlan($user, $ticket),
             'canApproveClose' => $this->workflow->canApproveClose($user, $ticket),
             'canMessage' => $this->workflow->canMessage($user, $ticket),
+            // Stop Chat / buka kembali diskusi — hanya superadmin.
+            'canLockChat' => $this->workflow->canLockChat($user, $ticket),
             // Change Teknisi: sejak plan dibuat sampai sebelum perjalanan mulai.
             'canReassign' => $canSupervise && $this->workflow->canReassign($ticket),
             // Kandidatnya: Teknisi Backup site ini (Master Data > Site).
@@ -486,6 +489,19 @@ class TroubleTicketController extends Controller
         }
 
         return back()->with('success', 'Pesan terkirim.');
+    }
+
+    /**
+     * Stop Chat / buka kembali diskusi tiket — hanya superadmin
+     * (gerbang role ada di route DAN di TroubleTicketWorkflow::canLockChat()).
+     */
+    public function setChatLock(Request $request, TroubleTicket $ticket)
+    {
+        $data = $request->validate(['lock' => 'required|boolean']);
+
+        $this->workflow->setChatLock($ticket, Auth::user(), (bool) $data['lock']);
+
+        return back()->with('success', $data['lock'] ? 'Diskusi dihentikan.' : 'Diskusi dibuka kembali.');
     }
 
     /** Unduh/pratinjau lampiran — keterlihatan mengikuti tiketnya. */

@@ -1171,6 +1171,8 @@ Route::middleware('auth')->group(function () {
                 Route::get('/', 'show')->name('show');
                 Route::get('messages', 'messages')->name('messages');
                 Route::post('messages', 'postMessage')->name('messages.store');
+                // Stop Chat: role sama persis dengan AccessRoles::TROUBLE_TICKET_CHAT_LOCK.
+                Route::post('chat-lock', 'setChatLock')->middleware('role:superadmin')->name('chat-lock');
                 Route::post('remote', 'remote')->name('remote');
                 Route::post('plan', 'createPlan')->name('plan.create');
                 Route::post('travel', 'startTravel')->name('travel.start');

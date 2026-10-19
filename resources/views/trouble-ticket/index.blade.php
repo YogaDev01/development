@@ -53,7 +53,7 @@
                 <div class="tt-mob-chips" role="tablist" aria-label="Filter tahap">
                     <button type="button" class="tt-chip-f is-on" data-status="">Semua <span>{{ $tickets->count() }}</span></button>
                     @foreach(['OPEN' => 'TT Open', 'REMOTE' => 'Remote', 'PLAN' => 'Plan', 'TRIP' => 'Trip',
-                              'IN_PROGRESS' => 'Progress', 'PROGRESS_DONE' => 'Progress Done', 'CLOSED' => 'Closed'] as $kode => $label)
+                              'IN_PROGRESS' => 'Progress', 'PROGRESS_DONE' => 'Waiting Approve', 'CLOSED' => 'Closed'] as $kode => $label)
                         <button type="button" class="tt-chip-f" data-status="{{ $kode }}">{{ $label }}
                             <span>{{ $tickets->where('status', $kode)->count() }}</span></button>
                     @endforeach
@@ -108,7 +108,7 @@
             ['Plan',          $stats['PLAN'],          'warning',   'PLAN'],
             ['Trip',          $stats['TRIP'],          'info',      'TRIP'],
             ['Progress',      $stats['IN_PROGRESS'],   'primary',   'IN_PROGRESS'],
-            ['Progress Done', $stats['PROGRESS_DONE'], 'success',   'PROGRESS_DONE'],
+            ['Waiting Approve', $stats['PROGRESS_DONE'], 'success',   'PROGRESS_DONE'],
             ['Closed',        $stats['CLOSED'],        'dark',      'CLOSED'],
         ]" />
 

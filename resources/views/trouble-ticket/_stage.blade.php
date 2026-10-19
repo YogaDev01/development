@@ -81,14 +81,9 @@
             <span class="tt-swipe-knob" tabindex="0" role="button" aria-label="Geser untuk mulai progres"><i class="fas fa-arrow-right"></i></span>
             <span class="tt-swipe-text">Ready Progress</span>
         </div>
-        {{-- Form close disembunyikan dari TEKNISI selama perjalanan dan
-             setelah On Site (keputusan 15 Okt 2026); peran lain tetap bisa
-             menutup tiket dari tahap ini. --}}
-        @unless($isTechnician)
-            <button type="button" class="btn btn-success btn-sm btn-block tt-btn-wide mt-2" data-toggle="modal" data-target="#mdlTtClosure">
-                <i class="fas fa-flag-checkered mr-1"></i> Form Close
-            </button>
-        @endunless
+        {{-- Setelah On Site TIDAK ada form close (keputusan 19 Okt 2026):
+             pengerjaan di site harus dimulai lebih dulu, lalu ditutup dari
+             tahap In Progress. --}}
     </div>
 @endif
 
@@ -129,7 +124,7 @@
 
 @if($t->status === 'PROGRESS_DONE')
     <div class="tt-stage">
-        <div class="tt-stage-title">Menunggu approval supervisor</div>
+        <div class="tt-stage-title">Waiting approval supervisor</div>
         @if($canApproveClose)
             <button type="button" class="btn btn-success btn-sm btn-block" data-toggle="modal" data-target="#mdlTtApprove">
                 <i class="fas fa-check mr-1"></i> Close
@@ -138,7 +133,7 @@
                 <i class="fas fa-undo mr-1"></i> Reject Close
             </button>
         @else
-            <div class="tt-stage-note">Form close dikirim {{ $t->progress_done_at?->format('d/m/Y H:i') }}. Hanya supervisor yang dapat menyetujui penutupan.</div>
+            <div class="tt-stage-note">Form close dikirim {{ $t->progress_done_at?->format('d/m/Y H:i') }}.</div>
         @endif
     </div>
 @endif

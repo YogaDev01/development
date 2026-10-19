@@ -398,6 +398,11 @@ class WorkflowStatus
         ],
     ];
 
+    /** Label khusus Trouble Ticket — sisanya ikut ucwords(kode). */
+    public const TROUBLE_TICKET_LABELS = [
+        'PROGRESS_DONE' => 'Waiting Approve',
+    ];
+
     /** Status yang menghentikan perjalanan dokumen, bukan salah satu tahapnya. */
     private const OFF_FLOW = ['REJECTED', 'CANCELLED', 'SETTLE_REJECTED'];
 
@@ -495,6 +500,13 @@ class WorkflowStatus
 
         if ($context === 'daily-transaction') {
             return ucwords(strtolower(DailyTransaction::statusLabelFor($status)));
+        }
+
+        // Trouble Ticket: PROGRESS_DONE dibaca "Waiting Approve" (keputusan
+        // 19 Okt 2026) — tahapnya memang menunggu approval supervisor, bukan
+        // pekerjaan yang sudah tuntas. Kode statusnya tidak berubah.
+        if ($context === 'trouble-ticket' && isset(self::TROUBLE_TICKET_LABELS[$status])) {
+            return self::TROUBLE_TICKET_LABELS[$status];
         }
 
         return ucwords(strtolower(str_replace('_', ' ', $status)));

@@ -122,6 +122,14 @@ final class AccessRoles
     public const TROUBLE_TICKET_SETTINGS = ['superadmin'];
 
     /**
+     * Trouble Ticket — Stop Chat: menghentikan (dan membuka kembali) diskusi
+     * sebuah tiket. Tiket CLOSED tidak lagi menutup chat sendiri (keputusan
+     * 19 Okt 2026), jadi penutupnya harus tindakan sadar seseorang. Harus sama
+     * dengan gerbang route chat-lock.
+     */
+    public const TROUBLE_TICKET_CHAT_LOCK = ['superadmin'];
+
+    /**
      * Trouble Ticket — role yang TIDAK boleh membuat tiket. Teknisi hanya
      * mengerjakan tiket yang ditugaskan padanya, bukan membuatnya
      * (TroubleTicketController::create()/store() dan tombol "Buat Tiket").

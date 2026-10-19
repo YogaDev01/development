@@ -372,7 +372,7 @@ class SiteController extends Controller
             */
             'columns' => [
                 ['key' => 'tid', 'label' => 'Site ID', 'value' => fn ($r) => $r->tid, 'strong' => true, 'drawer_link' => true],
-                ['key' => 'sitename', 'label' => 'Nama Site', 'value' => fn ($r) => $r->sitename, 'truncate' => 60,
+                ['key' => 'sitename', 'label' => 'Nama Site', 'value' => fn ($r) => $r->sitename, 'truncate' => 34,
                     'sub' => fn ($r) => $r->customer?->name],
                 ['key' => 'type', 'label' => 'Tipe', 'value' => fn ($r) => Site::TYPES[$r->type] ?? $r->type, 'default' => false],
                 ['key' => 'power', 'label' => 'Source Power', 'value' => fn ($r) => Site::SOURCE_POWERS[$r->source_power] ?? $r->source_power],
