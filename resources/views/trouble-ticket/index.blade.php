@@ -89,9 +89,11 @@
                 <x-empty title="Tidak ada tiket" message="Ubah kata pencarian atau filter tahap." icon="fas fa-ticket-alt" compact />
             </div>
 
-            <a href="{{ route('trouble-ticket.create') }}" class="tt-fab" aria-label="Buat tiket">
-                <i class="fas fa-plus" aria-hidden="true"></i>
-            </a>
+            @if($canCreate)
+                <a href="{{ route('trouble-ticket.create') }}" class="tt-fab" aria-label="Buat tiket">
+                    <i class="fas fa-plus" aria-hidden="true"></i>
+                </a>
+            @endif
         </div>
 
         {{-- ============ TAMPILAN LAYAR LEBAR ============ --}}
@@ -181,7 +183,9 @@
                     </div>
                     <div class="tt-toolbar-right">
                         <a href="{{ route('trouble-ticket.export') }}" class="btn btn-outline-success btn-sm" id="btnTtExport"><i class="fas fa-file-excel mr-1"></i> Export</a>
-                        <a href="{{ route('trouble-ticket.create') }}" class="btn btn-success btn-sm"><i class="fas fa-plus mr-1"></i> Buat Tiket</a>
+                        @if($canCreate)
+                            <a href="{{ route('trouble-ticket.create') }}" class="btn btn-success btn-sm"><i class="fas fa-plus mr-1"></i> Buat Tiket</a>
+                        @endif
                     </div>
                 </div>
 

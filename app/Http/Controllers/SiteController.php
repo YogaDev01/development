@@ -26,6 +26,7 @@ use App\Models\Team;
 use App\Models\TroubleTicket;
 use App\Models\User;
 use App\Models\UserActivityLog;
+use App\Support\AccessRoles;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -34,8 +35,46 @@ use Illuminate\Validation\Rule;
 
 class SiteController extends Controller
 {
-    use ImportsMasterRecords;
-    use ManagesMasterRecords;
+    /*
+    | Aksi tulis bawaan trait (hapus, import, data modal edit) dibungkus ulang
+    | di bawah supaya ikut melewati guardWrite().
+    */
+    use ImportsMasterRecords {
+        import as importRecords;
+        importTemplate as importTemplateFile;
+    }
+    use ManagesMasterRecords {
+        destroy as destroyRecord;
+        editData as editDataRecord;
+    }
+
+    public function destroy($id)
+    {
+        $this->guardWrite();
+
+        return $this->destroyRecord($id);
+    }
+
+    public function editData($id)
+    {
+        $this->guardWrite();
+
+        return $this->editDataRecord($id);
+    }
+
+    public function import(Request $request)
+    {
+        $this->guardWrite();
+
+        return $this->importRecords($request);
+    }
+
+    public function importTemplate()
+    {
+        $this->guardWrite();
+
+        return $this->importTemplateFile();
+    }
 
     protected function importConfig(): array
     {
@@ -183,6 +222,83 @@ class SiteController extends Controller
         ];
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | AKSES ROLE LIHAT-SAJA (AccessRoles::SITE_READ_ONLY, mis. teknisi)
+    |--------------------------------------------------------------------------
+    | Role ini hanya boleh melihat daftar site, membuka detail, dan mengunduh
+    | dokumen site — terbatas pada customer miliknya sendiri. Tombol memang
+    | disembunyikan di tampilan, tapi gerbang sebenarnya ada di sini supaya URL
+    | yang diketik langsung tetap ditolak.
+    */
+
+    /** True bila user login hanya boleh melihat menu Site. */
+    private function isReadOnlyUser(): bool
+    {
+        return (bool) auth()->user()?->hasRole(AccessRoles::SITE_READ_ONLY);
+    }
+
+    /**
+     * Customer yang "dimiliki" user lihat-saja: customer dari site tempat ia
+     * terdaftar sebagai Teknisi (site_pics → master_pics.user_id) atau Teknisi
+     * Backup. null = tanpa batas (role biasa); array kosong = tidak punya site,
+     * sehingga daftarnya kosong. Dihitung sekali per request.
+     */
+    private function visibleCustomerIds(): ?array
+    {
+        $user = auth()->user();
+        if (! $user || ! $this->isReadOnlyUser()) {
+            return null;
+        }
+
+        $attrs = request()->attributes;
+        if (! $attrs->has('site_visible_customers')) {
+            $siteIds = SitePic::query()
+                ->join('master_pics', 'master_pics.id', '=', 'site_pics.pic_id')
+                ->where('master_pics.user_id', $user->id)
+                ->where('master_pics.status', 'ACTIVE')
+                ->pluck('site_pics.site_id')
+                ->merge(SiteBackupTechnician::where('user_id', $user->id)->pluck('site_id'))
+                ->unique();
+
+            $attrs->set('site_visible_customers', Site::whereIn('id', $siteIds)
+                ->whereNotNull('customer_id')
+                ->distinct()
+                ->pluck('customer_id')
+                ->map(fn ($c) => (int) $c)
+                ->all());
+        }
+
+        return $attrs->get('site_visible_customers');
+    }
+
+    /** Menolak semua aksi tulis bagi role lihat-saja. */
+    private function guardWrite(): void
+    {
+        abort_if($this->isReadOnlyUser(), 403, 'Anda hanya memiliki akses lihat pada menu Site.');
+    }
+
+    /** Site per-baris sesuai batas customer; versi per-record dari scopeIndexQuery(). */
+    private function findVisibleSite($id, array $with = []): Site
+    {
+        $site = Site::with($with)->findOrFail($id);
+        $allowed = $this->visibleCustomerIds();
+
+        abort_if($allowed !== null && ! in_array((int) $site->customer_id, $allowed, true),
+            403, 'Site ini berada di luar customer Anda.');
+
+        return $site;
+    }
+
+    /** Daftar site disaring ke customer milik user lihat-saja. */
+    protected function scopeIndexQuery($query): void
+    {
+        $allowed = $this->visibleCustomerIds();
+        if ($allowed !== null) {
+            $query->whereIn('customer_id', $allowed);
+        }
+    }
+
     protected function master(): array
     {
         return [
@@ -199,7 +315,7 @@ class SiteController extends Controller
             // Tujuh tab (Informasi … Preventive Maintenance) tidak muat di
             // lebar bawaan 640px.
             'drawer_width' => '860px',
-            'import' => true,
+            'import' => ! $this->isReadOnlyUser(),
             'numbered' => false,
             'compact' => true,
             'column_picker' => 'site-index',
@@ -291,6 +407,8 @@ class SiteController extends Controller
                 'maintenances' => 'sudah memiliki catatan Preventive Maintenance',
             ],
             'describe' => fn ($r) => $r->tid.' - '.$r->sitename,
+            // Role lihat-saja: tanpa Tambah / Edit / Hapus / Import.
+            'readonly' => $this->isReadOnlyUser(),
         ];
     }
 
@@ -615,6 +733,8 @@ class SiteController extends Controller
 
     public function edit($id)
     {
+        $this->guardWrite();
+
         $site = Site::with(['picLinks.pic', 'keepers', 'backupTechnicians'])->findOrFail($id);
         $fields = $this->resolvedFields($this->formFields($site));
 
@@ -623,6 +743,8 @@ class SiteController extends Controller
 
     public function update(Request $request, $id)
     {
+        $this->guardWrite();
+
         $site = Site::with('picLinks.pic')->findOrFail($id);
         $data = $this->validatedData($request, $site);
         $request->validate($this->keeperRules(), [], ['keepers.*.name' => 'Site Keeper']);
@@ -655,6 +777,8 @@ class SiteController extends Controller
 
     public function create()
     {
+        $this->guardWrite();
+
         $fields = $this->resolvedFields($this->formFields(null));
 
         return view('site.create', compact('fields'));
@@ -662,6 +786,8 @@ class SiteController extends Controller
 
     public function store(Request $request)
     {
+        $this->guardWrite();
+
         $data = $this->validatedData($request, null);
         $request->validate($this->keeperRules(), [], ['keepers.*.name' => 'Site Keeper']);
         $request->validate($this->backupTechnicianRules(), [], ['backup_technicians.*' => 'Teknisi Backup']);
@@ -688,11 +814,11 @@ class SiteController extends Controller
     /** Isi drawer detail (HTML parsial). */
     public function drawer($id)
     {
-        $site = Site::with([
+        $site = $this->findVisibleSite($id, [
             'customer:id,name', 'pulau', 'provinsi', 'kota', 'kecamatan', 'desa', 'keepers.user:id,name,phone,email',
             'backupTechnicians.user:id,name,phone,email',
             'picLinks.pic', 'materialLinks.material.category', 'accessoryLinks.accessory.category',
-        ])->findOrFail($id);
+        ]);
 
         // Tab TT: tiket terbaru site ini yang terlihat oleh user login.
         $tickets = TroubleTicket::visibleTo(auth()->user())
@@ -702,17 +828,19 @@ class SiteController extends Controller
             ->limit(10)
             ->get();
 
-        return view('site._drawer', compact('site', 'tickets'));
+        $readonly = $this->isReadOnlyUser();
+
+        return view('site._drawer', compact('site', 'tickets', 'readonly'));
     }
 
     public function show($id)
     {
-        $site = Site::with([
+        $site = $this->findVisibleSite($id, [
             'customer:id,name', 'pulau', 'provinsi', 'kota', 'kecamatan', 'desa', 'keepers.user:id,name,phone,email',
             'backupTechnicians.user:id,name,phone,email',
             'materialLinks.material.category', 'accessoryLinks.accessory.category', 'picLinks.pic',
             'maintenances.items.material:id,product_code', 'documents.inputBy:id,name',
-        ])->findOrFail($id);
+        ]);
 
         $availablePics = MasterPic::where('status', 'ACTIVE')
             ->whereNotIn('id', $site->picLinks->pluck('pic_id'))
@@ -730,7 +858,9 @@ class SiteController extends Controller
             ->orderBy('accessories_code')
             ->get(['id', 'accessories_code', 'accessories_name']);
 
-        return view('site.show', compact('site', 'availableMaterials', 'availableAccessories', 'availablePics'));
+        $readonly = $this->isReadOnlyUser();
+
+        return view('site.show', compact('site', 'availableMaterials', 'availableAccessories', 'availablePics', 'readonly'));
     }
 
     /**
@@ -744,6 +874,8 @@ class SiteController extends Controller
      */
     public function storeMaintenance(Request $request, $id)
     {
+        $this->guardWrite();
+
         $site = Site::with('materialLinks.material')->findOrFail($id);
         $materialIds = $site->materialLinks->pluck('material_id')->all();
 
@@ -803,6 +935,8 @@ class SiteController extends Controller
     /** Mengunggah dokumen site ke disk `secure` (bukan disk public). */
     public function addDocument(Request $request, $id)
     {
+        $this->guardWrite();
+
         $site = Site::findOrFail($id);
 
         $data = $request->validate([
@@ -829,6 +963,8 @@ class SiteController extends Controller
 
     public function removeDocument($id, $docId)
     {
+        $this->guardWrite();
+
         $site = Site::findOrFail($id);
         $doc = SiteDocument::where('site_id', $site->id)->findOrFail($docId);
 
@@ -844,6 +980,8 @@ class SiteController extends Controller
 
     public function addPic(Request $request, $id)
     {
+        $this->guardWrite();
+
         $site = Site::findOrFail($id);
 
         $data = $request->validate([
@@ -865,6 +1003,8 @@ class SiteController extends Controller
 
     public function removePic($id, $linkId)
     {
+        $this->guardWrite();
+
         $link = SitePic::where('site_id', $id)->findOrFail($linkId);
         $link->delete();
 
@@ -875,6 +1015,8 @@ class SiteController extends Controller
 
     public function addMaterial(Request $request, $id)
     {
+        $this->guardWrite();
+
         $site = Site::findOrFail($id);
 
         $data = $request->validate([
@@ -897,6 +1039,8 @@ class SiteController extends Controller
 
     public function removeMaterial($id, $linkId)
     {
+        $this->guardWrite();
+
         $link = SiteMaterial::where('site_id', $id)->findOrFail($linkId);
         $link->delete();
 
@@ -907,6 +1051,8 @@ class SiteController extends Controller
 
     public function addAccessory(Request $request, $id)
     {
+        $this->guardWrite();
+
         $site = Site::findOrFail($id);
 
         $data = $request->validate([
@@ -930,6 +1076,8 @@ class SiteController extends Controller
 
     public function updateAccessory(Request $request, $id, $linkId)
     {
+        $this->guardWrite();
+
         $link = SiteAccessory::where('site_id', $id)->findOrFail($linkId);
 
         $data = $request->validate([
@@ -946,6 +1094,8 @@ class SiteController extends Controller
 
     public function removeAccessory($id, $linkId)
     {
+        $this->guardWrite();
+
         $link = SiteAccessory::where('site_id', $id)->findOrFail($linkId);
         $link->delete();
 

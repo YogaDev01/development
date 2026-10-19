@@ -120,4 +120,22 @@ final class AccessRoles
      * gerbang role: pada route trouble-ticket/settings.
      */
     public const TROUBLE_TICKET_SETTINGS = ['superadmin'];
+
+    /**
+     * Trouble Ticket — role yang TIDAK boleh membuat tiket. Teknisi hanya
+     * mengerjakan tiket yang ditugaskan padanya, bukan membuatnya
+     * (TroubleTicketController::create()/store() dan tombol "Buat Tiket").
+     */
+    public const TROUBLE_TICKET_CREATE_DENIED = ['teknisi'];
+
+    /**
+     * Site — hanya boleh MELIHAT: daftar, detail, dan unduh dokumen site.
+     * Semua aksi tulis (tambah/ubah/hapus site, import, PIC, material,
+     * accessories, dokumen, maintenance) ditolak di SiteController.
+     *
+     * Daftar site yang terlihat juga dipersempit ke customer miliknya sendiri
+     * (SiteController::visibleCustomerIds()): customer dari site tempat ia
+     * terdaftar sebagai Teknisi atau Teknisi Backup.
+     */
+    public const SITE_READ_ONLY = ['teknisi'];
 }

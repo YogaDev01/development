@@ -58,6 +58,7 @@ bypass — superadmin passes because it is listed in each route gate; only
 | Cash Management post/cancel/delete | superadmin, finance, finance_manager, treasury, approver |
 | Closing close | `menu:closing` only |
 | Beneficiary edit/delete | superadmin only (`AccessRoles::BENEFICIARY_MANAGE`) |
+| Site tambah/ubah/hapus/import, PIC, material, accessories, dokumen, maintenance | semua role KECUALI `AccessRoles::SITE_READ_ONLY` (teknisi) |
 
 ## Files & uploads
 

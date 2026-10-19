@@ -108,6 +108,8 @@ class TroubleTicketController extends Controller
             // Tombol Close di kolom Action baris Progress Done. Kelayakan per
             // baris tetap diperiksa ulang server lewat canApproveClose().
             'canApprove' => $user->hasRole(AccessRoles::TROUBLE_TICKET_APPROVE),
+            // Tombol "Buat Tiket" — teknisi hanya mengerjakan tiket, tidak membuatnya.
+            'canCreate' => ! $user->hasRole(AccessRoles::TROUBLE_TICKET_CREATE_DENIED),
             'userId' => (int) $user->id,
         ]);
     }
@@ -211,6 +213,8 @@ class TroubleTicketController extends Controller
 
     public function create()
     {
+        $this->abortIfCannotCreate();
+
         $sites = Site::with('customer:id,name')->where('status', 'ACTIVE')->orderBy('tid')->get(['id', 'tid', 'sitename', 'customer_id']);
 
         return view('trouble-ticket.create', [
@@ -222,6 +226,14 @@ class TroubleTicketController extends Controller
             // Dipakai dropdown Sub-RCA di browser (tanpa request tambahan).
             'subRcas' => TroubleTicketSubRca::where('status', 'ACTIVE')->orderBy('name')->get(['id', 'rca_id', 'name']),
         ]);
+    }
+
+    /** Teknisi tidak boleh membuat tiket; ia hanya mengerjakan yang ditugaskan. */
+    private function abortIfCannotCreate(): void
+    {
+        if (auth()->user()->hasRole(AccessRoles::TROUBLE_TICKET_CREATE_DENIED)) {
+            abort(403, 'Role Anda tidak berhak membuat trouble ticket.');
+        }
     }
 
     /** Teknisi yang boleh ditugaskan di sebuah site (dropdown form & reassign). */
@@ -245,6 +257,8 @@ class TroubleTicketController extends Controller
      */
     public function store(Request $request)
     {
+        $this->abortIfCannotCreate();
+
         if (! is_array($request->input('tickets'))) {
             $request->merge(['tickets' => [$request->except(['site_id', 'assigned_to', '_token'])]]);
             if ($request->hasFile('attachments')) {

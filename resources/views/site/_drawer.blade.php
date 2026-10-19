@@ -308,15 +308,17 @@
 <div class="mt-3 pt-3 border-top d-flex justify-content-between align-items-center" style="gap:8px;">
     {{-- Unggah dokumen langsung dari drawer. Hanya tampil saat tab Document
          dibuka — tombol ini memang hanya berlaku untuk dokumen site. --}}
-    <form action="{{ url('/site/' . $site->id . '/document') }}" method="POST" enctype="multipart/form-data"
-          class="mb-0 d-none" id="frmSiteDocDrawer">
-        @csrf
-        <input type="file" name="file" id="fldSiteDocDrawer" class="d-none"
-               accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
-        <button type="button" class="btn btn-success btn-sm" id="btnSiteDocDrawer">
-            <i class="fas fa-upload mr-1"></i> Unggah Dokumen
-        </button>
-    </form>
+    @if(empty($readonly))
+        <form action="{{ url('/site/' . $site->id . '/document') }}" method="POST" enctype="multipart/form-data"
+              class="mb-0 d-none" id="frmSiteDocDrawer">
+            @csrf
+            <input type="file" name="file" id="fldSiteDocDrawer" class="d-none"
+                   accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
+            <button type="button" class="btn btn-success btn-sm" id="btnSiteDocDrawer">
+                <i class="fas fa-upload mr-1"></i> Unggah Dokumen
+            </button>
+        </form>
+    @endif
 
     {{-- ml-auto: saat tombol unggah disembunyikan (tab selain Document),
          tombol ini tetap menempel di kanan, bukan melompat ke kiri. --}}
