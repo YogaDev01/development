@@ -27,6 +27,9 @@ use Illuminate\Support\Facades\Storage;
  */
 class CashReceiptController extends Controller
 {
+    // Urutan kunci No. PO -> BAST -> invoice (per id) -> header/detail - lihat Concerns\LocksPoNumbers.
+    use Concerns\LocksPoNumbers;
+
     /*
     | Daftar + ringkasan dikirim UTUH ke halaman, lalu penyaringan dikerjakan
     | di browser (DataTables + TesysColumnFilter), sama seperti halaman index
@@ -146,6 +149,7 @@ class CashReceiptController extends Controller
             'reference_number'    => 'nullable|string|max:255',
             'proof_file'          => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png',
             'notes'               => 'nullable|string|max:1000',
+            'partial_note'        => 'nullable|string|max:1000',
             'invoice_ids'         => 'required|array|min:1',
             'invoice_ids.*'       => 'exists:invoices,id',
             'amounts'             => 'required|array',
@@ -161,15 +165,27 @@ class CashReceiptController extends Controller
             $proofPath = $request->file('proof_file')->store('cash_receipt_proofs', 'secure');
         }
 
+        // Invoice yang diisi nominalnya, dan No. PO-nya - dicari SEBELUM transaksi (lihat Concerns\LocksPoNumbers).
+        $berisi = collect($invoiceIds)
+            ->filter(fn ($id) => $this->normalizeMoney($amounts[$id] ?? 0)
+                + $this->normalizeMoney($withholding[$id] ?? 0) > 0)
+            ->unique()->values();
+        $poIds = $this->noPoDariInvoice($berisi);
+
         /*
         | Seluruh pemeriksaan dilakukan DI DALAM satu transaksi dengan invoice
         | terkunci: dua penerimaan yang dicatat bersamaan atas invoice yang sama
         | bisa sama-sama lolos pengecekan sisa tagihan kalau dibaca di luar
         | kunci, dan invoice jadi terbayar melebihi tagihannya.
         */
-        $hasil = DB::transaction(function () use ($request, $invoiceIds, $amounts, $withholding, $proofPath) {
+        $hasil = DB::transaction(function () use ($request, $invoiceIds, $amounts, $withholding, $proofPath, $berisi, $poIds) {
             $baris = [];
             $total = 0;
+            $parsial = [];
+
+            // Urutan kunci: No. PO (id naik) -> BAST -> invoice (id naik) -> header. Pembayaran memicu
+            // sinkron status No. PO (Invoice::syncPaymentStatus), jadi No. PO harus dikunci lebih dulu.
+            $this->kunciNoPo($poIds);
 
             /*
             | Semua invoice yang diisi nominalnya dikunci SEKALIGUS, urut id,
@@ -183,11 +199,6 @@ class CashReceiptController extends Controller
             |    terlewat.
             | Pemeriksaan & pesan tetap mengikuti urutan request.
             */
-            $berisi = collect($invoiceIds)
-                ->filter(fn ($id) => $this->normalizeMoney($amounts[$id] ?? 0)
-                    + $this->normalizeMoney($withholding[$id] ?? 0) > 0)
-                ->unique()->values();
-
             $terkunci = Invoice::whereIn('id', $berisi)
                 ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
 
@@ -219,12 +230,23 @@ class CashReceiptController extends Controller
                         number_format($invoice->remainingBalance(), 0, ',', '.') . ').'];
                 }
 
+                $sisa = $invoice->remainingBalance();
+                if ($nominal + $pph < $sisa) {
+                    $parsial[] = ['invoice' => $invoice, 'sisa' => $sisa, 'amount' => $nominal, 'withholding' => $pph];
+                }
+
                 $baris[] = ['invoice' => $invoice, 'amount' => $nominal, 'withholding' => $pph];
                 $total  += $nominal + $pph;
             }
 
             if (!$baris) {
                 return ['error' => 'Isi nominal untuk minimal satu invoice.'];
+            }
+
+            // Pembayaran tidak penuh wajib disertai komentar; komentarnya masuk ke Log & Approval invoice terkait.
+            $catatanParsial = trim((string) $request->partial_note);
+            if ($parsial && $catatanParsial === '') {
+                return ['error' => 'Ada invoice yang dibayar tidak penuh. Tulis komentar alasannya.'];
             }
 
             $header = CashReceiptHeader::create([
@@ -252,6 +274,15 @@ class CashReceiptController extends Controller
                     'withholding_tax'        => $b['withholding'],
                     'source_fund_id'         => $request->source_fund_id,
                     'input_by'               => Auth::id(),
+                ]);
+            }
+
+            foreach ($parsial as $p) {
+                $p['invoice']->comments()->create([
+                    'user_id' => Auth::id(),
+                    'comment' => 'Penerimaan ' . $header->code . ' tidak penuh (diterima Rp ' . number_format($p['amount'], 0, ',', '.')
+                        . ' + PPh Rp ' . number_format($p['withholding'], 0, ',', '.')
+                        . ' dari sisa tagihan Rp ' . number_format($p['sisa'], 0, ',', '.') . '): ' . $catatanParsial,
                 ]);
             }
 
@@ -335,10 +366,15 @@ class CashReceiptController extends Controller
             return back()->with('error', 'Nominal alokasi harus lebih dari nol.');
         }
 
+        $poIds = $this->noPoDariInvoice([$request->invoice_id]); // sebelum transaksi (Concerns\LocksPoNumbers)
+
         // Dikunci di dalam transaksi: dua alokasi bersamaan atas invoice yang
         // sama bisa sama-sama lolos pengecekan sisa tagihan kalau dibaca di
         // luar kunci, dan invoice jadi terbayar melebihi tagihannya.
-        $error = DB::transaction(function () use ($request, $header, $amount, $withholding) {
+        $error = DB::transaction(function () use ($request, $header, $amount, $withholding, $poIds) {
+            // Urutan kunci: No. PO -> BAST -> invoice -> header (alokasi memicu sinkron status No. PO).
+            $this->kunciNoPo($poIds);
+
             /*
             | Invoice dikunci dulu, lalu HEADER. Sebelumnya hanya invoice yang
             | dikunci, jadi dua alokasi dari bukti terima yang sama ke dua
@@ -347,7 +383,7 @@ class CashReceiptController extends Controller
             | benar-benar diterima. Dengan header ikut terkunci, alokasi
             | berikutnya antre dan melihat sisa yang sudah berkurang.
             |
-            | Urutan invoice -> header WAJIB sama di semua jalur: hapus/settle
+            | Urutan No. PO -> invoice -> header WAJIB sama di semua jalur: hapus/settle
             | receipt (removeAllocation, destroyCashReceipt, settleCashReceipt)
             | mengunci invoice lalu header lewat hook CashReceipt::saved/deleted,
             | dan cancel() mengikuti urutan yang sama. Urutan terbalik membuat
@@ -413,10 +449,23 @@ class CashReceiptController extends Controller
 
         $detail = CashReceipt::where('cash_receipt_header_id', $header->id)->findOrFail($detailId);
 
-        // Soft delete: status invoice ikut disinkronkan otomatis lewat
-        // CashReceipt::booted(), dan jejak pembatalannya tetap ada.
-        $detail->update(['deleted_by' => Auth::id(), 'delete_reason' => 'Alokasi dibatalkan dari bukti terima ' . $header->code]);
-        $detail->delete();
+        $poIds = $this->noPoDariInvoice([$detail->invoice_id]); // sebelum transaksi (Concerns\LocksPoNumbers)
+
+        // Satu transaksi dengan urutan kunci No. PO -> invoice -> detail (sama dengan allocate/cancel).
+        // Soft delete: status invoice ikut disinkronkan otomatis lewat CashReceipt::booted(),
+        // dan jejak pembatalannya tetap ada.
+        DB::transaction(function () use ($header, $detail, $poIds) {
+            $this->kunciNoPo($poIds);
+            Invoice::whereKey($detail->invoice_id)->lockForUpdate()->first();
+
+            $terkunci = CashReceipt::whereKey($detail->id)->lockForUpdate()->first();
+            if (! $terkunci) {
+                return; // sudah dihapus request lain
+            }
+
+            $terkunci->update(['deleted_by' => Auth::id(), 'delete_reason' => 'Alokasi dibatalkan dari bukti terima ' . $header->code]);
+            $terkunci->delete();
+        });
 
         UserActivityLog::record('cash_receipt', 'update', 'Membatalkan alokasi penerimaan #' . $header->code, $header);
 
@@ -433,10 +482,18 @@ class CashReceiptController extends Controller
             return back()->with('error', 'Penerimaan ini sudah dibatalkan.');
         }
 
-        DB::transaction(function () use ($header, $request) {
+        // No. PO dari alokasi saat ini - dicari SEBELUM transaksi (Concerns\LocksPoNumbers).
+        $poIds = $this->noPoDariInvoice(
+            CashReceipt::where('cash_receipt_header_id', $header->id)->pluck('invoice_id')
+        );
+
+        try {
+        DB::transaction(function () use ($header, $request, $poIds) {
+            $this->kunciNoPo($poIds); // No. PO (id naik) lebih dulu - pembatalan memicu sinkron status No. PO
+
             /*
-            | Urutan kunci sama dengan allocate(): invoice-invoice alokasinya
-            | dulu (id naik), lalu header. Tanpa kunci header, alokasi yang
+            | Urutan kunci sama dengan allocate(): No. PO, invoice-invoice alokasinya
+            | (id naik), lalu header. Tanpa kunci header, alokasi yang
             | sedang berjalan bisa tetap tercatat pada bukti terima yang di
             | saat bersamaan dibatalkan. Daftar alokasi dibaca dengan kunci
             | (bukan baca biasa) supaya alokasi yang baru saja masuk ikut
@@ -445,6 +502,12 @@ class CashReceiptController extends Controller
             */
             $invoiceIds = CashReceipt::where('cash_receipt_header_id', $header->id)
                 ->lockForUpdate()->pluck('invoice_id')->unique()->sort()->values();
+
+            // Alokasi baru ke invoice di No. PO lain bisa masuk antara pembacaan awal dan kunci:
+            // No. PO-nya belum terkunci, jadi minta diulang daripada mengunci dengan urutan terbalik.
+            if (array_diff($this->noPoDariInvoice($invoiceIds), $poIds)) {
+                throw new \DomainException('Alokasi pada bukti terima ini berubah saat diproses. Muat ulang halaman lalu ulangi.');
+            }
 
             Invoice::whereIn('id', $invoiceIds)->orderBy('id')->lockForUpdate()->get();
 
@@ -474,6 +537,9 @@ class CashReceiptController extends Controller
                 'cancel_reason' => $request->cancel_reason,
             ]);
         });
+        } catch (\DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         UserActivityLog::record('cash_receipt', 'cancel', 'Membatalkan penerimaan #' . $header->code, $header, $request->reason ?? $request->notes);
 

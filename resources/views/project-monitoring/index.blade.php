@@ -83,7 +83,7 @@
                                 <td>
                                     <div style="font-weight:600;margin-top:3px;">
                                         {{ $project->name }}
-                                        @if(in_array($project->status, ['WAITING_PO', 'ACTIVE']))
+                                        @if(in_array($project->status, array_merge(['WAITING_PO', 'ACTIVE'], \App\Models\Project::PARTIAL_STATUSES)))
                                             @if($project->status === 'WAITING_PO' && $project->monitoring_po_received_status === 'DONE')
                                                 <span class="badge badge-warning ml-1" style="font-size:10px;">Waiting Upload PO</span>
                                             @elseif($project->monitoring_bast_status === 'DONE')

@@ -82,7 +82,7 @@
                             $invColRestricted = Auth::user()->hasRole(['manager', 'head']);
                         @endphp
                         <div class="dropdown" id="invColVisDropdown">
-                            <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown" @if($invColRestricted) disabled title="Kolom finansial tidak tersedia untuk role Anda" @endif>
+                            <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-boundary="viewport" @if($invColRestricted) disabled title="Kolom finansial tidak tersedia untuk role Anda" @endif>
                                 <i class="fas fa-columns mr-1"></i> Kolom
                             </button>
                             @unless($invColRestricted)
@@ -153,8 +153,11 @@
                             @forelse($invoices as $invoice)
                             @php
                                 $dStatus  = $invoice->display_status;
-                                $received = $invoice->cashReceipts->sum('amount') + $invoice->cashReceipts->sum('withholding_tax');
-                                $gap      = ($invoice->captured_total ?? 0) - $received;
+                                // Kolom Payment = uang yang benar-benar masuk (cash receipt saja);
+                                // $settled (cash + settle PPh) tetap dipakai untuk selisih/gap.
+                                $received = (int) $invoice->cashReceipts->sum('amount');
+                                $settled  = $received + (int) $invoice->cashReceipts->sum('withholding_tax');
+                                $gap      = ($invoice->captured_total ?? 0) - $settled;
                                 $pmNames  = $invoice->po?->pm_internal_name && $invoice->po->pm_internal_name !== '-' ? $invoice->po->pm_internal_name : '';
                                 $pmUpper  = $pmNames ? strtoupper($pmNames) : '-';
 
@@ -188,6 +191,7 @@
                                     <strong>{{ $invoice->poNumber->po_number ?? '-' }} - {{ Str::limit($invoice->po->name ?? '-', 50) }}</strong>
                                     <div style="font-size:11px;color:var(--text-faint);margin-top:3px;">
                                         {{ $invoice->po->code ?? '-' }} — {{ $invoice->po->customer->name ?? '-' }} — {{ $invoice->payment_term_label }}
+                                        — {{ $invoice->bast ? 'BAST: ' . $invoice->bast->no_bast : 'BAST: belum tertaut' }}
                                     </div>
                                 </td>
 
@@ -742,6 +746,27 @@ $(function () {
         if (!q) return;
         $('#invSearchInput').val(q);
         table.search(q).draw();
+    })();
+
+    /*
+    | ?open=<id> (mis. dari tab Invoice di modal Detail PO). Halaman ini tidak
+    | punya modal detail — detail invoice adalah halaman sendiri — jadi baris
+    | yang dituju dibuka lewat tautan kodenya. Invoice yang tidak terlihat oleh
+    | user ini tidak ada di tabel; saat itu pencarian ?q= (kode invoice) yang
+    | sudah diterapkan di atas tetap berlaku sebagai cadangan.
+    */
+    (function openInvoiceFromUrl() {
+        var params = new URLSearchParams(window.location.search);
+        var openId = params.get('open');
+        if (!openId) return;
+
+        params.delete('open');
+        var sisa = params.toString();
+        window.history.replaceState({}, '',
+            window.location.pathname + (sisa ? '?' + sisa : '') + window.location.hash);
+
+        var $link = $('#tblInvoice tbody tr[data-id="' + String(openId).replace(/[^0-9]/g, '') + '"] .inv-code-link').first();
+        if ($link.length) window.location.href = $link.attr('href');
     })();
 
     // Bungkus HANYA tabelnya dengan scroller horizontal, kolom No Invoice & Action beku.

@@ -2703,7 +2703,7 @@ $(function () {
     var W = window.tesysWarna || function (v) { return v; };
 
     var palette = ['var(--info)', '#eb6834', '#1baf7a', 'var(--warning)', '#e87ba4', '#008300', '#4a3aa7', 'var(--danger)'].map(W);
-    var statusPalette = { DRAFT: palette[0], SUBMITTED: palette[1], WAITING_PO: palette[2], ACTIVE: palette[3], PROGRESS_DONE: palette[4], PAID: palette[5], CLOSING: palette[6], CLOSED: palette[7] };
+    var statusPalette = { DRAFT: palette[0], SUBMITTED: palette[1], WAITING_PO: palette[2], ACTIVE: palette[3], PROGRESS_DONE: palette[4], PARTIALLY_INVOICED: palette[4], PARTIALLY_PAID: palette[5], PAID: palette[5], CLOSING: palette[6], CLOSED: palette[7] };
     var statusColorFor = { good: W('var(--success)'), warning: '#fab219', neutral: '#c3c2b7' };
     var inkSecondary = '#52514E';
     var gridColor = '#E1E0D9';

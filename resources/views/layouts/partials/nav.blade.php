@@ -110,8 +110,9 @@
             @if ($baris1['type'] === 'item')
                 @php($item = $baris1['item'])
                 <a href="{{ $navUrl($item) }}" class="nav-item {{ $navAktif($item) ? 'active' : '' }}"
+                    @if ($navAktif($item)) aria-current="page" @endif
                     @if (($item['menu'] ?? null) === 'todo-list') id="navTodoList" @endif>
-                    <i class="{{ $item['icon'] }} ic"></i>{{ $item['label'] }}
+                    <i class="{{ $item['icon'] }} ic" aria-hidden="true"></i>{{ $item['label'] }}
                     @if (($item['menu'] ?? null) === 'todo-list')
                         <span class="nav-badge-dot" id="navTodoBadge" title="New Task Assigned"
                             data-url="{{ route('todo-list.has-pending') }}" style="display:none;"></span>
@@ -121,14 +122,15 @@
                 <div class="nav-group {{ $baris1['active'] ? 'open' : '' }}">
                     <button type="button" class="nav-group-toggle" aria-expanded="{{ $baris1['active'] ? 'true' : 'false' }}">
                         <span class="nav-group-toggle-main">
-                            <i class="{{ $baris1['icon'] }} ic"></i>{{ $baris1['label'] }}
+                            <i class="{{ $baris1['icon'] }} ic" aria-hidden="true"></i>{{ $baris1['label'] }}
                         </span>
-                        <i class="fas fa-chevron-right nav-group-caret"></i>
+                        <i class="fas fa-chevron-right nav-group-caret" aria-hidden="true"></i>
                     </button>
                     <div class="nav-group-items">
                         @foreach ($baris1['items'] as $item)
-                            <a href="{{ $navUrl($item) }}" class="nav-item {{ $navAktif($item) ? 'active' : '' }}">
-                                <i class="{{ $item['icon'] }} ic"></i>{{ $item['label'] }}
+                            <a href="{{ $navUrl($item) }}" class="nav-item {{ $navAktif($item) ? 'active' : '' }}"
+                                @if ($navAktif($item)) aria-current="page" @endif>
+                                <i class="{{ $item['icon'] }} ic" aria-hidden="true"></i>{{ $item['label'] }}
                             </a>
                         @endforeach
                     </div>

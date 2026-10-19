@@ -73,7 +73,86 @@ Global web middleware: `SecurityHeaders`, `EnsureUserActive` (`bootstrap/app.php
   palette (`tesys-command.js`), session keep-alive.
 - Tables: DataTables with per-column filters; lists capped at 1,000 rows;
   CR index uses lazy-loaded tabs.
+- Listing DataTable & mode card mobile: `public/js/tesys-table.js` +
+  `public/css/tesys-ui-datatable.css` (dimuat setelah `components` dan `mobile`;
+  file terpisah agar mudah ditinjau/ditarik, boleh dilipat atas keputusan pemilik).
+  - Struktur listing (desktop & mobile) = margin halaman → tabel: `.card` di
+    `.main > .content` yang berisi `.dataTables_wrapper` dilepas bingkainya
+    (border/latar/padding card-body). Pengecualian: kartu di modal/drawer,
+    `.ts-keep-card`, dan kartu berisi `.col-pic-table` (pivot Finance Summary).
+  - Mode card ≤640px otomatis untuk tabel layak (thead satu baris tanpa
+    colspan/rowspan > 1, tanpa baris grup); semua listing ikut, termasuk CR
+    (`#tblCA/#tblCP/#tblDB`), Invoice, Project. Dikecualikan: pivot/grup (Finance
+    Summary) dan `data-ts-card="off"` (Trouble Ticket, punya card sendiri).
+    Label mengikuti kolom terlihat; pemicu `init/draw/column-visibility/
+    responsive-display.dt` dan `shown.bs.tab`; kolom sticky dinetralkan; status di
+    baris judul; tfoot jadi kartu ringkasan di atas. `<table>` tidak pernah
+    `display:none` (pencarian topbar `tesys-shell.js`); teks sel tidak diubah
+    (`tesys-money-sort.js`).
+  - Spesifisitas: aturan card diawali `body.tesys-ui table.ts-card-table:not(#ts-card)`
+    (`:not(#id)` = spesifisitas ID tanpa menambah `!important` berserakan).
+  - Atribut opsional: `data-ts-card="off"`, `data-short`, `data-card="title|hide|show"`.
+  - Batasan: sel `tbody` ber-`colspan` di tengah baris tidak didukung.
+  - Bottom tab (Fase 3) ditahan; lihat `docs/ui/datatable-inventory.md`.
 - Detail views: modals/drawers fed by `*/detail-json` endpoints.
+- Accessibility: fokus keyboard tab & dropdown-item diatur di
+  `tesys-ui-motion.css`; menu sidebar (`.sidebar .nav-item`, `.nav-group-toggle`)
+  memakai cincin warna `--chrome-text` (latar gelap); `.custom-select` dan
+  centang kustom memakai `box-shadow` `--accent-ring`. Fokus `.page-link`
+  DataTables dimiliki `tesys-ui-base.css` (box-shadow `--accent-ring`, tanpa
+  outline). Menu aktif diberi `aria-current="page"` (`nav.blade.php`).
+  Kontrol ikon-saja (sel tabel, topbar, toolbar, modal) mendapat `aria-label`
+  dari `title`/`data-original-title` lewat `tesys-icon-buttons.js`; `<label>`
+  tanpa `for` dihubungkan ke satu-satunya kontrol di `.form-group` oleh
+  `tesys-ui.js` (juga label hasil `.clone()` yang `for`-nya menunjuk kontrol
+  di luar `.form-group` yang sama; `id` hanya diganti bila terduplikasi).
+  Angka rata kanan memakai `tabular-nums` (`tesys-ui-pages.css`): sel/th
+  `.text-right`, `.text-end`, `.num`, `.ts-num` (td saja), dan style inline
+  `text-align:right` / `text-align: right`. Batas: spasi ganda di style inline
+  dan kolom uang yang rata kanan lewat kelas halaman sendiri tidak tertangkap
+  (pasang `.ts-num`).
+  Modal panjang menggulir di badannya pada layar pendek/sempit
+  (`tesys-ui-compat.css`); rantai flex hanya mencakup satu pembungkus
+  (`<form>` atau `<div>`) langsung di bawah `.modal-content`, pembungkus yang
+  lebih dalam belum diaudit per modal.
+- Mobile (`tesys-ui-mobile.css`, dimuat terakhir): breakpoint 900 (sidebar
+  jadi laci) / 768 (modal detail ditumpuk) / **640 (handphone)** / 480. Aturan
+  baru memakai 640px dan dibatasi `max-width`; target sentuh 36px hanya di
+  `@media (pointer: coarse)` agar desktop tidak berubah. Bagian bawah
+  DataTables (info/length/pagination) ditengahkan di ≤640px untuk tiga bentuk
+  `dom` yang dipakai (`.row` + kolom `d-flex`, dan `d-flex justify-content-between`
+  tanpa `.row`); utilitas Bootstrap 4 itu `!important`, jadi override-nya juga.
+  Di tabel Cost Request hanya kolom Action yang beku di ≤640px (Code ikut
+  tergulir) — keputusan ini Needs confirmation dari pengguna. Verifikasi
+  browser per viewport: belum dilakukan.
+  - Inventaris audit mobile (ORC-20261017-002; semua berstatus COMPLETED di
+    kode, **NOT VERIFIED** di browser):
+
+    | Berkas:baris | Viewport | Severity | Sumber | Temuan → perbaikan |
+    |---|---|---|---|---|
+    | `tesys-ui-shell.css:643-655` | ≤900 | MAJOR | shared | laci `height:100vh` terpotong bilah alamat → `100dvh` (mobile §17) |
+    | `tesys-ui-shell.css:134,1198` | ≤380 | MINOR | shared | `.crumb` tanpa ellipsis, topbar sesak di 320px → ellipsis, gap/padding dirapatkan (§17) |
+    | `layouts/app.blade.php:424-443` | ≤900 | — | shared | struktur topbar (toggle, judul, aksi) sudah wrap-safe; hanya CSS yang disesuaikan |
+    | `cash-receipt/create:79`, `customer/show:123`, `delivery-note/show:115` | 320 | MINOR | halaman | input `width:220-260px` inline → `max-width:100%` global (§18) |
+    | `budget-request/_toolbar:31,50`, `todo-list/_summary_task_list:51,66` | 320 | MAJOR | halaman | `min-width` inline 180-420px melebihi layar → `max-width: calc(100vw - 16px)` (§18) |
+    | view non-index (payroll-run, assignment, todo-list, trouble-ticket/settings, daily-transaction/show, groups/bank/budget-plan show) | semua | — | halaman | tabel sudah dalam `.table-responsive`; **tidak ada temuan** |
+    | `tesys-ui-motion.css:212` | — | MINOR | shared | `prefers-reduced-motion` sudah mencakup `animation`/`transition`/pseudo-element; ditambah `html{scroll-behavior:auto}` |
+- Tom Select (`tesys-ui-compat.css`): border/ring ada di `.ts-control`, bukan
+  wrapper (`.ts-wrapper.form-control` dikosongkan); `.is-invalid` diberi
+  `border-color: var(--danger)` pada `.ts-control`. Tom Select hanya dipakai di
+  toolbar accessgroup dan form customer (tidak di dalam modal), sehingga
+  `dropdownParent` tidak diperlukan; bila nanti dipakai di modal, set
+  `dropdownParent: 'body'`.
+- Dropdown di tabel/kontainer ber-overflow memakai `data-display="static"` atau
+  `data-boundary="viewport"` agar menu tidak terpotong. Inventaris 14
+  `data-toggle="dropdown"` di `resources/views`: semua sudah memakai salah
+  satunya (terakhir ditambah di `project-monitoring/show`). Dropdown baru wajib
+  mengikuti.
+- Pekerjaan lanjutan: aturan `.tsys-link` di `tesys-ui-base.css` dan
+  `tesys-ui-chrome.css` tidak dipakai di view, belum dibersihkan.
+  `.ts-kpi-label` (10.5px, `--text-dim`) belum diverifikasi di mode gelap.
+- `tesys-ui-chrome.css`: tidak direferensikan di layout; belum dikonfirmasi
+  pengguna apakah dipakai — tidak diubah/dihapus.
 - Empty/loading: `x-empty`, `x-skeleton`. Status: `x-status`.
 - Reference pattern for index pages: Budget Plan (modal sizing, sidebar, tabs,
   NOB colors, sort, filters).

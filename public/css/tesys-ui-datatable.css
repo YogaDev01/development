@@ -1,0 +1,211 @@
+/* =====================================================================
+   Tesys UI — DAFTAR DATA (DataTable): margin halaman -> tabel, dan mode
+   card mobile
+   ---------------------------------------------------------------------
+   Dimuat di layouts/app.blade.php SESUDAH tesys-ui-components.css dan
+   tesys-ui-mobile.css. Hanya memakai token dari tesys-ui-tokens.css.
+
+   Bagian 1  Listing tanpa bingkai kartu (desktop & mobile): kartu yang
+             membungkus DataTable dilepas — halaman langsung ke tabel.
+             Pengecualian: tambahkan .ts-keep-card pada .card.
+   Bagian 2  Mode card (<= 640px): tabel layak diubah jadi daftar card
+             oleh public/js/tesys-table.js (kelas .ts-card-table).
+             Murni tampilan; DOM DataTables tidak diganti.
+
+   Soal spesifisitas: aturan halaman memakai ID + !important (mis.
+   `.inv-hscroll #tblInvoice td.action-column`). Aturan card di bawah
+   diawali  body.tesys-ui table.ts-card-table:not(#ts-card)  — :not(#id)
+   menyumbang spesifisitas ID tanpa mencocokkan elemen apa pun — sehingga
+   menang tanpa menyebar !important.
+   ===================================================================== */
+
+
+/* ==========================================================================
+   1. LISTING: MARGIN HALAMAN -> TABEL
+   --------------------------------------------------------------------------
+   Sasaran: .card di dalam .main > .content yang berisi .dataTables_wrapper.
+   TIDAK terkena: kartu di modal / drawer, kartu ber-.ts-keep-card, kartu
+   berisi tabel pivot Finance Summary (.col-pic-table). !important dipakai
+   hanya pada properti yang di tesys-ui-compat.css / tesys-ui-shell.css
+   sudah !important.
+   ========================================================================== */
+body.tesys-ui .main > .content .card:has(.dataTables_wrapper):not(.ts-keep-card):not(.modal .card):not(.ts-drawer-root .card):not(.todo-drawer .card):not(:has(.col-pic-table)) {
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    margin: 0 0 16px !important;
+}
+body.tesys-ui .main > .content .card:has(.dataTables_wrapper):not(.ts-keep-card):not(.modal .card):not(.ts-drawer-root .card):not(.todo-drawer .card):not(:has(.col-pic-table)) > .card-header {
+    display: flex;
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    align-items: center !important;
+    justify-content: space-between;
+    gap: 8px 12px;
+    padding: 0 0 10px !important;
+    margin: 0 0 12px;
+    background: transparent !important;
+    border-radius: 0;
+    border-bottom: 1px solid var(--border) !important;
+}
+body.tesys-ui .main > .content .card:has(.dataTables_wrapper):not(.ts-keep-card):not(.modal .card):not(.ts-drawer-root .card):not(.todo-drawer .card):not(:has(.col-pic-table)) > .card-body {
+    padding: 0 !important;
+}
+/* Tabel: satu garis tepi (milik .table-bordered), latar permukaan. */
+body.tesys-ui .main > .content .card:has(.dataTables_wrapper):not(.ts-keep-card) table.dataTable {
+    background: var(--surface);
+}
+
+.ts-card-summary { display: none; }
+
+
+/* ==========================================================================
+   2. MODE CARD — MOBILE (<= 640px)
+   --------------------------------------------------------------------------
+   Kolom yang disembunyikan ekstensi Responsive (inline display:none) sengaja
+   ditampilkan kembali di mode card — card menampilkan semua kolom.
+   <table> sendiri tidak pernah display:none.
+   ========================================================================== */
+@media (max-width: 640px) {
+    body.tesys-ui table.ts-card-table:not(#ts-card),
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody,
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr,
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: none;
+        box-sizing: border-box;
+    }
+    body.tesys-ui table.ts-card-table:not(#ts-card) { border: 0; background: transparent; }
+
+    /* Header kolom tetap ada untuk pengurut/pembaca layar, tidak terlihat. */
+    body.tesys-ui table.ts-card-table:not(#ts-card) > thead {
+        position: absolute;
+        width: 1px; height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+    }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tfoot { display: none; }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr.child { display: none !important; }
+
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr {
+        position: relative;
+        margin: 0 0 10px;
+        padding: 4px 12px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-xs);
+    }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td {
+        display: flex !important;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 6px 0;
+        border: 0;
+        border-bottom: 1px solid var(--border);
+        text-align: right !important;
+        white-space: normal !important;
+        word-break: break-word;
+        /* Kolom beku (sticky kiri/kanan) di CSS halaman dinetralkan. */
+        position: static !important;
+        left: auto !important;
+        right: auto !important;
+        box-shadow: none !important;
+        background: transparent;
+    }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td:last-child { border-bottom: 0; }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td::before {
+        content: attr(data-label);
+        flex: 0 0 38%;
+        max-width: 38%;
+        text-align: left;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-faint);
+    }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td[data-label=""]::before,
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td:not([data-label])::before { display: none; }
+
+    /* Uang / angka: rata kanan, lebar angka seragam. */
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.text-right { font-variant-numeric: tabular-nums; }
+
+    /* Kolom yang disembunyikan di card (No / data-card="hide"). */
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.ts-card-hide { display: none !important; }
+
+    /* Penanda "+" ekstensi Responsive tidak dipakai di mode card. */
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.dtr-control::before { display: none !important; }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.dtr-control { padding-left: 0 !important; }
+
+    /* Judul: baris pertama, tanpa label, rata kiri. */
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.ts-card-title {
+        justify-content: flex-start;
+        text-align: left !important;
+        font-weight: 600;
+        color: var(--text);
+        padding-right: 96px;   /* ruang untuk chip status di kanan judul */
+    }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.ts-card-title::before { display: none; }
+
+    /* Status (badge / chip): di baris judul, kanan atas card. */
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.ts-card-status {
+        position: absolute !important;
+        top: 8px;
+        right: 12px !important;   /* menimpa `right:auto !important` di aturan sel */
+        width: auto !important;
+        max-width: 45%;
+        padding: 0;
+        border: 0;
+    }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.ts-card-status::before { display: none; }
+
+    /* Aksi: rata kanan di dasar card, tanpa label. */
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.ts-card-actions {
+        justify-content: flex-end;
+        padding-top: 8px;
+        border-top: 1px solid var(--border);
+        border-bottom: 0;
+    }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.ts-card-actions::before { display: none; }
+
+    /* Baris pesan kosong ("tidak ada data"): bukan card. */
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr:has(> td.dataTables_empty) {
+        padding: 0; border: 0; box-shadow: none; background: transparent;
+    }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.dataTables_empty {
+        display: block !important;
+        text-align: center !important;
+        border: 0;
+    }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.dataTables_empty::before { display: none; }
+
+    /* tfoot -> kartu ringkasan di posisi paling atas daftar. */
+    .ts-card-summary {
+        display: block;
+        margin: 0 0 10px;
+        padding: 8px 12px;
+        background: var(--surface-2);
+        border: 1px solid var(--border-strong);
+        border-radius: var(--radius-md);
+    }
+    .ts-card-summary-title {
+        margin: 0 0 4px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+    }
+    .ts-card-summary-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 3px 0;
+        font-size: 12px;
+    }
+    .ts-card-summary-row > span:first-child { color: var(--text-faint); }
+    .ts-card-summary-row > span:last-child { font-weight: 600; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+}

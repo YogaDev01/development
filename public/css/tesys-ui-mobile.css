@@ -362,3 +362,210 @@
     body.tesys-ui .ts-pop-head { padding: 10px 12px; }
     body.tesys-ui .notif-row { padding: 10px 12px; }
 }
+
+
+/* ==========================================================================
+   11. TABEL COST REQUEST — HANYA ACTION YANG BEKU DI HP
+   --------------------------------------------------------------------------
+   CACAT: kolom Code (kiri) dan Action (kanan) sama-sama dibekukan. Di layar
+   360px keduanya memakan sebagian besar lebar, sehingga Description yang
+   ada di antaranya nyaris tak terlihat dan isi sel saling menutupi.
+   Di HP hanya Action yang tetap beku (aksi selalu terjangkau); Code ikut
+   tergulir. Selektor dan !important disamakan dengan aturan di
+   budget-request/index.blade.php, yang kalah urutan dari berkas ini.
+   ========================================================================== */
+@media (max-width: 640px) {
+    .cr-hscroll .cr-tbl th.cr-col-code,
+    .cr-hscroll .cr-tbl td.cr-col-code {
+        position: static !important;
+        box-shadow: none;
+    }
+}
+
+
+/* ==========================================================================
+   12. TOOLBAR DAFTAR (Cost Request dan halaman sepola)
+   --------------------------------------------------------------------------
+   CACAT: di <=576px halaman menumpuk toolbar jadi kolom, sehingga Clear,
+   Filter, Kolom, Export, dan Tambah masing-masing satu baris penuh. Di sini
+   pencarian tetap satu baris penuh, tombol lainnya berjajar dan turun baris.
+   Panel Filter/Kolom dibentangkan selebar toolbar agar tidak keluar layar
+   (sebelumnya min-width 420px/260px dari tepi tombol).
+   ========================================================================== */
+@media (max-width: 640px) {
+    .custom-toolbar,
+    .custom-toolbar-left {
+        flex-direction: row !important;
+        flex-wrap: wrap;
+        align-items: center !important;
+        gap: 8px;
+        width: 100%;
+    }
+    .custom-toolbar-left { position: relative; }
+
+    .custom-toolbar-left .toolbar-row { flex: 1 1 100%; }
+    .custom-toolbar-left .toolbar-label { display: none; }
+
+    .custom-toolbar-right { width: 100%; display: flex; gap: 8px; }
+    .custom-toolbar-right .btn { flex: 1 1 0; width: auto; }
+    .cr-btn-clear { width: auto; }
+
+    .custom-toolbar-left .cr-pop { position: static; }
+    /* left/right !important: JS (budget-request/index) menulisnya sebagai
+       inline style tiap panel dibuka, yang tanpa !important mengalahkan ini. */
+    .custom-toolbar-left .cr-pop-menu {
+        left: 0 !important;
+        right: 0 !important;
+        min-width: 0 !important;
+        width: auto;
+        max-width: none;
+    }
+}
+
+
+/* ==========================================================================
+   13. BAGIAN BAWAH DATATABLES
+   --------------------------------------------------------------------------
+   Info baris, pilihan jumlah baris, dan pagination berjajar di satu baris
+   Bootstrap. Di HP mereka ditumpuk di tengah; tombol halaman dibuat dapat
+   turun baris dan cukup besar untuk disentuh. Tanpa mengubah `dom`.
+   ========================================================================== */
+@media (max-width: 640px) {
+    .dataTables_wrapper .row:last-child > [class*="col-"] {
+        flex: 0 0 100%;
+        max-width: 100%;
+        text-align: center;
+        margin-bottom: 8px;
+    }
+    /* Kolom pagination di ±20 halaman memakai `d-flex justify-content-end`
+       (atau `justify-content-between`). Utilitas Bootstrap 4 itu !important,
+       jadi text-align saja tidak menengahkannya — harus dilawan dengan
+       !important yang setara. */
+    .dataTables_wrapper .row:last-child > [class*="col-"].d-flex {
+        justify-content: center !important;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    /* Pola kedua (cost-center, employee, payroll-run): tanpa .row, pembungkus
+       flex langsung di bawah .dataTables_wrapper berisi info + (length+paginate). */
+    .dataTables_wrapper > .d-flex.justify-content-between {
+        justify-content: center !important;
+        flex-wrap: wrap;
+        gap: 8px;
+        text-align: center;
+    }
+    .dataTables_wrapper > .d-flex.justify-content-between > .d-flex { flex-wrap: wrap; justify-content: center; gap: 8px; }
+    .dataTables_length { margin-left: 0; justify-content: center; }
+    .dataTables_paginate .pagination { flex-wrap: wrap; justify-content: center; }
+    .dataTables_paginate .paginate_button,
+    .dataTables_paginate .page-link { min-width: 36px; min-height: 36px; }
+}
+
+
+/* ==========================================================================
+   14. FOOTER MODAL TETAP TERJANGKAU
+   --------------------------------------------------------------------------
+   Modal biasa menggulir seluruh halaman, sehingga tombol Simpan bisa berada
+   jauh di bawah form panjang. Pada layar sentuh sempit, tinggi modal dibatasi
+   setinggi layar dan hanya badannya yang menggulir; header dan footer tetap.
+   Modal detail (.dm-body, modal-dialog-xxl) punya pengaturan tinggi sendiri
+   dan tidak disentuh.
+   ========================================================================== */
+@media (max-width: 640px) {
+    .modal-dialog:not(.modal-dialog-xxl) .modal-content {
+        max-height: calc(100vh - 16px);
+        max-height: calc(100dvh - 16px);
+    }
+    .modal-dialog:not(.modal-dialog-xxl) .modal-content > form {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        max-height: inherit;
+    }
+    .modal-dialog:not(.modal-dialog-xxl) .modal-body {
+        overflow-y: auto;
+        min-height: 0;
+    }
+}
+
+
+/* ==========================================================================
+   15. ISIAN: TOM SELECT, FLATPICKR, CHECKBOX
+   ========================================================================== */
+@media (max-width: 640px) {
+    .ts-wrapper, .ts-control, .flatpickr-input, .flatpickr-wrapper { max-width: 100%; }
+    .ts-control, .ts-control input, .flatpickr-input { font-size: 16px; }
+    .invalid-feedback, .help-block, .form-text { overflow-wrap: anywhere; }
+    .custom-control-label { padding-top: 2px; }
+}
+
+
+/* ==========================================================================
+   16. TARGET SENTUH & ANGKA
+   --------------------------------------------------------------------------
+   Hanya untuk layar sentuh (pointer: coarse) agar desktop tidak berubah.
+   Tombol kecil dinaikkan ke 36px (batas nyaman). Angka tabel memakai
+   tabular-nums agar digit sejajar.
+   ========================================================================== */
+@media (pointer: coarse) {
+    .btn-sm, .icon-btn, .ts-action-primary, .ts-action-more { min-height: 36px; min-width: 36px; }
+}
+@media (max-width: 767.98px) {
+    .table td, .table th, .ts-kpi-value { font-variant-numeric: tabular-nums; }
+}
+
+
+/* ==========================================================================
+   17. TOPBAR & LACI SIDEBAR
+   --------------------------------------------------------------------------
+   Sumber: tesys-ui-shell.css (topbar, blok "7. LAYAR KECIL").
+   - Laci memakai height:100vh; di iOS/Android Chrome 100vh lebih tinggi dari
+     area terlihat (bilah alamat), sehingga kaki menu terpotong. Dipasang
+     100dvh sebagai pengganti (100vh tetap sebagai cadangan).
+   - Judul/breadcrumb topbar diberi ellipsis agar tidak mendorong tombol
+     bel/akun keluar layar di 320px.
+   - Padding samping mengikuti safe-area (viewport-fit=cover sudah dipasang).
+   ========================================================================== */
+@media (max-width: 900px) {
+    body.tesys-ui .sidebar {
+        height: 100vh;
+        height: 100dvh;
+        overscroll-behavior: contain;
+    }
+    body.tesys-ui .topbar {
+        padding-left: max(14px, env(safe-area-inset-left));
+        padding-right: max(14px, env(safe-area-inset-right));
+    }
+    body.tesys-ui .topbar-lead { flex: 1 1 auto; }
+    body.tesys-ui .topbar-actions { flex: none; }
+    body.tesys-ui .topbar .crumb {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
+@media (max-width: 380px) {
+    body.tesys-ui .topbar { gap: 8px; padding-top: 8px; padding-bottom: 8px; }
+    body.tesys-ui .topbar-lead { gap: 6px; }
+    body.tesys-ui .topbar-actions { gap: 2px; }
+    body.tesys-ui .page-title { font-size: 15px; }
+}
+
+
+/* ==========================================================================
+   18. LEBAR TETAP INLINE DI VIEW NON-INDEX
+   --------------------------------------------------------------------------
+   Audit view create/show/form: semua tabel sudah dibungkus .table-responsive
+   (tidak ada temuan). Yang tersisa adalah input pencarian dengan
+   style="width:220-260px" (cash-receipt/create, customer/show,
+   delivery-note/show) dan dropdown/popover dengan min-width inline
+   (todo-list, budget-request/_toolbar) yang bisa melebihi layar 320px.
+   max-width mengalahkan width inline tanpa !important dan tidak mengubah
+   desktop. Perbaikan di sumber bersama, bukan per halaman.
+   ========================================================================== */
+@media (max-width: 640px) {
+    input.form-control[style*="width:"],
+    select.form-control[style*="width:"] { max-width: 100%; }
+    .dropdown-menu[style*="min-width"],
+    .cr-pop-menu { max-width: calc(100vw - 16px); }
+}

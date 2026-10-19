@@ -26,6 +26,8 @@
                 ['Waiting PO',      $summary['waiting_po'],    'info',      'WAITING_PO'],
                 ['Active',          $summary['active'],        'success',   'ACTIVE'],
                 ['Waiting Invoice', $summary['progress_done'], 'warning',   'PROGRESS_DONE'],
+                ['Partially Invoiced', $summary['partially_invoiced'], 'warning', 'PARTIALLY_INVOICED'],
+                ['Partially Paid',  $summary['partially_paid'], 'info',     'PARTIALLY_PAID'],
                 ['Paid',            $summary['paid'],          'success',   'PAID'],
                 /*
                   Tahap "Closing" sengaja TIDAK ditampilkan di stepper ini —
@@ -99,6 +101,7 @@
                                         'uploaded'   => 'Uploaded',
                                         'margin'     => 'Margin',
                                         'contract'   => 'Contract',
+                                        'restitusi'  => 'Restitusi',
                                         'povalue'    => 'PO Value',
                                         'budget'     => 'Budget',
                                         'varcost'    => 'Variable Cost',
@@ -148,6 +151,7 @@
                                 <th scope="col" class="text-center col-wrap-header" style="width:110px;" title="Lingkaran isi = status Upload dokumen (No. PO). Cincin luar = status Progress milestone (Project Monitoring).">Uploaded</th>
                                 <th scope="col" class="text-center col-wrap-header" style="width:80px;">Margin</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Contract</th>
+                                <th scope="col" class="text-right text-nowrap" style="width:1%;">Restitusi</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">PO Value</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Budget</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Variable Cost</th>
@@ -245,7 +249,7 @@
                                 <td>
                                     <div style="font-size:13px;font-weight:600;">
                                         {{ $project->name }}
-                                        @if(in_array($project->status, ['WAITING_PO', 'ACTIVE']))
+                                        @if(in_array($project->status, array_merge(['WAITING_PO', 'ACTIVE'], \App\Models\Project::PARTIAL_STATUSES)))
                                             @if($project->status === 'WAITING_PO' && $project->monitoring_po_received_status === 'DONE')
                                                 <span class="badge badge-warning ml-1" style="font-size:9px;">Waiting Upload PO</span>
                                             @elseif($project->monitoring_bast_status === 'DONE')
@@ -310,6 +314,10 @@
 
                                 <td class="text-right text-nowrap col-raw-contract" data-raw="{{ $poRaw($project->contract ?? 0) }}">
                                     <button type="button" class="po-cell-link po-summary-link" data-id="{{ $project->id }}" title="Lihat Summary">{{ $poNilai($project->contract_formatted) }}</button>
+                                </td>
+
+                                <td class="text-right text-nowrap col-raw-restitusi" data-raw="{{ $poRaw($project->restitusi ?? 0) }}">
+                                    {{ $poNilai($project->restitusi_formatted) }}
                                 </td>
 
                                 <td class="text-right text-nowrap col-raw-value" data-raw="{{ $poRaw($project->value ?? 0) }}">
@@ -594,7 +602,8 @@
                                 <th></th>
                                 <th></th>
                                 <th class="text-right text-nowrap" id="poFooterContract" style="font-size:12px;color:var(--info);"></th>
-                                <th class="text-right text-nowrap" id="poFooterValue" style="font-size:12px;color:var(--info);"></th>
+                                <th class="text-right text-nowrap" id="poFooterRestitusi" style="font-size:12px;color:var(--info);"></th>
+                                <th class="text-right text-nowrap" id="poFooterValue"style="font-size:12px;color:var(--info);"></th>
                                 <th class="text-right text-nowrap" id="poFooterBp" style="font-size:12px;color:var(--text-faint);"></th>
                                 <th class="text-right text-nowrap" id="poFooterCr" style="font-size:12px;color:var(--warning);"></th>
                                 <th class="text-right text-nowrap" id="poFooterInvoice" style="font-size:12px;color:var(--info);"></th>
@@ -761,7 +770,7 @@
                                          yang lama membuat wadahnya lebih menonjol daripada
                                          isinya, dan mata harus melompat mengikuti grid alih-alih
                                          menyusuri satu kolom. --}}
-                                    <div class="ts-deflist mb-3">
+                                    <div class="ts-deflist ts-deflist--left mb-3">
                                         <div class="ts-deflist-head">Identitas</div>
 
                                         <div class="ts-deflist-row">
@@ -770,7 +779,7 @@
                                         </div>
                                         <div class="ts-deflist-row">
                                             <span class="ts-deflist-label">Scope of Work</span>
-                                            <span class="ts-deflist-value d-flex align-items-center justify-content-end" style="gap:8px;">
+                                            <span class="ts-deflist-value d-flex align-items-center" style="gap:8px;">
                                                 <span id="infoStatus"></span>
                                                 <span id="infoName"></span>
                                             </span>
@@ -905,21 +914,24 @@
                                 <div class="tab-pane fade" id="prjPanePoNumbers">
                                     <div class="d-flex justify-content-between align-items-center mb-2">
                                         <small class="text-muted">Submit BAST (termasuk multi No. PO sekaligus) sekarang dilakukan di halaman terpisah.</small>
-                                        <a href="#" id="btnOpenBastPage" target="_blank" class="btn btn-primary btn-sm prj-can-submit-bast" style="display:none;">
-                                            <i class="fas fa-file-signature mr-1"></i> Submit BAST
-                                        </a>
+                                        <div>
+                                            <button type="button" id="btnTogglePoBast" class="btn btn-outline-secondary btn-sm mr-1" style="display:none;"></button>
+                                            <a href="#" id="btnOpenBastPage" target="_blank" class="btn btn-primary btn-sm prj-can-submit-bast" style="display:none;">
+                                                <i class="fas fa-file-signature mr-1"></i> Submit BAST
+                                            </a>
+                                        </div>
                                     </div>
+                                    <div id="prjPoNumberSummary" class="mb-3"></div>
                                     <div class="table-responsive">
                                         <table class="table table-bordered prj-tab-table mb-0">
                                             <thead style="background:var(--surface-2);">
                                                 <tr>
                                                     <th scope="col" class="prj-col-wide">No. PO</th>
                                                     <th scope="col" class="text-right">Nominal</th>
+                                                    <th scope="col" class="text-right">BAST</th>
                                                     <th scope="col">Tanggal Rilis</th>
                                                     <th scope="col">Status</th>
-                                                    <th scope="col">No BAST</th>
-                                                    <th scope="col" class="text-right">Nilai BAST</th>
-                                                    <th scope="col">Lampiran</th>
+                                                    <th scope="col">Lampiran PO</th>
                                                     <th scope="col" class="text-center">Aksi</th>
                                                 </tr>
                                             </thead>
@@ -928,7 +940,8 @@
                                                 <tr style="background:var(--surface-2);">
                                                     <th>Grand Total</th>
                                                     <th class="text-right" id="prjPoNumberGrandTotal" style="color:var(--info);"></th>
-                                                    <th colspan="6"></th>
+                                                    <th class="text-right" id="prjPoNumberBastTotal" style="color:var(--info);"></th>
+                                                    <th colspan="4"></th>
                                                 </tr>
                                             </tfoot>
                                         </table>
@@ -938,6 +951,7 @@
                                 <!-- TAB COST -->
                                 <div class="tab-pane fade" id="prjPaneCost">
                                     <div id="prjCostSummary" class="mb-3"></div>
+                                    <div id="prjCostStatusSummary" class="mb-3"></div>
                                     <div class="text-muted mb-2" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">
                                         Variable Cost
                                     </div>
@@ -970,7 +984,10 @@
                                                     <th scope="col">Payment Term</th>
                                                     <th scope="col">Tgl Invoice</th>
                                                     <th scope="col">Due Date</th>
-                                                    <th scope="col" class="text-right prj-money-col">Nilai</th>
+                                                    <th scope="col" class="text-right prj-money-col" title="Nilai invoice sebelum PPN">Invoice</th>
+                                                    <th scope="col" class="text-right prj-money-col">PPN</th>
+                                                    <th scope="col" class="text-right prj-money-col" title="Pengurang dari total">PPH</th>
+                                                    <th scope="col" class="text-right prj-money-col" title="Invoice + PPN &minus; PPH">Total</th>
                                                     <th scope="col" class="prj-money-col">Tgl Diterima</th>
                                                     <th scope="col">Status</th>
                                                     <th scope="col" class="text-center">Aksi</th>
@@ -980,6 +997,9 @@
                                             <tfoot>
                                                 <tr style="background:var(--surface-2);">
                                                     <th colspan="5" class="text-right">Total</th>
+                                                    <th class="text-right prj-money-col" id="prjInvoiceFootBilled" style="color:var(--info);"></th>
+                                                    <th class="text-right prj-money-col" id="prjInvoiceFootTax" style="color:var(--info);"></th>
+                                                    <th class="text-right prj-money-col" id="prjInvoiceFootWht" style="color:var(--info);"></th>
                                                     <th class="text-right prj-money-col" id="prjInvoiceFootValue" style="color:var(--info);"></th>
                                                     <th colspan="3"></th>
                                                 </tr>
@@ -1088,6 +1108,12 @@
 <form id="frmDeletePoNumber" method="POST" style="display:none;">
     @csrf
     @method('DELETE')
+</form>
+
+<form id="frmDeleteBast" method="POST" style="display:none;">
+    @csrf
+    @method('DELETE')
+    <input type="hidden" name="delete_reason" id="frmDeleteBastReason">
 </form>
 
 <!-- MODAL SUBMIT CLOSING -->

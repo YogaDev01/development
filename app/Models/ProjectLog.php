@@ -31,6 +31,7 @@ class ProjectLog extends Model
         'waiting_to_active'    => 'PO Diterima → Active',
         'bast_submitted'       => 'BAST Diajukan',
         'bast_completed'       => 'BAST Ditandai Lengkap',
+        'bast_deleted'         => 'BAST Dihapus',
         'edited'               => 'Data PO Disunting',
         'po_number_added'      => 'No. PO Ditambahkan',
         'billed'               => 'Invoice Dibuat (Billed)',

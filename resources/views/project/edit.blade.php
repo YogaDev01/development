@@ -152,7 +152,7 @@
                             </div>
 
                             <!-- NILAI KONTRAK -->
-                            <div class="form-group{{ (in_array($project->status, ['WAITING_PO','SUBMITTED']) && Auth::user()->hasRole(['superadmin','finance','finance_manager'])) ? '' : ' mb-0' }}">
+                            <div class="form-group">
                                 <label class="font-weight-600">Nilai Kontrak</label>
                                 <div class="input-group">
                                     <div class="input-group-prepend">
@@ -164,6 +164,20 @@
                                            placeholder="0" autocomplete="off">
                                 </div>
                                 <small class="text-muted">Nilai kontrak yang ditandatangani (bisa berbeda dari Nilai PO).</small>
+                            </div>
+
+                            <!-- RESTITUSI -->
+                            <div class="form-group{{ (in_array($project->status, ['WAITING_PO','SUBMITTED']) && Auth::user()->hasRole(['superadmin','finance','finance_manager'])) ? '' : ' mb-0' }}">
+                                <label class="font-weight-600">Restitusi</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text">Rp</span>
+                                    </div>
+                                    <input type="text" name="restitusi"
+                                           class="form-control text-right inp-money"
+                                           value="{{ old('restitusi', number_format($project->restitusi ?? 0, 0, ',', '.')) }}"
+                                           placeholder="0" autocomplete="off">
+                                </div>
                             </div>
 
                             <!-- NO PO (hanya finance saat WAITING_PO) -->

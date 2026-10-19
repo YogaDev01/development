@@ -278,6 +278,39 @@ body.tesys-ui .modal-header .close { color: var(--text-faint); text-shadow: none
 body.tesys-ui .modal-body { padding: 18px 20px; font-size: 12.5px; }
 body.tesys-ui .modal-footer { border-top: 1px solid var(--border); padding: 13px 20px; background: var(--surface); }
 body.tesys-ui .modal-backdrop.show { opacity: .44; background: #101828; }
+/* Layar pendek/sempit: modal panjang menggulir di badannya sendiri sehingga
+   header dan footer (tombol simpan/tutup) tetap terlihat, mengikuti perilaku
+   .modal-dialog-scrollable bawaan Bootstrap. Batas tinggi = viewport dikurangi
+   margin dialog (1.75rem x2 di >=576px, .5rem x2 di bawahnya). Banyak modal
+   membungkus body+footer dengan <form> (atau <div> pembungkus), jadi satu
+   level pembungkus langsung di bawah .modal-content ikut menjadi kolom flex.
+   Pembungkus yang bersarang lebih dalam tidak dicakup (NOT VERIFIED per modal).
+   Tom Select tidak dipakai di dalam modal (hanya toolbar accessgroup dan form
+   customer), jadi dropdown-nya tidak terpotong body modal. */
+@media (max-height: 700px), (max-width: 575.98px) {
+    body.tesys-ui .modal-dialog:not(.modal-dialog-scrollable) .modal-content {
+        max-height: calc(100vh - 3.5rem);
+        display: flex;
+        flex-direction: column;
+    }
+    body.tesys-ui .modal-dialog:not(.modal-dialog-scrollable) .modal-content > form,
+    body.tesys-ui .modal-dialog:not(.modal-dialog-scrollable) .modal-content > div:not(.modal-header):not(.modal-body):not(.modal-footer) {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+    body.tesys-ui .modal-dialog:not(.modal-dialog-scrollable) .modal-body {
+        overflow-y: auto;
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+}
+@media (max-width: 575.98px) {
+    body.tesys-ui .modal-dialog:not(.modal-dialog-scrollable) .modal-content {
+        max-height: calc(100vh - 1rem);
+    }
+}
 
 /* Modal detail besar milik app (sidebar gelap + tab) */
 body.tesys-ui .modal-content [style*="#0D1B2A"] { background: var(--charcoal) !important; }
@@ -517,6 +550,21 @@ body.tesys-ui .ts-wrapper.multi .ts-control {
     border-radius: var(--radius-sm) !important;
     background: var(--surface) !important;
     font-size: 12px !important;
+}
+/* Tinggi Tom Select tunggal = .form-control (padding 8px 11px, line-height 1.5
+   dari 12px => 36px), supaya sebaris dengan input/select/Flatpickr di form
+   yang sama. Wrapper yang mewarisi kelas form-control tidak diberi padding
+   ganda. Multi-select dibiarkan tumbuh mengikuti jumlah tag. */
+body.tesys-ui .ts-wrapper.form-control,
+body.tesys-ui .ts-wrapper.custom-select { padding: 0; height: auto; border: 0; box-shadow: none; background: none; }
+/* Border/ring dipindah dari wrapper ke .ts-control; status invalid tetap terlihat. */
+body.tesys-ui .ts-wrapper.is-invalid .ts-control,
+body.tesys-ui .is-invalid + .ts-wrapper .ts-control { border-color: var(--danger) !important; }
+body.tesys-ui .ts-wrapper.single .ts-control {
+    min-height: 36px;
+    padding: 8px 11px;
+    line-height: 1.5;
+    align-items: center;
 }
 
 /* ---- SweetAlert2 ---- */

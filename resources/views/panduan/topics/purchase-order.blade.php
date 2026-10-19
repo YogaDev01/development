@@ -26,6 +26,13 @@
     BAST, dan kembali ke <strong>ACTIVE</strong> bila ada No. PO yang dibatalkan
     penyelesaiannya.
 </p>
+<p>
+    <strong>PARTIALLY_INVOICED</strong> berlaku otomatis bila sebagian (belum semua)
+    No. PO sudah ditagih, dan <strong>PARTIALLY_PAID</strong> bila sebagian No. PO
+    sudah Paid. Keduanya berlaku dari <strong>ACTIVE</strong> maupun
+    <strong>PROGRESS_DONE</strong>, bisa kembali bila statusnya turun, dan menjadi
+    <strong>PAID</strong> saat seluruh No. PO Paid.
+</p>
 
 <h2>Alur kerja</h2>
 <ol class="pnd-steps">

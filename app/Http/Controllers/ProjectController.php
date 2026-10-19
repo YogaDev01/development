@@ -344,6 +344,8 @@ class ProjectController extends Controller
             'waiting_po'    => (int) ($statusCounts['WAITING_PO'] ?? 0),
             'active'        => (int) ($statusCounts['ACTIVE'] ?? 0),
             'progress_done' => (int) ($statusCounts['PROGRESS_DONE'] ?? 0),
+            'partially_invoiced' => (int) ($statusCounts['PARTIALLY_INVOICED'] ?? 0),
+            'partially_paid'     => (int) ($statusCounts['PARTIALLY_PAID'] ?? 0),
             'paid'          => (int) ($statusCounts['PAID'] ?? 0),
             'closing'       => (int) ($statusCounts['CLOSING'] ?? 0),
             'closed'        => (int) ($statusCounts['CLOSED'] ?? 0),
@@ -494,6 +496,7 @@ class ProjectController extends Controller
             'manager_id'     => 'nullable|exists:users,id',
             'po_quantity'    => 'nullable|integer|min:0',
             'contract'       => 'nullable',
+            'restitusi'      => 'nullable',
             'overhead'       => 'nullable',
             'fixed_cost'     => 'nullable',
             'term_of_payment' => 'nullable|string|max:255',
@@ -522,6 +525,7 @@ class ProjectController extends Controller
                 'manager_id'     => $request->manager_id,
                 'po_quantity'    => $request->filled('po_quantity') ? (int) $request->po_quantity : null,
                 'contract'       => $this->normalizeMoney($request->contract),
+                'restitusi'      => $this->normalizeMoney($request->restitusi),
                 'overhead'       => $this->normalizeMoney($request->overhead),
                 'fixed_cost'     => $this->normalizeMoney($request->fixed_cost),
                 'term_of_payment'     => $request->term_of_payment,
@@ -558,6 +562,9 @@ class ProjectController extends Controller
             'pics',
             'invoices' => fn ($q) => $q->with('cashReceipts')->orderBy('invoice_date', 'desc'),
             'poNumbers.attachments',
+            'poNumbers.basts.attachments',
+            'poNumbers.basts.invoices',
+            'poNumbers.basts.parent.attachments',
         ])->findOrFail($id);
 
         abort_unless($this->canViewProjectJson($project), 403);
@@ -591,6 +598,12 @@ class ProjectController extends Controller
         $grossProfit  = $paymentTotal - $variableCost;
         $netProfit    = $grossProfit - $overhead - $fixedCost;
 
+        // Nilai Contract seharusnya = total BAST + Restitusi; bila tidak sama,
+        // selisihnya ditampilkan di modal (hanya tampilan, tidak disimpan).
+        $bastTotal      = (int) $project->poNumbers->sum('nilai_bast');
+        $restitusi      = (int) ($project->restitusi ?? 0);
+        $contractSelisih = (int) $project->contract - ($bastTotal + $restitusi);
+
         // Users with access to this project via access groups
         $accessUsers = \App\Models\User::whereHas('accessGroup.details', function($q) use ($project) {
             $q->where('project_id', $project->id);
@@ -620,6 +633,12 @@ class ProjectController extends Controller
             'po_adjustment_required'   => $project->poAdjustmentRequired(),
             'contract'            => $project->contract,
             'contract_formatted'  => $project->contract_formatted,
+            'bast_total'               => $bastTotal,
+            'bast_total_formatted'     => $rp($bastTotal),
+            'restitusi'                => $restitusi,
+            'restitusi_formatted'      => $rp($restitusi),
+            'contract_selisih'         => $contractSelisih,
+            'contract_selisih_formatted' => ($contractSelisih < 0 ? '-' : '') . $rp(abs($contractSelisih)),
             'overhead'            => $project->overhead,
             'overhead_formatted'  => $project->overhead_formatted,
             'fixed_cost'           => $project->fixed_cost,
@@ -761,6 +780,31 @@ class ProjectController extends Controller
                 'tanggal_bast_raw'    => $p->tanggal_bast?->format('Y-m-d'),
                 'nilai_bast_formatted' => $p->nilai_bast_formatted,
                 'bast_notes'          => $p->bast_notes,
+                'nilai_bast'          => (int) $p->nilai_bast,
+                // Jumlah dari rincian BAST (bukan kolom agregat) — dipakai kolom BAST di tab No. PO.
+                'bast_total'          => (int) $p->basts->sum('nilai_bast'),
+                'bast_total_formatted' => number_format((int) $p->basts->sum('nilai_bast'), 0, ',', '.'),
+                // Rincian BAST (detail dari No. PO = header).
+                'basts'               => $p->basts->map(fn ($b) => [
+                    'id'                   => $b->id,
+                    // Pecahan BAST sintetis: nomor induk (induknya sudah soft-delete) dan pecahan/sisa/biasa.
+                    'split_from_no'        => $b->parent?->no_bast,
+                    'origin'               => $b->origin,
+                    // Sudah ditagih = punya invoice aktif (CANCELLED tidak dihitung).
+                    'is_billed'            => $b->invoices->where('status', '!=', 'CANCELLED')->isNotEmpty(),
+                    'billed_invoices'      => $b->invoices->where('status', '!=', 'CANCELLED')->pluck('code')->values(),
+                    'no_bast'              => $b->no_bast,
+                    'tanggal_bast'         => $b->tanggal_bast?->format('d M Y'),
+                    'nilai_bast'           => (int) $b->nilai_bast,
+                    'nilai_bast_formatted' => number_format((int) $b->nilai_bast, 0, ',', '.'),
+                    // Lampiran pecahan tetap menempel di induk (tidak dipindah): tampilkan lampiran induk bila pecahan tidak punya.
+                    'attachments'          => ($b->attachments->isEmpty() && $b->parent ? $b->parent->attachments : $b->attachments)->map(fn ($a) => [
+                        'title'    => $a->title ?? $a->file_name,
+                        'path'     => $a->file_path,
+                        'is_image' => $a->isImage(),
+                        'is_pdf'   => $a->isPdf(),
+                    ])->values(),
+                ])->values(),
                 'attachments'         => $p->attachments->where('type', '!=', 'po_number_bast')->values()->map(fn($a) => [
                     'title'    => $a->title ?? $a->file_name,
                     'path'     => $a->file_path,
@@ -794,6 +838,13 @@ class ProjectController extends Controller
                     'payment_term'      => $inv->payment_term_label,
                     'invoice_date'      => $inv->invoice_date?->format('d M Y'),
                     'due_date'          => $inv->due_date?->format('d M Y'),
+                    'billed_amount'     => (int) $inv->billed_amount,
+                    'billed_amount_formatted' => $rp($inv->billed_amount),
+                    // Nilai tersimpan apa adanya (dihitung InvoiceCalculationService saat invoice disimpan).
+                    'tax_amount'        => (int) $inv->tax_amount,
+                    'tax_amount_formatted' => $rp($inv->tax_amount),
+                    'withholding_tax'   => (int) $inv->withholding_tax,
+                    'withholding_tax_formatted' => $rp($inv->withholding_tax),
                     'captured_total'    => (int) $inv->captured_total,
                     'captured_total_formatted' => $inv->captured_total_formatted,
                     'received'          => $received,
@@ -831,6 +882,7 @@ class ProjectController extends Controller
                 'date'         => $cr->created_at?->format('d M Y'),
                 'description'  => $cr->description,
                 'beneficiary'  => $cr->beneficiary->nickname ?? '-',
+                'request'           => (int) $cr->amount,
                 'request_formatted' => $rp($cr->amount),
                 'refund'            => (int) $cr->refund_calc,
                 'refund_formatted'  => $rp($cr->refund_calc),
@@ -891,8 +943,8 @@ class ProjectController extends Controller
                     ->with('error', 'PO tidak dapat diedit pada status ini.');
             }
 
-            // ACTIVE & CLOSED tidak bisa diedit siapapun
-            if (in_array($project->status, ['ACTIVE', 'CLOSED']) && !in_array($role, ['superadmin'])) {
+            // ACTIVE (termasuk Partially Invoiced/Paid) & CLOSED tidak bisa diedit siapapun
+            if (in_array($project->status, array_merge(['ACTIVE', 'CLOSED'], Project::PARTIAL_STATUSES)) && !in_array($role, ['superadmin'])) {
                 return redirect('/project')
                     ->with('error', 'PO berstatus ACTIVE atau CLOSED tidak dapat diedit.');
             }
@@ -946,6 +998,7 @@ class ProjectController extends Controller
             'manager_id'             => 'nullable|exists:users,id',
             'po_quantity'            => 'nullable|integer|min:0',
             'contract'               => 'nullable',
+            'restitusi'              => 'nullable',
             'overhead'               => 'nullable',
             'fixed_cost'             => 'nullable',
             'term_of_payment'         => 'nullable|string|max:255',
@@ -976,6 +1029,7 @@ class ProjectController extends Controller
                 'manager_id'     => $request->manager_id,
                 'po_quantity'    => $request->filled('po_quantity') ? (int) $request->po_quantity : null,
                 'contract'       => $this->normalizeMoney($request->contract),
+                'restitusi'      => $this->normalizeMoney($request->restitusi),
                 'overhead'       => $this->normalizeMoney($request->overhead),
                 'fixed_cost'     => $this->normalizeMoney($request->fixed_cost),
                 'term_of_payment'     => $request->term_of_payment,
@@ -1052,6 +1106,7 @@ class ProjectController extends Controller
             'manager_id'      => 'Manager',
             'po_quantity'     => 'PO Quantity',
             'contract'        => 'Contract',
+            'restitusi'       => 'Restitusi',
             'overhead'        => 'Overhead',
             'fixed_cost'      => 'Fixed Cost',
             'term_of_payment' => 'Term of Payment',
@@ -1081,7 +1136,7 @@ class ProjectController extends Controller
         foreach ($label as $kolom => $nama) {
             $changeMap[$kolom] = [
                 'label' => $nama,
-                'money' => in_array($kolom, ['contract', 'overhead', 'fixed_cost'], true),
+                'money' => in_array($kolom, ['contract', 'restitusi', 'overhead', 'fixed_cost'], true),
             ];
         }
         $changes = \App\Models\UserActivityLog::changeSet($sebelum, $project, $changeMap);
@@ -1534,6 +1589,26 @@ class ProjectController extends Controller
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * PO ditutup → Budget Plan ACTIVE/CLOSING miliknya ikut CLOSED. Dipanggil
+     * di dalam transaksi penutupan PO dari ketiga jalur close.
+     */
+    private function closeBudgetPlans(Project $project, string $notes): void
+    {
+        $project->budgetPlans()
+            ->whereIn('status', ['ACTIVE', 'CLOSING'])
+            ->get()
+            ->each(function ($bp) use ($notes) {
+                $dari = $bp->status;
+                $bp->update([
+                    'status'      => 'CLOSED',
+                    'approved_by' => Auth::id(),
+                    'approved_at' => now(),
+                ]);
+                $bp->addLog($dari, 'CLOSED', 'closed_with_po', $notes);
+            });
+    }
+
     public function close(Request $request, $id)
     {
         $request->validate([
@@ -1559,6 +1634,7 @@ class ProjectController extends Controller
 
             $this->storeAttachments($project, $request, 'closing');
             $project->addLog('ACTIVE', 'CLOSED', 'closed', $request->closing_notes);
+            $this->closeBudgetPlans($project, 'Otomatis: PO ' . $project->code . ' ditutup.');
         });
 
         return redirect('/project')->with('success', 'PO berhasil ditutup.');
@@ -1601,6 +1677,7 @@ class ProjectController extends Controller
             ]);
 
             $project->addLog('PAID', 'CLOSED', 'finance_closed', $request->notes);
+            $this->closeBudgetPlans($project, 'Otomatis: PO ' . $project->code . ' ditutup.');
         });
 
         return redirect('/project')->with('success', 'PO berhasil ditutup.');
@@ -1663,12 +1740,15 @@ class ProjectController extends Controller
             return back()->with('error', 'Status tidak valid.');
         }
 
-        $project->update([
-            'status'    => 'CLOSED',
-            'closed_by' => Auth::id(),
-            'closed_at' => now(),
-        ]);
-        $project->addLog('CLOSING', 'CLOSED', 'closing_approved', $request->notes);
+        DB::transaction(function () use ($request, $project) {
+            $project->update([
+                'status'    => 'CLOSED',
+                'closed_by' => Auth::id(),
+                'closed_at' => now(),
+            ]);
+            $project->addLog('CLOSING', 'CLOSED', 'closing_approved', $request->notes);
+            $this->closeBudgetPlans($project, 'Otomatis: PO ' . $project->code . ' ditutup.');
+        });
 
         if ($project->inputBy) {
             NotifyService::send(
@@ -1996,11 +2076,14 @@ class ProjectController extends Controller
 
         $rows  = (array) $request->input('po_numbers', []);
         $files = (array) $request->file('po_numbers', []);
+        // Diproses berurutan id No. PO: kunci No. PO diambil dalam urutan yang sama di setiap request.
+        ksort($rows);
 
         $processed = [];
         $skipped   = [];
+        $blocked   = [];
 
-        DB::transaction(function () use ($rows, $files, $project, &$processed, &$skipped) {
+        DB::transaction(function () use ($rows, $files, $project, &$processed, &$skipped, &$blocked) {
             foreach ($rows as $poNumberId => $row) {
                 $fileList = array_values(array_filter(
                     $files[$poNumberId]['attachments'] ?? [],
@@ -2012,7 +2095,8 @@ class ProjectController extends Controller
                     continue;
                 }
 
-                $poNumber = \App\Models\ProjectPoNumber::where('project_id', $project->id)->find($poNumberId);
+                // Dikunci: dua submit bersamaan tidak boleh sama-sama lolos cek total BAST di bawah.
+                $poNumber = \App\Models\ProjectPoNumber::where('project_id', $project->id)->lockForUpdate()->find($poNumberId);
                 $noBast      = trim($row['no_bast'] ?? '');
                 $tanggalBast = $row['tanggal_bast'] ?? null;
                 $nominalBast = $this->normalizeMoney($row['nominal_bast'] ?? null);
@@ -2022,13 +2106,25 @@ class ProjectController extends Controller
                     continue;
                 }
 
+                // Total BAST (aktif) tidak boleh melebihi nominal No. PO; kurang dari nominal tetap boleh.
+                $totalBaru = (int) $poNumber->basts()->sum('nilai_bast') + $nominalBast;
+                if ($totalBaru > (int) $poNumber->nominal) {
+                    $blocked[] = $poNumber->po_number . ' (total BAST Rp ' . number_format($totalBaru, 0, ',', '.')
+                        . ' melebihi nominal Rp ' . number_format((int) $poNumber->nominal, 0, ',', '.') . ')';
+                    continue;
+                }
+
                 $this->applyBastSubmission($poNumber, $noBast, $tanggalBast, $nominalBast, $fileList, !empty($row['mark_complete']));
                 $processed[] = $poNumber->po_number;
             }
         });
 
+        $pesanBlokir = $blocked
+            ? 'BAST DIBLOKIR — total BAST melebihi nominal No. PO: ' . implode('; ', $blocked) . '.'
+            : null;
+
         if (empty($processed)) {
-            return back()->with('error', 'Tidak ada No. PO yang disubmit — pastikan minimal 1 No. PO diisi No. BAST, Tanggal BAST, Nominal BAST, dan lampiran.');
+            return back()->with('error', $pesanBlokir ?? 'Tidak ada No. PO yang disubmit — pastikan minimal 1 No. PO diisi No. BAST, Tanggal BAST, Nominal BAST, dan lampiran.');
         }
 
         $msg = count($processed) . ' No. PO berhasil disubmit BAST-nya: ' . implode(', ', $processed) . '.';
@@ -2036,7 +2132,9 @@ class ProjectController extends Controller
             $msg .= ' Dilewati (tidak valid/sudah Invoiced-Paid): ' . implode(', ', $skipped) . '.';
         }
 
-        return back()->with('success', $msg);
+        $balik = back()->with('success', $msg);
+
+        return $pesanBlokir ? $balik->with('error', $pesanBlokir) : $balik;
     }
 
     /**
@@ -2057,6 +2155,14 @@ class ProjectController extends Controller
             'bast_submitted_at' => now(),
         ]);
 
+        // Rincian per submission: No. PO = header, BAST = detail (kolom agregat di atas tetap diisi).
+        $bast = $poNumber->basts()->create([
+            'no_bast'      => $noBast,
+            'tanggal_bast' => $tanggalBast,
+            'nilai_bast'   => $nominalBast,
+            'submitted_by' => Auth::id(),
+        ]);
+
         $attCount = count($files);
         foreach ($files as $i => $file) {
             $title = $attCount > 1 ? $noBast . ' - ' . ($i + 1) : $noBast;
@@ -2064,6 +2170,7 @@ class ProjectController extends Controller
 
             $poNumber->attachments()->create([
                 'project_id' => $poNumber->project_id,
+                'project_po_bast_id' => $bast->id,
                 'type'       => 'po_number_bast',
                 'title'      => strtoupper($title),
                 'file_path'  => $path,
@@ -2074,7 +2181,8 @@ class ProjectController extends Controller
 
         $note = 'BAST No. PO ' . $poNumber->po_number . ' disubmit' . ($markComplete ? ' dan ditandai lengkap.' : ' (partial).');
         $poNumber->project->addLog('ACTIVE', 'ACTIVE', 'bast_submitted', $note);
-        $poNumber->project->syncStatusFromPoNumbers();
+        // Status No. PO (dan header PO) dihitung dari BAST-nya, satu jalur dengan penagihan.
+        $poNumber->syncInvoiceStatus();
     }
 
     /**
@@ -2097,7 +2205,10 @@ class ProjectController extends Controller
 
         $poNumber->update(['status' => 'BAST_SUBMITTED']);
         $poNumber->project->addLog('ACTIVE', 'ACTIVE', 'bast_completed', 'BAST No. PO ' . $poNumber->po_number . ' ditandai lengkap.');
-        $poNumber->project->syncStatusFromPoNumbers();
+        // Bila semua BAST-nya sudah ditagih, langsung naik ke INVOICED/PAID.
+        $poNumber->usesBastBilling()
+            ? $poNumber->syncInvoiceStatus()
+            : $poNumber->project->syncStatusFromPoNumbers();
 
         return back()->with('success', 'No. PO ' . $poNumber->po_number . ' ditandai BAST lengkap.');
     }
@@ -2110,11 +2221,74 @@ class ProjectController extends Controller
             return back()->with('error', 'No. PO yang sudah berjalan (bukan RELEASED) tidak dapat dihapus.');
         }
 
-        foreach ($poNumber->attachments as $att) {
-            Storage::disk('secure')->delete($att->file_path);
+        // withTrashed: BAST yang sudah di-soft-delete tetap ada barisnya (FK restrict), jadi tetap menolak.
+        if ($poNumber->basts()->withTrashed()->exists()) {
+            return back()->with('error', 'No. PO yang sudah punya BAST tidak dapat dihapus.');
         }
-        $poNumber->delete();
+
+        $paths = $poNumber->attachments->pluck('file_path')->all();
+
+        DB::transaction(fn () => $poNumber->delete());
+
+        // File fisik dihapus sesudah baris DB berhasil di-commit; kegagalan hapus file
+        // tidak boleh membatalkan hasilnya.
+        foreach ($paths as $path) {
+            try {
+                Storage::disk('secure')->delete($path);
+            } catch (\Throwable $e) {
+                \Log::warning('Gagal menghapus file lampiran No. PO: ' . $path . ' — ' . $e->getMessage());
+            }
+        }
 
         return back()->with('success', 'No. PO berhasil dihapus.');
+    }
+
+    /**
+     * Hapus (soft delete) satu BAST — superadmin saja, hanya bila belum ditagih.
+     * Baris & lampirannya TIDAK dihapus (jejak audit); agregat kolom lama No. PO
+     * dan statusnya dihitung ulang dari BAST yang masih aktif.
+     */
+    public function destroyBast(Request $request, $bastId)
+    {
+        abort_unless(Auth::user()->hasRole(['superadmin']), 403);
+
+        $request->validate(['delete_reason' => 'required|string|max:1000']);
+
+        // No. PO dicari SEBELUM transaksi: kunci pertama di dalamnya harus baris No. PO supaya
+        // pembacaan biasa sesudahnya melihat data terbaru (lihat InvoiceCashReceiptController::kunciBastUntukTagihan).
+        $poId = \App\Models\ProjectPoBast::whereKey($bastId)->value('project_po_number_id');
+        if (!$poId) {
+            return back()->with('error', 'BAST tidak ditemukan atau sudah dihapus.');
+        }
+
+        try {
+            DB::transaction(function () use ($bastId, $request, $poId) {
+                // Urutan kunci sama di semua jalur BAST/invoice: (1) No. PO, (2) BAST, (3) invoice per id saja.
+                $poNumber = \App\Models\ProjectPoNumber::whereKey($poId)->lockForUpdate()->firstOrFail();
+                $bast     = \App\Models\ProjectPoBast::whereKey($bastId)->lockForUpdate()->first();
+                if (!$bast) {
+                    throw new \DomainException('BAST tidak ditemukan atau sudah dihapus.');
+                }
+
+                $invoice = $bast->activeInvoices()->first();
+                if ($invoice) {
+                    throw new \DomainException('BAST ' . $bast->no_bast . ' sudah ditagih pada invoice ' . $invoice->code . ' dan tidak dapat dihapus.');
+                }
+
+                $bast->update(['deleted_by' => Auth::id(), 'delete_reason' => $request->delete_reason]);
+                $bast->delete();
+
+                $poNumber->recalculateBastAggregate();
+                $poNumber->syncInvoiceStatus();
+
+                $status = $poNumber->project->status;
+                $poNumber->project->addLog($status, $status, 'bast_deleted',
+                    'BAST ' . $bast->no_bast . ' (No. PO ' . $poNumber->po_number . ') dihapus: ' . $request->delete_reason);
+            });
+        } catch (\DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', 'BAST berhasil dihapus.');
     }
 }

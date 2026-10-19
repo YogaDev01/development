@@ -91,6 +91,8 @@
         if (!terbuka) return;
 
         if (e.key === 'Escape') {
+            // Viewer lampiran (carousel) yang sedang terbuka menutup dirinya sendiri dulu.
+            if (document.querySelector('#imgViewerOverlay.show')) return;
             e.preventDefault();
             close();
             return;

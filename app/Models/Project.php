@@ -38,6 +38,7 @@ class Project extends Model
         'value',
         'po_quantity',
         'contract',
+        'restitusi',
         'overhead',
         'fixed_cost',
         'term_of_payment',
@@ -64,6 +65,7 @@ class Project extends Model
         'value'            => 'integer',
         'po_quantity'      => 'integer',
         'contract'         => 'integer',
+        'restitusi'        => 'integer',
         'overhead'         => 'integer',
         'fixed_cost'       => 'integer',
         'submitted_at'     => 'datetime',
@@ -89,10 +91,26 @@ class Project extends Model
         'WAITING_PO',
         'ACTIVE',
         'PROGRESS_DONE',
+        'PARTIALLY_INVOICED',
+        'PARTIALLY_PAID',
         'PAID',
         'CLOSING',
         'CLOSED',
     ];
+
+    /**
+     * Status berjalan yang dihitung ulang otomatis dari agregat status No. PO
+     * (lihat syncStatusFromPoNumbers()). Di luar daftar ini status tidak
+     * disentuh sinkronisasi.
+     */
+    public const OPERATIONAL_STATUSES = ['ACTIVE', 'PROGRESS_DONE', 'PARTIALLY_INVOICED', 'PARTIALLY_PAID'];
+
+    /**
+     * Status Active "lanjutan": PO masih berjalan (belum PAID) tetapi sebagian
+     * No. PO sudah ditagih/dibayar. Diperlakukan seperti ACTIVE pada pengecekan
+     * yang dulu hanya melihat ACTIVE (budget-able, kunci edit, badge menunggu).
+     */
+    public const PARTIAL_STATUSES = ['PARTIALLY_INVOICED', 'PARTIALLY_PAID'];
 
     /**
      * Status PO yang boleh dibuatkan Budget Plan di dalamnya. Sumber tunggal,
@@ -102,7 +120,7 @@ class Project extends Model
      * EARLY_START ikut: PO yang baru diketahui scope-nya pun sudah dianggap
      * sah dan boleh menampung budget (lihat workflow Early Start).
      */
-    public const BUDGETABLE_STATUSES = ['EARLY_START', 'WAITING_PO', 'ACTIVE'];
+    public const BUDGETABLE_STATUSES = ['EARLY_START', 'WAITING_PO', 'ACTIVE', 'PARTIALLY_INVOICED', 'PARTIALLY_PAID'];
 
     /*
     |--------------------------------------------------------------------------
@@ -209,22 +227,75 @@ class Project extends Model
      *   supaya status header tidak pernah "Progress Done" palsu.
      *   PROGRESS_DONE -> PAID otomatis begitu SEMUA No. PO sudah Paid
      *   (dipicu dari Invoice::syncPaymentStatus() saat invoice lunas).
+     *   Sebagian No. PO sudah ditagih (belum semua) -> PARTIALLY_INVOICED;
+     *   sebagian sudah Paid (belum semua) -> PARTIALLY_PAID. Keduanya berlaku
+     *   dari ACTIVE maupun PROGRESS_DONE dan bisa kembali bila agregatnya turun.
      */
     public function syncStatusFromPoNumbers(): void
     {
-        if ($this->status === 'ACTIVE' && $this->workProgressStatus() === 'DONE') {
-            $this->update(['status' => 'PROGRESS_DONE']);
-            $this->addLog('ACTIVE', 'PROGRESS_DONE', 'bast_submitted', 'Semua No. PO sudah BAST (otomatis).');
-        } elseif ($this->status === 'PROGRESS_DONE' && $this->workProgressStatus() !== 'DONE') {
-            $this->update(['status' => 'ACTIVE']);
-            $this->addLog('PROGRESS_DONE', 'ACTIVE', 'bast_partial', 'Ada No. PO yang belum BAST lengkap — status dikembalikan ke Active (otomatis).');
+        if (!in_array($this->status, self::OPERATIONAL_STATUSES, true)) {
+            return;
         }
 
-        if ($this->status === 'PROGRESS_DONE' && $this->paymentProgressStatus() === 'DONE') {
-            $this->update(['status' => 'PAID']);
-            $this->addLog('PROGRESS_DONE', 'PAID', 'invoice_paid', 'Semua No. PO sudah Paid (otomatis).');
+        $dari   = $this->status;
+        $target = $this->operationalStatus();
+
+        if ($target === $dari) {
+            return;
+        }
+
+        $this->update(['status' => $target]);
+
+        [$aksi, $catatan] = match ($target) {
+            'PROGRESS_DONE'      => ['bast_submitted', 'Semua No. PO sudah BAST (otomatis).'],
+            'ACTIVE'             => ['bast_partial', 'Ada No. PO yang belum BAST lengkap — status dikembalikan ke Active (otomatis).'],
+            'PARTIALLY_INVOICED' => ['invoice_partial', 'Sebagian No. PO sudah ditagih (otomatis).'],
+            'PARTIALLY_PAID'     => ['payment_partial', 'Sebagian No. PO sudah Paid (otomatis).'],
+            default              => ['invoice_paid', 'Semua No. PO sudah Paid (otomatis).'],
+        };
+        $this->addLog($dari, $target, $aksi, $catatan);
+
+        if ($target === 'PAID') {
             $this->autoCloseBudgetPlans();
         }
+    }
+
+    /**
+     * Sudah ada tagihan (invoice tidak Cancelled, nilai > 0) pada salah satu
+     * No. PO PO ini. Status No. PO baru INVOICED bila tertagih penuh, jadi
+     * penagihan sebagian (mis. 90% sesuai nilai BAST Partial) hanya terlihat dari sini.
+     */
+    private function hasInvoicedAmount(): bool
+    {
+        return Invoice::whereIn('project_po_number_id', $this->poNumbers()->select('id'))
+            ->where('status', '!=', 'CANCELLED')
+            ->where('billed_amount', '>', 0)
+            ->exists();
+    }
+
+    /**
+     * Status berjalan yang seharusnya, dihitung dari agregat status No. PO
+     * dan penagihan yang sudah ada. Prioritas: PAID (semua Paid) >
+     * PARTIALLY_PAID (ada yang Paid) > PARTIALLY_INVOICED (sudah ada tagihan
+     * tapi belum semua No. PO tertagih penuh) > PROGRESS_DONE (semua BAST) > ACTIVE.
+     */
+    public function operationalStatus(): string
+    {
+        $work    = $this->workProgressStatus();
+        $billing = $this->billingProgressStatus();
+        $payment = $this->paymentProgressStatus();
+
+        if ($work === 'DONE' && $payment === 'DONE') {
+            return 'PAID';
+        }
+        if ($payment !== 'NOT_STARTED') {
+            return 'PARTIALLY_PAID';
+        }
+        if ($billing === 'PARTIAL' || ($billing === 'NOT_STARTED' && $this->hasInvoicedAmount())) {
+            return 'PARTIALLY_INVOICED';
+        }
+
+        return $work === 'DONE' ? 'PROGRESS_DONE' : 'ACTIVE';
     }
 
     /**
@@ -509,6 +580,11 @@ class Project extends Model
         return number_format($this->value ?? 0, 0, ',', '.');
     }
 
+    public function getRestitusiFormattedAttribute(): string
+    {
+        return number_format($this->restitusi ?? 0, 0, ',', '.');
+    }
+
     public function getContractFormattedAttribute(): string
     {
         return number_format($this->contract ?? 0, 0, ',', '.');
@@ -549,7 +625,7 @@ class Project extends Model
     public function budgetPlanTotal(): int
     {
         return (int) $this->budgetPlans
-            ->whereIn('status', ['ACTIVE', 'CLOSED'])
+            ->whereIn('status', ['ACTIVE', 'CLOSING', 'CLOSED'])
             ->sum('amount');
     }
 
@@ -753,6 +829,8 @@ class Project extends Model
             'WAITING_PO'    => 'info',
             'ACTIVE'        => 'success',
             'PROGRESS_DONE' => 'warning',
+            'PARTIALLY_INVOICED' => 'warning',
+            'PARTIALLY_PAID'     => 'info',
             'PAID'          => 'success',
             'CLOSING'       => 'warning',
             'CLOSED'        => 'dark',
@@ -781,6 +859,8 @@ class Project extends Model
             'WAITING_PO'    => 'Waiting PO',
             'ACTIVE'        => 'Active',
             'PROGRESS_DONE' => 'Waiting Invoice',
+            'PARTIALLY_INVOICED' => 'Partially Invoiced',
+            'PARTIALLY_PAID'     => 'Partially Paid',
             'PAID'          => 'Paid',
             'CLOSING'       => 'Closing',
             'CLOSED'        => 'Closed',
@@ -997,6 +1077,7 @@ class Project extends Model
             'waiting_to_active' => 'Mengaktifkan',
             'bast_submitted'    => 'Mengajukan BAST',
             'bast_completed'    => 'Menyelesaikan BAST',
+            'bast_deleted'      => 'Menghapus BAST',
             'closing_submitted' => 'Mengajukan closing',
             'closing_approved'  => 'Menyetujui closing',
             'closing_rejected'  => 'Menolak closing',

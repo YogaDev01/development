@@ -9,6 +9,7 @@ class ProjectAttachment extends Model
     protected $fillable = [
         'project_id',
         'project_po_number_id',
+        'project_po_bast_id',
         'type',
         'title',
         'file_path',

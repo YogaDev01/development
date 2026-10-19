@@ -4,6 +4,72 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [3.0.7] - 2026-10-19 — Tampilan Kartu Mobile pada Daftar Data
+
+Daftar data (tabel) kini tampil sebagai kartu di layar ponsel, tampilan listing di desktop dan mobile lebih rapi tanpa bingkai ganda, dan tersedia perintah untuk membuat BAST dari invoice lama.
+
+### Baru
+- Daftar data di layar 640px ke bawah tampil sebagai kartu: setiap nilai diberi label kolom, status di baris judul, tombol aksi tetap terjangkau, dan baris total menjadi kartu ringkasan di atas daftar. Tabel pivot Finance Summary dan Trouble Ticket (punya tampilan kartu sendiri) tidak ikut.
+- Perintah bast:create-from-invoice (default dry run, dapat di-rollback) untuk membuat BAST dari invoice lama bagi No. PO yang belum punya BAST; nilai dan status Invoice serta status No. PO tidak berubah.
+
+### Berubah
+- Kartu pembungkus daftar data dilepas bingkainya sehingga tabel langsung berada di margin halaman, baik di desktop maupun mobile.
+
+### Perbaikan
+- Popup periode custom (datepicker) dengan tombol Terapkan kini tetap berbentuk landscape.
+- Perintah invoice:split-synthetic-bast dan rollback-nya tidak lagi berakhir dengan galat palsu pada pemeriksaan akhir run walaupun pemecahan BAST berhasil.
+
+## [3.0.6] - 2026-10-19 — Penagihan Invoice per BAST
+
+Invoice kini ditagih per BAST (1 Invoice = 1 BAST), satu No. PO bisa memiliki banyak BAST, dan tersedia perintah migrasi data lama beserta pengaman dan rollback.
+
+### Baru
+- No. PO kini bisa memiliki banyak BAST; setiap submission BAST menjadi satu baris BAST beserta lampirannya, dan Superadmin dapat menghapus BAST yang belum ditagih (soft delete dengan alasan).
+- Form Invoice memilih BAST yang ditagih: nilai Invoice sebelum PPN harus sama persis dengan nilai BAST, dengan pengecekan langsung di form create/edit.
+- Status No. PO mengikuti BAST dan Invoice: PARTIAL, BAST_SUBMITTED (Tandai Lengkap), INVOICED saat semua BAST tertagih, dan PAID saat semua Invoice-nya Paid. Invoice lama tanpa BAST tetap memakai alur lama.
+- Perintah migrasi data lama (default dry run, hasil CSV, dapat di-rollback): invoice:link-bast, bast:mark-backfill, invoice:split-synthetic-bast, dan invoice:report-po-paid-drop.
+- Tampilan Invoice (daftar, detail, cetak) menampilkan No. BAST; Modal Detail PO menampilkan selisih Contract terhadap BAST + Restitusi.
+- Cost Request: badge Rejected dan Settle Rejected di awal stepper; lampiran di side modal dibuka dalam carousel; tombol Terapkan periode custom kini ada di dalam datepicker.
+- Cash Receipt: tombol Hapus untuk bukti terima Draft yang belum teralokasi, dropdown customer bisa dicari, dan bukti transfer bisa di-drag & drop atau di-paste.
+- Perintah budget:close-by-closed-po (default dry run) untuk menutup Budget Plan Active milik PO yang sudah Closed.
+
+### Berubah
+- Submit BAST yang membuat total BAST melebihi nominal No. PO kini diblokir.
+- Pembuatan, perubahan, pembatalan, dan pembayaran Invoice serta Cash Receipt memakai penguncian baris No. PO, BAST, dan Invoice dengan urutan tetap agar tidak terjadi penagihan ganda.
+- Collection: kolom Payment kini hanya menampilkan nilai cash receipt, tanpa settle PPh.
+- Catat Penerimaan: Diterima + PPh tidak boleh melebihi Sisa Tagihan; bila kurang dari Sisa Tagihan, wajib konfirmasi dan komentar yang tersimpan di Log & Approval invoice terkait.
+
+### Perbaikan
+- Kolom alasan pada dialog Hapus BAST kini bisa diklik dan diisi.
+
+## [3.0.5] - 2026-10-17 — Status Partially Invoiced & Partially Paid pada Purchase Order
+
+Workflow Purchase Order mendapat dua status baru yang mengikuti progres
+penagihan dan pembayaran No. PO, dan kolom uang di daftar PO kini bisa
+diurutkan menurut angka.
+
+### Baru
+- Status PO Partially Invoiced (sudah ada tagihan, termasuk penagihan sebagian atas BAST Partial, tetapi belum semua No. PO tertagih penuh) dan Partially Paid (sebagian No. PO sudah Paid), dihitung otomatis dari status No. PO, berlaku dari Active maupun Waiting Invoice, dan menjadi Paid saat seluruh No. PO Paid.
+- Kedua status tampil di stepper, filter, dan label status di daftar PO.
+
+### Perbaikan
+- Kolom uang di daftar PO (Contract sampai Net Profit) kini diurutkan menurut nilai angka, bukan menurut teks (9.000.000 tidak lagi mendahului 175.700.000).
+
+## [3.0.4] - 2026-10-17 — Restitusi PO, Invoice tanpa PPN & Budget Otomatis Closed
+
+Purchase Order mendapat kolom Restitusi, modal detail menampilkan nilai
+Invoice sebelum PPN, dan Budget Plan ikut CLOSED saat PO ditutup.
+
+### Baru
+- Purchase Order punya kolom Restitusi (input nominal di form Tambah/Edit PO, tampil di antara Contract dan PO Value pada daftar PO).
+- Tab Invoice pada modal detail PO punya kolom Invoice berisi nilai sebelum PPN, beserta totalnya.
+
+### Berubah
+- Saat PO CLOSED, Budget Plan berstatus ACTIVE atau CLOSING miliknya otomatis menjadi CLOSED.
+
+### Perbaikan
+- Nilai Budget pada daftar PO kini ikut menghitung Budget Plan berstatus CLOSING, tidak hanya ACTIVE dan CLOSED.
+
 ## [3.0.3] - 2026-10-16 — Teknisi Backup per Site & Pemakaian Anggaran Mengikuti Settlement
 
 Kandidat Change Teknisi kini diambil dari daftar Teknisi Backup yang

@@ -206,6 +206,8 @@ class FinanceSummaryController extends Controller
             'waiting_po'    => $poAgg['counts']['WAITING_PO'] ?? 0,
             'active'        => $poAgg['counts']['ACTIVE'] ?? 0,
             'progress_done' => $poAgg['counts']['PROGRESS_DONE'] ?? 0,
+            'partially_invoiced' => $poAgg['counts']['PARTIALLY_INVOICED'] ?? 0,
+            'partially_paid'     => $poAgg['counts']['PARTIALLY_PAID'] ?? 0,
             'billed'        => $poAgg['counts']['BILLED'] ?? 0,
             'paid'          => $poAgg['counts']['PAID'] ?? 0,
             'closing'       => $poAgg['counts']['CLOSING'] ?? 0,

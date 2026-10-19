@@ -584,6 +584,12 @@ body.tesys-ui .btn.is-busy { color: transparent !important; }
 .ts-deflist-row.is-total .ts-deflist-label,
 .ts-deflist-row.is-total .ts-deflist-value { font-weight: 700; color: var(--text); }
 
+/* Varian rata kiri untuk blok teks (Identitas & Administrasi): label lebar
+   tetap, nilai mengikuti tepat di sampingnya. Kartu angka tetap rata kanan. */
+.ts-deflist--left .ts-deflist-row { justify-content: flex-start; }
+.ts-deflist--left .ts-deflist-label { flex: 0 0 140px; }
+.ts-deflist--left .ts-deflist-value { text-align: left; }
+
 /* Keterangan kecil di bawah sebuah baris (mis. rentang tanggal). */
 .ts-deflist-sub {
     font-size: 11px;
@@ -828,11 +834,11 @@ body.tesys-ui .btn.is-busy { color: transparent !important; }
 .ts-kpi-value,
 .ts-kpi-sub { display: block; }
 .ts-kpi-label {
-    font-size: 9.5px;
+    font-size: 10.5px;
     font-weight: var(--fw-section, 600);
-    letter-spacing: .07em;
+    letter-spacing: .06em;
     text-transform: uppercase;
-    color: var(--text-faint);
+    color: var(--text-dim);
     line-height: 1.25;
     /* Label panjang dipotong satu baris: membiarkannya membungkus membuat
        tinggi kartu dalam satu baris jadi tidak seragam. */
@@ -1184,6 +1190,12 @@ a.ts-feed-row:hover { background: var(--surface-2); text-decoration: none; color
     box-shadow: 0 10px 28px rgba(0,0,0,.16);
 }
 .tdr-pop.d-none { display: none; }
+/* Tombol terapkan opsional: baris sendiri di bawah kedua kalender. Grid (bukan
+   flex-wrap) supaya kalender tetap berdampingan: lebar popup mengikuti isi
+   (max-content), tidak terjepit oleh sisa lebar induknya. */
+.tdr-pop.tdr-pop-has-foot { display: grid; grid-template-columns: auto auto; width: max-content; }
+.tdr-pop.tdr-pop-has-foot.d-none { display: none; }
+.tdr-pop .tdr-foot { grid-column: 1 / -1; display: flex; justify-content: flex-end; padding-top: 6px; border-top: 1px solid var(--border); }
 .tdr-cal .flatpickr-calendar.inline { box-shadow: none; margin: 0; }
 /* Input sumber tiap kalender hanya pemegang nilai, tidak perlu tampil. */
 .tdr-cal input.tdr-src { display: none; }
@@ -1225,4 +1237,5 @@ a.ts-feed-row:hover { background: var(--surface-2); text-decoration: none; color
 
 @media (max-width: 760px) {
     .tdr-pop { flex-direction: column; }
+    .tdr-pop.tdr-pop-has-foot { grid-template-columns: auto; }
 }

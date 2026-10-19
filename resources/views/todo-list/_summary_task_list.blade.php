@@ -44,7 +44,7 @@
 
         <div class="dropdown">
             <button type="button" class="btn btn-sm btn-outline-secondary col-mf-btn" id="stModuleBtn"
-                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    data-toggle="dropdown" data-boundary="viewport" aria-haspopup="true" aria-expanded="false">
                 <span id="stModuleLabel">All Module</span>
                 <i class="fas fa-caret-down ml-1"></i>
             </button>
@@ -59,7 +59,7 @@
 
         <div class="dropdown">
             <button type="button" class="btn btn-sm btn-outline-secondary col-mf-btn" id="stRoleBtn"
-                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    data-toggle="dropdown" data-boundary="viewport" aria-haspopup="true" aria-expanded="false">
                 <span id="stRoleLabel">All Role</span>
                 <i class="fas fa-caret-down ml-1"></i>
             </button>
