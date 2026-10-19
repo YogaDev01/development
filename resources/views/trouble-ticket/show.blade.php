@@ -25,7 +25,10 @@
     $bisaBerangkat = $diTrip && ! $t->travel_started_at && ! $t->travel_arrived_at;
     $dalamJalan    = $diTrip && $t->travel_started_at && ! $t->travel_arrived_at;
     $bisaMulai     = $diTrip && $t->travel_arrived_at;
-    $bisaTutup     = $canActAsTech && in_array($t->status, TroubleTicket::CLOSABLE, true);
+    // Setelah teknisi konfirmasi On Site form close tidak ada lagi (keputusan
+    // 19 Okt 2026): progres dimulai dulu, penutupan dari tahap In Progress.
+    $bisaTutup     = $canActAsTech && in_array($t->status, TroubleTicket::CLOSABLE, true)
+        && ! ($t->status === 'TRIP' && $t->travel_arrived_at);
     // Change Teknisi: sejak plan dibuat sampai sebelum swipe "mulai perjalanan"
     // ($canReassign dari controller — TroubleTicketWorkflow::canReassign()).
     $bisaAlihkan   = $canReassign;
@@ -44,7 +47,7 @@
             <div class="tt-title tt-head-site" title="{{ $site?->tid }} — {{ $site?->sitename }}">{{ $site?->tid }} — {{ $site?->sitename }}</div>
             <x-status :status="$t->status" context="trouble-ticket" size="md" />
         </div>
-        @php $actionVars = compact('t', 'canActAsTech', 'isTechnician', 'bisaRemote', 'bisaPlan', 'bisaBerangkat', 'dalamJalan', 'bisaMulai', 'bisaTutup', 'canApproveClose', 'bisaAlihkan'); @endphp
+        @php $actionVars = compact('t', 'canActAsTech', 'isTechnician', 'bisaRemote', 'bisaPlan', 'bisaBerangkat', 'dalamJalan', 'bisaMulai', 'bisaTutup', 'canApproveClose', 'bisaAlihkan', 'canLockChat'); @endphp
 
         {{-- Desktop: chat kiri + satu kartu informasi bertab di kanan.
              Mobile (< 992px): satu panel tampil bergantian lewat bilah bawah
@@ -96,7 +99,9 @@
                             </form>
                         @else
                             <div class="tt-chat-form text-muted text-center" style="font-size:12px;">
-                                <i class="fas fa-lock mr-1"></i> {{ $t->isFinal() ? 'Tiket sudah ' . strtolower(\App\Support\WorkflowStatus::label($t->status, 'trouble-ticket')) . '; diskusi ditutup.' : 'Anda tidak dapat mengirim pesan pada tiket ini.' }}
+                                {{-- Tiket CLOSED tidak menutup diskusi lagi (19 Okt 2026):
+                                     yang menutupnya hanya Stop Chat oleh superadmin. --}}
+                                <i class="fas fa-lock mr-1"></i> {{ $t->chatLocked() ? 'Diskusi dihentikan ' . $t->chat_locked_at?->format('d/m/Y H:i') . ($t->chatLocker?->name ? ' oleh ' . $t->chatLocker->name : '') . '.' : 'Anda tidak dapat mengirim pesan pada tiket ini.' }}
                             </div>
                         @endif
                     </div>
@@ -132,6 +137,7 @@
                             'responded' => 'fa-eye', 'remote_started' => 'fa-satellite-dish',
                             'plan_created' => 'fa-calendar-check', 'plan_updated' => 'fa-calendar-alt', 'trip_due' => 'fa-route',
                             'travel_started' => 'fa-car', 'travel_cancelled' => 'fa-ban',
+                            'chat_stopped' => 'fa-comment-slash', 'chat_reopened' => 'fa-comments',
                             'arrived_on_site' => 'fa-map-marker-alt', 'progress_started' => 'fa-tools',
                             'progress_done' => 'fa-clipboard-check', 'close_rejected' => 'fa-undo',
                             'closed' => 'fa-flag-checkered',
@@ -298,18 +304,16 @@
 
                         {{-- ================= LOG ================= --}}
                         <div class="tab-pane fade" id="ttTabLog" role="tabpanel">
-                            {{-- Terbaru di atas; +durasi = jarak dari kejadian sebelumnya (baris di bawahnya). --}}
+                            {{-- Terbaru di atas. --}}
                             <ol class="tt-steps">
                                 @forelse($statusLog as $ev)
                                     <li class="tt-step" data-msg-id="{{ $ev->id }}" title="Klik untuk melihat di timeline chat">
                                         <span class="tt-step-ic"><i class="fas {{ $ikonLog[$ev->event] ?? 'fa-circle' }}"></i></span>
                                         <div class="tt-step-body">
                                             <div class="tt-step-head">
+                                                {{-- Jeda antar kejadian (+durasi) dihapus 19 Okt 2026:
+                                                     jam tiap baris sudah cukup, ukurannya dibaca di tab SLA. --}}
                                                 <strong>{{ $ev->event_label }}</strong>
-                                                @unless($isTechnician)
-                                                    @php $lebihLama = $statusLog[$loop->index + 1] ?? null; @endphp
-                                                    @if($lebihLama)<span class="tt-step-gap">+{{ $dur(max(0, $ev->created_at->getTimestamp() - $lebihLama->created_at->getTimestamp())) }}</span>@endif
-                                                @endunless
                                             </div>
                                             <div class="tt-step-meta">{{ $ev->actor_name ?? 'System' }} · {{ $ev->created_at?->format('d M Y H:i') }}</div>
                                             @php $visitLog = in_array($ev->event, ['plan_created', 'plan_updated', 'reassigned'], true) ? ($ev->metadata['visit_site'] ?? null) : null; @endphp
@@ -445,10 +449,9 @@
                     <textarea name="reason" id="fldCancelTrip" class="form-control mb-2" rows="3" maxlength="500" required></textarea>
                     {{-- Tanggal plan wajib diisi ulang: pembatalan selalu meninggalkan
                          jadwal kunjungan berikutnya. --}}
-                    <label class="font-weight-bold" for="fldCancelVisit">Plan Visit baru <span class="text-danger">*</span></label>
+                    <label class="font-weight-bold" for="fldCancelVisit">Replan visit date <span class="text-danger">*</span></label>
                     <input type="date" name="visit_site" id="fldCancelVisit" class="form-control"
                            min="{{ now()->toDateString() }}" value="{{ now()->toDateString() }}" required>
-                    <small class="text-muted">Pembatalan tercatat di log dan SLA Travel kembali ke 0. Tanggal hari ini = tiket tetap di tahap Trip; tanggal lain = tiket kembali ke tahap Plan.</small>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Kembali</button>
@@ -866,7 +869,13 @@ $(function () {
                 appendUnique(res.html);
                 if (dekatBawah) scrollBottom();
             }
-            if (res.status !== pageStatus) $('#ttStaleNotice').show();
+            // Status tiket berpindah (mis. supervisor menyetujui penutupan):
+            // halaman dimuat ulang sendiri supaya teknisi langsung melihat
+            // tahap Closed, bukan panel tahap lama (keputusan 19 Okt 2026).
+            if (res.status !== pageStatus) {
+                $('#ttStaleNotice').show();
+                window.location.reload();
+            }
         });
     }
     function appendUnique(html) {

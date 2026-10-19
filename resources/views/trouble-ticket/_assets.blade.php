@@ -221,7 +221,6 @@
 .tt-step:hover .tt-step-head strong { color:var(--accent-text); }
 .tt-step-body { flex:1; min-width:0; font-size:12.5px; padding-top:3px; }
 .tt-step-head { display:flex; justify-content:space-between; gap:6px; }
-.tt-step-gap { font-size:11px; color:var(--text-faint); white-space:nowrap; }
 .tt-step-meta { font-size:11.5px; color:var(--text-faint); }
 .tt-step-note { font-size:12px; color:var(--text-dim); white-space:pre-wrap; overflow-wrap:anywhere; }
 

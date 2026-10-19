@@ -12,6 +12,7 @@
         'responded' => 'fa-eye', 'remote_started' => 'fa-satellite-dish',
         'plan_created' => 'fa-calendar-check', 'plan_updated' => 'fa-calendar-alt', 'trip_due' => 'fa-route',
         'travel_started' => 'fa-car', 'travel_cancelled' => 'fa-ban',
+        'chat_stopped' => 'fa-comment-slash', 'chat_reopened' => 'fa-comments',
         'arrived_on_site' => 'fa-map-marker-alt', 'progress_started' => 'fa-tools',
         'progress_done' => 'fa-clipboard-check', 'close_rejected' => 'fa-undo',
         'closed' => 'fa-flag-checkered',

@@ -26,10 +26,47 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '3.0.7',
+    'current' => '3.0.8',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '3.0.8',
+            'date'    => '2026-10-19',
+            'title'   => 'Impor & Ekspor Site, Stop Chat Tiket & Landing Sesuai Peran',
+            'summary' => 'Master Site kini bisa diimpor dan diekspor, diskusi tiket hanya ditutup oleh '
+                       . 'superadmin lewat Stop Chat, dan setiap pengguna mendarat langsung di aplikasi '
+                       . 'yang sesuai perannya.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Master Site bisa diimpor dari berkas dan diekspor, mengikuti pola master data lainnya.',
+                        'Stop Chat: diskusi tiket tetap terbuka walau tiket sudah Closed, dan hanya superadmin yang bisa menghentikan atau membukanya kembali.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Setelah login, pengguna langsung mendarat di aplikasi yang sesuai perannya - teknisi ke Operations - tanpa mampir di halaman pemilih aplikasi.',
+                        'Tiket di tahap On Site tidak lagi menampilkan form penutupan: pengerjaan di site dimulai dulu, tiket ditutup dari In Progress.',
+                        'Hak akses Site dan Trouble Ticket dirapikan agar tombol yang tampil sesuai dengan yang benar-benar boleh dijalankan.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Pilihan Site Keeper diambil dari PIC berjenis Site Keeper di Personal Master, bukan lagi dari seluruh akun pengguna yang tidak ada kaitannya dengan penjaga site.',
+                        'Pilihan Teknisi Backup tidak lagi dibatasi customer site, sehingga teknisi yang memang tersedia tidak hilang dari daftar.',
+                        'Popup pemilih tanggal tetap melebar menyamping saat tombol Terapkan ditampilkan.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '3.0.7',

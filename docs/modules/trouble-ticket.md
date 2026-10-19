@@ -110,7 +110,9 @@ notifikasi tidak terkirim dua kali. Error keadaan = `ValidationException`
   yang memuat jam keberangkatan yang dibatalkan + tanggal plan baru. Tanggal
   hari ini → tiket tetap `TRIP` (lewat `promoteIfDue`); tanggal lain → kembali
   ke `PLAN`. **Inilah cara menjadwalkan ulang setelah perjalanan dimulai** —
-  Change Teknisi sudah tertutup di titik itu.
+  Change Teknisi sudah tertutup di titik itu. Keterangan panjang yang dulu
+  tercetak di bawah form (log + SLA + aturan tanggal) **dihapus dari modal**
+  (19 Okt 2026) — aturannya tetap berlaku, hanya tidak ditulis lagi di UI.
 - **Trip**: tiga aksi teknisi, semuanya tetap di status `TRIP`:
   `POST {ticket}/travel` (geser "mulai perjalanan" membuka modal evidence;
   evidence perjalanan **wajib** (15 Okt 2026) dan menempel pada kejadian
@@ -125,7 +127,10 @@ notifikasi tidak terkirim dua kali. Error keadaan = `ValidationException`
 - **Form close** (`POST {ticket}/close`): dari `REMOTE`, `PLAN`, `TRIP`,
   maupun `IN_PROGRESS` (`TroubleTicket::CLOSABLE`). Dari `TRIP` sebelum On
   Site, perjalanan yang sedang berjalan dibatalkan otomatis (kejadian
-  `travel_cancelled`, SLA Travel tidak dihitung). Wajib: RCA (dari master),
+  `travel_cancelled`, SLA Travel tidak dihitung). **Setelah On Site form close
+  ditutup** (19 Okt 2026): `TRIP` + `travel_arrived_at` terisi ditolak server
+  dan tombolnya tidak dirender — progres dimulai dulu, penutupan dari
+  `IN_PROGRESS`. Wajib: RCA (dari master),
   keterangan, dan evidence — kolom Action tidak dipakai lagi. RCA/Sub-RCA
   tiket DIPERBARUI mengikuti isian form ini. Tiket yang ditutup langsung
   dari `PLAN` memakai waktu pengiriman form sebagai awal Resolution. Status `PROGRESS_DONE`, `approval = PENDING`,
@@ -218,6 +223,19 @@ SLA di tab **SLA**.
 - Baris `reassigned` di tab **Log** menampilkan perpindahannya
   (`from_name` &rarr; `to_name` dari metadata kejadian), sama seperti gelembung
   di timeline chat.
+- **Diskusi tidak lagi ditutup oleh status (19 Okt 2026).** Tiket `CLOSED`
+  tetap bisa dikomentari; yang menutup chat hanya **Stop Chat**
+  (`POST {ticket}/chat-lock`, body `lock=1`/`lock=0`) oleh
+  `AccessRoles::TROUBLE_TICKET_CHAT_LOCK` (`superadmin`, sama dengan gerbang
+  `role:superadmin` di route). Jejaknya di `chat_locked_at` / `chat_locked_by`
+  (migrasi `2026_10_19_000200`) dan kejadian `chat_stopped` / `chat_reopened`.
+  `TroubleTicketWorkflow::canMessage()` kini hanya menguji `chatLocked()` +
+  keterlihatan.
+- **Label `PROGRESS_DONE` dibaca "Waiting Approve"** (19 Okt 2026) lewat
+  `WorkflowStatus::TROUBLE_TICKET_LABELS`; kode statusnya tidak berubah. Panel
+  tahapnya berjudul **"Waiting approval supervisor"**. Halaman detail juga
+  **memuat ulang sendiri** begitu polling melihat status berpindah, supaya
+  teknisi langsung melihat tahap Closed setelah supervisor approve.
 - Label kejadian di tab **Log** dan timeline berbahasa **Inggris**
   (`TroubleTicketMessage::EVENTS`) — satu-satunya bagian modul ini yang tidak
   berbahasa Indonesia; permintaan pengguna 13 Okt 2026. Pengecualian:
@@ -402,6 +420,7 @@ di dev, jadi perubahan ditulis sebagai migrasi baru (saat itu 0 tiket).
 | `visit_site`, `target_online` | modal Create Plan | `visit_site` wajib (≥ hari ini); target online opsional |
 | `travel_started_at`, `travel_arrived_at`, `travel_seconds` | tahap Trip | jejak SLA Travel (migrasi `2026_10_12_000300`) |
 | `travel_cancelled_at`, `travel_cancel_reason` | batal visit | pembatalan terakhir; SLA Travel dibatalkan tapi jejaknya tetap |
+| `chat_locked_at`, `chat_locked_by` | Stop Chat (superadmin) | kosong = diskusi terbuka, termasuk pada tiket `CLOSED` |
 | `resolved_at`, `progress_done_at` | kirim form close | saat teknisi mengirim hasil, sebelum approval |
 | `approved_at`/`_by` | approve penutupan | supervisor yang menutup tiket |
 | `plan_approved_at`/`_by` | LEGACY | jejak approval plan alur lama (migrasi `2026_10_10_000200`) |

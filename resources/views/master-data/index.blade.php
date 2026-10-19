@@ -143,14 +143,16 @@
                                 <i class="fas fa-file-excel mr-1"></i> Import Excel
                             </button>
                         @endif
-                        @if(!empty($m['create_url']))
-                            <a href="{{ url($m['create_url']) }}" class="btn btn-success btn-sm">
-                                <i class="fas fa-plus mr-1"></i> Tambah {{ $m['singular'] }}
-                            </a>
-                        @else
-                            <button type="button" class="btn btn-success btn-sm" id="btnTambahMaster">
-                                <i class="fas fa-plus mr-1"></i> Tambah {{ $m['singular'] }}
-                            </button>
+                        @if(empty($m['readonly']))
+                            @if(!empty($m['create_url']))
+                                <a href="{{ url($m['create_url']) }}" class="btn btn-success btn-sm">
+                                    <i class="fas fa-plus mr-1"></i> Tambah {{ $m['singular'] }}
+                                </a>
+                            @else
+                                <button type="button" class="btn btn-success btn-sm" id="btnTambahMaster">
+                                    <i class="fas fa-plus mr-1"></i> Tambah {{ $m['singular'] }}
+                                </button>
+                            @endif
                         @endif
                     </div>
                 </div>
@@ -217,22 +219,24 @@
                                                     <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Detail</span>
                                                 </a>
                                             @endif
-                                            @if(!empty($m['edit_url']))
-                                                <a href="{{ url(str_replace('{id}', $row->id, $m['edit_url'])) }}" class="ts-action-primary is-neutral" title="Edit" aria-label="Edit">
-                                                    <i class="fas fa-pen" aria-hidden="true"></i><span class="ts-al">Edit</span>
-                                                </a>
-                                            @else
-                                                <button type="button" class="ts-action-primary is-neutral btn-edit-master" data-id="{{ $row->id }}" title="Edit" aria-label="Edit">
-                                                    <i class="fas fa-pen" aria-hidden="true"></i><span class="ts-al">Edit</span>
-                                                </button>
+                                            @if(empty($m['readonly']))
+                                                @if(!empty($m['edit_url']))
+                                                    <a href="{{ url(str_replace('{id}', $row->id, $m['edit_url'])) }}" class="ts-action-primary is-neutral" title="Edit" aria-label="Edit">
+                                                        <i class="fas fa-pen" aria-hidden="true"></i><span class="ts-al">Edit</span>
+                                                    </a>
+                                                @else
+                                                    <button type="button" class="ts-action-primary is-neutral btn-edit-master" data-id="{{ $row->id }}" title="Edit" aria-label="Edit">
+                                                        <i class="fas fa-pen" aria-hidden="true"></i><span class="ts-al">Edit</span>
+                                                    </button>
+                                                @endif
+                                                <form action="{{ url($m['url'] . '/' . $row->id) }}" method="POST" class="frmDeleteMaster d-inline">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="ts-action-primary is-danger" title="Hapus" aria-label="Hapus">
+                                                        <i class="fas fa-trash" aria-hidden="true"></i><span class="ts-al">Hapus</span>
+                                                    </button>
+                                                </form>
                                             @endif
-                                            <form action="{{ url($m['url'] . '/' . $row->id) }}" method="POST" class="frmDeleteMaster d-inline">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="ts-action-primary is-danger" title="Hapus" aria-label="Hapus">
-                                                    <i class="fas fa-trash" aria-hidden="true"></i><span class="ts-al">Hapus</span>
-                                                </button>
-                                            </form>
                                         </div>
                                     </td>
                                 </tr>

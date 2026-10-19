@@ -28,13 +28,19 @@ trait ManagesMasterRecords
     {
     }
 
+    /** Kait penyaringan daftar per hak akses user (mis. Site untuk teknisi). */
+    protected function scopeIndexQuery($query): void
+    {
+    }
+
     public function index()
     {
         $m = $this->master();
 
-        [$rows, $truncated, $total] = $this->cappedRows(
-            $m['model']::query()->with($m['with'] ?? [])->withCount($m['withCount'] ?? [])
-        );
+        $query = $m['model']::query()->with($m['with'] ?? [])->withCount($m['withCount'] ?? []);
+        $this->scopeIndexQuery($query);
+
+        [$rows, $truncated, $total] = $this->cappedRows($query);
 
         return view('master-data.index', [
             'm'         => $m,

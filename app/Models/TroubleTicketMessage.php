@@ -46,6 +46,8 @@ class TroubleTicketMessage extends Model
         'trip_due'          => 'Moved to Trip',
         'travel_started'    => 'Travel started',
         'travel_cancelled'  => 'Visit cancelled',
+        'chat_stopped'      => 'Diskusi dihentikan',
+        'chat_reopened'     => 'Diskusi dibuka kembali',
         'arrived_on_site'   => 'Arrived on site',
         'progress_started'  => 'Progress started',
         'progress_done'     => 'Close form submitted',

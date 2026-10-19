@@ -153,6 +153,22 @@ Homebase (+ PIC), dan Wilayah berjenjang.
   tidak ikut tampil di kolom ini — lihat tab PIC di detail/drawer site. Kolom TT & tab TT/Document
   masih placeholder (tabel trouble ticket & dokumen site belum ada).
 
+## Akses role lihat-saja (teknisi)
+
+- `AccessRoles::SITE_READ_ONLY` (saat ini `teknisi`): hanya daftar Site, detail
+  (drawer & halaman show), dan unduh dokumen site. Tombol Tambah/Edit/Hapus,
+  Template & Import Excel, serta semua form di halaman detail (PIC, material,
+  accessories, unggah/hapus dokumen, Preventive Maintenance) disembunyikan —
+  gerbang sebenarnya `SiteController::guardWrite()` (403), bukan tampilan.
+- Daftar dipersempit ke **customer miliknya**: customer dari site tempat ia
+  terdaftar sebagai Teknisi (`site_pics` → `master_pics.user_id`) atau Teknisi
+  Backup (`site_backup_technicians`). Semua site milik customer tersebut ikut
+  tampil. Penyaringnya `SiteController::visibleCustomerIds()` +
+  `scopeIndexQuery()`; versi per-record `findVisibleSite()` menolak id site
+  customer lain yang diketik langsung di URL (403).
+- Filter Customer di toolbar dibangun dari baris yang tampil, jadi ikut
+  menyempit dengan sendirinya.
+
 ## Import Excel (Sites, Master Material)
 
 - `GET {site|master-material}/import-template` → xlsx: sheet **Data** (header +

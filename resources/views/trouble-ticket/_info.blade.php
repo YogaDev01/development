@@ -51,6 +51,9 @@
                 <div class="tt-kv"><dt>Close by</dt><dd>{{ $t->closer?->name ?: '—' }}</dd></div>
                 <div class="tt-kv"><dt>Date closed</dt><dd>{{ $tgl($t->closed_at) }}</dd></div>
             </dl>
+            {{-- SLA tidak ditampilkan kepada teknisi tiket ini (keputusan
+                 19 Okt 2026), sama seperti tab SLA di halaman detail. --}}
+            @unless($isTechnician ?? false)
             <div class="tt-sec-title">SLA</div>
             <div class="tt-sum-sla mt-1">
                 @foreach(['response' => ['Response', $t->sla_response_minutes], 'travel' => ['Travel', $t->sla_travel_minutes], 'resolution' => ['Resolution', $t->sla_resolution_minutes]] as $key => [$label, $target])
@@ -61,6 +64,7 @@
                     </div>
                 @endforeach
             </div>
+            @endunless
         </div>
     </div>
 </div>

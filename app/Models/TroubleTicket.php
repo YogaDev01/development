@@ -52,6 +52,7 @@ class TroubleTicket extends Model
         'approved_at', 'approved_by', 'rca_id', 'sub_rca_id',
         'rca', 'sub_rca', 'action', 'approval',
         'resolution_summary', 'closed_at', 'closed_by', 'resolution_seconds',
+        'chat_locked_at', 'chat_locked_by',
         'sla_policy_id', 'sla_response_minutes', 'sla_travel_minutes', 'sla_resolution_minutes',
     ];
 
@@ -72,6 +73,7 @@ class TroubleTicket extends Model
         'progress_done_at'     => 'datetime',
         'approved_at'          => 'datetime',
         'closed_at'            => 'datetime',
+        'chat_locked_at'       => 'datetime',
         'response_seconds'     => 'integer',
         'resolution_seconds'   => 'integer',
         'sla_response_minutes'   => 'integer',
@@ -214,6 +216,21 @@ class TroubleTicket extends Model
     public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    /** Superadmin yang menghentikan diskusi tiket ini. */
+    public function chatLocker(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'chat_locked_by');
+    }
+
+    /**
+     * Diskusi dihentikan? Tiket CLOSED TIDAK otomatis menutup chat (keputusan
+     * 19 Okt 2026) — hanya superadmin yang menghentikannya lewat Stop Chat.
+     */
+    public function chatLocked(): bool
+    {
+        return $this->chat_locked_at !== null;
     }
 
     public function messages(): HasMany

@@ -108,6 +108,8 @@ class TroubleTicketController extends Controller
             // Tombol Close di kolom Action baris Progress Done. Kelayakan per
             // baris tetap diperiksa ulang server lewat canApproveClose().
             'canApprove' => $user->hasRole(AccessRoles::TROUBLE_TICKET_APPROVE),
+            // Tombol "Buat Tiket" — teknisi hanya mengerjakan tiket, tidak membuatnya.
+            'canCreate' => ! $user->hasRole(AccessRoles::TROUBLE_TICKET_CREATE_DENIED),
             'userId' => (int) $user->id,
         ]);
     }
@@ -200,6 +202,9 @@ class TroubleTicketController extends Controller
         return view('trouble-ticket._info', [
             'ticket' => $ticket,
             'supervisors' => $this->workflow->supervisorsFor((int) $ticket->assigned_to),
+            // SLA disembunyikan dari teknisi tiket ini — sama dengan halaman
+            // detail (ukuran waktu dipakai supervisor, bukan pelaksana).
+            'isTechnician' => $this->workflow->isTechnician(Auth::user(), $ticket),
         ]);
     }
 
@@ -211,6 +216,8 @@ class TroubleTicketController extends Controller
 
     public function create()
     {
+        $this->abortIfCannotCreate();
+
         $sites = Site::with('customer:id,name')->where('status', 'ACTIVE')->orderBy('tid')->get(['id', 'tid', 'sitename', 'customer_id']);
 
         return view('trouble-ticket.create', [
@@ -222,6 +229,14 @@ class TroubleTicketController extends Controller
             // Dipakai dropdown Sub-RCA di browser (tanpa request tambahan).
             'subRcas' => TroubleTicketSubRca::where('status', 'ACTIVE')->orderBy('name')->get(['id', 'rca_id', 'name']),
         ]);
+    }
+
+    /** Teknisi tidak boleh membuat tiket; ia hanya mengerjakan yang ditugaskan. */
+    private function abortIfCannotCreate(): void
+    {
+        if (auth()->user()->hasRole(AccessRoles::TROUBLE_TICKET_CREATE_DENIED)) {
+            abort(403, 'Role Anda tidak berhak membuat trouble ticket.');
+        }
     }
 
     /** Teknisi yang boleh ditugaskan di sebuah site (dropdown form & reassign). */
@@ -245,6 +260,8 @@ class TroubleTicketController extends Controller
      */
     public function store(Request $request)
     {
+        $this->abortIfCannotCreate();
+
         if (! is_array($request->input('tickets'))) {
             $request->merge(['tickets' => [$request->except(['site_id', 'assigned_to', '_token'])]]);
             if ($request->hasFile('attachments')) {
@@ -361,6 +378,7 @@ class TroubleTicketController extends Controller
             'closer:id,name',
             'planApprover:id,name',
             'approver:id,name',
+            'chatLocker:id,name',
             'assignments.technician:id,name',
             'assignments.assigner:id,name',
         ]);
@@ -396,6 +414,8 @@ class TroubleTicketController extends Controller
             'canCreatePlan' => $this->workflow->canCreatePlan($user, $ticket),
             'canApproveClose' => $this->workflow->canApproveClose($user, $ticket),
             'canMessage' => $this->workflow->canMessage($user, $ticket),
+            // Stop Chat / buka kembali diskusi — hanya superadmin.
+            'canLockChat' => $this->workflow->canLockChat($user, $ticket),
             // Change Teknisi: sejak plan dibuat sampai sebelum perjalanan mulai.
             'canReassign' => $canSupervise && $this->workflow->canReassign($ticket),
             // Kandidatnya: Teknisi Backup site ini (Master Data > Site).
@@ -472,6 +492,19 @@ class TroubleTicketController extends Controller
         }
 
         return back()->with('success', 'Pesan terkirim.');
+    }
+
+    /**
+     * Stop Chat / buka kembali diskusi tiket — hanya superadmin
+     * (gerbang role ada di route DAN di TroubleTicketWorkflow::canLockChat()).
+     */
+    public function setChatLock(Request $request, TroubleTicket $ticket)
+    {
+        $data = $request->validate(['lock' => 'required|boolean']);
+
+        $this->workflow->setChatLock($ticket, Auth::user(), (bool) $data['lock']);
+
+        return back()->with('success', $data['lock'] ? 'Diskusi dihentikan.' : 'Diskusi dibuka kembali.');
     }
 
     /** Unduh/pratinjau lampiran — keterlihatan mengikuti tiketnya. */

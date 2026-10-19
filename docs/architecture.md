@@ -186,7 +186,11 @@ auth) sets `session('tesys.app')` to the user's App Default and renders
 `ProfileController@show`. Each user picks their **App Default** (which app's
 sidebar/menu is active at login) in Settings → saved to `users.default_app`
 (nullable; falls back to `config('apps.default')` via `User::defaultApp()`).
-`AuthController::login()` also sets the active app from `defaultApp()`.
+`AuthController::login()` also sets the active app from `defaultApp()` and
+redirects to `User::defaultAppLanding()` — the app's `landing` (module home)
+when it has one, else its `home`. Since 19 Oct 2026 an app whose `roles` list
+matches the user **wins over** their saved `default_app`, so `teknisi` always
+lands on Operations → Trouble Ticket (`/trouble-ticket`).
 
 Change password flow (no "current password"): `profile.password.token` emails a
 6-digit code (hashed in cache 15 min, rate-limited 5/10 min) → `profile.password`

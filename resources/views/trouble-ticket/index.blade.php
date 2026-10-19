@@ -53,7 +53,7 @@
                 <div class="tt-mob-chips" role="tablist" aria-label="Filter tahap">
                     <button type="button" class="tt-chip-f is-on" data-status="">Semua <span>{{ $tickets->count() }}</span></button>
                     @foreach(['OPEN' => 'TT Open', 'REMOTE' => 'Remote', 'PLAN' => 'Plan', 'TRIP' => 'Trip',
-                              'IN_PROGRESS' => 'Progress', 'PROGRESS_DONE' => 'Progress Done', 'CLOSED' => 'Closed'] as $kode => $label)
+                              'IN_PROGRESS' => 'Progress', 'PROGRESS_DONE' => 'Waiting Approve', 'CLOSED' => 'Closed'] as $kode => $label)
                         <button type="button" class="tt-chip-f" data-status="{{ $kode }}">{{ $label }}
                             <span>{{ $tickets->where('status', $kode)->count() }}</span></button>
                     @endforeach
@@ -89,9 +89,11 @@
                 <x-empty title="Tidak ada tiket" message="Ubah kata pencarian atau filter tahap." icon="fas fa-ticket-alt" compact />
             </div>
 
-            <a href="{{ route('trouble-ticket.create') }}" class="tt-fab" aria-label="Buat tiket">
-                <i class="fas fa-plus" aria-hidden="true"></i>
-            </a>
+            @if($canCreate)
+                <a href="{{ route('trouble-ticket.create') }}" class="tt-fab" aria-label="Buat tiket">
+                    <i class="fas fa-plus" aria-hidden="true"></i>
+                </a>
+            @endif
         </div>
 
         {{-- ============ TAMPILAN LAYAR LEBAR ============ --}}
@@ -106,7 +108,7 @@
             ['Plan',          $stats['PLAN'],          'warning',   'PLAN'],
             ['Trip',          $stats['TRIP'],          'info',      'TRIP'],
             ['Progress',      $stats['IN_PROGRESS'],   'primary',   'IN_PROGRESS'],
-            ['Progress Done', $stats['PROGRESS_DONE'], 'success',   'PROGRESS_DONE'],
+            ['Waiting Approve', $stats['PROGRESS_DONE'], 'success',   'PROGRESS_DONE'],
             ['Closed',        $stats['CLOSED'],        'dark',      'CLOSED'],
         ]" />
 
@@ -181,7 +183,9 @@
                     </div>
                     <div class="tt-toolbar-right">
                         <a href="{{ route('trouble-ticket.export') }}" class="btn btn-outline-success btn-sm" id="btnTtExport"><i class="fas fa-file-excel mr-1"></i> Export</a>
-                        <a href="{{ route('trouble-ticket.create') }}" class="btn btn-success btn-sm"><i class="fas fa-plus mr-1"></i> Buat Tiket</a>
+                        @if($canCreate)
+                            <a href="{{ route('trouble-ticket.create') }}" class="btn btn-success btn-sm"><i class="fas fa-plus mr-1"></i> Buat Tiket</a>
+                        @endif
                     </div>
                 </div>
 

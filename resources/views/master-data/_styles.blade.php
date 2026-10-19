@@ -42,11 +42,15 @@
 | dengan satu kolom `width:auto` yang menyerap seluruh sisa ruang — itu yang
 | membuat kolom bertanda `truncate` (mis. Nama Site) jauh lebih lebar dari
 | kolom lain saat isi tabel lebih sempit dari kartunya. Kolom col-trunc tetap
-| dipotong dengan elipsis dan melebar saat barisnya di-hover.
+| dibatasi lebarnya lalu teksnya dibungkus ke baris berikutnya - nama tidak
+| pernah dipotong, hanya turun baris.
+|
+| Sebelumnya isi kolom ini melebar saat barisnya di-hover, sehingga tinggi
+| baris (dan lebar kolom) berubah-ubah saat kursor bergerak di atas tabel.
+| Sekarang nilainya tetap: teks penuh dibungkus pada lebar yang sama.
 */
 .master-compact th, .master-compact td { white-space:nowrap; }
-.master-compact .cell-trunc { display:inline-block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:middle; }
-.master-compact tbody tr:hover .cell-trunc { white-space:normal; overflow:visible; }
+.master-compact .cell-trunc { display:inline-block; white-space:normal; word-break:break-word; vertical-align:middle; }
 /*
 | Nilai kolom yang bisa diklik untuk membuka drawer (`drawer_link`).
 | Gayanya mengikuti .cr-number-btn di daftar Cost Request: tulisan tetap gelap,

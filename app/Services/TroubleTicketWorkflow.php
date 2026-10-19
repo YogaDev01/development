@@ -111,9 +111,20 @@ class TroubleTicketWorkflow
             && $user->hasRole(AccessRoles::TROUBLE_TICKET_APPROVE);
     }
 
+    /**
+     * Boleh mengirim pesan: tiket CLOSED TIDAK menutup diskusi lagi (keputusan
+     * 19 Okt 2026) — hanya Stop Chat oleh superadmin yang menutupnya.
+     */
     public function canMessage(User $user, TroubleTicket $ticket): bool
     {
-        return ! $ticket->isFinal() && $this->canView($user, $ticket);
+        return ! $ticket->chatLocked() && $this->canView($user, $ticket);
+    }
+
+    /** Stop / buka kembali diskusi tiket: hanya superadmin. */
+    public function canLockChat(User $user, TroubleTicket $ticket): bool
+    {
+        return $user->hasRole(AccessRoles::TROUBLE_TICKET_CHAT_LOCK)
+            && $this->canView($user, $ticket);
     }
 
     /** Teknisi wajib memilih Remote atau membuat Plan sebelum bisa melakukan apa pun. */
@@ -803,6 +814,12 @@ class TroubleTicketWorkflow
             $this->authorizeIf($this->actsAsTechnician($user, $t), 'Hanya teknisi yang ditugaskan atau superadmin yang dapat menutup tiket.');
             $this->expect($t, TroubleTicket::CLOSABLE, 'Form close hanya bisa dikirim dari tahap Remote, Plan, Trip, atau In Progress.');
 
+            // Sudah On Site: form close ditutup (keputusan 19 Okt 2026) —
+            // pengerjaan di site dimulai dulu, tiket ditutup dari In Progress.
+            if ($t->status === 'TRIP' && $t->travel_arrived_at !== null) {
+                $this->fail('Teknisi sudah di site; mulai progres dulu sebelum mengirim form close.');
+            }
+
             // Close dari tahap Trip sebelum teknisi tiba: perjalanan yang
             // sedang berjalan dibatalkan otomatis (keputusan 15 Okt 2026),
             // jadi SLA Travel tidak ikut dihitung.
@@ -1079,11 +1096,13 @@ class TroubleTicketWorkflow
             return $ada;
         }
 
-        if ($ticket->isFinal()) {
-            $this->fail('Tiket sudah '.strtolower($ticket->status).'; pesan baru tidak bisa ditambahkan.');
+        // Tiket CLOSED tetap bisa didiskusikan (keputusan 19 Okt 2026); yang
+        // menutup chat hanya Stop Chat oleh superadmin. Chat juga tidak pernah
+        // dikunci oleh keputusan jalur penanganan (keputusan 15 Okt 2026):
+        // teknisi tetap bisa berdiskusi sebelum memilih Remote.
+        if ($ticket->chatLocked()) {
+            $this->fail('Diskusi tiket ini sudah dihentikan.');
         }
-        // Chat TIDAK pernah dikunci oleh keputusan jalur penanganan (keputusan
-        // 15 Okt 2026): teknisi tetap bisa berdiskusi sebelum memilih Remote.
 
         $body = $body !== null ? trim($body) : null;
         if (($body === null || $body === '') && empty($files)) {
@@ -1116,6 +1135,30 @@ class TroubleTicketWorkflow
             }
             throw $e;
         }
+    }
+
+    /**
+     * Stop Chat / buka kembali — hanya superadmin
+     * (AccessRoles::TROUBLE_TICKET_CHAT_LOCK). Keadaannya dicatat di timeline
+     * supaya terlihat siapa yang menghentikan diskusi dan kapan.
+     */
+    public function setChatLock(TroubleTicket $ticket, User $user, bool $lock): void
+    {
+        DB::transaction(function () use ($ticket, $user, $lock) {
+            $t = $this->lock($ticket);
+            $this->authorizeIf($this->canLockChat($user, $t), 'Hanya superadmin yang dapat menghentikan atau membuka diskusi tiket.');
+
+            if ($lock === $t->chatLocked()) {
+                $this->fail($lock ? 'Diskusi sudah dihentikan.' : 'Diskusi sedang terbuka.');
+            }
+
+            $t->update([
+                'chat_locked_at' => $lock ? now() : null,
+                'chat_locked_by' => $lock ? $user->id : null,
+            ]);
+
+            $this->event($t, $user, $lock ? 'chat_stopped' : 'chat_reopened');
+        });
     }
 
     private function messageByToken(TroubleTicket $ticket, string $token): ?TroubleTicketMessage

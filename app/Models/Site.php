@@ -44,6 +44,9 @@ class Site extends Model
 
     public const TECHNICIAN_POSITION = 'teknisi';
 
+    /** Jenis PIC (MasterPic::TYPES) yang mengisi pilihan Site Keeper. */
+    public const KEEPER_PIC_TYPE = 'site_keeper';
+
     protected $fillable = [
         'tid', 'sitename', 'type', 'source_power', 'program', 'status',
         'latitude', 'longitude', 'address', 'customer_id', 'network_id',
