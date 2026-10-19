@@ -108,7 +108,6 @@
                     $backupTechOptions = \App\Http\Controllers\SiteController::backupTechnicianOptions();
                     $backupTechRows = old('backup_technicians', $isEdit ? $site->backupTechnicians->pluck('user_id')->all() : []);
                     $backupTechRows = $backupTechRows ?: [''];
-                    $backupCustomerId = old('customer_id', $isEdit ? $site->customer_id : null);
                 @endphp
                 <div class="card card-primary card-outline shadow-sm flex-fill">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -116,7 +115,7 @@
                         <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddBackupTech"><i class="fas fa-plus mr-1"></i> Tambah Teknisi Backup</button>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted mb-2" style="font-size:12px;">Teknisi cadangan yang ikut ditawarkan pada Change Teknisi. Pilih Customer dulu: daftarnya hanya teknisi customer tersebut. Boleh lebih dari satu; baris kosong diabaikan.</p>
+                        <p class="text-muted mb-2" style="font-size:12px;">Teknisi cadangan yang ikut ditawarkan pada Change Teknisi. Boleh lebih dari satu; baris kosong diabaikan.</p>
                         <div id="backupTechRows">
                             @foreach($backupTechRows as $i => $uid)
                                 <div class="form-row align-items-start js-backup-tech-row">
@@ -126,7 +125,6 @@
                                                     class="form-control js-backup-tech @error('backup_technicians.' . $i) is-invalid @enderror">
                                                 <option value="">&mdash; Pilih Teknisi Backup &mdash;</option>
                                                 @foreach($backupTechOptions as $opt)
-                                                    @continue(! $backupCustomerId || ! in_array((int) $backupCustomerId, $opt['customers'], true))
                                                     <option value="{{ $opt['id'] }}" @selected((string) $uid === (string) $opt['id'])>{{ $opt['name'] }}</option>
                                                 @endforeach
                                             </select>
@@ -252,24 +250,18 @@ $(function () {
     });
 
     /*
-    | Baris Teknisi Backup: pilihannya dibatasi teknisi milik customer yang
-    | sedang dipilih, jadi <option> dibangun ulang tiap customer berubah.
+    | Baris Teknisi Backup: seluruh PIC internal berjabatan teknisi ditawarkan,
+    | tidak dibatasi customer site — sebelum 19 Okt 2026 daftarnya disaring per
+    | customer, sehingga teknisi yang belum terpasang di site mana pun tidak
+    | pernah bisa dipilih. <option> tetap dibangun di sini supaya baris baru
+    | hasil tombol Tambah ikut terisi.
     */
     var backupTechs = @json($backupTechOptions);
 
-    function backupTechOptionsFor(customerId) {
-        customerId = parseInt(customerId, 10);
-        if (!customerId) return [];
-
-        return backupTechs.filter(function (t) {
-            return (t.customers || []).indexOf(customerId) !== -1;
-        });
-    }
-
-    function fillBackupTechSelect($sel, customerId) {
+    function fillBackupTechSelect($sel) {
         var keep = $sel.val();
         $sel.empty().append('<option value="">— Pilih Teknisi Backup —</option>');
-        backupTechOptionsFor(customerId).forEach(function (t) {
+        backupTechs.forEach(function (t) {
             $sel.append($('<option></option>').attr('value', t.id).text(t.name));
         });
         $sel.val(keep);
@@ -277,17 +269,10 @@ $(function () {
         $sel.trigger('tss:sync');
     }
 
-    function refreshBackupTechs() {
-        var customerId = $('#fld_customer_id').val();
-        $('.js-backup-tech').each(function () { fillBackupTechSelect($(this), customerId); });
-    }
-
-    $('#fld_customer_id').on('change', refreshBackupTechs);
-
     $('#btnAddBackupTech').on('click', function () {
         var $row = $($('#backupTechRowTemplate').html()).filter('.js-backup-tech-row');
         $('#backupTechRows').append($row);
-        fillBackupTechSelect($row.find('.js-backup-tech'), $('#fld_customer_id').val());
+        fillBackupTechSelect($row.find('.js-backup-tech'));
         TesysSearchableSelect.init($row.find('select[data-searchable]'), {});
     });
 

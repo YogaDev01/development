@@ -455,7 +455,13 @@ class SiteController extends Controller
     /** Field form yang bukan kolom `sites` (lihat master()['fields']). */
     public const VIRTUAL_FIELDS = ['spv_id', 'pic_id'];
 
-    /** PIC internal yang jabatannya mengandung kata $position. */
+    /**
+     * PIC internal yang jabatannya mengandung kata $position.
+     *
+     * Hanya nama yang ditampilkan: daftarnya sudah disaring per jabatan, jadi
+     * imbuhan " - Teknisi" / " - Supervisor" di tiap baris mengulang judul
+     * fieldnya sendiri.
+     */
     protected static function picOptions(string $position): array
     {
         return MasterPic::where('type', 'internal')
@@ -463,16 +469,23 @@ class SiteController extends Controller
             ->where('position', 'like', '%'.$position.'%')
             ->orderBy('pic')
             ->get(['id', 'pic', 'position'])
-            ->mapWithKeys(fn ($p) => [$p->id => $p->pic.($p->position ? ' - '.$p->position : '')])
+            ->mapWithKeys(fn ($p) => [$p->id => $p->pic])
             ->all();
     }
 
-    /** Pilihan Site Keeper: nama user aktif. */
+    /**
+     * Pilihan Site Keeper: PIC aktif berjenis `site_keeper` di Personal Master
+     * > PIC. Sebelum 19 Okt 2026 daftarnya diambil dari seluruh akun user
+     * aktif, yang tidak ada kaitannya dengan data penjaga site. Nilai yang
+     * disimpan tetap NAMA (kolom `site_keepers.name`), jadi hanya sumber
+     * daftarnya yang berubah.
+     */
     public static function keeperOptions(): array
     {
-        return User::where('status', 'ACTIVE')
-            ->orderBy('name')
-            ->pluck('name')
+        return MasterPic::where('status', 'ACTIVE')
+            ->where('type', Site::KEEPER_PIC_TYPE)
+            ->orderBy('pic')
+            ->pluck('pic')
             ->unique()
             ->values()
             ->all();
