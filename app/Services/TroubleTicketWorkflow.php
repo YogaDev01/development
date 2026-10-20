@@ -565,6 +565,23 @@ class TroubleTicketWorkflow
             $this->fail('Budget Plan harus berstatus ACTIVE.', 'budget_plan_id');
         }
 
+        /* Budget PROYEK wajib bercluster — aturannya sama dengan form Cost
+           Request (cluster_id required bila isProjectBudget). Dulu syarat ini
+           baru ketahuan saat supervisor menekan Approve, jadi plan sudah telanjur
+           disusun lalu mentok tanpa penjelasan apa pun. Diperiksa sejak plan
+           disimpan (20 Okt 2026), dengan pesan yang menyebut proyeknya dan
+           tempat memperbaikinya. */
+        if ($budgetPlan->isProjectBudget()
+            && ! Cluster::where('project_id', $budgetPlan->project_id)->where('status', 'ACTIVE')->exists()) {
+            $this->fail(
+                'Budget Plan "' . $budgetPlan->code . '" bersumber dari proyek "'
+                . ($budgetPlan->project?->name ?? $budgetPlan->project?->code ?? '-')
+                . '" yang belum punya Cluster berstatus ACTIVE, padahal Cost Request dari budget proyek wajib bercluster. '
+                . 'Tambahkan cluster-nya lebih dulu di Master Data > Project Master, atau pilih Budget Plan lain.',
+                'budget_plan_id'
+            );
+        }
+
         $items = array_values(array_filter($items, fn ($r) => filled($r['description'] ?? null)));
 
         if ($items === []) {
@@ -857,8 +874,14 @@ class TroubleTicketWorkflow
                 : ($kandidat->count() === 1 ? $kandidat->first() : null);
 
             if ($cluster === null) {
+                /* Plan lama masih bisa sampai ke sini walau siapkanBiayaPlan()
+                   kini menjaga di depan — pesannya menyebut proyek dan tempat
+                   memperbaikinya, bukan cuma menyatakan buntu. */
                 $this->fail($kandidat->isEmpty()
-                    ? 'Project budget plan ini belum punya cluster aktif.'
+                    ? 'Proyek "' . ($plan->project?->name ?? $plan->project?->code ?? '-')
+                        . '" (Budget Plan ' . $plan->code . ') belum punya Cluster berstatus ACTIVE, '
+                        . 'padahal Cost Request dari budget proyek wajib bercluster. Tambahkan cluster-nya '
+                        . 'di Master Data > Project Master, lalu approve lagi.'
                     : 'Cluster wajib dipilih untuk budget proyek.', 'cluster_id');
             }
         }
