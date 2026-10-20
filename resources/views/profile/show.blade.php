@@ -236,6 +236,27 @@
 .prof-avatar-wrap { z-index:2; }
 @media (max-width: 575px) { .prof-identity { margin-left:0; padding-left:16px; } }
 
+/* HP: sampul lebih pendek, avatar lebih kecil dan di tengah, identitas
+   sebagai teks biasa di bawahnya. Pil gelap transparan dirancang untuk
+   menumpang di atas sampul; di HP ia jatuh ke latar putih dan tampak
+   sebagai kotak abu yang berat. */
+@media (max-width: 575px) {
+    .prof-cover { height:112px; }
+    .prof-cover + div { margin-top:-50px !important; padding-left:16px !important; padding-right:16px !important; }
+    .prof-cover + div > .d-flex { flex-direction:column; align-items:center !important; gap:8px !important; text-align:center; }
+    .prof-avatar { width:96px; height:96px; border-width:4px; }
+    .prof-avatar #avatarPreviewInitials { font-size:32px !important; }
+    .prof-avatar-cam { width:32px; height:32px; font-size:12px; bottom:2px; right:2px; }
+    .prof-identity {
+        background:transparent; backdrop-filter:none; -webkit-backdrop-filter:none;
+        padding:0; margin:0 !important; width:100%;
+    }
+    .prof-identity h4 { color:var(--text); font-size:18px; }
+    .prof-identity > div { color:var(--text-dim); }
+    .prof-identity .mt-1 { display:flex; flex-wrap:wrap; justify-content:center; gap:4px; }
+    .prof-tabs { flex-wrap:nowrap; overflow-x:auto; padding-left:8px !important; padding-right:8px !important; }
+}
+
 /* ---- Tabs: tanpa scrollbar, membungkus di layar sempit ---- */
 .prof-tabs { flex-wrap:wrap; overflow:visible; }
 

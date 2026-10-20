@@ -90,6 +90,13 @@ body.tesys-ui .main > .content .card:has(.dataTables_wrapper):not(.ts-keep-card)
     body.tesys-ui table.ts-card-table:not(#ts-card) > tfoot { display: none; }
     body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr.child { display: none !important; }
 
+    /* Baris yang disembunyikan skrip halaman (collapse grup, pencarian) lewat
+       style inline / atribut hidden harus tetap tersembunyi — aturan
+       display:block !important di atas akan memunculkannya lagi. */
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr[style*="display: none"],
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr[style*="display:none"],
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr[hidden] { display: none !important; }
+
     body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr {
         position: relative;
         margin: 0 0 10px;
@@ -104,7 +111,8 @@ body.tesys-ui .main > .content .card:has(.dataTables_wrapper):not(.ts-keep-card)
         align-items: baseline;
         justify-content: space-between;
         gap: 12px;
-        padding: 6px 0;
+        /* !important: tesys-ui-luxe.css memasang `.table td { padding … !important }`. */
+        padding: 6px 0 !important;
         border: 0;
         border-bottom: 1px solid var(--border);
         text-align: right !important;
@@ -118,6 +126,10 @@ body.tesys-ui .main > .content .card:has(.dataTables_wrapper):not(.ts-keep-card)
         background: transparent;
     }
     body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td:last-child { border-bottom: 0; }
+    /* Isi sel tidak boleh lebih lebar dari card (chip/badge panjang yang
+       nowrap, mis. daftar anggota Team). */
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td > * { max-width: 100%; min-width: 0; }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td .badge { white-space: normal; overflow-wrap: break-word; text-align: left; }
     body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td::before {
         content: attr(data-label);
         flex: 0 0 38%;
@@ -129,6 +141,22 @@ body.tesys-ui .main > .content .card:has(.dataTables_wrapper):not(.ts-keep-card)
     }
     body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td[data-label=""]::before,
     body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td:not([data-label])::before { display: none; }
+
+    /* Sel berlabel yang isinya lebih dari satu blok (mis. catatan + nama
+       penolak, judul + keterangan PO): grid dua kolom — label di kiri, seluruh isi bertumpuk di
+       kanan. Dengan flex biasa blok-blok itu berjajar dan saling menghimpit. */
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td[data-label]:not([data-label=""]):not(.ts-card-title):not(.ts-card-status):not(.ts-card-actions):is(:has(> div + *), :has(> * + div), :has(> .badge + .badge)) {
+        display: grid !important;
+        grid-template-columns: minmax(0, 38%) minmax(0, 1fr);
+        column-gap: 12px;
+        row-gap: 2px;
+    }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td[data-label]:not([data-label=""]):not(.ts-card-title):not(.ts-card-status):not(.ts-card-actions):is(:has(> div + *), :has(> * + div), :has(> .badge + .badge))::before {
+        grid-column: 1;
+        grid-row: 1 / span 9;
+        max-width: none;
+    }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td[data-label]:not([data-label=""]):not(.ts-card-title):not(.ts-card-status):not(.ts-card-actions):is(:has(> div + *), :has(> * + div), :has(> .badge + .badge)) > * { grid-column: 2; }
 
     /* Uang / angka: rata kanan, lebar angka seragam. */
     body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.text-right { font-variant-numeric: tabular-nums; }
@@ -146,9 +174,14 @@ body.tesys-ui .main > .content .card:has(.dataTables_wrapper):not(.ts-keep-card)
         text-align: left !important;
         font-weight: 600;
         color: var(--text);
-        padding-right: 96px;   /* ruang untuk chip status di kanan judul */
     }
+    /* Ruang untuk chip status di kanan judul — hanya bila card memang punya
+       status. !important: padding sel di atas sudah !important (luxe). */
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr:has(> td.ts-card-status) > td.ts-card-title { padding-right: 96px !important; }
     body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.ts-card-title::before { display: none; }
+    /* Isi judul yang berupa blok (judul + keterangan di bawahnya) tetap bertumpuk. */
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.ts-card-title { flex-wrap: wrap; }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.ts-card-title > div { flex: 1 1 100%; min-width: 0; }
 
     /* Status (badge / chip): di baris judul, kanan atas card. */
     body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.ts-card-status {
@@ -157,7 +190,7 @@ body.tesys-ui .main > .content .card:has(.dataTables_wrapper):not(.ts-keep-card)
         right: 12px !important;   /* menimpa `right:auto !important` di aturan sel */
         width: auto !important;
         max-width: 45%;
-        padding: 0;
+        padding: 0 !important;
         border: 0;
     }
     body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.ts-card-status::before { display: none; }
@@ -165,11 +198,52 @@ body.tesys-ui .main > .content .card:has(.dataTables_wrapper):not(.ts-keep-card)
     /* Aksi: rata kanan di dasar card, tanpa label. */
     body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.ts-card-actions {
         justify-content: flex-end;
-        padding-top: 8px;
+        padding: 8px 0 6px !important;
         border-top: 1px solid var(--border);
         border-bottom: 0;
     }
     body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.ts-card-actions::before { display: none; }
+
+    /* Checkbox pilih-baris: pojok kiri atas card, judul bergeser ke kanannya. */
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr:has(> td.ts-card-check) { padding-left: 42px; }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.ts-card-check {
+        position: absolute !important;
+        top: 6px;
+        left: 12px !important;
+        width: auto !important;
+        padding: 6px 0 !important;
+        border: 0;
+    }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.ts-card-check::before { display: none; }
+    /* Area sentuh checkbox di card & kepala grup. */
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr > td.ts-card-check > input[type="checkbox"],
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr.ts-card-group > td > input[type="checkbox"] { width: 20px; height: 20px; }
+
+    /* Baris grup (sel ber-colspan): kepala kelompok ringkas, bukan card berlabel. */
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr.ts-card-group {
+        display: flex !important;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 10px;
+        padding: 10px 12px;
+        background: var(--surface-3);
+        border-color: var(--border-strong);
+        box-shadow: none;
+    }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr.ts-card-group > td {
+        display: block !important;
+        width: auto !important;
+        padding: 0 !important;
+        border: 0;
+        text-align: left !important;
+        background: transparent !important;
+    }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr.ts-card-group > td::before { display: none; }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr.ts-card-group > td[colspan] {
+        flex: 1 1 calc(100% - 40px);
+        min-width: 0;
+    }
+    body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr.ts-card-group > td[colspan] ~ td:last-child { margin-left: auto; }
 
     /* Baris pesan kosong ("tidak ada data"): bukan card. */
     body.tesys-ui table.ts-card-table:not(#ts-card) > tbody > tr:has(> td.dataTables_empty) {

@@ -18,8 +18,11 @@
      <th data-card="title">         paksa kolom ini jadi judul card
      <th data-card="hide">          sembunyikan kolom ini di card
      <th data-card="show">          tampilkan kolom "No" yang biasanya disembunyikan
-   Kelas yang dipasang: ts-card-table (tabel); ts-card-title, ts-card-status,
-   ts-card-actions, ts-card-hide, data-label (sel).
+     <div data-ts-card-scope>        tabel biasa (bukan DataTable) di dalamnya ikut
+                                     mode card (kecuali di modal/drawer)
+   Kelas yang dipasang: ts-card-table (tabel); ts-card-group (baris grup
+   ber-colspan); ts-card-title, ts-card-status, ts-card-actions, ts-card-hide,
+   ts-card-check, data-label (sel).
 
    Label mengikuti kolom TERLIHAT: th dan td dipasangkan menurut posisi DOM
    (kolom yang dibuang DataTables lewat visible:false / toggle kolom tidak ada
@@ -96,8 +99,9 @@
     function bersihkan($t) {
         $t.removeClass('ts-card-table');
         $t.prev('.ts-card-summary').remove();
-        $t.children('tbody').children('tr').children('td')
-            .removeClass('ts-card-hide ts-card-title ts-card-status ts-card-actions')
+        $t.children('tbody').children('tr').removeClass('ts-card-group')
+            .children('td')
+            .removeClass('ts-card-hide ts-card-title ts-card-status ts-card-actions ts-card-check')
             .removeAttr('data-label');
     }
 
@@ -124,9 +128,24 @@
 
         $t.addClass('ts-card-table');
         $t.children('tbody').children('tr').each(function () {
-            $(this).children('td').each(function (i) {
+            var $tr = $(this);
+            // Baris grup (sel ber-colspan, mis. baris PO di Todo List): posisi sel
+            // tidak lagi sejajar dengan header, jadi tanpa label — tampil sebagai
+            // kepala kelompok. Baris "tidak ada data" DataTables punya CSS sendiri.
+            var grup = $tr.children('td[colspan]').filter(function () {
+                return (parseInt(this.getAttribute('colspan'), 10) || 1) > 1 && !$(this).hasClass('dataTables_empty');
+            }).length > 0;
+            $tr.toggleClass('ts-card-group', grup);
+            if (grup) {
+                $tr.children('td').removeAttr('data-label')
+                    .removeClass('ts-card-title ts-card-status ts-card-actions ts-card-hide ts-card-check');
+                return;
+            }
+            $tr.children('td').each(function (i) {
                 if (this.hasAttribute('colspan')) return;
                 var $c = $(this);
+                // Sel yang isinya hanya checkbox pilih-baris: ditaruh di pojok kiri atas card.
+                $c.toggleClass('ts-card-check', $c.children('input[type="checkbox"]').length === 1 && teks(this) === '');
                 // Kolom aksi juga dikenali dari isinya (tombol/menu aksi), bukan hanya header.
                 var aksi = !!aksiIdx[i] || $c.find('.ts-actions, .action-buttons').length > 0;
                 $c.attr('data-label', labels[i] || '');
@@ -166,6 +185,41 @@
         $('table.dataTable').each(function () { jadwalkan(this); });
     });
     $(function () { $('table.dataTable').each(function () { jadwalkan(this); }); });
+
+    /*
+     | Tabel biasa (bukan DataTable) di area konten halaman juga ikut mode card:
+     |  - semua tabel di dalam elemen ber-atribut data-ts-card-scope, dan
+     |  - tabel daftar di .main .content (otomatis).
+     | Tidak ikut: tabel di modal & drawer (rincian, bukan daftar), tabel di
+     | dalam <form> atau berisi isian (baris yang diedit tetap tabel), tabel
+     | bersarang di dalam tabel lain (ikut induknya lewat pemanggilan manual),
+     | dan tabel yang tidak layak (header bertingkat, pivot, data-ts-card="off").
+     */
+    var SELEKTOR_LUAR = '.modal, .todo-drawer, .ts-drawer-root, form';
+    function tabelScope() {
+        return $('[data-ts-card-scope] table, .main .content table').not('table.dataTable')
+            .filter(function () {
+                var $t = $(this);
+                if ($t.closest(SELEKTOR_LUAR).length) return false;
+                if ($t.parents('table').length) return false;
+                // Isian tersembunyi (token form hapus di kolom aksi) bukan isian baris.
+                if ($t.find('input:not([type="checkbox"]):not([type="hidden"]), select, textarea').length) return false;
+                return true;
+            });
+    }
+
+    // Isi tabel yang diganti skrip halaman (AJAX, filter ulang) dipasang ulang.
+    function amati(tbl) {
+        var body = tbl.tBodies && tbl.tBodies[0];
+        if (!body || body._tsObs || !window.MutationObserver) return;
+        body._tsObs = new MutationObserver(function () { jadwalkan(tbl); });
+        body._tsObs.observe(body, { childList: true });
+    }
+    function pindai() {
+        tabelScope().each(function () { amati(this); jadwalkan(this); });
+    }
+    $(pindai);
+    $(document).on('shown.bs.tab', pindai);
 
     window.TesysTable = { pasang: pasang, layak: layak };
 })(window.jQuery);

@@ -222,7 +222,8 @@
                         </div>
 
                         <div class="table-responsive exec-hscroll">
-                            <table id="tblExecutive" class="table table-bordered mb-0" style="font-size:12.5px;">
+                            {{-- Tabel pivot (baris grup customer berisi angka per kolom): di HP tetap tabel bergulir, bukan card. --}}
+                            <table id="tblExecutive" data-ts-card="off" class="table table-bordered mb-0" style="font-size:12.5px;">
                                 <thead class="bg-light">
                                     <tr>
                                         <th scope="col" class="text-nowrap exec-col-kode">Kode</th>

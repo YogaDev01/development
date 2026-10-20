@@ -4,6 +4,28 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [3.0.9] - 2026-10-21 — Tampilan Mobile yang Lebih Rapi di Seluruh Aplikasi
+
+Seluruh halaman kini lebih bersih dan lega di layar ponsel: padding kartu tidak lagi
+berlapis, toolbar dan alur status lebih ringkas, semua daftar data tampil sebagai kartu,
+dan Todo List beserta detailnya nyaman dipakai dengan satu tangan.
+
+### Baru
+- Todo List di ponsel: worklist, Tugas/Assignment, panel detail Cost Request, dan modal View Budget tampil sebagai kartu ringkas; angka anggaran disusun dua kolom dan pilihan "Pilih semua" tetap tersedia.
+- Semua daftar data di area halaman - termasuk tabel yang dimuat ulang lewat filter - ikut tampil sebagai kartu di ponsel.
+
+### Berubah
+- Di ponsel, kartu halaman hanya punya satu lapis padding sehingga isi tidak lagi menjorok jauh dari tepi layar.
+- Toolbar daftar di ponsel: pencarian selebar layar, tombol filter berjajar, dan tombol utama (Tambah/Buat) mengisi satu baris penuh.
+- Alur status (stepper) di atas daftar Cost Request, Budgeting, PO, Collection, dan lainnya menjadi satu baris yang bisa digeser di ponsel.
+- Halaman Profil di ponsel: sampul lebih pendek, foto di tengah, dan identitas tampil sebagai teks biasa.
+
+### Perbaikan
+- Panel detail Cost Request di Todo List tidak lagi terpotong di sisi kiri layar ponsel.
+- Kolom tabel Todo List tidak lagi saling menimpa di layar sempit.
+- Judul kartu tidak lagi tertimpa label status, dan isi bertumpuk (catatan + nama, badge anggota) tidak lagi terhimpit.
+- Form filter Team tidak lagi terpotong di tepi kanan, dan ikon cari Trouble Ticket tidak lagi menimpa teks.
+
 ## [3.0.8] - 2026-10-19 — Impor & Ekspor Site, Stop Chat Tiket & Landing Sesuai Peran
 
 Master Site kini bisa diimpor dan diekspor, diskusi tiket hanya ditutup oleh

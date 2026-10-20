@@ -35,7 +35,7 @@
     };
 @endphp
 
-<div class="content" id="todoApp">
+<div class="content" id="todoApp" data-ts-card-scope>
     <div class="container-fluid">
 
         <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
@@ -63,7 +63,7 @@
              tunggal cuma menambah satu lapis tanpa memberi pilihan apa pun. --}}
 
         <!-- SUMMARY CARDS -->
-        <div class="row">
+        <div class="row todo-kpi">
             <div class="col-6 col-md-4 mb-3">
                 <div class="card shadow-sm mb-0 h-100" style="border-radius:var(--radius-lg);border-left:4px solid var(--accent);">
                     <div class="card-body py-3 px-3">
@@ -93,9 +93,9 @@
         <!-- TOOLBAR -->
         <div class="card shadow-sm mb-0" style="border-radius:var(--radius-lg);">
             <div class="card-body py-3 px-3">
-                <div class="d-flex flex-wrap align-items-center" style="gap:10px;">
-                    <div class="d-flex flex-wrap align-items-center" style="gap:10px;">
-                        <div style="position:relative;width:190px;">
+                <div class="d-flex flex-wrap align-items-center todo-toolbar" style="gap:10px;">
+                    <div class="d-flex flex-wrap align-items-center todo-toolbar-filters" style="gap:10px;">
+                        <div class="todo-search" style="position:relative;width:190px;">
                             <i class="fas fa-search" style="position:absolute;left:10px;top:9px;color:var(--text-faint);font-size:12px;"></i>
                             <input type="text" id="todoSearch" class="form-control form-control-sm" placeholder="Cari CR..." style="padding-left:28px;">
                         </div>
@@ -104,7 +104,7 @@
                             <i class="fas fa-eraser"></i>
                         </button>
                     </div>
-                    <div class="d-flex flex-wrap align-items-center ml-auto" style="gap:8px;">
+                    <div class="d-flex flex-wrap align-items-center ml-auto todo-toolbar-actions" style="gap:8px;">
                         <button type="button" class="btn btn-outline-secondary btn-sm" data-toggle="modal" data-target="#mdlSummaryTask">
                             <i class="fas fa-chart-pie mr-1"></i> Summary Task
                         </button>
@@ -1985,6 +1985,116 @@
     .todo-worklist input.todo-check,
     .todo-worklist input.todo-check-all,
     .todo-worklist input.todo-check-group { width:20px;height:20px; }
+
+    /* Mode card (tesys-table.js lewat data-ts-card-scope di #todoApp): daftar
+       card duduk di latar abu tipis supaya terpisah dari kepala section. */
+    #todoApp .table-responsive:has(> table.ts-card-table) { padding:10px 10px 0;background:var(--surface-2); }
+    /* .p-0 dikalahkan `.card-body { padding … !important }` di tesys-ui-luxe.css;
+       di HP padding itu dobel dengan padding daftar card di atas. */
+    body.tesys-ui #todoApp .card-body.p-0 { padding:0 !important; }
+    #todoApp .table-responsive > .ts-card-summary { margin-top:0; }
+
+    /* Header tabel disembunyikan di mode card, tapi checkbox "pilih semua"
+       (bulk approve, buat batch) harus tetap terjangkau: hanya sel itu yang tampil. */
+    body.tesys-ui #todoApp table.ts-card-table:not(#ts-card) > thead:has(th > input[type="checkbox"]) {
+        position:static;width:auto;height:auto;overflow:visible;clip:auto;display:block;margin-bottom:8px;
+    }
+    body.tesys-ui #todoApp table.ts-card-table:not(#ts-card) > thead:has(th > input[type="checkbox"]) > tr { display:block; }
+    body.tesys-ui #todoApp table.ts-card-table:not(#ts-card) > thead:has(th > input[type="checkbox"]) th { display:none; }
+    body.tesys-ui #todoApp table.ts-card-table:not(#ts-card) > thead:has(th > input[type="checkbox"]) th:has(> input[type="checkbox"]) {
+        display:flex;align-items:center;gap:8px;width:auto !important;padding:0;border:0;background:transparent;
+        font-size:12px;font-weight:600;color:var(--text-dim);text-transform:none;letter-spacing:0;
+    }
+    body.tesys-ui #todoApp table.ts-card-table:not(#ts-card) > thead:has(th > input[type="checkbox"]) th:has(> input[type="checkbox"])::after { content:'Pilih semua'; }
+
+    /* Tabel yang TIDAK jadi card (header bertingkat dsb.): lebar kolom yang
+       dikunci (table-layout:fixed) membuat kolom tanpa lebar menyusut di bawah
+       nol dan teksnya saling menimpa. Di HP kolom mengikuti isi, digulir. */
+    #todoApp .card-body table:not(.ts-card-table) { table-layout:auto;min-width:560px; }
+
+    /* Kepala section: judul, jumlah, dan keterangan turun baris dengan rapi. */
+    #todoApp .card-header { padding:12px 14px !important; }
+    #todoApp .card-header .card-title {
+        display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;
+        font-size:14px;line-height:1.3;
+    }
+    #todoApp .card-header .card-title > i { margin-right:2px !important; }
+    #todoApp .card-header .card-title .badge { margin-left:0 !important; }
+    #todoApp .card-header .card-title .text-muted { margin-left:0 !important; }
+
+    /* Tab Assignment: dua tab dibagi rata, label boleh dua baris (badge
+       jumlah tetap terlihat), tanpa batang gulir. */
+    #assignmentTabs { flex-wrap:nowrap;overflow:hidden; }
+    #assignmentTabs .nav-item { flex:1 1 0;min-width:0; }
+    #assignmentTabs .nav-link { text-align:center;padding:8px 6px;white-space:normal;font-size:12.5px;line-height:1.3; }
+
+    /* Padding kartu: dua lapis 18px (.content + .card-body) memakan lebar
+       layar HP. Satu ukuran ringkas untuk semua kartu di halaman ini. */
+    body.tesys-ui #todoApp .card-body:not(.p-0) { padding:12px !important; }
+    /* tesys-ui.css memberi .card padding 16px 18px DI LUAR padding .card-body. */
+    #todoApp .card { padding:0; }
+
+    /* Ringkasan angka: lebih rapat, angka tidak memaksa kartu setinggi layar. */
+    .todo-kpi > [class*="col-"] { margin-bottom:10px !important; }
+    .todo-kpi .card-body > div:last-child { font-size:20px !important;line-height:1.2; }
+    .todo-kpi { margin-left:-5px;margin-right:-5px; }
+    .todo-kpi > [class*="col-"] { padding-left:5px;padding-right:5px; }
+
+    /* Toolbar: pencarian selebar layar, tombol aksi berbagi satu baris. */
+    .todo-toolbar, .todo-toolbar-filters { width:100%; }
+    .todo-toolbar .todo-search { width:100% !important; }
+    .todo-toolbar-actions { margin-left:0 !important;width:100%; }
+    .todo-toolbar-actions > .btn { flex:1 1 auto; }
+
+    /* ── Drawer detail CR: selebar layar. Lebar 50vw + min-width 440px
+       membuat sisi kirinya terpotong di HP. ── */
+    /* #todoDrawer di depan: aturan dasar drawer ditulis SESUDAH blok ini
+       dengan spesifisitas yang sama, jadi tanpa ID aturan HP kalah urutan. */
+    #todoDrawer.todo-drawer { width:100vw;min-width:0;max-width:100vw; }
+    #todoDrawer .todo-drawer-header { padding:14px 16px; }
+    #todoDrawer .todo-drawer-body > .nav-tabs { padding:0 8px !important; }
+    #todoDrawer .todo-drawer-body > .nav-tabs .nav-link { padding:10px 10px !important; }
+    #todoDrawer .todo-drawer-body > .tab-content { padding:14px 16px !important; }
+    #todoDrawer .todo-drawer-actions { padding:10px 16px calc(10px + env(safe-area-inset-bottom)); }
+    #todoDrawer .todo-drawer-actions .btn { flex:1 1 auto; }
+    #todoDrawer .todo-drw-amount-val { font-size:22px; }
+    #todoDrawer .todo-drw-section .todo-drw-label { flex-basis:104px; }
+
+    /* ── Modal View Budget (mode card via TesysTable, lihat show.bs.modal):
+       judul tidak menabrak tombol tutup, angka dalam grid dua kolom. ── */
+    .modal[id^="mdlTodoCoa"] .modal-header { padding:12px 14px; }
+    .modal[id^="mdlTodoCoa"] .modal-header > div,
+    .modal[id^="mdlTodoCoa"] .modal-header > .modal-title { flex:1 1 auto;min-width:0;padding-right:8px; }
+    .modal[id^="mdlTodoCoa"] .modal-title { font-size:14.5px;line-height:1.35; }
+    .modal[id^="mdlTodoCoa"] .modal-body { padding:10px !important;background:var(--surface-2);max-height:calc(100vh - 150px) !important; }
+    .modal[id^="mdlTodoCoa"] .todo-multi-head { margin:0 -10px; }
+
+    body.tesys-ui .modal[id^="mdlTodoCoa"] table.ts-card-table:not(#ts-card) > tbody > tr:not(.ts-card-group) {
+        display:grid !important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:12px;padding:8px 12px;
+    }
+    body.tesys-ui .modal[id^="mdlTodoCoa"] table.ts-card-table:not(#ts-card) > tbody > tr:not(.ts-card-group) > td {
+        flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:1px;
+        text-align:left !important;border-bottom:0;padding:4px 0 !important;
+    }
+    body.tesys-ui .modal[id^="mdlTodoCoa"] table.ts-card-table:not(#ts-card) > tbody > tr:not(.ts-card-group) > td::before {
+        flex:none;max-width:none;font-size:10.5px;
+    }
+    /* Judul (Chart of Account / sub-item / deskripsi CR) selebar card. */
+    body.tesys-ui .modal[id^="mdlTodoCoa"] table.ts-card-table:not(#ts-card) > tbody > tr:not(.ts-card-group) > td.ts-card-title {
+        grid-column:1 / -1;order:-1;flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px;
+        padding:2px 0 8px !important;margin-bottom:2px;border-bottom:1px solid var(--border);
+    }
+    body.tesys-ui .modal[id^="mdlTodoCoa"] table.ts-card-table:not(#ts-card) > tbody > tr:not(.ts-card-group):has(> td.ts-card-status) > td.ts-card-title { padding-right:92px !important; }
+    body.tesys-ui .modal[id^="mdlTodoCoa"] table.ts-card-table:not(#ts-card) > tbody > tr:not(.ts-card-group) > td.ts-card-title .badge { margin-left:0 !important; }
+    body.tesys-ui .modal[id^="mdlTodoCoa"] table.ts-card-table:not(#ts-card) > tbody > tr:not(.ts-card-group) > td.ts-card-actions {
+        grid-column:1 / -1;flex-direction:row;justify-content:flex-end;margin-top:4px;padding-top:8px !important;
+    }
+    /* Baris pemegang daftar CR (sel ber-colspan berisi tabel): wadah, bukan kepala grup. */
+    body.tesys-ui .modal[id^="mdlTodoCoa"] table.ts-card-table:not(#ts-card) > tbody > tr.ts-card-group:has(table) {
+        display:block !important;padding:8px;background:transparent;border:1px dashed var(--border-strong);
+    }
+    body.tesys-ui .modal[id^="mdlTodoCoa"] table.ts-card-table:not(#ts-card) > tbody > tr.ts-card-group:has(table) > td { display:block !important;width:100% !important; }
+    body.tesys-ui .modal[id^="mdlTodoCoa"] table.ts-card-table table.ts-card-table > tbody > tr { margin-bottom:8px; }
 }
 
 /* Detail drawer */
@@ -2920,6 +3030,15 @@ $(function () {
             var $m = $(e.target);
             if (!/^mdlTodoCoa/.test($m.attr('id') || '')) return;
             window.todoPasangSortir($m);
+        });
+
+        // Di HP tabel View Budget (tujuh kolom angka) tampil sebagai card —
+        // dipasang sebelum modal tampil, termasuk salinan di modal gabungan.
+        // Tampilan desktop tidak berubah: kelasnya hanya dipakai CSS <= 640px.
+        $(document).on('show.bs.modal', function (e) {
+            var $m = $(e.target);
+            if (!/^mdlTodoCoa/.test($m.attr('id') || '') || !window.TesysTable) return;
+            $m.find('table').each(function () { window.TesysTable.pasang(this); });
         });
     })();
 

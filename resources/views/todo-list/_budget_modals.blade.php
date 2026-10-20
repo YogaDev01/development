@@ -110,11 +110,12 @@
                                     <thead style="background:var(--surface-2);">
                                         <tr>
                                             <th scope="col" class="text-nowrap" style="width:1%;">Date</th>
-                                            <th scope="col">Description</th>
+                                            {{-- data-card: di HP (mode card) Description jadi judul, Takeout jadi baris aksi. --}}
+                                            <th scope="col" data-card="title">Description</th>
                                             <th scope="col" class="text-nowrap" style="width:1%;">Beneficiary</th>
                                             <th scope="col" class="text-right text-nowrap" style="width:1%;">Amount</th>
                                             <th scope="col" class="text-nowrap" style="width:1%;">Status</th>
-                                            <th scope="col" class="text-center text-nowrap" style="width:1%;">Takeout</th>
+                                            <th scope="col" class="text-center text-nowrap action-column" style="width:1%;">Takeout</th>
                                         </tr>
                                     </thead>
                                     <tbody>

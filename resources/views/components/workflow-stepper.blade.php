@@ -89,12 +89,24 @@
     .wf-compact .wf-tl-label { margin-top: 3px; font-size: 10.5px; }
     .wf-compact .wf-dist-bar { height: 4px; }
 
-    /* Di layar sempit strip ini paling mudah menjadi dinding badge. Kolomnya
-       dipersempit lagi supaya membungkus rapi, bukan memaksa gulir mendatar. */
+    /* Di layar sempit strip ini paling mudah menjadi dinding badge: alur 15
+       tahap membungkus jadi tiga baris dan memakan setengah layar. Di HP ia
+       dijadikan SATU baris yang digeser mendatar (gulir hanya di strip ini,
+       bukan halaman), dengan pudar di tepi kanan sebagai tanda masih ada. */
     @media (max-width: 575.98px) {
-        .wf-compact { padding: 6px 10px; }
-        .wf-compact .wf-tl-grid { grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); row-gap: 6px; }
-        .wf-compact .wf-tl-label { font-size: 10px; }
+        .wf-compact { padding: 6px 0; }
+        .wf-compact .wf-tl-grid {
+            display: flex; overflow-x: auto; overscroll-behavior-x: contain;
+            -webkit-overflow-scrolling: touch; scrollbar-width: none;
+            padding: 0 10px;
+            -webkit-mask-image: linear-gradient(to right, #000 85%, transparent);
+                    mask-image: linear-gradient(to right, #000 85%, transparent);
+        }
+        .wf-compact .wf-tl-grid::-webkit-scrollbar { display: none; }
+        .wf-compact .wf-tl-step { flex: 0 0 auto; min-width: 62px; }
+        .wf-compact .wf-tl-step:last-child { margin-right: 24px; }
+        .wf-compact .wf-tl-step:hover { transform: none; }
+        .wf-compact .wf-tl-label { font-size: 10px; white-space: nowrap; }
     }
 </style>
 @endonce

@@ -104,6 +104,27 @@
 
 
 /* ==========================================================================
+   1b. KARTU HALAMAN — SATU LAPIS PADDING
+   --------------------------------------------------------------------------
+   tesys-ui.css memberi .card padding 16px 18px, lalu .card-body diberi lagi
+   16-20px (!important di compat/luxe). Di layar lebar dobel itu hanya terasa
+   lapang; di HP isi kartu mulai 38-56px dari tepi layar dan tabel/teks jadi
+   sempit. Di HP: kartu yang punya header/body tidak berpadding sendiri,
+   body 12px, dan .p-0 benar-benar nol (sebelumnya dikalahkan !important).
+   Kartu tanpa .card-header/.card-body (isi langsung di .card) tidak disentuh.
+   ========================================================================== */
+@media (max-width: 640px) {
+    body.tesys-ui .main .card:has(> .card-body),
+    body.tesys-ui .main .card:has(> .card-header) { padding: 0; }
+    body.tesys-ui .main .card > .card-header { padding: 12px !important; }
+    body.tesys-ui .main .card > .card-body:not(.p-0) { padding: 12px !important; }
+    body.tesys-ui .main .card > .card-body.p-0 { padding: 0 !important; }
+    body.tesys-ui .main .card > .card-footer { padding: 10px 12px; }
+    body.tesys-ui .main .card { margin-bottom: 12px; }
+}
+
+
+/* ==========================================================================
    2. LEBAR & MARGIN MODAL
    --------------------------------------------------------------------------
    .modal-xl / .modal-dialog-xxl dirancang untuk layar lebar. Di HP, margin
@@ -237,12 +258,23 @@
         -webkit-overflow-scrolling: touch;
     }
     .nav-tabs .nav-link { white-space: nowrap; }
+    /* Batang gulir tab disembunyikan: tab tetap bisa digeser, tapi garis
+       abu di bawah label (terlihat seperti garis ganda) hilang. */
+    .nav-tabs { scrollbar-width: none; }
+    .nav-tabs::-webkit-scrollbar { display: none; }
 
     /* Kepala kartu menampung judul + jumlah + keterangan + tombol dalam satu
        baris flex. Di HP keempatnya tidak muat; tanpa wrap, tombol di ujung
        (mis. "Buka Semua") menekan keterangan sampai terpotong. */
     .card-header.d-flex { flex-wrap: wrap; gap: 6px; }
     .card-header.d-flex > .ml-auto { margin-left: 0 !important; }
+
+    /* Form filter di kepala kartu (mis. Team: cari + dua dropdown + tombol)
+       berjajar dengan lebar inline tetap dan terpotong di tepi kanan. Di HP
+       ia selebar kepala kartu dan isiannya berbagi baris. */
+    .card-header .ml-auto:has(form) { width: 100%; }
+    .card-header form.d-flex { flex-wrap: wrap; width: 100%; }
+    .card-header form.d-flex > .form-control { flex: 1 1 140px; width: auto !important; min-width: 0; }
 }
 
 
@@ -406,9 +438,33 @@
     .custom-toolbar-left .toolbar-row { flex: 1 1 100%; }
     .custom-toolbar-left .toolbar-label { display: none; }
 
-    .custom-toolbar-right { width: 100%; display: flex; gap: 8px; }
-    .custom-toolbar-right .btn { flex: 1 1 0; width: auto; }
+    /* Tombol kanan: grid dua kolom; tombol utama (Tambah) selebar baris di
+       atas, sisanya berbagi. Dengan flex 1:1:1 label "Tambah Budget Plan"
+       terpotong di 393px. */
+    /* display:grid !important: pembungkusnya memakai utilitas .d-flex
+       (display:flex !important). Tombol solid (Tambah/Buat — .btn-primary/
+       .btn-success/.btn-danger) dianggap aksi utama. */
+    body.tesys-ui .custom-toolbar-right { width: 100%; display: grid !important; grid-template-columns: 1fr 1fr; gap: 8px; }
+    body.tesys-ui .custom-toolbar-right > .btn { width: auto; min-width: 0; margin: 0 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    body.tesys-ui .custom-toolbar-right > .btn-primary,
+    body.tesys-ui .custom-toolbar-right > .btn-success,
+    body.tesys-ui .custom-toolbar-right > .btn-danger { grid-column: 1 / -1; order: -1; }
+    body.tesys-ui .custom-toolbar-right > :only-child { grid-column: 1 / -1; }
+    /* Hanya dua tombol: berdampingan, tanpa baris utama tersendiri. */
+    body.tesys-ui .custom-toolbar-right:has(> :nth-child(2):last-child) > * { grid-column: auto; order: 0; }
     .cr-btn-clear { width: auto; }
+
+    /* Tombol ikon/kecil di kiri (Clear, Filter, Kolom) selebar isinya, satu
+       baris di bawah pencarian. :not(#ts-x) mengalahkan aturan ber-ID di
+       halaman (mis. #btnClearFilterBP { width:100% }). */
+    body.tesys-ui .custom-toolbar .btn:not(#ts-x) { width: auto !important; }
+    body.tesys-ui .custom-toolbar-left .btn:not(#ts-x) { flex: 0 0 auto; }
+    /* Elemen kiri selain baris pencarian (Clear, Filter, Kolom, saklar):
+       selebar isinya, berjajar — beberapa halaman memaksanya 100% di HP. */
+    body.tesys-ui .custom-toolbar-left > :not(.toolbar-row):not(#ts-x) { width: auto !important; flex: 0 0 auto; max-width: 100%; }
+    /* Halaman Master Data menumpuk toolbar kiri jadi kolom
+       (.master-page .custom-toolbar-left { flex-direction:column !important }). */
+    body.tesys-ui .custom-toolbar-left { flex-direction: row !important; align-items: center !important; }
 
     .custom-toolbar-left .cr-pop { position: static; }
     /* left/right !important: JS (budget-request/index) menulisnya sebagai

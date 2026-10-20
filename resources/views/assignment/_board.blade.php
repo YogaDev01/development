@@ -22,7 +22,8 @@
     </div>
 @endif
 
-<div class="card shadow-sm mt-3" style="border-radius:var(--radius-lg);">
+{{-- data-ts-card-scope: di HP tabel tugas tampil sebagai card (tesys-table.js). --}}
+<div class="card shadow-sm mt-3" style="border-radius:var(--radius-lg);" data-ts-card-scope>
     <div class="card-body py-3 px-3">
         <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap" style="gap:8px;">
             <div>

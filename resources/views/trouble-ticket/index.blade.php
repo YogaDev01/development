@@ -366,7 +366,8 @@
     .tt-mob-bar { margin:0 -15px; padding:10px 15px 8px; border-bottom:1px solid var(--border); }
     .tt-mob-search { position:relative; }
     .tt-mob-search > i { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-faint); font-size:13px; }
-    .tt-mob-search input.form-control { height:40px; padding-left:34px; border-radius:999px; font-size:13px; }
+    /* padding-left !important: padding .form-control di lapis tema (!important) menimpa ruang ikon. */
+    .tt-mob-search input.form-control { height:40px; padding-left:34px !important; border-radius:999px; font-size:13px; }
 
     /* Chip tahap: TURUN BARIS, tidak digulir mendatar. Versi bergulir
        menyisakan batang scroll yang digambar di atas chip (dan chip terakhir

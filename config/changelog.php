@@ -26,10 +26,49 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '3.0.8',
+    'current' => '3.0.9',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '3.0.9',
+            'date'    => '2026-10-21',
+            'title'   => 'Tampilan Mobile yang Lebih Rapi di Seluruh Aplikasi',
+            'summary' => 'Seluruh halaman kini lebih bersih dan lega di layar ponsel: padding kartu tidak lagi '
+                       . 'berlapis, toolbar dan alur status lebih ringkas, semua daftar data tampil sebagai kartu, '
+                       . 'dan Todo List beserta detailnya nyaman dipakai dengan satu tangan.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Todo List di ponsel: worklist, Tugas/Assignment, panel detail Cost Request, dan modal View Budget tampil sebagai kartu ringkas; angka anggaran disusun dua kolom dan pilihan "Pilih semua" tetap tersedia.',
+                        'Semua daftar data di area halaman - termasuk tabel yang dimuat ulang lewat filter - ikut tampil sebagai kartu di ponsel.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Di ponsel, kartu halaman hanya punya satu lapis padding sehingga isi tidak lagi menjorok jauh dari tepi layar.',
+                        'Toolbar daftar di ponsel: pencarian selebar layar, tombol filter berjajar, dan tombol utama (Tambah/Buat) mengisi satu baris penuh.',
+                        'Alur status (stepper) di atas daftar Cost Request, Budgeting, PO, Collection, dan lainnya menjadi satu baris yang bisa digeser di ponsel.',
+                        'Halaman Profil di ponsel: sampul lebih pendek, foto di tengah, dan identitas tampil sebagai teks biasa.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Panel detail Cost Request di Todo List tidak lagi terpotong di sisi kiri layar ponsel.',
+                        'Kolom tabel Todo List tidak lagi saling menimpa di layar sempit.',
+                        'Judul kartu tidak lagi tertimpa label status, dan isi bertumpuk (catatan + nama, badge anggota) tidak lagi terhimpit.',
+                        'Form filter Team tidak lagi terpotong di tepi kanan, dan ikon cari Trouble Ticket tidak lagi menimpa teks.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '3.0.8',

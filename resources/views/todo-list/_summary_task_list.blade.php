@@ -74,7 +74,7 @@
     </div>
 
     <div class="table-responsive">
-    <table class="table table-bordered mb-0" id="summaryTaskTable" style="font-size:12.5px;min-width:720px;">
+    <table class="table table-bordered mb-0" id="summaryTaskTable" data-ts-card="off" style="font-size:12.5px;min-width:720px;">
         <thead class="bg-light">
             <tr>
                 <th scope="col" style="width:1%;" class="text-nowrap">Role</th>

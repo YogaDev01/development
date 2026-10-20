@@ -46,7 +46,7 @@
     </p>
 
     <div class="table-responsive">
-    <table class="table table-bordered mb-0" id="summaryResponTable" style="font-size:12.5px;min-width:820px;">
+    <table class="table table-bordered mb-0" id="summaryResponTable" data-ts-card="off" style="font-size:12.5px;min-width:820px;">
         <thead class="bg-light">
             <tr>
                 <th scope="col" class="text-nowrap sr-sort" data-key="user" role="button" tabindex="0" style="width:1%;">
