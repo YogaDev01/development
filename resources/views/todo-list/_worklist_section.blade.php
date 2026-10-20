@@ -153,7 +153,7 @@
                         $crAging = $cr->aging_days;
                         $crAgingClass = $crAging >= 3 ? 'text-danger' : ($crAging >= 1 ? 'rv-nob-item' : 'text-muted');
                     @endphp
-                    <tr class="{{ $indukBarisCr }} {{ $kelasSemuaCr }} todo-row {{ $crNobClass }}" style="display:none;"
+                    <tr class="{{ $indukBarisCr }} {{ $kelasSemuaCr }} todo-row {{ $crNobClass }}" data-export-key="cr:{{ $cr->id }}" style="display:none;"
                         data-pm="{{ $group['pm'] }}" data-po="{{ $poGroup['po'] }}" data-search="{{ $crSearch }}">
                         <td><input type="checkbox" class="todo-check" value="{{ $cr->id }}" data-amount="{{ $cr->amount }}"></td>
                         {{-- Jangan nowrap: nomor CR plus badge NOB bisa melebihi lebar

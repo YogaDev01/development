@@ -14,7 +14,7 @@ use Illuminate\Console\Command;
  * Dijalankan TIAP JAM (routes/console.php, ->hourly()). Untuk setiap user
  * ACTIVE yang mengaktifkan reminder dan jam ini cocok dengan jadwalnya
  * (mode 'fixed' = jam tertentu, 'interval' = tiap N jam), dihitung To-Do
- * List-nya secara LIVE lewat TodoService::build(). Jika masih ada item,
+ * List-nya secara LIVE lewat TodoService::pendingCounts() (definisi antrean yang sama dengan halaman Todo List). Jika masih ada item,
  * dikirim satu pengingat (lonceng in-app + WhatsApp bila di-opt-in). Bila
  * tidak ada item, tidak ada pengingat.
  *
@@ -41,7 +41,7 @@ class SendTodoReminders extends Command
                         continue;
                     }
 
-                    $count = count(TodoService::build($user));
+                    $count = TodoService::pendingTotal($user, TodoService::pendingCounts($user));
                     if ($count === 0) {
                         continue;
                     }

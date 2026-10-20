@@ -2,214 +2,148 @@
 
 namespace App\Services;
 
+use App\Http\Controllers\TodoListController;
 use App\Models\User;
-use App\Models\BudgetRequest;
-use App\Models\BudgetPlan;
-use App\Models\Project;
+use Illuminate\Support\Facades\Cache;
 
 /**
- * Menghitung daftar "To Do" untuk user saat ini — LIVE query terhadap status
- * record saat ini (bukan tabel tersendiri), jadi otomatis hilang dari daftar
- * begitu record-nya sudah diproses (status berubah). Sumber: Cost Request,
- * Budget Plan, Purchase Order, dan status Project Monitoring.
+ * SATU-SATUNYA sumber definisi antrean Todo List: siapa (role) menangani
+ * antrean apa, dan di status mana dokumennya mengantre.
+ *
+ * Dipakai oleh:
+ *  - TodoListController::buildWorklistData() — isi halaman Todo List &
+ *    blok "Perlu Tindakan" di Dashboard (gerbang role & status dibaca dari sini);
+ *  - hitungan ringan untuk badge sidebar (todo-list.has-pending) dan
+ *    pengingat terjadwal (todo:remind) lewat pendingCounts()/hasPending().
+ *
+ * Dengan begitu badge, pengingat, dan halaman tidak mungkin berbeda
+ * definisi. (Isi lama build() — daftar item bergaya "APPROVED = verifikasi
+ * Finance, REALIZED = Finance" — sudah usang dan dihapus.)
  */
 class TodoService
 {
-    private const CAP_PER_CATEGORY = 10;
+    /**
+     * Role yang TIDAK dibatasi Access Group (keputusan pemilik K3). Role lain
+     * — termasuk head, manager, supervisor, dan guest — dibatasi Access Group
+     * pada antrean yang dokumennya terikat proyek.
+     */
+    public const AKSES_PENUH_ROLES = [
+        'superadmin', 'approver', 'accounting', 'treasury',
+        'finance', 'finance_manager', 'collection', 'cost_control',
+    ];
 
-    public static function build(User $user): array
+    /**
+     * Role yang oleh scopeByRole() (Cost Request) diperlakukan istimewa di kode
+     * padahal BUKAN bagian dari AKSES_PENUH_ROLES. Pada Todo List keduanya tetap
+     * dibatasi Access Group untuk dokumen proyek.
+     */
+    public const ISTIMEWA_DI_KODE_BUKAN_K3 = ['admin', 'guest'];
+
+    /**
+     * key antrean => role penangan, status antrean (bila antrean berbasis status),
+     * dan apakah ikut hitungan "total" (sama dengan $totalPending di halaman).
+     */
+    public const QUEUES = [
+        // Cost Request — review berjenjang
+        'head'                    => ['roles' => ['superadmin', 'head'], 'status' => ['SUBMITTED']],
+        'cost_control_checked'    => ['roles' => ['superadmin', 'finance', 'finance_manager', 'cost_control'], 'status' => ['CHECKED']],
+        'ceo'                     => ['roles' => ['superadmin', 'approver', 'guest'], 'status' => ['VERIFIED']],
+        // Cost Request — pengaju
+        'managerRejected'         => ['roles' => ['superadmin', 'manager', 'supervisor'], 'status' => ['REJECTED']],
+        'managerPaid'             => ['roles' => ['superadmin', 'manager', 'supervisor'], 'status' => ['PAID', 'SETTLE_REJECTED']],
+        // Cost Request — settlement
+        'headSettlementCheck'     => ['roles' => ['superadmin', 'head'], 'status' => ['REALIZED']],
+        'financeSettlementVerify' => ['roles' => ['superadmin', 'finance', 'finance_manager', 'cost_control'], 'status' => ['SETTLE_CHECKED']],
+        'ceoSettlementClose'      => ['roles' => ['superadmin', 'finance_manager'], 'status' => ['SETTLE_VERIFIED']],
+        'approverSecondApprove'   => ['roles' => ['superadmin', 'approver'], 'status' => ['SETTLE_APPROVED']],
+        // Treasury
+        'secondPaymentPending'    => ['roles' => ['superadmin', 'treasury', 'finance', 'finance_manager']],
+        'treasuryBatchCreate'     => ['roles' => ['superadmin', 'treasury', 'finance', 'finance_manager'], 'status' => ['APPROVED']],
+        'treasuryBatchSecond'     => ['roles' => ['superadmin', 'treasury', 'finance', 'finance_manager'], 'total' => false],
+        'treasuryProcess'         => ['roles' => ['superadmin', 'approver', 'guest'], 'status' => ['PENDING_APPROVER']],
+        'treasuryReadyToPay'      => ['roles' => ['superadmin', 'treasury', 'finance', 'finance_manager'], 'status' => ['DONE']],
+        // Budget Plan
+        'budgetingHeadCheck'      => ['roles' => ['superadmin', 'head'], 'status' => ['SUBMITTED']],
+        'budgetingVerify'         => ['roles' => ['superadmin', 'finance', 'finance_manager'], 'status' => ['CHECKED']],
+        'budgetingCeoApprove'     => ['roles' => ['superadmin', 'approver', 'guest'], 'status' => ['VERIFIED']],
+        'budgetingClosingDue'     => ['roles' => ['superadmin', 'manager'], 'status' => ['CLOSING']],
+        'budgetingRejected'       => ['roles' => ['superadmin', 'manager'], 'status' => ['REJECTED']],
+        // Purchase Order, Invoice, Collection
+        'poSubmitted'             => ['roles' => ['superadmin', 'finance', 'finance_manager'], 'status' => ['SUBMITTED']],
+        'invoiceVerify'           => ['roles' => ['superadmin', 'finance_manager', 'accounting'], 'status' => ['SUBMITTED']],
+        'invoiceApprove'          => ['roles' => ['superadmin', 'finance_manager'], 'status' => ['VERIFIED']],
+        'collectionWaitingInvoice' => ['roles' => ['superadmin', 'collection']],
+    ];
+
+    /** Role penangan sebuah antrean. */
+    public static function roles(string $key): array
     {
-        $role = strtolower($user->role->name ?? '');
-        $items = [];
-
-        // Cost Request menunggu approval Head
-        if (in_array($role, ['superadmin', 'head'])) {
-            $items = array_merge($items, self::crItems(
-                BudgetRequest::where('status', 'SUBMITTED'),
-                'Menunggu approval Anda',
-                'cr-submitted',
-                'fa-file-invoice-dollar',
-                'warning'
-            ));
-        }
-
-        // Cost Request menunggu verifikasi Finance
-        if (in_array($role, ['superadmin', 'finance', 'finance_manager'])) {
-            $items = array_merge($items, self::crItems(
-                BudgetRequest::where('status', 'APPROVED'),
-                'Menunggu verifikasi Anda',
-                'cr-approved',
-                'fa-file-invoice-dollar',
-                'info'
-            ));
-
-            $items = array_merge($items, self::crItems(
-                BudgetRequest::where('status', 'REALIZED'),
-                'Realisasi menunggu verifikasi Anda',
-                'cr-realized',
-                'fa-receipt',
-                'info'
-            ));
-        }
-
-        // Cost Request sudah dibayar — milik sendiri, perlu Realisasi
-        $crPaidQuery = BudgetRequest::where('status', 'PAID');
-        if ($role !== 'superadmin') {
-            $crPaidQuery->where('applicant_id', $user->id);
-        }
-        $items = array_merge($items, self::crItems(
-            $crPaidQuery,
-            'Sudah dibayar — buat Realisasi',
-            'cr-paid',
-            'fa-money-check-alt',
-            'success'
-        ));
-
-        // Budget Plan — 4 tahap sama seperti Cost Request: Manager submit ->
-        // Head check -> Finance verify -> CEO approve (Active).
-        if (in_array($role, ['superadmin', 'head'])) {
-            $items = array_merge($items, self::budgetPlanItems(
-                BudgetPlan::where('status', 'SUBMITTED'),
-                'Menunggu approval Anda',
-                'bp-submitted',
-                'warning'
-            ));
-        }
-
-        if (in_array($role, ['superadmin', 'finance', 'finance_manager'])) {
-            $items = array_merge($items, self::budgetPlanItems(
-                BudgetPlan::where('status', 'CHECKED'),
-                'Menunggu verifikasi Anda',
-                'bp-checked',
-                'info'
-            ));
-
-            $items = array_merge($items, self::budgetPlanItems(
-                BudgetPlan::where('status', 'CLOSING'),
-                'Closing menunggu verifikasi Anda',
-                'bp-closing',
-                'info'
-            ));
-        }
-
-        if (in_array($role, ['superadmin', 'approver'])) {
-            $items = array_merge($items, self::budgetPlanItems(
-                BudgetPlan::where('status', 'VERIFIED'),
-                'Menunggu approval Anda',
-                'bp-verified',
-                'primary'
-            ));
-        }
-
-        // Purchase Order menunggu approval / verifikasi Finance
-        if (in_array($role, ['superadmin', 'finance', 'finance_manager'])) {
-            $items = array_merge($items, self::projectItems(
-                Project::where('status', 'SUBMITTED'),
-                'Menunggu approval Anda',
-                'po-submitted',
-                fn ($p) => route('project.index') . '?open=' . $p->id,
-                'warning'
-            ));
-
-            $items = array_merge($items, self::projectItems(
-                Project::where('status', 'CLOSING'),
-                'Closing menunggu verifikasi Anda',
-                'po-closing',
-                fn ($p) => route('project.index') . '?open=' . $p->id,
-                'info'
-            ));
-        }
-
-        // Purchase Order Waiting PO dengan No. PO sudah terisi — siap diaktifkan
-        if (in_array($role, ['superadmin', 'finance', 'finance_manager', 'head'])) {
-            $items = array_merge($items, self::projectItems(
-                Project::where('status', 'WAITING_PO')->whereHas('poNumbers'),
-                'Siap diaktifkan',
-                'po-waiting-activate',
-                fn ($p) => route('project.activate-form', $p->id),
-                'success'
-            ));
-        }
-
-        // Project Monitoring — milestone selesai tapi dokumen belum di-upload
-        if (in_array($role, ['superadmin', 'head'])) {
-            $items = array_merge($items, self::monitoringItems(
-                Project::where('status', 'WAITING_PO')->where('monitoring_po_received_status', 'DONE'),
-                'PO Received selesai — upload No. PO',
-                'mon-waiting-po',
-                'warning'
-            ));
-
-            $items = array_merge($items, self::monitoringItems(
-                Project::whereIn('status', array_merge(['WAITING_PO', 'ACTIVE'], Project::PARTIAL_STATUSES))->where('monitoring_bast_status', 'DONE'),
-                'BAST selesai — submit BAST',
-                'mon-waiting-bast',
-                'warning'
-            ));
-        }
-
-        // Payment selesai tapi PO belum diajukan Closing
-        if (in_array($role, ['superadmin', 'finance', 'finance_manager', 'head'])) {
-            $items = array_merge($items, self::monitoringItems(
-                Project::whereIn('status', array_merge(['WAITING_PO', 'ACTIVE'], Project::PARTIAL_STATUSES))->where('monitoring_payment_status', 'DONE'),
-                'Payment selesai — ajukan Closing',
-                'mon-waiting-closed',
-                'success'
-            ));
-        }
-
-        return $items;
+        return self::QUEUES[$key]['roles'];
     }
 
-    private static function crItems($query, string $message, string $category, string $icon, string $color): array
+    /** Status dokumen yang mengantre di antrean ini. */
+    public static function statuses(string $key): array
     {
-        return $query->orderByDesc('created_at')->limit(self::CAP_PER_CATEGORY)->get()
-            ->map(fn ($cr) => [
-                'category' => $category,
-                'icon'     => $icon,
-                'color'    => $color,
-                'title'    => $cr->code . ' — ' . ($cr->description ?: '-'),
-                'message'  => $message,
-                'url'      => route('budget-request.index') . '?open=' . $cr->id,
-            ])->all();
+        return self::QUEUES[$key]['status'] ?? [];
     }
 
-    private static function budgetPlanItems($query, string $message, string $category, string $color): array
+    /** Apakah user (role efektif, ikut "View As") menangani antrean ini? */
+    public static function allows(User $user, string $key): bool
     {
-        return $query->orderByDesc('created_at')->limit(self::CAP_PER_CATEGORY)->get()
-            ->map(fn ($bp) => [
-                'category' => $category,
-                'icon'     => 'fa-wallet',
-                'color'    => $color,
-                'title'    => $bp->code . ' — ' . ($bp->description ?: '-'),
-                'message'  => $message,
-                'url'      => route('budget-plan.index') . '?open=' . $bp->id,
-            ])->all();
+        return $user->hasRole(self::roles($key));
     }
 
-    private static function projectItems($query, string $message, string $category, callable $urlResolver, string $color): array
+    /** Role user (efektif) dibatasi Access Group? Lawan dari AKSES_PENUH_ROLES. */
+    public static function terbatasAccessGroup(User $user): bool
     {
-        return $query->orderByDesc('created_at')->limit(self::CAP_PER_CATEGORY)->get()
-            ->map(fn ($p) => [
-                'category' => $category,
-                'icon'     => 'fa-file-contract',
-                'color'    => $color,
-                'title'    => $p->code . ' — ' . $p->name,
-                'message'  => $message,
-                'url'      => $urlResolver($p),
-            ])->all();
+        $nama = strtolower($user->effectiveRole()?->name ?? '');
+
+        return ! in_array($nama, self::AKSES_PENUH_ROLES, true);
     }
 
-    private static function monitoringItems($query, string $message, string $category, string $color): array
+    /**
+     * Jumlah dokumen per antrean untuk user — hanya hitungan, tanpa CoA,
+     * summary, atau respon time. Gerbang role dan scope visibilitas sama
+     * dengan halaman (dibangun oleh TodoListController::queueQuery()).
+     *
+     * @return array<string,int> key antrean => jumlah (hanya antrean milik user)
+     */
+    public static function pendingCounts(User $user): array
     {
-        return $query->orderByDesc('id')->limit(self::CAP_PER_CATEGORY)->get()
-            ->map(fn ($p) => [
-                'category' => $category,
-                'icon'     => 'fa-binoculars',
-                'color'    => $color,
-                'title'    => $p->code . ' — ' . $p->name,
-                'message'  => $message,
-                'url'      => route('project-monitoring.show', $p->id),
-            ])->all();
+        return app(TodoListController::class)->pendingCounts($user);
+    }
+
+    /** Jumlah tugas yang sama dengan $totalPending di halaman (tanpa batch second). */
+    public static function pendingTotal(User $user, ?array $counts = null): int
+    {
+        $total = 0;
+        foreach ($counts ?? self::pendingCounts($user) as $key => $n) {
+            if (self::QUEUES[$key]['total'] ?? true) {
+                $total += $n;
+            }
+        }
+
+        return $total;
+    }
+
+    /** Lama cache hasPending() per user (detik) — badge sidebar dipoll berkala. */
+    public const HAS_PENDING_TTL = 60;
+
+    /**
+     * Ada tugas menunggu? Definisi sama dengan $hasAnyTask di halaman, tetapi
+     * berhenti di antrean pertama yang berisi (exists) dan di-cache singkat.
+     * Kunci cache memuat id user DAN id role efektif, jadi "View As" superadmin
+     * tidak memakai hasil milik role aslinya. Halaman Todo List dan todo:remind
+     * tetap memakai pendingCounts() yang penuh.
+     */
+    public static function hasPending(User $user): bool
+    {
+        $kunci = 'todo-list.has-pending.u' . $user->id . '.r' . ($user->effectiveRole()?->id ?? 0);
+
+        return Cache::remember(
+            $kunci,
+            self::HAS_PENDING_TTL,
+            fn () => app(TodoListController::class)->anyPending($user)
+        );
     }
 }

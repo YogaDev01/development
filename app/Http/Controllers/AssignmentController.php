@@ -32,11 +32,13 @@ class AssignmentController extends Controller
     /** Validasi lampiran — disamakan dengan lampiran Cost Request. */
     private const ATTACHMENT_RULES = 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx';
 
+    private const MSG_STATUS_BERUBAH = 'Status sudah berubah, muat ulang.';
+
     public function index(Request $request)
     {
         $user = Auth::user();
 
-        [$assignedToMe, $createdByMe] = $this->listsFor($user);
+        [$assignedToMe, $createdByMe] = $this->listsFor($user, semua: true);
 
         $assignees = User::where('status', 'ACTIVE')
             ->where('id', '!=', $user->id)
@@ -54,11 +56,15 @@ class AssignmentController extends Controller
             'title'         => 'required|string|max:255',
             'description'   => 'nullable|string|max:5000',
             'assignee_id'   => 'required|exists:users,id',
-            'due_date'      => 'nullable|date',
+            'due_date'      => 'nullable|date|after_or_equal:today',
             'priority'      => 'required|in:' . implode(',', Assignment::PRIORITIES),
             'attachments'   => 'nullable|array',
             'attachments.*' => self::ATTACHMENT_RULES,
         ]);
+
+        if ((int) $data['assignee_id'] === $user->id) {
+            return back()->withInput()->with('error', 'Tugas tidak bisa ditugaskan ke diri sendiri.');
+        }
 
         // Penerima harus user aktif (tidak bisa menugaskan ke akun nonaktif).
         $assignee = User::where('status', 'ACTIVE')->find($data['assignee_id']);
@@ -116,30 +122,63 @@ class AssignmentController extends Controller
             'attachments.*' => self::ATTACHMENT_RULES,
         ]);
 
+        // Tanggal lama boleh dipertahankan walau sudah lewat; hanya tanggal
+        // yang diubah yang tidak boleh di masa lalu.
+        if (! empty($data['due_date'])) {
+            $dueBaru = \Illuminate\Support\Carbon::parse($data['due_date'])->startOfDay();
+            $berubah = ! $assignment->due_date || ! $dueBaru->isSameDay($assignment->due_date);
+            if ($berubah && $dueBaru->lt(today())) {
+                return back()->withInput()->with('error', 'Tenggat tidak boleh di masa lalu.');
+            }
+        }
+
+        if ((int) $data['assignee_id'] === $assignment->assigner_id) {
+            return back()->withInput()->with('error', 'Tugas tidak bisa ditugaskan ke pemberi tugasnya sendiri.');
+        }
+
         $assigneeBaru = User::where('status', 'ACTIVE')->find($data['assignee_id']);
         if (! $assigneeBaru) {
             return back()->withInput()->with('error', 'Penerima tugas tidak ditemukan atau tidak aktif.');
         }
 
         $penerimaLama = $assignment->assignee_id;
+        $diganti      = (int) $data['assignee_id'] !== $penerimaLama;
 
-        DB::transaction(function () use ($assignment, $data, $request) {
-            $assignment->update([
+        $berhasil = DB::transaction(function () use ($assignment, $data, $request, $diganti) {
+            $atribut = [
                 'title'       => $data['title'],
                 'description' => $data['description'] ?? null,
                 'assignee_id' => $data['assignee_id'],
                 'due_date'    => $data['due_date'] ?? null,
                 'priority'    => $data['priority'],
-            ]);
+            ];
+            // Penerima baru memulai dari awal: belum dibaca, belum dikerjakan.
+            if ($diganti) {
+                $atribut += ['status' => 'PENDING', 'read_at' => null, 'started_at' => null];
+            }
+
+            if (! $this->transisi($assignment, Assignment::OPEN_STATUSES, $atribut)) {
+                return false;
+            }
 
             $this->saveAttachments($assignment, $request);
 
-            AssignmentLog::record($assignment, 'update');
+            AssignmentLog::record($assignment, $diganti ? 'reassign' : 'update');
+
+            return true;
         });
 
+        if (! $berhasil) {
+            return back()->with('error', self::MSG_STATUS_BERUBAH);
+        }
+
         // Beri tahu penerima (baru maupun yang lama, kalau penerima dipindah).
-        $this->notify($assigneeBaru, 'Tugas diperbarui', $user->name . ' memperbarui tugas: ' . $assignment->title);
-        if ($penerimaLama != $assignment->assignee_id) {
+        $this->notify(
+            $assigneeBaru,
+            $diganti ? 'Tugas baru untuk Anda' : 'Tugas diperbarui',
+            $user->name . ($diganti ? ' memberi Anda tugas: ' : ' memperbarui tugas: ') . $assignment->title
+        );
+        if ($diganti) {
             $this->notify(
                 User::find($penerimaLama),
                 'Tugas dialihkan',
@@ -165,7 +204,9 @@ class AssignmentController extends Controller
             return back()->with('error', 'Tugas ini tidak sedang menunggu dikerjakan.');
         }
 
-        $assignment->update(['status' => 'ON_PROGRESS', 'started_at' => now()]);
+        if (! $this->transisi($assignment, ['READ'], ['status' => 'ON_PROGRESS', 'started_at' => now()])) {
+            return back()->with('error', self::MSG_STATUS_BERUBAH);
+        }
         AssignmentLog::record($assignment, 'start_progress');
 
         $this->notify($assignment->assigner, 'Tugas mulai dikerjakan', $user->name . ' mulai mengerjakan tugas: ' . $assignment->title);
@@ -187,7 +228,9 @@ class AssignmentController extends Controller
 
         $notes = $request->validate(['notes' => 'nullable|string|max:500'])['notes'] ?? null;
 
-        $assignment->update(['status' => 'CLOSED', 'done_at' => now()]);
+        if (! $this->transisi($assignment, Assignment::OPEN_STATUSES, ['status' => 'CLOSED', 'done_at' => now()])) {
+            return back()->with('error', self::MSG_STATUS_BERUBAH);
+        }
         AssignmentLog::record($assignment, 'close', $notes);
 
         // Kabari pemberi tugas kalau yang menyelesaikan adalah penerima.
@@ -216,7 +259,9 @@ class AssignmentController extends Controller
 
         $notes = $request->validate(['notes' => 'nullable|string|max:500'])['notes'] ?? null;
 
-        $assignment->update(['status' => 'CANCELLED', 'cancelled_at' => now()]);
+        if (! $this->transisi($assignment, Assignment::OPEN_STATUSES, ['status' => 'CANCELLED', 'cancelled_at' => now()])) {
+            return back()->with('error', self::MSG_STATUS_BERUBAH);
+        }
         AssignmentLog::record($assignment, 'cancel', $notes);
 
         if ($user->id !== $assignment->assignee_id) {
@@ -240,13 +285,16 @@ class AssignmentController extends Controller
             return back()->with('error', 'Tugas ini masih terbuka.');
         }
 
-        $assignment->update([
+        $dibuka = $this->transisi($assignment, ['CLOSED', 'CANCELLED'], [
             'status'       => 'PENDING',
             'read_at'      => null,
             'started_at'   => null,
             'done_at'      => null,
             'cancelled_at' => null,
         ]);
+        if (! $dibuka) {
+            return back()->with('error', self::MSG_STATUS_BERUBAH);
+        }
         AssignmentLog::record($assignment, 'reopen');
 
         $this->notify($assignment->assignee, 'Tugas dibuka kembali', 'Tugas "' . $assignment->title . '" dibuka kembali.');
@@ -289,7 +337,7 @@ class AssignmentController extends Controller
      * tugas membuka ini untuk pertama kali (status masih PENDING), transisi
      * otomatis ke READ dicatat di sini — inilah yang dimaksud "dibaca".
      */
-    public function logs(Assignment $assignment)
+    public function logs(Request $request, Assignment $assignment)
     {
         $user = Auth::user();
 
@@ -297,7 +345,10 @@ class AssignmentController extends Controller
             abort(403);
         }
 
-        if ($assignment->status === 'PENDING' && $user->id === $assignment->assignee_id) {
+        // Prefetch browser tidak boleh menandai "dibaca" — hanya pembukaan nyata.
+        $prefetch = str_contains(strtolower($request->header('Sec-Purpose', '') . ' ' . $request->header('Purpose', '')), 'prefetch');
+
+        if (! $prefetch && $assignment->status === 'PENDING' && $user->id === $assignment->assignee_id) {
             $assignment->update(['status' => 'READ', 'read_at' => now()]);
             AssignmentLog::record($assignment, 'read');
         }
@@ -313,13 +364,31 @@ class AssignmentController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    /** Daftar tugas untuk Todo List / halaman index: [ditugaskan ke saya, dibuat saya]. */
-    public function listsFor(User $user): array
+    /** Batas hari tugas CLOSED/CANCELLED yang masih ditampilkan di Todo List. */
+    public const RIWAYAT_HARI = 30;
+
+    /**
+     * Daftar tugas untuk Todo List / halaman index: [ditugaskan ke saya, dibuat saya].
+     * Tugas terbuka selalu tampil; yang CLOSED/CANCELLED dibatasi RIWAYAT_HARI
+     * hari terakhir kecuali $semua (halaman /assignment).
+     */
+    public function listsFor(User $user, bool $semua = false): array
     {
+        $batasi = function ($q) use ($semua) {
+            if ($semua) {
+                return;
+            }
+            $q->where(function ($w) {
+                $w->whereIn('status', Assignment::OPEN_STATUSES)
+                  ->orWhereRaw('COALESCE(done_at, cancelled_at, updated_at) >= ?', [now()->subDays(self::RIWAYAT_HARI)]);
+            });
+        };
+
         $urutanStatus = "FIELD(status, 'ON_PROGRESS', 'READ', 'PENDING', 'CLOSED', 'CANCELLED')";
 
         $assignedToMe = Assignment::with(['assigner', 'assignee', 'attachments'])
             ->where('assignee_id', $user->id)
+            ->tap($batasi)
             ->orderByRaw($urutanStatus)
             ->orderByRaw('due_date IS NULL, due_date ASC')
             ->orderByDesc('id')
@@ -327,12 +396,32 @@ class AssignmentController extends Controller
 
         $createdByMe = Assignment::with(['assigner', 'assignee', 'attachments'])
             ->where('assigner_id', $user->id)
+            ->tap($batasi)
             ->orderByRaw($urutanStatus)
             ->orderByRaw('due_date IS NULL, due_date ASC')
             ->orderByDesc('id')
             ->get();
 
         return [$assignedToMe, $createdByMe];
+    }
+
+    /**
+     * Update bersyarat: hanya berhasil bila status baris MASIH salah satu dari
+     * $dari (mencegah dua aksi bersamaan sama-sama lolos dari pengecekan di
+     * memori). Mengembalikan true bila tepat satu baris berubah; model ikut
+     * disegarkan supaya log/notifikasi memakai keadaan terbaru.
+     */
+    private function transisi(Assignment $assignment, array $dari, array $atribut): bool
+    {
+        $baris = Assignment::whereKey($assignment->getKey())
+            ->whereIn('status', $dari)
+            ->update($atribut);
+
+        if ($baris === 1) {
+            $assignment->refresh();
+        }
+
+        return $baris === 1;
     }
 
     private function saveAttachments(Assignment $assignment, Request $request): void

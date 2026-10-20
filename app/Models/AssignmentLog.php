@@ -41,6 +41,7 @@ class AssignmentLog extends Model
         'close'          => 'Ditutup',
         'cancel'         => 'Dibatalkan',
         'reopen'         => 'Dibuka Kembali',
+        'reassign'       => 'Penerima Diganti',
     ];
 
     /** Dirender berbeda di timeline (bubble komentar, bukan badge status). */

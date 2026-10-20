@@ -22,13 +22,24 @@ class TodoReminderCommandTest extends TestCase
         parent::tearDown();
     }
 
+    /**
+     * Head bukan role K3 (dibatasi Access Group): CR SUBMITTED baru muncul di
+     * antreannya bila proyeknya ada di Access Group head itu.
+     */
+    private function headDenganCrSubmitted()
+    {
+        $plan = $this->makeBudgetPlan();
+        $this->makeCostRequest(['status' => 'SUBMITTED', 'budget_plan' => $plan]);
+
+        return $this->giveProjectAccess($this->userWithRole('head'), $plan->project);
+    }
+
     public function test_kirim_reminder_saat_due_dan_ada_todo(): void
     {
         Carbon::setTestNow(Carbon::create(2026, 10, 8, 8, 0, 0)); // jam default 08:00
         Notification::fake();
 
-        $head = $this->userWithRole('head');
-        $this->makeCostRequest(['status' => 'SUBMITTED']); // tugas approval Head
+        $head = $this->headDenganCrSubmitted(); // tugas approval Head (dalam Access Group-nya)
 
         $this->artisan('todo:remind')->assertSuccessful();
 
@@ -54,8 +65,7 @@ class TodoReminderCommandTest extends TestCase
         Carbon::setTestNow(Carbon::create(2026, 10, 8, 9, 0, 0)); // 09:00 bukan jadwal default
         Notification::fake();
 
-        $head = $this->userWithRole('head');
-        $this->makeCostRequest(['status' => 'SUBMITTED']);
+        $head = $this->headDenganCrSubmitted();
 
         $this->artisan('todo:remind')->assertSuccessful();
 
@@ -67,9 +77,8 @@ class TodoReminderCommandTest extends TestCase
         Carbon::setTestNow(Carbon::create(2026, 10, 8, 8, 0, 0));
         Notification::fake();
 
-        $head = $this->userWithRole('head');
+        $head = $this->headDenganCrSubmitted();
         $head->update(['notification_prefs' => ['todo_reminder' => ['enabled' => false]]]);
-        $this->makeCostRequest(['status' => 'SUBMITTED']);
 
         $this->artisan('todo:remind')->assertSuccessful();
 
