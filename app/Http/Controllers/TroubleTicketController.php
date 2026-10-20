@@ -294,6 +294,28 @@ class TroubleTicketController extends Controller
             ->values();
     }
 
+    /**
+     * Teknisi hanya boleh memilih Budget Plan milik CUSTOMER team-nya sendiri
+     * — customer dari team tempat supervisornya jadi leader (20 Okt 2026).
+     *
+     * Peran pengawas tidak dibatasi di sini: aturannya sengaja hanya berlaku
+     * bagi teknisi tiket ini, dan hanya bila team-nya memang punya customer.
+     */
+    private function abortIfBudgetPlanLuarCustomer(User $user, TroubleTicket $ticket, int $budgetPlanId): void
+    {
+        $customerTeam = $this->teamCustomerIds($user);
+
+        if ($customerTeam->isEmpty() || ! $this->workflow->isTechnician($user, $ticket)) {
+            return;
+        }
+
+        $customerPlan = BudgetPlan::with('project:id,customer_id')->find($budgetPlanId)?->project?->customer_id;
+
+        if ($customerPlan === null || ! $customerTeam->contains((int) $customerPlan)) {
+            abort(403, 'Budget Plan ini di luar customer team Anda.');
+        }
+    }
+
     /** Teknisi tidak boleh membuat tiket; ia hanya mengerjakan yang ditugaskan. */
     private function abortIfCannotCreate(): void
     {
@@ -478,11 +500,22 @@ class TroubleTicketController extends Controller
            ia tidak terikat customer, dan dulu membanjiri daftar.
            Sub-itemnya dikirim sekali untuk disaring di browser, jadi tidak ada
            permintaan tambahan saat budget plan diganti. */
-        $customerIds = $this->teamCustomerIds($user)
-            // Customer TIKET selalu ikut: supervisor yang team-nya memegang
-            // customer lain (atau belum diisi) tetap bisa menganggarkan tiket
-            // yang jadi tanggung jawabnya — tanpa ini daftarnya kosong.
-            ->push($ticket->customer_id)
+        $customerTeam = $this->teamCustomerIds($user);
+
+        /* TEKNISI dikunci ke customer team-nya sendiri — customer dari team
+           tempat supervisornya jadi leader (keputusan 20 Okt 2026). Customer
+           TIKET tidak lagi otomatis ikut untuknya: pengajuan biaya harus jatuh
+           ke pagu customer yang memang jadi tanggung jawab supervisornya,
+           bukan ke pagu customer lain yang kebetulan punya tiket itu.
+
+           Peran pengawas tetap memakai customer tiket sebagai cadangan:
+           supervisor yang team-nya memegang customer lain (atau belum diisi)
+           dan superadmin yang tidak terikat team mana pun harus tetap bisa
+           menganggarkan tiket yang jadi tanggung jawabnya — tanpa itu
+           daftarnya kosong sama sekali. */
+        $kunciKeTeam = $this->workflow->isTechnician($user, $ticket) && $customerTeam->isNotEmpty();
+
+        $customerIds = ($kunciKeTeam ? $customerTeam : $customerTeam->push($ticket->customer_id))
             ->filter()
             ->unique()
             ->values();
@@ -730,6 +763,12 @@ class TroubleTicketController extends Controller
             'budget_plan_id.required' => 'Budget Plan wajib dipilih.',
             'costs.required' => 'Minimal satu baris item biaya wajib diisi.',
         ]);
+
+        /* Gerbang yang sama dengan penyaringan daftar di show(): teknisi hanya
+           boleh menganggarkan dari pagu CUSTOMER team-nya sendiri. Daftar di
+           form sudah disaring, tapi id-nya tetap datang dari browser — tanpa
+           pemeriksaan ini batasannya cuma tampilan (20 Okt 2026). */
+        $this->abortIfBudgetPlanLuarCustomer(Auth::user(), $ticket, (int) $data['budget_plan_id']);
 
         $this->workflow->createPlan(
             $ticket, Auth::user(), $data['visit_site'], $data['target_online'] ?? null, $data['reason'] ?? null,
