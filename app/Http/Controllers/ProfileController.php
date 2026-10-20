@@ -123,8 +123,7 @@ class ProfileController extends Controller
      * Pemetaan key antrean (TodoListController::actionQueues) ke 3 modul tabel
      * yang ditampilkan di Profil: Cost Request, Budgeting, Purchase Order.
      * Tahap Treasury/Settlement bagian dari alur Cost Request; Invoice &
-     * Collection bagian dari alur Purchase Order. Milestone (monitoring) tidak
-     * masuk ketiga tabel ini.
+     * Collection bagian dari alur Purchase Order.
      */
     private const TODO_MODULE_MAP = [
         'Cost Request' => [

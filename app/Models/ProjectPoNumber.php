@@ -193,10 +193,25 @@ class ProjectPoNumber extends Model
     public function punyaInvoiceLamaBelumTertaut(?int $kecualiInvoiceId = null): bool
     {
         return $this->invoices()
-            ->where('status', '!=', 'CANCELLED')
-            ->whereNull('project_po_bast_id')
+            ->tap(fn ($q) => self::batasInvoiceLamaBelumTertaut($q))
             ->when($kecualiInvoiceId, fn ($q) => $q->where('id', '!=', $kecualiInvoiceId))
             ->exists();
+    }
+
+    /**
+     * Batasan query invoice yang dimaksud punyaInvoiceLamaBelumTertaut(): aktif
+     * (bukan CANCELLED; soft-deleted dikecualikan global scope Invoice) dan belum
+     * tertaut BAST. Satu sumber definisi, dipakai juga oleh scopeTanpaInvoiceLamaBelumTertaut().
+     */
+    public static function batasInvoiceLamaBelumTertaut($query)
+    {
+        return $query->where('status', '!=', 'CANCELLED')->whereNull('project_po_bast_id');
+    }
+
+    /** No. PO yang TIDAK punya invoice lama aktif yang belum tertaut BAST. */
+    public function scopeTanpaInvoiceLamaBelumTertaut($query)
+    {
+        return $query->whereDoesntHave('invoices', fn ($q) => self::batasInvoiceLamaBelumTertaut($q));
     }
 
     /**

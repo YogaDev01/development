@@ -42,6 +42,8 @@ class Assignment extends Model
     ];
 
     protected $casts = [
+        'assigner_id'  => 'integer',
+        'assignee_id'  => 'integer',
         'due_date'     => 'date',
         'read_at'      => 'datetime',
         'started_at'   => 'datetime',

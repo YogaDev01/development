@@ -9,7 +9,6 @@ use App\Models\BudgetRequest;
 use App\Models\DailyTransaction;
 use App\Models\Invoice;
 use App\Models\Project;
-use App\Models\ProjectDetail;
 use App\Models\ProjectPoNumber;
 use App\Models\RequestStatusLog;
 use App\Models\User;
@@ -33,16 +32,17 @@ class TodoListController extends Controller
      */
     use ScopesBudgetPlanVisibility;
 
-    /** Role yang lihat semua PO tanpa dibatasi Access Group — dipakai section reminder Milestone (sama seperti ProjectMonitoringController::isPrivileged()). */
-    private const PROJECT_PRIVILEGED_ROLES = ['superadmin', 'admin', 'approver', 'finance', 'finance_manager', 'cost_control', 'treasury', 'collection', 'accounting', 'guest'];
+    /** Rentang (hari) log yang dihitung pada tabel Respon Time. */
+    private const RESPONTIME_DAYS = 90;
+
+    /** Lama cache tabel Respon Time (menit) — ringkasan lintas user, bukan data per user. */
+    private const RESPONTIME_CACHE_MINUTES = 10;
 
     /**
      * Todo List Request — worklist lintas modul per role: Cost Request,
-     * Budgeting, Treasury (Daily Transaction), Invoice & Cash Receipt, dan
-     * reminder Milestone (Project Monitoring, yang tidak punya alur approval
-     * jadi bukan worklist approve/reject seperti modul lain). Accounting/
-     * Collection belum punya modul nyata untuk di-wire — sengaja tetap kosong
-     * (lihat blok "Coming Soon" di bawah).
+     * Budgeting, Treasury (Daily Transaction), Invoice & Cash Receipt,
+     * Purchase Order, dan Collection. (Project Monitoring dikeluarkan dari
+     * Todo List atas permintaan pemilik — alasan performa.)
      */
     public function index()
     {
@@ -64,6 +64,26 @@ class TodoListController extends Controller
             ]);
             $data = $this->emptyWorklistData();
             $data['loadError'] = true;
+        }
+
+        // Tabel ringkasan & respon time hanya dipakai halaman ini — sengaja
+        // tidak ada di buildWorklistData() agar Dashboard (actionQueues) tidak
+        // ikut menanggung query agregat yang berat. Masing-masing punya try
+        // sendiri: kegagalan salah satunya tidak boleh menjatuhkan worklist
+        // maupun tabel yang lain.
+        $kosong = $this->emptyWorklistData();
+        foreach ([
+            'summaryTable'    => fn () => $this->buildSummaryTable(),
+            'respontimeTable' => fn () => $this->cachedRespontimeTable(),
+        ] as $kunci => $bangun) {
+            try {
+                $data[$kunci] = $bangun();
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('TodoListController::index gagal membangun ' . $kunci, [
+                    'user_id' => $user->id, 'error' => $e->getMessage(),
+                ]);
+                $data[$kunci] = $kosong[$kunci];
+            }
         }
 
         // Assignment — penugasan bebas antar-user. Sumber data PERSISTEN
@@ -186,25 +206,6 @@ class TodoListController extends Controller
             ];
         }
 
-        /*
-          Reminder Milestone tidak punya alur approval sehingga tidak ikut
-          $totalPending di buildWorklistData(). Tetap ditampilkan karena tetap
-          menuntut tindakan, tapi memakai overdue_label, bukan aging_label.
-        */
-        $milestone = collect($data['milestoneOverdue']);
-        if ($milestone->isNotEmpty()) {
-            $terlama = $milestone->sortByDesc(fn ($m) => $m->overdue_days)->first();
-            $antrean[] = [
-                'key'   => 'milestone',
-                'label' => 'Milestone Lewat Tenggat',
-                'icon'  => 'fas fa-bell',
-                'tone'  => 'danger',
-                'count' => $milestone->count(),
-                'aging' => $terlama?->overdue_label ?? '-',
-                'url'   => $todoUrl ? $todoUrl . '#tl-milestone' : null,
-            ];
-        }
-
         return [
             'queues'         => $antrean,
             'total'          => $data['totalPending'],
@@ -232,7 +233,7 @@ class TodoListController extends Controller
             'treasuryBatchSecond' => collect(), 'batchSourceFunds' => collect(),
             'treasuryProcess' => collect(), 'treasuryReadyToPay' => collect(),
             'poSubmitted' => collect(),
-            'invoiceVerify' => collect(), 'invoiceApprove' => collect(), 'milestoneOverdue' => collect(),
+            'invoiceVerify' => collect(), 'invoiceApprove' => collect(),
             'collectionWaitingInvoice' => collect(),
             'comingSoonRoles' => [], 'totalPending' => 0, 'maxAging' => '0 hari', 'completedToday' => 0,
             'hasAnyTask' => false, 'hasAnySection' => false,
@@ -260,33 +261,33 @@ class TodoListController extends Controller
         $sections = [];
 
         // Head — SUBMITTED, grouped per Budget Plan, bulk approve/reject.
-        if ($user->hasRole(['superadmin', 'head'])) {
+        if (TodoService::allows($user, 'head')) {
             $sections['head'] = [
                 'title'        => 'Menunggu Approval Head',
                 'status_label' => 'Submitted',
-                'groups'       => $this->buildPoGroups('SUBMITTED', $denganCoa),
+                'groups'       => $this->buildPoGroups(TodoService::statuses('head'), $denganCoa),
                 'approve_url'  => route('budget-request.review-bulk-approve'),
                 'reject_url'   => route('budget-request.review-bulk-reject'),
             ];
         }
 
         // Cost Control — verifikasi CHECKED, grouped per Budget Plan, bulk approve/reject.
-        if ($user->hasRole(['superadmin', 'finance', 'finance_manager', 'cost_control'])) {
+        if (TodoService::allows($user, 'cost_control_checked')) {
             $sections['cost_control_checked'] = [
                 'title'        => 'Menunggu Verifikasi Cost Control',
                 'status_label' => 'Checked',
-                'groups'       => $this->buildPoGroups('CHECKED', $denganCoa),
+                'groups'       => $this->buildPoGroups(TodoService::statuses('cost_control_checked'), $denganCoa),
                 'approve_url'  => route('budget-request.review-bulk-approve'),
                 'reject_url'   => route('budget-request.review-bulk-reject'),
             ];
         }
 
         // CEO / Approver — VERIFIED, grouped per Budget Plan, bulk approve/reject.
-        if ($user->hasRole(['superadmin', 'approver', 'guest'])) {
+        if (TodoService::allows($user, 'ceo')) {
             $sections['ceo'] = [
                 'title'        => 'Menunggu Approval CEO',
                 'status_label' => 'Verified',
-                'groups'       => $this->buildPoGroups('VERIFIED', $denganCoa),
+                'groups'       => $this->buildPoGroups(TodoService::statuses('ceo'), $denganCoa),
                 'approve_url'  => route('budget-request.review-bulk-approve'),
                 'reject_url'   => route('budget-request.review-bulk-reject'),
             ];
@@ -297,10 +298,9 @@ class TodoListController extends Controller
         $managerPaid     = collect();
         $budgetPlanRelations = ['budgetPlan.project.customer', 'budgetPlan.costCenter'];
 
-        if ($user->hasRole(['superadmin', 'manager', 'supervisor'])) {
-            $rejectedQuery = BudgetRequest::with(array_merge(['type', 'beneficiary', 'statusLogs'], $budgetPlanRelations))
-                ->where('status', 'REJECTED');
-            $this->scopeByRole($rejectedQuery);
+        if (TodoService::allows($user, 'managerRejected')) {
+            $rejectedQuery = $this->queueQuery('managerRejected')
+                ->with(array_merge(['type', 'beneficiary', 'statusLogs'], $budgetPlanRelations));
             $managerRejected = $rejectedQuery->latest()->get()
                 ->map(function ($cr) {
                     $cr->rejection_log      = $cr->latestRejectionLog();
@@ -314,9 +314,8 @@ class TodoListController extends Controller
             // SETTLE_REJECTED ikut daftar yang sama dengan PAID: dua-duanya
             // menunggu pengaju mengisi/mengajukan ulang Settlement lewat form
             // yang sama (realize.blade.php).
-            $paidQuery = BudgetRequest::with(array_merge(['type', 'beneficiary', 'statusLogs'], $budgetPlanRelations))
-                ->whereIn('status', ['PAID', 'SETTLE_REJECTED']);
-            $this->scopeByRole($paidQuery);
+            $paidQuery = $this->queueQuery('managerPaid')
+                ->with(array_merge(['type', 'beneficiary', 'statusLogs'], $budgetPlanRelations));
             $managerPaid = $paidQuery->latest()->get()
                 ->map(function ($cr) {
                     $cr->budget_plan_label = $this->budgetPlanLabel($cr->budgetPlan);
@@ -358,28 +357,28 @@ class TodoListController extends Controller
 
         // Head — Settlement Check (REALIZED -> SETTLE_CHECKED).
         $headSettlementCheck = collect();
-        if ($user->hasRole(['superadmin', 'head'])) {
-            $headSettlementCheck = $addRefund($this->buildPoGroups('REALIZED', $denganCoa));
+        if (TodoService::allows($user, 'headSettlementCheck')) {
+            $headSettlementCheck = $addRefund($this->buildPoGroups(TodoService::statuses('headSettlementCheck'), $denganCoa));
         }
 
         // Finance/Cost Control — Settlement Verify (SETTLE_CHECKED -> SETTLE_VERIFIED).
         $financeSettlementVerify = collect();
-        if ($user->hasRole(['superadmin', 'finance', 'finance_manager', 'cost_control'])) {
-            $financeSettlementVerify = $addRefund($this->buildPoGroups('SETTLE_CHECKED', $denganCoa));
+        if (TodoService::allows($user, 'financeSettlementVerify')) {
+            $financeSettlementVerify = $addRefund($this->buildPoGroups(TodoService::statuses('financeSettlementVerify'), $denganCoa));
         }
 
         // Finance Manager — Settlement Close (SETTLE_VERIFIED -> CLOSED). Diblokir
         // di backend (ceoCloseSettlement()) selama masih ada Second Payment
         // PENDING — ditandai di sini supaya Blade bisa tampilkan alasannya.
         $ceoSettlementClose = collect();
-        if ($user->hasRole(['superadmin', 'finance_manager'])) {
+        if (TodoService::allows($user, 'ceoSettlementClose')) {
             /*
             | Satu antrean Finance Manager di status SETTLE_VERIFIED, dua aksi:
             |   tanpa Expense Claim -> Close
             |   ada Expense Claim   -> Settle Approve / Reject, lanjut ke
             |                          antrean Second Approve milik Approver
             */
-            $ceoSettlementClose = $addRefund($this->buildPoGroups('SETTLE_VERIFIED', $denganCoa));
+            $ceoSettlementClose = $addRefund($this->buildPoGroups(TodoService::statuses('ceoSettlementClose'), $denganCoa));
             foreach ($ceoSettlementClose as $po) {
                 foreach ($po['plans'] as $group) {
                     foreach ($group['items'] as $cr) {
@@ -394,8 +393,8 @@ class TodoListController extends Controller
         // Approver — Second Approve Expense Claim (SETTLE_APPROVED ->
         // SECOND_APPROVED, lalu menunggu Treasury membuat batch).
         $approverSecondApprove = collect();
-        if ($user->hasRole(['superadmin', 'approver'])) {
-            $approverSecondApprove = $addRefund($this->buildPoGroups('SETTLE_APPROVED', $denganCoa));
+        if (TodoService::allows($user, 'approverSecondApprove')) {
+            $approverSecondApprove = $addRefund($this->buildPoGroups(TodoService::statuses('approverSecondApprove'), $denganCoa));
             foreach ($approverSecondApprove as $po) {
                 foreach ($po['plans'] as $group) {
                     foreach ($group['items'] as $cr) {
@@ -416,13 +415,13 @@ class TodoListController extends Controller
         | dan mana yang masih menunggu dimasukkan ke batch.
         */
         $secondPaymentPending = collect();
-        if ($user->hasRole(['superadmin', 'treasury', 'finance', 'finance_manager'])) {
-            $secondPaymentPending = BudgetRequest::with([
+        if (TodoService::allows($user, 'secondPaymentPending')) {
+            $secondPaymentPending = $this->queueQuery('secondPaymentPending')
+                ->with([
                     'beneficiary',
                     'statusLogs',
                     'secondPayments.dailyTransactionItems.dailyTransaction',
                 ])
-                ->whereHas('secondPayments', fn ($q) => $q->where('status', 'PENDING'))
                 ->get()
                 ->map(function ($cr) {
                     $payment = $cr->secondPayments->firstWhere('status', 'PENDING');
@@ -472,10 +471,9 @@ class TodoListController extends Controller
         // grouped+bulk seperti CR) karena BudgetPlanController cuma punya
         // endpoint single-record per tahap.
         $budgetingHeadCheck = collect();
-        if ($user->hasRole(['superadmin', 'head'])) {
-            $budgetingHeadCheck = BudgetPlan::with(['project.customer', 'project.manager', 'costCenter'])
-                ->tap(fn ($q) => $this->scopeVisibleTo($q))
-                ->where('status', 'SUBMITTED')
+        if (TodoService::allows($user, 'budgetingHeadCheck')) {
+            $budgetingHeadCheck = $this->queueQuery('budgetingHeadCheck')
+                ->with(['project.customer', 'project.manager', 'costCenter'])
                 ->latest()
                 ->get()
                 ->map(fn ($bp) => $this->withAging($bp, $bp->updated_at))
@@ -483,10 +481,9 @@ class TodoListController extends Controller
         }
 
         $budgetingVerify = collect();
-        if ($user->hasRole(['superadmin', 'finance', 'finance_manager'])) {
-            $budgetingVerify = BudgetPlan::with(['project.customer', 'project.manager', 'costCenter'])
-                ->tap(fn ($q) => $this->scopeVisibleTo($q))
-                ->where('status', 'CHECKED')
+        if (TodoService::allows($user, 'budgetingVerify')) {
+            $budgetingVerify = $this->queueQuery('budgetingVerify')
+                ->with(['project.customer', 'project.manager', 'costCenter'])
                 ->latest()
                 ->get()
                 ->map(fn ($bp) => $this->withAging($bp, $bp->updated_at))
@@ -494,10 +491,9 @@ class TodoListController extends Controller
         }
 
         $budgetingCeoApprove = collect();
-        if ($user->hasRole(['superadmin', 'approver', 'guest'])) {
-            $budgetingCeoApprove = BudgetPlan::with(['project.customer', 'project.manager', 'costCenter'])
-                ->tap(fn ($q) => $this->scopeVisibleTo($q))
-                ->where('status', 'VERIFIED')
+        if (TodoService::allows($user, 'budgetingCeoApprove')) {
+            $budgetingCeoApprove = $this->queueQuery('budgetingCeoApprove')
+                ->with(['project.customer', 'project.manager', 'costCenter'])
                 ->latest()
                 ->get()
                 ->map(fn ($bp) => $this->withAging($bp, $bp->updated_at))
@@ -509,11 +505,9 @@ class TodoListController extends Controller
         // closing-nya belum diajukan (closing_submitted_at NULL) sehingga tugasnya
         // masih di manager, bukan di Finance.
         $budgetingClosingDue = collect();
-        if ($user->hasRole(['superadmin', 'manager'])) {
-            $budgetingClosingDue = BudgetPlan::with(['project.customer', 'project.manager', 'costCenter'])
-                ->tap(fn ($q) => $this->scopeVisibleTo($q))
-                ->where('status', 'CLOSING')
-                ->whereNull('closing_submitted_at')
+        if (TodoService::allows($user, 'budgetingClosingDue')) {
+            $budgetingClosingDue = $this->queueQuery('budgetingClosingDue')
+                ->with(['project.customer', 'project.manager', 'costCenter'])
                 ->latest()
                 ->get()
                 ->map(fn ($bp) => $this->withAging($bp, $bp->updated_at))
@@ -522,10 +516,9 @@ class TodoListController extends Controller
 
         // Manager — Budgeting: Reject Handling (REJECTED -> DRAFT via Revise).
         $budgetingRejected = collect();
-        if ($user->hasRole(['superadmin', 'manager'])) {
-            $budgetingRejected = BudgetPlan::with(['project.customer', 'project.manager', 'costCenter'])
-                ->tap(fn ($q) => $this->scopeVisibleTo($q))
-                ->where('status', 'REJECTED')
+        if (TodoService::allows($user, 'budgetingRejected')) {
+            $budgetingRejected = $this->queueQuery('budgetingRejected')
+                ->with(['project.customer', 'project.manager', 'costCenter'])
                 ->latest()
                 ->get()
                 ->map(fn ($bp) => $this->withAging($bp, $bp->updated_at))
@@ -537,10 +530,9 @@ class TodoListController extends Controller
         // (DONE, tinggal ditandai Paid oleh Treasury). Flat list per batch —
         // DailyTransactionController juga cuma punya endpoint single-record.
         $treasuryProcess = collect();
-        if ($user->hasRole(['superadmin', 'approver', 'guest'])) {
-            $treasuryProcess = DailyTransaction::with('sourceFund')->withCount('includedItems')
-                ->where('status', 'PENDING_APPROVER')
-                ->where('type', 'CASH_OUT')
+        if (TodoService::allows($user, 'treasuryProcess')) {
+            $treasuryProcess = $this->queueQuery('treasuryProcess')
+                ->with('sourceFund')->withCount('includedItems')
                 ->latest()
                 ->get()
                 ->map(fn ($batch) => $this->withAging($batch, $batch->created_at))
@@ -548,10 +540,9 @@ class TodoListController extends Controller
         }
 
         $treasuryReadyToPay = collect();
-        if ($user->hasRole(['superadmin', 'treasury', 'finance', 'finance_manager'])) {
-            $treasuryReadyToPay = DailyTransaction::with('sourceFund')->withCount('includedItems')
-                ->where('status', 'DONE')
-                ->where('type', 'CASH_OUT')
+        if (TodoService::allows($user, 'treasuryReadyToPay')) {
+            $treasuryReadyToPay = $this->queueQuery('treasuryReadyToPay')
+                ->with('sourceFund')->withCount('includedItems')
                 ->latest()
                 ->get()
                 ->map(fn ($batch) => $this->withAging($batch, $batch->approved_at ?? $batch->created_at))
@@ -566,16 +557,9 @@ class TodoListController extends Controller
         // persis dengan DailyTransactionController::create() supaya jumlahnya
         // konsisten dengan CR yang benar-benar muncul di form pembuatan batch.
         $treasuryBatchCreate = collect();
-        if ($user->hasRole(['superadmin', 'treasury', 'finance', 'finance_manager'])) {
-            $batchCreateQuery = BudgetRequest::with(['type', 'beneficiary', 'statusLogs', 'budgetPlan.project.customer', 'budgetPlan.project.manager', 'budgetPlan.costCenter'])
-                ->where('status', 'APPROVED')
-                ->whereDoesntHave('dailyTransactionItems', fn ($q) =>
-                    $q->where('status', 'INCLUDED')
-                      ->whereHas('dailyTransaction', fn ($q2) =>
-                          $q2->whereIn('status', ['PENDING_APPROVER', 'DONE'])
-                      )
-                );
-            $this->scopeByRole($batchCreateQuery);
+        if (TodoService::allows($user, 'treasuryBatchCreate')) {
+            $batchCreateQuery = $this->queueQuery('treasuryBatchCreate')
+                ->with(['type', 'beneficiary', 'statusLogs', 'budgetPlan.project.customer', 'budgetPlan.project.manager', 'budgetPlan.costCenter']);
             $treasuryBatchCreate = $batchCreateQuery->latest()->get()
                 ->map(function ($cr) {
                     $cr->budget_plan_label = $this->budgetPlanLabel($cr->budgetPlan);
@@ -618,12 +602,9 @@ class TodoListController extends Controller
          | tampil di sini pasti diterima store().
          */
         $treasuryBatchSecond = collect();
-        if ($user->hasRole(['superadmin', 'treasury', 'finance', 'finance_manager'])) {
-            $secondQuery = \App\Models\BudgetRequestSecondPayment::availableForBatch()
-                ->with(['budgetRequest.beneficiary', 'budgetRequest.budgetPlan.project.customer', 'budgetRequest.budgetPlan.project.manager', 'budgetRequest.budgetPlan.costCenter'])
-                ->whereHas('budgetRequest', function ($q) {
-                    $this->scopeByRole($q);
-                });
+        if (TodoService::allows($user, 'treasuryBatchSecond')) {
+            $secondQuery = $this->queueQuery('treasuryBatchSecond')
+                ->with(['budgetRequest.beneficiary', 'budgetRequest.budgetPlan.project.customer', 'budgetRequest.budgetPlan.project.manager', 'budgetRequest.budgetPlan.costCenter']);
 
             $treasuryBatchSecond = $secondQuery->latest()->get()
                 ->filter(fn ($sp) => $sp->budgetRequest !== null)
@@ -652,21 +633,19 @@ class TodoListController extends Controller
          | financeRevise()). Langkah approve berikutnya (VERIFIED -> Early Start
          | / Waiting PO / Active) ada di tangan Approver.
          |
-         | Definisi "siapa yang menangani PO SUBMITTED" sudah ada di
-         | TodoService::build() (dipakai widget Todo di Dashboard): role
-         | superadmin/finance/finance_manager, link ke project.index?open=<id>.
-         | Role & tautannya disamakan persis dengan itu supaya Dashboard dan
-         | halaman Todo List tidak pernah menampilkan daftar yang berbeda.
+         | Definisi "siapa yang menangani PO SUBMITTED" ada di
+         | TodoService::QUEUES['poSubmitted'] (satu sumber untuk halaman,
+         | badge sidebar, dan pengingat).
          |
          | Ini reminder + link-out, bukan approve/reject inline seperti section
          | Cost Request: keputusan verify/revise tidak bisa diambil tanpa melihat
          | isi PO-nya, jadi tombolnya membuka PO itu sendiri.
          */
         $poSubmitted = collect();
-        if ($user->hasRole(['superadmin', 'finance', 'finance_manager'])) {
-            $poSubmitted = Project::with(['customer', 'manager'])
+        if (TodoService::allows($user, 'poSubmitted')) {
+            $poSubmitted = $this->queueQuery('poSubmitted')
+                ->with(['customer', 'manager'])
                 ->withCount('poNumbers')
-                ->where('status', 'SUBMITTED')
                 ->latest()
                 ->get()
                 ->map(fn ($po) => $this->withAging($po, $po->submitted_at ?? $po->updated_at))
@@ -677,9 +656,9 @@ class TodoListController extends Controller
         // & Menunggu Approval (VERIFIED -> APPROVED). Kedua tahap milik Finance
         // Manager; lihat catatan di $invoiceApprove.
         $invoiceVerify = collect();
-        if ($user->hasRole(['superadmin', 'finance_manager'])) {
-            $invoiceVerify = Invoice::with(['po.customer'])
-                ->where('status', 'SUBMITTED')
+        if (TodoService::allows($user, 'invoiceVerify')) {
+            $invoiceVerify = $this->queueQuery('invoiceVerify')
+                ->with(['po.customer'])
                 ->latest()
                 ->get()
                 ->map(fn ($inv) => $this->withAging($inv, $inv->submitted_at ?? $inv->updated_at))
@@ -702,72 +681,43 @@ class TodoListController extends Controller
          | pun tugasnya berada.
          */
         $invoiceApprove = collect();
-        if ($user->hasRole(['superadmin', 'finance_manager'])) {
-            $invoiceApprove = Invoice::with(['po.customer'])
-                ->where('status', 'VERIFIED')
+        if (TodoService::allows($user, 'invoiceApprove')) {
+            $invoiceApprove = $this->queueQuery('invoiceApprove')
+                ->with(['po.customer'])
                 ->latest()
                 ->get()
                 ->map(fn ($inv) => $this->withAging($inv, $inv->verified_at ?? $inv->updated_at))
                 ->sortBy('aging_since')->values();
         }
 
-        // Collection — Waiting Invoice: No. PO yang BAST-nya sudah di-upload
-        // (PARTIAL/BAST_SUBMITTED, sama seperti daftar pilihan No. PO di form
-        // "Buat Invoice" — lihat InvoiceCashReceiptController::INVOICEABLE_PO_STATUSES)
-        // tapi masih ada sisa nominal yang belum ditagihkan sama sekali. Ini
-        // reminder buat Collection segera buat invoice, bukan approval — jadi
-        // flat list, link-out ke form Buat Invoice, tanpa aksi approve/reject.
+        // Collection — Waiting Invoice: No. PO yang punya BAST aktif yang belum
+        // tertagih (belum punya invoice non-CANCELLED), bukan sekadar status
+        // No. PO. No. PO lama tanpa baris BAST tetap memakai aturan lama
+        // (status PARTIAL/BAST_SUBMITTED). Ini reminder buat Collection segera
+        // buat invoice, bukan approval — jadi flat list, link-out ke form Buat
+        // Invoice, tanpa aksi approve/reject. Definisi queryFor di queueQuery().
         $collectionWaitingInvoice = collect();
-        if ($user->hasRole(['superadmin', 'collection'])) {
-            $collectionWaitingInvoice = ProjectPoNumber::with(['project.customer'])
-                ->whereIn('status', ['PARTIAL', 'BAST_SUBMITTED'])
-                ->latest('bast_submitted_at')
+        if (TodoService::allows($user, 'collectionWaitingInvoice')) {
+            $collectionWaitingInvoice = $this->queueQuery('collectionWaitingInvoice')
+                ->with(['project.customer', 'basts' => fn ($b) => $b->whereDoesntHave('activeInvoices')])
                 ->get()
-                ->map(fn ($po) => $this->withAging($po, $po->bast_submitted_at ?? $po->updated_at))
+                ->map(function ($po) {
+                    // Aging dari BAST tertua yang belum tertagih; No. PO lama
+                    // tanpa baris BAST memakai tanggal submit BAST agregatnya.
+                    $tertua = $po->basts->min('tanggal_bast');
+
+                    return $this->withAging($po, $tertua ?? $po->bast_submitted_at ?? $po->updated_at);
+                })
                 ->sortBy('aging_since')->values();
         }
 
-        // Project Monitoring — TIDAK punya alur approval sama sekali (manager
-        // bebas ubah status milestone kapan saja, lihat komentar di
-        // ProjectMonitoringController::setMilestoneStatus()). Jadi ini bukan
-        // worklist approve/reject seperti section lain, melainkan REMINDER buat
-        // Manager (PM Internal) — yang bertanggung jawab update status milestone
-        // — bukan Approver/CEO yang sama sekali tidak menyentuh update-nya.
-        // Milestone yang masih NOT_STARTED/ON_GOING tapi sudah lewat target
-        // selesai (plan_end). Scoping akses PO-nya meniru
-        // ProjectMonitoringController::accessibleProjectIds().
-        $milestoneOverdue = collect();
-        if ($user->hasRole(['superadmin', 'manager'])) {
-            $milestoneProjectIds = $user->hasRole(self::PROJECT_PRIVILEGED_ROLES)
-                ? null
-                : $user->accessibleProjectIds()->all();
-
-            $milestoneOverdue = ProjectDetail::with(['project.customer', 'stage'])
-                ->whereIn('status', ['NOT_STARTED', 'ON_GOING'])
-                ->whereNotNull('plan_end')
-                ->where('plan_end', '<', today())
-                ->when(is_array($milestoneProjectIds), fn ($q) => $q->whereHas('project', fn ($p) => $p->whereIn('id', $milestoneProjectIds)))
-                ->get()
-                ->map(function ($detail) {
-                    $overdueDays = (int) $detail->plan_end->diffInDays(today());
-                    $detail->overdue_days  = $overdueDays;
-                    $detail->overdue_label = $overdueDays . ' hari';
-                    return $detail;
-                })
-                ->sortByDesc('overdue_days')
-                ->values();
-        }
-
-        // Accounting — belum ada modul nyata yang di-wire. Collection sudah
-        // di-wire ke section Waiting Invoice di atas.
+        // Accounting kini pemilik tahap Verifikasi Invoice (keputusan pemilik K2),
+        // jadi tidak ada lagi role "Coming Soon".
         $comingSoonRoles = [];
-        if ($user->hasRole(['superadmin', 'accounting'])) $comingSoonRoles[] = 'Accounting';
 
         // Semua task yang tampil di halaman ini (flat), dipakai untuk kartu
         // ringkasan (Max Aging) & export — union dari seluruh section grouped +
-        // flat di atas. Milestone reminder SENGAJA tidak ikut union ini — bukan
-        // "task menunggu tindakan" (approval), jadi tidak realistis dibandingkan
-        // aging-nya dengan CR/Batch/Invoice yang punya tenggat approval nyata.
+        // flat di atas.
         // MN-03: grouping kini dua lapis (PO -> Budget Plan -> CR), jadi
         // perataan ke daftar datar ikut menembus dua lapis. Kalau tidak, kartu
         // "Max Aging" dan ekspor akan kehilangan seluruh task approval.
@@ -802,14 +752,9 @@ class TodoListController extends Controller
         $oldestTask = $allTasks->sortBy(fn ($cr) => $cr->aging_since)->first();
         $maxAging   = $oldestTask ? $oldestTask->aging_label : '0 hari';
 
-        // "Completed Today" — jumlah transisi status CR yang benar-benar dieksekusi
-        // user ini hari ini (approve/reject/revise/cancel/close/dst), dari log audit
-        // yang sudah ada (request_status_logs) — tanpa perlu tabel/counter baru.
-        $completedToday = RequestStatusLog::where('acted_by', $user->id)
-            ->whereDate('created_at', now()->toDateString())
-            ->count();
+        $completedToday = $this->completedTodayCount($user);
 
-        $hasAnyTask = $totalPending > 0 || $milestoneOverdue->isNotEmpty();
+        $hasAnyTask = $totalPending > 0;
         $hasAnySection = !empty($sections) || $managerRejected->isNotEmpty() || $managerPaid->isNotEmpty()
             || $headSettlementCheck->isNotEmpty() || $financeSettlementVerify->isNotEmpty()
             || $approverSecondApprove->isNotEmpty()
@@ -821,11 +766,8 @@ class TodoListController extends Controller
             || $treasuryBatchCreate->isNotEmpty()
             || $treasuryProcess->isNotEmpty() || $treasuryReadyToPay->isNotEmpty()
             || $poSubmitted->isNotEmpty()
-            || $invoiceVerify->isNotEmpty() || $invoiceApprove->isNotEmpty() || $milestoneOverdue->isNotEmpty()
+            || $invoiceVerify->isNotEmpty() || $invoiceApprove->isNotEmpty()
             || $collectionWaitingInvoice->isNotEmpty();
-
-        $summaryTable    = $this->buildSummaryTable();
-        $respontimeTable = $this->buildRespontimeTable();
 
         return compact(
             'sections', 'managerRejected', 'managerPaid',
@@ -834,10 +776,41 @@ class TodoListController extends Controller
             'budgetingHeadCheck', 'budgetingVerify', 'budgetingCeoApprove', 'budgetingRejected',
             'budgetingClosingDue',
             'treasuryBatchCreate', 'treasuryBatchGroups', 'treasuryBatchSecond', 'batchSourceFunds', 'treasuryProcess', 'treasuryReadyToPay', 'poSubmitted',
-            'invoiceVerify', 'invoiceApprove', 'milestoneOverdue', 'collectionWaitingInvoice',
+            'invoiceVerify', 'invoiceApprove', 'collectionWaitingInvoice',
             'comingSoonRoles', 'totalPending', 'maxAging', 'completedToday', 'hasAnyTask', 'hasAnySection',
-            'summaryTable', 'respontimeTable', 'allTasks'
+            'allTasks'
         );
+    }
+
+    /**
+     * KPI "Tindakan Selesai Hari Ini": transisi yang benar-benar dilakukan
+     * user ini hari ini, lintas modul, dari log/kolom pelaku yang SUDAH ada:
+     *  - Cost Request  : request_status_logs.acted_by
+     *  - Budget Plan   : budget_plan_logs.user_id
+     *  - Purchase Order: project_logs.user_id
+     *  - Treasury      : daily_transactions.approved_by/approved_at, paid_by/paid_at
+     *  - Invoice       : invoices.verified/approved/sent/received_by + *_at
+     * Daily Transaction & Invoice tidak punya tabel log tersendiri; pelakunya
+     * hanya tercatat di kolom *_by pada barisnya (jejak terakhir per tahap).
+     */
+    private function completedTodayCount(User $user): int
+    {
+        // whereBetween (bukan whereDate) agar indeks kolom waktu bisa dipakai.
+        $rentang = [now()->startOfDay(), now()->endOfDay()];
+        $uid     = $user->id;
+
+        $n = RequestStatusLog::where('acted_by', $uid)->whereBetween('created_at', $rentang)->count();
+        $n += \DB::table('budget_plan_logs')->where('user_id', $uid)->whereBetween('created_at', $rentang)->count();
+        $n += \DB::table('project_logs')->where('user_id', $uid)->whereBetween('created_at', $rentang)->count();
+
+        foreach ([['approved_by', 'approved_at'], ['paid_by', 'paid_at']] as [$by, $at]) {
+            $n += \DB::table('daily_transactions')->where($by, $uid)->whereBetween($at, $rentang)->count();
+        }
+        foreach (['verified', 'approved', 'sent', 'received'] as $tahap) {
+            $n += \DB::table('invoices')->where($tahap . '_by', $uid)->whereBetween($tahap . '_at', $rentang)->count();
+        }
+
+        return $n;
     }
 
     /**
@@ -1179,10 +1152,23 @@ class TodoListController extends Controller
      *                       sent→received, tiap tahap ke pelakunya)
      *
      * Dihitung MENYELURUH (bukan di-scope role): ini ringkasan kinerja lintas
-     * user untuk manajemen, bukan antrean milik user tertentu.
+     * user untuk manajemen, bukan antrean milik user tertentu. Karena itu
+     * hasilnya sama untuk semua user dan di-cache GLOBAL (cachedRespontimeTable()),
+     * bukan per user. Hanya log dalam RESPONTIME_DAYS hari terakhir yang dihitung.
      */
+    private function cachedRespontimeTable(): array
+    {
+        return \Illuminate\Support\Facades\Cache::remember(
+            'todo-list.respontime.v1',
+            now()->addMinutes(self::RESPONTIME_CACHE_MINUTES),
+            fn () => $this->buildRespontimeTable()
+        );
+    }
+
     private function buildRespontimeTable(): array
     {
+        $sejak = now()->subDays(self::RESPONTIME_DAYS)->startOfDay()->toDateTimeString();
+
         $modules = ['Purchase Order', 'Budgeting', 'Cost Request', 'Treasury', 'Invoice & Cash Receipt'];
 
         // $agg[uid][module] = ['sum' => detik, 'count' => n]
@@ -1203,18 +1189,23 @@ class TodoListController extends Controller
          | sama (LAG), lalu dijumlah per pelaku. Baris pertama tiap dokumen
          | (LAG null) dan selisih negatif (anomali data) diabaikan.
          */
-        $logStats = function (string $table, string $fk, string $actorCol) {
+        $logStats = function (string $table, string $fk, string $actorCol) use ($sejak) {
+            // LAG dihitung atas RIWAYAT PENUH dokumen yang punya log dalam
+            // jendela, supaya transisi pertama di dalam jendela tetap punya
+            // pendahulu (yang boleh di luar jendela). Jendela hanya memfilter
+            // baris luar: transisi yang TERJADI sebelum $sejak tidak dihitung.
             return \DB::select("
                 SELECT uid, SUM(diff) AS s, COUNT(*) AS n FROM (
-                    SELECT {$actorCol} AS uid,
+                    SELECT {$actorCol} AS uid, created_at AS at,
                            TIMESTAMPDIFF(SECOND,
                                LAG(created_at) OVER (PARTITION BY {$fk} ORDER BY created_at, id),
                                created_at) AS diff
                     FROM {$table}
+                    WHERE {$fk} IN (SELECT DISTINCT {$fk} FROM {$table} WHERE created_at >= ?)
                 ) t
-                WHERE diff IS NOT NULL AND diff >= 0 AND uid IS NOT NULL
+                WHERE at >= ? AND diff IS NOT NULL AND diff >= 0 AND uid IS NOT NULL
                 GROUP BY uid
-            ");
+            ", [$sejak, $sejak]);
         };
 
         foreach ($logStats('project_logs', 'project_id', 'user_id') as $r) {
@@ -1235,14 +1226,14 @@ class TodoListController extends Controller
         $treasury = \DB::select("
             SELECT uid, SUM(diff) AS s, COUNT(*) AS n FROM (
                 SELECT approved_by AS uid, TIMESTAMPDIFF(SECOND, created_at, approved_at) AS diff
-                    FROM daily_transactions WHERE approved_at IS NOT NULL AND approved_by IS NOT NULL
+                    FROM daily_transactions WHERE approved_at IS NOT NULL AND approved_by IS NOT NULL AND approved_at >= ?
                 UNION ALL
                 SELECT paid_by AS uid, TIMESTAMPDIFF(SECOND, approved_at, paid_at) AS diff
-                    FROM daily_transactions WHERE paid_at IS NOT NULL AND approved_at IS NOT NULL AND paid_by IS NOT NULL
+                    FROM daily_transactions WHERE paid_at IS NOT NULL AND approved_at IS NOT NULL AND paid_by IS NOT NULL AND paid_at >= ?
             ) t
             WHERE diff IS NOT NULL AND diff >= 0 AND uid IS NOT NULL
             GROUP BY uid
-        ");
+        ", [$sejak, $sejak]);
         foreach ($treasury as $r) {
             $add((int) $r->uid, 'Treasury', $r->s, $r->n);
         }
@@ -1254,20 +1245,20 @@ class TodoListController extends Controller
         $invoice = \DB::select("
             SELECT uid, SUM(diff) AS s, COUNT(*) AS n FROM (
                 SELECT verified_by AS uid, TIMESTAMPDIFF(SECOND, submitted_at, verified_at) AS diff
-                    FROM invoices WHERE verified_at IS NOT NULL AND submitted_at IS NOT NULL AND verified_by IS NOT NULL
+                    FROM invoices WHERE verified_at IS NOT NULL AND submitted_at IS NOT NULL AND verified_by IS NOT NULL AND verified_at >= ?
                 UNION ALL
                 SELECT approved_by AS uid, TIMESTAMPDIFF(SECOND, verified_at, approved_at) AS diff
-                    FROM invoices WHERE approved_at IS NOT NULL AND verified_at IS NOT NULL AND approved_by IS NOT NULL
+                    FROM invoices WHERE approved_at IS NOT NULL AND verified_at IS NOT NULL AND approved_by IS NOT NULL AND approved_at >= ?
                 UNION ALL
                 SELECT sent_by AS uid, TIMESTAMPDIFF(SECOND, approved_at, sent_at) AS diff
-                    FROM invoices WHERE sent_at IS NOT NULL AND approved_at IS NOT NULL AND sent_by IS NOT NULL
+                    FROM invoices WHERE sent_at IS NOT NULL AND approved_at IS NOT NULL AND sent_by IS NOT NULL AND sent_at >= ?
                 UNION ALL
                 SELECT received_by AS uid, TIMESTAMPDIFF(SECOND, sent_at, received_at) AS diff
-                    FROM invoices WHERE received_at IS NOT NULL AND sent_at IS NOT NULL AND received_by IS NOT NULL
+                    FROM invoices WHERE received_at IS NOT NULL AND sent_at IS NOT NULL AND received_by IS NOT NULL AND received_at >= ?
             ) t
             WHERE diff IS NOT NULL AND diff >= 0 AND uid IS NOT NULL
             GROUP BY uid
-        ");
+        ", array_fill(0, 4, $sejak));
         foreach ($invoice as $r) {
             $add((int) $r->uid, 'Invoice & Cash Receipt', $r->s, $r->n);
         }
@@ -1349,10 +1340,187 @@ class TodoListController extends Controller
     ];
 
     /**
+     * Scope Cost Request untuk Todo List: scopeByRole() + Access Group untuk
+     * role yang di kode diperlakukan istimewa tapi BUKAN bagian dari K3
+     * (admin, guest). Role K3 melihat semua; head/manager/supervisor dst.
+     * sudah dibatasi scopeByRole(). Dokumen non-proyek (overhead/payroll)
+     * tetap mengikuti aturan overhead/payroll yang sudah ada.
+     */
+    private function scopeCrTodo($query): void
+    {
+        $this->scopeByRole($query);
+
+        $role = strtolower(Auth::user()->effectiveRole()?->name ?? '');
+        if (in_array($role, TodoService::ISTIMEWA_DI_KODE_BUKAN_K3, true)) {
+            $projectIds = Auth::user()->accessibleProjectIds();
+            $query->where(function ($q) use ($projectIds) {
+                $q->whereHas('budgetPlan', fn ($b) => $b->whereNull('project_id'))
+                  ->orWhereHas('budgetPlan.project', fn ($p) => $p->whereIn('id', $projectIds));
+            });
+        }
+    }
+
+    /**
+     * Query dasar satu antrean (belum di-eager-load, belum di-get): status dari
+     * TodoService::QUEUES + scope visibilitas. Dipakai buildWorklistData()
+     * (isi halaman) DAN pendingCounts() (badge/pengingat) — satu definisi.
+     * Gerbang role dicek pemanggil lewat TodoService::allows().
+     *
+     * Wajib dipanggil dengan Auth::user() = user yang dihitung (scope helper
+     * membaca Auth); pendingCounts() memastikan itu.
+     */
+    public function queueQuery(string $key)
+    {
+        $status = TodoService::statuses($key);
+        $user   = Auth::user();
+
+        switch ($key) {
+            case 'head': case 'cost_control_checked': case 'ceo':
+            case 'managerRejected': case 'managerPaid':
+            case 'headSettlementCheck': case 'financeSettlementVerify':
+            case 'ceoSettlementClose': case 'approverSecondApprove':
+                return tap(BudgetRequest::query()->whereIn('status', $status), fn ($q) => $this->scopeCrTodo($q));
+
+            case 'secondPaymentPending':
+                return BudgetRequest::query()
+                    ->whereHas('secondPayments', fn ($q) => $q->where('status', 'PENDING'));
+
+            case 'treasuryBatchCreate':
+                // Query sama persis dengan DailyTransactionController::create().
+                return tap(
+                    BudgetRequest::query()
+                        ->whereIn('status', $status)
+                        ->whereDoesntHave('dailyTransactionItems', fn ($q) =>
+                            $q->where('status', 'INCLUDED')
+                              ->whereHas('dailyTransaction', fn ($q2) =>
+                                  $q2->whereIn('status', ['PENDING_APPROVER', 'DONE'])
+                              )
+                        ),
+                    fn ($q) => $this->scopeCrTodo($q)
+                );
+
+            case 'treasuryBatchSecond':
+                return \App\Models\BudgetRequestSecondPayment::availableForBatch()
+                    ->whereHas('budgetRequest', fn ($q) => $this->scopeCrTodo($q));
+
+            case 'budgetingHeadCheck': case 'budgetingVerify': case 'budgetingCeoApprove':
+            case 'budgetingClosingDue': case 'budgetingRejected':
+                $q = BudgetPlan::query()->tap(fn ($q) => $this->scopeVisibleTo($q))->whereIn('status', $status);
+                // Budget yang plan_finish-nya lewat, berkas closing belum diajukan.
+                if ($key === 'budgetingClosingDue') {
+                    $q->whereNull('closing_submitted_at');
+                }
+
+                return $q;
+
+            case 'treasuryProcess': case 'treasuryReadyToPay':
+                $q = DailyTransaction::query()->whereIn('status', $status)->where('type', 'CASH_OUT');
+                // Batch dibatasi Access Group lewat CR di dalamnya untuk role non-K3 (guest).
+                if ($key === 'treasuryProcess' && TodoService::terbatasAccessGroup($user)) {
+                    $q->whereHas('includedItems', fn ($i) =>
+                        $i->whereHas('budgetRequest', fn ($c) => $this->scopeCrTodo($c))
+                    );
+                }
+
+                return $q;
+
+            case 'poSubmitted':
+                return Project::query()->whereIn('status', $status);
+
+            case 'invoiceVerify': case 'invoiceApprove':
+                return Invoice::query()->whereIn('status', $status);
+
+            case 'collectionWaitingInvoice':
+                // Dua cabang, digabung OR:
+                //  1) BAST aktif yang belum punya invoice non-CANCELLED. Dikecualikan bila
+                //     No. PO punya invoice lama aktif yang belum tertaut BAST: BAST-nya
+                //     sintetis (hasil backfill) sehingga belum jadi dasar penagihan baru
+                //     sampai invoice lamanya ditautkan (ProjectPoNumber::usesBastBilling()).
+                //  2) No. PO lama tanpa baris BAST: aturan lama (status PARTIAL/BAST_SUBMITTED).
+                //     TIDAK terkena pengecualian di atas — invoice terminnya memang tak
+                //     bertaut BAST, dan itu keadaan normal untuk alur lama.
+                return ProjectPoNumber::query()->where(function ($q) {
+                    $q->where(fn ($b) => $b->tanpaInvoiceLamaBelumTertaut()
+                            ->whereHas('basts', fn ($x) => $x->whereDoesntHave('activeInvoices')))
+                      ->orWhere(fn ($l) => $l->whereDoesntHave('basts')->whereIn('status', ['PARTIAL', 'BAST_SUBMITTED']));
+                });
+
+        }
+
+        throw new \InvalidArgumentException("Antrean Todo List tidak dikenal: {$key}");
+    }
+
+    /**
+     * Hitungan ringan per antrean (tanpa CoA/summary/respontime) untuk badge
+     * sidebar & pengingat — lihat TodoService::pendingCounts().
+     *
+     * @return array<string,int>
+     */
+    public function pendingCounts(User $user): array
+    {
+        return $this->sebagai($user, function () use ($user) {
+            $out = [];
+            foreach (array_keys(TodoService::QUEUES) as $key) {
+                if (TodoService::allows($user, $key)) {
+                    $out[$key] = $this->queueQuery($key)->count();
+                }
+            }
+
+            return $out;
+        });
+    }
+
+    /**
+     * Ada minimal satu tugas? Berhenti di antrean pertama yang berisi (exists()),
+     * bukan menghitung semuanya. Definisi identik dengan $hasAnyTask di
+     * buildWorklistData(): antrean yang ikut total (semua kecuali
+     * treasuryBatchSecond).
+     */
+    public function anyPending(User $user): bool
+    {
+        return $this->sebagai($user, function () use ($user) {
+            foreach (TodoService::QUEUES as $key => $def) {
+                if (($def['total'] ?? true) && TodoService::allows($user, $key)
+                    && $this->queueQuery($key)->exists()) {
+                    return true;
+                }
+            }
+
+            return false;
+        });
+    }
+
+    /**
+     * Jalankan $fn dengan Auth::user() = $user (scope helper membaca Auth;
+     * command terjadwal tidak punya sesi), lalu pulihkan user sebelumnya.
+     *
+     * PERINGATAN View As: scope dan gerbang role membaca effectiveRole() milik
+     * Auth::user(). Untuk user lain (bukan pemanggil) role efektifnya = role
+     * aslinya; jangan memakai ini untuk "meniru" tampilan View As seseorang.
+     * Auth global bersifat per-proses: jangan dipanggil bersamaan dari konteks
+     * yang melayani banyak user dalam satu proses tanpa memulihkannya (finally).
+     */
+    public function sebagai(User $user, callable $fn)
+    {
+        $sebelumnya = Auth::user();
+        $ganti      = $sebelumnya?->id !== $user->id;
+        if ($ganti) {
+            Auth::setUser($user);
+        }
+
+        try {
+            return $fn();
+        } finally {
+            if ($ganti) {
+                $sebelumnya ? Auth::setUser($sebelumnya) : Auth::forgetUser();
+            }
+        }
+    }
+
+    /**
      * GET /todo-list/has-pending — dipanggil berkala oleh badge sidebar.
-     * Memakai TodoService::build() yang sama dengan widget Todo di Dashboard
-     * supaya badge tidak pernah menyala untuk antrean yang beda dengan yang
-     * sungguhan dilihat user saat membuka halaman ini.
+     * Memakai TodoService::hasPending() — definisi antrean yang SAMA dengan
+     * halaman Todo List (K1), bukan lagi daftar terpisah.
      */
     public function hasPending()
     {
@@ -1360,15 +1528,25 @@ class TodoListController extends Controller
         $user = Auth::user();
 
         return response()->json([
-            'has_pending' => count(TodoService::build($user)) > 0,
+            'has_pending' => TodoService::hasPending($user),
         ]);
     }
+
+    /** Batas jumlah item per request bulk — mencegah request panjang & timeout. */
+    private const BULK_MAX_IDS = 50;
 
     /** POST /todo-list/bulk/{section}/{mode} — multi-select approve/reject. */
     public function bulk(Request $request, string $section, string $mode)
     {
         $routeName = self::BULK_ROUTES[$section][$mode === 'reject' ? 1 : 0] ?? null;
         abort_unless($routeName && in_array($mode, ['approve', 'reject'], true), 404);
+
+        $request->validate([
+            'ids'   => 'required|array|min:1|max:' . self::BULK_MAX_IDS,
+            'ids.*' => 'required|integer',
+        ], [
+            'ids.max' => 'Maksimum ' . self::BULK_MAX_IDS . ' item per proses.',
+        ]);
 
         if ($mode === 'reject') {
             $request->validate(['notes' => 'required|string|max:500']);
@@ -1394,11 +1572,17 @@ class TodoListController extends Controller
         $ok = 0;
         $errors = [];
         foreach (array_unique((array) $request->input('ids', [])) as $id) {
-            session()->forget(['success', 'error']);
+            session()->forget(['success', 'error', 'warning']);
             try {
-                app()->call([$controller, $method], ['id' => $id]);
-                if ($err = session('error')) {
+                $hasil = app()->call([$controller, $method], ['id' => $id]);
+                if ($err = session('error') ?: session('warning')) {
                     $errors[] = '#' . $id . ': ' . $err;
+                } elseif ($hasil instanceof \Illuminate\Http\JsonResponse
+                    && ($hasil->getStatusCode() >= 400 || ($hasil->getData(true)['success'] ?? true) === false)) {
+                    $errors[] = '#' . $id . ': ' . ($hasil->getData(true)['message'] ?? 'aksi ditolak.');
+                } elseif (! $hasil instanceof \Illuminate\Http\RedirectResponse
+                    && ! $hasil instanceof \Illuminate\Http\JsonResponse) {
+                    $errors[] = '#' . $id . ': respons tidak terduga, hasil tidak dapat dipastikan.';
                 } else {
                     $ok++;
                 }
@@ -1413,7 +1597,7 @@ class TodoListController extends Controller
                 $errors[] = '#' . $id . ': terjadi kesalahan sistem.';
             }
         }
-        session()->forget(['success', 'error']);
+        session()->forget(['success', 'error', 'warning']);
 
         $redirect = redirect()->route('todo-list.index');
         $verb = $mode === 'reject' ? 'ditolak' : 'diproses';
@@ -1429,94 +1613,48 @@ class TodoListController extends Controller
     }
 
     /**
-     * GET /todo-list/export — export Excel dari seluruh task yang tampil untuk
-     * user yang login saat ini (union semua section, sama seperti index()).
+     * GET|POST /todo-list/export — export Excel SEMUA antrean yang tampil untuk
+     * user yang login (K5): Cost Request di semua tahap, Budgeting, Treasury,
+     * Purchase Order, Collection, dan Invoice. Assignment TIDAK ikut export
+     * (keputusan pemilik), baik dengan maupun tanpa filter.
+     *
+     * Barisnya diambil dari koleksi yang SAMA dengan halaman (buildWorklistData)
+     * — bukan query ulang dengan aturan lain — sehingga gerbang role dan scope
+     * Access Group otomatis sama.
+     *
+     * Penyaringan dari browser memakai kunci "modul:id" (mis. "cr:12",
+     * "bp:7") karena id antar-modul bisa sama. Kunci dari browser hanya
+     * MEMPERSEMPIT hasil setelah seluruh gerbang peran dilewati; tidak pernah
+     * memperluasnya. Kunci yang formatnya tidak valid diabaikan, dan bila
+     * browser mengirim kunci tetapi tak satu pun valid hasilnya kosong.
      */
     public function exportList(Request $request)
     {
         /** @var User $user */
         $user = Auth::user();
 
-        /*
-         | Export mengikuti pencarian/penyaringan yang sedang aktif di halaman:
-         | browser mengirim id CR dari baris yang masih terlihat (lihat
-         | public/js/tesys-export-filtered.js). Penyaringan dilakukan SETELAH
-         | union antar-section dirakit, supaya gerbang peran tiap section tetap
-         | berlaku — daftar id dari browser tidak bisa dipakai untuk menarik CR
-         | yang memang tidak boleh dilihat user ini.
-         */
-        $ids = collect((array) $request->input('ids', []))
-            ->filter(fn ($v) => is_numeric($v))
-            ->map(fn ($v) => (int) $v);
+        if ($request->has('ids')) {
+            $dikirim = collect((array) $request->input('ids', []));
+            $valid   = fn ($v) => is_string($v) && preg_match('/^[a-z]+:\d+$/', $v);
 
-        $rows = collect();
-
-        $stageOf = function (BudgetRequest $cr): string {
-            return match ($cr->status) {
-                'SUBMITTED'        => 'Menunggu Approval Head',
-                'CHECKED'          => 'Menunggu Verifikasi Cost Control',
-                'VERIFIED'         => 'Menunggu Approval CEO',
-                'REJECTED'         => 'Reject Handling',
-                'PAID'             => 'Submit Settlement',
-                'SETTLE_REJECTED'  => 'Submit Settlement (Revisi)',
-                'REALIZED'         => 'Settlement — Head Check',
-                'SETTLE_CHECKED'   => 'Settlement — Finance Verify',
-                'SETTLE_VERIFIED'  => 'Settlement — Finance Manager Close',
-                default            => $cr->status,
-            };
-        };
-
-        foreach (['SUBMITTED', 'CHECKED', 'VERIFIED'] as $status) {
-            $allowed = match ($status) {
-                'SUBMITTED' => $user->hasRole(['superadmin', 'head']),
-                'CHECKED'   => $user->hasRole(['superadmin', 'finance', 'finance_manager', 'cost_control']),
-                'VERIFIED'  => $user->hasRole(['superadmin', 'approver', 'guest']),
-            };
-            if (!$allowed) continue;
-
-            $query = BudgetRequest::with(['type', 'beneficiary', 'budgetPlan.project.manager', 'budgetPlan.costCenter', 'statusLogs'])
-                ->where('status', $status);
-            $this->scopeByRole($query);
-            $rows = $rows->concat($query->get());
+            // Halaman lama (belum dimuat ulang) masih mengirim id polos. Beri
+            // pesan jelas, jangan menghasilkan file kosong secara diam-diam.
+            if ($dikirim->contains(fn ($v) => ! $valid($v))) {
+                return redirect()->route('todo-list.index')->with(
+                    'error',
+                    'Format penyaringan export tidak dikenali (halaman versi lama). Muat ulang halaman Todo List lalu coba export lagi.'
+                );
+            }
         }
 
-        if ($user->hasRole(['superadmin', 'manager', 'supervisor'])) {
-            $q1 = BudgetRequest::with(['type', 'beneficiary', 'budgetPlan.project.manager', 'budgetPlan.costCenter', 'statusLogs'])->where('status', 'REJECTED');
-            $this->scopeByRole($q1);
-            $rows = $rows->concat($q1->get());
+        $rows = $this->exportRows($user);
 
-            $q2 = BudgetRequest::with(['type', 'beneficiary', 'budgetPlan.project.manager', 'budgetPlan.costCenter', 'statusLogs'])
-                ->whereIn('status', ['PAID', 'SETTLE_REJECTED']);
-            $this->scopeByRole($q2);
-            $rows = $rows->concat($q2->get());
+        if ($request->has('ids')) {
+            $kunci = collect((array) $request->input('ids', []))->flip();
+            $rows  = $rows->filter(fn ($r) => $kunci->has($r['key']))->values();
         }
 
-        if ($user->hasRole(['superadmin', 'head'])) {
-            $q3 = BudgetRequest::with(['type', 'beneficiary', 'budgetPlan.project.manager', 'budgetPlan.costCenter', 'statusLogs'])->where('status', 'REALIZED');
-            $this->scopeByRole($q3);
-            $rows = $rows->concat($q3->get());
-        }
-
-        if ($user->hasRole(['superadmin', 'finance', 'finance_manager', 'cost_control'])) {
-            $q4 = BudgetRequest::with(['type', 'beneficiary', 'budgetPlan.project.manager', 'budgetPlan.costCenter', 'statusLogs'])->where('status', 'SETTLE_CHECKED');
-            $this->scopeByRole($q4);
-            $rows = $rows->concat($q4->get());
-        }
-
-        if ($user->hasRole(['superadmin', 'approver', 'guest'])) {
-            $q5 = BudgetRequest::with(['type', 'beneficiary', 'budgetPlan.project.manager', 'budgetPlan.costCenter', 'statusLogs'])->where('status', 'SETTLE_VERIFIED');
-            $this->scopeByRole($q5);
-            $rows = $rows->concat($q5->get());
-        }
-
-        // Penyaringan dilakukan di sini — setelah seluruh gerbang peran di atas
-        // dilewati — sehingga id dari browser hanya bisa MEMPERSEMPIT hasil,
-        // tidak pernah memperluasnya.
-        if ($ids->isNotEmpty()) {
-            $rows = $rows->whereIn('id', $ids)->values();
-        }
-
-        $columns = ['Stage', 'CR Number', 'Budget Plan', 'Manager', 'Description', 'Beneficiary', 'Amount', 'Status', 'Aging'];
+        $columns = ['Modul', 'Tahap', 'Nomor', 'Referensi (PO/Budget Plan)', 'Deskripsi', 'Pemohon/Pemilik', 'Nilai', 'Status', 'Aging'];
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -1531,22 +1669,15 @@ class TodoListController extends Controller
         }
 
         $row = 2;
-        foreach ($rows as $cr) {
+        foreach ($rows as $r) {
             $sheet->fromArray([
-                $stageOf($cr),
-                $cr->code,
-                $this->budgetPlanLabel($cr->budgetPlan),
-                $cr->pm_internal_name,
-                $cr->description ?? '-',
-                $cr->beneficiary?->nickname ?? '-',
-                (int) $cr->amount,
-                $cr->status,
-                $cr->aging_label,
+                $r['modul'], $r['tahap'], $r['nomor'], $r['ref'], $r['desc'],
+                $r['pemilik'], $r['nilai'], $r['status'], $r['aging'],
             ], null, 'A' . $row);
             $row++;
         }
 
-        foreach (['A'=>26,'B'=>18,'C'=>36,'D'=>20,'E'=>40,'F'=>20,'G'=>16,'H'=>12,'I'=>12] as $col => $width) {
+        foreach (['A'=>20,'B'=>38,'C'=>20,'D'=>36,'E'=>40,'F'=>22,'G'=>16,'H'=>16,'I'=>12] as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
         }
 
@@ -1561,6 +1692,130 @@ class TodoListController extends Controller
     }
 
     /**
+     * Baris export seragam dari seluruh antrean user. Label tahap = judul
+     * antrean di halaman. 'key' = "modul:id" untuk penyaringan dari browser
+     * (atribut data-export-key pada baris Blade).
+     *
+     * @return \Illuminate\Support\Collection<int,array>
+     */
+    private function exportRows(User $user): \Illuminate\Support\Collection
+    {
+        $d    = $this->buildWorklistData($user, denganCoa: false);
+        $rows = collect();
+
+        $baris = fn (string $modul, string $tahap, string $key, $nomor, $ref, $desc, $pemilik, $nilai, $status, $aging) => [
+            'modul' => $modul, 'tahap' => $tahap, 'key' => $key, 'nomor' => $nomor,
+            'ref' => $ref ?: '-', 'desc' => $desc ?: '-', 'pemilik' => $pemilik ?: '-',
+            'nilai' => $nilai === null ? null : (int) $nilai, 'status' => $status, 'aging' => $aging ?: '-',
+        ];
+        $ratakan = fn ($grup) => collect($grup)
+            ->flatMap(fn ($po) => collect($po['plans'])->flatMap(fn ($g) => $g['items']));
+
+        // Cost Request — satu pemetaan untuk semua tahap.
+        $cr = function (string $tahap, $items, ?callable $nilai = null) use (&$rows, $baris) {
+            // Relasi yang dibaca per baris dimuat sekaligus (tidak menimpa yang sudah ada).
+            $items = \Illuminate\Database\Eloquent\Collection::make($items)
+                ->loadMissing(['applicant', 'budgetPlan.project.manager', 'budgetPlan.costCenter']);
+            foreach ($items as $c) {
+                $rows->push($baris(
+                    'Cost Request', $tahap, 'cr:' . $c->id, $c->code,
+                    $this->budgetPlanLabel($c->budgetPlan), $c->description,
+                    $c->applicant?->name ?? $c->pm_internal_name,
+                    $nilai ? $nilai($c) : $c->amount, $c->status, $c->aging_label
+                ));
+            }
+        };
+
+        foreach (['head', 'cost_control_checked', 'ceo'] as $k) {
+            if (isset($d['sections'][$k])) {
+                $cr($d['sections'][$k]['title'], $ratakan($d['sections'][$k]['groups']));
+            }
+        }
+        $cr('Reject Handling', $d['managerRejected']);
+        $cr('Submit Settlement', $d['managerPaid']);
+        $cr('Settlement — Head Check', $ratakan($d['headSettlementCheck']));
+        $cr('Settlement — Finance Verify', $ratakan($d['financeSettlementVerify']));
+        $cr('Settlement — Finance Manager Close', $ratakan($d['ceoSettlementClose']));
+        $cr('Expense Claim — Second Approve', $ratakan($d['approverSecondApprove']), fn ($c) => $c->expenseClaimAmount());
+        $cr('Second Approval — Menunggu Pembayaran', $d['secondPaymentPending'], fn ($c) => $c->pending_payment?->amount);
+        $cr('Treasury — Buat Batch Pembayaran', $d['treasuryBatchCreate']);
+
+        foreach ($d['treasuryBatchSecond'] as $sp) {
+            $rows->push($baris(
+                'Treasury', 'Treasury — Buat Batch Pembayaran (Second Payment)', 'sp:' . $sp->id, $sp->cr_code,
+                $sp->po_label, $sp->cr_desc, $sp->beneficiary_label, $sp->amount, $sp->status,
+                $sp->created_at ? (int) $sp->created_at->diffInDays(now()) . ' hari' : '-'
+            ));
+        }
+
+        // Budgeting
+        foreach ([
+            ['budgetingHeadCheck', 'Budgeting — Menunggu Approval Head'],
+            ['budgetingVerify', 'Budgeting — Menunggu Verifikasi Finance'],
+            ['budgetingCeoApprove', 'Budgeting — Menunggu Approval CEO'],
+            ['budgetingClosingDue', 'Budgeting — Ajukan Closing (Plan Finish terlewati)'],
+            ['budgetingRejected', 'Budgeting — Ditolak (Revise ke Draft)'],
+        ] as [$k, $tahap]) {
+            foreach ($d[$k] as $bp) {
+                $rows->push($baris(
+                    'Budgeting', $tahap, 'bp:' . $bp->id, $bp->code, $this->budgetPlanLabel($bp),
+                    $bp->description, $bp->project?->manager?->name, $bp->amount, $bp->status, $bp->aging_label
+                ));
+            }
+        }
+
+        // Treasury — batch
+        foreach ([['treasuryProcess', 'Treasury — Menunggu Proses'], ['treasuryReadyToPay', 'Treasury — Siap Dibayar']] as [$k, $tahap]) {
+            $batches = \Illuminate\Database\Eloquent\Collection::make($d[$k])->loadMissing(['sourceFund', 'createdBy']);
+            foreach ($batches as $batch) {
+                $rows->push($baris(
+                    'Treasury', $tahap, 'dt:' . $batch->id, $batch->code, $batch->sourceFund?->name,
+                    $batch->description, $batch->createdBy?->name, $batch->total_amount, $batch->status, $batch->aging_label
+                ));
+            }
+        }
+
+        // Purchase Order
+        foreach ($d['poSubmitted'] as $po) {
+            $rows->push($baris(
+                'Purchase Order', 'Purchase Order — Menunggu Approval Finance', 'po:' . $po->id, $po->code,
+                $po->customer?->name, $po->name, $po->manager?->name, $po->value, $po->status, $po->aging_label
+            ));
+        }
+
+        // Collection — sisa nilai (= ProjectPoNumber::remainingValue()) dihitung
+        // dengan SATU query agregat untuk semua No. PO, bukan satu query per baris.
+        $poCollection = \Illuminate\Database\Eloquent\Collection::make($d['collectionWaitingInvoice'])
+            ->loadMissing(['project.customer']);
+        $tertagih = $poCollection->isEmpty() ? collect() : Invoice::query()
+            ->where('status', '!=', 'CANCELLED')
+            ->whereIn('project_po_number_id', $poCollection->pluck('id'))
+            ->selectRaw('project_po_number_id, SUM(billed_amount) AS total')
+            ->groupBy('project_po_number_id')
+            ->pluck('total', 'project_po_number_id');
+        foreach ($poCollection as $pn) {
+            $rows->push($baris(
+                'Collection', 'Collection — Waiting Invoice', 'ponum:' . $pn->id, $pn->po_number,
+                $pn->project?->code, $pn->project?->name, $pn->project?->customer?->name,
+                (int) $pn->nominal - (int) ($tertagih[$pn->id] ?? 0), $pn->status, $pn->aging_label
+            ));
+        }
+
+        // Invoice
+        foreach ([['invoiceVerify', 'Invoice — Menunggu Verifikasi'], ['invoiceApprove', 'Invoice — Menunggu Approval']] as [$k, $tahap]) {
+            $invoices = \Illuminate\Database\Eloquent\Collection::make($d[$k])->loadMissing(['po.customer', 'submittedBy']);
+            foreach ($invoices as $inv) {
+                $rows->push($baris(
+                    'Invoice', $tahap, 'inv:' . $inv->id, $inv->code, $inv->po?->name, $inv->po?->customer?->name,
+                    $inv->submittedBy?->name ?? null, $inv->billed_amount, $inv->status, $inv->aging_label
+                ));
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
      * Bangun worklist CR grouped per Budget Plan untuk satu status (SUBMITTED/
      * CHECKED/VERIFIED), sama persis dengan pola yang dulu ada di
      * BudgetRequestController::index() (section "Review Cost Request").
@@ -1572,7 +1827,7 @@ class TodoListController extends Controller
             'type', 'beneficiary', 'applicant', 'details', 'statusLogs', 'realizations',
             'budgetPlan.project.customer', 'budgetPlan.project.manager', 'budgetPlan.costCenter',
         ])->whereIn('status', (array) $status);
-        $this->scopeByRole($query);
+        $this->scopeCrTodo($query);
 
         $crs = $query->get();
 
