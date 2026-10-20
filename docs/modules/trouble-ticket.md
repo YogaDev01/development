@@ -9,6 +9,14 @@ Sejak **12 Okt 2026** alur status menjadi **7 tahap** (TT Open → Remote /
 Plan → Trip → In Progress → Progress Done → Closed). Approval plan dihapus;
 satu-satunya approval ada di penutupan tiket, dan hanya role `supervisor`.
 
+Tiga perubahan alur pada **19 Okt 2026**: tidak ada lagi tombol **Remote**
+(tiket `OPEN` yang dibuka teknisinya langsung masuk `REMOTE`), `PLAN → TRIP`
+**tidak lagi otomatis** (teknisi menggeser swipe pada tanggal plan — sejak
+20 Okt 2026 geseran itu "Swipe for travel", satu aksi dengan keberangkatan), dan
+**Cancel Visit selalu mengembalikan tiket ke `PLAN`** dengan SLA Travel direset.
+Mengubah tanggal plan yang sudah ada kini **hak supervisor**, dan fitur
+**Stop Chat dihapus**.
+
 Menu: **TESYS Operation → Workflow → Trouble Ticket** (`config/navigation.php`,
 key `trouble-ticket`). URL `/trouble-ticket`.
 
@@ -60,11 +68,11 @@ trouble_tickets ──< trouble_ticket_messages     (MESSAGE | EVENT, immutable,
 ## State machine
 
 ```
-OPEN ─(teknisi pilih Remote)───────────────────→ REMOTE
+OPEN ─(teknisi membuka detail tiket)───────────→ REMOTE
 REMOTE ─(teknisi buat Plan Visit)──────────────→ PLAN
-PLAN ─(tanggal plan visit tiba, otomatis)──────→ TRIP
+PLAN ─(geser "Swipe for travel", tanggal tiba)─→ TRIP (perjalanan dimulai)
 TRIP ─(mulai perjalanan → On Site → mulai progres)→ IN_PROGRESS
-TRIP ─(reschedule, sebelum On Site)────────────→ PLAN
+TRIP ─(Cancel Visit / reschedule, sebelum On Site)→ PLAN
 REMOTE / PLAN / TRIP / IN_PROGRESS ─(form close dikirim)→ PROGRESS_DONE
 PROGRESS_DONE ─(supervisor approve)────────────→ CLOSED
               └─(supervisor tolak)─────────────→ REMOTE / IN_PROGRESS
@@ -73,12 +81,17 @@ PROGRESS_DONE ─(supervisor approve)────────────→ CLO
 Tidak ada approval plan dan tidak ada pembatalan tiket. Status lama `APPROVED`
 dan `ON_PLAN` dipetakan ke `PLAN` oleh migrasi `2026_10_12_000300`.
 
-`PLAN → TRIP` berjalan tanpa penjadwal: `promoteDueTrips()` dipanggil saat
-daftar/detail dibuka dan menaikkan semua tiket `PLAN` yang `visit_site`-nya
-sudah tiba (idempoten, satu transaksi + row lock per tiket). Teknisi tiket yang
-naik menerima notifikasi "Hari kunjungan tiba" (dikirim setelah transaksi, 16 Okt
-2026). Di daftar, tiket `PLAN`/`TRIP` yang `visit_site`-nya sudah lewat diberi
-tanda seru merah di kolom Site dan tanggal Plan ditulis merah tebal.
+`PLAN → TRIP` **digeser teknisi** (19 Okt 2026): `promoteDueTrips()` dicabut.
+Sejak **20 Okt 2026** tidak ada swipe Trip tersendiri — `startTrip()` dan route
+`POST {ticket}/trip` dihapus, dan **`startTravel()` (`POST {ticket}/travel`)
+yang menaikkan status ke `TRIP` sekaligus memulai perjalanan**: tiket `PLAN`
+yang `visit_site`-nya sudah tiba (`tripDue()`), evidence perjalanan tetap
+wajib. Swipe "Swipe for travel" baru muncul pada hari-H; sebelum itu panel
+Plan hanya memberi tahu kapan tahap Trip dimulai. `startTravel()` juga masih
+menerima tiket yang sudah berada di `TRIP` (riwayat lama). Kejadian yang
+tercatat hanya `travel_started`; `trip_due` tinggal label riwayat. Di daftar, tiket
+`PLAN`/`TRIP` yang `visit_site`-nya sudah lewat tetap diberi tanda seru merah di
+kolom Site dan tanggal Plan ditulis merah tebal.
 
 Setiap transisi: transaksi + `lockForUpdate` baris tiket + cek ulang pelaku &
 status asal + kejadian timeline di transaksi yang sama (gagal = batal semua).
@@ -86,17 +99,36 @@ Permintaan ulang gagal di cek status, jadi timestamp tidak pernah ditimpa dan
 notifikasi tidak terkirim dua kali. Error keadaan = `ValidationException`
 (`workflow`), hak akses = 403.
 
-- **Respons pertama**: dicatat saat **teknisi yang ditugaskan** membuka detail
-  (`recordAccess`). User lain tidak mencatat apa pun. `first_responded_at`
-  sekali seumur tiket; `trouble_ticket_assignments.responded_at` sekali per penugasan.
-- **Remote** (`POST {ticket}/remote`): teknisi memilih penyelesaian tanpa
-  kunjungan. Status `REMOTE`, `visit_decision = NON_VISIT`, dan
-  `progress_started_at` diisi — **SLA Resolution mulai di sini**. Lanjut ke
-  form close. Tombolnya **tanpa dialog konfirmasi** (15 Okt 2026): Remote tidak
-  menutup tiket dan masih bisa berbalik ke Create Plan.
+- **Respons pertama + Remote otomatis**: dicatat saat **teknisi yang
+  ditugaskan** membuka detail (`recordAccess`). User lain tidak mencatat apa
+  pun. `acknowledged_at` sekali seumur tiket;
+  `trouble_ticket_assignments.responded_at` sekali per penugasan. Sejak 19 Okt
+  2026 **tidak ada tombol Remote** (`POST {ticket}/remote` dan `startRemote()`
+  dihapus): pada transaksi yang sama, tiket `OPEN` langsung menjadi `REMOTE`
+  dengan `visit_decision = NON_VISIT` dan `progress_started_at` — **SLA Response
+  berhenti dan SLA Resolution mulai di titik yang sama**. Keduanya ditulis
+  sebagai **satu** kejadian `responded_remote` ("Ticket read — Remote"), bukan
+  `responded` + `remote_started` pada detik yang sama; dua kode lama tetap
+  dipakai riwayat tiket sebelum tanggal itu. Dari `REMOTE` teknisi mengirim form
+  close atau membuat Plan Visit.
 - **Create Plan** (`POST {ticket}/plan`): teknisi mengisi tanggal plan visit
-  (site & pelaksana mengikuti tiket, tidak bisa diubah di modal). Status
-  `PLAN`, tanpa approval. Tanggal hari ini langsung naik ke `TRIP`.
+  (site & pelaksana mengikuti tiket, tidak bisa diubah di modal) **dan
+  estimasi biaya** (20 Okt 2026, lihat "Biaya plan" di bawah). Status
+  `PLAN`, tanpa approval. Tanggal hari ini **tidak** langsung naik ke `TRIP`
+  (19 Okt 2026) — teknisi menggeser swipe Trip. **Membuat plan pertama**
+  (dari `REMOTE`): teknisi tiket ini atau supervisor (`canCreatePlan()`).
+  **Batas tanggal** (19 Okt 2026, `TroubleTicket::planMinDate()`): plan pertama
+  minimal **hari ini** — tanggal lampau tidak bisa dipilih. Saat tanggalnya
+  diubah atau di-reschedule (`PLAN`/`TRIP`), tanggal lampau boleh, tapi tidak
+  boleh lebih awal dari **hari plan itu dibuat** (kejadian `plan_created`
+  pertama; fallback `created_at` tiket). Batas yang sama dipakai kalender
+  (flatpickr `minDate` lewat `data-min-date`), validasi controller
+  (`after_or_equal:`), dan guard service `assertVisitDateAllowed()` pada
+  `createPlan()`, `cancelTravel()`, dan reschedule di `reassign()`.
+  **Mengubah tanggal plan yang sudah ada** (`PLAN`/`TRIP`): hanya supervisor
+  (`canReschedulePlan()` = leader team teknisinya, `TROUBLE_TICKET_SUPERVISE`,
+  atau `TROUBLE_TICKET_APPROVE`); teknisi tidak lagi boleh menggesernya
+  sendiri. Gerbang yang dipakai tombol & server: `canPlan()`.
   Hanya dari `REMOTE` (berbalik jadi kunjungan — SLA Resolution yang sempat
   berjalan dibatalkan), `PLAN` (ubah tanggal; kejadian `plan_updated`), dan
   `TRIP` (reschedule: jejak perjalanan dikosongkan supaya SLA Travel dihitung
@@ -107,9 +139,9 @@ notifikasi tidak terkirim dua kali. Error keadaan = `ValidationException`
   **tanggal plan visit berikutnya** (15 Okt 2026). SLA Travel kembali ke 0
   (`travel_started_at` & `travel_seconds` dikosongkan) tapi riwayatnya tetap:
   `travel_cancelled_at`, `travel_cancel_reason`, dan kejadian `travel_cancelled`
-  yang memuat jam keberangkatan yang dibatalkan + tanggal plan baru. Tanggal
-  hari ini → tiket tetap `TRIP` (lewat `promoteIfDue`); tanggal lain → kembali
-  ke `PLAN`. **Inilah cara menjadwalkan ulang setelah perjalanan dimulai** —
+  yang memuat jam keberangkatan yang dibatalkan + tanggal plan baru. Tiket
+  **selalu kembali ke `PLAN`** (19 Okt 2026, termasuk bila tanggal berikutnya
+  hari ini juga) — tahap Trip dimulai lagi lewat "Swipe for travel". **Inilah cara menjadwalkan ulang setelah perjalanan dimulai** —
   Change Teknisi sudah tertutup di titik itu. Keterangan panjang yang dulu
   tercetak di bawah form (log + SLA + aturan tanggal) **dihapus dari modal**
   (19 Okt 2026) — aturannya tetap berlaku, hanya tidak ditulis lagi di UI.
@@ -124,24 +156,144 @@ notifikasi tidak terkirim dua kali. Error keadaan = `ValidationException`
 - **Start Progress** (`POST {ticket}/start`): hanya dari `TRIP` dan hanya
   setelah On Site. Status `IN_PROGRESS`, `progress_started_at` diisi — **SLA
   Resolution mulai**.
-- **Form close** (`POST {ticket}/close`): dari `REMOTE`, `PLAN`, `TRIP`,
-  maupun `IN_PROGRESS` (`TroubleTicket::CLOSABLE`). Dari `TRIP` sebelum On
+- **Form close** (`POST {ticket}/close`): dari `OPEN` (20 Okt 2026), `REMOTE`,
+  `PLAN`, `TRIP`, maupun `IN_PROGRESS` (`TroubleTicket::CLOSABLE`). Sejak 20 Okt
+  2026 **semua peran yang boleh melihat tiket** dapat mengirimnya (bukan lagi
+  hanya teknisi yang ditugaskan + superadmin) — gerbangnya
+  `TroubleTicketWorkflow::canClose()`, dengan satu kekecualian: tahap `TRIP`
+  tertutup bagi **teknisi tiket itu** — sebelum maupun sesudah On Site ia
+  memulai progres dulu dan menutup dari `IN_PROGRESS`. Peran lain tetap bisa
+  menutup dari `TRIP`, termasuk sesudah On Site (20 Okt 2026). Dari `TRIP` sebelum On
   Site, perjalanan yang sedang berjalan dibatalkan otomatis (kejadian
-  `travel_cancelled`, SLA Travel tidak dihitung). **Setelah On Site form close
-  ditutup** (19 Okt 2026): `TRIP` + `travel_arrived_at` terisi ditolak server
-  dan tombolnya tidak dirender — progres dimulai dulu, penutupan dari
+  `travel_cancelled`, SLA Travel tidak dihitung). **Setelah On Site form close ditutup
+  bagi teknisi** (19 Okt 2026, dipersempit 20 Okt 2026): `TRIP` +
+  `travel_arrived_at` terisi ditolak server untuk teknisi tiket itu dan
+  tombolnya tidak dirender — progres dimulai dulu, penutupan dari
   `IN_PROGRESS`. Wajib: RCA (dari master),
   keterangan, dan evidence — kolom Action tidak dipakai lagi. RCA/Sub-RCA
   tiket DIPERBARUI mengikuti isian form ini. Tiket yang ditutup langsung
   dari `PLAN` memakai waktu pengiriman form sebagai awal Resolution. Status `PROGRESS_DONE`, `approval = PENDING`,
   `progress_done_at`/`resolved_at` diisi. **Tiket belum ditutup.**
+- **Biaya plan** (20 Okt 2026, bagian Biaya pada modal Create Plan — **wajib**):
+  satu **Budget Plan** berstatus `ACTIVE` sebagai sumber dana
+  (`trouble_tickets.budget_plan_id`) plus minimal satu baris item
+  (`trouble_ticket_plan_costs`). Daftar Budget Plan disaring ke **customer milik
+  user itu** — customer team ACTIVE tempat ia terdaftar (`teamCustomerIds()`)
+  **ditambah customer tiket itu sendiri**, supaya supervisor yang team-nya
+  memegang customer lain tetap bisa menganggarkan tiket yang jadi tanggung
+  jawabnya. Budget **cost center** (overhead/payroll) tidak ikut karena tidak
+  terikat customer.
+  Tiap baris memilih **sub-item budget plan** (`budget_detail_id` →
+  `budget_plan_details`), bukan COA lepas — karena rincian Cost Request
+  bersandar pada sub-item; `account_id`/`account_name` ikut tersalin dari
+  sub-item sebagai jejak baca. Uang **integer rupiah**; `total` tiap baris dan
+  `trouble_tickets.plan_cost_total` **dihitung ulang di server**
+  (`TroubleTicketWorkflow::siapkanBiayaPlan()`) — angka kiriman browser tidak
+  dipakai. Baris **diganti seluruhnya** tiap plan disimpan: satu tiket = satu
+  set estimasi yang berlaku, dan penyimpanan ulang selalu mengembalikan
+  `plan_budget_status` ke `PENDING`.
+  Totalnya ikut di metadata kejadian `plan_created`/`plan_updated`
+  (`budget_plan`, `cost_total`), tampil ringkas di panel tahap Plan dan rinci
+  di tab **Tiket**.
+- **Approval plan & biaya → Cost Request draft** (20 Okt 2026,
+  `POST {ticket}/plan/approve` & `{ticket}/plan/reject`): sesudah Create Plan,
+  tiket **tetap di tahap `PLAN`** dan `plan_budget_status = PENDING`. Di daftar
+  tiket, site-nya diberi tanda seru **kuning** ("Budget plan belum disetujui"),
+  terpisah dari tanda merah "Tanggal visit terlewat".
+  Pemutusnya = pengawas tiket + `TROUBLE_TICKET_APPROVE`
+  (`canApprovePlanBudget()`). **Reject** wajib beralasan, menulis
+  `plan_budget_notes`, dan tiket tetap di `PLAN` untuk direvisi (kejadian
+  `plan_budget_rejected`). **Approve** menulis `plan_approved_at`/`_by`
+  (kolom lama dari migrasi `2026_10_10_000200`), `plan_budget_status =
+  APPROVED`, `budget_request_id`, kejadian `plan_budget_approved` — **status
+  tiket tidak berubah**.
+  Cost Request yang dibuat (`buatDraftCostRequest()`) berstatus **`DRAFT`** dan
+  menempuh seluruh alur Cost Request seperti CR yang diketik manusia; tidak ada
+  tahap yang dilewati. Pemetaannya: jenis **Cash Advance**
+  (`BudgetRequest::cashAdvanceTypeIds()`), `applicant_id` = **supervisor yang
+  approve**, `beneficiary_id` = beneficiary **INTERNAL ACTIVE milik PIC teknisi
+  tiket** (tidak ada → approve ditolak dengan pesan), `budget_plan_id` dari
+  plan, `cluster_id` dari **project budget plan** (satu cluster aktif →
+  otomatis; lebih dari satu → supervisor memilih di modal Approve; budget cost
+  center → null), kode lewat `BudgetRequest::generateCode()`, rincian per baris
+  biaya (`budget_detail_id`, `account_id`, amount/qty/total), NOB per CR dan
+  per baris dihitung dengan rumus yang sama dengan form CR
+  (`BudgetConsumption::COMMITTED`, `effectiveCostSql()`,
+  `BudgetPlanDetail::remainingAmount()`). Qty baris biaya plan **bilangan bulat**
+  (20 Okt 2026) — satuannya trip/orang/hari/unit — jadi baris pindah apa adanya
+  ke `request_details` yang qty-nya juga bilangan bulat.
+  **Tidak ada pagu yang ditahan oleh plan itu sendiri**: konsumsi anggaran
+  terjadi lewat CR seperti biasa.
+  CR yang terbentuk otomatis diberi **lampiran global** berisi ringkasan detail
+  tiket dalam PNG (`App\Services\TicketDetailImage`, digambar dengan ekstensi
+  GD — tanpa paket baru): Identitas, Gangguan, Resolution, dan Biaya Plan,
+  **tanpa bagian SLA** (20 Okt 2026). Tanpa lampiran ini CR tipe Cash Advance
+  tidak bisa disimpan ulang Finance, karena lampiran global memang wajib untuk
+  tipe itu. Tata letaknya meniru modal Info (dua kolom, chip status, garis
+  antar baris). Teks memakai TTF: `resources/fonts/regular.ttf` &
+  `bold.ttf` lebih dulu, lalu font sistem yang lazim (DejaVu/Liberation di
+  Linux, Arial di Windows);
+  repo hanya memuat font IKON, jadi selama folder itu kosong dipakai font
+  bitmap bawaan GD (terbaca, bentuknya lebih sederhana). Kegagalan menggambar
+  dicatat ke log dan **tidak** membatalkan approve.
+  CR lama yang terbit sebelum aturan ini bisa dilampiri menyusul lewat
+  `php artisan tt:backfill-plan-attachment` (dry run; `--apply` untuk menulis,
+  `--replace` untuk mengganti lampiran `detail-tiket-*` buatan sendiri —
+  lampiran unggahan manusia tidak pernah disentuh).
+- **Settlement dari halaman tiket** (20 Okt 2026): begitu CR tiket berstatus
+  `PAID`/`SETTLE_REJECTED`, panel tahap memunculkan **Submit Settlement**.
+  Modalnya meniru layar Settlement per Item (Description Settle, Qty, Request,
+  Settle, Variance) dan **mengirim ke endpoint yang sudah ada** —
+  `POST budget-request/{id}/save-realization-draft` — jadi ia menyimpan
+  **DRAFT**: status CR tidak berubah dan pengajuan resminya tetap dilakukan
+  dari modul Cost Request. Tidak ada perhitungan settlement yang ditulis ulang
+  di modul ini.
+  **Perubahan otorisasi (jalur uang):** teknisi kini boleh submit settlement,
+  tetapi HANYA untuk CR yang lahir dari plan visit tiket yang ditugaskan
+  kepadanya. Penyempitan itu ditegakkan di tiga lapis yang harus tetap sejalan
+  (CLAUDE.md §8): route `role:superadmin,manager,supervisor,teknisi` untuk
+  `submit-realization` & `save-realization-draft`,
+  `BudgetRequestController::isTicketTechnicianOfCr()` pada keduanya dan pada
+  `canViewCr()`, serta tombol di `_stage.blade.php` (`$canSettle`).
+  Form realisasi penuh (`realize-form`) TETAP tanpa teknisi.
+  **E-sign per baris**: tiap baris punya dua tombol IKON — lampiran item dan
+  e-sign. E-sign membuka pad bersama (Upload / Ulang / Batal); coretannya
+  disimpan di input tersembunyi baris itu dan baru ditulis server saat
+  settlement disimpan, sebagai **lampiran global CR** bernama
+  `ttd-<no baris>-<kode CR>.png` di `settlement_signatures/` pada disk
+  `secure` — bukan lampiran item, supaya bukti serah-terima terkumpul
+  terpisah dari nota belanja. Mengirim ulang mengganti tanda tangan baris itu,
+  jadi menyimpan draft berkali-kali tidak menumpuk berkas.
+  Catatan: kolom `settlement_signature_path`/`_signer_name`/`_signed_at` dari
+  migrasi `2026_10_20_000500` dibuat untuk rancangan awal (satu tanda tangan
+  per settlement) dan **kini tidak dipakai** — aditif & nullable, tidak
+  mengganggu alur mana pun.
+- **Pencairan CR kembali ke tiket** (20 Okt 2026): saat Treasury menandai batch
+  **Paid**, `DailyTransactionController::markPaid()` memanggil
+  `TroubleTicketWorkflow::recordCostRequestPaid()` yang menulis kejadian
+  **`cost_request_paid`** ("Cost Request paid") di timeline chat & tab **Log**
+  tiket beserta nomor CR dan nilainya, lalu memberi tahu teknisinya. Status
+  tiket maupun CR **tidak** diubah — murni jejak baca; pemanggilan berulang
+  tidak menggandakan baris karena kejadiannya dicek lebih dulu.
+  Hook itu hanya menangkap pembayaran yang MELEWATI `markPaid()`. CR yang
+  statusnya berubah lewat jalur lain (perbaikan data, impor, alur lama) tidak
+  memicunya, jadi `syncCostRequestPaid()` dipanggil sekali setiap halaman
+  detail tiket dibuka: bila CR-nya sudah `PAID`/`REALIZED`/`SETTLE_*`/`CLOSED`
+  tetapi kejadiannya belum ada, barisnya ditulis dengan pelaku **pemohon CR**
+  (fallback penyetuju plan), bukan orang yang kebetulan membuka tiket.
+  Migrasi: `2026_10_20_000100_create_trouble_ticket_plan_costs_table`,
+  `2026_10_20_000200_add_plan_cost_to_trouble_tickets`,
+  `2026_10_20_000300_add_budget_detail_to_trouble_ticket_plan_costs`,
+  `2026_10_20_000400_add_plan_budget_approval_to_trouble_tickets`.
 - **Approval penutupan**: hanya `AccessRoles::TROUBLE_TICKET_APPROVE`
   (`supervisor`, `superadmin`) dan **bukan** teknisi tiket itu.
   `POST {ticket}/close/approve` → `CLOSED` + `approved_at/by` + `closed_at`
   (`closed_by` tetap teknisi) dan `resolution_seconds` difinalkan.
   `POST {ticket}/close/reject` wajib alasan → kembali ke `IN_PROGRESS`
   (atau `REMOTE` untuk jalur non-visit); SLA Resolution tetap berjalan.
-- **Reassign** (tombol **Change Teknisi**, dulu "Swap Teknisi"): jendelanya
+- **Reassign** (tombol **Change Teknisi**, dulu "Swap Teknisi"): pelakunya =
+  pengawas tiket (`canSupervise()`) **ditambah peran penyetuju penutupan —
+  `supervisor`** (keputusan 20 Okt 2026, `canReassignBy()`). Jendelanya
   **sejak plan visit dibuat sampai tepat sebelum swipe "mulai perjalanan"** —
   `TroubleTicketWorkflow::canReassign()` = status `PLAN`/`TRIP` **dan**
   `travel_started_at`/`travel_arrived_at` masih NULL (15 Okt 2026). Setelah
@@ -164,6 +316,15 @@ notifikasi tidak terkirim dua kali. Error keadaan = `ValidationException`
   dua baris tetap terbaca apa adanya. **Inilah satu-satunya
   jalan reschedule di tahap Trip** (15 Okt 2026) — tombol Reschedule di panel
   Trip dicabut; `POST {ticket}/plan` tetap menerima `TRIP` untuk integrasi.
+- **Customer mengikuti team pembuat tiket** (19 Okt 2026): form Buat Trouble
+  Ticket tidak lagi menanyakan customer bila pembuatnya anggota ACTIVE (atau
+  leader) sebuah team ACTIVE yang kolom `teams.customer_id`-nya terisi
+  (migrasi `2026_10_19_000300`, diisi di Master Data > Team). Satu customer →
+  kotaknya baca-saja dan daftar site langsung menyempit ke customer itu;
+  beberapa team dengan customer berbeda → tetap memilih, hanya daftarnya yang
+  menyempit; tanpa team (mis. superadmin) → perilaku lama. Penegakannya ada di
+  `store()`: site di luar customer team pembuat ditolak (`site_id`), jadi
+  kiriman browser tidak bisa menembusnya.
 - **Notifikasi tiket baru**: teknisi yang ditugaskan **dan seluruh PIC internal
   site** (`sitePicUsers()`).
 
@@ -171,7 +332,7 @@ notifikasi tidak terkirim dua kali. Error keadaan = `ValidationException`
 
 | Ukuran | Rumus | Catatan |
 |---|---|---|
-| Response | `first_responded_at − created_at` | Penugasan wajib saat dibuat, jadi = waktu penugasan awal. Reassign tidak me-restart jam. |
+| Response | `acknowledged_at − created_at` | Berhenti saat **teknisi yang ditugaskan membaca detail tiket** (`recordAccess()`). Penugasan wajib saat dibuat, jadi = waktu penugasan awal. Reassign tidak me-restart jam. |
 | Travel | `travel_arrived_at − travel_started_at` | Sejak 12 Okt 2026: dari geser "mulai perjalanan" sampai konfirmasi On Site. Visit yang dibatalkan mengosongkan `travel_started_at`, jadi tidak ikut dihitung. Jalur Remote tidak pernah punya Travel. |
 | Resolution | `closed_at − progress_started_at` | Mulai saat Remote dipilih atau progres di site dimulai; **berhenti saat supervisor approve**, bukan saat teknisi mengirim form close. |
 
@@ -223,14 +384,14 @@ SLA di tab **SLA**.
 - Baris `reassigned` di tab **Log** menampilkan perpindahannya
   (`from_name` &rarr; `to_name` dari metadata kejadian), sama seperti gelembung
   di timeline chat.
-- **Diskusi tidak lagi ditutup oleh status (19 Okt 2026).** Tiket `CLOSED`
-  tetap bisa dikomentari; yang menutup chat hanya **Stop Chat**
-  (`POST {ticket}/chat-lock`, body `lock=1`/`lock=0`) oleh
-  `AccessRoles::TROUBLE_TICKET_CHAT_LOCK` (`superadmin`, sama dengan gerbang
-  `role:superadmin` di route). Jejaknya di `chat_locked_at` / `chat_locked_by`
-  (migrasi `2026_10_19_000200`) dan kejadian `chat_stopped` / `chat_reopened`.
-  `TroubleTicketWorkflow::canMessage()` kini hanya menguji `chatLocked()` +
-  keterlihatan.
+- **Diskusi tidak pernah ditutup (19 Okt 2026).** Tiket `CLOSED` tetap bisa
+  dikomentari, dan fitur **Stop Chat dihapus** pada hari yang sama: route
+  `chat-lock`, `setChatLock()`, `canLockChat()`, `TroubleTicket::chatLocked()`
+  dan `AccessRoles::TROUBLE_TICKET_CHAT_LOCK` tidak ada lagi.
+  `canMessage()` kini sama dengan keterlihatan tiket. Kolom
+  `chat_locked_at` / `chat_locked_by` (migrasi `2026_10_19_000200`) dibiarkan di
+  basis data tanpa pengisi; label kejadian `chat_stopped` / `chat_reopened`
+  dipertahankan supaya log lama tetap terbaca.
 - **Label `PROGRESS_DONE` dibaca "Waiting Approve"** (19 Okt 2026) lewat
   `WorkflowStatus::TROUBLE_TICKET_LABELS`; kode statusnya tidak berubah. Panel
   tahapnya berjudul **"Waiting approval supervisor"**. Halaman detail juga
@@ -275,8 +436,23 @@ SLA di tab **SLA**.
   `ttBaruLuntur` sepanjang **2 detik**, hanya latar tanpa garis tepi. Id
   tiketnya dikirim lewat session `tt_baru` → view var `$baruIds`; baris tabel
   dan kartu HP sama-sama dikenali lewat `data-id`.
-- Tombol **Remote** di tahap TT Open berdiri satu baris penuh (`tt-btn-wide`),
-  tidak lagi di grid dua kolom `.tt-stage-acts` yang membuatnya separuh lebar.
+- **Log aktivitas dipakai bersama** (19 Okt 2026): tab **Log** di halaman
+  detail dan modal **Info** dari daftar sama-sama merender
+  `trouble-ticket/_log.blade.php` (`$statusLog`, `$tautChat` hanya true di
+  halaman detail), jadi keduanya tidak pernah bercerita berbeda.
+- **Scrollbar disembunyikan** di halaman detail (19 Okt 2026): `.tt-chat-list`,
+  `.tt-tab-body`, dan `.tt-info-log` memakai `scrollbar-width:none` +
+  `::-webkit-scrollbar{display:none}` — gulirannya tetap berjalan. Di desktop
+  (≥992px) `fitDetail()` juga memasang kelas `tt-detail-open` pada `<body>`
+  (`overflow-y:hidden`, 20 Okt 2026) supaya sisa pembulatan tinggi tidak
+  memunculkan batang gulir kosong di tepi kanan halaman; di HP kelas itu
+  dilepas dan halaman menggulir seperti biasa.
+- Panel tahap **Plan**: swipe "Swipe for travel" (hanya pada tanggal plan;
+  membuka modal evidence perjalanan, lalu tiket masuk tahap Trip),
+  tombol **Form Close** (semua peran, lihat `canClose()`), dan **Ubah
+  Tanggal** yang hanya tampil untuk supervisor. Di tahap **Trip** Ubah Tanggal
+  **dicabut** (20 Okt 2026): jadwal diubah lewat Cancel Visit yang sekaligus
+  menjadwalkan ulang.
 - Panel tahap Trip: tombol **On Site / Cancel Visit / Form Close** memakai
   `tt-btn-wide` — selebar panel (bukan separuh baris) tapi tetap ramping,
   tinggi 38px (42px di HP). Sempat setinggi swipe (52px) pada 15 Okt 2026 dan
@@ -416,11 +592,11 @@ di dev, jadi perubahan ditulis sebagai migrasi baru (saat itu 0 tiket).
 | `reported_at` | buat tiket | label layar **Date Open**: default sekarang, boleh diubah, tidak boleh di masa depan. Jadi titik awal **aging**; SLA Response tetap dari `created_at` (keputusan 9 Okt 2026) |
 | `updated_at` | otomatis | hanya internal/export; kolom **Date Update** dan **Dibuat** (`created_at`) dicabut dari daftar 16 Okt 2026, urutan default daftar jadi Date Open terbaru |
 | `pic_id` | buat tiket / reassign | baris `master_pics` teknisi; `assigned_to` (user) tetap dipakai untuk hak akses. Di form buat tiket teknisi pertama site langsung terpilih (12 Okt 2026), masih bisa diganti |
-| `acknowledged_at`/`_by` (dulu `first_responded_*`) | teknisi membuka tiket | |
-| `visit_site`, `target_online` | modal Create Plan | `visit_site` wajib (≥ hari ini); target online opsional |
+| `acknowledged_at`/`_by` (dulu `first_responded_*`) | teknisi membaca detail tiket | sekali seumur tiket; titik berhenti SLA Response |
+| `visit_site`, `target_online` | modal Create Plan | `visit_site` wajib, batas bawah `TroubleTicket::planMinDate()`; target online opsional |
 | `travel_started_at`, `travel_arrived_at`, `travel_seconds` | tahap Trip | jejak SLA Travel (migrasi `2026_10_12_000300`) |
 | `travel_cancelled_at`, `travel_cancel_reason` | batal visit | pembatalan terakhir; SLA Travel dibatalkan tapi jejaknya tetap |
-| `chat_locked_at`, `chat_locked_by` | Stop Chat (superadmin) | kosong = diskusi terbuka, termasuk pada tiket `CLOSED` |
+| `chat_locked_at`, `chat_locked_by` | — | peninggalan Stop Chat yang dihapus 19 Okt 2026; tidak diisi kode mana pun lagi |
 | `resolved_at`, `progress_done_at` | kirim form close | saat teknisi mengirim hasil, sebelum approval |
 | `approved_at`/`_by` | approve penutupan | supervisor yang menutup tiket |
 | `plan_approved_at`/`_by` | LEGACY | jejak approval plan alur lama (migrasi `2026_10_10_000200`) |

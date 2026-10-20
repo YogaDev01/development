@@ -52,8 +52,10 @@
 
 <div class="d-flex flex-wrap align-items-center mb-3" style="gap:6px;">
     <span class="badge badge-{{ $site->status === 'ACTIVE' ? 'success' : 'danger' }} px-2 py-1">{{ Site::STATUSES[$site->status] ?? $site->status }}</span>
-    {{-- Program kosong tetap tampil sebagai "-" supaya badge-nya tidak melompong. --}}
-    <span class="badge badge-light border px-2 py-1">{{ Site::PROGRAMS[$site->program] ?? ($site->program ?: '-') }}</span>
+    {{-- Program kosong: badge-nya tidak usah dicetak sama sekali. --}}
+    @if($site->program)
+        <span class="badge badge-light border px-2 py-1">{{ Site::PROGRAMS[$site->program] ?? $site->program }}</span>
+    @endif
     <span class="badge badge-light border px-2 py-1">{{ $site->customer?->name ?? '-' }}</span>
 </div>
 

@@ -2,6 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\Account;
+use App\Models\Beneficiary;
+use App\Models\BudgetPlan;
+use App\Models\BudgetPlanDetail;
+use App\Models\BudgetRequest;
+use App\Models\Cluster;
 use App\Models\Site;
 use App\Models\SiteBackupTechnician;
 use App\Models\SitePic;
@@ -17,12 +23,16 @@ use App\Models\TroubleTicketRca;
 use App\Models\TroubleTicketSlaPolicy;
 use App\Models\TroubleTicketSubRca;
 use App\Models\User;
+use App\Services\TicketDetailImage;
 use App\Support\AccessRoles;
+use App\Support\BudgetConsumption;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -87,16 +97,71 @@ class TroubleTicketWorkflow
     }
 
     /**
-     * Create / ubah Plan Visit: teknisi yang ditugaskan (atau superadmin lewat
-     * TROUBLE_TICKET_FULL_SCOPE) dan supervisor tiket ini — leader team-nya,
-     * cadangan pengawas, atau role penyetuju penutupan (keputusan 15 Okt 2026).
-     * Peran lain tidak boleh membuat plan.
+     * Boleh mengirim FORM CLOSE (keputusan 20 Okt 2026): SEMUA peran yang
+     * boleh melihat tiket — bukan lagi hanya teknisi yang ditugaskan — di
+     * tahap Open, Remote, Plan, dan In Progress. Dua kekecualian tetap:
+     *
+     *   - tahap TRIP tertutup bagi TEKNISI tiket itu (superadmin & peran lain
+     *     tetap bisa), lanjutan aturan 15 Okt 2026 soal perjalanan;
+     *   - sesudah On Site TEKNISI tetap harus memulai progres dulu (19 Okt
+     *     2026); peran lain boleh menutup dari tahap itu (20 Okt 2026).
+     */
+    public function canClose(User $user, TroubleTicket $ticket): bool
+    {
+        if (! in_array($ticket->status, TroubleTicket::CLOSABLE, true)) {
+            return false;
+        }
+
+        if ($ticket->status === 'TRIP'
+            && $this->isTechnician($user, $ticket)
+            && ! $user->hasRole(AccessRoles::TROUBLE_TICKET_FULL_SCOPE)) {
+            return false;
+        }
+
+        return $this->canView($user, $ticket);
+    }
+
+    /**
+     * Boleh mengalihkan teknisi: pengawas tiket ini, ditambah peran penyetuju
+     * penutupan — supervisor (keputusan 20 Okt 2026).
+     */
+    public function canReassignBy(User $user, TroubleTicket $ticket): bool
+    {
+        return $this->canSupervise($user, $ticket)
+            || $user->hasRole(AccessRoles::TROUBLE_TICKET_APPROVE);
+    }
+
+    /**
+     * Membuat Plan Visit PERTAMA (dari tahap Remote): teknisi yang ditugaskan
+     * (atau superadmin lewat TROUBLE_TICKET_FULL_SCOPE) dan supervisor tiket
+     * ini — leader team-nya, cadangan pengawas, atau role penyetuju penutupan
+     * (keputusan 15 Okt 2026). Peran lain tidak boleh membuat plan.
      */
     public function canCreatePlan(User $user, TroubleTicket $ticket): bool
     {
         return $this->actsAsTechnician($user, $ticket)
             || $this->canSupervise($user, $ticket)
             || $user->hasRole(AccessRoles::TROUBLE_TICKET_APPROVE);
+    }
+
+    /**
+     * MENGUBAH tanggal plan yang sudah ada (tahap Plan / Trip): hanya
+     * supervisor (keputusan 19 Okt 2026) — leader team teknisinya, cadangan
+     * pengawas, atau role penyetuju penutupan. Teknisi tidak lagi menggeser
+     * sendiri jadwal kunjungannya.
+     */
+    public function canReschedulePlan(User $user, TroubleTicket $ticket): bool
+    {
+        return $this->canSupervise($user, $ticket)
+            || $user->hasRole(AccessRoles::TROUBLE_TICKET_APPROVE);
+    }
+
+    /** Hak membuat/mengubah plan sesuai tahap tiket sekarang — dipakai tombol & server. */
+    public function canPlan(User $user, TroubleTicket $ticket): bool
+    {
+        return in_array($ticket->status, ['PLAN', 'TRIP'], true)
+            ? $this->canReschedulePlan($user, $ticket)
+            : $this->canCreatePlan($user, $ticket);
     }
 
     /**
@@ -112,28 +177,13 @@ class TroubleTicketWorkflow
     }
 
     /**
-     * Boleh mengirim pesan: tiket CLOSED TIDAK menutup diskusi lagi (keputusan
-     * 19 Okt 2026) — hanya Stop Chat oleh superadmin yang menutupnya.
+     * Boleh mengirim pesan: siapa pun yang bisa melihat tiket. Tiket CLOSED
+     * tidak menutup diskusi (keputusan 19 Okt 2026), dan fitur Stop Chat
+     * dihapus (keputusan 19 Okt 2026) — tidak ada lagi yang menutup chat.
      */
     public function canMessage(User $user, TroubleTicket $ticket): bool
     {
-        return ! $ticket->chatLocked() && $this->canView($user, $ticket);
-    }
-
-    /** Stop / buka kembali diskusi tiket: hanya superadmin. */
-    public function canLockChat(User $user, TroubleTicket $ticket): bool
-    {
-        return $user->hasRole(AccessRoles::TROUBLE_TICKET_CHAT_LOCK)
-            && $this->canView($user, $ticket);
-    }
-
-    /** Teknisi wajib memilih Remote atau membuat Plan sebelum bisa melakukan apa pun. */
-    public function mustDecide(User $user, TroubleTicket $ticket): bool
-    {
-        // Sengaja teknisi aslinya saja: aturan ini juga mengunci chat, dan
-        // superadmin tidak boleh ikut terkunci saat menengahi tiket.
-        return $this->isTechnician($user, $ticket)
-            && $ticket->status === 'OPEN';
+        return $this->canView($user, $ticket);
     }
 
     /** Leader team ACTIVE dari teknisi (user ACTIVE). */
@@ -401,6 +451,11 @@ class TroubleTicketWorkflow
      * acknowledged_at tiket (sekali seumur tiket) dan responded_at
      * penugasan aktif (sekali per penugasan). Mengembalikan true bila ada
      * yang tercatat pada panggilan ini.
+     *
+     * Sejak 19 Okt 2026 tidak ada lagi tombol Remote: tiket OPEN yang dibuka
+     * teknisinya LANGSUNG masuk tahap Remote (penanganan jarak jauh) dalam
+     * transaksi yang sama — SLA Response berhenti di sini dan SLA Resolution
+     * mulai berjalan. Dari Remote teknisi menutup tiket atau membuat Plan.
      */
     public function recordAccess(TroubleTicket $ticket, User $user): bool
     {
@@ -409,7 +464,9 @@ class TroubleTicketWorkflow
         }
 
         $assignment = $ticket->assignments()->whereNull('unassigned_at')->first();
-        if ($ticket->acknowledged_at !== null && ($assignment === null || $assignment->responded_at !== null)) {
+        if ($ticket->acknowledged_at !== null
+            && $ticket->status !== 'OPEN'
+            && ($assignment === null || $assignment->responded_at !== null)) {
             return false; // jalur cepat: sudah tercatat, tanpa kunci
         }
 
@@ -447,8 +504,29 @@ class TroubleTicketWorkflow
                 $t->update($changes);
             }
 
+            // Tiket OPEN yang dibuka teknisinya langsung masuk tahap Remote.
+            $keRemote = $t->status === 'OPEN';
+
+            if ($keRemote) {
+                $t->update([
+                    'status' => 'REMOTE',
+                    'visit_decision' => TroubleTicket::NON_VISIT,
+                    'visit_decided_by' => $user->id,
+                    'visit_decided_at' => $now,
+                    'visit_site' => null,
+                    'approval' => null,
+                    'progress_started_at' => $t->progress_started_at ?? $now,
+                ]);
+
+                $recorded = true;
+            }
+
+            /* Satu kejadian untuk satu tindakan (19 Okt 2026): membuka tiket
+               dan masuk tahap Remote terjadi bersamaan, jadi log & timeline
+               menulisnya sebagai satu baris 'responded_remote', bukan
+               'responded' lalu 'remote_started' pada detik yang sama. */
             if ($recorded) {
-                $this->event($t, $user, 'responded', null, [
+                $this->event($t, $user, $keRemote ? 'responded_remote' : 'responded', null, [
                     'first' => isset($changes['acknowledged_at']),
                 ]);
             }
@@ -461,63 +539,137 @@ class TroubleTicketWorkflow
 
     /*
     |--------------------------------------------------------------------------
-    | OPEN → REMOTE / PLAN
+    | REMOTE → PLAN
     |--------------------------------------------------------------------------
     */
 
     /**
-     * Teknisi memilih jalur Remote: tiket diselesaikan tanpa kunjungan. SLA
-     * Resolution mulai di sini (sama seperti "mulai progres" pada jalur visit),
-     * lalu teknisi mengisi form close.
+     * Memvalidasi & menormalkan isian Biaya pada Create Plan.
+     *
+     * Totalnya DIHITUNG di sini (harga × qty, dibulatkan ke rupiah penuh)
+     * supaya angka kiriman browser tidak pernah menentukan nilai tersimpan.
+     * Nama COA ikut disalin sebagai jejak baca.
+     *
+     * @return array{0: BudgetPlan, 1: array<int, array<string, mixed>>, 2: int}
      */
-    public function startRemote(TroubleTicket $ticket, User $user): void
+    private function siapkanBiayaPlan(?int $budgetPlanId, array $items): array
     {
-        DB::transaction(function () use ($ticket, $user) {
-            $t = $this->lock($ticket);
-            $this->authorizeIf($this->actsAsTechnician($user, $t), 'Hanya teknisi yang ditugaskan atau superadmin yang dapat memilih Remote.');
-            $this->expect($t, ['OPEN'], 'Remote hanya bisa dipilih saat tiket berstatus Open.');
+        $budgetPlan = $budgetPlanId ? BudgetPlan::find($budgetPlanId) : null;
 
-            $t->update([
-                'status' => 'REMOTE',
-                'visit_decision' => TroubleTicket::NON_VISIT,
-                'visit_decided_by' => $user->id,
-                'visit_decided_at' => now(),
-                'visit_site' => null,
-                'approval' => null,
-                'progress_started_at' => $t->progress_started_at ?? now(),
-            ]);
+        if ($budgetPlan === null) {
+            $this->fail('Budget Plan wajib dipilih.', 'budget_plan_id');
+        }
 
-            $this->event($t, $user, 'remote_started');
-        });
+        // Hanya pagu yang sudah berjalan yang boleh jadi sumber dana.
+        if ($budgetPlan->status !== 'ACTIVE') {
+            $this->fail('Budget Plan harus berstatus ACTIVE.', 'budget_plan_id');
+        }
+
+        $items = array_values(array_filter($items, fn ($r) => filled($r['description'] ?? null)));
+
+        if ($items === []) {
+            $this->fail('Minimal satu baris item biaya wajib diisi.', 'costs');
+        }
+
+        /* Baris digantung ke SUB-ITEM budget plan, bukan ke COA lepas: rincian
+           Cost Request memang bersandar pada budget_plan_details, jadi draft CR
+           nanti terbentuk tanpa menebak pasangan COA-nya. */
+        $subItem = BudgetPlanDetail::with('account')
+            ->where('budget_plan_id', $budgetPlan->id)
+            ->whereIn('id', array_map(fn ($r) => (int) ($r['budget_detail_id'] ?? 0), $items))
+            ->get()
+            ->keyBy('id');
+
+        $baris = [];
+        $total = 0;
+
+        foreach ($items as $r) {
+            $detailId = (int) ($r['budget_detail_id'] ?? 0);
+            if (! $subItem->has($detailId)) {
+                $this->fail('Sub-item biaya harus dipilih dari Budget Plan yang sama.', 'costs');
+            }
+
+            $detail = $subItem[$detailId];
+            $harga  = (int) ($r['amount'] ?? 0);
+            // Qty bilangan bulat: satuannya trip/orang/hari/unit (20 Okt 2026).
+            $qty    = (int) ($r['qty'] ?? 0);
+
+            if ($harga <= 0 || $qty <= 0) {
+                $this->fail('Harga dan qty setiap baris biaya harus lebih dari nol.', 'costs');
+            }
+
+            $barisTotal = $harga * $qty;
+            $total += $barisTotal;
+
+            $baris[] = [
+                'budget_detail_id' => $detail->id,
+                'account_id'       => $detail->account_id,
+                'account_name'     => $detail->account?->name,
+                'description'      => trim((string) $r['description']),
+                'amount'           => $harga,
+                'qty'              => $qty,
+                'total'            => $barisTotal,
+            ];
+        }
+
+        return [$budgetPlan, $baris, $total];
     }
 
     /**
-     * Teknisi membuat Plan Visit: tiket menunggu tanggal plan visit. Tidak ada
-     * approval plan (keputusan 12 Okt 2026) — begitu tanggalnya tiba tiket
-     * naik sendiri ke tahap Trip (lihat promoteDueTrips()).
+     * Membuat / mengubah Plan Visit: tiket menunggu tanggal plan visit. Tidak
+     * ada approval plan (keputusan 12 Okt 2026), dan tiket TIDAK naik sendiri
+     * ke tahap Trip saat tanggalnya tiba (keputusan 19 Okt 2026) — teknisi
+     * yang menggeser "Swipe for travel" (lihat startTravel()).
      *
      * @param  string  $visitSite  tanggal rencana kunjungan (Y-m-d)
      */
-    public function createPlan(TroubleTicket $ticket, User $user, string $visitSite, ?string $targetOnline = null, ?string $reason = null): void
+    /**
+     * @param  int|null  $budgetPlanId  Budget Plan sumber dana (wajib, status ACTIVE)
+     * @param  array<int, array{account_id:int, description:string, amount:int, qty:float}>  $items
+     *         Baris estimasi biaya; total tiap baris DIHITUNG ULANG di sini, nilai
+     *         kiriman browser tidak dipercaya.
+     */
+    public function createPlan(TroubleTicket $ticket, User $user, string $visitSite, ?string $targetOnline = null, ?string $reason = null, ?int $budgetPlanId = null, array $items = []): void
     {
         if (blank($visitSite)) {
             $this->fail('Tanggal plan visit wajib diisi.', 'visit_site');
         }
 
-        DB::transaction(function () use ($ticket, $user, $visitSite, $targetOnline, $reason) {
+        DB::transaction(function () use ($ticket, $user, $visitSite, $targetOnline, $reason, $budgetPlanId, $items) {
             $t = $this->lock($ticket);
-            $this->authorizeIf($this->canCreatePlan($user, $t), 'Hanya teknisi yang ditugaskan atau supervisor yang dapat membuat plan.');
+            // Plan pertama: teknisi atau supervisor. Mengubah tanggal plan
+            // yang sudah ada: supervisor saja (keputusan 19 Okt 2026).
+            $this->authorizeIf(
+                $this->canPlan($user, $t),
+                in_array($t->status, ['PLAN', 'TRIP'], true)
+                    ? 'Hanya supervisor yang dapat mengubah tanggal plan visit.'
+                    : 'Hanya teknisi yang ditugaskan atau supervisor yang dapat membuat plan.',
+            );
             // Remote (berbalik jadi kunjungan), Plan (ubah tanggal), Trip
             // (reschedule saat kunjungan batal). Dari Open tidak bisa:
             // teknisi memilih Remote dulu (keputusan 15 Okt 2026).
             $this->expect($t, ['REMOTE', 'PLAN', 'TRIP'], 'Plan hanya bisa dibuat atau diubah dari tahap Remote, Plan, atau Trip.');
+            $this->assertVisitDateAllowed($t, $visitSite);
 
             if ($t->status === 'TRIP' && $t->travel_arrived_at !== null) {
                 $this->fail('Teknisi sudah tiba di site; jadwal kunjungan tidak bisa diubah lagi.');
             }
 
+            // Estimasi biaya wajib menyertai plan (keputusan 20 Okt 2026).
+            [$budgetPlan, $baris, $totalBiaya] = $this->siapkanBiayaPlan($budgetPlanId, $items);
+
             $t->update([
                 'status' => 'PLAN',
+                'budget_plan_id' => $budgetPlan->id,
+                'plan_cost_total' => $totalBiaya,
+                /* Plan yang baru disimpan/diubah SELALU menunggu supervisor
+                   lagi (keputusan 20 Okt 2026): revisi tanggal atau biaya
+                   membatalkan persetujuan sebelumnya. CR draft yang terlanjur
+                   dibuat TIDAK disentuh — ia hidup sendiri di Cost Request. */
+                'plan_budget_status' => TroubleTicket::PLAN_BUDGET_PENDING,
+                'plan_budget_notes' => null,
+                'plan_approved_at' => null,
+                'plan_approved_by' => null,
                 'visit_decision' => TroubleTicket::VISIT,
                 'visit_decided_by' => $user->id,
                 'visit_decided_at' => now(),
@@ -536,12 +688,17 @@ class TroubleTicketWorkflow
                 'travel_seconds' => null,
             ]);
 
+            /* Baris biaya DIGANTI seluruhnya tiap plan disimpan: satu tiket
+               punya satu set estimasi yang berlaku, bukan riwayat bertumpuk. */
+            $t->planCosts()->delete();
+            $t->planCosts()->createMany($baris);
+
             $this->event($t, $user, $t->wasChanged('status') ? 'plan_created' : 'plan_updated', $reason, [
                 'visit_site' => $t->visit_site?->toDateString(),
                 'target_online' => $t->target_online?->toDateString(),
+                'budget_plan' => $budgetPlan->code,
+                'cost_total' => $totalBiaya,
             ]);
-
-            $this->promoteIfDue($t);
         });
 
         $ticket->refresh();
@@ -555,84 +712,347 @@ class TroubleTicketWorkflow
 
     /*
     |--------------------------------------------------------------------------
-    | PLAN → TRIP (otomatis, tanpa penjadwal)
+    | APPROVAL PLAN & BIAYA → COST REQUEST DRAFT
     |--------------------------------------------------------------------------
     */
 
-    /**
-     * Naikkan semua tiket PLAN yang tanggal plan visit-nya sudah tiba ke tahap
-     * TRIP. Dipanggil saat daftar/detail dibuka — tidak ada penjadwal di
-     * hosting bersama. Idempoten: baris yang sudah TRIP tidak tersentuh.
-     */
-    public function promoteDueTrips(): int
+    /** Boleh memutus plan & biaya: pengawas tiket ini + supervisor. */
+    public function canApprovePlanBudget(User $user, TroubleTicket $ticket): bool
     {
-        $ids = TroubleTicket::query()->dueTrip()->pluck('trouble_tickets.id');
+        return $ticket->planBudgetPending()
+            && $ticket->status === 'PLAN'
+            && ($this->canSupervise($user, $ticket) || $user->hasRole(AccessRoles::TROUBLE_TICKET_APPROVE));
+    }
 
-        if ($ids->isEmpty()) {
-            return 0;
+    /**
+     * Supervisor menyetujui tanggal & biaya plan. Tiket TETAP di tahap Plan
+     * (keputusan 20 Okt 2026); yang berubah hanya status approval, dan sistem
+     * membuat Cost Request berstatus DRAFT dari estimasi biaya plan.
+     *
+     * @param  int|null  $clusterId  wajib bila budget plan-nya budget PROYEK
+     *                               dan project itu punya lebih dari satu cluster
+     */
+    public function approvePlanBudget(TroubleTicket $ticket, User $user, ?int $clusterId = null, ?string $notes = null): void
+    {
+        $cr = null;
+
+        DB::transaction(function () use ($ticket, $user, $clusterId, $notes, &$cr) {
+            $t = $this->lock($ticket);
+            $this->authorizeIf($this->canApprovePlanBudget($user, $t), 'Hanya supervisor yang dapat menyetujui plan & biaya.');
+            $this->expect($t, ['PLAN'], 'Approval plan hanya bisa dilakukan saat tiket di tahap Plan.');
+
+            $cr = $this->buatDraftCostRequest($t, $user, $clusterId);
+
+            $t->update([
+                'plan_budget_status' => TroubleTicket::PLAN_BUDGET_APPROVED,
+                'plan_budget_notes'  => $notes,
+                'plan_approved_at'   => now(),
+                'plan_approved_by'   => $user->id,
+                'budget_request_id'  => $cr->id,
+            ]);
+
+            $this->event($t, $user, 'plan_budget_approved', $notes, [
+                'cost_request' => $cr->code,
+                'cost_total'   => (int) $t->plan_cost_total,
+            ]);
+        });
+
+        $ticket->refresh();
+
+        $this->notify(
+            collect([$ticket->technician])->filter()->reject(fn ($u) => (int) $u->id === (int) $user->id),
+            $ticket,
+            'Plan & biaya disetujui',
+            "{$ticket->ticket_number}: plan visit & biaya disetujui {$user->name}. Cost Request {$cr->code} dibuat sebagai draft.",
+        );
+    }
+
+    /** Supervisor menolak plan & biaya - tiket tetap di Plan untuk direvisi. */
+    public function rejectPlanBudget(TroubleTicket $ticket, User $user, string $notes): void
+    {
+        if (blank($notes)) {
+            $this->fail('Alasan penolakan wajib diisi.', 'notes');
         }
 
-        $jumlah = 0;
-        $naik = [];
+        DB::transaction(function () use ($ticket, $user, $notes) {
+            $t = $this->lock($ticket);
+            $this->authorizeIf($this->canApprovePlanBudget($user, $t), 'Hanya supervisor yang dapat menolak plan & biaya.');
+            $this->expect($t, ['PLAN'], 'Approval plan hanya bisa dilakukan saat tiket di tahap Plan.');
 
-        foreach ($ids as $id) {
-            $jumlah += DB::transaction(function () use ($id, &$naik) {
-                $t = TroubleTicket::whereKey($id)->lockForUpdate()->first();
+            $t->update([
+                'plan_budget_status' => TroubleTicket::PLAN_BUDGET_REJECTED,
+                'plan_budget_notes'  => $notes,
+                'plan_approved_at'   => null,
+                'plan_approved_by'   => null,
+            ]);
 
-                if ($t && $this->promoteIfDue($t)) {
-                    $naik[] = $t->id;
+            $this->event($t, $user, 'plan_budget_rejected', $notes);
+        });
 
-                    return 1;
-                }
+        $ticket->refresh();
 
-                return 0;
-            });
+        $this->notify(
+            collect([$ticket->technician])->filter()->reject(fn ($u) => (int) $u->id === (int) $user->id),
+            $ticket,
+            'Plan & biaya ditolak',
+            "{$ticket->ticket_number}: plan visit & biaya ditolak {$user->name}. Perbaiki tanggal/biaya lalu simpan lagi.",
+        );
+    }
+
+    /**
+     * Membuat Cost Request berstatus DRAFT dari estimasi biaya plan.
+     *
+     * Aturan CR yang sudah berlaku diikuti apa adanya, tidak ditulis ulang:
+     * jenis Cash Advance, beneficiary INTERNAL, kode lewat generateCode(),
+     * rincian bersandar pada sub-item budget plan, NOB dihitung dari
+     * BudgetConsumption::COMMITTED. Pemohon = supervisor yang menyetujui.
+     *
+     * Tidak ada tahap alur uang yang dilewati: CR lahir sebagai DRAFT dan
+     * tetap menempuh seluruh alur Cost Request seperti CR yang diketik manusia.
+     */
+    private function buatDraftCostRequest(TroubleTicket $t, User $user, ?int $clusterId): BudgetRequest
+    {
+        $plan = BudgetPlan::with(['project', 'costCenter'])->find($t->budget_plan_id);
+
+        if ($plan === null) {
+            $this->fail('Budget Plan plan ini tidak ditemukan lagi.');
         }
 
-        // Notifikasi dikirim setelah transaksi, seperti transisi lain. Hanya
-        // permintaan yang benar-benar menaikkan tiket yang mengirimnya, jadi
-        // teknisi tidak menerima pemberitahuan ganda.
-        if ($naik) {
-            foreach (TroubleTicket::with('technician')->whereKey($naik)->get() as $t) {
-                // Teknisi tiket + supervisor (leader team-nya): keduanya perlu
-                // tahu kunjungan hari ini dimulai.
-                $penerima = collect([$t->technician])->filter()
-                    ->merge($t->assigned_to ? $this->supervisorsFor((int) $t->assigned_to) : collect())
-                    ->unique('id');
+        $baris = $t->planCosts()->with('budgetDetail')->orderBy('id')->get();
 
-                if ($penerima->isEmpty()) {
-                    continue;
-                }
+        if ($baris->isEmpty()) {
+            $this->fail('Plan ini belum punya baris biaya.');
+        }
 
-                $this->notify(
-                    $penerima,
-                    $t,
-                    'Hari kunjungan tiba',
-                    "Tiket {$t->ticket_number} masuk tahap Trip: plan visit ".$t->visit_site?->format('d/m/Y').'.'
-                );
+        if ($baris->contains(fn ($b) => $b->budget_detail_id === null)) {
+            $this->fail('Ada baris biaya tanpa sub-item Budget Plan; simpan ulang plan-nya dulu.');
+        }
+
+        // Jenis CR = Cash Advance (tab Draft pada Cash Advance, 20 Okt 2026).
+        $typeId = BudgetRequest::cashAdvanceTypeIds()[0] ?? null;
+        if ($typeId === null) {
+            $this->fail('Request Type "Cash Advance" belum ada di master.');
+        }
+
+        // Penerima dana = beneficiary INTERNAL milik PIC teknisi tiket ini.
+        $beneficiary = Beneficiary::where('category', 'INTERNAL')
+            ->where('status', 'ACTIVE')
+            ->where('pic_id', $t->pic_id)
+            ->first();
+
+        if ($beneficiary === null) {
+            $this->fail('Beneficiary Internal untuk PIC teknisi tiket ini belum ada (Master Data > Beneficiary).');
+        }
+
+        // Cluster hanya relevan untuk budget PROYEK - sama seperti form CR.
+        $cluster = null;
+        if ($plan->isProjectBudget()) {
+            $kandidat = Cluster::where('project_id', $plan->project_id)
+                ->where('status', 'ACTIVE')
+                ->orderBy('name')
+                ->get();
+
+            $cluster = $clusterId
+                ? $kandidat->firstWhere('id', $clusterId)
+                : ($kandidat->count() === 1 ? $kandidat->first() : null);
+
+            if ($cluster === null) {
+                $this->fail($kandidat->isEmpty()
+                    ? 'Project budget plan ini belum punya cluster aktif.'
+                    : 'Cluster wajib dipilih untuk budget proyek.', 'cluster_id');
             }
         }
 
-        return $jumlah;
-    }
+        $total = (int) $baris->sum('total');
 
-    /** Satu tiket PLAN yang tanggalnya sudah tiba → TRIP. Dipakai di dalam transaksi. */
-    private function promoteIfDue(TroubleTicket $t): bool
-    {
-        if ($t->status !== 'PLAN' || ! $t->visit_site || $t->visit_site->copy()->startOfDay()->isFuture()) {
-            return false;
-        }
+        // Pelampauan anggaran: rumus yang sama dengan form Cost Request.
+        $terpakai = (int) BudgetRequest::where('budget_plan_id', $plan->id)
+            ->whereIn('status', BudgetConsumption::COMMITTED)
+            ->sum(DB::raw(BudgetRequest::effectiveCostSql()));
+        $nobAmount = (int) max(0, ($terpakai + $total) - ($plan->amount ?? 0));
 
-        $t->update(['status' => 'TRIP']);
+        $sourceCode = $plan->isCostCenterBudget()
+            ? (preg_replace('/\D/', '', $plan->costCenter?->code ?? '') ?: '0000')
+            : ($plan->project?->code ?? '0000');
 
-        $pelaku = $t->technician ?? $t->creator;
-        if ($pelaku) {
-            $this->event($t, $pelaku, 'trip_due', null, [
-                'visit_site' => $t->visit_site->toDateString(),
+        $cr = BudgetRequest::create([
+            'code'           => BudgetRequest::generateCode($sourceCode),
+            'description'    => strtoupper('BIAYA VISIT ' . $t->ticket_number . ' - ' . ($t->site?->sitename ?? '')),
+            'is_nob'         => $nobAmount > 0,
+            'nob_amount'     => $nobAmount,
+            'amount'         => 0,
+            'notes'          => 'Dibuat otomatis dari plan visit Trouble Ticket ' . $t->ticket_number . '.',
+            'applicant_id'   => $user->id,
+            'beneficiary_id' => $beneficiary->id,
+            'type_id'        => $typeId,
+            'cluster_id'     => $cluster?->id,
+            'budget_plan_id' => $plan->id,
+            'status'         => 'DRAFT',
+        ]);
+
+        foreach ($baris as $b) {
+            // Qty plan maupun rincian CR sama-sama bilangan bulat, jadi baris
+            // pindah apa adanya tanpa perlu dirapikan jadi lumpsum.
+            $sisaDetail = $b->budgetDetail?->remainingAmount() ?? 0;
+
+            $cr->details()->create([
+                'budget_detail_id' => $b->budget_detail_id,
+                'account_id'       => $b->account_id,
+                'description'      => trim(($b->account_name ?? '-') . ' - ' . $b->description),
+                'amount'           => (int) $b->amount,
+                'qty'              => (int) $b->qty,
+                'total'            => (int) $b->total,
+                'notes'            => $b->description,
+                'is_nob'           => (int) $b->total > $sisaDetail,
+                'nob_amount'       => (int) max(0, (int) $b->total - $sisaDetail),
             ]);
         }
 
+        $this->lampirkanDetailTiket($cr, $t, $baris, $user);
+
+        $cr->recalculateAmount();
+        $cr->addLog('DRAFT', 'DRAFT', 'created');
+
+        return $cr->refresh();
+    }
+
+    /**
+     * Mencatat bahwa Cost Request milik sebuah tiket SUDAH DIBAYAR, sebagai
+     * kejadian di timeline chat & tab Log tiket (keputusan 20 Okt 2026).
+     *
+     * Dipanggil dari Treasury saat batch ditandai Paid. Tidak mengubah status
+     * tiket maupun CR — murni jejak baca, supaya orang lapangan tahu dananya
+     * sudah cair tanpa membuka modul Finance.
+     *
+     * Aman dipanggil berulang: tiket yang kejadiannya sudah ada dilewati,
+     * sehingga pembayaran yang diproses dua kali tidak menggandakan baris.
+     */
+    public function recordCostRequestPaid(BudgetRequest $cr, User $user, ?string $notes = null): void
+    {
+        $ticket = TroubleTicket::where('budget_request_id', $cr->id)->first();
+
+        if ($ticket === null) {
+            return;
+        }
+
+        if (! $this->tulisKejadianDibayar($ticket, $cr, $user, $notes)) {
+            return;
+        }
+
+        $this->notify(
+            collect([$ticket->technician])->filter()->reject(fn ($u) => (int) $u->id === (int) $user->id),
+            $ticket,
+            'Biaya visit sudah dibayar',
+            "{$ticket->ticket_number}: Cost Request {$cr->code} sudah dibayar.",
+        );
+    }
+
+    /**
+     * Menyamakan timeline tiket dengan keadaan CR-nya saat tiket dibuka.
+     *
+     * Hook di Treasury hanya menangkap pembayaran yang MELEWATI markPaid().
+     * CR yang statusnya berubah lewat jalur lain — perbaikan data, impor, atau
+     * alur lama — tidak akan pernah memicunya, sehingga timeline tiket diam
+     * saja padahal dananya sudah cair. Pemeriksaan murah ini menutup celah
+     * itu: satu query, dan hanya menulis bila kejadiannya memang belum ada.
+     *
+     * Pelakunya dicatat sebagai pemohon CR (atau penyetuju plan), bukan orang
+     * yang kebetulan membuka tiket.
+     */
+    public function syncCostRequestPaid(TroubleTicket $ticket): void
+    {
+        if ($ticket->budget_request_id === null) {
+            return;
+        }
+
+        $cr = $ticket->budgetRequest;
+
+        // CLOSED ikut dihitung: CR non-Cash Advance langsung ditutup saat dibayar.
+        if ($cr === null || ! in_array($cr->status, ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'], true)) {
+            return;
+        }
+
+        $pelaku = $cr->applicant ?? $ticket->planApprover;
+
+        if ($pelaku === null) {
+            return;
+        }
+
+        $this->tulisKejadianDibayar($ticket, $cr, $pelaku, null);
+    }
+
+    /** Menulis kejadian sekali saja; true bila baris benar-benar dibuat. */
+    private function tulisKejadianDibayar(TroubleTicket $ticket, BudgetRequest $cr, User $pelaku, ?string $notes): bool
+    {
+        $sudah = TroubleTicketMessage::where('trouble_ticket_id', $ticket->id)
+            ->where('event', 'cost_request_paid')
+            ->exists();
+
+        if ($sudah) {
+            return false;
+        }
+
+        $this->event($ticket, $pelaku, 'cost_request_paid', $notes, [
+            'cost_request' => $cr->code,
+            'cost_total'   => (int) $cr->amount,
+            'paid_at'      => $cr->paid_at?->toDateTimeString(),
+        ]);
+
         return true;
+    }
+
+    /**
+     * Melampirkan ringkasan detail tiket (PNG) sebagai "Lampiran Tambahan /
+     * Pendukung" pada Cost Request yang baru dibuat.
+     *
+     * Tipe Cash Advance MEWAJIBKAN lampiran global; tanpa ini CR draft hasil
+     * approve tidak bisa disimpan ulang oleh Finance karena lampirannya kosong
+     * (keputusan 20 Okt 2026). Isinya cermin modal Info tiket tanpa bagian SLA.
+     *
+     * Kegagalan menggambar TIDAK membatalkan approve: CR-nya tetap sah, hanya
+     * lampirannya perlu diisi manusia. Karena itu dibungkus try/catch dan
+     * dicatat di log aplikasi.
+     *
+     * @param  \Illuminate\Support\Collection  $baris  baris biaya plan
+     */
+    private function lampirkanDetailTiket(BudgetRequest $cr, TroubleTicket $t, $baris, User $user): void
+    {
+        try {
+            $png = TicketDetailImage::render($t, $baris);
+            $nama = 'detail-tiket-' . str_replace(['/', '\\', ' '], '-', $t->ticket_number) . '.png';
+            $path = 'cost_request_attachments/' . Str::random(40) . '.png';
+
+            Storage::disk('secure')->put($path, $png);
+
+            $cr->attachments()->create([
+                'original_name' => $nama,
+                'stored_name'   => basename($path),
+                'path'          => $path,
+                'mime_type'     => 'image/png',
+                'size'          => strlen($png),
+                'uploaded_by'   => $user->id,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Lampiran detail tiket gagal dibuat', [
+                'ticket' => $t->ticket_number,
+                'cr'     => $cr->code,
+                'error'  => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | PLAN → TRIP (digeser teknisi)
+    |--------------------------------------------------------------------------
+    */
+
+    /** Tanggal plan visit sudah tiba — swipe "Swipe for travel" boleh digeser. */
+    public function tripDue(TroubleTicket $ticket): bool
+    {
+        return $ticket->status === 'PLAN'
+            && $ticket->visit_site !== null
+            && ! $ticket->visit_site->copy()->startOfDay()->isFuture();
     }
 
     /*
@@ -642,7 +1062,9 @@ class TroubleTicketWorkflow
     */
 
     /**
-     * Geser "mulai perjalanan": SLA Travel mulai berjalan. Evidence perjalanan
+     * Geser "Swipe for travel": tiket masuk tahap Trip dan SLA Travel mulai
+     * berjalan. Tidak ada lagi swipe Trip tersendiri (keputusan 20 Okt 2026) —
+     * tahap Trip dimulai oleh keberangkatan itu sendiri. Evidence perjalanan
      * wajib dilampirkan (keputusan 15 Okt 2026) — berkasnya menempel pada
      * kejadian `travel_started` di timeline, sama seperti evidence form close.
      *
@@ -659,13 +1081,19 @@ class TroubleTicketWorkflow
         $this->withStoredFiles($stored, function () use ($ticket, $user, $stored) {
             $t = $this->lock($ticket);
             $this->authorizeIf($this->actsAsTechnician($user, $t), 'Hanya teknisi yang ditugaskan atau superadmin yang dapat memulai perjalanan.');
-            $this->expect($t, ['TRIP'], 'Perjalanan hanya bisa dimulai pada tahap Trip.');
+            // Tahap Plan: tanggal visit harus sudah tiba. Tahap Trip tetap
+            // diterima untuk tiket lama yang sudah terlanjur di tahap itu.
+            $this->expect($t, ['PLAN', 'TRIP'], 'Perjalanan hanya bisa dimulai dari tahap Plan atau Trip.');
 
+            if ($t->status === 'PLAN' && ! $this->tripDue($t)) {
+                $this->fail('Tanggal plan visit belum tiba.');
+            }
             if ($t->travel_started_at !== null) {
                 $this->fail('Perjalanan sudah dimulai.');
             }
 
             $t->update([
+                'status' => 'TRIP',
                 'travel_started_at' => now(),
                 'travel_arrived_at' => null,
                 'travel_seconds' => null,
@@ -679,10 +1107,11 @@ class TroubleTicketWorkflow
     }
 
     /**
-     * Perjalanan dibatalkan di tengah jalan: SLA Travel dibatalkan (jejak
-     * waktunya dikosongkan, jadi tidak ikut dihitung), tiket TETAP di tahap
-     * Trip sehingga teknisi bisa menggeser mulai perjalanan lagi. Alasannya
-     * tetap tercatat di log.
+     * Perjalanan dibatalkan di tengah jalan: SLA Travel direset (jejak
+     * waktunya dikosongkan, jadi tidak ikut dihitung) dan tiket KEMBALI ke
+     * tahap Plan dengan tanggal kunjungan berikutnya — bukan tetap di Trip
+     * (keputusan 19 Okt 2026). Teknisi menggeser "Swipe for travel" lagi saat
+     * tanggal itu tiba. Alasannya tetap tercatat di log.
      */
     public function cancelTravel(TroubleTicket $ticket, User $user, string $reason, ?string $visitSite = null): void
     {
@@ -704,6 +1133,7 @@ class TroubleTicketWorkflow
             if ($t->travel_arrived_at !== null) {
                 $this->fail('Teknisi sudah tiba di site; perjalanan tidak bisa dibatalkan.');
             }
+            $this->assertVisitDateAllowed($t, $visitSite);
 
             $mulai = $t->travel_started_at;
 
@@ -716,8 +1146,8 @@ class TroubleTicketWorkflow
                 'travel_cancelled_at' => now(),
                 'travel_cancel_reason' => $reason,
                 'visit_site' => $visitSite,
-                // Tanggal hari ini: tiket tetap di Trip (promoteIfDue menaikkannya
-                // lagi); tanggal lain: kembali menunggu di tahap Plan.
+                // Selalu kembali menunggu di tahap Plan, walau tanggal
+                // berikutnya hari ini juga: tahap Trip dimulai oleh teknisi.
                 'status' => 'PLAN',
             ]);
 
@@ -725,8 +1155,6 @@ class TroubleTicketWorkflow
                 'started_at' => $mulai?->toIso8601String(),
                 'visit_site' => $t->visit_site?->toDateString(),
             ]);
-
-            $this->promoteIfDue($t);
         });
 
         $ticket->refresh();
@@ -811,14 +1239,16 @@ class TroubleTicketWorkflow
 
         $this->withStoredFiles($stored, function () use ($ticket, $user, $data, $stored) {
             $t = $this->lock($ticket);
-            $this->authorizeIf($this->actsAsTechnician($user, $t), 'Hanya teknisi yang ditugaskan atau superadmin yang dapat menutup tiket.');
-            $this->expect($t, TroubleTicket::CLOSABLE, 'Form close hanya bisa dikirim dari tahap Remote, Plan, Trip, atau In Progress.');
+            $this->expect($t, TroubleTicket::CLOSABLE, 'Form close hanya bisa dikirim dari tahap Open, Remote, Plan, Trip, atau In Progress.');
 
-            // Sudah On Site: form close ditutup (keputusan 19 Okt 2026) —
-            // pengerjaan di site dimulai dulu, tiket ditutup dari In Progress.
-            if ($t->status === 'TRIP' && $t->travel_arrived_at !== null) {
+            // Sudah On Site: TEKNISI harus memulai progres dulu (19 Okt 2026),
+            // tiket ditutup dari In Progress. Peran lain tidak terikat ini.
+            if ($t->status === 'TRIP' && $t->travel_arrived_at !== null && $this->isTechnician($user, $t)) {
                 $this->fail('Teknisi sudah di site; mulai progres dulu sebelum mengirim form close.');
             }
+
+            // Sisanya (siapa yang boleh, tahap Trip bagi teknisi) di canClose().
+            $this->authorizeIf($this->canClose($user, $t), 'Anda tidak berhak mengirim form close untuk tiket ini.');
 
             // Close dari tahap Trip sebelum teknisi tiba: perjalanan yang
             // sedang berjalan dibatalkan otomatis (keputusan 15 Okt 2026),
@@ -995,7 +1425,7 @@ class TroubleTicketWorkflow
 
         DB::transaction(function () use ($ticket, $user, $newTechnicianId, $reason, $visitSite, &$lama) {
             $t = $this->lock($ticket);
-            $this->authorizeIf($this->canSupervise($user, $t), 'Hanya leader team teknisi yang dapat mengalihkan tiket.');
+            $this->authorizeIf($this->canReassignBy($user, $t), 'Hanya leader team teknisi atau supervisor yang dapat mengalihkan tiket.');
             $this->expect($t, self::REASSIGNABLE, 'Tiket pada status ini tidak bisa dialihkan.');
             if (! $this->canReassign($t)) {
                 $this->fail('Perjalanan sudah dimulai; teknisi tidak bisa diganti lagi.');
@@ -1041,6 +1471,7 @@ class TroubleTicketWorkflow
                 && in_array($t->status, ['PLAN', 'TRIP'], true)
                 && $t->travel_arrived_at === null;
             if ($jadwalUlang) {
+                $this->assertVisitDateAllowed($t, $visitSite);
                 $changes = array_merge($changes, [
                     'status' => 'PLAN',
                     'visit_site' => $visitSite,
@@ -1063,10 +1494,6 @@ class TroubleTicketWorkflow
                 'visit_site' => $jadwalUlang ? $t->visit_site?->toDateString() : null,
                 'target_online' => $jadwalUlang ? $t->target_online?->toDateString() : null,
             ], fn ($v) => $v !== null));
-
-            if ($jadwalUlang) {
-                $this->promoteIfDue($t);
-            }
         });
 
         $ticket->refresh();
@@ -1096,13 +1523,9 @@ class TroubleTicketWorkflow
             return $ada;
         }
 
-        // Tiket CLOSED tetap bisa didiskusikan (keputusan 19 Okt 2026); yang
-        // menutup chat hanya Stop Chat oleh superadmin. Chat juga tidak pernah
-        // dikunci oleh keputusan jalur penanganan (keputusan 15 Okt 2026):
-        // teknisi tetap bisa berdiskusi sebelum memilih Remote.
-        if ($ticket->chatLocked()) {
-            $this->fail('Diskusi tiket ini sudah dihentikan.');
-        }
+        // Tiket CLOSED tetap bisa didiskusikan (keputusan 19 Okt 2026), dan
+        // tidak ada lagi cara menutup diskusi sebuah tiket: fitur Stop Chat
+        // dihapus (keputusan 19 Okt 2026).
 
         $body = $body !== null ? trim($body) : null;
         if (($body === null || $body === '') && empty($files)) {
@@ -1135,30 +1558,6 @@ class TroubleTicketWorkflow
             }
             throw $e;
         }
-    }
-
-    /**
-     * Stop Chat / buka kembali — hanya superadmin
-     * (AccessRoles::TROUBLE_TICKET_CHAT_LOCK). Keadaannya dicatat di timeline
-     * supaya terlihat siapa yang menghentikan diskusi dan kapan.
-     */
-    public function setChatLock(TroubleTicket $ticket, User $user, bool $lock): void
-    {
-        DB::transaction(function () use ($ticket, $user, $lock) {
-            $t = $this->lock($ticket);
-            $this->authorizeIf($this->canLockChat($user, $t), 'Hanya superadmin yang dapat menghentikan atau membuka diskusi tiket.');
-
-            if ($lock === $t->chatLocked()) {
-                $this->fail($lock ? 'Diskusi sudah dihentikan.' : 'Diskusi sedang terbuka.');
-            }
-
-            $t->update([
-                'chat_locked_at' => $lock ? now() : null,
-                'chat_locked_by' => $lock ? $user->id : null,
-            ]);
-
-            $this->event($t, $user, $lock ? 'chat_stopped' : 'chat_reopened');
-        });
     }
 
     private function messageByToken(TroubleTicket $ticket, string $token): ?TroubleTicketMessage
@@ -1196,6 +1595,23 @@ class TroubleTicketWorkflow
         }
         if ($decision === TroubleTicket::VISIT && blank($visitSite)) {
             $this->fail('Tanggal rencana kunjungan (Visit Site) wajib diisi untuk Plan Visit.', 'visit_site');
+        }
+    }
+
+    /**
+     * Tanggal plan visit tidak boleh lebih awal dari batas tiket
+     * (TroubleTicket::planMinDate(), permintaan 19 Okt 2026): hari ini untuk
+     * plan pertama, hari plan dibuat untuk perubahan/reschedule.
+     */
+    private function assertVisitDateAllowed(TroubleTicket $t, string $visitSite): void
+    {
+        $min = $t->planMinDate();
+
+        if (Carbon::parse($visitSite)->startOfDay()->lt($min)) {
+            $this->fail(
+                'Tanggal plan visit tidak boleh sebelum '.$min->format('d/m/Y').'.',
+                'visit_site',
+            );
         }
     }
 

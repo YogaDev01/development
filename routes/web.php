@@ -140,7 +140,17 @@ Route::middleware('auth')->group(function () {
     // sidebar/menu yang muncul mengikuti preferensi (lihat layouts/app.blade.php
     // $currentApp & User::defaultApp()).
     Route::get('/', function (\Illuminate\Http\Request $request) {
-        session(['tesys.app' => \Illuminate\Support\Facades\Auth::user()->defaultApp()]);
+        $user = \Illuminate\Support\Facades\Auth::user();
+        session(['tesys.app' => $user->defaultApp()]);
+
+        /* Aplikasi yang punya 'landing' (Operations → /trouble-ticket)
+           membawa penggunanya langsung ke modul itu, juga saat ia membuka
+           alamat utama — bukan hanya sesudah login (keputusan 20 Okt 2026).
+           Tanpa ini teknisi mendarat di Profil Saya. */
+        $landing = config('apps.items.' . $user->defaultApp() . '.landing');
+        if ($landing) {
+            return redirect($landing);
+        }
 
         return app(ProfileController::class)->show($request);
     });
@@ -720,15 +730,24 @@ Route::middleware('auth')->group(function () {
         Route::post('budget-request/{id}/manager-cancel', [BudgetRequestController::class, 'managerCancel'])->name('budget-request.manager-cancel');
     });
 
+    /* Submit settlement juga boleh TEKNISI (20 Okt 2026) — tapi hanya untuk CR
+       yang lahir dari plan visit tiket yang ditugaskan kepadanya. Penyempitan
+       itu ada di BudgetRequestController::submitRealization(); gerbang route
+       ini sekadar menyaring peran yang sama sekali tidak berkepentingan.
+       Form realisasi penuh (realize-form) TETAP tanpa teknisi: ia menyettle
+       lewat modal di halaman tiketnya sendiri. */
+    Route::middleware('role:superadmin,manager,supervisor,teknisi')->group(function () {
+        Route::post('budget-request/{id}/submit-realization', [BudgetRequestController::class, 'submitRealization'])->name('budget-request.submit-realization');
+        // Draft settlement: jalur yang dipakai modal di halaman tiket.
+        Route::post('budget-request/{id}/save-realization-draft', [BudgetRequestController::class, 'saveRealizationDraft'])->name('budget-request.save-realization-draft');
+    });
+
     Route::middleware('role:superadmin,manager,supervisor')->group(function () {
         Route::post('budget-request/{id}/manager-revise',     [BudgetRequestController::class, 'managerRevise'])->name('budget-request.manager-revise');
         Route::get('budget-request/{id}/realize-form',        [BudgetRequestController::class, 'realizeForm'])->name('budget-request.realize-form');
-        Route::post('budget-request/{id}/submit-realization', [BudgetRequestController::class, 'submitRealization'])->name('budget-request.submit-realization');
         // GET ke URL POST (mis. tombol Back / refresh peramban setelah submit):
         // jangan tampilkan 405, kembalikan saja ke form realisasi.
         Route::get('budget-request/{id}/submit-realization',  [BudgetRequestController::class, 'realizeForm']);
-        // "Simpan" — menyimpan draft Settlement tanpa mengajukan (status tetap).
-        Route::post('budget-request/{id}/save-realization-draft', [BudgetRequestController::class, 'saveRealizationDraft'])->name('budget-request.save-realization-draft');
     });
 
     // Tahap 1 - Head: check pengajuan & check settlement.
@@ -1171,10 +1190,13 @@ Route::middleware('auth')->group(function () {
                 Route::get('/', 'show')->name('show');
                 Route::get('messages', 'messages')->name('messages');
                 Route::post('messages', 'postMessage')->name('messages.store');
-                // Stop Chat: role sama persis dengan AccessRoles::TROUBLE_TICKET_CHAT_LOCK.
-                Route::post('chat-lock', 'setChatLock')->middleware('role:superadmin')->name('chat-lock');
-                Route::post('remote', 'remote')->name('remote');
                 Route::post('plan', 'createPlan')->name('plan.create');
+                // Approval plan & biaya oleh supervisor -> Cost Request draft
+                // (20 Okt 2026). Tiket tetap di tahap Plan.
+                Route::post('plan/approve', 'approvePlanBudget')->name('plan.approve');
+                Route::post('plan/reject', 'rejectPlanBudget')->name('plan.reject');
+                // Plan → Trip: digeser teknisi lewat "Swipe for travel", satu
+                // aksi dengan mulai perjalanan (20 Okt 2026).
                 Route::post('travel', 'startTravel')->name('travel.start');
                 Route::post('travel/cancel', 'cancelTravel')->name('travel.cancel');
                 Route::post('arrive', 'arrive')->name('arrive');

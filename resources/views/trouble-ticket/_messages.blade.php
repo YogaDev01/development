@@ -9,8 +9,11 @@
     $sup  = $ctx['sup'] ?? [];
     $ikonEvent = [
         'created' => 'fa-plus-circle', 'assigned' => 'fa-user-plus', 'reassigned' => 'fa-exchange-alt',
-        'responded' => 'fa-eye', 'remote_started' => 'fa-satellite-dish',
+        'responded' => 'fa-eye', 'responded_remote' => 'fa-satellite-dish',
+        'remote_started' => 'fa-satellite-dish',
         'plan_created' => 'fa-calendar-check', 'plan_updated' => 'fa-calendar-alt', 'trip_due' => 'fa-route',
+        'plan_budget_approved' => 'fa-file-invoice-dollar', 'plan_budget_rejected' => 'fa-times-circle',
+        'cost_request_paid' => 'fa-money-bill-wave',
         'travel_started' => 'fa-car', 'travel_cancelled' => 'fa-ban',
         'chat_stopped' => 'fa-comment-slash', 'chat_reopened' => 'fa-comments',
         'arrived_on_site' => 'fa-map-marker-alt', 'progress_started' => 'fa-tools',
@@ -39,7 +42,11 @@
                 @php
                     // Kotak hanya dipakai saat kejadian punya keterangan; tanpa
                     // keterangan chip berdiri sendiri.
+                    // Baris biaya/CR juga sebuah keterangan, jadi ikut membuat
+                    // chip-nya berkotak (20 Okt 2026).
+                    $adaBiaya = isset($meta['budget_plan']) || isset($meta['cost_total']) || isset($meta['cost_request']);
                     $adaCatatan = filled($msg->body)
+                        || $adaBiaya
                         || (in_array($msg->event, ['progress_done', 'closed'], true) && ! empty($meta['rca']));
                 @endphp
                 <div class="{{ $adaCatatan ? 'tt-event-card' : '' }}">
@@ -78,6 +85,21 @@
                         @break
                 @endswitch
                 </span>
+                {{-- Budget pengajuan & Cost Request yang terbit darinya ditulis
+                     di BARIS SENDIRI di bawah chip (20 Okt 2026): menempelkannya
+                     ke label membuat satu baris panjang yang sulit dipindai.
+                     Rangkaiannya disusun di PHP supaya tidak ada spasi sisa
+                     dari Blade. --}}
+                @php
+                    $bagianBiaya = array_filter([
+                        $meta['budget_plan'] ?? null,
+                        isset($meta['cost_total']) ? 'Rp ' . number_format((int) $meta['cost_total'], 0, ',', '.') : null,
+                        isset($meta['cost_request']) ? 'CR ' . $meta['cost_request'] : null,
+                    ]);
+                @endphp
+                @if($bagianBiaya)
+                    <div class="tt-event-note">{{ implode(' · ', $bagianBiaya) }}</div>
+                @endif
                 @if(in_array($msg->event, ['progress_done', 'closed'], true) && ! empty($meta['rca']))
                     <div class="tt-event-note">RCA: {{ $meta['rca'] }}{{ ! empty($meta['sub_rca']) ? ' / ' . $meta['sub_rca'] : '' }}</div>
                 @endif

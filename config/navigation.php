@@ -184,7 +184,7 @@ return [
         // tetap di route trouble-ticket.settings (gerbang menu:trouble-ticket +
         // role:superadmin); di sidebar ia berdiri sebagai Master Data.
         'trouble-ticket-rules' => [
-            'label'  => 'Custom Ruls',
+            'label'  => 'Custom Rules',
             'icon'   => 'fas fa-sliders-h',
             'url'    => 'route:trouble-ticket.settings',
             'active' => ['trouble-ticket/settings*'],

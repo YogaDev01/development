@@ -41,6 +41,20 @@
                                 </select>
                             </div>
                         </div>
+                        @if(\App\Models\Team::supportsCustomer())
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label class="font-weight-600">Customer</label>
+                                <select name="customer_id" class="form-control">
+                                    <option value="">&mdash; Pilih Customer &mdash;</option>
+                                    @foreach($customers as $cust)
+                                    <option value="{{ $cust->id }}" {{ old('customer_id') == $cust->id ? 'selected' : '' }}>{{ $cust->name }}</option>
+                                    @endforeach
+                                </select>
+                                <small class="form-text text-muted">Dipakai Trouble Ticket: customer &amp; site terisi otomatis untuk anggota team ini.</small>
+                            </div>
+                        </div>
+                        @endif
                         <div class="col-md-3">
                             <div class="form-group">
                                 <label class="font-weight-600">Leader <span class="text-danger">*</span></label>

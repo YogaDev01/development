@@ -40,12 +40,26 @@ class TroubleTicketMessage extends Model
         // satu-satunya label kejadian yang berbahasa Indonesia.
         'reassigned'        => 'Change Teknisi',
         'responded'         => 'Ticket read',
+        // Teknisi membuka tiket = tiket masuk tahap Remote (19 Okt 2026):
+        // satu kejadian, bukan 'responded' + 'remote_started' berurutan.
+        'responded_remote'  => 'Ticket read — Remote',
+        // Dipakai riwayat lama (tombol Remote, sebelum 19 Okt 2026).
         'remote_started'    => 'Remote',
         'plan_created'      => 'Plan visit created',
         'plan_updated'      => 'Plan visit date changed',
+        // Approval plan & biaya oleh supervisor (20 Okt 2026). Approve
+        // membuat Cost Request berstatus Draft; nomornya ada di metadata.
+        'plan_budget_approved' => 'Plan & budget approved',
+        'plan_budget_rejected' => 'Plan & budget rejected',
+        // Pencairan CR yang lahir dari plan visit (20 Okt 2026).
+        'cost_request_paid' => 'Cost Request paid',
+        // Dipakai riwayat lama: sejak 20 Okt 2026 tahap Trip dimulai bersama
+        // keberangkatan ('travel_started'), tidak ada kejadian tersendiri.
         'trip_due'          => 'Moved to Trip',
         'travel_started'    => 'Travel started',
         'travel_cancelled'  => 'Visit cancelled',
+        // Fitur Stop Chat dihapus 19 Okt 2026; labelnya tetap ada supaya log
+        // tiket yang terlanjur mencatat kejadian ini masih terbaca.
         'chat_stopped'      => 'Diskusi dihentikan',
         'chat_reopened'     => 'Diskusi dibuka kembali',
         'arrived_on_site'   => 'Arrived on site',

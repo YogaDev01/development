@@ -29,7 +29,7 @@ use Illuminate\Support\Collection;
  * di penutupan tiket, dan hanya supervisor yang boleh.
  *
  * SLA (lihat docs/modules/trouble-ticket.md):
- *   Response   = acknowledged_at − created_at (berhenti saat teknisi membuka tiket)
+ *   Response   = acknowledged_at − created_at (berhenti saat form close dikirim)
  *   Travel     = travel_arrived_at − travel_started_at (geser "mulai perjalanan"
  *                sampai konfirmasi On Site; dibatalkan = jejaknya dikosongkan)
  *   Resolution = closed_at − progress_started_at (berhenti saat supervisor approve)
@@ -46,6 +46,10 @@ class TroubleTicket extends Model
         'acknowledged_at', 'acknowledged_by', 'response_seconds',
         'visit_decision', 'visit_decided_by', 'visit_decided_at', 'visit_decision_reason',
         'visit_site', 'target_online', 'plan_approved_at', 'plan_approved_by',
+        // Create Plan — sumber dana, estimasi biaya & approval supervisor
+        // yang membuahkan Cost Request draft (20 Okt 2026).
+        'budget_plan_id', 'plan_cost_total',
+        'plan_budget_status', 'plan_budget_notes', 'budget_request_id',
         'travel_started_at', 'travel_arrived_at', 'travel_seconds',
         'travel_cancelled_at', 'travel_cancel_reason',
         'progress_started_at', 'resolved_at', 'progress_done_at',
@@ -75,6 +79,7 @@ class TroubleTicket extends Model
         'closed_at'            => 'datetime',
         'chat_locked_at'       => 'datetime',
         'response_seconds'     => 'integer',
+        'plan_cost_total'      => 'integer',
         'resolution_seconds'   => 'integer',
         'sla_response_minutes'   => 'integer',
         'sla_travel_minutes'     => 'integer',
@@ -90,7 +95,19 @@ class TroubleTicket extends Model
      * (keputusan 15 Okt 2026): gangguan bisa beres saat teknisi masih di
      * jalan — perjalanan yang sedang berjalan dibatalkan otomatis.
      */
-    public const CLOSABLE = ['REMOTE', 'PLAN', 'TRIP', 'IN_PROGRESS'];
+    public const CLOSABLE = ['OPEN', 'REMOTE', 'PLAN', 'TRIP', 'IN_PROGRESS'];
+
+    /* Status approval plan & biaya oleh supervisor (20 Okt 2026). null =
+       plan lama tanpa biaya; perilakunya seperti sebelum aturan ini ada. */
+    public const PLAN_BUDGET_PENDING  = 'PENDING';
+    public const PLAN_BUDGET_APPROVED = 'APPROVED';
+    public const PLAN_BUDGET_REJECTED = 'REJECTED';
+
+    /** Plan & biaya sudah diajukan tapi belum diputus supervisor. */
+    public function planBudgetPending(): bool
+    {
+        return $this->plan_budget_status === self::PLAN_BUDGET_PENDING;
+    }
 
     /** Status akhir — tidak ada transisi keluar. */
     public const FINAL_STATUSES = ['CLOSED'];
@@ -191,6 +208,24 @@ class TroubleTicket extends Model
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
+    /** Sumber dana estimasi biaya plan visit (Create Plan, 20 Okt 2026). */
+    public function budgetPlan(): BelongsTo
+    {
+        return $this->belongsTo(BudgetPlan::class);
+    }
+
+    /** Cost Request draft yang terbentuk saat supervisor menyetujui plan. */
+    public function budgetRequest(): BelongsTo
+    {
+        return $this->belongsTo(BudgetRequest::class);
+    }
+
+    /** Baris estimasi biaya plan visit — sub-item budget, keterangan, harga, qty. */
+    public function planCosts(): HasMany
+    {
+        return $this->hasMany(TroubleTicketPlanCost::class);
+    }
+
     public function acknowledger(): BelongsTo
     {
         return $this->belongsTo(User::class, 'acknowledged_by');
@@ -218,24 +253,37 @@ class TroubleTicket extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
-    /** Superadmin yang menghentikan diskusi tiket ini. */
-    public function chatLocker(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'chat_locked_by');
-    }
-
-    /**
-     * Diskusi dihentikan? Tiket CLOSED TIDAK otomatis menutup chat (keputusan
-     * 19 Okt 2026) — hanya superadmin yang menghentikannya lewat Stop Chat.
-     */
-    public function chatLocked(): bool
-    {
-        return $this->chat_locked_at !== null;
-    }
+    /* Kolom chat_locked_at / chat_locked_by peninggalan fitur Stop Chat yang
+       dihapus 19 Okt 2026. Kolomnya dibiarkan (migrasi tidak pernah diubah),
+       tapi tidak ada lagi kode yang mengisi atau membacanya. */
 
     public function messages(): HasMany
     {
         return $this->hasMany(TroubleTicketMessage::class);
+    }
+
+    /**
+     * Tanggal paling awal yang boleh dipilih sebagai plan visit
+     * (permintaan 19 Okt 2026).
+     *
+     * Plan pertama tidak boleh ke tanggal lampau: minimal hari ini. Saat
+     * tanggalnya diubah atau di-reschedule, tanggal lampau boleh dipilih —
+     * tapi tidak boleh lebih awal dari hari plan itu dibuat, jadi jadwal
+     * tidak bisa digeser ke sebelum plannya ada.
+     */
+    public function planMinDate(): Carbon
+    {
+        if (! in_array($this->status, ['PLAN', 'TRIP'], true)) {
+            return Carbon::today();
+        }
+
+        $dibuat = $this->messages()
+            ->where('type', TroubleTicketMessage::TYPE_EVENT)
+            ->where('event', 'plan_created')
+            ->orderBy('id')
+            ->value('created_at');
+
+        return Carbon::parse($dibuat ?? $this->created_at)->startOfDay();
     }
 
     public function attachments(): HasMany
@@ -367,9 +415,10 @@ class TroubleTicket extends Model
     }
 
     /**
-     * Tiket PLAN yang tanggal plan visit-nya sudah tiba — tahap Trip dimulai
-     * tanpa penjadwal: baris dipromosikan saat daftar/detail dibuka
-     * (TroubleTicketWorkflow::promoteDueTrips()).
+     * Tiket PLAN yang tanggal plan visit-nya sudah tiba — teknisinya boleh
+     * menggeser "Swipe for travel" (TroubleTicketWorkflow::startTravel()),
+     * yang sekaligus memulai perjalanan (keputusan 20 Okt 2026). Tiket tidak
+     * naik sendiri ke tahap Trip (keputusan 19 Okt 2026).
      */
     public function scopeDueTrip(Builder $query): Builder
     {

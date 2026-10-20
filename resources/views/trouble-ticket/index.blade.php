@@ -119,7 +119,7 @@
                 @endif
 
                 {{-- Toolbar. Kiri: cari · clear · Filter (filter kolom) · Kolom · lewat SLA.
-                     Kanan: Export · Buat Tiket. (Pengaturan pindah ke Master Data > Operation Master > Custom Ruls.) --}}
+                     Kanan: Export · Buat Tiket. (Pengaturan pindah ke Master Data > Operation Master > Custom Rules.) --}}
                 {{-- Rentang tanggal dilaporkan: di luar kotak toolbar, rata kanan (default bulan berjalan). --}}
                 {{-- Filter tanggal: pola yang sama dengan Cost Request — dropdown
                      rentang cepat, dan pilihan "Custom…" memunculkan kotak rentang
@@ -213,6 +213,10 @@
                                     $visitLewat = $t->visit_site
                                         && in_array($t->status, ['PLAN', 'TRIP'], true)
                                         && $t->visit_site->copy()->startOfDay()->isBefore(today());
+                                    /* Budget plan belum diputus supervisor (20 Okt 2026): penanda
+                                       sendiri di kolom site, sewarna peringatan ringan supaya tidak
+                                       tertukar dengan tanda merah "visit terlewat". */
+                                    $budgetMenunggu = $t->plan_budget_status === TroubleTicket::PLAN_BUDGET_PENDING;
                                 @endphp
                                 <tr data-id="{{ $t->id }}" data-status="{{ $t->status }}"
                                     data-severity="{{ $t->severity_label }}"
@@ -229,6 +233,7 @@
                                     <td class="col-site">
                                         <span class="cell-trunc" style="max-width:60ch;" title="{{ $siteLabel }}">{{ Str::limit($siteLabel, 60, '...') ?: '-' }}</span>
                                         @if($visitLewat)<i class="fas fa-exclamation-circle text-danger ml-1" title="Tanggal visit terlewat"></i>@endif
+                                        @if($budgetMenunggu)<i class="fas fa-exclamation-circle text-warning ml-1" title="Budget plan belum disetujui supervisor"></i>@endif
                                     </td>
                                     <td class="col-fit">{{ $t->technician?->name ?? '-' }}</td>
                                     <td class="col-fit" data-order="{{ $t->aging_days }}">{{ $t->aging_days }} hari</td>

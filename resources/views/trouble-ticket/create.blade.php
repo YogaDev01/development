@@ -110,17 +110,29 @@
                     <div class="card card-primary card-outline shadow-sm">
                         <div class="card-header"><h3 class="card-title"><i class="fas fa-broadcast-tower mr-1"></i> Site & Penugasan</h3></div>
                         <div class="card-body">
-                            {{-- Customer dipilih lebih dulu: daftar site di bawahnya
-                                 hanya memuat site milik customer tersebut. --}}
+                            {{-- Customer mengikuti team pembuat tiket (19 Okt 2026).
+                                 Terikat satu customer: kotaknya baca-saja dan
+                                 daftar site langsung menyempit ke customer itu.
+                                 Tidak terikat team: pilih seperti biasa, dan
+                                 daftar site menyesuaikan pilihan. --}}
                             <div class="form-group">
                                 <label class="font-weight-bold" for="fldCustomer">Customer <span class="text-danger">*</span></label>
-                                @php $custLama = old('customer_id', $sites->firstWhere('id', old('site_id'))?->customer_id); @endphp
-                                <select id="fldCustomer" class="form-control">
-                                    <option value="">— Pilih customer —</option>
-                                    @foreach($customers as $c)
-                                        <option value="{{ $c->id }}" @selected((string) $custLama === (string) $c->id)>{{ $c->name }}</option>
-                                    @endforeach
-                                </select>
+                                @php $custLama = old('customer_id', $customerTerkunci?->id ?? $sites->firstWhere('id', old('site_id'))?->customer_id); @endphp
+                                @if($customerTerkunci)
+                                    <input type="text" class="form-control" value="{{ $customerTerkunci->name }}" readonly>
+                                    <input type="hidden" id="fldCustomer" value="{{ $customerTerkunci->id }}">
+                                    <small class="form-text text-muted">Mengikuti team Anda.</small>
+                                @else
+                                    <select id="fldCustomer" class="form-control">
+                                        <option value="">— Pilih customer —</option>
+                                        @foreach($customers as $c)
+                                            <option value="{{ $c->id }}" @selected((string) $custLama === (string) $c->id)>{{ $c->name }}</option>
+                                        @endforeach
+                                    </select>
+                                @endif
+                                @if($alasanCustomer)
+                                    <small class="form-text text-muted">{{ $alasanCustomer }}</small>
+                                @endif
                                 <input type="hidden" name="customer_id" id="fldCustomerId" value="{{ $custLama }}">
                             </div>
                             <div class="form-group">
@@ -168,7 +180,11 @@ $(function () {
     var SITES = @json($sites->map(fn ($s) => ['id' => $s->id, 'customer_id' => $s->customer_id, 'label' => $s->tid . ' — ' . $s->sitename])->values());
     var oldSite = @json((string) old('site_id'));
 
-    TesysSearchableSelect.init('#fldCustomer', { placeholder: '— Pilih customer —', searchPlaceholder: 'Cari customer...' });
+    // Customer terkunci (mengikuti team): tidak ada yang perlu dipilih.
+    var CUST_TERKUNCI = @json((bool) $customerTerkunci);
+    if (!CUST_TERKUNCI) {
+        TesysSearchableSelect.init('#fldCustomer', { placeholder: '— Pilih customer —', searchPlaceholder: 'Cari customer...' });
+    }
     TesysSearchableSelect.init('#fldSite', { searchPlaceholder: 'Cari Site ID / nama...' });
 
     /* ---------- Customer → site ---------- */
@@ -232,7 +248,7 @@ $(function () {
         var id = $site.val();
         if (!id) {
             setTech('', '');
-            $techName.attr('placeholder', $cust.val() ? '— Pilih site dulu —' : '— Pilih customer dulu —');
+            $techName.attr('placeholder', ($cust.val() || CUST_TERKUNCI) ? '— Pilih site dulu —' : '— Pilih customer dulu —');
             return;
         }
         setTech('', 'Memuat…');
