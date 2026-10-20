@@ -5,6 +5,16 @@
 .tt-page .tt-title { font-size:20px; font-weight:700; color:var(--text); margin:0; }
 .tt-page .tt-sub   { color:var(--text-faint); font-size:13px; margin-top:2px; }
 
+/* Input tanggal: ikon kalender di ujung kanan kotak isian. Ikonnya tembus
+   klik (pointer-events:none) supaya klik di atasnya tetap membuka flatpickr.
+   Pembungkus dipakai karena flatpickr altInput menyisipkan input kedua. */
+.tt-date-field { position:relative; }
+.tt-date-field > input { padding-right:30px; }
+.tt-date-field > .tt-date-ico {
+    position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    color:var(--text-faint); font-size:13px; pointer-events:none;
+}
+
 /* SLA */
 .tt-sla { display:inline-flex; align-items:center; gap:4px; font-size:12px; white-space:nowrap; font-variant-numeric:tabular-nums; }
 .tt-sla-na, .tt-sla-none, .tt-sla-ok { color:var(--text-dim); }
@@ -43,9 +53,42 @@
 @media (min-width: 992px) {
     .tt-detail .tt-panes { flex:1 1 0; min-height:0; flex-wrap:nowrap; }
     .tt-detail .tt-pane { height:100%; }
+    /* Halaman detail memang sudah dipaskan setinggi layar oleh fitDetail();
+       scrollbar halaman dimatikan supaya sisa 1-2 piksel pembulatan tidak
+       memunculkan batang gulir kosong di tepi kanan (20 Okt 2026). Kelasnya
+       dipasang JS, jadi halaman lain dan tampilan HP tidak ikut terkunci. */
+    html.tt-detail-open, body.tt-detail-open { overflow-y:hidden; }
 }
 .tt-detail .tt-pane { min-height:0; }
 .tt-fill { height:100%; display:flex; flex-direction:column; min-height:0; overflow:hidden; }
+/* Angka yang membuka detail Cost Request — gaya pil yang sama dengan
+   .cr-cell-link di halaman Cost Request (20 Okt 2026), supaya angka yang bisa
+   diklik terlihat sama di kedua modul. */
+/* Ditulis sebagai `body.tesys-ui a.tt-cell-link` (0-2-1), bukan
+   `.tt-cell-link` (0-1-0): aturan `body.tesys-ui a` di tesys-ui-compat.css
+   berkekhususan 0-1-1 dan akan memenangi warnanya. Di Cost Request persoalan
+   ini tidak muncul karena elemennya <button>, bukan <a>. */
+body.tesys-ui a.tt-cell-link {
+    display:inline-block; background:transparent; border:none; padding:2px 8px; border-radius:var(--radius-sm);
+    color:var(--text); font-weight:700; font-size:13px; line-height:1.4;
+    transition:background-color .12s ease, color .12s ease;
+}
+body.tesys-ui a.tt-cell-link:hover,
+body.tesys-ui a.tt-cell-link:focus { background:var(--charcoal); color:#fff; outline:none; text-decoration:none; }
+
+/* Kanvas tanda tangan penerima dana (modal Settlement). touch-action:none
+   supaya coretan jari tidak ikut menggulir halaman di HP. */
+/* Tombol aksi berbentuk ikon di tabel settlement — selebar isinya saja. */
+.tt-icon-btn { padding:2px 8px; line-height:1.2; }
+
+.tt-signpad { width:100%; height:140px; border:1px dashed var(--border); border-radius:var(--radius-sm); background:#fff; touch-action:none; cursor:crosshair; }
+
+/* Tabel item biaya plan (modal Create Plan & tab Tiket) — rapat, mengikuti
+   kepadatan tabel lain di modul ini. */
+.tt-cost-table { font-size:12.5px; }
+.tt-cost-table th, .tt-cost-table td { padding:4px 6px; vertical-align:middle; }
+.tt-cost-table .form-control-sm { font-size:12.5px; height:28px; }
+
 .tt-card-head { min-height:36px; }
 .tt-card-head .card-title { font-size:13.5px; }
 .tt-card-ticket { font-weight:700; font-size:13px; color:var(--text); white-space:nowrap; }
@@ -61,6 +104,12 @@
 
 /* Chat */
 .tt-chat { position:relative; display:flex; flex-direction:column; flex:1 1 0; min-height:0; }
+/* Scrollbar disembunyikan di halaman detail (keputusan 19 Okt 2026) —
+   gulirannya tetap jalan, hanya batangnya yang tidak digambar. */
+.tt-chat-list, .tt-tab-body, .tt-info-log { scrollbar-width:none; -ms-overflow-style:none; }
+.tt-chat-list::-webkit-scrollbar, .tt-tab-body::-webkit-scrollbar, .tt-info-log::-webkit-scrollbar { width:0; height:0; display:none; }
+/* Log di modal Info: tingginya dibatasi supaya modal tidak memanjang. */
+.tt-info-log { max-height:260px; overflow-y:auto; }
 .tt-chat-list { flex:1 1 0; min-height:0; overflow-y:auto; padding:10px 14px; background:var(--card-bg); border-radius:var(--radius-md); }
 .tt-msg { display:flex; gap:8px; margin-bottom:8px; transition:background var(--dur-fast, .15s); }
 /* Avatar selalu ada — di kiri untuk peran lain, di kanan untuk teknisi. */
@@ -195,7 +244,11 @@
 .tt-next > i { color:var(--info); margin-top:2px; }
 .tt-copy { border:0; background:transparent; color:var(--text-faint); padding:0 3px; font-size:12px; cursor:pointer; }
 .tt-copy:hover { color:var(--accent-text); }
-.tt-sec-title { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-faint); font-weight:700; margin:10px 0 2px; }
+/* Warna judul bagian dinaikkan dari --text-faint ke --text (20 Okt 2026):
+   bobotnya memang sudah 700, tapi dengan warna paling redup ia terbaca
+   selemah teks biasa, sehingga Identitas/Gangguan/Biaya Plan/SLA tidak
+   tampak sebagai kepala bagian. */
+.tt-sec-title { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text); font-weight:700; margin:10px 0 2px; }
 
 /* Tiket: grup bisa dilipat */
 .tt-acc { border-bottom:1px solid var(--border-soft); }
@@ -252,6 +305,44 @@
     }
     .tt-mbar button i { font-size:16px; }
     .tt-mbar button.active { color:var(--accent-text); border-top-color:var(--accent); }
+
+    /* ---- Halaman detail tetap bisa digulir di HP (20 Okt 2026) ----
+       fitDetail() melepas kelas tt-detail-open saat layar menyempit, tetapi
+       kelas itu bisa tertinggal bila skrip berhenti lebih dulu karena satu
+       error. Penegasan ini membuat batang gulir halaman tidak pernah hilang
+       di HP, apa pun yang terjadi pada skripnya. */
+    html.tt-detail-open, body.tt-detail-open { overflow-y:auto !important; }
+    /* Tinggi area chat diatur CSS di HP; tinggi inline dari fitDetail() hanya
+       untuk desktop dan akan membuat panel terpotong bila ikut terbawa. */
+    .tt-detail { height:auto !important; }
+
+    /* ---- Modal lebar (Create Plan, Review, Settlement) ---- */
+    .modal-lg, .modal-xl { max-width:calc(100% - 16px); margin:8px auto; }
+    .modal-body { max-height:calc(100vh - 170px); overflow-y:auto; }
+
+    /* Tabel rincian tidak diperas sampai tak terbaca: ia menggulir mendatar
+       di dalam .table-responsive. */
+    .tt-cost-table { min-width:620px; }
+    /* Sasaran sentuh tombol ikon (lampiran & e-sign) — 44px mengikuti ukuran
+       minimum yang nyaman ditekan jari. */
+    .tt-icon-btn { min-width:40px; min-height:36px; }
+    .tt-signpad { height:170px; }
+
+    /* Nominal Settle di HP (20 Okt 2026): kolomnya terlalu sempit, angka yang
+       sedang diketik terpotong ("40.00…"). Input yang sedang difokus diangkat
+       jadi kotak yang cukup besar untuk dibaca — selebar isinya saja, bukan
+       selebar layar — dan ketuk di mana saja di luar untuk selesai. Tidak ada
+       latar gelap: isi modal di belakangnya harus tetap terbaca jelas.
+       Posisi tegak (top) dan mendatarnya (left) diisi skrip: kotak ini melebar
+       KE KIRI dari tepi kanan input aslinya dan mengikuti baris yang sedang
+       diisi, jadi ia tidak pernah menutupi tombol Lampiran & E-sign di
+       sebelah kanannya maupun baris lain. */
+    .tt-settle-amount.tt-amount-zoom {
+        position:fixed; width:200px; max-width:60vw; height:auto !important;
+        z-index:1061; font-size:22px !important; line-height:1.2; font-weight:600;
+        text-align:center; padding:10px 12px; border-radius:10px;
+        background:var(--surface); box-shadow:0 10px 28px rgba(0,0,0,.28);
+    }
 }
 @media (max-width: 400px) {
     .tt-tabs .nav-link i { display:none; }

@@ -6,7 +6,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 use App\Models\BudgetRequest;
 use App\Models\BudgetRequestRealization;
@@ -20,6 +22,7 @@ use App\Models\Beneficiary;
 use App\Models\Account;
 use App\Models\DailyTransactionItem;
 use App\Models\CostCenter;
+use App\Models\TroubleTicket;
 use App\Models\User;
 use App\Services\NotifyService;
 use App\Services\RoleDirectory;
@@ -107,7 +110,16 @@ class BudgetRequestController extends Controller
     {
         $query = BudgetRequest::whereKey($cr->getKey());
         $this->scopeByRole($query);
-        return $query->exists();
+
+        if ($query->exists()) {
+            return true;
+        }
+
+        /* Teknisi tidak punya access group proyek, jadi scopeByRole() tidak
+           pernah meloloskan CR apa pun untuknya. Satu kekecualian sempit
+           (20 Okt 2026): CR yang lahir dari plan visit TIKET YANG DITUGASKAN
+           KEPADANYA — itulah yang ia settle dari halaman tiketnya. */
+        return $this->isTicketTechnicianOfCr(Auth::user(), $cr);
     }
 
     /**
@@ -2703,6 +2715,86 @@ class BudgetRequestController extends Controller
     }
 
     /**
+     * Bukti wajib per baris settlement (keputusan 20 Okt 2026):
+     *
+     *   a. Baris bernilai > 0 yang SUDAH ditandatangani penerima dana wajib
+     *      punya lampiran — tanda tangan tanpa bukti belanja tidak bisa
+     *      dipertanggungjawabkan.
+     *   b. Baris yang VARIANCE-nya tidak nol (Settle beda dari Request) wajib
+     *      punya lampiran DAN tanda tangan — selisih uang harus berbukti dan
+     *      diakui penerimanya.
+     *
+     * Berlaku juga saat menyimpan DRAFT: draft memang boleh setengah jadi,
+     * tapi tidak untuk baris yang sudah menyentuh dua hal di atas. Lampiran
+     * dan tanda tangan dari simpanan sebelumnya ikut dihitung selama tidak
+     * dicentang hapus, persis cara validateRealizationInput() menghitungnya
+     * saat Submit.
+     */
+    private function validateSettlementEvidence(Request $request, BudgetRequest $cr)
+    {
+        $signatures     = (array) $request->input('signatures', []);
+        $hapusIds       = array_filter((array) $request->input('delete_realization_attachments', []));
+        $kurangLampiran = [];
+        $kurangTtd      = [];
+
+        foreach ((array) $request->input('realizations', []) as $i => $row) {
+            $detailId = (int) ($row['request_detail_id'] ?? 0);
+            $amount   = $this->normalizeMoney($row['amount'] ?? null);
+            $detail   = $detailId ? RequestDetail::find($detailId) : null;
+
+            if (! $detail) {
+                continue;
+            }
+
+            $adaSelisih = $amount !== (int) $detail->total;
+
+            // Tanda tangan baru dari form, atau yang sudah tersimpan sebelumnya.
+            $ttd = str_starts_with((string) ($signatures[$i] ?? ''), 'data:image/png;base64,')
+                || $cr->realizationAttachments()
+                    ->where('original_name', 'ttd-' . ((int) $i + 1) . '-' . $cr->code . '.png')
+                    ->exists();
+
+            if (! $adaSelisih && ! ($amount && $ttd)) {
+                continue;
+            }
+
+            if ($adaSelisih && ! $ttd) {
+                $kurangTtd[] = (int) $i + 1;
+            }
+
+            $adaBerkas = collect((array) $request->file("realizations.$i.attachments", []))
+                ->contains(fn ($f) => $f && $f->isValid());
+
+            if (! $adaBerkas) {
+                $adaBerkas = \App\Models\RealizationDetailAttachment::whereIn(
+                        'realization_id',
+                        $cr->realizations()->where('request_detail_id', $detailId)->pluck('id')
+                    )
+                    ->whereNotIn('id', $hapusIds ?: [0])
+                    ->exists();
+            }
+
+            if (! $adaBerkas) {
+                $kurangLampiran[] = (int) $i + 1;
+            }
+        }
+
+        $pesan = [];
+
+        if ($kurangLampiran) {
+            $pesan[] = '"Lampiran Item" belum diisi pada baris no. ' . implode(', ', $kurangLampiran) . '.';
+        }
+
+        if ($kurangTtd) {
+            $pesan[] = '"E-sign" belum diisi pada baris no. ' . implode(', ', $kurangTtd) . '.';
+        }
+
+        return $pesan
+            ? back()->withInput()->with('error', implode(' ', $pesan))
+            : null;
+    }
+
+    /**
      * Simpan data form Settlement (realisasi + lampiran) ke database. Status
      * CR TIDAK disentuh di sini — pemanggil (submit atau simpan draft) yang
      * memutuskan transisinya.
@@ -2731,11 +2823,16 @@ class BudgetRequestController extends Controller
     {
         /** @var User $user */
         $user = Auth::user();
-        if (!$user->hasRole(['superadmin', 'manager', 'supervisor'])) {
-            abort(403, 'Anda tidak memiliki wewenang untuk mengajukan realisasi CR ini.');
-        }
 
         $cr = $this->findVisibleCr($id);
+
+        /* Sejak 20 Okt 2026 TEKNISI boleh mengajukan settlement — tetapi HANYA
+           untuk CR yang lahir dari plan visit tiket yang ditugaskan kepadanya,
+           bukan CR mana pun. Di luar itu gerbang perannya tidak berubah. */
+        if (! $user->hasRole(['superadmin', 'manager', 'supervisor'])
+            && ! $this->isTicketTechnicianOfCr($user, $cr)) {
+            abort(403, 'Anda tidak memiliki wewenang untuk mengajukan realisasi CR ini.');
+        }
 
         if (! in_array($cr->status, ['PAID', 'SETTLE_REJECTED'], true)) {
             return back()->with('error', 'Hanya CR berstatus PAID atau Settle Rejected yang dapat diajukan realisasi.');
@@ -2783,6 +2880,84 @@ class BudgetRequestController extends Controller
     }
 
     /**
+     * User ini teknisi yang ditugaskan pada tiket yang melahirkan CR ini?
+     *
+     * Dipakai sebagai PELEBARAN SEMPIT gerbang settlement (20 Okt 2026):
+     * teknisi hanya boleh pada CR tiketnya sendiri. Kalau kolom penghubungnya
+     * belum ada (migrasi belum dijalankan), jawabannya false — perilaku lama.
+     */
+    private function isTicketTechnicianOfCr(User $user, BudgetRequest $cr): bool
+    {
+        if (! Schema::hasColumn('trouble_tickets', 'budget_request_id')) {
+            return false;
+        }
+
+        return TroubleTicket::where('budget_request_id', $cr->id)
+            ->where('assigned_to', $user->id)
+            ->exists();
+    }
+
+    /**
+     * Menyimpan tanda tangan penerima dana per baris settlement.
+     *
+     * Dikirim sebagai data URL PNG pada `signatures[<indeks baris>]`. Tiap
+     * coretan disimpan ke disk `secure` dan dicatat sebagai LAMPIRAN GLOBAL
+     * CR (bukan lampiran item), dengan nama yang menyebut nomor barisnya —
+     * keputusan 20 Okt 2026, supaya bukti serah-terima terkumpul di satu
+     * tempat dan tidak tercampur dengan nota/bukti belanja per item.
+     *
+     * Tanda tangan baris yang sama DIGANTI bila dikirim ulang, jadi menyimpan
+     * draft berkali-kali tidak menumpuk berkas.
+     */
+    private function storeSettlementSignatures(Request $request, BudgetRequest $cr): void
+    {
+        foreach ((array) $request->input('signatures', []) as $i => $raw) {
+            $raw = (string) $raw;
+
+            if (! str_starts_with($raw, 'data:image/png;base64,')) {
+                continue;
+            }
+
+            $png = base64_decode(substr($raw, strlen('data:image/png;base64,')), true);
+
+            if ($png === false) {
+                continue;
+            }
+
+            $nama = 'ttd-' . ((int) $i + 1) . '-' . $cr->code . '.png';
+
+            // Tanda tangan lama untuk baris ini dibuang lebih dulu.
+            $cr->realizationAttachments()->where('original_name', $nama)->get()
+                ->each(function ($att) {
+                    Storage::disk('secure')->delete($att->path);
+                    $att->delete();
+                });
+
+            $path = 'settlement_signatures/' . Str::random(40) . '.png';
+            Storage::disk('secure')->put($path, $png);
+
+            $cr->realizationAttachments()->create([
+                'original_name' => $nama,
+                'stored_name'   => basename($path),
+                'path'          => $path,
+                'mime_type'     => 'image/png',
+                'size'          => strlen($png),
+                'uploaded_by'   => Auth::id(),
+            ]);
+        }
+    }
+
+    /** CR ini lahir dari plan visit sebuah Trouble Ticket? */
+    private function crBerasalDariTiket(BudgetRequest $cr): bool
+    {
+        if (! Schema::hasColumn('trouble_tickets', 'budget_request_id')) {
+            return false;
+        }
+
+        return TroubleTicket::where('budget_request_id', $cr->id)->exists();
+    }
+
+    /**
      * Simpan draft Settlement TANPA mengajukan — status CR tetap PAID atau
      * SETTLE_REJECTED, pengaju bisa melanjutkan mengisi nanti lalu baru
      * menekan "Ajukan" (submitRealization). Draft boleh belum lengkap:
@@ -2793,11 +2968,17 @@ class BudgetRequestController extends Controller
     {
         /** @var User $user */
         $user = Auth::user();
-        if (!$user->hasRole(['superadmin', 'manager', 'supervisor'])) {
-            abort(403, 'Anda tidak memiliki wewenang untuk menyimpan realisasi CR ini.');
-        }
 
         $cr = $this->findVisibleCr($id);
+
+        /* Teknisi boleh menyimpan draft settlement — hanya untuk CR yang lahir
+           dari plan visit tiket yang ditugaskan kepadanya (20 Okt 2026).
+           Status CR tidak berubah, jadi tidak ada tahap alur uang yang
+           dilewati; pengajuan resminya tetap dari modul Cost Request. */
+        if (! $user->hasRole(['superadmin', 'manager', 'supervisor'])
+            && ! $this->isTicketTechnicianOfCr($user, $cr)) {
+            abort(403, 'Anda tidak memiliki wewenang untuk menyimpan realisasi CR ini.');
+        }
 
         if (! in_array($cr->status, ['PAID', 'SETTLE_REJECTED'], true)) {
             return back()->with('error', 'Hanya CR berstatus PAID atau Settle Rejected yang dapat disimpan.');
@@ -2807,9 +2988,19 @@ class BudgetRequestController extends Controller
             return $error;
         }
 
+        if ($error = $this->validateSettlementEvidence($request, $cr)) {
+            return $error;
+        }
+
         DB::transaction(function () use ($request, $cr) {
             $this->syncRealizationData($request, $cr);
+            $this->storeSettlementSignatures($request, $cr);
         });
+
+        // Permintaan dari modal tiket cukup kembali ke halaman asalnya.
+        if ($request->boolean('from_ticket')) {
+            return back()->with('success', 'Draft Settlement tersimpan. Status CR belum berubah.');
+        }
 
         // Kembali ke daftar Cost Request biasa (tanpa membuka drawer detail) —
         // draft bisa dilanjutkan lagi kapan saja lewat aksi Settlement.

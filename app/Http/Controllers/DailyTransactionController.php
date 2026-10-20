@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\TroubleTicketWorkflow;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -1101,6 +1102,13 @@ class DailyTransactionController extends Controller
                     ]);
                     $cr->addLog('QUEUED', 'CLOSED', 'paid', $request->payment_notes);
                 }
+
+                /* CR yang lahir dari plan visit Trouble Ticket: pencairannya
+                   dicatat juga di timeline tiketnya (20 Okt 2026), supaya orang
+                   lapangan tidak perlu membuka modul Finance. Hanya menulis
+                   kejadian — status tiket tidak disentuh. */
+                app(TroubleTicketWorkflow::class)
+                    ->recordCostRequestPaid($cr->refresh(), Auth::user(), $request->payment_notes);
             }
 
             // Batch → PAID

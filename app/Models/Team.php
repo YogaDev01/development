@@ -10,6 +10,9 @@ class Team extends Model
         'code',
         'name',
         'department_id',
+        // Customer (project) yang dilayani team ini — dipakai form Buat
+        // Trouble Ticket untuk mengisi customer & menyaring site otomatis.
+        'customer_id',
         'leader_id',
         'status',
     ];
@@ -25,6 +28,26 @@ class Team extends Model
     public function department()
     {
         return $this->belongsTo(Department::class);
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    /**
+     * Kolom teams.customer_id sudah ada (migrasi 2026_10_19_000300 dijalankan)?
+     *
+     * Dipakai jalur yang membaca/menulis kolom itu — Buat Trouble Ticket dan
+     * form Team — supaya basis data yang belum dimigrasi tidak memunculkan
+     * "Unknown column", melainkan kembali ke perilaku lama (customer dipilih
+     * sendiri). Jawabannya dihitung sekali per permintaan.
+     */
+    public static function supportsCustomer(): bool
+    {
+        static $ada = null;
+
+        return $ada ??= \Illuminate\Support\Facades\Schema::hasColumn('teams', 'customer_id');
     }
 
     public function leader()

@@ -37,6 +37,10 @@ class BudgetRequest extends Model
         'approved_at',
         'paid_at',
         'realized_at',
+        // Tanda tangan penerima dana pada settlement (20 Okt 2026).
+        'settlement_signature_path',
+        'settlement_signer_name',
+        'settlement_signed_at',
         'closed_at',
         'email',
     ];
@@ -49,6 +53,7 @@ class BudgetRequest extends Model
         'approved_at'  => 'datetime',
         'paid_at'      => 'datetime',
         'realized_at'  => 'datetime',
+        'settlement_signed_at' => 'datetime',
         'closed_at'    => 'datetime',
     ];
 

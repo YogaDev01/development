@@ -2,7 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BudgetPlan;
+use App\Models\BudgetPlanDetail;
+use App\Models\Cluster;
 use App\Models\Site;
+use App\Models\Team;
 use App\Models\TroubleTicket;
 use App\Models\TroubleTicketAttachment;
 use App\Models\TroubleTicketMessage;
@@ -60,9 +64,6 @@ class TroubleTicketController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-
-        // Plan yang tanggal visit-nya sudah tiba naik ke tahap Trip (tanpa penjadwal).
-        $this->workflow->promoteDueTrips();
 
         $query = TroubleTicket::visibleTo($user)
             ->with([
@@ -196,15 +197,25 @@ class TroubleTicketController extends Controller
         $ticket->load([
             'site.customer:id,name', 'problem', 'issueRef', 'deviceRef', 'rcaRef', 'subRcaRef', 'creator:id,name',
             'technician:id,name,phone', 'acknowledger:id,name', 'decider:id,name',
-            'closer:id,name', 'planApprover:id,name',
+            'closer:id,name', 'planApprover:id,name', 'budgetPlan:id,code',
+            // Total estimasi biaya menautkan ke CR ini (20 Okt 2026).
+            'budgetRequest:id,code',
         ]);
 
         return view('trouble-ticket._info', [
             'ticket' => $ticket,
+            // Log aktivitas tiket (kejadian workflow saja, terbaru di atas) —
+            // isinya sama dengan tab Log di halaman detail.
+            'statusLog' => $ticket->messages()
+                ->where('type', TroubleTicketMessage::TYPE_EVENT)
+                ->orderByDesc('id')
+                ->get(['id', 'event', 'actor_name', 'body', 'metadata', 'created_at']),
             'supervisors' => $this->workflow->supervisorsFor((int) $ticket->assigned_to),
             // SLA disembunyikan dari teknisi tiket ini — sama dengan halaman
             // detail (ukuran waktu dipakai supervisor, bukan pelaksana).
             'isTechnician' => $this->workflow->isTechnician(Auth::user(), $ticket),
+            // Estimasi biaya plan visit (20 Okt 2026).
+            'planCosts' => $ticket->planCosts()->with('account:id,name')->orderBy('id')->get(),
         ]);
     }
 
@@ -218,17 +229,69 @@ class TroubleTicketController extends Controller
     {
         $this->abortIfCannotCreate();
 
-        $sites = Site::with('customer:id,name')->where('status', 'ACTIVE')->orderBy('tid')->get(['id', 'tid', 'sitename', 'customer_id']);
+        /* Customer mengikuti team pembuat tiket (19 Okt 2026): anggota ACTIVE
+           sebuah team ACTIVE yang sudah diisi customer-nya tidak lagi memilih
+           customer — ia terisi sendiri dan daftar site menyusut ke customer
+           itu. Pembuat yang tidak terikat team mana pun (mis. superadmin)
+           tetap memilih seperti sebelumnya. */
+        $customerIds = $this->teamCustomerIds(Auth::user());
+
+        $sites = Site::with('customer:id,name')
+            ->where('status', 'ACTIVE')
+            ->when($customerIds->isNotEmpty(), fn ($q) => $q->whereIn('customer_id', $customerIds))
+            ->orderBy('tid')
+            ->get(['id', 'tid', 'sitename', 'customer_id']);
+
+        $customers = $sites->pluck('customer')->filter()->unique('id')->sortBy('name')->values();
 
         return view('trouble-ticket.create', [
             'sites' => $sites,
-            // Customer dipilih lebih dulu; daftarnya hanya customer yang punya
-            // site aktif, supaya tidak ada pilihan yang menghasilkan site kosong.
-            'customers' => $sites->pluck('customer')->filter()->unique('id')->sortBy('name')->values(),
+            // Daftarnya hanya customer yang punya site aktif, supaya tidak ada
+            // pilihan yang menghasilkan site kosong.
+            'customers' => $customers,
+            /* Satu customer saja: kotak pilihan diganti teks baca-saja.
+               Lebih dari satu team dengan customer berbeda tetap memilih,
+               hanya daftarnya yang menyempit. */
+            'customerTerkunci' => $customerIds->isNotEmpty() && $customers->count() === 1
+                ? $customers->first()
+                : null,
+            /* Kenapa customer tidak terisi sendiri — ditulis apa adanya di
+               form supaya penyebabnya terbaca tanpa menebak: kolom customer
+               team belum ada/diisi, atau customer-nya belum punya site aktif. */
+            'alasanCustomer' => match (true) {
+                ! Team::supportsCustomer() => 'Migrasi teams.customer_id belum dijalankan.',
+                $customers->isEmpty() => 'Customer team Anda belum punya site berstatus ACTIVE.',
+                default => null,
+            },
             'rcas' => TroubleTicketRca::active(),
             // Dipakai dropdown Sub-RCA di browser (tanpa request tambahan).
             'subRcas' => TroubleTicketSubRca::where('status', 'ACTIVE')->orderBy('name')->get(['id', 'rca_id', 'name']),
         ]);
+    }
+
+    /**
+     * Customer milik team ACTIVE tempat user terdaftar (anggota ACTIVE atau
+     * leader) dan yang customer-nya sudah diisi di Master Data > Team.
+     * Kosong = user tidak terikat customer mana pun; ia memilih sendiri.
+     *
+     * @return \Illuminate\Support\Collection<int, int>
+     */
+    private function teamCustomerIds(User $user): Collection
+    {
+        if (! Team::supportsCustomer()) {
+            return collect();
+        }
+
+        return Team::query()
+            ->where('teams.status', 'ACTIVE')
+            ->whereNotNull('customer_id')
+            ->where(fn ($q) => $q
+                ->where('leader_id', $user->id)
+                ->orWhereHas('members', fn ($m) => $m->where('user_id', $user->id)->where('status', 'ACTIVE')))
+            ->pluck('customer_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
     }
 
     /** Teknisi tidak boleh membuat tiket; ia hanya mengerjakan yang ditugaskan. */
@@ -298,6 +361,17 @@ class TroubleTicketController extends Controller
         $pokok = ['site_id' => $data['site_id'], 'assigned_to' => $data['assigned_to']];
         $user = Auth::user();
 
+        /* Gerbang server untuk aturan di create(): pembuat yang terikat team
+           hanya boleh membuat tiket pada site milik customer team-nya —
+           kiriman browser tidak dipercaya. */
+        $customerIds = $this->teamCustomerIds($user);
+        if ($customerIds->isNotEmpty()
+            && ! $customerIds->contains((int) Site::whereKey($data['site_id'])->value('customer_id'))) {
+            throw ValidationException::withMessages([
+                'site_id' => 'Site itu bukan milik customer team Anda.',
+            ]);
+        }
+
         /* Dibuat berurutan, bukan dalam satu transaksi: tiap tiket punya nomor,
            lampiran dan notifikasinya sendiri, dan workflow->create() sudah
            menjaga keutuhan per tiket. Bila satu gagal, tiket sebelumnya tetap
@@ -354,17 +428,16 @@ class TroubleTicketController extends Controller
         $user = Auth::user();
         abort_unless($this->workflow->canView($user, $ticket), 403);
 
-        // Respons pertama teknisi dicatat di server, sekali (lihat recordAccess()).
+        /* Respons pertama teknisi dicatat di server, sekali (lihat
+           recordAccess()). Tiket OPEN yang dibuka teknisinya sekaligus masuk
+           tahap Remote di sana — tidak ada lagi tombol Remote (19 Okt 2026). */
         $this->workflow->recordAccess($ticket, $user);
-        // Plan yang tanggalnya sudah tiba naik ke Trip sebelum halaman dirender.
-        if ($ticket->status === 'PLAN') {
-            $this->workflow->promoteDueTrips();
-            $ticket->refresh();
-        }
 
         $ticket->load([
             'site.customer:id,name',
             'site.picLinks.pic',
+            'budgetPlan:id,code',
+            'budgetRequest',
             'problem',
             'issueRef',
             'deviceRef',
@@ -378,14 +451,88 @@ class TroubleTicketController extends Controller
             'closer:id,name',
             'planApprover:id,name',
             'approver:id,name',
-            'chatLocker:id,name',
             'assignments.technician:id,name',
             'assignments.assigner:id,name',
         ]);
 
         [$messages, $hasOlder] = $this->messagePage($ticket);
 
+        /* Timeline disamakan dengan keadaan CR-nya: pembayaran yang tidak
+           melewati Treasury (perbaikan data, impor, alur lama) tidak pernah
+           memicu hook di sana, jadi dicek sekali saat tiket dibuka. */
+        $this->workflow->syncCostRequestPaid($ticket);
+
         $canSupervise = $this->workflow->canSupervise($user, $ticket);
+
+        /* CR yang sudah cair boleh disettle dari sini. Statusnya mengikuti
+           syarat BudgetRequestController::submitRealization(). */
+        $bolehSettle = $ticket->budgetRequest
+            && in_array($ticket->budgetRequest->status, ['PAID', 'SETTLE_REJECTED'], true)
+            && ($this->workflow->isTechnician($user, $ticket)
+                || $user->hasRole(['superadmin', 'manager', 'supervisor']));
+
+        /* Pilihan Budget Plan dibatasi ke CUSTOMER milik user ini — customer
+           team ACTIVE tempat ia terdaftar (keputusan 20 Okt 2026). User yang
+           tidak terikat team mana pun (mis. superadmin) memakai customer tiket
+           sebagai patokan. Budget cost center (overhead/payroll) TIDAK ikut:
+           ia tidak terikat customer, dan dulu membanjiri daftar.
+           Sub-itemnya dikirim sekali untuk disaring di browser, jadi tidak ada
+           permintaan tambahan saat budget plan diganti. */
+        $customerIds = $this->teamCustomerIds($user)
+            // Customer TIKET selalu ikut: supervisor yang team-nya memegang
+            // customer lain (atau belum diisi) tetap bisa menganggarkan tiket
+            // yang jadi tanggung jawabnya — tanpa ini daftarnya kosong.
+            ->push($ticket->customer_id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $budgetPlans = BudgetPlan::with('project:id,customer_id')
+            ->where('status', 'ACTIVE')
+            ->whereHas('project', fn ($p) => $p->whereIn('customer_id', $customerIds))
+            ->orderBy('code')
+            ->get(['id', 'code', 'description', 'project_id', 'cost_center_id']);
+
+        $budgetDetails = BudgetPlanDetail::with('account:id,name')
+            ->whereIn('budget_plan_id', $budgetPlans->pluck('id'))
+            ->orderBy('id')
+            ->get(['id', 'budget_plan_id', 'account_id', 'deskripsi']);
+
+        /* Cluster hanya ditanyakan saat budget plan-nya budget PROYEK dan
+           project itu punya lebih dari satu cluster aktif — persis aturan
+           form Cost Request. */
+        $planClusters = $ticket->budget_plan_id
+            ? Cluster::where('status', 'ACTIVE')
+                ->whereIn('project_id', $budgetPlans->where('id', $ticket->budget_plan_id)->pluck('project_id')->filter())
+                ->orderBy('name')
+                ->get(['id', 'name'])
+            : collect();
+        // Change Teknisi: pengawas tiket ini + supervisor (20 Okt 2026).
+        $bolehAlihkan = $this->workflow->canReassignBy($user, $ticket);
+
+        /* Isi draft settlement yang SUDAH tersimpan, supaya modalnya boleh
+           diisi sebagian lalu dilanjutkan lain waktu (20 Okt 2026): tanpa ini
+           form selalu kembali ke nilai Request dan pekerjaan sebelumnya tidak
+           terlihat. Dikunci per request_detail_id — satu baris realisasi per
+           item, persis yang ditulis syncRealizations(). */
+        $settleDetails = $bolehSettle
+            ? $ticket->budgetRequest->details()->where('status', '!=', 'TAKEOUT')->orderBy('id')->get()
+            : collect();
+
+        $settleDrafts = $bolehSettle
+            ? $ticket->budgetRequest->realizations()->withCount('attachments')->get()->keyBy('request_detail_id')
+            : collect();
+
+        /* Tanda tangan disimpan sebagai lampiran global bernama
+           "ttd-<nomor baris>-<kode CR>.png" (storeSettlementSignatures), jadi
+           nomor barisnya dibaca kembali dari nama berkas itu. */
+        $settleSignedRows = $bolehSettle
+            ? $ticket->budgetRequest->realizationAttachments()
+                ->where('original_name', 'like', 'ttd-%-' . $ticket->budgetRequest->code . '.png')
+                ->pluck('original_name')
+                ->map(fn ($n) => (int) explode('-', $n)[1])
+                ->all()
+            : [];
 
         return view('trouble-ticket.show', [
             'ticket' => $ticket,
@@ -407,19 +554,41 @@ class TroubleTicketController extends Controller
             'ctx' => $this->timelineContext($ticket),
             'hasOlder' => $hasOlder,
             'isTechnician' => $this->workflow->isTechnician($user, $ticket),
+            // Swipe Trip: tanggal plan visit sudah tiba, tiket masih di Plan.
+            'tripDue' => $this->workflow->tripDue($ticket),
             // Tombol tahap: teknisi tiket ini, atau superadmin.
             'canActAsTech' => $this->workflow->actsAsTechnician($user, $ticket),
             'canSupervise' => $canSupervise,
-            // Create Plan: teknisi tiket ini atau supervisor (bukan peran lain).
-            'canCreatePlan' => $this->workflow->canCreatePlan($user, $ticket),
+            /* Plan: membuat plan pertama = teknisi atau supervisor; mengubah
+               tanggal plan yang sudah ada = supervisor saja (19 Okt 2026). */
+            'canCreatePlan' => $this->workflow->canPlan($user, $ticket),
             'canApproveClose' => $this->workflow->canApproveClose($user, $ticket),
+            /* Create Plan — Biaya (20 Okt 2026). Sumber dana hanya pagu yang
+               sudah berjalan DAN sesuai customer tiket ini (budget proyek
+               customer itu + budget cost center yang tidak terikat customer).
+               Baris biaya memilih SUB-ITEM budget plan, bukan COA lepas:
+               rincian Cost Request memang bersandar pada sub-item. */
+            'budgetPlans' => $budgetPlans,
+            'budgetDetails' => $budgetDetails,
+            'planCosts' => $ticket->planCosts()->with(['account:id,name', 'budgetDetail'])->orderBy('id')->get(),
+            // Approval plan & biaya oleh supervisor → Cost Request draft.
+            'canApprovePlanBudget' => $this->workflow->canApprovePlanBudget($user, $ticket),
+            /* Settlement dari halaman tiket (20 Okt 2026): hanya saat CR-nya
+               sudah cair dan pelakunya berhak — teknisi tiket ini, atau peran
+               yang memang sudah boleh menyettle di modul Cost Request.
+               Gerbang sebenarnya tetap di BudgetRequestController. */
+            'canSettle' => $bolehSettle,
+            'settleDetails' => $settleDetails,
+            'settleDrafts' => $settleDrafts,
+            'settleSignedRows' => $settleSignedRows,
+            'planClusters' => $planClusters,
+            // Form close: semua peran yang boleh melihat tiket (20 Okt 2026).
+            'canClose' => $this->workflow->canClose($user, $ticket),
             'canMessage' => $this->workflow->canMessage($user, $ticket),
-            // Stop Chat / buka kembali diskusi — hanya superadmin.
-            'canLockChat' => $this->workflow->canLockChat($user, $ticket),
             // Change Teknisi: sejak plan dibuat sampai sebelum perjalanan mulai.
-            'canReassign' => $canSupervise && $this->workflow->canReassign($ticket),
+            'canReassign' => $bolehAlihkan && $this->workflow->canReassign($ticket),
             // Kandidatnya: Teknisi Backup site ini (Master Data > Site).
-            'reassignTo' => $canSupervise && $this->workflow->canReassign($ticket)
+            'reassignTo' => $bolehAlihkan && $this->workflow->canReassign($ticket)
                 ? $this->workflow->reassignCandidates($ticket)
                 : collect(),
         ]);
@@ -494,19 +663,6 @@ class TroubleTicketController extends Controller
         return back()->with('success', 'Pesan terkirim.');
     }
 
-    /**
-     * Stop Chat / buka kembali diskusi tiket — hanya superadmin
-     * (gerbang role ada di route DAN di TroubleTicketWorkflow::canLockChat()).
-     */
-    public function setChatLock(Request $request, TroubleTicket $ticket)
-    {
-        $data = $request->validate(['lock' => 'required|boolean']);
-
-        $this->workflow->setChatLock($ticket, Auth::user(), (bool) $data['lock']);
-
-        return back()->with('success', $data['lock'] ? 'Diskusi dihentikan.' : 'Diskusi dibuka kembali.');
-    }
-
     /** Unduh/pratinjau lampiran — keterlihatan mengikuti tiketnya. */
     public function download(TroubleTicketAttachment $attachment)
     {
@@ -531,31 +687,90 @@ class TroubleTicketController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    /** Teknisi memilih Remote (non-visit) — lanjut ke form close. */
-    public function remote(TroubleTicket $ticket)
-    {
-        $this->workflow->startRemote($ticket, Auth::user());
-
-        return back()->with('success', 'Tiket masuk tahap Remote. Lengkapi form close untuk menyelesaikannya.');
-    }
-
-    /** Teknisi membuat Plan Visit — tanpa approval; tiket menunggu tanggal plan. */
+    /** Membuat Plan Visit (teknisi/supervisor) atau mengubah tanggalnya (supervisor). */
     public function createPlan(Request $request, TroubleTicket $ticket)
     {
+        // Batas tanggal plan: hari ini untuk plan pertama, hari plan dibuat
+        // saat tanggalnya diubah (TroubleTicket::planMinDate()).
+        $minVisit = $ticket->planMinDate()->toDateString();
+
+        /* Harga diketik bertitik ribuan ("1.500.000"), seperti form Budget
+           Plan & Cost Request. Titiknya dibuang SEBELUM validasi supaya aturan
+           integer di bawah menilai angkanya, bukan teksnya. */
+        $request->merge([
+            'costs' => collect($request->input('costs', []))
+                ->map(function ($row) {
+                    if (isset($row['amount'])) {
+                        $row['amount'] = preg_replace('/\D/', '', (string) $row['amount']);
+                    }
+
+                    return $row;
+                })
+                ->all(),
+        ]);
+
         $data = $request->validate([
-            'visit_site' => 'required|date|after_or_equal:today',
+            'visit_site' => 'required|date|after_or_equal:'.$minVisit,
             'target_online' => 'nullable|date|after_or_equal:today',
             // Plan pertama tidak perlu alasan; mengubah tanggal yang sudah ada wajib.
             'reason' => in_array($ticket->status, ['PLAN', 'TRIP'], true)
                 ? 'required|string|max:500'
                 : 'nullable|string|max:500',
-        ], ['reason.required' => 'Keterangan perubahan tanggal visit wajib diisi.']);
+            /* Biaya plan wajib (keputusan 20 Okt 2026). Nilai 'total' tiap
+               baris sengaja TIDAK divalidasi/dipakai: workflow menghitung
+               ulang harga × qty. */
+            'budget_plan_id' => 'required|integer|exists:budget_plans,id',
+            'costs' => 'required|array|min:1',
+            'costs.*.budget_detail_id' => 'required|integer|exists:budget_plan_details,id',
+            'costs.*.description' => 'required|string|max:255',
+            'costs.*.amount' => 'required|integer|min:1',
+            'costs.*.qty' => 'required|integer|min:1',
+        ], [
+            'reason.required' => 'Keterangan perubahan tanggal visit wajib diisi.',
+            'budget_plan_id.required' => 'Budget Plan wajib dipilih.',
+            'costs.required' => 'Minimal satu baris item biaya wajib diisi.',
+        ]);
 
         $this->workflow->createPlan(
             $ticket, Auth::user(), $data['visit_site'], $data['target_online'] ?? null, $data['reason'] ?? null,
+            (int) $data['budget_plan_id'], $data['costs'],
         );
 
         return back()->with('success', 'Plan visit dibuat.');
+    }
+
+    /**
+     * Supervisor menyetujui plan & biaya. Tiket tetap di tahap Plan; sistem
+     * membuat Cost Request berstatus DRAFT dari estimasi biaya plan.
+     */
+    public function approvePlanBudget(Request $request, TroubleTicket $ticket)
+    {
+        $data = $request->validate([
+            'cluster_id' => 'nullable|integer|exists:clusters,id',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $this->workflow->approvePlanBudget(
+            $ticket, Auth::user(), isset($data['cluster_id']) ? (int) $data['cluster_id'] : null, $data['notes'] ?? null,
+        );
+
+        $ticket->refresh();
+
+        return back()->with('success', 'Plan & biaya disetujui. Cost Request draft: '
+            . ($ticket->budgetRequest?->code ?? '-') . '.');
+    }
+
+    /** Supervisor menolak plan & biaya — tiket tetap di Plan untuk direvisi. */
+    public function rejectPlanBudget(Request $request, TroubleTicket $ticket)
+    {
+        $data = $request->validate(
+            ['notes' => 'required|string|max:500'],
+            ['notes.required' => 'Alasan penolakan wajib diisi.'],
+        );
+
+        $this->workflow->rejectPlanBudget($ticket, Auth::user(), $data['notes']);
+
+        return back()->with('success', 'Plan & biaya ditolak.');
     }
 
     /** Geser "mulai perjalanan" — SLA Travel mulai. Evidence perjalanan wajib. */
@@ -577,7 +792,7 @@ class TroubleTicketController extends Controller
         $data = $request->validate([
             'reason' => 'required|string|max:500',
             // Jadwal kunjungan berikutnya wajib: tiket tidak ditinggalkan tanpa plan.
-            'visit_site' => 'required|date|after_or_equal:today',
+            'visit_site' => 'required|date|after_or_equal:'.$ticket->planMinDate()->toDateString(),
         ]);
 
         $this->workflow->cancelTravel($ticket, Auth::user(), $data['reason'], $data['visit_site']);
@@ -645,7 +860,7 @@ class TroubleTicketController extends Controller
             'assigned_to' => 'required|integer|exists:users,id',
             'reason' => 'required|string|max:500',
             // Reschedule tahap Plan & Trip ikut di form ini; tahap lain tidak mengirimnya.
-            'visit_site' => 'nullable|date|after_or_equal:today',
+            'visit_site' => 'nullable|date|after_or_equal:'.$ticket->planMinDate()->toDateString(),
         ]);
 
         $this->workflow->reassign(

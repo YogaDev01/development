@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Custom Ruls Trouble Ticket')
+@section('title', 'Custom Rules Trouble Ticket')
 
 @include('trouble-ticket._assets')
 
@@ -9,7 +9,7 @@
     <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
             <div>
-                <h1 class="tt-title">Custom Ruls</h1>
+                <h1 class="tt-title">Custom Rules</h1>
                 <div class="tt-sub">Kebijakan SLA &amp; master Trouble Ticket. Target SLA disalin ke tiket saat tiket dibuat — mengubahnya tidak memengaruhi tiket lama.</div>
             </div>
             <a href="{{ route('trouble-ticket.index') }}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left mr-1"></i> Kembali</a>

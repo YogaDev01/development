@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
+use App\Models\Customer;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\Department;
@@ -30,7 +31,12 @@ class TeamController extends Controller
         | nama anggota), karena yang dicari orang biasanya nama orangnya, bukan
         | nama team-nya.
         */
-        $baseQuery = Team::with(['department:id,name', 'leader:id,username,name', 'activeMembers.user:id,username,name'])
+        $relasi = ['department:id,name', 'leader:id,username,name', 'activeMembers.user:id,username,name'];
+        if (Team::supportsCustomer()) {
+            $relasi[] = 'customer:id,name';
+        }
+
+        $baseQuery = Team::with($relasi)
             ->withCount('activeMembers')
             ->when($request->filled('department_id'), fn ($q) => $q->where('department_id', $request->department_id))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
@@ -77,8 +83,9 @@ class TeamController extends Controller
     {
         $departments = Department::where('status', 'ACTIVE')->orderBy('name')->get();
         $users = User::where('status', 'ACTIVE')->orderBy('name')->get(['id', 'name', 'username']);
+        $customers = Customer::orderBy('name')->get(['id', 'name']);
 
-        return view('team.create', compact('departments', 'users'));
+        return view('team.create', compact('departments', 'users', 'customers'));
     }
 
     /*
@@ -92,7 +99,7 @@ class TeamController extends Controller
         $validated = $this->validateTeam($request);
 
         DB::transaction(function () use ($validated) {
-            $team = Team::create([
+            $team = Team::create($this->customerAttribute($validated) + [
                 'code'          => Team::generateNextCode(),
                 'name'          => strtoupper(trim($validated['name'])),
                 'department_id' => $validated['department_id'] ?? null,
@@ -135,8 +142,9 @@ class TeamController extends Controller
 
         $departments = Department::where('status', 'ACTIVE')->orderBy('name')->get();
         $users = User::where('status', 'ACTIVE')->orderBy('name')->get(['id', 'name', 'username']);
+        $customers = Customer::orderBy('name')->get(['id', 'name']);
 
-        return view('team.edit', compact('team', 'departments', 'users'));
+        return view('team.edit', compact('team', 'departments', 'users', 'customers'));
     }
 
     /*
@@ -153,7 +161,7 @@ class TeamController extends Controller
         $validated = $this->validateTeam($request, $team->id);
 
         DB::transaction(function () use ($team, $validated) {
-            $team->update([
+            $team->update($this->customerAttribute($validated) + [
                 'name'          => strtoupper(trim($validated['name'])),
                 'department_id' => $validated['department_id'] ?? null,
                 'leader_id'     => $validated['leader_id'],
@@ -219,11 +227,25 @@ class TeamController extends Controller
         abort(403, 'Hanya Superadmin atau Leader team ini yang boleh mengubah data.');
     }
 
+    /**
+     * ['customer_id' => …] hanya bila kolomnya sudah ada (migrasi
+     * 2026_10_19_000300). Basis data yang belum dimigrasi menyimpan team
+     * seperti sebelumnya, tanpa galat "Unknown column".
+     */
+    private function customerAttribute(array $validated): array
+    {
+        return Team::supportsCustomer()
+            ? ['customer_id' => $validated['customer_id'] ?? null]
+            : [];
+    }
+
     private function validateTeam(Request $request, ?int $teamId = null): array
     {
         $rules = [
             'name'                  => 'required|string|max:255',
             'department_id'         => 'nullable|exists:departments,id',
+            // Customer yang dilayani team — dipakai Trouble Ticket (opsional).
+            'customer_id'           => 'nullable|exists:customers,id',
             'leader_id'              => 'required|exists:users,id',
             'members'                => 'required|array|min:1',
             'members.*.user_id'      => 'required|exists:users,id|distinct',
