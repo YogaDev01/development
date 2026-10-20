@@ -34,24 +34,19 @@
        disisipkan di antara angka spesifikasi supaya skalanya tetap punya
        anak tangga untuk isian lembut, keadaan tekan, dan teks sekunder.
        ================================================================= */
-    /* LATAR PUTIH MURNI, NETRAL TANPA ARAH WARNA.
+    /* LATAR ABU TERANG, KARTU PUTIH.
 
-       Nilai sebelumnya (#f6f6f4 dan seluruh keluarganya) punya biru satu
-       sampai dua tingkat di bawah merah dan hijau. Selisih sekecil itu
-       tidak terlihat kalau sewarnanya berdiri sendiri, tapi sebidang
-       penuh layar membuatnya terbaca kekuningan — dan di sebelah kartu
-       putih murni, perbedaannya jadi jelas.
+       Latar halaman dan kartu sebelumnya sama-sama putih murni, sehingga di
+       tema terang kartu hanya terbedakan oleh garis tepi 1px — sedangkan di
+       tema gelap latar dan kartu sudah dua nada berbeda. Sekarang tema terang
+       mengikuti pola yang sama: latar abu terang (#eeeef0), kartu putih.
 
-       Sekarang latar halaman sama putihnya dengan kartu. Kartu tetap
-       terbaca karena ia memang tidak pernah mengandalkan beda warna:
-       bentuknya dibuat oleh garis tepi 1px, sesuai keputusan di bagian
-       BAYANGAN ("kartu biasa memakai garis tepi, bukan bayangan").
-
-       Netral sisanya dibuat benar-benar netral — R, G, dan B berdekatan
-       tanpa condong ke mana pun. Konsekuensinya header tabel, chip, dan
-       keadaan hover kini jadi satu-satunya pembeda permukaan, sehingga
-       nilainya sengaja tidak ikut diputihkan. */
-    --bg:            #ffffff;
+       Tetap netral (R, G, B berdekatan, tanpa condong ke warna apa pun) supaya
+       tidak terbaca kekuningan/kebiruan di sebidang layar penuh. Latar dibuat
+       sedikit lebih gelap daripada --surface-2 (#f4f4f5) agar header tabel,
+       chip, dan hover di dalam kartu tetap terbaca sebagai isian lembut,
+       bukan menyatu dengan latar. */
+    --bg:            #eeeef0;
     --surface:       #ffffff;
     --surface-2:     #f4f4f5;   /* isian lembut: header tabel, chip, hover */
     --surface-3:     #e9e9eb;   /* isian tekan / pembatas blok             */
