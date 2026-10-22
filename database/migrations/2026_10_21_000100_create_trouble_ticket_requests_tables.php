@@ -89,7 +89,10 @@ return new class extends Migration
         if (! Schema::hasTable('trouble_ticket_request_attachments')) {
             Schema::create('trouble_ticket_request_attachments', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('trouble_ticket_request_id')->constrained('trouble_ticket_requests')->restrictOnDelete();
+                // Nama FK eksplisit: nama otomatis (69 karakter) melewati batas 64 karakter MySQL.
+                $table->foreignId('trouble_ticket_request_id')
+                    ->constrained('trouble_ticket_requests', 'id', 'tt_req_att_request_fk')
+                    ->restrictOnDelete();
                 $table->unsignedBigInteger('item_id')->nullable();
                 // Berkas di disk "secure"; unduhan lewat controller Trouble Ticket (cek canView).
                 $table->string('path');
@@ -102,6 +105,23 @@ return new class extends Migration
                 $table->foreign('item_id')->references('id')->on('trouble_ticket_request_items')->nullOnDelete();
                 $table->foreign('uploaded_by')->references('id')->on('users')->nullOnDelete();
             });
+        }
+
+        // Pemulihan: bila run sebelumnya gagal tepat di FK lampiran, tabelnya sudah ada tanpa FK itu.
+        if (Schema::hasTable('trouble_ticket_request_attachments')) {
+            $adaFk = DB::table('information_schema.TABLE_CONSTRAINTS')
+                ->where('CONSTRAINT_SCHEMA', DB::raw('DATABASE()'))
+                ->where('TABLE_NAME', 'trouble_ticket_request_attachments')
+                ->where('CONSTRAINT_TYPE', 'FOREIGN KEY')
+                ->where('CONSTRAINT_NAME', 'tt_req_att_request_fk')
+                ->exists();
+
+            if (! $adaFk) {
+                Schema::table('trouble_ticket_request_attachments', function (Blueprint $table) {
+                    $table->foreign('trouble_ticket_request_id', 'tt_req_att_request_fk')
+                        ->references('id')->on('trouble_ticket_requests')->restrictOnDelete();
+                });
+            }
         }
     }
 
