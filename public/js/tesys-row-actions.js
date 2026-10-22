@@ -73,8 +73,11 @@
         }
         kiri = Math.min(Math.max(8, kiri), window.innerWidth - m.width - 8);
 
-        menu.style.left = Math.round(kiri) + 'px';
-        menu.style.top = Math.round(atas) + 'px';
+        // Koordinat rect = koordinat layar; style memakai px ber-`zoom`
+        // (skala 80% di tesys-ui-shell.css), jadi dibagi skalanya.
+        var z = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+        menu.style.left = Math.round(kiri / z) + 'px';
+        menu.style.top = Math.round(atas / z) + 'px';
         menu.style.visibility = 'visible';
 
         tombol.setAttribute('aria-expanded', 'true');

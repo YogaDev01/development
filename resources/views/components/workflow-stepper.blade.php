@@ -80,13 +80,21 @@
        tanpa menggulir. Garis tepi dipakai menggantikan bayangan supaya
        batasnya tetap terbaca di tema gelap, tempat bayangan hitam tak
        kelihatan. */
-    .wf-compact {
-        background: var(--surface); border-radius: var(--radius-md); padding: 8px 16px;
-        border: 1px solid var(--border); margin-bottom: 4px;
-    }
+    /* Tanpa kartu: strip langsung berdiri di kanvas halaman, hanya node,
+       garis tipis dan label. Cincin node memakai warna kanvas (--bg) supaya
+       tetap melubangi garis penghubung tanpa halo putih. */
+    .wf-compact { background: transparent; border: 0; padding: 2px 0 4px; margin-bottom: 0; }
     .wf-compact .wf-tl-grid { grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); row-gap: 8px; }
-    .wf-compact .wf-tl-node { min-width: 20px; padding: 2px 6px; font-size: 11px; }
-    .wf-compact .wf-tl-label { margin-top: 3px; font-size: 10.5px; }
+    .wf-compact .wf-tl-step::before { height: 1px; background: var(--border-strong, var(--border)); }
+    .wf-compact .wf-tl-node {
+        min-width: 24px; padding: 3px 7px; font-size: 11px; font-weight: 700;
+        border-radius: 999px; box-shadow: 0 0 0 4px var(--bg);
+    }
+    .wf-compact .wf-tl-node.is-empty { background: var(--bg) !important; }
+    .wf-compact .wf-tl-step:hover .wf-tl-node,
+    .wf-compact .wf-tl-step.wf-active .wf-tl-node { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--accent-ring); }
+    .wf-compact .wf-tl-label { margin-top: 4px; font-size: 10.5px; letter-spacing: .01em; }
+    .wf-compact .wf-tl-step.wf-active .wf-tl-label { text-decoration: none; color: var(--accent-text, var(--text)); font-weight: 700; }
     .wf-compact .wf-dist-bar { height: 4px; }
 
     /* Di layar sempit strip ini paling mudah menjadi dinding badge: alur 15
@@ -94,7 +102,7 @@
        dijadikan SATU baris yang digeser mendatar (gulir hanya di strip ini,
        bukan halaman), dengan pudar di tepi kanan sebagai tanda masih ada. */
     @media (max-width: 575.98px) {
-        .wf-compact { padding: 6px 0; }
+        .wf-compact { padding: 4px 0; }
         .wf-compact .wf-tl-grid {
             display: flex; overflow-x: auto; overscroll-behavior-x: contain;
             -webkit-overflow-scrolling: touch; scrollbar-width: none;

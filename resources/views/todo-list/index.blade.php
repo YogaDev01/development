@@ -1944,7 +1944,10 @@
    adalah tabelnya, bukan seluruh layar, dan menggeser halaman justru membawa
    sidebar & header ikut bergeser. Ditutup di kontainer halaman saja, bukan di
    body, supaya tidak memengaruhi halaman lain. */
-#todoApp { overflow-x: hidden; }
+/* clip, bukan hidden: hidden membuat #todoApp (anak flex .main > .content)
+   menjadi kotak gulir sendiri — batang gulirnya jadi menjorok dari tepi
+   kanan/bawah layar. clip memotong luapan mendatar tanpa kotak gulir. */
+#todoApp { overflow-x: clip; }
 
 .todo-po-row { cursor:pointer;background:var(--surface-3) !important;font-weight:700; }
 .todo-po-row:hover { filter:brightness(.97); }

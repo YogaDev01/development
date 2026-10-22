@@ -215,8 +215,9 @@
             Math.max(8, r.top + (r.height - h) / 2),
             Math.max(8, window.innerHeight - h - 8)
         );
-        tip.style.left = (r.right + 10) + 'px';
-        tip.style.top = top + 'px';
+        var z = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+        tip.style.left = ((r.right + 10) / z) + 'px';
+        tip.style.top = (top / z) + 'px';
         tip.classList.add('show');
     }
 

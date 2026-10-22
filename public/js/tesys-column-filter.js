@@ -166,7 +166,9 @@
             // Tidak cukup ruang di kanan -> rata kanan terhadap ikon
             left = offset.left + $icon.outerWidth() - ddWidth;
         }
-        $dd.css({ top: offset.top + $icon.outerHeight() + 4, left: Math.max(10, left) });
+        // offset()/window = koordinat layar; css top/left ber-`zoom` (skala 80%).
+        var z = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+        $dd.css({ top: offset.top / z + $icon.outerHeight() + 4, left: Math.max(10, left / z) });
 
         $search.on('input', function () {
             var q = $(this).val().toLowerCase();
@@ -412,7 +414,8 @@
         var viewportRight = $(window).scrollLeft() + $(window).width();
         var left = offset.left;
         if (left + ddWidth > viewportRight - 10) left = offset.left + $btn.outerWidth() - ddWidth;
-        $dd.css({ top: offset.top + $btn.outerHeight() + 4, left: Math.max(10, left) });
+        var z = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+        $dd.css({ top: offset.top / z + $btn.outerHeight() + 4, left: Math.max(10, left / z) });
 
         if ($search) {
             $search.on('input', function () {

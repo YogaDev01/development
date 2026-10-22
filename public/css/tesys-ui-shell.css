@@ -57,6 +57,32 @@ body.tesys-ui .main > .content {
 }
 body.tesys-ui .topbar { flex: none; }
 
+/* ------------------------------------------------- SKALA DEFAULT 80%
+   Tampilan desktop dibuat setara zoom peramban 80% (lebih luas & rapat).
+   Layar <= 900px (tablet/ponsel) tidak diskalakan. Satuan vh/dvh tidak ikut
+   terskala oleh `zoom`, jadi tinggi penuh-layar dibagi skala agar tetap
+   memenuhi viewport. Ubah skala cukup lewat --ts-zoom. */
+@media (min-width: 901px) {
+    html { --ts-zoom: .8; zoom: var(--ts-zoom); }
+    html body.tesys-ui,
+    html body.tesys-ui .shell,
+    html body.tesys-ui .main {
+        height: calc(100vh / var(--ts-zoom));
+        min-height: calc(100vh / var(--ts-zoom));
+    }
+    html body.tesys-ui .sidebar { height: calc(100vh / var(--ts-zoom)); }
+    /* Lapisan fixed selebar layar (backdrop modal, laci, command palette)
+       ikut menyusut 80% — latar gelap hanya menutup sebagian layar.
+       Ukurannya dikembalikan ke seluruh viewport. */
+    html body.tesys-ui .modal-backdrop,
+    html body.tesys-ui .modal,
+    html body.tesys-ui .ts-drawer-root,
+    html body.tesys-ui .ts-cmd-root {
+        width: calc(100vw / var(--ts-zoom));
+        height: calc(100vh / var(--ts-zoom));
+    }
+}
+
 /* ------------------------------------------------- PANEL KONTEN RATA
    Area kerja memenuhi sisa layar tanpa sudut membulat maupun garis batas;
    pemisah dari navigasi datang dari bayangan sidebar. */

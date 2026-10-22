@@ -35,6 +35,9 @@ body.tesys-ui .main > .content .card:has(.dataTables_wrapper):not(.ts-keep-card)
     border-radius: 0 !important;
     box-shadow: none !important;
     margin: 0 0 16px !important;
+    /* .card dasar (tesys-ui.css) berpadding 16px 18px: tanpa ini tabel
+       menjorok ~18px dari tepi, tidak sejajar dengan kartu stepper/stat. */
+    padding: 8px 0 0 !important;
 }
 body.tesys-ui .main > .content .card:has(.dataTables_wrapper):not(.ts-keep-card):not(.modal .card):not(.ts-drawer-root .card):not(.todo-drawer .card):not(:has(.col-pic-table)) > .card-header {
     display: flex;
@@ -52,12 +55,96 @@ body.tesys-ui .main > .content .card:has(.dataTables_wrapper):not(.ts-keep-card)
 body.tesys-ui .main > .content .card:has(.dataTables_wrapper):not(.ts-keep-card):not(.modal .card):not(.ts-drawer-root .card):not(.todo-drawer .card):not(:has(.col-pic-table)) > .card-body {
     padding: 0 !important;
 }
+/* Judul "Daftar ..." di header kartu dobel dengan judul halaman di topbar:
+   disembunyikan. Header yang isinya hanya judul ikut dihilangkan; header
+   yang masih memuat tombol tetap tampil. */
+body.tesys-ui .main > .content .card:has(.dataTables_wrapper):not(.ts-keep-card):not(.modal .card):not(.ts-drawer-root .card):not(.todo-drawer .card):not(:has(.col-pic-table)) > .card-header .card-title {
+    display: none;
+}
+body.tesys-ui .main > .content .card:has(.dataTables_wrapper):not(.ts-keep-card):not(.modal .card):not(.ts-drawer-root .card):not(.todo-drawer .card):not(:has(.col-pic-table)) > .card-header:not(:has(button, a, input, select, .btn)) {
+    display: none;
+}
 /* Tabel: satu garis tepi (milik .table-bordered), latar permukaan. */
 body.tesys-ui .main > .content .card:has(.dataTables_wrapper):not(.ts-keep-card) table.dataTable {
     background: var(--surface);
 }
 
 .ts-card-summary { display: none; }
+
+
+/* ==========================================================================
+   1b. DATA TABLE BERLAPIS (toolbar / header / body / footer / kolom beku)
+   --------------------------------------------------------------------------
+   Hanya tampilan, tanpa mengubah markup/JS: filter kolom, sort, export,
+   pagination, dan checkbox pilih-baris tetap bekerja seperti sebelumnya.
+   Cakupan: tabel di .main > .content (bukan modal/drawer).
+   ========================================================================== */
+
+/* Lapisan 1 — toolbar: panel permukaan dengan bayangan lembut. */
+body.tesys-ui .main > .content .custom-toolbar {
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Label "Cari :" dibuang; kotak pencarian (placeholder "Cari data...") dan
+   tombol lain tetap satu baris seperti semula. Label baris lain, mis. "Filter :", tetap. */
+body.tesys-ui .main > .content .toolbar-row:has(input[type="search"], input[placeholder^="Cari"]) > .toolbar-label {
+    display: none;
+}
+
+/* Lapisan 2/3 — header & badan tabel: tabel terangkat dari kanvas. */
+body.tesys-ui .main > .content table.dataTable {
+    box-shadow: var(--shadow-sm);
+}
+body.tesys-ui .main > .content table.dataTable tbody td {
+    --ts-row-hover: color-mix(in srgb, var(--accent) 5%, var(--surface));
+}
+/* Hover: seluruh baris bertinta tipis (pada sel, agar kolom beku ikut). */
+body.tesys-ui .main > .content table.dataTable tbody tr:hover > td {
+    background-color: var(--ts-row-hover) !important;
+}
+/* Baris terpilih: tinta lebih kuat + penanda aksen di tepi kiri. Berlaku
+   untuk checkbox pilih-baris maupun .selected bawaan DataTables. */
+body.tesys-ui .main > .content table.dataTable tbody tr:has(td input[type="checkbox"]:checked) > td,
+body.tesys-ui .main > .content table.dataTable tbody tr.selected > td {
+    background-color: color-mix(in srgb, var(--accent) 9%, var(--surface)) !important;
+}
+body.tesys-ui .main > .content table.dataTable tbody tr:has(td input[type="checkbox"]:checked) > td:first-child,
+body.tesys-ui .main > .content table.dataTable tbody tr.selected > td:first-child {
+    box-shadow: inset 3px 0 0 var(--accent), 1px 0 0 var(--border) !important;
+}
+
+/* Lapisan 4 — footer: info jumlah + pagination dalam satu panel. */
+body.tesys-ui .main > .content .dataTables_wrapper > .row:last-child:not(:first-child) {
+    align-items: center;
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-xs);
+}
+
+/* Lapisan 5 — kolom pertama beku saat tabel digulir mendatar. Latarnya harus
+   pekat agar kolom lain tidak tembus pandang di belakangnya. Mode card
+   mobile (<= 640px) dikecualikan. */
+@media (min-width: 641px) {
+    body.tesys-ui .main > .content table.dataTable:not(.ts-card-table) > tbody > tr > td:first-child:not([colspan]),
+    body.tesys-ui .main > .content table.dataTable:not(.ts-card-table) > thead > tr > th:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        background-color: var(--surface);
+    }
+    body.tesys-ui .main > .content table.dataTable:not(.ts-card-table) > thead > tr > th:first-child {
+        z-index: 3;
+        background-color: var(--surface-2) !important;
+    }
+    body.tesys-ui .main > .content table.dataTable:not(.ts-card-table) > tbody > tr > td:first-child:not([colspan]) {
+        box-shadow: 1px 0 0 var(--border);
+    }
+}
 
 
 /* ==========================================================================
