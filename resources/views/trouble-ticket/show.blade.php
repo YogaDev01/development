@@ -2,6 +2,9 @@
 
 @section('title', $ticket->ticket_number)
 
+{{-- Halaman ini punya bar aksi bawah sendiri (.tt-mbar); bar navigasi global dimatikan. --}}
+@section('bottom_nav', 'off')
+
 @php
     use App\Models\TroubleTicket;
     use App\Models\TroubleTicketAttachment;

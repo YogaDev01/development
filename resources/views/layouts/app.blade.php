@@ -414,6 +414,13 @@
                 <span class="sc-wib">WIB</span>
             </span>
             <span class="sc-date">{{ \Carbon\Carbon::now('Asia/Jakarta')->locale('id')->isoFormat('dddd, D MMM YYYY') }}</span>
+
+            {{-- Tombol tutup laci — hanya layar sempit (CSS: tesys-ui-mobile.css
+                 bagian 19). Memakai data-sidebar-toggle, jadi ditangani handler
+                 tesys-shell.js yang sudah ada (di layar sempit = menutup laci). --}}
+            <button type="button" class="sidebar-close" data-sidebar-toggle aria-label="Tutup menu" title="Tutup menu">
+                <i class="fas fa-arrow-left" aria-hidden="true"></i>
+            </button>
         </div>
 
     </aside>
@@ -651,6 +658,10 @@
         <div class="content">
             @yield('content')
         </div>
+
+        @if (trim($__env->yieldContent('bottom_nav')) !== 'off')
+            @include('layouts.partials.bottom-nav')
+        @endif
 
     </div>
 

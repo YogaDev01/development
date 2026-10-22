@@ -137,6 +137,92 @@ Global web middleware: `SecurityHeaders`, `EnsureUserActive` (`bootstrap/app.php
     | `budget-request/_toolbar:31,50`, `todo-list/_summary_task_list:51,66` | 320 | MAJOR | halaman | `min-width` inline 180-420px melebihi layar → `max-width: calc(100vw - 16px)` (§18) |
     | view non-index (payroll-run, assignment, todo-list, trouble-ticket/settings, daily-transaction/show, groups/bank/budget-plan show) | semua | — | halaman | tabel sudah dalam `.table-responsive`; **tidak ada temuan** |
     | `tesys-ui-motion.css:212` | — | MINOR | shared | `prefers-reduced-motion` sudah mencakup `animation`/`transition`/pseudo-element; ditambah `html{scroll-behavior:auto}` |
+- **Bar navigasi bawah (layar sempit)** — `layouts/partials/bottom-nav.blade.php`
+  + `tesys-ui-mobile.css` §19 (**NOT VERIFIED** di browser):
+  - Tampil ≤767.98px (portrait, atau tinggi ≥481px); landscape pendek
+    (`max-height:480px` + landscape) bar disembunyikan. Desktop (>900px) tak berubah.
+  - Isi tetap 5 item, urutan: **Logo Terex · Home · Todo List · Tabs · Menu**
+    (tidak lagi dari config; kunci config `bottom_nav`, kunci `short`, dan
+    `Navigation::bottomKeys()` sudah dihapus — `@section('bottom_nav')` di
+    Blade tetap dipakai, lihat di bawah).
+    - Logo Terex: `dist/img/ts_icon.png` (sama dengan sidebar); dropup Bootstrap
+      (`data-toggle="dropdown" data-display="static"`) berisi `$apps` dari layout
+      (`config/apps.php`, tujuan `home` — sama dengan `#appSwitch` sidebar, yang
+      tidak menyaring akses). Tertutup oleh klik di luar / Escape (Bootstrap).
+    - Home: `$currentAppConfig['home']`, aktif bila URL = home (tanpa gerbang
+      menu, seperti Dashboard di sidebar).
+    - Todo List: hanya dirender bila `$can('todo-list')` (gerbang sidebar);
+      titik `[data-todo-dot]` oleh `initTodoBadge()`.
+    - Tabs: `initBottomNav()` (`tesys-shell.js`) membangun daftar saat klik dari
+      strip `.nav-tabs/.nav-pills` tingkat halaman (kecuali di `.modal`,
+      `.ts-drawer-root`, `.todo-drawer`, `.tab-pane`, `.card-header`, bar,
+      sidebar) — hanya strip terlihat pertama dengan >=2 tab terlihat &
+      tidak disabled. Memilih = klik elemen tab asli (lazy-load AJAX & handler
+      halaman jalan; tab tautan = navigasi). Tab aktif = `.active`
+      (highlight `--accent-tint` + teks `--accent-text`, tebal, `aria-current`;
+      tanpa ikon centang — sama untuk dropup Logo/app aktif). Label lewat
+      `textContent`; badge angka dipisah jadi hitungan (tetap ditampilkan).
+      Tanpa tab: tombol redup (`aria-disabled`, tidak membuka apa pun);
+      dievaluasi saat load dan saat klik.
+    - Strip yang dipilih dropup diberi kelas `ts-tabs-hosted`; CSS
+      menyembunyikannya (`display:none`, tetap di DOM) hanya saat bar tampil
+      (`body:has(.ts-bnav)` di media bar), jadi tab tidak dobel. Hanya `ul`
+      tab; filter/header satu wrapper (mis. `#crTabs`) tetap. `kumpulkan()`
+      mencopot tanda sebelum mengukur keterlihatan (sinkron) agar strip yang
+      disembunyikan sendiri tidak dianggap tak terlihat; strip tanpa jalan
+      masuk lewat dropup (<2 tab) tidak ditandai. Bar mati (`bottom_nav=off`,
+      768–900px, landscape pendek) → strip tampil seperti biasa.
+    - Menu: `data-sidebar-toggle` (membuka laci; menutup dropup yang terbuka);
+      `aria-expanded` disinkronkan dengan `body.sidebar-off`.
+  - Warna bar disamakan dengan item sidebar (`--chrome`, `--chrome-text`, ikon
+    `--chrome-dim`, hover putih beralfa, aktif `--chrome-active` + putih).
+    Penyebab teks merah dulu: item bar berupa `<a>` dan `compat.css` mewarnai
+    `body.tesys-ui a` dengan `--accent-text`; pemilih bar kini
+    `body.tesys-ui .ts-bnav .ts-bnav-item` (kekhususan lebih tinggi).
+  - Hamburger topbar (`#sidebarToggle`) disembunyikan (`display:none`, tetap di
+    DOM) hanya saat bar tampil (`body:has(.ts-bnav)` di media bar); di
+    768–900px dan landscape pendek tetap ada.
+  - Laci sidebar punya tombol tutup (`.sidebar-close`, panah kiri, 44px) di
+    kaki sidebar sisi kanan jam, `data-sidebar-toggle`; hanya ≤900px.
+  - Garis tipis di bawah bar: html/body/`.shell`/`.main` semuanya `--bg` dan
+    setinggi 100dvh (`tesys-ui-shell.css` juga memberi `html{background:
+    var(--bg)}`). Dugaan dari CSS (belum direproduksi di browser): selisih
+    sub-piksel antara 100dvh terbulatkan dan viewport nyata (zoom/emulasi,
+    bilah alamat, area aman) menampakkan `--bg` di bawah bar gelap. Zoom 80%
+    desktop (`--ts-zoom`) hanya ≥901px sehingga bukan penyebab di mobile.
+    Perbaikan: selama bar ada (media bar), hanya `html` dan `.shell` dicat
+    `--chrome`, sehingga celah di luar `.main` berwarna chrome. `.main` sengaja
+    tetap `--bg` (bar adalah anak terakhir `.main`); jika `.main` dicat chrome,
+    animasi `tesys-fade` pada `.content` (opacity 0 → 1) menampakkan latar gelap
+    tiap halaman dimuat. `.content` dan topbar tidak diubah.
+    Penyebab hanya dugaan dari CSS, belum direproduksi; perbaikan hanya menutup
+    celah di luar `.main`. **NOT VERIFIED** di browser.
+  - Halaman dapat mematikan bar dengan `@section('bottom_nav', 'off')`
+    (dipakai `trouble-ticket/show`, yang punya bar aksi `.tt-mbar` sendiri).
+  - Bar ada di alur `.main` (flex:none di bawah `.content`), bukan `fixed`;
+    elemen fixed-bawah (`.ts-toast-stack`, `#prjCopyToast`, `.tt-fab`) digeser
+    sebesar `--ts-bnav-h` lewat `body.tesys-ui:has(.ts-bnav)`.
+  - Peta z-index: topbar 1020 < bar bawah 1025 < overlay laci 1040 < laci 1041
+    < modal 1060 < toast 2000.
+  - Titik Todo: `[data-todo-dot]` diubah oleh `initTodoBadge()` bersama
+    `#navTodoBadge` sidebar (satu polling).
+  - Tab halaman tidak dipindah ke bar kedua (dua bar bawah bertumpuk menyita
+    tinggi layar): saat bar tampil strip yang dicantumkan dropup Tabs
+    disembunyikan (lihat di atas); saat bar tidak tampil tab tetap di ATAS.
+    Tab (`.nav-tabs` dan `.nav-pills`) ≤767.98px = satu baris gulir
+    mendatar; `.nav-tabs .nav-link` tinggi ≥44px (hanya `padding-block`,
+    padding horizontal tak berubah); tab aktif
+    ditengahkan (`initPageTabs()`); aturan tambahan ini (tinggi 44px, nowrap)
+    tidak menyentuh tab di `.modal`, `.ts-drawer-root`, `.todo-drawer`,
+    `.tab-pane`, `.card-header` (aturan lama `.nav-tabs` ≤640px tetap
+    berlaku ke semua tab). Kelas opt-in
+    `.ts-tabs-sticky` membuat strip menempel di atas area gulir (dipasang di
+    Finance Summary dan Cashflow; tab Cost Request tidak, karena berada dalam
+    wrapper `d-flex` bersama filter). Saat bar tampil strip itu disembunyikan,
+    jadi sticky hanya berlaku di landscape pendek (bar tidak tampil) — aturan
+    dipertahankan untuk kasus itu.
+  - Tinggi layar: ≤900px `body`, `.shell`, `.main` memakai `100dvh` (cadangan
+    `100vh`) supaya bar tidak terdorong keluar layar oleh bilah alamat.
 - Tom Select (`tesys-ui-compat.css`): border/ring ada di `.ts-control`, bukan
   wrapper (`.ts-wrapper.form-control` dikosongkan); `.is-invalid` diberi
   `border-color: var(--danger)` pada `.ts-control`. Tom Select hanya dipakai di
