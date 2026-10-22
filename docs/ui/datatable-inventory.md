@@ -168,6 +168,7 @@ Tabel DataTable yang ber-tfoot (budget-plan, cash-management/tblLedger, daily-tr
 ## 6b. Ditahan menunggu persetujuan pemilik
 
 - **Bottom tab (Fase 3):** `tesys-tabbar.js`, CSS bagian 3, `<script>` di layout, dan pembungkus `data-ts-tabbar="off"` di `todo-list/index` dikeluarkan dari repo; salinan di scratchpad sesi (`tabbar-hold/`), bukan di repo.
+  - Catatan: bar navigasi bawah **global** (`layouts/partials/bottom-nav.blade.php`, mobile.css §19; lihat `docs/architecture.md` bagian UI) adalah fitur berbeda — jalan pintas menu aplikasi, bukan tab halaman — dan **tidak menggantikan** Fase 3 yang ditahan ini. Tab halaman: saat bar tampil strip yang dicantumkan dropup Tabs disembunyikan, selain itu tetap di atas (gulir mendatar, opt-in `.ts-tabs-sticky`); `tesys-tabbar.js` tidak dihidupkan.
 - **Desktop DAFTAR DATA:** usulan membuang border kiri/kanan semua DataTable di desktop dikeluarkan. Potongan CSS-nya (untuk disetujui nanti):
 
 ```css

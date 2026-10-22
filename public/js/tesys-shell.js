@@ -142,6 +142,23 @@
         // Berpindah antara layar lebar dan sempit: samakan kembali keadaannya
         // supaya laci tidak tertinggal terbuka menutupi konten.
         narrowScreen.addEventListener('change', applyStoredSidebarState);
+
+        // Tombol "Menu" di bar bawah (partial bottom-nav) hanya membuka laci
+        // lewat handler di atas; di sini cuma aria-expanded-nya yang
+        // disamakan dengan keadaan laci (body.sidebar-off = tertutup).
+        var menuBtns = document.querySelectorAll('.ts-bnav [data-sidebar-toggle]');
+        if (menuBtns.length) {
+            var syncMenuBtns = function () {
+                if (!narrowScreen.matches) return;
+                var terbuka = !document.body.classList.contains('sidebar-off');
+                menuBtns.forEach(function (b) {
+                    b.setAttribute('aria-expanded', terbuka ? 'true' : 'false');
+                });
+            };
+            new MutationObserver(syncMenuBtns).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+            narrowScreen.addEventListener('change', syncMenuBtns);
+            syncMenuBtns();
+        }
     }
 
     // Dijalankan sedini mungkin supaya sidebar tidak "berkedip" saat reload.
@@ -505,17 +522,164 @@
         var url = badge && badge.getAttribute('data-url');
         if (!badge || !url || typeof window.tesysPoll !== 'function') return;
 
+        // Titik di bar bawah layar sempit (partial bottom-nav) + teks pembaca layar-nya.
+        var dots = document.querySelectorAll('[data-todo-dot], [data-todo-dot-text]');
+
         function cek() {
             fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                 .then(function (res) { return res.ok ? res.json() : null; })
                 .then(function (data) {
                     if (!data) return;
                     badge.style.display = data.has_pending ? '' : 'none';
+                    dots.forEach(function (el) { el.hidden = !data.has_pending; });
                 })
                 .catch(function () { /* diam — jangan ganggu sidebar kalau polling gagal */ });
         }
 
         window.tesysPoll(cek, 5 * 60 * 1000);
+    }
+
+    /* ---------------------------------------------------------------
+       3e. Tab halaman di layar sempit digulir mendatar (tesys-ui-mobile.css
+       bagian 19); tab aktif ditengahkan saat dimuat dan saat berpindah tab
+       supaya tidak tersembunyi di luar layar. Tab di modal/drawer/kartu/pane
+       tidak disentuh.
+       --------------------------------------------------------------- */
+    function initPageTabs() {
+        var skip = '.modal, .ts-drawer-root, .todo-drawer, .tab-pane, .card-header';
+
+        function tengahkan(link) {
+            var strip = link.closest('.nav-tabs, .nav-pills');
+            if (!strip || strip.closest(skip)) return;
+            if (strip.scrollWidth <= strip.clientWidth) return;
+            // Posisi relatif ke strip lewat rect (strip belum tentu offsetParent).
+            var rl = link.getBoundingClientRect();
+            var rs = strip.getBoundingClientRect();
+            var kiri = strip.scrollLeft + (rl.left - rs.left) - (strip.clientWidth - rl.width) / 2;
+            strip.scrollLeft = Math.max(0, kiri);
+        }
+
+        document.querySelectorAll('.nav-tabs .nav-link.active, .nav-pills .nav-link.active').forEach(tengahkan);
+
+        if (window.jQuery) {
+            window.jQuery(document).on('shown.bs.tab', function (e) {
+                if (e.target) tengahkan(e.target);
+            });
+        }
+    }
+
+    /* ---------------------------------------------------------------
+       3f. Bar bawah (partial bottom-nav): tombol "Tabs".
+
+       Memilih SUB-TAB halaman dari bar bawah. Daftarnya dibangun saat tombol
+       diklik (show.bs.dropdown, supaya mencakup tab yang dirender belakangan),
+       dari strip tab tingkat halaman — definisi yang sama dengan initPageTabs
+       (bukan di .modal/.ts-drawer-root/.todo-drawer/.tab-pane/.card-header;
+       ditambah bar & sidebar sendiri). Dipakai strip terlihat PERTAMA yang
+       punya >=2 tab terlihat dan tidak disabled; strip lain diabaikan.
+       Memilih tab = klik elemen tab aslinya, jadi data-api Bootstrap, muat-
+       malas AJAX, dan handler halaman tetap jalan (tab berupa tautan = navigasi).
+       Tanpa tab: tombol redup (aria-disabled) dan tidak membuka apa pun.
+       Teks tab dipasang lewat textContent (bukan innerHTML).
+       --------------------------------------------------------------- */
+    function initBottomNav() {
+        var jq = window.jQuery;
+        var btn = document.getElementById('bnavTabsBtn');
+        var menu = document.getElementById('bnavTabsMenu');
+        if (!jq || !btn || !menu) return;
+
+        var skip = '.modal, .ts-drawer-root, .todo-drawer, .tab-pane, .card-header, .ts-bnav, .sidebar';
+
+        function terlihat(el) { return el.getClientRects().length > 0; }
+
+        // Strip yang dipakai dropup ditandai 'ts-tabs-hosted'; CSS (mobile.css
+        // bagian 19) menyembunyikannya (display:none) selama bar tampil. Tanda
+        // dicopot dulu sebelum mengukur keterlihatan (sinkron, tanpa repaint di
+        // antaranya), kalau tidak strip yang disembunyikan sendiri dianggap tak
+        // terlihat dan tab-nya hilang dari dropup. Hanya strip terpilih yang
+        // ditandai ulang, jadi strip tanpa jalan masuk lewat dropup tak pernah
+        // tersembunyi.
+        function kumpulkan() {
+            var tanda = 'ts-tabs-hosted';
+            [].forEach.call(document.querySelectorAll('.' + tanda), function (s) { s.classList.remove(tanda); });
+            var strips = document.querySelectorAll('.nav-tabs, .nav-pills');
+            for (var i = 0; i < strips.length; i++) {
+                var strip = strips[i];
+                if (strip.closest(skip) || !terlihat(strip)) continue;
+                var links = [].filter.call(strip.querySelectorAll('.nav-link'), function (a) {
+                    return !a.classList.contains('disabled') && !a.classList.contains('dropdown-toggle') &&
+                        a.getAttribute('aria-disabled') !== 'true' && !a.disabled && terlihat(a);
+                });
+                if (links.length >= 2) {
+                    strip.classList.add(tanda);
+                    return links;
+                }
+            }
+            return [];
+        }
+
+        // Label tanpa badge angka; angkanya dipisah sebagai hitungan.
+        function infoTab(a) {
+            var salin = a.cloneNode(true);
+            var hitung = '';
+            [].forEach.call(salin.querySelectorAll('.badge'), function (b) {
+                if (!hitung) hitung = b.textContent.trim();
+                b.remove();
+            });
+            return { teks: salin.textContent.replace(/\s+/g, ' ').trim(), hitung: hitung };
+        }
+
+        function atur(aktif) {
+            btn.classList.toggle('is-disabled', !aktif);
+            btn.setAttribute('aria-disabled', aktif ? 'false' : 'true');
+        }
+
+        function isi() {
+            var links = kumpulkan();
+            menu.textContent = '';
+            links.forEach(function (a) {
+                var info = infoTab(a);
+                var aktif = a.classList.contains('active');
+                var opsi = document.createElement('button');
+                opsi.type = 'button';
+                opsi.className = 'dropdown-item' + (aktif ? ' is-current' : '');
+                opsi.setAttribute('role', 'menuitem');
+                if (aktif) opsi.setAttribute('aria-current', 'true');
+
+                var teks = document.createElement('span');
+                teks.className = 'ts-bnav-opt-label';
+                teks.textContent = info.teks;
+                opsi.appendChild(teks);
+
+                if (info.hitung) {
+                    var h = document.createElement('span');
+                    h.className = 'ts-bnav-opt-count';
+                    h.textContent = info.hitung;
+                    opsi.appendChild(h);
+                }
+                opsi.addEventListener('click', function () { a.click(); });
+                menu.appendChild(opsi);
+            });
+            return links.length;
+        }
+
+        jq(btn.parentNode).on('show.bs.dropdown', function (e) {
+            var n = isi();
+            atur(n > 0);
+            if (!n) e.preventDefault();
+        });
+
+        // Tombol "Menu" menghentikan perambatan kliknya (initSidebarToggle),
+        // jadi Bootstrap tak menutup dropup yang terbuka; ditutup di sini.
+        var menuBtn = document.querySelector('.ts-bnav [data-sidebar-toggle]');
+        if (menuBtn) {
+            menuBtn.addEventListener('click', function () {
+                jq('.ts-bnav [data-toggle="dropdown"]').dropdown('hide');
+            });
+        }
+
+        atur(kumpulkan().length > 0);
+        window.addEventListener('load', function () { atur(kumpulkan().length > 0); });
     }
 
     applyStoredSidebarState();
@@ -530,6 +694,8 @@
         initSidebarToggle();
         initNavGroups();
         initTodoBadge();
+        initPageTabs();
+        initBottomNav();
         initQuickSearch();
         initAppSwitcher();
         revealActiveNav();

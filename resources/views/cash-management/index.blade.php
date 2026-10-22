@@ -96,7 +96,7 @@
             </div>
         </div>
 
-        <ul class="nav nav-tabs mt-3" role="tablist">
+        <ul class="nav nav-tabs ts-tabs-sticky mt-3" role="tablist">
             <li class="nav-item">
                 <a class="nav-link active" data-toggle="tab" href="#tabLedger" role="tab">
                     <i class="fas fa-stream mr-1"></i> Buku Kas

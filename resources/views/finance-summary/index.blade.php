@@ -7,7 +7,7 @@
 <div class="content">
     <div class="container-fluid">
 
-        <ul class="nav nav-tabs mb-3" id="summaryTabs">
+        <ul class="nav nav-tabs ts-tabs-sticky mb-3" id="summaryTabs">
             @if($canViewExecutive)
             <li class="nav-item">
                 <a class="nav-link {{ $initialTab === 'executive' ? 'active' : '' }}" id="summaryTabExecutiveLink" data-toggle="tab" href="#summaryPaneExecutive">
