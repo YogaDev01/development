@@ -69,7 +69,8 @@
             var h = $dd.outerHeight();
             var top = rect.bottom + 4;
             if (top + h > window.innerHeight - 10 && rect.top - h - 4 > 10) top = rect.top - h - 4;
-            $dd.css({ position: 'fixed', top: top, left: l });
+            var zm = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+            $dd.css({ position: 'fixed', top: top / zm, left: l / zm });
             // Posisi fixed tidak ikut gulir modal: tutup panel saat modal digulir/ditutup.
             $modal.one('scroll hide.bs.modal', closeAllTss);
             return;
@@ -103,7 +104,8 @@
             }
             top = Math.max(10, r.top - ddHeight - 4);
         }
-        $dd.css({ position: 'fixed', top: top, left: left });
+        var zm = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+        $dd.css({ position: 'fixed', top: top / zm, left: left / zm });
 
         // Posisi fixed tidak ikut gulir: tutup panel saat wadahnya digeser.
         $anchor.parents().filter(function () {

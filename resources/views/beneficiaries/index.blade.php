@@ -1556,7 +1556,8 @@ $(function () {
         function posisikan() {
             var r = $disp[0].getBoundingClientRect();
             var maxH = Math.min(300, Math.max(180, window.innerHeight - 32));
-            $menu.css({ left: r.left + 'px', width: r.width + 'px', top: '', bottom: '' });
+            var z = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+            $menu.css({ left: (r.left / z) + 'px', width: (r.width / z) + 'px', top: '', bottom: '' });
             $opts.css('max-height', (maxH - 70) + 'px');
 
             var tinggi = $menu.outerHeight();

@@ -26,10 +26,47 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '3.0.9',
+    'current' => '3.1.0',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '3.1.0',
+            'date'    => '2026-10-22',
+            'title'   => 'Tampilan Desktop Lebih Luas & Tabel Data Berlapis',
+            'summary' => 'Aplikasi di desktop kini tampil setara zoom 80% agar lebih luas, tabel data didesain ulang '
+                       . 'berlapis (toolbar, header, baris, footer), alur status lebih bersih tanpa kartu, dan modal '
+                       . 'detail memenuhi tinggi layar.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Baris tabel yang dicentang diberi penanda aksen di tepi kiri, dan kolom pertama tabel menempel saat tabel digulir mendatar.',
+                        'Footer tabel (jumlah data dan pagination) tampil dalam satu panel tersendiri.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Tampilan desktop dibuat setara zoom peramban 80%: lebih luas dan lebih kecil. Layar tablet dan ponsel tidak berubah.',
+                        'Tabel data sejajar dengan tepi halaman, label "Cari :" dan judul "Daftar ..." dihapus karena sudah ada di toolbar dan topbar.',
+                        'Alur status (stepper) tampil tanpa kartu putih, dengan node bulat dan garis tipis; jaraknya ke toolbar pencarian dirapatkan.',
+                        'Modal ditempatkan di tengah layar; modal detail Purchase Order, Budgeting, dan Cost Request memenuhi tinggi layar dan sedikit lebih lebar.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Latar gelap modal menutup seluruh layar, dan menu aksi serta dropdown filter muncul tepat di tempatnya.',
+                        'Batang gulir halaman Todo List kembali berada di tepi kanan layar.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '3.0.9',

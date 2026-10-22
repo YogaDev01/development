@@ -447,7 +447,8 @@ $(function () {
             var viewportRight = $(window).scrollLeft() + $(window).width();
             var left = offset.left;
             if (left + ddWidth > viewportRight - 10) left = Math.max(10, viewportRight - 10 - ddWidth);
-            $dd.css({ top: offset.top + $btn.outerHeight() + 4, left: left });
+            var z = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+            $dd.css({ top: offset.top / z + $btn.outerHeight() + 4, left: left / z });
 
             $search.on('input', function () {
                 var q = $(this).val().toLowerCase();

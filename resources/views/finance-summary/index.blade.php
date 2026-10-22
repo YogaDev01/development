@@ -3245,7 +3245,8 @@ $(function () {
         $('body').append($dd);
 
         var offset = $btn.offset();
-        $dd.css({ top: offset.top + $btn.outerHeight() + 4, left: offset.left });
+        var z = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+        $dd.css({ top: offset.top / z + $btn.outerHeight() + 4, left: offset.left / z });
 
         $list.on('change', '.tcf-check', function () {
             var selected = new Set();

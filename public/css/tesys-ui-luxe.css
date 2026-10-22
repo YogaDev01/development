@@ -1034,7 +1034,7 @@ body.tesys-ui .table td:last-child { white-space: nowrap; }
    ===================================================================== */
 body.tesys-ui .modal-dialog { max-width: 800px; }                 /* sedang    */
 body.tesys-ui .modal-dialog.modal-lg { max-width: 1150px; }       /* besar     */
-body.tesys-ui .modal-dialog.modal-xl { max-width: 1350px; }       /* sangat bs */
+body.tesys-ui .modal-dialog.modal-xl { max-width: 1480px; }       /* sangat bs */
 body.tesys-ui .modal-dialog.modal-sm { max-width: 460px; }
 
 /* Kelas layar penuh yang masih dipakai markup lama dijinakkan jadi
@@ -1065,12 +1065,28 @@ body.tesys-ui .modal-dialog.modal-fullwidth {
    .modal-dialog-xxl di halaman tanpa perlu !important. */
 body.tesys-ui .modal-dialog.modal-dialog-xxl {
     width: auto;
-    height: min(860px, calc(100vh - 64px));
-    margin: 1.75rem auto;
+    /* Setinggi area modal (.modal = seluruh viewport, lihat skala di
+       tesys-ui-shell.css) dikurangi sisa 1rem di atas & bawah. Memakai %,
+       bukan vh, supaya ikut benar di bawah `zoom`. */
+    height: calc(100% - 2rem);
+    margin: 1rem auto;
 }
 body.tesys-ui .modal-dialog.modal-dialog-xxl .modal-content {
-    height: min(860px, calc(100vh - 64px));
-    max-height: min(860px, calc(100vh - 64px));
+    height: 100%;
+    max-height: 100%;
+}
+
+/* Modal ditempatkan di tengah layar (vertikal): dialog dibuat flex setinggi
+   area modal dikurangi margin, isinya rata tengah — sama dengan
+   .modal-dialog-centered Bootstrap, tapi untuk semua modal. Modal yang
+   menggulir di dalam (.modal-dialog-scrollable) dan HP dikecualikan. */
+@media (min-width: 901px) {
+    body.tesys-ui .modal-dialog:not(.modal-dialog-scrollable) {
+        display: flex;
+        align-items: center;
+        min-height: calc(100% - 3.5rem);
+    }
+    body.tesys-ui .modal-dialog:not(.modal-dialog-scrollable) > .modal-content { width: 100%; }
 }
 
 /* =====================================================================
