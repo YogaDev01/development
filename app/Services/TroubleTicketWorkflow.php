@@ -2,12 +2,11 @@
 
 namespace App\Services;
 
-use App\Models\Account;
 use App\Models\Beneficiary;
 use App\Models\BudgetPlan;
 use App\Models\BudgetPlanDetail;
 use App\Models\BudgetRequest;
-use App\Models\Cluster;
+use App\Models\RequestType;
 use App\Models\Site;
 use App\Models\SiteBackupTechnician;
 use App\Models\SitePic;
@@ -19,13 +18,15 @@ use App\Models\TroubleTicketDevice;
 use App\Models\TroubleTicketIssue;
 use App\Models\TroubleTicketMessage;
 use App\Models\TroubleTicketProblem;
+use App\Models\TroubleTicketRequest;
+use App\Models\TroubleTicketRequestAttachment;
+use App\Models\TroubleTicketRequestItem;
 use App\Models\TroubleTicketRca;
 use App\Models\TroubleTicketSlaPolicy;
 use App\Models\TroubleTicketSubRca;
 use App\Models\User;
 use App\Services\TicketDetailImage;
 use App\Support\AccessRoles;
-use App\Support\BudgetConsumption;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
@@ -544,95 +545,6 @@ class TroubleTicketWorkflow
     */
 
     /**
-     * Memvalidasi & menormalkan isian Biaya pada Create Plan.
-     *
-     * Totalnya DIHITUNG di sini (harga × qty, dibulatkan ke rupiah penuh)
-     * supaya angka kiriman browser tidak pernah menentukan nilai tersimpan.
-     * Nama COA ikut disalin sebagai jejak baca.
-     *
-     * @return array{0: BudgetPlan, 1: array<int, array<string, mixed>>, 2: int}
-     */
-    private function siapkanBiayaPlan(?int $budgetPlanId, array $items): array
-    {
-        $budgetPlan = $budgetPlanId ? BudgetPlan::find($budgetPlanId) : null;
-
-        if ($budgetPlan === null) {
-            $this->fail('Budget Plan wajib dipilih.', 'budget_plan_id');
-        }
-
-        // Hanya pagu yang sudah berjalan yang boleh jadi sumber dana.
-        if ($budgetPlan->status !== 'ACTIVE') {
-            $this->fail('Budget Plan harus berstatus ACTIVE.', 'budget_plan_id');
-        }
-
-        /* Budget PROYEK wajib bercluster — aturannya sama dengan form Cost
-           Request (cluster_id required bila isProjectBudget). Dulu syarat ini
-           baru ketahuan saat supervisor menekan Approve, jadi plan sudah telanjur
-           disusun lalu mentok tanpa penjelasan apa pun. Diperiksa sejak plan
-           disimpan (20 Okt 2026), dengan pesan yang menyebut proyeknya dan
-           tempat memperbaikinya. */
-        if ($budgetPlan->isProjectBudget()
-            && ! Cluster::where('project_id', $budgetPlan->project_id)->where('status', 'ACTIVE')->exists()) {
-            $this->fail(
-                'Budget Plan "' . $budgetPlan->code . '" bersumber dari proyek "'
-                . ($budgetPlan->project?->name ?? $budgetPlan->project?->code ?? '-')
-                . '" yang belum punya Cluster berstatus ACTIVE, padahal Cost Request dari budget proyek wajib bercluster. '
-                . 'Tambahkan cluster-nya lebih dulu di Master Data > Project Master, atau pilih Budget Plan lain.',
-                'budget_plan_id'
-            );
-        }
-
-        $items = array_values(array_filter($items, fn ($r) => filled($r['description'] ?? null)));
-
-        if ($items === []) {
-            $this->fail('Minimal satu baris item biaya wajib diisi.', 'costs');
-        }
-
-        /* Baris digantung ke SUB-ITEM budget plan, bukan ke COA lepas: rincian
-           Cost Request memang bersandar pada budget_plan_details, jadi draft CR
-           nanti terbentuk tanpa menebak pasangan COA-nya. */
-        $subItem = BudgetPlanDetail::with('account')
-            ->where('budget_plan_id', $budgetPlan->id)
-            ->whereIn('id', array_map(fn ($r) => (int) ($r['budget_detail_id'] ?? 0), $items))
-            ->get()
-            ->keyBy('id');
-
-        $baris = [];
-        $total = 0;
-
-        foreach ($items as $r) {
-            $detailId = (int) ($r['budget_detail_id'] ?? 0);
-            if (! $subItem->has($detailId)) {
-                $this->fail('Sub-item biaya harus dipilih dari Budget Plan yang sama.', 'costs');
-            }
-
-            $detail = $subItem[$detailId];
-            $harga  = (int) ($r['amount'] ?? 0);
-            // Qty bilangan bulat: satuannya trip/orang/hari/unit (20 Okt 2026).
-            $qty    = (int) ($r['qty'] ?? 0);
-
-            if ($harga <= 0 || $qty <= 0) {
-                $this->fail('Harga dan qty setiap baris biaya harus lebih dari nol.', 'costs');
-            }
-
-            $barisTotal = $harga * $qty;
-            $total += $barisTotal;
-
-            $baris[] = [
-                'budget_detail_id' => $detail->id,
-                'account_id'       => $detail->account_id,
-                'account_name'     => $detail->account?->name,
-                'description'      => trim((string) $r['description']),
-                'amount'           => $harga,
-                'qty'              => $qty,
-                'total'            => $barisTotal,
-            ];
-        }
-
-        return [$budgetPlan, $baris, $total];
-    }
-
-    /**
      * Membuat / mengubah Plan Visit: tiket menunggu tanggal plan visit. Tidak
      * ada approval plan (keputusan 12 Okt 2026), dan tiket TIDAK naik sendiri
      * ke tahap Trip saat tanggalnya tiba (keputusan 19 Okt 2026) — teknisi
@@ -640,19 +552,17 @@ class TroubleTicketWorkflow
      *
      * @param  string  $visitSite  tanggal rencana kunjungan (Y-m-d)
      */
-    /**
-     * @param  int|null  $budgetPlanId  Budget Plan sumber dana (wajib, status ACTIVE)
-     * @param  array<int, array{account_id:int, description:string, amount:int, qty:float}>  $items
-     *         Baris estimasi biaya; total tiap baris DIHITUNG ULANG di sini, nilai
-     *         kiriman browser tidak dipercaya.
+    /*
+     * Plan visit = JADWAL saja (keputusan Okt 2026). Biaya diajukan terpisah lewat tab
+     * Pengajuan; Create Plan tidak lagi menulis/menyentuh biaya maupun approval biaya.
      */
-    public function createPlan(TroubleTicket $ticket, User $user, string $visitSite, ?string $targetOnline = null, ?string $reason = null, ?int $budgetPlanId = null, array $items = []): void
+    public function createPlan(TroubleTicket $ticket, User $user, string $visitSite, ?string $targetOnline = null, ?string $reason = null): void
     {
         if (blank($visitSite)) {
             $this->fail('Tanggal plan visit wajib diisi.', 'visit_site');
         }
 
-        DB::transaction(function () use ($ticket, $user, $visitSite, $targetOnline, $reason, $budgetPlanId, $items) {
+        DB::transaction(function () use ($ticket, $user, $visitSite, $targetOnline, $reason) {
             $t = $this->lock($ticket);
             // Plan pertama: teknisi atau supervisor. Mengubah tanggal plan
             // yang sudah ada: supervisor saja (keputusan 19 Okt 2026).
@@ -672,21 +582,8 @@ class TroubleTicketWorkflow
                 $this->fail('Teknisi sudah tiba di site; jadwal kunjungan tidak bisa diubah lagi.');
             }
 
-            // Estimasi biaya wajib menyertai plan (keputusan 20 Okt 2026).
-            [$budgetPlan, $baris, $totalBiaya] = $this->siapkanBiayaPlan($budgetPlanId, $items);
-
             $t->update([
                 'status' => 'PLAN',
-                'budget_plan_id' => $budgetPlan->id,
-                'plan_cost_total' => $totalBiaya,
-                /* Plan yang baru disimpan/diubah SELALU menunggu supervisor
-                   lagi (keputusan 20 Okt 2026): revisi tanggal atau biaya
-                   membatalkan persetujuan sebelumnya. CR draft yang terlanjur
-                   dibuat TIDAK disentuh — ia hidup sendiri di Cost Request. */
-                'plan_budget_status' => TroubleTicket::PLAN_BUDGET_PENDING,
-                'plan_budget_notes' => null,
-                'plan_approved_at' => null,
-                'plan_approved_by' => null,
                 'visit_decision' => TroubleTicket::VISIT,
                 'visit_decided_by' => $user->id,
                 'visit_decided_at' => now(),
@@ -705,16 +602,9 @@ class TroubleTicketWorkflow
                 'travel_seconds' => null,
             ]);
 
-            /* Baris biaya DIGANTI seluruhnya tiap plan disimpan: satu tiket
-               punya satu set estimasi yang berlaku, bukan riwayat bertumpuk. */
-            $t->planCosts()->delete();
-            $t->planCosts()->createMany($baris);
-
             $this->event($t, $user, $t->wasChanged('status') ? 'plan_created' : 'plan_updated', $reason, [
                 'visit_site' => $t->visit_site?->toDateString(),
                 'target_online' => $t->target_online?->toDateString(),
-                'budget_plan' => $budgetPlan->code,
-                'cost_total' => $totalBiaya,
             ]);
         });
 
@@ -729,170 +619,746 @@ class TroubleTicketWorkflow
 
     /*
     |--------------------------------------------------------------------------
-    | APPROVAL PLAN & BIAYA → COST REQUEST DRAFT
+    | PENGAJUAN BIAYA (pra-Cost Request)
     |--------------------------------------------------------------------------
+    | Terlepas dari Plan Visit (keputusan Okt 2026): Create Plan hanya jadwal,
+    | biaya diajukan lewat tab Pengajuan. Satu tiket boleh punya banyak
+    | pengajuan, di tahap mana pun kecuali CLOSED. Cost Request (berstatus DRAFT)
+    | baru lahir saat supervisor meng-approve. Modul ini TIDAK menampilkan atau
+    | mengecek sisa pagu, NOB, maupun kuota Cash Advance - itu urusan modul Cost
+    | Request saat CR di-submit.
+    |
+    | Setiap transisi: transaksi + kunci baris tiket lalu baris pengajuan
+    | (urutan tetap) + pemeriksaan status asal pada baris yang terkunci.
     */
 
-    /** Boleh memutus plan & biaya: pengawas tiket ini + supervisor. */
-    public function canApprovePlanBudget(User $user, TroubleTicket $ticket): bool
+    /** Boleh MEMBUAT atau mengelola pengajuan sendiri: teknisi tiket ini (atau superadmin), tiket belum CLOSED. */
+    public function canRequest(User $user, TroubleTicket $ticket): bool
     {
-        return $ticket->planBudgetPending()
-            && $ticket->status === 'PLAN'
-            && ($this->canSupervise($user, $ticket) || $user->hasRole(AccessRoles::TROUBLE_TICKET_APPROVE));
+        return $ticket->status !== 'CLOSED' && $this->actsAsTechnician($user, $ticket);
     }
 
     /**
-     * Supervisor menyetujui tanggal & biaya plan. Tiket TETAP di tahap Plan
-     * (keputusan 20 Okt 2026); yang berubah hanya status approval, dan sistem
-     * membuat Cost Request berstatus DRAFT dari estimasi biaya plan.
-     *
-     * @param  int|null  $clusterId  wajib bila budget plan-nya budget PROYEK
-     *                               dan project itu punya lebih dari satu cluster
+     * Mengubah / mengajukan / membatalkan pengajuan yang SUDAH ADA sebagai
+     * pemohon: pembuatnya sendiri (atau superadmin), tiket belum CLOSED.
      */
-    public function approvePlanBudget(TroubleTicket $ticket, User $user, ?int $clusterId = null, ?string $notes = null): void
+    public function canManageRequest(User $user, TroubleTicket $ticket, TroubleTicketRequest $req): bool
     {
-        $cr = null;
+        return $this->canRequest($user, $ticket)
+            && ((int) $req->requested_by === (int) $user->id || $user->hasRole(AccessRoles::TROUBLE_TICKET_FULL_SCOPE));
+    }
 
-        DB::transaction(function () use ($ticket, $user, $clusterId, $notes, &$cr) {
+    /**
+     * Reviewer pengajuan (Q4): user ber-role supervisor yang berada dalam TEAM
+     * YANG SAMA dengan teknisi tiket (leader atau anggota ACTIVE team ACTIVE
+     * itu), BUKAN pembuat pengajuan. Superadmin tetap boleh, tetapi tidak untuk
+     * pengajuan buatannya sendiri.
+     */
+    public function canReviewRequest(User $user, TroubleTicket $ticket, TroubleTicketRequest $req): bool
+    {
+        if ((int) $req->requested_by === (int) $user->id) {
+            return false;
+        }
+
+        if (! $user->hasRole(AccessRoles::TROUBLE_TICKET_APPROVE)) {
+            return false;
+        }
+
+        return $user->hasRole(AccessRoles::TROUBLE_TICKET_FULL_SCOPE)
+            || $this->sameActiveTeam((int) $user->id, (int) $ticket->assigned_to);
+    }
+
+    /** User dan teknisi sama-sama ada di satu team ACTIVE (sebagai leader atau anggota ACTIVE). */
+    private function sameActiveTeam(int $userId, int $technicianId): bool
+    {
+        return Team::query()
+            ->where('status', 'ACTIVE')
+            ->whereHas('members', fn ($m) => $m->where('user_id', $technicianId)->where('status', 'ACTIVE'))
+            ->where(fn ($q) => $q
+                ->where('leader_id', $userId)
+                ->orWhereHas('members', fn ($m) => $m->where('user_id', $userId)->where('status', 'ACTIVE')))
+            ->exists();
+    }
+
+    /**
+     * id semua anggota ACTIVE team ACTIVE tempat user menjadi leader atau anggota ACTIVE
+     * (termasuk dirinya bila anggota). Dasar scope antrean Todo List "Review Pengajuan":
+     * teknisi tiket harus ada di himpunan ini (cermin sameActiveTeam()).
+     *
+     * @return Collection<int, int>
+     */
+    public function teamMemberIdsFor(int $userId): Collection
+    {
+        return Team::query()
+            ->where('status', 'ACTIVE')
+            ->where(fn ($q) => $q
+                ->where('leader_id', $userId)
+                ->orWhereHas('members', fn ($m) => $m->where('user_id', $userId)->where('status', 'ACTIVE')))
+            ->with(['members' => fn ($m) => $m->where('status', 'ACTIVE')])
+            ->get()
+            ->flatMap(fn ($t) => $t->members->pluck('user_id'))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+    }
+
+    /** Akun yang boleh me-review pengajuan tiket ini: supervisor ACTIVE di team teknisi (penerima notifikasi). */
+    public function requestReviewers(TroubleTicket $ticket): Collection
+    {
+        $teams = Team::query()
+            ->where('status', 'ACTIVE')
+            ->whereHas('members', fn ($m) => $m->where('user_id', $ticket->assigned_to)->where('status', 'ACTIVE'))
+            ->with(['members' => fn ($m) => $m->where('status', 'ACTIVE')])
+            ->get();
+
+        $ids = $teams->flatMap(fn ($t) => $t->members->pluck('user_id')->push($t->leader_id))
+            ->filter()->map(fn ($id) => (int) $id)->unique();
+
+        return app(RoleDirectory::class)->usersWithRoles(['supervisor'])
+            ->filter(fn ($u) => $ids->contains((int) $u->id))
+            ->values();
+    }
+
+    /**
+     * Memvalidasi & menormalkan isian pengajuan. Total tiap baris (harga × qty)
+     * DIHITUNG di sini; angka kiriman browser tidak pernah menentukan nilai tersimpan.
+     *
+     * @param  array<int, array<string, mixed>>  $items
+     * @return array{plan: BudgetPlan, cluster: ?Cluster, typeId: int, isCa: bool, beneficiaryId: ?int, description: string, rows: array<int, array<string, mixed>>, total: int}
+     */
+    private function normalisasiPengajuan(TroubleTicket $t, array $header, array $items): array
+    {
+        $plan = ! empty($header['budget_plan_id']) ? BudgetPlan::with('project')->find((int) $header['budget_plan_id']) : null;
+
+        if ($plan === null) {
+            $this->fail('Budget Plan wajib dipilih.', 'budget_plan_id');
+        }
+        if ($plan->status !== 'ACTIVE') {
+            $this->fail('Budget Plan harus berstatus ACTIVE.', 'budget_plan_id');
+        }
+
+        // Budget PROYEK wajib bercluster - aturan yang sama dengan form Cost Request.
+        $cluster = null;
+        if ($plan->isProjectBudget()) {
+            // Sumber yang sama dengan dropdown Project di form Cost Request (milestone project).
+            $kandidat = $plan->projectClusters();
+
+            if ($kandidat->isEmpty()) {
+                $this->fail(
+                    'Budget Plan "' . $plan->code . '" bersumber dari proyek "' . ($plan->project?->name ?? $plan->project?->code ?? '-')
+                    . '" yang belum punya Project (cluster) terhubung, padahal Cost Request dari budget proyek wajib memilih Project. '
+                    . 'Hubungkan di milestone proyek (Project Master), atau pilih Budget Plan lain.',
+                    'budget_plan_id'
+                );
+            }
+
+            $cluster = ! empty($header['cluster_id'])
+                ? $kandidat->firstWhere('id', (int) $header['cluster_id'])
+                : ($kandidat->count() === 1 ? $kandidat->first() : null);
+
+            if ($cluster === null) {
+                $this->fail('Project wajib dipilih untuk budget proyek.', 'cluster_id');
+            }
+        }
+
+        $type = ! empty($header['request_type_id']) ? RequestType::find((int) $header['request_type_id']) : null;
+        if ($type === null) {
+            $this->fail('Jenis Cost Request wajib dipilih.', 'request_type_id');
+        }
+        $isCa = in_array((int) $type->id, BudgetRequest::cashAdvanceTypeIds(), true);
+
+        if ($isCa) {
+            // Penerima dana = beneficiary INTERNAL milik PIC teknisi tiket ini (otomatis).
+            $beneficiary = Beneficiary::where('category', 'INTERNAL')->where('status', 'ACTIVE')->where('pic_id', $t->pic_id)->first();
+            if ($beneficiary === null) {
+                $this->fail('Beneficiary Internal untuk PIC teknisi tiket ini belum ada (Master Data > Beneficiary).', 'beneficiary_id');
+            }
+        } else {
+            $beneficiary = ! empty($header['beneficiary_id'])
+                ? Beneficiary::where('status', 'ACTIVE')->find((int) $header['beneficiary_id'])
+                : null;
+            if ($beneficiary === null) {
+                $this->fail('Beneficiary wajib dipilih untuk jenis ini.', 'beneficiary_id');
+            }
+        }
+
+        $description = trim((string) ($header['description'] ?? ''));
+        if ($description === '') {
+            $this->fail('Deskripsi pengajuan wajib diisi.', 'description');
+        }
+
+        $items = array_values(array_filter($items, fn ($r) => filled($r['description'] ?? null) || filled($r['budget_detail_id'] ?? null)));
+        if ($items === []) {
+            $this->fail('Minimal satu baris biaya wajib diisi.', 'items');
+        }
+
+        // Baris bersandar pada SUB-ITEM budget plan, bukan COA lepas.
+        $subItem = BudgetPlanDetail::with('account')
+            ->where('budget_plan_id', $plan->id)
+            ->whereIn('id', array_map(fn ($r) => (int) ($r['budget_detail_id'] ?? 0), $items))
+            ->get()
+            ->keyBy('id');
+
+        $rows = [];
+        $total = 0;
+
+        foreach ($items as $i => $r) {
+            $nomor = $i + 1;
+            $detail = $subItem->get((int) ($r['budget_detail_id'] ?? 0));
+            if ($detail === null) {
+                $this->fail("Baris {$nomor}: sub-item biaya harus dipilih dari Budget Plan yang sama.", 'items');
+            }
+
+            $deskripsi = trim((string) ($r['description'] ?? ''));
+            if ($deskripsi === '') {
+                $this->fail("Baris {$nomor}: deskripsi wajib diisi.", 'items');
+            }
+
+            $harga = (int) ($r['amount'] ?? 0);
+            $qty = (int) ($r['qty'] ?? 0);
+            if ($harga <= 0 || $qty <= 0) {
+                $this->fail("Baris {$nomor}: harga dan qty harus lebih dari nol.", 'items');
+            }
+
+            $baris = $harga * $qty;
+            $total += $baris;
+
+            $rows[] = [
+                'source_item_id'   => ! empty($r['source_item_id']) ? (int) $r['source_item_id'] : null,
+                'budget_detail_id' => $detail->id,
+                'account_id'       => $detail->account_id,
+                'account_name'     => $detail->account?->name,
+                'sub_item_name'    => $detail->deskripsi,
+                'description'      => mb_substr($deskripsi, 0, 255),
+                'amount'           => $harga,
+                'qty'              => $qty,
+                'total'            => $baris,
+                'keep'             => array_map('intval', (array) ($r['keep_attachment_ids'] ?? [])),
+                'stored'           => (array) ($r['stored'] ?? []),
+            ];
+        }
+
+        return [
+            'plan' => $plan, 'cluster' => $cluster, 'typeId' => (int) $type->id, 'isCa' => $isCa,
+            'beneficiaryId' => (int) $beneficiary->id, 'description' => mb_substr($description, 0, 500),
+            'rows' => $rows, 'total' => $total,
+        ];
+    }
+
+    /**
+     * Membuat atau memperbarui pengajuan (oleh teknisi), sebagai REVISI BARU: baris
+     * revisi sebelumnya tidak diubah atau dihapus. Status hasilnya DRAFT; dengan
+     * $submit = true langsung diajukan (SUBMITTED) dalam transaksi yang sama.
+     *
+     * @param  array<string, mixed>  $header  budget_plan_id, request_type_id, cluster_id, beneficiary_id, description
+     * @param  array<int, array<string, mixed>>  $items  source_item_id, budget_detail_id, description, amount, qty, keep_attachment_ids, files
+     * @param  UploadedFile[]  $generalFiles  lampiran umum (tidak terikat baris)
+     * @param  int[]  $keepGeneral  id lampiran umum yang dipertahankan
+     */
+    public function saveRequest(TroubleTicket $ticket, User $user, array $header, array $items, array $generalFiles = [], array $keepGeneral = [], ?int $requestId = null, bool $submit = false): TroubleTicketRequest
+    {
+        [$stored, $storedGeneral] = $this->simpanBerkasPengajuan($items, $generalFiles);
+        $semuaPath = array_merge(...array_map(fn ($s) => array_column($s, 'path'), array_merge($stored, [$storedGeneral])));
+
+        $req = null;
+
+        try {
+            DB::transaction(function () use ($ticket, $user, $header, $items, $stored, $storedGeneral, $keepGeneral, $requestId, $submit, &$req) {
+                $t = $this->lock($ticket);
+                $this->authorizeIf($this->canRequest($user, $t), 'Hanya teknisi tiket ini atau superadmin yang dapat mengajukan biaya, dan tiket belum Closed.');
+
+                $req = $requestId
+                    ? TroubleTicketRequest::where('trouble_ticket_id', $t->id)->whereKey($requestId)->lockForUpdate()->firstOrFail()
+                    : null;
+
+                if ($req) {
+                    $this->authorizeIf($this->canManageRequest($user, $t, $req), 'Hanya pembuat pengajuan yang dapat mengubahnya.');
+                    if (! in_array($req->status, TroubleTicketRequest::EDITABLE_BY_REQUESTER, true)) {
+                        $this->fail('Pengajuan berstatus ' . $req->status_label . ' tidak dapat diubah.');
+                    }
+                }
+
+                // Berkas yang diunggah ikut urutan baris setelah disaring; sisipkan ke hasil normalisasi.
+                $norm = $this->normalisasiPengajuan($t, $header, $this->gabungBerkas($items, $stored));
+                $req = $this->tulisRevisi($t, $req, $user, $norm, $storedGeneral, $keepGeneral, TroubleTicketRequest::DRAFT, true);
+
+                if ($submit) {
+                    $this->ajukan($t, $req, $user);
+                }
+            });
+        } catch (\Throwable $e) {
+            foreach ($semuaPath as $path) {
+                Storage::disk('secure')->delete($path);
+            }
+            throw $e;
+        }
+
+        if ($submit) {
+            $this->notifikasiPengajuanDiajukan($ticket->refresh(), $req, $user);
+        }
+
+        return $req;
+    }
+
+    /** Mengajukan pengajuan DRAFT yang sudah tersimpan (tanpa mengubah isinya). */
+    public function submitRequest(TroubleTicket $ticket, User $user, int $requestId): TroubleTicketRequest
+    {
+        $req = null;
+
+        DB::transaction(function () use ($ticket, $user, $requestId, &$req) {
             $t = $this->lock($ticket);
-            $this->authorizeIf($this->canApprovePlanBudget($user, $t), 'Hanya supervisor yang dapat menyetujui plan & biaya.');
-            $this->expect($t, ['PLAN'], 'Approval plan hanya bisa dilakukan saat tiket di tahap Plan.');
+            $this->authorizeIf($this->canRequest($user, $t), 'Hanya teknisi tiket ini atau superadmin yang dapat mengajukan biaya, dan tiket belum Closed.');
 
-            $cr = $this->buatDraftCostRequest($t, $user, $clusterId);
+            $req = TroubleTicketRequest::where('trouble_ticket_id', $t->id)->whereKey($requestId)->lockForUpdate()->firstOrFail();
+            $this->authorizeIf($this->canManageRequest($user, $t, $req), 'Hanya pembuat pengajuan yang dapat mengajukannya.');
 
-            $t->update([
-                'plan_budget_status' => TroubleTicket::PLAN_BUDGET_APPROVED,
-                'plan_budget_notes'  => $notes,
-                'plan_approved_at'   => now(),
-                'plan_approved_by'   => $user->id,
-                'budget_request_id'  => $cr->id,
-            ]);
+            if ($req->status !== TroubleTicketRequest::DRAFT) {
+                $this->fail('Hanya pengajuan berstatus Draft yang dapat diajukan.');
+            }
 
-            $this->event($t, $user, 'plan_budget_approved', $notes, [
-                'cost_request' => $cr->code,
-                'cost_total'   => (int) $t->plan_cost_total,
-            ]);
+            $this->ajukan($t, $req, $user);
         });
 
-        $ticket->refresh();
+        $this->notifikasiPengajuanDiajukan($ticket->refresh(), $req, $user);
 
+        return $req;
+    }
+
+    /** DRAFT -> SUBMITTED + kejadian (dengan salinan baris) di timeline. Dipanggil di dalam transaksi. */
+    private function ajukan(TroubleTicket $t, TroubleTicketRequest $req, User $user): void
+    {
+        $req->update([
+            'status' => TroubleTicketRequest::SUBMITTED, 'submitted_at' => now(),
+            'reviewed_by' => null, 'reviewed_at' => null, 'review_notes' => null,
+        ]);
+
+        $this->event($t, $user, 'request_submitted', $req->description, $this->metaPengajuan($req));
+    }
+
+    private function notifikasiPengajuanDiajukan(TroubleTicket $ticket, TroubleTicketRequest $req, User $user): void
+    {
         $this->notify(
-            collect([$ticket->technician])->filter()->reject(fn ($u) => (int) $u->id === (int) $user->id),
+            $this->requestReviewers($ticket)->reject(fn ($u) => (int) $u->id === (int) $user->id),
             $ticket,
-            'Plan & biaya disetujui',
-            "{$ticket->ticket_number}: plan visit & biaya disetujui {$user->name}. Cost Request {$cr->code} dibuat sebagai draft.",
+            'Pengajuan biaya menunggu review',
+            "{$user->name} mengajukan biaya {$ticket->ticket_number}: Rp " . number_format((int) $req->total, 0, ',', '.') . '.',
         );
     }
 
-    /** Supervisor menolak plan & biaya - tiket tetap di Plan untuk direvisi. */
-    public function rejectPlanBudget(TroubleTicket $ticket, User $user, string $notes): void
+    /** Ringkasan pengajuan untuk metadata kejadian: jenis, budget plan, total, dan salinan baris. */
+    private function metaPengajuan(TroubleTicketRequest $req, array $tambahan = []): array
+    {
+        $req->loadMissing(['requestType', 'budgetPlan']);
+
+        return array_merge([
+            'request_id'  => $req->id,
+            'revision'    => $req->revision,
+            'type'        => $req->requestType?->name,
+            'budget_plan' => $req->budgetPlan?->code,
+            'cost_total'  => (int) $req->total,
+            'items'       => $req->currentItems()->get()->map(fn ($i) => [
+                'account' => $i->account_name, 'sub_item' => $i->sub_item_name, 'description' => $i->description,
+                'amount' => (int) $i->amount, 'qty' => (int) $i->qty, 'total' => (int) $i->total,
+            ])->all(),
+        ], $tambahan);
+    }
+
+    /**
+     * Supervisor MENGUBAH isi pengajuan sebelum approve (Q7). Revisi baru dengan
+     * created_by = supervisor, status tetap SUBMITTED; kejadian request_edited
+     * mencatat siapa mengubah apa (baris +/-/~, total lama -> baru).
+     */
+    public function editRequestByReviewer(TroubleTicket $ticket, User $user, int $requestId, array $header, array $items, array $generalFiles = [], array $keepGeneral = []): TroubleTicketRequest
+    {
+        [$stored, $storedGeneral] = $this->simpanBerkasPengajuan($items, $generalFiles);
+        $semuaPath = array_merge(...array_map(fn ($s) => array_column($s, 'path'), array_merge($stored, [$storedGeneral])));
+
+        $req = null;
+
+        try {
+            DB::transaction(function () use ($ticket, $user, $requestId, $header, $items, $stored, $storedGeneral, $keepGeneral, &$req) {
+                $t = $this->lock($ticket);
+                $req = TroubleTicketRequest::where('trouble_ticket_id', $t->id)->whereKey($requestId)->lockForUpdate()->firstOrFail();
+
+                $this->authorizeIf($this->canReviewRequest($user, $t, $req), 'Hanya supervisor team teknisi (bukan pembuat pengajuan) yang dapat mengubah pengajuan.');
+                if ($req->status !== TroubleTicketRequest::SUBMITTED) {
+                    $this->fail('Hanya pengajuan yang menunggu review yang dapat diubah supervisor.');
+                }
+
+                $norm = $this->normalisasiPengajuan($t, $header, $this->gabungBerkas($items, $stored));
+                $req = $this->tulisRevisi($t, $req, $user, $norm, $storedGeneral, $keepGeneral, TroubleTicketRequest::SUBMITTED, false);
+            });
+        } catch (\Throwable $e) {
+            foreach ($semuaPath as $path) {
+                Storage::disk('secure')->delete($path);
+            }
+            throw $e;
+        }
+
+        $ticket->refresh();
+        $this->notify(
+            collect([$req->requester])->filter()->reject(fn ($u) => (int) $u->id === (int) $user->id),
+            $ticket,
+            'Pengajuan biaya diubah supervisor',
+            "{$ticket->ticket_number}: {$user->name} mengubah pengajuan biaya Anda (total Rp " . number_format((int) $req->total, 0, ',', '.') . ').',
+        );
+
+        return $req;
+    }
+
+    /**
+     * Menulis revisi: header diperbarui, baris BARU ditambahkan (revisi + 1,
+     * baris lama utuh), lampiran dibawa/ditambah. Mengembalikan pengajuan.
+     * $tulisEventEdit = false pada penyimpanan oleh pemohon (draft tidak ditulis ke
+     * timeline); true bila yang mengubah supervisor.
+     *
+     * @param  array<string, mixed>  $norm  hasil normalisasiPengajuan()
+     * @param  array<int, array<string, mixed>>  $storedGeneral
+     */
+    private function tulisRevisi(TroubleTicket $t, ?TroubleTicketRequest $req, User $user, array $norm, array $storedGeneral, array $keepGeneral, string $statusAkhir, bool $olehPemohon): TroubleTicketRequest
+    {
+        $sebelum = $req ? $req->currentItems()->get() : collect();
+        $totalLama = (int) ($req?->total ?? 0);
+        $ringkasanHeader = $req ? $this->bedaHeader($req, $norm) : [];
+        $revisi = $req ? $req->revision + 1 : 1;
+
+        // Baris sumber harus benar-benar baris revisi berlaku pengajuan ini.
+        $idSebelum = $sebelum->pluck('id')->map(fn ($v) => (int) $v)->all();
+        foreach ($norm['rows'] as $r) {
+            if ($r['source_item_id'] !== null && ! in_array($r['source_item_id'], $idSebelum, true)) {
+                $this->fail('Baris sumber tidak ditemukan pada pengajuan ini.', 'items');
+            }
+        }
+
+        // Lampiran Q10: jenis non-Cash Advance wajib berlampiran PER BARIS.
+        if (! $norm['isCa']) {
+            foreach ($norm['rows'] as $i => $r) {
+                $ada = count($this->lampiranDipertahankan($req, $r['keep'])) + count($r['stored'] ?? []);
+                if ($ada < 1) {
+                    $this->fail('Baris ' . ($i + 1) . ': lampiran wajib untuk jenis Cost Request selain Cash Advance.', 'attachments');
+                }
+            }
+        }
+
+        $atribut = [
+            'budget_plan_id' => $norm['plan']->id, 'cluster_id' => $norm['cluster']?->id,
+            'request_type_id' => $norm['typeId'], 'beneficiary_id' => $norm['beneficiaryId'],
+            'description' => $norm['description'], 'total' => $norm['total'],
+            'status' => $statusAkhir, 'revision' => $revisi,
+        ];
+
+        if ($req) {
+            $req->update($atribut);
+        } else {
+            $req = TroubleTicketRequest::create($atribut + [
+                'trouble_ticket_id' => $t->id, 'requested_by' => $user->id,
+            ]);
+        }
+
+        foreach ($norm['rows'] as $r) {
+            $item = TroubleTicketRequestItem::create([
+                'trouble_ticket_request_id' => $req->id, 'revision' => $revisi,
+                'budget_detail_id' => $r['budget_detail_id'], 'account_id' => $r['account_id'],
+                'account_name' => $r['account_name'], 'sub_item_name' => $r['sub_item_name'],
+                'description' => $r['description'], 'amount' => $r['amount'], 'qty' => $r['qty'],
+                'total' => $r['total'], 'created_by' => $user->id,
+            ]);
+
+            // Lampiran yang dipertahankan DISALIN sebagai baris baru (path sama): revisi lama tetap utuh.
+            foreach ($this->lampiranDipertahankan($req, $r['keep']) as $lama) {
+                TroubleTicketRequestAttachment::create([
+                    'trouble_ticket_request_id' => $req->id, 'item_id' => $item->id, 'path' => $lama->path,
+                    'original_name' => $lama->original_name, 'mime' => $lama->mime, 'size' => $lama->size,
+                    'uploaded_by' => $lama->uploaded_by,
+                ]);
+            }
+            foreach ($r['stored'] ?? [] as $s) {
+                TroubleTicketRequestAttachment::create([
+                    'trouble_ticket_request_id' => $req->id, 'item_id' => $item->id, 'path' => $s['path'],
+                    'original_name' => $s['name'], 'mime' => $s['mime'], 'size' => $s['size'], 'uploaded_by' => $user->id,
+                ]);
+            }
+        }
+
+        // Lampiran umum: yang tidak dipertahankan dilepas (berkasnya tetap di disk), yang baru ditambahkan.
+        if ($req->wasRecentlyCreated === false) {
+            $req->attachments()->whereNull('item_id')->whereNotIn('id', array_map('intval', $keepGeneral) ?: [0])->delete();
+        }
+        foreach ($storedGeneral as $s) {
+            TroubleTicketRequestAttachment::create([
+                'trouble_ticket_request_id' => $req->id, 'item_id' => null, 'path' => $s['path'],
+                'original_name' => $s['name'], 'mime' => $s['mime'], 'size' => $s['size'], 'uploaded_by' => $user->id,
+            ]);
+        }
+
+        if (! $olehPemohon) {
+            $diff = $this->bedaBaris($sebelum, $norm['rows'], $totalLama, (int) $norm['total'], $ringkasanHeader);
+            $this->event($t, $user, 'request_edited', $diff['teks'], $this->metaPengajuan($req, ['perubahan' => $diff['data']]));
+        }
+
+        return $req->refresh();
+    }
+
+    /** Lampiran lama milik pengajuan ini yang ditandai "dipertahankan" pada sebuah baris. */
+    private function lampiranDipertahankan(?TroubleTicketRequest $req, array $ids): Collection
+    {
+        if ($req === null || $ids === []) {
+            return collect();
+        }
+
+        return $req->attachments()->whereIn('id', $ids)->get();
+    }
+
+    /** Perbedaan header (jenis, budget plan, cluster, beneficiary, deskripsi) lama -> baru, sebagai teks. */
+    private function bedaHeader(TroubleTicketRequest $req, array $norm): array
+    {
+        $req->loadMissing(['requestType', 'budgetPlan', 'cluster', 'beneficiary']);
+        $beda = [];
+        $cek = function (string $nama, $lama, $baru) use (&$beda) {
+            if ((string) $lama !== (string) $baru) {
+                $beda[] = "{$nama}: " . ($lama ?: '-') . ' -> ' . ($baru ?: '-');
+            }
+        };
+        $cek('Jenis', $req->requestType?->name, RequestType::find($norm['typeId'])?->name);
+        $cek('Budget Plan', $req->budgetPlan?->code, $norm['plan']->code);
+        $cek('Project', $req->cluster?->name, $norm['cluster']?->name);
+        $cek('Beneficiary', $req->beneficiary?->nickname, Beneficiary::find($norm['beneficiaryId'])?->nickname);
+        $cek('Deskripsi', $req->description, $norm['description']);
+
+        return $beda;
+    }
+
+    /**
+     * Ringkasan perubahan baris revisi sebelumnya -> yang baru (Q7). Baris cocok lewat
+     * source_item_id; tanpa sumber = ditambah; baris lama tak dirujuk = dihapus.
+     *
+     * @return array{teks: string, data: array<string, mixed>}
+     */
+    private function bedaBaris(Collection $sebelum, array $rows, int $totalLama, int $totalBaru, array $header): array
+    {
+        $dirujuk = collect($rows)->pluck('source_item_id')->filter()->map(fn ($v) => (int) $v);
+        $ditambah = [];
+        $diubah = [];
+        $dihapus = [];
+
+        foreach ($rows as $r) {
+            $lama = $r['source_item_id'] ? $sebelum->firstWhere('id', $r['source_item_id']) : null;
+            if ($lama === null) {
+                $ditambah[] = $r['description'] . ' (' . number_format($r['amount'], 0, ',', '.') . ' x ' . $r['qty'] . ')';
+                continue;
+            }
+            if ((int) $lama->budget_detail_id !== (int) $r['budget_detail_id'] || $lama->description !== $r['description']
+                || (int) $lama->amount !== $r['amount'] || (int) $lama->qty !== $r['qty']) {
+                $diubah[] = $r['description'] . ': ' . number_format((int) $lama->amount, 0, ',', '.') . ' x ' . (int) $lama->qty
+                    . ' -> ' . number_format($r['amount'], 0, ',', '.') . ' x ' . $r['qty'];
+            }
+        }
+        foreach ($sebelum as $lama) {
+            if (! $dirujuk->contains((int) $lama->id)) {
+                $dihapus[] = $lama->description . ' (' . number_format((int) $lama->total, 0, ',', '.') . ')';
+            }
+        }
+
+        $teks = [];
+        if ($ditambah) { $teks[] = 'Ditambah ' . count($ditambah) . ' baris'; }
+        if ($dihapus)  { $teks[] = 'Dihapus ' . count($dihapus) . ' baris'; }
+        if ($diubah)   { $teks[] = 'Diubah ' . count($diubah) . ' baris'; }
+        if ($header)   { $teks[] = implode('; ', $header); }
+        $teks[] = 'Total Rp ' . number_format($totalLama, 0, ',', '.') . ' -> Rp ' . number_format($totalBaru, 0, ',', '.');
+
+        return [
+            'teks' => implode('. ', $teks) . '.',
+            'data' => [
+                'ditambah' => $ditambah, 'dihapus' => $dihapus, 'diubah' => $diubah, 'header' => $header,
+                'total_lama' => $totalLama, 'total_baru' => $totalBaru,
+            ],
+        ];
+    }
+
+    /**
+     * Menyimpan berkas pengajuan ke disk SEBELUM transaksi (pola storeFiles): satu berkas
+     * ditolak = tidak ada yang tersimpan. Mengembalikan [per baris, umum].
+     *
+     * @return array{0: array<int, array<int, array<string, mixed>>>, 1: array<int, array<string, mixed>>}
+     */
+    private function simpanBerkasPengajuan(array $items, array $generalFiles): array
+    {
+        $perBaris = [];
+        $jejak = [];
+
+        try {
+            foreach (array_values($items) as $i => $r) {
+                $perBaris[$i] = $this->storeFiles((array) ($r['files'] ?? []));
+                $jejak = array_merge($jejak, array_column($perBaris[$i], 'path'));
+            }
+            $umum = $this->storeFiles($generalFiles);
+        } catch (\Throwable $e) {
+            foreach ($jejak as $path) {
+                Storage::disk('secure')->delete($path);
+            }
+            throw $e;
+        }
+
+        return [$perBaris, $umum];
+    }
+
+    /** Sisipkan hasil penyimpanan berkas ke baris yang sesuai (kunci 'stored'). */
+    private function gabungBerkas(array $items, array $stored): array
+    {
+        $hasil = [];
+        foreach (array_values($items) as $i => $r) {
+            $r['stored'] = $stored[$i] ?? [];
+            unset($r['files']);
+            $hasil[] = $r;
+        }
+
+        return $hasil;
+    }
+
+    /**
+     * Supervisor menyetujui pengajuan: membentuk Cost Request berstatus DRAFT dari
+     * revisi terakhir. Applicant CR = supervisor yang meng-approve (Q6). Dua approve
+     * bersamaan tidak membuat CR ganda: baris pengajuan terkunci, dan
+     * budget_request_id UNIQUE.
+     */
+    public function approveRequest(TroubleTicket $ticket, User $user, int $requestId, ?string $notes = null): TroubleTicketRequest
+    {
+        $req = null;
+        $cr = null;
+
+        DB::transaction(function () use ($ticket, $user, $requestId, $notes, &$req, &$cr) {
+            $t = $this->lock($ticket);
+            $req = TroubleTicketRequest::where('trouble_ticket_id', $t->id)->whereKey($requestId)->lockForUpdate()->firstOrFail();
+
+            $this->authorizeIf($this->canReviewRequest($user, $t, $req), 'Hanya supervisor team teknisi (bukan pembuat pengajuan) yang dapat menyetujui.');
+            if ($req->status !== TroubleTicketRequest::SUBMITTED) {
+                $this->fail('Hanya pengajuan yang menunggu review yang dapat disetujui.');
+            }
+            if ($req->budget_request_id !== null) {
+                $this->fail('Pengajuan ini sudah punya Cost Request.');
+            }
+
+            $cr = $this->buatDraftCostRequest($t, $req, $user);
+
+            $req->update([
+                'status' => TroubleTicketRequest::APPROVED, 'reviewed_by' => $user->id,
+                'reviewed_at' => now(), 'review_notes' => $notes, 'budget_request_id' => $cr->id,
+            ]);
+
+            $this->event($t, $user, 'request_approved', $notes, $this->metaPengajuan($req, ['cost_request' => $cr->code]));
+        });
+
+        $ticket->refresh();
+        $this->notify(
+            collect([$req->requester])->filter()->reject(fn ($u) => (int) $u->id === (int) $user->id),
+            $ticket,
+            'Pengajuan biaya disetujui',
+            "{$ticket->ticket_number}: pengajuan biaya Anda disetujui {$user->name}. Cost Request {$cr->code} dibuat sebagai draft.",
+        );
+
+        return $req;
+    }
+
+    /** Supervisor menolak pengajuan (alasan wajib); teknisi merevisi lalu mengajukan lagi. */
+    public function rejectRequest(TroubleTicket $ticket, User $user, int $requestId, string $notes): TroubleTicketRequest
     {
         if (blank($notes)) {
             $this->fail('Alasan penolakan wajib diisi.', 'notes');
         }
 
-        DB::transaction(function () use ($ticket, $user, $notes) {
-            $t = $this->lock($ticket);
-            $this->authorizeIf($this->canApprovePlanBudget($user, $t), 'Hanya supervisor yang dapat menolak plan & biaya.');
-            $this->expect($t, ['PLAN'], 'Approval plan hanya bisa dilakukan saat tiket di tahap Plan.');
+        $req = null;
 
-            $t->update([
-                'plan_budget_status' => TroubleTicket::PLAN_BUDGET_REJECTED,
-                'plan_budget_notes'  => $notes,
-                'plan_approved_at'   => null,
-                'plan_approved_by'   => null,
+        DB::transaction(function () use ($ticket, $user, $requestId, $notes, &$req) {
+            $t = $this->lock($ticket);
+            $req = TroubleTicketRequest::where('trouble_ticket_id', $t->id)->whereKey($requestId)->lockForUpdate()->firstOrFail();
+
+            $this->authorizeIf($this->canReviewRequest($user, $t, $req), 'Hanya supervisor team teknisi (bukan pembuat pengajuan) yang dapat menolak.');
+            if ($req->status !== TroubleTicketRequest::SUBMITTED) {
+                $this->fail('Hanya pengajuan yang menunggu review yang dapat ditolak.');
+            }
+
+            $req->update([
+                'status' => TroubleTicketRequest::REJECTED, 'reviewed_by' => $user->id,
+                'reviewed_at' => now(), 'review_notes' => $notes,
             ]);
 
-            $this->event($t, $user, 'plan_budget_rejected', $notes);
+            $this->event($t, $user, 'request_rejected', $notes, $this->metaPengajuan($req));
         });
 
         $ticket->refresh();
-
         $this->notify(
-            collect([$ticket->technician])->filter()->reject(fn ($u) => (int) $u->id === (int) $user->id),
+            collect([$req->requester])->filter()->reject(fn ($u) => (int) $u->id === (int) $user->id),
             $ticket,
-            'Plan & biaya ditolak',
-            "{$ticket->ticket_number}: plan visit & biaya ditolak {$user->name}. Perbaiki tanggal/biaya lalu simpan lagi.",
+            'Pengajuan biaya ditolak',
+            "{$ticket->ticket_number}: pengajuan biaya ditolak {$user->name}. Perbaiki lalu ajukan lagi.",
         );
+
+        return $req;
+    }
+
+    /** Membatalkan pengajuan (alasan wajib): pembuatnya, atau reviewer. Dari Draft/Submitted/Rejected. */
+    public function cancelRequest(TroubleTicket $ticket, User $user, int $requestId, string $reason): TroubleTicketRequest
+    {
+        if (blank($reason)) {
+            $this->fail('Alasan pembatalan wajib diisi.', 'reason');
+        }
+
+        $req = null;
+
+        DB::transaction(function () use ($ticket, $user, $requestId, $reason, &$req) {
+            $t = $this->lock($ticket);
+            $req = TroubleTicketRequest::where('trouble_ticket_id', $t->id)->whereKey($requestId)->lockForUpdate()->firstOrFail();
+
+            $this->authorizeIf(
+                $this->canManageRequest($user, $t, $req) || $this->canReviewRequest($user, $t, $req),
+                'Hanya pembuat pengajuan atau reviewer yang dapat membatalkan.'
+            );
+            if (! in_array($req->status, TroubleTicketRequest::CANCELLABLE, true)) {
+                $this->fail('Pengajuan berstatus ' . $req->status_label . ' tidak dapat dibatalkan.');
+            }
+
+            $req->update([
+                'status' => TroubleTicketRequest::CANCELLED, 'cancelled_by' => $user->id,
+                'cancelled_at' => now(), 'cancel_reason' => $reason,
+            ]);
+
+            $this->event($t, $user, 'request_cancelled', $reason, $this->metaPengajuan($req));
+        });
+
+        $ticket->refresh();
+        $penerima = (int) $user->id === (int) $req->requested_by
+            ? $this->requestReviewers($ticket)
+            : collect([$req->requester])->filter();
+        $this->notify($penerima->reject(fn ($u) => (int) $u->id === (int) $user->id), $ticket, 'Pengajuan biaya dibatalkan',
+            "{$ticket->ticket_number}: pengajuan biaya dibatalkan {$user->name}.");
+
+        return $req;
     }
 
     /**
-     * Membuat Cost Request berstatus DRAFT dari estimasi biaya plan.
+     * Membuat Cost Request berstatus DRAFT dari revisi terakhir pengajuan.
      *
-     * Aturan CR yang sudah berlaku diikuti apa adanya, tidak ditulis ulang:
-     * jenis Cash Advance, beneficiary INTERNAL, kode lewat generateCode(),
-     * rincian bersandar pada sub-item budget plan, NOB dihitung dari
-     * BudgetConsumption::COMMITTED. Pemohon = supervisor yang menyetujui.
-     *
-     * Tidak ada tahap alur uang yang dilewati: CR lahir sebagai DRAFT dan
-     * tetap menempuh seluruh alur Cost Request seperti CR yang diketik manusia.
+     * Aturan CR yang sudah berlaku diikuti apa adanya, tidak ditulis ulang: kode lewat
+     * generateCode(), NOB lewat BudgetPlan::isNob()/nobOverage() (satu sumber dengan
+     * form CR), rincian bersandar pada sub-item budget plan. Tidak ada tahap alur uang
+     * yang dilewati: CR lahir sebagai DRAFT dan menempuh seluruh alur Cost Request.
+     * Kuota Cash Advance TIDAK dicek di sini (tetap ditegakkan saat CR di-submit).
      */
-    private function buatDraftCostRequest(TroubleTicket $t, User $user, ?int $clusterId): BudgetRequest
+    private function buatDraftCostRequest(TroubleTicket $t, TroubleTicketRequest $req, User $reviewer): BudgetRequest
     {
-        $plan = BudgetPlan::with(['project', 'costCenter'])->find($t->budget_plan_id);
+        $plan = BudgetPlan::with(['project', 'costCenter'])->find($req->budget_plan_id);
 
-        if ($plan === null) {
-            $this->fail('Budget Plan plan ini tidak ditemukan lagi.');
+        if ($plan === null || $plan->status !== 'ACTIVE') {
+            $this->fail('Budget Plan pengajuan ini tidak ditemukan atau sudah tidak ACTIVE.');
         }
 
-        $baris = $t->planCosts()->with('budgetDetail')->orderBy('id')->get();
+        $baris = $req->currentItems()->with('budgetDetail')->orderBy('id')->get();
 
         if ($baris->isEmpty()) {
-            $this->fail('Plan ini belum punya baris biaya.');
-        }
-
-        if ($baris->contains(fn ($b) => $b->budget_detail_id === null)) {
-            $this->fail('Ada baris biaya tanpa sub-item Budget Plan; simpan ulang plan-nya dulu.');
-        }
-
-        // Jenis CR = Cash Advance (tab Draft pada Cash Advance, 20 Okt 2026).
-        $typeId = BudgetRequest::cashAdvanceTypeIds()[0] ?? null;
-        if ($typeId === null) {
-            $this->fail('Request Type "Cash Advance" belum ada di master.');
-        }
-
-        // Penerima dana = beneficiary INTERNAL milik PIC teknisi tiket ini.
-        $beneficiary = Beneficiary::where('category', 'INTERNAL')
-            ->where('status', 'ACTIVE')
-            ->where('pic_id', $t->pic_id)
-            ->first();
-
-        if ($beneficiary === null) {
-            $this->fail('Beneficiary Internal untuk PIC teknisi tiket ini belum ada (Master Data > Beneficiary).');
-        }
-
-        // Cluster hanya relevan untuk budget PROYEK - sama seperti form CR.
-        $cluster = null;
-        if ($plan->isProjectBudget()) {
-            $kandidat = Cluster::where('project_id', $plan->project_id)
-                ->where('status', 'ACTIVE')
-                ->orderBy('name')
-                ->get();
-
-            $cluster = $clusterId
-                ? $kandidat->firstWhere('id', $clusterId)
-                : ($kandidat->count() === 1 ? $kandidat->first() : null);
-
-            if ($cluster === null) {
-                /* Plan lama masih bisa sampai ke sini walau siapkanBiayaPlan()
-                   kini menjaga di depan — pesannya menyebut proyek dan tempat
-                   memperbaikinya, bukan cuma menyatakan buntu. */
-                $this->fail($kandidat->isEmpty()
-                    ? 'Proyek "' . ($plan->project?->name ?? $plan->project?->code ?? '-')
-                        . '" (Budget Plan ' . $plan->code . ') belum punya Cluster berstatus ACTIVE, '
-                        . 'padahal Cost Request dari budget proyek wajib bercluster. Tambahkan cluster-nya '
-                        . 'di Master Data > Project Master, lalu approve lagi.'
-                    : 'Cluster wajib dipilih untuk budget proyek.', 'cluster_id');
-            }
+            $this->fail('Pengajuan ini belum punya baris biaya.');
         }
 
         $total = (int) $baris->sum('total');
-
-        // Pelampauan anggaran: rumus yang sama dengan form Cost Request.
-        $terpakai = (int) BudgetRequest::where('budget_plan_id', $plan->id)
-            ->whereIn('status', BudgetConsumption::COMMITTED)
-            ->sum(DB::raw(BudgetRequest::effectiveCostSql()));
-        $nobAmount = (int) max(0, ($terpakai + $total) - ($plan->amount ?? 0));
 
         $sourceCode = $plan->isCostCenterBudget()
             ? (preg_replace('/\D/', '', $plan->costCenter?->code ?? '') ?: '0000')
@@ -900,28 +1366,27 @@ class TroubleTicketWorkflow
 
         $cr = BudgetRequest::create([
             'code'           => BudgetRequest::generateCode($sourceCode),
-            'description'    => strtoupper('BIAYA VISIT ' . $t->ticket_number . ' - ' . ($t->site?->sitename ?? '')),
-            'is_nob'         => $nobAmount > 0,
-            'nob_amount'     => $nobAmount,
+            'description'    => mb_substr(strtoupper('BIAYA ' . $t->ticket_number . ' - ' . ($t->site?->sitename ?? '') . ' - ' . $req->description), 0, 255),
+            'is_nob'         => $plan->isNob($total),
+            'nob_amount'     => $plan->nobOverage($total),
             'amount'         => 0,
-            'notes'          => 'Dibuat otomatis dari plan visit Trouble Ticket ' . $t->ticket_number . '.',
-            'applicant_id'   => $user->id,
-            'beneficiary_id' => $beneficiary->id,
-            'type_id'        => $typeId,
-            'cluster_id'     => $cluster?->id,
+            'notes'          => 'Dibuat dari pengajuan biaya Trouble Ticket ' . $t->ticket_number . '.',
+            'applicant_id'   => $reviewer->id,
+            'beneficiary_id' => $req->beneficiary_id,
+            'type_id'        => $req->request_type_id,
+            'cluster_id'     => $req->cluster_id,
             'budget_plan_id' => $plan->id,
             'status'         => 'DRAFT',
         ]);
 
         foreach ($baris as $b) {
-            // Qty plan maupun rincian CR sama-sama bilangan bulat, jadi baris
-            // pindah apa adanya tanpa perlu dirapikan jadi lumpsum.
+            // Qty pengajuan maupun rincian CR sama-sama bilangan bulat: baris pindah apa adanya.
             $sisaDetail = $b->budgetDetail?->remainingAmount() ?? 0;
 
-            $cr->details()->create([
+            $detail = $cr->details()->create([
                 'budget_detail_id' => $b->budget_detail_id,
                 'account_id'       => $b->account_id,
-                'description'      => trim(($b->account_name ?? '-') . ' - ' . $b->description),
+                'description'      => trim(($b->account_name ?? '-') . ($b->sub_item_name ? ' — ' . $b->sub_item_name : '')),
                 'amount'           => (int) $b->amount,
                 'qty'              => (int) $b->qty,
                 'total'            => (int) $b->total,
@@ -929,14 +1394,53 @@ class TroubleTicketWorkflow
                 'is_nob'           => (int) $b->total > $sisaDetail,
                 'nob_amount'       => (int) max(0, (int) $b->total - $sisaDetail),
             ]);
+
+            // Lampiran baris -> "Lampiran Item" CR (berkas DISALIN: CR boleh menghapus berkasnya sendiri).
+            foreach ($b->attachments as $a) {
+                $salinan = $this->salinBerkas($a->path, 'cost_request_detail_attachments');
+                if ($salinan) {
+                    $detail->attachments()->create([
+                        'original_name' => $a->original_name, 'stored_name' => basename($salinan), 'path' => $salinan,
+                        'mime_type' => $a->mime, 'size' => $a->size, 'uploaded_by' => $reviewer->id,
+                    ]);
+                }
+            }
         }
 
-        $this->lampirkanDetailTiket($cr, $t, $baris, $user);
+        // Lampiran umum pengajuan -> lampiran global CR.
+        foreach ($req->attachments()->whereNull('item_id')->get() as $a) {
+            $salinan = $this->salinBerkas($a->path, 'cost_request_attachments');
+            if ($salinan) {
+                $cr->attachments()->create([
+                    'original_name' => $a->original_name, 'stored_name' => basename($salinan), 'path' => $salinan,
+                    'mime_type' => $a->mime, 'size' => $a->size, 'uploaded_by' => $reviewer->id,
+                ]);
+            }
+        }
+
+        $this->lampirkanDetailTiket($cr, $t, $baris, $reviewer);
 
         $cr->recalculateAmount();
         $cr->addLog('DRAFT', 'DRAFT', 'created');
 
         return $cr->refresh();
+    }
+
+    /** Menyalin berkas di disk secure ke folder lain dengan nama acak; null bila sumbernya hilang. */
+    private function salinBerkas(string $path, string $folder): ?string
+    {
+        $disk = Storage::disk('secure');
+
+        if (! $disk->exists($path)) {
+            Log::warning('Lampiran pengajuan tidak ditemukan saat membentuk Cost Request', ['path' => $path]);
+
+            return null;
+        }
+
+        $baru = $folder . '/' . Str::random(40) . (($ext = pathinfo($path, PATHINFO_EXTENSION)) ? '.' . $ext : '');
+        $disk->copy($path, $baru);
+
+        return $baru;
     }
 
     /**
@@ -952,7 +1456,8 @@ class TroubleTicketWorkflow
      */
     public function recordCostRequestPaid(BudgetRequest $cr, User $user, ?string $notes = null): void
     {
-        $ticket = TroubleTicket::where('budget_request_id', $cr->id)->first();
+        // Lewat pengajuan (baru) atau kolom budget_request_id tiket (data lama); satu kejadian PER CR.
+        $ticket = TroubleTicket::forCostRequest($cr->id)->first();
 
         if ($ticket === null) {
             return;
@@ -984,32 +1489,48 @@ class TroubleTicketWorkflow
      */
     public function syncCostRequestPaid(TroubleTicket $ticket): void
     {
-        if ($ticket->budget_request_id === null) {
-            return;
+        // Semua CR tiket ini: satu dari kolom lama + satu per pengajuan yang disetujui.
+        foreach ($this->costRequestsOf($ticket) as $cr) {
+            // CLOSED ikut dihitung: CR non-Cash Advance langsung ditutup saat dibayar.
+            if (! in_array($cr->status, ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'], true)) {
+                continue;
+            }
+
+            $pelaku = $cr->applicant ?? $ticket->planApprover;
+
+            if ($pelaku === null) {
+                continue;
+            }
+
+            $this->tulisKejadianDibayar($ticket, $cr, $pelaku, null);
         }
+    }
 
-        $cr = $ticket->budgetRequest;
+    /**
+     * Semua Cost Request milik tiket: dari pengajuan yang disetujui, ditambah CR lama
+     * (trouble_tickets.budget_request_id, sebelum Pengajuan Biaya) bila ada.
+     *
+     * @return Collection<int, BudgetRequest>
+     */
+    public function costRequestsOf(TroubleTicket $ticket): Collection
+    {
+        $ids = $ticket->requests()->whereNotNull('budget_request_id')->pluck('budget_request_id')
+            ->when($ticket->budget_request_id, fn ($c) => $c->push($ticket->budget_request_id))
+            ->unique()->values();
 
-        // CLOSED ikut dihitung: CR non-Cash Advance langsung ditutup saat dibayar.
-        if ($cr === null || ! in_array($cr->status, ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'], true)) {
-            return;
-        }
-
-        $pelaku = $cr->applicant ?? $ticket->planApprover;
-
-        if ($pelaku === null) {
-            return;
-        }
-
-        $this->tulisKejadianDibayar($ticket, $cr, $pelaku, null);
+        return $ids->isEmpty()
+            ? collect()
+            : BudgetRequest::with('applicant')->whereIn('id', $ids)->orderBy('id')->get();
     }
 
     /** Menulis kejadian sekali saja; true bila baris benar-benar dibuat. */
     private function tulisKejadianDibayar(TroubleTicket $ticket, BudgetRequest $cr, User $pelaku, ?string $notes): bool
     {
+        // Unik PER CR (bukan per tiket): satu tiket bisa punya banyak CR yang dibayar sendiri-sendiri.
         $sudah = TroubleTicketMessage::where('trouble_ticket_id', $ticket->id)
             ->where('event', 'cost_request_paid')
-            ->exists();
+            ->get(['id', 'metadata'])
+            ->contains(fn ($m) => ($m->metadata['cost_request'] ?? null) === $cr->code);
 
         if ($sudah) {
             return false;
@@ -1036,7 +1557,7 @@ class TroubleTicketWorkflow
      * lampirannya perlu diisi manusia. Karena itu dibungkus try/catch dan
      * dicatat di log aplikasi.
      *
-     * @param  \Illuminate\Support\Collection  $baris  baris biaya plan
+     * @param  \Illuminate\Support\Collection  $baris  baris biaya pengajuan
      */
     private function lampirkanDetailTiket(BudgetRequest $cr, TroubleTicket $t, $baris, User $user): void
     {

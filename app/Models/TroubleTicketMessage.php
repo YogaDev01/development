@@ -51,8 +51,14 @@ class TroubleTicketMessage extends Model
         // membuat Cost Request berstatus Draft; nomornya ada di metadata.
         'plan_budget_approved' => 'Plan & budget approved',
         'plan_budget_rejected' => 'Plan & budget rejected',
-        // Pencairan CR yang lahir dari plan visit (20 Okt 2026).
+        // Pencairan CR yang lahir dari pengajuan biaya / plan visit lama (20 Okt 2026).
         'cost_request_paid' => 'Cost Request paid',
+        // Pengajuan biaya (pra-Cost Request), terlepas dari Plan Visit.
+        'request_submitted' => 'Cost request submitted',
+        'request_edited'    => 'Cost request edited',
+        'request_approved'  => 'Cost request approved',
+        'request_rejected'  => 'Cost request rejected',
+        'request_cancelled' => 'Cost request cancelled',
         // Dipakai riwayat lama: sejak 20 Okt 2026 tahap Trip dimulai bersama
         // keberangkatan ('travel_started'), tidak ada kejadian tersendiri.
         'trip_due'          => 'Moved to Trip',

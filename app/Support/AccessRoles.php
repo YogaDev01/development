@@ -74,6 +74,15 @@ final class AccessRoles
     public const PO_FULL_EDIT = ['superadmin', 'approver', 'finance_manager'];
 
     /**
+     * Boleh mengisi bagian Budget pada form Purchase Order (Budget Plan yang
+     * ikut dibuat bersama PO dan ikut approval PO). Keputusan 22 Okt 2026:
+     * sama dengan akses form Tambah PO (route project/create). Harus SAMA
+     * dengan gerbang route pembuatan PO, ProjectController::store()/update(),
+     * dan kondisi bagian Budget di project/create & project/edit.
+     */
+    public const PO_BUDGET_BUNDLE = ['superadmin', 'head'];
+
+    /**
      * Boleh MENGUBAH & MENGHAPUS baris Beneficiary yang sudah ada.
      *
      * Dipindahkan dari BeneficiaryController::MANAGE_ROLES. Harus SAMA PERSIS

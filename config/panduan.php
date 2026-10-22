@@ -127,6 +127,20 @@ return [
             ],
         ],
 
+        'operations' => [
+            'label' => 'Operations',
+            'icon'  => 'fa-tools',
+            'topics' => [
+                [
+                    'slug'  => 'trouble-ticket',
+                    'title' => 'Trouble Ticket',
+                    'icon'  => 'fa-ticket-alt',
+                    'desc'  => 'Penanganan gangguan site dan pengajuan biaya lapangan (pra-Cost Request).',
+                    'gate'  => 'menu:trouble-ticket',
+                ],
+            ],
+        ],
+
     ],
 
 ];

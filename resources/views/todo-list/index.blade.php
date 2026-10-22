@@ -956,12 +956,12 @@
             @endif
             @endforeach
 
-            {{-- BUDGETING — JATUH TEMPO PLAN FINISH, MANAGER AJUKAN CLOSING --}}
+            {{-- BUDGETING — CLOSING BELUM DIAJUKAN (SISA DATA LAMA), MANAGER AJUKAN CLOSING --}}
             @if($budgetingClosingDue->isNotEmpty())
             <div id="tl-bp-closing-due" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
                 <div class="card-header">
                     <h3 class="card-title mb-0">
-                        <i class="fas fa-flag-checkered mr-1"></i> Budgeting — Ajukan Closing (Plan Finish terlewati)
+                        <i class="fas fa-flag-checkered mr-1"></i> Budgeting — Ajukan Closing (CLOSING belum diajukan)
                         <span class="badge badge-secondary ml-1">{{ $budgetingClosingDue->count() }}</span>
                     </h3>
                 </div>
@@ -974,7 +974,6 @@
                                     <th scope="col" style="width:40%;">Description</th>
                                     <th scope="col" style="width:26%;">PO</th>
                                     <th scope="col" class="text-right text-nowrap" style="width:130px;">Budget</th>
-                                    <th scope="col" class="text-center text-nowrap" style="width:110px;">Plan Finish</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
                                     <th scope="col" class="text-center text-nowrap" style="width:100px;">Action</th>
                                 </tr>
@@ -990,7 +989,6 @@
                                     <td>{{ Str::limit($bp->description, 120) }}</td>
                                     <td>{{ $bpPoLabel($bp) }}</td>
                                     <td class="text-right text-nowrap"><strong>{{ $bp->amount_formatted }}</strong></td>
-                                    <td class="text-center text-nowrap text-danger">{{ $bp->plan_finish?->format('d-m-Y') ?? '-' }}</td>
                                     <td class="text-center text-nowrap {{ $bpAgingClass }}">{{ $bp->aging_label }}</td>
                                     <td class="text-center text-nowrap">
                                         {{-- Pengajuan closing wajib berlampiran, jadi barisnya
@@ -1432,6 +1430,55 @@
             </div>
             @endif
 
+            {{-- TROUBLE TICKET — REVIEW PENGAJUAN BIAYA (supervisor team teknisi; flat list, tautan ke tab Pengajuan) --}}
+            @if($ticketRequestReview->isNotEmpty())
+            <div id="tl-tt-request" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-file-invoice-dollar mr-1"></i> Trouble Ticket — Review Pengajuan
+                        <span class="badge badge-secondary ml-1">{{ $ticketRequestReview->count() }}</span>
+                    </h3>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th scope="col" class="text-nowrap" style="width:150px;">Tiket</th>
+                                    <th scope="col">Site / Pengajuan</th>
+                                    <th scope="col" class="text-nowrap">Pemohon</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:135px;">Total</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:100px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($ticketRequestReview as $req)
+                                @php $reqAgingClass = $req->aging_days >= 3 ? 'text-danger' : ($req->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
+                                <tr class="todo-row" data-export-key="ttreq:{{ $req->id }}" data-search="{{ strtolower(($req->ticket?->ticket_number ?? '') . ' ' . ($req->ticket?->site?->sitename ?? '') . ' ' . $req->description . ' ' . ($req->requester?->name ?? '')) }}">
+                                    <td>{{ $req->ticket?->ticket_number ?? '-' }}</td>
+                                    <td>{{ $req->ticket?->site?->sitename ?? '-' }}<div class="text-muted">{{ $req->requestType?->name }} — {{ \Illuminate\Support\Str::limit($req->description, 80) }}</div></td>
+                                    <td class="text-nowrap">{{ $req->requester?->name ?? '-' }}</td>
+                                    <td class="text-right text-nowrap"><strong>{{ number_format((int) $req->total, 0, ',', '.') }}</strong></td>
+                                    <td class="text-center text-nowrap {{ $reqAgingClass }}">{{ $req->aging_label }}</td>
+                                    <td class="text-center text-nowrap">
+                                        <div class="action-buttons ts-actions">
+                                            @if($req->ticket)
+                                            <a href="{{ route('trouble-ticket.show', $req->ticket) }}?tab=pengajuan" class="ts-action-primary" title="Review pengajuan">
+                                                <i class="fas fa-clipboard-check" aria-hidden="true"></i><span class="ts-al">Review</span>
+                                            </a>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             {{-- INVOICE — MENUNGGU VERIFIKASI --}}
             {{-- PURCHASE ORDER — MENUNGGU APPROVAL FINANCE --}}
             @if($poSubmitted->isNotEmpty())
@@ -1475,6 +1522,65 @@
                                     {{-- Jumlah No. PO ditampilkan sebagai konteks: saat di-approve nanti,
                                          status Active otomatis dipilih hanya bila total No. PO sudah pas
                                          dengan kontrak, selain itu Waiting PO. --}}
+                                    <td class="text-center text-nowrap">
+                                        @if($po->po_numbers_count > 0)
+                                            <span class="badge badge-info">{{ $po->po_numbers_count }}</span>
+                                        @else
+                                            <span class="text-muted" title="Belum ada No. PO — hanya bisa disetujui ke Waiting PO">-</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center text-nowrap {{ $poAgingClass }}">{{ $po->aging_label }}</td>
+                                    <td class="text-center text-nowrap">
+                                        <div class="action-buttons ts-actions">
+                                            <a href="{{ route('project.index') }}?q={{ urlencode($po->code) }}&open={{ $po->id }}"
+                                               class="ts-action-primary" title="Review PO">
+                                                <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Review</span>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            {{-- PURCHASE ORDER — MENUNGGU APPROVAL APPROVER (VERIFIED) --}}
+            @if($poVerified->isNotEmpty())
+            <div id="tl-po-verified" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-file-signature mr-1"></i> Purchase Order — Menunggu Approval Approver
+                        <span class="badge badge-secondary ml-1">{{ $poVerified->count() }}</span>
+                    </h3>
+                    <div class="text-muted small mt-1">Budget Plan yang dibuat dari form PO ikut disetujui bersama PO.</div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th scope="col" class="text-nowrap" style="width:150px;">PO</th>
+                                    <th scope="col">Scope of Work / Customer</th>
+                                    <th scope="col" class="text-nowrap">Manager</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:135px;">Nilai PO</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:90px;">No. PO</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:100px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($poVerified as $po)
+                                @php $poAgingClass = $po->aging_days >= 3 ? 'text-danger' : ($po->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
+                                <tr class="todo-row" data-export-key="po:{{ $po->id }}" data-search="{{ strtolower($po->code . ' ' . $po->name . ' ' . ($po->customer?->name ?? '') . ' ' . ($po->manager?->name ?? '')) }}">
+                                    <td class="text-nowrap">
+                                        <a href="{{ route('project.index') }}?q={{ urlencode($po->code) }}&open={{ $po->id }}" class="cr-number-btn">{{ $po->code }}</a>
+                                    </td>
+                                    <td>{{ $po->name }} <span class="text-muted">({{ $po->customer?->name ?? '-' }})</span></td>
+                                    <td class="text-nowrap">{{ $po->manager?->username ?? '-' }}</td>
+                                    <td class="text-right text-nowrap"><strong>{{ $po->value_formatted }}</strong></td>
                                     <td class="text-center text-nowrap">
                                         @if($po->po_numbers_count > 0)
                                             <span class="badge badge-info">{{ $po->po_numbers_count }}</span>
@@ -3482,7 +3588,8 @@ $(function () {
         var viewportRight = $(window).scrollLeft() + $(window).width();
         var left = offset.left;
         if (left + ddWidth > viewportRight - 10) left = offset.left + $btn.outerWidth() - ddWidth;
-        $dd.css({ top: offset.top + $btn.outerHeight() + 4, left: Math.max(10, left) });
+        var z = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+        $dd.css({ top: offset.top / z + $btn.outerHeight() + 4, left: Math.max(10, left / z) });
 
         $search.on('input', function () {
             var q = $(this).val().toLowerCase();

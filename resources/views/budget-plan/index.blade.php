@@ -160,14 +160,19 @@
                                         $pengguna = Auth::user();
                                         $stBp = $bp->status;
 
-                                        $bolehDraft      = $stBp === 'DRAFT' && $pengguna->hasRole(['superadmin','manager']);
-                                        $bolehHead       = $stBp === 'SUBMITTED' && $pengguna->hasRole(['superadmin','head']);
-                                        $bolehFinance    = $stBp === 'CHECKED' && $pengguna->hasRole(['superadmin','finance','finance_manager']);
-                                        $bolehCeo        = $stBp === 'VERIFIED' && $pengguna->hasRole(['superadmin','approver']);
-                                        $bolehRevisi     = $stBp === 'REJECTED' && $pengguna->hasRole(['superadmin','manager']);
-                                        // CLOSING punya dua tahap: hasil auto-closing saat Plan
-                                        // Finish terlewati (berkas belum diajukan) masih tugas
-                                        // manager; baru setelah diajukan jadi giliran Finance.
+                                        // Budget dari form PO (via_po_approval): statusnya ikut approval PO,
+                                        // jadi tombol workflow/ubah/hapus Budget Plan disembunyikan
+                                        // (BudgetPlanController menolaknya juga). Closing tetap normal.
+                                        $viaPo           = $bp->isBundled();
+
+                                        $bolehDraft      = !$viaPo && $stBp === 'DRAFT' && $pengguna->hasRole(['superadmin','manager']);
+                                        $bolehHead       = !$viaPo && $stBp === 'SUBMITTED' && $pengguna->hasRole(['superadmin','head']);
+                                        $bolehFinance    = !$viaPo && $stBp === 'CHECKED' && $pengguna->hasRole(['superadmin','finance','finance_manager']);
+                                        $bolehCeo        = !$viaPo && $stBp === 'VERIFIED' && $pengguna->hasRole(['superadmin','approver']);
+                                        $bolehRevisi     = !$viaPo && $stBp === 'REJECTED' && $pengguna->hasRole(['superadmin','manager']);
+                                        // CLOSING punya dua tahap: sisa data lama yang berkasnya
+                                        // belum diajukan masih tugas manager; baru setelah
+                                        // diajukan jadi giliran Finance.
                                         $bolehClosing    = ($stBp === 'ACTIVE' || $bp->isClosingPending()) && $pengguna->hasRole(['superadmin','manager']);
                                         $bolehVerClosing = $bp->isClosingSubmitted() && $pengguna->hasRole(['superadmin','finance','finance_manager']);
                                         // Finance boleh menutup budget yang sudah ACTIVE tanpa
@@ -399,10 +404,6 @@
                                     <div id="bpRemaining" class="text-white" style="font-size:12px;"></div>
                                     <span id="bpMarginBadge" class="badge px-2 py-1" style="font-size:10px;"></span>
                                 </div>
-                            </div>
-                            <div class="mb-3">
-                                <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Plan Finish</span>
-                                <div id="bpPlanFinish" class="text-white mt-1" style="font-size:12px;"></div>
                             </div>
                             <div class="mb-3">
                                 <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Input By</span>
@@ -1834,7 +1835,6 @@ $(function () {
             $('#bpProgressBar').css('width', Math.min(d.usage_percentage, 100) + '%');
             $('#bpRemaining').text(d.remaining_amount.toLocaleString('id-ID'));
             $('#bpInputBy').text(d.input_by);
-            $('#bpPlanFinish').text(d.plan_finish || '-');
 
             var marginPct = d.amount > 0 ? Math.round((d.remaining_amount / d.amount) * 1000) / 10 : 0;
             var marginColor = marginPct <= 0 ? 'danger' : (marginPct <= 15 ? 'warning' : 'light border');
@@ -1842,7 +1842,8 @@ $(function () {
                 .addClass('badge-' + marginColor.replace(' border', '') + (marginColor.includes('border') ? ' border' : ''))
                 .text(marginPct + '%');
 
-            if (d.status === 'DRAFT') {
+            // Budget dari form PO diubah lewat Edit PO, bukan form Budget Plan.
+            if (d.status === 'DRAFT' && !d.via_po_approval) {
                 $('#bpEditBtn, #bpEditBtnFooter').attr('href', '/budget-plan/' + id + '/edit').show();
             } else {
                 $('#bpEditBtn, #bpEditBtnFooter').hide();

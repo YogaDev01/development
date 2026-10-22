@@ -226,6 +226,34 @@ class TroubleTicket extends Model
         return $this->hasMany(TroubleTicketPlanCost::class);
     }
 
+    /**
+     * Pengajuan biaya (pra-Cost Request) tiket ini — banyak per tiket. Terlepas
+     * dari Plan Visit; trouble_tickets.budget_request_id / plan_costs hanya data lama.
+     */
+    public function requests(): HasMany
+    {
+        return $this->hasMany(TroubleTicketRequest::class)->orderBy('id');
+    }
+
+    /**
+     * Tiket yang melahirkan Cost Request tertentu: lewat pengajuan (baru) atau
+     * kolom budget_request_id di tiket (data lama sebelum Pengajuan Biaya).
+     */
+    public function scopeForCostRequest($query, int $costRequestId)
+    {
+        // Tabel pengajuan belum tentu ada (migrasi menyusul di host): tanpa itu hanya jalur lama yang berlaku.
+        static $adaPengajuan = null;
+        $adaPengajuan ??= \Illuminate\Support\Facades\Schema::hasTable('trouble_ticket_requests');
+
+        return $query->where(function ($q) use ($costRequestId, $adaPengajuan) {
+            $q->where('budget_request_id', $costRequestId);
+
+            if ($adaPengajuan) {
+                $q->orWhereHas('requests', fn ($r) => $r->where('budget_request_id', $costRequestId));
+            }
+        });
+    }
+
     public function acknowledger(): BelongsTo
     {
         return $this->belongsTo(User::class, 'acknowledged_by');

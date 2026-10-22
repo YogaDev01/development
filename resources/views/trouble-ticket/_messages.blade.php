@@ -14,6 +14,8 @@
         'plan_created' => 'fa-calendar-check', 'plan_updated' => 'fa-calendar-alt', 'trip_due' => 'fa-route',
         'plan_budget_approved' => 'fa-file-invoice-dollar', 'plan_budget_rejected' => 'fa-times-circle',
         'cost_request_paid' => 'fa-money-bill-wave',
+        'request_submitted' => 'fa-paper-plane', 'request_edited' => 'fa-pen', 'request_approved' => 'fa-check-circle',
+        'request_rejected' => 'fa-times-circle', 'request_cancelled' => 'fa-ban',
         'travel_started' => 'fa-car', 'travel_cancelled' => 'fa-ban',
         'chat_stopped' => 'fa-comment-slash', 'chat_reopened' => 'fa-comments',
         'arrived_on_site' => 'fa-map-marker-alt', 'progress_started' => 'fa-tools',
@@ -99,6 +101,19 @@
                 @endphp
                 @if($bagianBiaya)
                     <div class="tt-event-note">{{ implode(' · ', $bagianBiaya) }}</div>
+                @endif
+                {{-- Perubahan supervisor atas pengajuan (Q7): satu baris per perubahan. --}}
+                @if(! empty($meta['perubahan']))
+                    @php
+                        $pb = $meta['perubahan'];
+                        $barisUbah = array_merge(
+                            array_map(fn ($x) => '+ ' . $x, $pb['ditambah'] ?? []),
+                            array_map(fn ($x) => '− ' . $x, $pb['dihapus'] ?? []),
+                            array_map(fn ($x) => '~ ' . $x, $pb['diubah'] ?? []),
+                            $pb['header'] ?? []
+                        );
+                    @endphp
+                    @foreach($barisUbah as $baris)<div class="tt-event-note">{{ $baris }}</div>@endforeach
                 @endif
                 @if(in_array($msg->event, ['progress_done', 'closed'], true) && ! empty($meta['rca']))
                     <div class="tt-event-note">RCA: {{ $meta['rca'] }}{{ ! empty($meta['sub_rca']) ? ' / ' . $meta['sub_rca'] : '' }}</div>

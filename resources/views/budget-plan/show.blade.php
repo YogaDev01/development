@@ -194,6 +194,7 @@
                         </ul>
 
                         <!-- ACTION -->
+                        @unless($budgetPlan->isBundled())
                         <a 
                             href="{{ url('/budget-plan/' . $budgetPlan->id . '/edit') }}"
                             class="btn btn-primary btn-block"
@@ -204,6 +205,7 @@
                             Edit Budget Plan
 
                         </a>
+                        @endunless
 
                     </div>
 

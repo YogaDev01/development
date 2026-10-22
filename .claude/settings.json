@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(*php* artisan migrate:fresh*)",
+      "Bash(*php* artisan migrate:reset*)",
+      "Bash(*php* artisan migrate:rollback*)",
+      "Bash(*php* artisan db:wipe*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(!**/.env.example)"
+    ],
+    "ask": [
+      "Bash(*php* artisan migrate)",
+      "Bash(*php* artisan migrate *)",
+      "Bash(*php* artisan migrate:refresh*)",
+      "Bash(*php* artisan db:seed*)",
+      "Bash(*php* artisan test*)",
+      "Bash(*php* artisan tinker*)",
+      "Bash(*php* artisan config:cache*)",
+      "Bash(*php* artisan optimize)",
+      "Bash(*php* artisan optimize *)",
+      "Bash(*phpunit*)",
+      "Bash(composer run*)",
+      "Bash(composer run-script*)",
+      "Bash(*php* artisan storage:link*)",
+      "Bash(composer test*)",
+      "Bash(composer setup*)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git merge *)",
+      "Bash(git rebase *)",
+      "Bash(git reset *)",
+      "Bash(git checkout *)",
+      "Bash(git switch *)"
+    ]
+  }
+}

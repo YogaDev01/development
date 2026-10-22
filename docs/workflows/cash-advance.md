@@ -4,6 +4,14 @@ Source: `BudgetRequest::getAllowedNextStatuses()`, `BudgetRequestController`,
 `Concerns/HandlesCrSettlement`, `DailyTransactionController`, `routes/web.php`.
 UI labels: QUEUED = "Process", REALIZED = "Settle".
 
+## CR yang lahir dari Trouble Ticket
+
+Pengajuan biaya Trouble Ticket (tab Pengajuan) menghasilkan CR berstatus **DRAFT** saat supervisor team teknisi
+menyetujuinya (`TroubleTicketWorkflow::approveRequest()`): applicant = supervisor itu, deskripsi/notes memuat nomor
+tiket, NOB lewat `BudgetPlan::isNob()/nobOverage()` (rumus yang sama dengan form CR). Sesudah itu CR menempuh alur
+di bawah seperti CR biasa; kuota CA ditegakkan saat `submit`. Satu tiket bisa punya banyak CR, dan pembayaran serta
+settlement dicatat per CR. Detail: `docs/modules/trouble-ticket.md`.
+
 ## Request leg
 
 | From → To | Action (route) | Roles |

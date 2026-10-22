@@ -19,32 +19,11 @@
 @if($t->status === 'PLAN')
     <div class="tt-stage">
         <div class="tt-stage-title">Plan visit {{ $t->visit_site?->format('d/m/Y') ?? '—' }}</div>
-        {{-- Ringkasan biaya & nomor CR TIDAK diulang di sini (20 Okt 2026):
-             keduanya sudah terbaca di timeline chat, tab Log, dan tab Tiket.
-             Panel ini khusus untuk hal yang masih perlu dikerjakan. --}}
+        {{-- Biaya TIDAK lagi bagian dari Plan (keputusan Okt 2026): pengajuan biaya
+             ada di tab Pengajuan. Panel ini khusus jadwal kunjungan. --}}
 
-        {{-- Approval plan & biaya oleh supervisor (20 Okt 2026). Tiket tetap di
-             tahap Plan; approve membuat Cost Request berstatus Draft. --}}
-        @if($t->plan_budget_status === \App\Models\TroubleTicket::PLAN_BUDGET_PENDING)
-            @if($canApprovePlanBudget)
-                {{-- Satu pintu: modal review memuat rincian lengkap beserta
-                     tombol Approve dan Reject sekaligus (20 Okt 2026). --}}
-                {{-- Jarak antar tombol panel ini SELALU dari mt-2 tombol di
-                     bawahnya, tidak pernah dari mb-2 tombol di atasnya — supaya
-                     satu aturan saja yang menentukan dan jaraknya seragam. --}}
-                <button type="button" class="btn btn-success btn-sm btn-block tt-btn-wide" data-toggle="modal" data-target="#mdlTtPlanReview">
-                    <i class="fas fa-clipboard-check mr-1"></i> Review Plan &amp; Budget
-                </button>
-            @else
-                <div class="tt-stage-note mb-2">Menunggu approval supervisor atas tanggal &amp; biaya plan.</div>
-            @endif
-        @elseif($t->plan_budget_status === \App\Models\TroubleTicket::PLAN_BUDGET_REJECTED)
-            <div class="tt-stage-note text-danger mb-2">
-                Plan &amp; biaya ditolak{{ $t->plan_budget_notes ? ': ' . $t->plan_budget_notes : '' }}. Perbaiki lalu simpan lagi.
-            </div>
-        @endif
         @if($bisaTutup)
-            <button type="button" class="btn btn-success btn-sm btn-block tt-btn-wide {{ $canApprovePlanBudget ? 'mt-2' : '' }}" data-toggle="modal" data-target="#mdlTtClosure">
+            <button type="button" class="btn btn-success btn-sm btn-block tt-btn-wide" data-toggle="modal" data-target="#mdlTtClosure">
                 <i class="fas fa-flag-checkered mr-1"></i> Form Close
             </button>
         @endif

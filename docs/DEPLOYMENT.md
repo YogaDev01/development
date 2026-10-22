@@ -81,6 +81,12 @@ php artisan queue:restart
 php artisan up
 ```
 
+> **Urutan khusus rilis Budget Plan bundled di PO (22 Okt 2026):** jalankan
+> migrasi `2026_10_22_000100_add_via_po_approval_to_budget_plans` **DULU**, baru
+> upload kode. Kode Todo List/badge dan Summary Task memakai kolom
+> `budget_plans.via_po_approval` tanpa guard; kode baru di atas skema lama = 500.
+> Migrasinya aditif (kolom boolean default 0), jadi aman dijalankan lebih awal.
+
 Periksa setelah rilis:
 
 - [ ] halaman login terbuka, bisa masuk

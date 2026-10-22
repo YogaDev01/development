@@ -26,7 +26,6 @@ use App\Models\TroubleTicket;
 use App\Models\User;
 use App\Services\NotifyService;
 use App\Services\RoleDirectory;
-use App\Support\BudgetConsumption;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -142,24 +141,6 @@ class BudgetRequestController extends Controller
         abort_unless($this->canViewCr($cr), 403, 'Anda tidak memiliki akses ke Cost Request ini.');
 
         return $cr;
-    }
-
-    /**
-     * Pastikan semua budget_detail_id yang dikirim benar-benar milik
-     * Budget Plan yang dipilih (cegah user memilih sub-item dari budget lain).
-     */
-    private function detailsBelongToPlan(BudgetPlan $bp, Request $request): bool
-    {
-        $ids = collect((array) $request->input('details', []))
-            ->pluck('budget_detail_id')
-            ->filter()
-            ->map(fn ($id) => (int) $id);
-
-        if ($ids->isEmpty()) return true;
-
-        $validIds = $bp->details()->whereIn('id', $ids)->pluck('id')->map(fn ($id) => (int) $id);
-
-        return $ids->diff($validIds)->isEmpty();
     }
 
     /**
@@ -875,43 +856,10 @@ class BudgetRequestController extends Controller
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | NOB CHECK — apakah total melebihi sisa budget
-    |--------------------------------------------------------------------------
+    | Rumus NOB (isNob / nobOverage) dan pemeriksaan kepemilikan sub-item
+    | (ownsDetails) kini ada di model BudgetPlan, satu sumber dengan pengajuan
+    | Trouble Ticket.
     */
-
-    private function isNOB(BudgetPlan $bp, int $amount, ?int $excludeCrId = null): bool
-    {
-        /*
-        | Daftar statusnya diambil dari BudgetConsumption::COMMITTED, bukan
-        | ditulis ulang di sini. Versi lama menuliskannya langsung dan lupa
-        | 'CHECKED' - CR yang sudah lolos Head tapi belum diverifikasi Finance
-        | tidak terhitung memakan anggaran, sehingga sisa budget yang dilaporkan
-        | selalu lebih besar dari kenyataan dan peringatan NOB terlambat muncul.
-        */
-        $used = BudgetRequest::where('budget_plan_id', $bp->id)
-            ->whereIn('status', BudgetConsumption::COMMITTED)
-            ->when($excludeCrId, fn($q) => $q->where('id', '!=', $excludeCrId))
-            ->sum(DB::raw(BudgetRequest::effectiveCostSql()));
-
-        return ($used + $amount) > ($bp->amount ?? 0);
-    }
-
-    /**
-     * Berapa rupiah pengajuan ini melampaui sisa anggaran (0 bila tidak).
-     *
-     * Disimpan sebagai angka, bukan disisipkan ke teks: angka bisa dijumlahkan
-     * pada laporan, teks tidak.
-     */
-    private function nobOverage(BudgetPlan $bp, int $amount, ?int $excludeCrId = null): int
-    {
-        $used = BudgetRequest::where('budget_plan_id', $bp->id)
-            ->whereIn('status', BudgetConsumption::COMMITTED)
-            ->when($excludeCrId, fn ($q) => $q->where('id', '!=', $excludeCrId))
-            ->sum(DB::raw(BudgetRequest::effectiveCostSql()));
-
-        return (int) max(0, ($used + $amount) - ($bp->amount ?? 0));
-    }
 
     /*
     |--------------------------------------------------------------------------
@@ -1160,7 +1108,7 @@ class BudgetRequestController extends Controller
 
         $budgetPlan = BudgetPlan::with(['project', 'costCenter'])->findOrFail($request->budget_plan_id);
 
-        if (!$this->detailsBelongToPlan($budgetPlan, $request)) {
+        if (!$budgetPlan->ownsDetails(collect((array) $request->input('details', []))->pluck('budget_detail_id'))) {
             return back()->withInput()
                 ->with('error', 'Sub-item budget yang dipilih tidak sesuai dengan Budget Plan ini.');
         }
@@ -1197,8 +1145,8 @@ class BudgetRequestController extends Controller
         | itu bisa diketik sendiri, terhapus saat diedit, dan harus diurai
         | ulang di setiap tempat yang menampilkannya.
         */
-        $isNob     = $this->isNOB($budgetPlan, $totalAmount);
-        $nobAmount = $this->nobOverage($budgetPlan, $totalAmount);
+        $isNob     = $budgetPlan->isNob($totalAmount);
+        $nobAmount = $budgetPlan->nobOverage($totalAmount);
         $description = strtoupper(trim($request->description));
 
         /*
@@ -1899,7 +1847,7 @@ class BudgetRequestController extends Controller
 
         $budgetPlan = BudgetPlan::findOrFail($request->budget_plan_id);
 
-        if (!$this->detailsBelongToPlan($budgetPlan, $request)) {
+        if (!$budgetPlan->ownsDetails(collect((array) $request->input('details', []))->pluck('budget_detail_id'))) {
             return back()->withInput()
                 ->with('error', 'Sub-item budget yang dipilih tidak sesuai dengan Budget Plan ini.');
         }
@@ -1910,8 +1858,8 @@ class BudgetRequestController extends Controller
             $totalAmount += $amt * (int) ($row['qty'] ?? 1);
         }
 
-        $isNob     = $this->isNOB($budgetPlan, $totalAmount, $cr->id);
-        $nobAmount = $this->nobOverage($budgetPlan, $totalAmount, $cr->id);
+        $isNob     = $budgetPlan->isNob($totalAmount, $cr->id);
+        $nobAmount = $budgetPlan->nobOverage($totalAmount, $cr->id);
         $description = strtoupper(trim($request->description));
 
         DB::transaction(function () use ($request, $cr, $description, $isNob, $nobAmount) {
@@ -2892,7 +2840,7 @@ class BudgetRequestController extends Controller
             return false;
         }
 
-        return TroubleTicket::where('budget_request_id', $cr->id)
+        return TroubleTicket::forCostRequest($cr->id)
             ->where('assigned_to', $user->id)
             ->exists();
     }
@@ -2954,7 +2902,7 @@ class BudgetRequestController extends Controller
             return false;
         }
 
-        return TroubleTicket::where('budget_request_id', $cr->id)->exists();
+        return TroubleTicket::forCostRequest($cr->id)->exists();
     }
 
     /**
@@ -3051,7 +2999,7 @@ class BudgetRequestController extends Controller
 
         if (!$bp) return response()->json(['is_nob' => false, 'remaining' => 0]);
 
-        $isNob     = $this->isNOB($bp, $amount, $crId);
+        $isNob     = $bp->isNob($amount, $crId);
         $remaining = $bp->remainingAmount();
 
         return response()->json([

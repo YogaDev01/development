@@ -12,9 +12,8 @@ use Illuminate\Console\Command;
  * mis. "Waiting Invoice" padahal ada No. PO yang BAST-nya masih Partial.
  *
  * Tanpa --apply hanya menampilkan perubahan yang akan terjadi (dry run).
- * Hanya menyentuh status berjalan (Project::OPERATIONAL_STATUSES). Perhatian:
- * PO yang hasilnya PAID akan ikut memindahkan Budget Plan ACTIVE miliknya ke
- * CLOSING (Project::autoCloseBudgetPlans()), sama seperti jalur normal.
+ * Hanya menyentuh status berjalan (Project::OPERATIONAL_STATUSES). Status
+ * Budget Plan tidak ikut berubah (BP baru ditutup saat PO ditutup).
  */
 class SyncProjectStatuses extends Command
 {

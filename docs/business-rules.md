@@ -71,8 +71,25 @@ Closing ← ClosingService reads Treasury, Invoice, Collection, Cash Receipt…
 ### Budget Plan
 - Statuses: DRAFT, SUBMITTED, CHECKED, VERIFIED, ACTIVE, CLOSING, CLOSED, REJECTED.
 - Usage/remaining computed by `App\Support\BudgetConsumption` (+ `scopeDisbursed`).
-- Auto-closing command `budget-plan:auto-closing` runs daily (rule details:
-  see command source).
+- Plan Finish dan auto-closing berbasis tanggal DIHAPUS (keputusan 22 Okt 2026):
+  command `budget-plan:auto-closing` dan transisi otomatis "PO PAID → BP ACTIVE
+  menjadi CLOSING" tidak ada lagi; form BP maupun form PO tidak meminta Plan Finish.
+  Kolom `budget_plans.plan_finish` dibiarkan (nullable, data lama tidak dimigrasi).
+  Satu-satunya pemicu otomatis status BP: saat PO ditutup
+  (`ProjectController::closeBudgetPlans()` — dipanggil dari `close`, `financeClose`,
+  `verifyClosing`) BP milik PO berstatus ACTIVE/CLOSING menjadi CLOSED dengan log
+  `closed_with_po`. BP non-PO (Cost Center/Overhead/Payroll) hanya ditutup manual
+  (`submit-closing` manager → `verify-closing` Finance); closing manual BP bundled
+  tetap diizinkan.
+- **Budget Plan bundled** (`budget_plans.via_po_approval = 1`, keputusan 22 Okt 2026):
+  Head/superadmin (`AccessRoles::PO_BUDGET_BUNDLE`) boleh mengisi SATU Budget Plan
+  (opsional) langsung di form PO. Statusnya ikut approval PO (submit → CHECKED,
+  verify → VERIFIED, approve → ACTIVE termasuk Early Start, finance-revise → DRAFT).
+  Detail BP hanya bisa diubah selagi DRAFT lewat Edit PO; PO EARLY_START yang
+  diedit kembali ke DRAFT TIDAK membuka BP yang sudah ACTIVE. BP tambahan tetap
+  dibuat lewat `/budget-plan/create` (workflow lama). Cost Request hanya memakai
+  BP ACTIVE (`BudgetRequestController`), sehingga BP bundled baru bisa dipakai
+  setelah PO di-approve.
 
 ### Treasury batch
 - Statuses: PENDING_APPROVER → DONE (approver) → PAID (treasury mark-paid); REJECTED.

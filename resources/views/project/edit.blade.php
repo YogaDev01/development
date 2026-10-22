@@ -551,6 +551,9 @@
                 </div>
             </div>
 
+            {{-- BUDGET (opsional, Head/superadmin) — Budget Plan yang ikut approval PO --}}
+            @include('project._budget-section', ['canFillBudget' => $canFillBudget, 'budgetAccounts' => $budgetAccounts, 'bundledBudget' => $bundledBudget, 'project' => $project])
+
             <!-- NOTES -->
             <div class="card card-warning card-outline shadow-sm">
                 <div class="card-header">

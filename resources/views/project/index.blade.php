@@ -1047,6 +1047,8 @@
                 <input type="hidden" name="decision" id="approveDecision" value="APPROVE">
                 <div class="modal-body" style="padding:24px 28px;">
                     <p id="approvePoText" class="text-muted mb-3"></p>
+                    {{-- Ringkasan Budget bundled (diisi JS dari detail-json); ikut aktif saat PO di-approve --}}
+                    <div id="approvePoBudget" class="alert alert-warning py-2 px-3" style="font-size:12px;display:none;"></div>
                     <div class="alert alert-info py-2 px-3" style="font-size:12px;">
                         <i class="fas fa-info-circle mr-1"></i>
                         <strong>Approve</strong>: status dipilih otomatis — <em>Active</em> bila total No. PO sudah pas dengan nilai kontrak, selain itu <em>Waiting PO</em>.

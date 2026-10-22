@@ -179,7 +179,9 @@ class TodoListController extends Controller
             ['key' => 'settle-2nd',      'label' => 'Expense Claim — Second Approve', 'icon' => 'fas fa-hand-holding-usd', 'tone' => 'attention', 'items' => $rata($data['approverSecondApprove'])],
             ['key' => 'settle-close',    'label' => 'Settlement — Penutupan',    'icon' => 'fas fa-lock',             'tone' => 'progress',  'items' => $rata($data['ceoSettlementClose'])],
             ['key' => 'po-submitted',    'label' => 'PO — Approval Finance',     'icon' => 'fas fa-file-signature',   'tone' => 'attention', 'items' => $data['poSubmitted']],
+            ['key' => 'po-verified',     'label' => 'PO — Approval Approver',    'icon' => 'fas fa-file-signature',   'tone' => 'attention', 'items' => $data['poVerified']],
             ['key' => 'collection',      'label' => 'Menunggu Invoice Ditagih',  'icon' => 'fas fa-file-invoice',     'tone' => 'attention', 'items' => $data['collectionWaitingInvoice']],
+            ['key' => 'tt-request',      'label' => 'Trouble Ticket — Review Pengajuan', 'icon' => 'fas fa-file-invoice-dollar', 'tone' => 'attention', 'items' => $data['ticketRequestReview']],
             ['key' => 'invoice-verify',  'label' => 'Invoice — Verifikasi',      'icon' => 'fas fa-file-invoice',     'tone' => 'attention', 'items' => $data['invoiceVerify']],
             ['key' => 'invoice-approve', 'label' => 'Invoice — Approval',        'icon' => 'fas fa-file-invoice',     'tone' => 'attention', 'items' => $data['invoiceApprove']],
         ];
@@ -232,9 +234,9 @@ class TodoListController extends Controller
             'treasuryBatchCreate' => collect(), 'treasuryBatchGroups' => collect(),
             'treasuryBatchSecond' => collect(), 'batchSourceFunds' => collect(),
             'treasuryProcess' => collect(), 'treasuryReadyToPay' => collect(),
-            'poSubmitted' => collect(),
+            'poSubmitted' => collect(), 'poVerified' => collect(),
             'invoiceVerify' => collect(), 'invoiceApprove' => collect(),
-            'collectionWaitingInvoice' => collect(),
+            'collectionWaitingInvoice' => collect(), 'ticketRequestReview' => collect(),
             'comingSoonRoles' => [], 'totalPending' => 0, 'maxAging' => '0 hari', 'completedToday' => 0,
             'hasAnyTask' => false, 'hasAnySection' => false,
             // Bentuknya WAJIB sama dengan keluaran buildSummaryTable() —
@@ -500,10 +502,10 @@ class TodoListController extends Controller
                 ->sortBy('aging_since')->values();
         }
 
-        // Manager — Budgeting: Ajukan Closing. Budget yang plan_finish-nya sudah
-        // lewat dipindahkan ke CLOSING oleh budget-plan:auto-closing, tapi berkas
+        // Manager — Budgeting: Ajukan Closing. Budget berstatus CLOSING yang berkas
         // closing-nya belum diajukan (closing_submitted_at NULL) sehingga tugasnya
-        // masih di manager, bukan di Finance.
+        // masih di manager, bukan di Finance. Auto-closing berbasis Plan Finish sudah
+        // dihapus, jadi antrean ini hanya berisi sisa data lama.
         $budgetingClosingDue = collect();
         if (TodoService::allows($user, 'budgetingClosingDue')) {
             $budgetingClosingDue = $this->queueQuery('budgetingClosingDue')
@@ -652,6 +654,20 @@ class TodoListController extends Controller
                 ->sortBy('aging_since')->values();
         }
 
+        // Purchase Order — Menunggu Approval Approver (VERIFIED -> approve()). Reminder +
+        // link-out seperti $poSubmitted. BP bundled ikut disetujui bersama PO, jadi tidak
+        // muncul ganda di antrean Budgeting (lihat queueQuery budgetingCeoApprove).
+        $poVerified = collect();
+        if (TodoService::allows($user, 'poVerified')) {
+            $poVerified = $this->queueQuery('poVerified')
+                ->with(['customer', 'manager'])
+                ->withCount('poNumbers')
+                ->latest()
+                ->get()
+                ->map(fn ($po) => $this->withAging($po, $po->verified_at ?? $po->updated_at))
+                ->sortBy('aging_since')->values();
+        }
+
         // Invoice & Cash Receipt — Menunggu Verifikasi (SUBMITTED -> VERIFIED)
         // & Menunggu Approval (VERIFIED -> APPROVED). Kedua tahap milik Finance
         // Manager; lihat catatan di $invoiceApprove.
@@ -711,6 +727,16 @@ class TodoListController extends Controller
                 ->sortBy('aging_since')->values();
         }
 
+        // Trouble Ticket — pengajuan biaya menunggu review supervisor (flat list, tautan ke tab Pengajuan tiket).
+        $ticketRequestReview = collect();
+        if (TodoService::allows($user, 'ticketRequestReview')) {
+            $ticketRequestReview = $this->queueQuery('ticketRequestReview')
+                ->with(['ticket.site:id,tid,sitename', 'requestType:id,name', 'requester:id,name', 'budgetPlan:id,code'])
+                ->get()
+                ->map(fn ($r) => $this->withAging($r, $r->submitted_at ?? $r->updated_at))
+                ->sortBy('aging_since')->values();
+        }
+
         // Accounting kini pemilik tahap Verifikasi Invoice (keputusan pemilik K2),
         // jadi tidak ada lagi role "Coming Soon".
         $comingSoonRoles = [];
@@ -736,9 +762,10 @@ class TodoListController extends Controller
             ->concat($budgetingClosingDue)
             ->concat($treasuryBatchCreate)
             ->concat($treasuryProcess)->concat($treasuryReadyToPay)
-            ->concat($poSubmitted)
+            ->concat($poSubmitted)->concat($poVerified)
             ->concat($invoiceVerify)->concat($invoiceApprove)
-            ->concat($collectionWaitingInvoice);
+            ->concat($collectionWaitingInvoice)
+            ->concat($ticketRequestReview);
 
         $totalPending = $allTasks->count();
 
@@ -765,9 +792,10 @@ class TodoListController extends Controller
             || $budgetingClosingDue->isNotEmpty()
             || $treasuryBatchCreate->isNotEmpty()
             || $treasuryProcess->isNotEmpty() || $treasuryReadyToPay->isNotEmpty()
-            || $poSubmitted->isNotEmpty()
+            || $poSubmitted->isNotEmpty() || $poVerified->isNotEmpty()
             || $invoiceVerify->isNotEmpty() || $invoiceApprove->isNotEmpty()
-            || $collectionWaitingInvoice->isNotEmpty();
+            || $collectionWaitingInvoice->isNotEmpty()
+            || $ticketRequestReview->isNotEmpty();
 
         return compact(
             'sections', 'managerRejected', 'managerPaid',
@@ -775,8 +803,8 @@ class TodoListController extends Controller
             'ceoSettlementClose', 'secondPaymentPending', 'secondPaymentGroups',
             'budgetingHeadCheck', 'budgetingVerify', 'budgetingCeoApprove', 'budgetingRejected',
             'budgetingClosingDue',
-            'treasuryBatchCreate', 'treasuryBatchGroups', 'treasuryBatchSecond', 'batchSourceFunds', 'treasuryProcess', 'treasuryReadyToPay', 'poSubmitted',
-            'invoiceVerify', 'invoiceApprove', 'collectionWaitingInvoice',
+            'treasuryBatchCreate', 'treasuryBatchGroups', 'treasuryBatchSecond', 'batchSourceFunds', 'treasuryProcess', 'treasuryReadyToPay', 'poSubmitted', 'poVerified',
+            'invoiceVerify', 'invoiceApprove', 'collectionWaitingInvoice', 'ticketRequestReview',
             'comingSoonRoles', 'totalPending', 'maxAging', 'completedToday', 'hasAnyTask', 'hasAnySection',
             'allTasks'
         );
@@ -924,14 +952,14 @@ class TodoListController extends Controller
          | closing, hanya log SAAT diajukan) sengaja dibiarkan null → tampil
          | "-", daripada menebak.
          */
-        $statusFromAvg = function (string $table, string $fk) {
+        $statusFromAvg = function (string $table, string $fk, string $where = '') {
             $rows = \DB::select("
                 SELECT status_from AS st, SUM(diff) AS s, COUNT(*) AS n FROM (
                     SELECT status_from,
                            TIMESTAMPDIFF(SECOND,
                                LAG(created_at) OVER (PARTITION BY {$fk} ORDER BY created_at, id),
                                created_at) AS diff
-                    FROM {$table}
+                    FROM {$table} {$where}
                 ) t
                 WHERE diff IS NOT NULL AND diff >= 0
                 GROUP BY status_from
@@ -955,7 +983,9 @@ class TodoListController extends Controller
         };
 
         $poAvg = $statusFromAvg('project_logs', 'project_id');
-        $bpAvg = $statusFromAvg('budget_plan_logs', 'budget_plan_id');
+        // BP bundled (ikut approval PO) dikecualikan, konsisten dengan $bpCount.
+        $bpAvg = $statusFromAvg('budget_plan_logs', 'budget_plan_id',
+            'WHERE budget_plan_id IN (SELECT id FROM budget_plans WHERE via_po_approval = 0)');
         $crAvg = $statusFromAvg('request_status_logs', 'budget_request_id');
 
         $treasuryApproveAvg = $pairAvg('daily_transactions', 'created_at', 'approved_at', "AND type = 'CASH_OUT'");
@@ -1020,13 +1050,14 @@ class TodoListController extends Controller
             // ---- Purchase Order
             ['Head',            'Submit (Draft)',          'Purchase Order', Project::where('status', 'DRAFT')->count(),        url('/project?status=DRAFT'),      $poAvg['DRAFT'] ?? null],
             ['Finance',         'Approval Finance',        'Purchase Order', Project::where('status', 'SUBMITTED')->count(),    url('/project?status=SUBMITTED'),  $poAvg['SUBMITTED'] ?? null],
+            ['Approver',        'Approval Approver (PO VERIFIED)', 'Purchase Order', Project::where('status', 'VERIFIED')->count(), url('/project?status=VERIFIED'), $poAvg['VERIFIED'] ?? null],
             ['Finance',         'Aktivasi PO',             'Purchase Order', Project::where('status', 'WAITING_PO')->count(),   url('/project?status=WAITING_PO'), $poAvg['WAITING_PO'] ?? null],
 
             // ---- Budgeting
-            ['Manager',         'Submit (Draft)',          'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'DRAFT')),     url('/budget-plan'), $bpAvg['DRAFT'] ?? null],
-            ['Head',            'Approval Head',           'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'SUBMITTED')), url('/budget-plan'), $bpAvg['SUBMITTED'] ?? null],
-            ['Cost Control',    'Verifikasi Cost Control', 'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'CHECKED')),   url('/budget-plan'), $bpAvg['CHECKED'] ?? null],
-            ['CEO',             'Approval CEO',            'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'VERIFIED')),  url('/budget-plan'), $bpAvg['VERIFIED'] ?? null],
+            ['Manager',         'Submit (Draft)',          'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'DRAFT')->where('via_po_approval', false)),     url('/budget-plan'), $bpAvg['DRAFT'] ?? null],
+            ['Head',            'Approval Head',           'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'SUBMITTED')->where('via_po_approval', false)), url('/budget-plan'), $bpAvg['SUBMITTED'] ?? null],
+            ['Cost Control',    'Verifikasi Cost Control', 'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'CHECKED')->where('via_po_approval', false)),   url('/budget-plan'), $bpAvg['CHECKED'] ?? null],
+            ['CEO',             'Approval CEO',            'Budgeting',      $bpCount(fn ($q) => $q->where('status', 'VERIFIED')->where('via_po_approval', false)),  url('/budget-plan'), $bpAvg['VERIFIED'] ?? null],
 
             // ---- Cost Request
             ['Manager',         'Submit (Draft)',          'Cost Request',   $crCount('DRAFT'),     $crLink('DRAFT'),     $crAvg['DRAFT'] ?? null],
@@ -1406,9 +1437,15 @@ class TodoListController extends Controller
             case 'budgetingHeadCheck': case 'budgetingVerify': case 'budgetingCeoApprove':
             case 'budgetingClosingDue': case 'budgetingRejected':
                 $q = BudgetPlan::query()->tap(fn ($q) => $this->scopeVisibleTo($q))->whereIn('status', $status);
-                // Budget yang plan_finish-nya lewat, berkas closing belum diajukan.
+                // CLOSING yang berkas closing-nya belum diajukan (sisa data lama).
                 if ($key === 'budgetingClosingDue') {
                     $q->whereNull('closing_submitted_at');
+                }
+                // Budget dari form PO (via_po_approval) ikut approval PO — tugasnya sudah
+                // muncul sebagai tugas PO, jadi tidak diulang di antrean Budgeting.
+                // Closing tetap alur biasa.
+                if ($key !== 'budgetingClosingDue') {
+                    $q->where('via_po_approval', false);
                 }
 
                 return $q;
@@ -1424,7 +1461,7 @@ class TodoListController extends Controller
 
                 return $q;
 
-            case 'poSubmitted':
+            case 'poSubmitted': case 'poVerified':
                 return Project::query()->whereIn('status', $status);
 
             case 'invoiceVerify': case 'invoiceApprove':
@@ -1445,6 +1482,20 @@ class TodoListController extends Controller
                       ->orWhere(fn ($l) => $l->whereDoesntHave('basts')->whereIn('status', ['PARTIAL', 'BAST_SUBMITTED']));
                 });
 
+            case 'ticketRequestReview':
+                // Pengajuan biaya Trouble Ticket menunggu review: bukan buatan user ini; supervisor
+                // hanya untuk teknisi di team yang sama (cermin TroubleTicketWorkflow::canReviewRequest()),
+                // superadmin semuanya.
+                $q = \App\Models\TroubleTicketRequest::query()
+                    ->whereIn('status', $status)
+                    ->where('requested_by', '!=', $user->id);
+
+                if (! $user->hasRole(\App\Support\AccessRoles::TROUBLE_TICKET_FULL_SCOPE)) {
+                    $rekan = app(\App\Services\TroubleTicketWorkflow::class)->teamMemberIdsFor((int) $user->id);
+                    $q->whereHas('ticket', fn ($t) => $t->whereIn('assigned_to', $rekan->all() ?: [0]));
+                }
+
+                return $q;
         }
 
         throw new \InvalidArgumentException("Antrean Todo List tidak dikenal: {$key}");
@@ -1753,7 +1804,7 @@ class TodoListController extends Controller
             ['budgetingHeadCheck', 'Budgeting — Menunggu Approval Head'],
             ['budgetingVerify', 'Budgeting — Menunggu Verifikasi Finance'],
             ['budgetingCeoApprove', 'Budgeting — Menunggu Approval CEO'],
-            ['budgetingClosingDue', 'Budgeting — Ajukan Closing (Plan Finish terlewati)'],
+            ['budgetingClosingDue', 'Budgeting — Ajukan Closing (CLOSING belum diajukan)'],
             ['budgetingRejected', 'Budgeting — Ditolak (Revise ke Draft)'],
         ] as [$k, $tahap]) {
             foreach ($d[$k] as $bp) {
@@ -1783,6 +1834,13 @@ class TodoListController extends Controller
             ));
         }
 
+        foreach ($d['poVerified'] as $po) {
+            $rows->push($baris(
+                'Purchase Order', 'Purchase Order — Menunggu Approval Approver', 'po:' . $po->id, $po->code,
+                $po->customer?->name, $po->name, $po->manager?->name, $po->value, $po->status, $po->aging_label
+            ));
+        }
+
         // Collection — sisa nilai (= ProjectPoNumber::remainingValue()) dihitung
         // dengan SATU query agregat untuk semua No. PO, bukan satu query per baris.
         $poCollection = \Illuminate\Database\Eloquent\Collection::make($d['collectionWaitingInvoice'])
@@ -1798,6 +1856,16 @@ class TodoListController extends Controller
                 'Collection', 'Collection — Waiting Invoice', 'ponum:' . $pn->id, $pn->po_number,
                 $pn->project?->code, $pn->project?->name, $pn->project?->customer?->name,
                 (int) $pn->nominal - (int) ($tertagih[$pn->id] ?? 0), $pn->status, $pn->aging_label
+            ));
+        }
+
+        // Trouble Ticket — pengajuan biaya menunggu review
+        $pengajuanTt = \Illuminate\Database\Eloquent\Collection::make($d['ticketRequestReview'])
+            ->loadMissing(['ticket.site', 'requestType', 'requester', 'budgetPlan']);
+        foreach ($pengajuanTt as $r) {
+            $rows->push($baris(
+                'Trouble Ticket', 'Trouble Ticket — Review Pengajuan', 'ttreq:' . $r->id, $r->ticket?->ticket_number,
+                $r->budgetPlan?->code, $r->description, $r->requester?->name, $r->total, $r->status, $r->aging_label
             ));
         }
 

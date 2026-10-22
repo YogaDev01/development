@@ -56,7 +56,7 @@
             <div class="tt-title tt-head-site" title="{{ $site?->tid }} — {{ $site?->sitename }}">{{ $site?->tid }} — {{ $site?->sitename }}</div>
             <x-status :status="$t->status" context="trouble-ticket" size="md" />
         </div>
-        @php $actionVars = compact('t', 'canActAsTech', 'isTechnician', 'canCreatePlan', 'bisaPlan', 'bisaBerangkat', 'dalamJalan', 'bisaMulai', 'bisaTutup', 'canApproveClose', 'bisaAlihkan', 'canApprovePlanBudget', 'canSettle'); @endphp
+        @php $actionVars = compact('t', 'canActAsTech', 'isTechnician', 'canCreatePlan', 'bisaPlan', 'bisaBerangkat', 'dalamJalan', 'bisaMulai', 'bisaTutup', 'canApproveClose', 'bisaAlihkan', 'canSettle', 'settleList', 'settleCr'); @endphp
 
         {{-- Desktop: chat kiri + satu kartu informasi bertab di kanan.
              Mobile (< 992px): satu panel tampil bergantian lewat bilah bawah
@@ -148,6 +148,7 @@
                             @unless($isTechnician)
                                 <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#ttTabSla" role="tab"><i class="fas fa-stopwatch"></i><span>SLA</span></a></li>
                             @endunless
+                            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#ttTabPengajuan" role="tab"><i class="fas fa-file-invoice-dollar"></i><span>Pengajuan</span>@if($pengajuan->isNotEmpty())<span class="tt-tab-count">{{ $pengajuan->count() }}</span>@endif</a></li>
                             <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#ttTabLog" role="tab"><i class="fas fa-history"></i><span>Log</span><span class="tt-tab-count">{{ $statusLog->count() }}</span></a></li>
                         </ul>
                     </div>
@@ -296,6 +297,11 @@
                         </div>
                         @endunless
 
+                        {{-- ================= PENGAJUAN BIAYA ================= --}}
+                        <div class="tab-pane fade" id="ttTabPengajuan" role="tabpanel">
+                            @include('trouble-ticket._pengajuan')
+                        </div>
+
                         {{-- ================= LOG ================= --}}
                         <div class="tab-pane fade" id="ttTabLog" role="tabpanel">
                             {{-- Terbaru di atas; isi sama dengan modal Info dari daftar. --}}
@@ -330,6 +336,8 @@
 </div>
 
 {{-- ===================== MODAL ===================== --}}
+
+@include('trouble-ticket._pengajuan_modals')
 
 @if($bisaPlan)
     {{-- Create Plan — site & teknisi terkunci (ikut tiket); teknisi hanya mengisi tanggal. --}}
@@ -369,101 +377,18 @@
                                       placeholder="Alasan tanggal visit diubah">{{ old('reason') }}</textarea>
                         </div>
                     @endif
-                    {{-- Biaya plan (keputusan 20 Okt 2026): sumber dana + baris
-                         item. Total tiap baris dan total keseluruhan dihitung
-                         ulang di server; angka di sini hanya bantuan baca. --}}
-                    <hr class="my-2">
-                    <div class="form-row">
-                        <div class="form-group col-md-6 mb-2">
-                            <label class="font-weight-bold" for="fldPlanBudget">Budget Plan <span class="text-danger">*</span></label>
-                            {{-- Daftarnya panjang, jadi dipasangi pencarian
-                                 (TesysSearchableSelect) seperti dropdown
-                                 panjang lain di app. --}}
-                            <select name="budget_plan_id" id="fldPlanBudget" class="form-control" data-searchable required>
-                                <option value="">— Pilih Budget Plan —</option>
-                                @foreach($budgetPlans as $bp)
-                                    <option value="{{ $bp->id }}" @selected(old('budget_plan_id', $t->budget_plan_id) == $bp->id)>
-                                        {{ $bp->code }}@if($bp->description) — {{ \Illuminate\Support\Str::limit($bp->description, 40) }}@endif
-                                    </option>
-                                @endforeach
-                            </select>
-                            @if($budgetPlans->isEmpty())
-                                <small class="text-danger">Belum ada Budget Plan ACTIVE untuk customer Anda.</small>
-                            @endif
-                        </div>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table table-sm tt-cost-table mb-1">
-                            <thead>
-                                <tr>
-                                    <th style="width:26%">COA / Sub-item <span class="text-danger">*</span></th>
-                                    <th>Description <span class="text-danger">*</span></th>
-                                    <th style="width:18%">Harga <span class="text-danger">*</span></th>
-                                    <th style="width:10%">Qty <span class="text-danger">*</span></th>
-                                    <th style="width:18%" class="text-right">Total</th>
-                                    <th style="width:36px"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="ttCostRows">
-                                @foreach(($planCosts->isNotEmpty() ? $planCosts : collect([null])) as $row)
-                                    <tr class="tt-cost-row">
-                                        <td>
-                                            {{-- Pilihan disaring di browser mengikuti Budget Plan
-                                                 terpilih (data-plan); server memeriksa ulang bahwa
-                                                 sub-item memang milik plan itu. --}}
-                                            <select name="costs[{{ $loop->index }}][budget_detail_id]" class="form-control form-control-sm tt-cost-item" data-searchable required>
-                                                <option value="">— Sub-item —</option>
-                                                @foreach($budgetDetails as $bd)
-                                                    <option value="{{ $bd->id }}" data-plan="{{ $bd->budget_plan_id }}"
-                                                        @selected($row && $row->budget_detail_id == $bd->id)>
-                                                        {{ $bd->account?->name ?? '-' }}@if($bd->deskripsi) — {{ \Illuminate\Support\Str::limit($bd->deskripsi, 40) }}@endif
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                        </td>
-                                        <td><input type="text" name="costs[{{ $loop->index }}][description]" class="form-control form-control-sm" maxlength="255" required value="{{ $row?->description }}"></td>
-                                        {{-- Uang ditulis bertitik ribuan seperti form Budget Plan
-                                             & Cost Request; titiknya dibuang lagi di server. --}}
-                                        <td><input type="text" inputmode="numeric" name="costs[{{ $loop->index }}][amount]"
-                                                   class="form-control form-control-sm text-right tt-cost-amount" required
-                                                   value="{{ $row ? number_format($row->amount, 0, ',', '.') : '' }}"></td>
-                                        {{-- Qty bilangan BULAT (20 Okt 2026): satuannya trip,
-                                             orang, hari, unit — tidak ada setengah trip. --}}
-                                        <td><input type="number" name="costs[{{ $loop->index }}][qty]" class="form-control form-control-sm tt-cost-qty" min="1" step="1" required value="{{ $row ? (int) $row->qty : 1 }}"></td>
-                                        <td class="text-right align-middle tt-cost-total">0</td>
-                                        <td class="align-middle text-center">
-                                            <button type="button" class="btn btn-link btn-sm text-danger p-0 tt-cost-del" aria-label="Hapus baris"><i class="fas fa-times"></i></button>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <th colspan="4" class="text-right">Total Estimasi Biaya</th>
-                                    <th class="text-right" id="ttCostGrand">0</th>
-                                    <th></th>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                    <button type="button" class="btn btn-outline-primary btn-sm" id="ttCostAdd"><i class="fas fa-plus mr-1"></i> Tambah Baris</button>
-                    {{-- Alur sesudah Simpan, ditulis apa adanya supaya tidak
-                         ada yang mengira biaya ini langsung memotong pagu. --}}
+                    {{-- Plan visit = JADWAL saja. Biaya diajukan terpisah lewat tab Pengajuan
+                         (keputusan Okt 2026), jadi tidak ada isian biaya di sini. --}}
                     <div class="tt-stage-note mt-2">
-                        Setelah di-submit: tiket <strong>tetap di tahap Plan</strong> menunggu
-                        <strong>approval supervisor</strong> atas tanggal &amp; biaya.
-                        Begitu disetujui, sistem membuat <strong>Cost Request berstatus Draft</strong>
-                        yang selanjutnya menempuh alur Cost Request seperti biasa — pagu Budget Plan
-                        baru terpakai di sana, bukan oleh plan ini.
+                        Plan visit hanya menjadwalkan kunjungan. Biaya (Cash Advance atau jenis lain)
+                        diajukan terpisah lewat tab <strong>Pengajuan</strong>.
                         Tahap <strong>Trip</strong> dimulai saat teknisi menggeser
                         “Swipe for travel” pada tanggal plan visit.
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
-                    {{-- "Submit", bukan "Simpan": menekannya mengajukan plan & biaya untuk
-                         disetujui supervisor, bukan sekadar menyimpan draft. --}}
-                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-paper-plane mr-1"></i> Submit</button>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-calendar-check mr-1"></i> Simpan Plan</button>
                 </div>
             </form>
         </div>
@@ -661,12 +586,12 @@
             {{-- Menyimpan sebagai DRAFT settlement (20 Okt 2026): status CR tidak
                  berubah, pengajuan resminya tetap dari modul Cost Request. --}}
             <form class="modal-content tt-submit-once" id="frmTtSettle" method="POST"
-                  action="{{ route('budget-request.save-realization-draft', $t->budgetRequest->id) }}"
+                  action="{{ route('budget-request.save-realization-draft', $settleCr->id) }}"
                   enctype="multipart/form-data">
                 @csrf
                 <input type="hidden" name="from_ticket" value="1">
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-file-invoice-dollar mr-1"></i> Settlement — {{ $t->budgetRequest->code }}</h5>
+                    <h5 class="modal-title"><i class="fas fa-file-invoice-dollar mr-1"></i> Settlement — {{ $settleCr->code }}</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body" style="font-size:13px;">
@@ -727,7 +652,7 @@
                             <tfoot>
                                 <tr>
                                     <th colspan="3" class="text-right">SUBTOTAL</th>
-                                    <th class="text-right">{{ number_format((int) $t->budgetRequest->amount, 0, ',', '.') }}</th>
+                                    <th class="text-right">{{ number_format((int) $settleCr->amount, 0, ',', '.') }}</th>
                                     <th class="text-right" id="ttSettleTotal">0</th>
                                     <th class="text-right" id="ttSettleVar">0</th>
                                     <th></th>
@@ -772,114 +697,6 @@
                     <button type="button" class="btn btn-primary btn-sm" id="ttSignSave"><i class="fas fa-upload mr-1"></i> Upload</button>
                 </div>
             </div>
-        </div>
-    </div>
-@endif
-
-@if($canApprovePlanBudget)
-    {{-- Review plan & biaya (20 Okt 2026). SATU modal memuat seluruh rincian
-         pengajuan beserta kedua keputusannya: dua modal terpisah memaksa
-         supervisor menutup yang satu untuk melihat angka di yang lain.
-         Approve & Reject memakai formaction, jadi satu form melayani dua
-         endpoint tanpa menduplikasi isinya. --}}
-    <div class="modal fade" id="mdlTtPlanReview" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-lg" role="document">
-            <form class="modal-content tt-submit-once" id="frmTtPlanReview" method="POST"
-                  action="{{ route('trouble-ticket.plan.approve', $t) }}">
-                @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-clipboard-check mr-1"></i> Review Plan &amp; Budget</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
-                </div>
-                <div class="modal-body" style="font-size:13px;">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <dl class="m-0">
-                                <div class="tt-kv"><dt>TT</dt><dd><strong>{{ $t->ticket_number }}</strong></dd></div>
-                                <div class="tt-kv"><dt>Site</dt><dd>{{ $site?->sitename ?? '—' }}</dd></div>
-                                <div class="tt-kv"><dt>Customer</dt><dd>{{ $t->customer?->name ?? '—' }}</dd></div>
-                                <div class="tt-kv"><dt>Pelaksana</dt><dd>{{ $t->technician?->name ?? '—' }}</dd></div>
-                            </dl>
-                        </div>
-                        <div class="col-md-6">
-                            <dl class="m-0">
-                                <div class="tt-kv"><dt>Plan visit</dt><dd>{{ $t->visit_site?->format('d/m/Y') ?? '—' }}</dd></div>
-                                <div class="tt-kv"><dt>Budget Plan</dt><dd>{{ $t->budgetPlan?->code ?? '—' }}</dd></div>
-                                <div class="tt-kv"><dt>Diajukan</dt><dd>{{ $t->visit_decided_at?->format('d/m/Y H:i') ?? '—' }}</dd></div>
-                                <div class="tt-kv"><dt>RCA</dt><dd>{{ $t->rca_label ?: '—' }}</dd></div>
-                            </dl>
-                        </div>
-                    </div>
-
-                    {{-- Rincian biaya yang diajukan — angka yang sama dengan yang
-                         akan dipindahkan ke rincian Cost Request. --}}
-                    <div class="tt-sec-title">Rincian biaya</div>
-                    <div class="table-responsive">
-                        <table class="table table-sm tt-cost-table mb-0">
-                            <thead>
-                                <tr>
-                                    <th>COA</th>
-                                    <th>Description</th>
-                                    <th class="text-right">Harga</th>
-                                    <th class="text-right">Qty</th>
-                                    <th class="text-right">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($planCosts as $c)
-                                    <tr>
-                                        <td>{{ $c->account?->name ?? $c->account_name ?? '—' }}</td>
-                                        <td>{{ $c->description }}</td>
-                                        <td class="text-right">Rp {{ number_format($c->amount, 0, ',', '.') }}</td>
-                                        <td class="text-right">{{ (int) $c->qty }}</td>
-                                        <td class="text-right">Rp {{ number_format($c->total, 0, ',', '.') }}</td>
-                                    </tr>
-                                @empty
-                                    <tr><td colspan="5" class="text-muted">Belum ada baris biaya.</td></tr>
-                                @endforelse
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <th colspan="4" class="text-right">Total Estimasi Biaya</th>
-                                    <th class="text-right">Rp {{ number_format((int) $t->plan_cost_total, 0, ',', '.') }}</th>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-
-                    @if($planClusters->count() > 1)
-                        <div class="form-group mt-3 mb-2">
-                            <label class="font-weight-bold" for="fldPlanCluster">Cluster <span class="text-danger">*</span></label>
-                            <select name="cluster_id" id="fldPlanCluster" class="form-control">
-                                <option value="">— Pilih cluster —</option>
-                                @foreach($planClusters as $cl)
-                                    <option value="{{ $cl->id }}">{{ $cl->name }}</option>
-                                @endforeach
-                            </select>
-                            <small class="text-muted">Wajib diisi saat Approve — budget plan ini bersumber dari proyek.</small>
-                        </div>
-                    @endif
-
-                    <div class="form-group mb-0 mt-3">
-                        <label class="font-weight-bold" for="fldPlanReviewNotes">Catatan</label>
-                        <textarea name="notes" id="fldPlanReviewNotes" class="form-control" rows="2" maxlength="500"
-                                  placeholder="Lengkapi catatan ..."></textarea>
-                        <small class="text-muted">Opsional saat Approve, wajib saat Reject.</small>
-                        <div class="text-danger mt-1 d-none" id="ttPlanReviewErr"></div>
-                    </div>
-
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm mr-auto" data-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-outline-danger btn-sm" id="btnTtPlanReject"
-                            formaction="{{ route('trouble-ticket.plan.reject', $t) }}">
-                        <i class="fas fa-times mr-1"></i> Reject
-                    </button>
-                    <button type="submit" class="btn btn-success btn-sm" id="btnTtPlanApprove">
-                        <i class="fas fa-check mr-1"></i> Approve
-                    </button>
-                </div>
-            </form>
         </div>
     </div>
 @endif
@@ -1432,35 +1249,7 @@ $(function () {
         $m.addClass('tt-flash'); setTimeout(function () { $m.removeClass('tt-flash'); }, 1600);
     });
 
-    /* ---------- Review plan & biaya: dua keputusan, satu form ---------- */
-    /* Catatan wajib saat Reject, cluster wajib saat Approve. Keduanya tetap
-       diperiksa ulang di server; ini hanya supaya supervisor tidak perlu
-       memuat ulang halaman untuk tahu isiannya kurang. */
-    $('#frmTtPlanReview').on('click', '#btnTtPlanReject, #btnTtPlanApprove', function (e) {
-        var reject = this.id === 'btnTtPlanReject';
-        var $err = $('#ttPlanReviewErr');
-        var pesan = '';
-
-        if (reject && !$.trim($('#fldPlanReviewNotes').val())) {
-            pesan = 'Alasan penolakan wajib diisi.';
-        } else if (!reject && $('#fldPlanCluster').length && !$('#fldPlanCluster').val()) {
-            pesan = 'Cluster wajib dipilih untuk budget proyek.';
-        }
-
-        if (pesan) {
-            e.preventDefault();
-            $err.text(pesan).removeClass('d-none');
-            (reject ? $('#fldPlanReviewNotes') : $('#fldPlanCluster')).focus();
-
-            return;
-        }
-
-        $err.addClass('d-none');
-    });
-
-    /* ---------- Create Plan: baris estimasi biaya ---------- */
-    /* Angka di layar hanya bantuan baca; server tetap menghitung ulang
-       harga x qty, jadi hasil di sini tidak pernah jadi nilai tersimpan. */
+    /* ---------- Helper uang (dipakai blok settlement di bawah) ---------- */
     var rupiah = new Intl.NumberFormat('id-ID');
 
     /** "5.342.376" -> 5342376. Titik ribuan dibuang, bukan dianggap desimal. */
@@ -1472,99 +1261,6 @@ $(function () {
     function tulisUang(teks) {
         return String(teks || '').replace(/[^\d]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
-
-    $('#ttCostRows').on('input', '.tt-cost-amount', function () {
-        var posisiDariKanan = this.value.length - (this.selectionStart || 0);
-        this.value = tulisUang(this.value);
-        // Kursor dikembalikan relatif dari KANAN supaya titik yang baru
-        // disisipkan tidak melompatkan kursor ke ujung.
-        var kursor = Math.max(0, this.value.length - posisiDariKanan);
-        try { this.setSelectionRange(kursor, kursor); } catch (e) { /* input lama */ }
-    });
-
-    function hitungBiaya() {
-        var total = 0;
-        $('#ttCostRows .tt-cost-row').each(function () {
-            var harga = angkaUang($(this).find('.tt-cost-amount').val());
-            var qty   = parseInt($(this).find('.tt-cost-qty').val(), 10) || 0;
-            var baris = harga * qty;
-            total += baris;
-            $(this).find('.tt-cost-total').text(rupiah.format(baris));
-        });
-        $('#ttCostGrand').text(rupiah.format(total));
-    }
-
-    /* Nama input diberi nomor ulang sesudah tiap perubahan supaya indeks
-       costs[] tetap rapat walau baris tengah dihapus. */
-    function nomoriBiaya() {
-        $('#ttCostRows .tt-cost-row').each(function (i) {
-            $(this).find('select, input').each(function () {
-                this.name = this.name.replace(/costs\[\d+\]/, 'costs[' + i + ']');
-            });
-        });
-    }
-
-    /* Sub-item yang bukan milik Budget Plan terpilih disembunyikan sekaligus
-       dinonaktifkan: opsi disabled tidak ikut terkirim walau sempat terpilih. */
-    function saringSubItem() {
-        var plan = $('#fldPlanBudget').val();
-        $('.tt-cost-item').each(function () {
-            var $sel = $(this);
-            $sel.find('option[data-plan]').each(function () {
-                var cocok = String(this.dataset.plan) === String(plan);
-                this.hidden = !cocok;
-                this.disabled = !cocok;
-            });
-            if ($sel.find('option:selected').prop('disabled')) {
-                $sel.val('');
-                // Label tombol pencarian ikut dikembalikan ke placeholder.
-                $sel.trigger('tss:sync');
-            }
-        });
-    }
-
-    /* Pencarian untuk dua dropdown panjang. Opsi yang dinonaktifkan
-       saringSubItem() otomatis tidak muncul di panel: TesysSearchableSelect
-       membangun daftarnya setiap kali dibuka dan melewati option disabled. */
-    function pasangPencarian($scope) {
-        if (typeof TesysSearchableSelect === 'undefined') return;
-        TesysSearchableSelect.init(($scope || $('#mdlTtPlan')).find('select[data-searchable]'), {
-            searchPlaceholder: 'Ketik untuk mencari...',
-        });
-    }
-
-    $('#fldPlanBudget').on('change', saringSubItem);
-    saringSubItem();
-    pasangPencarian();
-
-    $('#ttCostAdd').on('click', function () {
-        var $baru = $('#ttCostRows .tt-cost-row').first().clone();
-        $baru.find('select').val('');
-        $baru.find('input').val('');
-        $baru.find('.tt-cost-qty').val(1);
-        $baru.find('.tt-cost-total').text('0');
-        /* Baris baru adalah kloningan baris pertama, termasuk tombol pencarian
-           yang sudah terpasang di sana. Tombol salinan itu dibuang dan penanda
-           'tss-init' dilepas supaya select-nya dipasangi tombol baru miliknya
-           sendiri — bukan tombol yang menunjuk select baris lain. */
-        $baru.find('.tss-btn').remove();
-        $baru.find('select[data-searchable]').removeData('tss-init').show();
-        $('#ttCostRows').append($baru);
-        nomoriBiaya();
-        saringSubItem();
-        pasangPencarian($baru);
-        hitungBiaya();
-    });
-
-    $('#ttCostRows').on('click', '.tt-cost-del', function () {
-        // Baris terakhir tidak dihapus: biaya wajib minimal satu baris.
-        if ($('#ttCostRows .tt-cost-row').length <= 1) { $(this).closest('tr').find('input').val(''); $(this).closest('tr').find('select').val(''); }
-        else { $(this).closest('tr').remove(); nomoriBiaya(); }
-        hitungBiaya();
-    });
-
-    $('#ttCostRows').on('input change', '.tt-cost-amount, .tt-cost-qty', hitungBiaya);
-    hitungBiaya();
 
     /* Blok ini HARUS berada sesudah rupiah()/angkaUang()/tulisUang()
        didefinisikan: keduanya var, bukan function, jadi nilainya belum
@@ -1864,4 +1560,9 @@ $(function () {
     scrollBottom();
 });
 </script>
+@if($canSettle && request()->query('settle'))
+<script>
+    $(function () { $('#mdlTtSettle').modal('show'); });
+</script>
+@endif
 @endpush

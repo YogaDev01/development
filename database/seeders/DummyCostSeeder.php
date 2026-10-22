@@ -535,9 +535,9 @@ class DummyCostSeeder extends Seeder
 
     /**
      * Status Budget Plan harus sejalan dengan status PO-nya:
-     * begitu PO PAID, Project::autoCloseBudgetPlans() memindahkan budget ACTIVE
-     * ke CLOSING — jadi budget ACTIVE di bawah PO yang sudah lunas/ditutup
-     * adalah kombinasi yang tidak pernah ada di aplikasi.
+     * saat PO ditutup, ProjectController::closeBudgetPlans() menutup budget
+     * ACTIVE/CLOSING miliknya — jadi budget ACTIVE di bawah PO yang sudah
+     * ditutup adalah kombinasi yang tidak pernah ada di aplikasi.
      */
     private function planStatusFor(string $projectStatus): string
     {

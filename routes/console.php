@@ -12,11 +12,6 @@ Artisan::command('inspire', function () {
 // (jalur otomatis selain tombol Close manual — lihat ForecastController).
 Schedule::command('forecast:auto-close')->daily();
 
-// Budgeting: Budget Plan ACTIVE yang plan_finish-nya sudah lewat otomatis
-// masuk tahap CLOSING, lalu manager diberi tahu untuk mengajukan closing
-// (lihat App\Console\Commands\AutoClosingBudgetPlans).
-Schedule::command('budget-plan:auto-closing')->daily();
-
 /*
 | Reminder To-Do List — tiap jam. Mengirim pengingat ke user ACTIVE yang
 | mengaktifkan reminder (Profil > Settings) saat jam ini cocok dengan

@@ -255,6 +255,10 @@ Route::middleware('auth')->group(function () {
         // Import Excel — Project & Milestone (wajib sebelum route wildcard project/{id})
         Route::get('project/import-template', [ProjectController::class, 'downloadDetailTemplate'])->name('project.import-template');
         Route::post('project/import-preview', [ProjectController::class, 'importDetailPreview'])->name('project.import-preview');
+
+        // Import Excel — Detail Budget di form PO (source terkunci PROJECT; wajib sebelum route wildcard project/{id})
+        Route::get('project/budget-import-template', [ProjectController::class, 'downloadBudgetTemplate'])->name('project.budget-import-template');
+        Route::post('project/budget-import-preview', [ProjectController::class, 'importBudgetPreview'])->name('project.budget-import-preview');
     });
 
     // Edit — superadmin/head bebas, finance juga boleh (gerbang detail per-status ada di controller).
@@ -1195,6 +1199,15 @@ Route::middleware('auth')->group(function () {
                 // (20 Okt 2026). Tiket tetap di tahap Plan.
                 Route::post('plan/approve', 'approvePlanBudget')->name('plan.approve');
                 Route::post('plan/reject', 'rejectPlanBudget')->name('plan.reject');
+                // Pengajuan biaya (pra-Cost Request), terlepas dari Plan Visit. Hak tiap aksi
+                // diperiksa TroubleTicketWorkflow (teknisi / supervisor team yang sama).
+                Route::post('requests', 'saveRequest')->name('requests.save');
+                Route::get('requests/attachment/{attachment}', 'downloadRequestAttachment')->whereNumber('attachment')->name('requests.attachment');
+                Route::post('requests/{requestId}/submit', 'submitRequest')->whereNumber('requestId')->name('requests.submit');
+                Route::post('requests/{requestId}/edit', 'editRequest')->whereNumber('requestId')->name('requests.edit');
+                Route::post('requests/{requestId}/approve', 'approveRequest')->whereNumber('requestId')->name('requests.approve');
+                Route::post('requests/{requestId}/reject', 'rejectRequest')->whereNumber('requestId')->name('requests.reject');
+                Route::post('requests/{requestId}/cancel', 'cancelRequest')->whereNumber('requestId')->name('requests.cancel');
                 // Plan → Trip: digeser teknisi lewat "Swipe for travel", satu
                 // aksi dengan mulai perjalanan (20 Okt 2026).
                 Route::post('travel', 'startTravel')->name('travel.start');
