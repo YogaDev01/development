@@ -29,6 +29,9 @@ use App\Services\RoleDirectory;
 class BudgetPlanController extends Controller
 {
     use Concerns\ScopesBudgetPlanVisibility;
+    // normalizeMoney / syncDetails / generateCode / buildUniqueCode / getAccountsFor
+    // + ACCOUNT_CATEGORY pindah ke Concerns\BuildsBudgetPlan (dipakai juga form PO).
+    use Concerns\BuildsBudgetPlan;
 
     /*
     |--------------------------------------------------------------------------
@@ -39,22 +42,6 @@ class BudgetPlanController extends Controller
     |   - CostCenter (internal)    -> overhead / payroll
     */
 
-    /** Kategori account yang boleh dipakai per jenis sumber dana.
-     *  PENTING: nilai ini harus SAMA PERSIS dengan isi kolom accounts.category.
-     *  Tipe cost center non-payroll lain (Tax/Asset/Liability/Capital/Adjustment)
-     *  sengaja berbagi kategori "Overhead" yang sama — belum ada Account
-     *  tersendiri untuk masing-masing tipe itu. */
-    private const ACCOUNT_CATEGORY = [
-        'PROJECT'    => 'Variable Cost',
-        'OVERHEAD'   => 'Overhead',
-        'PAYROLL'    => 'Fixed Cost',
-        'TAX'        => 'Overhead',
-        'ASSET'      => 'Overhead',
-        'LIABILITY'  => 'Overhead',
-        'CAPITAL'    => 'Overhead',
-        'ADJUSTMENT' => 'Overhead',
-    ];
-
     /** Role yang boleh melihat budget OVERHEAD */
     // OVERHEAD_PRIVILEGED_ROLES / PAYROLL_ROLES / PROJECT_PRIVILEGED_ROLES
     // pindah ke Concerns\ScopesBudgetPlanVisibility bersama method yang memakainya.
@@ -64,56 +51,6 @@ class BudgetPlanController extends Controller
     | HELPERS
     |--------------------------------------------------------------------------
     */
-
-    private function normalizeMoney(?string $value): int
-    {
-        if ($value === null || trim($value) === '') return 0;
-        $stripped = preg_replace('/\D/', '', $value);
-        return $stripped === '' ? 0 : (int) $stripped;
-    }
-
-    private function syncDetails(BudgetPlan $bp, Request $request): void
-    {
-        $bp->details()->delete();
-
-        foreach ((array) $request->input('details', []) as $row) {
-            $amount = $this->normalizeMoney($row['amount'] ?? null);
-            $qty    = (float) ($row['qty'] ?? 1);
-            if ($qty <= 0) $qty = 1;
-
-            if (!$amount) continue;
-
-            $total = (int) round($amount * $qty);
-
-            $bp->details()->create([
-                'account_id' => $row['account_id'] ?? null,
-                'category'   => 'Variable Cost',   // auto fixed
-                'type'       => 'main',             // auto fixed
-                'deskripsi'  => $row['deskripsi']   ?? null,
-                'amount'     => $amount,
-                'qty'        => $qty,
-                'unit'       => $row['unit'] ?? null,
-                'total'      => $total,
-                'notes'      => $row['notes']       ?? null,
-            ]);
-        }
-
-        $bp->recalculateAmount();
-    }
-
-    private function generateCode(Project $project): string
-    {
-        // Format: BD-{MM}{YY}{poCode(4)}{seq(4)}   contoh: BD-072600030002
-        $poCode = str_pad($project->code ?? '0000', 4, '0', STR_PAD_LEFT);
-        $prefix = 'BD-' . now()->format('m') . now()->format('y') . $poCode;
-
-        $count = BudgetPlan::whereYear('created_at', now()->format('Y'))
-            ->whereMonth('created_at', now()->format('m'))
-            ->where('project_id', $project->id)
-            ->count();
-
-        return $this->buildUniqueCode($prefix, $count);
-    }
 
     /**
      * Kode budget untuk cost center.
@@ -137,23 +74,6 @@ class BudgetPlanController extends Controller
             ->count();
 
         return $this->buildUniqueCode($prefix, $count);
-    }
-
-    /** Tambahkan nomor urut & pastikan unik */
-    private function buildUniqueCode(string $prefix, int $count): string
-    {
-        $seq       = str_pad($count + 1, 4, '0', STR_PAD_LEFT);
-        $candidate = $prefix . $seq;
-
-        $attempts = 0;
-        while (BudgetPlan::where('code', $candidate)->exists() && $attempts < 100) {
-            $count++;
-            $seq       = str_pad($count + 1, 4, '0', STR_PAD_LEFT);
-            $candidate = $prefix . $seq;
-            $attempts++;
-        }
-
-        return $candidate;
     }
 
     /**
@@ -272,20 +192,6 @@ class BudgetPlanController extends Controller
         ->get();
     }
 
-    /** Account yang boleh dipakai, sesuai jenis sumber dana */
-    private function getAccountsFor(string $sourceType)
-    {
-        $category = self::ACCOUNT_CATEGORY[strtoupper($sourceType)] ?? null;
-
-        $query = Account::active()->orderBy('name');
-
-        if ($category) {
-            $query->byCategory($category);
-        }
-
-        return $query->get(['id', 'name']);
-    }
-
     /**
      * Batasi $query BudgetPlan pada yang boleh dilihat user yang login.
      *
@@ -318,6 +224,23 @@ class BudgetPlanController extends Controller
         abort_unless($this->canViewBudgetPlan($bp), 403, 'Anda tidak memiliki akses ke Budget Plan ini.');
 
         return $bp;
+    }
+
+    /**
+     * Budget Plan yang dibuat dari form PO (via_po_approval) tidak punya workflow
+     * sendiri: statusnya digerakkan approval PO (submit -> CHECKED, verify ->
+     * VERIFIED, approve -> ACTIVE, revise -> DRAFT). Aksi workflow Budget Plan,
+     * ubah, dan hapus ditolak untuk BP ini. Closing (ACTIVE -> CLOSING/CLOSED)
+     * tetap memakai alur biasa.
+     */
+    private function rejectIfBundled(BudgetPlan $bp)
+    {
+        if ($bp->isBundled()) {
+            return redirect('/budget-plan')
+                ->with('error', 'Budget Plan ini dikelola lewat approval PO (diubah lewat Edit PO, disetujui bersama PO; dapat dihapus lewat Edit PO selagi masih DRAFT).');
+        }
+
+        return null;
     }
 
     // scopeVisibleTo() pindah ke Concerns\ScopesBudgetPlanVisibility supaya
@@ -489,7 +412,6 @@ class BudgetPlanController extends Controller
             'project_id'     => 'required_if:source_type,PROJECT|nullable|exists:projects,id',
             'cost_center_id' => 'required_if:source_type,COST_CENTER|nullable|exists:cost_centers,id',
             'description'    => 'required|string|max:500',
-            'plan_finish'    => 'required|date',
             'notes'          => 'nullable|string',
             'details'        => 'required|array|min:1',
             'details.*.account_id' => 'nullable|exists:accounts,id',
@@ -536,7 +458,6 @@ class BudgetPlanController extends Controller
                 'type'           => 'one_time',   // fixed default
                 'amount'         => 0,
                 'status'         => 'DRAFT',
-                'plan_finish'    => $request->plan_finish,
                 'notes'          => $request->notes,
                 'input_by'       => Auth::id(),
             ]);
@@ -597,7 +518,6 @@ class BudgetPlanController extends Controller
             ['Terpakai', $used],
             ['Sisa', $remaining],
             ['Status', $bp->status],
-            ['Plan Finish', $bp->plan_finish?->format('d-m-Y')],
             ['Notes', $bp->notes],
             ['Catatan Approver', $bp->approver_notes],
             ['Approved By', $bp->approvedBy->name ?? '-'],
@@ -1013,7 +933,7 @@ class BudgetPlanController extends Controller
             'description'      => $bp->description,
             'status'           => $bp->status,
             'status_color'     => $bp->status_color,
-            'plan_finish'      => $bp->plan_finish?->format('d-m-Y'),
+            'via_po_approval'  => $bp->isBundled(),
             'notes'            => $bp->notes,
             'approver_notes'   => $bp->approver_notes,
             'amount'           => (int) ($bp->amount ?? 0),
@@ -1226,6 +1146,7 @@ class BudgetPlanController extends Controller
     public function edit($id)
     {
         $budgetPlan = $this->findVisibleBudgetPlan($id, ['details', 'attachments', 'project', 'costCenter']);
+        if ($r = $this->rejectIfBundled($budgetPlan)) return $r;
 
         if (!$budgetPlan->isEditable()) {
             return redirect('/budget-plan')
@@ -1258,6 +1179,7 @@ class BudgetPlanController extends Controller
     public function update(Request $request, $id)
     {
         $budgetPlan = $this->findVisibleBudgetPlan($id);
+        if ($r = $this->rejectIfBundled($budgetPlan)) return $r;
 
         if (!$budgetPlan->isEditable()) {
             return redirect('/budget-plan')
@@ -1269,7 +1191,6 @@ class BudgetPlanController extends Controller
             // Budget proyek masih boleh ganti PO; budget cost center tidak ganti apa pun.
             'project_id'  => ($budgetPlan->isProjectBudget() ? 'required|exists:projects,id' : 'nullable'),
             'description' => 'required|string|max:500',
-            'plan_finish' => 'required|date',
             'notes'       => 'nullable|string',
             'details'     => 'required|array|min:1',
             'details.*.account_id' => 'nullable|exists:accounts,id',
@@ -1283,7 +1204,6 @@ class BudgetPlanController extends Controller
 
             $payload = [
                 'description' => strtoupper(trim($request->description)),
-                'plan_finish' => $request->plan_finish,
                 'notes'       => $request->notes,
             ];
 
@@ -1335,6 +1255,7 @@ class BudgetPlanController extends Controller
     public function submit($id)
     {
         $bp = $this->findVisibleBudgetPlan($id);
+        if ($r = $this->rejectIfBundled($bp)) return $r;
 
         if ($bp->status !== 'DRAFT') {
             return back()->with('error', 'Hanya Budget Plan berstatus DRAFT yang dapat disubmit.');
@@ -1383,6 +1304,7 @@ class BudgetPlanController extends Controller
         }
 
         $bp = $this->findVisibleBudgetPlan($id);
+        if ($r = $this->rejectIfBundled($bp)) return $r;
         if ($bp->status !== 'SUBMITTED') {
             return back()->with('error', 'Status tidak valid.');
         }
@@ -1428,6 +1350,7 @@ class BudgetPlanController extends Controller
 
         $request->validate(['notes' => 'required|string|max:500']);
         $bp = $this->findVisibleBudgetPlan($id);
+        if ($r = $this->rejectIfBundled($bp)) return $r;
         if ($bp->status !== 'SUBMITTED') {
             return back()->with('error', 'Status tidak valid.');
         }
@@ -1464,6 +1387,7 @@ class BudgetPlanController extends Controller
         }
 
         $bp = $this->findVisibleBudgetPlan($id);
+        if ($r = $this->rejectIfBundled($bp)) return $r;
         if ($bp->status !== 'CHECKED') {
             return back()->with('error', 'Status tidak valid.');
         }
@@ -1501,6 +1425,7 @@ class BudgetPlanController extends Controller
 
         $request->validate(['notes' => 'required|string|max:500']);
         $bp = $this->findVisibleBudgetPlan($id);
+        if ($r = $this->rejectIfBundled($bp)) return $r;
         if ($bp->status !== 'CHECKED') {
             return back()->with('error', 'Status tidak valid.');
         }
@@ -1537,6 +1462,7 @@ class BudgetPlanController extends Controller
         }
 
         $bp = $this->findVisibleBudgetPlan($id);
+        if ($r = $this->rejectIfBundled($bp)) return $r;
         if ($bp->status !== 'VERIFIED') {
             return back()->with('error', 'Status tidak valid.');
         }
@@ -1578,6 +1504,7 @@ class BudgetPlanController extends Controller
 
         $request->validate(['notes' => 'required|string|max:500']);
         $bp = $this->findVisibleBudgetPlan($id);
+        if ($r = $this->rejectIfBundled($bp)) return $r;
         if ($bp->status !== 'VERIFIED') {
             return back()->with('error', 'Status tidak valid.');
         }
@@ -1615,6 +1542,7 @@ class BudgetPlanController extends Controller
 
         $request->validate(['notes' => 'required|string|max:500']);
         $bp = $this->findVisibleBudgetPlan($id);
+        if ($r = $this->rejectIfBundled($bp)) return $r;
         if ($bp->status !== 'REJECTED') {
             return back()->with('error', 'Status tidak valid.');
         }
@@ -1642,9 +1570,9 @@ class BudgetPlanController extends Controller
 
         $bp = $this->findVisibleBudgetPlan($id);
 
-        // CLOSING yang belum diajukan berkasnya adalah hasil auto-closing saat
-        // plan_finish terlewati — manager tetap harus mengunggah berkas closing
-        // dari sana, jadi status itu ikut diterima di sini.
+        // CLOSING yang belum diajukan berkasnya adalah sisa data lama (dulu hasil
+        // auto-closing berbasis tanggal, kini sudah dihapus) — manager tetap harus
+        // mengunggah berkas closing dari sana, jadi status itu ikut diterima di sini.
         if (!in_array($bp->status, ['ACTIVE', 'CLOSING'], true) || $bp->isClosingSubmitted()) {
             return back()->with('error', 'Hanya Budget Plan berstatus ACTIVE atau CLOSING (belum diajukan) yang dapat diajukan closing.');
         }
@@ -1851,6 +1779,7 @@ class BudgetPlanController extends Controller
     public function destroy($id)
     {
         $bp = $this->findVisibleBudgetPlan($id, ['attachments']);
+        if ($r = $this->rejectIfBundled($bp)) return $r;
 
         if ($bp->status !== 'DRAFT') {
             return redirect('/budget-plan')
@@ -1893,12 +1822,9 @@ class BudgetPlanController extends Controller
     | Template & parser untuk mengisi baris "Detail Budget" (create/edit)
     | secara massal dari file Excel. Import TIDAK langsung menyimpan ke
     | database — hanya mem-parsing & mengembalikan JSON, lalu JS di form
-    | yang mengisi ulang tabel Detail Budget. Simpan tetap lewat tombol
-    | "Simpan" seperti biasa, supaya alur validasi & DB transaction sama
-    | persis dengan input manual.
+    | yang mengisi ulang tabel Detail Budget. Logikanya ada di trait
+    | Concerns\BuildsBudgetPlan (dipakai juga oleh form PO).
     */
-
-    private const IMPORT_HEADERS = ['Account', 'Deskripsi', 'Harga Satuan', 'Qty', 'Unit', 'Notes'];
 
     /**
      * GET /budget-plan/import-template?source=PROJECT|OVERHEAD|PAYROLL
@@ -1906,100 +1832,14 @@ class BudgetPlanController extends Controller
      */
     public function downloadTemplate(Request $request)
     {
-        $sourceType = strtoupper($request->query('source', 'PROJECT'));
-        $accounts   = $this->getAccountsFor($sourceType);
-
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Detail Budget');
-
-        // Header
-        foreach (self::IMPORT_HEADERS as $i => $label) {
-            $col = chr(65 + $i); // A, B, C, ...
-            $sheet->setCellValue($col . '1', $label);
-            $sheet->getStyle($col . '1')->getFont()->setBold(true);
-            $sheet->getStyle($col . '1')->getFill()
-                ->setFillType(Fill::FILL_SOLID)
-                ->getStartColor()->setRGB('0D1B2A');
-            $sheet->getStyle($col . '1')->getFont()->getColor()->setRGB('FFFFFF');
-        }
-
-        // Contoh baris
-        $sheet->setCellValue('A2', $accounts->first()->name ?? 'NAMA ACCOUNT');
-        $sheet->setCellValue('B2', 'Contoh deskripsi item');
-        $sheet->setCellValue('C2', 100000);
-        $sheet->setCellValue('D2', 1);
-        $sheet->setCellValue('E2', 'pcs');
-        $sheet->setCellValue('F2', 'Catatan opsional');
-
-        // Lebar kolom
-        foreach (['A' => 30, 'B' => 30, 'C' => 16, 'D' => 8, 'E' => 14, 'F' => 30] as $col => $width) {
-            $sheet->getColumnDimension($col)->setWidth($width);
-        }
-
-        // Sheet referensi: daftar Account & Unit yang valid (dipakai dropdown)
-        $refSheet = $spreadsheet->createSheet();
-        $refSheet->setTitle('Referensi');
-        $refSheet->setCellValue('A1', 'Daftar Account Valid');
-        $refSheet->setCellValue('B1', 'Daftar Unit Valid');
-        $refSheet->getStyle('A1:B1')->getFont()->setBold(true);
-
-        foreach ($accounts->values() as $i => $acc) {
-            $refSheet->setCellValue('A' . ($i + 2), $acc->name);
-        }
-        foreach (BudgetPlanDetail::UNITS as $i => $unit) {
-            $refSheet->setCellValue('B' . ($i + 2), $unit);
-        }
-        $refSheet->getColumnDimension('A')->setWidth(30);
-        $refSheet->getColumnDimension('B')->setWidth(18);
-
-        // Dropdown Account (kolom A) & Unit (kolom E) di sheet utama, merujuk ke sheet Referensi
-        $accountCount = max($accounts->count(), 1);
-        $unitCount    = count(BudgetPlanDetail::UNITS);
-
-        for ($row = 2; $row <= 200; $row++) {
-            $validationAccount = $sheet->getCell('A' . $row)->getDataValidation();
-            $validationAccount->setType(DataValidation::TYPE_LIST);
-            $validationAccount->setErrorStyle(DataValidation::STYLE_WARNING);
-            $validationAccount->setAllowBlank(true);
-            $validationAccount->setShowInputMessage(true);
-            $validationAccount->setShowErrorMessage(true);
-            $validationAccount->setShowDropDown(false);
-            $validationAccount->setPromptTitle('Pilih Account');
-            $validationAccount->setPrompt('Pilih dari daftar di sheet Referensi.');
-            $validationAccount->setFormula1("Referensi!\$A\$2:\$A\$" . ($accountCount + 1));
-
-            $validationUnit = $sheet->getCell('E' . $row)->getDataValidation();
-            $validationUnit->setType(DataValidation::TYPE_LIST);
-            $validationUnit->setErrorStyle(DataValidation::STYLE_WARNING);
-            $validationUnit->setAllowBlank(true);
-            $validationUnit->setShowInputMessage(true);
-            $validationUnit->setShowErrorMessage(true);
-            $validationUnit->setShowDropDown(false);
-            $validationUnit->setPromptTitle('Pilih Unit');
-            $validationUnit->setPrompt('Pilih dari daftar di sheet Referensi.');
-            $validationUnit->setFormula1("Referensi!\$B\$2:\$B\$" . ($unitCount + 1));
-        }
-
-        $spreadsheet->setActiveSheetIndex(0);
-
-        $filename = 'template-detail-budget-' . strtolower($sourceType) . '-' . now()->format('Ymd-His') . '.xlsx';
-
-        $writer = new Xlsx($spreadsheet);
-
-        return response()->streamDownload(function () use ($writer) {
-            $writer->save('php://output');
-        }, $filename, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        ]);
+        return $this->budgetImportTemplateResponse((string) $request->query('source', 'PROJECT'));
     }
 
     /**
      * POST /budget-plan/import-preview
      * Body: file (xlsx), source_type (PROJECT|OVERHEAD|PAYROLL)
      * Response JSON: { rows: [...], errors: [...] }
-     * Tidak menyimpan apa pun ke database — hanya parsing untuk ditampilkan
-     * & diisi ulang oleh JS ke tabel Detail Budget di form.
+     * Tidak menyimpan apa pun ke database.
      */
     public function importPreview(Request $request)
     {
@@ -2008,74 +1848,6 @@ class BudgetPlanController extends Controller
             'source_type' => 'required|in:PROJECT,OVERHEAD,PAYROLL',
         ]);
 
-        $accounts = $this->getAccountsFor($request->source_type)
-            ->keyBy(fn ($a) => strtoupper(trim($a->name)));
-
-        $units = collect(BudgetPlanDetail::UNITS)->map(fn ($u) => strtoupper($u));
-
-        try {
-            $spreadsheet = IOFactory::load($request->file('file')->getRealPath());
-            $sheet       = $spreadsheet->getSheetByName('Detail Budget') ?? $spreadsheet->getActiveSheet();
-            $rows        = $sheet->toArray(null, true, true, false);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'rows'   => [],
-                'errors' => ['File tidak dapat dibaca: ' . $e->getMessage()],
-            ], 422);
-        }
-
-        $result = [];
-        $errors = [];
-
-        foreach ($rows as $i => $row) {
-            // Baris 0 = header, lewati
-            if ($i === 0) continue;
-
-            [$accName, $deskripsi, $amount, $qty, $unit, $notes] = array_pad($row, 6, null);
-
-            // Lewati baris kosong total
-            if (blank($accName) && blank($deskripsi) && blank($amount) && blank($qty)) {
-                continue;
-            }
-
-            $rowNum = $i + 1; // nomor baris asli di Excel (1-based, +1 karena header)
-            $accKey = strtoupper(trim((string) $accName));
-            $account = $accounts->get($accKey);
-
-            if (!$account && filled($accName)) {
-                $errors[] = "Baris {$rowNum}: Account \"{$accName}\" tidak ditemukan di daftar Variable Cost/Overhead/Payroll yang sesuai.";
-            }
-
-            $unitKey    = strtoupper(trim((string) $unit));
-            $unitValid  = blank($unit) || $units->contains($unitKey);
-            if (!$unitValid) {
-                $errors[] = "Baris {$rowNum}: Unit \"{$unit}\" tidak valid.";
-            }
-
-            $amountNum = is_numeric($amount) ? (int) round((float) $amount) : (int) $this->normalizeMoney((string) $amount);
-            $qtyNum    = is_numeric($qty) ? (float) $qty : 1;
-            if ($qtyNum <= 0) $qtyNum = 1;
-
-            $result[] = [
-                'row'         => $rowNum,
-                'account_id'  => $account->id ?? null,
-                'account_name'=> $account->name ?? $accName,
-                'deskripsi'   => $deskripsi,
-                'amount'      => $amountNum,
-                'qty'         => $qtyNum,
-                'unit'        => $unitValid && filled($unit) ? strtolower(trim((string) $unit)) : null,
-                'notes'       => $notes,
-                'total'       => $amountNum * $qtyNum,
-            ];
-        }
-
-        if (empty($result) && empty($errors)) {
-            $errors[] = 'Tidak ada baris data yang terbaca dari file. Pastikan mengisi mulai baris ke-2.';
-        }
-
-        return response()->json([
-            'rows'   => $result,
-            'errors' => $errors,
-        ]);
+        return $this->budgetImportPreviewResponse($request, $request->source_type);
     }
 }

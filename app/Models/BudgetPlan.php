@@ -22,10 +22,12 @@ class BudgetPlan extends Model
         'approved_by',
         'approved_at',
         'input_by',
+        'via_po_approval',
     ];
 
     protected $casts = [
         'amount'               => 'integer',
+        'via_po_approval'      => 'boolean',
         'approved_at'          => 'datetime',
         'plan_finish'          => 'date',
         'closing_submitted_at' => 'datetime',
@@ -184,6 +186,9 @@ class BudgetPlan extends Model
     |--------------------------------------------------------------------------
     */
 
+    /** Budget yang dibuat dari form PO: status digerakkan approval PO, bukan workflow Budget Plan. */
+    public function isBundled(): bool    { return (bool) $this->via_po_approval; }
+
     public function isDraft(): bool      { return $this->status === 'DRAFT'; }
     public function isSubmitted(): bool  { return $this->status === 'SUBMITTED'; }
     public function isChecked(): bool    { return $this->status === 'CHECKED'; }
@@ -191,18 +196,13 @@ class BudgetPlan extends Model
     public function isActive(): bool     { return $this->status === 'ACTIVE'; }
     public function isClosing(): bool    { return $this->status === 'CLOSING'; }
 
-    /** CLOSING yang berkas closing-nya belum diajukan manager (hasil auto-closing
-     *  saat plan_finish terlewati) — tugasnya masih di manager, bukan Finance. */
+    /** CLOSING yang berkas closing-nya belum diajukan manager (sisa data lama dari
+     *  auto-closing yang sudah dihapus) — tugasnya masih di manager, bukan Finance. */
     public function isClosingPending(): bool { return $this->status === 'CLOSING' && is_null($this->closing_submitted_at); }
 
     /** CLOSING yang sudah diajukan manager — menunggu verifikasi Finance. */
     public function isClosingSubmitted(): bool { return $this->status === 'CLOSING' && !is_null($this->closing_submitted_at); }
 
-    /** Sudah sampai (atau lewat) tanggal rencana selesai — hari-H ikut terhitung. */
-    public function isPastPlanFinish(): bool
-    {
-        return $this->plan_finish && !$this->plan_finish->isAfter(today());
-    }
     public function isClosed(): bool     { return $this->status === 'CLOSED'; }
     public function isRejected(): bool   { return $this->status === 'REJECTED'; }
     public function isEditable(): bool   { return $this->status === 'DRAFT'; }
@@ -252,6 +252,82 @@ class BudgetPlan extends Model
     public function remainingAmount(): int
     {
         return max(0, ($this->amount ?? 0) - $this->usedAmount());
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | NOB — apakah total melebihi sisa budget
+    |--------------------------------------------------------------------------
+    | Satu-satunya sumber rumus NOB: dipakai form Cost Request
+    | (BudgetRequestController) dan pembentukan CR dari pengajuan Trouble Ticket.
+    */
+
+    /**
+     * Pemakaian anggaran yang SUDAH TERIKAT (BudgetConsumption::COMMITTED),
+     * dihitung dari effective cost. Daftar statusnya diambil dari
+     * BudgetConsumption::COMMITTED, bukan ditulis ulang: versi lama lupa
+     * 'CHECKED' - CR yang sudah lolos Head tapi belum diverifikasi Finance tidak
+     * terhitung memakan anggaran, sehingga peringatan NOB terlambat muncul.
+     */
+    private function committedAmount(?int $excludeCrId = null)
+    {
+        return BudgetRequest::where('budget_plan_id', $this->id)
+            ->whereIn('status', \App\Support\BudgetConsumption::COMMITTED)
+            ->when($excludeCrId, fn ($q) => $q->where('id', '!=', $excludeCrId))
+            ->sum(\Illuminate\Support\Facades\DB::raw(BudgetRequest::effectiveCostSql()));
+    }
+
+    /**
+     * Project (cluster) yang bisa dipilih pada Cost Request budget PROYEK: cluster yang terhubung ke
+     * milestone project (project_details.cluster_id) — sumber yang sama dengan dropdown Project di
+     * form Cost Request, BUKAN clusters.project_id. Kosong untuk budget cost center.
+     *
+     * @return \Illuminate\Support\Collection<int, Cluster>
+     */
+    public function projectClusters(): \Illuminate\Support\Collection
+    {
+        if (! $this->project_id) {
+            return collect();
+        }
+
+        return Cluster::whereIn('id', ProjectDetail::where('project_id', $this->project_id)->whereNotNull('cluster_id')->select('cluster_id'))
+            ->orderBy('name')
+            ->get();
+    }
+
+    public function isNob(int $amount, ?int $excludeCrId = null): bool
+    {
+        return ($this->committedAmount($excludeCrId) + $amount) > ($this->amount ?? 0);
+    }
+
+    /**
+     * Berapa rupiah pengajuan ini melampaui sisa anggaran (0 bila tidak).
+     *
+     * Disimpan sebagai angka, bukan disisipkan ke teks: angka bisa dijumlahkan
+     * pada laporan, teks tidak.
+     */
+    public function nobOverage(int $amount, ?int $excludeCrId = null): int
+    {
+        return (int) max(0, ($this->committedAmount($excludeCrId) + $amount) - ($this->amount ?? 0));
+    }
+
+    /**
+     * Semua id sub-item yang dikirim benar-benar milik Budget Plan ini (cegah
+     * memilih sub-item dari budget lain). Daftar kosong dianggap sah.
+     *
+     * @param  iterable<int|string|null>  $detailIds
+     */
+    public function ownsDetails(iterable $detailIds): bool
+    {
+        $ids = collect($detailIds)->filter()->map(fn ($id) => (int) $id);
+
+        if ($ids->isEmpty()) {
+            return true;
+        }
+
+        $validIds = $this->details()->whereIn('id', $ids)->pluck('id')->map(fn ($id) => (int) $id);
+
+        return $ids->diff($validIds)->isEmpty();
     }
 
     public function recalculateAmount(): void

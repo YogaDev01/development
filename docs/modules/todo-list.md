@@ -20,7 +20,7 @@ dan apakah ikut hitungan total. Dipakai oleh:
 REALIZED = Finance, dll.) dihapus; pemakainya hanya `has-pending` dan `todo:remind`.
 
 `hasPending` = ada antrean berisi di luar `treasuryBatchSecond` — sama dengan
-`$hasAnyTask` di halaman. Ada 23 antrean di `TodoService::QUEUES`.
+`$hasAnyTask` di halaman. Ada 25 antrean di `TodoService::QUEUES` (termasuk `poVerified` dan `ticketRequestReview`; tabel di bawah belum memuat `ticketRequestReview`).
 
 ## Antrean per role
 
@@ -43,9 +43,16 @@ REALIZED = Finance, dll.) dihapus; pemakainya hanya `has-pending` dan `todo:remi
 | budgetingHeadCheck | superadmin, head | Budget Plan SUBMITTED |
 | budgetingVerify | superadmin, finance, finance_manager | Budget Plan CHECKED |
 | budgetingCeoApprove | superadmin, approver, guest | Budget Plan VERIFIED |
-| budgetingClosingDue | superadmin, manager | CLOSING & `closing_submitted_at` null |
+| budgetingClosingDue | superadmin, manager | CLOSING & `closing_submitted_at` null (tidak lagi dihasilkan otomatis sejak auto-closing Plan Finish dihapus; hanya menampilkan sisa data lama) |
 | budgetingRejected | superadmin, manager | Budget Plan REJECTED |
+
+Budget Plan bundled (`via_po_approval = 1`) dikecualikan dari `budgetingHeadCheck`,
+`budgetingVerify`, `budgetingCeoApprove`, `budgetingRejected` dan angka
+DRAFT/SUBMITTED/CHECKED/VERIFIED pada Summary Task (satu `where('via_po_approval', false)`
+di `TodoListController::queueQuery()` / `buildSummaryTable()`): tugasnya sudah muncul
+sebagai tugas PO, jadi tidak digandakan. `budgetingClosingDue` tetap memuatnya.
 | poSubmitted | superadmin, finance, finance_manager | PO SUBMITTED |
+| poVerified | superadmin, approver | PO VERIFIED (menunggu `ProjectController::approve()`; BP bundled ikut disetujui, tidak digandakan di `budgetingCeoApprove`). Section `#tl-po-verified`, key actionQueues `po-verified`, baris Summary Task "Approval Approver (PO VERIFIED)" |
 | invoiceVerify | superadmin, finance_manager, accounting | Invoice SUBMITTED |
 | invoiceApprove | superadmin, finance_manager | Invoice VERIFIED |
 | collectionWaitingInvoice | superadmin, collection | lihat di bawah |

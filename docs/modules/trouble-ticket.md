@@ -112,8 +112,9 @@ notifikasi tidak terkirim dua kali. Error keadaan = `ValidationException`
   dipakai riwayat tiket sebelum tanggal itu. Dari `REMOTE` teknisi mengirim form
   close atau membuat Plan Visit.
 - **Create Plan** (`POST {ticket}/plan`): teknisi mengisi tanggal plan visit
-  (site & pelaksana mengikuti tiket, tidak bisa diubah di modal) **dan
-  estimasi biaya** (20 Okt 2026, lihat "Biaya plan" di bawah). Status
+  (site & pelaksana mengikuti tiket, tidak bisa diubah di modal) — **jadwal
+  saja**; biaya diajukan terpisah lewat tab Pengajuan (lihat "Pengajuan Biaya"
+  di bawah). Status
   `PLAN`, tanpa approval. Tanggal hari ini **tidak** langsung naik ke `TRIP`
   (19 Okt 2026) — teknisi menggeser swipe Trip. **Membuat plan pertama**
   (dari `REMOTE`): teknisi tiket ini atau supervisor (`canCreatePlan()`).
@@ -174,72 +175,68 @@ notifikasi tidak terkirim dua kali. Error keadaan = `ValidationException`
   tiket DIPERBARUI mengikuti isian form ini. Tiket yang ditutup langsung
   dari `PLAN` memakai waktu pengiriman form sebagai awal Resolution. Status `PROGRESS_DONE`, `approval = PENDING`,
   `progress_done_at`/`resolved_at` diisi. **Tiket belum ditutup.**
-- **Biaya plan** (20 Okt 2026, bagian Biaya pada modal Create Plan — **wajib**):
-  satu **Budget Plan** berstatus `ACTIVE` sebagai sumber dana
-  (`trouble_tickets.budget_plan_id`) plus minimal satu baris item
-  (`trouble_ticket_plan_costs`). Daftar Budget Plan disaring ke **customer milik
-  user itu** — customer team ACTIVE tempat ia terdaftar (`teamCustomerIds()`)
-  **ditambah customer tiket itu sendiri**, supaya supervisor yang team-nya
-  memegang customer lain tetap bisa menganggarkan tiket yang jadi tanggung
-  jawabnya. Budget **cost center** (overhead/payroll) tidak ikut karena tidak
-  terikat customer.
-  Tiap baris memilih **sub-item budget plan** (`budget_detail_id` →
-  `budget_plan_details`), bukan COA lepas — karena rincian Cost Request
-  bersandar pada sub-item; `account_id`/`account_name` ikut tersalin dari
-  sub-item sebagai jejak baca. Uang **integer rupiah**; `total` tiap baris dan
-  `trouble_tickets.plan_cost_total` **dihitung ulang di server**
-  (`TroubleTicketWorkflow::siapkanBiayaPlan()`) — angka kiriman browser tidak
-  dipakai. Baris **diganti seluruhnya** tiap plan disimpan: satu tiket = satu
-  set estimasi yang berlaku, dan penyimpanan ulang selalu mengembalikan
-  `plan_budget_status` ke `PENDING`.
-  Totalnya ikut di metadata kejadian `plan_created`/`plan_updated`
-  (`budget_plan`, `cost_total`), tampil ringkas di panel tahap Plan dan rinci
-  di tab **Tiket**.
-- **Approval plan & biaya → Cost Request draft** (20 Okt 2026,
-  `POST {ticket}/plan/approve` & `{ticket}/plan/reject`): sesudah Create Plan,
-  tiket **tetap di tahap `PLAN`** dan `plan_budget_status = PENDING`. Di daftar
-  tiket, site-nya diberi tanda seru **kuning** ("Budget plan belum disetujui"),
-  terpisah dari tanda merah "Tanggal visit terlewat".
-  Pemutusnya = pengawas tiket + `TROUBLE_TICKET_APPROVE`
-  (`canApprovePlanBudget()`). **Reject** wajib beralasan, menulis
-  `plan_budget_notes`, dan tiket tetap di `PLAN` untuk direvisi (kejadian
-  `plan_budget_rejected`). **Approve** menulis `plan_approved_at`/`_by`
-  (kolom lama dari migrasi `2026_10_10_000200`), `plan_budget_status =
-  APPROVED`, `budget_request_id`, kejadian `plan_budget_approved` — **status
-  tiket tidak berubah**.
-  Cost Request yang dibuat (`buatDraftCostRequest()`) berstatus **`DRAFT`** dan
-  menempuh seluruh alur Cost Request seperti CR yang diketik manusia; tidak ada
-  tahap yang dilewati. Pemetaannya: jenis **Cash Advance**
-  (`BudgetRequest::cashAdvanceTypeIds()`), `applicant_id` = **supervisor yang
-  approve**, `beneficiary_id` = beneficiary **INTERNAL ACTIVE milik PIC teknisi
-  tiket** (tidak ada → approve ditolak dengan pesan), `budget_plan_id` dari
-  plan, `cluster_id` dari **project budget plan** (satu cluster aktif →
-  otomatis; lebih dari satu → supervisor memilih di modal Approve; budget cost
-  center → null), kode lewat `BudgetRequest::generateCode()`, rincian per baris
-  biaya (`budget_detail_id`, `account_id`, amount/qty/total), NOB per CR dan
-  per baris dihitung dengan rumus yang sama dengan form CR
-  (`BudgetConsumption::COMMITTED`, `effectiveCostSql()`,
-  `BudgetPlanDetail::remainingAmount()`). Qty baris biaya plan **bilangan bulat**
-  (20 Okt 2026) — satuannya trip/orang/hari/unit — jadi baris pindah apa adanya
-  ke `request_details` yang qty-nya juga bilangan bulat.
-  **Tidak ada pagu yang ditahan oleh plan itu sendiri**: konsumsi anggaran
-  terjadi lewat CR seperti biasa.
-  CR yang terbentuk otomatis diberi **lampiran global** berisi ringkasan detail
-  tiket dalam PNG (`App\Services\TicketDetailImage`, digambar dengan ekstensi
-  GD — tanpa paket baru): Identitas, Gangguan, Resolution, dan Biaya Plan,
-  **tanpa bagian SLA** (20 Okt 2026). Tanpa lampiran ini CR tipe Cash Advance
-  tidak bisa disimpan ulang Finance, karena lampiran global memang wajib untuk
-  tipe itu. Tata letaknya meniru modal Info (dua kolom, chip status, garis
-  antar baris). Teks memakai TTF: `resources/fonts/regular.ttf` &
-  `bold.ttf` lebih dulu, lalu font sistem yang lazim (DejaVu/Liberation di
-  Linux, Arial di Windows);
-  repo hanya memuat font IKON, jadi selama folder itu kosong dipakai font
-  bitmap bawaan GD (terbaca, bentuknya lebih sederhana). Kegagalan menggambar
-  dicatat ke log dan **tidak** membatalkan approve.
-  CR lama yang terbit sebelum aturan ini bisa dilampiri menyusul lewat
-  `php artisan tt:backfill-plan-attachment` (dry run; `--apply` untuk menulis,
-  `--replace` untuk mengganti lampiran `detail-tiket-*` buatan sendiri —
-  lampiran unggahan manusia tidak pernah disentuh).
+- **Pengajuan Biaya (pra-Cost Request)** (Okt 2026, tab **Pengajuan** pada halaman
+  tiket). Menggantikan isian biaya pada Create Plan: **Plan visit = jadwal saja**
+  (`createPlan()` tidak menulis atau menyentuh biaya maupun `plan_budget_*`;
+  menjadwalkan ulang tidak membatalkan biaya).
+  - **Siapa & kapan:** teknisi tiket (atau superadmin) boleh mengajukan di **semua
+    tahap kecuali `CLOSED`**; satu tiket boleh punya **banyak** pengajuan, termasuk
+    beberapa yang `SUBMITTED` bersamaan (`TroubleTicketWorkflow::canRequest()`).
+  - **Reviewer** (`canReviewRequest()`): user ber-role supervisor
+    (`AccessRoles::TROUBLE_TICKET_APPROVE`) dalam **team yang sama** dengan teknisi
+    tiket (leader atau anggota ACTIVE team ACTIVE), **bukan pembuat pengajuan**;
+    superadmin tetap boleh (juga tidak untuk pengajuan buatannya sendiri).
+  - **Tabel** (`2026_10_21_000100`, additive, `down()` menolak bila berisi data):
+    `trouble_ticket_requests` (header; `status` DRAFT/SUBMITTED/APPROVED/REJECTED/
+    CANCELLED, `revision`, `budget_request_id` **UNIQUE tanpa FK**, soft delete),
+    `trouble_ticket_request_items` (baris per revisi), `trouble_ticket_request_attachments`.
+    **Revisi = baris item BARU** (`revision + 1`); baris lama tidak diubah atau dihapus,
+    lampiran yang dipertahankan disalin sebagai baris baru (path sama), berkas tidak
+    pernah dihapus. Uang integer rupiah; `total` = harga × qty dihitung server.
+  - **Isian** (mengikuti form CR): Jenis (semua `request_type`) → Budget Plan ACTIVE
+    (teknisi disaring ke customer team-nya: `abortIfBudgetPlanLuarCustomer()`) →
+    Project (= `cluster_id` di Cost Request; wajib untuk budget proyek, otomatis bila satu; ditampilkan `[kode] nama`; daftar = cluster pada milestone project (`project_details.cluster_id`) milik Budget Plan, `BudgetPlan::projectClusters()`, sama dengan form CR) → Beneficiary (Cash
+    Advance: beneficiary INTERNAL ACTIVE milik PIC teknisi, otomatis; jenis lain:
+    dropdown beneficiary ACTIVE) → Deskripsi → baris (sub-item budget plan,
+    deskripsi, harga, qty bulat) → lampiran. **Lampiran:** Cash Advance tidak wajib;
+    jenis lain **wajib per baris**.
+  - **Tanpa informasi budget** di TT: tidak ada sisa pagu, peringatan NOB, atau kuota
+    Cash Advance. Kuota CA tetap ditegakkan saat CR di-submit di modul Cost Request.
+  - **Alur:** `saveRequest` (Draft atau langsung `submit`) → `submitRequest` →
+    reviewer `approveRequest` / `rejectRequest` (alasan wajib; teknisi merevisi lalu
+    mengajukan lagi) / `cancelRequest` (pembuat atau reviewer, alasan wajib). Semua
+    transisi: transaksi + kunci baris tiket lalu baris pengajuan + cek status asal.
+  - **Supervisor boleh mengubah isi** sebelum approve (`editRequestByReviewer()`):
+    revisi baru (`created_by` = supervisor), status tetap `SUBMITTED`, kejadian
+    `request_edited` mencatat baris ditambah/dihapus/diubah dan total lama → baru
+    (chat & tab Log), pemohon dinotifikasi.
+  - **Approve → Cost Request `DRAFT`** (`buatDraftCostRequest()`): jenis & beneficiary
+    sesuai pilihan, `applicant_id` = **supervisor yang approve**, cluster & budget plan
+    dari pengajuan, deskripsi/notes memuat **nomor tiket** (tidak ada nomor pengajuan
+    sendiri), kode lewat `BudgetRequest::generateCode()`, rincian dari revisi terakhir,
+    **NOB lewat `BudgetPlan::isNob()/nobOverage()`** — satu sumber rumus dengan form CR
+    (tidak ada salinan di TT), lampiran baris → "Lampiran Item" CR (berkas disalin),
+    lampiran umum → lampiran global, ditambah PNG ringkasan tiket
+    (`TicketDetailImage`, kegagalan menggambar tidak membatalkan approve). Dua approve
+    bersamaan tidak membuat CR ganda (kunci + UNIQUE). Penolakan/pembatalan CR di modul
+    Cost Request tidak mengubah pengajuan (status CR ditampilkan live).
+  - **Kejadian:** `request_submitted/edited/approved/rejected/cancelled` (chat & Log,
+    dengan salinan baris di metadata) dan `cost_request_paid` yang kini **unik per CR**
+    (`tulisKejadianDibayar()` mencocokkan kode CR, bukan per tiket).
+  - **Pembayaran & settlement per CR:** `recordCostRequestPaid()` mencari tiket lewat
+    `TroubleTicket::forCostRequest()` (pengajuan **atau** `trouble_tickets.budget_request_id`
+    data lama); `syncCostRequestPaid()` memeriksa semua CR tiket; tombol Settlement satu
+    per CR yang berhak (`?settle=<id CR>` memilih CR pada modal). `BudgetRequestController`
+    (`isTicketTechnicianOfCr()`, `crBerasalDariTiket()`) memakai scope yang sama.
+  - **Todo List:** antrean `ticketRequestReview` ("Trouble Ticket — Review Pengajuan",
+    role supervisor/superadmin, scope team teknisi, bukan buatan sendiri) lewat
+    `TodoService::QUEUES`; tautan membuka tiket dengan tab Pengajuan (`?tab=pengajuan`).
+  - **Notifikasi** lewat `NotifyService` (queued): reviewer saat diajukan; pemohon saat
+    diubah/disetujui/ditolak.
+  - **Data lama (tanpa backfill):** tiket dengan `trouble_ticket_plan_costs`/`plan_budget_*`/
+    `budget_request_id` tetap terbaca read-only pada bagian "Biaya Plan (lama)"; CR lama,
+    event dibayar, dan settlement-nya tetap berfungsi. Route `plan/approve` & `plan/reject`
+    dipertahankan tetapi hanya mengembalikan pesan "Biaya kini lewat tab Pengajuan".
 - **Settlement dari halaman tiket** (20 Okt 2026): begitu CR tiket berstatus
   `PAID`/`SETTLE_REJECTED`, panel tahap memunculkan **Submit Settlement**.
   Modalnya meniru layar Settlement per Item (Description Settle, Qty, Request,

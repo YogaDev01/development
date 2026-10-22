@@ -525,3 +525,131 @@ Handling uncertainty:
 - If code comments contradict code, **the code is the current behavior**;
   report the contradiction, don't "fix" it silently.
 - Never fabricate documentation, statuses, roles or flows.
+
+---
+
+## 21. AI roles and skills
+
+Sections 1–20 are the rulebook for every role. This section only adds how roles and
+skills are organized. Where this section and §1–20 differ, §1–20 win.
+
+### 21.1 Definitions
+
+- **Role** — responsibility, authority and working behavior (Planner, Executor, Reviewer,
+  Evaluator, Refinement).
+- **Skill** — specialized procedure/expertise for a type of work; supports a role, never
+  changes its scope.
+- **Tool** — ability to read, edit, run or test.
+- **Task instruction** — the work requested by the IT team.
+
+Priority when instructions conflict: safety/production rules (§4, §20) > explicit user
+instruction > active role > skill. Report material conflicts instead of silently choosing.
+
+### 21.2 Roles and how to invoke them
+
+Canonical definitions: `.claude/roles/{planner,executor,reviewer,evaluator,refinement}.md`.
+Custom subagents with the same names are in `.claude/agents/*.md`; each one only sets tool
+permissions and tells the subagent to read its role file (single source, no duplicated text).
+Markdown files do not activate a role by themselves. Ways to activate:
+
+- Ask for it by name, e.g. "use the planner agent to …" or `@planner` (subagent via the Agent
+  tool; the agent list is loaded at session start — restart the session or use `/agents` if a
+  newly added file is not listed).
+- Run the whole session as that role: `claude --agent <name>`.
+- Or ask the main session to "read `.claude/roles/<role>.md` and act as that role".
+
+If no role is named, the main session works as a general assistant under §1–20 and states
+which role (if any) it is acting as. It must not claim that roles which did not run have run.
+Do not run all five roles for every task; use the roles the task needs, in this usual order:
+Planner → Executor → Reviewer → Evaluator. Refinement replaces Planner+Executor for small,
+well-understood fixes (not for HIGH/CRITICAL changes without approval).
+
+| Role | Edits code | Main output |
+|---|---|---|
+| Planner | no | plan, risks, acceptance criteria |
+| Executor | yes (approved scope) | changes + report + "Pesan untuk Reviewer" |
+| Reviewer | no | severity-ranked findings, verdict |
+| Evaluator | no | per-criterion verdict with evidence |
+| Refinement | yes (focused) | small change + concise report |
+
+All roles: reply in Bahasa Indonesia; list new/changed files ("File baru" / "File diubah");
+never claim tests passed unless actually run (and run only under §4.3).
+
+### 21.3 Skill selection policy
+
+Project skills live in `.claude/skills/<name>/SKILL.md`:
+
+| Skill | Use for |
+|---|---|
+| `tesys-frontend-ui` | Blade, CSS/JS, tables, modals, forms, responsive/mobile, accessibility |
+| `tesys-laravel-development` | routes, controllers, models, services, validation, targeted performance/quality |
+| `tesys-database-safety` | migrations, schema, queries, transactions, financial data integrity |
+| `tesys-testing-and-debugging` | root-cause analysis, writing tests, the §4.3 test gate |
+| `tesys-security-review` | authn/authz, uploads, tokens, sensitive data |
+
+Procedure: (1) understand the task; (2) identify the technical domain; (3) check skill
+descriptions for applicability; (4) read the applicable `SKILL.md` before specialized work;
+(5) use the minimum combination; (6) follow the skill's constraints; (7) stay within the active
+role's scope; (8) verify with appropriate tools. Do not load every skill for every task; keep it
+light for trivial tasks. If no skill fits, follow repository conventions — do not invent one.
+
+Examples (not rigid): UI styling → frontend; business logic → laravel; migration → database
+(+ laravel); unclear bug → testing-and-debugging + domain skill; mobile layout → frontend;
+permission change → laravel + security; performance → testing-and-debugging + laravel/database;
+independent review → Reviewer + security/domain skill; acceptance → Evaluator + testing skill.
+
+### 21.4 Mode workflow
+
+Sesi utama yang **mengoordinasikan**: memilih mode, memanggil subagent lewat Agent tool,
+menyerahkan konteks dan bukti (diff, `git status`, output perintah) kepada agent read-only
+(Planner, Reviewer, Evaluator tidak punya Bash), dan melaporkan dengan jujur agent mana yang
+**benar-benar dipanggil**. Kelima role adalah subagent nyata di `.claude/agents/`; file di
+`.claude/roles/` hanyalah definisi kanoniknya. Jangan mengklaim role sudah berjalan jika tidak
+dipanggil.
+
+**Mode A — Quick Refinement** (CSS, spasing, teks, responsif, bug sederhana; LOW):
+1. Pahami permintaan dan baca file relevan.
+2. Implementasikan perubahan dengan scope minimal (sesi utama atau Refinement).
+3. Verifikasi ringan yang aman: `php -l`, pemeriksaan sintaks Blade/JS, baca ulang `git diff`.
+   Tanpa test database untuk perubahan presentasi.
+4. Laporkan file berubah, hasil verifikasi, risiko tersisa.
+Tidak memanggil kelima agent otomatis. Jika ternyata HIGH/CRITICAL (§20), berhenti dan naikkan ke Mode B.
+
+**Mode B — Full Workflow** (fitur baru, lintas modul, aturan bisnis keuangan, keamanan, database):
+1. Planner: rencana, scope, risiko, acceptance criteria.
+2. Executor: implementasi sesuai rencana yang disetujui.
+3. Reviewer: periksa diff aktual (sesi utama menyuplai `git diff`).
+4. Refinement: perbaiki temuan valid, bila ada.
+5. Reviewer: periksa ulang bagian yang diperbaiki.
+6. Evaluator: nilai acceptance criteria berdasarkan bukti.
+Langkah boleh dilewati hanya dengan alasan jelas yang dinyatakan di laporan (mis. tidak ada temuan
+→ langkah 4–5 dilewati).
+
+### 21.5 Menjalankan test dengan aman (anti-menggantung)
+
+Berlaku di atas §4.3 (gerbang database); tidak melonggarkannya. Test hanya atas permintaan
+pengguna.
+- **Prioritas verifikasi** tanpa database: `php -l`, pemeriksaan statis, `git diff`, test terisolasi
+  tanpa DB. Jangan menjalankan seluruh suite untuk perubahan kecil; mulai dari `--filter` terpilih.
+- Test ber-`RefreshDatabase` tidak dijalankan sebelum target efektif dipastikan aman (§4.3).
+  `DB_DATABASE` di `phpunit.xml` bukan bukti tunggal. Jangan mengganti `RefreshDatabase` dengan
+  mekanisme lain hanya agar test lolos.
+- Jika test butuh database tetapi target belum aman, laporkan **BLOCKED / NOT RUN** (bukan gagal,
+  bukan lulus).
+- Dilarang otomatis: `migrate*`, `db:wipe`, `db:seed`, `config:cache`, `optimize`, `composer test`,
+  `composer setup`.
+- **Sebelum menjalankan**: tulis command lengkap, risiko, dan dependensi DB-nya.
+- **Saat berjalan**: jalankan di background dengan output ke file log
+  (scratchpad/`storage/logs` bila aman), mis. `... > <log> 2>&1`; pantau dengan membaca log.
+  Jangan memakai pipeline `| tail -N` yang menyembunyikan progres sampai proses selesai.
+- **Batas waktu**: tetapkan di awal (acuan: satu `--filter` ≤ 2 menit, grup kecil ≤ 5 menit); jangan
+  mengasumsikan timeout tool/wrapper menghentikan child process (`php.exe` anak bisa tertinggal
+  meski task berstatus killed).
+- **Jika batas tercapai**: periksa status task, proses induk-anak, dan baris log terakhir. Jangan
+  menjalankan ulang sebelum proses sebelumnya dipastikan berhenti. Hentikan hanya proses yang
+  pasti milik test itu (PID dan command line cocok dengan command yang dijalankan); jangan
+  menghentikan MySQL atau proses PHP lain (mis. server Laragon). Jangan mengklaim child berhenti
+  hanya karena wrapper berstatus killed — verifikasi daftar proses.
+- **Tanpa retry otomatis** untuk test yang timeout atau gagal saat migrasi; berhenti dan lapor.
+- Laporan test memuat: command, durasi, status proses (selesai/ditinggalkan/dihentikan), output
+  relevan, dan apakah test benar-benar selesai.

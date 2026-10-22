@@ -716,7 +716,7 @@ class TodoListAuditTest extends TestCase
     public function test_todo_list_tidak_lagi_memuat_antrean_milestone(): void
     {
         $this->assertArrayNotHasKey('milestoneOverdue', \App\Services\TodoService::QUEUES);
-        $this->assertCount(23, \App\Services\TodoService::QUEUES);
+        $this->assertCount(25, \App\Services\TodoService::QUEUES);
     }
 
     public function test_assignment_tidak_pernah_ikut_export(): void

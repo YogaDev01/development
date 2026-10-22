@@ -34,10 +34,10 @@ return [
         [
             'version' => '3.1.0',
             'date'    => '2026-10-22',
-            'title'   => 'Tampilan Desktop Lebih Luas & Tabel Data Berlapis',
+            'title'   => 'Tampilan Desktop Lebih Luas, Pengajuan Biaya Tiket & Budget Plan di PO',
             'summary' => 'Aplikasi di desktop kini tampil setara zoom 80% agar lebih luas, tabel data didesain ulang '
-                       . 'berlapis (toolbar, header, baris, footer), alur status lebih bersih tanpa kartu, dan modal '
-                       . 'detail memenuhi tinggi layar.',
+                       . 'berlapis, dan modal detail memenuhi tinggi layar. Trouble Ticket mendapat tab Pengajuan biaya '
+                       . '(pra-Cost Request), dan Budget Plan kini bisa diisi langsung di form PO.',
             'sections' => [
                 [
                     'type'  => 'added',
@@ -45,6 +45,10 @@ return [
                     'items' => [
                         'Baris tabel yang dicentang diberi penanda aksen di tepi kiri, dan kolom pertama tabel menempel saat tabel digulir mendatar.',
                         'Footer tabel (jumlah data dan pagination) tampil dalam satu panel tersendiri.',
+                        'Trouble Ticket: tab Pengajuan untuk mengajukan biaya lapangan (banyak pengajuan per tiket, revisi, lampiran per baris). Supervisor team teknisi me-review, boleh mengubah isi, lalu menyetujui - pengajuan yang disetujui otomatis menjadi Cost Request berstatus Draft.',
+                        'Todo List: antrean "Trouble Ticket - Review Pengajuan" untuk supervisor dan "PO - Approval Approver" untuk PO berstatus Verified.',
+                        'Budget Plan bundled: Head/superadmin dapat mengisi satu Budget Plan langsung di form PO; statusnya ikut approval PO, dan bisa dihapus lewat Edit PO selama masih Draft.',
+                        'Panduan: topik Trouble Ticket di aplikasi Operations dan keterangan Budget Plan di form PO.',
                     ],
                 ],
                 [
@@ -55,6 +59,9 @@ return [
                         'Tabel data sejajar dengan tepi halaman, label "Cari :" dan judul "Daftar ..." dihapus karena sudah ada di toolbar dan topbar.',
                         'Alur status (stepper) tampil tanpa kartu putih, dengan node bulat dan garis tipis; jaraknya ke toolbar pencarian dirapatkan.',
                         'Modal ditempatkan di tengah layar; modal detail Purchase Order, Budgeting, dan Cost Request memenuhi tinggi layar dan sedikit lebih lebar.',
+                        'Trouble Ticket: Create Plan kini hanya untuk jadwal kunjungan; biaya diajukan lewat tab Pengajuan. Pembayaran dan settlement dicatat per Cost Request, dan data biaya lama tetap terbaca.',
+                        'Plan Finish dan auto-closing Budget Plan berbasis tanggal dihapus. Budget Plan milik PO kini otomatis Closed saat PO ditutup; Budget Plan non-PO tetap ditutup manual.',
+                        'Budget Plan bundled tidak lagi digandakan di Todo List dan Summary Task karena sudah muncul sebagai tugas PO.',
                     ],
                 ],
                 [

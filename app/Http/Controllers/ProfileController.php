@@ -135,7 +135,7 @@ class ProfileController extends Controller
             'bp-head', 'bp-verify', 'bp-ceo', 'bp-closing-due', 'bp-rejected',
         ],
         'Purchase Order' => [
-            'po-submitted', 'collection', 'invoice-verify', 'invoice-approve',
+            'po-submitted', 'po-verified', 'collection', 'invoice-verify', 'invoice-approve',
         ],
     ];
 

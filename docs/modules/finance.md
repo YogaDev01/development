@@ -2,7 +2,7 @@
 
 | Sub-module | Controller | Menu key(s) | Notes |
 |-----------|------------|-------------|-------|
-| Budget Plan | `BudgetPlanController` | `finance-budgeting`, `project-budgeting` | consumption via `BudgetConsumption`; auto-closing command |
+| Budget Plan | `BudgetPlanController` | `finance-budgeting`, `project-budgeting` | consumption via `BudgetConsumption`; tanpa Plan Finish/auto-closing — BP project ditutup otomatis saat PO ditutup, BP lain ditutup manual |
 | Cost Request | `BudgetRequestController` (+ `HandlesCrSettlement`, `BuildsCrWorklist`) | `finance-cost-request`, `project-cost-request` | 3 lazy tabs: Cash Advance / Cost Payment / Database; Excel export + import templates |
 | Invoice & Cash Receipt | `InvoiceCashReceiptController` | `invoice-cash-receipt` | calc in `InvoiceCalculationService`; comments; timeline (`InvoiceTimeline`) |
 | Delivery Note | `DeliveryNoteController` | `delivery-note` | APPROVED invoice → SENT |

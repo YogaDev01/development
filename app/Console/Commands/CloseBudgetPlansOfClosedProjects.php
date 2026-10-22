@@ -7,9 +7,10 @@ use Illuminate\Console\Command;
 
 /**
  * Tutup (ACTIVE -> CLOSED) Budget Plan yang terhubung ke PO berstatus CLOSED.
- * Jalur normal hanya menutup budget saat PO PAID (-> CLOSING); PO yang ditutup
- * lewat jalur lain meninggalkan budget ACTIVE yatim. Command ini membereskan
- * data lama itu, mengikuti BudgetPlanController::financeClose() (tanpa notifikasi).
+ * Jalur normal menutup budget (-> CLOSED) saat PO ditutup; PO berstatus PAID tidak
+ * memicu apa pun. PO yang ditutup lewat jalur lain bisa meninggalkan budget ACTIVE
+ * yatim. Command ini membereskan data lama itu, mengikuti
+ * BudgetPlanController::financeClose() (tanpa notifikasi).
  *
  * Tanpa --apply hanya menampilkan daftar (dry run). Budget non-ACTIVE
  * (CLOSING, CLOSED, dll.) tidak disentuh.

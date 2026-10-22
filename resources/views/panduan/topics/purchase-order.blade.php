@@ -45,6 +45,26 @@
     <li>Setelah semua BAST terverifikasi, proyek masuk <code>CLOSING</code> lalu <code>CLOSED</code>.</li>
 </ol>
 
+<h2>Budget dari form PO (opsional)</h2>
+<p>
+    Saat membuat atau mengedit PO yang masih <strong>DRAFT</strong>, Head dapat mengisi satu
+    <strong>Budget</strong> langsung di form PO (deskripsi dan detail biaya; detail bisa diisi massal lewat <strong>Download Template</strong> dan <strong>Import Excel</strong>).
+    Budget ini <strong>tidak punya approval sendiri</strong>: ia ikut alur PO &mdash; saat PO di-submit
+    budget menjadi <code>CHECKED</code>, saat Finance verify menjadi <code>VERIFIED</code>, dan saat
+    Approver approve menjadi <code>ACTIVE</code> (juga untuk Early Start), sehingga baru bisa dipakai
+    Cost Request setelah PO di-approve. Bila PO dikembalikan untuk revisi, budget ikut kembali ke
+    <code>DRAFT</code>. Saat PO ditutup (<code>CLOSED</code>), budget yang masih <code>ACTIVE</code>
+    atau <code>CLOSING</code> otomatis menjadi <code>CLOSED</code>.
+</p>
+<ul>
+    <li>PO Early Start yang diedit kembali ke DRAFT: budget yang sudah <code>ACTIVE</code> tetap <code>ACTIVE</code> dan read-only; submit, verify, dan approve ulang PO tidak menggerakkannya lagi. PO yang budget-nya sudah berjalan (bukan DRAFT) tidak dapat dihapus.</li>
+    <li>Kosongkan bagian Budget bila PO tidak membawa budget &mdash; PO berjalan seperti biasa.</li>
+    <li>Detail budget hanya bisa diubah lewat <strong>Edit PO</strong> selagi berstatus DRAFT; selebihnya tampil read-only.</li>
+    <li>Budget yang salah dibuat dapat dihapus lewat tombol <strong>Hapus Budget dari PO ini</strong> di Edit PO, selama PO dan budget masih <code>DRAFT</code>. Penghapusan permanen (beserta detail, log, dan lampiran) dan tidak bisa dibatalkan; budget yang sudah dipakai dokumen lain tidak dapat dihapus.</li>
+    <li>PO berstatus <code>VERIFIED</code> muncul di Todo List Approver sebagai &ldquo;PO &mdash; Approval Approver&rdquo;; budget yang ikut PO disetujui bersamanya.</li>
+    <li>Budget tambahan tetap dibuat dari menu <strong>Budget Plan</strong> (alur approval Budget Plan biasa).</li>
+</ul>
+
 <h2>Fitur pendukung</h2>
 <ul>
     <li><strong>Import Excel</strong> untuk Project + Milestone dan untuk daftar No. PO.</li>

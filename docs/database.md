@@ -46,6 +46,21 @@ converted in place.
 
 ## Audit fields
 
+- `budget_plans.via_po_approval` (boolean, default 0; migrasi
+  `2026_10_22_000100`): 1 = Budget Plan dibuat dari form PO dan statusnya
+  digerakkan approval PO. Aditif, tanpa backfill; migrasi belum dijalankan
+  (menunggu manusia pada target terverifikasi). Urutan deploy: migrasi dulu,
+  baru upload kode (kode memakai kolom ini tanpa guard; lihat `DEPLOYMENT.md` §2).
+- `budget_plans.plan_finish` (date, nullable; migrasi `2026_09_28_000001`) tidak lagi diisi
+  maupun ditampilkan sejak Plan Finish & auto-closing dihapus (22 Okt 2026). Kolom
+  sengaja dibiarkan, tanpa migrasi/backfill; nilai lama tetap tersimpan dan tidak ditimpa
+  saat BP diedit.
+- Hapus BP bundled lewat Edit PO adalah hard delete: `budget_plan_details` dan
+  `budget_plan_logs` ikut terhapus (FK `cascadeOnDelete`), `budget_plan_attachments` juga
+  cascade (berkas `secure` dihapus setelah commit), `project_monitoring_logs.budget_plan_id`
+  dan `payroll_runs.budget_plan_id` menjadi NULL (`nullOnDelete`), sedangkan `budget_request`
+  dan `trouble_ticket_requests` RESTRICT (penghapusan ditolak). `trouble_tickets.budget_plan_id`
+  tanpa FK, jadi dicek eksplisit di kode.
 - History tables: `request_status_logs`, `budget_plan_logs`, `project_logs`,
   `delivery_note_logs`, `forecast_logs`, `project_monitoring_logs`.
 - Per-document actors/timestamps: e.g. `submitted_at`, `approved_at`,

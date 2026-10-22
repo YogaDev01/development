@@ -120,20 +120,6 @@
                                 @enderror
                             </div>
 
-                            <!-- PLAN FINISH -->
-                            <div class="form-group">
-                                <label class="font-weight-600">
-                                    Plan Finish <span class="text-danger">*</span>
-                                </label>
-                                <input type="date" name="plan_finish"
-                                       class="form-control @error('plan_finish') is-invalid @enderror"
-                                       value="{{ old('plan_finish', $budgetPlan->plan_finish?->format('Y-m-d')) }}" required>
-                                @error('plan_finish')
-                                    <small class="text-danger d-block">{{ $message }}</small>
-                                @enderror
-                                <small class="text-muted">Tanggal rencana periode budget selesai. Setelah tanggal ini terlewati, budget otomatis masuk tahap Closing.</small>
-                            </div>
-
                             <!-- NOTES -->
                             <div class="form-group mb-0">
                                 <label class="font-weight-600">Notes</label>

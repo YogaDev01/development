@@ -70,9 +70,15 @@ class TodoService
         'budgetingRejected'       => ['roles' => ['superadmin', 'manager'], 'status' => ['REJECTED']],
         // Purchase Order, Invoice, Collection
         'poSubmitted'             => ['roles' => ['superadmin', 'finance', 'finance_manager'], 'status' => ['SUBMITTED']],
-        'invoiceVerify'           => ['roles' => ['superadmin', 'finance_manager', 'accounting'], 'status' => ['SUBMITTED']],
+        // PO VERIFIED menunggu keputusan Approver (ProjectController::approve()); BP bundled ikut disetujui.
+        'poVerified'              => ['roles' => ['superadmin', 'approver'], 'status' => ['VERIFIED']],
+        'invoiceVerify'          => ['roles' => ['superadmin', 'finance_manager', 'accounting'], 'status' => ['SUBMITTED']],
         'invoiceApprove'          => ['roles' => ['superadmin', 'finance_manager'], 'status' => ['VERIFIED']],
         'collectionWaitingInvoice' => ['roles' => ['superadmin', 'collection']],
+        // Trouble Ticket — pengajuan biaya (pra-Cost Request) menunggu review. 'status' di sini
+        // = status PENGAJUAN (trouble_ticket_requests), bukan status tiket. Scope: supervisor
+        // team yang sama dengan teknisi tiket, bukan pembuatnya (queueQuery()).
+        'ticketRequestReview'     => ['roles' => ['superadmin', 'supervisor'], 'status' => ['SUBMITTED']],
     ];
 
     /** Role penangan sebuah antrean. */

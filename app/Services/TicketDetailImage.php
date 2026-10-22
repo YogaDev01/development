@@ -13,7 +13,7 @@ use Illuminate\Support\Collection;
  * yang untuk tipe Cash Advance memang wajib ada.
  *
  * Tata letaknya meniru modal Info tiket — kepala berisi nomor tiket & chip,
- * dua kolom (kiri Identitas/Gangguan/Resolution, kanan Biaya Plan), label
+ * dua kolom (kiri Identitas/Gangguan/Resolution, kanan Rincian Biaya Pengajuan), label
  * abu-abu, garis tipis antar baris — TANPA bagian SLA (keputusan 20 Okt
  * 2026): SLA ukuran kerja internal, bukan keterangan pengeluaran.
  *
@@ -43,7 +43,7 @@ class TicketDetailImage
     private ?string $fontTebal = null;
 
     /**
-     * @param  Collection<int, \App\Models\TroubleTicketPlanCost>  $planCosts
+     * @param  Collection<int, \App\Models\TroubleTicketRequestItem>  $planCosts  baris biaya pengajuan
      * @return string Isi berkas PNG
      */
     public static function render(TroubleTicket $ticket, Collection $planCosts): string
@@ -139,14 +139,14 @@ class TicketDetailImage
         return $this->baris(self::MARGIN, $y, 'Date closed', $t->closed_at?->format('d M Y') ?: '-');
     }
 
-    /** @param  Collection<int, \App\Models\TroubleTicketPlanCost>  $rows */
+    /** @param  Collection<int, \App\Models\TroubleTicketRequestItem>  $rows */
     private function kolomKanan(TroubleTicket $t, Collection $rows, int $y): int
     {
         $x = self::KANAN;
         $kananTepi = self::LEBAR - self::MARGIN;
 
-        $y = $this->judul($x, $y, 'BIAYA PLAN');
-        $y = $this->baris($x, $y, 'Budget Plan', $t->budgetPlan?->code ?? '-');
+        $y = $this->judul($x, $y, 'RINCIAN BIAYA PENGAJUAN');
+        $y = $this->baris($x, $y, 'Budget Plan', $rows->first()?->request?->budgetPlan?->code ?? $t->budgetPlan?->code ?? '-');
         $y += 8;
 
         /* Kolom tabel: COA, Description, lalu tiga kolom angka rata kanan.
@@ -178,8 +178,8 @@ class TicketDetailImage
 
         imageline($this->img, $x, $y, $kananTepi, $y, $this->warna['garis']);
         $y += 14;
-        $this->kanan($kTotal - 130, $y, 'TOTAL ESTIMASI BIAYA', 'label', 10);
-        $this->kanan($kTotal, $y, 'Rp ' . number_format((int) $t->plan_cost_total, 0, ',', '.'), 'teks', 12, true);
+        $this->kanan($kTotal - 130, $y, 'TOTAL PENGAJUAN BIAYA', 'label', 10);
+        $this->kanan($kTotal, $y, 'Rp ' . number_format((int) $rows->sum('total'), 0, ',', '.'), 'teks', 12, true);
 
         return $y + self::BARIS;
     }

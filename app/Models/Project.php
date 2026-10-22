@@ -254,10 +254,6 @@ class Project extends Model
             default              => ['invoice_paid', 'Semua No. PO sudah Paid (otomatis).'],
         };
         $this->addLog($dari, $target, $aksi, $catatan);
-
-        if ($target === 'PAID') {
-            $this->autoCloseBudgetPlans();
-        }
     }
 
     /**
@@ -296,20 +292,6 @@ class Project extends Model
         }
 
         return $work === 'DONE' ? 'PROGRESS_DONE' : 'ACTIVE';
-    }
-
-    /**
-     * Begitu PO ini PAID, Budget Plan (project-funded) yang masih ACTIVE
-     * auto-transisi ke CLOSING — bukan langsung CLOSED, supaya tetap ada
-     * tahap konfirmasi akhir Finance (BudgetPlanController::verifyClosing()),
-     * konsisten dengan state CLOSING yang sudah ada. Lihat dokumen Minor 2.3.
-     */
-    private function autoCloseBudgetPlans(): void
-    {
-        foreach ($this->budgetPlans()->where('status', 'ACTIVE')->get() as $bp) {
-            $bp->update(['status' => 'CLOSING']);
-            $bp->addLog('ACTIVE', 'CLOSING', 'auto_closing', 'PO sudah PAID — Budget Plan otomatis masuk tahap Closing.');
-        }
     }
 
     /**
@@ -418,6 +400,12 @@ class Project extends Model
     public function budgetPlans()
     {
         return $this->hasMany(BudgetPlan::class, 'project_id');
+    }
+
+    /** Budget Plan yang dibuat dari form PO (status ikut approval PO). */
+    public function bundledBudgetPlans()
+    {
+        return $this->budgetPlans()->where('via_po_approval', true);
     }
 
     public function costRegisters()

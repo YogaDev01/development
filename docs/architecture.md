@@ -34,7 +34,7 @@ Global web middleware: `SecurityHeaders`, `EnsureUserActive` (`bootstrap/app.php
 | `app/Services` | `NotifyService`, `RoleDirectory`, `FileAccess`, `ClosingService`, `CashFlowService`, `InvoiceCalculationService`, `TodoService`, `TroubleTicketWorkflow` |
 | `app/Support` | `AccessRoles`, `WorkflowStatus`, `BudgetConsumption`, `DocumentSequence`, `InvoiceTimeline`, `Navigation`, `AssetVersion`, `Terbilang` |
 | `app/Notifications` | one queued notification + a WhatsApp (Fonnte) channel |
-| `app/Console/Commands` | `forecast:auto-close`, `budget-plan:auto-closing`, `todo:remind`, `queue:health`, `CheckUserRoles`, `MoveLegacyAttachments`, `ResyncProjectPoValue` |
+| `app/Console/Commands` | `forecast:auto-close`, `todo:remind`, `queue:health`, `CheckUserRoles`, `MoveLegacyAttachments`, `ResyncProjectPoValue` |
 | `app/Policies`, `app/Http/Requests`, `app/Jobs`, `app/Events`, `app/Listeners` | **Do not exist** |
 | `config/navigation.php` | sidebar + role menu-access definition (via `App\Support\Navigation`) |
 | `config/changelog.php`, `config/panduan.php` | in-app What's New + user guide |

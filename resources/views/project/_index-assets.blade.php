@@ -663,19 +663,46 @@ $(function () {
     $(document).on('click', '.btn-verify-po', function () {
         var id   = $(this).data('id');
         var name = $(this).data('name');
-        Swal.fire({
-            title: 'Verifikasi PO?',
-            text: 'PO "' + name + '" akan diteruskan ke Approver.',
-            icon: 'question', showCancelButton: true,
-            confirmButtonColor: WARNA_SETUJU, cancelButtonColor: WARNA_BATAL,
-            confirmButtonText: 'Ya, Verifikasi', cancelButtonText: 'Batal'
-        }).then(function (r) {
-            if (!r.isConfirmed) return;
-            var $f = $('<form method="POST" target="_blank" action="/project/' + id + '/verify"></form>')
-                .append('<input type="hidden" name="_token" value="{{ csrf_token() }}">');
-            $('body').append($f);
-            $f.trigger('submit');
-        });
+
+        // Ringkasan Budget bundled (sumber sama dengan modal Approve: detail-json).
+        // Dibangun sebagai elemen DOM + text node, bukan string HTML dari data.
+        function bukaDialog(bundled) {
+            var opsi = {
+                title: 'Verifikasi PO?',
+                icon: 'question', showCancelButton: true,
+                confirmButtonColor: WARNA_SETUJU, cancelButtonColor: WARNA_BATAL,
+                confirmButtonText: 'Ya, Verifikasi', cancelButtonText: 'Batal'
+            };
+            if (bundled.length) {
+                var box = document.createElement('div');
+                box.appendChild(document.createTextNode('PO "' + name + '" akan diteruskan ke Approver. Budget berikut ikut diverifikasi:'));
+                bundled.forEach(function (b) {
+                    var baris = document.createElement('div');
+                    baris.className = 'mt-2 text-left';
+                    var kode = document.createElement('strong');
+                    kode.textContent = b.code;
+                    baris.appendChild(kode);
+                    baris.appendChild(document.createTextNode(
+                        ' — ' + b.description + ' · Rp ' + b.amount_formatted + ' · ' + (b.details || []).length + ' baris'
+                    ));
+                    box.appendChild(baris);
+                });
+                opsi.html = box;
+            } else {
+                opsi.text = 'PO "' + name + '" akan diteruskan ke Approver.';
+            }
+            Swal.fire(opsi).then(function (r) {
+                if (!r.isConfirmed) return;
+                var $f = $('<form method="POST" target="_blank" action="/project/' + id + '/verify"></form>')
+                    .append('<input type="hidden" name="_token" value="{{ csrf_token() }}">');
+                $('body').append($f);
+                $f.trigger('submit');
+            });
+        }
+
+        $.getJSON('/project/' + id + '/detail-json').done(function (d) {
+            bukaDialog((d.budget_plans || []).filter(function (b) { return b.via_po_approval; }));
+        }).fail(function () { bukaDialog([]); });
     });
 
     /*
@@ -690,6 +717,21 @@ $(function () {
         $('#frmApprovePo').attr('action', '/project/' + id + '/approve');
         $('#frmApprovePo')[0].reset();
         $('#approveDecision').val('APPROVE');
+
+        // Ringkasan Budget yang dibuat dari form PO: ikut ACTIVE bersama PO ini.
+        var $bud = $('#approvePoBudget').hide().empty();
+        $.getJSON('/project/' + id + '/detail-json', function (d) {
+            // Abaikan respons basi bila modal sudah beralih ke PO lain.
+            if ($('#frmApprovePo').attr('action') !== '/project/' + id + '/approve') return;
+            (d.budget_plans || []).filter(function (b) { return b.via_po_approval; }).forEach(function (b) {
+                $('<div></div>').append($('<strong></strong>').text(b.code))
+                    .append(document.createTextNode(' — ' + b.description + ' · Rp ' + b.amount_formatted))
+                    .appendTo($bud);
+            });
+            if ($bud.children().length) {
+                $bud.prepend($('<div></div>').text('Budget berikut ikut menjadi ACTIVE bila PO di-approve:')).show();
+            }
+        });
         $('#mdlApprovePo').modal('show');
     });
 

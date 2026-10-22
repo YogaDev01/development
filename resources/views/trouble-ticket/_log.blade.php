@@ -14,6 +14,8 @@
         'plan_created' => 'fa-calendar-check', 'plan_updated' => 'fa-calendar-alt', 'trip_due' => 'fa-route',
         'plan_budget_approved' => 'fa-file-invoice-dollar', 'plan_budget_rejected' => 'fa-times',
         'cost_request_paid' => 'fa-money-bill-wave',
+        'request_submitted' => 'fa-paper-plane', 'request_edited' => 'fa-pen', 'request_approved' => 'fa-check-circle',
+        'request_rejected' => 'fa-times-circle', 'request_cancelled' => 'fa-ban',
         'travel_started' => 'fa-car', 'travel_cancelled' => 'fa-ban',
         'arrived_on_site' => 'fa-map-marker-alt', 'progress_started' => 'fa-tools',
         'progress_done' => 'fa-clipboard-check', 'close_rejected' => 'fa-undo',
@@ -52,10 +54,23 @@
                     ]));
                 @endphp
                 @if($biayaLog !== '')<div class="tt-step-note">{{ $biayaLog }}</div>@endif
+                {{-- Perubahan supervisor atas pengajuan (Q7): baris +/−/~ dan header, total lama → baru ada di keterangan. --}}
+                @if(! empty($metaLog['perubahan']))
+                    @php
+                        $pb = $metaLog['perubahan'];
+                        $barisUbah = array_merge(
+                            array_map(fn ($x) => '+ ' . $x, $pb['ditambah'] ?? []),
+                            array_map(fn ($x) => '− ' . $x, $pb['dihapus'] ?? []),
+                            array_map(fn ($x) => '~ ' . $x, $pb['diubah'] ?? []),
+                            $pb['header'] ?? []
+                        );
+                    @endphp
+                    @if($barisUbah)<div class="tt-step-note">{{ implode("\n", $barisUbah) }}</div>@endif
+                @endif
                 @if($ev->event === 'reassigned' && ($ev->metadata['to_name'] ?? null))
                     <div class="tt-step-note">{{ $ev->metadata['from_name'] ?? '—' }} &rarr; {{ $ev->metadata['to_name'] }}</div>
                 @endif
-                @if($ev->body)<div class="tt-step-note">{{ \Illuminate\Support\Str::limit($ev->body, 140) }}</div>@endif
+                @if($ev->body)<div class="tt-step-note">{{ $ev->event === 'request_edited' ? $ev->body : \Illuminate\Support\Str::limit($ev->body, 140) }}</div>@endif
             </div>
         </li>
     @empty

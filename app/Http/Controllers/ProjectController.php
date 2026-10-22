@@ -5,8 +5,12 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
+use App\Models\BudgetPlan;
+use App\Models\BudgetRequest;
+use App\Models\BudgetPlanDetail;
 use App\Models\Project;
 use App\Models\ProjectAttachment;
 use App\Models\UserActivityLog;
@@ -27,6 +31,10 @@ use App\Support\AccessRoles;
 class ProjectController extends Controller
 {
     use \App\Http\Controllers\Concerns\CapsLargeLists;
+    // Dipakai untuk membuat Budget Plan dari bagian Budget form PO (generateCode,
+    // syncBudgetDetails, getAccountsFor). normalizeMoney() & syncDetails() di bawah
+    // milik controller ini dan menang atas versi trait dengan nama yang sama.
+    use \App\Http\Controllers\Concerns\BuildsBudgetPlan;
 
     /*
     |--------------------------------------------------------------------------
@@ -39,6 +47,153 @@ class ProjectController extends Controller
         if ($value === null || trim($value) === '') return 0;
         $stripped = preg_replace('/\D/', '', $value);
         return $stripped === '' ? 0 : (int) $stripped;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | BUDGET PLAN YANG IKUT FORM PO (via_po_approval)
+    |--------------------------------------------------------------------------
+    | Keputusan 22 Okt 2026: Head mengisi satu Budget Plan langsung di form PO.
+    | Status BP tidak berjalan di workflow Budget Plan sendiri, melainkan ikut
+    | approval PO: submit -> CHECKED, verify -> VERIFIED, approve -> ACTIVE,
+    | finance-revise -> DRAFT. Budget bersifat opsional.
+    */
+
+    /** Aturan validasi blok budget.* (semua opsional; kelengkapan dicek di budgetRowsOrFail()). */
+    private function budgetRules(): array
+    {
+        return [
+            'budget'                      => 'nullable|array',
+            'budget.description'          => 'nullable|string|max:500',
+            'budget.notes'                => 'nullable|string',
+            'budget.hapus'                => 'nullable|boolean',
+            'budget.details'              => 'nullable|array',
+            'budget.details.*.account_id' => 'nullable|exists:accounts,id',
+            'budget.details.*.deskripsi'  => 'nullable|string|max:255',
+            'budget.details.*.amount'     => 'nullable|string|max:30',
+            'budget.details.*.notes'      => 'nullable|string|max:1000',
+            'budget.details.*.qty'        => 'nullable|numeric|min:0.01',
+            'budget.details.*.unit'       => 'nullable|in:' . implode(',', BudgetPlanDetail::UNITS),
+        ];
+    }
+
+    /** Hanya Head & superadmin yang bagian Budget-nya diproses (AccessRoles::PO_BUDGET_BUNDLE). */
+    private function canFillPoBudget(): bool
+    {
+        return Auth::user()->hasRole(AccessRoles::PO_BUDGET_BUNDLE);
+    }
+
+    /**
+     * Isi bagian Budget dari request: null bila tidak diisi sama sekali (budget
+     * opsional), atau ['description','notes','rows'] bila diisi.
+     * Bila diisi, deskripsi dan minimal satu baris bernominal wajib ada.
+     */
+    private function budgetRowsOrFail(Request $request): ?array
+    {
+        $in   = (array) $request->input('budget', []);
+        $rows = collect((array) ($in['details'] ?? []))
+            ->filter(fn ($r) => $this->normalizeMoney($r['amount'] ?? null) > 0)
+            ->values()
+            ->all();
+
+        $desc = trim((string) ($in['description'] ?? ''));
+
+        if ($desc === '' && empty($rows)) {
+            return null;
+        }
+
+        $errors = [];
+        if ($desc === '')   $errors['budget.description'] = 'Deskripsi budget wajib diisi bila bagian Budget dipakai.';
+        if (empty($rows))   $errors['budget.details']     = 'Detail budget minimal 1 baris dengan harga satuan.';
+        if ($errors) {
+            throw \Illuminate\Validation\ValidationException::withMessages($errors);
+        }
+
+        return [
+            'description' => strtoupper($desc),
+            'notes'       => $in['notes'] ?? null,
+            'rows'        => $rows,
+        ];
+    }
+
+    /** GET project/budget-import-template - template Detail Budget; sumber dana terkunci PROJECT. */
+    public function downloadBudgetTemplate()
+    {
+        return $this->budgetImportTemplateResponse('PROJECT');
+    }
+
+    /** POST project/budget-import-preview - hanya parsing, tidak menyimpan; sumber dana terkunci PROJECT. */
+    public function importBudgetPreview(Request $request)
+    {
+        $request->validate(['file' => 'required|file|mimes:xlsx,xls|max:5120']);
+
+        return $this->budgetImportPreviewResponse($request, 'PROJECT');
+    }
+
+    /** Buat BP DRAFT bundled untuk PO ini (dipanggil di dalam transaksi PO). */
+    private function createBundledBudgetPlan(Project $project, array $budget): void
+    {
+        $bp = BudgetPlan::create([
+            'code'            => $this->generateCode($project),
+            'project_id'      => $project->id,
+            'cost_center_id'  => null,
+            'description'     => $budget['description'],
+            'type'            => 'one_time',
+            'amount'          => 0,
+            'status'          => 'DRAFT',
+            'notes'           => $budget['notes'],
+            'input_by'        => Auth::id(),
+            'via_po_approval' => true,
+        ]);
+
+        $this->syncBudgetDetails($bp, $budget['rows']);
+        $bp->addLog('DRAFT', 'DRAFT', 'created', 'Dibuat dari form PO ' . $project->code . '.');
+    }
+
+    /**
+     * Budget Plan sudah dirujuk dokumen lain (Cost Request termasuk yang di-soft-delete,
+     * pengajuan Trouble Ticket, rencana biaya tiket, log Project Monitoring, atau Payroll Run)?
+     * Bila ya, tidak boleh dihapus. FK RESTRICT (Cost Request, pengajuan TT) jadi jaring
+     * terakhir; FK log Monitoring & Payroll Run adalah nullOnDelete (referensi diam-diam
+     * di-NULL-kan) dan trouble_tickets tanpa FK, jadi ketiganya wajib dicek eksplisit.
+     */
+    private function budgetDipakaiDokumenLain(BudgetPlan $bp): bool
+    {
+        if (BudgetRequest::withTrashed()->where('budget_plan_id', $bp->id)->exists()) {
+            return true;
+        }
+
+        if (Schema::hasTable('trouble_ticket_requests')
+            && DB::table('trouble_ticket_requests')->where('budget_plan_id', $bp->id)->exists()) {
+            return true;
+        }
+
+        foreach (['project_monitoring_logs', 'payroll_runs'] as $tabel) {
+            if (Schema::hasTable($tabel) && Schema::hasColumn($tabel, 'budget_plan_id')
+                && DB::table($tabel)->where('budget_plan_id', $bp->id)->exists()) {
+                return true;
+            }
+        }
+
+        return Schema::hasColumn('trouble_tickets', 'budget_plan_id')
+            && DB::table('trouble_tickets')->where('budget_plan_id', $bp->id)->exists();
+    }
+
+    /**
+     * Budget Plan bundled ikut pindah status bersama PO. Hanya BP yang sedang
+     * di status $from yang dipindah (BP yang sudah ACTIVE karena Early Start
+     * dibuka lagi tidak ikut tersentuh). Dipanggil di dalam transaksi PO.
+     */
+    private function moveBundledBudgetPlans(Project $project, array $from, string $to, string $action, ?string $notes = null, array $extra = []): void
+    {
+        $project->bundledBudgetPlans()
+            ->whereIn('status', $from)
+            ->get()
+            ->each(function (BudgetPlan $bp) use ($to, $action, $notes, $extra) {
+                $dari = $bp->status;
+                $bp->update(array_merge(['status' => $to], $extra));
+                $bp->addLog($dari, $to, $action, $notes);
+            });
     }
 
     /**
@@ -479,7 +634,11 @@ class ProjectController extends Controller
         }])->orderBy('name')->get();
         $managers      = $this->managerOptions();
 
-        return view('project.create', compact('customers', 'picsInternal', 'picsCustomer', 'accessGroups', 'managers'));
+        // Bagian Budget (opsional) — hanya untuk Head/superadmin.
+        $canFillBudget = $this->canFillPoBudget();
+        $budgetAccounts = $canFillBudget ? $this->getAccountsFor('PROJECT') : collect();
+
+        return view('project.create', compact('customers', 'picsInternal', 'picsCustomer', 'accessGroups', 'managers', 'canFillBudget', 'budgetAccounts'));
     }
 
     /*
@@ -513,11 +672,14 @@ class ProjectController extends Controller
             'po_numbers.*.file'          => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
             'access_group_ids'   => 'nullable|array',
             'access_group_ids.*' => 'exists:access_groups,id',
-        ]);
+        ] + $this->budgetRules());
+
+        // Bagian Budget opsional; hanya Head/superadmin yang boleh mengisinya.
+        $budget = $this->canFillPoBudget() ? $this->budgetRowsOrFail($request) : null;
 
         $code = Project::generateNextCode();
 
-        DB::transaction(function () use ($request, $code) {
+        DB::transaction(function () use ($request, $code, $budget) {
             $project = Project::create([
                 'code'           => $code,
                 'name'           => strtoupper(trim($request->name)),
@@ -542,6 +704,10 @@ class ProjectController extends Controller
             $this->storePoNumbers($project, $request);
             $this->syncAccessGroups($project, $request);
             $project->addLog('DRAFT', 'DRAFT', 'created');
+
+            if ($budget) {
+                $this->createBundledBudgetPlan($project, $budget);
+            }
         });
 
         return redirect('/project')->with('success', 'PO berhasil dibuat dengan kode ' . $code);
@@ -717,6 +883,7 @@ class ProjectController extends Controller
                 'description'      => $bp->description,
                 'status'           => $bp->status,
                 'status_color'     => $bp->status_color,
+                'via_po_approval'  => $bp->isBundled(),
                 'amount'           => (int) ($bp->amount ?? 0),
                 'amount_formatted' => $bp->amount_formatted,
                 // Terpakai oleh Cost Request (VERIFIED s/d CLOSED) — untuk kolom Used & Var
@@ -962,9 +1129,16 @@ class ProjectController extends Controller
         $selectedAccessGroupIds = $project->accessGroupLinks()->pluck('access_group_id')->all();
         $managers = $this->managerOptions();
 
+        // Bagian Budget: Head/superadmin saja. Bila PO sudah punya BP bundled,
+        // isinya hanya bisa diubah selagi BP itu DRAFT (selain itu read-only).
+        $canFillBudget  = $this->canFillPoBudget();
+        $bundledBudget  = $project->bundledBudgetPlans()->with('details.account')->orderBy('id')->first();
+        $budgetAccounts = $canFillBudget ? $this->getAccountsFor('PROJECT') : collect();
+
         return view('project.edit', compact(
             'project', 'customers', 'clusters', 'stages', 'picsInternal', 'picsCustomer',
-            'accessGroups', 'selectedAccessGroupIds', 'managers'
+            'accessGroups', 'selectedAccessGroupIds', 'managers',
+            'canFillBudget', 'bundledBudget', 'budgetAccounts'
         ));
     }
 
@@ -1017,12 +1191,68 @@ class ProjectController extends Controller
             'po_numbers.*.file'          => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
             'access_group_ids'   => 'nullable|array',
             'access_group_ids.*' => 'exists:access_groups,id',
-        ]);
+        ] + $this->budgetRules());
 
         // Dipotret sebelum update supaya isi log bisa menyebut nilai lama -> baru.
         $sebelum = $project->getOriginal();
 
-        DB::transaction(function () use ($request, $project, $sebelum) {
+        /*
+        | Bagian Budget (BP bundled), hanya Head/superadmin:
+        |  - sudah ada BP bundled & SEMUANYA DRAFT -> detailnya diperbarui
+        |    (tidak boleh dikosongkan);
+        |  - sudah ada tapi ada yang bukan DRAFT   -> read-only, input diabaikan;
+        |  - belum ada & PO berstatus DRAFT        -> boleh ditambah (opsional);
+        |  - belum ada & PO bukan DRAFT            -> input diabaikan.
+        | PO EARLY_START yang disunting kembali ke DRAFT TIDAK membuka BP yang
+        | sudah ACTIVE (BP tetap ACTIVE & read-only).
+        */
+        $budget       = null;
+        $bundledPlans = $project->bundledBudgetPlans()->orderBy('id')->get();
+
+        /*
+        | Hapus Budget (tombol eksplisit "Hapus Budget dari PO ini"): hard delete BP
+        | bundled beserta detail, log, lampiran. Hanya bila Head/superadmin, semua BP
+        | bundled DRAFT, dan PO asli DRAFT; selain itu flag diabaikan (jalur lama).
+        | Tanpa flag, form budget kosong tetap error "tidak boleh dikosongkan".
+        */
+        $hapusBudget = $this->canFillPoBudget()
+            && filter_var($request->input('budget.hapus'), FILTER_VALIDATE_BOOLEAN)
+            && $bundledPlans->isNotEmpty()
+            && $bundledPlans->every(fn ($bp) => $bp->isDraft())
+            && ($sebelum['status'] ?? null) === 'DRAFT';
+
+        // UI hanya mengenal satu budget per PO; bila data ternyata >1, jangan hapus sebagian diam-diam.
+        if ($hapusBudget && $bundledPlans->count() > 1) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'budget.hapus' => 'PO ini punya lebih dari satu budget bundled; hapus tidak dilakukan otomatis. Hubungi admin.',
+            ]);
+        }
+
+        if ($hapusBudget) {
+            foreach ($bundledPlans as $bp) {
+                if ($this->budgetDipakaiDokumenLain($bp)) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'budget.hapus' => 'Budget sudah dipakai dokumen lain dan tidak dapat dihapus.',
+                    ]);
+                }
+            }
+        } elseif ($this->canFillPoBudget()) {
+            if ($bundledPlans->isNotEmpty()) {
+                if ($bundledPlans->every(fn ($bp) => $bp->isDraft())) {
+                    $budget = $this->budgetRowsOrFail($request);
+                    if (!$budget) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'budget.description' => 'Budget yang sudah dibuat dari form PO tidak dapat dikosongkan.',
+                        ]);
+                    }
+                }
+            } elseif (($sebelum['status'] ?? null) === 'DRAFT') {
+                $budget = $this->budgetRowsOrFail($request);
+            }
+        }
+
+        try {
+        DB::transaction(function () use ($request, $project, $sebelum, $budget, $bundledPlans, $hapusBudget) {
             $project->update([
                 'name'           => strtoupper(trim($request->name)),
                 'customer_id'    => $request->customer_id,
@@ -1063,6 +1293,61 @@ class ProjectController extends Controller
             // supaya satu edit = satu entri log.
             $this->logProjectEdit($project, $sebelum);
 
+            if ($hapusBudget) {
+                foreach ($bundledPlans as $plan) {
+                    // Kunci baris & periksa ulang di dalam transaksi (status bisa berubah
+                    // atau budget baru dirujuk dokumen lain sejak pemeriksaan awal).
+                    $bp = BudgetPlan::with('attachments')->whereKey($plan->id)->lockForUpdate()->first();
+                    if (! $bp) {
+                        continue;
+                    }
+                    if (! $bp->isDraft()) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'budget.hapus' => 'Status Budget sudah berubah, muat ulang halaman.',
+                        ]);
+                    }
+                    if ($this->budgetDipakaiDokumenLain($bp)) {
+                        throw \Illuminate\Validation\ValidationException::withMessages([
+                            'budget.hapus' => 'Budget sudah dipakai dokumen lain dan tidak dapat dihapus.',
+                        ]);
+                    }
+
+                    $paths = $bp->attachments->pluck('path')->filter()->all();
+
+                    $project->addLog('DRAFT', 'DRAFT', 'budget_deleted', 'Budget bundled ' . $bp->code . ' dihapus lewat Edit PO.');
+                    // Dicatat SEBELUM delete supaya subject/kode masih terbaca.
+                    UserActivityLog::record(
+                        'budget_plan',
+                        'delete',
+                        'Menghapus Budget Plan ' . $bp->code . ' lewat Edit PO #' . ($project->code ?? $project->id),
+                        $bp
+                    );
+
+                    $bp->delete(); // detail, log, lampiran ikut terhapus (FK cascade)
+
+                    // Berkas dihapus hanya setelah commit (pola BudgetPlanController::destroy).
+                    DB::afterCommit(function () use ($paths) {
+                        foreach ($paths as $path) {
+                            Storage::disk('secure')->delete($path);
+                        }
+                    });
+                }
+            }
+
+            if ($budget) {
+                if ($bundledPlans->isNotEmpty()) {
+                    $bp = $bundledPlans->first();
+                    $bp->update([
+                        'description' => $budget['description'],
+                        'notes'       => $budget['notes'],
+                    ]);
+                    $this->syncBudgetDetails($bp, $budget['rows']);
+                    $bp->addLog('DRAFT', 'DRAFT', 'updated', 'Diubah lewat form PO ' . $project->code . '.');
+                } else {
+                    $this->createBundledBudgetPlan($project, $budget);
+                }
+            }
+
             /*
              | Early Start yang disunting kembali ke DRAFT (lihat workflow Early
              | Start): PO ini sengaja di-approve dalam keadaan belum lengkap,
@@ -1076,8 +1361,20 @@ class ProjectController extends Controller
                 $project->addLog('EARLY_START', 'DRAFT', 'early_start_revised', 'Data Early Start dilengkapi — kembali ke Draft untuk disubmit ulang.');
             }
         });
+        } catch (\Illuminate\Database\QueryException $e) {
+            // FK RESTRICT (mis. Cost Request baru merujuk budget): seluruh perubahan di-rollback.
+            // Hanya pelanggaran FK (SQLSTATE 23000 / MySQL 1451) yang dipetakan ke pesan ini.
+            $pelanggaranFk = (string) $e->getCode() === '23000' && (int) ($e->errorInfo[1] ?? 0) === 1451;
+            if (! $hapusBudget || ! $pelanggaranFk) {
+                throw $e; // handler Laravel yang mencatat (report() di sini akan menggandakan log)
+            }
 
-        return redirect('/project')->with('success', 'PO berhasil diupdate.');
+            return back()->withInput()->withErrors([
+                'budget.hapus' => 'Budget sudah dipakai dokumen lain dan tidak dapat dihapus.',
+            ]);
+        }
+
+        return redirect('/project')->with('success', $hapusBudget ? 'PO berhasil diupdate dan budget dihapus.' : 'PO berhasil diupdate.');
     }
 
     /*
@@ -1315,11 +1612,24 @@ class ProjectController extends Controller
             return back()->with('error', 'Hanya PO berstatus DRAFT yang dapat disubmit.');
         }
 
-        $project->update([
-            'status'       => 'SUBMITTED',
-            'submitted_at' => now(),
-        ]);
-        $project->addLog('DRAFT', 'SUBMITTED', 'submitted');
+        // BP bundled tanpa detail tidak boleh ikut diajukan.
+        $bpKosong = $project->bundledBudgetPlans()->where('status', 'DRAFT')->withCount('details')->get()
+            ->contains(fn ($bp) => $bp->details_count === 0);
+        if ($bpKosong) {
+            return back()->with('error', 'Budget pada PO ini belum punya detail. Lengkapi lewat Edit PO sebelum disubmit.');
+        }
+
+        DB::transaction(function () use ($project) {
+            $project->update([
+                'status'       => 'SUBMITTED',
+                'submitted_at' => now(),
+            ]);
+            $project->addLog('DRAFT', 'SUBMITTED', 'submitted');
+
+            // Budget bundled melewati tahap Head-check BP: DRAFT -> CHECKED.
+            $this->moveBundledBudgetPlans($project, ['DRAFT'], 'CHECKED', 'submitted',
+                'Ikut submit PO ' . $project->code . ' (tahap Head-check Budget Plan dilewati).');
+        });
 
         NotifyService::send(
             $this->financeUsers(),
@@ -1357,12 +1667,17 @@ class ProjectController extends Controller
             return back()->with('error', 'Hanya PO berstatus Submitted yang dapat diverifikasi.');
         }
 
-        $project->update([
-            'status'      => 'VERIFIED',
-            'verified_by' => Auth::id(),
-            'verified_at' => now(),
-        ]);
-        $project->addLog('SUBMITTED', 'VERIFIED', 'verified');
+        DB::transaction(function () use ($project) {
+            $project->update([
+                'status'      => 'VERIFIED',
+                'verified_by' => Auth::id(),
+                'verified_at' => now(),
+            ]);
+            $project->addLog('SUBMITTED', 'VERIFIED', 'verified');
+
+            $this->moveBundledBudgetPlans($project, ['CHECKED'], 'VERIFIED', 'finance_verified',
+                'Ikut verifikasi PO ' . $project->code . '.');
+        });
 
         NotifyService::send(
             app(RoleDirectory::class)->approvers(),
@@ -1410,12 +1725,20 @@ class ProjectController extends Controller
             $action    = $newStatus === 'ACTIVE' ? 'approved_active' : 'approved_waiting';
         }
 
-        $project->update([
-            'status'      => $newStatus,
-            'approved_by' => Auth::id(),
-            'approved_at' => now(),
-        ]);
-        $project->addLog('VERIFIED', $newStatus, $action, $request->notes);
+        DB::transaction(function () use ($project, $newStatus, $action, $request) {
+            $project->update([
+                'status'      => $newStatus,
+                'approved_by' => Auth::id(),
+                'approved_at' => now(),
+            ]);
+            $project->addLog('VERIFIED', $newStatus, $action, $request->notes);
+
+            // Budget bundled ACTIVE untuk semua hasil approve (Early Start sudah
+            // budgetable), sebelum syncStatusFromPoNumbers() di bawah.
+            $this->moveBundledBudgetPlans($project, ['VERIFIED'], 'ACTIVE', 'ceo_approved',
+                'Ikut approve PO ' . $project->code . ' (' . Project::statusLabelFor($newStatus) . ').',
+                ['approved_by' => Auth::id(), 'approved_at' => now()]);
+        });
 
         // Kalau langsung ACTIVE dan No. PO-nya kebetulan sudah BAST/Paid, teruskan.
         if ($newStatus === 'ACTIVE') {
@@ -1567,8 +1890,14 @@ class ProjectController extends Controller
         }
 
         $dari = $project->status;
-        $project->update(['status' => 'DRAFT']);
-        $project->addLog($dari, 'DRAFT', 'revised', $request->notes);
+        DB::transaction(function () use ($project, $dari, $request) {
+            $project->update(['status' => 'DRAFT']);
+            $project->addLog($dari, 'DRAFT', 'revised', $request->notes);
+
+            // Budget bundled ikut kembali ke DRAFT (langsung, tanpa REJECTED).
+            $this->moveBundledBudgetPlans($project, ['CHECKED', 'VERIFIED'], 'DRAFT', 'revised',
+                'PO ' . $project->code . ' dikembalikan untuk revisi: ' . $request->notes);
+        });
 
         if ($project->inputBy) {
             NotifyService::send(
@@ -2000,6 +2329,12 @@ class ProjectController extends Controller
         if ($project->status !== 'DRAFT') {
             return redirect('/project')
                 ->with('error', 'Hanya PO berstatus DRAFT yang dapat dihapus.');
+        }
+
+        // BP bundled yang sudah bergerak (mis. ACTIVE dari Early Start) tidak boleh hilang bersama PO.
+        if ($project->bundledBudgetPlans()->where('status', '!=', 'DRAFT')->exists()) {
+            return redirect('/project')
+                ->with('error', 'PO tidak dapat dihapus karena memiliki Budget Plan yang sudah berjalan (bukan DRAFT).');
         }
 
         $projectCode = $project->code ?? $project->id;
