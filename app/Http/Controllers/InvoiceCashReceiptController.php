@@ -1184,26 +1184,40 @@ class InvoiceCashReceiptController extends Controller
         | berbeda dulu sama-sama lolos batas maxTax, sehingga total diterima
         | bisa melampaui tagihan. Rumus dan pesan tidak berubah.
         */
-        $error = DB::transaction(function () use ($invoice, $cr, $tax) {
-            $this->kunciNoPo($invoice->project_po_number_id); // No. PO dulu, baru invoice (urutan global)
-            $terkunci = Invoice::whereKey($invoice->id)->lockForUpdate()->first();
+        try {
+            $error = DB::transaction(function () use ($invoice, $cr, $tax) {
+                $this->kunciNoPo($invoice->project_po_number_id); // No. PO dulu, baru invoice (urutan global)
+                $terkunci = Invoice::whereKey($invoice->id)->lockForUpdate()->first();
 
-            if (! in_array($terkunci->status, ['SENT', 'RECEIVED', 'PARTIALLY_PAID'], true)) {
-                return 'Settle PPh hanya bisa dilakukan untuk invoice yang belum lunas.';
-            }
+                if (! in_array($terkunci->status, ['SENT', 'RECEIVED', 'PARTIALLY_PAID'], true)) {
+                    return 'Settle PPh hanya bisa dilakukan untuk invoice yang belum lunas.';
+                }
 
-            $cr->refresh();
-            $otherReceived = $terkunci->totalReceived() - $cr->amount - $cr->withholding_tax;
-            $maxTax = max(0, $terkunci->captured_total - $otherReceived - $cr->amount);
+                $cr->refresh();
 
-            if ($tax > $maxTax) {
-                return 'Nominal PPh melebihi sisa tagihan (maks ' . number_format($maxTax, 0, ',', '.') . ').';
-            }
+                // Batas PPh = sisa tagihan BRUTO (Invoice + PPN) di luar receipt ini, dikurangi nominal diterima receipt ini.
+                $maxTax = max(0, $terkunci->sisaBruto($cr->id) - $cr->amount);
 
-            $cr->update(['withholding_tax' => $tax]);
+                if ($tax > $maxTax) {
+                    return 'Nominal PPh melebihi sisa tagihan (maks ' . number_format($maxTax, 0, ',', '.') . ').';
+                }
 
-            return null;
-        });
+                // PPh invoice disinkronkan DULU (selisih receipt ini ditambahkan sebagai PPh tertunda),
+                // baru receipt disimpan - hook CashReceipt::saved lalu membaca invoice yang sudah segar.
+                $terkunci->sinkronPphDariCashReceipt(
+                    'settle PPh Cash Receipt invoice ini',
+                    $tax - (int) $cr->withholding_tax,
+                    $tax === 0 && (int) $cr->amount >= $terkunci->sisaBruto($cr->id),
+                    $tax === 0 && (int) $cr->withholding_tax > 0,
+                );
+
+                $cr->update(['withholding_tax' => $tax]);
+
+                return null;
+            });
+        } catch (\DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         if ($error) {
             return back()->with('error', $error);
@@ -1239,17 +1253,36 @@ class InvoiceCashReceiptController extends Controller
             'reason.min'      => 'Alasan penghapusan terlalu singkat.',
         ]);
 
-        DB::transaction(function () use ($cr, $invoice, $request) {
-            $this->kunciNoPo($invoice->project_po_number_id); // No. PO dulu, baru invoice (urutan global)
-            Invoice::whereKey($invoice->id)->lockForUpdate()->first();
+        try {
+            DB::transaction(function () use ($cr, $invoice, $request) {
+                $this->kunciNoPo($invoice->project_po_number_id); // No. PO dulu, baru invoice (urutan global)
+                $terkunci = Invoice::whereKey($invoice->id)->lockForUpdate()->first();
 
-            $cr->update([
-                'deleted_by'    => Auth::id(),
-                'delete_reason' => $request->input('reason'),
-            ]);
+                // PPh receipt yang dihapus dibalik dari PPh invoice SEBELUM barisnya dihapus
+                // (selisih -PPh dilewatkan sebagai PPh tertunda), supaya hook model membaca invoice yang sudah segar.
+                // Dibaca ulang di dalam kunci: kalau sudah dihapus request lain, tidak ada yang dibalik dua kali.
+                $segar = CashReceipt::whereKey($cr->id)->lockForUpdate()->first();
+                if ($segar && (int) $segar->withholding_tax > 0) {
+                    $terkunci->sinkronPphDariCashReceipt(
+                        'pembatalan Cash Receipt invoice ini',
+                        -(int) $segar->withholding_tax,
+                        false,
+                        true,
+                    );
+                }
 
-            $cr->delete(); // syncPaymentStatus() otomatis jalan lewat model event
-        });
+                // Penanda hapus disimpan tanpa event: sinkron status cukup dari delete() di bawah,
+                // saat PPh invoice dan receipt sudah konsisten.
+                $cr->fill([
+                    'deleted_by'    => Auth::id(),
+                    'delete_reason' => $request->input('reason'),
+                ])->saveQuietly();
+
+                $cr->delete(); // syncPaymentStatus() otomatis jalan lewat model event
+            });
+        } catch (\DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         Log::warning('Cash Receipt dihapus', [
             'invoice_id'      => $invoice->id,
@@ -1343,7 +1376,11 @@ class InvoiceCashReceiptController extends Controller
                 continue;
             }
 
-            $received = $invoice->cashReceipts->sum('amount') + $invoice->cashReceipts->sum('withholding_tax');
+            $received = Invoice::hitungDiterima(
+                (int) $invoice->cashReceipts->sum('amount'),
+                (int) $invoice->cashReceipts->sum('withholding_tax'),
+                (int) $invoice->withholding_tax,
+            );
             $pmNames  = $invoice->po?->pm_internal_name ?: '-';
             $lastCr = $invoice->cashReceipts
                 ->filter(fn ($cr) => $cr->received_date)

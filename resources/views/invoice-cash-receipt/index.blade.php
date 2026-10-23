@@ -156,7 +156,11 @@
                                 // Kolom Payment = uang yang benar-benar masuk (cash receipt saja);
                                 // $settled (cash + settle PPh) tetap dipakai untuk selisih/gap.
                                 $received = (int) $invoice->cashReceipts->sum('amount');
-                                $settled  = $received + (int) $invoice->cashReceipts->sum('withholding_tax');
+                                $settled  = \App\Models\Invoice::hitungDiterima(
+                                    $received,
+                                    (int) $invoice->cashReceipts->sum('withholding_tax'),
+                                    (int) $invoice->withholding_tax,
+                                );
                                 $gap      = ($invoice->captured_total ?? 0) - $settled;
                                 $pmNames  = $invoice->po?->pm_internal_name && $invoice->po->pm_internal_name !== '-' ? $invoice->po->pm_internal_name : '';
                                 $pmUpper  = $pmNames ? strtoupper($pmNames) : '-';

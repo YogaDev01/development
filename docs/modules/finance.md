@@ -13,3 +13,10 @@
 | Cost Center / Account / Source Fund | master controllers | `cost-center`, `account`, `source-fund` | |
 
 Workflows: `docs/workflows/`. Rules: `docs/business-rules.md`.
+
+## Cash Receipt — index (`/cash-receipt`)
+
+- Kolom: Kode, Tanggal, Customer, Referensi, **Tagihan** (Σ Invoice+PPN invoice unik per header), **Total PPh**, **Total Diterima** (Σ amount detail aktif, bukan `total_amount`), Invoice, Status, Aksi. Header CANCELLED: kolom uang 0. `total_amount` hanya untuk sisa belum teralokasi.
+- Filter tanggal terima server-side (`date_from`, `date_to`, `range`; default bulan berjalan, inklusif, tidak valid → default dan `range` kosong; opsi default dropdown berlabel "Tanggal Terima"; `range` 1d/3d/7d/30d/1y dihitung dengan jam server relatif hari ini). Header CANCELLED: Belum Teralokasi 0. Cari/Status/Customer di browser; kartu dan footer dihitung ulang saat draw.
+- `<tfoot>` per kolom (Tagihan/PPh/Diterima dari `data-*` baris terfilter). Tombol **Kolom** (localStorage `crCashColVis_*`): Tanggal, Referensi, Tagihan, Total PPh, Invoice bisa disembunyikan; tanpa ekstensi `responsive`, tabel digulir horizontal.
+- Create: sisa = sisa bruto; PPh otomatis = sisa − diterima sampai PPh diketik manual, hanya bila ≤ 15% DPP invoice (di atasnya kosong + peringatan merah di dialog simpan, tidak memblokir); konfirmasi menampilkan ringkasan PPh per invoice. Aturan hitung: `docs/business-rules.md`.

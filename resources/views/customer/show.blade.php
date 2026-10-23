@@ -144,8 +144,10 @@
 
                                         // Uang yang sudah diterima atas PO ini — dihitung dari
                                         // relasi yang sudah di-eager-load, bukan query baru.
-                                        $poReceived = (int) $project->invoices->sum(fn ($inv) =>
-                                            (int) $inv->cashReceipts->sum('amount') + (int) $inv->cashReceipts->sum('withholding_tax'));
+                                        $poReceived = (int) $project->invoices->sum(fn ($inv) => \App\Models\Invoice::hitungDiterima(
+                                            (int) $inv->cashReceipts->sum('amount'),
+                                            (int) $inv->cashReceipts->sum('withholding_tax'),
+                                            (int) $inv->withholding_tax));
 
                                         $poSearch = strtolower($project->code . ' ' . $project->name);
                                     @endphp
@@ -191,7 +193,10 @@
                                     {{-- LAPIS 2b — Invoice --}}
                                     @foreach($project->invoices as $inv)
                                     @php
-                                        $invReceived = (int) $inv->cashReceipts->sum('amount') + (int) $inv->cashReceipts->sum('withholding_tax');
+                                        $invReceived = \App\Models\Invoice::hitungDiterima(
+                                            (int) $inv->cashReceipts->sum('amount'),
+                                            (int) $inv->cashReceipts->sum('withholding_tax'),
+                                            (int) $inv->withholding_tax);
                                     @endphp
                                     <tr class="cust-row" data-parent="{{ $poKey }}" style="display:none;"
                                         data-search="{{ strtolower($poSearch . ' ' . $inv->code) }}">

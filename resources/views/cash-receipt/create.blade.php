@@ -105,7 +105,7 @@
                                     <th scope="col">Invoice</th>
                                     <th scope="col" class="text-nowrap">Jatuh Tempo</th>
                                     <th scope="col" class="text-center text-nowrap">Status</th>
-                                    <th scope="col" class="text-right text-nowrap">Sisa Tagihan</th>
+                                    <th scope="col" class="text-right text-nowrap" title="Invoice + PPN dikurangi penerimaan dan PPh sebelumnya">Sisa Tagihan</th>
                                     <th scope="col" class="text-right text-nowrap" style="width:16%;">Diterima</th>
                                     <th scope="col" class="text-right text-nowrap" style="width:14%;">PPh</th>
                                 </tr>
@@ -218,6 +218,17 @@
 $(function () {
     function rp(n) { return (n || 0).toLocaleString('id-ID'); }
 
+    /* Batas kewajaran PPh terhadap DPP invoice (keputusan pemilik). Hanya
+       peringatan sisi klien: PPh otomatis tidak diisi di atas batas ini, dan
+       dialog simpan memberi peringatan merah. Server TIDAK membatasi. */
+    var BATAS_PPH_PERSEN = 15;
+
+    // Integer rupiah, tanpa float: pph/dpp > 15%  <=>  pph*100 > 15*dpp.
+    // DPP 0/kosong: hanya PPh 0 yang dianggap wajar.
+    function pphMelebihiBatas(pph, dpp) {
+        return pph * 100 > BATAS_PPH_PERSEN * (dpp || 0);
+    }
+
     function angka($el) {
         return parseInt(($el.val() || '0').toString().replace(/\D/g, ''), 10) || 0;
     }
@@ -243,7 +254,8 @@ $(function () {
         }
         if (!aktif) {
             $amount.val('');
-            $wht.val('');
+            $wht.val('').removeAttr('data-manual');
+            $('.cr-pph-info', $row).remove();
         }
         $row.removeClass('table-danger');
     }
@@ -280,12 +292,41 @@ $(function () {
     $(document).on('input', '.cr-amount, .cr-wht', function () {
         formatUang($(this));
 
+        var $row    = $(this).closest('tr');
+        var sisa    = parseInt($('.cr-balance', $row).data('value'), 10) || 0;
+        var $wht    = $('.cr-wht', $row);
+
+        /* PPh otomatis = selisih sisa tagihan dan nominal diterima, sampai user
+           mengetik PPh sendiri (data-manual dipasang HANYA oleh ketikan user di
+           kolom PPh, bukan oleh kode ini; dihapus bila kolom dikosongkan atau
+           baris di-uncheck). Diterima kosong -> PPh dikosongkan; Diterima
+           melebihi sisa -> PPh 0 dan baris ditandai merah (lihat di bawah). */
+        if ($(this).hasClass('cr-wht')) {
+            if ($wht.val()) { $wht.attr('data-manual', '1'); }
+            else            { $wht.removeAttr('data-manual'); }
+        } else if (!$wht.attr('data-manual')) {
+            var diterima = angka($(this));
+            var dpp      = parseInt($('.cr-check', $row).data('dpp'), 10) || 0;
+            var usulan   = Math.max(0, sisa - diterima);
+            $wht.val('');
+            $('.cr-pph-info', $row).remove();
+            if ($(this).val() && diterima <= sisa) {
+                if (pphMelebihiBatas(usulan, dpp)) {
+                    // Tidak diisi otomatis; beri tahu alasannya di bawah kolom PPh.
+                    $wht.after('<div class="cr-pph-info text-danger" style="font-size:10px;">'
+                        + 'PPh tidak diisi otomatis: Rp ' + rp(usulan) + ' &gt; ' + BATAS_PPH_PERSEN + '% DPP</div>');
+                } else if (usulan > 0) {
+                    $wht.val(rp(usulan));
+                }
+            }
+        }
+        // PPh diketik/dikosongkan sendiri oleh user: catatan "tidak diisi otomatis" tidak relevan lagi.
+        if ($(this).hasClass('cr-wht')) { $('.cr-pph-info', $row).remove(); }
+
         /* Nominal + PPh tidak boleh melebihi sisa tagihan barisnya. Backend
            tetap memeriksa ulang di dalam transaksi terkunci — ini hanya supaya
            orang tahu sebelum menekan Simpan, bukan sesudah ditolak. */
-        var $row    = $(this).closest('tr');
-        var sisa    = parseInt($('.cr-balance', $row).data('value'), 10) || 0;
-        var terisi  = angka($('.cr-amount', $row)) + angka($('.cr-wht', $row));
+        var terisi  = angka($('.cr-amount', $row)) + angka($wht);
 
         $row.toggleClass('table-danger', terisi > sisa);
         hitungUlang();
@@ -324,16 +365,23 @@ $(function () {
     var permintaan  = null;
 
     function esc(t) {
-        return $('<div>').text(t == null ? '' : t).html();
+        return String(t == null ? '' : t)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     function barisInvoice(inv) {
         var cari = (inv.code + ' ' + inv.po_number + ' ' + inv.project).toLowerCase();
 
         return '<tr class="cr-inv-row" data-search="' + esc(cari) + '">'
-            + '<td><input type="checkbox" name="invoice_ids[]" value="' + inv.id + '" class="cr-check" data-balance="' + inv.balance + '"></td>'
+            + '<td><input type="checkbox" name="invoice_ids[]" value="' + inv.id + '" class="cr-check" data-balance="' + inv.balance
+            +     '" data-code="' + esc(inv.code) + '" data-dpp="' + (inv.dpp || 0) + '"></td>'
             + '<td><strong>' + esc(inv.code) + '</strong>'
-            +     '<div class="text-muted" style="font-size:10px;">' + esc(inv.po_number) + ' &middot; ' + esc(inv.project) + '</div></td>'
+            +     '<div class="text-muted" style="font-size:10px;">' + esc(inv.po_number) + ' &middot; ' + esc(inv.project) + '</div>'
+            +     (inv.wht_muka > 0
+                    ? '<div class="text-warning" style="font-size:10px;">PPh di muka Rp ' + rp(inv.wht_muka) + ' akan diganti PPh aktual</div>'
+                    : '')
+            +     '</td>'
             + '<td class="text-nowrap">' + esc(inv.due_date || '-')
             +     (inv.overdue ? ' <span class="badge badge-danger ml-1" style="font-size:9px;">OVERDUE</span>' : '') + '</td>'
             + '<td class="text-center"><span class="badge badge-secondary px-2 py-1" style="font-size:9.5px;">' + esc(inv.status) + '</span></td>'
@@ -495,14 +543,43 @@ $(function () {
             return;
         }
 
-        var form = this, parsial = 0, melebihi = 0;
+        var form = this, parsial = 0, melebihi = 0, adaPph = 0, ringkasan = '', peringatan = '';
         $('.cr-inv-row').each(function () {
             if (!$('.cr-check', this).is(':checked')) return;
             var sisa   = parseInt($('.cr-balance', this).data('value'), 10) || 0;
-            var terisi = angka($('.cr-amount', this)) + angka($('.cr-wht', this));
+            var diterima = angka($('.cr-amount', this));
+            var pph    = angka($('.cr-wht', this));
+            var terisi = diterima + pph;
             if (terisi > sisa) melebihi++;
             else if (terisi < sisa) parsial++;
+
+            /* Ringkasan per invoice ber-PPh: PPh yang diinput akan MENGGANTIKAN PPh pada
+               invoice, jadi user diminta memastikannya sebelum menyimpan. */
+            if (pph > 0) {
+                adaPph++;
+                var $cek = $('.cr-check', this);
+                var dpp  = parseInt($cek.data('dpp'), 10) || 0;
+                var persen = dpp > 0 ? ' (' + (pph / dpp * 100).toLocaleString('id-ID', { maximumFractionDigits: 2 }) + '% dari DPP)' : '';
+                var lebih = pphMelebihiBatas(pph, dpp);
+                if (lebih) {
+                    peringatan += '<li><strong>' + esc($cek.data('code')) + '</strong>: PPh Rp ' + rp(pph)
+                        + (dpp > 0 ? ' = ' + (pph / dpp * 100).toLocaleString('id-ID', { maximumFractionDigits: 2 }) + '% dari DPP' : ' (DPP kosong)')
+                        + '</li>';
+                }
+                ringkasan += '<li' + (lebih ? ' class="text-danger"' : '') + '><strong>' + esc($cek.data('code')) + '</strong>: diterima Rp ' + rp(diterima)
+                    + ', PPh Rp ' + rp(pph) + persen + ', sisa setelah ini Rp ' + rp(Math.max(0, sisa - terisi)) + '</li>';
+            }
         });
+        var htmlRingkasan = ringkasan
+            ? '<div class="text-left" style="font-size:12px;">PPh yang diisi akan menggantikan PPh pada invoice:'
+              + '<ul class="mb-0 mt-1 pl-3">' + ringkasan + '</ul></div>'
+            : '';
+        if (peringatan) {
+            htmlRingkasan += '<div class="text-left text-danger mt-2" style="font-size:12px;">'
+                + '<strong>PERINGATAN: PPh melebihi ' + BATAS_PPH_PERSEN + '% DPP invoice.</strong> '
+                + 'Nilai ini akan mengubah PPh dan nilai invoice. Pastikan angkanya benar sebelum menyimpan.'
+                + '<ul class="mb-0 mt-1 pl-3">' + peringatan + '</ul></div>';
+        }
 
         if (melebihi > 0) {
             e.preventDefault();
@@ -511,12 +588,30 @@ $(function () {
             return;
         }
 
+        if (adaPph > 0 && parsial === 0 && !form.dataset.konfirmasi) {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'question',
+                title: 'Simpan penerimaan dengan PPh?',
+                html: htmlRingkasan,
+                showCancelButton: true,
+                confirmButtonColor: '#92232b', cancelButtonColor: '#55595e',
+                confirmButtonText: 'Ya, Simpan', cancelButtonText: 'Batal'
+            }).then(function (r) {
+                if (!r.isConfirmed) return;
+                form.dataset.konfirmasi = '1';
+                form.submit();
+            });
+            return;
+        }
+
         if (parsial > 0 && !form.dataset.konfirmasi) {
             e.preventDefault();
             Swal.fire({
                 icon: 'warning',
                 title: 'Apakah anda yakin, pembayaran yang diterima tidak penuh?',
-                text: parsial + ' invoice dibayar kurang dari sisa tagihannya. Komentar ini masuk ke Log & Approval invoice terkait.',
+                html: '<div style="font-size:13px;">' + parsial + ' invoice dibayar kurang dari sisa tagihannya. Komentar ini masuk ke Log &amp; Approval invoice terkait.</div>'
+                    + htmlRingkasan,
                 input: 'textarea',
                 inputPlaceholder: 'Komentar / alasan pembayaran tidak penuh (wajib)',
                 inputValidator: function (v) { return (v && v.trim()) ? undefined : 'Komentar wajib diisi'; },
