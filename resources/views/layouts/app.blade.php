@@ -21,6 +21,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" href="{{ asset('dist/img/favicon16.ico') }}" type="image/x-icon">
+    @include('layouts.partials.pwa-head')
 
     {{-- Tema dipasang SEBELUM satu lembar gaya pun diminta.
 
@@ -1101,5 +1102,6 @@ $(function () {
 })();
 </script>
 
+<script src="@aset('js/tesys-pwa.js')"></script>
 </body>
 </html>
