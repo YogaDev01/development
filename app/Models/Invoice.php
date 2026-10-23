@@ -296,7 +296,161 @@ class Invoice extends Model
      */
     public function totalReceived(): int
     {
-        return (int) $this->cashReceipts()->sum('amount') + (int) $this->cashReceipts()->sum('withholding_tax');
+        return self::hitungDiterima(
+            (int) $this->cashReceipts()->sum('amount'),
+            (int) $this->cashReceipts()->sum('withholding_tax'),
+            (int) $this->withholding_tax,
+        );
+    }
+
+    /**
+     * SATU-SATUNYA rumus "diterima" sebuah invoice (dipakai totalReceived(),
+     * Closing, Summary Collection, Customer, dst.).
+     *
+     * Rezim sinkron: PPh yang diinput di Cash Receipt disalin ke invoices.withholding_tax
+     * (sinkronPphDariCashReceipt), sehingga ia SUDAH mengurangi captured_total. Kalau
+     * PPh receipt juga dijumlahkan sebagai "diterima", PPh terhitung dua kali.
+     * Jadi bila PPh invoice sama persis dengan total PPh receipt (dan > 0), PPh receipt
+     * tidak ditambahkan lagi. Selain itu (data lama: PPh di muka saja, atau PPh receipt
+     * saja) rumusnya tetap amount + PPh receipt seperti sebelumnya.
+     */
+    public static function hitungDiterima(int $sumAmount, int $sumWht, int $invWht): int
+    {
+        return $sumAmount + ($invWht > 0 && $invWht === $sumWht ? 0 : $sumWht);
+    }
+
+    /**
+     * Sisa tagihan BRUTO (Invoice + PPN), dasar batas input Cash Receipt:
+     * billed_amount + tax_amount - amount - PPh pada receipt aktif. Tidak memakai
+     * captured_total, karena captured_total ikut bergeser saat PPh disinkronkan.
+     * $kecualiReceiptId mengecualikan satu receipt (batas settle PPh receipt itu).
+     */
+    public function sisaBruto(?int $kecualiReceiptId = null): int
+    {
+        $relasi = $this->cashReceipts();
+        if ($kecualiReceiptId) {
+            $relasi->where('id', '!=', $kecualiReceiptId);
+        }
+
+        return self::hitungSisaBruto(
+            (int) $this->billed_amount,
+            (int) $this->tax_amount,
+            (int) (clone $relasi)->sum('amount'),
+            (int) (clone $relasi)->sum('withholding_tax'),
+        );
+    }
+
+    /** Rumus sisa bruto untuk pemanggil yang sudah punya jumlah receipt dari relasi ter-eager-load (tanpa N+1). */
+    public static function hitungSisaBruto(int $billed, int $tax, int $sumAmount, int $sumWht): int
+    {
+        return max(0, $billed + $tax - $sumAmount - $sumWht);
+    }
+
+    /**
+     * Samakan invoices.withholding_tax dengan PPh aktual pada Cash Receipt, lalu hitung
+     * ulang captured_total lewat InvoiceCalculationService (rumus tidak ditulis ulang di sini).
+     *
+     * Target = total PPh receipt aktif + $pphTertunda (selisih receipt yang SEDANG
+     * disimpan/diubah/dihapus dan belum tercermin di database: +PPh baru, atau -PPh yang
+     * akan dibalik). Aturan:
+     *  - target > 0 -> PPh invoice = target;
+     *  - target = 0 -> PPh invoice jadi 0 hanya bila pembalikan receipt ber-PPh atau
+     *    receipt ini melunasi sisa bruto dengan PPh 0; selain itu PPh di muka dipertahankan.
+     *  - PEMBALIKAN hanya berlaku bila PPh invoice memang hasil sinkron (PPh invoice ==
+     *    total PPh receipt aktif SEBELUM pembalikan). Contoh: PPh di muka 2.000.000, receipt
+     *    lama R1 ber-PPh 1 -> dihapus: 2.000.000 != 1, bukan hasil sinkron, PPh invoice tidak
+     *    disentuh. Contoh sinkron: PPh invoice 1.000 == PPh R1 1.000 -> dihapus -> PPh invoice 0.
+     *  - Pada pembalikan, invoice yang tidak konsisten TIDAK memblokir: sinkron dilewati dan dicatat.
+     * Wajib dipanggil di dalam transaksi dengan baris invoice terkunci.
+     *
+     * @param  string  $sumber  asal perubahan untuk jejak, mis. "penerimaan CR/2026/10/0001"
+     * @param  int  $amountBaru  nominal diterima receipt yang SEDANG ditambahkan (belum di database);
+     *                           dipakai menolak kelebihan bayar. 0 untuk settle/pembalikan.
+     * @return array{dari:int, ke:int}|null  null bila tidak ada perubahan
+     * @throws \DomainException bila nilai tersimpan tidak cocok dengan hasil service (bukan pembalikan)
+     *                          atau penerimaan membuat total diterima melebihi captured_total
+     */
+    public function sinkronPphDariCashReceipt(string $sumber, int $pphTertunda = 0, bool $melunasiBruto = false, bool $pembalikan = false, int $amountBaru = 0): ?array
+    {
+        $sumPph = (int) $this->cashReceipts()->sum('withholding_tax');
+        $target = max(0, $sumPph + $pphTertunda);
+        $lama   = (int) $this->withholding_tax;
+
+        if ($pembalikan) {
+            // PPh invoice bukan hasil sinkron (mis. PPh di muka legacy): biarkan apa adanya.
+            if ($lama !== $sumPph) {
+                return null;
+            }
+            $baru = $target;
+        } elseif ($target > 0) {
+            $baru = $target;
+        } elseif ($melunasiBruto) {
+            $baru = 0;
+        } else {
+            $baru = $lama;
+        }
+
+        // Kelebihan bayar: setelah PPh invoice menjadi $baru, total diterima tidak boleh melebihi
+        // captured_total. Contoh: PPh di muka 2.000.000, bruto 111.000.000 (captured 109.000.000),
+        // diterima 110.000.000 tanpa PPh -> bukan pelunasan bruto, PPh di muka tetap -> kelebihan 1.000.000.
+        if (! $pembalikan && $amountBaru > 0) {
+            $capturedBaru = max(0, (int) $this->billed_amount + (int) $this->tax_amount - $baru);
+            $diterima     = self::hitungDiterima(
+                (int) $this->cashReceipts()->sum('amount') + $amountBaru,
+                $sumPph + $pphTertunda,
+                $baru,
+            );
+            if ($diterima > $capturedBaru) {
+                $maks = max(0, $capturedBaru - (int) $this->cashReceipts()->sum('amount'));
+                throw new \DomainException('Invoice ' . $this->code . ' memiliki PPh di muka, sehingga nominal tanpa PPh maksimal ' . number_format($maks, 0, ',', '.')
+                    . '. Isi PPh pada penerimaan ini, atau lunasi sisa bruto penuh (' . number_format($this->sisaBruto(), 0, ',', '.') . ') dengan PPh 0 untuk menolkan PPh di muka.');
+            }
+        }
+
+        if ($baru === $lama) {
+            return null;
+        }
+
+        // Pra-cek: nilai tagihan & PPN tersimpan harus sama dengan hasil service, kalau tidak
+        // captured_total hasil hitung ulang akan ikut menggeser angka lain secara diam-diam.
+        $service = app(\App\Services\InvoiceCalculationService::class);
+        $cek     = $service->computeFor($this);
+        if ($cek['billed_amount'] !== (int) $this->billed_amount || $cek['tax_amount'] !== (int) $this->tax_amount) {
+            if ($pembalikan) {
+                // Keputusan konservatif: pembatalan/penghapusan tidak boleh terblokir oleh data invoice lama.
+                $pesan = 'PPh invoice tidak disinkron karena data invoice tidak konsisten (' . $sumber . '), periksa manual.';
+                $this->comments()->create(['user_id' => \Illuminate\Support\Facades\Auth::id(), 'comment' => $pesan]);
+                UserActivityLog::record('invoice', 'update', $pesan . ' - Invoice #' . $this->code, $this);
+
+                return null;
+            }
+            throw new \DomainException('Invoice ' . $this->code . ' tidak konsisten (nilai tagihan/PPN tersimpan berbeda dari hasil hitung), PPh tidak dapat disinkronkan. Perbaiki invoice secara manual.');
+        }
+
+        $this->withholding_tax = $baru;
+        $calc = $service->computeFor($this);
+        $this->update([
+            'withholding_tax' => $calc['withholding_tax'],
+            'captured_total'  => $calc['captured_total'],
+        ]);
+
+        // Status disinkronkan di sini hanya bila tidak ada perubahan receipt yang tertunda. Bila ada
+        // ($pphTertunda != 0), pemanggil langsung menyimpan/menghapus receipt sesudahnya dan hook
+        // CashReceipt::saved/deleted yang menyinkronkan status dari data yang sudah konsisten
+        // (menghindari status sementara yang salah, yang bisa ikut menggeser status No. PO).
+        $this->refresh();
+        if ($pphTertunda === 0) {
+            $this->syncPaymentStatus();
+        }
+
+        $fmt  = fn (int $v) => number_format($v, 0, ',', '.');
+        $pesan = 'PPh invoice diubah dari ' . $fmt($lama) . ' ke ' . $fmt((int) $this->withholding_tax)
+            . ' oleh ' . $sumber . ' (PPh aktual)';
+
+        $this->comments()->create(['user_id' => \Illuminate\Support\Facades\Auth::id(), 'comment' => $pesan]);
+        UserActivityLog::record('invoice', 'update', $pesan . ' - Invoice #' . $this->code, $this);
+
+        return ['dari' => $lama, 'ke' => (int) $this->withholding_tax];
     }
 
     public function remainingBalance(): int

@@ -116,6 +116,11 @@ class CashReceiptHeader extends Model
      */
     public function unallocatedAmount(): int
     {
+        // Penerimaan yang dibatalkan tidak punya sisa untuk dialokasikan.
+        if ($this->isCancelled()) {
+            return 0;
+        }
+
         return (int) $this->total_amount - $this->allocatedAmount();
     }
 

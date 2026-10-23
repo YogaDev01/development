@@ -82,6 +82,8 @@ class InvoiceCalculationService
      * rekening tapi juga bukan piutang, karena sudah disetor customer sebagai
      * pajak. Sedangkan withholding_tax di `invoices` (PPh dipotong di muka)
      * sudah lebih dulu mengecilkan captured_total, jadi tidak dihitung dua kali.
+     * PPh receipt yang sudah disalin ke PPh invoice (rezim sinkron) juga tidak
+     * dihitung dua kali — lihat Invoice::hitungDiterima().
      */
     public function outstanding(Invoice $invoice): int
     {

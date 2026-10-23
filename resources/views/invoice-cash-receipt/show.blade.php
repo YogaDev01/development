@@ -605,7 +605,7 @@
                                                             style="font-size:10px;padding:1px 6px;"
                                                             data-invoice-id="{{ $invoice->id }}" data-cr-id="{{ $cr->id }}"
                                                             data-current-tax="{{ $cr->withholding_tax }}"
-                                                            data-max-tax="{{ max(0, $invoice->captured_total - ($received - $cr->amount - $cr->withholding_tax) - $cr->amount) }}">
+                                                            data-max-tax="{{ max(0, \App\Models\Invoice::hitungSisaBruto((int) $invoice->billed_amount, (int) $invoice->tax_amount, (int) $invoice->cashReceipts->sum('amount') - (int) $cr->amount, (int) $invoice->cashReceipts->sum('withholding_tax') - (int) $cr->withholding_tax) - $cr->amount) }}">
                                                         <i class="fas fa-percentage mr-1"></i>Settle
                                                     </button>
                                                     @endif

@@ -1143,7 +1143,11 @@ class FinanceSummaryController extends Controller
             // di loop semua invoice seperti di sini) — hitung sekali dari relasi yang
             // sudah di-eager-load, simpan sebagai atribut dinamis, dipakai ulang di bawah.
             ->each(function ($inv) {
-                $received = (int) $inv->cashReceipts->sum('amount') + (int) $inv->cashReceipts->sum('withholding_tax');
+                $received = Invoice::hitungDiterima(
+                    (int) $inv->cashReceipts->sum('amount'),
+                    (int) $inv->cashReceipts->sum('withholding_tax'),
+                    (int) $inv->withholding_tax,
+                );
                 $inv->computed_received = $received;
                 $inv->computed_balance  = max(0, $inv->captured_total - $received);
             });
@@ -1597,7 +1601,7 @@ class FinanceSummaryController extends Controller
         |
         | Diambil SEKALI (bukan per No. PO) supaya tidak N+1.
         */
-        $invoicesByPoNumber = Invoice::select('id', 'po_id', 'project_po_number_id', 'status', 'captured_total')
+        $invoicesByPoNumber = Invoice::select('id', 'po_id', 'project_po_number_id', 'status', 'captured_total', 'withholding_tax')
             ->where('status', '!=', 'DRAFT')
             ->whereIn('po_id', $projects->pluck('id'))
             ->when($scope['invoiceIds'] !== null, fn ($q) => $q->whereIn('id', $scope['invoiceIds']))
@@ -1615,8 +1619,10 @@ class FinanceSummaryController extends Controller
 
                         $poInvoices = $invoicesByPoNumber->get($poNumber->id, collect());
                         $invoiced   = (int) $poInvoices->sum('captured_total');
-                        $paid       = (int) $poInvoices->sum(fn ($inv) => (int) $inv->cashReceipts->sum('amount')
-                            + (int) $inv->cashReceipts->sum('withholding_tax'));
+                        $paid       = (int) $poInvoices->sum(fn ($inv) => Invoice::hitungDiterima(
+                            (int) $inv->cashReceipts->sum('amount'),
+                            (int) $inv->cashReceipts->sum('withholding_tax'),
+                            (int) $inv->withholding_tax));
 
                         /*
                         | NILAI MENGALIR BERTAHAP, tidak lagi pindah utuh.

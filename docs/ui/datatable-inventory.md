@@ -51,7 +51,7 @@ Kolom: **Tbl** = jumlah `<table>` di file (termasuk tabel statis non-DataTable d
 | 5 | budget-plan/index | tblBudgetPlan | 7/1 | inline | 1 baris, 9 th, **tfoot** | – | ya | – | ya (`bpDetailTabs`, 6 tab) | **ya*** | Referensi pola UI (memory). Ada tfoot total; 6 tabel statis di modal |
 | 6 | budget-request/index | `#tblCA` `#tblCP` `#tblDB` (`_table`) | 3/3 | **tidak** (komentar: bentrok dgn toggle kolom) | 1 baris; kolom dinamis (kolom bisa disembunyikan user) | kiri+kanan sticky (CSS) | ya | **ya** (`crTabs`, 3 tab lazy AJAX) | ya (`crDetailTabs`) | **tidak (tahan)** | Kolom 0 disembunyikan, `columnDefs` visibilitas manual, tfoot, tabel dimuat ulang via AJAX (DOM diganti) → risiko tinggi; lihat §4 |
 | 7 | cash-management/index | tblLedger, tblManual | 4/2 | true | 1 baris (8 & 9 th); tblLedger tfoot | – | tidak | ya (3 tab) | – | **ya*** (2 tabel) | 2 tabel di dua tab; tab ke-3 non-DataTable |
-| 8 | cash-receipt/index | tblCashReceipt | 1/1 | inline | 1 baris, 8 th | – | tidak | – | – | **ya** | Terbaru diubah di commit 89d5ab0 (cek tak bentrok) |
+| 8 | cash-receipt/index | tblCashReceipt | 1/1 | inline | 1 baris, 10 th, tfoot | – | tidak | – | – | **ya** | Kini 10 th + tfoot, tanpa responsive, tombol Kolom, filter tanggal server |
 | 9 | closing/index | tblClosingDetail | 3/1 | true | 1 baris, 6 th (**tanpa tfoot**) | – | tidak | – | – | **ya** | 2 tabel lain statis; tfoot (`closing/index.blade.php:160`) milik tabel ringkasan statis (bukan DataTable) |
 | 10 | cluster/index | clusterTable | 1/1 | inline | 1 baris, 7 th | – | ya | – | – | **ya** | |
 | 11 | cost-center/index | ccTable | 3/1 | inline | 1 baris, 7 th | – | ya | – | – | **ya** | 2 tabel statis (modal) |

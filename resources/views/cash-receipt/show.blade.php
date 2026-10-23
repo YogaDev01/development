@@ -44,7 +44,7 @@
         @endif
 
         <x-stat-cards :cards="[
-            ['Total Diterima', 'Rp ' . number_format($header->total_amount, 0, ',', '.'), 'success', 'fas fa-hand-holding-usd'],
+            ['Total Diterima', 'Rp ' . number_format($header->isCancelled() ? 0 : (int) $header->details->sum('amount'), 0, ',', '.'), 'success', 'fas fa-hand-holding-usd'],
             ['Teralokasi', 'Rp ' . number_format($allocated, 0, ',', '.'), 'primary', 'fas fa-link'],
             ['Belum Teralokasi', 'Rp ' . number_format(max(0, $unallocated), 0, ',', '.'), $unallocated > 0 ? 'warning' : 'secondary', 'fas fa-unlink'],
         ]" />
@@ -166,8 +166,8 @@
                     </div>
                     <div class="card-body p-0">
                         <p class="text-muted px-3 pt-3 mb-2" style="font-size:11px;">
-                            Sisa tagihan dihitung dari nominal yang sudah diterima, bukan dari label status —
-                            invoice baru menjadi <strong>PAID</strong> setelah pembayarannya menutup seluruh Captured Total.
+                            Sisa tagihan = Invoice + PPN dikurangi nominal yang sudah diterima dan PPh yang sudah dicatat, bukan dari label status —
+                            invoice baru menjadi <strong>PAID</strong> setelah diterima + PPh menutup seluruh tagihan.
                         </p>
                         <div class="table-responsive">
                             <table class="table table-bordered table-hover mb-0">
@@ -176,7 +176,7 @@
                                         <th scope="col">Invoice</th>
                                         <th scope="col" class="text-nowrap">Jatuh Tempo</th>
                                         <th scope="col" class="text-center">Status</th>
-                                        <th scope="col" class="text-right text-nowrap">Captured Total</th>
+                                        <th scope="col" class="text-right text-nowrap">Tagihan (Invoice + PPN)</th>
                                         <th scope="col" class="text-right text-nowrap">Sisa Tagihan</th>
                                         <th scope="col" class="text-center" style="width:12%;">Alokasi</th>
                                     </tr>
@@ -200,7 +200,7 @@
                                         <td class="text-center">
                                             <span class="badge badge-secondary px-2 py-1">{{ $inv->status }}</span>
                                         </td>
-                                        <td class="text-right text-nowrap">{{ number_format($inv->captured_total, 0, ',', '.') }}</td>
+                                        <td class="text-right text-nowrap">{{ number_format((int) $inv->billed_amount + (int) $inv->tax_amount, 0, ',', '.') }}</td>
                                         <td class="text-right text-nowrap text-danger">
                                             <strong>{{ number_format($inv->computed_balance, 0, ',', '.') }}</strong>
                                         </td>
@@ -257,7 +257,7 @@
                     <div class="form-group">
                         <label class="font-weight-600">PPh yang Di-settle</label>
                         <input type="text" name="withholding_tax" id="allocWht" class="form-control text-right" placeholder="0">
-                        <small class="form-text text-muted">Isi kalau customer memotong PPh dari pembayaran ini.</small>
+                        <small class="form-text text-muted">Isi kalau customer memotong PPh dari pembayaran ini. PPh ini akan menggantikan PPh pada invoice.</small>
                     </div>
                     <div class="form-group mb-0">
                         <label class="font-weight-600">Catatan</label>

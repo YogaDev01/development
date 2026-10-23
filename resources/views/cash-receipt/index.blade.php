@@ -51,12 +51,15 @@
 
             <div class="card-body">
                 {{--
-                     Penyaringan dikerjakan di browser: kotak cari disambungkan
-                     ke pencarian DataTables, dan Status/Customer memakai
-                     dropdown centang TesysColumnFilter — bentuk yang sama
-                     dengan halaman index lain. Tidak ada tombol "Terapkan" dan
-                     tidak ada muat ulang halaman: mencentang langsung menyaring.
+                     Rentang tanggal terima dikerjakan di SERVER (muat ulang dengan
+                     ?date_from=&date_to=&range=); kartu, daftar, dan footer mengikuti
+                     rentang itu. Kotak cari, Status, dan Customer tetap di browser:
+                     kotak cari disambungkan ke pencarian DataTables, Status/Customer
+                     memakai dropdown centang TesysColumnFilter.
                 --}}
+                @php
+                    $rangeAktif = $range;
+                @endphp
                 <div class="custom-toolbar mb-3 d-flex align-items-center justify-content-start flex-wrap" style="gap:8px;">
 
                     <div class="toolbar-row">
@@ -73,9 +76,45 @@
                             title="Clear Filter" aria-label="Clear Filter">
                         <i class="fas fa-eraser"></i>
                     </button>
+
+                    <div class="cr-pop cr-col-dropdown">
+                        <button type="button" class="btn btn-outline-secondary btn-sm cr-pop-toggle">
+                            <i class="fas fa-columns mr-1"></i> Kolom
+                        </button>
+                        <div class="cr-pop-menu p-2" style="min-width:200px;max-height:340px;overflow-y:auto;">
+                            @foreach(['tanggal' => 'Tanggal', 'referensi' => 'Referensi', 'tagihan' => 'Tagihan', 'pph' => 'Total PPh', 'invoice' => 'Invoice'] as $key => $label)
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input cr-col-vis-toggle" id="crColVis_{{ $key }}" data-column="{{ $key }}">
+                                <label class="custom-control-label" for="crColVis_{{ $key }}" style="font-size:12px;">{{ $label }}</label>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div class="ml-auto d-flex align-items-center flex-wrap" style="gap:8px;">
+                        <div id="crCustomRange" class="{{ $rangeAktif === 'custom' ? 'd-flex' : 'd-none' }} align-items-center flex-wrap" style="gap:6px;">
+                            <span class="text-muted" style="font-size:12px;">Periode</span>
+                            <div class="d-flex align-items-center cr-date-range" style="gap:4px;">
+                                <input type="text" id="crDateRange" class="form-control form-control-sm tdr-input" readonly>
+                                <input type="hidden" id="crDateFrom" value="{{ $dateFrom }}">
+                                <input type="hidden" id="crDateTo" value="{{ $dateTo }}">
+                            </div>
+                        </div>
+                        <select id="crQuickRange" class="form-control form-control-sm" style="width:auto;"
+                                title="Tanggal terima. Tanpa pilihan = bulan berjalan ({{ \Carbon\Carbon::parse($dateFrom)->format('d M Y') }} - {{ \Carbon\Carbon::parse($dateTo)->format('d M Y') }})">
+                            <option value="">Tanggal Terima</option>
+                            <option value="1d" @selected($rangeAktif === '1d')>1 hari terakhir</option>
+                            <option value="3d" @selected($rangeAktif === '3d')>3 hari terakhir</option>
+                            <option value="7d" @selected($rangeAktif === '7d')>7 hari terakhir</option>
+                            <option value="30d" @selected($rangeAktif === '30d')>30 hari terakhir</option>
+                            <option value="1y" @selected($rangeAktif === '1y')>1 tahun terakhir</option>
+                            <option value="custom" @selected($rangeAktif === 'custom')>Custom…</option>
+                        </select>
+                    </div>
                 </div>
 
-                <div class="table-responsive">
+                {{-- Tanpa ekstensi responsive DataTables (bentrok dengan toggle kolom manual): tabel digulir horizontal. --}}
+                <div class="cr-hscroll table-responsive">
                     <table id="tblCashReceipt" class="table table-bordered table-hover table-striped mb-0">
                         <thead class="bg-light">
                             <tr>
@@ -83,8 +122,10 @@
                                 <th scope="col" class="text-nowrap">Tanggal</th>
                                 <th scope="col">Customer</th>
                                 <th scope="col" class="text-nowrap">Referensi</th>
+                                <th scope="col" class="text-right text-nowrap">Tagihan</th>
+                                <th scope="col" class="text-right text-nowrap">Total PPh</th>
                                 <th scope="col" class="text-right text-nowrap">Total Diterima</th>
-                                <th scope="col" style="width:22%;">Invoice</th>
+                                <th scope="col">Invoice</th>
                                 <th scope="col" class="text-center text-nowrap">Status</th>
                                 <th scope="col" class="text-center text-nowrap">Aksi</th>
                             </tr>
@@ -96,19 +137,23 @@
                                 $unallocated = $h->unallocatedAmount();
                                 $stBadge = ['DRAFT' => 'badge-warning', 'ALLOCATED' => 'badge-success', 'CANCELLED' => 'badge-danger'][$h->status] ?? 'badge-secondary';
                             @endphp
-                            {{-- data-* dibaca dua pihak: TesysColumnFilter untuk
-                                 menyaring, dan penghitung kartu untuk menjumlah
+                            {{-- data-* dibaca tiga pihak: TesysColumnFilter untuk
+                                 menyaring, penghitung kartu, dan footer untuk menjumlah
                                  baris yang tersisa. --}}
                             <tr data-status="{{ $h->status }}"
                                 data-customer="{{ $h->customer->name ?? '-' }}"
-                                data-total="{{ (int) $h->total_amount }}"
+                                data-tagihan="{{ (int) $h->kolom_tagihan }}"
+                                data-pph="{{ (int) $h->kolom_pph }}"
+                                data-diterima="{{ (int) $h->kolom_diterima }}"
                                 data-invoices="{{ $h->details->count() }}"
                                 data-unallocated="{{ max(0, $unallocated) }}">
                                 <td class="text-nowrap"><strong>{{ $h->code }}</strong></td>
                                 <td class="text-nowrap">{{ $h->received_date?->format('d M Y') }}</td>
                                 <td>{{ $h->customer->name ?? '-' }}</td>
                                 <td class="text-nowrap">{{ $h->reference_number ?: '-' }}</td>
-                                <td class="text-right text-nowrap"><strong>{{ number_format($h->total_amount, 0, ',', '.') }}</strong></td>
+                                <td class="text-right text-nowrap">{{ number_format($h->kolom_tagihan, 0, ',', '.') }}</td>
+                                <td class="text-right text-nowrap">{{ number_format($h->kolom_pph, 0, ',', '.') }}</td>
+                                <td class="text-right text-nowrap"><strong>{{ number_format($h->kolom_diterima, 0, ',', '.') }}</strong></td>
                                 <td>
                                     {{-- Kode invoice ditampilkan langsung supaya penerimaan
                                          bisa ditelusuri tanpa membuka detailnya satu per
@@ -149,6 +194,21 @@
                             </tr>
                             @endforeach
                         </tbody>
+                        {{-- Satu sel per kolom (tanpa colspan) supaya footer tetap sinkron saat kolom disembunyikan. --}}
+                        <tfoot>
+                            <tr style="background:var(--surface-2);font-size:12px;">
+                                <th class="text-nowrap">Total</th>
+                                <th></th>
+                                <th></th>
+                                <th></th>
+                                <th class="text-right text-nowrap cr-foot-tagihan"></th>
+                                <th class="text-right text-nowrap cr-foot-pph"></th>
+                                <th class="text-right text-nowrap cr-foot-diterima"></th>
+                                <th></th>
+                                <th></th>
+                                <th></th>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>
@@ -172,6 +232,21 @@
 .toolbar-input { min-width:230px; }
 .custom-toolbar .toolbar-input .form-control { width:100%; }
 
+/* Tabel digulir horizontal (pola .cr-hscroll Cost Request). */
+.cr-hscroll { overflow-x:auto; }
+.cr-hscroll #tblCashReceipt { width:auto !important; min-width:100%; margin-bottom:0; }
+.cr-hscroll #tblCashReceipt th,
+.cr-hscroll #tblCashReceipt td { white-space:nowrap; }
+
+/* Popover tombol Kolom — ditempel pada tombolnya sendiri (salinan kecil blok .cr-pop Cost Request). */
+.cr-pop { position: relative; }
+.cr-pop-menu {
+    display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 1080;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-md); box-shadow: 0 8px 24px rgba(0,0,0,.14);
+}
+.cr-pop.show .cr-pop-menu { display: block; }
+
 @media (max-width: 575.98px) {
     .toolbar-row   { width:100%; }
     .toolbar-input { flex:1; min-width:0; }
@@ -183,21 +258,30 @@
 <script>
 $(function () {
 
+    /* Kolom yang boleh disembunyikan -> indeks kolom. Kode, Customer, Total
+       Diterima, Status, dan Aksi sengaja tidak ada di sini (wajib tampil). */
+    var MAP_VIS = { tanggal: 1, referensi: 3, tagihan: 4, pph: 5, invoice: 7 };
+    function visKey(key) { return 'crCashColVis_' + key; }
+    function getVis(key) { var v = localStorage.getItem(visKey(key)); return v === null ? true : v === '1'; }
+    function setVis(key, tampil) { localStorage.setItem(visKey(key), tampil ? '1' : '0'); }
+
+    var defs = [{ targets: [9], orderable: false }];
+    Object.keys(MAP_VIS).forEach(function (k) {
+        defs.push({ targets: [MAP_VIS[k]], visible: getVis(k) });
+    });
+
+    // TIDAK memakai ekstensi "responsive" (bentrok dengan toggle visibility manual): tabel digulir lewat .cr-hscroll.
     var table = $('#tblCashReceipt').DataTable({
-        responsive: { details: { type: 'inline' } },
         autoWidth: false, pageLength: 25, lengthChange: true, searching: true,
         order: [], // urutan dari server (terbaru di atas) dipertahankan
-        columnDefs: [
-            { targets: [7], orderable: false },
-            { responsivePriority: 1, targets: [0, 2, -1] },
-        ],
+        columnDefs: defs,
         dom: 'rt<"row mt-3 align-items-center"<"col-md-6 col-12 mb-2 mb-md-0"i><"col-md-6 col-12 d-flex justify-content-end"lp>>',
         language: {
             lengthMenu: 'Page Size _MENU_',
             emptyTable: '<div class="ts-empty ts-empty-compact">'
                 + '<span class="ts-empty-ic" aria-hidden="true"><i class="fas fa-receipt"></i></span>'
                 + '<p class="ts-empty-title">Belum ada penerimaan</p>'
-                + '<p class="ts-empty-msg">Belum ada bukti terima yang tercatat.</p></div>',
+                + '<p class="ts-empty-msg">Belum ada bukti terima pada rentang tanggal ini.</p></div>',
             zeroRecords: '<div class="ts-empty ts-empty-compact">'
                 + '<span class="ts-empty-ic" aria-hidden="true"><i class="fas fa-search"></i></span>'
                 + '<p class="ts-empty-title">Tidak ada yang cocok</p>'
@@ -208,7 +292,44 @@ $(function () {
         }
     });
 
-    /* Hapus draft — delegasi, karena baris bisa dipindah/dirender ulang oleh DataTables (mode responsive). */
+    /* ── TOMBOL KOLOM ─────────────────────────────────────────────────── */
+    $('.cr-col-vis-toggle').each(function () {
+        var key = $(this).data('column');
+        if (MAP_VIS[key] == null) return;
+        $(this).prop('checked', table.column(MAP_VIS[key]).visible());
+    }).on('change', function () {
+        var key = $(this).data('column');
+        if (MAP_VIS[key] == null) return;
+        var tampil = $(this).is(':checked');
+        table.column(MAP_VIS[key]).visible(tampil);
+        setVis(key, tampil);
+        try { table.columns.adjust(); } catch (e) {}
+    });
+
+    $(document).on('click', '.cr-pop-toggle', function (e) {
+        e.stopPropagation();
+        var $pop = $(this).closest('.cr-pop');
+        var buka = !$pop.hasClass('show');
+
+        $('.cr-pop').removeClass('show');
+        $pop.toggleClass('show', buka);
+        if (!buka) return;
+
+        // Geser kalau panel keluar dari tepi kanan layar.
+        var $menu = $pop.find('.cr-pop-menu');
+        $menu.css({ left: 0, right: 'auto' });
+        var rect = $menu[0].getBoundingClientRect();
+        if (rect.right > window.innerWidth - 8) $menu.css({ left: 'auto', right: 0 });
+    });
+    $(document).on('click', function (e) {
+        if ($(e.target).closest('.cr-pop').length) return;
+        $('.cr-pop').removeClass('show');
+    });
+    $(document).on('keydown', function (e) {
+        if (e.key === 'Escape') $('.cr-pop').removeClass('show');
+    });
+
+    /* Hapus draft — delegasi, karena baris bisa dirender ulang oleh DataTables. */
     $('#tblCashReceipt').on('submit', '.js-confirm-delete', function (e) {
         e.preventDefault();
         var form = this;
@@ -242,19 +363,20 @@ $(function () {
     });
 
     /*
-     | Kartu ringkasan dihitung ulang dari baris yang LOLOS filter (bukan hanya
-     | yang tampil di halaman aktif), jadi angka di atas selalu menggambarkan
-     | isi tabel di bawahnya. Inilah yang membuat penyaringan di browser aman
-     | dilakukan — dulu penyaringan dipaksa lewat reload demi hal ini.
+     | Kartu dan footer dihitung ulang dari baris yang LOLOS filter (bukan hanya
+     | yang tampil di halaman aktif), jadi angka selalu menggambarkan isi tabel
+     | di bawahnya. Rentang tanggal sudah diterapkan server; yang dihitung ulang
+     | di sini hanya pencarian dan dropdown Status/Customer.
      */
     var rupiah = function (n) { return 'Rp ' + (n || 0).toLocaleString('id-ID'); };
+    var angka  = function (n) { return (n || 0).toLocaleString('id-ID'); };
 
     function refreshCards() {
         var jumlah = 0, total = 0, invoice = 0, sisa = 0;
 
         table.rows({ search: 'applied' }).nodes().each(function (tr) {
             jumlah  += 1;
-            total   += parseInt(tr.getAttribute('data-total') || 0, 10);
+            total   += parseInt(tr.getAttribute('data-diterima') || 0, 10);
             invoice += parseInt(tr.getAttribute('data-invoices') || 0, 10);
             sisa    += parseInt(tr.getAttribute('data-unallocated') || 0, 10);
         });
@@ -270,7 +392,93 @@ $(function () {
         $ic.toggleClass('ts-tone-attention', sisa > 0).toggleClass('ts-tone-neutral', sisa <= 0);
     }
 
-    table.on('draw', refreshCards);
+    // Sel footer dicari lewat kelas (bukan indeks): DataTables ikut mencabut sel footer kolom yang disembunyikan.
+    function recalcFooter() {
+        var tagihan = 0, pph = 0, diterima = 0;
+
+        table.rows({ search: 'applied' }).nodes().each(function (tr) {
+            tagihan  += parseInt(tr.getAttribute('data-tagihan') || 0, 10);
+            pph      += parseInt(tr.getAttribute('data-pph') || 0, 10);
+            diterima += parseInt(tr.getAttribute('data-diterima') || 0, 10);
+        });
+
+        var $foot = $('#tblCashReceipt tfoot');
+        $foot.find('.cr-foot-tagihan').text(angka(tagihan));
+        $foot.find('.cr-foot-pph').text(angka(pph));
+        $foot.find('.cr-foot-diterima').text(angka(diterima));
+    }
+
+    table.on('draw', function () { refreshCards(); recalcFooter(); });
+    table.on('column-visibility.dt', function () { recalcFooter(); });
+    refreshCards();
+    recalcFooter();
+
+    /* ── FILTER TANGGAL (server-side) ──────────────────────────────────────
+     | Komponen bersama TesysDateRange (public/js/tesys-date-range.js). Menerapkan
+     | rentang = muat ulang halaman dengan ?date_from=&date_to=&range=. Kalau
+     | flatpickr gagal termuat, komponennya mengembalikan null dan filter turun
+     | ke dua input teks manual (YYYY-MM-DD). */
+    function terapkanRentang(dari, sampai, range) {
+        if (!dari || !sampai) { return; }
+        var url = new URL(window.location.href);
+        url.searchParams.set('date_from', dari);
+        url.searchParams.set('date_to', sampai);
+        if (range) { url.searchParams.set('range', range); }
+        else       { url.searchParams.delete('range'); }
+        window.location.href = url.toString();
+    }
+
+    var crPeriode = (typeof TesysDateRange === 'object')
+        ? TesysDateRange.init({
+            input: '#crDateRange', from: '#crDateFrom', to: '#crDateTo',
+            applyButton: { label: 'Terapkan', onClick: function (dari, sampai) { terapkanRentang(dari, sampai); } }
+        })
+        : null;
+
+    if (!crPeriode) {
+        console.warn('TesysDateRange tidak tersedia - filter tanggal beralih ke mode input manual.');
+        $('#crDateFrom, #crDateTo').attr('type', 'text')
+            .addClass('form-control form-control-sm')
+            .attr('placeholder', 'YYYY-MM-DD');
+        $('#crDateRange').remove();
+        $('<button type="button" class="btn btn-primary btn-sm"><i class="fas fa-check mr-1"></i> Terapkan</button>')
+            .on('click', function () { terapkanRentang($('#crDateFrom').val(), $('#crDateTo').val()); })
+            .appendTo('.cr-date-range');
+    }
+
+    function fmtTanggal(d) {
+        var p = function (n) { return (n < 10 ? '0' : '') + n; };
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+    }
+
+    $('#crQuickRange').on('change', function () {
+        var v = $(this).val();
+
+        // Pilihan kosong = kembali ke bawaan (bulan berjalan).
+        if (!v) {
+            var url = new URL(window.location.href);
+            ['date_from', 'date_to', 'range'].forEach(function (k) { url.searchParams.delete(k); });
+            window.location.href = url.toString();
+            return;
+        }
+
+        if (v === 'custom') {
+            $('#crCustomRange').removeClass('d-none').addClass('d-flex');
+            if (crPeriode) { crPeriode.open(); }
+            return;
+        }
+        $('#crCustomRange').addClass('d-none').removeClass('d-flex');
+
+        var sekarang = new Date();
+        var mulai = new Date(sekarang.getTime());
+        if (v === '1d')       { mulai.setDate(mulai.getDate() - 1); }
+        else if (v === '3d')  { mulai.setDate(mulai.getDate() - 3); }
+        else if (v === '7d')  { mulai.setDate(mulai.getDate() - 7); }
+        else if (v === '30d') { mulai.setDate(mulai.getDate() - 30); }
+        else if (v === '1y')  { mulai.setFullYear(mulai.getFullYear() - 1); }
+
+        terapkanRentang(fmtTanggal(mulai), fmtTanggal(sekarang), v);
+    });
 });
 </script>
 @endpush

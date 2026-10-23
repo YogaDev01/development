@@ -208,8 +208,10 @@ class CustomerController extends Controller
             'po_number_qty'  => $projects->sum(fn ($p) => $p->poNumbers->count()),
             'invoice_qty'    => $invoices->count(),
             'invoice_value'  => (int) $invoices->sum('captured_total'),
-            'paid_value'     => (int) $invoices->sum(fn ($inv) =>
-                (int) $inv->cashReceipts->sum('amount') + (int) $inv->cashReceipts->sum('withholding_tax')),
+            'paid_value'     => (int) $invoices->sum(fn ($inv) => \App\Models\Invoice::hitungDiterima(
+                (int) $inv->cashReceipts->sum('amount'),
+                (int) $inv->cashReceipts->sum('withholding_tax'),
+                (int) $inv->withholding_tax)),
         ];
 
         $summary['outstanding'] = max(0, $summary['invoice_value'] - $summary['paid_value']);

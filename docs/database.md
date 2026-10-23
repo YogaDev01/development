@@ -111,3 +111,8 @@ converted in place.
   `2026_09_22_000020`. Intentional (CHANGELOG v2.5.0: bank data lives on
   Beneficiary only); no code references remain. Data entered 22 Sep–1 Oct was
   not copied anywhere.
+
+## Makna `withholding_tax` (tanpa skema baru)
+
+- `invoices.withholding_tax`: PPh yang mengurangi `captured_total`; awalnya PPh di muka, kini disinkronkan dari PPh aktual pada `cash_receipts` (lihat business-rules.md).
+- `cash_receipts.withholding_tax`: PPh yang diinput pada penerimaan; bukan uang masuk. Bila sama dengan PPh invoice (>0) tidak dihitung dua kali pada "diterima" (`Invoice::hitungDiterima`).

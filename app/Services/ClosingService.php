@@ -159,7 +159,11 @@ class ClosingService
             ->whereDate('invoice_date', '<=', $to)
             ->get()
             ->map(function ($inv) {
-                $received = (int) $inv->cashReceipts->sum('amount') + (int) $inv->cashReceipts->sum('withholding_tax');
+                $received = Invoice::hitungDiterima(
+                    (int) $inv->cashReceipts->sum('amount'),
+                    (int) $inv->cashReceipts->sum('withholding_tax'),
+                    (int) $inv->withholding_tax,
+                );
                 $balance  = max(0, (int) $inv->captured_total - $received);
 
                 return [
