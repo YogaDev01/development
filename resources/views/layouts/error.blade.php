@@ -24,6 +24,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('kode', 'Galat') — TESYS</title>
     <link rel="icon" href="{{ asset('dist/img/favicon16.ico') }}" type="image/x-icon">
+    @include('layouts.partials.pwa-head')
     <style>
         :root {
             --bg: #f6f7f9;

@@ -18,6 +18,7 @@
     <title>Masuk — TESYS</title>
 
     <link rel="icon" href="{{ asset('dist/img/favicon16.ico') }}" type="image/x-icon">
+    @include('layouts.partials.pwa-head')
 
     {{-- Tema dipasang SEBELUM satu piksel pun digambar.
 
@@ -1463,5 +1464,6 @@
 
 </script>
 
+<script src="@aset('js/tesys-pwa.js')"></script>
 </body>
 </html>

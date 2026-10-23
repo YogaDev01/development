@@ -141,6 +141,19 @@ return [
             ],
         ],
 
+        'umum' => [
+            'label' => 'Umum',
+            'icon'  => 'fa-mobile-alt',
+            'topics' => [
+                [
+                    'slug'  => 'instal-aplikasi',
+                    'title' => 'Pasang TESYS di HP',
+                    'icon'  => 'fa-mobile-alt',
+                    'desc'  => 'Menambahkan TESYS ke Home Screen Android atau iPhone dan cara memperbaruinya.',
+                ],
+            ],
+        ],
+
     ],
 
 ];
