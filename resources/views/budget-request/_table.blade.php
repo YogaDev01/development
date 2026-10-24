@@ -49,6 +49,9 @@
                 <th scope="col" class="text-right text-nowrap" style="width:1%;" data-col="claim">Expense Claim</th>
                 @endif
                 <th scope="col" data-col="status" class="text-nowrap" style="width:1%;">Status</th>
+                @if($isDb)
+                <th scope="col" data-col="close_date" class="text-nowrap" style="width:1%;">Close Date</th>
+                @endif
                 @unless($isDb)
                 <th scope="col" class="text-center all action-column" style="width:1%;">Action</th>
                 @endunless
@@ -77,7 +80,7 @@
                 @else
                 <th colspan="8" class="text-right" style="font-size:12px;">Total Cost (data tampil)</th>
                 <th class="text-right text-nowrap cr-foot-cost" style="font-size:12px;color:var(--info);"></th>
-                <th colspan="1"></th>
+                <th colspan="2"></th>
                 @endif
             </tr>
         </tfoot>

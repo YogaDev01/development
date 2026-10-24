@@ -26,10 +26,27 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '3.1.0',
+    'current' => '3.1.1',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '3.1.1',
+            'date'    => '2026-10-24',
+            'title'   => 'Perbaikan Tampilan Bottom Navbar Setelah Deploy',
+            'summary' => 'Bottom navbar di ponsel kembali tampil rapi setelah deploy: tombol tidak lagi polos dan logo tidak membesar.',
+            'sections' => [
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Bottom navbar yang tidak tampak dan berganti tombol tanpa gaya serta logo perusahaan raksasa setelah deploy, karena peramban masih memakai berkas CSS lama dari cache. Versi aset dinaikkan agar CSS terbaru dimuat.',
+                        'Logo pada tombol pemilih aplikasi di bottom navbar diberi ukuran bawaan sehingga tidak membesar walau CSS belum termuat.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '3.1.0',

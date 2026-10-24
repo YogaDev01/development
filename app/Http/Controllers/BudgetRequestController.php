@@ -1002,7 +1002,9 @@ class BudgetRequestController extends Controller
         } else {
             // Database: read-only & ringan — nilai Settlement cukup withSum, tanpa memuat baris realisasi.
             $query->with(['type', 'budgetPlan.project.manager', 'applicant', 'beneficiary.pic'])
-                ->withSum('realizations as realization_sum', 'total');
+                ->withSum('realizations as realization_sum', 'total')
+                // Close Date = kapan Second Payment (pembayaran ke-2) dibayar.
+                ->withMax(['secondPayments as second_paid_at' => fn ($q) => $q->where('status', 'PAID')], 'paid_at');
         }
 
         $rows = $query->latest()->limit($maxRows)->get();
@@ -3268,7 +3270,7 @@ class BudgetRequestController extends Controller
         $query = BudgetRequest::with([
             'type', 'cluster', 'budgetPlan.project', 'budgetPlan.costCenter',
             'applicant', 'beneficiary.pic', 'details.account', 'statusLogs', 'realizations',
-            'dailyTransactionItems.dailyTransaction.sourceFund',
+            'dailyTransactionItems.dailyTransaction.sourceFund', 'secondPayments',
         ]);
 
         $this->scopeByRole($query);
@@ -3339,6 +3341,9 @@ class BudgetRequestController extends Controller
             */
             'cost'      => ['Cost',         16, fn ($cr) => $cr->realizedCostValue()],
             'status'    => ['Status',       14, fn ($cr) => $cr->status],
+            // Close Date = tanggal Second Payment (pembayaran ke-2) dibayar; '-' bila tidak ada.
+            'close_date' => ['Close Date',  16, fn ($cr) => $cr->secondPayments->where('status', 'PAID')
+                ->sortByDesc('paid_at')->first()?->paid_at?->format('d-m-Y H:i') ?? '-'],
             // Hanya untuk export tanpa cols (bentuk lengkap lama):
             'type'      => ['Tipe',         16, fn ($cr) => $cr->type?->name ?? '-'],
             'sumber'    => ['Sumber Dana',  28, fn ($cr) => $cr->budgetPlan?->isProjectBudget()
@@ -3380,7 +3385,7 @@ class BudgetRequestController extends Controller
             'code', 'tanggal', 'paid_at', 'desc', 'type', 'sumber',
             'penerima', 'pic', 'pengaju',
             'request', 'realisasi', 'refund', 'claim', 'cost',
-            'status', 'nob', 'txid', 'account', 'costtype',
+            'status', 'close_date', 'nob', 'txid', 'account', 'costtype',
         ];
 
         foreach ($activeCols as $i => $key) {

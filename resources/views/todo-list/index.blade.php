@@ -3583,13 +3583,7 @@ $(function () {
         $dd.data('todoOwner', $btn.get(0));
         $('body').append($dd);
 
-        var offset = $btn.offset();
-        var ddWidth = $dd.outerWidth();
-        var viewportRight = $(window).scrollLeft() + $(window).width();
-        var left = offset.left;
-        if (left + ddWidth > viewportRight - 10) left = offset.left + $btn.outerWidth() - ddWidth;
-        var z = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
-        $dd.css({ top: offset.top / z + $btn.outerHeight() + 4, left: Math.max(10, left / z) });
+        TesysPlaceDropdown($dd, $btn);
 
         $search.on('input', function () {
             var q = $(this).val().toLowerCase();
