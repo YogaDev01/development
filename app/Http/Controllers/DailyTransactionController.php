@@ -1560,7 +1560,17 @@ class DailyTransactionController extends Controller
             ->filter(fn ($v) => is_numeric($v))
             ->map(fn ($v) => (int) $v);
 
-        $transactions = DailyTransaction::with(['sourceFund', 'toSourceFund', 'includedItems'])
+        // Relasi item di-eager-load untuk sheet "Detail"; tanpa ini tiap baris
+        // memicu query sendiri saat file dibentuk.
+        $transactions = DailyTransaction::with([
+                'sourceFund', 'toSourceFund',
+                'includedItems.budgetRequest.budgetPlan.project',
+                'includedItems.budgetRequest.budgetPlan.costCenter',
+                'includedItems.budgetRequest.applicant',
+                'includedItems.budgetRequest.beneficiary',
+                'includedItems.secondPayment',
+                'includedItems.costRegister.beneficiary',
+            ])
             // Dengan daftar id, rentang tanggal TIDAK ikut membatasi: id itu sudah
             // berasal dari tabel yang rentangnya sama, dan menerapkan keduanya
             // hanya bisa membuang baris yang justru diminta user.
@@ -1633,6 +1643,50 @@ class DailyTransactionController extends Controller
         foreach (['A'=>18,'B'=>14,'C'=>40,'D'=>12,'E'=>20,'F'=>16,'G'=>14,'H'=>16,'I'=>14,'J'=>28,'K'=>28] as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
         }
+
+        /* SHEET 2 — DETAIL
+           Isi per batch sama dengan sheet "Detail" Export Data di halaman show
+           (item INCLUDED saja), ditambah kolom Kode Batch + baris Cost Register. */
+        $detail = $spreadsheet->createSheet();
+        $detail->setTitle('Detail');
+        $detail->fromArray(['Kode Batch', 'Budget Plan', 'Kode', 'Deskripsi', 'Pengaju', 'Penerima', 'Amount', 'Tanggal'], null, 'A1');
+        foreach (range('A', 'H') as $col) {
+            $detail->getStyle($col . '1')->getFont()->setBold(true);
+            $detail->getStyle($col . '1')->getFill()
+                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                ->getStartColor()->setRGB('0D1B2A');
+            $detail->getStyle($col . '1')->getFont()->getColor()->setRGB('FFFFFF');
+        }
+
+        $detailRow = 2;
+        foreach ($transactions as $trx) {
+            foreach ($trx->includedItems as $item) {
+                $cr  = $item->budgetRequest;
+                $reg = $item->costRegister;
+                if (!$cr && !$reg) continue;
+
+                $detail->setCellValueExplicit('A' . $detailRow, $trx->code, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+                $detail->fromArray([
+                    $cr ? $this->budgetPlanLabel($cr->budgetPlan) : 'Cost Register (Non-CR)',
+                    $item->sourceCode(),
+                    $item->sourceDescription(),
+                    $cr ? ($cr->applicant->name ?? '-') : '-',
+                    ($cr ? $cr->beneficiary : $reg->beneficiary)->complete_name ?? '-',
+                    (int) $item->sourceAmount(),
+                    $cr ? $cr->created_at?->format('d-m-Y') : ($reg->period?->format('m-Y') ?? '-'),
+                ], null, 'B' . $detailRow);
+                $detailRow++;
+            }
+        }
+        if ($detailRow > 2) {
+            $detail->getStyle('A2:A' . ($detailRow - 1))->getNumberFormat()
+                ->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
+        }
+        foreach (['A'=>18,'B'=>32,'C'=>18,'D'=>40,'E'=>18,'F'=>22,'G'=>16,'H'=>14] as $col => $width) {
+            $detail->getColumnDimension($col)->setWidth($width);
+        }
+
+        $spreadsheet->setActiveSheetIndex(0);
 
         $filename = 'treasury_batch_' . $dateFrom . '_' . $dateTo . '.xlsx';
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);

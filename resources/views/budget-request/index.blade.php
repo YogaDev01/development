@@ -147,152 +147,19 @@
 {{-- DRAWER TINJAU CR                                                   --}}
 {{-- Permukaan tinjau cepat: status + konteks, ringkasan, timeline,     --}}
 {{-- lampiran, dan aksi. Memakai endpoint detail-json yang sudah ada.   --}}
-{{-- Tabel rincian yang lebar tetap di modal (tombol "Rincian lengkap").--}}
+{{-- Rincian Request/Settlement ada di tab drawer ini (satu permukaan).  --}}
 {{-- ================================================================ --}}
-<x-drawer id="crDrawer" label="Detail Cost Request" width="580px">
-    <div id="crDrawerContent" hidden></div>
-
-    <div id="crDrawerLoading">
-        <x-skeleton type="lines" :rows="2" />
-        <div style="height:14px"></div>
-        <x-skeleton type="card" />
-        <div style="height:14px"></div>
-        <x-skeleton type="lines" :rows="4" />
-    </div>
-
-    <x-slot:footer>
-        <div id="crDrawerActions" class="ts-actions" style="flex:1;justify-content:flex-start;"></div>
-        <button type="button" class="ts-action-primary is-neutral" id="crDrawerFull">
-            <i class="fas fa-list-alt"></i><span class="ts-al">Rincian lengkap</span>
-        </button>
-    </x-slot:footer>
-</x-drawer>
-
-{{-- ================================================================ --}}
-{{-- MODAL DETAIL CR                                                    --}}
-{{-- ================================================================ --}}
-<div class="modal fade" id="mdlDetailCR" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-xxl" role="document">
-        <div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
-            {{-- Tidak ada pita header di sini. Judul dokumen, kodenya, dan
-                 tombol tutup pindah ke kepala panel ringkas gelap di bawah,
-                 supaya modal terbaca sebagai SATU lembar: kolom gelap penuh
-                 di kiri, ruang kerja terang di kanan. --}}
-            <div class="modal-body dm-body" style="padding:0;background:var(--surface);">
-                {{-- Kerangka mengikuti bentuk isi modal (kolom kiri ringkasan,
-                     kanan tabel) supaya tidak ada lompatan tata letak saat data tiba. --}}
-                <div id="crDetailLoading" style="padding:18px;display:flex;gap:16px;flex-wrap:wrap;min-height:420px;">
-                    <div style="flex:0 0 200px;max-width:100%;background:var(--surface);border-radius:var(--radius-lg);padding:16px;">
-                        <x-skeleton type="card" />
-                        <x-skeleton type="lines" :rows="6" />
-                    </div>
-                    <div style="flex:1;min-width:240px;background:var(--surface);border-radius:var(--radius-lg);padding:16px;">
-                        <x-skeleton type="lines" :rows="2" />
-                        <x-skeleton type="table" :rows="9" :cols="4" />
-                    </div>
-                </div>
-                <div id="crDetailContent" style="display:none;">
-                    <div class="cr-modal-flex">
-                        <div class="cr-sidebar dm-side">
-
-                            {{-- Kepala panel. Lingkaran ikon 60px yang dulu ada di
-                                 sini dilepas: ia mengambil sepertiga tinggi panel
-                                 untuk mengulang informasi yang sudah dinyatakan
-                                 oleh modul tempat modal ini dibuka. --}}
-                            <div class="dm-head">
-                                <button type="button" class="close dm-close" data-dismiss="modal"
-                                        aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
-
-                                <div id="crCode" class="dm-code"></div>
-                                <h5 class="dm-title" id="crModalTitle">Cost Request Detail</h5>
-                                <small id="crModalSubtitle" class="dm-sub-hidden"></small>
-
-                                <div class="dm-badges">
-                                    <span id="crStatusBadge"></span>
-                                    <span id="crNobBadge"></span>
-                                </div>
-                            </div>
-                            <hr style="border-color:rgba(255,255,255,0.08);">
-                            <div class="mb-2"><span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Type</span><div id="crType" class="text-white mt-1" style="font-size:12px;"></div></div>
-                            <div class="mb-2"><span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Total Request</span><div id="crAmount" style="color:var(--accent);font-size:18px;font-weight:700;margin-top:4px;"></div></div>
-                            <div class="mb-2"><span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Total Settlement</span><div id="crRealizationAmount" style="color:var(--success);font-size:14px;font-weight:700;margin-top:4px;"></div></div>
-                            {{-- Label & warnanya diisi JS: "Refund" kalau settlement lebih
-                                 kecil dari pengajuan, "Second Payment" kalau justru lebih besar
-                                 (lihat pengisian #crRefundLabel di bawah). --}}
-                            <div class="mb-2"><span id="crRefundLabel" style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Refund</span><div id="crRefundAmount" class="dm-calc-zero" style="font-size:14px;font-weight:700;margin-top:4px;"></div></div>
-                            <div class="mb-2"><span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Beneficiary</span><div id="crBeneficiary" class="text-white mt-1" style="font-size:12px;"></div><div id="crBank" style="color:var(--text-faint);font-size:11px;"></div></div>
-                            <div class="mb-2"><span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Requestor</span><div id="crApplicant" class="text-white mt-1" style="font-size:12px;"></div></div>
-                            <div class="cr-sidebar-spacer"></div>
-                        </div>
-                        <div class="cr-main-panel">
-                            <ul class="nav nav-tabs mb-3" id="crDetailTabs" style="border-bottom:2px solid var(--border);flex-wrap:wrap;">
-                                <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#crPaneInfo" style="font-size:12px;font-weight:600;padding:8px 12px;"><i class="fas fa-info-circle mr-1"></i> Info</a></li>
-                                <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#crPaneDetails" style="font-size:12px;font-weight:600;padding:8px 12px;"><i class="fas fa-list-ul mr-1"></i> Request <span id="crDetailCount" class="badge badge-secondary ml-1" style="font-size:10px;"></span></a></li>
-                                <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#crPaneRealization" style="font-size:12px;font-weight:600;padding:8px 12px;"><i class="fas fa-receipt mr-1"></i> Settlement <span id="crRealizationCount" class="badge badge-secondary ml-1" style="font-size:10px;"></span></a></li>
-                                <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#crPaneLogs" style="font-size:12px;font-weight:600;padding:8px 12px;"><i class="fas fa-history mr-1"></i> Log</a></li>
-                            </ul>
-                            <div class="tab-content">
-                                <div class="tab-pane fade show active" id="crPaneInfo">
-                                    {{-- Satu informasi satu baris (.ts-deflist), sama dengan
-                                         modal Purchase Order & Budgeting. --}}
-                                    <div class="ts-deflist mb-3">
-                                        <div class="ts-deflist-row">
-                                            <span class="ts-deflist-label">Reference</span>
-                                            <span class="ts-deflist-value">
-                                                <span id="infoCode"></span>
-                                                <button type="button" class="cr-copy-btn" data-copy-target="infoCode" title="Salin Reference"><i class="far fa-copy"></i></button>
-                                            </span>
-                                        </div>
-                                        <div class="ts-deflist-row">
-                                            <span class="ts-deflist-label">Kode</span>
-                                            <span class="ts-deflist-value">
-                                                <span id="infoCrCode"></span>
-                                                <button type="button" class="cr-copy-btn" data-copy-target="infoCrCode" title="Salin Kode"><i class="far fa-copy"></i></button>
-                                            </span>
-                                        </div>
-                                        <div class="ts-deflist-row">
-                                            <span class="ts-deflist-label">Description</span>
-                                            <span id="infoDesc" class="ts-deflist-value"></span>
-                                        </div>
-                                        <div class="ts-deflist-row">
-                                            <span class="ts-deflist-label">Type</span>
-                                            <span id="infoType" class="ts-deflist-value"></span>
-                                        </div>
-                                        <div class="ts-deflist-row">
-                                            <span class="ts-deflist-label">Total</span>
-                                            <span id="infoAmount" class="ts-deflist-value"></span>
-                                        </div>
-                                        <div class="ts-deflist-row">
-                                            <span class="ts-deflist-label">Email Notification</span>
-                                            <span id="infoEmail" class="ts-deflist-value" style="word-break:break-all;"></span>
-                                        </div>
-                                    </div>
-                                    {{-- Baris yang hanya muncul untuk sebagian CR
-                                         dipisah supaya id="crScopeRow" tetap bisa
-                                         disembunyikan seluruhnya seperti sebelumnya. --}}
-                                    <div class="ts-deflist mb-3" id="crScopeRow">
-                                        <div class="ts-deflist-row">
-                                            <span class="ts-deflist-label">Scope of Work</span>
-                                            <span id="infoProject" class="ts-deflist-value"></span>
-                                        </div>
-                                        <div class="ts-deflist-row">
-                                            <span class="ts-deflist-label">Project</span>
-                                            <span id="infoCluster" class="ts-deflist-value"></span>
-                                        </div>
-                                        <div class="ts-deflist-row" id="crPaymentNotesCard" style="display:none;">
-                                            <span class="ts-deflist-label">Payment Notes</span>
-                                            <span id="infoPaymentNotes" class="ts-deflist-value"></span>
-                                        </div>
-                                        {{-- Notes ikut sebaris dengan informasi lain, tidak lagi
-                                             di balik tombol buka-tutup: ia satu keterangan biasa,
-                                             dan menyembunyikannya membuat catatan penting terlewat. --}}
-                                        <div class="ts-deflist-row">
-                                            <span class="ts-deflist-label">Notes</span>
-                                            <span id="infoNotes" class="ts-deflist-value" style="white-space:pre-line;"></span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="tab-pane fade" id="crPaneDetails">
+<x-drawer id="crDrawer" label="Detail Cost Request" width="max(50vw, 560px)">
+    <div id="crDrawerContent" hidden>
+        <ul class="nav nav-tabs mb-3" id="crDetailTabs" style="border-bottom:2px solid var(--border);flex-wrap:wrap;">
+            <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#crPaneInfo" style="font-size:12px;font-weight:600;padding:8px 12px;"><i class="fas fa-info-circle mr-1"></i> Info</a></li>
+            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#crPaneDetails" style="font-size:12px;font-weight:600;padding:8px 12px;"><i class="fas fa-list-ul mr-1"></i> Request <span id="crDetailCount" class="badge badge-secondary ml-1" style="font-size:10px;"></span></a></li>
+            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#crPaneRealization" style="font-size:12px;font-weight:600;padding:8px 12px;"><i class="fas fa-receipt mr-1"></i> Settlement <span id="crRealizationCount" class="badge badge-secondary ml-1" style="font-size:10px;"></span></a></li>
+            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#crPaneLogs" style="font-size:12px;font-weight:600;padding:8px 12px;"><i class="fas fa-history mr-1"></i> Log</a></li>
+        </ul>
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="crPaneInfo"></div>
+            <div class="tab-pane fade" id="crPaneDetails">
                                     {{-- Rincian dikelompokkan per Chart of Account, pola yang sama
                                          dengan tab Budget di modal Budgeting. --}}
                                     <div class="d-flex justify-content-end mb-2">
@@ -319,7 +186,7 @@
                                         </h6>
                                         <div id="crAttBody" class="cr-att-grid"></div>
                                     </div>
-                                </div>
+            </div>
                                 <div class="tab-pane fade" id="crPaneRealization">
                                     <div id="crNoRealization" class="text-center text-muted py-4" style="display:none;">
                                         <i class="fas fa-receipt d-block mb-2"></i> No settlement data yet.
@@ -353,17 +220,26 @@
                                         <div id="crSecondPaymentBox" class="mt-3" style="display:none;"></div>
                                     </div>
                                 </div>
-                                <div class="tab-pane fade" id="crPaneLogs">
-                                    <div id="crLogBody" class="cr-timeline cr-chat"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="tab-pane fade" id="crPaneLogs">
+                <div id="crLogBody" class="cr-timeline cr-chat"></div>
             </div>
         </div>
     </div>
-</div>
+
+    <div id="crDrawerError" hidden></div>
+
+    <div id="crDrawerLoading">
+        <x-skeleton type="lines" :rows="2" />
+        <div style="height:14px"></div>
+        <x-skeleton type="card" />
+        <div style="height:14px"></div>
+        <x-skeleton type="lines" :rows="4" />
+    </div>
+
+    <x-slot:footer>
+        <div id="crDrawerActions" class="ts-actions" style="flex:1;justify-content:flex-start;"></div>
+    </x-slot:footer>
+</x-drawer>
 
 {{-- MODAL HEAD APPROVE --}}
 <div class="modal fade" id="mdlHeadApprove" tabindex="-1" aria-hidden="true">
@@ -632,8 +508,6 @@
 .cr-req-badge { font-size:9px; }
 
 /* Tombol salin (Reference & Kode di tab Info). */
-.cr-copy-btn { background:none; border:0; padding:0 0 0 6px; color:var(--text-faint); cursor:pointer; font-size:12px; line-height:1; }
-.cr-copy-btn:hover { color:var(--accent); }
 
 /* Teks deskripsi panjang di tab Settlement: dipotong satu baris dengan "…",
    melebar penuh saat barisnya disorot kursor. */
@@ -667,8 +541,11 @@
 #crDetailBody tr.cr-group-row:hover td, #crRealizationBody tr.cr-group-row:hover td { background:var(--surface-3) !important; }
 #crDetailBody .cr-caret.rotated, #crRealizationBody .cr-caret.rotated { transform:rotate(90deg); }
 #crDetailBody td.cr-indent, #crRealizationBody td.cr-indent { padding-left:32px !important; }
-.cr-att-card { border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; background:var(--surface); }
-.cr-att-thumb { width:100%; height:120px; object-fit:cover; display:block; cursor:pointer; background:var(--surface-2); }
+/* Kartu lampiran: seluruh kartu adalah tombol yang membuka carousel. */
+.cr-att-card { display:block; width:100%; padding:0; text-align:left; border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; background:var(--surface); cursor:pointer; transition:border-color .12s ease, box-shadow .12s ease; }
+.cr-att-card:hover, .cr-att-card:focus-visible { border-color:var(--accent-soft); box-shadow:var(--shadow-sm, 0 1px 4px rgba(0,0,0,.12)); outline:none; }
+.cr-att-thumb { width:100%; height:120px; object-fit:cover; display:block; background:var(--surface-2); }
+.cr-att-meta { display:block; padding:0 8px 6px; font-size:10.5px; color:var(--text-faint); }
 .cr-att-icon { width:100%; height:120px; display:flex; align-items:center; justify-content:center; background:var(--surface-2); color:var(--text-faint); font-size:30px; }
 .cr-att-name { font-size:11px; padding:6px 8px; color:var(--text); word-break:break-word; border-top:1px solid var(--border); }
 
@@ -711,6 +588,8 @@
 .cr-main-tabs .nav-link:hover { color:var(--text); }
 .cr-main-tabs .nav-link.active { color:var(--accent) !important; border-bottom-color:var(--accent) !important; background:transparent !important; }
 .cr-tab-host { min-height:120px; }
+/* Tab drawer tetap di atas saat isinya digulir (.ts-drawer-body yang menggulir). */
+#crDetailTabs { position:sticky; top:0; z-index:5; background:var(--surface); }
 #crDetailTabs .nav-link { color:var(--text-faint); border:none; border-bottom:2px solid transparent; border-radius:0; padding:8px 12px; }
 #crDetailTabs .nav-link.active { color:var(--accent) !important; border-bottom-color:var(--accent) !important; background:transparent !important; font-weight:700; }
 @media (max-width:576px) {
@@ -1517,22 +1396,12 @@ $(function () {
             '<i class="fas fa-info-circle mr-1"></i> CR akan dikembalikan ke status <strong>PAID</strong> untuk diajukan ulang Settlement-nya.');
     });
 
-    /* ── MODAL DETAIL ── */
+    /* ── DRAWER DETAIL ── */
     // Set badge angka pada tab: tampil bila > 0, sembunyi bila 0
     function setTabCount(sel, n) {
         var el = $(sel);
         if (n && n > 0) { el.text(n).show(); }
         else { el.text('').hide(); }
-    }
-
-    /* Badge status di modal memakai peta yang sama dengan tabel dan drawer
-       (statusMeta, berasal dari App\Support\WorkflowStatus). Peta warna
-       kedua yang dulu ada di sini sudah dihapus. */
-    function statusBadgeHtml(kode, labelCadangan) {
-        var m = statusMeta[kode] || { label: labelCadangan || kode, tone: 'neutral', description: null };
-        return '<span class="ts-status ts-status-' + m.tone + ' ts-status-sm"'
-             + (m.description ? ' title="' + esc(m.label + ' — ' + m.description) + '"' : '')
-             + '>' + esc(m.label) + '</span>';
     }
 
     /* ── IMAGE VIEWER — carousel + zoom (ala WhatsApp), untuk tab Request & Realization ── */
@@ -1603,24 +1472,14 @@ $(function () {
         function showNext() { if (idx < images.length - 1) { idx++; renderViewer(); } }
         function showPrev() { if (idx > 0) { idx--; renderViewer(); } }
 
-        // Trigger: klik thumbnail gambar pada grid Attachment (Request maupun Realization)
-        $(document).on('click', '.cr-att-thumb', function () {
-            // Grup carousel = .cr-att-grid terdekat. Kalau thumbnail dirender
-            // tanpa wrapper (mis. langsung di sel tabel Settlement), pakai
-            // parent terdekat supaya daftar gambar tidak pernah kosong.
-            var $group = $(this).closest('.cr-att-grid');
-            if (!$group.length) $group = $(this).closest('td').length ? $(this).closest('td') : $(this).parent();
-            var $thumbs = $group.find('.cr-att-thumb');
-            if (!$thumbs.length) $thumbs = $(this);
-            var groupImages = $thumbs.map(function () {
-                return { full: $(this).data('full'), name: $(this).data('name') };
-            }).get();
-            var startIndex = $thumbs.index(this);
-            openViewer(groupImages, startIndex < 0 ? 0 : startIndex);
+        // Trigger: klik kartu lampiran (Info, Request, Settlement). Seluruh
+        // lampiran satu grup masuk carousel; gambar jadi slide, file lain kartu nama.
+        $(document).on('click', '.cr-att-card', function () {
+            var daftar = (window.__crAttGroups && window.__crAttGroups[$(this).data('group')]) || [];
+            openViewer(daftar.map(function (a) {
+                return { full: '/storage/' + a.path, name: a.original_name, is_image: !!a.is_image, is_pdf: !!a.is_pdf };
+            }), parseInt($(this).data('idx'), 10) || 0);
         });
-
-        // Dipakai tombol "View" pada kolom Aksi tab Request (lampiran per item).
-        window.__crOpenImgViewer = openViewer;
 
         /* Membuka lampiran satu baris. Gambar masuk carousel; PDF dan dokumen lain
            TIDAK bisa ditampilkan di carousel, jadi begitu ada file non-gambar
@@ -1786,15 +1645,6 @@ $(function () {
         return '<div class="ts-empty ts-empty-compact"><p class="ts-empty-msg">' + esc(pesan) + '</p></div>';
     }
 
-    /* Markup kerangka disimpan sekali karena saat pemuatan gagal isinya
-       diganti pesan galat; tanpa ini pembukaan berikutnya kehilangan kerangka. */
-    var kerangkaDetail = null;
-    function pulihkanKerangka() {
-        var el = $('#crDetailLoading');
-        if (kerangkaDetail === null) kerangkaDetail = el.html();
-        else el.html(kerangkaDetail);
-    }
-
     /* Memisah label gabungan "Sub COA — Deskripsi" menjadi dua bagian supaya
        tab Request & Settlement bisa menampilkannya dua baris. Pemisahnya bisa
        hyphen atau em/en dash yang diapit spasi. */
@@ -1805,73 +1655,27 @@ $(function () {
         return { sub: s, rest: '' };
     }
 
-    function openCRDetail(id, tab) {
-        pulihkanKerangka();
-        $('#crDetailLoading').show(); $('#crDetailContent').hide();
-        $('#mdlDetailCR').modal('show');
+    /* Kartu lampiran: gambar tampil sebagai thumbnail, file lain sebagai ikon.
+       Klik kartu membuka carousel untuk seluruh lampiran satu grup. */
+    window.__crAttGroups = {};
+    function renderAttGrid(atts, grup) {
+        if (!atts || !atts.length) return kosongRingkas('Belum ada lampiran.');
+        window.__crAttGroups[grup] = atts;
+        return atts.map(function (a, i) {
+            var url = '/storage/' + a.path;
+            var thumb = a.is_image
+                ? '<img loading="lazy" src="' + escAttr(url) + '" alt="" class="cr-att-thumb">'
+                : '<span class="cr-att-icon"><i class="fas ' + (a.is_pdf ? 'fa-file-pdf' : 'fa-file-alt') + '"></i></span>';
+            return '<button type="button" class="cr-att-card" data-group="' + grup + '" data-idx="' + i + '" title="Buka lampiran">'
+                + thumb
+                + '<span class="cr-att-name" style="display:block;">' + esc(a.original_name) + '</span>'
+                + (a.size_formatted ? '<span class="cr-att-meta">' + esc(a.size_formatted) + '</span>' : '')
+                + '</button>';
+        }).join('');
+    }
 
-        $.get('/budget-request/' + id + '/detail-json', function (d) {
-            $('#crModalTitle').text(d.description);
-            $('#crModalSubtitle').text(d.code);
-            $('#crCode').text(d.code);
-            $('#crStatusBadge').html(statusBadgeHtml(d.status, d.status_label));
-            $('#crNobBadge').html(d.is_nob ? '<span class="badge badge-danger px-2 py-1 mt-1">NOB</span>' : '');
-            $('#crType').text(d.type);
-            $('#crAmount').text(d.amount_formatted);
-            $('#crRealizationAmount').text(d.total_realization_formatted || '0');
-            /* Settlement > pengajuan bukan refund — itu kekurangan bayar yang
-               diselesaikan lewat Second Payment (istilah yang sudah dipakai
-               modul ini; lihat tab Settlement & Todo List). Menyebutnya
-               "Refund 0" menutupi bahwa masih ada kewajiban yang belum dibayar. */
-            (function () {
-                var lebih = parseInt(d.settlement_overage, 10) || 0;
-                $('#crRefundLabel').text(lebih > 0 ? 'Second Payment' : 'Refund');
-                /* Warna mengikuti arah selisihnya, bukan nama barisnya:
-                   kurang bayar (Second Payment) merah terang, dana kembali
-                   (Refund) hijau, dan nol ikut nada panel supaya tidak
-                   terbaca sebagai peringatan. */
-                var refund = parseInt(d.refund, 10) || 0;
-                $('#crRefundAmount')
-                    .text(lebih > 0 ? (d.settlement_overage_formatted || '0') : (d.refund_formatted || '0'))
-                    .css('color', '')
-                    .removeClass('dm-calc-neg dm-calc-pos dm-calc-zero')
-                    .addClass(lebih > 0 ? 'dm-calc-neg' : (refund > 0 ? 'dm-calc-pos' : 'dm-calc-zero'));
-            })();
-            $('#crBeneficiary').text(d.beneficiary);
-            $('#crBank').text(d.bank + ' — ' + d.account_number);
-            $('#crApplicant').text(d.applicant);
-
-            // Info tab
-            // Reference = [Kode PO] Scope of Work, mis. [0084] MS MSG - SEP 2026.
-            var refScope = (d.reference_scope && d.reference_scope !== '-') ? d.reference_scope : '';
-            var refKode  = (d.code_reference && d.code_reference !== '-') ? d.code_reference : '';
-            $('#infoCode').text((refKode ? '[' + refKode + '] ' : '') + (refScope || '-'));
-            $('#infoCrCode').text(d.code);
-            // Badge status DIHAPUS dari deskripsi — status sudah tampil di panel kiri.
-            $('#infoDesc').html(
-                (d.is_nob ? '<span class="badge badge-danger mr-1" style="font-size:9px;">NOB</span>' : '') +
-                esc(d.description)
-            );
-            // Badge tipe: Cash Advance burgundy lembut, selain itu biru lembut.
-            var gayaTipeModal = d.is_cash_advance
-                ? 'background:var(--accent-tint);color:var(--accent-text);border:1px solid var(--accent-tint-2);'
-                : 'background:var(--info-bg);color:var(--info);border:1px solid var(--info-bg);';
-            $('#infoType').html('<span style="' + gayaTipeModal + 'font-size:11px;font-weight:700;padding:2px 10px;border-radius:var(--radius-sm);">' + esc(d.type) + '</span>');
-            $('#infoProject').text(d.project);
-            $('#infoCluster').text(d.cluster);
-            $('#infoAmount').html('<strong style="color:var(--info);">' + d.amount_formatted + '</strong>');
-            $('#infoEmail').text(d.email || '-');
-
-            if (d.payment_notes) {
-                $('#infoPaymentNotes').text(d.payment_notes);
-                $('#crPaymentNotesCard').show();
-                $('#crScopeRow').addClass('has-payment');
-            } else {
-                $('#crPaymentNotesCard').hide();
-                $('#crScopeRow').removeClass('has-payment');
-            }
-            $('#infoNotes').text(d.notes || '-');
-
+    /* Mengisi tab Request, Settlement & Log drawer dari payload detail-json. */
+    function isiPanelCR(d, tab) {
             // Detail tab
             setTabCount('#crDetailCount', d.details.length);
             var canModerate = !!d.can_moderate_items;
@@ -1942,7 +1746,12 @@ $(function () {
                 var actionCell = showActionCol ? '<td class="text-center text-nowrap">' + actionInner + '</td>' : '';
 
                 // Dua baris: Sub COA (+ jumlah lampiran) di atas, deskripsi di bawah.
-                var belah = splitCoaLabel(det.item_label || det.description || '-');
+                // Sub COA dari budget detail dipakai langsung (tebal); catatan baris
+                // jadi deskripsi kecil di bawahnya. Tanpa sub_coa, fallback ke
+                // pemisahan label seperti sebelumnya.
+                var belah = det.sub_coa
+                    ? { sub: det.sub_coa, rest: det.notes || '' }
+                    : splitCoaLabel(det.item_label || det.description || '-');
                 dHtml += '<tr class="' + grupClass + ' cr-group-item" style="display:none;' + rowStyle + '">' +
                     '<td class="cr-indent" style="' + strike + '">' +
                         '<div style="font-weight:600;">' + esc(belah.sub) + takeoutBadge + attBadge + '</div>' +
@@ -1959,28 +1768,6 @@ $(function () {
             $('#crDetailBody').html(dHtml || '<tr><td colspan="6" class="text-center text-muted py-3">No item detail yet.</td></tr>');
             $('#crDetailTotal').text(grand.toLocaleString('id-ID'));
             $('#btnToggleCrDetail').data('expanded', 0).html('<i class="fas fa-angle-double-down mr-1"></i>Expand All');
-
-            // Helper: render grid thumbnail untuk attachments (dipakai tab Request & Realization)
-            function renderAttGrid(atts) {
-                if (!atts || !atts.length) return kosongRingkas('Belum ada lampiran.');
-                var html = '';
-                atts.forEach(function (a) {
-                    var url = '/storage/' + a.path;
-                    if (a.is_image) {
-                        html += '<div class="cr-att-card">' +
-                            '<img loading="lazy" src="' + url + '" class="cr-att-thumb" data-full="' + url + '" data-name="' + a.original_name + '">' +
-                            '<div class="cr-att-name">' + a.original_name + '</div>' +
-                        '</div>';
-                    } else {
-                        var icon = a.is_pdf ? 'fa-file-pdf' : 'fa-file-alt';
-                        html += '<div class="cr-att-card">' +
-                            '<a href="' + url + '" target="_blank" rel="noopener" class="cr-att-icon"><i class="fas ' + icon + '"></i></a>' +
-                            '<div class="cr-att-name">' + a.original_name + '</div>' +
-                        '</div>';
-                    }
-                });
-                return html;
-            }
 
             /* Tab Settlement hanya berlaku untuk Cash Advance — jenis pengajuan
                lain (Cost Payment) tidak punya tahap settlement sama sekali, jadi
@@ -2080,7 +1867,7 @@ $(function () {
                 $('#crRealizationBody').html(rHtml);
                 $('#crRealizationTotal').text(rGrand.toLocaleString('id-ID'));
                 $('#btnToggleCrReal').data('expanded', 0).html('<i class="fas fa-angle-double-down mr-1"></i>Expand All');
-                $('#crRealizationAtts').html(renderAttGrid(d.realization_attachments));
+                $('#crRealizationAtts').html(renderAttGrid(d.realization_attachments, 'real'));
 
                 // Second Payment — cuma tampil kalau Settlement pernah melebihi
                 // nilai pengajuan awal (ada baris di second_payments).
@@ -2121,7 +1908,7 @@ $(function () {
             // Attachment (di bawah tabel Request)
             var atts = d.attachments || [];
             setTabCount('#crAttCount', atts.length);
-            $('#crAttBody').html(renderAttGrid(atts));
+            $('#crAttBody').html(renderAttGrid(atts, 'req'));
 
             // Logs tab — gaya chat, sama persis dengan tab Log Purchase Order:
             // log dari user yang sedang login rata kanan ("mine"), lainnya rata
@@ -2149,20 +1936,10 @@ $(function () {
             // tab Request, klik badge Status -> tab Log) — default tab pertama (Info).
             var $targetTab = tab ? $('#crDetailTabs a[href="' + tab + '"]') : $();
             ($targetTab.length ? $targetTab : $('#crDetailTabs a:first')).tab('show');
-            $('#crDetailLoading').hide(); $('#crDetailContent').show();
-
-        }).fail(function () {
-            $('#crDetailLoading').html(
-                '<div class="ts-empty"><span class="ts-empty-ic" aria-hidden="true"><i class="fas fa-exclamation-triangle"></i></span>' +
-                '<p class="ts-empty-title">Detail gagal dimuat</p>' +
-                '<p class="ts-empty-msg">Periksa koneksi Anda, lalu buka kembali Cost Request ini.</p></div>'
-            );
-            if (window.toast) toast.error('Gagal memuat', 'Detail Cost Request tidak bisa ditampilkan.');
-        });
     }
 
     $(document).on('click', '.btn-detail-cr', function () {
-        openCRDetail($(this).data('id'), $(this).data('tab'));
+        openCRDrawer($(this).data('id'), this, $(this).data('tab'));
     });
 
     /* ================================================================
@@ -2180,8 +1957,8 @@ $(function () {
 
     var crDrawerId = null;
 
-    /* esc() sudah didefinisikan di atas (dipakai modal detail); tidak dibuat
-       ulang di sini supaya tidak ada dua fungsi dengan nama yang sama. */
+    /* esc() sudah didefinisikan di atas; tidak dibuat ulang di sini supaya
+       tidak ada dua fungsi dengan nama yang sama. */
 
     function drawerKV(pasangan) {
         var html = '<dl class="ts-dw-kv">';
@@ -2192,10 +1969,11 @@ $(function () {
         return html + '</dl>';
     }
 
-    function openCRDrawer(id, pemicu) {
+    function openCRDrawer(id, pemicu, tab) {
         crDrawerId = id;
 
-        $('#crDrawerContent').attr('hidden', true).empty();
+        $('#crDrawerContent').attr('hidden', true);
+        $('#crDrawerError').attr('hidden', true).empty();
         $('#crDrawerLoading').show();
         $('#crDrawer-eyebrow').text('');
         $('#crDrawer-title').text('Memuat…');
@@ -2210,7 +1988,7 @@ $(function () {
 
         function tampilkanGagal(pesan) {
             $('#crDrawerLoading').hide();
-            $('#crDrawerContent').html(
+            $('#crDrawerError').html(
                 '<div class="ts-empty">'
                 + '<span class="ts-empty-ic"><i class="fas fa-exclamation-triangle"></i></span>'
                 + '<p class="ts-empty-title">Detail belum dapat dimuat</p>'
@@ -2252,6 +2030,7 @@ $(function () {
                               + 'padding:2px 8px;border-radius:var(--radius-sm);white-space:nowrap;">'
                               + esc(d.type) + '</span>';
                 }
+                if (d.is_nob) tipeBadge += ' <span class="badge badge-danger" style="font-size:10px;">NOB</span>';
 
                 /* ---- Nilai: nominal pengajuan + status di pojok kanan kartu.
                    Settlement/Refund hanya ditampilkan kalau nilainya > 0. */
@@ -2313,6 +2092,12 @@ $(function () {
                     : (d.reference_scope || null);
                 html += '<div class="ts-dw-section"><p class="ts-dw-section-title">Informasi pengajuan</p>'
                      + drawerKV([
+                         ['Kode', d.code],
+                         ['Description', d.description],
+                         ['Scope of Work', d.project],
+                         ['Project', d.cluster],
+                         ['Payment Notes', d.payment_notes],
+                         ['Notes', d.notes],
                          ['Requestor', d.applicant],
                          ['Beneficiary', d.pic],
                          ['Bank Account', d.beneficiary && d.bank
@@ -2334,54 +2119,20 @@ $(function () {
                        ])
                      + '</div>';
 
-                /* Timeline approval — memakai renderer bersama TesysTimeline,
-                   bukan HTML sendiri, supaya modul lain (PO, Invoice) tinggal
-                   memanggil fungsi yang sama. Payload datang terbaru-dulu dan
-                   pembalikan urutannya ditangani di dalam renderer. */
-                html += '<div class="ts-dw-section"><p class="ts-dw-section-title">Riwayat persetujuan</p>'
-                     + TesysTimeline.render(d.logs, { pesanKosong: 'Belum ada riwayat persetujuan.', terbaruDulu: false })
-                     + '</div>';
-
-                /* Lampiran */
+                /* Lampiran — kartu; klik membuka carousel. */
                 html += '<div class="ts-dw-section"><p class="ts-dw-section-title">Lampiran'
-                     + (d.attachments_count ? ' (' + d.attachments_count + ')' : '') + '</p>';
-                if (d.attachments && d.attachments.length) {
-                    // Klik membuka carousel (viewer yang sama dengan modal rincian), bukan tab baru;
-                    // href tetap ada sebagai cadangan (klik tengah / buka di tab baru).
-                    window.__crDrawerAtt = d.attachments;
-                    html += '<div class="ts-dw-files">';
-                    d.attachments.forEach(function (a, i) {
-                        var ikon = a.is_image ? 'fa-image' : (a.is_pdf ? 'fa-file-pdf' : 'fa-paperclip');
-                        html += '<a class="ts-dw-file js-drawer-att" data-idx="' + i + '" href="/storage/' + esc(a.path) + '" target="_blank" rel="noopener">'
-                             +    '<i class="fas ' + ikon + '"></i>'
-                             +    '<span>' + esc(a.original_name) + '</span>'
-                             +    (a.size_formatted ? '<small>' + esc(a.size_formatted) + '</small>' : '')
-                             +  '</a>';
-                    });
-                    html += '</div>';
-                } else {
-                    html += '<div class="ts-empty ts-empty-compact">'
-                         +    '<p class="ts-empty-msg">Tidak ada lampiran.</p></div>';
-                }
-                html += '</div>';
+                     + (d.attachments_count ? ' (' + d.attachments_count + ')' : '') + '</p>'
+                     + '<div class="cr-att-grid">' + renderAttGrid(d.attachments, 'info') + '</div></div>';
 
-                $('#crDrawerContent').html(html).removeAttr('hidden');
+                $('#crPaneInfo').html(html);
+                $('#crDrawerContent').removeAttr('hidden');
                 $('#crDrawerLoading').hide();
+                isiPanelCR(d, tab);
             })
             .fail(function () {
                 tampilkanGagal('Sambungan ke server terputus atau data sedang tidak tersedia.');
             });
     }
-
-    $(document).on('click', '.js-drawer-att', function (e) {
-        if (e.ctrlKey || e.metaKey || e.shiftKey || e.which === 2) return; // biarkan buka di tab baru
-        var atts = window.__crDrawerAtt || [];
-        if (!atts.length || !window.__crOpenImgViewer) return;
-        e.preventDefault();
-        window.__crOpenImgViewer(atts.map(function (a) {
-            return { full: '/storage/' + a.path, name: a.original_name, is_image: !!a.is_image, is_pdf: !!a.is_pdf };
-        }), parseInt($(this).data('idx'), 10) || 0);
-    });
 
     $(document).on('click', '.btn-review-cr', function () {
         openCRDrawer($(this).data('id'), this);
@@ -2391,42 +2142,9 @@ $(function () {
         if (crDrawerId) openCRDrawer(crDrawerId);
     });
 
-    /* Tombol salin pada Reference & Kode (modal Info). Menyalin teks elemen
-       target ke clipboard lalu memberi umpan balik ikon centang sejenak. */
-    $(document).on('click', '.cr-copy-btn', function () {
-        var btn = this;
-        var teks = ($('#' + $(btn).data('copy-target')).text() || '').trim();
-        if (!teks) return;
-        var tandai = function () {
-            var $i = $(btn).find('i');
-            var lama = $i.attr('class');
-            $i.attr('class', 'fas fa-check');
-            setTimeout(function () { $i.attr('class', lama); }, 1200);
-        };
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(teks).then(tandai).catch(function () {});
-        } else {
-            var ta = document.createElement('textarea');
-            ta.value = teks; document.body.appendChild(ta); ta.select();
-            try { document.execCommand('copy'); tandai(); } catch (e) {}
-            document.body.removeChild(ta);
-        }
-    });
-
-    // "Rincian lengkap" membuka modal lama beserta seluruh tabelnya.
-    $(document).on('click', '#crDrawerFull', function () {
-        if (!crDrawerId) return;
-        TesysDrawer.close('crDrawer');
-        openCRDetail(crDrawerId, '#crPaneDetails');
-    });
-
-    $('#mdlDetailCR').on('hidden.bs.modal', function () {
-        $('#crDetailContent').hide(); $('#crDetailLoading').show();
-    });
-
-    // Auto-buka modal detail bila diakses dengan ?open=<id> (mis. dari To Do).
+    // Auto-buka drawer detail bila diakses dengan ?open=<id> (mis. dari To Do).
     // Parameternya langsung dibuang dari URL setelah dipakai: kalau dibiarkan,
-    // setiap reload (atau redirect back() dari aksi lain) akan membuka modal
+    // setiap reload (atau redirect back() dari aksi lain) akan membuka drawer
     // detail itu lagi seolah-olah bug.
     (function () {
         var params = new URLSearchParams(window.location.search);
@@ -2438,7 +2156,7 @@ $(function () {
         window.history.replaceState({}, '',
             window.location.pathname + (sisa ? '?' + sisa : '') + window.location.hash);
 
-        openCRDetail(openId);
+        openCRDrawer(openId);
     })();
 
 });

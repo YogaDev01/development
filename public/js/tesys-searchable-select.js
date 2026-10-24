@@ -40,8 +40,10 @@
        selalu menghapus lalu menggambar ulang panel — dari layar terlihat
        seperti dropdown yang tidak bisa ditutup. */
     function closeAllTss() {
-        $('.tss-dropdown').remove();
-        $('.tss-btn').parents().off('scroll.tss');
+        $('.tss-dropdown').each(function () {
+            var cleanup = $(this).data('tssCleanup');
+            if (cleanup) cleanup();
+        }).remove();
         $(document).off('click.tss-outside');
     }
 
@@ -62,57 +64,74 @@
         var $modal = $anchor.closest('.modal');
         if ($modal.length) {
             $modal.append($dd);
-            var rect = $anchor.get(0).getBoundingClientRect();
-            var w = $dd.outerWidth();
-            var l = rect.left;
-            if (l + w > window.innerWidth - 10) l = Math.max(10, window.innerWidth - 10 - w);
-            var h = $dd.outerHeight();
-            var top = rect.bottom + 4;
-            if (top + h > window.innerHeight - 10 && rect.top - h - 4 > 10) top = rect.top - h - 4;
-            var zm = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
-            $dd.css({ position: 'fixed', top: top / zm, left: l / zm });
-            // Posisi fixed tidak ikut gulir modal: tutup panel saat modal digulir/ditutup.
-            $modal.one('scroll hide.bs.modal', closeAllTss);
-            return;
+            $modal.one('hide.bs.modal', closeAllTss);
+        } else {
+            $('body').append($dd);
         }
-
-        $('body').append($dd);
 
         /* Halaman penuh menggulir lewat kotak konten (.main > .content, lihat
-           tesys-ui-shell.css) dan <body> sendiri tidak menggulir. Koordinat
-           dokumen karena itu membuat panel terpotong di tepi bawah layar dan
-           tertinggal melayang saat konten digeser; dipakai koordinat layar
-           (fixed) seperti di modal, dengan panel membalik ke atas field bila
-           ruang di bawahnya kurang. */
-        var r = $anchor.get(0).getBoundingClientRect();
-        var ddWidth = $dd.outerWidth();
-        var ddHeight = $dd.outerHeight();
-        var left = r.left;
-        if (left + ddWidth > window.innerWidth - 10) left = Math.max(10, window.innerWidth - 10 - ddWidth);
-        var spaceBelow = window.innerHeight - r.bottom - 14;
-        var spaceAbove = r.top - 14;
-        var top;
-        if (ddHeight <= spaceBelow || spaceBelow >= spaceAbove) {
-            top = r.bottom + 4;
-            // Sisa ruang lebih sempit dari panel: isinya yang dipendekkan,
-            // bukan panelnya yang terpotong di tepi layar.
-            if (ddHeight > spaceBelow) $dd.css('max-height', Math.max(140, spaceBelow));
-        } else {
-            if (ddHeight > spaceAbove) {
-                $dd.css('max-height', Math.max(140, spaceAbove));
-                ddHeight = $dd.outerHeight();
+           tesys-ui-shell.css) dan <body> sendiri tidak menggulir, jadi dipakai
+           koordinat layar (fixed). Aplikasi berjalan dengan `zoom` pada <html>
+           (skala 80%): getBoundingClientRect() memberi piksel LAYAR, sedangkan
+           outerHeight()/outerWidth() dan nilai css top/left/max-height memakai
+           satuan CSS. Ukuran panel karena itu diukur dengan
+           getBoundingClientRect() juga — dulu memakai outerHeight() sehingga
+           saat panel membalik ke atas field ia melayang jauh di atasnya. */
+        function place() {
+            var anchorEl = $anchor.get(0);
+            if (!document.body.contains(anchorEl)) { closeAllTss(); return; }
+
+            var zm = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+            var r = anchorEl.getBoundingClientRect();
+
+            // Field tergulir keluar layar: tutup, jangan biarkan panel melayang.
+            if (r.bottom < 0 || r.top > window.innerHeight) { closeAllTss(); return; }
+
+            // Ukur dari kondisi bersih (fixed, tanpa batas tinggi dari pemanggilan sebelumnya).
+            $dd.css({ position: 'fixed', top: 0, left: 0, maxHeight: '' });
+            var box = $dd.get(0).getBoundingClientRect();
+            var ddWidth = box.width;
+            var ddHeight = box.height;
+
+            var left = r.left;
+            if (left + ddWidth > window.innerWidth - 10) left = Math.max(10, window.innerWidth - 10 - ddWidth);
+
+            var spaceBelow = window.innerHeight - r.bottom - 14;
+            var spaceAbove = r.top - 14;
+            var top;
+            if (ddHeight <= spaceBelow || spaceBelow >= spaceAbove) {
+                top = r.bottom + 4;
+                // Sisa ruang lebih sempit dari panel: isinya yang dipendekkan,
+                // bukan panelnya yang terpotong di tepi layar.
+                if (ddHeight > spaceBelow) {
+                    $dd.css('max-height', Math.max(140, spaceBelow) / zm);
+                }
+            } else {
+                if (ddHeight > spaceAbove) {
+                    $dd.css('max-height', Math.max(140, spaceAbove) / zm);
+                    ddHeight = $dd.get(0).getBoundingClientRect().height;
+                }
+                top = Math.max(10, r.top - ddHeight - 4);
             }
-            top = Math.max(10, r.top - ddHeight - 4);
+            $dd.css({ top: top / zm, left: left / zm });
         }
-        var zm = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
-        $dd.css({ position: 'fixed', top: top / zm, left: left / zm });
 
-        // Posisi fixed tidak ikut gulir: tutup panel saat wadahnya digeser.
-        $anchor.parents().filter(function () {
-            var oy = $(this).css('overflow-y');
+        place();
+        $dd.data('tssPlace', place);
 
-            return (oy === 'auto' || oy === 'scroll') && this.scrollHeight > this.clientHeight;
-        }).one('scroll.tss', closeAllTss);
+        /* Posisi fixed tidak ikut gulir: ikuti field saat wadah mana pun
+           (konten, modal, jendela) digulir atau ukuran layar berubah — kecuali
+           gulir di dalam daftar panelnya sendiri. */
+        function onScroll(ev) {
+            if ($dd.get(0).contains(ev.target)) return;
+            place();
+        }
+        window.addEventListener('scroll', onScroll, true);
+        window.addEventListener('resize', place);
+        $dd.data('tssCleanup', function () {
+            window.removeEventListener('scroll', onScroll, true);
+            window.removeEventListener('resize', place);
+        });
     }
 
     function bindOutsideClose($dd) {
@@ -131,6 +150,9 @@
             $list.children('.tss-item').each(function () {
                 $(this).toggle($(this).text().toLowerCase().indexOf(q) !== -1);
             });
+            // Tinggi panel berubah: panel yang membalik ke atas harus menempel lagi ke field.
+            var place = $list.closest('.tss-dropdown').data('tssPlace');
+            if (place) place();
         }).focus();
     }
 
@@ -193,7 +215,7 @@
                 // halaman terpasang lewat cara yang tidak menangkap event bubble ini.
                 if (typeof opts.onChange === 'function') opts.onChange(selectEl);
                 syncLabel();
-                $dd.remove();
+                closeAllTss();
             });
 
             bindOutsideClose($dd);

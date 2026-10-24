@@ -661,6 +661,7 @@ class InvoiceCashReceiptController extends Controller
             'items.invoice.po:id,code,name',
             'items.invoice.poNumber:id,po_number,project_id',
             'logs.attachments',
+            'attachments',
             'createdBy',
             'receivedBy',
         ])->findOrFail($dnId);

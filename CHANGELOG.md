@@ -4,6 +4,14 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [3.1.1] - 2026-10-24 — Perbaikan Tampilan Bottom Navbar Setelah Deploy
+
+Bottom navbar di ponsel kembali tampil rapi setelah deploy: tombol tidak lagi polos dan logo tidak membesar.
+
+### Perbaikan
+- Bottom navbar yang tidak tampak dan berganti tombol tanpa gaya serta logo perusahaan raksasa setelah deploy, karena peramban masih memakai berkas CSS lama dari cache. Versi aset dinaikkan agar CSS terbaru dimuat.
+- Logo pada tombol pemilih aplikasi di bottom navbar diberi ukuran bawaan sehingga tidak membesar walau CSS belum termuat.
+
 ## [3.1.0] - 2026-10-22 — Tampilan Desktop Lebih Luas, Pengajuan Biaya Tiket & Budget Plan di PO
 
 Aplikasi di desktop kini tampil setara zoom 80% agar lebih luas, tabel data didesain ulang

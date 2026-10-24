@@ -79,5 +79,10 @@
                       role="button"
                       tabindex="0" />
         </td>
+
+        @php $closeAt = $cr->second_paid_at ? \Illuminate\Support\Carbon::parse($cr->second_paid_at) : null; @endphp
+        <td class="text-nowrap" data-order="{{ $closeAt?->format('Y-m-d') ?? '' }}">
+            {{ $closeAt?->format('d/m/Y') ?? '-' }}
+        </td>
     </tr>
 @endforeach
