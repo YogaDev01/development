@@ -255,7 +255,7 @@ class CashManagementController extends Controller
             'cancel_reason' => $request->cancel_reason,
         ]);
 
-        UserActivityLog::record('cash_management', 'cancel', 'Membatalkan Cash Flow #' . $cashFlow->code, $cashFlow, $request->reason ?? $request->notes);
+        UserActivityLog::record('cash_management', 'cancel', 'Membatalkan Cash Flow #' . $cashFlow->code, $cashFlow, $request->cancel_reason);
 
         return back()->with('success', 'Cash Flow ' . $cashFlow->code . ' dibatalkan.');
     }

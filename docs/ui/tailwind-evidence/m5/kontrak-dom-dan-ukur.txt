@@ -1,0 +1,37 @@
+M5a — kontrak DOM dan pengukuran kelas ! (Chrome 155 headless via CDP, http://localhost:8099, DB uji tesys_f3_pilot, dummy.superadmin)
+
+1. KONTRAK DOM (tab CA/CP/DB, 1440px, sebelum vs sesudah)
+   - Tanda tangan per tab: id/data-tab/kelas hook tabel dan pembungkus, tiap th (data-col, kelas hook, teks, lebar inline), tiap th tfoot
+     (colspan, hook, teks), tiap baris (atribut data-* tr, kelas row-nob/row-nob-item) dan tiap sel (teks, data-raw, data-order,
+     kelas hook cr-*/col-raw-*/action-column/text-*, jumlah elemen .ts-actions/.cr-check-row/.cr-number-btn/.cr-cell-link/.cr-status-link/.ts-action-more).
+   - 1.842 nilai dibandingkan, selisih 0.
+   - Hitung selektor kontrak (93 selektor): selisih hanya `[class*="cr-foot-"]` 11 -> 14. Penyebab: atribut class pada <table> kini memuat teks
+     kelas tw `...:not(.cr-foot-label)]:text-text!` (kecocokan substring, bukan elemen baru). Tidak ada kode yang memakai selektor itu
+     (JS memakai `.cr-foot-amount` dll. sebagai kelas utuh).
+   - Kelas non-tw unik di .content: tidak ada yang hilang/bertambah (jumlah elemen berkelas tw 400 -> 403: <table> x3).
+   - Kelas yang SENGAJA tidak dicabut: `table table-bordered` pada <table> (mode kartu <= 640px masih memakainya; lihat M5a).
+
+2. MOBILE <= 640px (390 dan 640, tab CA/CP/DB)
+   - Gaya terhitung (display/posisi/jarak/border/tipografi/warna/bayangan/z-index/ukuran/tinggi) tiap th, 4 baris pertama dan semua selnya,
+     baris NOB, sel nominal nol, tfoot: SELISIH 0 (kunci struktural, bukan kelas).
+   - Tangkapan layar 390px CA/CP/DB: byte identik (SHA-256 sama).
+   - Percobaan pertama (mencabut `table table-bordered` dan semua aturan lama tanpa menyisakan versi mobile) memberi selisih terukur di 390px:
+     tinggi tabel +10px (4593 -> 4603), border-bottom 1px -> 0 pada sel pertama/terakhir kartu, border-top 0 -> 1px, teks baris NOB tidak lagi merah,
+     z-index sticky 3 -> auto. Karena itu kelas dipertahankan dan aturan lama yang berlaku <= 640px disalin APA ADANYA ke
+     `@media (max-width:640px)` di index.blade.php (dihapus bersama kartu mobile pada M5b).
+
+3. UKUR KELAS ! (6 kelas; kelas dilepas -> aturan setara tanpa ! di @layer utilities -> nilai terhitung dibandingkan; tab CA)
+   td px-2!           tanpa ! 12px | dengan ! 8px      perlu
+   thead th pl-2!     tanpa ! 12px | dengan ! 8px      perlu
+   kolom centang px-0!  th/td/tfoot-th tanpa ! 12px | dengan ! 0px   perlu
+   th sticky! (Code, Action)   tanpa ! relative | dengan ! sticky   perlu
+   tfoot text-data!   tanpa ! 12px | dengan ! 12,5px   perlu
+   tfoot text-text!   tanpa ! rgb(90,79,81) | dengan ! rgb(37,24,27)   perlu
+   Penanda NOB (box-shadow inset, tanpa !): tanpa kelas none | kelas biasa rgb(154,48,48) 3px inset  => ! TIDAK perlu (dibuang).
+   Penanda NOB-item (warning): tidak ada baris uji di DB; diuji sintetis (kelas row-nob-item dipasang di satu baris): bayangan inset
+   rgb(127,99,40) 3px, warna teks sel netral.
+
+4. KELAS TW YANG DICOBA LALU DIBUANG KARENA TAK BERPENGARUH (diukur dengan melepas kelas satu per satu dan membandingkan gaya semua sel)
+   latar th/tfoot th, border th, font-heading/tabular-nums/font-label tfoot, border-border-strong! tfoot, 7 kelas ! th (text-th, text-dim, bg-surface-2, normal-case, tracking-micro, py-cell-y, border-strong) yang menyalin nilai
+   token refine.css §8 (th 12px/600/redam/surface-2, td jarak vertikal 9px) — nilainya sudah diberikan legacy, jadi kelasnya mubazir.
+   Dari 23 kelas bukan-! yang tersisa, 22 terukur berpengaruh lewat toggle; yang ke-23 (NOB-item) lewat uji sintetis di atas.

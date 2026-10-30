@@ -114,6 +114,8 @@ body.tesys-ui a.tt-cell-link:focus { background:var(--charcoal); color:#fff; out
 .tt-msg { display:flex; gap:8px; margin-bottom:8px; transition:background var(--dur-fast, .15s); }
 /* Avatar selalu ada — di kiri untuk peran lain, di kanan untuk teknisi. */
 .tt-msg.is-tech { flex-direction:row-reverse; }
+.tt-msg-av, .tt-event-av { overflow:hidden; }
+.tt-msg-av img, .tt-event-av img { width:100%; height:100%; object-fit:cover; }
 .tt-msg-av { width:26px; height:26px; flex:0 0 26px; border-radius:50%; background:var(--surface-2); border:1px solid var(--border);
     display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:var(--text-dim); }
 .tt-msg-col { display:flex; flex-direction:column; max-width:78%; }

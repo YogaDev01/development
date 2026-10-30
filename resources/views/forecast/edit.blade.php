@@ -201,7 +201,7 @@ $(function () {
 
     $(document).on('click', '.btn-remove-detail', function () {
         if ($('.detail-row').length <= 1) {
-            Swal.fire({ icon: 'warning', title: 'Minimal 1 baris detail', confirmButtonColor: '#92232b' });
+            Swal.fire({ icon: 'warning', title: 'Minimal 1 baris detail', confirmButtonColor: 'var(--accent)' });
             return;
         }
         $(this).closest('tr').remove();

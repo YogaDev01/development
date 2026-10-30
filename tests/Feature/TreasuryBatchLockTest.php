@@ -53,6 +53,12 @@ class TreasuryBatchLockTest extends TestCase
         ], $payload));
     }
 
+    /** Batch dibuat sebagai Draft; Submit memindahkan CR ke QUEUED (29 Okt 2026). */
+    private function submitBatch(User $user, DailyTransaction $batch)
+    {
+        return $this->actingAs($user)->post('/daily-transaction/' . $batch->id . '/submit');
+    }
+
     private function includedItemsFor(BudgetRequest $cr): int
     {
         return DailyTransactionItem::where('budget_request_id', $cr->id)
@@ -83,16 +89,26 @@ class TreasuryBatchLockTest extends TestCase
         });
     }
 
-    public function test_batch_normal_memindahkan_cr_ke_queued(): void
+    public function test_batch_normal_draft_lalu_submit_memindahkan_cr_ke_queued(): void
     {
         $cr = $this->makeCostRequest(['status' => 'APPROVED']);
+        $user = $this->treasury();
 
-        $this->storeBatch($this->treasury(), ['cr_ids' => [$cr->id]])
+        $this->storeBatch($user, ['cr_ids' => [$cr->id]])
             ->assertSessionHasNoErrors()
             ->assertSessionMissing('error');
 
-        $this->assertSame('QUEUED', $cr->refresh()->status);
+        // Draft: CR belum berubah status, tapi sudah dipesan batch ini.
+        $batch = DailyTransaction::firstOrFail();
+        $this->assertSame('DRAFT', $batch->status);
+        $this->assertSame('APPROVED', $cr->refresh()->status);
         $this->assertSame(1, $this->includedItemsFor($cr));
+        $this->assertSame(0, $cr->statusLogs()->where('status_to', 'QUEUED')->count());
+
+        $this->submitBatch($user, $batch)->assertSessionMissing('error');
+
+        $this->assertSame('PENDING_APPROVER', $batch->refresh()->status);
+        $this->assertSame('QUEUED', $cr->refresh()->status);
         $this->assertSame(1, DailyTransaction::count());
         $this->assertSame(1, $cr->statusLogs()->where('status_to', 'QUEUED')->count());
     }
@@ -134,6 +150,7 @@ class TreasuryBatchLockTest extends TestCase
 
         $this->storeBatch($user, ['cr_ids' => [$cr->id]]);
         $batch = DailyTransaction::firstOrFail();
+        $this->submitBatch($user, $batch);
 
         $this->actingAs($this->userWithRole('approver'))
             ->post('/daily-transaction/' . $batch->id . '/reject-batch', ['notes' => 'Ditahan dulu']);
@@ -141,6 +158,7 @@ class TreasuryBatchLockTest extends TestCase
         $this->assertSame('APPROVED', $cr->refresh()->status);
 
         $this->storeBatch($user, ['cr_ids' => [$cr->id]])->assertSessionMissing('error');
+        $this->submitBatch($user, DailyTransaction::latest('id')->firstOrFail())->assertSessionMissing('error');
 
         $this->assertSame('QUEUED', $cr->refresh()->status);
         $this->assertSame(2, DailyTransaction::count());
@@ -197,7 +215,7 @@ class TreasuryBatchLockTest extends TestCase
 
         $this->actingAs($user)
             ->post('/daily-transaction/' . $batch->id . '/add-item', ['cr_ids' => [$cr->id]])
-            ->assertSessionHas('error', 'Hanya batch PENDING_APPROVER yang bisa ditambah item.');
+            ->assertSessionHas('error', 'Hanya batch Draft atau PENDING_APPROVER yang bisa ditambah item.');
 
         $this->assertSame('APPROVED', $cr->refresh()->status);
         $this->assertSame(0, $this->includedItemsFor($cr));

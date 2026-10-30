@@ -65,26 +65,26 @@
         <!-- SUMMARY CARDS -->
         <div class="row todo-kpi">
             <div class="col-6 col-md-4 mb-3">
-                <div class="card shadow-sm mb-0 h-100" style="border-radius:var(--radius-lg);border-left:4px solid var(--accent);">
+                <div class="card shadow-sm mb-0 h-100 todo-kpi-card">
                     <div class="card-body py-3 px-3">
-                        <div style="color:var(--text-faint);font-size:11px;text-transform:uppercase;font-weight:700;">My Pending Tasks</div>
-                        <div style="font-size:26px;font-weight:700;color:var(--text);margin-top:2px;">{{ $totalPending }}</div>
+                        <div class="todo-kpi-label">My Pending Tasks</div>
+                        <div class="todo-kpi-value">{{ $totalPending }}</div>
                     </div>
                 </div>
             </div>
             <div class="col-6 col-md-4 mb-3">
-                <div class="card shadow-sm mb-0 h-100" style="border-radius:var(--radius-lg);border-left:4px solid var(--danger);">
+                <div class="card shadow-sm mb-0 h-100 todo-kpi-card is-alert">
                     <div class="card-body py-3 px-3">
-                        <div style="color:var(--text-faint);font-size:11px;text-transform:uppercase;font-weight:700;">Max Aging</div>
-                        <div style="font-size:26px;font-weight:700;color:var(--danger);margin-top:2px;">{{ $maxAging }}</div>
+                        <div class="todo-kpi-label">Max Aging</div>
+                        <div class="todo-kpi-value">{{ $maxAging }}</div>
                     </div>
                 </div>
             </div>
             <div class="col-12 col-md-4 mb-3">
-                <div class="card shadow-sm mb-0 h-100" style="border-radius:var(--radius-lg);border-left:4px solid var(--success);">
+                <div class="card shadow-sm mb-0 h-100 todo-kpi-card">
                     <div class="card-body py-3 px-3">
-                        <div style="color:var(--text-faint);font-size:11px;text-transform:uppercase;font-weight:700;">Tindakan Selesai Hari Ini</div>
-                        <div style="font-size:26px;font-weight:700;color:var(--success);margin-top:2px;">{{ $completedToday }}</div>
+                        <div class="todo-kpi-label">Tindakan Selesai Hari Ini</div>
+                        <div class="todo-kpi-value">{{ $completedToday }}</div>
                     </div>
                 </div>
             </div>
@@ -1010,6 +1010,59 @@
             </div>
             @endif
 
+            {{-- BUDGETING — CLOSING SUDAH DIAJUKAN MANAGER, FINANCE VERIFIKASI CLOSING --}}
+            @if($budgetingClosingVerify->isNotEmpty())
+            <div id="tl-bp-closing-verify" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-flag-checkered mr-1"></i> Budgeting — Menunggu Verifikasi Closing
+                        <span class="badge badge-secondary ml-1">{{ $budgetingClosingVerify->count() }}</span>
+                    </h3>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th scope="col" class="text-nowrap" style="width:180px;">Code</th>
+                                    <th scope="col" style="width:40%;">Description</th>
+                                    <th scope="col" style="width:26%;">PO</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:130px;">Budget</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:100px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($budgetingClosingVerify as $bp)
+                                @php $bpAgingClass = $bp->aging_days >= 3 ? 'text-danger' : ($bp->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
+                                <tr class="todo-row" data-export-key="bp:{{ $bp->id }}" data-search="{{ strtolower($bp->code . ' ' . $bp->description . ' ' . $bpPoLabel($bp)) }}">
+                                    <td class="text-nowrap">
+                                        <button type="button" class="cr-number-btn todo-bp-detail"
+                                                data-id="{{ $bp->id }}">{{ $bp->code }}</button>
+                                    </td>
+                                    <td>{{ Str::limit($bp->description, 120) }}</td>
+                                    <td>{{ $bpPoLabel($bp) }}</td>
+                                    <td class="text-right text-nowrap"><strong>{{ $bp->amount_formatted }}</strong></td>
+                                    <td class="text-center text-nowrap {{ $bpAgingClass }}">{{ $bp->aging_label }}</td>
+                                    <td class="text-center text-nowrap">
+                                        {{-- Verifikasi closing perlu melihat berkas closing, jadi
+                                             barisnya membuka Budget Plan itu di halaman Budgeting. --}}
+                                        <div class="action-buttons ts-actions">
+                                            <a href="{{ url('/budget-plan') }}?open={{ $bp->id }}" class="ts-action-primary"
+                                               title="Review closing di halaman Budgeting">
+                                                <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Review</span>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             {{-- BUDGETING — REJECTED, MANAGER REVISE KE DRAFT --}}
             @if($budgetingRejected->isNotEmpty())
             <div id="tl-bp-rejected" class="card card-danger card-outline shadow-sm mt-3 todo-flat-section">
@@ -1305,6 +1358,68 @@
             </div>
             @endif
 
+            {{-- TREASURY — DRAFT BELUM DIAJUKAN KE CEO (isinya sudah dipesan, tidak muncul lagi di Buat Batch) --}}
+            @if($treasuryDraftSubmit->isNotEmpty())
+            <div id="tl-batch-draft" class="card card-info card-outline shadow-sm mt-3 todo-flat-section">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-paper-plane mr-1"></i> Treasury — Draft Belum Diajukan
+                        <span class="badge badge-secondary ml-1">{{ $treasuryDraftSubmit->count() }}</span>
+                    </h3>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered mb-0 todo-fit-table" style="font-size:12.5px;">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th scope="col" class="todo-col-fit">Batch Code</th>
+                                    <th scope="col" class="todo-col-desc">Deskripsi</th>
+                                    <th scope="col" class="todo-col-fit">Tanggal</th>
+                                    <th scope="col" class="todo-col-fit">Kategori</th>
+                                    <th scope="col" class="todo-col-fit text-center">Item</th>
+                                    <th scope="col" class="todo-col-fit text-right">Nilai Batch</th>
+                                    <th scope="col" class="todo-col-fit text-center">Aging</th>
+                                    <th scope="col" class="todo-col-fit text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($treasuryDraftSubmit as $batch)
+                                @php $dtAgingClass = $batch->aging_days >= 3 ? 'text-danger' : ($batch->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
+                                <tr class="todo-row" data-export-key="dt:{{ $batch->id }}" data-search="{{ strtolower($batch->code . ' ' . $batch->description) }}">
+                                    <td class="todo-col-fit"><a href="{{ route('daily-transaction.show', $batch->id) }}" class="cr-number-btn">{{ $batch->code }}</a></td>
+                                    <td class="todo-col-desc">{{ $batch->description ?? '-' }}</td>
+                                    <td class="todo-col-fit">{{ $batch->date?->format('d M Y') ?? '-' }}</td>
+                                    <td class="todo-col-fit">
+                                        @if($batch->sourceFund)
+                                            <span class="badge badge-secondary px-2 py-1" style="font-size:10px;">{{ $batch->sourceFund->name }}</span>
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
+                                    <td class="todo-col-fit text-center">{{ $batch->included_items_count }}</td>
+                                    <td class="todo-col-fit text-right col-raw-total" data-raw="{{ $batch->captured_amount }}"><strong>{{ $batch->captured_amount_formatted }}</strong></td>
+                                    <td class="todo-col-fit text-center {{ $dtAgingClass }}">{{ $batch->aging_label }}</td>
+                                    <td class="todo-col-fit text-center">
+                                        <a href="{{ route('daily-transaction.show', $batch->id) }}" class="btn btn-outline-primary btn-sm" title="Buka draft untuk diajukan ke CEO">
+                                            <i class="fas fa-paper-plane mr-1"></i>Ajukan
+                                        </a>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                            <tfoot>
+                                <tr style="background:var(--surface-2);">
+                                    <th colspan="5" class="text-right">Subtotal</th>
+                                    <th class="text-right">{{ number_format($treasuryDraftSubmit->sum('captured_amount'), 0, ',', '.') }}</th>
+                                    <th colspan="2"></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             {{-- TREASURY — SIAP DIBAYAR (status DONE, tinggal ditandai Paid — perlu upload bukti transfer, jadi link-out) --}}
             @if($treasuryReadyToPay->isNotEmpty())
             <div id="tl-batch-pay" class="card card-info card-outline shadow-sm mt-3 todo-flat-section">
@@ -1361,6 +1476,133 @@
                                     <th colspan="2"></th>
                                 </tr>
                             </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            {{-- COST REGISTER — MENUNGGU APPROVAL APPROVER (VERIFIED) --}}
+            @if($costRegisterApprove->isNotEmpty())
+            <div id="tl-reg-approve" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-file-invoice-dollar mr-1"></i> Cost Register — Menunggu Approval
+                        <span class="badge badge-secondary ml-1">{{ $costRegisterApprove->count() }}</span>
+                    </h3>
+                    <div class="text-muted small mt-1">Diajukan Finance; Approver menyetujui atau mengembalikan ke Draft di halaman Cost Register.</div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th scope="col" class="text-nowrap" style="width:150px;">PO</th>
+                                    <th scope="col">Tipe / Catatan</th>
+                                    <th scope="col" class="text-nowrap">Beneficiary</th>
+                                    <th scope="col" class="text-nowrap">Input By</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:135px;">Nominal</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:110px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($costRegisterApprove as $reg)
+                                @php $regAgingClass = $reg->aging_days >= 3 ? 'text-danger' : ($reg->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
+                                <tr class="todo-row" data-export-key="reg:{{ $reg->id }}" data-search="{{ strtolower(($reg->project?->code ?? '') . ' ' . ($reg->project?->customer?->name ?? '') . ' ' . $reg->type_label . ' ' . ($reg->notes ?? '') . ' ' . ($reg->beneficiary?->nickname ?? '')) }}">
+                                    <td class="text-nowrap">{{ $reg->project?->code ?? '-' }}</td>
+                                    <td>
+                                        <span class="badge badge-{{ $reg->type_color }} px-2 py-1" style="font-size:10px;">{{ $reg->type_label }}</span>
+                                        @if($reg->notes) <span class="text-muted">{{ Str::limit($reg->notes, 80) }}</span> @endif
+                                    </td>
+                                    <td class="text-nowrap">{{ $reg->beneficiary?->nickname ?? '-' }}</td>
+                                    <td class="text-nowrap">{{ $reg->inputBy?->name ?? '-' }}</td>
+                                    <td class="text-right text-nowrap"><strong>{{ $reg->amount_formatted }}</strong></td>
+                                    <td class="text-center text-nowrap {{ $regAgingClass }}" title="Sejak diajukan">{{ $reg->aging_label }}</td>
+                                    <td class="text-center text-nowrap">
+                                        {{-- Approve / Revisi langsung dari sini memakai endpoint yang sama dengan
+                                             halaman Cost Register (CostRegisterController::approve()/revise()),
+                                             termasuk cek role & status di sana. Cost Register tidak punya status
+                                             REJECTED: "tolak" = kembalikan ke Draft dengan catatan wajib. --}}
+                                        <div class="action-buttons ts-actions">
+                                            <button type="button" class="ts-action-primary td-reg-approve"
+                                                    data-id="{{ $reg->id }}" data-label="{{ ($reg->project?->code ?? '-') . ' · ' . $reg->amount_formatted }}"
+                                                    title="Approve">
+                                                <i class="fas fa-check" aria-hidden="true"></i><span class="ts-al">Approve</span>
+                                            </button>
+
+                                            <button type="button" class="ts-action-more"
+                                                    aria-haspopup="true" aria-expanded="false"
+                                                    title="Aksi lain" aria-label="Aksi lain untuk Cost Register {{ $reg->project?->code ?? $reg->id }}">
+                                                <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
+                                            </button>
+                                            <div class="ts-action-menu dropdown-menu" hidden>
+                                                <button type="button" class="dropdown-item td-reg-revise"
+                                                        data-id="{{ $reg->id }}" data-label="{{ ($reg->project?->code ?? '-') . ' · ' . $reg->amount_formatted }}">
+                                                    <i class="fas fa-undo"></i>Kembalikan ke Draft
+                                                </button>
+                                                <a href="{{ route('cost-register.index') }}?date_from={{ $reg->created_at?->format('Y-m-d') }}" class="dropdown-item">
+                                                    <i class="fas fa-eye"></i>Detail
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            {{-- COST REGISTER — APPROVED, BELUM MASUK BATCH AKTIF --}}
+            @if($costRegisterBatch->isNotEmpty())
+            <div id="tl-reg-batch" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-layer-group mr-1"></i> Cost Register — Menunggu Dibatch Treasury
+                        <span class="badge badge-secondary ml-1">{{ $costRegisterBatch->count() }}</span>
+                    </h3>
+                    <div class="text-muted small mt-1">Sudah disetujui Approver, belum masuk batch pembayaran aktif.</div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th scope="col" class="text-nowrap" style="width:150px;">PO</th>
+                                    <th scope="col">Tipe / Catatan</th>
+                                    <th scope="col" class="text-nowrap">Beneficiary</th>
+                                    <th scope="col" class="text-nowrap">Input By</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:135px;">Nominal</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:110px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($costRegisterBatch as $reg)
+                                @php $regAgingClass = $reg->aging_days >= 3 ? 'text-danger' : ($reg->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
+                                <tr class="todo-row" data-export-key="reg:{{ $reg->id }}" data-search="{{ strtolower(($reg->project?->code ?? '') . ' ' . ($reg->project?->customer?->name ?? '') . ' ' . $reg->type_label . ' ' . ($reg->notes ?? '') . ' ' . ($reg->beneficiary?->nickname ?? '')) }}">
+                                    <td class="text-nowrap">{{ $reg->project?->code ?? '-' }}</td>
+                                    <td>
+                                        <span class="badge badge-{{ $reg->type_color }} px-2 py-1" style="font-size:10px;">{{ $reg->type_label }}</span>
+                                        @if($reg->notes) <span class="text-muted">{{ Str::limit($reg->notes, 80) }}</span> @endif
+                                    </td>
+                                    <td class="text-nowrap">{{ $reg->beneficiary?->nickname ?? '-' }}</td>
+                                    <td class="text-nowrap">{{ $reg->inputBy?->name ?? '-' }}</td>
+                                    <td class="text-right text-nowrap"><strong>{{ $reg->amount_formatted }}</strong></td>
+                                    <td class="text-center text-nowrap {{ $regAgingClass }}" title="Sejak disetujui">{{ $reg->aging_label }}</td>
+                                    <td class="text-center text-nowrap">
+                                        <div class="action-buttons ts-actions">
+                                            <a href="{{ route('daily-transaction.create') }}" class="ts-action-primary" title="Buat Batch">
+                                                <i class="fas fa-layer-group" aria-hidden="true"></i><span class="ts-al">Buat Batch</span>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
                         </table>
                     </div>
                 </div>
@@ -1593,6 +1835,56 @@
                                         <div class="action-buttons ts-actions">
                                             <a href="{{ route('project.index') }}?q={{ urlencode($po->code) }}&open={{ $po->id }}"
                                                class="ts-action-primary" title="Review PO">
+                                                <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Review</span>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            {{-- PURCHASE ORDER — CLOSING MENUNGGU VERIFIKASI FINANCE (CLOSING) --}}
+            @if($poClosingVerify->isNotEmpty())
+            <div id="tl-po-closing" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-flag-checkered mr-1"></i> Purchase Order — Menunggu Verifikasi Closing
+                        <span class="badge badge-secondary ml-1">{{ $poClosingVerify->count() }}</span>
+                    </h3>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th scope="col" class="text-nowrap" style="width:150px;">PO</th>
+                                    <th scope="col">Scope of Work / Customer</th>
+                                    <th scope="col" class="text-nowrap">Manager</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:135px;">Nilai PO</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:100px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($poClosingVerify as $po)
+                                @php $poAgingClass = $po->aging_days >= 3 ? 'text-danger' : ($po->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
+                                <tr class="todo-row" data-export-key="po:{{ $po->id }}" data-search="{{ strtolower($po->code . ' ' . $po->name . ' ' . ($po->customer?->name ?? '') . ' ' . ($po->manager?->name ?? '')) }}">
+                                    <td class="text-nowrap">
+                                        <a href="{{ route('project.index') }}?q={{ urlencode($po->code) }}&open={{ $po->id }}" class="cr-number-btn">{{ $po->code }}</a>
+                                    </td>
+                                    <td>{{ $po->name }} <span class="text-muted">({{ $po->customer?->name ?? '-' }})</span></td>
+                                    <td class="text-nowrap">{{ $po->manager?->username ?? '-' }}</td>
+                                    <td class="text-right text-nowrap"><strong>{{ $po->value_formatted }}</strong></td>
+                                    <td class="text-center text-nowrap {{ $poAgingClass }}">{{ $po->aging_label }}</td>
+                                    <td class="text-center text-nowrap">
+                                        <div class="action-buttons ts-actions">
+                                            <a href="{{ route('project.index') }}?q={{ urlencode($po->code) }}&open={{ $po->id }}"
+                                               class="ts-action-primary" title="Review Closing PO">
                                                 <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Review</span>
                                             </a>
                                         </div>
@@ -4049,9 +4341,57 @@ $(function () {
                 // di kolom Action, sama dengan drawer Cost Request.
                 window.__crRealAtt = {};
                 if (d.realizations && d.realizations.length) {
+                    /* Perbandingan per COA / Sub COA — angka dari server
+                       (settlement_comparison), BUKAN jumlah total_cr per baris:
+                       satu item bisa dipecah jadi beberapa baris settlement
+                       (Settlement Custom COA), dan total_cr adalah nilai item
+                       asalnya sehingga akan terhitung berkali-kali. */
+                    var cmp = d.settlement_comparison || { rows: [] };
+                    function tdVar(n) {
+                        n = Math.round(n || 0);
+                        if (n === 0) return '<span class="text-muted">0</span>';
+                        return '<span style="color:' + (n > 0 ? 'var(--success)' : 'var(--danger)') + ';font-weight:600;">'
+                            + esc((n > 0 ? '' : '-') + Math.abs(n).toLocaleString('id-ID')) + '</span>';
+                    }
+                    realHtml += '<div class="todo-drw-label" style="margin-bottom:6px;">Perbandingan per COA / Sub COA</div>';
+                    realHtml += '<div class="table-responsive mb-3"><table class="table table-sm table-bordered mb-0" style="font-size:11.5px;">' +
+                        '<thead class="bg-light"><tr>' +
+                            '<th scope="col">COA / Sub COA</th>' +
+                            '<th scope="col" class="text-right text-nowrap" style="width:16%;">Request</th>' +
+                            '<th scope="col" class="text-right text-nowrap" style="width:16%;">Settlement</th>' +
+                            '<th scope="col" class="text-right text-nowrap" style="width:14%;">Var</th>' +
+                        '</tr></thead><tbody>';
+                    (cmp.rows || []).forEach(function (c) {
+                        realHtml += '<tr>' +
+                            '<td><div style="font-weight:600;">' + esc(c.sub_coa || '-') + '</div>' +
+                                '<div class="text-muted" style="font-size:11px;">' + esc(c.account || '-') + '</div></td>' +
+                            '<td class="text-right text-nowrap">' + esc(c.request_formatted) + '</td>' +
+                            '<td class="text-right text-nowrap"><strong>' + esc(c.settlement_formatted) + '</strong></td>' +
+                            '<td class="text-right text-nowrap">' + tdVar(c.variance) + '</td>' +
+                        '</tr>';
+                    });
+                    realHtml += '</tbody><tfoot><tr style="background:var(--surface-2);">' +
+                        '<th class="text-right">Total</th>' +
+                        '<th class="text-right text-nowrap">' + esc(cmp.request_formatted || '0') + '</th>' +
+                        '<th class="text-right text-nowrap">' + esc(cmp.settlement_formatted || '0') + '</th>' +
+                        '<th class="text-right text-nowrap">' + tdVar(cmp.variance) + '</th>' +
+                        '</tr></tfoot></table></div>';
+
+                    /* Rincian Settlement: Request item asal hanya ditulis pada
+                       baris PERTAMA item itu; baris pecahan berikutnya "-". */
+                    var sudahTampil = {};
+                    d.realizations.forEach(function (r) {
+                        r._reqShown = null;
+                        if (r.request_detail_id && !sudahTampil[r.request_detail_id]) {
+                            sudahTampil[r.request_detail_id] = true;
+                            r._reqShown = parseFloat(r.total_cr) || 0;
+                        }
+                    });
+
                     var realGroups = groupByAccount(d.realizations);
                     var realNo = 0, realReq = 0, realSettle = 0;
-                    realHtml += '<div class="d-flex justify-content-end mb-2">' +
+                    realHtml += '<div class="d-flex align-items-center mb-2">' +
+                        '<div class="todo-drw-label mr-auto">Rincian Settlement</div>' +
                         '<button type="button" class="btn btn-xs btn-outline-secondary td-grp-expand" data-body="todoRealBody"><i class="fas fa-angle-double-down mr-1"></i>Expand All</button>&nbsp;' +
                         '<button type="button" class="btn btn-xs btn-outline-secondary td-grp-collapse" data-body="todoRealBody"><i class="fas fa-angle-double-up mr-1"></i>Collapse All</button>' +
                         '</div>';
@@ -4066,7 +4406,7 @@ $(function () {
                         var gClass = 'td-real-grp-' + gi;
                         var gReq = 0, gSettle = 0;
                         grp.items.forEach(function (x) {
-                            gReq    += parseFloat(x.total_cr) || 0;
+                            gReq    += x._reqShown || 0;
                             gSettle += parseFloat(x.actual) || 0;
                         });
                         realReq += gReq; realSettle += gSettle;
@@ -4092,6 +4432,10 @@ $(function () {
                             var evi = itemAtts.length
                                 ? ' <span class="badge badge-light border text-muted" style="font-size:9px;"><i class="fas fa-paperclip mr-1"></i>' + itemAtts.length + '</span>'
                                 : '';
+                            // Baris tambahan / pindah Sub COA (Settlement Custom COA).
+                            var asal = r.is_added
+                                ? ' <span class="badge badge-info" style="font-size:9px;">Baris tambahan</span>'
+                                : (r.is_moved ? ' <span class="badge badge-warning" style="font-size:9px;">Pindah dari: ' + esc(r.origin_label || '-') + '</span>' : '');
                             var subCoa = r.sub_coa || r.des_request || r.cr_item || '-';
                             // Empat baris: Sub COA (tebal) + jumlah lampiran, lalu
                             // Deskripsi dari form pengajuan (Request), Description
@@ -4100,12 +4444,12 @@ $(function () {
                             var desSettle = r.des_settle || '-';
                             realHtml += '<tr class="' + gClass + '" style="display:none;">' +
                                 '<td class="td-grp-indent">' +
-                                    '<div style="font-weight:600;">' + esc(subCoa) + evi + '</div>' +
+                                    '<div style="font-weight:600;">' + esc(subCoa) + evi + asal + '</div>' +
                                     '<div class="text-muted" style="font-size:11px;"><span style="font-size:10px;font-weight:700;">Request:</span> ' + esc(r.des_request || r.cr_item || '-') + '</div>' +
                                     '<div class="text-muted" style="font-size:11px;"><span style="font-size:10px;font-weight:700;">Settle:</span> ' + esc(desSettle) + '</div>' +
                                     '<div class="text-muted" style="font-size:11px;"><span style="font-size:10px;font-weight:700;">Notes:</span> ' + esc(r.change_note || '-') + '</div>' +
                                 '</td>' +
-                                '<td class="text-right text-nowrap">' + esc(r.total_cr_formatted) + '</td>' +
+                                '<td class="text-right text-nowrap">' + (r._reqShown !== null ? esc(r.total_cr_formatted) : '<span class="text-muted">-</span>') + '</td>' +
                                 '<td class="text-right text-nowrap"><strong>' + esc(r.actual_formatted) + '</strong></td>' +
                                 '<td class="text-center text-nowrap">' + aksi + '</td>' +
                             '</tr>';
@@ -4371,6 +4715,34 @@ $(function () {
             confirmButtonText: 'Takeout', cancelButtonText: 'Batal'
         }).then(function (r) {
             if (r.isConfirmed) todoSubmitPost('/budget-request/' + crId + '/detail/' + detailId + '/takeout', [['notes', r.value]]);
+        });
+    });
+
+    /* ── COST REGISTER — APPROVE / KEMBALIKAN KE DRAFT (endpoint halaman Cost Register) ── */
+    $(document).on('click', '.td-reg-approve', function () {
+        var id = $(this).data('id'), label = $(this).data('label') || '';
+        Swal.fire({
+            title: 'Approve Cost Register?',
+            html: '<strong>' + esc(label) + '</strong><br>Setelah disetujui, Treasury bisa memasukkannya ke batch pembayaran.',
+            input: 'textarea', inputLabel: 'Catatan (opsional)', inputAttributes: { maxlength: 500 },
+            icon: 'question', showCancelButton: true, confirmButtonColor: 'var(--accent)', cancelButtonColor: 'var(--text-muted)',
+            confirmButtonText: 'Ya, Approve', cancelButtonText: 'Batal'
+        }).then(function (r) {
+            if (r.isConfirmed) todoSubmitPost('{{ url('/cost-register') }}/' + id + '/approve', [['notes', r.value || '']]);
+        });
+    });
+
+    $(document).on('click', '.td-reg-revise', function () {
+        var id = $(this).data('id'), label = $(this).data('label') || '';
+        Swal.fire({
+            title: 'Kembalikan ke Draft?',
+            html: '<strong>' + esc(label) + '</strong><br>Finance merevisi lalu mengajukan ulang.',
+            input: 'textarea', inputLabel: 'Alasan (wajib)', inputPlaceholder: 'Tulis alasan...', inputAttributes: { maxlength: 500 },
+            inputValidator: function (v) { return !(v || '').trim() && 'Alasan wajib diisi.'; },
+            icon: 'warning', showCancelButton: true, confirmButtonColor: 'var(--danger)', cancelButtonColor: 'var(--text-muted)',
+            confirmButtonText: 'Kembalikan', cancelButtonText: 'Batal'
+        }).then(function (r) {
+            if (r.isConfirmed) todoSubmitPost('{{ url('/cost-register') }}/' + id + '/revise', [['notes', r.value]]);
         });
     });
 

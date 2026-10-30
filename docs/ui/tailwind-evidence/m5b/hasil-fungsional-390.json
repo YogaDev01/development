@@ -1,0 +1,402 @@
+{
+ "login": true,
+ "fn": {
+  "ca": {
+   "awal": {
+    "baris": 45,
+    "ring": "Total (data tampil) | Request: 11.602.793.000 | Refund: 379.659.000 | Expense Claim: 632.821.000",
+    "label": [
+     "·=",
+     "·=CR-10260043CL-B000",
+     "Description=BIAYA PENGIRIMAN M",
+     "Tanggal=25/10/2026",
+     "Tanggal Paid=-",
+     "Requestor=MGR.KARTIKA",
+     "PIC=- Sari",
+     "Request=35.984.000",
+     "Refund=0",
+     "Expense Claim=0",
+     "·=Checked",
+     "·=Verify Tinjau Reje"
+    ],
+    "lebar": {
+     "doc": [
+      390,
+      390
+     ],
+     "wrap": [
+      317,
+      317
+     ]
+    }
+   },
+   "cari": {
+    "baris": 21,
+    "ring": "Total (data tampil) | Request: 5.463.662.000 | Refund: 139.177.000 | Expense Claim: 282.377.000"
+   },
+   "kosong": {
+    "teks": "Tidak ada yang cocokTidak ada Cost Request yang cocok dengan pencarian atau filt",
+    "trBg": "rgba(0, 0, 0, 0)",
+    "trBorder": "0px",
+    "trShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0",
+    "trPad": "0px",
+    "tdDisplay": "block",
+    "tdPad": "6px 0px",
+    "tdBorder": "0px",
+    "w": 317,
+    "before": "none",
+    "ring": "Total (data tampil) | Request: 0 | Refund: 0 | Expense Claim: 0",
+    "lebar": {
+     "doc": [
+      390,
+      390
+     ],
+     "wrap": [
+      317,
+      317
+     ]
+    }
+   },
+   "bersih": {
+    "baris": 45
+   },
+   "filter": {
+    "baris": 3,
+    "ring": "Total (data tampil) | Request: 813.797.000 | Refund: 0 | Expense Claim: 0",
+    "lebar": {
+     "doc": [
+      390,
+      390
+     ],
+     "wrap": [
+      317,
+      317
+     ]
+    }
+   },
+   "reset": {
+    "baris": 45,
+    "ring": "Total (data tampil) | Request: 11.602.793.000 | Refund: 379.659.000 | Expense Claim: 632.821.000"
+   },
+   "picMati": [
+    "·=",
+    "·=CR-10260043CL-B000",
+    "Description=BIAYA PENGIRIMAN M",
+    "Tanggal=25/10/2026",
+    "Tanggal Paid=-",
+    "Requestor=MGR.KARTIKA",
+    "Request=35.984.000",
+    "Refund=0",
+    "Expense Claim=0",
+    "·=Checked",
+    "·=Verify Tinjau Reje"
+   ],
+   "picHidup": [
+    "·=",
+    "·=CR-10260043CL-B000",
+    "Description=BIAYA PENGIRIMAN M",
+    "Tanggal=25/10/2026",
+    "Tanggal Paid=-",
+    "Requestor=MGR.KARTIKA",
+    "PIC=- Sari",
+    "Request=35.984.000",
+    "Refund=0",
+    "Expense Claim=0",
+    "·=Checked",
+    "·=Verify Tinjau Reje"
+   ],
+   "bulk": {
+    "tampil": true,
+    "info": "1 dipilih · total Rp 35.984.000",
+    "tercentang": 1,
+    "shadowSelCentang": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px"
+   },
+   "bulkDialog": "Verify 1 CR?",
+   "bulkDialogTutup": true,
+   "bulkPost": 0,
+   "tercentangSesudah": 0,
+   "aksi": {
+    "w": 44,
+    "h": 44,
+    "kena": true
+   },
+   "menu": [
+    {
+     "teks": "Tinjau Reject",
+     "l": 155,
+     "r": 341,
+     "t": 456,
+     "b": 547,
+     "vw": 390,
+     "vh": 844
+    }
+   ],
+   "nob": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(154, 48, 48) 3px 0px 0px 0px inset, rgba(0, 0, 0, 0.03) 0px 1px 2px 0px",
+   "akhir": {
+    "lebar": {
+     "doc": [
+      390,
+      390
+     ],
+     "wrap": [
+      317,
+      317
+     ]
+    }
+   }
+  },
+  "cp": {
+   "awal": {
+    "baris": 28,
+    "ring": "Total (data tampil) | Request: 5.877.640.000",
+    "label": [
+     "·=",
+     "·=CR-102600550003",
+     "Description=UJI M2 REDESAIN 00",
+     "Tanggal=27/10/2026",
+     "Tanggal Paid=-",
+     "Requestor=DUMMY.SUPERADMIN",
+     "PIC=- CV Karya",
+     "Request=750.000",
+     "·=Draft",
+     "·=Submit Tinjau Edit"
+    ],
+    "lebar": {
+     "doc": [
+      390,
+      390
+     ],
+     "wrap": [
+      317,
+      317
+     ]
+    }
+   },
+   "cari": {
+    "baris": 6,
+    "ring": "Total (data tampil) | Request: 1.313.327.000"
+   },
+   "kosong": {
+    "teks": "Tidak ada yang cocokTidak ada Cost Request yang cocok dengan pencarian atau filt",
+    "trBg": "rgba(0, 0, 0, 0)",
+    "trBorder": "0px",
+    "trShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0",
+    "trPad": "0px",
+    "tdDisplay": "block",
+    "tdPad": "6px 0px",
+    "tdBorder": "0px",
+    "w": 317,
+    "before": "none",
+    "ring": "Total (data tampil) | Request: 0",
+    "lebar": {
+     "doc": [
+      390,
+      390
+     ],
+     "wrap": [
+      317,
+      317
+     ]
+    }
+   },
+   "bersih": {
+    "baris": 28
+   },
+   "filter": {
+    "baris": 3,
+    "ring": "Total (data tampil) | Request: 374.415.000",
+    "lebar": {
+     "doc": [
+      390,
+      390
+     ],
+     "wrap": [
+      317,
+      317
+     ]
+    }
+   },
+   "reset": {
+    "baris": 28,
+    "ring": "Total (data tampil) | Request: 5.877.640.000"
+   },
+   "picMati": [
+    "·=",
+    "·=CR-102600550003",
+    "Description=UJI M2 REDESAIN 00",
+    "Tanggal=27/10/2026",
+    "Tanggal Paid=-",
+    "Requestor=DUMMY.SUPERADMIN",
+    "Request=750.000",
+    "·=Draft",
+    "·=Submit Tinjau Edit"
+   ],
+   "picHidup": [
+    "·=",
+    "·=CR-102600550003",
+    "Description=UJI M2 REDESAIN 00",
+    "Tanggal=27/10/2026",
+    "Tanggal Paid=-",
+    "Requestor=DUMMY.SUPERADMIN",
+    "PIC=- CV Karya",
+    "Request=750.000",
+    "·=Draft",
+    "·=Submit Tinjau Edit"
+   ],
+   "bulk": {
+    "tampil": true,
+    "info": "1 dipilih · total Rp 200.800.000",
+    "tercentang": 1,
+    "shadowSelCentang": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px"
+   },
+   "bulkDialog": "Verify 1 CR?",
+   "bulkDialogTutup": true,
+   "bulkPost": 0,
+   "tercentangSesudah": 0,
+   "aksi": {
+    "w": 44,
+    "h": 44,
+    "kena": true
+   },
+   "menu": [
+    {
+     "teks": "Tinjau Edit Hapus",
+     "l": 155,
+     "r": 341,
+     "t": 456,
+     "b": 581,
+     "vw": 390,
+     "vh": 844
+    }
+   ],
+   "nob": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(154, 48, 48) 3px 0px 0px 0px inset, rgba(0, 0, 0, 0.03) 0px 1px 2px 0px",
+   "akhir": {
+    "lebar": {
+     "doc": [
+      390,
+      390
+     ],
+     "wrap": [
+      317,
+      317
+     ]
+    }
+   }
+  },
+  "db": {
+   "awal": {
+    "baris": 73,
+    "ring": "Total Cost (data tampil) | Cost: 17.733.595.000",
+    "label": [
+     "·=CR-102600550003",
+     "Description=UJI M2 REDESAIN 00",
+     "Jenis=Cost Payment",
+     "Tanggal=27/10/2026",
+     "Tanggal Paid=-",
+     "Requestor=DUMMY.SUPERADMIN",
+     "PIC=- CV Karya",
+     "Cost=750.000",
+     "·=Draft",
+     "Close Date=-"
+    ],
+    "lebar": {
+     "doc": [
+      390,
+      390
+     ],
+     "wrap": [
+      317,
+      317
+     ]
+    }
+   },
+   "cari": {
+    "baris": 27,
+    "ring": "Total Cost (data tampil) | Cost: 6.920.189.000"
+   },
+   "kosong": {
+    "teks": "Tidak ada yang cocokTidak ada Cost Request yang cocok dengan pencarian atau filt",
+    "trBg": "rgba(0, 0, 0, 0)",
+    "trBorder": "0px",
+    "trShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0",
+    "trPad": "0px",
+    "tdDisplay": "block",
+    "tdPad": "6px 0px",
+    "tdBorder": "0px",
+    "w": 317,
+    "before": "none",
+    "ring": "Total Cost (data tampil) | Cost: 0",
+    "lebar": {
+     "doc": [
+      390,
+      390
+     ],
+     "wrap": [
+      317,
+      317
+     ]
+    }
+   },
+   "bersih": {
+    "baris": 73
+   },
+   "filter": {
+    "baris": 6,
+    "ring": "Total Cost (data tampil) | Cost: 1.188.212.000",
+    "lebar": {
+     "doc": [
+      390,
+      390
+     ],
+     "wrap": [
+      317,
+      317
+     ]
+    }
+   },
+   "reset": {
+    "baris": 73,
+    "ring": "Total Cost (data tampil) | Cost: 17.733.595.000"
+   },
+   "picMati": [
+    "·=CR-102600550003",
+    "Description=UJI M2 REDESAIN 00",
+    "Jenis=Cost Payment",
+    "Tanggal=27/10/2026",
+    "Tanggal Paid=-",
+    "Requestor=DUMMY.SUPERADMIN",
+    "Cost=750.000",
+    "·=Draft",
+    "Close Date=-"
+   ],
+   "picHidup": [
+    "·=CR-102600550003",
+    "Description=UJI M2 REDESAIN 00",
+    "Jenis=Cost Payment",
+    "Tanggal=27/10/2026",
+    "Tanggal Paid=-",
+    "Requestor=DUMMY.SUPERADMIN",
+    "PIC=- CV Karya",
+    "Cost=750.000",
+    "·=Draft",
+    "Close Date=-"
+   ],
+   "nob": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(154, 48, 48) 3px 0px 0px 0px inset, rgba(0, 0, 0, 0.03) 0px 1px 2px 0px",
+   "akhir": {
+    "lebar": {
+     "doc": [
+      390,
+      390
+     ],
+     "wrap": [
+      317,
+      317
+     ]
+    }
+   }
+  }
+ },
+ "konsol": [],
+ "gagal": [],
+ "stop": 0
+}

@@ -430,7 +430,7 @@ $(function () {
                 if (status === 'abort') return;
                 $('#formCr').hide();
                 Swal.fire({ icon: 'error', title: 'Gagal memuat invoice',
-                            text: 'Coba pilih ulang customer-nya.', confirmButtonColor: '#92232b' });
+                            text: 'Coba pilih ulang customer-nya.', confirmButtonColor: 'var(--accent)' });
             })
             .always(function () { $('#crLoading').hide(); permintaan = null; });
     }
@@ -480,11 +480,11 @@ $(function () {
         function pasang(file) {
             if (!file) return;
             if (!BOLEH.test(file.name) && !/^(image\/(png|jpe?g)|application\/pdf)$/.test(file.type)) {
-                Swal.fire({ icon: 'warning', title: 'Format tidak didukung', text: 'Gunakan PDF, JPG, atau PNG.', confirmButtonColor: '#92232b' });
+                Swal.fire({ icon: 'warning', title: 'Format tidak didukung', text: 'Gunakan PDF, JPG, atau PNG.', confirmButtonColor: 'var(--accent)' });
                 return;
             }
             if (file.size > 10 * 1024 * 1024) {
-                Swal.fire({ icon: 'warning', title: 'Berkas terlalu besar', text: 'Maksimal 10 MB.', confirmButtonColor: '#92232b' });
+                Swal.fire({ icon: 'warning', title: 'Berkas terlalu besar', text: 'Maksimal 10 MB.', confirmButtonColor: 'var(--accent)' });
                 return;
             }
             // Gambar hasil paste biasanya bernama generik ("image.png"); beri nama yang jelas.
@@ -539,7 +539,7 @@ $(function () {
     $('#formCr').on('submit', function (e) {
         if ($('.cr-check:checked').length === 0) {
             e.preventDefault();
-            Swal.fire({ icon: 'warning', title: 'Pilih minimal satu invoice', confirmButtonColor: '#92232b' });
+            Swal.fire({ icon: 'warning', title: 'Pilih minimal satu invoice', confirmButtonColor: 'var(--accent)' });
             return;
         }
 
@@ -584,7 +584,7 @@ $(function () {
         if (melebihi > 0) {
             e.preventDefault();
             Swal.fire({ icon: 'error', title: 'Nominal melebihi sisa tagihan',
-                        text: 'Diterima + PPh tidak boleh lebih besar dari Sisa Tagihan.', confirmButtonColor: '#92232b' });
+                        text: 'Diterima + PPh tidak boleh lebih besar dari Sisa Tagihan.', confirmButtonColor: 'var(--accent)' });
             return;
         }
 
@@ -595,7 +595,7 @@ $(function () {
                 title: 'Simpan penerimaan dengan PPh?',
                 html: htmlRingkasan,
                 showCancelButton: true,
-                confirmButtonColor: '#92232b', cancelButtonColor: '#55595e',
+                confirmButtonColor: 'var(--accent)', cancelButtonColor: 'var(--text-muted)',
                 confirmButtonText: 'Ya, Simpan', cancelButtonText: 'Batal'
             }).then(function (r) {
                 if (!r.isConfirmed) return;
@@ -616,7 +616,7 @@ $(function () {
                 inputPlaceholder: 'Komentar / alasan pembayaran tidak penuh (wajib)',
                 inputValidator: function (v) { return (v && v.trim()) ? undefined : 'Komentar wajib diisi'; },
                 showCancelButton: true,
-                confirmButtonColor: '#92232b', cancelButtonColor: '#55595e',
+                confirmButtonColor: 'var(--accent)', cancelButtonColor: 'var(--text-muted)',
                 confirmButtonText: 'Ya, Simpan', cancelButtonText: 'Batal'
             }).then(function (r) {
                 if (!r.isConfirmed) return;

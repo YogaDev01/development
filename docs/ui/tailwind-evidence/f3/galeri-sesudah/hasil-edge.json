@@ -1,0 +1,3351 @@
+{
+ "browser": {
+  "nama": "edge",
+  "versi": "Edg/156.0.4314.42",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36 Edg/156.0.0.0",
+  "pid": 31580,
+  "port": 9334,
+  "userDataDir": "tesys-cdp-edge-GCYj9o",
+  "penghentian": {
+   "pid": 31580,
+   "penanda": "tesys-cdp-edge-GCYj9o",
+   "keluarSendiri": true,
+   "sisaProsesPenanda": 0,
+   "userDirDihapus": true
+  }
+ },
+ "waktu": "2026-10-25T22:38:23.670Z",
+ "viewport": [
+  "360x740",
+  "390x844",
+  "768x1024",
+  "1024x768",
+  "1366x768",
+  "1920x1080",
+  "1280x600",
+  "900x700",
+  "901x700"
+ ],
+ "keadaan": [
+  "terang-bawaan",
+  "gelap-bawaan",
+  "terang-kustom",
+  "gelap-kustom"
+ ],
+ "aksenKustom": "#0f6e66",
+ "ringkasan": {
+  "PASS": 34,
+  "FAIL": 1
+ },
+ "butir": [
+  {
+   "id": "G1-isolasi",
+   "judul": "Elemen legacy tak berubah dengan/ tanpa tesys-tw.css (2 posisi <link>, 4 keadaan, 2 viewport)",
+   "status": "PASS",
+   "nilai": {
+    "elemenDiukur": 46,
+    "selisihNol": true,
+    "cssTwDimuat": true,
+    "propertiRegistrasi": 19,
+    "digest": {
+     "1366x768/terang-bawaan/baseline": "4b859237efa9844e",
+     "1366x768/terang-bawaan/tw": "11573a1a135b0fab",
+     "1366x768/terang-bawaan/awal": "11573a1a135b0fab",
+     "1366x768/gelap-bawaan/baseline": "f6a831b3b46f3f1b",
+     "1366x768/gelap-bawaan/tw": "dde08a0c785567ae",
+     "1366x768/gelap-bawaan/awal": "dde08a0c785567ae",
+     "1366x768/terang-kustom/baseline": "ab02a62373177377",
+     "1366x768/terang-kustom/tw": "b0ac3fa0fcc525b6",
+     "1366x768/terang-kustom/awal": "b0ac3fa0fcc525b6",
+     "1366x768/gelap-kustom/baseline": "aee5d45bdc278570",
+     "1366x768/gelap-kustom/tw": "fba4c06276de8178",
+     "1366x768/gelap-kustom/awal": "fba4c06276de8178",
+     "390x844/terang-bawaan/baseline": "fe9ebdbda337021d",
+     "390x844/terang-bawaan/tw": "66513bef39ba3b42",
+     "390x844/terang-bawaan/awal": "66513bef39ba3b42",
+     "390x844/gelap-bawaan/baseline": "66ef6e9074180525",
+     "390x844/gelap-bawaan/tw": "0dea687939850940",
+     "390x844/gelap-bawaan/awal": "0dea687939850940",
+     "390x844/terang-kustom/baseline": "684bef275d43fc7c",
+     "390x844/terang-kustom/tw": "f6c31c60c0e3195a",
+     "390x844/terang-kustom/awal": "f6c31c60c0e3195a",
+     "390x844/gelap-kustom/baseline": "2950da49bce2f5d8",
+     "390x844/gelap-kustom/tw": "859071f702fd497a",
+     "390x844/gelap-kustom/awal": "859071f702fd497a"
+    }
+   }
+  },
+  {
+   "id": "G1-kontrol-positif",
+   "judul": "CSS bocor sengaja terdeteksi oleh snapshot",
+   "status": "PASS",
+   "nilai": {
+    "rincian": [
+     {
+      "vp": "1366x768",
+      "keadaan": "terang-bawaan",
+      "kontrolPositifSelisih": 10
+     },
+     {
+      "vp": "1366x768",
+      "keadaan": "gelap-bawaan",
+      "kontrolPositifSelisih": 10
+     },
+     {
+      "vp": "1366x768",
+      "keadaan": "terang-kustom",
+      "kontrolPositifSelisih": 10
+     },
+     {
+      "vp": "1366x768",
+      "keadaan": "gelap-kustom",
+      "kontrolPositifSelisih": 10
+     },
+     {
+      "vp": "390x844",
+      "keadaan": "terang-bawaan",
+      "kontrolPositifSelisih": 10
+     },
+     {
+      "vp": "390x844",
+      "keadaan": "gelap-bawaan",
+      "kontrolPositifSelisih": 10
+     },
+     {
+      "vp": "390x844",
+      "keadaan": "terang-kustom",
+      "kontrolPositifSelisih": 10
+     },
+     {
+      "vp": "390x844",
+      "keadaan": "gelap-kustom",
+      "kontrolPositifSelisih": 10
+     }
+    ]
+   }
+  },
+  {
+   "id": "G2-token",
+   "judul": "Computed (warna, tepi, radius, font, min-height, padding, bayangan) = nilai token, 4 keadaan",
+   "status": "PASS",
+   "nilai": {
+    "totalCek": 1596,
+    "perKeadaan": {
+     "terang-bawaan": {
+      "cek": 399,
+      "menyimpang": 0
+     },
+     "gelap-bawaan": {
+      "cek": 399,
+      "menyimpang": 0
+     },
+     "terang-kustom": {
+      "cek": 399,
+      "menyimpang": 0
+     },
+     "gelap-kustom": {
+      "cek": 399,
+      "menyimpang": 0
+     }
+    },
+    "jumlahDeviasi": 0,
+    "deviasi": []
+   }
+  },
+  {
+   "id": "G3-bang",
+   "judul": "Tiap sufiks \"!\" diukur: hasil dengan \"!\" vs bentuk tanpa \"!\" (utilitas berlayer biasa); perlu bila perlu di salah satu konteks (polos/DataTables/mobile, terang/gelap, rest/fokus); dan semua kelas \"!\" di artefak produksi terukur",
+   "status": "PASS",
+   "nilai": {
+    "kelasXPada": 32,
+    "perlu": 32,
+    "tidakPerlu": [],
+    "konteksDiukur": 124,
+    "kelasBangDiArtefak": 20,
+    "kelasBangTerukur": 20,
+    "kelasBangTakTerukur": []
+   },
+   "catatan": "FAIL = ada \"!\" yang tidak diperlukan di konteks mana pun, ATAU ada kelas \"!\" di artefak produksi yang tidak terukur (daftar di kelasBangTakTerukur)"
+  },
+  {
+   "id": "G3-cincin-tunggal",
+   "judul": "Fokus papan ketik: tepat satu indikator (outline ATAU ring, tidak ganda) pada tombol/input/select/tutup modal",
+   "status": "PASS",
+   "nilai": {
+    "elemenXKeadaan": 40,
+    "pelanggaran": [],
+    "pembandingLegacy": [
+     {
+      "keadaan": "terang-bawaan",
+      "nama": "legacy-btn",
+      "fokusVisible": true,
+      "aktif": true,
+      "outline": "none 2.5px offset 1.25px #ffffff",
+      "outlineAda": false,
+      "cincin": 0,
+      "radiusRest": "6px",
+      "radiusFokus": "6px",
+      "jenis": "tidak ada",
+      "indikator": 0
+     }
+    ]
+   }
+  },
+  {
+   "id": "G3-radius-fokus",
+   "judul": "Radius saat fokus = radius saat istirahat (tidak berubah ke 4px legacy)",
+   "status": "PASS",
+   "nilai": {
+    "contoh": [
+     "btn-primary: 6px -> 6px",
+     "btn-secondary: 6px -> 6px",
+     "btn-danger: 6px -> 6px",
+     "btn-ghost: 6px -> 6px",
+     "btn-sm: 6px -> 6px",
+     "input: 6px -> 6px",
+     "input-error: 6px -> 6px",
+     "select: 6px -> 6px",
+     "select-error: 6px -> 6px",
+     "legacy-btn: 6px -> 6px",
+     "tutup-modal: 6px -> 6px"
+    ]
+   }
+  },
+  {
+   "id": "G4-fokus-kontras",
+   "judul": "Kontras warna cincin fokus vs latar (--bg/--surface/--surface-2) >= 3:1; 8 praset aksen x terang/gelap x 10 komponen",
+   "status": "PASS",
+   "nilai": {
+    "minTerukur": 5.1,
+    "jumlahCek": 160,
+    "gagal": [],
+    "aksenEkstremInformasi": [
+     {
+      "tema": "terang",
+      "aksen": "#ffd400",
+      "cincin": "#e0bb00",
+      "kontras": [
+       1.66,
+       1.87
+      ]
+     },
+     {
+      "tema": "terang",
+      "aksen": "#00e5ff",
+      "cincin": "#00cae0",
+      "kontras": [
+       1.78,
+       2
+      ]
+     },
+     {
+      "tema": "terang",
+      "aksen": "#ff4d6d",
+      "cincin": "#e04460",
+      "kontras": [
+       3.6,
+       4.06
+      ]
+     },
+     {
+      "tema": "terang",
+      "aksen": "#111111",
+      "cincin": "#0f0f0f",
+      "kontras": [
+       17.02,
+       19.17
+      ]
+     },
+     {
+      "tema": "gelap",
+      "aksen": "#ffd400",
+      "cincin": "#ffe773",
+      "kontras": [
+       15.11,
+       14.02
+      ]
+     },
+     {
+      "tema": "gelap",
+      "aksen": "#00e5ff",
+      "cincin": "#73f1ff",
+      "kontras": [
+       13.99,
+       12.98
+      ]
+     },
+     {
+      "tema": "gelap",
+      "aksen": "#ff4d6d",
+      "cincin": "#ff9daf",
+      "kontras": [
+       9.53,
+       8.84
+      ]
+     },
+     {
+      "tema": "gelap",
+      "aksen": "#111111",
+      "cincin": "#7c7c7c",
+      "kontras": [
+       4.49,
+       4.16
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "G4-fokus-forced-colors",
+   "judul": "forced-colors: active -> setiap kontrol tetap punya indikator fokus terlukis (outline; box-shadow tidak dilukis)",
+   "status": "PASS",
+   "nilai": {
+    "diperiksa": 10,
+    "tanpaOutline": []
+   }
+  },
+  {
+   "id": "G4-tab-maju",
+   "judul": "Tab: urutan fokus = urutan DOM (elemen disabled/loading dilewati)",
+   "status": "PASS",
+   "nilai": {
+    "jumlahTabbable": 41,
+    "urutan": [
+     "tw-btn-primary-md",
+     "tw-btn-primary-sm",
+     "tw-btn-secondary-md",
+     "tw-btn-secondary-sm",
+     "tw-btn-danger-md",
+     "tw-btn-danger-sm",
+     "tw-btn-ghost-md",
+     "tw-btn-ghost-sm",
+     "tw-btn-submit",
+     "tw-in-normal",
+     "tw-in-hint",
+     "tw-in-error",
+     "tw-in-readonly",
+     "details-0-nama",
+     "tw-in-nolabel",
+     "tw-sel-normal",
+     "tw-sel-hint",
+     "tw-sel-error",
+     "lg-in-normal",
+     "lg-sel-normal",
+     "button.tw:inline-flex",
+     "button.tw:inline-flex",
+     "button.tw:inline-flex",
+     "button.tw:inline-flex",
+     "lg-buka-modal-tw"
+    ],
+    "selisih": []
+   }
+  },
+  {
+   "id": "G4-shift-tab",
+   "judul": "Shift+Tab: urutan terbalik",
+   "status": "PASS",
+   "nilai": {
+    "jumlah": 41
+   }
+  },
+  {
+   "id": "G4-enter-space",
+   "judul": "Enter dan Space mengaktifkan <x-tw.button type=submit>",
+   "status": "PASS",
+   "nilai": {
+    "awal": 0,
+    "setelahEnter": 1,
+    "setelahSpace": 2
+   }
+  },
+  {
+   "id": "G4-modal-papan-ketik",
+   "judul": "Modal dibuka dengan Enter pada x-tw.button: fokus masuk, Escape menutup, fokus kembali ke pemicu",
+   "status": "PASS",
+   "nilai": {
+    "dalam": {
+     "fokusDalam": true,
+     "aktif": "tw-modal-uji",
+     "tampil": true
+    },
+    "sesudah": {
+     "tampil": false,
+     "aktif": "tw-buka-modal",
+     "pemicuAktif": true
+    }
+   }
+  },
+  {
+   "id": "G4-aria",
+   "judul": "Nama aksesibel, aria-invalid/describedby/role=alert, aria-busy, dialog bernama, tombol tutup",
+   "status": "PASS",
+   "nilai": {
+    "cek": [
+     "ok: tombol bernama dari isi",
+     "ok: loading: aria-busy + disabled",
+     "ok: input bernama dari label",
+     "ok: input wajib: nama tanpa tanda * (aria-hidden)",
+     "ok: input tanpa label: aria-label",
+     "ok: input galat: aria-invalid + deskripsi",
+     "ok: role=alert pada pesan galat",
+     "ok: select galat: aria-invalid",
+     "ok: hint dihubungkan describedby",
+     "ok: select bernama dari label",
+     "ok: modal: role dialog + nama dari judul",
+     "ok: tombol tutup modal bernama \"Tutup\"",
+     "ok: label legacy tanpa for dihubungkan tesys-ui.js saat shown.bs.modal",
+     "ok: tabel: role table, th columnheader"
+    ]
+   }
+  },
+  {
+   "id": "G4-modal-backdrop-zoom",
+   "judul": "Backdrop menutup seluruh viewport di bawah html zoom .8 (rasio 1,0), 6 titik uji tepi/sudut",
+   "status": "PASS",
+   "nilai": {
+    "zoom": "0.8",
+    "viewport": [
+     1366,
+     768
+    ],
+    "kotak": {
+     "x": 0,
+     "y": 0,
+     "w": 1366,
+     "h": 768
+    },
+    "rasioLebar": 1,
+    "rasioTinggi": 1,
+    "sudutTertutup": [
+     true,
+     true,
+     true,
+     true,
+     true,
+     true
+    ]
+   }
+  },
+  {
+   "id": "G4-modal-ukuran",
+   "judul": "Lebar dialog x-tw.modal = dialog legacy pada viewport yang sama",
+   "status": "PASS",
+   "nilai": {
+    "tw": [
+     640,
+     723
+    ],
+    "legacy": [
+     640,
+     723
+    ]
+   }
+  },
+  {
+   "id": "G4-modal-fokus-masuk",
+   "judul": "Modal terbuka: fokus masuk ke dalam modal; Tab tetap di dalam (jebakan fokus Bootstrap)",
+   "status": "PASS",
+   "nilai": {
+    "fokusMasuk": {
+     "dalam": true,
+     "aktif": "tw-modal-uji"
+    },
+    "trap": {
+     "urutan": [
+      "button.tw:inline-flex",
+      "tw-modal-in",
+      "tw-modal-sel",
+      "tw-modal-in-legacy",
+      "tw-modal-batal",
+      "tw-modal-simpan",
+      "tw-modal-uji",
+      "button.tw:inline-flex",
+      "tw-modal-in"
+     ],
+     "semuaDalam": true
+    }
+   }
+  },
+  {
+   "id": "G4-modal-escape-kembali",
+   "judul": "Escape menutup modal; fokus kembali ke pemicu (legacy .btn dan x-tw.button); tombol x menutup",
+   "status": "PASS",
+   "nilai": {
+    "legacyPemicu": {
+     "tampil": false,
+     "pemicu": true
+    },
+    "tombolX": true,
+    "twPemicu": true
+   }
+  },
+  {
+   "id": "G4-modal-viewport-pendek",
+   "judul": "Viewport pendek (tinggi <=700px) & sempit (<=575px): header+footer modal tetap terlihat, lebar muat, tanpa overflow horizontal",
+   "status": "PASS",
+   "nilai": {
+    "1280x600": {
+     "secScrollH": 782,
+     "secClientH": 420,
+     "sectionBisaGulir": true,
+     "modalScrollH": 750,
+     "modalClientH": 750,
+     "modalBisaGulir": false,
+     "contentDisplay": "flex",
+     "contentMaxH": "544px",
+     "contentOverflow": "hidden",
+     "innerH": 600,
+     "innerW": 1280,
+     "docScrollW": 1280,
+     "docClientW": 1280,
+     "headerTop": 82,
+     "footerBottom": 518,
+     "contentBottom": 518,
+     "contentW": 640,
+     "vh": 600,
+     "vw": 1280,
+     "headerFooterTerlihat": true,
+     "lebarMuat": true,
+     "legacy": {
+      "badanBisaGulir": true,
+      "modalBisaGulir": false
+     }
+    },
+    "1024x768": {
+     "secScrollH": 782,
+     "secClientH": 782,
+     "sectionBisaGulir": false,
+     "modalScrollH": 962,
+     "modalClientH": 960,
+     "modalBisaGulir": true,
+     "contentDisplay": "flex",
+     "contentMaxH": "none",
+     "contentOverflow": "hidden",
+     "innerH": 768,
+     "innerW": 1024,
+     "docScrollW": 1024,
+     "docClientW": 1024,
+     "headerTop": 22,
+     "footerBottom": 748,
+     "contentBottom": 748,
+     "contentW": 640,
+     "vh": 768,
+     "vw": 1024,
+     "headerFooterTerlihat": true,
+     "lebarMuat": true,
+     "legacy": {
+      "badanBisaGulir": false,
+      "modalBisaGulir": false
+     }
+    },
+    "390x844": {
+     "secScrollH": 782,
+     "secClientH": 704,
+     "sectionBisaGulir": true,
+     "modalScrollH": 848,
+     "modalClientH": 844,
+     "modalBisaGulir": true,
+     "contentDisplay": "flex",
+     "contentMaxH": "828px",
+     "contentOverflow": "hidden",
+     "innerH": 844,
+     "innerW": 390,
+     "docScrollW": 390,
+     "docClientW": 390,
+     "headerTop": 10,
+     "footerBottom": 838,
+     "contentBottom": 838,
+     "contentW": 370,
+     "vh": 844,
+     "vw": 390,
+     "headerFooterTerlihat": true,
+     "lebarMuat": true,
+     "legacy": {
+      "badanBisaGulir": true,
+      "modalBisaGulir": true
+     }
+    },
+    "360x740": {
+     "secScrollH": 782,
+     "secClientH": 600,
+     "sectionBisaGulir": true,
+     "modalScrollH": 744,
+     "modalClientH": 740,
+     "modalBisaGulir": true,
+     "contentDisplay": "flex",
+     "contentMaxH": "724px",
+     "contentOverflow": "hidden",
+     "innerH": 740,
+     "innerW": 360,
+     "docScrollW": 360,
+     "docClientW": 360,
+     "headerTop": 10,
+     "footerBottom": 734,
+     "contentBottom": 734,
+     "contentW": 340,
+     "vh": 740,
+     "vw": 360,
+     "headerFooterTerlihat": true,
+     "lebarMuat": true,
+     "legacy": {
+      "badanBisaGulir": true,
+      "modalBisaGulir": true
+     }
+    }
+   }
+  },
+  {
+   "id": "G4-modal-gulir-internal",
+   "judul": "Viewport pendek/sempit: isi panjang menggulir DI DALAM <section>; viewport lain: perilaku sama dengan modal legacy (.modal-body)",
+   "status": "PASS",
+   "nilai": {
+    "1280x600": {
+     "sectionBisaGulir": true,
+     "modalBisaGulir": false,
+     "legacy": {
+      "badanBisaGulir": true,
+      "modalBisaGulir": false
+     },
+     "pendekAtauSempit": true
+    },
+    "1024x768": {
+     "sectionBisaGulir": false,
+     "modalBisaGulir": true,
+     "legacy": {
+      "badanBisaGulir": false,
+      "modalBisaGulir": false
+     },
+     "pendekAtauSempit": false
+    },
+    "390x844": {
+     "sectionBisaGulir": true,
+     "modalBisaGulir": true,
+     "legacy": {
+      "badanBisaGulir": true,
+      "modalBisaGulir": true
+     },
+     "pendekAtauSempit": true
+    },
+    "360x740": {
+     "sectionBisaGulir": true,
+     "modalBisaGulir": true,
+     "legacy": {
+      "badanBisaGulir": true,
+      "modalBisaGulir": true
+     },
+     "pendekAtauSempit": true
+    }
+   },
+   "catatan": "Di luar viewport pendek/sempit modal legacy tidak membatasi tinggi (compat.css:283-310); yang menggulir adalah overlay .modal (perilaku Bootstrap)."
+  },
+  {
+   "id": "G5-target-sentuh-44",
+   "judul": "Target sentuh >= 44x44 CSS px (390x844)",
+   "status": "FAIL",
+   "nilai": {
+    "ukuran390": {
+     "tombol md": "105.4x34",
+     "tombol sm": "93.7x30",
+     "tombol sm di tabel": "55.1x30",
+     "input": "360x34",
+     "select": "360x34",
+     "tutup modal": "40x40",
+     "tombol footer modal": "80.6x34",
+     "pembanding legacy .btn": "97.8x34",
+     "pembanding legacy .form-control": "360x36"
+    },
+    "dibawah44": [
+     "tombol md 105.4x34",
+     "tombol sm 93.7x30",
+     "tombol sm di tabel 55.1x30",
+     "input 360x34",
+     "select 360x34",
+     "tutup modal 40x40",
+     "tombol footer modal 80.6x34"
+    ],
+    "ukuran1366": {
+     "tombol md": "84.8x27.2",
+     "tombol sm": "75.3x24",
+     "tombol sm di tabel": "44.5x24",
+     "input": "288x27.2",
+     "select": "288x27.2",
+     "tutup modal": "32x32",
+     "tombol footer modal": "64.9x27.2",
+     "pembanding legacy .btn": "84.9x27.2",
+     "pembanding legacy .form-control": "288x27.2"
+    }
+   },
+   "catatan": "DEVIASI TERCATAT: tinggi kontrol token (34/30px) & tutup modal 40px; legacy memakai ukuran yang sama (mobile.css form-control 36px). WCAG 2.2 AA (2.5.8) mensyaratkan 24px: lolos 24px"
+  },
+  {
+   "id": "G5-target-sentuh-24",
+   "judul": "Target >= 24x24 CSS px (WCAG 2.2 AA 2.5.8) pada 390x844 dan 1366x768 (zoom .8: tinggi tersaji 0,8x)",
+   "status": "PASS",
+   "nilai": {
+    "terkecil": {
+     "v": "1366x768",
+     "n": "tombol sm",
+     "d": "75.3x24",
+     "h": 24,
+     "w": 75.3
+    },
+    "bawah24": []
+   },
+   "catatan": "Pada 1366x768 ukuran tersaji = 0,8x ukuran CSS (zoom .8), tombol sm 24px tersaji; dibaca sebagai informasi."
+  },
+  {
+   "id": "G5-ketuk",
+   "judul": "Input.dispatchTouchEvent: tombol (klik+submit), input (fokus), select, pemicu & tutup modal; disabled tidak merespons",
+   "status": "PASS",
+   "nilai": {
+    "submit": 1,
+    "btn": 1,
+    "fokusInput": 1,
+    "sel": 1,
+    "modalTerbuka": true,
+    "modalTertutup": true,
+    "disabledKlik": 0
+   }
+  },
+  {
+   "id": "G6-zoom-computed",
+   "judul": "documentElement computed zoom: 0.8 pada >=901px, 1 pada <=900px",
+   "status": "PASS",
+   "nilai": {
+    "360x740": {
+     "zoom": "1",
+     "ts": "",
+     "innerW": 360
+    },
+    "390x844": {
+     "zoom": "1",
+     "ts": "",
+     "innerW": 390
+    },
+    "768x1024": {
+     "zoom": "1",
+     "ts": "",
+     "innerW": 768
+    },
+    "900x700": {
+     "zoom": "1",
+     "ts": "",
+     "innerW": 900
+    },
+    "901x700": {
+     "zoom": "0.8",
+     "ts": ".8",
+     "innerW": 901
+    },
+    "1024x768": {
+     "zoom": "0.8",
+     "ts": ".8",
+     "innerW": 1024
+    },
+    "1366x768": {
+     "zoom": "0.8",
+     "ts": ".8",
+     "innerW": 1366
+    },
+    "1920x1080": {
+     "zoom": "0.8",
+     "ts": ".8",
+     "innerW": 1920
+    }
+   }
+  },
+  {
+   "id": "G6-artefak-tanpa-vh",
+   "judul": "Artefak produksi tanpa *-screen, satuan vh/vw/dvh, dan fixed (komponen tak memakai)",
+   "status": "PASS",
+   "nilai": {
+    "ukuranByte": 9329,
+    "ketemu": [
+     false,
+     false,
+     false
+    ]
+   }
+  },
+  {
+   "id": "G6-fixed-inset-0",
+   "judul": "tw:fixed tw:inset-0 (artefak uji) menutup viewport penuh di bawah zoom .8 (informasi: tidak dipakai komponen)",
+   "status": "PASS",
+   "nilai": {
+    "1366x768": {
+     "kotak": {
+      "w": 1366,
+      "h": 768
+     },
+     "viewport": [
+      1366,
+      768
+     ]
+    },
+    "1920x1080": {
+     "kotak": {
+      "w": 1920,
+      "h": 1080
+     },
+     "viewport": [
+      1920,
+      1080
+     ]
+    },
+    "390x844": {
+     "kotak": {
+      "w": 390,
+      "h": 844
+     },
+     "viewport": [
+      390,
+      844
+     ]
+    }
+   },
+   "catatan": "Tanpa kompensasi, lapisan fixed dalam html{zoom} menyusut; hasil di sini menunjukkan perilaku nyata."
+  },
+  {
+   "id": "RESP-viewport",
+   "judul": "Enam viewport x terang/gelap: tanpa overflow horizontal halaman & komponen tw di dalam viewport (di luar .table-responsive/.modal)",
+   "status": "PASS",
+   "nilai": {
+    "360x740/terang-bawaan": "ok",
+    "360x740/gelap-bawaan": "ok",
+    "390x844/terang-bawaan": "ok",
+    "390x844/gelap-bawaan": "ok",
+    "768x1024/terang-bawaan": "ok",
+    "768x1024/gelap-bawaan": "ok",
+    "1024x768/terang-bawaan": "ok",
+    "1024x768/gelap-bawaan": "ok",
+    "1366x768/terang-bawaan": "ok",
+    "1366x768/gelap-bawaan": "ok",
+    "1920x1080/terang-bawaan": "ok",
+    "1920x1080/gelap-bawaan": "ok"
+   }
+  },
+  {
+   "id": "G7-kontras-teks",
+   "judul": "Kontras teks komponen (warna terhitung) >= 4.5:1 pada 4 keadaan + on-accent 8 praset x 2 tema (normal & hover)",
+   "status": "PASS",
+   "nilai": {
+    "terendahTeksNormal": 4.81,
+    "jumlahPasangan": 148,
+    "gagal": [],
+    "informasiAksenKuning": [
+     {
+      "tema": "terang",
+      "aksen": "#ffd400",
+      "normal": {
+       "fg": "#ffffff",
+       "bg": "#ffd400",
+       "kontras": 1.43
+      },
+      "hover": {
+       "fg": "#ffffff",
+       "bg": "#d1ae00",
+       "kontras": 2.15
+      }
+     },
+     {
+      "tema": "gelap",
+      "aksen": "#ffd400",
+      "normal": {
+       "fg": "#ffffff",
+       "bg": "#ffd400",
+       "kontras": 1.43
+      },
+      "hover": {
+       "fg": "#ffffff",
+       "bg": "#d1ae00",
+       "kontras": 2.15
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "G3-kartu-aktif",
+   "judul": "x-tw.table + DataTables <=640px: tesys-table.js memasang mode kartu (ts-card-table, data-label)",
+   "status": "PASS",
+   "nilai": {
+    "m390": {
+     "kelasKartu": true,
+     "dataLabel": "Uraian",
+     "trDisplay": "block",
+     "tdDisplay": "flex",
+     "tdPad": "6px 0px 6px 0px",
+     "tdBorderBottom": "1px",
+     "beforeContent": "\"Uraian\"",
+     "beforeDisplay": "block",
+     "theadDisplay": "block",
+     "thDisplay": "table-cell",
+     "thTinggi": 36,
+     "thPad": "9px 12px",
+     "thFont": "11px",
+     "thTransform": "uppercase",
+     "trTinggi": 107,
+     "trBorder": "1px",
+     "trRadius": "8px",
+     "trBg": "rgb(255, 255, 255)"
+    },
+    "desktop1366": {
+     "kelasKartu": true,
+     "dataLabel": "Uraian",
+     "trDisplay": "table-row",
+     "tdDisplay": "table-cell",
+     "tdPad": "9px 12px 9px 12px",
+     "tdBorderBottom": "1.25px",
+     "beforeContent": "none",
+     "beforeDisplay": "inline",
+     "theadDisplay": "table-header-group",
+     "thDisplay": "table-cell",
+     "thTinggi": 28,
+     "thPad": "9px 12px",
+     "thFont": "12px",
+     "thTransform": "none",
+     "trTinggi": 30,
+     "trBorder": "0px",
+     "trRadius": "0px",
+     "trBg": "rgba(0, 0, 0, 0)"
+    },
+    "tanpaDt": {
+     "kelasKartu": true
+    }
+   }
+  },
+  {
+   "id": "G3-kartu-vs-legacy",
+   "judul": "Tampilan kartu x-tw.table = tabel DataTables legacy (display tr/td/before/thead, padding td, tepi tr) pada 390px",
+   "status": "PASS",
+   "nilai": {
+    "tw": {
+     "kelasKartu": true,
+     "dataLabel": "Uraian",
+     "trDisplay": "block",
+     "tdDisplay": "flex",
+     "tdPad": "6px 0px 6px 0px",
+     "tdBorderBottom": "1px",
+     "beforeContent": "\"Uraian\"",
+     "beforeDisplay": "block",
+     "theadDisplay": "block",
+     "thDisplay": "table-cell",
+     "thTinggi": 36,
+     "thPad": "9px 12px",
+     "thFont": "11px",
+     "thTransform": "uppercase",
+     "trTinggi": 107,
+     "trBorder": "1px",
+     "trRadius": "8px",
+     "trBg": "rgb(255, 255, 255)"
+    },
+    "legacy": {
+     "kelasKartu": true,
+     "dataLabel": "Uraian",
+     "trDisplay": "block",
+     "tdDisplay": "flex",
+     "tdPad": "6px 0px 6px 0px",
+     "tdBorderBottom": "1px",
+     "beforeContent": "\"Uraian\"",
+     "beforeDisplay": "block",
+     "theadDisplay": "block",
+     "thDisplay": "table-cell",
+     "thTinggi": 36,
+     "thPad": "9px 12px",
+     "thFont": "11.5px",
+     "thTransform": "uppercase",
+     "trTinggi": 108,
+     "trBorder": "1px",
+     "trRadius": "8px",
+     "trBg": "rgb(255, 255, 255)"
+    }
+   }
+  },
+  {
+   "id": "G3-kartu-off",
+   "judul": "card-mode=false -> data-ts-card=\"off\" ada dan tidak jadi kartu",
+   "status": "PASS",
+   "nilai": {
+    "dataTsCard": "off",
+    "kelasKartu": false
+   }
+  },
+  {
+   "id": "G2-transisi",
+   "judul": "tw:transition memakai durasi/kurva token proyek (--dur, --ease)",
+   "status": "PASS",
+   "nilai": {
+    "dur": "0.22s",
+    "durToken": "0.22s",
+    "fn": "cubic-bezier(0.4, 0, 0.2, 1)",
+    "fnToken": "cubic-bezier(0.4, 0, 0.2, 1)",
+    "memuatBackground": true,
+    "legacyDur": "0.14s, 0.14s, 0.14s, 0.22s, 0.14s"
+   }
+  },
+  {
+   "id": "G3-cursor-disabled",
+   "judul": "cursor: aktif=pointer, disabled=not-allowed, loading=progress, input/select disabled=not-allowed",
+   "status": "PASS",
+   "nilai": {
+    "btnAktif": "pointer",
+    "btnDisabled": "not-allowed",
+    "btnLoading": "progress",
+    "ghostDisabled": "not-allowed",
+    "inputDisabled": "not-allowed",
+    "selectDisabled": "not-allowed",
+    "legacyDisabled": "not-allowed",
+    "legacyAktif": "pointer"
+   }
+  },
+  {
+   "id": "G3-label",
+   "judul": "Label x-tw.input memakai nilai yang sama dengan label legacy (font/bobot/warna/margin) atau token",
+   "status": "PASS",
+   "nilai": {
+    "tw": {
+     "fs": "12px",
+     "fw": "500",
+     "color": "rgb(90, 79, 81)",
+     "mb": "5px",
+     "display": "inline-block",
+     "ls": "normal",
+     "tt": "none"
+    },
+    "legacy": {
+     "fs": "12px",
+     "fw": "500",
+     "color": "rgb(90, 79, 81)",
+     "mb": "5px",
+     "display": "inline-block",
+     "ls": "normal",
+     "tt": "none"
+    }
+   }
+  },
+  {
+   "id": "G4-landmark",
+   "judul": "x-tw.card dan x-tw.modal tidak memuat <header>/<footer> dan tidak ada elemen komponen yang terpetakan sebagai landmark banner/contentinfo (pohon aksesibilitas Chromium, kasus terburuk: bukan turunan section/article/main)",
+   "status": "PASS",
+   "nilai": {
+    "diperiksa": 11,
+    "tagHeaderFooterDiKomponen": 0,
+    "landmarkDitemukan": [],
+    "landmarkSeluruhHalaman": 0,
+    "role": [
+     "div:generic",
+     "div:none",
+     "section:generic"
+    ]
+   }
+  },
+  {
+   "id": "G0-proses-bersih",
+   "judul": "Setelah penghentian tidak ada proses bertanda user-data-dir milik runner yang tersisa, dan folder sementara terhapus",
+   "status": "PASS",
+   "nilai": {
+    "pid": 31580,
+    "penanda": "tesys-cdp-edge-GCYj9o",
+    "keluarSendiri": true,
+    "sisaProsesPenanda": 0,
+    "userDirDihapus": true
+   }
+  }
+ ],
+ "detail": {
+  "isolasi": [
+   {
+    "vp": "1366x768",
+    "keadaan": "terang-bawaan",
+    "pasangan": "tw vs baseline",
+    "selisih": 0,
+    "contoh": []
+   },
+   {
+    "vp": "1366x768",
+    "keadaan": "terang-bawaan",
+    "pasangan": "awal vs baseline",
+    "selisih": 0,
+    "contoh": []
+   },
+   {
+    "vp": "1366x768",
+    "keadaan": "gelap-bawaan",
+    "pasangan": "tw vs baseline",
+    "selisih": 0,
+    "contoh": []
+   },
+   {
+    "vp": "1366x768",
+    "keadaan": "gelap-bawaan",
+    "pasangan": "awal vs baseline",
+    "selisih": 0,
+    "contoh": []
+   },
+   {
+    "vp": "1366x768",
+    "keadaan": "terang-kustom",
+    "pasangan": "tw vs baseline",
+    "selisih": 0,
+    "contoh": []
+   },
+   {
+    "vp": "1366x768",
+    "keadaan": "terang-kustom",
+    "pasangan": "awal vs baseline",
+    "selisih": 0,
+    "contoh": []
+   },
+   {
+    "vp": "1366x768",
+    "keadaan": "gelap-kustom",
+    "pasangan": "tw vs baseline",
+    "selisih": 0,
+    "contoh": []
+   },
+   {
+    "vp": "1366x768",
+    "keadaan": "gelap-kustom",
+    "pasangan": "awal vs baseline",
+    "selisih": 0,
+    "contoh": []
+   },
+   {
+    "vp": "390x844",
+    "keadaan": "terang-bawaan",
+    "pasangan": "tw vs baseline",
+    "selisih": 0,
+    "contoh": []
+   },
+   {
+    "vp": "390x844",
+    "keadaan": "terang-bawaan",
+    "pasangan": "awal vs baseline",
+    "selisih": 0,
+    "contoh": []
+   },
+   {
+    "vp": "390x844",
+    "keadaan": "gelap-bawaan",
+    "pasangan": "tw vs baseline",
+    "selisih": 0,
+    "contoh": []
+   },
+   {
+    "vp": "390x844",
+    "keadaan": "gelap-bawaan",
+    "pasangan": "awal vs baseline",
+    "selisih": 0,
+    "contoh": []
+   },
+   {
+    "vp": "390x844",
+    "keadaan": "terang-kustom",
+    "pasangan": "tw vs baseline",
+    "selisih": 0,
+    "contoh": []
+   },
+   {
+    "vp": "390x844",
+    "keadaan": "terang-kustom",
+    "pasangan": "awal vs baseline",
+    "selisih": 0,
+    "contoh": []
+   },
+   {
+    "vp": "390x844",
+    "keadaan": "gelap-kustom",
+    "pasangan": "tw vs baseline",
+    "selisih": 0,
+    "contoh": []
+   },
+   {
+    "vp": "390x844",
+    "keadaan": "gelap-kustom",
+    "pasangan": "awal vs baseline",
+    "selisih": 0,
+    "contoh": []
+   }
+  ],
+  "lingkungan": {
+   "link": true,
+   "aturan": 118,
+   "prop": 19,
+   "twInit": "#fff",
+   "interSiap": true,
+   "cssProduksi": {
+    "berkas": "public/css/tesys-tw.css",
+    "sha256": "e10c7b7a6db02bd9e02dde81f94f692d3d682f858af59c0b1dd5238977158f20",
+    "bytes": 9329
+   },
+   "galeriHtml": {
+    "tools/tailwind/uji/galeri-baseline.html": "5e98be909e575545dee9a64842dbd4b9dc65d2434ff3a19a1e51f2e61ebd4d6b",
+    "tools/tailwind/uji/galeri-tw-awal.html": "0c46f6d52a49e711fe9e4389cfd1ebf298ebbff1f48877ed3472f19b8e0c7e68",
+    "tools/tailwind/uji/galeri-tw.html": "a5be4ac0b375460220b840d12b3bf61e04eb7c636e7c24e705b10fd290c9d70f"
+   },
+   "galeriSumber": {
+    "scripts/tailwind-harness/galeri.blade.php": "d722ac71bfb510b568b1e5d338bfedabd6c652e26e83f81c38870d08b7698bb3"
+   },
+   "komponen": {
+    "resources/views/components/tw/badge.blade.php": "eed838463811d8d52fbced26926971677bea8734f0b81026bbd15fbc1a8d7da8",
+    "resources/views/components/tw/button.blade.php": "9ef9cd5aa4d7a4959dee9b4c5f77440cb7c02e26fc7427ee4808c2ccdb64dff1",
+    "resources/views/components/tw/card.blade.php": "91e9c6b61ecb372ae2604b3d549fb9bb82b4f11a288b48a24d322518419ec28b",
+    "resources/views/components/tw/input.blade.php": "41d4e07c1769186068bfa641385280c8539ec4e97acd0e6b8ec6f29738073542",
+    "resources/views/components/tw/modal.blade.php": "c68a5df45f2f92e4b9a64730951a6ccd265af7ea8deac17c22a472b07b1d5acc",
+    "resources/views/components/tw/select.blade.php": "4ff80343141592d7703d69f85cde0ba9e0632aa5a2eb7d83b87c5ffff88a2c49",
+    "resources/views/components/tw/table.blade.php": "963a4ab74cc53e68cbaf4c4fa648ef5f393c0feff67c74b1976229be4a9f6cc3"
+   },
+   "versiBerkasExe": "156.0.4314.42"
+  },
+  "tokenDeviasi": [],
+  "bang": [
+   {
+    "kelas": "tw:rounded-sm!",
+    "pada": "button",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:rest+focus-visible",
+     "galeri 1366/gelap-kustom:rest+focus-visible"
+    ]
+   },
+   {
+    "kelas": "tw:leading-tight!",
+    "pada": "button",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:rest+focus-visible",
+     "galeri 1366/gelap-kustom:rest+focus-visible"
+    ]
+   },
+   {
+    "kelas": "tw:focus-visible:outline-accent-text!",
+    "pada": "button:focus-visible",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/gelap-kustom:focus-visible"
+    ]
+   },
+   {
+    "kelas": "tw:text-control!",
+    "pada": "button",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:rest+focus-visible",
+     "galeri 1366/gelap-kustom:rest+focus-visible"
+    ]
+   },
+   {
+    "kelas": "tw:text-data!",
+    "pada": "button",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:rest+focus-visible",
+     "galeri 1366/gelap-kustom:rest+focus-visible"
+    ]
+   },
+   {
+    "kelas": "tw:disabled:cursor-not-allowed!",
+    "pada": "button:disabled",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:disabled",
+     "galeri 1366/gelap-kustom:disabled"
+    ]
+   },
+   {
+    "kelas": "tw:disabled:cursor-progress!",
+    "pada": "button:disabled",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:disabled",
+     "galeri 1366/gelap-kustom:disabled"
+    ]
+   },
+   {
+    "kelas": "tw:rounded-sm!",
+    "pada": "input",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:focus-visible",
+     "galeri 1366/gelap-kustom:focus-visible"
+    ]
+   },
+   {
+    "kelas": "tw:focus-visible:outline-accent-text!",
+    "pada": "input:focus-visible",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/gelap-kustom:focus-visible"
+    ]
+   },
+   {
+    "kelas": "tw:rounded-sm!",
+    "pada": "select",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:focus-visible",
+     "galeri 1366/gelap-kustom:focus-visible"
+    ]
+   },
+   {
+    "kelas": "tw:focus-visible:outline-accent-text!",
+    "pada": "select:focus-visible",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/gelap-kustom:focus-visible"
+    ]
+   },
+   {
+    "kelas": "tw:min-sm:text-data!",
+    "pada": "table",
+    "konteksDiukur": 8,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:rest",
+     "galeri 1366/gelap-kustom:rest"
+    ]
+   },
+   {
+    "kelas": "tw:min-sm:[&_th]:text-th!",
+    "pada": "table th",
+    "konteksDiukur": 8,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:rest",
+     "galeri 1366/gelap-kustom:rest"
+    ]
+   },
+   {
+    "kelas": "tw:min-sm:[&_th]:normal-case!",
+    "pada": "table th",
+    "konteksDiukur": 8,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:rest",
+     "galeri 1366/gelap-kustom:rest"
+    ]
+   },
+   {
+    "kelas": "tw:min-sm:[&_th]:tracking-micro!",
+    "pada": "table th",
+    "konteksDiukur": 8,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:rest",
+     "galeri 1366/gelap-kustom:rest"
+    ]
+   },
+   {
+    "kelas": "tw:min-sm:[&_th]:text-text-dim!",
+    "pada": "table th",
+    "konteksDiukur": 8,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:rest",
+     "galeri 1366/gelap-kustom:rest"
+    ]
+   },
+   {
+    "kelas": "tw:min-sm:[&_th]:bg-surface-2!",
+    "pada": "table th",
+    "konteksDiukur": 8,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:rest",
+     "galeri 1366/gelap-kustom:rest"
+    ]
+   },
+   {
+    "kelas": "tw:min-sm:[&:not(.dataTable)_th]:px-cell-x!",
+    "pada": "table th",
+    "konteksDiukur": 8,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:rest",
+     "galeri 1366/gelap-kustom:rest"
+    ]
+   },
+   {
+    "kelas": "tw:min-sm:[&_th]:py-cell-y!",
+    "pada": "table th",
+    "konteksDiukur": 8,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:rest",
+     "galeri 1366/gelap-kustom:rest"
+    ]
+   },
+   {
+    "kelas": "tw:min-sm:[&_th]:border-border-strong!",
+    "pada": "table th",
+    "konteksDiukur": 8,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:rest",
+     "galeri 1366/gelap-kustom:rest"
+    ]
+   },
+   {
+    "kelas": "tw:min-sm:[&:not(.dataTable)_td]:px-cell-x!",
+    "pada": "table td",
+    "konteksDiukur": 8,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:rest",
+     "galeri 1366/gelap-kustom:rest"
+    ]
+   },
+   {
+    "kelas": "tw:min-sm:[&_td]:py-1!",
+    "pada": "table td",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:rest",
+     "galeri 1366/gelap-kustom:rest"
+    ]
+   },
+   {
+    "kelas": "tw:flex!",
+    "pada": "section(modal)",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:rest",
+     "galeri 1366/gelap-kustom:rest"
+    ]
+   },
+   {
+    "kelas": "tw:rounded-sm!",
+    "pada": "button(modal)",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:rest+focus-visible",
+     "galeri 1366/gelap-kustom:rest+focus-visible"
+    ]
+   },
+   {
+    "kelas": "tw:text-sub!",
+    "pada": "button(modal)",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:rest+focus-visible",
+     "galeri 1366/gelap-kustom:rest+focus-visible"
+    ]
+   },
+   {
+    "kelas": "tw:leading-tight!",
+    "pada": "button(modal)",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:rest+focus-visible",
+     "galeri 1366/gelap-kustom:rest+focus-visible"
+    ]
+   },
+   {
+    "kelas": "tw:focus-visible:outline-accent-text!",
+    "pada": "button(modal):focus-visible",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/gelap-kustom:focus-visible"
+    ]
+   },
+   {
+    "kelas": "tw:rounded-sm!",
+    "pada": "input(modal)",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:focus-visible",
+     "galeri 1366/gelap-kustom:focus-visible"
+    ]
+   },
+   {
+    "kelas": "tw:focus-visible:outline-accent-text!",
+    "pada": "input(modal):focus-visible",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/gelap-kustom:focus-visible"
+    ]
+   },
+   {
+    "kelas": "tw:rounded-sm!",
+    "pada": "select(modal)",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:focus-visible",
+     "galeri 1366/gelap-kustom:focus-visible"
+    ]
+   },
+   {
+    "kelas": "tw:focus-visible:outline-accent-text!",
+    "pada": "select(modal):focus-visible",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/gelap-kustom:focus-visible"
+    ]
+   },
+   {
+    "kelas": "tw:text-control!",
+    "pada": "button(modal)",
+    "konteksDiukur": 2,
+    "perlu": true,
+    "perluDi": [
+     "galeri 1366/terang-bawaan:rest+focus-visible",
+     "galeri 1366/gelap-kustom:rest+focus-visible"
+    ]
+   }
+  ],
+  "bangArtefak": [
+   "tw:disabled:cursor-not-allowed!",
+   "tw:disabled:cursor-progress!",
+   "tw:flex!",
+   "tw:focus-visible:outline-accent-text!",
+   "tw:leading-tight!",
+   "tw:min-sm:[&:not(.dataTable)_td]:px-cell-x!",
+   "tw:min-sm:[&:not(.dataTable)_th]:px-cell-x!",
+   "tw:min-sm:[&_td]:py-1!",
+   "tw:min-sm:[&_th]:bg-surface-2!",
+   "tw:min-sm:[&_th]:border-border-strong!",
+   "tw:min-sm:[&_th]:normal-case!",
+   "tw:min-sm:[&_th]:py-cell-y!",
+   "tw:min-sm:[&_th]:text-text-dim!",
+   "tw:min-sm:[&_th]:text-th!",
+   "tw:min-sm:[&_th]:tracking-micro!",
+   "tw:min-sm:text-data!",
+   "tw:rounded-sm!",
+   "tw:text-control!",
+   "tw:text-data!",
+   "tw:text-sub!"
+  ],
+  "fokusTunggal": [
+   {
+    "keadaan": "terang-bawaan",
+    "nama": "btn-primary",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #92232b",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "terang-bawaan",
+    "nama": "btn-secondary",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #92232b",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "terang-bawaan",
+    "nama": "btn-danger",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #92232b",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "terang-bawaan",
+    "nama": "btn-ghost",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #92232b",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "terang-bawaan",
+    "nama": "btn-sm",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #92232b",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "terang-bawaan",
+    "nama": "input",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #92232b",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "terang-bawaan",
+    "nama": "input-error",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #92232b",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "terang-bawaan",
+    "nama": "select",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #92232b",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "terang-bawaan",
+    "nama": "select-error",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #92232b",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "terang-bawaan",
+    "nama": "legacy-btn",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "none 2.5px offset 1.25px #ffffff",
+    "outlineAda": false,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "tidak ada",
+    "indikator": 0
+   },
+   {
+    "keadaan": "terang-bawaan",
+    "nama": "tutup-modal",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #92232b",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "gelap-bawaan",
+    "nama": "btn-primary",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #e2949a",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "gelap-bawaan",
+    "nama": "btn-secondary",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #e2949a",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "gelap-bawaan",
+    "nama": "btn-danger",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #e2949a",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "gelap-bawaan",
+    "nama": "btn-ghost",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #e2949a",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "gelap-bawaan",
+    "nama": "btn-sm",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #e2949a",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "gelap-bawaan",
+    "nama": "input",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #e2949a",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "gelap-bawaan",
+    "nama": "input-error",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #e2949a",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "gelap-bawaan",
+    "nama": "select",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #e2949a",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "gelap-bawaan",
+    "nama": "select-error",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #e2949a",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "gelap-bawaan",
+    "nama": "legacy-btn",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "none 2.5px offset 1.25px #ffffff",
+    "outlineAda": false,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "tidak ada",
+    "indikator": 0
+   },
+   {
+    "keadaan": "gelap-bawaan",
+    "nama": "tutup-modal",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #e2949a",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "terang-kustom",
+    "nama": "btn-primary",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #0d615a",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "terang-kustom",
+    "nama": "btn-secondary",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #0d615a",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "terang-kustom",
+    "nama": "btn-danger",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #0d615a",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "terang-kustom",
+    "nama": "btn-ghost",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #0d615a",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "terang-kustom",
+    "nama": "btn-sm",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #0d615a",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "terang-kustom",
+    "nama": "input",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #0d615a",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "terang-kustom",
+    "nama": "input-error",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #0d615a",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "terang-kustom",
+    "nama": "select",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #0d615a",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "terang-kustom",
+    "nama": "select-error",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #0d615a",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "terang-kustom",
+    "nama": "legacy-btn",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "none 2.5px offset 1.25px #ffffff",
+    "outlineAda": false,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "tidak ada",
+    "indikator": 0
+   },
+   {
+    "keadaan": "terang-kustom",
+    "nama": "tutup-modal",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #0d615a",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "gelap-kustom",
+    "nama": "btn-primary",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #7bafab",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "gelap-kustom",
+    "nama": "btn-secondary",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #7bafab",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "gelap-kustom",
+    "nama": "btn-danger",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #7bafab",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "gelap-kustom",
+    "nama": "btn-ghost",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #7bafab",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "gelap-kustom",
+    "nama": "btn-sm",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #7bafab",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "gelap-kustom",
+    "nama": "input",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #7bafab",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "gelap-kustom",
+    "nama": "input-error",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #7bafab",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "gelap-kustom",
+    "nama": "select",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #7bafab",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "gelap-kustom",
+    "nama": "select-error",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #7bafab",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   },
+   {
+    "keadaan": "gelap-kustom",
+    "nama": "legacy-btn",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "none 2.5px offset 1.25px #ffffff",
+    "outlineAda": false,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "tidak ada",
+    "indikator": 0
+   },
+   {
+    "keadaan": "gelap-kustom",
+    "nama": "tutup-modal",
+    "fokusVisible": true,
+    "aktif": true,
+    "outline": "solid 1.25px offset 1.25px #7bafab",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline",
+    "indikator": 1
+   }
+  ],
+  "fokusKontras": {
+   "ringkasPerAksen": [
+    {
+     "tema": "terang",
+     "aksen": "#92232b",
+     "cincin": "#92232b",
+     "min": 7.46
+    },
+    {
+     "tema": "terang",
+     "aksen": "#1f3a5f",
+     "cincin": "#1b3354",
+     "min": 11.31
+    },
+    {
+     "tema": "terang",
+     "aksen": "#0f6e66",
+     "cincin": "#0d615a",
+     "min": 6.5
+    },
+    {
+     "tema": "terang",
+     "aksen": "#2f6d43",
+     "cincin": "#29603b",
+     "min": 6.59
+    },
+    {
+     "tema": "terang",
+     "aksen": "#3d3a8c",
+     "cincin": "#36337b",
+     "min": 9.73
+    },
+    {
+     "tema": "terang",
+     "aksen": "#3f4a59",
+     "cincin": "#37414e",
+     "min": 9.16
+    },
+    {
+     "tema": "terang",
+     "aksen": "#9a4a23",
+     "cincin": "#88411f",
+     "min": 6.62
+    },
+    {
+     "tema": "terang",
+     "aksen": "#6a2a63",
+     "cincin": "#5d2557",
+     "min": 9.96
+    },
+    {
+     "tema": "gelap",
+     "aksen": "#92232b",
+     "cincin": "#e2949a",
+     "min": 6.82
+    },
+    {
+     "tema": "gelap",
+     "aksen": "#1f3a5f",
+     "cincin": "#8493a7",
+     "min": 5.1
+    },
+    {
+     "tema": "gelap",
+     "aksen": "#0f6e66",
+     "cincin": "#7bafab",
+     "min": 6.55
+    },
+    {
+     "tema": "gelap",
+     "aksen": "#2f6d43",
+     "cincin": "#8daf98",
+     "min": 6.63
+    },
+    {
+     "tema": "gelap",
+     "aksen": "#3d3a8c",
+     "cincin": "#9493c0",
+     "min": 5.48
+    },
+    {
+     "tema": "gelap",
+     "aksen": "#3f4a59",
+     "cincin": "#959ba4",
+     "min": 5.75
+    },
+    {
+     "tema": "gelap",
+     "aksen": "#9a4a23",
+     "cincin": "#c79b86",
+     "min": 6.49
+    },
+    {
+     "tema": "gelap",
+     "aksen": "#6a2a63",
+     "cincin": "#ad8aa9",
+     "min": 5.33
+    }
+   ],
+   "ekstrem": [
+    {
+     "tema": "terang",
+     "aksen": "#ffd400",
+     "cincin": "#e0bb00",
+     "kontras": [
+      1.66,
+      1.87
+     ]
+    },
+    {
+     "tema": "terang",
+     "aksen": "#00e5ff",
+     "cincin": "#00cae0",
+     "kontras": [
+      1.78,
+      2
+     ]
+    },
+    {
+     "tema": "terang",
+     "aksen": "#ff4d6d",
+     "cincin": "#e04460",
+     "kontras": [
+      3.6,
+      4.06
+     ]
+    },
+    {
+     "tema": "terang",
+     "aksen": "#111111",
+     "cincin": "#0f0f0f",
+     "kontras": [
+      17.02,
+      19.17
+     ]
+    },
+    {
+     "tema": "gelap",
+     "aksen": "#ffd400",
+     "cincin": "#ffe773",
+     "kontras": [
+      15.11,
+      14.02
+     ]
+    },
+    {
+     "tema": "gelap",
+     "aksen": "#00e5ff",
+     "cincin": "#73f1ff",
+     "kontras": [
+      13.99,
+      12.98
+     ]
+    },
+    {
+     "tema": "gelap",
+     "aksen": "#ff4d6d",
+     "cincin": "#ff9daf",
+     "kontras": [
+      9.53,
+      8.84
+     ]
+    },
+    {
+     "tema": "gelap",
+     "aksen": "#111111",
+     "cincin": "#7c7c7c",
+     "kontras": [
+      4.49,
+      4.16
+     ]
+    }
+   ]
+  },
+  "fokusIndikatorVsIsi": [
+   "btn-primary: outline #92232b, kontras vs isi 1",
+   "btn-secondary: outline #92232b, kontras vs isi 8.41",
+   "btn-danger: outline #92232b, kontras vs isi 6.93",
+   "btn-ghost: outline #92232b, kontras vs isi 8.41",
+   "btn-sm: outline #92232b, kontras vs isi 8.41"
+  ],
+  "fokusForcedColors": [
+   {
+    "nama": "btn-primary",
+    "aktif": true,
+    "fokusVisible": true,
+    "outline": "solid 1.25px offset 1.25px #1aebff",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline"
+   },
+   {
+    "nama": "btn-secondary",
+    "aktif": true,
+    "fokusVisible": true,
+    "outline": "solid 1.25px offset 1.25px #1aebff",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline"
+   },
+   {
+    "nama": "btn-danger",
+    "aktif": true,
+    "fokusVisible": true,
+    "outline": "solid 1.25px offset 1.25px #1aebff",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline"
+   },
+   {
+    "nama": "btn-ghost",
+    "aktif": true,
+    "fokusVisible": true,
+    "outline": "solid 1.25px offset 1.25px #1aebff",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline"
+   },
+   {
+    "nama": "btn-sm",
+    "aktif": true,
+    "fokusVisible": true,
+    "outline": "solid 1.25px offset 1.25px #1aebff",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline"
+   },
+   {
+    "nama": "input",
+    "aktif": true,
+    "fokusVisible": true,
+    "outline": "solid 1.25px offset 1.25px #1aebff",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline"
+   },
+   {
+    "nama": "input-error",
+    "aktif": true,
+    "fokusVisible": true,
+    "outline": "solid 1.25px offset 1.25px #1aebff",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline"
+   },
+   {
+    "nama": "select",
+    "aktif": true,
+    "fokusVisible": true,
+    "outline": "solid 1.25px offset 1.25px #1aebff",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline"
+   },
+   {
+    "nama": "select-error",
+    "aktif": true,
+    "fokusVisible": true,
+    "outline": "solid 1.25px offset 1.25px #1aebff",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline"
+   },
+   {
+    "nama": "tutup-modal",
+    "aktif": true,
+    "fokusVisible": true,
+    "outline": "solid 1.25px offset 1.25px #1aebff",
+    "outlineAda": true,
+    "cincin": 0,
+    "radiusRest": "6px",
+    "radiusFokus": "6px",
+    "jenis": "outline"
+   }
+  ],
+  "modalTombolTw": {
+   "dalam": {
+    "fokusDalam": true,
+    "aktif": "tw-modal-uji",
+    "tampil": true
+   },
+   "sesudah": {
+    "tampil": false,
+    "aktif": "tw-buka-modal",
+    "pemicuAktif": true
+   }
+  },
+  "aria": {
+   "ax": {
+    "tombol-md": {
+     "role": "button",
+     "nama": "Primary md",
+     "deskripsi": "",
+     "props": {
+      "invalid": "false",
+      "focusable": true
+     }
+    },
+    "tombol-loading": {
+     "role": "button",
+     "nama": "Primary memuat",
+     "deskripsi": "",
+     "props": {
+      "disabled": true,
+      "invalid": "false",
+      "busy": 1
+     }
+    },
+    "tombol-disabled": {
+     "role": "button",
+     "nama": "Primary nonaktif",
+     "deskripsi": "",
+     "props": {
+      "disabled": true,
+      "invalid": "false"
+     }
+    },
+    "input-normal": {
+     "role": "textbox",
+     "nama": "Nama pemohon",
+     "deskripsi": "",
+     "props": {
+      "invalid": "false",
+      "focusable": true,
+      "editable": "plaintext",
+      "settable": true,
+      "multiline": false,
+      "readonly": false,
+      "required": false
+     }
+    },
+    "input-hint-required": {
+     "role": "spinbutton",
+     "nama": "Jumlah",
+     "deskripsi": "Isi dalam rupiah, tanpa titik.",
+     "props": {
+      "invalid": "false",
+      "focusable": true,
+      "editable": "plaintext",
+      "settable": true,
+      "required": true,
+      "valuemin": 0,
+      "valuemax": 0,
+      "valuetext": "1500000",
+      "describedby": "tw-in-hint-hint"
+     }
+    },
+    "input-error": {
+     "role": "textbox",
+     "nama": "Email",
+     "deskripsi": "Format email tidak valid.",
+     "props": {
+      "invalid": "true",
+      "focusable": true,
+      "editable": "plaintext",
+      "settable": true,
+      "multiline": false,
+      "readonly": false,
+      "required": false,
+      "describedby": "tw-in-error-error"
+     }
+    },
+    "input-nolabel": {
+     "role": "textbox",
+     "nama": "Tanpa label",
+     "deskripsi": "",
+     "props": {
+      "invalid": "false",
+      "focusable": true,
+      "editable": "plaintext",
+      "settable": true,
+      "multiline": false,
+      "readonly": false,
+      "required": false
+     }
+    },
+    "select-normal": {
+     "role": "combobox",
+     "nama": "Jenis pengajuan",
+     "deskripsi": "",
+     "props": {
+      "invalid": "false",
+      "focusable": true,
+      "hasPopup": "menu",
+      "expanded": false
+     }
+    },
+    "select-error": {
+     "role": "combobox",
+     "nama": "Cabang",
+     "deskripsi": "Cabang wajib dipilih.",
+     "props": {
+      "invalid": "true",
+      "focusable": true,
+      "hasPopup": "menu",
+      "expanded": false,
+      "describedby": "tw-sel-error-error"
+     }
+    },
+    "tabel": {
+     "role": "table",
+     "nama": "",
+     "deskripsi": "",
+     "props": {}
+    },
+    "kolom-kode": {
+     "role": "columnheader",
+     "nama": "Kode",
+     "deskripsi": "",
+     "props": {
+      "readonly": false,
+      "required": false
+     }
+    },
+    "tombol-di-tabel": {
+     "role": "button",
+     "nama": "Lihat",
+     "deskripsi": "Lihat CR-0001",
+     "props": {
+      "invalid": "false",
+      "focusable": true
+     }
+    },
+    "modal": {
+     "role": "dialog",
+     "nama": "Judul modal uji",
+     "deskripsi": "",
+     "props": {
+      "focusable": true,
+      "focused": true,
+      "modal": true
+     }
+    },
+    "modal-tutup": {
+     "role": "button",
+     "nama": "Tutup",
+     "deskripsi": "",
+     "props": {
+      "invalid": "false",
+      "focusable": true
+     }
+    },
+    "modal-input-label-for": {
+     "role": "textbox",
+     "nama": "Nama di modal",
+     "deskripsi": "",
+     "props": {
+      "invalid": "false",
+      "focusable": true,
+      "editable": "plaintext",
+      "settable": true,
+      "multiline": false,
+      "readonly": false,
+      "required": false
+     }
+    },
+    "modal-input-legacy-terhubung": {
+     "role": "textbox",
+     "nama": "Label tanpa for (legacy)",
+     "deskripsi": "",
+     "props": {
+      "invalid": "false",
+      "focusable": true,
+      "editable": "plaintext",
+      "settable": true,
+      "multiline": false,
+      "readonly": false,
+      "required": false
+     }
+    }
+   },
+   "dom": {
+    "errInput": {
+     "invalid": "true",
+     "describedby": "tw-in-error-error",
+     "rujukanAda": [
+      true
+     ],
+     "alert": "alert"
+    },
+    "hintInput": {
+     "describedby": "tw-in-hint-hint",
+     "rujukanAda": [
+      true
+     ],
+     "required": true
+    },
+    "errSelect": {
+     "invalid": "true",
+     "describedby": "tw-sel-error-error",
+     "rujukanAda": [
+      true
+     ],
+     "alert": "alert"
+    },
+    "loading": {
+     "busy": "true",
+     "disabled": true
+    },
+    "labelLegacyFor": 1,
+    "labelTwFor": true,
+    "modal": {
+     "role": "dialog",
+     "labelledby": "tw-modal-uji-title",
+     "judulAda": true,
+     "ariaHidden": null,
+     "ariaModal": "true"
+    }
+   }
+  },
+  "modalProgramatik": {
+   "fokusSetelahTutup": "tw-modal-in",
+   "dibukaLewat": ".modal(show) tanpa pemicu data-toggle"
+  },
+  "modalPendek": {
+   "1280x600": {
+    "secScrollH": 782,
+    "secClientH": 420,
+    "sectionBisaGulir": true,
+    "modalScrollH": 750,
+    "modalClientH": 750,
+    "modalBisaGulir": false,
+    "contentDisplay": "flex",
+    "contentMaxH": "544px",
+    "contentOverflow": "hidden",
+    "innerH": 600,
+    "innerW": 1280,
+    "docScrollW": 1280,
+    "docClientW": 1280,
+    "headerTop": 82,
+    "footerBottom": 518,
+    "contentBottom": 518,
+    "contentW": 640,
+    "vh": 600,
+    "vw": 1280,
+    "headerFooterTerlihat": true,
+    "lebarMuat": true,
+    "legacy": {
+     "badanBisaGulir": true,
+     "modalBisaGulir": false
+    }
+   },
+   "1024x768": {
+    "secScrollH": 782,
+    "secClientH": 782,
+    "sectionBisaGulir": false,
+    "modalScrollH": 962,
+    "modalClientH": 960,
+    "modalBisaGulir": true,
+    "contentDisplay": "flex",
+    "contentMaxH": "none",
+    "contentOverflow": "hidden",
+    "innerH": 768,
+    "innerW": 1024,
+    "docScrollW": 1024,
+    "docClientW": 1024,
+    "headerTop": 22,
+    "footerBottom": 748,
+    "contentBottom": 748,
+    "contentW": 640,
+    "vh": 768,
+    "vw": 1024,
+    "headerFooterTerlihat": true,
+    "lebarMuat": true,
+    "legacy": {
+     "badanBisaGulir": false,
+     "modalBisaGulir": false
+    }
+   },
+   "390x844": {
+    "secScrollH": 782,
+    "secClientH": 704,
+    "sectionBisaGulir": true,
+    "modalScrollH": 848,
+    "modalClientH": 844,
+    "modalBisaGulir": true,
+    "contentDisplay": "flex",
+    "contentMaxH": "828px",
+    "contentOverflow": "hidden",
+    "innerH": 844,
+    "innerW": 390,
+    "docScrollW": 390,
+    "docClientW": 390,
+    "headerTop": 10,
+    "footerBottom": 838,
+    "contentBottom": 838,
+    "contentW": 370,
+    "vh": 844,
+    "vw": 390,
+    "headerFooterTerlihat": true,
+    "lebarMuat": true,
+    "legacy": {
+     "badanBisaGulir": true,
+     "modalBisaGulir": true
+    }
+   },
+   "360x740": {
+    "secScrollH": 782,
+    "secClientH": 600,
+    "sectionBisaGulir": true,
+    "modalScrollH": 744,
+    "modalClientH": 740,
+    "modalBisaGulir": true,
+    "contentDisplay": "flex",
+    "contentMaxH": "724px",
+    "contentOverflow": "hidden",
+    "innerH": 740,
+    "innerW": 360,
+    "docScrollW": 360,
+    "docClientW": 360,
+    "headerTop": 10,
+    "footerBottom": 734,
+    "contentBottom": 734,
+    "contentW": 340,
+    "vh": 740,
+    "vw": 360,
+    "headerFooterTerlihat": true,
+    "lebarMuat": true,
+    "legacy": {
+     "badanBisaGulir": true,
+     "modalBisaGulir": true
+    }
+   }
+  },
+  "targetSentuh": {
+   "390x844": {
+    "tombol md": "105.4x34",
+    "tombol sm": "93.7x30",
+    "tombol sm di tabel": "55.1x30",
+    "input": "360x34",
+    "select": "360x34",
+    "tutup modal": "40x40",
+    "tombol footer modal": "80.6x34",
+    "pembanding legacy .btn": "97.8x34",
+    "pembanding legacy .form-control": "360x36"
+   },
+   "1366x768": {
+    "tombol md": "84.8x27.2",
+    "tombol sm": "75.3x24",
+    "tombol sm di tabel": "44.5x24",
+    "input": "288x27.2",
+    "select": "288x27.2",
+    "tutup modal": "32x32",
+    "tombol footer modal": "64.9x27.2",
+    "pembanding legacy .btn": "84.9x27.2",
+    "pembanding legacy .form-control": "288x27.2"
+   }
+  },
+  "ketuk": {
+   "submit": 1,
+   "btn": 1,
+   "fokusInput": 1,
+   "sel": 1,
+   "modalTerbuka": true,
+   "modalTertutup": true,
+   "disabledKlik": 0
+  },
+  "fixedInset0": {
+   "1366x768": {
+    "kotak": {
+     "w": 1366,
+     "h": 768
+    },
+    "viewport": [
+     1366,
+     768
+    ]
+   },
+   "1920x1080": {
+    "kotak": {
+     "w": 1920,
+     "h": 1080
+    },
+    "viewport": [
+     1920,
+     1080
+    ]
+   },
+   "390x844": {
+    "kotak": {
+     "w": 390,
+     "h": 844
+    },
+    "viewport": [
+     390,
+     844
+    ]
+   }
+  },
+  "responsif": {
+   "360x740/terang-bawaan": {
+    "bersih": true,
+    "docScrollW": 360,
+    "docClientW": 360,
+    "pelanggar": [],
+    "gulirTabel": {
+     "scrollW": 336,
+     "clientW": 336
+    },
+    "innerW": 360
+   },
+   "360x740/gelap-bawaan": {
+    "bersih": true,
+    "docScrollW": 360,
+    "docClientW": 360,
+    "pelanggar": [],
+    "gulirTabel": {
+     "scrollW": 336,
+     "clientW": 336
+    },
+    "innerW": 360
+   },
+   "390x844/terang-bawaan": {
+    "bersih": true,
+    "docScrollW": 390,
+    "docClientW": 390,
+    "pelanggar": [],
+    "gulirTabel": {
+     "scrollW": 366,
+     "clientW": 366
+    },
+    "innerW": 390
+   },
+   "390x844/gelap-bawaan": {
+    "bersih": true,
+    "docScrollW": 390,
+    "docClientW": 390,
+    "pelanggar": [],
+    "gulirTabel": {
+     "scrollW": 366,
+     "clientW": 366
+    },
+    "innerW": 390
+   },
+   "768x1024/terang-bawaan": {
+    "bersih": true,
+    "docScrollW": 768,
+    "docClientW": 768,
+    "pelanggar": [],
+    "gulirTabel": {
+     "scrollW": 712,
+     "clientW": 712
+    },
+    "innerW": 768
+   },
+   "768x1024/gelap-bawaan": {
+    "bersih": true,
+    "docScrollW": 768,
+    "docClientW": 768,
+    "pelanggar": [],
+    "gulirTabel": {
+     "scrollW": 712,
+     "clientW": 712
+    },
+    "innerW": 768
+   },
+   "1024x768/terang-bawaan": {
+    "bersih": true,
+    "docScrollW": 1024,
+    "docClientW": 1024,
+    "pelanggar": [],
+    "gulirTabel": {
+     "scrollW": 972,
+     "clientW": 972
+    },
+    "innerW": 1024
+   },
+   "1024x768/gelap-bawaan": {
+    "bersih": true,
+    "docScrollW": 1024,
+    "docClientW": 1024,
+    "pelanggar": [],
+    "gulirTabel": {
+     "scrollW": 972,
+     "clientW": 972
+    },
+    "innerW": 1024
+   },
+   "1366x768/terang-bawaan": {
+    "bersih": true,
+    "docScrollW": 1366,
+    "docClientW": 1366,
+    "pelanggar": [],
+    "gulirTabel": {
+     "scrollW": 1399,
+     "clientW": 1399
+    },
+    "innerW": 1366
+   },
+   "1366x768/gelap-bawaan": {
+    "bersih": true,
+    "docScrollW": 1366,
+    "docClientW": 1366,
+    "pelanggar": [],
+    "gulirTabel": {
+     "scrollW": 1399,
+     "clientW": 1399
+    },
+    "innerW": 1366
+   },
+   "1920x1080/terang-bawaan": {
+    "bersih": true,
+    "docScrollW": 1920,
+    "docClientW": 1920,
+    "pelanggar": [],
+    "gulirTabel": {
+     "scrollW": 2092,
+     "clientW": 2092
+    },
+    "innerW": 1920
+   },
+   "1920x1080/gelap-bawaan": {
+    "bersih": true,
+    "docScrollW": 1920,
+    "docClientW": 1920,
+    "pelanggar": [],
+    "gulirTabel": {
+     "scrollW": 2092,
+     "clientW": 2092
+    },
+    "innerW": 1920
+   }
+  },
+  "kontrasOnAccent": [
+   "terang #92232b: normal 8.41 hover 10.1",
+   "terang #1f3a5f: normal 11.48 hover 13.39",
+   "terang #0f6e66: normal 6.1 hover 8.04",
+   "terang #2f6d43: normal 6.2 hover 8.14",
+   "terang #3d3a8c: normal 9.62 hover 11.68",
+   "terang #3f4a59: normal 8.99 hover 11.05",
+   "terang #9a4a23: normal 6.22 hover 8.17",
+   "terang #6a2a63: normal 9.89 hover 11.95",
+   "terang #ffd400: normal 1.43 hover 2.15",
+   "gelap #92232b: normal 8.41 hover 10.1",
+   "gelap #1f3a5f: normal 11.48 hover 13.39",
+   "gelap #0f6e66: normal 6.1 hover 8.04",
+   "gelap #2f6d43: normal 6.2 hover 8.14",
+   "gelap #3d3a8c: normal 9.62 hover 11.68",
+   "gelap #3f4a59: normal 8.99 hover 11.05",
+   "gelap #9a4a23: normal 6.22 hover 8.17",
+   "gelap #6a2a63: normal 9.89 hover 11.95",
+   "gelap #ffd400: normal 1.43 hover 2.15"
+  ],
+  "kontrasTeks": [
+   "terang-bawaan | tombol primary: 8.41 (#ffffff on #92232b) 13px",
+   "terang-bawaan | tombol secondary: 17.14 (#25181b on #ffffff) 13px",
+   "terang-bawaan | tombol danger: 6.1 (#9a3030 on #f4e6e6) 13px",
+   "terang-bawaan | tombol ghost: 6.98 (#5a4f51 on #f3f1ef) 13px",
+   "terang-bawaan | tombol primary hover: 10.1 (#ffffff on #7e1c24) 13px",
+   "terang-bawaan | tombol secondary hover: 15.91 (#25181b on #f8f6f5) 13px",
+   "terang-bawaan | tombol danger hover: 7.4 (#ffffff on #9a3030) 13px",
+   "terang-bawaan | tombol ghost hover: 15.91 (#25181b on #f8f6f5) 13px",
+   "terang-bawaan | label: 6.98 (#5a4f51 on #f3f1ef) 12px",
+   "terang-bawaan | isi input: 17.14 (#25181b on #ffffff) 13px",
+   "terang-bawaan | isi select: 17.14 (#25181b on #ffffff) 13px",
+   "terang-bawaan | input galat: 14.13 (#25181b on #f4e6e6) 13px",
+   "terang-bawaan | hint: 6.98 (#5a4f51 on #f3f1ef) 12px",
+   "terang-bawaan | pesan galat: 6.56 (#9a3030 on #f3f1ef) 12px",
+   "terang-bawaan | badge neutral: 7.3 (#5a4f51 on #f8f6f5) 12px",
+   "terang-bawaan | badge attention: 4.88 (#7f6328 on #f3eee1) 12px",
+   "terang-bawaan | badge progress: 5.38 (#42627d on #e6ecf1) 12px",
+   "terang-bawaan | badge positive: 4.81 (#47705a on #e8efea) 12px",
+   "terang-bawaan | badge done: 5.5 (#5a5f63 on #ecedeb) 12px",
+   "terang-bawaan | badge danger: 6.1 (#9a3030 on #f4e6e6) 12px",
+   "terang-bawaan | judul kartu: 17.14 (#25181b on #ffffff) 14.5px",
+   "terang-bawaan | isi kartu: 17.14 (#25181b on #ffffff) 14px",
+   "terang-bawaan | kaki kartu: 7.3 (#5a4f51 on #f8f6f5) 12px",
+   "terang-bawaan | th: 7.3 (#5a4f51 on #f8f6f5) 12px",
+   "terang-bawaan | td: 15.21 (#25181b on #f3f1ef) 12.5px",
+   "terang-bawaan | placeholder: 5.69 (#6f6466 on #ffffff) 13px",
+   "terang-bawaan | input disabled (dikecualikan WCAG 1.4.3, informasi): 5.28 (#6f6466 on #f8f6f5) 13px",
+   "terang-bawaan | tombol primary disabled (opacity .45 — informasi): 8.41 (#ffffff on #92232b) 13px",
+   "gelap-bawaan | tombol primary: 8.41 (#ffffff on #92232b) 13px",
+   "gelap-bawaan | tombol secondary: 14.18 (#e8e8ea on #1a1a1e) 13px",
+   "gelap-bawaan | tombol danger: 6.12 (#d98a8a on #2e1c1c) 13px",
+   "gelap-bawaan | tombol ghost: 7.92 (#a8a8b0 on #121215) 13px",
+   "gelap-bawaan | tombol primary hover: 10.1 (#ffffff on #7e1c24) 13px",
+   "gelap-bawaan | tombol secondary hover: 13.1 (#e8e8ea on #212126) 13px",
+   "gelap-bawaan | tombol danger hover: 6.57 (#1a1a1e on #d98a8a) 13px",
+   "gelap-bawaan | tombol ghost hover: 13.1 (#e8e8ea on #212126) 13px",
+   "gelap-bawaan | label: 7.92 (#a8a8b0 on #121215) 12px",
+   "gelap-bawaan | isi input: 14.18 (#e8e8ea on #1a1a1e) 13px",
+   "gelap-bawaan | isi select: 14.18 (#e8e8ea on #1a1a1e) 13px",
+   "gelap-bawaan | input galat: 13.21 (#e8e8ea on #2e1c1c) 13px",
+   "gelap-bawaan | hint: 7.92 (#a8a8b0 on #121215) 12px",
+   "gelap-bawaan | pesan galat: 7.08 (#d98a8a on #121215) 12px",
+   "gelap-bawaan | badge neutral: 6.79 (#a8a8b0 on #212126) 12px",
+   "gelap-bawaan | badge attention: 6.65 (#c9a65e on #2b2418) 12px",
+   "gelap-bawaan | badge progress: 6.85 (#86b0d1 on #1a242d) 12px",
+   "gelap-bawaan | badge positive: 6.11 (#7fb096 on #1b2a22) 12px",
+   "gelap-bawaan | badge done: 6.98 (#b0b0b8 on #26262c) 12px",
+   "gelap-bawaan | badge danger: 6.12 (#d98a8a on #2e1c1c) 12px",
+   "gelap-bawaan | judul kartu: 14.18 (#e8e8ea on #1a1a1e) 14.5px",
+   "gelap-bawaan | isi kartu: 14.18 (#e8e8ea on #1a1a1e) 14px",
+   "gelap-bawaan | kaki kartu: 6.79 (#a8a8b0 on #212126) 12px",
+   "gelap-bawaan | th: 6.79 (#a8a8b0 on #212126) 12px",
+   "gelap-bawaan | td: 15.28 (#e8e8ea on #121215) 12.5px",
+   "gelap-bawaan | placeholder: 4.81 (#86868f on #1a1a1e) 13px",
+   "gelap-bawaan | input disabled (dikecualikan WCAG 1.4.3, informasi): 4.44 (#86868f on #212126) 13px",
+   "gelap-bawaan | tombol primary disabled (opacity .45 — informasi): 8.41 (#ffffff on #92232b) 13px"
+  ],
+  "kartu": {
+   "390x844": {
+    "tw": {
+     "kelasKartu": true,
+     "dataLabel": "Uraian",
+     "trDisplay": "block",
+     "tdDisplay": "flex",
+     "tdPad": "6px 0px 6px 0px",
+     "tdBorderBottom": "1px",
+     "beforeContent": "\"Uraian\"",
+     "beforeDisplay": "block",
+     "theadDisplay": "block",
+     "thDisplay": "table-cell",
+     "thTinggi": 36,
+     "thPad": "9px 12px",
+     "thFont": "11px",
+     "thTransform": "uppercase",
+     "trTinggi": 107,
+     "trBorder": "1px",
+     "trRadius": "8px",
+     "trBg": "rgb(255, 255, 255)"
+    },
+    "legacyDt": {
+     "kelasKartu": true,
+     "dataLabel": "Uraian",
+     "trDisplay": "block",
+     "tdDisplay": "flex",
+     "tdPad": "6px 0px 6px 0px",
+     "tdBorderBottom": "1px",
+     "beforeContent": "\"Uraian\"",
+     "beforeDisplay": "block",
+     "theadDisplay": "block",
+     "thDisplay": "table-cell",
+     "thTinggi": 36,
+     "thPad": "9px 12px",
+     "thFont": "11.5px",
+     "thTransform": "uppercase",
+     "trTinggi": 108,
+     "trBorder": "1px",
+     "trRadius": "8px",
+     "trBg": "rgb(255, 255, 255)"
+    },
+    "twTanpaDt": {
+     "kelasKartu": true
+    },
+    "rapatOff": {
+     "dataTsCard": "off",
+     "kelasKartu": false
+    }
+   },
+   "360x740": {
+    "tw": {
+     "kelasKartu": true,
+     "dataLabel": "Uraian",
+     "trDisplay": "block",
+     "tdDisplay": "flex",
+     "tdPad": "6px 0px 6px 0px",
+     "tdBorderBottom": "1px",
+     "beforeContent": "\"Uraian\"",
+     "beforeDisplay": "block",
+     "theadDisplay": "block",
+     "thDisplay": "table-cell",
+     "thTinggi": 36,
+     "thPad": "9px 12px",
+     "thFont": "11px",
+     "thTransform": "uppercase",
+     "trTinggi": 107,
+     "trBorder": "1px",
+     "trRadius": "8px",
+     "trBg": "rgb(255, 255, 255)"
+    },
+    "legacyDt": {
+     "kelasKartu": true,
+     "dataLabel": "Uraian",
+     "trDisplay": "block",
+     "tdDisplay": "flex",
+     "tdPad": "6px 0px 6px 0px",
+     "tdBorderBottom": "1px",
+     "beforeContent": "\"Uraian\"",
+     "beforeDisplay": "block",
+     "theadDisplay": "block",
+     "thDisplay": "table-cell",
+     "thTinggi": 36,
+     "thPad": "9px 12px",
+     "thFont": "11.5px",
+     "thTransform": "uppercase",
+     "trTinggi": 108,
+     "trBorder": "1px",
+     "trRadius": "8px",
+     "trBg": "rgb(255, 255, 255)"
+    },
+    "twTanpaDt": {
+     "kelasKartu": true
+    },
+    "rapatOff": {
+     "dataTsCard": "off",
+     "kelasKartu": false
+    }
+   },
+   "768x1024": {
+    "tw": {
+     "kelasKartu": true,
+     "dataLabel": "Uraian",
+     "trDisplay": "table-row",
+     "tdDisplay": "table-cell",
+     "tdPad": "9px 12px 9px 12px",
+     "tdBorderBottom": "1px",
+     "beforeContent": "none",
+     "beforeDisplay": "inline",
+     "theadDisplay": "table-header-group",
+     "thDisplay": "table-cell",
+     "thTinggi": 35,
+     "thPad": "9px 12px",
+     "thFont": "12px",
+     "thTransform": "none",
+     "trTinggi": 38,
+     "trBorder": "0px",
+     "trRadius": "0px",
+     "trBg": "rgba(0, 0, 0, 0)"
+    },
+    "legacyDt": {
+     "kelasKartu": true,
+     "dataLabel": "Uraian",
+     "trDisplay": "table-row",
+     "tdDisplay": "table-cell",
+     "tdPad": "9px 12px 9px 12px",
+     "tdBorderBottom": "1px",
+     "beforeContent": "none",
+     "beforeDisplay": "inline",
+     "theadDisplay": "table-header-group",
+     "thDisplay": "table-cell",
+     "thTinggi": 35,
+     "thPad": "9px 12px",
+     "thFont": "12px",
+     "thTransform": "none",
+     "trTinggi": 38,
+     "trBorder": "0px",
+     "trRadius": "0px",
+     "trBg": "rgba(0, 0, 0, 0)"
+    },
+    "twTanpaDt": {
+     "kelasKartu": true
+    },
+    "rapatOff": {
+     "dataTsCard": "off",
+     "kelasKartu": false
+    }
+   },
+   "1366x768": {
+    "tw": {
+     "kelasKartu": true,
+     "dataLabel": "Uraian",
+     "trDisplay": "table-row",
+     "tdDisplay": "table-cell",
+     "tdPad": "9px 12px 9px 12px",
+     "tdBorderBottom": "1.25px",
+     "beforeContent": "none",
+     "beforeDisplay": "inline",
+     "theadDisplay": "table-header-group",
+     "thDisplay": "table-cell",
+     "thTinggi": 28,
+     "thPad": "9px 12px",
+     "thFont": "12px",
+     "thTransform": "none",
+     "trTinggi": 30,
+     "trBorder": "0px",
+     "trRadius": "0px",
+     "trBg": "rgba(0, 0, 0, 0)"
+    },
+    "legacyDt": {
+     "kelasKartu": true,
+     "dataLabel": "Uraian",
+     "trDisplay": "table-row",
+     "tdDisplay": "table-cell",
+     "tdPad": "9px 12px 9px 12px",
+     "tdBorderBottom": "1.25px",
+     "beforeContent": "none",
+     "beforeDisplay": "inline",
+     "theadDisplay": "table-header-group",
+     "thDisplay": "table-cell",
+     "thTinggi": 28,
+     "thPad": "9px 12px",
+     "thFont": "12px",
+     "thTransform": "none",
+     "trTinggi": 30,
+     "trBorder": "0px",
+     "trRadius": "0px",
+     "trBg": "rgba(0, 0, 0, 0)"
+    },
+    "twTanpaDt": {
+     "kelasKartu": true
+    },
+    "rapatOff": {
+     "dataTsCard": "off",
+     "kelasKartu": false
+    }
+   }
+  },
+  "transisi": {
+   "dur": "0.22s",
+   "durToken": "0.22s",
+   "fn": "cubic-bezier(0.4, 0, 0.2, 1)",
+   "fnToken": "cubic-bezier(0.4, 0, 0.2, 1)",
+   "memuatBackground": true,
+   "legacyDur": "0.14s, 0.14s, 0.14s, 0.22s, 0.14s"
+  },
+  "cursor": {
+   "btnAktif": "pointer",
+   "btnDisabled": "not-allowed",
+   "btnLoading": "progress",
+   "ghostDisabled": "not-allowed",
+   "inputDisabled": "not-allowed",
+   "selectDisabled": "not-allowed",
+   "legacyDisabled": "not-allowed",
+   "legacyAktif": "pointer"
+  },
+  "label": {
+   "tw": {
+    "fs": "12px",
+    "fw": "500",
+    "color": "rgb(90, 79, 81)",
+    "mb": "5px",
+    "display": "inline-block",
+    "ls": "normal",
+    "tt": "none"
+   },
+   "legacy": {
+    "fs": "12px",
+    "fw": "500",
+    "color": "rgb(90, 79, 81)",
+    "mb": "5px",
+    "display": "inline-block",
+    "ls": "normal",
+    "tt": "none"
+   }
+  },
+  "landmark": {
+   "diperiksa": 11,
+   "tagHeaderFooterDiKomponen": 0,
+   "rincian": [
+    {
+     "i": 0,
+     "tag": "div",
+     "di": "tw-card-md",
+     "role": "generic"
+    },
+    {
+     "i": 1,
+     "tag": "div",
+     "di": "tw-card-md",
+     "role": "generic"
+    },
+    {
+     "i": 2,
+     "tag": "div",
+     "di": "tw-card-md",
+     "role": "generic"
+    },
+    {
+     "i": 3,
+     "tag": "div",
+     "di": "tw-card-sm",
+     "role": "generic"
+    },
+    {
+     "i": 4,
+     "tag": "div",
+     "di": "tw-card-sm",
+     "role": "generic"
+    },
+    {
+     "i": 5,
+     "tag": "div",
+     "di": "tw-card-none",
+     "role": "generic"
+    },
+    {
+     "i": 6,
+     "tag": "div",
+     "di": "tw-card-none",
+     "role": "none"
+    },
+    {
+     "i": 7,
+     "tag": "div",
+     "di": "tw-card-polos",
+     "role": "generic"
+    },
+    {
+     "i": 8,
+     "tag": "section",
+     "di": "tw-modal-uji",
+     "role": "generic"
+    },
+    {
+     "i": 9,
+     "tag": "section",
+     "di": "tw-modal-uji",
+     "role": "generic"
+    },
+    {
+     "i": 10,
+     "tag": "section",
+     "di": "tw-modal-uji",
+     "role": "generic"
+    }
+   ],
+   "landmarkSeluruhHalaman": 0
+  }
+ },
+ "foto": [],
+ "fotoLain": [],
+ "belumDijalankan": [
+  "Firefox",
+  "WebKit/Safari",
+  "perangkat sentuh fisik",
+  "halaman Blade nyata di aplikasi",
+  "plugin CSS lain"
+ ]
+}

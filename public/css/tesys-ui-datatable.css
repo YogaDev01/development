@@ -62,7 +62,10 @@ body.tesys-ui .main > .content .card:has(.dataTables_wrapper):not(.ts-keep-card)
     display: none;
 }
 body.tesys-ui .main > .content .card:has(.dataTables_wrapper):not(.ts-keep-card):not(.modal .card):not(.ts-drawer-root .card):not(.todo-drawer .card):not(:has(.col-pic-table)) > .card-header:not(:has(button, a, input, select, .btn)) {
-    display: none;
+    /* !important: header Bootstrap `.d-flex` (display:flex !important) tadinya
+       menang, sehingga header kosong tetap tampil sebagai garis + celah
+       sekitar 50px di atas kotak pencarian (PO, Budget Plan). */
+    display: none !important;
 }
 /* Tabel: satu garis tepi (milik .table-bordered), latar permukaan. */
 body.tesys-ui .main > .content .card:has(.dataTables_wrapper):not(.ts-keep-card) table.dataTable {

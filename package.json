@@ -22,7 +22,12 @@
         "",
         "Kalau suatu saat aset TESYS memang akan dibundel, kembalikan Vite",
         "bersamaan dengan memindahkan berkas di public/css & public/js ke",
-        "resources/ - bukan sebelumnya."
+        "resources/ - bukan sebelumnya.",
+        "",
+        "Pengecualian: stylesheet Tailwind (prefix tw:) dibangun di mesin developer",
+        "dengan binary mandiri ber-checksum (scripts/build-tailwind.ps1), BUKAN lewat",
+        "npm/Vite. Produksi hanya melayani public/css/tesys-tw.css yang sudah jadi.",
+        "Lihat docs/ui/tailwind.md."
     ],
     "devDependencies": {
         "concurrently": "^9.0.1"

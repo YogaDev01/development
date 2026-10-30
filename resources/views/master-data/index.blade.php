@@ -38,17 +38,46 @@
 @section('content')
 <div class="content master-page">
     <div class="container-fluid">
+      <div class="ts-index tw:flex tw:flex-col tw:gap-4 tw:py-4">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <h1 class="m-0" style="font-size:20px;font-weight:700;color:var(--text);">{{ $m['title'] }}</h1>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
-                <li class="breadcrumb-item"><a href="#">Master</a></li>
+        {{-- Judul & breadcrumb topbar: shell memindahkan <h1> dan .breadcrumb pertama ke topbar
+             (tesys-shell.js hoistPageTitle); disembunyikan secara visual. --}}
+        <div class="tw:sr-only">
+            <h1>{{ $m['title'] }}</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">Master</li>
                 <li class="breadcrumb-item active">{{ $m['singular'] }}</li>
             </ol>
         </div>
 
+        @php
+            $bolehTambahMaster = empty($m['readonly']);
+            $tambahLabel = 'Tambah ' . $m['singular'];
+        @endphp
+        <x-tw.page-header title="Daftar {{ $m['singular'] }}"
+            description="{{ $m['note'] ?? 'Data master ' . strtolower($m['singular']) . '.' }}">
+            @if($bolehTambahMaster)
+            <x-slot:actions>
+                @if(!empty($m['create_url']))
+                <x-tw.button href="{{ url($m['create_url']) }}" class="ts-add-btn tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> {{ $tambahLabel }}</x-tw.button>
+                @else
+                <x-tw.button id="btnTambahMaster" class="ts-add-btn tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> {{ $tambahLabel }}</x-tw.button>
+                @endif
+            </x-slot:actions>
+            @endif
+        </x-tw.page-header>
+
+        @if($bolehTambahMaster)
+        {{-- Mobile: tombol di header disembunyikan dan diganti tombol melayang (tesys-ui-refine.css). --}}
+        @if(!empty($m['create_url']))
+        <a href="{{ url($m['create_url']) }}" class="ts-fab" aria-label="{{ $tambahLabel }}" title="{{ $tambahLabel }}"><i class="fas fa-plus" aria-hidden="true"></i></a>
+        @else
+        <button type="button" class="ts-fab" data-trigger="#btnTambahMaster" aria-label="{{ $tambahLabel }}" title="{{ $tambahLabel }}"><i class="fas fa-plus" aria-hidden="true"></i></button>
+        @endif
+        @endif
+
         @if(!empty($m['tabs']))
-            <ul class="nav nav-pills master-tabs mb-3">
+            <ul class="nav nav-tabs ts-pill-tabs master-tabs">
                 @foreach($m['tabs'] as $tab)
                     <li class="nav-item">
                         <a class="nav-link {{ $tab['active'] ? 'active' : '' }}" href="{{ url($tab['url']) }}">{{ $tab['label'] }}</a>
@@ -80,20 +109,8 @@
             </div>
         @endif
 
-        <div class="card card-primary card-outline shadow-sm">
-            <div class="card-header d-flex align-items-center">
-                <h3 class="card-title"><i class="{{ $m['icon'] }} mr-1"></i> Daftar {{ $m['singular'] }}</h3>
-                <div class="ml-auto d-flex" style="gap:8px;">
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="location.reload()">
-                        <i class="fas fa-sync-alt mr-1"></i> Refresh
-                    </button>
-                </div>
-            </div>
-
-            <div class="card-body">
-                @if(!empty($m['note']))
-                    <p class="text-muted mb-3" style="font-size:12px;"><i class="fas fa-info-circle mr-1"></i>{{ $m['note'] }}</p>
-                @endif
+        {{-- Kartu tunggal: toolbar + tabel + paginasi (pola Cost Request). --}}
+        <x-tw.card padding="sm">
 
                 <div class="custom-toolbar mb-3 d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
                     <div class="custom-toolbar-left">
@@ -143,22 +160,12 @@
                                 <i class="fas fa-file-excel mr-1"></i> Import Excel
                             </button>
                         @endif
-                        @if(empty($m['readonly']))
-                            @if(!empty($m['create_url']))
-                                <a href="{{ url($m['create_url']) }}" class="btn btn-success btn-sm">
-                                    <i class="fas fa-plus mr-1"></i> Tambah {{ $m['singular'] }}
-                                </a>
-                            @else
-                                <button type="button" class="btn btn-success btn-sm" id="btnTambahMaster">
-                                    <i class="fas fa-plus mr-1"></i> Tambah {{ $m['singular'] }}
-                                </button>
-                            @endif
-                        @endif
+                        <x-tw.button id="btnRefreshMaster" variant="secondary" size="sm"><i class="fas fa-sync-alt" aria-hidden="true"></i> Refresh</x-tw.button>
                     </div>
                 </div>
 
                 <div class="table-responsive">
-                    <table id="tblMaster" class="table table-bordered table-hover table-striped mb-0 {{ !empty($m['compact']) ? 'master-compact' : '' }}">
+                    <table id="tblMaster" class="table table-bordered table-hover mb-0 ts-idx-tbl {{ !empty($m['compact']) ? 'master-compact' : '' }}">
                         <thead class="bg-light">
                             <tr>
                                 @if($numbered)
@@ -167,12 +174,22 @@
                                 @foreach($m['columns'] as $col)
                                     <th scope="col" class="{{ !empty($col['truncate']) ? 'col-trunc' : '' }}">{{ $col['label'] }}</th>
                                 @endforeach
-                                <th scope="col" class="text-center col-action">Action</th>
+                                <th scope="col" class="text-center col-action action-column"><span class="sr-only">Aksi</span></th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($rows as $row)
-                                <tr @foreach($m['filters'] ?? [] as $flt) data-{{ $flt['key'] }}="{{ $flt['value']($row) }}" @endforeach
+                                @php
+                                    // Klik baris: halaman detail bila ada; tanpa detail (drawer / modal) lewat pemicu .js-row-open.
+                                    $hrefBaris = null;
+                                    if (empty($m['drawer']) && !empty($m['show'])) {
+                                        $hrefBaris = url($m['url'] . '/' . $row->id);
+                                    } elseif (empty($m['drawer']) && empty($m['show']) && empty($m['readonly']) && !empty($m['edit_url'])) {
+                                        $hrefBaris = url(str_replace('{id}', $row->id, $m['edit_url']));
+                                    }
+                                @endphp
+                                <tr @if($hrefBaris) data-href="{{ $hrefBaris }}" @endif
+                                    @foreach($m['filters'] ?? [] as $flt) data-{{ $flt['key'] }}="{{ $flt['value']($row) }}" @endforeach
                                     @if(!empty($m['hide_inactive'])) data-row-status="{{ $row->status }}" @endif>
                                     @if($numbered)
                                         <td>{{ $loop->iteration }}</td>
@@ -209,33 +226,40 @@
                                         </td>
                                     @endforeach
                                     <td class="text-center action-column">
+                                        {{-- Detail dibuka lewat klik baris. Dua aksi (Edit, Hapus) = satu tombol titik tiga;
+                                             data read-only tanpa aksi = sel kosong. --}}
                                         <div class="action-buttons ts-actions">
                                             @if(!empty($m['drawer']))
-                                                <button type="button" class="ts-action-primary is-neutral btn-drawer-master" data-id="{{ $row->id }}" title="Detail" aria-label="Detail">
-                                                    <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Detail</span>
-                                                </button>
-                                            @elseif(!empty($m['show']))
-                                                <a href="{{ url($m['url'] . '/' . $row->id) }}" class="ts-action-primary is-neutral" title="Detail" aria-label="Detail">
-                                                    <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Detail</span>
-                                                </a>
+                                                {{-- Pemicu drawer untuk klik baris (tombol Detail dihapus dari kolom aksi). --}}
+                                                <button type="button" class="btn-drawer-master js-row-open d-none" data-id="{{ $row->id }}" tabindex="-1" aria-hidden="true"></button>
                                             @endif
                                             @if(empty($m['readonly']))
-                                                @if(!empty($m['edit_url']))
-                                                    <a href="{{ url(str_replace('{id}', $row->id, $m['edit_url'])) }}" class="ts-action-primary is-neutral" title="Edit" aria-label="Edit">
-                                                        <i class="fas fa-pen" aria-hidden="true"></i><span class="ts-al">Edit</span>
-                                                    </a>
-                                                @else
-                                                    <button type="button" class="ts-action-primary is-neutral btn-edit-master" data-id="{{ $row->id }}" title="Edit" aria-label="Edit">
-                                                        <i class="fas fa-pen" aria-hidden="true"></i><span class="ts-al">Edit</span>
-                                                    </button>
-                                                @endif
-                                                <form action="{{ url($m['url'] . '/' . $row->id) }}" method="POST" class="frmDeleteMaster d-inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="ts-action-primary is-danger" title="Hapus" aria-label="Hapus">
-                                                        <i class="fas fa-trash" aria-hidden="true"></i><span class="ts-al">Hapus</span>
-                                                    </button>
-                                                </form>
+                                                <button type="button" class="ts-action-more"
+                                                        aria-haspopup="true" aria-expanded="false"
+                                                        title="Aksi" aria-label="Aksi">
+                                                    <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
+                                                </button>
+                                                <div class="ts-action-menu dropdown-menu" hidden>
+                                                    @if(!empty($m['edit_url']))
+                                                        <a href="{{ url(str_replace('{id}', $row->id, $m['edit_url'])) }}" class="dropdown-item">
+                                                            <i class="fas fa-pen"></i>Edit
+                                                        </a>
+                                                    @else
+                                                        <button type="button" class="dropdown-item btn-edit-master{{ empty($m['drawer']) && empty($m['show']) ? ' js-row-open' : '' }}" data-id="{{ $row->id }}">
+                                                            <i class="fas fa-pen"></i>Edit
+                                                        </button>
+                                                    @endif
+
+                                                    <div class="dropdown-divider"></div>
+
+                                                    <form action="{{ url($m['url'] . '/' . $row->id) }}" method="POST" class="frmDeleteMaster">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="dropdown-item is-danger">
+                                                            <i class="fas fa-trash"></i>Hapus
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             @endif
                                         </div>
                                     </td>
@@ -244,9 +268,8 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
-
+        </x-tw.card>
+      </div>
     </div>
 </div>
 
@@ -366,6 +389,10 @@
     @endpush
 @endif
 
+@push('styles')
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
+@endpush
+
 @include('master-data._styles')
 
 @push('scripts')
@@ -375,6 +402,20 @@ $(function () {
     var singular = @json($m['singular']);
     var fieldNames = @json(array_keys($fields));
     var $form = $('#frmMaster');
+
+    $('#btnRefreshMaster').on('click', function () { location.reload(); });
+    // Tombol melayang (HP) memicu tombol "Tambah" di header yang disembunyikan.
+    $('.ts-fab[data-trigger]').on('click', function () { $($(this).data('trigger')).trigger('click'); });
+
+    /* Klik di mana saja pada baris membuka detail (halaman / drawer) atau edit bila tidak ada detail —
+       pola Cost Request. Kontrol di dalam baris (tombol, tautan, menu aksi, kontrol responsif) bekerja sendiri. */
+    $(document).on('click', '#tblMaster tbody tr', function (e) {
+        if ($(e.target).closest('a, button, input, select, textarea, label, form, .ts-actions, .ts-action-menu, td.dtr-control').length) return;
+        if (window.getSelection && String(window.getSelection()).length) return;
+        var href = $(this).attr('data-href');
+        if (href) { window.location.href = href; return; }
+        $(this).find('.js-row-open').first().trigger('click');
+    });
 
     // Tabel diinisialisasi paling akhir: galat di sini tidak boleh mematikan tombol & modal.
     function initTable() {
@@ -392,6 +433,9 @@ $(function () {
             }
         });
         $('#masterSearch').on('keyup search', function () { table.search(this.value).draw(); });
+
+        // Scrollbar mendatar hanya untuk tabel (footer info + paginasi tetap diam).
+        $('#tblMaster').wrap('<div class="ts-dt-scroll"></div>');
 
         @if(!empty($m['column_picker']))
             // Pilihan kolom per pengguna disimpan di browser (pola sama dengan PO/Invoice).

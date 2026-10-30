@@ -4,164 +4,168 @@
 
 @section('content')
 
+@php
+    // Tujuan & nama aksesibel tombol kembali (pembaca berwenang non-pemilik datang dari Inbox).
+    $keInbox = $authorized && !$isOwner;
+@endphp
+
 <div class="content">
     <div class="container-fluid">
+        <div class="tw:mx-auto tw:flex tw:max-w-[1200px] tw:flex-col tw:gap-5 tw:py-4">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <div class="d-flex align-items-center">
-                <a href="{{ $authorized && !$isOwner ? route('feedback.inbox') : route('feedback.index') }}" class="btn btn-secondary btn-sm mr-3">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
-                <div>
-                    <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">
-                        {{ $submission->title }}
-                        <span class="badge badge-{{ $submission->status_color }} px-2 py-1 align-middle ml-1" style="font-size:12px;">
-                            {{ $submission->status_label }}
-                        </span>
-                    </h1>
-                    <small class="text-muted">
-                        <span class="badge badge-{{ $submission->category_color }} px-2 py-1">{{ $submission->category_label }}</span>
-                        &middot; {{ $submission->created_at->format('d/m/Y H:i') }}
-                    </small>
+            {{-- Judul & breadcrumb topbar: shell memindahkan <h1> dan .breadcrumb pertama ke topbar lalu
+                 menghapusnya dari konten (tesys-shell.js hoistPageTitle); disembunyikan secara visual. --}}
+            <div class="tw:sr-only">
+                <h1>{{ $submission->title }}</h1>
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="#">General</a></li>
+                    <li class="breadcrumb-item">{{ $keInbox ? 'Feedback Inbox' : 'General Feedback' }}</li>
+                    <li class="breadcrumb-item active">Detail Submission</li>
+                </ol>
+            </div>
+
+            @if(session('success'))
+            <div class="alert alert-success rounded-0 shadow-sm mb-0">{{ session('success') }}</div>
+            @endif
+            @if(session('error'))
+            <div class="alert alert-danger rounded-0 shadow-sm mb-0">{{ session('error') }}</div>
+            @endif
+
+            <div class="tw:flex tw:flex-col tw:gap-3">
+                <x-tw.page-header eyebrow="General · Feedback · Detail" :title="$submission->title">
+                    <x-slot:actions>
+                        {{-- Tombol kembali = tautan (x-tw.button href); nama aksesibel lewat aria-label. --}}
+                        <x-tw.button href="{{ $keInbox ? route('feedback.inbox') : route('feedback.index') }}" variant="secondary" class="tw:max-sm:min-h-12"
+                            aria-label="{{ $keInbox ? 'Kembali ke Feedback Inbox' : 'Kembali ke daftar General Feedback' }}">
+                            <i class="fas fa-arrow-left" aria-hidden="true"></i> Kembali
+                        </x-tw.button>
+                    </x-slot:actions>
+                </x-tw.page-header>
+
+                <div class="tw:flex tw:flex-wrap tw:items-center tw:gap-x-3 tw:gap-y-2 tw:text-data tw:text-text-dim">
+                    <x-tw.badge dot size="md" :tone="$submission->status_color">{{ $submission->status_label }}</x-tw.badge>
+                    <x-tw.badge dot size="md" :tone="$submission->category_color">{{ $submission->category_label }}</x-tw.badge>
+                    <span>Dikirim {{ $submission->created_at->format('d/m/Y H:i') }}@if($authorized) oleh <span class="tw:font-label tw:text-text">{{ $submission->submitter->name ?? '-' }}</span>@endif</span>
                 </div>
             </div>
-        </div>
 
-        @if(session('success'))
-        <div class="alert alert-success rounded-0 shadow-sm">{{ session('success') }}</div>
-        @endif
-        @if(session('error'))
-        <div class="alert alert-danger rounded-0 shadow-sm">{{ session('error') }}</div>
-        @endif
+            <div class="tw:grid tw:grid-cols-1 tw:items-start tw:gap-5 tw:lg:grid-cols-3">
 
-        @include('feedback._disclaimer', ['compact' => true])
+                <div class="tw:flex tw:min-w-0 tw:flex-col tw:gap-5 tw:lg:col-span-2">
 
-        <div class="row">
-            <div class="col-md-7">
-
-                <div class="card card-primary card-outline shadow-sm">
-                    <div class="card-header">
-                        <h3 class="card-title"><i class="fas fa-comment-dots mr-1"></i> Isi Submission</h3>
-                    </div>
-                    <div class="card-body">
+                    <x-tw.card>
+                        <x-slot:header><span role="heading" aria-level="2"><i class="fas fa-comment-dots tw:mr-2 tw:text-text-dim" aria-hidden="true"></i>Isi Submission</span></x-slot:header>
                         @if($submission->category === 'CRITICISM')
-                        <div class="mb-3">
-                            <div class="text-muted font-weight-600 mb-1" style="font-size:11px;text-transform:uppercase;">Kritik</div>
-                            <div style="white-space:pre-line;font-size:13px;">{{ $submission->criticism_text }}</div>
-                        </div>
-                        <div>
-                            <div class="text-muted font-weight-600 mb-1" style="font-size:11px;text-transform:uppercase;">Saran Perbaikan</div>
-                            <div style="white-space:pre-line;font-size:13px;">{{ $submission->suggestion_text }}</div>
+                        <div class="tw:flex tw:flex-col tw:gap-5">
+                            <div>
+                                <div class="tw:mb-1 tw:text-caption tw:font-label tw:uppercase tw:tracking-micro tw:text-text-dim">Kritik</div>
+                                <div class="tw:whitespace-pre-line tw:text-sub tw:leading-body tw:text-text">{{ $submission->criticism_text }}</div>
+                            </div>
+                            <div class="tw:border-t tw:border-border tw:pt-5">
+                                <div class="tw:mb-1 tw:text-caption tw:font-label tw:uppercase tw:tracking-micro tw:text-text-dim">Saran Perbaikan</div>
+                                <div class="tw:whitespace-pre-line tw:text-sub tw:leading-body tw:text-text">{{ $submission->suggestion_text }}</div>
+                            </div>
                         </div>
                         @else
-                        <div style="white-space:pre-line;font-size:13px;">{{ $submission->message }}</div>
+                        <div class="tw:whitespace-pre-line tw:text-sub tw:leading-body tw:text-text">{{ $submission->message }}</div>
                         @endif
-                    </div>
-                </div>
+                    </x-tw.card>
 
-                @if($submission->response_text)
-                <div class="card card-primary card-outline shadow-sm">
-                    <div class="card-header">
-                        <h3 class="card-title"><i class="fas fa-reply mr-1"></i> Tanggapan CEO</h3>
-                    </div>
-                    <div class="card-body">
-                        <div style="white-space:pre-line;font-size:13px;">{{ $submission->response_text }}</div>
-                        <div class="text-muted mt-2" style="font-size:11px;">
+                    @if($submission->response_text)
+                    <x-tw.card>
+                        <x-slot:header><span role="heading" aria-level="2"><i class="fas fa-reply tw:mr-2 tw:text-accent-text" aria-hidden="true"></i>Tanggapan CEO</span></x-slot:header>
+                        <div class="tw:whitespace-pre-line tw:text-sub tw:leading-body tw:text-text">{{ $submission->response_text }}</div>
+                        <x-slot:footer>
                             Oleh {{ $submission->respondedBy->name ?? '-' }} &middot; {{ $submission->responded_at?->format('d/m/Y H:i') }}
-                        </div>
-                    </div>
+                        </x-slot:footer>
+                    </x-tw.card>
+                    @endif
                 </div>
-                @endif
 
-                @if($authorized && $submission->status !== 'CLOSED')
-                <div class="card card-primary card-outline shadow-sm">
-                    <div class="card-header">
-                        <h3 class="card-title"><i class="fas fa-reply mr-1"></i> Beri Tanggapan</h3>
-                    </div>
-                    <div class="card-body">
-                        <form action="{{ route('feedback.respond', $submission->id) }}" method="POST">
-                            @csrf
-                            <div class="form-group">
-                                <textarea name="response_text" class="form-control form-control-sm" rows="4"
-                                          placeholder="Tuliskan tanggapan Anda kepada karyawan ini..." required>{{ $submission->response_text }}</textarea>
-                            </div>
-                            <div class="text-right">
-                                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-paper-plane mr-1"></i> Kirim Tanggapan</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                @endif
+                <div class="tw:flex tw:min-w-0 tw:flex-col tw:gap-5">
 
-                @if($authorized && $submission->status === 'RESPONDED')
-                <div class="card shadow-sm">
-                    <div class="card-body d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
-                        <small class="text-muted">Kalau tanggapan sudah cukup dan tidak ada tindak lanjut lagi, tandai submission ini selesai.</small>
-                        <form action="{{ route('feedback.close', $submission->id) }}" method="POST" class="frmCloseFeedback">
-                            @csrf
-                            <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-check-double mr-1"></i> Tandai Selesai (Closed)</button>
-                        </form>
-                    </div>
-                </div>
-                @endif
-
-            </div>
-
-            <div class="col-md-5">
-                <div class="card card-primary card-outline shadow-sm">
-                    <div class="card-header">
-                        <h3 class="card-title"><i class="fas fa-info-circle mr-1"></i> Informasi</h3>
-                    </div>
-                    <div class="card-body">
-                        <table class="table table-sm mb-0" style="font-size:12.5px;">
+                    <x-tw.card>
+                        <x-slot:header><span role="heading" aria-level="2"><i class="fas fa-info-circle tw:mr-2 tw:text-text-dim" aria-hidden="true"></i>Informasi</span></x-slot:header>
+                        {{-- Baris key-value dari div (bukan tabel): th legacy ikut aturan tabel/kartu mobile. --}}
+                        <div class="tw:flex tw:flex-col tw:text-data tw:leading-body">
+                            @php $baris = 'tw:flex tw:min-h-8 tw:items-center tw:justify-between tw:gap-4 tw:border-b tw:border-border tw:py-2 tw:last:border-b-0'; @endphp
                             @if($authorized)
-                            <tr>
-                                <th style="width:42%;color:var(--text-faint);font-weight:600;">Pengirim</th>
-                                <td>{{ $submission->submitter->name ?? '-' }}</td>
-                            </tr>
+                            <div class="{{ $baris }}">
+                                <span class="tw:text-text-dim">Pengirim</span>
+                                <span class="tw:min-w-0 tw:text-right tw:font-label tw:text-text">{{ $submission->submitter->name ?? '-' }}</span>
+                            </div>
                             @endif
-                            <tr>
-                                <th style="color:var(--text-faint);font-weight:600;">Kategori</th>
-                                <td><span class="badge badge-{{ $submission->category_color }} px-2 py-1">{{ $submission->category_label }}</span></td>
-                            </tr>
-                            <tr>
-                                <th style="color:var(--text-faint);font-weight:600;">Status</th>
-                                <td><span class="badge badge-{{ $submission->status_color }} px-2 py-1">{{ $submission->status_label }}</span></td>
-                            </tr>
-                            <tr>
-                                <th style="color:var(--text-faint);font-weight:600;">Bersedia Diskusi</th>
-                                <td>
+                            <div class="{{ $baris }}">
+                                <span class="tw:text-text-dim">Kategori</span>
+                                <x-tw.badge dot :tone="$submission->category_color">{{ $submission->category_label }}</x-tw.badge>
+                            </div>
+                            <div class="{{ $baris }}">
+                                <span class="tw:text-text-dim">Status</span>
+                                <x-tw.badge dot :tone="$submission->status_color">{{ $submission->status_label }}</x-tw.badge>
+                            </div>
+                            <div class="{{ $baris }}">
+                                <span class="tw:text-text-dim">Bersedia Diskusi</span>
+                                <span class="tw:flex tw:min-w-0 tw:flex-wrap tw:items-center tw:justify-end tw:gap-2 tw:text-right">
                                     @if($submission->willing_to_discuss)
-                                        <span class="badge badge-success px-2 py-1">Ya</span> — {{ $submission->whatsapp_number }}
+                                        <x-tw.badge tone="positive">Ya</x-tw.badge><span class="tw:text-text">{{ $submission->whatsapp_number }}</span>
                                     @else
-                                        <span class="badge badge-light border px-2 py-1">Tidak</span>
+                                        <x-tw.badge tone="neutral">Tidak</x-tw.badge>
                                     @endif
-                                </td>
-                            </tr>
-                            <tr>
-                                <th style="color:var(--text-faint);font-weight:600;">Tanggal Submit</th>
-                                <td>{{ $submission->created_at->format('d/m/Y H:i') }}</td>
-                            </tr>
+                                </span>
+                            </div>
+                            <div class="{{ $baris }}">
+                                <span class="tw:text-text-dim">Tanggal Submit</span>
+                                <span class="tw:text-right tw:text-text">{{ $submission->created_at->format('d/m/Y H:i') }}</span>
+                            </div>
                             @if($submission->reviewed_at)
-                            <tr>
-                                <th style="color:var(--text-faint);font-weight:600;">Direview</th>
-                                <td>{{ $submission->reviewed_at->format('d/m/Y H:i') }}</td>
-                            </tr>
+                            <div class="{{ $baris }}">
+                                <span class="tw:text-text-dim">Direview</span>
+                                <span class="tw:text-right tw:text-text">{{ $submission->reviewed_at->format('d/m/Y H:i') }}</span>
+                            </div>
                             @endif
                             @if($submission->responded_at)
-                            <tr>
-                                <th style="color:var(--text-faint);font-weight:600;">Ditanggapi</th>
-                                <td>{{ $submission->responded_at->format('d/m/Y H:i') }}</td>
-                            </tr>
+                            <div class="{{ $baris }}">
+                                <span class="tw:text-text-dim">Ditanggapi</span>
+                                <span class="tw:text-right tw:text-text">{{ $submission->responded_at->format('d/m/Y H:i') }}</span>
+                            </div>
                             @endif
                             @if($submission->closed_at)
-                            <tr>
-                                <th style="color:var(--text-faint);font-weight:600;">Ditutup</th>
-                                <td>{{ $submission->closed_at->format('d/m/Y H:i') }}</td>
-                            </tr>
+                            <div class="{{ $baris }}">
+                                <span class="tw:text-text-dim">Ditutup</span>
+                                <span class="tw:text-right tw:text-text">{{ $submission->closed_at->format('d/m/Y H:i') }}</span>
+                            </div>
                             @endif
-                        </table>
-                    </div>
+                        </div>
+                    </x-tw.card>
+
+                    @if($authorized && $submission->status !== 'CLOSED')
+                    <x-tw.card>
+                        <x-slot:header><span role="heading" aria-level="2"><i class="fas fa-reply tw:mr-2 tw:text-text-dim" aria-hidden="true"></i>Beri Tanggapan</span></x-slot:header>
+                        <form action="{{ route('feedback.respond', $submission->id) }}" method="POST">
+                            @csrf
+                            <x-tw.textarea name="response_text" id="inpResponse" label="Tanggapan" rows="5" required
+                                :value="$submission->response_text" :error="$errors->first('response_text')"
+                                placeholder="Tuliskan tanggapan Anda kepada karyawan ini..." />
+                            <div class="tw:flex tw:justify-end">
+                                <x-tw.button type="submit" class="tw:max-sm:min-h-12 tw:max-sm:w-full"><i class="fas fa-paper-plane" aria-hidden="true"></i> Kirim Tanggapan</x-tw.button>
+                            </div>
+                        </form>
+                    </x-tw.card>
+                    @endif
+
+                    @if($authorized && $submission->status === 'RESPONDED')
+                    <x-tw.card>
+                        <div class="tw:flex tw:flex-col tw:gap-3">
+                            <div class="tw:text-data tw:leading-body tw:text-text-dim">Kalau tanggapan sudah cukup dan tidak ada tindak lanjut lagi, tandai submission ini selesai.</div>
+                            <form action="{{ route('feedback.close', $submission->id) }}" method="POST" class="frmCloseFeedback">
+                                @csrf
+                                <x-tw.button type="submit" variant="secondary" class="tw:w-full tw:max-sm:min-h-12"><i class="fas fa-check-double" aria-hidden="true"></i> Tandai Selesai (Closed)</x-tw.button>
+                            </form>
+                        </div>
+                    </x-tw.card>
+                    @endif
+
+                    @include('feedback._disclaimer', ['compact' => true])
                 </div>
             </div>
         </div>
@@ -180,4 +184,8 @@ $(function () {
     });
 });
 </script>
+@endpush
+
+@push('styles')
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 @endpush

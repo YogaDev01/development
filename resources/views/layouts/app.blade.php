@@ -160,7 +160,10 @@
         tesys-ui.css membawa :root versi lama, jadi tokens.css harus SESUDAHNYA
         supaya shadow/radius hasil revisi yang dipakai.
     --}}
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+    {{-- Inter dimuat dari server sendiri (@font-face di tesys-ui-refine.css).
+         Preload supaya teks pertama sudah memakai Inter dan lebar angka tidak
+         bergeser saat font datang. Plus Jakarta Sans tidak dipakai lagi. --}}
+    <link rel="preload" href="{{ asset('fonts/inter/inter-latin-wght-normal.woff2') }}" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="@aset('css/tesys-ui.css')">
     <link rel="stylesheet" href="@aset('css/tesys-ui-tokens.css')">
     <link rel="stylesheet" href="@aset('css/tesys-ui-components.css')">
@@ -181,6 +184,11 @@
 
     {{-- Daftar data (DataTable) + mode card mobile. Sesudah components & mobile. --}}
     <link rel="stylesheet" href="@aset('css/tesys-ui-datatable.css')">
+
+    {{-- Lapis refine: tipografi, ukuran kontrol, dan komponen bersama (KPI,
+         tabel, tab, modal, drawer). PALING AKHIR supaya menang atas seluruh
+         lapis di atas; lepas baris ini untuk kembali ke tampilan lama. --}}
+    <link rel="stylesheet" href="@aset('css/tesys-ui-refine.css')">
 
     {{-- Warna aksen kustom per-perangkat (Profil > Settings > Preferensi
          Tampilan). Disimpan di localStorage 'tesys-accent', sama polanya

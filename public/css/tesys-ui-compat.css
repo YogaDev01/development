@@ -69,7 +69,7 @@ body.tesys-ui .card-header {
 body.tesys-ui .card-header .card-title {
     font-size: var(--fs-section, 13.5px);
     font-weight: var(--fw-section, 600);
-    font-family: "Plus Jakarta Sans", sans-serif;
+    font-family: var(--font-display);
     margin: 0;
     float: none;
 }
@@ -272,7 +272,7 @@ body.tesys-ui .modal-header {
 }
 body.tesys-ui .modal-header .modal-title {
     font-size: 14.5px; font-weight: var(--fw-section, 600);
-    font-family: "Plus Jakarta Sans", sans-serif; color: var(--text) !important;
+    font-family: var(--font-display); color: var(--text) !important;
 }
 body.tesys-ui .modal-header .close { color: var(--text-faint); text-shadow: none; opacity: 1; font-weight: 400; }
 body.tesys-ui .modal-body { padding: 18px 20px; font-size: 12.5px; }
@@ -343,7 +343,7 @@ body.tesys-ui .alert-info    { background: var(--info-bg);    color: var(--info)
 body.tesys-ui .breadcrumb { background: transparent; padding: 0; margin: 0; font-size: 11.5px; }
 body.tesys-ui .breadcrumb-item, body.tesys-ui .breadcrumb-item a { color: var(--text-faint); }
 body.tesys-ui .breadcrumb-item.active { color: var(--text-dim); }
-body.tesys-ui h1 { font-family: "Plus Jakarta Sans", sans-serif; font-size: 18px; font-weight: 700; color: var(--text); }
+body.tesys-ui h1 { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: var(--text); }
 body.tesys-ui h2 { font-size: 16px; } body.tesys-ui h3 { font-size: 14px; }
 body.tesys-ui .text-muted { color: var(--text-faint) !important; }
 
@@ -395,7 +395,7 @@ body.tesys-ui .small, body.tesys-ui small { font-size: 10.5px; }
 
 /* SweetAlert2 agar senada */
 body.tesys-ui .swal2-popup { border-radius: var(--radius-lg); font-family: "Inter", sans-serif; }
-body.tesys-ui .swal2-title { font-family: "Plus Jakarta Sans", sans-serif; font-size: 16px; }
+body.tesys-ui .swal2-title { font-family: var(--font-display); font-size: 16px; }
 body.tesys-ui .swal2-styled.swal2-confirm { background: var(--accent) !important; border-radius: var(--radius-sm) !important; }
 body.tesys-ui .swal2-styled.swal2-cancel { background: var(--surface-2) !important; color: var(--text) !important; border: 1px solid var(--border) !important; border-radius: var(--radius-sm) !important; }
 
@@ -569,7 +569,7 @@ body.tesys-ui .ts-wrapper.single .ts-control {
 
 /* ---- SweetAlert2 ---- */
 body.tesys-ui .swal2-popup { border-radius: var(--radius-lg) !important; font-family: "Inter", sans-serif !important; }
-body.tesys-ui .swal2-title { font-family: "Plus Jakarta Sans", sans-serif !important; font-size: 16px !important; color: var(--text) !important; }
+body.tesys-ui .swal2-title { font-family: var(--font-display) !important; font-size: 16px !important; color: var(--text) !important; }
 body.tesys-ui .swal2-styled.swal2-confirm {
     background: var(--accent) !important; border-radius: var(--radius-sm) !important; box-shadow: none !important;
 }

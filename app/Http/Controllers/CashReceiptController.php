@@ -692,7 +692,7 @@ class CashReceiptController extends Controller
             return back()->with('error', $e->getMessage());
         }
 
-        UserActivityLog::record('cash_receipt', 'cancel', 'Membatalkan penerimaan #' . $header->code, $header, $request->reason ?? $request->notes);
+        UserActivityLog::record('cash_receipt', 'cancel', 'Membatalkan penerimaan #' . $header->code, $header, $request->cancel_reason);
 
         return back()->with('success', 'Penerimaan ' . $header->code . ' dibatalkan.');
     }

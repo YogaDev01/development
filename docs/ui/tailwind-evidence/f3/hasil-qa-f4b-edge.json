@@ -1,0 +1,2528 @@
+{
+ "browser": "edge",
+ "versi": "Edg/156.0.4314.42",
+ "waktu": "2026-10-26T17:41:23.811Z",
+ "butir": [
+  {
+   "id": "sentuh-44-create-390",
+   "status": "PASS",
+   "detail": {
+    "create": [
+     {
+      "sel": ".content a.tw\\:inline-flex[href]",
+      "ada": true,
+      "zoom": 1,
+      "w": 161.4,
+      "h": 48,
+      "wLayar": 161,
+      "hLayar": 48
+     },
+     {
+      "sel": "#selCategory",
+      "ada": true,
+      "zoom": 1,
+      "w": 309,
+      "h": 48,
+      "wLayar": 309,
+      "hLayar": 48
+     },
+     {
+      "sel": "input#title",
+      "ada": true,
+      "zoom": 1,
+      "w": 309,
+      "h": 48,
+      "wLayar": 309,
+      "hLayar": 48
+     },
+     {
+      "sel": "div:has(> #chkWilling)",
+      "ada": true,
+      "zoom": 1,
+      "w": 309,
+      "h": 62.5,
+      "wLayar": 309,
+      "hLayar": 63
+     },
+     {
+      "sel": "label[for=chkWilling]",
+      "ada": true,
+      "zoom": 1,
+      "w": 251,
+      "h": 39.5,
+      "wLayar": 251,
+      "hLayar": 40
+     },
+     {
+      "sel": "input#inpWhatsapp",
+      "ada": true,
+      "zoom": 1,
+      "w": 309,
+      "h": 48,
+      "wLayar": 309,
+      "hLayar": 48
+     },
+     {
+      "sel": "#frmFeedback button[type=submit]",
+      "ada": true,
+      "zoom": 1,
+      "w": 309,
+      "h": 48,
+      "wLayar": 309,
+      "hLayar": 48
+     }
+    ],
+    "index": [
+     {
+      "sel": ".content a.tw\\:inline-flex[href]",
+      "ada": true,
+      "zoom": 1,
+      "w": 157,
+      "h": 48,
+      "wLayar": 157,
+      "hLayar": 48
+     }
+    ],
+    "catatan": "F4-b: baris centang (div:has(> #chkWilling), seluruhnya klik-able lewat label::after) ikut kriteria; label[for=chkWilling] sendiri hanya dilaporkan (kotak teksnya bukan area klik penuh)"
+   }
+  },
+  {
+   "id": "kontrak-dom-create",
+   "status": "PASS",
+   "detail": []
+  },
+  {
+   "id": "nama-aksesibel-tombol-kembali-create",
+   "status": "PASS",
+   "detail": {
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "role": "link",
+    "nama": "Kembali ke daftar",
+    "sumberNama": "contents"
+   }
+  },
+  {
+   "id": "nama-aksesibel-tombol-buat-index",
+   "status": "PASS",
+   "detail": {
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "role": "link",
+    "nama": "Buat Submission",
+    "sumberNama": "contents"
+   }
+  },
+  {
+   "id": "urutan-tab-create-terang",
+   "status": "PASS",
+   "detail": {
+    "urut": [
+     "a",
+     "select#selCategory[name=category]",
+     "input#title[name=title]",
+     "textarea#inpMessage[name=message]",
+     "input#chkWilling[name=willing_to_discuss]",
+     "input#inpWhatsapp[name=whatsapp_number]",
+     "a",
+     "button"
+    ],
+    "harapan": [
+     "a",
+     "select#selCategory[name=category]",
+     "input[name=title]"
+    ]
+   }
+  },
+  {
+   "id": "indikator-fokus-komponen-terang",
+   "status": "PASS",
+   "detail": [
+    {
+     "el": "a",
+     "dalamContent": true,
+     "fokusVisible": true,
+     "outline": "solid 1.25px",
+     "outlineOffset": "1.25px",
+     "warna": "#92232b",
+     "rasioOutline": 7.46,
+     "boxShadow": "none"
+    },
+    {
+     "el": "select#selCategory[name=category]",
+     "dalamContent": true,
+     "fokusVisible": true,
+     "outline": "solid 1.25px",
+     "outlineOffset": "1.25px",
+     "warna": "#92232b",
+     "rasioOutline": 8.41,
+     "boxShadow": "none"
+    },
+    {
+     "el": "input#title[name=title]",
+     "dalamContent": true,
+     "fokusVisible": true,
+     "outline": "solid 1.25px",
+     "outlineOffset": "1.25px",
+     "warna": "#92232b",
+     "rasioOutline": 8.41,
+     "boxShadow": "none"
+    },
+    {
+     "el": "input#inpWhatsapp[name=whatsapp_number]",
+     "dalamContent": true,
+     "fokusVisible": true,
+     "outline": "solid 1.25px",
+     "outlineOffset": "1.25px",
+     "warna": "#92232b",
+     "rasioOutline": 8.41,
+     "boxShadow": "none"
+    },
+    {
+     "el": "a",
+     "dalamContent": true,
+     "fokusVisible": true,
+     "outline": "solid 1.25px",
+     "outlineOffset": "1.25px",
+     "warna": "#92232b",
+     "rasioOutline": 7.8,
+     "boxShadow": "none"
+    }
+   ]
+  },
+  {
+   "id": "urutan-tab-create-gelap",
+   "status": "PASS",
+   "detail": {
+    "urut": [
+     "a",
+     "select#selCategory[name=category]",
+     "input#title[name=title]",
+     "textarea#inpMessage[name=message]",
+     "input#chkWilling[name=willing_to_discuss]",
+     "input#inpWhatsapp[name=whatsapp_number]",
+     "a",
+     "button"
+    ],
+    "harapan": [
+     "a",
+     "select#selCategory[name=category]",
+     "input[name=title]"
+    ]
+   }
+  },
+  {
+   "id": "indikator-fokus-komponen-gelap",
+   "status": "PASS",
+   "detail": [
+    {
+     "el": "a",
+     "dalamContent": true,
+     "fokusVisible": true,
+     "outline": "solid 1.25px",
+     "outlineOffset": "1.25px",
+     "warna": "#e2949a",
+     "rasioOutline": 7.96,
+     "boxShadow": "none"
+    },
+    {
+     "el": "select#selCategory[name=category]",
+     "dalamContent": true,
+     "fokusVisible": true,
+     "outline": "solid 1.25px",
+     "outlineOffset": "1.25px",
+     "warna": "#e2949a",
+     "rasioOutline": 7.38,
+     "boxShadow": "none"
+    },
+    {
+     "el": "input#title[name=title]",
+     "dalamContent": true,
+     "fokusVisible": true,
+     "outline": "solid 1.25px",
+     "outlineOffset": "1.25px",
+     "warna": "#e2949a",
+     "rasioOutline": 7.38,
+     "boxShadow": "none"
+    },
+    {
+     "el": "input#inpWhatsapp[name=whatsapp_number]",
+     "dalamContent": true,
+     "fokusVisible": true,
+     "outline": "solid 1.25px",
+     "outlineOffset": "1.25px",
+     "warna": "#e2949a",
+     "rasioOutline": 7.38,
+     "boxShadow": "none"
+    },
+    {
+     "el": "a",
+     "dalamContent": true,
+     "fokusVisible": true,
+     "outline": "solid 1.25px",
+     "outlineOffset": "1.25px",
+     "warna": "#e2949a",
+     "rasioOutline": 6.82,
+     "boxShadow": "none"
+    }
+   ]
+  },
+  {
+   "id": "keyboard-enter-tombol-kembali",
+   "status": "PASS",
+   "detail": {
+    "path": "/feedback"
+   }
+  },
+  {
+   "id": "tautan-href-kembali-create",
+   "status": "PASS",
+   "detail": {
+    "ok": true,
+    "jalur": "/feedback/create",
+    "tujuan": "/feedback",
+    "info": {
+     "tag": "a",
+     "href": "http://127.0.0.1:8099/feedback",
+     "pathname": "/feedback",
+     "search": "",
+     "dalamForm": false,
+     "teks": "Kembali ke daftar",
+     "busyAttr": null,
+     "disabled": false,
+     "jumlahFormGet": 0
+    },
+    "ax": {
+     "sel": ".content a.tw\\:inline-flex[href]",
+     "ada": true,
+     "role": "link",
+     "nama": "Kembali ke daftar",
+     "sumberNama": "contents"
+    },
+    "ctrlKlik": {
+     "tabBaru": 1,
+     "urlBaru": [
+      "/feedback"
+     ],
+     "halamanAsalTetap": true
+    },
+    "klikBiasa": {
+     "navigasi": true,
+     "p": "/feedback",
+     "s": "",
+     "u": "/feedback"
+    },
+    "enter": {
+     "navigasi": true,
+     "p": "/feedback",
+     "s": ""
+    }
+   }
+  },
+  {
+   "id": "tautan-href-buat-index",
+   "status": "PASS",
+   "detail": {
+    "ok": true,
+    "jalur": "/feedback",
+    "tujuan": "/feedback/create",
+    "info": {
+     "tag": "a",
+     "href": "http://127.0.0.1:8099/feedback/create",
+     "pathname": "/feedback/create",
+     "search": "",
+     "dalamForm": false,
+     "teks": "Buat Submi ion",
+     "busyAttr": null,
+     "disabled": false,
+     "jumlahFormGet": 0
+    },
+    "ax": {
+     "sel": ".content a.tw\\:inline-flex[href]",
+     "ada": true,
+     "role": "link",
+     "nama": "Buat Submission",
+     "sumberNama": "contents"
+    },
+    "ctrlKlik": {
+     "tabBaru": 1,
+     "urlBaru": [
+      "/feedback/create"
+     ],
+     "halamanAsalTetap": true
+    },
+    "klikBiasa": {
+     "navigasi": true,
+     "p": "/feedback/create",
+     "s": "",
+     "u": "/feedback/create"
+    },
+    "enter": {
+     "navigasi": true,
+     "p": "/feedback/create",
+     "s": ""
+    }
+   }
+  },
+  {
+   "id": "kontras-teks-terang-aksen-bawaan",
+   "status": "PASS",
+   "detail": {
+    "jumlah": 40,
+    "gagal": [],
+    "minimum": 4.81
+   }
+  },
+  {
+   "id": "kontras-teks-gelap-aksen-bawaan",
+   "status": "PASS",
+   "detail": {
+    "jumlah": 40,
+    "gagal": [],
+    "minimum": 4.81
+   }
+  },
+  {
+   "id": "badge-teks-bermakna",
+   "status": "PASS",
+   "detail": {
+    "jumlah": 88,
+    "teksUnik": [
+     "29 submission",
+     "Suggestion",
+     "Tidak",
+     "Closed",
+     "Criticism",
+     "Ya",
+     "Submitted",
+     "Responded"
+    ],
+    "pasanganWarna": [
+     {
+      "t": "29 submission",
+      "bg": "rgb(248, 246, 245)",
+      "fg": "rgb(90, 79, 81)"
+     },
+     {
+      "t": "Suggestion",
+      "bg": "rgb(230, 236, 241)",
+      "fg": "rgb(66, 98, 125)"
+     },
+     {
+      "t": "Tidak",
+      "bg": "rgb(248, 246, 245)",
+      "fg": "rgb(90, 79, 81)"
+     },
+     {
+      "t": "Closed",
+      "bg": "rgb(232, 239, 234)",
+      "fg": "rgb(71, 112, 90)"
+     },
+     {
+      "t": "Criticism",
+      "bg": "rgb(244, 230, 230)",
+      "fg": "rgb(154, 48, 48)"
+     },
+     {
+      "t": "Ya",
+      "bg": "rgb(232, 239, 234)",
+      "fg": "rgb(71, 112, 90)"
+     },
+     {
+      "t": "Submitted",
+      "bg": "rgb(248, 246, 245)",
+      "fg": "rgb(90, 79, 81)"
+     },
+     {
+      "t": "Responded",
+      "bg": "rgb(230, 236, 241)",
+      "fg": "rgb(66, 98, 125)"
+     }
+    ]
+   }
+  },
+  {
+   "id": "kontrak-dom-index",
+   "status": "PASS",
+   "detail": [
+    {
+     "sel": ".table-responsive table",
+     "n": 1
+    },
+    {
+     "sel": "a[aria-label^=\"Lihat detail submission\"][href*=\"/feedback/\"]",
+     "n": 29
+    },
+    {
+     "sel": "thead tr",
+     "n": 1
+    },
+    {
+     "sel": ".tw\\:grid .tw\\:min-w-0",
+     "n": 8
+    }
+   ]
+  },
+  {
+   "id": "zoom-desktop-0.8",
+   "status": "PASS",
+   "detail": {
+    "desktop": "0.8",
+    "mobile": "1",
+    "tinggiCssPxDesktop": [
+     {
+      "sel": "#selCategory",
+      "h": 34,
+      "hLayar": 27
+     },
+     {
+      "sel": "input#title",
+      "h": 34,
+      "hLayar": 27
+     },
+     {
+      "sel": "#frmFeedback button[type=submit]",
+      "h": 34,
+      "hLayar": 27
+     },
+     {
+      "sel": ".content a.tw\\:inline-flex[href]",
+      "h": 34,
+      "hLayar": 27
+     }
+    ]
+   }
+  },
+  {
+   "id": "escape-xss-index-show",
+   "status": "PASS",
+   "detail": {
+    "flash": "Submission Anda berhasil dikirim. Terima kasih atas masukannya.",
+    "idBaru": 30,
+    "xssIdx": {
+     "el": false,
+     "skrip": false,
+     "teks": true
+    },
+    "xssShow": {
+     "el": false,
+     "skrip": false,
+     "teks": true
+    }
+   }
+  },
+  {
+   "id": "tautan-href-kembali-show-staff",
+   "status": "PASS",
+   "detail": {
+    "ok": true,
+    "jalur": "/feedback/30",
+    "tujuan": "/feedback",
+    "info": {
+     "tag": "a",
+     "href": "http://127.0.0.1:8099/feedback",
+     "pathname": "/feedback",
+     "search": "",
+     "dalamForm": false,
+     "teks": "Kembali",
+     "busyAttr": null,
+     "disabled": false,
+     "jumlahFormGet": 0
+    },
+    "ax": {
+     "sel": ".content a.tw\\:inline-flex[href]",
+     "ada": true,
+     "role": "link",
+     "nama": "Kembali ke daftar General Feedback",
+     "sumberNama": "attribute"
+    },
+    "ctrlKlik": {
+     "tabBaru": 1,
+     "urlBaru": [
+      "/feedback"
+     ],
+     "halamanAsalTetap": true
+    },
+    "klikBiasa": {
+     "navigasi": true,
+     "p": "/feedback",
+     "s": "",
+     "u": "/feedback"
+    },
+    "enter": {
+     "navigasi": true,
+     "p": "/feedback",
+     "s": ""
+    }
+   }
+  },
+  {
+   "id": "show-staff-tombol-kembali",
+   "status": "PASS",
+   "detail": {
+    "ax": {
+     "sel": ".content a.tw\\:inline-flex[href]",
+     "ada": true,
+     "role": "link",
+     "nama": "Kembali ke daftar General Feedback",
+     "sumberNama": "attribute"
+    },
+    "sentuh": [
+     {
+      "sel": ".content a.tw\\:inline-flex[href]",
+      "ada": true,
+      "zoom": 1,
+      "w": 103.1,
+      "h": 48,
+      "wLayar": 103,
+      "hLayar": 48
+     }
+    ]
+   }
+  },
+  {
+   "id": "aksen-praset-8x2-kontras-dan-fokus",
+   "status": "PASS",
+   "detail": {
+    "total": 16,
+    "gagal": [],
+    "minTautan": 6.1,
+    "minTombol": 6.1,
+    "minFokus": 5.12
+   }
+  },
+  {
+   "id": "aksen-bebas-terang-#ffd400-informasi",
+   "status": "INFO",
+   "detail": {
+    "tombol": {
+     "nama": "tombol-primer",
+     "sel": "#frmFeedback button[type=submit]",
+     "ada": true,
+     "teks": "Kirim Submission",
+     "fg": "#ffffff",
+     "bg": "#ffd400",
+     "rasio": 1.43,
+     "batas": 4.5
+    },
+    "catatan": "sama dengan tombol legacy; deviasi F2 #4 (pemilih warna bebas)"
+   }
+  },
+  {
+   "id": "show-superadmin-sentuh-390",
+   "status": "PASS",
+   "detail": {
+    "sentuh": [
+     {
+      "sel": ".content a.tw\\:inline-flex[href]",
+      "ada": true,
+      "zoom": 1,
+      "w": 103.1,
+      "h": 48,
+      "wLayar": 103,
+      "hLayar": 48
+     },
+     {
+      "sel": "form[action$=\"/respond\"] button[type=submit]",
+      "ada": true,
+      "zoom": 1,
+      "w": 309,
+      "h": 48,
+      "wLayar": 309,
+      "hLayar": 48
+     }
+    ],
+    "ax": {
+     "sel": ".content a.tw\\:inline-flex[href]",
+     "ada": true,
+     "role": "link",
+     "nama": "Kembali ke Feedback Inbox",
+     "sumberNama": "attribute"
+    }
+   }
+  },
+  {
+   "id": "tautan-href-kembali-show-superadmin",
+   "status": "PASS",
+   "detail": {
+    "ok": true,
+    "jalur": "/feedback/30",
+    "tujuan": "/feedback-inbox",
+    "info": {
+     "tag": "a",
+     "href": "http://127.0.0.1:8099/feedback-inbox",
+     "pathname": "/feedback-inbox",
+     "search": "",
+     "dalamForm": false,
+     "teks": "Kembali",
+     "busyAttr": null,
+     "disabled": false,
+     "jumlahFormGet": 0
+    },
+    "ax": {
+     "sel": ".content a.tw\\:inline-flex[href]",
+     "ada": true,
+     "role": "link",
+     "nama": "Kembali ke Feedback Inbox",
+     "sumberNama": "attribute"
+    },
+    "ctrlKlik": {
+     "tabBaru": 1,
+     "urlBaru": [
+      "/feedback-inbox"
+     ],
+     "halamanAsalTetap": true
+    },
+    "klikBiasa": {
+     "navigasi": true,
+     "p": "/feedback-inbox",
+     "s": "",
+     "u": "/feedback-inbox"
+    },
+    "enter": {
+     "navigasi": true,
+     "p": "/feedback-inbox",
+     "s": ""
+    }
+   }
+  },
+  {
+   "id": "respond-ui-dan-escape",
+   "status": "PASS",
+   "detail": {
+    "flash": "Tanggapan berhasil dikirim.",
+    "kartuClose": true,
+    "xss": false,
+    "teks": true
+   }
+  },
+  {
+   "id": "show-superadmin-tombol-selesai-sentuh-390",
+   "status": "PASS",
+   "detail": [
+    {
+     "sel": ".frmCloseFeedback button[type=submit]",
+     "ada": true,
+     "zoom": 1,
+     "w": 309,
+     "h": 48,
+     "wLayar": 309,
+     "hLayar": 48
+    }
+   ]
+  },
+  {
+   "id": "kontras-show-terang",
+   "status": "PASS",
+   "detail": {
+    "minimum": 5.38,
+    "n": 12
+   }
+  },
+  {
+   "id": "kontras-show-gelap",
+   "status": "PASS",
+   "detail": {
+    "minimum": 6.79,
+    "n": 12
+   }
+  },
+  {
+   "id": "kontrak-dom-show",
+   "status": "PASS",
+   "detail": [
+    {
+     "sel": "form.frmCloseFeedback input[name=_token]",
+     "n": 1
+    },
+    {
+     "sel": "form[action$=\"/respond\"] input[name=_token]",
+     "n": 1
+    },
+    {
+     "sel": "form[action$=\"/respond\"] textarea[name=response_text][required]",
+     "n": 1
+    },
+    {
+     "sel": ".feedback-disclaimer",
+     "n": 1
+    },
+    {
+     "sel": "[role=heading][aria-level=\"2\"]",
+     "n": 6
+    }
+   ]
+  },
+  {
+   "id": "close-swal-ui",
+   "status": "PASS",
+   "detail": {
+    "navigasi": true
+   }
+  },
+  {
+   "id": "inbox-datatables-badge-tw",
+   "status": "PASS",
+   "detail": {
+    "wrapper": true,
+    "paginasi": true,
+    "panjang": true,
+    "tabel": "table table-bordered table-hover table-striped mb-0 dataTable no-footer dtr-inline ts-card-table",
+    "badgeTw": 30,
+    "badgeLegacy": 0,
+    "twCss": 1
+   }
+  },
+  {
+   "id": "kontras-inbox-terang",
+   "status": "PASS",
+   "detail": {
+    "minimum": 4.81,
+    "n": 12
+   }
+  }
+ ],
+ "galat": [],
+ "tab_terang": [
+  {
+   "el": "a",
+   "dalamContent": true,
+   "fokusVisible": true,
+   "outline": "solid 1.25px",
+   "outlineOffset": "1.25px",
+   "warna": "#92232b",
+   "rasioOutline": 7.46,
+   "boxShadow": "none"
+  },
+  {
+   "el": "select#selCategory[name=category]",
+   "dalamContent": true,
+   "fokusVisible": true,
+   "outline": "solid 1.25px",
+   "outlineOffset": "1.25px",
+   "warna": "#92232b",
+   "rasioOutline": 8.41,
+   "boxShadow": "none"
+  },
+  {
+   "el": "input#title[name=title]",
+   "dalamContent": true,
+   "fokusVisible": true,
+   "outline": "solid 1.25px",
+   "outlineOffset": "1.25px",
+   "warna": "#92232b",
+   "rasioOutline": 8.41,
+   "boxShadow": "none"
+  },
+  {
+   "el": "textarea#inpMessage[name=message]",
+   "dalamContent": true,
+   "fokusVisible": true,
+   "outline": "solid 1.25px",
+   "outlineOffset": "1.25px",
+   "warna": "#92232b",
+   "rasioOutline": 8.41,
+   "boxShadow": "none"
+  },
+  {
+   "el": "input#chkWilling[name=willing_to_discuss]",
+   "dalamContent": true,
+   "fokusVisible": true,
+   "outline": "solid 1.25px",
+   "outlineOffset": "1.25px",
+   "warna": "#92232b",
+   "rasioOutline": 7.8,
+   "boxShadow": "none"
+  },
+  {
+   "el": "input#inpWhatsapp[name=whatsapp_number]",
+   "dalamContent": true,
+   "fokusVisible": true,
+   "outline": "solid 1.25px",
+   "outlineOffset": "1.25px",
+   "warna": "#92232b",
+   "rasioOutline": 8.41,
+   "boxShadow": "none"
+  },
+  {
+   "el": "a",
+   "dalamContent": true,
+   "fokusVisible": true,
+   "outline": "solid 1.25px",
+   "outlineOffset": "1.25px",
+   "warna": "#92232b",
+   "rasioOutline": 7.8,
+   "boxShadow": "none"
+  },
+  {
+   "el": "button",
+   "dalamContent": true,
+   "fokusVisible": true,
+   "outline": "solid 1.25px",
+   "outlineOffset": "1.25px",
+   "warna": "#92232b",
+   "rasioOutline": 7.8,
+   "boxShadow": "ada"
+  }
+ ],
+ "tab_gelap": [
+  {
+   "el": "a",
+   "dalamContent": true,
+   "fokusVisible": true,
+   "outline": "solid 1.25px",
+   "outlineOffset": "1.25px",
+   "warna": "#e2949a",
+   "rasioOutline": 7.96,
+   "boxShadow": "none"
+  },
+  {
+   "el": "select#selCategory[name=category]",
+   "dalamContent": true,
+   "fokusVisible": true,
+   "outline": "solid 1.25px",
+   "outlineOffset": "1.25px",
+   "warna": "#e2949a",
+   "rasioOutline": 7.38,
+   "boxShadow": "none"
+  },
+  {
+   "el": "input#title[name=title]",
+   "dalamContent": true,
+   "fokusVisible": true,
+   "outline": "solid 1.25px",
+   "outlineOffset": "1.25px",
+   "warna": "#e2949a",
+   "rasioOutline": 7.38,
+   "boxShadow": "none"
+  },
+  {
+   "el": "textarea#inpMessage[name=message]",
+   "dalamContent": true,
+   "fokusVisible": true,
+   "outline": "solid 1.25px",
+   "outlineOffset": "1.25px",
+   "warna": "#e2949a",
+   "rasioOutline": 7.38,
+   "boxShadow": "none"
+  },
+  {
+   "el": "input#chkWilling[name=willing_to_discuss]",
+   "dalamContent": true,
+   "fokusVisible": true,
+   "outline": "solid 1.25px",
+   "outlineOffset": "1.25px",
+   "warna": "#92232b",
+   "rasioOutline": 1.91,
+   "boxShadow": "none"
+  },
+  {
+   "el": "input#inpWhatsapp[name=whatsapp_number]",
+   "dalamContent": true,
+   "fokusVisible": true,
+   "outline": "solid 1.25px",
+   "outlineOffset": "1.25px",
+   "warna": "#e2949a",
+   "rasioOutline": 7.38,
+   "boxShadow": "none"
+  },
+  {
+   "el": "a",
+   "dalamContent": true,
+   "fokusVisible": true,
+   "outline": "solid 1.25px",
+   "outlineOffset": "1.25px",
+   "warna": "#e2949a",
+   "rasioOutline": 6.82,
+   "boxShadow": "none"
+  },
+  {
+   "el": "button",
+   "dalamContent": true,
+   "fokusVisible": true,
+   "outline": "solid 1.25px",
+   "outlineOffset": "1.25px",
+   "warna": "#e2949a",
+   "rasioOutline": 6.82,
+   "boxShadow": "ada"
+  }
+ ],
+ "kontrasDetail": {
+  "terang": [
+   {
+    "nama": "label",
+    "sel": ".content label[for=selCategory], .content label[for=title]",
+    "ada": true,
+    "teks": "Kategori *",
+    "fg": "#5a4f51",
+    "bg": "#ffffff",
+    "rasio": 7.86,
+    "batas": 4.5
+   },
+   {
+    "nama": "label",
+    "sel": ".content label[for=selCategory], .content label[for=title]",
+    "ada": true,
+    "teks": "Judul *",
+    "fg": "#5a4f51",
+    "bg": "#ffffff",
+    "rasio": 7.86,
+    "batas": 4.5
+   },
+   {
+    "nama": "select-teks",
+    "sel": "#selCategory",
+    "ada": true,
+    "teks": "-- Pilih Kategori --\n   ",
+    "fg": "#25181b",
+    "bg": "#ffffff",
+    "rasio": 17.14,
+    "batas": 4.5
+   },
+   {
+    "nama": "input-teks",
+    "sel": "input#title",
+    "ada": true,
+    "teks": "",
+    "fg": "#25181b",
+    "bg": "#ffffff",
+    "rasio": 17.14,
+    "batas": 4.5
+   },
+   {
+    "nama": "placeholder",
+    "sel": "input#title",
+    "ada": true,
+    "teks": "",
+    "fg": "#6f6466",
+    "bg": "#ffffff",
+    "rasio": 5.69,
+    "batas": 4.5
+   },
+   {
+    "nama": "tombol-primer",
+    "sel": "#frmFeedback button[type=submit]",
+    "ada": true,
+    "teks": "Kirim Submission",
+    "fg": "#ffffff",
+    "bg": "#92232b",
+    "rasio": 8.41,
+    "batas": 4.5
+   },
+   {
+    "nama": "tombol-kembali",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Kembali ke daftar",
+    "fg": "#25181b",
+    "bg": "#ffffff",
+    "rasio": 17.14,
+    "batas": 4.5
+   },
+   {
+    "nama": "tombol-kembali",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Batal",
+    "fg": "#25181b",
+    "bg": "#ffffff",
+    "rasio": 17.14,
+    "batas": 4.5
+   },
+   {
+    "nama": "kartu-teks",
+    "sel": ".content label[for=selCategory]",
+    "ada": true,
+    "teks": "Kategori *",
+    "fg": "#5a4f51",
+    "bg": "#ffffff",
+    "rasio": 7.86,
+    "batas": 4.5
+   },
+   {
+    "nama": "hint",
+    "sel": "#inpWhatsapp-hint",
+    "ada": true,
+    "teks": "Akan dihubungi oleh CEO ",
+    "fg": "#5a4f51",
+    "bg": "#ffffff",
+    "rasio": 7.86,
+    "batas": 4.5
+   },
+   {
+    "nama": "placeholder-wa",
+    "sel": "input#inpWhatsapp",
+    "ada": true,
+    "teks": "",
+    "fg": "#6f6466",
+    "bg": "#ffffff",
+    "rasio": 5.69,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "29 submission",
+    "fg": "#5a4f51",
+    "bg": "#f8f6f5",
+    "rasio": 7.3,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Suggestion",
+    "fg": "#42627d",
+    "bg": "#e6ecf1",
+    "rasio": 5.38,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Tidak",
+    "fg": "#5a4f51",
+    "bg": "#f8f6f5",
+    "rasio": 7.3,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Closed",
+    "fg": "#47705a",
+    "bg": "#e8efea",
+    "rasio": 4.81,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Suggestion",
+    "fg": "#42627d",
+    "bg": "#e6ecf1",
+    "rasio": 5.38,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Tidak",
+    "fg": "#5a4f51",
+    "bg": "#f8f6f5",
+    "rasio": 7.3,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Closed",
+    "fg": "#47705a",
+    "bg": "#e8efea",
+    "rasio": 4.81,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Suggestion",
+    "fg": "#42627d",
+    "bg": "#e6ecf1",
+    "rasio": 5.38,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Tidak",
+    "fg": "#5a4f51",
+    "bg": "#f8f6f5",
+    "rasio": 7.3,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Closed",
+    "fg": "#47705a",
+    "bg": "#e8efea",
+    "rasio": 4.81,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Criticism",
+    "fg": "#9a3030",
+    "bg": "#f4e6e6",
+    "rasio": 6.1,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Ya",
+    "fg": "#47705a",
+    "bg": "#e8efea",
+    "rasio": 4.81,
+    "batas": 4.5
+   },
+   {
+    "nama": "th",
+    "sel": ".content thead th",
+    "ada": true,
+    "teks": "Judul",
+    "fg": "#5a4f51",
+    "bg": "#f8f6f5",
+    "rasio": 7.3,
+    "batas": 4.5
+   },
+   {
+    "nama": "th",
+    "sel": ".content thead th",
+    "ada": true,
+    "teks": "Kategori",
+    "fg": "#5a4f51",
+    "bg": "#f8f6f5",
+    "rasio": 7.3,
+    "batas": 4.5
+   },
+   {
+    "nama": "th",
+    "sel": ".content thead th",
+    "ada": true,
+    "teks": "Bersedia Diskusi",
+    "fg": "#5a4f51",
+    "bg": "#f8f6f5",
+    "rasio": 7.3,
+    "batas": 4.5
+   },
+   {
+    "nama": "th",
+    "sel": ".content thead th",
+    "ada": true,
+    "teks": "Status",
+    "fg": "#5a4f51",
+    "bg": "#f8f6f5",
+    "rasio": 7.3,
+    "batas": 4.5
+   },
+   {
+    "nama": "th",
+    "sel": ".content thead th",
+    "ada": true,
+    "teks": "Aksi",
+    "fg": "#5a4f51",
+    "bg": "#f8f6f5",
+    "rasio": 7.3,
+    "batas": 4.5
+   },
+   {
+    "nama": "td",
+    "sel": ".content tbody td",
+    "ada": true,
+    "teks": "<i id=\"xss-uji\">F3 QA</i",
+    "fg": "#25181b",
+    "bg": "#ffffff",
+    "rasio": 17.14,
+    "batas": 4.5
+   },
+   {
+    "nama": "td",
+    "sel": ".content tbody td",
+    "ada": true,
+    "teks": "Suggestion",
+    "fg": "#25181b",
+    "bg": "#ffffff",
+    "rasio": 17.14,
+    "batas": 4.5
+   },
+   {
+    "nama": "td",
+    "sel": ".content tbody td",
+    "ada": true,
+    "teks": "Tidak",
+    "fg": "#25181b",
+    "bg": "#ffffff",
+    "rasio": 17.14,
+    "batas": 4.5
+   },
+   {
+    "nama": "td",
+    "sel": ".content tbody td",
+    "ada": true,
+    "teks": "Closed",
+    "fg": "#25181b",
+    "bg": "#ffffff",
+    "rasio": 17.14,
+    "batas": 4.5
+   },
+   {
+    "nama": "td",
+    "sel": ".content tbody td",
+    "ada": true,
+    "teks": "Lihat",
+    "fg": "#25181b",
+    "bg": "#ffffff",
+    "rasio": 17.14,
+    "batas": 4.5
+   },
+   {
+    "nama": "td",
+    "sel": ".content tbody td",
+    "ada": true,
+    "teks": "<i id=\"xss-uji\">F3 QA</i",
+    "fg": "#25181b",
+    "bg": "#ffffff",
+    "rasio": 17.14,
+    "batas": 4.5
+   },
+   {
+    "nama": "tombol-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Buat Submission",
+    "fg": "#ffffff",
+    "bg": "#92232b",
+    "rasio": 8.41,
+    "batas": 4.5
+   },
+   {
+    "nama": "tombol-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Lihat",
+    "fg": "#5a4f51",
+    "bg": "#ffffff",
+    "rasio": 7.86,
+    "batas": 4.5
+   },
+   {
+    "nama": "tombol-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Lihat",
+    "fg": "#5a4f51",
+    "bg": "#ffffff",
+    "rasio": 7.86,
+    "batas": 4.5
+   },
+   {
+    "nama": "tombol-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Lihat",
+    "fg": "#5a4f51",
+    "bg": "#ffffff",
+    "rasio": 7.86,
+    "batas": 4.5
+   },
+   {
+    "nama": "tombol-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Lihat",
+    "fg": "#5a4f51",
+    "bg": "#ffffff",
+    "rasio": 7.86,
+    "batas": 4.5
+   },
+   {
+    "nama": "tombol-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Lihat",
+    "fg": "#5a4f51",
+    "bg": "#ffffff",
+    "rasio": 7.86,
+    "batas": 4.5
+   }
+  ],
+  "gelap": [
+   {
+    "nama": "label",
+    "sel": ".content label[for=selCategory], .content label[for=title]",
+    "ada": true,
+    "teks": "Kategori *",
+    "fg": "#a8a8b0",
+    "bg": "#1a1a1e",
+    "rasio": 7.35,
+    "batas": 4.5
+   },
+   {
+    "nama": "label",
+    "sel": ".content label[for=selCategory], .content label[for=title]",
+    "ada": true,
+    "teks": "Judul *",
+    "fg": "#a8a8b0",
+    "bg": "#1a1a1e",
+    "rasio": 7.35,
+    "batas": 4.5
+   },
+   {
+    "nama": "select-teks",
+    "sel": "#selCategory",
+    "ada": true,
+    "teks": "-- Pilih Kategori --\n   ",
+    "fg": "#e8e8ea",
+    "bg": "#1a1a1e",
+    "rasio": 14.18,
+    "batas": 4.5
+   },
+   {
+    "nama": "input-teks",
+    "sel": "input#title",
+    "ada": true,
+    "teks": "",
+    "fg": "#e8e8ea",
+    "bg": "#1a1a1e",
+    "rasio": 14.18,
+    "batas": 4.5
+   },
+   {
+    "nama": "placeholder",
+    "sel": "input#title",
+    "ada": true,
+    "teks": "",
+    "fg": "#86868f",
+    "bg": "#1a1a1e",
+    "rasio": 4.81,
+    "batas": 4.5
+   },
+   {
+    "nama": "tombol-primer",
+    "sel": "#frmFeedback button[type=submit]",
+    "ada": true,
+    "teks": "Kirim Submission",
+    "fg": "#ffffff",
+    "bg": "#92232b",
+    "rasio": 8.41,
+    "batas": 4.5
+   },
+   {
+    "nama": "tombol-kembali",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Kembali ke daftar",
+    "fg": "#e8e8ea",
+    "bg": "#1a1a1e",
+    "rasio": 14.18,
+    "batas": 4.5
+   },
+   {
+    "nama": "tombol-kembali",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Batal",
+    "fg": "#e8e8ea",
+    "bg": "#1a1a1e",
+    "rasio": 14.18,
+    "batas": 4.5
+   },
+   {
+    "nama": "kartu-teks",
+    "sel": ".content label[for=selCategory]",
+    "ada": true,
+    "teks": "Kategori *",
+    "fg": "#a8a8b0",
+    "bg": "#1a1a1e",
+    "rasio": 7.35,
+    "batas": 4.5
+   },
+   {
+    "nama": "hint",
+    "sel": "#inpWhatsapp-hint",
+    "ada": true,
+    "teks": "Akan dihubungi oleh CEO ",
+    "fg": "#a8a8b0",
+    "bg": "#1a1a1e",
+    "rasio": 7.35,
+    "batas": 4.5
+   },
+   {
+    "nama": "placeholder-wa",
+    "sel": "input#inpWhatsapp",
+    "ada": true,
+    "teks": "",
+    "fg": "#86868f",
+    "bg": "#1a1a1e",
+    "rasio": 4.81,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "29 submission",
+    "fg": "#a8a8b0",
+    "bg": "#212126",
+    "rasio": 6.79,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Suggestion",
+    "fg": "#86b0d1",
+    "bg": "#1a242d",
+    "rasio": 6.85,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Tidak",
+    "fg": "#a8a8b0",
+    "bg": "#212126",
+    "rasio": 6.79,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Closed",
+    "fg": "#7fb096",
+    "bg": "#1b2a22",
+    "rasio": 6.11,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Suggestion",
+    "fg": "#86b0d1",
+    "bg": "#1a242d",
+    "rasio": 6.85,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Tidak",
+    "fg": "#a8a8b0",
+    "bg": "#212126",
+    "rasio": 6.79,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Closed",
+    "fg": "#7fb096",
+    "bg": "#1b2a22",
+    "rasio": 6.11,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Suggestion",
+    "fg": "#86b0d1",
+    "bg": "#1a242d",
+    "rasio": 6.85,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Tidak",
+    "fg": "#a8a8b0",
+    "bg": "#212126",
+    "rasio": 6.79,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Closed",
+    "fg": "#7fb096",
+    "bg": "#1b2a22",
+    "rasio": 6.11,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Criticism",
+    "fg": "#d98a8a",
+    "bg": "#2e1c1c",
+    "rasio": 6.12,
+    "batas": 4.5
+   },
+   {
+    "nama": "badge",
+    "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+    "ada": true,
+    "teks": "Ya",
+    "fg": "#7fb096",
+    "bg": "#1b2a22",
+    "rasio": 6.11,
+    "batas": 4.5
+   },
+   {
+    "nama": "th",
+    "sel": ".content thead th",
+    "ada": true,
+    "teks": "Judul",
+    "fg": "#a8a8b0",
+    "bg": "#212126",
+    "rasio": 6.79,
+    "batas": 4.5
+   },
+   {
+    "nama": "th",
+    "sel": ".content thead th",
+    "ada": true,
+    "teks": "Kategori",
+    "fg": "#a8a8b0",
+    "bg": "#212126",
+    "rasio": 6.79,
+    "batas": 4.5
+   },
+   {
+    "nama": "th",
+    "sel": ".content thead th",
+    "ada": true,
+    "teks": "Bersedia Diskusi",
+    "fg": "#a8a8b0",
+    "bg": "#212126",
+    "rasio": 6.79,
+    "batas": 4.5
+   },
+   {
+    "nama": "th",
+    "sel": ".content thead th",
+    "ada": true,
+    "teks": "Status",
+    "fg": "#a8a8b0",
+    "bg": "#212126",
+    "rasio": 6.79,
+    "batas": 4.5
+   },
+   {
+    "nama": "th",
+    "sel": ".content thead th",
+    "ada": true,
+    "teks": "Aksi",
+    "fg": "#a8a8b0",
+    "bg": "#212126",
+    "rasio": 6.79,
+    "batas": 4.5
+   },
+   {
+    "nama": "td",
+    "sel": ".content tbody td",
+    "ada": true,
+    "teks": "<i id=\"xss-uji\">F3 QA</i",
+    "fg": "#e8e8ea",
+    "bg": "#1a1a1e",
+    "rasio": 14.18,
+    "batas": 4.5
+   },
+   {
+    "nama": "td",
+    "sel": ".content tbody td",
+    "ada": true,
+    "teks": "Suggestion",
+    "fg": "#e8e8ea",
+    "bg": "#1a1a1e",
+    "rasio": 14.18,
+    "batas": 4.5
+   },
+   {
+    "nama": "td",
+    "sel": ".content tbody td",
+    "ada": true,
+    "teks": "Tidak",
+    "fg": "#e8e8ea",
+    "bg": "#1a1a1e",
+    "rasio": 14.18,
+    "batas": 4.5
+   },
+   {
+    "nama": "td",
+    "sel": ".content tbody td",
+    "ada": true,
+    "teks": "Closed",
+    "fg": "#e8e8ea",
+    "bg": "#1a1a1e",
+    "rasio": 14.18,
+    "batas": 4.5
+   },
+   {
+    "nama": "td",
+    "sel": ".content tbody td",
+    "ada": true,
+    "teks": "Lihat",
+    "fg": "#e8e8ea",
+    "bg": "#1a1a1e",
+    "rasio": 14.18,
+    "batas": 4.5
+   },
+   {
+    "nama": "td",
+    "sel": ".content tbody td",
+    "ada": true,
+    "teks": "<i id=\"xss-uji\">F3 QA</i",
+    "fg": "#e8e8ea",
+    "bg": "#1a1a1e",
+    "rasio": 14.18,
+    "batas": 4.5
+   },
+   {
+    "nama": "tombol-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Buat Submission",
+    "fg": "#ffffff",
+    "bg": "#92232b",
+    "rasio": 8.41,
+    "batas": 4.5
+   },
+   {
+    "nama": "tombol-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Lihat",
+    "fg": "#a8a8b0",
+    "bg": "#1a1a1e",
+    "rasio": 7.35,
+    "batas": 4.5
+   },
+   {
+    "nama": "tombol-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Lihat",
+    "fg": "#a8a8b0",
+    "bg": "#1a1a1e",
+    "rasio": 7.35,
+    "batas": 4.5
+   },
+   {
+    "nama": "tombol-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Lihat",
+    "fg": "#a8a8b0",
+    "bg": "#1a1a1e",
+    "rasio": 7.35,
+    "batas": 4.5
+   },
+   {
+    "nama": "tombol-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Lihat",
+    "fg": "#a8a8b0",
+    "bg": "#1a1a1e",
+    "rasio": 7.35,
+    "batas": 4.5
+   },
+   {
+    "nama": "tombol-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Lihat",
+    "fg": "#a8a8b0",
+    "bg": "#1a1a1e",
+    "rasio": 7.35,
+    "batas": 4.5
+   }
+  ]
+ },
+ "aksenDetail": [
+  {
+   "hex": "#92232b",
+   "tema": "terang",
+   "tautan": {
+    "nama": "tautan-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Buat Submission",
+    "fg": "#ffffff",
+    "bg": "#92232b",
+    "rasio": 8.41,
+    "batas": 4.5
+   },
+   "tombol": {
+    "nama": "tombol-primer",
+    "sel": "#frmFeedback button[type=submit]",
+    "ada": true,
+    "teks": "Kirim Submission",
+    "fg": "#ffffff",
+    "bg": "#92232b",
+    "rasio": 8.41,
+    "batas": 4.5
+   },
+   "label": {
+    "nama": "label",
+    "sel": ".content label[for=title]",
+    "ada": true,
+    "teks": "Judul *",
+    "fg": "#5a4f51",
+    "bg": "#ffffff",
+    "rasio": 7.86,
+    "batas": 4.5
+   },
+   "fokus": {
+    "fokusVisible": true,
+    "outline": "solid 1.25px",
+    "rasioOutline": 7.8,
+    "accentDiMuat": "#92232b"
+   }
+  },
+  {
+   "hex": "#92232b",
+   "tema": "gelap",
+   "tautan": {
+    "nama": "tautan-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Buat Submission",
+    "fg": "#ffffff",
+    "bg": "#92232b",
+    "rasio": 8.41,
+    "batas": 4.5
+   },
+   "tombol": {
+    "nama": "tombol-primer",
+    "sel": "#frmFeedback button[type=submit]",
+    "ada": true,
+    "teks": "Kirim Submission",
+    "fg": "#ffffff",
+    "bg": "#92232b",
+    "rasio": 8.41,
+    "batas": 4.5
+   },
+   "label": {
+    "nama": "label",
+    "sel": ".content label[for=title]",
+    "ada": true,
+    "teks": "Judul *",
+    "fg": "#a8a8b0",
+    "bg": "#1a1a1e",
+    "rasio": 7.35,
+    "batas": 4.5
+   },
+   "fokus": {
+    "fokusVisible": true,
+    "outline": "solid 1.25px",
+    "rasioOutline": 6.82,
+    "accentDiMuat": "#92232b"
+   }
+  },
+  {
+   "hex": "#1f3a5f",
+   "tema": "terang",
+   "tautan": {
+    "nama": "tautan-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Buat Submission",
+    "fg": "#ffffff",
+    "bg": "#1f3a5f",
+    "rasio": 11.48,
+    "batas": 4.5
+   },
+   "tombol": {
+    "nama": "tombol-primer",
+    "sel": "#frmFeedback button[type=submit]",
+    "ada": true,
+    "teks": "Kirim Submission",
+    "fg": "#ffffff",
+    "bg": "#1f3a5f",
+    "rasio": 11.48,
+    "batas": 4.5
+   },
+   "label": {
+    "nama": "label",
+    "sel": ".content label[for=title]",
+    "ada": true,
+    "teks": "Judul *",
+    "fg": "#5a4f51",
+    "bg": "#ffffff",
+    "rasio": 7.86,
+    "batas": 4.5
+   },
+   "fokus": {
+    "fokusVisible": true,
+    "outline": "solid 1.25px",
+    "rasioOutline": 11.83,
+    "accentDiMuat": "#1f3a5f"
+   }
+  },
+  {
+   "hex": "#1f3a5f",
+   "tema": "gelap",
+   "tautan": {
+    "nama": "tautan-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Buat Submission",
+    "fg": "#ffffff",
+    "bg": "#1f3a5f",
+    "rasio": 11.48,
+    "batas": 4.5
+   },
+   "tombol": {
+    "nama": "tombol-primer",
+    "sel": "#frmFeedback button[type=submit]",
+    "ada": true,
+    "teks": "Kirim Submission",
+    "fg": "#ffffff",
+    "bg": "#1f3a5f",
+    "rasio": 11.48,
+    "batas": 4.5
+   },
+   "label": {
+    "nama": "label",
+    "sel": ".content label[for=title]",
+    "ada": true,
+    "teks": "Judul *",
+    "fg": "#a8a8b0",
+    "bg": "#1a1a1e",
+    "rasio": 7.35,
+    "batas": 4.5
+   },
+   "fokus": {
+    "fokusVisible": true,
+    "outline": "solid 1.25px",
+    "rasioOutline": 5.12,
+    "accentDiMuat": "#1f3a5f"
+   }
+  },
+  {
+   "hex": "#0f6e66",
+   "tema": "terang",
+   "tautan": {
+    "nama": "tautan-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Buat Submission",
+    "fg": "#ffffff",
+    "bg": "#0f6e66",
+    "rasio": 6.1,
+    "batas": 4.5
+   },
+   "tombol": {
+    "nama": "tombol-primer",
+    "sel": "#frmFeedback button[type=submit]",
+    "ada": true,
+    "teks": "Kirim Submission",
+    "fg": "#ffffff",
+    "bg": "#0f6e66",
+    "rasio": 6.1,
+    "batas": 4.5
+   },
+   "label": {
+    "nama": "label",
+    "sel": ".content label[for=title]",
+    "ada": true,
+    "teks": "Judul *",
+    "fg": "#5a4f51",
+    "bg": "#ffffff",
+    "rasio": 7.86,
+    "batas": 4.5
+   },
+   "fokus": {
+    "fokusVisible": true,
+    "outline": "solid 1.25px",
+    "rasioOutline": 6.78,
+    "accentDiMuat": "#0f6e66"
+   }
+  },
+  {
+   "hex": "#0f6e66",
+   "tema": "gelap",
+   "tautan": {
+    "nama": "tautan-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Buat Submission",
+    "fg": "#ffffff",
+    "bg": "#0f6e66",
+    "rasio": 6.1,
+    "batas": 4.5
+   },
+   "tombol": {
+    "nama": "tombol-primer",
+    "sel": "#frmFeedback button[type=submit]",
+    "ada": true,
+    "teks": "Kirim Submission",
+    "fg": "#ffffff",
+    "bg": "#0f6e66",
+    "rasio": 6.1,
+    "batas": 4.5
+   },
+   "label": {
+    "nama": "label",
+    "sel": ".content label[for=title]",
+    "ada": true,
+    "teks": "Judul *",
+    "fg": "#a8a8b0",
+    "bg": "#1a1a1e",
+    "rasio": 7.35,
+    "batas": 4.5
+   },
+   "fokus": {
+    "fokusVisible": true,
+    "outline": "solid 1.25px",
+    "rasioOutline": 6.54,
+    "accentDiMuat": "#0f6e66"
+   }
+  },
+  {
+   "hex": "#2f6d43",
+   "tema": "terang",
+   "tautan": {
+    "nama": "tautan-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Buat Submission",
+    "fg": "#ffffff",
+    "bg": "#2f6d43",
+    "rasio": 6.2,
+    "batas": 4.5
+   },
+   "tombol": {
+    "nama": "tombol-primer",
+    "sel": "#frmFeedback button[type=submit]",
+    "ada": true,
+    "teks": "Kirim Submission",
+    "fg": "#ffffff",
+    "bg": "#2f6d43",
+    "rasio": 6.2,
+    "batas": 4.5
+   },
+   "label": {
+    "nama": "label",
+    "sel": ".content label[for=title]",
+    "ada": true,
+    "teks": "Judul *",
+    "fg": "#5a4f51",
+    "bg": "#ffffff",
+    "rasio": 7.86,
+    "batas": 4.5
+   },
+   "fokus": {
+    "fokusVisible": true,
+    "outline": "solid 1.25px",
+    "rasioOutline": 6.89,
+    "accentDiMuat": "#2f6d43"
+   }
+  },
+  {
+   "hex": "#2f6d43",
+   "tema": "gelap",
+   "tautan": {
+    "nama": "tautan-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Buat Submission",
+    "fg": "#ffffff",
+    "bg": "#2f6d43",
+    "rasio": 6.2,
+    "batas": 4.5
+   },
+   "tombol": {
+    "nama": "tombol-primer",
+    "sel": "#frmFeedback button[type=submit]",
+    "ada": true,
+    "teks": "Kirim Submission",
+    "fg": "#ffffff",
+    "bg": "#2f6d43",
+    "rasio": 6.2,
+    "batas": 4.5
+   },
+   "label": {
+    "nama": "label",
+    "sel": ".content label[for=title]",
+    "ada": true,
+    "teks": "Judul *",
+    "fg": "#a8a8b0",
+    "bg": "#1a1a1e",
+    "rasio": 7.35,
+    "batas": 4.5
+   },
+   "fokus": {
+    "fokusVisible": true,
+    "outline": "solid 1.25px",
+    "rasioOutline": 6.65,
+    "accentDiMuat": "#2f6d43"
+   }
+  },
+  {
+   "hex": "#3d3a8c",
+   "tema": "terang",
+   "tautan": {
+    "nama": "tautan-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Buat Submission",
+    "fg": "#ffffff",
+    "bg": "#3d3a8c",
+    "rasio": 9.62,
+    "batas": 4.5
+   },
+   "tombol": {
+    "nama": "tombol-primer",
+    "sel": "#frmFeedback button[type=submit]",
+    "ada": true,
+    "teks": "Kirim Submission",
+    "fg": "#ffffff",
+    "bg": "#3d3a8c",
+    "rasio": 9.62,
+    "batas": 4.5
+   },
+   "label": {
+    "nama": "label",
+    "sel": ".content label[for=title]",
+    "ada": true,
+    "teks": "Judul *",
+    "fg": "#5a4f51",
+    "bg": "#ffffff",
+    "rasio": 7.86,
+    "batas": 4.5
+   },
+   "fokus": {
+    "fokusVisible": true,
+    "outline": "solid 1.25px",
+    "rasioOutline": 10.17,
+    "accentDiMuat": "#3d3a8c"
+   }
+  },
+  {
+   "hex": "#3d3a8c",
+   "tema": "gelap",
+   "tautan": {
+    "nama": "tautan-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Buat Submission",
+    "fg": "#ffffff",
+    "bg": "#3d3a8c",
+    "rasio": 9.62,
+    "batas": 4.5
+   },
+   "tombol": {
+    "nama": "tombol-primer",
+    "sel": "#frmFeedback button[type=submit]",
+    "ada": true,
+    "teks": "Kirim Submission",
+    "fg": "#ffffff",
+    "bg": "#3d3a8c",
+    "rasio": 9.62,
+    "batas": 4.5
+   },
+   "label": {
+    "nama": "label",
+    "sel": ".content label[for=title]",
+    "ada": true,
+    "teks": "Judul *",
+    "fg": "#a8a8b0",
+    "bg": "#1a1a1e",
+    "rasio": 7.35,
+    "batas": 4.5
+   },
+   "fokus": {
+    "fokusVisible": true,
+    "outline": "solid 1.25px",
+    "rasioOutline": 5.49,
+    "accentDiMuat": "#3d3a8c"
+   }
+  },
+  {
+   "hex": "#3f4a59",
+   "tema": "terang",
+   "tautan": {
+    "nama": "tautan-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Buat Submission",
+    "fg": "#ffffff",
+    "bg": "#3f4a59",
+    "rasio": 8.99,
+    "batas": 4.5
+   },
+   "tombol": {
+    "nama": "tombol-primer",
+    "sel": "#frmFeedback button[type=submit]",
+    "ada": true,
+    "teks": "Kirim Submission",
+    "fg": "#ffffff",
+    "bg": "#3f4a59",
+    "rasio": 8.99,
+    "batas": 4.5
+   },
+   "label": {
+    "nama": "label",
+    "sel": ".content label[for=title]",
+    "ada": true,
+    "teks": "Judul *",
+    "fg": "#5a4f51",
+    "bg": "#ffffff",
+    "rasio": 7.86,
+    "batas": 4.5
+   },
+   "fokus": {
+    "fokusVisible": true,
+    "outline": "solid 1.25px",
+    "rasioOutline": 9.61,
+    "accentDiMuat": "#3f4a59"
+   }
+  },
+  {
+   "hex": "#3f4a59",
+   "tema": "gelap",
+   "tautan": {
+    "nama": "tautan-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Buat Submission",
+    "fg": "#ffffff",
+    "bg": "#3f4a59",
+    "rasio": 8.99,
+    "batas": 4.5
+   },
+   "tombol": {
+    "nama": "tombol-primer",
+    "sel": "#frmFeedback button[type=submit]",
+    "ada": true,
+    "teks": "Kirim Submission",
+    "fg": "#ffffff",
+    "bg": "#3f4a59",
+    "rasio": 8.99,
+    "batas": 4.5
+   },
+   "label": {
+    "nama": "label",
+    "sel": ".content label[for=title]",
+    "ada": true,
+    "teks": "Judul *",
+    "fg": "#a8a8b0",
+    "bg": "#1a1a1e",
+    "rasio": 7.35,
+    "batas": 4.5
+   },
+   "fokus": {
+    "fokusVisible": true,
+    "outline": "solid 1.25px",
+    "rasioOutline": 5.73,
+    "accentDiMuat": "#3f4a59"
+   }
+  },
+  {
+   "hex": "#9a4a23",
+   "tema": "terang",
+   "tautan": {
+    "nama": "tautan-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Buat Submission",
+    "fg": "#ffffff",
+    "bg": "#9a4a23",
+    "rasio": 6.22,
+    "batas": 4.5
+   },
+   "tombol": {
+    "nama": "tombol-primer",
+    "sel": "#frmFeedback button[type=submit]",
+    "ada": true,
+    "teks": "Kirim Submission",
+    "fg": "#ffffff",
+    "bg": "#9a4a23",
+    "rasio": 6.22,
+    "batas": 4.5
+   },
+   "label": {
+    "nama": "label",
+    "sel": ".content label[for=title]",
+    "ada": true,
+    "teks": "Judul *",
+    "fg": "#5a4f51",
+    "bg": "#ffffff",
+    "rasio": 7.86,
+    "batas": 4.5
+   },
+   "fokus": {
+    "fokusVisible": true,
+    "outline": "solid 1.25px",
+    "rasioOutline": 6.91,
+    "accentDiMuat": "#9a4a23"
+   }
+  },
+  {
+   "hex": "#9a4a23",
+   "tema": "gelap",
+   "tautan": {
+    "nama": "tautan-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Buat Submission",
+    "fg": "#ffffff",
+    "bg": "#9a4a23",
+    "rasio": 6.22,
+    "batas": 4.5
+   },
+   "tombol": {
+    "nama": "tombol-primer",
+    "sel": "#frmFeedback button[type=submit]",
+    "ada": true,
+    "teks": "Kirim Submission",
+    "fg": "#ffffff",
+    "bg": "#9a4a23",
+    "rasio": 6.22,
+    "batas": 4.5
+   },
+   "label": {
+    "nama": "label",
+    "sel": ".content label[for=title]",
+    "ada": true,
+    "teks": "Judul *",
+    "fg": "#a8a8b0",
+    "bg": "#1a1a1e",
+    "rasio": 7.35,
+    "batas": 4.5
+   },
+   "fokus": {
+    "fokusVisible": true,
+    "outline": "solid 1.25px",
+    "rasioOutline": 6.46,
+    "accentDiMuat": "#9a4a23"
+   }
+  },
+  {
+   "hex": "#6a2a63",
+   "tema": "terang",
+   "tautan": {
+    "nama": "tautan-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Buat Submission",
+    "fg": "#ffffff",
+    "bg": "#6a2a63",
+    "rasio": 9.89,
+    "batas": 4.5
+   },
+   "tombol": {
+    "nama": "tombol-primer",
+    "sel": "#frmFeedback button[type=submit]",
+    "ada": true,
+    "teks": "Kirim Submission",
+    "fg": "#ffffff",
+    "bg": "#6a2a63",
+    "rasio": 9.89,
+    "batas": 4.5
+   },
+   "label": {
+    "nama": "label",
+    "sel": ".content label[for=title]",
+    "ada": true,
+    "teks": "Judul *",
+    "fg": "#5a4f51",
+    "bg": "#ffffff",
+    "rasio": 7.86,
+    "batas": 4.5
+   },
+   "fokus": {
+    "fokusVisible": true,
+    "outline": "solid 1.25px",
+    "rasioOutline": 10.44,
+    "accentDiMuat": "#6a2a63"
+   }
+  },
+  {
+   "hex": "#6a2a63",
+   "tema": "gelap",
+   "tautan": {
+    "nama": "tautan-buat",
+    "sel": ".content a.tw\\:inline-flex[href]",
+    "ada": true,
+    "teks": "Buat Submission",
+    "fg": "#ffffff",
+    "bg": "#6a2a63",
+    "rasio": 9.89,
+    "batas": 4.5
+   },
+   "tombol": {
+    "nama": "tombol-primer",
+    "sel": "#frmFeedback button[type=submit]",
+    "ada": true,
+    "teks": "Kirim Submission",
+    "fg": "#ffffff",
+    "bg": "#6a2a63",
+    "rasio": 9.89,
+    "batas": 4.5
+   },
+   "label": {
+    "nama": "label",
+    "sel": ".content label[for=title]",
+    "ada": true,
+    "teks": "Judul *",
+    "fg": "#a8a8b0",
+    "bg": "#1a1a1e",
+    "rasio": 7.35,
+    "batas": 4.5
+   },
+   "fokus": {
+    "fokusVisible": true,
+    "outline": "solid 1.25px",
+    "rasioOutline": 5.33,
+    "accentDiMuat": "#6a2a63"
+   }
+  }
+ ],
+ "kontrasShow": [
+  {
+   "nama": "badge",
+   "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+   "ada": true,
+   "teks": "Responded",
+   "fg": "#42627d",
+   "bg": "#e6ecf1",
+   "rasio": 5.38,
+   "batas": 4.5
+  },
+  {
+   "nama": "badge",
+   "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+   "ada": true,
+   "teks": "Suggestion",
+   "fg": "#42627d",
+   "bg": "#e6ecf1",
+   "rasio": 5.38,
+   "batas": 4.5
+  },
+  {
+   "nama": "badge",
+   "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+   "ada": true,
+   "teks": "Suggestion",
+   "fg": "#42627d",
+   "bg": "#e6ecf1",
+   "rasio": 5.38,
+   "batas": 4.5
+  },
+  {
+   "nama": "badge",
+   "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+   "ada": true,
+   "teks": "Responded",
+   "fg": "#42627d",
+   "bg": "#e6ecf1",
+   "rasio": 5.38,
+   "batas": 4.5
+  },
+  {
+   "nama": "badge",
+   "sel": ".content .tw\\:rounded-pill:not([aria-hidden=true])",
+   "ada": true,
+   "teks": "Tidak",
+   "fg": "#5a4f51",
+   "bg": "#f8f6f5",
+   "rasio": 7.3,
+   "batas": 4.5
+  },
+  {
+   "nama": "tombol-selesai",
+   "sel": ".frmCloseFeedback button",
+   "ada": true,
+   "teks": "Tandai Selesai (Closed)",
+   "fg": "#25181b",
+   "bg": "#ffffff",
+   "rasio": 17.14,
+   "batas": 4.5
+  },
+  {
+   "nama": "header-kartu",
+   "sel": ".content [role=heading]",
+   "ada": true,
+   "teks": "<i id=\"xss-uji\">F3 QA</i",
+   "fg": "#25181b",
+   "bg": "#f3f1ef",
+   "rasio": 15.21,
+   "batas": 4.5
+  },
+  {
+   "nama": "header-kartu",
+   "sel": ".content [role=heading]",
+   "ada": true,
+   "teks": "Isi Submission",
+   "fg": "#25181b",
+   "bg": "#ffffff",
+   "rasio": 17.14,
+   "batas": 4.5
+  },
+  {
+   "nama": "header-kartu",
+   "sel": ".content [role=heading]",
+   "ada": true,
+   "teks": "Tanggapan CEO",
+   "fg": "#25181b",
+   "bg": "#ffffff",
+   "rasio": 17.14,
+   "batas": 4.5
+  },
+  {
+   "nama": "header-kartu",
+   "sel": ".content [role=heading]",
+   "ada": true,
+   "teks": "Informasi",
+   "fg": "#25181b",
+   "bg": "#ffffff",
+   "rasio": 17.14,
+   "batas": 4.5
+  },
+  {
+   "nama": "header-kartu",
+   "sel": ".content [role=heading]",
+   "ada": true,
+   "teks": "Beri Tanggapan",
+   "fg": "#25181b",
+   "bg": "#ffffff",
+   "rasio": 17.14,
+   "batas": 4.5
+  },
+  {
+   "nama": "header-kartu",
+   "sel": ".content [role=heading]",
+   "ada": true,
+   "teks": "Rahasia & Tidak Memengar",
+   "fg": "#25181b",
+   "bg": "#ffffff",
+   "rasio": 17.14,
+   "batas": 4.5
+  }
+ ],
+ "penghentian": {
+  "pid": 34784,
+  "penanda": "tesys-pages-edge-JcAcYH",
+  "keluarSendiri": true,
+  "menungguSisaMs": 3851,
+  "sisaProsesPenanda": 0,
+  "userDirDihapus": true
+ }
+}

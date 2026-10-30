@@ -581,28 +581,40 @@ class TroubleTicketController extends Controller
         $bolehAlihkan = $this->workflow->canReassignBy($user, $ticket);
 
         /* Isi draft settlement yang SUDAH tersimpan, supaya modalnya boleh
-           diisi sebagian lalu dilanjutkan lain waktu (20 Okt 2026): tanpa ini
-           form selalu kembali ke nilai Request dan pekerjaan sebelumnya tidak
-           terlihat. Dikunci per request_detail_id — satu baris realisasi per
-           item, persis yang ditulis syncRealizations(). */
-        $settleDetails = $bolehSettle
-            ? $settleCr->details()->where('status', '!=', 'TAKEOUT')->orderBy('id')->get()
-            : collect();
+           diisi sebagian lalu dilanjutkan lain waktu (20 Okt 2026). Sejak
+           Settlement Custom COA (25 Okt 2026) baris boleh dipecah / pindah Sub
+           COA / ditambah, jadi isinya dari BudgetRequest::settlementFormRows()
+           — sumber yang sama dengan halaman Submit Settlement. */
+        if ($bolehSettle) {
+            $settleCr->loadMissing(['type', 'details.account', 'realizations.attachments']);
+        }
 
-        $settleDrafts = $bolehSettle
-            ? $settleCr->realizations()->withCount('attachments')->get()->keyBy('request_detail_id')
-            : collect();
+        $settleRows = $bolehSettle ? $settleCr->settlementFormRows() : collect();
+        $settleSubItems = $bolehSettle ? $settleCr->settlementSubItemOptions() : collect();
 
-        /* Tanda tangan disimpan sebagai lampiran global bernama
-           "ttd-<nomor baris>-<kode CR>.png" (storeSettlementSignatures), jadi
-           nomor barisnya dibaca kembali dari nama berkas itu. */
-        $settleSignedRows = $bolehSettle
-            ? $settleCr->realizationAttachments()
+        /* Tanda tangan disimpan sebagai lampiran global (storeSettlementSignatures):
+           format baru "ttd-r<id baris realisasi>-<kode CR>.png" dikunci ke baris
+           tersimpan; format lama "ttd-<nomor item>-<kode CR>.png" (nomor urut
+           item non-TAKEOUT) dibaca sebagai milik baris pertama item itu. */
+        $settleSignedIds = [];
+        if ($bolehSettle) {
+            $namaTtd = $settleCr->realizationAttachments()
                 ->where('original_name', 'like', 'ttd-%-' . $settleCr->code . '.png')
-                ->pluck('original_name')
-                ->map(fn ($n) => (int) explode('-', $n)[1])
-                ->all()
-            : [];
+                ->pluck('original_name');
+            $itemPerNomor = $settleCr->details->reject(fn ($d) => $d->isTakenOut())->values()
+                ->mapWithKeys(fn ($d, $pos) => [$pos + 1 => (int) $d->id]);
+
+            foreach ($namaTtd as $nama) {
+                if (preg_match('/^ttd-r(\d+)-/', $nama, $m)) {
+                    $settleSignedIds[] = (int) $m[1];
+                } elseif (preg_match('/^ttd-(\d+)-/', $nama, $m) && ($detailId = $itemPerNomor[(int) $m[1]] ?? null)) {
+                    $pertama = $settleRows->first(fn ($r) => $r['id'] && $r['detail'] && (int) $r['detail']->id === $detailId);
+                    if ($pertama) {
+                        $settleSignedIds[] = (int) $pertama['id'];
+                    }
+                }
+            }
+        }
 
         return view('trouble-ticket.show', [
             'ticket' => $ticket,
@@ -655,9 +667,9 @@ class TroubleTicketController extends Controller
             'canSettle' => $bolehSettle,
             'settleList' => $settleList,
             'settleCr' => $settleCr,
-            'settleDetails' => $settleDetails,
-            'settleDrafts' => $settleDrafts,
-            'settleSignedRows' => $settleSignedRows,
+            'settleRows' => $settleRows,
+            'settleSubItems' => $settleSubItems,
+            'settleSignedIds' => $settleSignedIds,
             // Form close: semua peran yang boleh melihat tiket (20 Okt 2026).
             'canClose' => $this->workflow->canClose($user, $ticket),
             'canMessage' => $this->workflow->canMessage($user, $ticket),

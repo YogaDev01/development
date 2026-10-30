@@ -1,6 +1,7 @@
 @push('styles')
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
-.badge-purple        { color:#fff; background-color:var(--purple); }
+.badge-purple       { color:#fff; background-color:var(--purple); }
 .col-wrap-header     { white-space:normal !important; word-break:normal; overflow-wrap:normal; line-height:1.25; text-align:center; }
 .po-mini-badge       { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; line-height:1; padding:0; margin:0 1px; font-size:9px; font-weight:700; border-radius:50%; text-align:center; cursor:default; box-sizing:border-box; border:2px solid transparent; }
 .po-mini-badge:hover { transform:scale(1.08); }
@@ -188,6 +189,50 @@ body.tesys-ui a.po-cell-link:focus { background:var(--charcoal); color:#fff; }
     .prj-sidebar { width:100%; flex:0 0 auto; }
 }
 
+/* Detail PO sebagai panel samping (menempel di kanan, tinggi penuh) bergaya terang seperti
+   drawer Cost Request — markup & JS modal tetap; hanya tampilannya yang berubah. Ditulis
+   dengan ID supaya menang atas .modal-dialog-xxl dan aturan modal di tesys-ui-luxe.css. */
+#mdlDetailProject .modal-dialog {
+    position:absolute; top:0; right:0; bottom:0; margin:0;
+    width:60%; min-width:680px; max-width:100%; height:100%; min-height:0;
+    display:block; transition:transform .25s ease;
+}
+#mdlDetailProject.fade .modal-dialog { transform:translateX(100%); }
+#mdlDetailProject.show .modal-dialog { transform:none; }
+#mdlDetailProject .modal-content { height:100%; max-height:100%; border-radius:0 !important; }
+#mdlDetailProject .modal-body.dm-body { overflow-y:auto; display:block; background:var(--surface) !important; }
+#mdlDetailProject .prj-modal-flex { flex-direction:column; height:auto; min-height:100%; }
+#mdlDetailProject .prj-sidebar {
+    width:100%; flex:0 0 auto; min-height:0; display:block; align-self:auto;
+    background:var(--surface) !important; border-radius:0; border-bottom:1px solid var(--border);
+    padding:20px 24px 14px;
+}
+#mdlDetailProject .prj-sidebar-spacer { display:none; }
+#mdlDetailProject .prj-sidebar .dm-head { margin:0; padding-right:34px; }
+#mdlDetailProject .prj-sidebar .dm-head .dm-code { color:var(--text-faint); letter-spacing:.02em; font-size:11.5px; margin-bottom:3px; }
+#mdlDetailProject .prj-sidebar .dm-head .dm-title { color:var(--text); font-size:18px; margin:0; }
+#mdlDetailProject .prj-sidebar .dm-head .dm-close { top:0; right:0; color:var(--text-muted) !important; }
+#mdlDetailProject .prj-sidebar .dm-head .dm-close:hover { background:var(--surface-2); color:var(--text) !important; }
+#mdlDetailProject .prj-main-panel { overflow:visible; max-height:none; padding:16px 24px 24px !important; }
+
+/* Kartu ringkasan di tab Info (pola kartu "Nilai pengajuan"). */
+#mdlDetailProject .prj-figcard { border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px 18px; background:var(--surface); }
+#mdlDetailProject .prj-fig-label { font-size:12px; color:var(--text-dim); }
+#mdlDetailProject .prj-fig-big { font-size:28px; line-height:1.15; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; margin:2px 0 8px; }
+#mdlDetailProject .prj-fig-chips { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:10px; }
+#mdlDetailProject .prj-fig-val { font-size:13px; font-weight:600; color:var(--text); font-variant-numeric:tabular-nums; }
+#mdlDetailProject .prj-fig-extra { display:flex; flex-wrap:wrap; gap:8px 32px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
+#mdlDetailProject .prj-fig-extra:empty { display:none; }
+#mdlDetailProject .prj-fig-extra hr { display:none; }
+#mdlDetailProject .prj-fig-extra .mb-3 { margin:0 !important; }
+#mdlDetailProject .modal-footer.prj-dm-foot {
+    justify-content:flex-start; background:var(--surface) !important;
+    border-top:1px solid var(--border) !important; padding:12px 24px !important;
+}
+@media (max-width:640px) {
+    #mdlDetailProject .modal-dialog { width:100%; min-width:0; }
+}
+
 /* TAB SUMMARY — clean grid layout */
 .prj-info-grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px 14px; }
 .prj-info-grid-ref { display:grid; grid-template-columns:220px 1fr; gap:12px 14px; }
@@ -273,9 +318,16 @@ body.tesys-ui a.po-cell-link:focus { background:var(--charcoal); color:#fff; }
 .prj-chat-row.mine { align-self:flex-end; flex-direction:row-reverse; text-align:right; }
 .prj-chat-av { width:30px; height:30px; border-radius:50%; background:var(--info-bg); color:var(--text-dim); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; }
 .prj-chat-row.mine .prj-chat-av { background:var(--charcoal); color:#fff; }
+.prj-chat-av { overflow:hidden; }
+.prj-chat-av img { width:100%; height:100%; object-fit:cover; }
 .prj-chat-bubble { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:8px 12px; font-size:12px; }
 .prj-chat-row.mine .prj-chat-bubble { border-color:var(--border); }
 .prj-chat-meta { font-size:10px; color:var(--text-faint); margin-bottom:4px; }
+.prj-log-form { display:flex; gap:8px; align-items:flex-end; margin-top:16px; padding:12px 0; border-top:1px solid var(--border); position:sticky; bottom:0; background:var(--surface); }
+.prj-log-form textarea { font-size:12px; resize:none; flex:1 1 auto; }
+.prj-log-closed { margin-top:16px; padding-top:12px; border-top:1px solid var(--border); font-size:11.5px; color:var(--text-faint); }
+#prjPaneLogs.active { display:flex; flex-direction:column; }
+#prjPaneLogs #prjLogBody { margin-top:auto; }
 .prj-chat-note { margin-top:6px; font-size:11.5px; line-height:1.45; white-space:pre-line; color:var(--text); }
 
 /* ── IMAGE VIEWER (carousel + zoom) ── */
@@ -517,6 +569,7 @@ $(function () {
     | baris yang lolos filter/search saat ini (bukan cuma baris di halaman aktif).
     */
     function moneyFmtPO(v) {
+        if (Math.round(v) === 0) return '-'; // nilai nol di kolom uang tabel daftar = "-"
         var sign = v < 0 ? '-' : '';
         return sign + Math.abs(Math.round(v)).toLocaleString('id-ID');
     }
@@ -2033,23 +2086,13 @@ $(function () {
 
             // Tab Log — gaya chat: log dari user aktif di kanan, lainnya di kiri
             var logHtml = '';
-            (d.logs || []).slice().reverse().forEach(function (l) {
-                var mine = l.user_id && currentUserId && l.user_id === currentUserId;
-                var actor = l.actor || 'System';
-                var initials = actor.trim().split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase() || '?';
-                logHtml += '<div class="prj-chat-row ' + (mine ? 'mine' : '') + '">' +
-                    '<div class="prj-chat-av">' + initials + '</div>' +
-                    '<div>' +
-                        '<div class="prj-chat-meta">' + (mine ? '' : '<strong>' + actor + '</strong> · ') + l.date + '</div>' +
-                        '<div class="prj-chat-bubble">' +
-                            '<span class="badge badge-' + l.action_color + ' px-2 py-1" style="font-size:9px;">' + l.action_label + '</span>' +
-                            (l.status_from && l.status_to ? ' <span style="font-size:10px;opacity:.75;">' + l.status_from + ' → ' + l.status_to + '</span>' : '') +
-                            (l.notes ? '<div class="prj-chat-note">' + l.notes + '</div>' : '') +
-                        '</div>' +
-                    '</div>' +
-                '</div>';
-            });
+            (d.logs || []).slice().reverse().forEach(function (l) { logHtml += renderPrjLogRow(l); });
             $('#prjLogBody').html(logHtml || kosongRingkas('Belum ada riwayat persetujuan.'));
+            // Kotak catatan hanya selama PO belum Closed (server menolak juga).
+            var bisaCatat = d.can_post_log_note !== false;
+            $('#prjLogForm').prop('hidden', !bisaCatat).data('id', d.id);
+            $('#prjLogClosed').prop('hidden', bisaCatat);
+            $('#prjLogInput').val('');
 
             var pendingTab = window._prjPendingTab;
             if (pendingTab && $('#prjDetailTabs a[href="' + pendingTab + '"]').length) {
@@ -2071,8 +2114,234 @@ $(function () {
         });
     }
 
+    /* ── TAB LOG GAYA CHAT (riwayat workflow + catatan bebas) ── */
+    function escPrj(s) { return $('<div>').text(s == null ? '' : String(s)).html(); }
+
+    function renderPrjLogRow(l) {
+        var mine = l.user_id && currentUserId && l.user_id === currentUserId;
+        var isNote = l.kind === 'note';
+        var actor = l.actor || 'System';
+        var initials = actor.trim().split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase() || '?';
+        var isi = isNote
+            ? '<div class="prj-chat-note" style="margin-top:0;">' + escPrj(l.notes) + '</div>'
+            : '<span class="badge badge-' + escPrj(l.action_color) + ' px-2 py-1" style="font-size:9px;">' + escPrj(l.action_label) + '</span>'
+              + (l.status_from && l.status_to ? ' <span style="font-size:10px;opacity:.75;">' + escPrj(l.status_from) + ' → ' + escPrj(l.status_to) + '</span>' : '')
+              + (l.notes ? '<div class="prj-chat-note">' + escPrj(l.notes) + '</div>' : '');
+        return '<div class="prj-chat-row ' + (mine ? 'mine' : '') + '">'
+            + '<div class="prj-chat-av">' + (l.avatar ? '<img src="' + escPrj(l.avatar) + '" alt="">' : escPrj(initials)) + '</div>'
+            + '<div><div class="prj-chat-meta">' + (mine ? '' : '<strong>' + escPrj(actor) + '</strong> · ') + escPrj(l.date) + '</div>'
+            + '<div class="prj-chat-bubble">' + isi + '</div></div></div>';
+    }
+
+    /* Tab Log setinggi area gulir panel supaya chat menempel di bawah walau isinya sedikit. */
+    function aturTinggiLogPrj(gulirKeBawah) {
+        var body = document.querySelector('#mdlDetailProject .modal-body');
+        if (!body) return;
+        var tinggi = body.clientHeight - $('#mdlDetailProject .prj-sidebar').outerHeight() - $('#prjDetailTabs').outerHeight(true) - 40;
+        $('#prjPaneLogs').css('min-height', Math.max(tinggi, 0));
+        if (gulirKeBawah) body.scrollTop = body.scrollHeight;
+    }
+    $(document).on('shown.bs.tab', '#prjDetailTabs a[data-toggle="tab"]', function () {
+        if ($(this).attr('href') === '#prjPaneLogs') aturTinggiLogPrj(true);
+    });
+
+    $(document).on('submit', '#prjLogForm', function (e) {
+        e.preventDefault();
+        var $f = $(this), $in = $('#prjLogInput'), $btn = $('#prjLogSend');
+        var teks = $.trim($in.val());
+        if (!teks) { $in.focus(); return; }
+        $btn.prop('disabled', true);
+        $.post('{{ url('/project') }}/' + $f.data('id') + '/log-note', { _token: $('meta[name="csrf-token"]').attr('content'), notes: teks })
+            .done(function (res) {
+                if (!res || !res.log) return;
+                $('#prjLogBody .ts-empty').remove();
+                $('#prjLogBody').append(renderPrjLogRow(res.log));
+                $in.val('');
+                aturTinggiLogPrj(true);
+            })
+            .fail(function (xhr) {
+                var pesan = (xhr.responseJSON && (xhr.responseJSON.message || (xhr.responseJSON.errors && xhr.responseJSON.errors.notes && xhr.responseJSON.errors.notes[0])))
+                    || 'Catatan belum dapat dikirim. Coba lagi.';
+                Swal.fire({ icon: 'error', title: 'Gagal mengirim', text: pesan });
+            })
+            .always(function () { $btn.prop('disabled', false); });
+    });
+
     $(document).on('click', '.btn-detail-project, .po-code-link', function () {
         openProjectDetail($(this).data('id'));
+    });
+
+    /* Klik di mana saja pada baris membuka detail PO (pola Cost Request). Kontrol di dalam
+       baris (kode yang disalin, tombol nilai, status, menu aksi, kontrol responsif
+       DataTables) tetap bekerja sendiri. */
+    $(document).on('click', '#projectTable tbody tr[data-id]', function (e) {
+        if ($(e.target).closest('a, button, input, select, textarea, label, form, .ts-actions, .ts-action-menu, td.dtr-control').length) return;
+        if (window.getSelection && String(window.getSelection()).length) return;
+        openProjectDetail($(this).data('id'));
+    });
+
+    /* ── BULK VERIFY / APPROVE / MINTA REVISI (pola Cost Request & Treasury) ──
+       Hak centang dihitung server (data-elig). SATU status per proses, maks 50;
+       melewati batas = seluruh pilihan dibatalkan + peringatan. Pilihan yang tak
+       lagi lolos filter/tab dibuang supaya yang dikirim = yang terlihat. Server
+       memproses tiap PO lewat method satuan dan melewati yang statusnya sudah
+       berubah. Approve hanya keputusan Approve (Early Start tetap satuan). */
+    var PO_BULK_MAX = 50;
+    var PO_TAHAP = {
+        SUBMITTED: { dari: 'Submitted', aksi: 'Verify',  ke: 'Verified' },
+        VERIFIED:  { dari: 'Verified',  aksi: 'Approve', ke: 'Active atau Waiting PO (ditentukan sistem)' }
+    };
+    var poSel = new Set();
+
+    // Checkbox "pilih semua" ada di dalam <th> yang bisa diurutkan: klik jangan memicu sortir.
+    $('.po-check-all').on('click', function (e) { e.stopPropagation(); });
+
+    function poBulkInfo(tr) {
+        var $tr = $(tr);
+        return {
+            id: String($tr.attr('data-id')), status: $tr.attr('data-status'), code: $tr.attr('data-code'),
+            total: parseInt($tr.find('.col-raw-contract').attr('data-raw'), 10) || 0
+        };
+    }
+    function poBulkToast(tipe, pesan) { if (window.tsToast) window.tsToast(tipe, pesan); }
+    function poBulkStatusAktif() {
+        var st = null;
+        $(table.rows().nodes()).each(function () {
+            var inf = poBulkInfo(this);
+            if (poSel.has(inf.id)) { st = inf.status; return false; }
+        });
+        return st;
+    }
+    function poBulkRefresh() {
+        var tampil = new Set(), jml = 0, total = 0;
+        table.rows({ search: 'applied' }).every(function () { tampil.add(poBulkInfo(this.node()).id); });
+        poSel.forEach(function (id) { if (!tampil.has(id)) poSel.delete(id); });
+
+        $(table.rows().nodes()).each(function () {
+            var inf = poBulkInfo(this);
+            $(this).find('.po-check-row').prop('checked', poSel.has(inf.id));
+            if (poSel.has(inf.id)) { jml++; total += inf.total; }
+        });
+
+        var aktif = poBulkStatusAktif(), kandidat = 0, dipilih = 0;
+        if (!aktif) {   // belum ada pilihan: kandidat "pilih semua" = status eligible pertama yang tampil
+            table.rows({ search: 'applied' }).every(function () {
+                var $n = $(this.node());
+                if (!aktif && $n.find('.po-check-row').attr('data-elig') === '1') aktif = $n.attr('data-status');
+            });
+        }
+        table.rows({ search: 'applied' }).every(function () {
+            var $n = $(this.node()), inf = poBulkInfo(this.node());
+            if ($n.find('.po-check-row').attr('data-elig') === '1' && inf.status === aktif) {
+                kandidat++;
+                if (poSel.has(inf.id)) dipilih++;
+            }
+        });
+        var all = document.querySelector('#projectTable .po-check-all');
+        if (all) {
+            all.checked = kandidat > 0 && dipilih === kandidat;
+            all.indeterminate = dipilih > 0 && dipilih < kandidat;
+        }
+        if (PO_TAHAP[aktif]) $('.po-bulk-approve-label').text(PO_TAHAP[aktif].aksi);
+        $('.po-bulk-bar').toggleClass('d-none', jml === 0).toggleClass('d-flex', jml > 0);
+        $('.po-bulk-info').text(jml + ' dipilih' + (total ? ' · kontrak Rp ' + Math.round(total).toLocaleString('id-ID') : ''));
+    }
+
+    $(document).on('change', '.po-check-row', function () {
+        var id = String(this.value), st = $(this).closest('tr').attr('data-status');
+        if (this.checked) {
+            var aktif = poBulkStatusAktif();
+            if (aktif && aktif !== st) {
+                this.checked = false;
+                poBulkToast('warning', 'Pilih PO dengan status yang sama dalam satu proses (sekarang: ' + aktif + ').');
+                return;
+            }
+            if (poSel.size >= PO_BULK_MAX) {
+                this.checked = false;
+                poBulkToast('warning', 'Maksimal ' + PO_BULK_MAX + ' PO per proses. Persempit dengan filter lalu pilih lagi.');
+                return;
+            }
+            poSel.add(id);
+        } else {
+            poSel.delete(id);
+        }
+        poBulkRefresh();
+    });
+
+    $(document).on('change', '.po-check-all', function () {
+        if (!this.checked) { poSel.clear(); poBulkRefresh(); return; }
+        var aktif = poBulkStatusAktif(), gabungan = new Set(poSel);
+        table.rows({ search: 'applied' }).every(function () {
+            var $n = $(this.node());
+            if ($n.find('.po-check-row').attr('data-elig') !== '1') return;
+            if (!aktif) aktif = $n.attr('data-status');
+            if ($n.attr('data-status') === aktif) gabungan.add(String($n.attr('data-id')));
+        });
+        if (gabungan.size > PO_BULK_MAX) {
+            poSel.clear(); poBulkRefresh();
+            poBulkToast('warning', 'Maksimal ' + PO_BULK_MAX + ' PO per proses. Pilihan dibatalkan; persempit dengan filter lalu pilih lagi.');
+            return;
+        }
+        gabungan.forEach(function (id) { poSel.add(id); });
+        poBulkRefresh();
+    });
+
+    $(document).on('click', '.po-bulk-clear', function () { poSel.clear(); poBulkRefresh(); });
+    table.on('draw', poBulkRefresh);
+
+    var poBulkKirim = false;
+    $(document).on('click', '.po-bulk-approve, .po-bulk-revise', function () {
+        if (poBulkKirim) return;
+        var revisi = $(this).hasClass('po-bulk-revise'), $btn = $(this);
+        var rows = [], total = 0, status = null;
+        $(table.rows().nodes()).each(function () {
+            var inf = poBulkInfo(this);
+            if (poSel.has(inf.id)) { rows.push(inf); total += inf.total; status = inf.status; }
+        });
+        if (!rows.length || !PO_TAHAP[status]) return;
+        var th = PO_TAHAP[status];
+
+        var html = '<div style="text-align:left;font-size:13px;line-height:1.7;">'
+            + '<div><strong>' + rows.length + ' PO</strong>: ' + th.dari + ' &rarr; ' + (revisi ? 'Draft' : th.ke) + '</div>'
+            + (total ? '<div>Total Kontrak: <strong>Rp ' + Math.round(total).toLocaleString('id-ID') + '</strong></div>' : '')
+            + '<div class="mt-1" style="font-size:12px;">Budget Plan bundled ikut berpindah status bersama PO-nya.</div>'
+            + '</div>';
+
+        var opsi = revisi
+            ? { title: 'Minta revisi ' + rows.length + ' PO?', icon: 'warning',
+                html: html + '<div class="mt-2" style="text-align:left;font-size:12px;">Alasan revisi wajib diisi:</div>',
+                input: 'textarea', inputAttributes: { maxlength: 500, 'aria-label': 'Alasan revisi' },
+                inputValidator: function (v) { if (!v || !v.trim()) return 'Alasan revisi wajib diisi.'; },
+                confirmButtonColor: WARNA_BAHAYA, confirmButtonText: 'Ya, Minta Revisi' }
+            : { title: th.aksi + ' ' + rows.length + ' PO?', icon: 'question', html: html,
+                confirmButtonColor: WARNA_UTAMA, confirmButtonText: 'Ya, ' + th.aksi };
+        opsi.showCancelButton = true;
+        opsi.cancelButtonColor = WARNA_BATAL;
+        opsi.cancelButtonText = 'Batal';
+
+        Swal.fire(opsi).then(function (r) {
+            if (!r.isConfirmed || poBulkKirim) return;
+            poBulkKirim = true;
+            var $f = $('<form method="POST"></form>').attr('action', revisi
+                ? '{{ route('project.bulk-revise') }}' : '{{ route('project.bulk-approve') }}');
+            $f.append($('<input type="hidden" name="_token">').val($('meta[name="csrf-token"]').attr('content')));
+            $f.append($('<input type="hidden" name="status">').val(status));
+            rows.forEach(function (x) { $f.append($('<input type="hidden" name="ids[]">').val(x.id)); });
+            if (revisi) $f.append($('<input type="hidden" name="notes">').val(r.value));
+            $('.po-bulk-bar button').prop('disabled', true);
+            if (window.TesysUI && TesysUI.busy) TesysUI.busy($btn[0], true);
+            $('body').append($f);
+            $f[0].submit();
+        });
+    });
+
+    // Kembali lewat tombol Back (bfcache): kunci kirim dilepas lagi.
+    window.addEventListener('pageshow', function (e) {
+        if (!e.persisted) return;
+        poBulkKirim = false;
+        $('.po-bulk-bar button').prop('disabled', false).each(function () {
+            if (window.TesysUI && TesysUI.busy) TesysUI.busy(this, false);
+        });
     });
     $(document).on('click', '.po-status-link', function () {
         openProjectDetail($(this).data('id'), '#prjPaneLogs');

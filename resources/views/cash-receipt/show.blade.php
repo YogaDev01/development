@@ -17,14 +17,13 @@
         @php
             $allocated   = $header->allocatedAmount();
             $unallocated = $header->unallocatedAmount();
-            $stBadge = ['DRAFT' => 'badge-warning', 'ALLOCATED' => 'badge-success', 'CANCELLED' => 'badge-danger'][$header->status] ?? 'badge-secondary';
         @endphp
 
         <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
             <div>
                 <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">
                     {{ $header->code }}
-                    <span class="badge {{ $stBadge }} ml-2" style="font-size:11px;vertical-align:middle;">{{ $header->status }}</span>
+                    <x-status :status="$header->status" context="cash-receipt" size="md" class="ml-2 align-middle" />
                 </h1>
                 <small class="text-muted">{{ $header->customer->name ?? '-' }} &middot; {{ $header->received_date?->format('d M Y') }}</small>
             </div>
@@ -349,8 +348,8 @@ $(function () {
             text: $(form).data('text') || '',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#9a3030',
-            cancelButtonColor: '#55595e',
+            confirmButtonColor: 'var(--danger)',
+            cancelButtonColor: 'var(--text-muted)',
             confirmButtonText: 'Ya, Lanjutkan',
             cancelButtonText: 'Batal'
         }).then(function (r) { if (r.isConfirmed) form.submit(); });

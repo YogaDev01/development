@@ -172,7 +172,7 @@ class ClosingController extends Controller
             'reopen_reason' => $request->reopen_reason,
         ]);
 
-        UserActivityLog::record('closing', 'process', 'Membuka kembali periode ' . $closing->period, $closing, $request->reason ?? $request->notes, $closing->period);
+        UserActivityLog::record('closing', 'process', 'Membuka kembali periode ' . $closing->period, $closing, $request->reopen_reason, $closing->period);
 
         return back()->with('success', 'Periode ' . $closing->period . ' dibuka kembali.');
     }

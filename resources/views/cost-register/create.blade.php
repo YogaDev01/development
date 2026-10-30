@@ -51,9 +51,10 @@
                             <input type="hidden" name="mode" value="single">
 
                             <div class="alert alert-light border" style="font-size:12px;">
-                                Satu nominal Fixed Cost atau Overhead untuk satu No. PO. Wajib isi catatan sebagai dasar
-                                perhitungan (mis. hasil prorate personel, atau porsi alokasi overhead) — nominal ini
-                                idealnya sudah divalidasi lewat meeting/approval CEO sebelum diinput.
+                                Fixed Cost atau Overhead untuk satu No. PO, dengan rincian per item (akun, deskripsi, qty,
+                                harga). Nominal register = jumlah total rincian. Wajib isi catatan sebagai dasar perhitungan
+                                (mis. hasil prorate personel, atau porsi alokasi overhead). Setelah diajukan, register menunggu
+                                approval CEO sebelum bisa dibayar lewat Treasury.
                             </div>
 
                             <div class="row">
@@ -79,9 +80,43 @@
                                 </div>
                             </div>
 
+                            {{-- Rincian per item (pola Cost Request). Total dihitung ulang di server. --}}
                             <div class="form-group">
-                                <label class="font-weight-600">Nominal <span class="text-danger">*</span></label>
-                                <input type="text" name="amount" id="inpSingleAmount" class="form-control form-control-sm text-right" placeholder="0" required>
+                                <label class="font-weight-600">Rincian <span class="text-danger">*</span></label>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm mb-1" id="tblDetails" style="table-layout:fixed;min-width:720px;">
+                                        <thead style="background:var(--surface-2);">
+                                            <tr>
+                                                <th style="width:44px;">No</th>
+                                                <th style="width:220px;">Akun</th>
+                                                <th>Deskripsi</th>
+                                                <th class="text-right" style="width:72px;">Qty</th>
+                                                <th class="text-right" style="width:140px;">Harga Satuan</th>
+                                                <th class="text-right" style="width:140px;">Total</th>
+                                                <th style="width:48px;"><span class="sr-only">Aksi</span></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="detailBody"></tbody>
+                                        <tfoot>
+                                            <tr style="background:var(--surface-2);">
+                                                <th colspan="5" class="text-right">Total Nominal</th>
+                                                <th class="text-right" id="detailGrand">0</th>
+                                                <th></th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-secondary" id="btnAddDetail"><i class="fas fa-plus mr-1"></i> Tambah Rincian</button>
+                                <template id="tplAccountOptions">
+                                    <option value="">— Akun —</option>
+                                    @foreach($accounts->groupBy('category') as $kategori => $akun)
+                                    <optgroup label="{{ $kategori }}">
+                                        @foreach($akun as $a)
+                                        <option value="{{ $a->id }}">{{ $a->name }}</option>
+                                        @endforeach
+                                    </optgroup>
+                                    @endforeach
+                                </template>
                             </div>
 
                             {{-- MN-09 — tujuan pembayaran. Tanpa Beneficiary,
@@ -234,7 +269,45 @@ $(function () {
     }
     function unfmt(v) { return parseInt((v || '0').toString().replace(/\D/g, ''), 10) || 0; }
 
-    $('#inpSingleAmount, #inpBatchTotal').on('input', function () { this.value = fmt(this.value); });
+    $('#inpBatchTotal').on('input', function () { this.value = fmt(this.value); });
+
+    /* ── Rincian per item (Entri Tunggal) ── */
+    var detailIdx = 0;
+    function recalcDetails() {
+        var grand = 0;
+        $('#detailBody tr').each(function (i) {
+            var qty = parseInt($(this).find('.d-qty').val(), 10) || 0;
+            var price = unfmt($(this).find('.d-price').val());
+            var tot = qty * price;
+            grand += tot;
+            $(this).find('.d-total').text(fmt(String(tot)) || '0');
+            $(this).find('.d-no').text(i + 1);
+        });
+        $('#detailGrand').text(fmt(String(grand)) || '0');
+    }
+    function addDetailRow() {
+        var i = detailIdx++;
+        var opts = document.getElementById('tplAccountOptions').innerHTML;
+        $('#detailBody').append(
+            '<tr>' +
+            '<td class="d-no text-center"></td>' +
+            '<td><select name="details[' + i + '][account_id]" class="form-control form-control-sm">' + opts + '</select></td>' +
+            '<td><input type="text" name="details[' + i + '][description]" class="form-control form-control-sm" maxlength="500" required></td>' +
+            '<td><input type="number" name="details[' + i + '][qty]" class="form-control form-control-sm text-right d-qty" min="1" value="1" required></td>' +
+            '<td><input type="text" name="details[' + i + '][unit_price]" class="form-control form-control-sm text-right d-price" placeholder="0" required></td>' +
+            '<td class="text-right d-total">0</td>' +
+            '<td class="text-center"><button type="button" class="btn btn-xs btn-danger btn-del-detail" aria-label="Hapus baris"><i class="fas fa-trash"></i></button></td>' +
+            '</tr>'
+        );
+        recalcDetails();
+    }
+    $('#btnAddDetail').on('click', addDetailRow);
+    $(document).on('click', '.btn-del-detail', function () {
+        if ($('#detailBody tr').length > 1) { $(this).closest('tr').remove(); recalcDetails(); }
+    });
+    $(document).on('input', '.d-qty', recalcDetails);
+    $(document).on('input', '.d-price', function () { this.value = fmt(this.value); recalcDetails(); });
+    addDetailRow();
 
     TesysSearchableSelect.init('#singleProjectSelect', { placeholder: '-- Pilih PO --', searchPlaceholder: 'Cari PO...' });
     TesysSearchableSelect.init('#batchProjectSelect', { placeholder: 'Pilih No. PO...', searchPlaceholder: 'Cari PO...' });

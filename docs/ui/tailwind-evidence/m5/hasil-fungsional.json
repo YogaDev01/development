@@ -1,0 +1,813 @@
+{
+ "catatan": "Skenario sama dijalankan pada kode lama (berkas cadangan dipasang sementara) dan kode baru; selisih nilai = 0 dari 233 nilai. Berisi cari, filter kolom Status, toggle kolom, sortir tiap kolom (asc/desc), pilih-semua + dialog bulk Approve (ditutup Escape, tidak dikonfirmasi), menu aksi, hover, centang satu baris, keadaan kosong, total tfoot, export (permintaan), View As head/manager/finance/guest.",
+ "sebelum": {
+  "ca": {
+   "awal": {
+    "baris": 45,
+    "tfoot": "Total (data tampil) | 11.602.793.000 | 379.659.000 | 632.821.000",
+    "ids": "260,258,256,254,253,252,251,250,248,246"
+   },
+   "kolom0": ",Code,Description,Tanggal,Tanggal Paid,Requestor,PIC,Request,Refund,Expense Claim,Status,Action",
+   "cari": {
+    "baris": 21,
+    "tfoot": "Total (data tampil) | 5.463.662.000 | 139.177.000 | 282.377.000",
+    "ids": "260,258,253,250,248,246,240,228,220,219"
+   },
+   "kosong": {
+    "baris": 0,
+    "tfoot": "Total (data tampil) | 0 | 0 | 0",
+    "teks": "Tidak ada yang cocokTidak ada Cost Request yang cocok dengan pencarian atau filter yang sedang aktif.Reset filter"
+   },
+   "cariBersih": {
+    "baris": 45,
+    "tfoot": "Total (data tampil) | 11.602.793.000 | 379.659.000 | 632.821.000",
+    "ids": "260,258,256,254,253,252,251,250,248,246"
+   },
+   "filterBtn": "PO,Beneficiary,PIC,Manager,Status",
+   "filter": {
+    "baris": 3,
+    "tfoot": "Total (data tampil) | 813.797.000 | 0 | 0",
+    "ids": "253,246,219"
+   },
+   "filterReset": {
+    "baris": 45,
+    "tfoot": "Total (data tampil) | 11.602.793.000 | 379.659.000 | 632.821.000",
+    "ids": "260,258,256,254,253,252,251,250,248,246"
+   },
+   "kolomSembunyi": ",Code,Description,Tanggal,Tanggal Paid,Requestor,Request,Refund,Expense Claim,Status,Action",
+   "kolomKembali": true,
+   "sortir": {
+    "Code": {
+     "asc": "203,248,256,205,202,213",
+     "desc": "250,216,258,217,251,197",
+     "aria": "descending"
+    },
+    "Description": {
+     "asc": "242,253,246,191,250,189",
+     "desc": "204,258,212,237,251,197",
+     "aria": "descending"
+    },
+    "Tanggal": {
+     "asc": "190,189,193,194,192,191",
+     "desc": "258,260,254,256,251,252",
+     "aria": "descending"
+    },
+    "Tanggal Paid": {
+     "asc": "258,260,254,256,251,252",
+     "desc": "224,218,213,212,210,223",
+     "aria": "descending"
+    },
+    "Requestor": {
+     "asc": "223,209,195,190,205,251",
+     "desc": "210,200,196,207,202,256",
+     "aria": "descending"
+    },
+    "PIC": {
+     "asc": "189,212,217,253,213,254",
+     "desc": "210,200,242,225,191,216",
+     "aria": "descending"
+    },
+    "Request": {
+     "asc": "253,256,205,206,258,260",
+     "desc": "246,196,192,231,213,230",
+     "aria": "descending"
+    },
+    "Refund": {
+     "asc": "246,196,192,231,213,230",
+     "desc": "200,194,190,216,207,193",
+     "aria": "descending"
+    },
+    "Expense Claim": {
+     "asc": "200,194,190,216,207,193",
+     "desc": "192,196,202,209,224,212",
+     "aria": "descending"
+    },
+    "Status": {
+     "asc": "246,219,253,227,248,206",
+     "desc": "242,254,256,250,251,191",
+     "aria": "descending"
+    },
+    "Action": {
+     "asc": "202,203,204,231,197,225",
+     "desc": "240,237,258,250,251,191",
+     "aria": "descending"
+    }
+   },
+   "bulk": {
+    "tampil": true,
+    "info": "3 dipilih · total Rp 982.992.000",
+    "tercentang": 3,
+    "barisDicentang": 3
+   },
+   "bulkDialog": {
+    "judul": "Approve (Check) 3 CR?",
+    "teks": "3 CR: Submitted → CheckedTotal: Rp 982.992.000Berstatus NOB (termasuk NOB sub-item): 1 CR"
+   },
+   "bulkDialogTutup": true,
+   "bulkPostTerkirim": 0,
+   "tercentangSetelahClear": 0,
+   "centangSatu": {
+    "bg": "color(srgb 0.961529 0.922353 0.925177)",
+    "sh": "rgb(146, 35, 43) 3px 0px 0px 0px inset, rgb(230, 225, 224) 1px 0px 0px 0px",
+    "semuaSel": [
+     "color(srgb 0.961529 0.922353 0.925177)"
+    ]
+   },
+   "menuAksi": [
+    "Tinjau Edit Hapus"
+   ],
+   "hover": [
+    "color(srgb 0.978627 0.956863 0.958431)"
+   ],
+   "nonHover": [
+    "rgb(255, 255, 255)"
+   ]
+  },
+  "cp": {
+   "awal": {
+    "baris": 28,
+    "tfoot": "Total (data tampil) | 5.877.640.000",
+    "ids": "261,259,257,255,249,247,245,244,243,241"
+   },
+   "kolom0": ",Code,Description,Tanggal,Tanggal Paid,Requestor,PIC,Request,Status,Action",
+   "cari": {
+    "baris": 6,
+    "tfoot": "Total (data tampil) | 1.313.327.000",
+    "ids": "245,239,233,232,226,222"
+   },
+   "kosong": {
+    "baris": 0,
+    "tfoot": "Total (data tampil) | 0",
+    "teks": "Tidak ada yang cocokTidak ada Cost Request yang cocok dengan pencarian atau filter yang sedang aktif.Reset filter"
+   },
+   "cariBersih": {
+    "baris": 28,
+    "tfoot": "Total (data tampil) | 5.877.640.000",
+    "ids": "261,259,257,255,249,247,245,244,243,241"
+   },
+   "filterBtn": "PO,Tipe,Beneficiary,PIC,Manager,Status",
+   "filter": {
+    "baris": 3,
+    "tfoot": "Total (data tampil) | 374.415.000",
+    "ids": "241,236,215"
+   },
+   "filterReset": {
+    "baris": 28,
+    "tfoot": "Total (data tampil) | 5.877.640.000",
+    "ids": "261,259,257,255,249,247,245,244,243,241"
+   },
+   "kolomSembunyi": ",Code,Description,Tanggal,Tanggal Paid,Requestor,Request,Status,Action",
+   "kolomKembali": true,
+   "sortir": {
+    "Code": {
+     "asc": "245,247,214,244,208,233",
+     "desc": "215,249,235,259,261,234",
+     "aria": "descending"
+    },
+    "Description": {
+     "asc": "214,199,222,241,243,259",
+     "desc": "215,226,211,257,255,229",
+     "aria": "descending"
+    },
+    "Tanggal": {
+     "asc": "198,199,201,208,211,215",
+     "desc": "261,259,257,255,249,247",
+     "aria": "descending"
+    },
+    "Tanggal Paid": {
+     "asc": "261,259,255,249,247,245",
+     "desc": "257,222,198,261,259,255",
+     "aria": "descending"
+    },
+    "Requestor": {
+     "asc": "245,244,238,257,239,259",
+     "desc": "241,235,215,201,247,243",
+     "aria": "descending"
+    },
+    "PIC": {
+     "asc": "241,235,198,226,249,236",
+     "desc": "215,247,222,199,234,232",
+     "aria": "descending"
+    },
+    "Request": {
+     "asc": "261,214,244,259,235,243",
+     "desc": "247,221,249,233,234,226",
+     "aria": "descending"
+    },
+    "Status": {
+     "asc": "236,215,241,221,208,235",
+     "desc": "233,229,239,211,201,214",
+     "aria": "descending"
+    },
+    "Action": {
+     "asc": "238,232,259,198,257,222",
+     "desc": "247,243,244,261,211,201",
+     "aria": "descending"
+    }
+   },
+   "bulk": {
+    "tampil": true,
+    "info": "3 dipilih · total Rp 471.745.000",
+    "tercentang": 3,
+    "barisDicentang": 3
+   },
+   "bulkDialog": {
+    "judul": "Approve (Check) 3 CR?",
+    "teks": "3 CR: Submitted → CheckedTotal: Rp 471.745.000Berstatus NOB (termasuk NOB sub-item): 2 CR"
+   },
+   "bulkDialogTutup": true,
+   "bulkPostTerkirim": 0,
+   "tercentangSetelahClear": 0,
+   "centangSatu": {
+    "bg": "color(srgb 0.961529 0.922353 0.925177)",
+    "sh": "rgb(146, 35, 43) 3px 0px 0px 0px inset, rgb(230, 225, 224) 1px 0px 0px 0px",
+    "semuaSel": [
+     "color(srgb 0.961529 0.922353 0.925177)"
+    ]
+   },
+   "menuAksi": [
+    "Tinjau Edit Hapus"
+   ],
+   "hover": [
+    "color(srgb 0.978627 0.956863 0.958431)"
+   ],
+   "nonHover": [
+    "rgb(255, 255, 255)"
+   ]
+  },
+  "db": {
+   "awal": {
+    "baris": 73,
+    "tfoot": "Total Cost (data tampil) | 17.733.595.000",
+    "ids": "261,260,259,258,257,256,255,254,253,252"
+   },
+   "kolom0": "Code,Description,Jenis,Tanggal,Tanggal Paid,Requestor,PIC,Cost,Status,Close Date",
+   "cari": {
+    "baris": 27,
+    "tfoot": "Total Cost (data tampil) | 6.920.189.000",
+    "ids": "260,258,253,250,248,246,245,240,239,233"
+   },
+   "kosong": {
+    "baris": 0,
+    "tfoot": "Total Cost (data tampil) | 0",
+    "teks": "Tidak ada yang cocokTidak ada Cost Request yang cocok dengan pencarian atau filter yang sedang aktif.Reset filter"
+   },
+   "cariBersih": {
+    "baris": 73,
+    "tfoot": "Total Cost (data tampil) | 17.733.595.000",
+    "ids": "261,260,259,258,257,256,255,254,253,252"
+   },
+   "filterBtn": "PO,Tipe,Beneficiary,PIC,Manager,Status",
+   "filter": {
+    "baris": 6,
+    "tfoot": "Total Cost (data tampil) | 1.188.212.000",
+    "ids": "253,246,241,236,219,215"
+   },
+   "filterReset": {
+    "baris": 73,
+    "tfoot": "Total Cost (data tampil) | 17.733.595.000",
+    "ids": "261,260,259,258,257,256,255,254,253,252"
+   },
+   "kolomSembunyi": "Code,Description,Jenis,Tanggal,Tanggal Paid,Requestor,Cost,Status,Close Date",
+   "kolomKembali": true,
+   "sortir": {
+    "Code": {
+     "asc": "203,245,248,247,256,205",
+     "desc": "250,216,215,258,217,251",
+     "aria": "descending"
+    },
+    "Description": {
+     "asc": "214,242,199,222,253,246",
+     "desc": "204,215,258,212,226,211",
+     "aria": "descending"
+    },
+    "Jenis": {
+     "asc": "204,258,212,237,251,197",
+     "desc": "215,226,211,257,255,229",
+     "aria": "descending"
+    },
+    "Tanggal": {
+     "asc": "190,189,193,194,192,191",
+     "desc": "261,259,258,260,257,255",
+     "aria": "descending"
+    },
+    "Tanggal Paid": {
+     "asc": "261,259,258,260,255,254",
+     "desc": "257,224,222,218,213,212",
+     "aria": "descending"
+    },
+    "Requestor": {
+     "asc": "245,244,238,257,223,209",
+     "desc": "241,210,200,196,207,202",
+     "aria": "descending"
+    },
+    "PIC": {
+     "asc": "241,235,189,212,217,253",
+     "desc": "210,200,242,225,215,191",
+     "aria": "descending"
+    },
+    "Cost": {
+     "asc": "261,253,256,205,214,206",
+     "desc": "196,192,246,247,231,221",
+     "aria": "descending"
+    },
+    "Status": {
+     "asc": "246,236,215,241,219,253",
+     "desc": "233,242,254,229,239,256",
+     "aria": "descending"
+    },
+    "Close Date": {
+     "asc": "233,242,254,229,239,256",
+     "desc": "233,242,254,229,239,256",
+     "aria": "descending"
+    }
+   },
+   "hover": [
+    "color(srgb 0.978627 0.956863 0.958431)"
+   ],
+   "nonHover": [
+    "rgb(255, 255, 255)"
+   ]
+  },
+  "export": [
+   "http://127.0.0.1:8099/budget-request/export?date_from=2026-10-01&date_to=2026-10-31&tab=db&cols[]=code&cols[]=desc&cols[]=jenis&cols[]=tanggal&cols[]=paid_at&cols[]=pengaju&cols[]=pic&cols[]=cost&cols[]=status&cols[]=close_date 200"
+  ],
+  "peran": {
+   "head": {
+    "muat": true,
+    "ca": {
+     "th": ",Code,Description,Tanggal,Tanggal Paid,Requestor,PIC,Request,Refund,Expense Claim,Status,Action",
+     "cek": true,
+     "baris": 0,
+     "aksi": 0,
+     "more": 0,
+     "tfoot": "Total (data tampil)|0|0|0"
+    },
+    "cp": {
+     "th": ",Code,Description,Tanggal,Tanggal Paid,Requestor,PIC,Request,Status,Action",
+     "baris": 1,
+     "tfoot": "Total (data tampil)|750.000"
+    },
+    "db": 1
+   },
+   "manager": {
+    "muat": true,
+    "ca": {
+     "th": "Code,Description,Tanggal,Tanggal Paid,Requestor,PIC,Request,Refund,Expense Claim,Status,Action",
+     "cek": false,
+     "baris": 0,
+     "aksi": 0,
+     "more": 0,
+     "tfoot": "Total (data tampil)|0|0|0"
+    },
+    "cp": {
+     "th": "Code,Description,Tanggal,Tanggal Paid,Requestor,PIC,Request,Status,Action",
+     "baris": 1,
+     "tfoot": "Total (data tampil)|750.000"
+    },
+    "db": 1
+   },
+   "finance": {
+    "muat": true,
+    "ca": {
+     "th": ",Code,Description,Tanggal,Tanggal Paid,Requestor,PIC,Request,Refund,Expense Claim,Status,Action",
+     "cek": true,
+     "baris": 45,
+     "aksi": 1,
+     "more": 10,
+     "tfoot": "Total (data tampil)|11.602.793.000|379.659.000|632.821.000"
+    },
+    "cp": {
+     "th": ",Code,Description,Tanggal,Tanggal Paid,Requestor,PIC,Request,Status,Action",
+     "baris": 28,
+     "tfoot": "Total (data tampil)|5.877.640.000"
+    },
+    "db": 73
+   },
+   "guest": {
+    "muat": true,
+    "ca": {
+     "th": "Code,Description,Tanggal,Tanggal Paid,Requestor,PIC,Request,Refund,Expense Claim,Status,Action",
+     "cek": false,
+     "baris": 45,
+     "aksi": 0,
+     "more": 10,
+     "tfoot": "Total (data tampil)|11.602.793.000|379.659.000|632.821.000"
+    },
+    "cp": {
+     "th": "Code,Description,Tanggal,Tanggal Paid,Requestor,PIC,Request,Status,Action",
+     "baris": 28,
+     "tfoot": "Total (data tampil)|5.877.640.000"
+    },
+    "db": 73
+   }
+  }
+ },
+ "sesudah": {
+  "ca": {
+   "awal": {
+    "baris": 45,
+    "tfoot": "Total (data tampil) | 11.602.793.000 | 379.659.000 | 632.821.000",
+    "ids": "260,258,256,254,253,252,251,250,248,246"
+   },
+   "kolom0": ",Code,Description,Tanggal,Tanggal Paid,Requestor,PIC,Request,Refund,Expense Claim,Status,Action",
+   "cari": {
+    "baris": 21,
+    "tfoot": "Total (data tampil) | 5.463.662.000 | 139.177.000 | 282.377.000",
+    "ids": "260,258,253,250,248,246,240,228,220,219"
+   },
+   "kosong": {
+    "baris": 0,
+    "tfoot": "Total (data tampil) | 0 | 0 | 0",
+    "teks": "Tidak ada yang cocokTidak ada Cost Request yang cocok dengan pencarian atau filter yang sedang aktif.Reset filter"
+   },
+   "cariBersih": {
+    "baris": 45,
+    "tfoot": "Total (data tampil) | 11.602.793.000 | 379.659.000 | 632.821.000",
+    "ids": "260,258,256,254,253,252,251,250,248,246"
+   },
+   "filterBtn": "PO,Beneficiary,PIC,Manager,Status",
+   "filter": {
+    "baris": 3,
+    "tfoot": "Total (data tampil) | 813.797.000 | 0 | 0",
+    "ids": "253,246,219"
+   },
+   "filterReset": {
+    "baris": 45,
+    "tfoot": "Total (data tampil) | 11.602.793.000 | 379.659.000 | 632.821.000",
+    "ids": "260,258,256,254,253,252,251,250,248,246"
+   },
+   "kolomSembunyi": ",Code,Description,Tanggal,Tanggal Paid,Requestor,Request,Refund,Expense Claim,Status,Action",
+   "kolomKembali": true,
+   "sortir": {
+    "Code": {
+     "asc": "203,248,256,205,202,213",
+     "desc": "250,216,258,217,251,197",
+     "aria": "descending"
+    },
+    "Description": {
+     "asc": "242,253,246,191,250,189",
+     "desc": "204,258,212,237,251,197",
+     "aria": "descending"
+    },
+    "Tanggal": {
+     "asc": "190,189,193,194,192,191",
+     "desc": "258,260,254,256,251,252",
+     "aria": "descending"
+    },
+    "Tanggal Paid": {
+     "asc": "258,260,254,256,251,252",
+     "desc": "224,218,213,212,210,223",
+     "aria": "descending"
+    },
+    "Requestor": {
+     "asc": "223,209,195,190,205,251",
+     "desc": "210,200,196,207,202,256",
+     "aria": "descending"
+    },
+    "PIC": {
+     "asc": "189,212,217,253,213,254",
+     "desc": "210,200,242,225,191,216",
+     "aria": "descending"
+    },
+    "Request": {
+     "asc": "253,256,205,206,258,260",
+     "desc": "246,196,192,231,213,230",
+     "aria": "descending"
+    },
+    "Refund": {
+     "asc": "246,196,192,231,213,230",
+     "desc": "200,194,190,216,207,193",
+     "aria": "descending"
+    },
+    "Expense Claim": {
+     "asc": "200,194,190,216,207,193",
+     "desc": "192,196,202,209,224,212",
+     "aria": "descending"
+    },
+    "Status": {
+     "asc": "246,219,253,227,248,206",
+     "desc": "242,254,256,250,251,191",
+     "aria": "descending"
+    },
+    "Action": {
+     "asc": "202,203,204,231,197,225",
+     "desc": "240,237,258,250,251,191",
+     "aria": "descending"
+    }
+   },
+   "bulk": {
+    "tampil": true,
+    "info": "3 dipilih · total Rp 982.992.000",
+    "tercentang": 3,
+    "barisDicentang": 3
+   },
+   "bulkDialog": {
+    "judul": "Approve (Check) 3 CR?",
+    "teks": "3 CR: Submitted → CheckedTotal: Rp 982.992.000Berstatus NOB (termasuk NOB sub-item): 1 CR"
+   },
+   "bulkDialogTutup": true,
+   "bulkPostTerkirim": 0,
+   "tercentangSetelahClear": 0,
+   "centangSatu": {
+    "bg": "color(srgb 0.961529 0.922353 0.925177)",
+    "sh": "rgb(146, 35, 43) 3px 0px 0px 0px inset, rgb(230, 225, 224) 1px 0px 0px 0px",
+    "semuaSel": [
+     "color(srgb 0.961529 0.922353 0.925177)"
+    ]
+   },
+   "menuAksi": [
+    "Tinjau Edit Hapus"
+   ],
+   "hover": [
+    "color(srgb 0.978627 0.956863 0.958431)"
+   ],
+   "nonHover": [
+    "rgb(255, 255, 255)"
+   ]
+  },
+  "cp": {
+   "awal": {
+    "baris": 28,
+    "tfoot": "Total (data tampil) | 5.877.640.000",
+    "ids": "261,259,257,255,249,247,245,244,243,241"
+   },
+   "kolom0": ",Code,Description,Tanggal,Tanggal Paid,Requestor,PIC,Request,Status,Action",
+   "cari": {
+    "baris": 6,
+    "tfoot": "Total (data tampil) | 1.313.327.000",
+    "ids": "245,239,233,232,226,222"
+   },
+   "kosong": {
+    "baris": 0,
+    "tfoot": "Total (data tampil) | 0",
+    "teks": "Tidak ada yang cocokTidak ada Cost Request yang cocok dengan pencarian atau filter yang sedang aktif.Reset filter"
+   },
+   "cariBersih": {
+    "baris": 28,
+    "tfoot": "Total (data tampil) | 5.877.640.000",
+    "ids": "261,259,257,255,249,247,245,244,243,241"
+   },
+   "filterBtn": "PO,Tipe,Beneficiary,PIC,Manager,Status",
+   "filter": {
+    "baris": 3,
+    "tfoot": "Total (data tampil) | 374.415.000",
+    "ids": "241,236,215"
+   },
+   "filterReset": {
+    "baris": 28,
+    "tfoot": "Total (data tampil) | 5.877.640.000",
+    "ids": "261,259,257,255,249,247,245,244,243,241"
+   },
+   "kolomSembunyi": ",Code,Description,Tanggal,Tanggal Paid,Requestor,Request,Status,Action",
+   "kolomKembali": true,
+   "sortir": {
+    "Code": {
+     "asc": "245,247,214,244,208,233",
+     "desc": "215,249,235,259,261,234",
+     "aria": "descending"
+    },
+    "Description": {
+     "asc": "214,199,222,241,243,259",
+     "desc": "215,226,211,257,255,229",
+     "aria": "descending"
+    },
+    "Tanggal": {
+     "asc": "198,199,201,208,211,215",
+     "desc": "261,259,257,255,249,247",
+     "aria": "descending"
+    },
+    "Tanggal Paid": {
+     "asc": "261,259,255,249,247,245",
+     "desc": "257,222,198,261,259,255",
+     "aria": "descending"
+    },
+    "Requestor": {
+     "asc": "245,244,238,257,239,259",
+     "desc": "241,235,215,201,247,243",
+     "aria": "descending"
+    },
+    "PIC": {
+     "asc": "241,235,198,226,249,236",
+     "desc": "215,247,222,199,234,232",
+     "aria": "descending"
+    },
+    "Request": {
+     "asc": "261,214,244,259,235,243",
+     "desc": "247,221,249,233,234,226",
+     "aria": "descending"
+    },
+    "Status": {
+     "asc": "236,215,241,221,208,235",
+     "desc": "233,229,239,211,201,214",
+     "aria": "descending"
+    },
+    "Action": {
+     "asc": "238,232,259,198,257,222",
+     "desc": "247,243,244,261,211,201",
+     "aria": "descending"
+    }
+   },
+   "bulk": {
+    "tampil": true,
+    "info": "3 dipilih · total Rp 471.745.000",
+    "tercentang": 3,
+    "barisDicentang": 3
+   },
+   "bulkDialog": {
+    "judul": "Approve (Check) 3 CR?",
+    "teks": "3 CR: Submitted → CheckedTotal: Rp 471.745.000Berstatus NOB (termasuk NOB sub-item): 2 CR"
+   },
+   "bulkDialogTutup": true,
+   "bulkPostTerkirim": 0,
+   "tercentangSetelahClear": 0,
+   "centangSatu": {
+    "bg": "color(srgb 0.961529 0.922353 0.925177)",
+    "sh": "rgb(146, 35, 43) 3px 0px 0px 0px inset, rgb(230, 225, 224) 1px 0px 0px 0px",
+    "semuaSel": [
+     "color(srgb 0.961529 0.922353 0.925177)"
+    ]
+   },
+   "menuAksi": [
+    "Tinjau Edit Hapus"
+   ],
+   "hover": [
+    "color(srgb 0.978627 0.956863 0.958431)"
+   ],
+   "nonHover": [
+    "rgb(255, 255, 255)"
+   ]
+  },
+  "db": {
+   "awal": {
+    "baris": 73,
+    "tfoot": "Total Cost (data tampil) | 17.733.595.000",
+    "ids": "261,260,259,258,257,256,255,254,253,252"
+   },
+   "kolom0": "Code,Description,Jenis,Tanggal,Tanggal Paid,Requestor,PIC,Cost,Status,Close Date",
+   "cari": {
+    "baris": 27,
+    "tfoot": "Total Cost (data tampil) | 6.920.189.000",
+    "ids": "260,258,253,250,248,246,245,240,239,233"
+   },
+   "kosong": {
+    "baris": 0,
+    "tfoot": "Total Cost (data tampil) | 0",
+    "teks": "Tidak ada yang cocokTidak ada Cost Request yang cocok dengan pencarian atau filter yang sedang aktif.Reset filter"
+   },
+   "cariBersih": {
+    "baris": 73,
+    "tfoot": "Total Cost (data tampil) | 17.733.595.000",
+    "ids": "261,260,259,258,257,256,255,254,253,252"
+   },
+   "filterBtn": "PO,Tipe,Beneficiary,PIC,Manager,Status",
+   "filter": {
+    "baris": 6,
+    "tfoot": "Total Cost (data tampil) | 1.188.212.000",
+    "ids": "253,246,241,236,219,215"
+   },
+   "filterReset": {
+    "baris": 73,
+    "tfoot": "Total Cost (data tampil) | 17.733.595.000",
+    "ids": "261,260,259,258,257,256,255,254,253,252"
+   },
+   "kolomSembunyi": "Code,Description,Jenis,Tanggal,Tanggal Paid,Requestor,Cost,Status,Close Date",
+   "kolomKembali": true,
+   "sortir": {
+    "Code": {
+     "asc": "203,245,248,247,256,205",
+     "desc": "250,216,215,258,217,251",
+     "aria": "descending"
+    },
+    "Description": {
+     "asc": "214,242,199,222,253,246",
+     "desc": "204,215,258,212,226,211",
+     "aria": "descending"
+    },
+    "Jenis": {
+     "asc": "204,258,212,237,251,197",
+     "desc": "215,226,211,257,255,229",
+     "aria": "descending"
+    },
+    "Tanggal": {
+     "asc": "190,189,193,194,192,191",
+     "desc": "261,259,258,260,257,255",
+     "aria": "descending"
+    },
+    "Tanggal Paid": {
+     "asc": "261,259,258,260,255,254",
+     "desc": "257,224,222,218,213,212",
+     "aria": "descending"
+    },
+    "Requestor": {
+     "asc": "245,244,238,257,223,209",
+     "desc": "241,210,200,196,207,202",
+     "aria": "descending"
+    },
+    "PIC": {
+     "asc": "241,235,189,212,217,253",
+     "desc": "210,200,242,225,215,191",
+     "aria": "descending"
+    },
+    "Cost": {
+     "asc": "261,253,256,205,214,206",
+     "desc": "196,192,246,247,231,221",
+     "aria": "descending"
+    },
+    "Status": {
+     "asc": "246,236,215,241,219,253",
+     "desc": "233,242,254,229,239,256",
+     "aria": "descending"
+    },
+    "Close Date": {
+     "asc": "233,242,254,229,239,256",
+     "desc": "233,242,254,229,239,256",
+     "aria": "descending"
+    }
+   },
+   "hover": [
+    "color(srgb 0.978627 0.956863 0.958431)"
+   ],
+   "nonHover": [
+    "rgb(255, 255, 255)"
+   ]
+  },
+  "export": [
+   "http://127.0.0.1:8099/budget-request/export?date_from=2026-10-01&date_to=2026-10-31&tab=db&cols[]=code&cols[]=desc&cols[]=jenis&cols[]=tanggal&cols[]=paid_at&cols[]=pengaju&cols[]=pic&cols[]=cost&cols[]=status&cols[]=close_date 200"
+  ],
+  "peran": {
+   "head": {
+    "muat": true,
+    "ca": {
+     "th": ",Code,Description,Tanggal,Tanggal Paid,Requestor,PIC,Request,Refund,Expense Claim,Status,Action",
+     "cek": true,
+     "baris": 0,
+     "aksi": 0,
+     "more": 0,
+     "tfoot": "Total (data tampil)|0|0|0"
+    },
+    "cp": {
+     "th": ",Code,Description,Tanggal,Tanggal Paid,Requestor,PIC,Request,Status,Action",
+     "baris": 1,
+     "tfoot": "Total (data tampil)|750.000"
+    },
+    "db": 1
+   },
+   "manager": {
+    "muat": true,
+    "ca": {
+     "th": "Code,Description,Tanggal,Tanggal Paid,Requestor,PIC,Request,Refund,Expense Claim,Status,Action",
+     "cek": false,
+     "baris": 0,
+     "aksi": 0,
+     "more": 0,
+     "tfoot": "Total (data tampil)|0|0|0"
+    },
+    "cp": {
+     "th": "Code,Description,Tanggal,Tanggal Paid,Requestor,PIC,Request,Status,Action",
+     "baris": 1,
+     "tfoot": "Total (data tampil)|750.000"
+    },
+    "db": 1
+   },
+   "finance": {
+    "muat": true,
+    "ca": {
+     "th": ",Code,Description,Tanggal,Tanggal Paid,Requestor,PIC,Request,Refund,Expense Claim,Status,Action",
+     "cek": true,
+     "baris": 45,
+     "aksi": 1,
+     "more": 10,
+     "tfoot": "Total (data tampil)|11.602.793.000|379.659.000|632.821.000"
+    },
+    "cp": {
+     "th": ",Code,Description,Tanggal,Tanggal Paid,Requestor,PIC,Request,Status,Action",
+     "baris": 28,
+     "tfoot": "Total (data tampil)|5.877.640.000"
+    },
+    "db": 73
+   },
+   "guest": {
+    "muat": true,
+    "ca": {
+     "th": "Code,Description,Tanggal,Tanggal Paid,Requestor,PIC,Request,Refund,Expense Claim,Status,Action",
+     "cek": false,
+     "baris": 45,
+     "aksi": 0,
+     "more": 10,
+     "tfoot": "Total (data tampil)|11.602.793.000|379.659.000|632.821.000"
+    },
+    "cp": {
+     "th": "Code,Description,Tanggal,Tanggal Paid,Requestor,PIC,Request,Status,Action",
+     "baris": 28,
+     "tfoot": "Total (data tampil)|5.877.640.000"
+    },
+    "db": 73
+   }
+  }
+ },
+ "konsolSebelum": [],
+ "konsolSesudah": [],
+ "jaringanGagalSebelum": [],
+ "jaringanGagalSesudah": []
+}

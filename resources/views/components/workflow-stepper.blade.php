@@ -8,11 +8,14 @@
       total  : total row (untuk hitung proporsi dist-bar), default sum semua count
       table  : id elemen <table> DataTable yang mau difilter (tanpa '#')
       field  : nama data-attribute di <tr> yang menyimpan status, default "status"
+      groups : (opsional, hanya mode compact) [[judul fase, [statusKey, ...]], ...] —
+               tahap dikelompokkan per fase; tanpa prop ini tampilan lama dipakai.
 --}}
 @php
     $total = $total ?? collect($steps)->sum(fn($s) => $s[1]);
     $field = $field ?? 'status';
     $compact = $compact ?? false;
+    $groups = $groups ?? null;
 
     /*
     | Label multi-kata dipecah satu kata per baris ("Settle Approved" jadi dua
@@ -179,8 +182,51 @@
 @endonce
 @endpush
 
-@if($compact)
-<div class="wf-compact" data-wf-table="{{ $table }}" data-wf-field="{{ $field }}">
+@if($compact && !empty($groups))
+{{-- Mode berfase (opsional, prop groups = [[judul, [statusKey, ...]], ...]).
+     Tahap yang tidak disebut di grup mana pun ditaruh di grup terakhir supaya
+     tidak ada status yang hilang. Kelas .wf-tl-step + data-status dipertahankan,
+     jadi filter klik di atas tetap berlaku tanpa perubahan. --}}
+@php
+    $byKey = collect($steps)->keyBy(fn ($s) => $s[3]);
+    $phases = [];
+    $used = [];
+    foreach ($groups as [$gTitle, $gKeys]) {
+        $items = [];
+        foreach ($gKeys as $k) {
+            if ($byKey->has($k)) { $items[] = $byKey[$k]; $used[$k] = true; }
+        }
+        $phases[] = [$gTitle, $items];
+    }
+    $sisa = collect($steps)->reject(fn ($s) => isset($used[$s[3]]))->values()->all();
+    if ($sisa && $phases) { $phases[count($phases) - 1][1] = array_merge($phases[count($phases) - 1][1], $sisa); }
+    $phases = array_values(array_filter($phases, fn ($p) => count($p[1]) > 0));
+@endphp
+<div class="wf-host">
+<div class="wf-compact wf-phased" data-wf-table="{{ $table }}" data-wf-field="{{ $field }}">
+    <div class="wf-phase-row">
+        @foreach($phases as $pi => [$pTitle, $pSteps])
+            @if($pi > 0)
+                <span class="wf-phase-sep" aria-hidden="true"><i class="fas fa-chevron-right"></i></span>
+            @endif
+            <section class="wf-phase" style="flex-grow: {{ count($pSteps) }};">
+                <div class="wf-phase-title">{{ $pTitle }}</div>
+                <div class="wf-phase-steps">
+                    @foreach($pSteps as $s)
+                        <div class="wf-tl-step" role="button" tabindex="0" data-status="{{ $s[3] }}" data-wf-color="{{ $s[2] }}"
+                             title="{{ $s[0] }}: {{ $s[1] }}">
+                            <span class="badge wf-tl-node {{ $s[1] > 0 ? 'badge-' . $s[2] : 'is-empty' }}">{{ $s[1] }}</span>
+                            <div class="wf-tl-label {{ $s[1] > 0 ? 'is-on' : 'is-off' }}">{!! $wfLabel($s[0]) !!}</div>
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+        @endforeach
+    </div>
+</div>
+</div>
+@elseif($compact)
+<div class="wf-compact"data-wf-table="{{ $table }}" data-wf-field="{{ $field }}">
     <div class="wf-tl-grid">
         @foreach($steps as $s)
             <div class="wf-tl-step" role="button" tabindex="0" data-status="{{ $s[3] }}" data-wf-color="{{ $s[2] }}">

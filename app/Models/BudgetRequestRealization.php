@@ -11,6 +11,7 @@ class BudgetRequestRealization extends Model
     protected $fillable = [
         'budget_request_id',
         'request_detail_id',
+        'budget_detail_id',
         'description',
         'account_id',
         'amount',
@@ -40,6 +41,54 @@ class BudgetRequestRealization extends Model
     public function requestDetail()
     {
         return $this->belongsTo(RequestDetail::class, 'request_detail_id');
+    }
+
+    /**
+     * Sub COA (sub-item Budget Plan) yang dipilih langsung pada baris
+     * settlement ini. NULL pada baris lama (sebelum Settlement Custom COA,
+     * 25 Okt 2026) — pakai effectiveBudgetDetailId() untuk nilai yang berlaku.
+     */
+    public function budgetDetail()
+    {
+        return $this->belongsTo(BudgetPlanDetail::class, 'budget_detail_id');
+    }
+
+    /**
+     * Sub-item Budget Plan yang BERLAKU untuk baris ini:
+     * COALESCE(budget_detail_id baris, budget_detail_id item asal).
+     *
+     * $origin boleh dikirim pemanggil yang sudah memegang item asalnya
+     * (mis. dari koleksi details CR yang sudah dimuat) supaya tidak memicu
+     * query relasi requestDetail per baris.
+     */
+    public function effectiveBudgetDetailId(?RequestDetail $origin = null): ?int
+    {
+        if ($this->budget_detail_id) {
+            return (int) $this->budget_detail_id;
+        }
+
+        if (! $this->request_detail_id) {
+            return null;
+        }
+
+        $origin ??= $this->requestDetail;
+
+        return $origin?->budget_detail_id ? (int) $origin->budget_detail_id : null;
+    }
+
+    /** Memo per request — lihat hasBudgetDetailColumn(). */
+    private static ?bool $hasBudgetDetailColumn = null;
+
+    /**
+     * Kolom budget_detail_id sudah ada? Jaga-jaga bila kode terunggah lebih
+     * dulu daripada migrasi 2026_10_25_000200 dijalankan di server: tanpa ini
+     * setiap query yang menyebut kolomnya gagal 500. Dicek sekali per request.
+     */
+    public static function hasBudgetDetailColumn(): bool
+    {
+        return self::$hasBudgetDetailColumn ??= \Illuminate\Support\Facades\Schema::hasColumn(
+            'budget_request_realizations', 'budget_detail_id'
+        );
     }
 
     /** Lampiran KHUSUS baris realisasi ini (beda dengan lampiran global Settlement). */

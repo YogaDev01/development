@@ -35,11 +35,20 @@ class DailyTransaction extends Model
     ];
 
     public const STATUSES = [
+        'DRAFT',
         'PENDING_APPROVER',
         'DONE',
         'PAID',
         'REJECTED',
     ];
+
+    /**
+     * Status batch yang "memegang" itemnya: Cost Request / Cost Register /
+     * Second Payment yang INCLUDED di batch berstatus ini tidak boleh masuk
+     * batch lain. DRAFT ikut karena isinya sudah dipesan walau status
+     * sumbernya belum berubah (baru QUEUED saat Submit).
+     */
+    public const ACTIVE_STATUSES = ['DRAFT', 'PENDING_APPROVER', 'DONE'];
 
     /**
      * CASH_OUT = batch berbasis Cost Request (perilaku lama).
@@ -151,6 +160,7 @@ class DailyTransaction extends Model
     public function getStatusColorAttribute(): string
     {
         return match ($this->status) {
+            'DRAFT'            => 'secondary',
             'PENDING_APPROVER' => 'warning',
             'DONE'             => 'primary',
             'PAID'             => 'success',
@@ -218,6 +228,7 @@ class DailyTransaction extends Model
         return number_format($this->grand_total, 0, ',', '.');
     }
 
+    public function isDraft(): bool           { return $this->status === 'DRAFT'; }
     public function isPendingApprover(): bool { return $this->status === 'PENDING_APPROVER'; }
     public function isDone(): bool            { return $this->status === 'DONE'; }
     public function isPaid(): bool            { return $this->status === 'PAID'; }
@@ -250,6 +261,7 @@ class DailyTransaction extends Model
     public static function statusLabelFor(?string $status): string
     {
         return match ($status) {
+            'DRAFT'            => 'DRAFT',
             'PENDING_APPROVER' => 'SUBMITTED',
             'DONE'             => 'DONE',
             'PAID'             => 'PAID',

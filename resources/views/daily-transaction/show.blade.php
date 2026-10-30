@@ -165,6 +165,21 @@
                     </div>
                     @endif
 
+                    {{-- DRAFT — Treasury: ajukan ke CEO atau hapus draft (29 Okt 2026). --}}
+                    @if($batch->isDraft() && Auth::user()->hasRole(['superadmin','finance','finance_manager','treasury']))
+                    <div class="card-footer p-3 d-flex flex-wrap align-items-center" style="background:var(--surface-2);gap:10px;">
+                        <button type="button" class="btn btn-success btn-submit-batch"
+                                data-id="{{ $batch->id }}" data-code="{{ $batch->code }}">
+                            <i class="fas fa-paper-plane mr-1"></i> Submit ke CEO ({{ $batch->isTopUp() ? 'Top Up' : $batch->includedItems()->count() . ' item' }})
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-delete-batch"
+                                data-id="{{ $batch->id }}" data-code="{{ $batch->code }}">
+                            <i class="fas fa-trash mr-1"></i> Hapus Draft
+                        </button>
+                        <span class="text-muted" style="font-size:12px;">Draft belum bisa di-approve CEO. Keluarkan item yang tidak jadi dibayar, lalu Submit.</span>
+                    </div>
+                    @endif
+
                     {{-- MARK PAID — finance/treasury, batch DONE --}}
                     @if($batch->isDone() && Auth::user()->hasRole(['superadmin','finance','finance_manager','treasury']))
                     <div class="card-footer p-3" style="background:var(--surface-2);">
@@ -374,8 +389,18 @@
                                         <td class="text-nowrap">{{ $rowBen }}</td>
                                         <td class="text-right text-nowrap"><strong>{{ $rowAmount }}</strong></td>
                                         <td class="text-center text-nowrap">
-                                            @php $bolehTakeout = !$isTakeout && $batch->isPendingApprover() && Auth::user()->hasRole(['superadmin','approver']); @endphp
+                                            @php
+                                                $bolehTakeout = !$isTakeout && $batch->isPendingApprover() && Auth::user()->hasRole(['superadmin','approver']);
+                                                $bolehKeluarDraft = !$isTakeout && $batch->isDraft() && Auth::user()->hasRole(['superadmin','finance','finance_manager','treasury']);
+                                            @endphp
                                             <div class="action-buttons ts-actions">
+                                                @if($bolehKeluarDraft)
+                                                <button type="button" class="ts-action-primary is-danger btn-draft-remove-item"
+                                                        data-item-id="{{ $item->id }}" data-code="{{ $rowCode }}"
+                                                        title="Keluarkan dari draft" aria-label="Keluarkan {{ $rowCode }} dari draft">
+                                                    <i class="fas fa-times" aria-hidden="true"></i><span class="ts-al">Keluarkan</span>
+                                                </button>
+                                                @endif
 
                                                 <a href="{{ $rowUrl }}" target="_blank"
                                                    class="ts-action-primary is-neutral"
@@ -394,6 +419,13 @@
                                                             data-item-id="{{ $item->id }}" data-code="{{ $rowCode }}">
                                                         <i class="fas fa-times"></i>Takeout
                                                     </button>
+                                                    @unless($isRegister)
+                                                    <button type="button" class="dropdown-item is-danger btn-takeout-cr-item"
+                                                            data-mode="reject"
+                                                            data-item-id="{{ $item->id }}" data-code="{{ $rowCode }}">
+                                                        <i class="fas fa-ban"></i>Reject
+                                                    </button>
+                                                    @endunless
                                                 </div>
                                                 @endif
 
@@ -532,8 +564,18 @@
                                                             <td class="text-center text-nowrap">{{ $cri['qty'] }}</td>
                                                             <td class="text-right text-nowrap"><strong>{{ $cri['amount_formatted'] }}</strong></td>
                                                             <td class="text-center text-nowrap">
-                                                                @php $bolehTakeoutItem = $cri['item_status'] === 'INCLUDED' && $batch->isPendingApprover() && Auth::user()->hasRole(['superadmin','approver']); @endphp
+                                                                @php
+                                                                    $bolehTakeoutItem = $cri['item_status'] === 'INCLUDED' && $batch->isPendingApprover() && Auth::user()->hasRole(['superadmin','approver']);
+                                                                    $bolehKeluarDraftItem = $cri['item_status'] === 'INCLUDED' && $batch->isDraft() && Auth::user()->hasRole(['superadmin','finance','finance_manager','treasury']);
+                                                                @endphp
                                                                 <div class="action-buttons ts-actions">
+                                                                    @if($bolehKeluarDraftItem)
+                                                                    <button type="button" class="ts-action-primary is-danger btn-draft-remove-item"
+                                                                            data-item-id="{{ $cri['item_id'] }}" data-code="{{ $cri['cr_code'] }}"
+                                                                            title="Keluarkan dari draft" aria-label="Keluarkan {{ $cri['cr_code'] }} dari draft">
+                                                                        <i class="fas fa-times" aria-hidden="true"></i><span class="ts-al">Keluarkan</span>
+                                                                    </button>
+                                                                    @endif
 
                                                                     <a href="/budget-request?open={{ $cri['cr_id'] }}" target="_blank"
                                                                        class="ts-action-primary is-neutral" title="Lihat Cost Request">
@@ -551,6 +593,12 @@
                                                                                 class="dropdown-item is-danger btn-takeout-cr-item"
                                                                                 data-item-id="{{ $cri['item_id'] }}" data-code="{{ $cri['cr_code'] }}">
                                                                             <i class="fas fa-times"></i>Takeout
+                                                                        </button>
+                                                                        <button aria-label="Reject" type="button"
+                                                                                class="dropdown-item is-danger btn-takeout-cr-item"
+                                                                                data-mode="reject"
+                                                                                data-item-id="{{ $cri['item_id'] }}" data-code="{{ $cri['cr_code'] }}">
+                                                                            <i class="fas fa-ban"></i>Reject
                                                                         </button>
                                                                     </div>
                                                                     @endif
@@ -631,19 +679,17 @@
                         <label class="font-weight-600">
                             Lampiran Bukti Pembayaran <span class="text-danger">*</span>
                         </label>
-                        <div id="attachmentList">
-                            <div class="att-row mb-2 d-flex align-items-center" style="gap:8px;">
-                                <input type="file" name="attachments[]"
-                                       class="form-control-file flex-grow-1"
-                                       accept=".pdf,.jpg,.jpeg,.png" required>
-                                <button type="button" class="btn btn-xs btn-danger btn-remove-att">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
+                        {{-- Satu kotak: klik untuk pilih, tarik-lepas, atau tempel (Ctrl+V).
+                             File terkumpul di #inpAttachments (DataTransfer), jadi form
+                             tetap mengirim attachments[] seperti sebelumnya. --}}
+                        <input type="file" name="attachments[]" id="inpAttachments" multiple
+                               accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+                        <div id="attDropzone" tabindex="0" role="button"
+                             style="border:2px dashed var(--border);border-radius:var(--radius-lg);padding:22px 14px;text-align:center;font-size:12px;color:var(--text-muted);cursor:pointer;">
+                            <i class="fas fa-cloud-upload-alt mr-1" style="font-size:18px;display:block;margin-bottom:6px;"></i>
+                            Klik, tarik &amp; lepas, atau tempel (Ctrl+V) bukti pembayaran di sini
                         </div>
-                        <button type="button" class="btn btn-sm btn-secondary mt-1" id="btnAddAtt">
-                            <i class="fas fa-plus mr-1"></i> Tambah File
-                        </button>
+                        <ul id="attFileList" class="list-unstyled mb-0 mt-2"></ul>
                         <small class="text-muted d-block mt-1">Format: pdf, jpg, png. Maks 10 MB per file.</small>
                     </div>
                 </div>
@@ -714,12 +760,13 @@
     <div class="modal-dialog" role="document">
         <div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
             <div class="modal-header" style="background:var(--charcoal);border-bottom:3px solid var(--accent);">
-                <h5 class="modal-title text-white"><i class="fas fa-times mr-2" style="color:var(--accent);"></i> Takeout CR <span id="rejectItemCode"></span></h5>
+                <h5 class="modal-title text-white"><i class="fas fa-times mr-2" style="color:var(--accent);"></i> <span id="rejectItemTitle">Takeout CR</span> <span id="rejectItemCode"></span></h5>
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <form id="frmRejectItem" method="POST">
                 @csrf
                 <div class="modal-body" style="padding:24px 28px;">
+                    <small id="rejectItemHint" class="text-muted d-block mb-2"></small>
                     <div class="form-group mb-0">
                         <label class="font-weight-600">Alasan <span class="text-danger">*</span></label>
                         <textarea name="notes" class="form-control" rows="3" placeholder="Alasan takeout..." required></textarea>
@@ -727,7 +774,7 @@
                 </div>
                 <div class="modal-footer" style="background:var(--surface-2);">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-danger"><i class="fas fa-times mr-1"></i> Takeout</button>
+                    <button type="submit" id="btnRejectItemSubmit" class="btn btn-danger"><i class="fas fa-times mr-1"></i> Takeout</button>
                 </div>
             </form>
         </div>
@@ -1036,6 +1083,48 @@
 <script>
 $(function () {
 
+    /* ── DRAFT BATCH: Submit / Hapus / Keluarkan item ─────────────────────
+       Konfirmasi Swal lalu kirim form (POST/DELETE) ke route Draft. */
+    function kirimFormDraft(url, metode) {
+        var $f = $('<form method="POST"></form>').attr('action', url);
+        $f.append($('<input type="hidden" name="_token">').val($('meta[name="csrf-token"]').attr('content')));
+        if (metode && metode !== 'POST') $f.append($('<input type="hidden" name="_method">').val(metode));
+        $('body').append($f);
+        $f[0].submit();
+    }
+    function warnaToken(nama, cadangan) {
+        var v = getComputedStyle(document.documentElement).getPropertyValue(nama).trim();
+        return v || cadangan;
+    }
+    $(document).on('click', '.btn-submit-batch', function () {
+        var id = $(this).data('id'), code = $(this).data('code');
+        Swal.fire({
+            title: 'Submit batch ' + code + '?', icon: 'question',
+            text: 'Batch diajukan ke CEO untuk approval. Setelah di-submit, Cost Request di dalamnya menjadi QUEUED dan isi batch tidak bisa diubah langsung oleh Treasury.',
+            showCancelButton: true, confirmButtonText: 'Ya, Submit', cancelButtonText: 'Batal',
+            confirmButtonColor: warnaToken('--accent', '#92232b'), cancelButtonColor: warnaToken('--text-muted', '#6a6e72')
+        }).then(function (r) { if (r.isConfirmed) kirimFormDraft('{{ url('/daily-transaction') }}/' + id + '/submit', 'POST'); });
+    });
+    $(document).on('click', '.btn-delete-batch', function () {
+        var id = $(this).data('id'), code = $(this).data('code');
+        Swal.fire({
+            title: 'Hapus draft ' + code + '?', icon: 'warning',
+            text: 'Draft batch beserta daftar itemnya dihapus. Cost Request di dalamnya tetap APPROVED dan bisa dimasukkan ke batch lain.',
+            showCancelButton: true, confirmButtonText: 'Ya, Hapus', cancelButtonText: 'Batal',
+            confirmButtonColor: warnaToken('--danger', '#9a3030'), cancelButtonColor: warnaToken('--text-muted', '#6a6e72')
+        }).then(function (r) { if (r.isConfirmed) kirimFormDraft('{{ url('/daily-transaction') }}/' + id, 'DELETE'); });
+    });
+
+    $(document).on('click', '.btn-draft-remove-item', function () {
+        var itemId = $(this).data('item-id'), code = $(this).data('code');
+        Swal.fire({
+            title: 'Keluarkan ' + code + '?', icon: 'warning',
+            text: 'Baris ini dikeluarkan dari draft batch. Statusnya tidak berubah dan bisa dimasukkan ke batch lain.',
+            showCancelButton: true, confirmButtonText: 'Ya, Keluarkan', cancelButtonText: 'Batal',
+            confirmButtonColor: warnaToken('--danger', '#9a3030'), cancelButtonColor: warnaToken('--text-muted', '#6a6e72')
+        }).then(function (r) { if (r.isConfirmed) kirimFormDraft('{{ url('/daily-transaction/' . $batch->id . '/draft-remove-item') }}/' + itemId, 'POST'); });
+    });
+
     // ── DAFTAR CR DALAM BATCH — List CR grouped per Budget Plan/PO (pola sama
     // seperti Todo List), dirender penuh di server (Blade), TIDAK ada AJAX.
     // Breakdown Chart of Account dipindah ke modal "View Budget" per grup.
@@ -1103,18 +1192,83 @@ $(function () {
         this.value = v.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     });
 
-    // MARK PAID — tambah file
-    $('#btnAddAtt').on('click', function () {
-        $('#attachmentList').append(
-            '<div class="att-row mb-2 d-flex align-items-center" style="gap:8px;">' +
-            '<input type="file" name="attachments[]" class="form-control-file flex-grow-1" accept=".pdf,.jpg,.jpeg,.png">' +
-            '<button type="button" class="btn btn-xs btn-danger btn-remove-att"><i class="fas fa-trash"></i></button>' +
-            '</div>'
-        );
-    });
+    // MARK PAID — lampiran: klik / drag-drop / paste ke satu kotak.
+    // Berkas dikumpulkan di DataTransfer lalu dipasang ke #inpAttachments.
+    var attInput = document.getElementById('inpAttachments');
+    var attFiles = new DataTransfer();
+
+    function fmtSize(b) {
+        return b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+    }
+
+    function renderAttFiles() {
+        attInput.files = attFiles.files;
+        var $ul = $('#attFileList').empty();
+        $.each(attFiles.files, function (i, f) {
+            var $li = $('<li class="d-flex align-items-center py-1 px-2 mb-1" style="gap:8px;border:1px solid var(--border);border-radius:var(--radius-md);font-size:12px;"></li>');
+            $('<i class="fas ' + (/pdf/i.test(f.type) ? 'fa-file-pdf' : 'fa-file-image') + '" style="color:var(--text-muted);"></i>').appendTo($li);
+            $('<span class="flex-grow-1 text-truncate"></span>').text(f.name).appendTo($li);
+            $('<span class="text-muted text-nowrap"></span>').text(fmtSize(f.size)).appendTo($li);
+            $('<button type="button" class="btn btn-xs btn-link text-danger p-0 btn-remove-att" title="Hapus"><i class="fas fa-times"></i></button>')
+                .attr('data-index', i).appendTo($li);
+            $ul.append($li);
+        });
+    }
+
+    function addAttFiles(files) {
+        var okExt = /\.(pdf|jpe?g|png)$/i, okType = /^(application\/pdf|image\/(jpeg|png))$/, rejected = [];
+        $.each(files, function (_, f) {
+            if (!okExt.test(f.name) && !okType.test(f.type)) { rejected.push(f.name + ' (format tidak didukung)'); return; }
+            if (f.size > 10 * 1024 * 1024) { rejected.push(f.name + ' (lebih dari 10 MB)'); return; }
+            attFiles.items.add(f);
+        });
+        renderAttFiles();
+        if (rejected.length) alert('File ditolak:\n' + rejected.join('\n'));
+    }
 
     $(document).on('click', '.btn-remove-att', function () {
-        if ($('.att-row').length > 1) $(this).closest('.att-row').remove();
+        var idx = parseInt($(this).attr('data-index'), 10), next = new DataTransfer();
+        $.each(attFiles.files, function (i, f) { if (i !== idx) next.items.add(f); });
+        attFiles = next;
+        renderAttFiles();
+    });
+
+    $('#attDropzone')
+        .on('click', function () { attInput.click(); })
+        .on('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); attInput.click(); } })
+        .on('dragover dragenter', function (e) {
+            e.preventDefault();
+            $(this).css('border-color', 'var(--accent)');
+        })
+        .on('dragleave drop', function () { $(this).css('border-color', ''); })
+        .on('drop', function (e) {
+            e.preventDefault();
+            var dt = e.originalEvent.dataTransfer;
+            if (dt && dt.files.length) addAttFiles(dt.files);
+        });
+
+    // Pilihan dari dialog file ditambahkan ke daftar, bukan menggantikannya.
+    $(attInput).on('change', function () {
+        var picked = Array.prototype.slice.call(attInput.files);
+        attInput.files = attFiles.files;
+        addAttFiles(picked);
+    });
+
+    $('#mdlMarkPaid').on('paste', function (e) {
+        var cd = e.originalEvent.clipboardData;
+        if (!cd || !cd.files || !cd.files.length) return;
+        e.preventDefault();
+        addAttFiles(cd.files);
+    }).on('hidden.bs.modal', function () {
+        attFiles = new DataTransfer();
+        renderAttFiles();
+    });
+
+    $('#frmMarkPaid').on('submit', function (e) {
+        if (!attFiles.files.length) {
+            e.preventDefault();
+            alert('Upload minimal 1 file bukti pembayaran.');
+        }
     });
 
     // APPROVE BATCH
@@ -1142,8 +1296,14 @@ $(function () {
     $(document).on('click', '.btn-takeout-cr-item', function (e) {
         e.stopPropagation();
         var itemId = $(this).data('item-id'), code = $(this).data('code');
-        $('#frmRejectItem').attr('action', '/daily-transaction/{{ $batch->id }}/reject-item/' + itemId);
-        $('#frmRejectItem textarea[name="notes"]').val('');
+        var isReject = $(this).data('mode') === 'reject';
+        $('#frmRejectItem').attr('action', '/daily-transaction/{{ $batch->id }}/' + (isReject ? 'reject-cr-item/' : 'reject-item/') + itemId);
+        $('#frmRejectItem textarea[name="notes"]').val('').attr('placeholder', isReject ? 'Alasan reject...' : 'Alasan takeout...');
+        $('#rejectItemTitle').text(isReject ? 'Reject CR' : 'Takeout CR');
+        $('#rejectItemHint').text(isReject
+            ? 'CR berstatus REJECTED (Second Payment: CR induk menjadi Settle Rejected).'
+            : 'CR dikembalikan ke status APPROVED dan bisa dimasukkan ke batch lain.');
+        $('#btnRejectItemSubmit').html('<i class="fas fa-times mr-1"></i> ' + (isReject ? 'Reject' : 'Takeout'));
         $('#rejectItemCode').text(code);
         $('#mdlRejectItem').modal('show');
     });

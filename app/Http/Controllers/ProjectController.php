@@ -719,6 +719,215 @@ class ProjectController extends Controller
     |--------------------------------------------------------------------------
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | BULK VERIFY / APPROVE / MINTA REVISI — satu tahap per proses
+    |--------------------------------------------------------------------------
+    | Tidak ada logika approval baru: tiap PO diproses method satuan yang sama
+    | (verify / approve / financeRevise), jadi perpindahan status, propagasi ke
+    | Budget Plan bundled, log, dan notifikasi identik dengan aksi satuan.
+    |
+    | verify / approve / financeRevise TIDAK mengecek role di dalam method (role
+    | dijaga middleware route), jadi bulk mengecek rolenya sendiri per tahap,
+    | dengan aturan yang sama dengan tombol di daftar PO:
+    |   SUBMITTED : superadmin, finance, finance_manager  (Verify / Minta Revisi)
+    |   VERIFIED  : superadmin, approver                  (Approve / Minta Revisi)
+    | Approve hanya memakai keputusan APPROVE (status akhir dipilih sistem);
+    | Early Start tidak bisa lewat bulk.
+    */
+
+    private const BULK_MAX = 50;
+
+    private const BULK_ROLE_TAHAP = [
+        'SUBMITTED' => ['superadmin', 'finance', 'finance_manager'],
+        'VERIFIED'  => ['superadmin', 'approver'],
+    ];
+
+    public function bulkApprove(Request $request)
+    {
+        return $this->bulkProses($request, false);
+    }
+
+    public function bulkRevise(Request $request)
+    {
+        $request->validate(['notes' => 'required|string|max:500']);
+
+        return $this->bulkProses($request, true);
+    }
+
+    private function bulkProses(Request $request, bool $revisi)
+    {
+        $request->validate([
+            'ids'    => 'required|array|min:1|max:' . self::BULK_MAX,
+            'ids.*'  => 'integer',
+            'status' => 'required|in:SUBMITTED,VERIFIED',
+        ]);
+
+        $status = $request->input('status');
+        abort_unless(Auth::user()->hasRole(self::BULK_ROLE_TAHAP[$status]), 403,
+            'Anda tidak memiliki wewenang untuk tahap ini.');
+
+        $ids      = array_values(array_unique(array_map('intval', (array) $request->input('ids', []))));
+        $projects = Project::whereIn('id', $ids)->get()->keyBy('id');
+
+        $ok     = 0;
+        $errors = [];
+
+        foreach ($ids as $id) {
+            $project = $projects->get($id);
+            if (! $project) {
+                $errors[] = '#' . $id . ' (tidak ditemukan)';
+                continue;
+            }
+            if ($project->status !== $status) {
+                $errors[] = $project->code . ' (status berubah dari ' . $status . ' menjadi ' . $project->status . ' — muat ulang)';
+                continue;
+            }
+
+            // Aksi satuan mengembalikan redirect + flash; hanya flash 'error'-nya yang dibaca.
+            session()->forget(['success', 'error']);
+            try {
+                if ($revisi) {
+                    $this->financeRevise($request, $id);
+                } elseif ($status === 'SUBMITTED') {
+                    $this->verify($id);
+                } else {
+                    $request->merge(['decision' => 'APPROVE']);
+                    $this->approve($request, $id);
+                }
+                $error = session('error');
+            } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+                $error = $e->getMessage() ?: 'akses ditolak.';
+            }
+            session()->forget(['success', 'error']);
+
+            if ($error) {
+                $errors[] = $project->code . ' (' . $error . ')';
+            } else {
+                $ok++;
+            }
+        }
+
+        $aksi = $revisi ? 'dikembalikan untuk revisi.' : ($status === 'SUBMITTED' ? 'diverifikasi.' : 'di-approve.');
+
+        $redirect = back();
+        if ($ok) {
+            $redirect->with('success', $ok . ' PO berhasil ' . $aksi);
+        }
+        if ($errors) {
+            $redirect->with('error', count($errors) . ' PO dilewati: ' . implode(', ', array_slice($errors, 0, 5))
+                . (count($errors) > 5 ? ', …' : '') . '.');
+        }
+
+        return $redirect;
+    }
+
+    /** Catatan chat dikunci begitu PO CLOSED (seperti CR yang CLOSED). */
+    private function canPostLogNote(Project $project): bool
+    {
+        return $project->status !== 'CLOSED';
+    }
+
+    /**
+     * Tab Log (gaya chat, sama dengan Cost Request): riwayat workflow + catatan
+     * bebas, terbaru lebih dulu. Tabel catatan yang belum dimigrasi di server
+     * tidak boleh merusak detail PO.
+     */
+    private function logsFor(Project $project)
+    {
+        $semua = $project->logs->map(fn ($l) => [
+            'kind'         => 'activity',
+            'action_label' => $l->action_label,
+            'action_color' => $l->action_color,
+            'status_from'  => $l->status_from,
+            'status_to'    => $l->status_to,
+            'actor'        => $l->user_name ?? '-',
+            'user_id'      => $l->user_id,
+            'role'         => $l->role ?? '-',
+            'notes'        => $l->notes,
+            'at'           => $l->created_at,
+        ]);
+
+        try {
+            $catatan = \App\Models\ProjectLogNote::where('project_id', $project->id)->get()
+                ->map(fn ($n) => [
+                    'kind'         => 'note',
+                    'action_label' => 'Catatan',
+                    'action_color' => 'secondary',
+                    'status_from'  => null,
+                    'status_to'    => null,
+                    'actor'        => $n->actor_name ?? 'System',
+                    'user_id'      => $n->acted_by,
+                    'role'         => $n->actor_role ?? '-',
+                    'notes'        => $n->notes,
+                    'at'           => $n->created_at,
+                ]);
+            $semua = $semua->concat($catatan);
+        } catch (\Throwable $e) {
+            // tabel catatan belum ada: tampilkan riwayat workflow saja
+        }
+
+        $semua   = $semua->sortByDesc('at')->values();
+        $avatars = \App\Models\User::avatarUrlMap($semua->pluck('user_id'));
+
+        return $semua->map(fn ($l) => [
+            'kind'         => $l['kind'],
+            'avatar'       => $avatars[$l['user_id']] ?? null,
+            'action_label' => $l['action_label'],
+            'action_color' => $l['action_color'],
+            'status_from'  => $l['status_from'],
+            'status_to'    => $l['status_to'],
+            'actor'        => $l['actor'],
+            'user_id'      => $l['user_id'],
+            'role'         => $l['role'],
+            'notes'        => $l['notes'],
+            'date'         => $l['at']?->format('d M Y H:i'),
+        ])->all();
+    }
+
+    /**
+     * Kirim catatan ke tab Log (gaya chat). Siapa pun yang boleh melihat PO
+     * (aturan yang sama dengan detail-json) boleh menulis; ditutup begitu PO CLOSED.
+     */
+    public function storeLogNote(Request $request, $id)
+    {
+        $project = Project::findOrFail($id);
+
+        abort_unless($this->canViewProjectJson($project), 403);
+
+        $data = $request->validate(['notes' => 'required|string|max:1000']);
+
+        if (! $this->canPostLogNote($project)) {
+            return response()->json(['message' => 'Purchase Order sudah Closed; catatan baru tidak dapat ditambahkan.'], 422);
+        }
+
+        $user = Auth::user();
+        $note = \App\Models\ProjectLogNote::create([
+            'project_id' => $project->id,
+            'acted_by'   => $user?->id,
+            'actor_name' => $user?->name ?? 'System',
+            'actor_role' => $user?->role?->name,
+            'notes'      => trim($data['notes']),
+        ]);
+
+        return response()->json([
+            'ok'  => true,
+            'log' => [
+                'kind'         => 'note',
+                'avatar'       => $user?->avatar_url,
+                'action_label' => 'Catatan',
+                'action_color' => 'secondary',
+                'status_from'  => null,
+                'status_to'    => null,
+                'actor'        => $note->actor_name,
+                'user_id'      => $note->acted_by,
+                'role'         => $note->actor_role ?? '-',
+                'notes'        => $note->notes,
+                'date'         => now()->format('d M Y H:i'),
+            ],
+        ]);
+    }
+
     public function showJson($id)
     {
         $project = Project::with([
@@ -888,32 +1097,30 @@ class ProjectController extends Controller
                 'amount_formatted' => $bp->amount_formatted,
                 // Terpakai oleh Cost Request (VERIFIED s/d CLOSED) — untuk kolom Used & Var
                 'used'             => (int) $bp->usedAmount(),
-                'details' => $bp->details->map(function ($d) use ($bp) {
+                'details' => tap($bp->details, fn ($all) => \App\Models\BudgetPlanDetail::primeCostLines($all))->map(function ($d) use ($bp) {
                     $used      = $d->usedAmount();
                     $remaining = $d->remainingAmount();
 
-                    $crDetails = collect();
-                    if (\Illuminate\Support\Facades\Schema::hasColumn('request_detail', 'budget_detail_id')) {
-                        $crDetails = $d->costRequestDetails()
-                            ->whereHas('budgetRequest', fn ($q) => $q->disbursed())
-                            ->with(['budgetRequest:id,code,description,beneficiary_id,created_at', 'budgetRequest.beneficiary:id,nickname', 'realization'])
-                            ->get()
-                            ->map(function ($rd) {
-                                $amount = (int) ($rd->realization->total ?? $rd->total);
-                                return [
-                                    'cr_id'                  => $rd->budgetRequest->id ?? null,
-                                    'cr_code'                => $rd->budgetRequest->code ?? '-',
-                                    'cr_date_formatted'      => $rd->budgetRequest->created_at?->format('d M Y') ?? '-',
-                                    'beneficiary'            => $rd->budgetRequest->beneficiary->nickname ?? '-',
-                                    'notes'                  => $rd->notes ?: '-',
-                                    'unit_price_formatted'   => number_format((int) $rd->amount, 0, ',', '.'),
-                                    'qty'                    => (float) $rd->qty,
-                                    'amount'                 => $amount,
-                                    'amount_formatted'       => number_format($amount, 0, ',', '.'),
-                                ];
-                            })
-                            ->values();
-                    }
+                    // Riwayat CR per sub-item dari sumber yang sama dengan
+                    // "Used" (BudgetPlanDetail::costLines(), per baris settlement
+                    // untuk Cash Advance yang settlement-nya sudah diajukan).
+                    $crDetails = $d->costLines()
+                        ->map(function ($u) {
+                            $cr   = $u['budget_request'];
+                            $show = \App\Models\BudgetPlanDetail::costLineDisplay($u);
+                            return [
+                                'cr_id'                  => $cr->id,
+                                'cr_code'                => $cr->code ?? '-',
+                                'cr_date_formatted'      => $cr->created_at?->format('d M Y') ?? '-',
+                                'beneficiary'            => $cr->beneficiary->nickname ?? '-',
+                                'notes'                  => $show['notes'],
+                                'unit_price_formatted'   => number_format($show['unit_price'], 0, ',', '.'),
+                                'qty'                    => $show['qty'],
+                                'amount'                 => $show['amount'],
+                                'amount_formatted'       => number_format($show['amount'], 0, ',', '.'),
+                            ];
+                        })
+                        ->values();
 
                     return [
                         'budget_plan_code'    => $bp->code,
@@ -1058,17 +1265,8 @@ class ProjectController extends Controller
                 'status_color' => $cr->status_color,
             ]),
 
-            'logs' => $project->logs->map(fn($l) => [
-                'action_label' => $l->action_label,
-                'action_color' => $l->action_color,
-                'status_from'  => $l->status_from,
-                'status_to'    => $l->status_to,
-                'actor'        => $l->user_name ?? '-',
-                'user_id'      => $l->user_id,
-                'role'         => $l->role ?? '-',
-                'notes'        => $l->notes,
-                'date'         => $l->created_at->format('d M Y H:i'),
-            ]),
+            'logs'              => $this->logsFor($project),
+            'can_post_log_note' => $this->canPostLogNote($project),
         ]);
     }
 

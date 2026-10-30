@@ -20,6 +20,10 @@ class CostRegister extends Model
         'source_fund_id',
         'submitted_at',
         'paid_at',
+        'verified_by',
+        'verified_at',
+        'approved_by',
+        'approved_at',
     ];
 
     protected $casts = [
@@ -27,30 +31,37 @@ class CostRegister extends Model
         'period'       => 'date',
         'submitted_at' => 'datetime',
         'paid_at'      => 'datetime',
+        'verified_at'  => 'datetime',
+        'approved_at'  => 'datetime',
     ];
 
     public const TYPES = ['FIXED_COST', 'OVERHEAD'];
 
     /**
-     * MN-09 — alur biaya NON-Cost Request:
+     * Alur Cost Register = alur Cost Payment (Non-Cash Advance) di Cost Request,
+     * tanpa tahap Checked:
      *
-     *     DRAFT -> SUBMITTED -> QUEUED -> PAID
+     *     DRAFT -> VERIFIED -> APPROVED -> QUEUED -> CLOSED
      *
-     * Sengaja TANPA rantai approval berjenjang seperti Cost Request: nominal
-     * Fixed Cost/Overhead sudah disepakati lewat meeting + approval CEO di luar
-     * sistem (lihat CostRegisterController), jadi menambahkan approval di sini
-     * hanya menduplikasi keputusan yang sudah diambil.
+     *   DRAFT     : baru diinput, belum diajukan.
+     *   VERIFIED  : diajukan (Draft langsung Verified); label tampilan "Submitted".
+     *               Menunggu persetujuan Approver (CEO).
+     *   APPROVED  : disetujui; siap dimasukkan ke batch Treasury.
+     *   QUEUED    : sudah masuk batch Treasury yang aktif (label "Process").
+     *   CLOSED    : batch-nya sudah dibayar.
+     *   CANCELLED : dibatalkan sebelum masuk batch.
      *
-     *   DRAFT     : baru diinput, belum diajukan ke Treasury.
-     *   SUBMITTED : siap dimasukkan ke batch Treasury.
-     *   QUEUED    : sudah masuk batch Treasury yang aktif.
-     *   PAID      : batch-nya sudah dibayar.
-     *   CANCELLED : dibatalkan sebelum dibayar.
+     * Perpindahan status milik CostRegisterController (DRAFT/VERIFIED/APPROVED)
+     * dan DailyTransactionController (QUEUED/CLOSED).
      */
-    public const STATUSES = ['DRAFT', 'SUBMITTED', 'QUEUED', 'PAID', 'CANCELLED'];
+    public const STATUSES = ['DRAFT', 'VERIFIED', 'APPROVED', 'QUEUED', 'CLOSED', 'CANCELLED'];
 
     /** Status yang boleh dipilih Treasury saat menyusun batch. */
-    public const TREASURY_READY_STATUS = 'SUBMITTED';
+    public const TREASURY_READY_STATUS = 'APPROVED';
+
+    /** Peran per tahap (dipakai route, controller, dan Blade — satu sumber). */
+    public const SUBMIT_ROLES  = ['superadmin', 'finance', 'finance_manager'];
+    public const APPROVE_ROLES = ['superadmin', 'approver'];
 
     /*
     |--------------------------------------------------------------------------
@@ -83,6 +94,26 @@ class CostRegister extends Model
         return $this->belongsTo(SourceFund::class);
     }
 
+    public function details()
+    {
+        return $this->hasMany(CostRegisterDetail::class)->orderBy('id');
+    }
+
+    public function logs()
+    {
+        return $this->hasMany(CostRegisterLog::class)->orderByDesc('id');
+    }
+
+    public function verifiedBy()
+    {
+        return $this->belongsTo(User::class, 'verified_by');
+    }
+
+    public function approvedBy()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
     /** Baris batch Treasury yang memuat Cost Register ini. */
     public function dailyTransactionItems()
     {
@@ -95,26 +126,72 @@ class CostRegister extends Model
     |--------------------------------------------------------------------------
     */
 
-    public function isDraft(): bool     { return $this->status === 'DRAFT'; }
-    public function isSubmitted(): bool { return $this->status === 'SUBMITTED'; }
-    public function isPaid(): bool      { return $this->status === 'PAID'; }
+    public function isDraft(): bool    { return $this->status === 'DRAFT'; }
+    public function isVerified(): bool { return $this->status === 'VERIFIED'; }
+    public function isApproved(): bool { return $this->status === 'APPROVED'; }
+    public function isClosed(): bool   { return $this->status === 'CLOSED'; }
 
-    /** Masih boleh diubah/dihapus selama belum masuk antrean pembayaran. */
+    /** Hanya DRAFT yang boleh dihapus (Verified/Approved dibatalkan, bukan dihapus). */
     public function isEditable(): bool
     {
-        return in_array($this->status, ['DRAFT', 'SUBMITTED'], true);
+        return $this->status === 'DRAFT';
+    }
+
+    /** Boleh dibatalkan selama belum masuk antrean pembayaran. */
+    public function isCancellable(): bool
+    {
+        return in_array($this->status, ['DRAFT', 'VERIFIED', 'APPROVED'], true);
     }
 
     public function getStatusColorAttribute(): string
     {
         return match ($this->status) {
-            'DRAFT'     => 'secondary',
-            'SUBMITTED' => 'warning',
-            'QUEUED'    => 'info',
-            'PAID'      => 'success',
+            'DRAFT'    => 'secondary',
+            'VERIFIED' => 'warning',
+            'APPROVED' => 'primary',
+            'QUEUED'   => 'info',
+            'CLOSED'   => 'success',
             'CANCELLED' => 'danger',
-            default     => 'secondary',
+            default    => 'secondary',
         };
+    }
+
+    /**
+     * Label tampilan. VERIFIED tampil sebagai "Submitted" (Draft langsung Verified,
+     * tahap Checked dilewati) dan QUEUED sebagai "Process", seperti Cost Request.
+     */
+    public static function statusLabelFor(?string $status): string
+    {
+        return match ($status) {
+            'DRAFT'     => 'Draft',
+            'VERIFIED'  => 'Submitted',
+            'APPROVED'  => 'Approved',
+            'QUEUED'    => 'Process',
+            'CLOSED'    => 'Closed',
+            'CANCELLED' => 'Cancelled',
+            default     => $status ?? '-',
+        };
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return self::statusLabelFor($this->status);
+    }
+
+    /** Catat transisi status / catatan ke cost_register_logs (aktor dari user login). */
+    public function addLog(?string $from, ?string $to, string $action, ?string $notes = null): void
+    {
+        $user = \Illuminate\Support\Facades\Auth::user();
+
+        $this->logs()->create([
+            'action'      => $action,
+            'status_from' => $from,
+            'status_to'   => $to,
+            'notes'       => $notes,
+            'user_id'     => $user?->id,
+            'user_name'   => $user?->name ?? 'System',
+            'role'        => $user?->role?->name,
+        ]);
     }
 
     /*

@@ -25,6 +25,15 @@
 |
 | Label tiap opsi diambil dari atribut data-label (kalau ada), fallback ke
 | teks <option> itu sendiri.
+|
+| Tambahan opsional (single select; pemanggil lama tidak terpengaruh):
+|   <optgroup label="..."> — judul grup tampil tebal dan tidak bisa diklik; opsi
+|                            di bawahnya menjorok. Judul disembunyikan saat pencarian
+|                            tidak menyisakan opsi di grupnya.
+|   data-item-label       — teks item di daftar (tombol terpilih tetap memakai data-label).
+|   data-search           — kata tambahan yang ikut dicari (tidak ditampilkan).
+|   data-badge            — teks lencana kecil di akhir item (data-badge-tone: nada, mis.
+|                            "internal"/"external" -> kelas tss-badge-<nada>).
 */
 (function () {
     'use strict';
@@ -148,7 +157,15 @@
         $search.on('input', function () {
             var q = $(this).val().toLowerCase();
             $list.children('.tss-item').each(function () {
-                $(this).toggle($(this).text().toLowerCase().indexOf(q) !== -1);
+                var teks = ($(this).text() + ' ' + ($(this).attr('data-search') || '')).toLowerCase();
+                $(this).toggle(teks.indexOf(q) !== -1);
+            });
+            // Judul grup hanya tampil bila ada opsi di bawahnya yang tampil.
+            $list.children('.tss-group').each(function () {
+                var ada = $(this).nextUntil('.tss-group', '.tss-item').filter(function () {
+                    return $(this).css('display') !== 'none';
+                }).length > 0;
+                $(this).toggle(ada);
             });
             // Tinggi panel berubah: panel yang membalik ke atas harus menempel lagi ke field.
             var place = $list.closest('.tss-dropdown').data('tssPlace');
@@ -185,15 +202,35 @@
                 (opts.searchPlaceholder || 'Cari...') + '">');
             var $list = $('<div class="tss-list"></div>');
 
-            $select.find('option').each(function () {
-                var $opt = $(this);
+            function tambahItem($opt, dalamGrup) {
                 var val = $opt.val();
                 // Opsi kosong = placeholder; opsi disabled = disaring dropdown
                 // dependen (mis. Sub-RCA yang bukan milik RCA terpilih).
                 if (!val || $opt.prop('disabled')) return;
-                var $item = $('<div class="tss-item"></div>').text(optionLabel($opt)).attr('data-value', val);
+                var $item = $('<div class="tss-item"></div>').text($opt.attr('data-item-label') || optionLabel($opt)).attr('data-value', val);
+                if (dalamGrup) $item.addClass('tss-item-grouped');
+                if ($opt.attr('data-search')) $item.attr('data-search', $opt.attr('data-search'));
+                var badge = $opt.attr('data-badge');
+                if (badge) {
+                    var nada = $opt.attr('data-badge-tone');
+                    $item.append($('<span class="tss-badge"></span>')
+                        .addClass(nada ? 'tss-badge-' + nada : '').text(badge));
+                }
                 if ($opt.is(':selected')) $item.addClass('active');
                 $list.append($item);
+            }
+            $select.children().each(function () {
+                var $el = $(this);
+                if ($el.is('optgroup')) {
+                    var $opts = $el.children('option').filter(function () {
+                        return $(this).val() && !$(this).prop('disabled');
+                    });
+                    if (!$opts.length) return;
+                    $list.append($('<div class="tss-group"></div>').text($el.attr('label') || ''));
+                    $opts.each(function () { tambahItem($(this), true); });
+                } else if ($el.is('option')) {
+                    tambahItem($el, false);
+                }
             });
             if ($list.children().length === 0) {
                 $list.append('<div class="text-muted p-2" style="font-size:12px;">Tidak ada data.</div>');

@@ -46,6 +46,7 @@ bypass — superadmin passes because it is listed in each route gate; only
 | CR settle approve/reject, `ceo-close-settlement`, settlement bulk close/reject | superadmin, finance_manager |
 | CR `manager-reject-settlement` (SETTLE_VERIFIED → PAID) | Route: `role:superadmin,finance_manager`. Controller: `authorizeSettlementClose()` → same two roles. Despite the name, `manager` cannot call it. |
 | CR bulk approve/reject, item takeout/restore | superadmin, head, finance, finance_manager, cost_control, approver (stage checked in controller) |
+|   - bulk dari index CR (tab CA/CP) | Memakai route yang sama. Kolom checkbox hanya untuk peran efektif di `STAGE_ROLES` + superadmin; server memeriksa ulang status, peran, visibilitas (`visibleCrs`) per CR, plus `expected[id]` opsional dan batas 50 id. Id tak ditemukan dan id tanpa akses diberi pesan yang sama (tidak membocorkan keberadaan). Needs confirmation: belum ada throttle khusus pada endpoint ini. |
 | Treasury batch create / add item / **mark paid** | superadmin, finance, finance_manager, treasury |
 | Treasury batch approve / reject batch / reject item | superadmin, approver |
 | Budget Plan create/submit/closing request | superadmin, manager |

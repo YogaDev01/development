@@ -61,7 +61,7 @@ class BudgetRequestSecondPayment extends Model
             ->whereDoesntHave('dailyTransactionItems', fn ($q) =>
                 $q->where('status', 'INCLUDED')
                   ->whereHas('dailyTransaction', fn ($q2) =>
-                      $q2->whereIn('status', ['PENDING_APPROVER', 'DONE'])
+                      $q2->whereIn('status', DailyTransaction::ACTIVE_STATUSES)
                   )
             );
     }

@@ -6,14 +6,41 @@
 
 <div class="content">
     <div class="container-fluid">
+      <div class="tw:flex tw:flex-col tw:gap-4 tw:py-4 tw:has-[#crTabs_.nav-link[data-crtab=db].active]:[&_.cr-add-request]:hidden">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Cost Request</h1>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+        {{-- Judul & breadcrumb topbar: shell memindahkan <h1> dan .breadcrumb pertama ke topbar lalu
+             menghapusnya dari konten (tesys-shell.js hoistPageTitle); disembunyikan secara visual. --}}
+        <div class="tw:sr-only">
+            <h1>Cost Request</h1>
+            <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="#">Finance</a></li>
                 <li class="breadcrumb-item active">Cost Request</li>
             </ol>
         </div>
+
+        @php
+            // Sama dengan gerbang tombol "Tambah Request" di toolbar sebelumnya (peran tidak berubah).
+            $canAdd = Auth::user()->hasRole(['superadmin','manager','supervisor']);
+        @endphp
+
+        <x-tw.page-header title="Pengajuan Dana & Pembayaran"
+            description="Cash Advance dan Cost Payment beserta tahap persetujuan, pembayaran, dan settlement-nya.">
+            @if($canAdd)
+            <x-slot:actions>
+                {{-- Hanya relevan di tab Cash Advance / Cost Payment: kelas cr-add-request disembunyikan oleh varian has pada
+                     pembungkus halaman saat tab Database aktif (sama seperti sebelumnya, tombol ini tidak ada di tab itu). --}}
+                <x-tw.button href="{{ url('/budget-request/create') }}" class="cr-add-request tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Request</x-tw.button>
+            </x-slot:actions>
+            @endif
+        </x-tw.page-header>
+
+        @if($canAdd)
+        {{-- Mobile: tombol "Tambah Request" di header disembunyikan (CSS) dan diganti tombol melayang ini.
+             Hanya tampil di layar sempit dan tidak di tab Database (aturan di tesys-ui-refine.css). --}}
+        <a href="{{ url('/budget-request/create') }}" class="cr-fab" aria-label="Tambah Request" title="Tambah Request">
+            <i class="fas fa-plus" aria-hidden="true"></i>
+        </a>
+        @endif
 
         @php
             $n = fn ($counts, $s) => (int) ($counts[$s] ?? 0);
@@ -52,10 +79,24 @@
                 $cpSteps[] = ['Paid', $n($cpCounts, 'PAID'), 'success', 'PAID'];
             }
             $cpSteps[] = ['Closed', $n($cpCounts, 'CLOSED'), 'dark', 'CLOSED'];
+
+            // Pengelompokan tampilan per fase (presentasi saja; urutan & arti status tidak berubah).
+            // Second Approved = pembayaran kedua setelah Settle Approved, jadi masuk fase Settlement.
+            $caGroups = [
+                ['Fase 1: Pengajuan',   ['REJECTED', 'SETTLE_REJECTED', 'DRAFT', 'SUBMITTED']],
+                ['Fase 2: Persetujuan', ['CHECKED', 'VERIFIED', 'APPROVED']],
+                ['Fase 3: Pembayaran',  ['QUEUED', 'PAID']],
+                ['Fase 4: Settlement',  ['REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'SETTLE_APPROVED', 'SECOND_APPROVED', 'CLOSED']],
+            ];
+            $cpGroups = [
+                ['Fase 1: Pengajuan',   ['REJECTED', 'DRAFT', 'SUBMITTED']],
+                ['Fase 2: Persetujuan', ['CHECKED', 'VERIFIED', 'APPROVED']],
+                ['Fase 3: Pembayaran',  ['QUEUED', 'PAID', 'CLOSED']],
+            ];
         @endphp
 
         {{-- Tab + rentang tanggal (filter tanggal berlaku untuk semua tab) --}}
-        <div class="d-flex justify-content-between align-items-end flex-wrap mt-2" style="gap:8px;">
+        <div class="cr-head tw:flex tw:flex-wrap tw:items-end tw:justify-between tw:gap-2">
             <ul class="nav nav-tabs cr-main-tabs" id="crTabs" role="tablist">
                 <li class="nav-item">
                     <a class="nav-link {{ $activeTab === 'ca' ? 'active' : '' }}" data-toggle="tab" data-crtab="ca" href="#crPaneCA" role="tab">
@@ -76,7 +117,7 @@
                     </a>
                 </li>
             </ul>
-            <div class="d-flex align-items-center flex-wrap pb-1" style="gap:8px;">
+            <div class="tw:flex tw:flex-wrap tw:items-center tw:gap-2 tw:pb-1">
                 {{-- Filter tanggal: dropdown "Last Update Time" (12 jam s/d 1 tahun).
                      Pilihan "Custom…" memunculkan dua date-picker di sebelah KIRI
                      dropdown; pilihan lain menyembunyikannya kembali. Tanpa filter,
@@ -105,41 +146,53 @@
                     <option value="1y">1 tahun terakhir</option>
                     <option value="custom">Custom…</option>
                 </select>
-                <button id="btnRefreshCR" class="btn btn-secondary btn-sm">
-                    <i class="fas fa-sync-alt mr-1"></i> Refresh
-                </button>
+                <x-tw.button id="btnRefreshCR" variant="secondary" size="sm"><i class="fas fa-sync-alt" aria-hidden="true"></i> Refresh</x-tw.button>
             </div>
         </div>
 
         {{-- Worklist approval per Budget Plan (dulu section "Review Cost Request") sudah
              dipindah ke halaman Todo List Request. --}}
-        <div class="tab-content pt-3">
+        <div class="tab-content">
             @foreach([
-                'ca' => ['pane' => 'crPaneCA', 'steps' => $caSteps, 'table' => 'tblCA'],
-                'cp' => ['pane' => 'crPaneCP', 'steps' => $cpSteps, 'table' => 'tblCP'],
-                'db' => ['pane' => 'crPaneDB', 'steps' => null,     'table' => 'tblDB'],
+                'ca' => ['pane' => 'crPaneCA', 'steps' => $caSteps, 'groups' => $caGroups, 'table' => 'tblCA'],
+                'cp' => ['pane' => 'crPaneCP', 'steps' => $cpSteps, 'groups' => $cpGroups, 'table' => 'tblCP'],
+                'db' => ['pane' => 'crPaneDB', 'steps' => null,     'groups' => null,      'table' => 'tblDB'],
             ] as $tabKey => $cfg)
             <div class="tab-pane fade {{ $activeTab === $tabKey ? 'show active' : '' }} cr-pane" id="{{ $cfg['pane'] }}" data-tab="{{ $tabKey }}" role="tabpanel">
 
                 @if($cfg['steps'])
                 {{-- Angka stepper dihitung di server (query agregat) — tampil segera walau tabel belum dimuat. --}}
-                <x-workflow-stepper :steps="$cfg['steps']" :compact="true" :table="$cfg['table']" field="status" />
+                <x-workflow-stepper :steps="$cfg['steps']" :compact="true" :groups="$cfg['groups']" :table="$cfg['table']" field="status" />
                 @endif
 
-                <div class="card card-primary card-outline shadow-sm mt-3">
-                    <div class="card-body">
-                        @include('budget-request._toolbar', ['tab' => $tabKey])
+                {{-- Kartu tunggal toolbar + tabel. Div murni (tanpa kelas card/card-body): jarak, tepi, dan
+                     latar dari token Tailwind; popover filter/kolom harus bisa keluar dari kartu (tanpa overflow). --}}
+                <x-tw.card padding="sm" class="tw:mt-3">
+                    @include('budget-request._toolbar', ['tab' => $tabKey])
 
-                        {{-- Diisi AJAX saat tab pertama kali dibuka (data baru dimuat hanya bila tab dibuka). --}}
-                        <div class="cr-tab-host" data-tab="{{ $tabKey }}"
-                             data-url="{{ url('/budget-request/tab/' . $tabKey) }}">
-                            <x-skeleton type="table" :rows="8" :cols="6" />
+                    {{-- Diisi AJAX saat tab pertama kali dibuka (data baru dimuat hanya bila tab dibuka).
+                         Isi awal = kerangka pemuatan statis (tanpa animasi) yang menyerupai baris tabel. --}}
+                    <div class="cr-tab-host" data-tab="{{ $tabKey }}"
+                         data-url="{{ url('/budget-request/tab/' . $tabKey) }}">
+                        <div role="status" aria-live="polite" aria-label="Memuat data" class="tw:flex tw:flex-col tw:gap-3">
+                            <div aria-hidden="true" class="tw:h-8 tw:rounded-sm tw:bg-surface-2"></div>
+                            @for($i = 0; $i < 8; $i++)
+                            <div aria-hidden="true" class="tw:flex tw:items-center tw:gap-4 tw:border-b tw:border-border tw:pb-3">
+                                <span class="tw:h-4 tw:w-8 tw:shrink-0 tw:rounded-sm tw:bg-surface-3"></span>
+                                <span class="tw:h-4 tw:w-1/6 tw:shrink-0 tw:rounded-sm tw:bg-surface-3"></span>
+                                <span class="tw:h-4 tw:flex-1 tw:rounded-sm tw:bg-surface-2"></span>
+                                <span class="tw:h-4 tw:w-1/6 tw:shrink-0 tw:rounded-sm tw:bg-surface-2 tw:max-sm:hidden"></span>
+                                <span class="tw:h-4 tw:w-1/12 tw:shrink-0 tw:rounded-sm tw:bg-surface-3"></span>
+                            </div>
+                            @endfor
+                            <span class="tw:sr-only">Memuat data…</span>
                         </div>
                     </div>
-                </div>
+                </x-tw.card>
             </div>
             @endforeach
         </div>
+      </div>
     </div>
 </div>
 
@@ -151,11 +204,11 @@
 {{-- ================================================================ --}}
 <x-drawer id="crDrawer" label="Detail Cost Request" width="max(50vw, 560px)">
     <div id="crDrawerContent" hidden>
-        <ul class="nav nav-tabs mb-3" id="crDetailTabs" style="border-bottom:2px solid var(--border);flex-wrap:wrap;">
-            <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#crPaneInfo" style="font-size:12px;font-weight:600;padding:8px 12px;"><i class="fas fa-info-circle mr-1"></i> Info</a></li>
-            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#crPaneDetails" style="font-size:12px;font-weight:600;padding:8px 12px;"><i class="fas fa-list-ul mr-1"></i> Request <span id="crDetailCount" class="badge badge-secondary ml-1" style="font-size:10px;"></span></a></li>
-            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#crPaneRealization" style="font-size:12px;font-weight:600;padding:8px 12px;"><i class="fas fa-receipt mr-1"></i> Settlement <span id="crRealizationCount" class="badge badge-secondary ml-1" style="font-size:10px;"></span></a></li>
-            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#crPaneLogs" style="font-size:12px;font-weight:600;padding:8px 12px;"><i class="fas fa-history mr-1"></i> Log</a></li>
+        <ul class="nav nav-tabs mb-3" id="crDetailTabs" style="border-bottom:2px solid var(--border);">
+            <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#crPaneInfo"><i class="fas fa-info-circle mr-1"></i> Info</a></li>
+            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#crPaneDetails"><i class="fas fa-list-ul mr-1"></i> Request <span id="crDetailCount" class="badge badge-secondary ml-1"></span></a></li>
+            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#crPaneRealization"><i class="fas fa-receipt mr-1"></i> Settlement <span id="crRealizationCount" class="badge badge-secondary ml-1"></span></a></li>
+            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#crPaneLogs"><i class="fas fa-history mr-1"></i> Log</a></li>
         </ul>
         <div class="tab-content">
             <div class="tab-pane fade show active" id="crPaneInfo"></div>
@@ -166,14 +219,14 @@
                                         <button type="button" class="btn btn-xs btn-outline-secondary cr-toggle-all" id="btnToggleCrDetail" data-body="crDetailBody" data-expanded="0"><i class="fas fa-angle-double-down mr-1"></i>Expand All</button>
                                     </div>
                                     <div class="table-responsive">
-                                        <table class="table table-bordered mb-0" style="font-size:12px;">
+                                        <table class="table table-bordered mb-0">
                                             <thead style="background:var(--surface-2);">
                                                 <tr>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;">Chart of Account / Description</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:13%;">Price</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:center;width:6%;">Qty</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:14%;">Total</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:center;width:1%;white-space:nowrap;" id="crDetailActionTh" class="d-none">Aksi</th>
+                                                    <th scope="col">Chart of Account / Description</th>
+                                                    <th scope="col" style="text-align:right;width:13%;">Price</th>
+                                                    <th scope="col" style="text-align:center;width:6%;">Qty</th>
+                                                    <th scope="col" style="text-align:right;width:14%;">Total</th>
+                                                    <th scope="col" style="text-align:center;width:1%;white-space:nowrap;" id="crDetailActionTh" class="d-none">Aksi</th>
                                                 </tr>
                                             </thead>
                                             <tbody id="crDetailBody"></tbody>
@@ -181,8 +234,8 @@
                                         </table>
                                     </div>
                                     <div class="mt-3">
-                                        <h6 style="font-size:12px;font-weight:700;color:var(--text-faint);text-transform:uppercase;">
-                                            <i class="fas fa-paperclip mr-1"></i> Attachment <span id="crAttCount" class="badge badge-secondary ml-1" style="font-size:10px;"></span>
+                                        <h6 class="ts-dw-section-title">
+                                            <i class="fas fa-paperclip mr-1"></i> Attachment <span id="crAttCount" class="badge badge-secondary ml-1"></span>
                                         </h6>
                                         <div id="crAttBody" class="cr-att-grid"></div>
                                     </div>
@@ -192,27 +245,30 @@
                                         <i class="fas fa-receipt d-block mb-2"></i> No settlement data yet.
                                     </div>
                                     <div id="crRealizationWrapper">
+                                        <h6 class="ts-dw-section-title">
+                                            <i class="fas fa-list mr-1"></i> Rincian Settlement
+                                        </h6>
                                         {{-- Dikelompokkan per Chart of Account, sama dengan tab Request & Budgeting. --}}
                                         <div class="d-flex justify-content-end mb-2">
                                             <button type="button" class="btn btn-xs btn-outline-secondary cr-toggle-all" id="btnToggleCrReal" data-body="crRealizationBody" data-expanded="0"><i class="fas fa-angle-double-down mr-1"></i>Expand All</button>
                                         </div>
                                         <div class="table-responsive">
-                                            <table class="table table-bordered mb-0" style="font-size:12px;">
+                                            <table class="table table-bordered mb-0">
                                                 <thead style="background:var(--surface-2);">
                                                     <tr>
-                                                        <th scope="col" style="color:var(--text-faint);font-size:11px;">Chart of Account / Description</th>
-                                                        <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:13%;">Request</th>
-                                                        <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:13%;">Settlement</th>
-                                                        <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:right;width:12%;">Var</th>
-                                                        <th scope="col" style="color:var(--text-faint);font-size:11px;text-align:center;width:1%;">Action</th>
+                                                        <th scope="col">Chart of Account / Description</th>
+                                                        <th scope="col" style="text-align:right;width:13%;">Request</th>
+                                                        <th scope="col" style="text-align:right;width:13%;">Settlement</th>
+                                                        <th scope="col" style="text-align:right;width:12%;">Var</th>
+                                                        <th scope="col" style="text-align:center;width:1%;">Action</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="crRealizationBody"></tbody>
-                                                <tfoot><tr style="background:var(--surface-2);"><th colspan="2" class="text-right">Total Settlement</th><th class="text-right" id="crRealizationTotal" style="color:var(--success);"></th><th colspan="2"></th></tr></tfoot>
+                                                <tfoot><tr style="background:var(--surface-2);"><th class="text-right">Total</th><th class="text-right" id="crRealizationReqTotal"></th><th class="text-right" id="crRealizationTotal" style="color:var(--success);"></th><th class="text-right" id="crRealizationVarTotal"></th><th></th></tr></tfoot>
                                             </table>
                                         </div>
                                         <div class="mt-3">
-                                            <h6 style="font-size:12px;font-weight:700;color:var(--text-faint);text-transform:uppercase;">
+                                            <h6 class="ts-dw-section-title">
                                                 <i class="fas fa-paperclip mr-1"></i> Settlement Attachment (Global)
                                             </h6>
                                             <div id="crRealizationAtts" class="cr-att-grid"></div>
@@ -222,6 +278,13 @@
                                 </div>
             <div class="tab-pane fade" id="crPaneLogs">
                 <div id="crLogBody" class="cr-timeline cr-chat"></div>
+                {{-- Kotak catatan gaya chat; disembunyikan JS saat CR berstatus Closed. --}}
+                <form id="crLogForm" class="cr-log-form" hidden>
+                    <textarea id="crLogInput" class="form-control" rows="2" maxlength="1000"
+                              placeholder="Tulis catatan atau update…" aria-label="Catatan log"></textarea>
+                    <button type="submit" class="btn btn-sm btn-primary" id="crLogSend"><i class="fas fa-paper-plane mr-1"></i> Kirim</button>
+                </form>
+                <div id="crLogClosed" class="cr-log-closed" hidden><i class="fas fa-lock mr-1"></i> Cost Request sudah Closed — catatan baru tidak dapat ditambahkan.</div>
             </div>
         </div>
     </div>
@@ -381,17 +444,14 @@
 @endsection
 
 @push('styles')
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
 
-.row-nob td      { color:var(--danger) !important; }
-.row-nob-item td { color:var(--warning) !important; }
 .text-var-pos { color:var(--success); }
 .text-var-neg { color:var(--danger); }
 
-/* ── Gaya index Purchase Order: baris bersih + link kode/status biru-tua ── */
-.cr-tbl tbody tr,
-.cr-tbl tbody tr:hover { background-color:var(--surface) !important; }
-.cr-tbl tbody td { background-color:var(--surface); }
+/* ── Gaya index Purchase Order: link kode/status biru-tua. Latar/sorot baris/NOB/centang
+   tabel Cost Request kini utilitas tw di _table.blade.php ($gayaTabel) + datatable.css. ── */
 .cr-number-btn, .cr-cell-link {
     display:inline-block; background:transparent; border:none; padding:2px 8px; border-radius:var(--radius-sm);
     color:var(--text); font-weight:700; line-height:1.4;
@@ -404,56 +464,18 @@
 .cr-status-link { cursor:pointer; }
 .cr-status-link:hover { filter:brightness(.92); }
 
-/* ── TABEL: scroll horizontal, semua kolom fit-content kecuali Description,
-   kolom Code & Action dibekukan (pola sama seperti invoice-cash-receipt &
-   project/Purchase Order). ── */
+/* ── TABEL: gaya sel/th/tfoot, kolom beku (centang/Code/Action), baris NOB/centang
+   kini utilitas tw pada <table> (_table.blade.php, $gayaTabel; M5a). Di sini tinggal
+   pembungkus guliran server (.cr-table-wrap) dan kursor kotak centang. ── */
 /*
-| .cr-table-wrap dipakai di _table.blade.php sebagai pembungkus tabel, tapi
-| sebelumnya TIDAK PERNAH didefinisikan di CSS mana pun. Akibatnya markup yang
-| dikirim server tidak punya area geser sama sekali: pada layar sempit, tabel
-| ~20 kolom memaksa SELURUH halaman menggeser sampai JavaScript di bawah
-| membungkusnya ulang dengan .cr-hscroll. Ada jenak tata letak rusak di setiap
-| pemuatan, dan kalau JavaScript gagal, tabel tersibuk di aplikasi merusak
-| layout secara permanen.
-|
-| Didefinisikan di sini supaya markup server sudah benar sendiri; pembungkusan
-| oleh JavaScript tetap bekerja seperti sebelumnya (dan kini hanya menambahkan
-| perilaku, bukan menjadi syarat).
+| .cr-table-wrap dipakai di _table.blade.php sebagai pembungkus tabel; didefinisikan
+| agar markup server sudah punya area geser sendiri sebelum JavaScript membungkusnya
+| ulang dengan .cr-hscroll (.table-responsive: overflow-x:auto).
 */
 .cr-table-wrap { overflow-x:auto; }
-.cr-table-wrap .cr-tbl { width:auto !important; min-width:100%; margin-bottom:0; }
-
-.cr-hscroll { overflow-x:auto; }
-.cr-hscroll .cr-tbl { width:auto !important; min-width:100%; margin-bottom:0; }
-.cr-hscroll .cr-tbl th,
-.cr-hscroll .cr-tbl td { white-space:nowrap; }
-
-/* Kolom Code & Action dibekukan di tepi kiri/kanan — termasuk sel header dan
-   footer-nya. position:sticky pada <th> perlu !important karena CSS DataTables
-   memasang position:relative pada setiap header yang bisa diurutkan
-   (table.dataTable>thead .sorting), yang kalau menang akan membatalkan freeze
-   di baris header saja: datanya beku, judul kolomnya ikut menggeser.
-   Latar sel wajib pekat, kalau tidak isi kolom lain terlihat menembusnya. */
-.cr-hscroll .cr-tbl th.cr-col-code,
-.cr-hscroll .cr-tbl td.cr-col-code {
-    position:sticky !important; left:0; z-index:3;
-    background:var(--surface);
-    box-shadow:2px 0 6px -2px rgba(0,0,0,.18);
-}
-.cr-hscroll .cr-tbl th.action-column,
-.cr-hscroll .cr-tbl td.action-column {
-    position:sticky !important; right:0; z-index:3;
-    background:var(--surface);
-    box-shadow:-2px 0 6px -2px rgba(0,0,0,.18);
-}
-.cr-hscroll .cr-tbl thead th.cr-col-code,
-.cr-hscroll .cr-tbl thead th.action-column,
-.cr-hscroll .cr-tbl tfoot th.cr-col-code,
-.cr-hscroll .cr-tbl tfoot th.action-column {
-    background:var(--surface-2) !important; z-index:4;
-}
-.cr-hscroll .cr-tbl tbody tr:hover > td.cr-col-code,
-.cr-hscroll .cr-tbl tbody tr:hover > td.action-column { background:var(--surface-2); }
+/* Mode kartu (<= 640px) tabel Cost Request: utilitas tw pada <table> (_table.blade.php, $gayaKartu; M5b). */
+.cr-col-check input[type="checkbox"] { cursor:pointer; margin:0; vertical-align:middle; }
+.cr-col-check input[type="checkbox"]:disabled { cursor:not-allowed; }
 
 /* Modal detail CR — ukuran & style disamakan dengan modal show Budget Plan. */
 .modal-dialog-xxl {
@@ -498,9 +520,28 @@
 .cr-chat-row.mine { align-self:flex-end; flex-direction:row-reverse; text-align:right; }
 .cr-chat-av { width:30px; height:30px; border-radius:50%; background:var(--info-bg); color:var(--text-dim); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; }
 .cr-chat-row.mine .cr-chat-av { background:var(--charcoal); color:#fff; }
+.cr-chat-av { overflow:hidden; }
+.cr-chat-av img { width:100%; height:100%; object-fit:cover; }
 .cr-chat-bubble { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:8px 12px; font-size:12px; }
 .cr-chat-row.mine .cr-chat-bubble { border-color:var(--border); }
 .cr-chat-meta { font-size:10px; color:var(--text-faint); margin-bottom:4px; }
+/* Tab satu baris: bisa digeser mendatar tanpa scrollbar. */
+#crDetailTabs { flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; -ms-overflow-style:none; }
+#crDetailTabs::-webkit-scrollbar { display:none; }
+#crDetailTabs .nav-item { flex:0 0 auto; }
+#crDetailTabs .nav-link { white-space:nowrap; }
+/* Tab Log: chat menempel di bawah (terlama di atas), kotak kirim selalu terlihat. */
+#crPaneLogs.active { display:flex; flex-direction:column; }
+#crPaneLogs #crLogBody { margin-top:auto; }
+#crPaneLogs .cr-log-form, #crPaneLogs .cr-log-closed { position:sticky; bottom:-24px; margin-bottom:-24px; padding-bottom:24px; background:var(--surface); }
+/* Kode CR di kepala drawer: klik untuk menyalin. */
+.cr-copy-code { background:none; border:0; padding:0; margin:0; font:inherit; letter-spacing:inherit; text-transform:inherit; color:inherit; cursor:pointer; }
+.cr-copy-code:hover { color:var(--accent); text-decoration:underline; }
+.cr-copy-code:focus-visible { outline:none; box-shadow:0 0 0 3px var(--accent-ring); border-radius:var(--radius-sm); }
+/* Kotak catatan tab Log. */
+.cr-log-form { display:flex; gap:8px; align-items:flex-end; margin-top:16px; padding-top:12px; border-top:1px solid var(--border); }
+.cr-log-form textarea { font-size:12px; resize:none; flex:1 1 auto; }
+.cr-log-closed { margin-top:16px; padding-top:12px; border-top:1px solid var(--border); font-size:11.5px; color:var(--text-faint); }
 .cr-chat-note { margin-top:6px; font-size:11.5px; line-height:1.45; white-space:pre-line; color:var(--text); }
 
 /* Budget tab — reuse pola pivot grup/NOB dari Budget Plan */
@@ -549,11 +590,6 @@
 .cr-att-icon { width:100%; height:120px; display:flex; align-items:center; justify-content:center; background:var(--surface-2); color:var(--text-faint); font-size:30px; }
 .cr-att-name { font-size:11px; padding:6px 8px; color:var(--text); word-break:break-word; border-top:1px solid var(--border); }
 
-.custom-toolbar      { display:flex; align-items:flex-start; gap:15px; flex-wrap:wrap; }
-.custom-toolbar-left { display:flex; flex-direction:row; align-items:center; gap:12px; flex-wrap:wrap; }
-.toolbar-row         { display:flex; align-items:center; gap:8px; }
-.toolbar-label       { min-width:50px; font-weight:600; color:var(--text-dim); white-space:nowrap; flex-shrink:0; }
-.toolbar-input       { min-width:180px; }
 .cr-search-box input   { width:180px; border-radius:var(--radius-sm); }
 .ts-wrapper          { min-width:260px; }
 .ts-control .item {
@@ -570,9 +606,7 @@
 }
 .ts-control .item .remove { flex-shrink: 0; }
 .ts-control          { border-radius:var(--radius-sm) !important; border:1px solid var(--border) !important; min-height:38px !important; padding:6px 10px !important; box-shadow:none !important; }
-.cr-tbl               { width:100% !important; }
 .table td,.table th  { vertical-align:middle !important; }
-.action-column       { white-space:nowrap !important; width:1% !important; }
 .action-buttons      { display:flex; align-items:center; justify-content:center; gap:3px; flex-wrap:nowrap; }
 .font-weight-600     { font-weight:600; }
 .dataTables_wrapper .row:last-child { margin-top:18px; align-items:center; }
@@ -589,25 +623,16 @@
 .cr-main-tabs .nav-link.active { color:var(--accent) !important; border-bottom-color:var(--accent) !important; background:transparent !important; }
 .cr-tab-host { min-height:120px; }
 /* Tab drawer tetap di atas saat isinya digulir (.ts-drawer-body yang menggulir). */
-#crDetailTabs { position:sticky; top:0; z-index:5; background:var(--surface); }
+/* Offset -18px = padding-top .ts-drawer-body, supaya tab menempel tepat di tepi atas dan isi tidak terlihat di atasnya. */
+#crDetailTabs { position:sticky; top:-18px; margin-top:-18px; padding-top:18px; z-index:5; background:var(--surface); }
 #crDetailTabs .nav-link { color:var(--text-faint); border:none; border-bottom:2px solid transparent; border-radius:0; padding:8px 12px; }
 #crDetailTabs .nav-link.active { color:var(--accent) !important; border-bottom-color:var(--accent) !important; background:transparent !important; font-weight:700; }
 @media (max-width:576px) {
-    .custom-toolbar { flex-direction:column !important; align-items:stretch !important; }
-    .custom-toolbar-left { flex-direction:column !important; align-items:stretch !important; width:100%; }
-    .custom-toolbar-right { width:100%; }
-    .custom-toolbar-right .btn { width:100%; }
-    .cr-btn-clear { width:100%; }
+    .cr-btn-clear { width:auto; }
     .cr-row-filters { width:100%; }
     .cr-row-filters .tcf-row-btn { width:100%; }
-    .toolbar-row { width:100%; }
-    .toolbar-input { flex:1; min-width:0; }
     .cr-search-box input { width:100%; }
     .ts-wrapper { width:100% !important; min-width:0 !important; }
-    .card-header { flex-direction:column; align-items:stretch !important; gap:10px; }
-    .card-header .card-title { margin-bottom:0; }
-    .card-header .ml-auto { margin-left:0 !important; flex-wrap:wrap; }
-    .card-header .ml-auto .btn { flex:1 1 auto; }
     .cr-row-filters .tcf-row-btn { flex:1 1 auto; }
 }
 
@@ -641,7 +666,7 @@
 #imgViewerOverlay.show { display:flex; }
 #imgViewerStage { position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden; }
 #imgViewerImg {
-    max-width:90vw; max-height:82vh; object-fit:contain; cursor:zoom-in;
+    max-width:92%; max-height:calc(100% - 96px); object-fit:contain; cursor:zoom-in;
     transition:transform .15s ease; transform-origin:center center; user-select:none; -webkit-user-drag:none;
 }
 #imgViewerFile {
@@ -650,6 +675,8 @@
     padding:40px 48px; max-width:80vw; text-decoration:none;
 }
 #imgViewerFile:hover { background:var(--surface-2); }
+/* Saat drawer detail terbuka, viewer hanya menempati ruang di sebelah kirinya (lihat openViewer)
+   supaya data di drawer tetap terbaca & lampiran lain bisa dipilih dari drawer. */
 #imgViewerFile i { font-size:72px; color:var(--danger); }
 #imgViewerFile span { font-size:14px; font-weight:600; word-break:break-all; text-align:center; }
 #imgViewerFile small { font-size:11px; color:var(--text-faint); }
@@ -811,6 +838,7 @@ $(function () {
         { key: 'type',        label: 'Tipe' },
         { key: 'beneficiary', label: 'Beneficiary' },
         { key: 'pic',         label: 'PIC' },
+        { key: 'requestor',   label: 'Requestor' },
         { key: 'pminternal',  label: 'Manager' },
         { key: 'status',      label: 'Status' },
     ];
@@ -911,6 +939,113 @@ $(function () {
         if (e.key === 'Escape') $('.cr-pop').removeClass('show');
     });
 
+
+    // Klik kode CR = salin ke clipboard (detail dibuka lewat klik baris).
+    function crToast(pesan, ikon) {
+        // Toast standar aplikasi (sama dengan pesan flash sukses/galat).
+        if (window.tsToast) window.tsToast(ikon === 'error' ? 'error' : 'success', pesan);
+    }
+    $(document).on('click', '.cr-copy-code', function (e) {
+        e.stopPropagation();
+        var kode = String($(this).data('code') || $.trim($(this).text()));
+        function berhasil() { crToast('Kode ' + kode + ' disalin'); }
+        function gagal() { crToast('Gagal menyalin kode', 'error'); }
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(kode).then(berhasil, gagal);
+            return;
+        }
+        // Cadangan untuk koneksi non-HTTPS.
+        var ta = document.createElement('textarea');
+        ta.value = kode; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy') ? berhasil() : gagal(); } catch (err) { gagal(); }
+        document.body.removeChild(ta);
+    });
+
+    /* Lebar kolom bisa diseret (handle di tepi kanan header) dan diingat per tab di
+       localStorage. Tanpa pengaturan tersimpan, lebar bawaan dari CSS tetap dipakai.
+       Lebar ditulis lewat elemen <style> khusus di dalam media (min-width: 641px),
+       jadi mode kartu mobile tidak tersentuh. Klik dua kali handle = kembali ke bawaan. */
+    function crInitResize(tab, tbl) {
+        var id = tbl.id, kunci = 'crColW_' + tab, MIN = 48;
+        var styleEl = document.createElement('style');
+        document.head.appendChild(styleEl);
+
+        function zoom() { return parseFloat(getComputedStyle(document.documentElement).zoom) || 1; }
+        function ths() { return Array.prototype.slice.call(tbl.querySelectorAll('thead th')); }
+        function lebar(th) { return th.getBoundingClientRect().width / zoom(); }
+
+        // Lebar efektif sekarang: kolom ber-data-col ke peta, sisanya (centang/aksi) ke "tetap".
+        function ukur() {
+            var peta = {}, tetap = 0;
+            ths().forEach(function (th) {
+                var k = th.getAttribute('data-col');
+                if (k) peta[k] = lebar(th); else tetap += lebar(th);
+            });
+            return { peta: peta, tetap: tetap };
+        }
+        function lukis(peta, tetap) {
+            var total = tetap, aturan = '';
+            Object.keys(peta).forEach(function (k) {
+                total += peta[k];
+                aturan += 'body.tesys-ui .cr-pane #' + id + ' th[data-col="' + k + '"]{width:' + Math.round(peta[k]) + 'px !important;}';
+            });
+            aturan += 'body.tesys-ui .cr-pane table#' + id + '{width:' + Math.round(total) + 'px;min-width:0;}';
+            styleEl.textContent = '@media (min-width: 641px){' + aturan + '}';
+        }
+        function simpan(peta) {
+            try { localStorage.setItem(kunci, JSON.stringify(peta)); } catch (e) {}
+        }
+        function reset() {
+            styleEl.textContent = '';
+            try { localStorage.removeItem(kunci); } catch (e) {}
+        }
+
+        // Terapkan lebar tersimpan (bila ada) di atas lebar bawaan yang sedang terukur.
+        var tersimpan = null;
+        try { tersimpan = JSON.parse(localStorage.getItem(kunci) || 'null'); } catch (e) {}
+        if (tersimpan && typeof tersimpan === 'object') {
+            var u = ukur();
+            Object.keys(u.peta).forEach(function (k) {
+                var w = parseFloat(tersimpan[k]);
+                if (w >= MIN) u.peta[k] = w;
+            });
+            lukis(u.peta, u.tetap);
+        }
+
+        ths().forEach(function (th) {
+            var k = th.getAttribute('data-col');
+            if (!k) return;
+            var h = document.createElement('span');
+            h.className = 'cr-resizer';
+            h.title = 'Seret untuk mengubah lebar • klik dua kali untuk mengembalikan';
+            th.appendChild(h);
+
+            h.addEventListener('click', function (e) { e.stopPropagation(); });   // jangan memicu sortir
+            h.addEventListener('dblclick', function (e) { e.stopPropagation(); reset(); });
+            h.addEventListener('pointerdown', function (e) {
+                e.preventDefault(); e.stopPropagation();
+                var z = zoom(), u = ukur(), x0 = e.clientX, w0 = u.peta[k];
+                h.setPointerCapture(e.pointerId);
+                h.classList.add('is-active');
+                function gerak(ev) {
+                    u.peta[k] = Math.max(MIN, w0 + (ev.clientX - x0) / z);
+                    lukis(u.peta, u.tetap);
+                }
+                function lepas() {
+                    h.removeEventListener('pointermove', gerak);
+                    h.removeEventListener('pointerup', lepas);
+                    h.removeEventListener('pointercancel', lepas);
+                    h.classList.remove('is-active');
+                    simpan(u.peta);
+                }
+                h.addEventListener('pointermove', gerak);
+                h.addEventListener('pointerup', lepas);
+                h.addEventListener('pointercancel', lepas);
+            });
+        });
+    }
+
     function crCurrentTab() { return $('#crTabs .nav-link.active').data('crtab') || 'ca'; }
 
     function initCrTable(tab) {
@@ -919,9 +1054,14 @@ $(function () {
         if (!$tbl.length) return;
 
         var emptyTpl = $host.find('.cr-empty-template')[0];
-        var defs = [{ targets: [0], visible: false, orderable: false }];
+        // Kolom checkbox bulk (hanya bila server merendernya) menggeser SEMUA indeks kolom satu langkah.
+        var off = $tbl.find('thead th.cr-col-check').length ? 1 : 0;
+        var defs = [{ targets: [off], visible: false, orderable: false }];
+        if (off) defs.push({ targets: [0], orderable: false, searchable: false });
+        // Kolom Action (terakhir; tab Database tidak punya) tanpa sortir.
+        if ($tbl.find('thead th.action-column').length) defs.push({ targets: [-1], orderable: false, searchable: false });
         Object.keys(cfg.mapVis).forEach(function (k) {
-            defs.push({ targets: [cfg.mapVis[k]], visible: getCrColVis(tab, k) });
+            defs.push({ targets: [cfg.mapVis[k] + off], visible: getCrColVis(tab, k) });
         });
 
         var table;
@@ -951,17 +1091,18 @@ $(function () {
         cfg.table = table;
 
         $tbl.wrap('<div class="cr-hscroll table-responsive"></div>');
+        crInitResize(tab, $tbl[0]);
 
         // Toggle kolom
         $pane.find('.cr-col-vis-toggle').each(function () {
             var key = $(this).data('column');
             if (cfg.mapVis[key] == null) return;
-            $(this).prop('checked', table.column(cfg.mapVis[key]).visible());
+            $(this).prop('checked', table.column(cfg.mapVis[key] + off).visible());
         }).off('change').on('change', function () {
             var key = $(this).data('column');
             if (cfg.mapVis[key] == null) return;
             var visible = $(this).is(':checked');
-            table.column(cfg.mapVis[key]).visible(visible);
+            table.column(cfg.mapVis[key] + off).visible(visible);
             setCrColVis(tab, key, visible);
             try { table.columns.adjust(); } catch (e) {}
         });
@@ -1000,6 +1141,7 @@ $(function () {
 
         TesysColumnFilter.initRowFilters('#' + cfg.id, $pane.find('.cr-row-filters'), cfg.filters);
         buildFilterPanel($pane, cfg);
+        crBulkInit(tab);
 
         $pane.find('.cr-btn-clear').off('click').on('click', function () {
             TesysColumnFilter.clearAll('#' + cfg.id);
@@ -1084,6 +1226,7 @@ $(function () {
         url.searchParams.set('tab', tab);
         url.searchParams.delete('status');
         window.history.replaceState({}, '', url.toString());
+        Object.keys(CR_TABS).forEach(crBulkReset); // seleksi bulk tidak dibawa antar tab
         crLoadTab(tab);
     });
 
@@ -1143,6 +1286,8 @@ $(function () {
                 try { cfg.table.destroy(); } catch (e) {}
                 cfg.table = null;
             }
+            if (cfg.sel) cfg.sel.clear();
+            crPane(tab).find('.cr-bulk-bar').addClass('d-none').removeClass('d-flex');
             cfg.loaded  = false;
             cfg.loading = false;
             crPane(tab).find('.cr-tab-host').empty();
@@ -1240,6 +1385,231 @@ $(function () {
     $(document).on('submit',
         '#frmHeadApprove, #frmNotes, #frmFinanceVerify, #frmCeoApprove, #frmVerifyRealization',
         function () { sibukkan(this); });
+
+    /* ── BULK APPROVE / REJECT TAHAP PENGAJUAN + BULK APPROVE TAHAP SETTLEMENT (Fase 4) ──
+    | Tahap settlement (Settle, Settle Checked, Settle Verified, Settle Approved) hanya
+    | punya Approve (budget-request.settlement-bulk-approve); tombol Reject disembunyikan.
+    | Memakai endpoint yang sama dengan section Review di Todo List
+    | (budget-request.review-bulk-approve / -reject). Seleksi hanya satu status
+    | per aksi, maks CR_BULK_MAX; id & status yang terlihat dikirim sebagai
+    | expected[id] supaya CR yang statusnya sudah berubah dilewati server.
+    | Hak centang per baris ditentukan server (data-elig), JS hanya menguncinya. */
+    var CR_BULK_MAX = 50;
+    var CR_BULK_URL = {
+        approve: '{{ route('budget-request.review-bulk-approve') }}',
+        reject:  '{{ route('budget-request.review-bulk-reject') }}',
+        settle:  '{{ route('budget-request.settlement-bulk-approve') }}'
+    };
+    var CR_BULK_STAGE = {
+        SUBMITTED: { ke: 'CHECKED',  approve: 'Approve (Check)' },
+        CHECKED:   { ke: 'VERIFIED', approve: 'Verify' },
+        VERIFIED:  { ke: 'APPROVED', approve: 'Approve' },
+        // Fase 4 — Settlement (hanya Approve).
+        REALIZED:        { ke: 'SETTLE_CHECKED',  approve: 'Check Settle',   settle: true },
+        SETTLE_CHECKED:  { ke: 'SETTLE_VERIFIED', approve: 'Verify Settle',  settle: true },
+        SETTLE_VERIFIED: { ke: 'SETTLE_APPROVED / CLOSED', approve: 'Approve Settle', settle: true },
+        SETTLE_APPROVED: { ke: 'SECOND_APPROVED', approve: 'Second Approve', settle: true }
+    };
+
+    function crCap(s) { return s ? String(s).split('_').map(function (w) { return w.charAt(0) + w.slice(1).toLowerCase(); }).join(' ') : ''; }
+    function crBulkWarn() {
+        if (window.tsToast) window.tsToast('warning', 'Maksimal ' + CR_BULK_MAX + ' CR per proses. Pilihan dibatalkan; persempit dengan filter lalu pilih lagi.');
+    }
+    function crBulkNodes(tab) {
+        var cfg = CR_TABS[tab];
+        return (cfg && cfg.table) ? $(cfg.table.rows().nodes()) : $();
+    }
+    function crBulkInfo(tr) {
+        var $tr = $(tr);
+        return {
+            id:      String($tr.attr('data-id')),
+            status:  $tr.attr('data-status'),
+            amount:  parseInt($tr.attr('data-amount'), 10) || 0,
+            nob:     $tr.attr('data-nob') === '1',
+            takeout: $tr.attr('data-takeout') === '1'
+        };
+    }
+
+    // Buang seleksi yang tidak lagi lolos search/filter (agar yang dikirim = yang terlihat).
+    function crBulkPrune(cfg) {
+        var ada = new Set();
+        cfg.table.rows({ search: 'applied' }).every(function () { ada.add(String($(this.node()).attr('data-id'))); });
+        cfg.sel.forEach(function (id) { if (!ada.has(id)) cfg.sel.delete(id); });
+    }
+
+    function crBulkRefresh(tab) {
+        var cfg = CR_TABS[tab];
+        if (!cfg || !cfg.sel || !cfg.table) return;
+        var $pane = crPane(tab), jml = 0, total = 0, status = null;
+
+        crBulkNodes(tab).each(function () {
+            var inf = crBulkInfo(this);
+            if (cfg.sel.has(inf.id)) { jml++; total += inf.amount; if (!status) status = inf.status; }
+        });
+        cfg.status = status;
+
+        crBulkNodes(tab).each(function () {
+            var $cb = $(this).find('.cr-check-row');
+            if (!$cb.length) return;
+            var inf = crBulkInfo(this), elig = $cb.attr('data-elig') === '1';
+            var kunci = !!status && inf.status !== status;
+            $cb.prop('checked', cfg.sel.has(inf.id));
+            if (!elig) return; // alasan tooltip dari server
+            $cb.prop('disabled', kunci);
+            if (kunci) $cb.attr('title', 'Satu proses hanya untuk satu tahap (' + crCap(status) + '). Baris ini berstatus ' + crCap(inf.status) + '.');
+            else $cb.removeAttr('title');
+        });
+
+        // Header "pilih semua": hanya baris eligible berstatus sama yang lolos filter.
+        var cand = 0, dipilih = 0;
+        if (status) {
+            cfg.table.rows({ search: 'applied' }).every(function () {
+                var inf = crBulkInfo(this.node());
+                if ($(this.node()).find('.cr-check-row').attr('data-elig') !== '1' || inf.status !== status) return;
+                cand++;
+                if (cfg.sel.has(inf.id)) dipilih++;
+            });
+        }
+        var allEl = $pane.find('.cr-check-all')[0];
+        if (allEl) {
+            allEl.checked = cand > 0 && dipilih === cand;
+            allEl.indeterminate = dipilih > 0 && dipilih < cand;
+        }
+
+        var $bar = $pane.find('.cr-bulk-bar');
+        $bar.toggleClass('d-none', jml === 0).toggleClass('d-flex', jml > 0);
+        $bar.find('.cr-bulk-info').text(jml + ' dipilih · total Rp ' + crMoney(total));
+        $bar.find('.cr-bulk-approve-label').text(status && CR_BULK_STAGE[status] ? CR_BULK_STAGE[status].approve : 'Approve');
+        // Tahap settlement tidak punya bulk Reject.
+        $bar.find('.cr-bulk-reject').toggleClass('d-none', !!(status && CR_BULK_STAGE[status] && CR_BULK_STAGE[status].settle));
+    }
+
+    function crBulkInit(tab) {
+        var cfg = CR_TABS[tab];
+        if (!cfg.table || !$('#' + cfg.id).find('.cr-check-all').length) return;
+        cfg.sel = new Set();
+        cfg.status = null;
+        cfg.table.on('draw', function () { crBulkPrune(cfg); crBulkRefresh(tab); });
+    }
+
+    function crBulkReset(tab) {
+        var cfg = CR_TABS[tab];
+        if (!cfg || !cfg.sel) return;
+        cfg.sel.clear();
+        crBulkRefresh(tab);
+    }
+
+    $(document).on('change', '.cr-check-row', function () {
+        var tab = $(this).closest('.cr-tbl').data('tab'), cfg = CR_TABS[tab];
+        if (!cfg || !cfg.sel) return;
+        var id = String(this.value);
+        if (this.checked) {
+            if (cfg.sel.size >= CR_BULK_MAX) { this.checked = false; crBulkWarn(); return; }
+            cfg.sel.add(id);
+        } else {
+            cfg.sel.delete(id);
+        }
+        crBulkRefresh(tab);
+    });
+
+    $(document).on('change', '.cr-check-all', function () {
+        var tab = $(this).closest('.cr-tbl').data('tab'), cfg = CR_TABS[tab];
+        if (!cfg || !cfg.sel) return;
+        if (!this.checked) { cfg.sel.clear(); crBulkRefresh(tab); return; }
+
+        var target = cfg.status, cand = [];
+        cfg.table.rows({ search: 'applied' }).every(function () {
+            if ($(this.node()).find('.cr-check-row').attr('data-elig') !== '1') return;
+            var inf = crBulkInfo(this.node());
+            if (!target) target = inf.status;
+            if (inf.status === target) cand.push(inf.id);
+        });
+        // Lebih dari batas: seluruh pilihan dibatalkan (bukan dipotong), supaya
+        // tidak ada CR terpilih yang tak disadari user.
+        var gabungan = new Set(cfg.sel);
+        cand.forEach(function (id) { gabungan.add(id); });
+        if (gabungan.size > CR_BULK_MAX) {
+            cfg.sel.clear();
+            crBulkWarn();
+            crBulkRefresh(tab);
+            return;
+        }
+        gabungan.forEach(function (id) { cfg.sel.add(id); });
+        crBulkRefresh(tab);
+    });
+
+    $(document).on('click', '.cr-bulk-clear', function () {
+        crBulkReset($(this).closest('.cr-bulk-bar').data('tab'));
+    });
+
+    $(document).on('click', '.cr-bulk-approve, .cr-bulk-reject', function () {
+        var $btn = $(this), reject = $btn.hasClass('cr-bulk-reject');
+        var tab = $btn.closest('.cr-bulk-bar').data('tab'), cfg = CR_TABS[tab];
+        if (!cfg || !cfg.sel || cfg.submitting) return;
+
+        var rows = [];
+        crBulkNodes(tab).each(function () {
+            var inf = crBulkInfo(this);
+            if (cfg.sel.has(inf.id)) rows.push(inf);
+        });
+        if (!rows.length) return;
+
+        var dari = rows[0].status, tahap = CR_BULK_STAGE[dari];
+        if (!tahap || (reject && tahap.settle)) return;
+        var total = 0, nob = 0, tk = 0;
+        rows.forEach(function (r) { total += r.amount; if (r.nob) nob++; if (r.takeout) tk++; });
+
+        var html = '<div style="text-align:left;font-size:13px;line-height:1.7;">'
+            + '<div><strong>' + rows.length + ' CR</strong>: ' + crCap(dari) + ' &rarr; ' + (reject ? 'Rejected' : crCap(tahap.ke)) + '</div>'
+            + '<div>Total: <strong>Rp ' + crMoney(total) + '</strong></div>'
+            + (nob ? '<div>Berstatus NOB (termasuk NOB sub-item): <strong>' + nob + ' CR</strong></div>' : '')
+            + (tk ? '<div>Punya item takeout: <strong>' + tk + ' CR</strong></div>' : '')
+            + '</div>';
+
+        var opsi = reject
+            ? { title: 'Reject ' + rows.length + ' CR?', icon: 'warning', html: html + '<div class="mt-2" style="text-align:left;font-size:12px;">Alasan penolakan wajib diisi:</div>',
+                input: 'textarea', inputAttributes: { maxlength: 500, 'aria-label': 'Alasan penolakan' },
+                inputValidator: function (v) { if (!v || !v.trim()) return 'Alasan penolakan wajib diisi.'; },
+                confirmButtonColor: WARNA_BAHAYA, confirmButtonText: 'Ya, Reject' }
+            : { title: tahap.approve + ' ' + rows.length + ' CR?', icon: 'question', html: html,
+                confirmButtonColor: WARNA_UTAMA, confirmButtonText: 'Ya, ' + tahap.approve };
+        opsi.showCancelButton = true;
+        opsi.cancelButtonColor = WARNA_BATAL;
+        opsi.cancelButtonText = 'Batal';
+
+        Swal.fire(opsi).then(function (r) {
+            if (!r.isConfirmed || cfg.submitting) return;
+            cfg.submitting = true;
+
+            var $f = $('<form method="POST"></form>').attr('action', reject ? CR_BULK_URL.reject : (tahap.settle ? CR_BULK_URL.settle : CR_BULK_URL.approve));
+            $f.append($('<input type="hidden" name="_token">').val($('meta[name="csrf-token"]').attr('content')));
+            rows.forEach(function (x) {
+                $f.append($('<input type="hidden" name="ids[]">').val(x.id));
+                $f.append($('<input type="hidden">').attr('name', 'expected[' + x.id + ']').val(x.status));
+            });
+            if (reject) $f.append($('<input type="hidden" name="notes">').val(r.value));
+
+            crPane(tab).find('.cr-bulk-bar button').prop('disabled', true);
+            if (window.TesysUI && TesysUI.busy) TesysUI.busy($btn[0], true);
+            // Redirect back() membawa kembali ke URL halaman ini (termasuk ?tab=).
+            $('body').append($f);
+            $f[0].submit();
+        });
+    });
+
+    // Kembali lewat tombol Back (bfcache): halaman dipulihkan beku, jadi kunci kirim
+    // dan tombol bar yang sempat dinonaktifkan harus dilepas lagi.
+    window.addEventListener('pageshow', function (e) {
+        if (!e.persisted) return;
+        Object.keys(CR_TABS).forEach(function (tab) {
+            var cfg = CR_TABS[tab];
+            if (!cfg || !cfg.sel) return;
+            cfg.submitting = false;
+            crPane(tab).find('.cr-bulk-bar button').prop('disabled', false).each(function () {
+                if (window.TesysUI && TesysUI.busy) TesysUI.busy(this, false);
+            });
+        });
+    });
 
     /* ── SUBMIT CONFIRM ── */
     $(document).on('submit', '.frmSubmitCR', function (e) {
@@ -1460,14 +1830,27 @@ $(function () {
             if (!images.length) return; // jangan buka overlay kosong
             idx = Math.min(Math.max(startIndex || 0, 0), images.length - 1);
             renderViewer();
+            // Drawer terbuka (layar lebar): viewer mengisi ruang kosong di kirinya, selebar sisa
+            // setelah panel drawer. Layar sempit: tetap layar penuh seperti semula.
+            var panel = document.querySelector('.ts-drawer-root.is-open .ts-drawer-panel');
+            var lebar = panel ? panel.style.getPropertyValue('--drawer-w').trim() : '';
+            overlay.style.right = (lebar && window.innerWidth > 640)
+                ? 'min(' + lebar + ', calc(100vw - 32px))'
+                : '';
             overlay.classList.add('show');
             $('body').css('overflow', 'hidden');
         }
 
         function closeViewer() {
             overlay.classList.remove('show');
+            overlay.style.right = '';
             $('body').css('overflow', '');
         }
+
+        // Drawer ditutup (tombol silang / area gelap) -> viewer ikut tertutup.
+        $(document).on('click', '[data-drawer-close]', function () {
+            if (overlay.classList.contains('show')) closeViewer();
+        });
 
         function showNext() { if (idx < images.length - 1) { idx++; renderViewer(); } }
         function showPrev() { if (idx > 0) { idx--; renderViewer(); } }
@@ -1793,16 +2176,8 @@ $(function () {
                 // cukup satu ikon "view" di kolom Action yang membuka viewer.
                 window.__crRealAtt = {};
 
-                // Dikelompokkan per Chart of Account, pola yang sama dengan tab Request.
-                var rUrutan = [], rPerAkun = {};
-                d.realizations.forEach(function (r) {
-                    var acc = r.account || '-';
-                    if (!rPerAkun[acc]) { rPerAkun[acc] = []; rUrutan.push(acc); }
-                    rPerAkun[acc].push(r);
-                });
-
-                // Var = Request - Settlement per baris (angka yang ditampilkan di
-                // kolom Request & Settlement baris itu). Hijau = sisa, merah = lebih.
+                // Var = Request - Settlement (angka yang ditampilkan di kolom
+                // Request & Settlement baris itu). Hijau = sisa, merah = lebih.
                 function fmtVar(n) {
                     n = Math.round(n || 0);
                     if (n === 0) return '<span class="text-muted">0</span>';
@@ -1811,10 +2186,43 @@ $(function () {
                         + (n > 0 ? '' : '-') + Math.abs(n).toLocaleString('id-ID') + '</span>';
                 }
 
+                // Total Request / Settlement / Var di footer Rincian Settlement — angka dari
+                // server (settlement_comparison): Request = item pengajuan, tidak dijumlah dari
+                // total_cr per baris (bisa berlipat bila satu item dipecah jadi beberapa baris).
+                var cmp = d.settlement_comparison || { rows: [] };
+                $('#crRealizationReqTotal').text(cmp.request_formatted || '0');
+                $('#crRealizationVarTotal').html(fmtVar(cmp.variance));
+
+                // Rincian Settlement: Request item asal hanya ditulis di baris
+                // PERTAMA item itu (baris pecahan berikutnya "-"), Var-nya =
+                // Request item - jumlah seluruh baris settlement item tersebut.
+                var settlePerItem = {}, sudahTampil = {};
+                d.realizations.forEach(function (r) {
+                    if (r.request_detail_id) {
+                        settlePerItem[r.request_detail_id] = (settlePerItem[r.request_detail_id] || 0) + (r.actual || 0);
+                    }
+                });
+                d.realizations.forEach(function (r) {
+                    r._reqShown = null;
+                    if (r.request_detail_id && !sudahTampil[r.request_detail_id]) {
+                        sudahTampil[r.request_detail_id] = true;
+                        r._reqShown = r.total_cr || 0;
+                        r._varShown = (r.total_cr || 0) - (settlePerItem[r.request_detail_id] || 0);
+                    }
+                });
+
+                // Dikelompokkan per Chart of Account, pola yang sama dengan tab Request.
+                var rUrutan = [], rPerAkun = {};
+                d.realizations.forEach(function (r) {
+                    var acc = r.account || '-';
+                    if (!rPerAkun[acc]) { rPerAkun[acc] = []; rUrutan.push(acc); }
+                    rPerAkun[acc].push(r);
+                });
+
                 rUrutan.forEach(function (acc) {
                   var items = rPerAkun[acc];
                   var grupClass = 'cr-rgrp-' + (rGrupIdx++);
-                  var grupReq    = items.reduce(function (t, x) { return t + (x.total_cr || 0); }, 0);
+                  var grupReq    = items.reduce(function (t, x) { return t + (x._reqShown || 0); }, 0);
                   var grupSettle = items.reduce(function (t, x) { return t + (x.actual || 0); }, 0);
 
                   rHtml += '<tr class="cr-group-row" data-target="' + grupClass + '" style="cursor:pointer;">'
@@ -1849,17 +2257,21 @@ $(function () {
                     var attR     = itemAtts.length
                         ? ' <span class="badge badge-light border text-muted" style="font-size:9px;"><i class="fas fa-paperclip mr-1"></i>' + itemAtts.length + '</span>'
                         : '';
+                    // Baris tambahan / pindah Sub COA (Settlement Custom COA).
+                    var asal = r.is_added
+                        ? ' <span class="badge badge-info" style="font-size:9px;">Baris tambahan</span>'
+                        : (r.is_moved ? ' <span class="badge badge-warning" style="font-size:9px;">Pindah dari: ' + esc(r.origin_label || '-') + '</span>' : '');
 
                     rHtml += '<tr class="' + grupClass + ' cr-group-item" style="display:none;">'
                         + '<td class="cr-indent">'
-                            + '<div style="font-weight:600;">' + esc(subCoa) + attR + '</div>'
+                            + '<div style="font-weight:600;">' + esc(subCoa) + attR + asal + '</div>'
                             + '<div class="cr-clip" style="font-size:11px;"><span class="text-muted">Request:</span> ' + esc(reqDesc) + '</div>'
                             + '<div class="cr-clip" style="font-size:11px;"><span class="text-muted">Settle:</span> ' + esc(setDesc) + '</div>'
                             + '<div class="cr-clip" style="font-size:11px;"><span class="text-muted">Note:</span> ' + esc(noteDesc) + '</div>'
                         + '</td>'
-                        + '<td class="text-right">' + r.total_cr_formatted + '</td>'
+                        + '<td class="text-right">' + (r._reqShown !== null ? (r._reqShown || 0).toLocaleString('id-ID') : '<span class="text-muted">-</span>') + '</td>'
                         + '<td class="text-right"><strong>' + r.actual_formatted + '</strong></td>'
-                        + '<td class="text-right">' + fmtVar((r.total_cr || 0) - (r.actual || 0)) + '</td>'
+                        + '<td class="text-right">' + (r._reqShown !== null ? fmtVar(r._varShown) : (r.is_added ? fmtVar(-(r.actual || 0)) : '<span class="text-muted">-</span>')) + '</td>'
                         + '<td class="text-center">' + aksi + '</td>'
                         + '</tr>';
                   });
@@ -1915,22 +2327,15 @@ $(function () {
             // kiri, avatar inisial dari nama actor. Tanpa nama role.
             var logHtml = '';
             (d.logs || []).slice().reverse().forEach(function (log) {
-                var mine = log.user_id && currentUserId && log.user_id === currentUserId;
-                var actor = log.actor || 'System';
-                var initials = actor.trim().split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase() || '?';
-                logHtml += '<div class="cr-chat-row ' + (mine ? 'mine' : '') + '">' +
-                    '<div class="cr-chat-av">' + initials + '</div>' +
-                    '<div>' +
-                        '<div class="cr-chat-meta"><strong>' + actor + '</strong> · ' + log.date + '</div>' +
-                        '<div class="cr-chat-bubble">' +
-                            '<span class="badge badge-' + log.action_color + ' px-2 py-1" style="font-size:9px;">' + log.action_label + '</span>' +
-                            (log.status_from && log.status_to ? ' <span style="font-size:10px;opacity:.75;">' + (log.status_from_label || log.status_from) + ' → ' + (log.status_to_label || log.status_to) + '</span>' : '') +
-                            (log.notes ? '<div class="cr-chat-note">' + log.notes + '</div>' : '') +
-                        '</div>' +
-                    '</div>' +
-                '</div>';
+                logHtml += renderLogRow(log);
             });
             $('#crLogBody').html(logHtml || kosongRingkas('Belum ada riwayat persetujuan.'));
+            // Kotak catatan hanya selama CR belum Closed (server menolak juga).
+            var bisaCatat = d.can_post_log_note !== false;
+            $('#crLogForm').prop('hidden', !bisaCatat).data('id', d.id);
+            $('#crLogClosed').prop('hidden', bisaCatat);
+            $('#crLogInput').val('');
+            if ($('#crPaneLogs').hasClass('active')) aturTinggiLog(true);
 
             // Buka tab tertentu bila diminta pemanggil (mis. klik nilai Request ->
             // tab Request, klik badge Status -> tab Log) — default tab pertama (Info).
@@ -1969,6 +2374,166 @@ $(function () {
         return html + '</dl>';
     }
 
+    /* Tab Log setinggi area gulir drawer supaya chat menempel di bawah
+       walau isinya sedikit; lalu gulir ke pesan terbaru. */
+    function aturTinggiLog(gulirKeBawah) {
+        var body = document.getElementById('crDrawer-body');
+        var $tabs = $('#crDetailTabs');
+        if (!body || !$tabs.length) return;
+        var cs = getComputedStyle(body);
+        var tinggi = body.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)
+                   - $tabs.outerHeight() - parseFloat($tabs.css('margin-bottom')) - parseFloat($tabs.css('margin-top'));
+        $('#crPaneLogs').css('min-height', Math.max(tinggi, 0));
+        if (gulirKeBawah) body.scrollTop = body.scrollHeight;
+    }
+    $(document).on('shown.bs.tab', '#crDetailTabs a[data-toggle="tab"]', function () {
+        this.scrollIntoView({ block: 'nearest', inline: 'nearest' }); // tab aktif selalu terlihat
+        if ($(this).attr('href') === '#crPaneLogs') aturTinggiLog(true);
+    });
+    $(window).on('resize', function () { if ($('#crPaneLogs').hasClass('active')) aturTinggiLog(false); });
+
+    /* Mobile: geser kiri/kanan pada isi drawer untuk pindah tab. Di tab
+       pertama (Info), geser kanan menutup drawer. Gesekan yang dimulai di
+       tabel/tab/kotak isian dibiarkan (itu gulir mendatar atau mengetik). */
+    (function () {
+        var x0 = null, y0 = null, abaikan = false;
+        $(document).on('touchstart', '#crDrawer-body', function (e) {
+            var t = e.originalEvent.touches[0];
+            x0 = t.clientX; y0 = t.clientY;
+            abaikan = window.innerWidth > 768 || e.originalEvent.touches.length > 1 ||
+                $(e.target).closest('.table-responsive, #crDetailTabs, textarea, input, select').length > 0;
+        });
+        $(document).on('touchend', '#crDrawer-body', function (e) {
+            if (x0 === null || abaikan) { x0 = null; return; }
+            var t = e.originalEvent.changedTouches[0];
+            var dx = t.clientX - x0, dy = t.clientY - y0;
+            x0 = null;
+            if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+            var $tabs = $('#crDetailTabs li:visible a');
+            var i = $tabs.index($tabs.filter('.active'));
+            if (dx < 0) {                    // geser kiri → tab berikutnya
+                if ($tabs[i + 1]) $($tabs[i + 1]).tab('show');
+            } else if (i > 0) {              // geser kanan → tab sebelumnya
+                $($tabs[i - 1]).tab('show');
+            } else {                         // geser kanan di tab Info → tutup
+                TesysDrawer.close('crDrawer');
+            }
+        });
+    })();
+
+    /* Satu baris chat di tab Log. Catatan bebas di-escape; riwayat status
+       dirender seperti semula. */
+    function renderLogRow(log) {
+        var mine = log.user_id && currentUserId && log.user_id === currentUserId;
+        var isNote = log.kind === 'note';
+        var actor = log.actor || 'System';
+        var initials = actor.trim().split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase() || '?';
+        return '<div class="cr-chat-row ' + (mine ? 'mine' : '') + '">' +
+            '<div class="cr-chat-av">' + (log.avatar ? '<img src="' + esc(log.avatar) + '" alt="">' : esc(initials)) + '</div>' +
+            '<div>' +
+                '<div class="cr-chat-meta"><strong>' + (isNote ? esc(actor) : actor) + '</strong> · ' + esc(log.date) + '</div>' +
+                '<div class="cr-chat-bubble">' +
+                    (isNote
+                        ? '<div class="cr-chat-note" style="margin-top:0;">' + esc(log.notes) + '</div>'
+                        : '<span class="badge badge-' + log.action_color + ' px-2 py-1" style="font-size:9px;">' + log.action_label + '</span>' +
+                          (log.status_from && log.status_to ? ' <span style="font-size:10px;opacity:.75;">' + (log.status_from_label || log.status_from) + ' → ' + (log.status_to_label || log.status_to) + '</span>' : '') +
+                          (log.notes ? '<div class="cr-chat-note">' + log.notes + '</div>' : '')) +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    }
+
+    $(document).on('submit', '#crLogForm', function (e) {
+        e.preventDefault();
+        var $f = $(this), $in = $('#crLogInput'), $btn = $('#crLogSend');
+        var teks = $.trim($in.val());
+        if (!teks) { $in.focus(); return; }
+        $btn.prop('disabled', true);
+        $.post('/budget-request/' + $f.data('id') + '/log-note', { _token: $('meta[name="csrf-token"]').attr('content'), notes: teks })
+            .done(function (res) {
+                if (!res || !res.log) return;
+                $('#crLogBody .ts-empty').remove();
+                $('#crLogBody').append(renderLogRow(res.log));
+                $in.val('');
+                var body = document.getElementById('crDrawer-body');
+                if (body) body.scrollTop = body.scrollHeight;
+            })
+            .fail(function (xhr) {
+                var pesan = (xhr.responseJSON && (xhr.responseJSON.message || (xhr.responseJSON.errors && xhr.responseJSON.errors.notes && xhr.responseJSON.errors.notes[0])))
+                    || 'Catatan belum dapat dikirim. Coba lagi.';
+                Swal.fire({ icon: 'error', title: 'Gagal mengirim', text: pesan });
+            })
+            .always(function () { $btn.prop('disabled', false); });
+    });
+
+    // Salin kode CR ke clipboard saat kode di kepala drawer diklik.
+    $(document).on('click', '.cr-copy-code', function () {
+        var btn = this, kode = $(btn).data('code'), asli = $(btn).text();
+        function selesai() {
+            $(btn).text('Tersalin ✓');
+            setTimeout(function () { $(btn).text(asli); }, 1200);
+        }
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(kode).then(selesai);
+        } else {
+            var t = document.createElement('textarea');
+            t.value = kode; t.style.position = 'fixed'; t.style.opacity = '0';
+            document.body.appendChild(t); t.select();
+            try { document.execCommand('copy'); selesai(); } catch (err) {}
+            document.body.removeChild(t);
+        }
+    });
+
+    /* Lini masa tahap CR dari log status. Memakai kejadian TERBARU tiap tahap
+       dan hanya yang terjadi setelah pengajuan terakhir, supaya CR yang pernah
+       ditolak lalu diajukan ulang tidak menampilkan tanggal dari putaran lama. */
+    function bangunLiniMasa(d) {
+        var logs = (d.logs || []).filter(function (l) { return l.kind !== 'note'; }); // terbaru dulu
+        function cari(fn) { for (var i = 0; i < logs.length; i++) { if (fn(logs[i])) return logs[i]; } return null; }
+
+        var diajukan = cari(function (l) { return l.status_to === 'SUBMITTED'; });
+        var mulai = diajukan ? Date.parse(diajukan.ts) : null;
+
+        function tahap(label, fn, cadangan) {
+            var l = cari(function (x) { return fn(x) && (mulai === null || Date.parse(x.ts) >= mulai); });
+            if (l) return { label: label, date: l.date, ts: Date.parse(l.ts) };
+            return cadangan ? { label: label, date: cadangan, ts: null } : null;
+        }
+        function status(kode) { return function (l) { return l.status_to === kode; }; }
+
+        var daftar = [
+            tahap('Diajukan', status('SUBMITTED'), d.submitted_at),
+            tahap('Dicheck', status('CHECKED')),
+            tahap('Diverifikasi', status('VERIFIED')),
+            tahap('Di-approve', status('APPROVED')),
+            tahap('Diproses', status('QUEUED')),
+            tahap('Dibayar', function (l) { return l.action_type === 'paid'; }, d.paid_at)
+        ];
+        if (d.is_cash_advance) {
+            daftar.push(
+                tahap('Settle', status('REALIZED')),
+                tahap('Settle: Dicheck', status('SETTLE_CHECKED')),
+                tahap('Settle: Diverifikasi', status('SETTLE_VERIFIED')),
+                tahap('Settle: Di-approve', status('SETTLE_APPROVED')),
+                tahap('2nd Payment', status('SECOND_APPROVED'))
+            );
+        }
+        var closed = d.status === 'CLOSED' ? tahap('Closed', status('CLOSED')) : null;
+        daftar.push(closed);
+
+        var baris = daftar.filter(Boolean).map(function (t) { return [t.label, t.date]; });
+
+        // Total waktu: diajukan → closed; selama belum closed dihitung sampai sekarang.
+        if (mulai !== null) {
+            var selesai = closed && closed.ts ? closed.ts : Date.now();
+            var menit = Math.max(0, Math.floor((selesai - mulai) / 60000));
+            var hari = Math.floor(menit / 1440), jam = Math.floor((menit % 1440) / 60), mnt = menit % 60;
+            var teks = (hari ? hari + ' hari ' : '') + (jam || hari ? jam + ' jam ' : '') + mnt + ' menit';
+            baris.push([closed && closed.ts ? 'Total waktu (Diajukan → Closed)' : 'Berjalan sejak Diajukan', teks]);
+        }
+        return { baris: baris };
+    }
+
     function openCRDrawer(id, pemicu, tab) {
         crDrawerId = id;
 
@@ -1984,6 +2549,12 @@ $(function () {
         // Aksi baris disalin apa adanya, termasuk form dan token CSRF-nya.
         var baris = pemicu ? $(pemicu).closest('tr') : $('.cr-tbl:not([data-tab="db"]) tbody tr[data-id="' + id + '"]').first();
         var aksi = baris.find('.ts-actions').children('.ts-action-primary, form').clone(true, true);
+        // Baris dengan banyak aksi hanya punya menu titik tiga: butirnya disalin sebagai tombol drawer.
+        var $menuAksi = baris.find('.ts-action-menu').first();
+        if ($menuAksi.length) {
+            aksi = $menuAksi.children('.dropdown-item, form').clone(true, true);
+            aksi.find('.dropdown-item').addBack('.dropdown-item').removeClass('dropdown-item').addClass('ts-action-primary');
+        }
         if (aksi.length) $('#crDrawerActions').append(aksi);
 
         function tampilkanGagal(pesan) {
@@ -2013,7 +2584,9 @@ $(function () {
 
                 var meta = statusMeta[d.status] || { label: d.status_label || d.status, description: null, tone: 'neutral' };
 
-                $('#crDrawer-eyebrow').text(d.code + (d.type ? ' · ' + d.type : ''));
+                $('#crDrawer-eyebrow').html(
+                    '<button type="button" class="cr-copy-code" data-code="' + escAttr(d.code) + '" title="Klik untuk menyalin kode">'
+                    + esc(d.code) + '</button>' + esc(d.type ? ' · ' + d.type : ''));
                 $('#crDrawer-title').text(d.description);
 
                 var html = '';
@@ -2086,7 +2659,8 @@ $(function () {
                 /* ---- Informasi pengajuan: siapa & atas dasar apa.
                    Penerima menampilkan PIC-nya; Rekening memuat beneficiary +
                    bank & nomor. Purchase Order / Budget Plan dilebur jadi satu
-                   baris Reference (Kode - Scope of Work). */
+                   baris Reference (Kode - Scope of Work); baris Scope of Work
+                   dan Project terpisah tidak ditampilkan lagi. */
                 var referensi = (d.code_reference && d.code_reference !== '-')
                     ? d.code_reference + (d.reference_scope && d.reference_scope !== '-' ? ' - ' + d.reference_scope : '')
                     : (d.reference_scope || null);
@@ -2094,8 +2668,6 @@ $(function () {
                      + drawerKV([
                          ['Kode', d.code],
                          ['Description', d.description],
-                         ['Scope of Work', d.project],
-                         ['Project', d.cluster],
                          ['Payment Notes', d.payment_notes],
                          ['Notes', d.notes],
                          ['Requestor', d.applicant],
@@ -2108,21 +2680,13 @@ $(function () {
                        ])
                      + '</div>';
 
-                /* ---- Tanggal: dipisah dari informasi supaya keduanya
-                   bisa dipindai sendiri-sendiri. */
+                /* ---- Tanggal: lini masa tahap persetujuan, disusun dari log
+                   status (tahap terbaru per status). Lampiran tidak diulang di
+                   sini — sudah ada di tab Request & Settlement. */
+                var tl = bangunLiniMasa(d);
                 html += '<div class="ts-dw-section"><p class="ts-dw-section-title">Tanggal</p>'
-                     + drawerKV([
-                         ['Dibuat', d.created_at],
-                         ['Diajukan', d.submitted_at],
-                         ['Disetujui', d.approved_at],
-                         ['Dibayar', d.paid_at],
-                       ])
+                     + (tl.baris.length ? drawerKV(tl.baris) : kosongRingkas('Belum diajukan.'))
                      + '</div>';
-
-                /* Lampiran — kartu; klik membuka carousel. */
-                html += '<div class="ts-dw-section"><p class="ts-dw-section-title">Lampiran'
-                     + (d.attachments_count ? ' (' + d.attachments_count + ')' : '') + '</p>'
-                     + '<div class="cr-att-grid">' + renderAttGrid(d.attachments, 'info') + '</div></div>';
 
                 $('#crPaneInfo').html(html);
                 $('#crDrawerContent').removeAttr('hidden');
@@ -2135,6 +2699,14 @@ $(function () {
     }
 
     $(document).on('click', '.btn-review-cr', function () {
+        openCRDrawer($(this).data('id'), this);
+    });
+
+    // Klik di mana saja pada baris membuka detail (drawer yang sama dengan klik kode CR).
+    // Kontrol di dalam baris (tombol, tautan, centang, menu aksi) tetap bekerja sendiri.
+    $(document).on('click', '.cr-tbl tbody tr[data-id]', function (e) {
+        if ($(e.target).closest('a, button, input, select, textarea, label, form, .ts-actions, .ts-action-menu, .cr-col-check').length) return;
+        if (window.getSelection && String(window.getSelection()).length) return;
         openCRDrawer($(this).data('id'), this);
     });
 

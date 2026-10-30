@@ -63,7 +63,12 @@ class SecondPaymentRebatchTest extends TestCase
             'source_fund_id' => $this->fundId(),
         ], $payload))->assertSessionMissing('error');
 
-        return DailyTransaction::latest('id')->firstOrFail();
+        // Batch lahir sebagai Draft; Submit memindahkan sumbernya ke QUEUED.
+        $batch = DailyTransaction::latest('id')->firstOrFail();
+        $this->actingAs($this->treasury)->post('/daily-transaction/' . $batch->id . '/submit')
+            ->assertSessionMissing('error');
+
+        return $batch->refresh();
     }
 
     public function test_batch_ditolak_mengembalikan_cr_induk_ke_second_approved(): void

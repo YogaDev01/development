@@ -39,6 +39,7 @@
     <span class="pnd-chip">CLOSED</span>
 </div>
 <p>Setelah dibayar (<code>PAID</code>), pengaju wajib <strong>menyelesaikan</strong> (label <strong>"Settle"</strong>) dengan bukti realisasi; selisih dikembalikan/ditagih, lalu <code>CLOSED</code>.</p>
+<p>Di form Settlement, tiap baris memilih <strong>Sub COA</strong> dari Budget Plan yang sama. Satu item boleh <strong>dipecah</strong> (ikon cabang) ke beberapa Sub COA, boleh ada <strong>baris tambahan</strong> (tombol "Tambah Baris"), dan baris boleh dihapus (Settle 0). <strong>Note</strong> wajib untuk baris tambahan, baris yang pindah Sub COA, dan item yang total Settle-nya melebihi Request. Peringatan merah muncul bila Settle melebihi sisa budget Sub COA — hanya informasi, tidak memblokir.</p>
 
 <h3>Tipe non–Cash Advance</h3>
 <div class="pnd-status-flow">

@@ -29,7 +29,7 @@
                                 <i class="fas fa-file-invoice-dollar fa-2x text-white"></i>
                             </div>
                             <h4 class="mt-2 mb-0 font-weight-bold">{{ $run->code }}</h4>
-                            <span class="badge badge-{{ $run->status_color }} px-3 py-1 mt-2">{{ $run->status }}</span>
+                            <x-status :status="$run->status" context="payroll-run" size="md" class="mt-2" />
                         </div>
 
                         <hr style="border-color:rgba(255,255,255,0.08);">
@@ -329,8 +329,8 @@ $(function () {
             text: msg,
             icon: 'question',
             showCancelButton: true,
-            confirmButtonColor: '#92232b',
-            cancelButtonColor: '#55595e',
+            confirmButtonColor: 'var(--accent)',
+            cancelButtonColor: 'var(--text-muted)',
             confirmButtonText: 'Ya, Lanjutkan',
             cancelButtonText: 'Batal'
         }).then(function (r) { if (r.isConfirmed) form.submit(); });

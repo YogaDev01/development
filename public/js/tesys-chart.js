@@ -94,11 +94,11 @@
         if (d) {
             d.defaultFontFamily = HURUF;
             d.defaultFontColor  = TEKS();
-            d.defaultFontSize   = 11;
+            d.defaultFontSize   = 11.5;
 
             if (d.legend && d.legend.labels) {
                 d.legend.labels.boxWidth = 10;
-                d.legend.labels.padding = 12;
+                d.legend.labels.padding = 14;
                 d.legend.labels.usePointStyle = true;
             }
 
@@ -106,11 +106,11 @@
                 d.tooltips.backgroundColor = TEKS_PEKAT();
                 d.tooltips.titleFontFamily = HURUF;
                 d.tooltips.bodyFontFamily  = HURUF;
-                d.tooltips.titleFontSize   = 11.5;
-                d.tooltips.bodyFontSize    = 11.5;
-                d.tooltips.cornerRadius    = 8;
-                d.tooltips.xPadding        = 10;
-                d.tooltips.yPadding        = 8;
+                d.tooltips.titleFontSize   = 12;
+                d.tooltips.bodyFontSize    = 12;
+                d.tooltips.cornerRadius    = 6;
+                d.tooltips.xPadding        = 12;
+                d.tooltips.yPadding        = 9;
                 d.tooltips.displayColors   = true;
                 d.tooltips.borderWidth     = 0;
             }

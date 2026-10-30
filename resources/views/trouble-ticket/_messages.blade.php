@@ -7,6 +7,7 @@
 
     $tech = $ctx['tech'] ?? [];
     $sup  = $ctx['sup'] ?? [];
+    $avatars = \App\Models\User::avatarUrlMap($messages->pluck('user_id'));
     $ikonEvent = [
         'created' => 'fa-plus-circle', 'assigned' => 'fa-user-plus', 'reassigned' => 'fa-exchange-alt',
         'responded' => 'fa-eye', 'responded_remote' => 'fa-satellite-dish',
@@ -35,7 +36,7 @@
     @if($msg->is_event)
         {{-- Sisi kejadian mengikuti peran pemicunya: teknisi di kanan. --}}
         <div class="tt-event {{ $peran === 'Teknisi' ? 'is-tech' : '' }}" data-id="{{ $msg->id }}">
-            <span class="tt-event-av">{{ mb_strtoupper(mb_substr($msg->actor_name ?? 'S', 0, 1)) }}{{ mb_strtoupper(mb_substr(\Illuminate\Support\Str::after($msg->actor_name ?? '', ' '), 0, 1)) }}</span>
+            <span class="tt-event-av">@if(isset($avatars[$msg->user_id]))<img src="{{ $avatars[$msg->user_id] }}" alt="">@else{{ mb_strtoupper(mb_substr($msg->actor_name ?? 'S', 0, 1)) }}{{ mb_strtoupper(mb_substr(\Illuminate\Support\Str::after($msg->actor_name ?? '', ' '), 0, 1)) }}@endif</span>
             <div class="tt-event-box">
                 <div class="tt-event-head">
                     <strong>{{ $msg->actor_name ?? 'System' }}</strong>
@@ -129,7 +130,7 @@
         {{-- Sisi gelembung mengikuti PERAN, bukan siapa yang membuka halaman
              (keputusan 15 Okt 2026): teknisi di kanan, peran lain di kiri. --}}
         <div class="tt-msg {{ $peran === 'Teknisi' ? 'is-tech' : '' }}" data-id="{{ $msg->id }}">
-            <span class="tt-msg-av">{{ mb_strtoupper(mb_substr($msg->actor_name ?? '?', 0, 1)) }}{{ mb_strtoupper(mb_substr(\Illuminate\Support\Str::after($msg->actor_name ?? '', ' '), 0, 1)) }}</span>
+            <span class="tt-msg-av">@if(isset($avatars[$msg->user_id]))<img src="{{ $avatars[$msg->user_id] }}" alt="">@else{{ mb_strtoupper(mb_substr($msg->actor_name ?? '?', 0, 1)) }}{{ mb_strtoupper(mb_substr(\Illuminate\Support\Str::after($msg->actor_name ?? '', ' '), 0, 1)) }}@endif</span>
             <div class="tt-msg-col">
                 <div class="tt-bubble-head">
                     <span class="tt-bubble-name">{{ $msg->actor_name ?? '-' }}</span>

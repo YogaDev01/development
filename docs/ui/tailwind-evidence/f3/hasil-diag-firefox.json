@@ -1,0 +1,5108 @@
+{
+ "bagian": {
+  "diag-fokus": {
+   "browser": "firefox",
+   "versiBrowser": "158.0.1",
+   "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0",
+   "buildID": "20261019185856",
+   "paketAppx": "Mozilla.Firefox 158.0.1.0",
+   "driver": "WebDriver BiDi bawaan Firefox (Remote Agent, ws://127.0.0.1:9444/session); tanpa geckodriver",
+   "headless": true,
+   "perintahStart": "firefox.exe -no-remote -profile <profil-sementara> -headless -remote-debugging-port=9444 about:blank",
+   "perintahUji": "node scripts/tailwind-harness/bidi-firefox.mjs --bagian=diag-fokus --base=http://127.0.0.1:8099 --port=9444 --user-superadmin=dummy.superadmin (kata sandi via env TESYS_PW_STAFF / TESYS_PW_SUPERADMIN)",
+   "base": "http://127.0.0.1:8099",
+   "waktu": "2026-10-26T08:26:22.307Z",
+   "akunUji": {
+    "superadmin": "dummy.superadmin",
+    "staff": "dummy.staff"
+   },
+   "setup": {
+    "pidAlias": 15596,
+    "pidProsesUtama": 15560,
+    "profilSesiCocokProfilSementara": true,
+    "pidBukanRunnerSebelum": []
+   },
+   "emulasi": "browsingContext.setViewport (lebar x tinggi, DPR 1); TANPA emulasi sentuh/seluler; input = input.performActions (mouse/keyboard sintetis)",
+   "acuanChrome": "hasil-href-chrome.json",
+   "hasil": {
+    "urutanEksekusi": [
+     "1. gelap aksen=bawaan mode=tab-murni",
+     "2. terang aksen=bawaan mode=tab-murni",
+     "3. gelap aksen=bawaan mode=lama-focus-skrip",
+     "4. terang aksen=bawaan mode=lama-focus-skrip",
+     "5. gelap aksen=#92232b mode=tab-murni",
+     "6. terang aksen=#92232b mode=tab-murni",
+     "7. gelap aksen=#0f6e66 mode=tab-murni",
+     "8. terang aksen=#0f6e66 mode=tab-murni",
+     "9. gelap aksen=bawaan mode=tab-murni (ULANG gelap-bawaan di akhir: cek efek urutan)"
+    ],
+    "jalankan": [
+     {
+      "no": 1,
+      "tema": "gelap",
+      "aksenDiminta": "bawaan",
+      "mode": "tab-murni",
+      "lingkungan": {
+       "tema": "dark",
+       "accent": "#92232b",
+       "hasFocus": true,
+       "visibilitas": "visible",
+       "zoom": "0.8",
+       "innerWidth": 1366,
+       "title": "Buat Submission | TESYS"
+      },
+      "awal": {
+       "aktif": "body",
+       "hasFocus": true,
+       "visibilitas": "visible"
+      },
+      "tabDitekan": 18,
+      "mencapaiTombolKirim": true,
+      "urutanContent": [
+       "a",
+       "select#selCategory[name=category]",
+       "input#title[name=title]",
+       "textarea#inpMessage[name=message]",
+       "input#chkWilling[name=willing_to_discuss]",
+       "input#inpWhatsapp[name=whatsapp_number]",
+       "button"
+      ],
+      "urutanBalik": [
+       "input#inpWhatsapp[name=whatsapp_number]",
+       "input#chkWilling[name=willing_to_discuss]",
+       "textarea#inpMessage[name=message]",
+       "input#title[name=title]"
+      ],
+      "luarContent": {
+       "jumlah": 7,
+       "fokusVisibleTrue": 7,
+       "fokusVisibleFalse": 0,
+       "contohFalse": []
+      },
+      "maju": [
+       {
+        "langkah": 8,
+        "el": "a",
+        "tw": true,
+        "teks": "Kembali ke daftar General Feed",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(226, 148, 154)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#e2949a",
+        "latarInduk": "#121215",
+        "rasio": 7.96,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4,
+        "foto": "docs/ui/tailwind-evidence/f3/firefox/diag-fokus-gelap-bawaan-kembali.png"
+       },
+       {
+        "langkah": 9,
+        "el": "select#selCategory[name=category]",
+        "tw": true,
+        "teks": "-- Pilih Kategori -- Suggestio",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(226, 148, 154)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#e2949a",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.38,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 10,
+        "el": "input#title[name=title]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(226, 148, 154)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#e2949a",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.38,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 11,
+        "el": "textarea#inpMessage[name=message]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "none",
+        "outlineWidth": "0px",
+        "outlineColor": "rgb(232, 232, 234)",
+        "outlineOffset": "2px",
+        "boxShadow": "rgba(146, 35, 43, 0.38) 0px 0px 0px 3px",
+        "radius": "6px",
+        "warnaIndikator": "#e8e8ea",
+        "latarInduk": "#1a1a1e",
+        "rasio": 14.18,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ".form-control:focus",
+          "lapis": "-",
+          "outline": "outline:0px outline-style:none outline-width:0px outline-color:currentcolor",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": true
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 2
+       },
+       {
+        "langkah": 12,
+        "el": "input#chkWilling[name=willing_to_discuss]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "4px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#1a1a1e",
+        "rasio": 2.06,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 1,
+        "spasiTombolKeyboard": true
+       },
+       {
+        "langkah": 13,
+        "el": "input#inpWhatsapp[name=whatsapp_number]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(226, 148, 154)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#e2949a",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.38,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 14,
+        "el": "button",
+        "tw": true,
+        "teks": "Kirim Submission",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(226, 148, 154)",
+        "outlineOffset": "2px",
+        "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+        "radius": "6px",
+        "warnaIndikator": "#e2949a",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.38,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4,
+        "foto": "docs/ui/tailwind-evidence/f3/firefox/diag-fokus-gelap-bawaan-kirim.png"
+       }
+      ],
+      "balik": [
+       {
+        "langkah": 15,
+        "el": "input#inpWhatsapp[name=whatsapp_number]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(226, 148, 154)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#e2949a",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.38,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 16,
+        "el": "input#chkWilling[name=willing_to_discuss]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "4px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#1a1a1e",
+        "rasio": 2.06,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 1
+       },
+       {
+        "langkah": 17,
+        "el": "textarea#inpMessage[name=message]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "none",
+        "outlineWidth": "0px",
+        "outlineColor": "rgb(232, 232, 234)",
+        "outlineOffset": "2px",
+        "boxShadow": "rgba(146, 35, 43, 0.38) 0px 0px 0px 3px",
+        "radius": "6px",
+        "warnaIndikator": "#e8e8ea",
+        "latarInduk": "#1a1a1e",
+        "rasio": 14.18,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ".form-control:focus",
+          "lapis": "-",
+          "outline": "outline:0px outline-style:none outline-width:0px outline-color:currentcolor",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": true
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 2
+       },
+       {
+        "langkah": 18,
+        "el": "input#title[name=title]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(226, 148, 154)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#e2949a",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.38,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       }
+      ],
+      "ringkas": {
+       "dalamContent": 11,
+       "fokusTrue": 11,
+       "fokusVisibleTrue": 11,
+       "outlineTerlihat": 7,
+       "minRasio": 2.06,
+       "tw": {
+        "jumlah": 7,
+        "elemen": [
+         "a",
+         "select#selCategory[name=category]",
+         "input#title[name=title]",
+         "input#inpWhatsapp[name=whatsapp_number]",
+         "button"
+        ],
+        "fokusVisibleTrue": 7,
+        "outlineTerlihat": 7,
+        "minRasio": 7.38,
+        "gagal": []
+       },
+       "legacy": {
+        "jumlah": 4,
+        "elemen": [
+         "textarea#inpMessage[name=message]",
+         "input#chkWilling[name=willing_to_discuss]"
+        ],
+        "fokusVisibleTrue": 4,
+        "tanpaOutlineTerlihat": [
+         "textarea#inpMessage[name=message] fv=true outline=none 0px rasioOutline=14.18 boxShadow=rgba(146, 35, 43, 0.38) 0px 0px 0px 3px",
+         "input#chkWilling[name=willing_to_discuss] fv=true outline=solid 1.25px rasioOutline=2.06 boxShadow=none"
+        ]
+       },
+       "gagal": [
+        "textarea#inpMessage[name=message] fv=true none 0px rasio=14.18",
+        "input#chkWilling[name=willing_to_discuss] fv=true solid 1.25px rasio=2.06",
+        "input#chkWilling[name=willing_to_discuss] fv=true solid 1.25px rasio=2.06",
+        "textarea#inpMessage[name=message] fv=true none 0px rasio=14.18"
+       ]
+      }
+     },
+     {
+      "no": 2,
+      "tema": "terang",
+      "aksenDiminta": "bawaan",
+      "mode": "tab-murni",
+      "lingkungan": {
+       "tema": "light",
+       "accent": "#92232b",
+       "hasFocus": true,
+       "visibilitas": "visible",
+       "zoom": "0.8",
+       "innerWidth": 1366,
+       "title": "Buat Submission | TESYS"
+      },
+      "awal": {
+       "aktif": "body",
+       "hasFocus": true,
+       "visibilitas": "visible"
+      },
+      "tabDitekan": 18,
+      "mencapaiTombolKirim": true,
+      "urutanContent": [
+       "a",
+       "select#selCategory[name=category]",
+       "input#title[name=title]",
+       "textarea#inpMessage[name=message]",
+       "input#chkWilling[name=willing_to_discuss]",
+       "input#inpWhatsapp[name=whatsapp_number]",
+       "button"
+      ],
+      "urutanBalik": [
+       "input#inpWhatsapp[name=whatsapp_number]",
+       "input#chkWilling[name=willing_to_discuss]",
+       "textarea#inpMessage[name=message]",
+       "input#title[name=title]"
+      ],
+      "luarContent": {
+       "jumlah": 7,
+       "fokusVisibleTrue": 7,
+       "fokusVisibleFalse": 0,
+       "contohFalse": []
+      },
+      "maju": [
+       {
+        "langkah": 8,
+        "el": "a",
+        "tw": true,
+        "teks": "Kembali ke daftar General Feed",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#f3f1ef",
+        "rasio": 7.46,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4,
+        "foto": "docs/ui/tailwind-evidence/f3/firefox/diag-fokus-terang-bawaan-kembali.png"
+       },
+       {
+        "langkah": 9,
+        "el": "select#selCategory[name=category]",
+        "tw": true,
+        "teks": "-- Pilih Kategori -- Suggestio",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#ffffff",
+        "rasio": 8.41,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 10,
+        "el": "input#title[name=title]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#ffffff",
+        "rasio": 8.41,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 11,
+        "el": "textarea#inpMessage[name=message]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "none",
+        "outlineWidth": "0px",
+        "outlineColor": "rgb(37, 24, 27)",
+        "outlineOffset": "2px",
+        "boxShadow": "rgba(146, 35, 43, 0.2) 0px 0px 0px 3px",
+        "radius": "6px",
+        "warnaIndikator": "#25181b",
+        "latarInduk": "#ffffff",
+        "rasio": 17.14,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ".form-control:focus",
+          "lapis": "-",
+          "outline": "outline:0px outline-style:none outline-width:0px outline-color:currentcolor",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": true
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 2
+       },
+       {
+        "langkah": 12,
+        "el": "input#chkWilling[name=willing_to_discuss]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "4px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#ffffff",
+        "rasio": 8.41,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 1,
+        "spasiTombolKeyboard": true
+       },
+       {
+        "langkah": 13,
+        "el": "input#inpWhatsapp[name=whatsapp_number]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#ffffff",
+        "rasio": 8.41,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 14,
+        "el": "button",
+        "tw": true,
+        "teks": "Kirim Submission",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+        "radius": "6px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#ffffff",
+        "rasio": 8.41,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4,
+        "foto": "docs/ui/tailwind-evidence/f3/firefox/diag-fokus-terang-bawaan-kirim.png"
+       }
+      ],
+      "balik": [
+       {
+        "langkah": 15,
+        "el": "input#inpWhatsapp[name=whatsapp_number]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#ffffff",
+        "rasio": 8.41,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 16,
+        "el": "input#chkWilling[name=willing_to_discuss]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "4px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#ffffff",
+        "rasio": 8.41,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 1
+       },
+       {
+        "langkah": 17,
+        "el": "textarea#inpMessage[name=message]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "none",
+        "outlineWidth": "0px",
+        "outlineColor": "rgb(37, 24, 27)",
+        "outlineOffset": "2px",
+        "boxShadow": "rgba(146, 35, 43, 0.2) 0px 0px 0px 3px",
+        "radius": "6px",
+        "warnaIndikator": "#25181b",
+        "latarInduk": "#ffffff",
+        "rasio": 17.14,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ".form-control:focus",
+          "lapis": "-",
+          "outline": "outline:0px outline-style:none outline-width:0px outline-color:currentcolor",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": true
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 2
+       },
+       {
+        "langkah": 18,
+        "el": "input#title[name=title]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#ffffff",
+        "rasio": 8.41,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       }
+      ],
+      "ringkas": {
+       "dalamContent": 11,
+       "fokusTrue": 11,
+       "fokusVisibleTrue": 11,
+       "outlineTerlihat": 9,
+       "minRasio": 7.46,
+       "tw": {
+        "jumlah": 7,
+        "elemen": [
+         "a",
+         "select#selCategory[name=category]",
+         "input#title[name=title]",
+         "input#inpWhatsapp[name=whatsapp_number]",
+         "button"
+        ],
+        "fokusVisibleTrue": 7,
+        "outlineTerlihat": 7,
+        "minRasio": 7.46,
+        "gagal": []
+       },
+       "legacy": {
+        "jumlah": 4,
+        "elemen": [
+         "textarea#inpMessage[name=message]",
+         "input#chkWilling[name=willing_to_discuss]"
+        ],
+        "fokusVisibleTrue": 4,
+        "tanpaOutlineTerlihat": [
+         "textarea#inpMessage[name=message] fv=true outline=none 0px rasioOutline=17.14 boxShadow=rgba(146, 35, 43, 0.2) 0px 0px 0px 3px"
+        ]
+       },
+       "gagal": [
+        "textarea#inpMessage[name=message] fv=true none 0px rasio=17.14",
+        "textarea#inpMessage[name=message] fv=true none 0px rasio=17.14"
+       ]
+      }
+     },
+     {
+      "no": 3,
+      "tema": "gelap",
+      "aksenDiminta": "bawaan",
+      "mode": "lama-focus-skrip",
+      "lingkungan": {
+       "tema": "dark",
+       "accent": "#92232b",
+       "hasFocus": true,
+       "visibilitas": "visible",
+       "zoom": "0.8",
+       "innerWidth": 1366,
+       "title": "Buat Submission | TESYS"
+      },
+      "urut": [
+       {
+        "el": "a",
+        "dalamContent": true,
+        "fokusVisible": true,
+        "outline": "solid 1.25px",
+        "outlineOffset": "2px",
+        "warna": "#e2949a",
+        "rasioOutline": 7.96,
+        "boxShadow": "none"
+       },
+       {
+        "el": "select#selCategory[name=category]",
+        "dalamContent": true,
+        "fokusVisible": true,
+        "outline": "solid 1.25px",
+        "outlineOffset": "2px",
+        "warna": "#e2949a",
+        "rasioOutline": 7.38,
+        "boxShadow": "none"
+       },
+       {
+        "el": "input#title[name=title]",
+        "dalamContent": true,
+        "fokusVisible": true,
+        "outline": "solid 1.25px",
+        "outlineOffset": "2px",
+        "warna": "#e2949a",
+        "rasioOutline": 7.38,
+        "boxShadow": "none"
+       },
+       {
+        "el": "textarea#inpMessage[name=message]",
+        "dalamContent": true,
+        "fokusVisible": true,
+        "outline": "none 0px",
+        "outlineOffset": "2px",
+        "warna": "#e8e8ea",
+        "rasioOutline": 14.18,
+        "boxShadow": "ada"
+       },
+       {
+        "el": "input#chkWilling[name=willing_to_discuss]",
+        "dalamContent": true,
+        "fokusVisible": true,
+        "outline": "solid 1.25px",
+        "outlineOffset": "2px",
+        "warna": "#92232b",
+        "rasioOutline": 2.06,
+        "boxShadow": "none"
+       },
+       {
+        "el": "input#inpWhatsapp[name=whatsapp_number]",
+        "dalamContent": true,
+        "fokusVisible": true,
+        "outline": "solid 1.25px",
+        "outlineOffset": "2px",
+        "warna": "#e2949a",
+        "rasioOutline": 7.38,
+        "boxShadow": "none"
+       },
+       {
+        "el": "button",
+        "dalamContent": true,
+        "fokusVisible": true,
+        "outline": "solid 1.25px",
+        "outlineOffset": "2px",
+        "warna": "#e2949a",
+        "rasioOutline": 7.38,
+        "boxShadow": "ada"
+       }
+      ],
+      "ringkas": {
+       "elemen": [
+        "a fv=true solid 1.25px",
+        "select#selCategory[name=category] fv=true solid 1.25px",
+        "input#title[name=title] fv=true solid 1.25px",
+        "textarea#inpMessage[name=message] fv=true none 0px",
+        "input#chkWilling[name=willing_to_discuss] fv=true solid 1.25px",
+        "input#inpWhatsapp[name=whatsapp_number] fv=true solid 1.25px",
+        "button fv=true solid 1.25px"
+       ],
+       "twFokusVisibleTrue": 4,
+       "twTotal": 4
+      }
+     },
+     {
+      "no": 4,
+      "tema": "terang",
+      "aksenDiminta": "bawaan",
+      "mode": "lama-focus-skrip",
+      "lingkungan": {
+       "tema": "light",
+       "accent": "#92232b",
+       "hasFocus": true,
+       "visibilitas": "visible",
+       "zoom": "0.8",
+       "innerWidth": 1366,
+       "title": "Buat Submission | TESYS"
+      },
+      "urut": [
+       {
+        "el": "a",
+        "dalamContent": true,
+        "fokusVisible": true,
+        "outline": "solid 1.25px",
+        "outlineOffset": "2px",
+        "warna": "#92232b",
+        "rasioOutline": 7.46,
+        "boxShadow": "none"
+       },
+       {
+        "el": "select#selCategory[name=category]",
+        "dalamContent": true,
+        "fokusVisible": true,
+        "outline": "solid 1.25px",
+        "outlineOffset": "2px",
+        "warna": "#92232b",
+        "rasioOutline": 8.41,
+        "boxShadow": "none"
+       },
+       {
+        "el": "input#title[name=title]",
+        "dalamContent": true,
+        "fokusVisible": true,
+        "outline": "solid 1.25px",
+        "outlineOffset": "2px",
+        "warna": "#92232b",
+        "rasioOutline": 8.41,
+        "boxShadow": "none"
+       },
+       {
+        "el": "textarea#inpMessage[name=message]",
+        "dalamContent": true,
+        "fokusVisible": true,
+        "outline": "none 0px",
+        "outlineOffset": "2px",
+        "warna": "#25181b",
+        "rasioOutline": 17.14,
+        "boxShadow": "ada"
+       },
+       {
+        "el": "input#chkWilling[name=willing_to_discuss]",
+        "dalamContent": true,
+        "fokusVisible": true,
+        "outline": "solid 1.25px",
+        "outlineOffset": "2px",
+        "warna": "#92232b",
+        "rasioOutline": 8.41,
+        "boxShadow": "none"
+       },
+       {
+        "el": "input#inpWhatsapp[name=whatsapp_number]",
+        "dalamContent": true,
+        "fokusVisible": true,
+        "outline": "solid 1.25px",
+        "outlineOffset": "2px",
+        "warna": "#92232b",
+        "rasioOutline": 8.41,
+        "boxShadow": "none"
+       },
+       {
+        "el": "button",
+        "dalamContent": true,
+        "fokusVisible": true,
+        "outline": "solid 1.25px",
+        "outlineOffset": "2px",
+        "warna": "#92232b",
+        "rasioOutline": 8.41,
+        "boxShadow": "ada"
+       }
+      ],
+      "ringkas": {
+       "elemen": [
+        "a fv=true solid 1.25px",
+        "select#selCategory[name=category] fv=true solid 1.25px",
+        "input#title[name=title] fv=true solid 1.25px",
+        "textarea#inpMessage[name=message] fv=true none 0px",
+        "input#chkWilling[name=willing_to_discuss] fv=true solid 1.25px",
+        "input#inpWhatsapp[name=whatsapp_number] fv=true solid 1.25px",
+        "button fv=true solid 1.25px"
+       ],
+       "twFokusVisibleTrue": 4,
+       "twTotal": 4
+      }
+     },
+     {
+      "no": 5,
+      "tema": "gelap",
+      "aksenDiminta": "#92232b",
+      "mode": "tab-murni",
+      "lingkungan": {
+       "tema": "dark",
+       "accent": "#92232b",
+       "hasFocus": true,
+       "visibilitas": "visible",
+       "zoom": "0.8",
+       "innerWidth": 1366,
+       "title": "Buat Submission | TESYS"
+      },
+      "awal": {
+       "aktif": "body",
+       "hasFocus": true,
+       "visibilitas": "visible"
+      },
+      "tabDitekan": 18,
+      "mencapaiTombolKirim": true,
+      "urutanContent": [
+       "a",
+       "select#selCategory[name=category]",
+       "input#title[name=title]",
+       "textarea#inpMessage[name=message]",
+       "input#chkWilling[name=willing_to_discuss]",
+       "input#inpWhatsapp[name=whatsapp_number]",
+       "button"
+      ],
+      "urutanBalik": [
+       "input#inpWhatsapp[name=whatsapp_number]",
+       "input#chkWilling[name=willing_to_discuss]",
+       "textarea#inpMessage[name=message]",
+       "input#title[name=title]"
+      ],
+      "luarContent": {
+       "jumlah": 7,
+       "fokusVisibleTrue": 7,
+       "fokusVisibleFalse": 0,
+       "contohFalse": []
+      },
+      "maju": [
+       {
+        "langkah": 8,
+        "el": "a",
+        "tw": true,
+        "teks": "Kembali ke daftar General Feed",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(226, 148, 154)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#e2949a",
+        "latarInduk": "#121215",
+        "rasio": 7.96,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 9,
+        "el": "select#selCategory[name=category]",
+        "tw": true,
+        "teks": "-- Pilih Kategori -- Suggestio",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(226, 148, 154)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#e2949a",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.38,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 10,
+        "el": "input#title[name=title]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(226, 148, 154)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#e2949a",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.38,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 11,
+        "el": "textarea#inpMessage[name=message]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "none",
+        "outlineWidth": "0px",
+        "outlineColor": "rgb(232, 232, 234)",
+        "outlineOffset": "2px",
+        "boxShadow": "rgba(146, 35, 43, 0.38) 0px 0px 0px 3px",
+        "radius": "6px",
+        "warnaIndikator": "#e8e8ea",
+        "latarInduk": "#1a1a1e",
+        "rasio": 14.18,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ".form-control:focus",
+          "lapis": "-",
+          "outline": "outline:0px outline-style:none outline-width:0px outline-color:currentcolor",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": true
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 2
+       },
+       {
+        "langkah": 12,
+        "el": "input#chkWilling[name=willing_to_discuss]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "4px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#1a1a1e",
+        "rasio": 2.06,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 1,
+        "spasiTombolKeyboard": true
+       },
+       {
+        "langkah": 13,
+        "el": "input#inpWhatsapp[name=whatsapp_number]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(226, 148, 154)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#e2949a",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.38,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 14,
+        "el": "button",
+        "tw": true,
+        "teks": "Kirim Submission",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(226, 148, 154)",
+        "outlineOffset": "2px",
+        "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+        "radius": "6px",
+        "warnaIndikator": "#e2949a",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.38,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       }
+      ],
+      "balik": [
+       {
+        "langkah": 15,
+        "el": "input#inpWhatsapp[name=whatsapp_number]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(226, 148, 154)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#e2949a",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.38,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 16,
+        "el": "input#chkWilling[name=willing_to_discuss]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "4px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#1a1a1e",
+        "rasio": 2.06,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 1
+       },
+       {
+        "langkah": 17,
+        "el": "textarea#inpMessage[name=message]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "none",
+        "outlineWidth": "0px",
+        "outlineColor": "rgb(232, 232, 234)",
+        "outlineOffset": "2px",
+        "boxShadow": "rgba(146, 35, 43, 0.38) 0px 0px 0px 3px",
+        "radius": "6px",
+        "warnaIndikator": "#e8e8ea",
+        "latarInduk": "#1a1a1e",
+        "rasio": 14.18,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ".form-control:focus",
+          "lapis": "-",
+          "outline": "outline:0px outline-style:none outline-width:0px outline-color:currentcolor",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": true
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 2
+       },
+       {
+        "langkah": 18,
+        "el": "input#title[name=title]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(226, 148, 154)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#e2949a",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.38,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       }
+      ],
+      "ringkas": {
+       "dalamContent": 11,
+       "fokusTrue": 11,
+       "fokusVisibleTrue": 11,
+       "outlineTerlihat": 7,
+       "minRasio": 2.06,
+       "tw": {
+        "jumlah": 7,
+        "elemen": [
+         "a",
+         "select#selCategory[name=category]",
+         "input#title[name=title]",
+         "input#inpWhatsapp[name=whatsapp_number]",
+         "button"
+        ],
+        "fokusVisibleTrue": 7,
+        "outlineTerlihat": 7,
+        "minRasio": 7.38,
+        "gagal": []
+       },
+       "legacy": {
+        "jumlah": 4,
+        "elemen": [
+         "textarea#inpMessage[name=message]",
+         "input#chkWilling[name=willing_to_discuss]"
+        ],
+        "fokusVisibleTrue": 4,
+        "tanpaOutlineTerlihat": [
+         "textarea#inpMessage[name=message] fv=true outline=none 0px rasioOutline=14.18 boxShadow=rgba(146, 35, 43, 0.38) 0px 0px 0px 3px",
+         "input#chkWilling[name=willing_to_discuss] fv=true outline=solid 1.25px rasioOutline=2.06 boxShadow=none"
+        ]
+       },
+       "gagal": [
+        "textarea#inpMessage[name=message] fv=true none 0px rasio=14.18",
+        "input#chkWilling[name=willing_to_discuss] fv=true solid 1.25px rasio=2.06",
+        "input#chkWilling[name=willing_to_discuss] fv=true solid 1.25px rasio=2.06",
+        "textarea#inpMessage[name=message] fv=true none 0px rasio=14.18"
+       ]
+      }
+     },
+     {
+      "no": 6,
+      "tema": "terang",
+      "aksenDiminta": "#92232b",
+      "mode": "tab-murni",
+      "lingkungan": {
+       "tema": "light",
+       "accent": "#92232b",
+       "hasFocus": true,
+       "visibilitas": "visible",
+       "zoom": "0.8",
+       "innerWidth": 1366,
+       "title": "Buat Submission | TESYS"
+      },
+      "awal": {
+       "aktif": "body",
+       "hasFocus": true,
+       "visibilitas": "visible"
+      },
+      "tabDitekan": 18,
+      "mencapaiTombolKirim": true,
+      "urutanContent": [
+       "a",
+       "select#selCategory[name=category]",
+       "input#title[name=title]",
+       "textarea#inpMessage[name=message]",
+       "input#chkWilling[name=willing_to_discuss]",
+       "input#inpWhatsapp[name=whatsapp_number]",
+       "button"
+      ],
+      "urutanBalik": [
+       "input#inpWhatsapp[name=whatsapp_number]",
+       "input#chkWilling[name=willing_to_discuss]",
+       "textarea#inpMessage[name=message]",
+       "input#title[name=title]"
+      ],
+      "luarContent": {
+       "jumlah": 7,
+       "fokusVisibleTrue": 7,
+       "fokusVisibleFalse": 0,
+       "contohFalse": []
+      },
+      "maju": [
+       {
+        "langkah": 8,
+        "el": "a",
+        "tw": true,
+        "teks": "Kembali ke daftar General Feed",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#f3f1ef",
+        "rasio": 7.46,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 9,
+        "el": "select#selCategory[name=category]",
+        "tw": true,
+        "teks": "-- Pilih Kategori -- Suggestio",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#ffffff",
+        "rasio": 8.41,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 10,
+        "el": "input#title[name=title]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#ffffff",
+        "rasio": 8.41,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 11,
+        "el": "textarea#inpMessage[name=message]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "none",
+        "outlineWidth": "0px",
+        "outlineColor": "rgb(37, 24, 27)",
+        "outlineOffset": "2px",
+        "boxShadow": "rgba(146, 35, 43, 0.2) 0px 0px 0px 3px",
+        "radius": "6px",
+        "warnaIndikator": "#25181b",
+        "latarInduk": "#ffffff",
+        "rasio": 17.14,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ".form-control:focus",
+          "lapis": "-",
+          "outline": "outline:0px outline-style:none outline-width:0px outline-color:currentcolor",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": true
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 2
+       },
+       {
+        "langkah": 12,
+        "el": "input#chkWilling[name=willing_to_discuss]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "4px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#ffffff",
+        "rasio": 8.41,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 1,
+        "spasiTombolKeyboard": true
+       },
+       {
+        "langkah": 13,
+        "el": "input#inpWhatsapp[name=whatsapp_number]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#ffffff",
+        "rasio": 8.41,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 14,
+        "el": "button",
+        "tw": true,
+        "teks": "Kirim Submission",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+        "radius": "6px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#ffffff",
+        "rasio": 8.41,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       }
+      ],
+      "balik": [
+       {
+        "langkah": 15,
+        "el": "input#inpWhatsapp[name=whatsapp_number]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#ffffff",
+        "rasio": 8.41,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 16,
+        "el": "input#chkWilling[name=willing_to_discuss]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "4px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#ffffff",
+        "rasio": 8.41,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 1
+       },
+       {
+        "langkah": 17,
+        "el": "textarea#inpMessage[name=message]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "none",
+        "outlineWidth": "0px",
+        "outlineColor": "rgb(37, 24, 27)",
+        "outlineOffset": "2px",
+        "boxShadow": "rgba(146, 35, 43, 0.2) 0px 0px 0px 3px",
+        "radius": "6px",
+        "warnaIndikator": "#25181b",
+        "latarInduk": "#ffffff",
+        "rasio": 17.14,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ".form-control:focus",
+          "lapis": "-",
+          "outline": "outline:0px outline-style:none outline-width:0px outline-color:currentcolor",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": true
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 2
+       },
+       {
+        "langkah": 18,
+        "el": "input#title[name=title]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#ffffff",
+        "rasio": 8.41,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       }
+      ],
+      "ringkas": {
+       "dalamContent": 11,
+       "fokusTrue": 11,
+       "fokusVisibleTrue": 11,
+       "outlineTerlihat": 9,
+       "minRasio": 7.46,
+       "tw": {
+        "jumlah": 7,
+        "elemen": [
+         "a",
+         "select#selCategory[name=category]",
+         "input#title[name=title]",
+         "input#inpWhatsapp[name=whatsapp_number]",
+         "button"
+        ],
+        "fokusVisibleTrue": 7,
+        "outlineTerlihat": 7,
+        "minRasio": 7.46,
+        "gagal": []
+       },
+       "legacy": {
+        "jumlah": 4,
+        "elemen": [
+         "textarea#inpMessage[name=message]",
+         "input#chkWilling[name=willing_to_discuss]"
+        ],
+        "fokusVisibleTrue": 4,
+        "tanpaOutlineTerlihat": [
+         "textarea#inpMessage[name=message] fv=true outline=none 0px rasioOutline=17.14 boxShadow=rgba(146, 35, 43, 0.2) 0px 0px 0px 3px"
+        ]
+       },
+       "gagal": [
+        "textarea#inpMessage[name=message] fv=true none 0px rasio=17.14",
+        "textarea#inpMessage[name=message] fv=true none 0px rasio=17.14"
+       ]
+      }
+     },
+     {
+      "no": 7,
+      "tema": "gelap",
+      "aksenDiminta": "#0f6e66",
+      "mode": "tab-murni",
+      "lingkungan": {
+       "tema": "dark",
+       "accent": "#0f6e66",
+       "hasFocus": true,
+       "visibilitas": "visible",
+       "zoom": "0.8",
+       "innerWidth": 1366,
+       "title": "Buat Submission | TESYS"
+      },
+      "awal": {
+       "aktif": "body",
+       "hasFocus": true,
+       "visibilitas": "visible"
+      },
+      "tabDitekan": 18,
+      "mencapaiTombolKirim": true,
+      "urutanContent": [
+       "a",
+       "select#selCategory[name=category]",
+       "input#title[name=title]",
+       "textarea#inpMessage[name=message]",
+       "input#chkWilling[name=willing_to_discuss]",
+       "input#inpWhatsapp[name=whatsapp_number]",
+       "button"
+      ],
+      "urutanBalik": [
+       "input#inpWhatsapp[name=whatsapp_number]",
+       "input#chkWilling[name=willing_to_discuss]",
+       "textarea#inpMessage[name=message]",
+       "input#title[name=title]"
+      ],
+      "luarContent": {
+       "jumlah": 7,
+       "fokusVisibleTrue": 7,
+       "fokusVisibleFalse": 0,
+       "contohFalse": []
+      },
+      "maju": [
+       {
+        "langkah": 8,
+        "el": "a",
+        "tw": true,
+        "teks": "Kembali ke daftar General Feed",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "color(srgb 0.482353 0.687255 0.67)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#7bafab",
+        "latarInduk": "#121215",
+        "rasio": 7.62,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 9,
+        "el": "select#selCategory[name=category]",
+        "tw": true,
+        "teks": "-- Pilih Kategori -- Suggestio",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "color(srgb 0.482353 0.687255 0.67)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#7bafab",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.07,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 10,
+        "el": "input#title[name=title]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "color(srgb 0.482353 0.687255 0.67)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#7bafab",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.07,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 11,
+        "el": "textarea#inpMessage[name=message]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "none",
+        "outlineWidth": "0px",
+        "outlineColor": "rgb(232, 232, 234)",
+        "outlineOffset": "2px",
+        "boxShadow": "rgba(146, 35, 43, 0.38) 0px 0px 0px 3px",
+        "radius": "6px",
+        "warnaIndikator": "#e8e8ea",
+        "latarInduk": "#1a1a1e",
+        "rasio": 14.18,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ".form-control:focus",
+          "lapis": "-",
+          "outline": "outline:0px outline-style:none outline-width:0px outline-color:currentcolor",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": true
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 2
+       },
+       {
+        "langkah": 12,
+        "el": "input#chkWilling[name=willing_to_discuss]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(15, 110, 102)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "4px",
+        "warnaIndikator": "#0f6e66",
+        "latarInduk": "#1a1a1e",
+        "rasio": 2.84,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 1,
+        "spasiTombolKeyboard": true
+       },
+       {
+        "langkah": 13,
+        "el": "input#inpWhatsapp[name=whatsapp_number]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "color(srgb 0.482353 0.687255 0.67)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#7bafab",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.07,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 14,
+        "el": "button",
+        "tw": true,
+        "teks": "Kirim Submission",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "color(srgb 0.482353 0.687255 0.67)",
+        "outlineOffset": "2px",
+        "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+        "radius": "6px",
+        "warnaIndikator": "#7bafab",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.07,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       }
+      ],
+      "balik": [
+       {
+        "langkah": 15,
+        "el": "input#inpWhatsapp[name=whatsapp_number]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "color(srgb 0.482353 0.687255 0.67)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#7bafab",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.07,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 16,
+        "el": "input#chkWilling[name=willing_to_discuss]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(15, 110, 102)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "4px",
+        "warnaIndikator": "#0f6e66",
+        "latarInduk": "#1a1a1e",
+        "rasio": 2.84,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 1
+       },
+       {
+        "langkah": 17,
+        "el": "textarea#inpMessage[name=message]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "none",
+        "outlineWidth": "0px",
+        "outlineColor": "rgb(232, 232, 234)",
+        "outlineOffset": "2px",
+        "boxShadow": "rgba(146, 35, 43, 0.38) 0px 0px 0px 3px",
+        "radius": "6px",
+        "warnaIndikator": "#e8e8ea",
+        "latarInduk": "#1a1a1e",
+        "rasio": 14.18,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ".form-control:focus",
+          "lapis": "-",
+          "outline": "outline:0px outline-style:none outline-width:0px outline-color:currentcolor",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": true
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 2
+       },
+       {
+        "langkah": 18,
+        "el": "input#title[name=title]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "color(srgb 0.482353 0.687255 0.67)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#7bafab",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.07,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       }
+      ],
+      "ringkas": {
+       "dalamContent": 11,
+       "fokusTrue": 11,
+       "fokusVisibleTrue": 11,
+       "outlineTerlihat": 7,
+       "minRasio": 2.84,
+       "tw": {
+        "jumlah": 7,
+        "elemen": [
+         "a",
+         "select#selCategory[name=category]",
+         "input#title[name=title]",
+         "input#inpWhatsapp[name=whatsapp_number]",
+         "button"
+        ],
+        "fokusVisibleTrue": 7,
+        "outlineTerlihat": 7,
+        "minRasio": 7.07,
+        "gagal": []
+       },
+       "legacy": {
+        "jumlah": 4,
+        "elemen": [
+         "textarea#inpMessage[name=message]",
+         "input#chkWilling[name=willing_to_discuss]"
+        ],
+        "fokusVisibleTrue": 4,
+        "tanpaOutlineTerlihat": [
+         "textarea#inpMessage[name=message] fv=true outline=none 0px rasioOutline=14.18 boxShadow=rgba(146, 35, 43, 0.38) 0px 0px 0px 3px",
+         "input#chkWilling[name=willing_to_discuss] fv=true outline=solid 1.25px rasioOutline=2.84 boxShadow=none"
+        ]
+       },
+       "gagal": [
+        "textarea#inpMessage[name=message] fv=true none 0px rasio=14.18",
+        "input#chkWilling[name=willing_to_discuss] fv=true solid 1.25px rasio=2.84",
+        "input#chkWilling[name=willing_to_discuss] fv=true solid 1.25px rasio=2.84",
+        "textarea#inpMessage[name=message] fv=true none 0px rasio=14.18"
+       ]
+      }
+     },
+     {
+      "no": 8,
+      "tema": "terang",
+      "aksenDiminta": "#0f6e66",
+      "mode": "tab-murni",
+      "lingkungan": {
+       "tema": "light",
+       "accent": "#0f6e66",
+       "hasFocus": true,
+       "visibilitas": "visible",
+       "zoom": "0.8",
+       "innerWidth": 1366,
+       "title": "Buat Submission | TESYS"
+      },
+      "awal": {
+       "aktif": "body",
+       "hasFocus": true,
+       "visibilitas": "visible"
+      },
+      "tabDitekan": 18,
+      "mencapaiTombolKirim": true,
+      "urutanContent": [
+       "a",
+       "select#selCategory[name=category]",
+       "input#title[name=title]",
+       "textarea#inpMessage[name=message]",
+       "input#chkWilling[name=willing_to_discuss]",
+       "input#inpWhatsapp[name=whatsapp_number]",
+       "button"
+      ],
+      "urutanBalik": [
+       "input#inpWhatsapp[name=whatsapp_number]",
+       "input#chkWilling[name=willing_to_discuss]",
+       "textarea#inpMessage[name=message]",
+       "input#title[name=title]"
+      ],
+      "luarContent": {
+       "jumlah": 7,
+       "fokusVisibleTrue": 7,
+       "fokusVisibleFalse": 0,
+       "contohFalse": []
+      },
+      "maju": [
+       {
+        "langkah": 8,
+        "el": "a",
+        "tw": true,
+        "teks": "Kembali ke daftar General Feed",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "color(srgb 0.0517647 0.379608 0.352)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#0d615a",
+        "latarInduk": "#f3f1ef",
+        "rasio": 6.48,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 9,
+        "el": "select#selCategory[name=category]",
+        "tw": true,
+        "teks": "-- Pilih Kategori -- Suggestio",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "color(srgb 0.0517647 0.379608 0.352)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#0d615a",
+        "latarInduk": "#ffffff",
+        "rasio": 7.31,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 10,
+        "el": "input#title[name=title]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "color(srgb 0.0517647 0.379608 0.352)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#0d615a",
+        "latarInduk": "#ffffff",
+        "rasio": 7.31,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 11,
+        "el": "textarea#inpMessage[name=message]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "none",
+        "outlineWidth": "0px",
+        "outlineColor": "rgb(37, 24, 27)",
+        "outlineOffset": "2px",
+        "boxShadow": "color(srgb 0.0588235 0.431373 0.4 / 0.22) 0px 0px 0px 3px",
+        "radius": "6px",
+        "warnaIndikator": "#25181b",
+        "latarInduk": "#ffffff",
+        "rasio": 17.14,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ".form-control:focus",
+          "lapis": "-",
+          "outline": "outline:0px outline-style:none outline-width:0px outline-color:currentcolor",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": true
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 2
+       },
+       {
+        "langkah": 12,
+        "el": "input#chkWilling[name=willing_to_discuss]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(15, 110, 102)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "4px",
+        "warnaIndikator": "#0f6e66",
+        "latarInduk": "#ffffff",
+        "rasio": 6.1,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 1,
+        "spasiTombolKeyboard": true
+       },
+       {
+        "langkah": 13,
+        "el": "input#inpWhatsapp[name=whatsapp_number]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "color(srgb 0.0517647 0.379608 0.352)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#0d615a",
+        "latarInduk": "#ffffff",
+        "rasio": 7.31,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 14,
+        "el": "button",
+        "tw": true,
+        "teks": "Kirim Submission",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "color(srgb 0.0517647 0.379608 0.352)",
+        "outlineOffset": "2px",
+        "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+        "radius": "6px",
+        "warnaIndikator": "#0d615a",
+        "latarInduk": "#ffffff",
+        "rasio": 7.31,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       }
+      ],
+      "balik": [
+       {
+        "langkah": 15,
+        "el": "input#inpWhatsapp[name=whatsapp_number]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "color(srgb 0.0517647 0.379608 0.352)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#0d615a",
+        "latarInduk": "#ffffff",
+        "rasio": 7.31,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 16,
+        "el": "input#chkWilling[name=willing_to_discuss]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(15, 110, 102)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "4px",
+        "warnaIndikator": "#0f6e66",
+        "latarInduk": "#ffffff",
+        "rasio": 6.1,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 1
+       },
+       {
+        "langkah": 17,
+        "el": "textarea#inpMessage[name=message]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "none",
+        "outlineWidth": "0px",
+        "outlineColor": "rgb(37, 24, 27)",
+        "outlineOffset": "2px",
+        "boxShadow": "color(srgb 0.0588235 0.431373 0.4 / 0.22) 0px 0px 0px 3px",
+        "radius": "6px",
+        "warnaIndikator": "#25181b",
+        "latarInduk": "#ffffff",
+        "rasio": 17.14,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ".form-control:focus",
+          "lapis": "-",
+          "outline": "outline:0px outline-style:none outline-width:0px outline-color:currentcolor",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": true
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 2
+       },
+       {
+        "langkah": 18,
+        "el": "input#title[name=title]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "color(srgb 0.0517647 0.379608 0.352)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#0d615a",
+        "latarInduk": "#ffffff",
+        "rasio": 7.31,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       }
+      ],
+      "ringkas": {
+       "dalamContent": 11,
+       "fokusTrue": 11,
+       "fokusVisibleTrue": 11,
+       "outlineTerlihat": 9,
+       "minRasio": 6.1,
+       "tw": {
+        "jumlah": 7,
+        "elemen": [
+         "a",
+         "select#selCategory[name=category]",
+         "input#title[name=title]",
+         "input#inpWhatsapp[name=whatsapp_number]",
+         "button"
+        ],
+        "fokusVisibleTrue": 7,
+        "outlineTerlihat": 7,
+        "minRasio": 6.48,
+        "gagal": []
+       },
+       "legacy": {
+        "jumlah": 4,
+        "elemen": [
+         "textarea#inpMessage[name=message]",
+         "input#chkWilling[name=willing_to_discuss]"
+        ],
+        "fokusVisibleTrue": 4,
+        "tanpaOutlineTerlihat": [
+         "textarea#inpMessage[name=message] fv=true outline=none 0px rasioOutline=17.14 boxShadow=color(srgb 0.0588235 0.431373 0.4 / 0.22) 0px 0px 0px 3px"
+        ]
+       },
+       "gagal": [
+        "textarea#inpMessage[name=message] fv=true none 0px rasio=17.14",
+        "textarea#inpMessage[name=message] fv=true none 0px rasio=17.14"
+       ]
+      }
+     },
+     {
+      "no": 9,
+      "tema": "gelap",
+      "aksenDiminta": "bawaan",
+      "mode": "tab-murni",
+      "lingkungan": {
+       "tema": "dark",
+       "accent": "#92232b",
+       "hasFocus": true,
+       "visibilitas": "visible",
+       "zoom": "0.8",
+       "innerWidth": 1366,
+       "title": "Buat Submission | TESYS"
+      },
+      "awal": {
+       "aktif": "body",
+       "hasFocus": true,
+       "visibilitas": "visible"
+      },
+      "tabDitekan": 18,
+      "mencapaiTombolKirim": true,
+      "urutanContent": [
+       "a",
+       "select#selCategory[name=category]",
+       "input#title[name=title]",
+       "textarea#inpMessage[name=message]",
+       "input#chkWilling[name=willing_to_discuss]",
+       "input#inpWhatsapp[name=whatsapp_number]",
+       "button"
+      ],
+      "urutanBalik": [
+       "input#inpWhatsapp[name=whatsapp_number]",
+       "input#chkWilling[name=willing_to_discuss]",
+       "textarea#inpMessage[name=message]",
+       "input#title[name=title]"
+      ],
+      "luarContent": {
+       "jumlah": 7,
+       "fokusVisibleTrue": 7,
+       "fokusVisibleFalse": 0,
+       "contohFalse": []
+      },
+      "maju": [
+       {
+        "langkah": 8,
+        "el": "a",
+        "tw": true,
+        "teks": "Kembali ke daftar General Feed",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(226, 148, 154)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#e2949a",
+        "latarInduk": "#121215",
+        "rasio": 7.96,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 9,
+        "el": "select#selCategory[name=category]",
+        "tw": true,
+        "teks": "-- Pilih Kategori -- Suggestio",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(226, 148, 154)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#e2949a",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.38,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 10,
+        "el": "input#title[name=title]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(226, 148, 154)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#e2949a",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.38,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 11,
+        "el": "textarea#inpMessage[name=message]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "none",
+        "outlineWidth": "0px",
+        "outlineColor": "rgb(232, 232, 234)",
+        "outlineOffset": "2px",
+        "boxShadow": "rgba(146, 35, 43, 0.38) 0px 0px 0px 3px",
+        "radius": "6px",
+        "warnaIndikator": "#e8e8ea",
+        "latarInduk": "#1a1a1e",
+        "rasio": 14.18,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ".form-control:focus",
+          "lapis": "-",
+          "outline": "outline:0px outline-style:none outline-width:0px outline-color:currentcolor",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": true
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 2
+       },
+       {
+        "langkah": 12,
+        "el": "input#chkWilling[name=willing_to_discuss]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "4px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#1a1a1e",
+        "rasio": 2.06,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 1,
+        "spasiTombolKeyboard": true
+       },
+       {
+        "langkah": 13,
+        "el": "input#inpWhatsapp[name=whatsapp_number]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(226, 148, 154)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#e2949a",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.38,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 14,
+        "el": "button",
+        "tw": true,
+        "teks": "Kirim Submission",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(226, 148, 154)",
+        "outlineOffset": "2px",
+        "boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0",
+        "radius": "6px",
+        "warnaIndikator": "#e2949a",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.38,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       }
+      ],
+      "balik": [
+       {
+        "langkah": 15,
+        "el": "input#inpWhatsapp[name=whatsapp_number]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(226, 148, 154)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#e2949a",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.38,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       },
+       {
+        "langkah": 16,
+        "el": "input#chkWilling[name=willing_to_discuss]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(146, 35, 43)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "4px",
+        "warnaIndikator": "#92232b",
+        "latarInduk": "#1a1a1e",
+        "rasio": 2.06,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 1
+       },
+       {
+        "langkah": 17,
+        "el": "textarea#inpMessage[name=message]",
+        "tw": false,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "none",
+        "outlineWidth": "0px",
+        "outlineColor": "rgb(232, 232, 234)",
+        "outlineOffset": "2px",
+        "boxShadow": "rgba(146, 35, 43, 0.38) 0px 0px 0px 3px",
+        "radius": "6px",
+        "warnaIndikator": "#e8e8ea",
+        "latarInduk": "#1a1a1e",
+        "rasio": 14.18,
+        "terlihat": false,
+        "aturanFokus": [
+         {
+          "sel": ".form-control:focus",
+          "lapis": "-",
+          "outline": "outline:0px outline-style:none outline-width:0px outline-color:currentcolor",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": true
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 2
+       },
+       {
+        "langkah": 18,
+        "el": "input#title[name=title]",
+        "tw": true,
+        "teks": "",
+        "dalamContent": true,
+        "hasFocus": true,
+        "visibilitas": "visible",
+        "fokus": true,
+        "fokusVisible": true,
+        "outlineStyle": "solid",
+        "outlineWidth": "1.25px",
+        "outlineColor": "rgb(226, 148, 154)",
+        "outlineOffset": "2px",
+        "boxShadow": "none",
+        "radius": "6px",
+        "warnaIndikator": "#e2949a",
+        "latarInduk": "#1a1a1e",
+        "rasio": 7.38,
+        "terlihat": true,
+        "aturanFokus": [
+         {
+          "sel": ".tw\\:focus-visible\\:outline-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-style:var(--tw-outline-style) outline-width:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-offset-2:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-offset:2px",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ".tw\\:focus-visible\\:outline-accent-text\\!:focus-visible",
+          "lapis": "utilities",
+          "outline": "outline-color:var(--accent-text)important",
+          "radius": "",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         },
+         {
+          "sel": ":focus-visible",
+          "lapis": "-",
+          "outline": "outline:2px solid var(--accent) outline-offset:2px",
+          "radius": "4px",
+          "cocokAsli": true,
+          "cocokTanpaPseudo": false
+         }
+        ],
+        "aturanFokusTotal": 4
+       }
+      ],
+      "ringkas": {
+       "dalamContent": 11,
+       "fokusTrue": 11,
+       "fokusVisibleTrue": 11,
+       "outlineTerlihat": 7,
+       "minRasio": 2.06,
+       "tw": {
+        "jumlah": 7,
+        "elemen": [
+         "a",
+         "select#selCategory[name=category]",
+         "input#title[name=title]",
+         "input#inpWhatsapp[name=whatsapp_number]",
+         "button"
+        ],
+        "fokusVisibleTrue": 7,
+        "outlineTerlihat": 7,
+        "minRasio": 7.38,
+        "gagal": []
+       },
+       "legacy": {
+        "jumlah": 4,
+        "elemen": [
+         "textarea#inpMessage[name=message]",
+         "input#chkWilling[name=willing_to_discuss]"
+        ],
+        "fokusVisibleTrue": 4,
+        "tanpaOutlineTerlihat": [
+         "textarea#inpMessage[name=message] fv=true outline=none 0px rasioOutline=14.18 boxShadow=rgba(146, 35, 43, 0.38) 0px 0px 0px 3px",
+         "input#chkWilling[name=willing_to_discuss] fv=true outline=solid 1.25px rasioOutline=2.06 boxShadow=none"
+        ]
+       },
+       "gagal": [
+        "textarea#inpMessage[name=message] fv=true none 0px rasio=14.18",
+        "input#chkWilling[name=willing_to_discuss] fv=true solid 1.25px rasio=2.06",
+        "input#chkWilling[name=willing_to_discuss] fv=true solid 1.25px rasio=2.06",
+        "textarea#inpMessage[name=message] fv=true none 0px rasio=14.18"
+       ]
+      }
+     }
+    ],
+    "foto": [
+     "docs/ui/tailwind-evidence/f3/firefox/diag-fokus-gelap-bawaan-kembali.png",
+     "docs/ui/tailwind-evidence/f3/firefox/diag-fokus-gelap-bawaan-kirim.png",
+     "docs/ui/tailwind-evidence/f3/firefox/diag-fokus-terang-bawaan-kembali.png",
+     "docs/ui/tailwind-evidence/f3/firefox/diag-fokus-terang-bawaan-kirim.png"
+    ],
+    "galat": [],
+    "ulangOffline": [],
+    "login": {
+     "akun": "dummy.staff",
+     "navigasi": true,
+     "urlSetelahLogin": "/",
+     "berhasil": true,
+     "galatLogin": null
+    }
+   },
+   "penghentian": {
+    "penanda": "tesys-ff-xT5tsd",
+    "pidMilikRunner": [
+     15596,
+     15560,
+     24768,
+     33060,
+     7360,
+     24120,
+     6848,
+     9148,
+     27952,
+     14436,
+     24040,
+     24396,
+     18660,
+     18920
+    ],
+    "penutupanSopanBiDi": true,
+    "menungguMs": 7656,
+    "sisaProsesPenanda": 0,
+    "profilDihapus": true,
+    "pidBukanRunnerSebelum": [],
+    "pidBukanRunnerSesudah": [],
+    "pidPuncakPenggunaSebelum": [],
+    "pidPuncakPenggunaSesudah": [],
+    "pidPenggunaTakBerubah": true
+   }
+  },
+  "qa-xss": {
+   "browser": "firefox",
+   "versiBrowser": "158.0.1",
+   "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0",
+   "buildID": "20261019185856",
+   "paketAppx": "Mozilla.Firefox 158.0.1.0",
+   "driver": "WebDriver BiDi bawaan Firefox (Remote Agent, ws://127.0.0.1:9444/session); tanpa geckodriver",
+   "headless": true,
+   "perintahStart": "firefox.exe -no-remote -profile <profil-sementara> -headless -remote-debugging-port=9444 about:blank",
+   "perintahUji": "node scripts/tailwind-harness/bidi-firefox.mjs --bagian=qa-xss --base=http://127.0.0.1:8099 --port=9444 --user-superadmin=dummy.superadmin (kata sandi via env TESYS_PW_STAFF / TESYS_PW_SUPERADMIN)",
+   "base": "http://127.0.0.1:8099",
+   "waktu": "2026-10-26T08:31:17.504Z",
+   "akunUji": {
+    "superadmin": "dummy.superadmin",
+    "staff": "dummy.staff"
+   },
+   "setup": {
+    "pidAlias": 30004,
+    "pidProsesUtama": 21372,
+    "profilSesiCocokProfilSementara": true,
+    "pidBukanRunnerSebelum": []
+   },
+   "emulasi": "browsingContext.setViewport (lebar x tinggi, DPR 1); TANPA emulasi sentuh/seluler; input = input.performActions (mouse/keyboard sintetis)",
+   "acuanChrome": "hasil-href-chrome.json",
+   "hasil": {
+    "butir": [
+     {
+      "id": "escape-xss-index",
+      "status": "PASS",
+      "detail": {
+       "flash": "Submission Anda berhasil dikirim. Terima kasih atas masukannya.",
+       "path": "/feedback",
+       "title": "General Feedback | TESYS",
+       "jumlahBaris": 20,
+       "idBarisPertama": 20,
+       "idBarisJudul": 20,
+       "elInjeksi": false,
+       "skripInjeksi": false,
+       "teksJudul": true,
+       "ulangOffline": []
+      }
+     },
+     {
+      "id": "escape-xss-show",
+      "status": "PASS",
+      "detail": {
+       "idDimuat": 20,
+       "halamanBenar": true,
+       "path": "/feedback/20",
+       "title": "Detail Submission | TESYS",
+       "h1": null,
+       "halamanFallback": false,
+       "elInjeksi": false,
+       "skripInjeksi": false,
+       "teksJudul": true,
+       "teksPesan": true,
+       "judulLiteralDiH1": false,
+       "foto": "docs/ui/tailwind-evidence/f3/firefox/diag-xss-show-terang-1366x768.png",
+       "ulangOffline": []
+      }
+     }
+    ],
+    "galat": [],
+    "foto": [
+     "docs/ui/tailwind-evidence/f3/firefox/diag-xss-show-terang-1366x768.png"
+    ],
+    "fotoMaks": 1,
+    "login": {
+     "akun": "dummy.staff",
+     "navigasi": true,
+     "urlSetelahLogin": "/",
+     "berhasil": true,
+     "galatLogin": null
+    },
+    "idBaru": 20
+   },
+   "penghentian": {
+    "penanda": "tesys-ff-CjcvN7",
+    "pidMilikRunner": [
+     30004,
+     21372,
+     15400,
+     21404,
+     10204,
+     20616,
+     7368,
+     11988,
+     19212,
+     18476,
+     14272,
+     17072,
+     22368,
+     9784
+    ],
+    "penutupanSopanBiDi": true,
+    "menungguMs": 7023,
+    "sisaProsesPenanda": 0,
+    "profilDihapus": true,
+    "pidBukanRunnerSebelum": [],
+    "pidBukanRunnerSesudah": [],
+    "pidPuncakPenggunaSebelum": [],
+    "pidPuncakPenggunaSesudah": [],
+    "pidPenggunaTakBerubah": true
+   }
+  },
+  "diag-jaringan": {
+   "browser": "firefox",
+   "versiBrowser": "158.0.1",
+   "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0",
+   "buildID": "20261019185856",
+   "paketAppx": "Mozilla.Firefox 158.0.1.0",
+   "driver": "WebDriver BiDi bawaan Firefox (Remote Agent, ws://127.0.0.1:9444/session); tanpa geckodriver",
+   "headless": true,
+   "perintahStart": "firefox.exe -no-remote -profile <profil-sementara> -headless -remote-debugging-port=9444 about:blank",
+   "perintahUji": "node scripts/tailwind-harness/bidi-firefox.mjs --bagian=diag-jaringan --base=http://127.0.0.1:8099 --port=9444 --user-superadmin=dummy.superadmin (kata sandi via env TESYS_PW_STAFF / TESYS_PW_SUPERADMIN)",
+   "base": "http://127.0.0.1:8099",
+   "waktu": "2026-10-26T09:19:38.085Z",
+   "akunUji": {
+    "superadmin": "dummy.superadmin",
+    "staff": "dummy.staff"
+   },
+   "setup": {
+    "pidAlias": 34704,
+    "pidProsesUtama": 2868,
+    "profilSesiCocokProfilSementara": true,
+    "pidBukanRunnerSebelum": []
+   },
+   "emulasi": "browsingContext.setViewport (lebar x tinggi, DPR 1); TANPA emulasi sentuh/seluler; input = input.performActions (mouse/keyboard sintetis)",
+   "acuanChrome": "hasil-href-chrome.json",
+   "hasil": {
+    "login": {
+     "staff": {
+      "akun": "dummy.staff",
+      "navigasi": true,
+      "urlSetelahLogin": "/",
+      "berhasil": true,
+      "galatLogin": null
+     },
+     "superadmin": {
+      "akun": "dummy.superadmin",
+      "navigasi": true,
+      "urlSetelahLogin": "/",
+      "berhasil": true,
+      "galatLogin": null
+     }
+    },
+    "idDipakai": 21,
+    "sapuan": [
+     {
+      "akun": "staff",
+      "jalur": "/feedback",
+      "tema": "terang",
+      "viewport": "390x844",
+      "title": "General Feedback | TESYS",
+      "ulangOffline": [],
+      "status": null,
+      "gagal": []
+     },
+     {
+      "akun": "staff",
+      "jalur": "/feedback",
+      "tema": "terang",
+      "viewport": "1366x768",
+      "title": "General Feedback | TESYS",
+      "ulangOffline": [],
+      "status": null,
+      "gagal": []
+     },
+     {
+      "akun": "staff",
+      "jalur": "/feedback",
+      "tema": "gelap",
+      "viewport": "390x844",
+      "title": "General Feedback | TESYS",
+      "ulangOffline": [],
+      "status": null,
+      "gagal": []
+     },
+     {
+      "akun": "staff",
+      "jalur": "/feedback",
+      "tema": "gelap",
+      "viewport": "1366x768",
+      "title": "General Feedback | TESYS",
+      "ulangOffline": [],
+      "status": null,
+      "gagal": []
+     },
+     {
+      "akun": "staff",
+      "jalur": "/feedback/create",
+      "tema": "terang",
+      "viewport": "390x844",
+      "title": "Buat Submission | TESYS",
+      "ulangOffline": [],
+      "status": null,
+      "gagal": []
+     },
+     {
+      "akun": "staff",
+      "jalur": "/feedback/create",
+      "tema": "terang",
+      "viewport": "1366x768",
+      "title": "Buat Submission | TESYS",
+      "ulangOffline": [],
+      "status": null,
+      "gagal": []
+     },
+     {
+      "akun": "staff",
+      "jalur": "/feedback/create",
+      "tema": "gelap",
+      "viewport": "390x844",
+      "title": "Buat Submission | TESYS",
+      "ulangOffline": [],
+      "status": null,
+      "gagal": []
+     },
+     {
+      "akun": "staff",
+      "jalur": "/feedback/create",
+      "tema": "gelap",
+      "viewport": "1366x768",
+      "title": "Buat Submission | TESYS",
+      "ulangOffline": [],
+      "status": null,
+      "gagal": []
+     },
+     {
+      "akun": "staff",
+      "jalur": "/feedback/21",
+      "tema": "terang",
+      "viewport": "390x844",
+      "title": "Detail Submission | TESYS",
+      "ulangOffline": [],
+      "status": null,
+      "gagal": []
+     },
+     {
+      "akun": "staff",
+      "jalur": "/feedback/21",
+      "tema": "terang",
+      "viewport": "1366x768",
+      "title": "Detail Submission | TESYS",
+      "ulangOffline": [],
+      "status": null,
+      "gagal": []
+     },
+     {
+      "akun": "staff",
+      "jalur": "/feedback/21",
+      "tema": "gelap",
+      "viewport": "390x844",
+      "title": "Detail Submission | TESYS",
+      "ulangOffline": [],
+      "status": null,
+      "gagal": []
+     },
+     {
+      "akun": "staff",
+      "jalur": "/feedback/21",
+      "tema": "gelap",
+      "viewport": "1366x768",
+      "title": "Detail Submission | TESYS",
+      "ulangOffline": [],
+      "status": null,
+      "gagal": []
+     },
+     {
+      "akun": "superadmin",
+      "jalur": "/feedback-inbox",
+      "tema": "terang",
+      "viewport": "390x844",
+      "title": "Feedback Inbox | TESYS",
+      "ulangOffline": [],
+      "status": null,
+      "gagal": []
+     },
+     {
+      "akun": "superadmin",
+      "jalur": "/feedback-inbox",
+      "tema": "terang",
+      "viewport": "1366x768",
+      "title": "Feedback Inbox | TESYS",
+      "ulangOffline": [],
+      "status": null,
+      "gagal": []
+     },
+     {
+      "akun": "superadmin",
+      "jalur": "/feedback-inbox",
+      "tema": "gelap",
+      "viewport": "390x844",
+      "title": "Feedback Inbox | TESYS",
+      "ulangOffline": [],
+      "status": null,
+      "gagal": []
+     },
+     {
+      "akun": "superadmin",
+      "jalur": "/feedback-inbox",
+      "tema": "gelap",
+      "viewport": "1366x768",
+      "title": "Feedback Inbox | TESYS",
+      "ulangOffline": [],
+      "status": null,
+      "gagal": []
+     },
+     {
+      "akun": "superadmin",
+      "jalur": "/feedback/21",
+      "tema": "terang",
+      "viewport": "390x844",
+      "title": "Detail Submission | TESYS",
+      "ulangOffline": [],
+      "status": {
+       "kartuRespond": false,
+       "kartuClose": false
+      },
+      "gagal": []
+     },
+     {
+      "akun": "superadmin",
+      "jalur": "/feedback/21",
+      "tema": "terang",
+      "viewport": "1366x768",
+      "title": "Detail Submission | TESYS",
+      "ulangOffline": [],
+      "status": {
+       "kartuRespond": false,
+       "kartuClose": false
+      },
+      "gagal": []
+     },
+     {
+      "akun": "superadmin",
+      "jalur": "/feedback/21",
+      "tema": "gelap",
+      "viewport": "390x844",
+      "title": "Detail Submission | TESYS",
+      "ulangOffline": [],
+      "status": {
+       "kartuRespond": false,
+       "kartuClose": false
+      },
+      "gagal": []
+     },
+     {
+      "akun": "superadmin",
+      "jalur": "/feedback/21",
+      "tema": "gelap",
+      "viewport": "1366x768",
+      "title": "Detail Submission | TESYS",
+      "ulangOffline": [],
+      "status": {
+       "kartuRespond": false,
+       "kartuClose": false
+      },
+      "gagal": []
+     },
+     {
+      "akun": "superadmin",
+      "jalur": "/feedback/21",
+      "tema": "terang",
+      "viewport": "390x844",
+      "title": "Detail Submission | TESYS",
+      "ulangOffline": [],
+      "status": {
+       "kartuRespond": false,
+       "kartuClose": false
+      },
+      "gagal": []
+     },
+     {
+      "akun": "superadmin",
+      "jalur": "/feedback/21",
+      "tema": "terang",
+      "viewport": "1366x768",
+      "title": "Detail Submission | TESYS",
+      "ulangOffline": [],
+      "status": {
+       "kartuRespond": false,
+       "kartuClose": false
+      },
+      "gagal": []
+     },
+     {
+      "akun": "superadmin",
+      "jalur": "/feedback/21",
+      "tema": "gelap",
+      "viewport": "390x844",
+      "title": "Detail Submission | TESYS",
+      "ulangOffline": [],
+      "status": {
+       "kartuRespond": false,
+       "kartuClose": false
+      },
+      "gagal": []
+     },
+     {
+      "akun": "superadmin",
+      "jalur": "/feedback/21",
+      "tema": "gelap",
+      "viewport": "1366x768",
+      "title": "Detail Submission | TESYS",
+      "ulangOffline": [],
+      "status": {
+       "kartuRespond": false,
+       "kartuClose": false
+      },
+      "gagal": []
+     }
+    ],
+    "galat": [],
+    "ringkas": {
+     "muatan": 24,
+     "totalFetchError": 0,
+     "tersaringDalamJendelaNavigasi": 0,
+     "diLuarJendela": [],
+     "perDest": {}
+    },
+    "butir": [
+     {
+      "id": "F-jaringan-abort-dalam-jendela-navigasi",
+      "status": "PASS",
+      "detail": {
+       "muatan": 24,
+       "totalFetchError": 0,
+       "tersaringDalamJendelaNavigasi": 0,
+       "diLuarJendela": [],
+       "perDest": {}
+      }
+     }
+    ],
+    "navigasiDiulang": []
+   },
+   "penghentian": {
+    "penanda": "tesys-ff-DY6lB7",
+    "pidMilikRunner": [
+     34704,
+     2868,
+     4192,
+     12604,
+     34304,
+     10828,
+     25844,
+     27748,
+     3120,
+     9768,
+     30972,
+     13728,
+     29076,
+     33356
+    ],
+    "penutupanSopanBiDi": true,
+    "menungguMs": 2147,
+    "sisaProsesPenanda": 0,
+    "profilDihapus": true,
+    "pidBukanRunnerSebelum": [],
+    "pidBukanRunnerSesudah": [],
+    "pidPuncakPenggunaSebelum": [],
+    "pidPuncakPenggunaSesudah": [],
+    "pidPenggunaTakBerubah": true
+   }
+  }
+ }
+}

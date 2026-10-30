@@ -24,7 +24,7 @@
              halaman terpisah, dan nilai lama tetap terbaca sampai disimpan. --}}
         <div class="card card-primary card-outline shadow-sm">
             <div class="card-header p-0">
-                <ul class="nav nav-tabs" role="tablist">
+                <ul class="nav nav-tabs ts-pill-tabs" role="tablist">
                     <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#stTabSla" role="tab"><i class="fas fa-stopwatch mr-1"></i> SLA</a></li>
                     <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#stTabRca" role="tab"><i class="fas fa-sitemap mr-1"></i> RCA</a></li>
                     <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#stTabSub" role="tab"><i class="fas fa-stream mr-1"></i> Sub-RCA</a></li>

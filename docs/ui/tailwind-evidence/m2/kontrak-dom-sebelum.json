@@ -1,0 +1,3733 @@
+{
+ "s0": {
+  "#frmCR": {
+   "n": 1,
+   "first": {
+    "tag": "form",
+    "id": "frmCR",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#selectBudgetPlan": {
+   "n": 1,
+   "first": {
+    "tag": "select",
+    "id": "selectBudgetPlan",
+    "name": "budget_plan_id",
+    "type": null,
+    "req": true,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#selectType": {
+   "n": 1,
+   "first": {
+    "tag": "select",
+    "id": "selectType",
+    "name": "type_id",
+    "type": null,
+    "req": true,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#selectBeneficiary": {
+   "n": 1,
+   "first": {
+    "tag": "select",
+    "id": "selectBeneficiary",
+    "name": "beneficiary_id",
+    "type": null,
+    "req": true,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#beneficiaryInfo": {
+   "n": 1,
+   "first": {
+    "tag": "small",
+    "id": "beneficiaryInfo",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-muted",
+    "inForm": true
+   }
+  },
+  "#selectCluster": {
+   "n": 1,
+   "first": {
+    "tag": "select",
+    "id": "selectCluster",
+    "name": "cluster_id",
+    "type": null,
+    "req": true,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#clusterBox": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "clusterBox",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "form-group",
+    "inForm": true
+   }
+  },
+  "#remainingBudget": {
+   "n": 1,
+   "first": {
+    "tag": "strong",
+    "id": "remainingBudget",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-success",
+    "inForm": true
+   }
+  },
+  "#emailTagsBox": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "emailTagsBox",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#emailTagInput": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "emailTagInput",
+    "name": null,
+    "type": "text",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#emailHidden": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "emailHidden",
+    "name": "email",
+    "type": "hidden",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  ".email-tag": {
+   "n": 1,
+   "first": {
+    "tag": "span",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "badge badge-light border email-tag",
+    "inForm": true
+   }
+  },
+  "#nobWarning": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "nobWarning",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "alert alert-warning mb-0",
+    "inForm": true
+   }
+  },
+  "#workflowAlert": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "workflowAlert",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "alert mb-0",
+    "inForm": true
+   }
+  },
+  "#caQuotaAlert": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "caQuotaAlert",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "alert mb-0 mt-2",
+    "inForm": true
+   }
+  },
+  "#totalLabel": {
+   "n": 1,
+   "first": {
+    "tag": "span",
+    "id": "totalLabel",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "badge badge-primary px-3 py-2",
+    "inForm": true
+   }
+  },
+  "#btnDownloadDetailTemplate": {
+   "n": 1,
+   "first": {
+    "tag": "a",
+    "id": "btnDownloadDetailTemplate",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-outline-secondary btn-sm",
+    "inForm": true
+   }
+  },
+  "#btnImportDetailExcel": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnImportDetailExcel",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-outline-primary btn-sm",
+    "inForm": true
+   }
+  },
+  "#importDetailFileInput": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "importDetailFileInput",
+    "name": null,
+    "type": "file",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#btnAddDetail": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnAddDetail",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-primary btn-sm",
+    "inForm": true
+   }
+  },
+  "#detailBody": {
+   "n": 1,
+   "first": {
+    "tag": "tbody",
+    "id": "detailBody",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#btnAddAttachment": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnAddAttachment",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-primary btn-sm ml-auto",
+    "inForm": true
+   }
+  },
+  "#attUploadArea": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "attUploadArea",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#dropZoneCR": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "dropZoneCR",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "att-dropzone mb-3",
+    "inForm": true
+   }
+  },
+  "#dropZoneInputCR": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "dropZoneInputCR",
+    "name": null,
+    "type": "file",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#dropZoneBrowseCR": {
+   "n": 1,
+   "first": {
+    "tag": "span",
+    "id": "dropZoneBrowseCR",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-primary",
+    "inForm": true
+   }
+  },
+  "#attTableWrap": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "attTableWrap",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "mt-3 table-responsive",
+    "inForm": true
+   }
+  },
+  "#attachmentBody": {
+   "n": 1,
+   "first": {
+    "tag": "tbody",
+    "id": "attachmentBody",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#attRequiredBadge": {
+   "n": 1,
+   "first": {
+    "tag": "span",
+    "id": "attRequiredBadge",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "badge badge-danger ml-1",
+    "inForm": true
+   }
+  },
+  "#itemAttRequiredBadge": {
+   "n": 1,
+   "first": {
+    "tag": "span",
+    "id": "itemAttRequiredBadge",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "badge badge-danger",
+    "inForm": true
+   }
+  },
+  "#btnSaveCR": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnSaveCR",
+    "name": null,
+    "type": "submit",
+    "req": null,
+    "dis": true,
+    "cls": "btn btn-primary",
+    "inForm": true
+   }
+  },
+  "#saveHint": {
+   "n": 1,
+   "first": {
+    "tag": "small",
+    "id": "saveHint",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "ml-3 text-danger",
+    "inForm": true
+   }
+  },
+  "#accountsHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "accountsHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  "#accountsBySourceHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "accountsBySourceHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  "#bpClustersHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "bpClustersHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  "#oldDetailsHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "oldDetailsHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  "#oldBudgetPlanHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "oldBudgetPlanHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  "#oldClusterHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "oldClusterHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  ".detail-row": {
+   "n": 0,
+   "first": null
+  },
+  ".inp-amount": {
+   "n": 0,
+   "first": null
+  },
+  ".inp-qty": {
+   "n": 0,
+   "first": null
+  },
+  ".inp-total": {
+   "n": 0,
+   "first": null
+  },
+  ".inp-notes": {
+   "n": 0,
+   "first": null
+  },
+  ".select-budget-detail": {
+   "n": 0,
+   "first": null
+  },
+  ".nob-badge": {
+   "n": 0,
+   "first": null
+  },
+  ".cell-remaining": {
+   "n": 0,
+   "first": null
+  },
+  ".col-remaining": {
+   "n": 1,
+   "first": {
+    "tag": "th",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "col-remaining text-right",
+    "inForm": true
+   }
+  },
+  ".detail-att-input": {
+   "n": 0,
+   "first": null
+  },
+  ".detail-att-list": {
+   "n": 0,
+   "first": null
+  },
+  ".detail-att-label": {
+   "n": 0,
+   "first": null
+  },
+  ".detail-att-cell": {
+   "n": 0,
+   "first": null
+  },
+  ".btn-detail-att": {
+   "n": 0,
+   "first": null
+  },
+  ".btn-remove-detail": {
+   "n": 0,
+   "first": null
+  },
+  ".desc-wrap": {
+   "n": 0,
+   "first": null
+  },
+  ".desc-expand": {
+   "n": 0,
+   "first": null
+  },
+  ".desc-count": {
+   "n": 0,
+   "first": null
+  },
+  ".cr-type-ben": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "cr-type-ben d-flex",
+    "inForm": true
+   }
+  },
+  ".cr-type-col": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "cr-type-col form-group",
+    "inForm": true
+   }
+  },
+  ".cr-ben-col": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "cr-ben-col form-group",
+    "inForm": true
+   }
+  },
+  ".cr-detail-head": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "align-items-center card-header cr-detail-head d-flex",
+    "inForm": true
+   }
+  },
+  ".cr-detail-actions": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "align-items-center cr-detail-actions d-flex ml-auto",
+    "inForm": true
+   }
+  },
+  "[name=\"description\"]": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "ts-fld-1",
+    "name": "description",
+    "type": "text",
+    "req": true,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "[name=\"notes\"]": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "ts-fld-2",
+    "name": "notes",
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "[name=\"email\"]": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "emailHidden",
+    "name": "email",
+    "type": "hidden",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  ".att-dropzone": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "dropZoneCR",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "att-dropzone mb-3",
+    "inForm": true
+   }
+  },
+  ".btn-remove-att": {
+   "n": 0,
+   "first": null
+  },
+  ".att-global-preview": {
+   "n": 0,
+   "first": null
+  },
+  "__names": [
+   "_token",
+   "beneficiary_id",
+   "budget_plan_id",
+   "cluster_id",
+   "description",
+   "email",
+   "notes",
+   "type_id"
+  ],
+  "__ids": [
+   "accountsBySourceHolder",
+   "accountsHolder",
+   "appSwitch",
+   "appSwitchBtn",
+   "attRequiredBadge",
+   "attTableWrap",
+   "attUploadArea",
+   "attachmentBody",
+   "beneficiaryInfo",
+   "bnavTabsBtn",
+   "bnavTabsMenu",
+   "bpClustersHolder",
+   "btnAddAttachment",
+   "btnAddDetail",
+   "btnDownloadDetailTemplate",
+   "btnImportDetailExcel",
+   "btnSaveCR",
+   "caQuotaAlert",
+   "clusterBox",
+   "detailBody",
+   "dropZoneBrowseCR",
+   "dropZoneCR",
+   "dropZoneInputCR",
+   "emailHidden",
+   "emailTagInput",
+   "emailTagsBox",
+   "frmCR",
+   "importDetailFileInput",
+   "itemAttRequiredBadge",
+   "logout-form",
+   "navTodoBadge",
+   "navTodoList",
+   "nobWarning",
+   "notifBadge",
+   "notifBellToggle",
+   "notifBellWrap",
+   "notifDropdown",
+   "notifEmpty",
+   "notifList",
+   "notifMarkAllRead",
+   "oldBudgetPlanHolder",
+   "oldClusterHolder",
+   "oldDetailsHolder",
+   "remainingBudget",
+   "saveHint",
+   "selectBeneficiary",
+   "selectBudgetPlan",
+   "selectCluster",
+   "selectType",
+   "sidebarToggle",
+   "tcf-inline-style",
+   "tesysCommandData",
+   "themeToggle",
+   "totalLabel",
+   "ts-fld-1",
+   "ts-fld-2",
+   "tsCmd",
+   "tsCmdInput",
+   "tsCmdList",
+   "tsCmdLoading",
+   "tsCrumb",
+   "tsQuickSearch",
+   "tsQuickSearchWrap",
+   "tsSidebar",
+   "tsTitle",
+   "userBtn",
+   "userPop",
+   "workflowAlert"
+  ],
+  "__form": {
+   "action": "http://127.0.0.1:8099/budget-request",
+   "method": "post",
+   "enctype": "multipart/form-data",
+   "id": "frmCR"
+  },
+  "__h1": [],
+  "__title": "Tambah Cost Request | TESYS"
+ },
+ "s1": {
+  "#frmCR": {
+   "n": 1,
+   "first": {
+    "tag": "form",
+    "id": "frmCR",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#selectBudgetPlan": {
+   "n": 1,
+   "first": {
+    "tag": "select",
+    "id": "selectBudgetPlan",
+    "name": "budget_plan_id",
+    "type": null,
+    "req": true,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#selectType": {
+   "n": 1,
+   "first": {
+    "tag": "select",
+    "id": "selectType",
+    "name": "type_id",
+    "type": null,
+    "req": true,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#selectBeneficiary": {
+   "n": 1,
+   "first": {
+    "tag": "select",
+    "id": "selectBeneficiary",
+    "name": "beneficiary_id",
+    "type": null,
+    "req": true,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#beneficiaryInfo": {
+   "n": 1,
+   "first": {
+    "tag": "small",
+    "id": "beneficiaryInfo",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-muted",
+    "inForm": true
+   }
+  },
+  "#selectCluster": {
+   "n": 1,
+   "first": {
+    "tag": "select",
+    "id": "selectCluster",
+    "name": "cluster_id",
+    "type": null,
+    "req": true,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#clusterBox": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "clusterBox",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "form-group",
+    "inForm": true
+   }
+  },
+  "#remainingBudget": {
+   "n": 1,
+   "first": {
+    "tag": "strong",
+    "id": "remainingBudget",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-success",
+    "inForm": true
+   }
+  },
+  "#emailTagsBox": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "emailTagsBox",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#emailTagInput": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "emailTagInput",
+    "name": null,
+    "type": "text",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#emailHidden": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "emailHidden",
+    "name": "email",
+    "type": "hidden",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  ".email-tag": {
+   "n": 1,
+   "first": {
+    "tag": "span",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "badge badge-light border email-tag",
+    "inForm": true
+   }
+  },
+  "#nobWarning": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "nobWarning",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "alert alert-warning mb-0",
+    "inForm": true
+   }
+  },
+  "#workflowAlert": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "workflowAlert",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "alert alert-warning mb-0",
+    "inForm": true
+   }
+  },
+  "#caQuotaAlert": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "caQuotaAlert",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "alert mb-0 mt-2",
+    "inForm": true
+   }
+  },
+  "#totalLabel": {
+   "n": 1,
+   "first": {
+    "tag": "span",
+    "id": "totalLabel",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "badge badge-primary px-3 py-2",
+    "inForm": true
+   }
+  },
+  "#btnDownloadDetailTemplate": {
+   "n": 1,
+   "first": {
+    "tag": "a",
+    "id": "btnDownloadDetailTemplate",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-outline-secondary btn-sm",
+    "inForm": true
+   }
+  },
+  "#btnImportDetailExcel": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnImportDetailExcel",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-outline-primary btn-sm",
+    "inForm": true
+   }
+  },
+  "#importDetailFileInput": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "importDetailFileInput",
+    "name": null,
+    "type": "file",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#btnAddDetail": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnAddDetail",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-primary btn-sm",
+    "inForm": true
+   }
+  },
+  "#detailBody": {
+   "n": 1,
+   "first": {
+    "tag": "tbody",
+    "id": "detailBody",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#btnAddAttachment": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnAddAttachment",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-primary btn-sm ml-auto",
+    "inForm": true
+   }
+  },
+  "#attUploadArea": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "attUploadArea",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#dropZoneCR": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "dropZoneCR",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "att-dropzone mb-3",
+    "inForm": true
+   }
+  },
+  "#dropZoneInputCR": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "dropZoneInputCR",
+    "name": null,
+    "type": "file",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#dropZoneBrowseCR": {
+   "n": 1,
+   "first": {
+    "tag": "span",
+    "id": "dropZoneBrowseCR",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-primary",
+    "inForm": true
+   }
+  },
+  "#attTableWrap": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "attTableWrap",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "mt-3 table-responsive",
+    "inForm": true
+   }
+  },
+  "#attachmentBody": {
+   "n": 1,
+   "first": {
+    "tag": "tbody",
+    "id": "attachmentBody",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#attRequiredBadge": {
+   "n": 1,
+   "first": {
+    "tag": "span",
+    "id": "attRequiredBadge",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "badge badge-danger ml-1",
+    "inForm": true
+   }
+  },
+  "#itemAttRequiredBadge": {
+   "n": 1,
+   "first": {
+    "tag": "span",
+    "id": "itemAttRequiredBadge",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "badge badge-danger",
+    "inForm": true
+   }
+  },
+  "#btnSaveCR": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnSaveCR",
+    "name": null,
+    "type": "submit",
+    "req": null,
+    "dis": true,
+    "cls": "btn btn-primary",
+    "inForm": true
+   }
+  },
+  "#saveHint": {
+   "n": 1,
+   "first": {
+    "tag": "small",
+    "id": "saveHint",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "ml-3 text-danger",
+    "inForm": true
+   }
+  },
+  "#accountsHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "accountsHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  "#accountsBySourceHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "accountsBySourceHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  "#bpClustersHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "bpClustersHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  "#oldDetailsHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "oldDetailsHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  "#oldBudgetPlanHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "oldBudgetPlanHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  "#oldClusterHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "oldClusterHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  ".detail-row": {
+   "n": 3,
+   "first": {
+    "tag": "tr",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "detail-row",
+    "inForm": true
+   }
+  },
+  ".inp-amount": {
+   "n": 3,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "details[0][amount]",
+    "type": "text",
+    "req": true,
+    "dis": null,
+    "cls": "form-control form-control-sm inp-amount text-right",
+    "inForm": true
+   }
+  },
+  ".inp-qty": {
+   "n": 3,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "details[0][qty]",
+    "type": "number",
+    "req": true,
+    "dis": null,
+    "cls": "form-control form-control-sm inp-qty text-center",
+    "inForm": true
+   }
+  },
+  ".inp-total": {
+   "n": 3,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "details[0][total_display]",
+    "type": "text",
+    "req": null,
+    "dis": null,
+    "cls": "form-control form-control-sm inp-total text-right",
+    "inForm": true
+   }
+  },
+  ".inp-notes": {
+   "n": 3,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "details[0][notes]",
+    "type": "text",
+    "req": true,
+    "dis": null,
+    "cls": "form-control form-control-sm inp-notes",
+    "inForm": true
+   }
+  },
+  ".select-budget-detail": {
+   "n": 3,
+   "first": {
+    "tag": "select",
+    "id": null,
+    "name": "details[0][budget_detail_id]",
+    "type": null,
+    "req": true,
+    "dis": null,
+    "cls": "form-control form-control-sm select-budget-detail",
+    "inForm": true
+   }
+  },
+  ".nob-badge": {
+   "n": 3,
+   "first": {
+    "tag": "span",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "badge badge-danger d-none mb-1 nob-badge",
+    "inForm": true
+   }
+  },
+  ".cell-remaining": {
+   "n": 3,
+   "first": {
+    "tag": "td",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "cell-remaining col-remaining text-right",
+    "inForm": true
+   }
+  },
+  ".col-remaining": {
+   "n": 4,
+   "first": {
+    "tag": "th",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "col-remaining text-right",
+    "inForm": true
+   }
+  },
+  ".detail-att-input": {
+   "n": 3,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "details[0][attachments][]",
+    "type": "file",
+    "req": null,
+    "dis": null,
+    "cls": "d-none detail-att-input",
+    "inForm": true
+   }
+  },
+  ".detail-att-list": {
+   "n": 3,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "detail-att-list mt-1",
+    "inForm": true
+   }
+  },
+  ".detail-att-label": {
+   "n": 3,
+   "first": {
+    "tag": "span",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "detail-att-label",
+    "inForm": true
+   }
+  },
+  ".detail-att-cell": {
+   "n": 3,
+   "first": {
+    "tag": "td",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "align-middle detail-att-cell",
+    "inForm": true
+   }
+  },
+  ".btn-detail-att": {
+   "n": 3,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-detail-att btn-outline-secondary btn-sm",
+    "inForm": true
+   }
+  },
+  ".btn-remove-detail": {
+   "n": 3,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-danger btn-remove-detail btn-sm ts-icon-only",
+    "inForm": true
+   }
+  },
+  ".desc-wrap": {
+   "n": 3,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "desc-wrap",
+    "inForm": true
+   }
+  },
+  ".desc-expand": {
+   "n": 3,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "desc-expand",
+    "inForm": true
+   }
+  },
+  ".desc-count": {
+   "n": 3,
+   "first": {
+    "tag": "small",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "desc-count text-muted",
+    "inForm": true
+   }
+  },
+  ".cr-type-ben": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "cr-type-ben d-flex",
+    "inForm": true
+   }
+  },
+  ".cr-type-col": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "cr-type-col form-group",
+    "inForm": true
+   }
+  },
+  ".cr-ben-col": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "cr-ben-col form-group",
+    "inForm": true
+   }
+  },
+  ".cr-detail-head": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "align-items-center card-header cr-detail-head d-flex",
+    "inForm": true
+   }
+  },
+  ".cr-detail-actions": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "align-items-center cr-detail-actions d-flex ml-auto",
+    "inForm": true
+   }
+  },
+  "[name=\"description\"]": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "ts-fld-1",
+    "name": "description",
+    "type": "text",
+    "req": true,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "[name=\"notes\"]": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "ts-fld-2",
+    "name": "notes",
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "[name=\"email\"]": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "emailHidden",
+    "name": "email",
+    "type": "hidden",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  ".att-dropzone": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "dropZoneCR",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "att-dropzone mb-3",
+    "inForm": true
+   }
+  },
+  ".btn-remove-att": {
+   "n": 0,
+   "first": null
+  },
+  ".att-global-preview": {
+   "n": 0,
+   "first": null
+  },
+  "__names": [
+   "_token",
+   "beneficiary_id",
+   "budget_plan_id",
+   "cluster_id",
+   "description",
+   "details[0][amount]",
+   "details[0][attachments][]",
+   "details[0][budget_detail_id]",
+   "details[0][notes]",
+   "details[0][qty]",
+   "details[0][total_display]",
+   "details[1][amount]",
+   "details[1][attachments][]",
+   "details[1][budget_detail_id]",
+   "details[1][notes]",
+   "details[1][qty]",
+   "details[1][total_display]",
+   "details[2][amount]",
+   "details[2][attachments][]",
+   "details[2][budget_detail_id]",
+   "details[2][notes]",
+   "details[2][qty]",
+   "details[2][total_display]",
+   "email",
+   "notes",
+   "type_id"
+  ],
+  "__ids": [
+   "accountsBySourceHolder",
+   "accountsHolder",
+   "appSwitch",
+   "appSwitchBtn",
+   "attRequiredBadge",
+   "attTableWrap",
+   "attUploadArea",
+   "attachmentBody",
+   "beneficiaryInfo",
+   "bnavTabsBtn",
+   "bnavTabsMenu",
+   "bpClustersHolder",
+   "btnAddAttachment",
+   "btnAddDetail",
+   "btnDownloadDetailTemplate",
+   "btnImportDetailExcel",
+   "btnSaveCR",
+   "caQuotaAlert",
+   "clusterBox",
+   "detailBody",
+   "dropZoneBrowseCR",
+   "dropZoneCR",
+   "dropZoneInputCR",
+   "emailHidden",
+   "emailTagInput",
+   "emailTagsBox",
+   "frmCR",
+   "importDetailFileInput",
+   "itemAttRequiredBadge",
+   "logout-form",
+   "navTodoBadge",
+   "navTodoList",
+   "nobWarning",
+   "notifBadge",
+   "notifBellToggle",
+   "notifBellWrap",
+   "notifDropdown",
+   "notifEmpty",
+   "notifList",
+   "notifMarkAllRead",
+   "oldBudgetPlanHolder",
+   "oldClusterHolder",
+   "oldDetailsHolder",
+   "remainingBudget",
+   "saveHint",
+   "selectBeneficiary",
+   "selectBudgetPlan",
+   "selectCluster",
+   "selectType",
+   "sidebarToggle",
+   "tcf-inline-style",
+   "tesysCommandData",
+   "themeToggle",
+   "totalLabel",
+   "ts-fld-1",
+   "ts-fld-2",
+   "tsCmd",
+   "tsCmdInput",
+   "tsCmdList",
+   "tsCmdLoading",
+   "tsCrumb",
+   "tsQuickSearch",
+   "tsQuickSearchWrap",
+   "tsSidebar",
+   "tsTitle",
+   "userBtn",
+   "userPop",
+   "workflowAlert"
+  ],
+  "__form": {
+   "action": "http://127.0.0.1:8099/budget-request",
+   "method": "post",
+   "enctype": "multipart/form-data",
+   "id": "frmCR"
+  },
+  "__h1": [],
+  "__title": "Tambah Cost Request | TESYS"
+ },
+ "saveDisabled1": true,
+ "hint1": "Lengkapi: Lampiran Item pada baris rincian no. 1, 2, 3",
+ "total1": "Total: 1.350.000",
+ "swal1": "×!Form belum lengkapLengkapi: Lampiran Item pada baris rincian no. 1, 2, 3OKNoCancel",
+ "s2": {
+  "#frmCR": {
+   "n": 1,
+   "first": {
+    "tag": "form",
+    "id": "frmCR",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#selectBudgetPlan": {
+   "n": 1,
+   "first": {
+    "tag": "select",
+    "id": "selectBudgetPlan",
+    "name": "budget_plan_id",
+    "type": null,
+    "req": true,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#selectType": {
+   "n": 1,
+   "first": {
+    "tag": "select",
+    "id": "selectType",
+    "name": "type_id",
+    "type": null,
+    "req": true,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#selectBeneficiary": {
+   "n": 1,
+   "first": {
+    "tag": "select",
+    "id": "selectBeneficiary",
+    "name": "beneficiary_id",
+    "type": null,
+    "req": true,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#beneficiaryInfo": {
+   "n": 1,
+   "first": {
+    "tag": "small",
+    "id": "beneficiaryInfo",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-muted",
+    "inForm": true
+   }
+  },
+  "#selectCluster": {
+   "n": 1,
+   "first": {
+    "tag": "select",
+    "id": "selectCluster",
+    "name": "cluster_id",
+    "type": null,
+    "req": true,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#clusterBox": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "clusterBox",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "form-group",
+    "inForm": true
+   }
+  },
+  "#remainingBudget": {
+   "n": 1,
+   "first": {
+    "tag": "strong",
+    "id": "remainingBudget",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-success",
+    "inForm": true
+   }
+  },
+  "#emailTagsBox": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "emailTagsBox",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#emailTagInput": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "emailTagInput",
+    "name": null,
+    "type": "text",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#emailHidden": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "emailHidden",
+    "name": "email",
+    "type": "hidden",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  ".email-tag": {
+   "n": 1,
+   "first": {
+    "tag": "span",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "badge badge-light border email-tag",
+    "inForm": true
+   }
+  },
+  "#nobWarning": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "nobWarning",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "alert alert-warning mb-0",
+    "inForm": true
+   }
+  },
+  "#workflowAlert": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "workflowAlert",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "alert alert-warning mb-0",
+    "inForm": true
+   }
+  },
+  "#caQuotaAlert": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "caQuotaAlert",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "alert mb-0 mt-2",
+    "inForm": true
+   }
+  },
+  "#totalLabel": {
+   "n": 1,
+   "first": {
+    "tag": "span",
+    "id": "totalLabel",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "badge badge-primary px-3 py-2",
+    "inForm": true
+   }
+  },
+  "#btnDownloadDetailTemplate": {
+   "n": 1,
+   "first": {
+    "tag": "a",
+    "id": "btnDownloadDetailTemplate",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-outline-secondary btn-sm",
+    "inForm": true
+   }
+  },
+  "#btnImportDetailExcel": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnImportDetailExcel",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-outline-primary btn-sm",
+    "inForm": true
+   }
+  },
+  "#importDetailFileInput": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "importDetailFileInput",
+    "name": null,
+    "type": "file",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#btnAddDetail": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnAddDetail",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-primary btn-sm",
+    "inForm": true
+   }
+  },
+  "#detailBody": {
+   "n": 1,
+   "first": {
+    "tag": "tbody",
+    "id": "detailBody",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#btnAddAttachment": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnAddAttachment",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-primary btn-sm ml-auto",
+    "inForm": true
+   }
+  },
+  "#attUploadArea": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "attUploadArea",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#dropZoneCR": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "dropZoneCR",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "att-dropzone mb-3",
+    "inForm": true
+   }
+  },
+  "#dropZoneInputCR": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "dropZoneInputCR",
+    "name": null,
+    "type": "file",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#dropZoneBrowseCR": {
+   "n": 1,
+   "first": {
+    "tag": "span",
+    "id": "dropZoneBrowseCR",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-primary",
+    "inForm": true
+   }
+  },
+  "#attTableWrap": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "attTableWrap",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "mt-3 table-responsive",
+    "inForm": true
+   }
+  },
+  "#attachmentBody": {
+   "n": 1,
+   "first": {
+    "tag": "tbody",
+    "id": "attachmentBody",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#attRequiredBadge": {
+   "n": 1,
+   "first": {
+    "tag": "span",
+    "id": "attRequiredBadge",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "badge badge-danger ml-1",
+    "inForm": true
+   }
+  },
+  "#itemAttRequiredBadge": {
+   "n": 1,
+   "first": {
+    "tag": "span",
+    "id": "itemAttRequiredBadge",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "badge badge-danger",
+    "inForm": true
+   }
+  },
+  "#btnSaveCR": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnSaveCR",
+    "name": null,
+    "type": "submit",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-primary",
+    "inForm": true
+   }
+  },
+  "#saveHint": {
+   "n": 1,
+   "first": {
+    "tag": "small",
+    "id": "saveHint",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "ml-3 text-danger",
+    "inForm": true
+   }
+  },
+  "#accountsHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "accountsHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  "#accountsBySourceHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "accountsBySourceHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  "#bpClustersHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "bpClustersHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  "#oldDetailsHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "oldDetailsHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  "#oldBudgetPlanHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "oldBudgetPlanHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  "#oldClusterHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "oldClusterHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  ".detail-row": {
+   "n": 3,
+   "first": {
+    "tag": "tr",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "detail-row",
+    "inForm": true
+   }
+  },
+  ".inp-amount": {
+   "n": 3,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "details[0][amount]",
+    "type": "text",
+    "req": true,
+    "dis": null,
+    "cls": "form-control form-control-sm inp-amount text-right",
+    "inForm": true
+   }
+  },
+  ".inp-qty": {
+   "n": 3,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "details[0][qty]",
+    "type": "number",
+    "req": true,
+    "dis": null,
+    "cls": "form-control form-control-sm inp-qty text-center",
+    "inForm": true
+   }
+  },
+  ".inp-total": {
+   "n": 3,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "details[0][total_display]",
+    "type": "text",
+    "req": null,
+    "dis": null,
+    "cls": "form-control form-control-sm inp-total text-right",
+    "inForm": true
+   }
+  },
+  ".inp-notes": {
+   "n": 3,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "details[0][notes]",
+    "type": "text",
+    "req": true,
+    "dis": null,
+    "cls": "form-control form-control-sm inp-notes",
+    "inForm": true
+   }
+  },
+  ".select-budget-detail": {
+   "n": 3,
+   "first": {
+    "tag": "select",
+    "id": null,
+    "name": "details[0][budget_detail_id]",
+    "type": null,
+    "req": true,
+    "dis": null,
+    "cls": "form-control form-control-sm select-budget-detail",
+    "inForm": true
+   }
+  },
+  ".nob-badge": {
+   "n": 3,
+   "first": {
+    "tag": "span",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "badge badge-danger d-none mb-1 nob-badge",
+    "inForm": true
+   }
+  },
+  ".cell-remaining": {
+   "n": 3,
+   "first": {
+    "tag": "td",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "cell-remaining col-remaining text-right",
+    "inForm": true
+   }
+  },
+  ".col-remaining": {
+   "n": 4,
+   "first": {
+    "tag": "th",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "col-remaining text-right",
+    "inForm": true
+   }
+  },
+  ".detail-att-input": {
+   "n": 3,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "details[0][attachments][]",
+    "type": "file",
+    "req": null,
+    "dis": null,
+    "cls": "d-none detail-att-input",
+    "inForm": true
+   }
+  },
+  ".detail-att-list": {
+   "n": 3,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "detail-att-list mt-1",
+    "inForm": true
+   }
+  },
+  ".detail-att-label": {
+   "n": 3,
+   "first": {
+    "tag": "span",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "detail-att-label",
+    "inForm": true
+   }
+  },
+  ".detail-att-cell": {
+   "n": 3,
+   "first": {
+    "tag": "td",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "align-middle detail-att-cell",
+    "inForm": true
+   }
+  },
+  ".btn-detail-att": {
+   "n": 3,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-detail-att btn-outline-secondary btn-sm",
+    "inForm": true
+   }
+  },
+  ".btn-remove-detail": {
+   "n": 3,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-danger btn-remove-detail btn-sm ts-icon-only",
+    "inForm": true
+   }
+  },
+  ".desc-wrap": {
+   "n": 3,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "desc-wrap",
+    "inForm": true
+   }
+  },
+  ".desc-expand": {
+   "n": 3,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "desc-expand",
+    "inForm": true
+   }
+  },
+  ".desc-count": {
+   "n": 3,
+   "first": {
+    "tag": "small",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "desc-count text-muted",
+    "inForm": true
+   }
+  },
+  ".cr-type-ben": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "cr-type-ben d-flex",
+    "inForm": true
+   }
+  },
+  ".cr-type-col": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "cr-type-col form-group",
+    "inForm": true
+   }
+  },
+  ".cr-ben-col": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "cr-ben-col form-group",
+    "inForm": true
+   }
+  },
+  ".cr-detail-head": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "align-items-center card-header cr-detail-head d-flex",
+    "inForm": true
+   }
+  },
+  ".cr-detail-actions": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "align-items-center cr-detail-actions d-flex ml-auto",
+    "inForm": true
+   }
+  },
+  "[name=\"description\"]": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "ts-fld-1",
+    "name": "description",
+    "type": "text",
+    "req": true,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "[name=\"notes\"]": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "ts-fld-2",
+    "name": "notes",
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "[name=\"email\"]": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "emailHidden",
+    "name": "email",
+    "type": "hidden",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  ".att-dropzone": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "dropZoneCR",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "att-dropzone mb-3",
+    "inForm": true
+   }
+  },
+  ".btn-remove-att": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-danger btn-remove-att btn-sm ts-icon-only",
+    "inForm": true
+   }
+  },
+  ".att-global-preview": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "att-global-preview mt-1",
+    "inForm": true
+   }
+  },
+  "__names": [
+   "_token",
+   "attachments[0][file]",
+   "beneficiary_id",
+   "budget_plan_id",
+   "cluster_id",
+   "description",
+   "details[0][amount]",
+   "details[0][attachments][]",
+   "details[0][budget_detail_id]",
+   "details[0][notes]",
+   "details[0][qty]",
+   "details[0][total_display]",
+   "details[1][amount]",
+   "details[1][attachments][]",
+   "details[1][budget_detail_id]",
+   "details[1][notes]",
+   "details[1][qty]",
+   "details[1][total_display]",
+   "details[2][amount]",
+   "details[2][attachments][]",
+   "details[2][budget_detail_id]",
+   "details[2][notes]",
+   "details[2][qty]",
+   "details[2][total_display]",
+   "email",
+   "notes",
+   "type_id"
+  ],
+  "__ids": [
+   "accountsBySourceHolder",
+   "accountsHolder",
+   "appSwitch",
+   "appSwitchBtn",
+   "attRequiredBadge",
+   "attTableWrap",
+   "attUploadArea",
+   "attachmentBody",
+   "beneficiaryInfo",
+   "bnavTabsBtn",
+   "bnavTabsMenu",
+   "bpClustersHolder",
+   "btnAddAttachment",
+   "btnAddDetail",
+   "btnDownloadDetailTemplate",
+   "btnImportDetailExcel",
+   "btnSaveCR",
+   "caQuotaAlert",
+   "clusterBox",
+   "detailBody",
+   "dropZoneBrowseCR",
+   "dropZoneCR",
+   "dropZoneInputCR",
+   "emailHidden",
+   "emailTagInput",
+   "emailTagsBox",
+   "frmCR",
+   "importDetailFileInput",
+   "itemAttRequiredBadge",
+   "logout-form",
+   "navTodoBadge",
+   "navTodoList",
+   "nobWarning",
+   "notifBadge",
+   "notifBellToggle",
+   "notifBellWrap",
+   "notifDropdown",
+   "notifEmpty",
+   "notifList",
+   "notifMarkAllRead",
+   "oldBudgetPlanHolder",
+   "oldClusterHolder",
+   "oldDetailsHolder",
+   "remainingBudget",
+   "saveHint",
+   "selectBeneficiary",
+   "selectBudgetPlan",
+   "selectCluster",
+   "selectType",
+   "sidebarToggle",
+   "tcf-inline-style",
+   "tesysCommandData",
+   "themeToggle",
+   "totalLabel",
+   "ts-fld-1",
+   "ts-fld-2",
+   "tsCmd",
+   "tsCmdInput",
+   "tsCmdList",
+   "tsCmdLoading",
+   "tsCrumb",
+   "tsQuickSearch",
+   "tsQuickSearchWrap",
+   "tsSidebar",
+   "tsTitle",
+   "userBtn",
+   "userPop",
+   "workflowAlert"
+  ],
+  "__form": {
+   "action": "http://127.0.0.1:8099/budget-request",
+   "method": "post",
+   "enctype": "multipart/form-data",
+   "id": "frmCR"
+  },
+  "__h1": [],
+  "__title": "Tambah Cost Request | TESYS"
+ },
+ "saveDisabled2": false,
+ "hint2": "none",
+ "alertsCA": [
+  "nobWarning:none:Perhatian: Total pengajuan melebihi sisa budget. Deskripsi akan otomatis ditambahkan prefi",
+  "workflowAlert:block:Cash Advance — workflow: Process → Paid → Settle → Closed. Ada tahap realisasi (settlement",
+  "caQuotaAlert:none:"
+ ],
+ "alertsNob": [
+  "nobWarning:block"
+ ],
+ "nobBadge": [
+  "inline-flex:[NOB][1.707.070.000]",
+  "none:NOB",
+  "none:NOB"
+ ],
+ "emailTags": [
+  "dummy.superadmin@example.test",
+  "uji@contoh.com"
+ ],
+ "emailHidden": "dummy.superadmin@example.test,uji@contoh.com",
+ "rowsSetelahHapus": 2,
+ "navigasiGalat": true,
+ "urlGalat": "/budget-request/create",
+ "galatServer": [
+  "Terjadi kesalahan: The description field is required.",
+  "*",
+  "*",
+  "*",
+  "*",
+  "The description field is required.",
+  "*",
+  "Lengkapi: Deskripsi, Lampiran Item pada baris rincian no. 1, 2"
+ ],
+ "oldBp": "37",
+ "oldRows": 2,
+ "oldAmounts": [
+  "900.000.000",
+  "150.000"
+ ],
+ "oldEmail": "dummy.superadmin@example.test,uji@contoh.com",
+ "sGalat": {
+  "#frmCR": {
+   "n": 1,
+   "first": {
+    "tag": "form",
+    "id": "frmCR",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#selectBudgetPlan": {
+   "n": 1,
+   "first": {
+    "tag": "select",
+    "id": "selectBudgetPlan",
+    "name": "budget_plan_id",
+    "type": null,
+    "req": true,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#selectType": {
+   "n": 1,
+   "first": {
+    "tag": "select",
+    "id": "selectType",
+    "name": "type_id",
+    "type": null,
+    "req": true,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#selectBeneficiary": {
+   "n": 1,
+   "first": {
+    "tag": "select",
+    "id": "selectBeneficiary",
+    "name": "beneficiary_id",
+    "type": null,
+    "req": true,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#beneficiaryInfo": {
+   "n": 1,
+   "first": {
+    "tag": "small",
+    "id": "beneficiaryInfo",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-muted",
+    "inForm": true
+   }
+  },
+  "#selectCluster": {
+   "n": 1,
+   "first": {
+    "tag": "select",
+    "id": "selectCluster",
+    "name": "cluster_id",
+    "type": null,
+    "req": true,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#clusterBox": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "clusterBox",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "form-group",
+    "inForm": true
+   }
+  },
+  "#remainingBudget": {
+   "n": 1,
+   "first": {
+    "tag": "strong",
+    "id": "remainingBudget",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-success",
+    "inForm": true
+   }
+  },
+  "#emailTagsBox": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "emailTagsBox",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#emailTagInput": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "emailTagInput",
+    "name": null,
+    "type": "text",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#emailHidden": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "emailHidden",
+    "name": "email",
+    "type": "hidden",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  ".email-tag": {
+   "n": 2,
+   "first": {
+    "tag": "span",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "badge badge-light border email-tag",
+    "inForm": true
+   }
+  },
+  "#nobWarning": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "nobWarning",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "alert alert-warning mb-0",
+    "inForm": true
+   }
+  },
+  "#workflowAlert": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "workflowAlert",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "alert alert-warning mb-0",
+    "inForm": true
+   }
+  },
+  "#caQuotaAlert": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "caQuotaAlert",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "alert mb-0 mt-2",
+    "inForm": true
+   }
+  },
+  "#totalLabel": {
+   "n": 1,
+   "first": {
+    "tag": "span",
+    "id": "totalLabel",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "badge badge-primary px-3 py-2",
+    "inForm": true
+   }
+  },
+  "#btnDownloadDetailTemplate": {
+   "n": 1,
+   "first": {
+    "tag": "a",
+    "id": "btnDownloadDetailTemplate",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-outline-secondary btn-sm",
+    "inForm": true
+   }
+  },
+  "#btnImportDetailExcel": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnImportDetailExcel",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-outline-primary btn-sm",
+    "inForm": true
+   }
+  },
+  "#importDetailFileInput": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "importDetailFileInput",
+    "name": null,
+    "type": "file",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#btnAddDetail": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnAddDetail",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-primary btn-sm",
+    "inForm": true
+   }
+  },
+  "#detailBody": {
+   "n": 1,
+   "first": {
+    "tag": "tbody",
+    "id": "detailBody",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#btnAddAttachment": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnAddAttachment",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-primary btn-sm ml-auto",
+    "inForm": true
+   }
+  },
+  "#attUploadArea": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "attUploadArea",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#dropZoneCR": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "dropZoneCR",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "att-dropzone mb-3",
+    "inForm": true
+   }
+  },
+  "#dropZoneInputCR": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "dropZoneInputCR",
+    "name": null,
+    "type": "file",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#dropZoneBrowseCR": {
+   "n": 1,
+   "first": {
+    "tag": "span",
+    "id": "dropZoneBrowseCR",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-primary",
+    "inForm": true
+   }
+  },
+  "#attTableWrap": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "attTableWrap",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "mt-3 table-responsive",
+    "inForm": true
+   }
+  },
+  "#attachmentBody": {
+   "n": 1,
+   "first": {
+    "tag": "tbody",
+    "id": "attachmentBody",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#attRequiredBadge": {
+   "n": 1,
+   "first": {
+    "tag": "span",
+    "id": "attRequiredBadge",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "badge badge-danger ml-1",
+    "inForm": true
+   }
+  },
+  "#itemAttRequiredBadge": {
+   "n": 1,
+   "first": {
+    "tag": "span",
+    "id": "itemAttRequiredBadge",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "badge badge-danger",
+    "inForm": true
+   }
+  },
+  "#btnSaveCR": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnSaveCR",
+    "name": null,
+    "type": "submit",
+    "req": null,
+    "dis": true,
+    "cls": "btn btn-primary",
+    "inForm": true
+   }
+  },
+  "#saveHint": {
+   "n": 1,
+   "first": {
+    "tag": "small",
+    "id": "saveHint",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "ml-3 text-danger",
+    "inForm": true
+   }
+  },
+  "#accountsHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "accountsHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  "#accountsBySourceHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "accountsBySourceHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  "#bpClustersHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "bpClustersHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  "#oldDetailsHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "oldDetailsHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  "#oldBudgetPlanHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "oldBudgetPlanHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  "#oldClusterHolder": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "oldClusterHolder",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": false
+   }
+  },
+  ".detail-row": {
+   "n": 2,
+   "first": {
+    "tag": "tr",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "detail-row",
+    "inForm": true
+   }
+  },
+  ".inp-amount": {
+   "n": 2,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "details[0][amount]",
+    "type": "text",
+    "req": true,
+    "dis": null,
+    "cls": "form-control form-control-sm inp-amount text-right",
+    "inForm": true
+   }
+  },
+  ".inp-qty": {
+   "n": 2,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "details[0][qty]",
+    "type": "number",
+    "req": true,
+    "dis": null,
+    "cls": "form-control form-control-sm inp-qty text-center",
+    "inForm": true
+   }
+  },
+  ".inp-total": {
+   "n": 2,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "details[0][total_display]",
+    "type": "text",
+    "req": null,
+    "dis": null,
+    "cls": "form-control form-control-sm inp-total text-right",
+    "inForm": true
+   }
+  },
+  ".inp-notes": {
+   "n": 2,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "details[0][notes]",
+    "type": "text",
+    "req": true,
+    "dis": null,
+    "cls": "form-control form-control-sm inp-notes",
+    "inForm": true
+   }
+  },
+  ".select-budget-detail": {
+   "n": 2,
+   "first": {
+    "tag": "select",
+    "id": null,
+    "name": "details[0][budget_detail_id]",
+    "type": null,
+    "req": true,
+    "dis": null,
+    "cls": "form-control form-control-sm select-budget-detail",
+    "inForm": true
+   }
+  },
+  ".nob-badge": {
+   "n": 2,
+   "first": {
+    "tag": "span",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "badge badge-danger mb-1 nob-badge",
+    "inForm": true
+   }
+  },
+  ".cell-remaining": {
+   "n": 2,
+   "first": {
+    "tag": "td",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "cell-remaining col-remaining text-right",
+    "inForm": true
+   }
+  },
+  ".col-remaining": {
+   "n": 3,
+   "first": {
+    "tag": "th",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "col-remaining text-right",
+    "inForm": true
+   }
+  },
+  ".detail-att-input": {
+   "n": 2,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "details[0][attachments][]",
+    "type": "file",
+    "req": null,
+    "dis": null,
+    "cls": "d-none detail-att-input",
+    "inForm": true
+   }
+  },
+  ".detail-att-list": {
+   "n": 2,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "detail-att-list mt-1",
+    "inForm": true
+   }
+  },
+  ".detail-att-label": {
+   "n": 2,
+   "first": {
+    "tag": "span",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "detail-att-label",
+    "inForm": true
+   }
+  },
+  ".detail-att-cell": {
+   "n": 2,
+   "first": {
+    "tag": "td",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "align-middle detail-att-cell",
+    "inForm": true
+   }
+  },
+  ".btn-detail-att": {
+   "n": 2,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-detail-att btn-outline-secondary btn-sm",
+    "inForm": true
+   }
+  },
+  ".btn-remove-detail": {
+   "n": 2,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-danger btn-remove-detail btn-sm ts-icon-only",
+    "inForm": true
+   }
+  },
+  ".desc-wrap": {
+   "n": 2,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "desc-wrap",
+    "inForm": true
+   }
+  },
+  ".desc-expand": {
+   "n": 2,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "desc-expand",
+    "inForm": true
+   }
+  },
+  ".desc-count": {
+   "n": 2,
+   "first": {
+    "tag": "small",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "desc-count text-muted",
+    "inForm": true
+   }
+  },
+  ".cr-type-ben": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "cr-type-ben d-flex",
+    "inForm": true
+   }
+  },
+  ".cr-type-col": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "cr-type-col form-group",
+    "inForm": true
+   }
+  },
+  ".cr-ben-col": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "cr-ben-col form-group",
+    "inForm": true
+   }
+  },
+  ".cr-detail-head": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "align-items-center card-header cr-detail-head d-flex",
+    "inForm": true
+   }
+  },
+  ".cr-detail-actions": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "align-items-center cr-detail-actions d-flex ml-auto",
+    "inForm": true
+   }
+  },
+  "[name=\"description\"]": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "ts-fld-1",
+    "name": "description",
+    "type": "text",
+    "req": true,
+    "dis": null,
+    "cls": "form-control is-invalid",
+    "inForm": true
+   }
+  },
+  "[name=\"notes\"]": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "ts-fld-2",
+    "name": "notes",
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "[name=\"email\"]": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "emailHidden",
+    "name": "email",
+    "type": "hidden",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  ".att-dropzone": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "dropZoneCR",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "att-dropzone mb-3",
+    "inForm": true
+   }
+  },
+  ".btn-remove-att": {
+   "n": 0,
+   "first": null
+  },
+  ".att-global-preview": {
+   "n": 0,
+   "first": null
+  },
+  "__names": [
+   "_token",
+   "beneficiary_id",
+   "budget_plan_id",
+   "cluster_id",
+   "description",
+   "details[0][amount]",
+   "details[0][attachments][]",
+   "details[0][budget_detail_id]",
+   "details[0][notes]",
+   "details[0][qty]",
+   "details[0][total_display]",
+   "details[1][amount]",
+   "details[1][attachments][]",
+   "details[1][budget_detail_id]",
+   "details[1][notes]",
+   "details[1][qty]",
+   "details[1][total_display]",
+   "email",
+   "notes",
+   "type_id"
+  ],
+  "__ids": [
+   "accountsBySourceHolder",
+   "accountsHolder",
+   "appSwitch",
+   "appSwitchBtn",
+   "attRequiredBadge",
+   "attTableWrap",
+   "attUploadArea",
+   "attachmentBody",
+   "beneficiaryInfo",
+   "bnavTabsBtn",
+   "bnavTabsMenu",
+   "bpClustersHolder",
+   "btnAddAttachment",
+   "btnAddDetail",
+   "btnDownloadDetailTemplate",
+   "btnImportDetailExcel",
+   "btnSaveCR",
+   "caQuotaAlert",
+   "clusterBox",
+   "detailBody",
+   "dropZoneBrowseCR",
+   "dropZoneCR",
+   "dropZoneInputCR",
+   "emailHidden",
+   "emailTagInput",
+   "emailTagsBox",
+   "frmCR",
+   "importDetailFileInput",
+   "itemAttRequiredBadge",
+   "logout-form",
+   "navTodoBadge",
+   "navTodoList",
+   "nobWarning",
+   "notifBadge",
+   "notifBellToggle",
+   "notifBellWrap",
+   "notifDropdown",
+   "notifEmpty",
+   "notifList",
+   "notifMarkAllRead",
+   "oldBudgetPlanHolder",
+   "oldClusterHolder",
+   "oldDetailsHolder",
+   "remainingBudget",
+   "saveHint",
+   "selectBeneficiary",
+   "selectBudgetPlan",
+   "selectCluster",
+   "selectType",
+   "sidebarToggle",
+   "tcf-inline-style",
+   "tesysCommandData",
+   "themeToggle",
+   "totalLabel",
+   "ts-fld-1",
+   "ts-fld-2",
+   "tsCmd",
+   "tsCmdInput",
+   "tsCmdList",
+   "tsCmdLoading",
+   "tsCrumb",
+   "tsQuickSearch",
+   "tsQuickSearchWrap",
+   "tsSidebar",
+   "tsTitle",
+   "userBtn",
+   "userPop",
+   "workflowAlert"
+  ],
+  "__form": {
+   "action": "http://127.0.0.1:8099/budget-request",
+   "method": "post",
+   "enctype": "multipart/form-data",
+   "id": "frmCR"
+  },
+  "__h1": [],
+  "__title": "Tambah Cost Request | TESYS"
+ },
+ "mobileOverflow": 0
+}

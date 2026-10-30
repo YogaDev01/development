@@ -6,14 +6,34 @@
 
 <div class="content">
     <div class="container-fluid">
+      <div class="ts-index tw:flex tw:flex-col tw:gap-4 tw:py-4">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Surat Jalan Invoice</h1>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
-                <li class="breadcrumb-item"><a href="#">Finance</a></li>
+        {{-- Judul & breadcrumb topbar: shell memindahkan <h1> dan .breadcrumb pertama ke topbar
+             (tesys-shell.js hoistPageTitle); disembunyikan secara visual. --}}
+        <div class="tw:sr-only">
+            <h1>Surat Jalan Invoice</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">Finance</li>
                 <li class="breadcrumb-item active">Surat Jalan Invoice</li>
             </ol>
         </div>
+
+        @php $bolehBuatDN = Auth::user()->hasRole(['superadmin','admin','finance','finance_manager','collection']); @endphp
+        <x-tw.page-header title="Daftar Surat Jalan"
+            description="Surat Jalan yang terbit dari invoice APPROVED, beserta status kirim dan terimanya.">
+            @if($bolehBuatDN)
+            <x-slot:actions>
+                <x-tw.button href="{{ route('delivery-note.create') }}" class="ts-add-btn tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Buat Surat Jalan</x-tw.button>
+            </x-slot:actions>
+            @endif
+        </x-tw.page-header>
+
+        @if($bolehBuatDN)
+        {{-- Mobile: tombol di header disembunyikan dan diganti tombol melayang (tesys-ui-refine.css). --}}
+        <a href="{{ route('delivery-note.create') }}" class="ts-fab" aria-label="Buat Surat Jalan" title="Buat Surat Jalan">
+            <i class="fas fa-plus" aria-hidden="true"></i>
+        </a>
+        @endif
 
         {{-- Kartu dibungkus wadah ber-id: isinya dihitung ulang dari baris yang
              lolos filter setiap kali tabel digambar ulang, supaya kartu dan
@@ -26,25 +46,13 @@
         ]" />
         </div>
 
-        <div class="card card-primary card-outline shadow-sm mt-3">
-            <div class="card-header d-flex align-items-center flex-wrap" style="gap:8px;">
-                <h3 class="card-title"><i class="fas fa-truck mr-1"></i> Daftar Surat Jalan</h3>
-                <div class="ml-auto d-flex" style="gap:8px;">
-                    @if(Auth::user()->hasRole(['superadmin','admin','finance','finance_manager','collection']))
-                    <a href="{{ route('delivery-note.create') }}" class="btn btn-success btn-sm">
-                        <i class="fas fa-plus mr-1"></i> Buat Surat Jalan
-                    </a>
-                    @endif
-                </div>
-            </div>
-            <div class="card-body">
+        {{-- Kartu tunggal: toolbar + tabel + paginasi (pola Cost Request). --}}
+        <x-tw.card padding="sm">
                 {{--
-                     Penyaringan dikerjakan di browser, bentuknya disamakan
-                     dengan Cash Receipt: kotak cari disambungkan ke pencarian
-                     DataTables, Status/Customer memakai dropdown centang
-                     TesysColumnFilter. Tidak ada tombol "Terapkan" dan tidak
-                     ada muat ulang halaman — mengetik/mencentang langsung
-                     menyaring, dan kartu di atas ikut dihitung ulang.
+                     Penyaringan dikerjakan di browser: kotak cari disambungkan ke pencarian
+                     DataTables, Status/Customer memakai dropdown centang TesysColumnFilter.
+                     Tidak ada tombol "Terapkan" dan tidak ada muat ulang halaman — mengetik/
+                     mencentang langsung menyaring, dan kartu di atas ikut dihitung ulang.
                 --}}
                 <div class="custom-toolbar mb-3 d-flex align-items-center justify-content-start flex-wrap" style="gap:8px;">
 
@@ -65,16 +73,15 @@
                 </div>
 
                 <div class="table-responsive">
-                    <table id="tblDeliveryNote" class="table table-bordered table-hover table-striped mb-0">
+                    <table id="tblDeliveryNote" class="table table-bordered table-hover mb-0 ts-idx-tbl">
                         <thead class="bg-light">
                             <tr>
-                                <th scope="col" style="width:14%;">Kode Surat Jalan</th>
+                                <th scope="col" class="text-nowrap">Kode Surat Jalan</th>
                                 <th scope="col">Customer</th>
-                                <th scope="col" style="width:10%;" class="text-center">Jml Invoice</th>
-                                <th scope="col" style="width:20%;">Invoice / No. PO</th>
-                                <th scope="col" style="width:14%;">Tanggal Kirim</th>
-                                <th scope="col" style="width:12%;">Status</th>
-                                <th scope="col" style="width:10%;" class="text-center">Aksi</th>
+                                <th scope="col" class="text-center text-nowrap">Jml Invoice</th>
+                                <th scope="col">Invoice / No. PO</th>
+                                <th scope="col" class="text-nowrap">Tanggal Kirim</th>
+                                <th scope="col" class="text-nowrap">Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -83,53 +90,42 @@
                                  menyaring, dan penghitung kartu untuk menjumlah
                                  baris yang tersisa. --}}
                             <tr data-status="{{ $dn->status_label }}"
-                                data-customer="{{ $dn->customer->name ?? '-' }}">
-                                <td><span class="badge badge-dark px-2 py-1" style="font-size:11px;">{{ $dn->code }}</span></td>
-                                <td>{{ $dn->customer->name ?? '-' }}</td>
+                                data-customer="{{ $dn->customer->name ?? '-' }}"
+                                data-href="{{ route('delivery-note.show', $dn->id) }}">
+                                <td class="text-nowrap">
+                                    {{-- Klik kode = salin; detail dibuka lewat klik baris. --}}
+                                    <button type="button" class="ts-copy-code" data-code="{{ $dn->code }}" title="Klik untuk menyalin kode">{{ $dn->code }}</button>
+                                </td>
+                                <td class="ts-col-desc">{{ $dn->customer->name ?? '-' }}</td>
                                 <td class="text-center">{{ $dn->items_count }}</td>
                                 <td>
                                     {{-- Kode invoice ditampilkan langsung supaya hasil
                                          pencarian bisa dipastikan tanpa membuka detailnya
                                          satu per satu. Dibatasi 3; sisanya diringkas. --}}
-                                    @forelse($dn->items->take(3) as $it)
-                                        <span class="badge badge-light border px-2 py-1" style="font-size:9.5px;">
-                                            {{ $it->invoice->code ?? '-' }}
-                                        </span>
-                                    @empty
-                                        <span class="text-muted">-</span>
-                                    @endforelse
-                                    @if($dn->items_count > 3)
-                                        <span class="text-muted" style="font-size:10px;">+{{ $dn->items_count - 3 }} lagi</span>
+                                    {{ $dn->items->take(3)->map(fn ($it) => $it->invoice->code ?? '-')->implode(', ') ?: '-' }}@if($dn->items_count > 3)
+                                        <span class="text-muted" style="font-size:11px;">+{{ $dn->items_count - 3 }} lagi</span>
                                     @endif
                                     {{-- Kode invoice sisanya dan No. PO ikut bisa dicari
                                          walau tidak ditampilkan — kolomnya akan penuh
                                          kalau semuanya dicetak. --}}
                                     <span class="d-none">{{ $dn->items->pluck('invoice.code')->filter()->implode(' ') }} {{ $dn->items->pluck('invoice.poNumber.po_number')->filter()->implode(' ') }}</span>
                                 </td>
-                                <td>{{ $dn->sent_at ? $dn->sent_at->format('d/m/Y') : '-' }}</td>
-                                <td><span class="badge badge-{{ $dn->status_color }} px-2 py-1">{{ $dn->status_label }}</span></td>
-                                <td class="text-center action-column">
-                                    <div class="action-buttons ts-actions">
-                                        <a href="{{ route('delivery-note.show', $dn->id) }}"
-                                           class="ts-action-primary is-neutral"
-                                           title="Detail" aria-label="Detail surat jalan {{ $dn->code ?? '' }}">
-                                            <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Detail</span>
-                                        </a>
-                                    </div>
-                                </td>
+                                <td class="text-nowrap" data-order="{{ $dn->sent_at?->format('Y-m-d') }}">{{ $dn->sent_at ? $dn->sent_at->format('d/m/Y') : '-' }}</td>
+                                <td class="text-nowrap"><span class="badge badge-{{ $dn->status_color }} px-2 py-1">{{ $dn->status_label }}</span></td>
                             </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
+        </x-tw.card>
+      </div>
     </div>
 </div>
 
 @endsection
 
 @push('styles')
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
 /* Blok "Cari :" di bilah filter tidak punya gaya sendiri di halaman ini,
    sehingga label jatuh di atas input dan barisnya terlihat tidak sejajar
@@ -141,6 +137,7 @@
 .toolbar-input { min-width:260px; }
 .custom-toolbar .toolbar-input .form-control { width:100%; }
 .table td, .table th { vertical-align:middle !important; }
+#tblDeliveryNote tbody tr[data-href] { cursor:pointer; }
 
 @media (max-width: 575.98px) {
     .toolbar-row   { width:100%; }
@@ -158,8 +155,7 @@ $(function () {
         autoWidth: false, pageLength: 25, lengthChange: true, searching: true,
         order: [], // urutan dari server (terbaru di atas) dipertahankan
         columnDefs: [
-            { targets: [6], orderable: false },
-            { responsivePriority: 1, targets: [0, 1, -1] },
+            { responsivePriority: 1, targets: [0, 1] },
         ],
         dom: 'rt<"row mt-3 align-items-center"<"col-md-6 col-12 mb-2 mb-md-0"i><"col-md-6 col-12 d-flex justify-content-end"lp>>',
         language: {
@@ -216,6 +212,14 @@ $(function () {
     }
 
     table.on('draw', refreshCards);
+
+    /* Klik di mana saja pada baris membuka detail surat jalan (pola Cost Request). Kontrol di
+       dalam baris (kode yang disalin, tautan, kontrol responsif DataTables) bekerja sendiri. */
+    $(document).on('click', '#tblDeliveryNote tbody tr[data-href]', function (e) {
+        if ($(e.target).closest('a, button, input, select, textarea, label, td.dtr-control').length) return;
+        if (window.getSelection && String(window.getSelection()).length) return;
+        window.location.href = $(this).attr('data-href');
+    });
 });
 </script>
 @endpush

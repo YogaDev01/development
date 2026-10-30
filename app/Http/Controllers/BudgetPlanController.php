@@ -277,7 +277,18 @@ class BudgetPlanController extends Controller
             'rejected' => $budgetPlans->where('status', 'REJECTED')->count(),
         ];
 
-        return view('budget-plan.index', compact('budgetPlans', 'summary'));
+        // Pilihan Account untuk modal "Tambah COA" (Budget Plan ACTIVE) — hanya
+        // dimuat untuk role yang boleh memakainya (lihat addCoa()).
+        $coaAccounts = [];
+        $coaCategoryOf = self::ACCOUNT_CATEGORY;
+        if (Auth::user()->hasRole(['superadmin', 'manager'])) {
+            foreach (array_unique($coaCategoryOf) as $category) {
+                $coaAccounts[$category] = Account::active()->byCategory($category)
+                    ->orderBy('name')->get(['id', 'name']);
+            }
+        }
+
+        return view('budget-plan.index', compact('budgetPlans', 'summary', 'coaAccounts', 'coaCategoryOf'));
     }
 
     /*
@@ -555,6 +566,8 @@ class BudgetPlanController extends Controller
         }
 
         $sortedDetails = $bp->details->sortBy(fn ($d) => $d->account->name ?? '-')->values();
+        // "Used" seluruh sub-item dimuat sekaligus (bukan per baris).
+        BudgetPlanDetail::primeCostLines($sortedDetails);
 
         $r = 2;
         foreach ($sortedDetails as $d) {
@@ -602,27 +615,161 @@ class BudgetPlanController extends Controller
     }
 
     /**
-     * Effective cost per item CR (aturan sama dengan realizedCostValue, per baris):
-     * Cash Advance + settle sudah diajukan (termasuk 0) -> nilai settle;
-     * selainnya -> pengajuan;
-     * item takeout -> 0.
+     * Baris biaya per Cost Request untuk tab Cost modal Budget Plan dan sheet
+     * Detail export Cost (aturan sama dengan realizedCostValue, per baris):
+     *   - Cash Advance + settle sudah diajukan (termasuk 0) -> SATU BARIS PER
+     *     BARIS SETTLEMENT, di Akun / Sub COA efektifnya (Settlement Custom
+     *     COA, 25 Okt 2026 — baris bisa dipecah, pindah Sub COA, atau
+     *     tambahan). Baris yang tidak dipindah tetap menampilkan deskripsi &
+     *     catatan item asalnya seperti sebelumnya;
+     *   - selainnya -> satu baris per item pengajuan, nilai pengajuan;
+     *   - item takeout -> tetap tampil, nilai 0.
+     * Jumlah 'effective' seluruh baris = realizedCostValue() CR itu.
+     *
+     * Relasi type, details.account, details.budgetDetail.account,
+     * realizations.account, realizations.budgetDetail.account perlu dimuat.
      */
-    private function effectiveDetailCost(RequestDetail $d, bool $isCashAdvance): int
+    private function crCostRows(BudgetRequest $cr): \Illuminate\Support\Collection
     {
-        if ($d->isTakenOut()) {
-            return 0;
+        $rows = collect();
+
+        $takeout = fn (RequestDetail $d) => [
+            'account'     => $d->account->name ?? $d->budgetDetail->account->name ?? '-',
+            'sub_coa'     => $d->budgetDetail->deskripsi ?? '-',
+            'description' => $d->description ?: '-',
+            'notes'       => $d->notes ?: null,
+            'effective'   => 0,
+            'is_takeout'  => true,
+            'takeout_stage_label' => $d->takeout_stage_label,
+            'keterangan'  => 'Takeout · ' . $d->takeout_stage_label,
+        ];
+
+        if (! $cr->usesSettlementCost()) {
+            foreach ($cr->details as $d) {
+                $rows->push($d->isTakenOut() ? $takeout($d) : [
+                    'account'     => $d->account->name ?? $d->budgetDetail->account->name ?? '-',
+                    'sub_coa'     => $d->budgetDetail->deskripsi ?? '-',
+                    'description' => $d->description ?: '-',
+                    'notes'       => $d->notes ?: null,
+                    'effective'   => (int) $d->total,
+                    'is_takeout'  => false,
+                    'takeout_stage_label' => null,
+                    'keterangan'  => '',
+                ]);
+            }
+
+            return $rows;
         }
-        // Settle 0 tetap dipakai (dana dikembalikan utuh) — penentunya baris
-        // realisasi ada atau tidak, bukan nilainya > 0.
-        return ($isCashAdvance && $d->realization !== null)
-            ? (int) $d->realization->total
-            : (int) $d->total;
+
+        $settleRow = function ($r, ?RequestDetail $d) {
+            $bd     = $r->budgetDetail ?? $d?->budgetDetail;
+            $pindah = $d && $r->effectiveBudgetDetailId($d) !== ($d->budget_detail_id ? (int) $d->budget_detail_id : null);
+            $biasa  = $d && ! $pindah;
+
+            return [
+                'account'     => $r->account->name ?? $bd?->account?->name ?? $d?->account?->name ?? '-',
+                'sub_coa'     => $bd->deskripsi ?? '-',
+                'description' => $biasa ? ($d->description ?: '-') : ($r->description ?: '-'),
+                'notes'       => $biasa ? ($d->notes ?: null) : ($r->notes ?: null),
+                'effective'   => (int) $r->total,
+                'is_takeout'  => false,
+                'takeout_stage_label' => null,
+                'keterangan'  => ! $d
+                    ? 'Baris tambahan'
+                    : ($pindah ? 'Pindah dari: ' . ($d->budgetDetail->deskripsi ?? '-') : ''),
+            ];
+        };
+
+        foreach ($cr->details as $d) {
+            if ($d->isTakenOut()) {
+                $rows->push($takeout($d));
+                continue;
+            }
+
+            foreach ($cr->realizations->where('request_detail_id', $d->id)->sortBy('id') as $r) {
+                $rows->push($settleRow($r, $d));
+            }
+        }
+
+        // Baris tambahan (dan baris yang item asalnya sudah tidak ikut).
+        $includedIds = $cr->details->reject(fn ($d) => $d->isTakenOut())->pluck('id')->all();
+        foreach ($cr->realizations->sortBy('id') as $r) {
+            if ($r->request_detail_id && in_array($r->request_detail_id, $includedIds)) continue;
+            $rows->push($settleRow($r, null));
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Daftar CR di balik satu sub-item untuk modal Budget Plan (tab Budget)
+     * dan sheet Detail export Budget — dari BudgetPlanDetail::costLines(),
+     * sumber yang sama dengan kolom "Used".
+     *
+     * Tampilan per unit mengikuti aturan lama: baris settlement Cash Advance
+     * yang nilainya > 0 tampil sebagai baris settle (nominal & deskripsi
+     * settle); selainnya baris pengajuan. Catatan: aturan "> 0" ini BEDA dari
+     * "Used" (settle 0 dihitung 0) — perilaku lama yang dipertahankan apa
+     * adanya. Unit yang item asalnya dipindah seluruhnya ke Sub COA lain
+     * (tanpa baris settlement di sub-item ini) tidak ditampilkan, supaya
+     * nilainya tidak muncul dua kali.
+     *
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    private function budgetCostRows(\App\Models\BudgetPlanDetail $d): \Illuminate\Support\Collection
+    {
+        return $d->costLines()
+            ->map(function ($u) {
+                $cr  = $u['budget_request'];
+                $rd  = $u['request_detail'];
+                $rr  = $u['realizations'];
+                $biasa = $rd && ! $u['is_added'] && ! $u['is_moved'];
+
+                if ($u['real'] !== null && $rr->isEmpty()) {
+                    return null;
+                }
+
+                $useSettle = $u['real'] !== null && (int) $u['real'] > 0;
+
+                if (! $useSettle && ! $biasa) {
+                    return null;
+                }
+
+                if ($useSettle) {
+                    $satu   = $rr->count() === 1 ? $rr->first() : null;
+                    $amount = (int) $u['real'];
+                    $price  = $satu ? (int) $satu->amount : $amount;
+                    $qty    = $satu ? (float) $satu->qty : 1.0;
+                    $desc   = $rr->pluck('description')->filter()->implode('; ')
+                        ?: ($rd?->description ?: ($rd?->notes ?: '-'));
+                } else {
+                    $amount = (int) $rd->total;
+                    $price  = (int) $rd->amount;
+                    $qty    = (float) $rd->qty;
+                    $desc   = $rd->notes ?: ($rd->description ?: '-');
+                }
+
+                return [
+                    'cr'        => $cr,
+                    'amount'    => $amount,
+                    'price'     => $price,
+                    'qty'       => $qty,
+                    'desc'      => $desc,
+                    'is_settle' => $useSettle,
+                    'is_added'  => (bool) $u['is_added'],
+                    'is_moved'  => (bool) $u['is_moved'],
+                ];
+            })
+            ->filter()
+            ->values();
     }
 
     /**
      * EXPORT COST — 1 file, 2 sheet:
      *   Header : satu baris per Cost Request (ringkasan + effective cost)
-     *   Detail : satu baris per item CR, dikelompokkan CoA / Sub CoA, nilai effective
+     *   Detail : satu baris per item CR — atau per baris settlement untuk Cash
+     *            Advance yang settlement-nya sudah diajukan — dikelompokkan
+     *            CoA / Sub CoA, nilai effective (lihat crCostRows())
      */
     public function exportCost($id)
     {
@@ -633,7 +780,8 @@ class BudgetPlanController extends Controller
             ->disbursed()
             ->with([
                 'type', 'beneficiary',
-                'details', 'details.realization', 'details.budgetDetail.account', 'details.account',
+                'details', 'details.budgetDetail.account', 'details.account',
+                'realizations.account', 'realizations.budgetDetail.account',
             ])
             ->latest()
             ->get();
@@ -650,8 +798,7 @@ class BudgetPlanController extends Controller
 
         $r = 2;
         foreach ($crs as $cr) {
-            $isCa = $cr->isCashAdvance();
-            $eff  = (int) $cr->details->sum(fn ($d) => $this->effectiveDetailCost($d, $isCa));
+            $eff = (int) $this->crCostRows($cr)->sum('effective');
 
             $header->setCellValue('A' . $r, $cr->code);
             $header->setCellValue('B' . $r, $cr->description);
@@ -670,7 +817,7 @@ class BudgetPlanController extends Controller
             $header->getColumnDimension($col)->setWidth($w);
         }
 
-        // ── SHEET 2: DETAIL (per item CR) ───────────────────────────
+        // ── SHEET 2: DETAIL (per item CR / per baris settlement) ─────
         $detail = $spreadsheet->createSheet();
         $detail->setTitle('Detail');
         $this->styleSheetHeader($detail, [
@@ -679,14 +826,13 @@ class BudgetPlanController extends Controller
 
         $r = 2;
         foreach ($crs as $cr) {
-            $isCa = $cr->isCashAdvance();
-            foreach ($cr->details as $d) {
+            foreach ($this->crCostRows($cr) as $row) {
                 $detail->setCellValue('A' . $r, $cr->code);
-                $detail->setCellValue('B' . $r, $d->account->name ?? $d->budgetDetail->account->name ?? '-');
-                $detail->setCellValue('C' . $r, $d->budgetDetail->deskripsi ?? '-');
-                $detail->setCellValue('D' . $r, $d->description ?: '-');
-                $detail->setCellValue('E' . $r, $this->effectiveDetailCost($d, $isCa));
-                $detail->setCellValue('F' . $r, $d->isTakenOut() ? ('Takeout · ' . $d->takeout_stage_label) : '');
+                $detail->setCellValue('B' . $r, $row['account']);
+                $detail->setCellValue('C' . $r, $row['sub_coa']);
+                $detail->setCellValue('D' . $r, $row['description']);
+                $detail->setCellValue('E' . $r, $row['effective']);
+                $detail->setCellValue('F' . $r, $row['keterangan']);
                 $r++;
             }
         }
@@ -716,7 +862,8 @@ class BudgetPlanController extends Controller
         abort_unless($this->canViewBudgetPlan($bp), 403);
 
         $details = $bp->details->sortBy(fn ($d) => $d->account->name ?? '-')->values();
-        $hasBudgetDetailLink = \Illuminate\Support\Facades\Schema::hasColumn('request_detail', 'budget_detail_id');
+        // "Used" + daftar CR seluruh sub-item dimuat sekaligus.
+        BudgetPlanDetail::primeCostLines($details);
 
         $spreadsheet = new Spreadsheet();
 
@@ -751,36 +898,20 @@ class BudgetPlanController extends Controller
         ]);
 
         $r = 2;
-        if ($hasBudgetDetailLink) {
-            foreach ($details as $d) {
-                $rds = $d->costRequestDetails()
-                    ->whereHas('budgetRequest', fn ($q) => $q->disbursed())
-                    ->with(['budgetRequest.type', 'budgetRequest.beneficiary:id,nickname', 'realization'])
-                    ->get();
+        foreach ($details as $d) {
+            foreach ($this->budgetCostRows($d) as $row) {
+                $cr = $row['cr'];
 
-                foreach ($rds as $rd) {
-                    $isCa      = (bool) $rd->budgetRequest?->isCashAdvance();
-                    $settle    = $rd->realization;
-                    $useSettle = $isCa && (int) ($settle->total ?? 0) > 0;
-
-                    $amount = $useSettle ? (int) $settle->total : (int) $rd->total;
-                    $price  = $useSettle ? (int) $settle->amount : (int) $rd->amount;
-                    $qty    = $useSettle ? (float) $settle->qty : (float) $rd->qty;
-                    $desc   = $useSettle
-                        ? ($settle->description ?: ($rd->description ?: ($rd->notes ?: '-')))
-                        : ($rd->notes ?: ($rd->description ?: '-'));
-
-                    $detail->setCellValue('A' . $r, $d->account->name ?? '-');
-                    $detail->setCellValue('B' . $r, $d->deskripsi);
-                    $detail->setCellValue('C' . $r, $rd->budgetRequest->created_at?->format('d-m-Y') ?? '-');
-                    $detail->setCellValue('D' . $r, $rd->budgetRequest->code ?? '-');
-                    $detail->setCellValue('E' . $r, $rd->budgetRequest->beneficiary->nickname ?? '-');
-                    $detail->setCellValue('F' . $r, $desc);
-                    $detail->setCellValue('G' . $r, $price);
-                    $detail->setCellValue('H' . $r, $qty);
-                    $detail->setCellValue('I' . $r, $amount);
-                    $r++;
-                }
+                $detail->setCellValue('A' . $r, $d->account->name ?? '-');
+                $detail->setCellValue('B' . $r, $d->deskripsi);
+                $detail->setCellValue('C' . $r, $cr->created_at?->format('d-m-Y') ?? '-');
+                $detail->setCellValue('D' . $r, $cr->code ?? '-');
+                $detail->setCellValue('E' . $r, $cr->beneficiary->nickname ?? '-');
+                $detail->setCellValue('F' . $r, $row['desc']);
+                $detail->setCellValue('G' . $r, $row['price']);
+                $detail->setCellValue('H' . $r, $row['qty']);
+                $detail->setCellValue('I' . $r, $row['amount']);
+                $r++;
             }
         }
         foreach (['A'=>20,'B'=>30,'C'=>12,'D'=>18,'E'=>18,'F'=>40,'G'=>14,'H'=>8,'I'=>16] as $col => $w) {
@@ -804,6 +935,197 @@ class BudgetPlanController extends Controller
     |--------------------------------------------------------------------------
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | BULK APPROVE / REJECT — satu tahap per proses (pola Treasury & Cost Request)
+    |--------------------------------------------------------------------------
+    | Tidak ada logika approval baru: tiap Budget Plan diproses oleh method satuan
+    | yang sama (headApprove / financeVerify / ceoApprove dan pasangan reject-nya),
+    | jadi cek role, cek status, aturan "via PO", log, dan notifikasi identik.
+    | Tahap ditentukan oleh `status` yang dikirim: Budget Plan yang statusnya
+    | sudah berubah dilewati, bukan dipaksa.
+    */
+
+    private const BULK_MAX = 50;
+
+    public function bulkApprove(Request $request)
+    {
+        return $this->bulkProses($request, false);
+    }
+
+    public function bulkReject(Request $request)
+    {
+        $request->validate(['notes' => 'required|string|max:500']);
+
+        return $this->bulkProses($request, true);
+    }
+
+    private function bulkProses(Request $request, bool $tolak)
+    {
+        $request->validate([
+            'ids'    => 'required|array|min:1|max:' . self::BULK_MAX,
+            'ids.*'  => 'integer',
+            'status' => 'required|in:SUBMITTED,CHECKED,VERIFIED',
+        ]);
+
+        // status awal => [method approve, method reject]
+        $tahap = [
+            'SUBMITTED' => ['headApprove', 'headReject'],
+            'CHECKED'   => ['financeVerify', 'financeReject'],
+            'VERIFIED'  => ['ceoApprove', 'ceoReject'],
+        ][$request->input('status')];
+        $aksi = $tolak ? $tahap[1] : $tahap[0];
+
+        $ids   = array_values(array_unique(array_map('intval', (array) $request->input('ids', []))));
+        $plans = BudgetPlan::whereIn('id', $ids)->get()->keyBy('id');
+
+        $ok     = 0;
+        $errors = [];
+
+        foreach ($ids as $id) {
+            $bp = $plans->get($id);
+            if (! $bp) {
+                $errors[] = '#' . $id . ' (tidak ditemukan)';
+                continue;
+            }
+            if ($bp->status !== $request->input('status')) {
+                $errors[] = $bp->code . ' (status berubah dari ' . $request->input('status') . ' menjadi ' . $bp->status . ' — muat ulang)';
+                continue;
+            }
+
+            // Aksi satuan mengembalikan redirect + flash; hanya flash 'error'-nya yang dibaca.
+            session()->forget(['success', 'error']);
+            try {
+                $this->{$aksi}($request, $id);
+                $error = session('error');
+            } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+                $error = $e->getMessage() ?: 'akses ditolak.';
+            }
+            session()->forget(['success', 'error']);
+
+            if ($error) {
+                $errors[] = $bp->code . ' (' . $error . ')';
+            } else {
+                $ok++;
+            }
+        }
+
+        $redirect = back();
+        if ($ok) {
+            $redirect->with('success', $ok . ' Budget Plan berhasil ' . ($tolak ? 'ditolak.' : 'di-approve.'));
+        }
+        if ($errors) {
+            $redirect->with('error', count($errors) . ' Budget Plan dilewati: ' . implode(', ', array_slice($errors, 0, 5))
+                . (count($errors) > 5 ? ', …' : '') . '.');
+        }
+
+        return $redirect;
+    }
+
+    /** Catatan chat dikunci begitu Budget Plan CLOSED (seperti CR yang CLOSED). */
+    private function canPostLogNote(BudgetPlan $bp): bool
+    {
+        return $bp->status !== 'CLOSED';
+    }
+
+    /**
+     * Tab Log (gaya chat, sama dengan Cost Request): riwayat workflow + catatan
+     * bebas, terbaru lebih dulu. Tabel catatan yang belum dimigrasi di server
+     * tidak boleh merusak detail Budget Plan.
+     */
+    private function logsFor(BudgetPlan $bp)
+    {
+        $semua = $bp->logs->map(fn ($l) => [
+            'kind'         => 'activity',
+            'action_label' => $l->action_label,
+            'action_color' => $l->action_color,
+            'status_from'  => $l->status_from,
+            'status_to'    => $l->status_to,
+            'user'         => $l->user_name ?? '-',
+            'user_id'      => $l->user_id,
+            'role'         => $l->role ?? '-',
+            'notes'        => $l->notes,
+            'at'           => $l->created_at,
+        ]);
+
+        try {
+            $catatan = \App\Models\BudgetPlanLogNote::where('budget_plan_id', $bp->id)->get()
+                ->map(fn ($n) => [
+                    'kind'         => 'note',
+                    'action_label' => 'Catatan',
+                    'action_color' => 'secondary',
+                    'status_from'  => null,
+                    'status_to'    => null,
+                    'user'         => $n->actor_name ?? 'System',
+                    'user_id'      => $n->acted_by,
+                    'role'         => $n->actor_role ?? '-',
+                    'notes'        => $n->notes,
+                    'at'           => $n->created_at,
+                ]);
+            $semua = $semua->concat($catatan);
+        } catch (\Throwable $e) {
+            // tabel catatan belum ada: tampilkan riwayat workflow saja
+        }
+
+        $semua   = $semua->sortByDesc('at')->values();
+        $avatars = \App\Models\User::avatarUrlMap($semua->pluck('user_id'));
+
+        return $semua->map(fn ($l) => [
+            'kind'         => $l['kind'],
+            'avatar'       => $avatars[$l['user_id']] ?? null,
+            'action_label' => $l['action_label'],
+            'action_color' => $l['action_color'],
+            'status_from'  => $l['status_from'],
+            'status_to'    => $l['status_to'],
+            'user'         => $l['user'],
+            'user_id'      => $l['user_id'],
+            'role'         => $l['role'],
+            'notes'        => $l['notes'],
+            'date'         => $l['at']?->format('d M Y H:i'),
+        ])->all();
+    }
+
+    /**
+     * Kirim catatan ke tab Log (gaya chat). Siapa pun yang boleh melihat Budget
+     * Plan boleh menulis; ditutup begitu Budget Plan CLOSED.
+     */
+    public function storeLogNote(Request $request, $id)
+    {
+        $bp = $this->findVisibleBudgetPlan($id);
+
+        $data = $request->validate(['notes' => 'required|string|max:1000']);
+
+        if (! $this->canPostLogNote($bp)) {
+            return response()->json(['message' => 'Budget Plan sudah Closed; catatan baru tidak dapat ditambahkan.'], 422);
+        }
+
+        $user = Auth::user();
+        $note = \App\Models\BudgetPlanLogNote::create([
+            'budget_plan_id' => $bp->id,
+            'acted_by'       => $user?->id,
+            'actor_name'     => $user?->name ?? 'System',
+            'actor_role'     => $user?->role?->name,
+            'notes'          => trim($data['notes']),
+        ]);
+
+        return response()->json([
+            'ok'  => true,
+            'log' => [
+                'kind'         => 'note',
+                'avatar'       => $user?->avatar_url,
+                'action_label' => 'Catatan',
+                'action_color' => 'secondary',
+                'status_from'  => null,
+                'status_to'    => null,
+                'user'         => $note->actor_name,
+                'user_id'      => $note->acted_by,
+                'role'         => $note->actor_role ?? '-',
+                'notes'        => $note->notes,
+                'date'         => now()->format('d M Y H:i'),
+            ],
+        ]);
+    }
+
     public function showJson($id)
     {
         $bp = BudgetPlan::with([
@@ -822,8 +1144,9 @@ class BudgetPlanController extends Controller
         $costRequests = BudgetRequest::where('budget_plan_id', $bp->id)
             ->disbursed()
             ->with([
-                'type', 'applicant', 'beneficiary', 'realizations',
-                'details', 'details.realization', 'details.budgetDetail.account', 'details.account',
+                'type', 'applicant', 'beneficiary',
+                'realizations.account', 'realizations.budgetDetail.account',
+                'details', 'details.budgetDetail.account', 'details.account',
             ])
             ->latest()
             ->get();
@@ -983,44 +1306,25 @@ class BudgetPlanController extends Controller
             'approved_by'      => $bp->approvedBy->name ?? '-',
             'approved_at'      => $bp->approved_at?->format('d M Y H:i'),
 
-            'details' => $bp->details->map(function ($d) {
+            'details' => tap($bp->details, fn ($all) => BudgetPlanDetail::primeCostLines($all))->map(function ($d) {
                 $used      = $d->usedAmount();
                 $remaining = $d->remainingAmount();
 
-                $crDetails = collect();
-                if (\Illuminate\Support\Facades\Schema::hasColumn('request_detail', 'budget_detail_id')) {
-                    $crDetails = $d->costRequestDetails()
-                        ->whereHas('budgetRequest', fn ($q) => $q->disbursed())
-                        ->with(['budgetRequest.type', 'budgetRequest.beneficiary:id,nickname', 'realization'])
-                        ->get()
-                        ->map(function ($rd) {
-                            // Effective: Cash Advance dengan settle terisi -> ambil
-                            // baris settle (nominal & DESKRIPSI), selain itu pengajuan.
-                            $isCa    = (bool) $rd->budgetRequest?->isCashAdvance();
-                            $settle  = $rd->realization;
-                            $useSettle = $isCa && (int) ($settle->total ?? 0) > 0;
-
-                            $amount = $useSettle ? (int) $settle->total : (int) $rd->total;
-                            $price  = $useSettle ? (int) $settle->amount : (int) $rd->amount;
-                            $qty    = $useSettle ? (float) $settle->qty : (float) $rd->qty;
-                            $desc   = $useSettle
-                                ? ($settle->description ?: ($rd->description ?: ($rd->notes ?: '-')))
-                                : ($rd->notes ?: ($rd->description ?: '-'));
-
-                            return [
-                                'cr_id'                => $rd->budgetRequest->id ?? null,
-                                'cr_date_formatted'    => $rd->budgetRequest->created_at?->format('d M Y') ?? '-',
-                                'beneficiary'          => $rd->budgetRequest->beneficiary->nickname ?? '-',
-                                'notes'                => $desc,
-                                'is_settle'            => $useSettle,
-                                'unit_price_formatted' => number_format($price, 0, ',', '.'),
-                                'qty'                  => $qty,
-                                'amount'               => $amount,
-                                'amount_formatted'     => number_format($amount, 0, ',', '.'),
-                            ];
-                        })
-                        ->values();
-                }
+                // Daftar CR di balik sub-item ini — sumber yang sama dengan
+                // "Used" (lihat budgetCostRows()).
+                $crDetails = $this->budgetCostRows($d)
+                    ->map(fn ($row) => [
+                        'cr_id'                => $row['cr']->id,
+                        'cr_date_formatted'    => $row['cr']->created_at?->format('d M Y') ?? '-',
+                        'beneficiary'          => $row['cr']->beneficiary->nickname ?? '-',
+                        'notes'                => $row['desc'],
+                        'is_settle'            => $row['is_settle'],
+                        'unit_price_formatted' => number_format($row['price'], 0, ',', '.'),
+                        'qty'                  => $row['qty'],
+                        'amount'               => $row['amount'],
+                        'amount_formatted'     => number_format($row['amount'], 0, ',', '.'),
+                    ])
+                    ->values();
 
                 return [
                     'account'           => $d->account->name ?? '-',
@@ -1047,58 +1351,37 @@ class BudgetPlanController extends Controller
                 'is_pdf'         => $a->isPdf(),
             ]),
 
-            'logs' => $bp->logs->map(fn($l) => [
-                'action_label' => $l->action_label,
-                'action_color' => $l->action_color,
-                'status_from'  => $l->status_from,
-                'status_to'    => $l->status_to,
-                'user'         => $l->user_name ?? '-',
-                'user_id'      => $l->user_id,
-                'role'         => $l->role ?? '-',
-                'notes'        => $l->notes,
-                'date'         => $l->created_at->format('d M Y H:i'),
-            ]),
+            'logs'              => $this->logsFor($bp),
+            'can_post_log_note' => $this->canPostLogNote($bp),
 
             // Daftar Cost Request yang terhubung ke Budget Plan ini
             'requests' => $costRequests->map(function ($cr) use ($realizedValueOf, $refundOf) {
                 $realisasi = $realizedValueOf($cr);
                 $refund    = $refundOf($cr);
 
-                // Effective cost per item (aturan sama dengan realizedCostValue,
-                // tapi diterapkan per baris):
-                //   - Cash Advance + settle sudah diajukan (baris realization ada,
-                //     termasuk Settle 0) -> nilai settle
-                //   - Cash Advance tanpa settle, atau tipe lain -> nilai pengajuan
-                // Item takeout tidak dihitung sebagai biaya (effective = 0).
+                // Effective cost per baris (aturan sama dengan realizedCostValue,
+                // diterapkan per baris — lihat crCostRows()): Cash Advance yang
+                // settlement-nya sudah diajukan per baris settlement di Akun /
+                // Sub COA efektifnya; selainnya per item pengajuan. Item takeout
+                // tampil dengan nilai 0.
                 $isCa = $cr->isCashAdvance();
-                $effectiveOf = function ($d) use ($isCa) {
-                    if ($d->isTakenOut()) {
-                        return 0;
-                    }
-                    return ($isCa && $d->realization !== null)
-                        ? (int) $d->realization->total
-                        : (int) $d->total;
-                };
 
                 // Grouping tab Cost: CR -> CoA (Account) -> Sub CoA (deskripsi
                 // Budget Plan Detail) + Detail Deskripsi. Nilai = effective cost.
-                $coaGroups = $cr->details
-                    ->groupBy(fn ($d) => $d->account->name
-                        ?? $d->budgetDetail->account->name
-                        ?? '-')
-                    ->map(function ($items, $accName) use ($effectiveOf) {
-                        $rows = $items->map(function ($d) use ($effectiveOf) {
-                            $eff = $effectiveOf($d);
-                            return [
-                                'sub_coa'     => $d->budgetDetail->deskripsi ?? '-',
-                                'description' => $d->description ?: '-',
-                                'notes'       => $d->notes ?: null,
-                                'effective'   => $eff,
-                                'effective_formatted' => number_format($eff, 0, ',', '.'),
-                                'is_takeout'  => $d->isTakenOut(),
-                                'takeout_stage_label' => $d->isTakenOut() ? $d->takeout_stage_label : null,
-                            ];
-                        })->values();
+                $coaGroups = $this->crCostRows($cr)
+                    ->groupBy('account')
+                    ->map(function ($items, $accName) {
+                        $rows = $items->map(fn ($row) => [
+                            'sub_coa'     => $row['sub_coa'],
+                            'description' => $row['description'],
+                            'notes'       => $row['notes'],
+                            'effective'   => $row['effective'],
+                            'effective_formatted' => number_format($row['effective'], 0, ',', '.'),
+                            'is_takeout'  => $row['is_takeout'],
+                            'takeout_stage_label' => $row['takeout_stage_label'],
+                            // "Baris tambahan" / "Pindah dari: {Sub COA asal}".
+                            'keterangan'  => $row['is_takeout'] ? '' : $row['keterangan'],
+                        ])->values();
 
                         return [
                             'account'   => $accName,
@@ -1716,6 +1999,90 @@ class BudgetPlanController extends Controller
 
     /*
     |--------------------------------------------------------------------------
+    | TAMBAH COA — ACTIVE (manager)
+    |--------------------------------------------------------------------------
+    | Menambah baris detail (Account / Sub COA) ke Budget Plan yang sudah
+    | ACTIVE supaya Cost Request bisa dibebankan ke akun yang belum ada.
+    | Nilainya selalu 0 (harga satuan 0, qty 0, total 0): nilai budget TIDAK
+    | bertambah, jadi pemakaian di baris baru otomatis tercatat NOB. Baris
+    | lama tidak disentuh (CR yang sudah menunjuk ke sana tetap utuh).
+    */
+
+    public function addCoa(Request $request, $id)
+    {
+        $bp = $this->findVisibleBudgetPlan($id, ['costCenter']);
+
+        $category = self::ACCOUNT_CATEGORY[$bp->source_type] ?? null;
+        $allowedAccountIds = $this->getAccountsFor($bp->source_type)->pluck('id')->all();
+
+        $request->validate([
+            'rows'              => 'required|array|min:1|max:100',
+            'rows.*.account_id' => ['required', 'integer', \Illuminate\Validation\Rule::in($allowedAccountIds)],
+            'rows.*.deskripsi'  => 'required|string|max:255',
+            'rows.*.unit'       => 'required|in:' . implode(',', BudgetPlanDetail::UNITS),
+            'notes'             => 'nullable|string|max:2000',
+        ], [
+            'rows.*.account_id.in' => 'Account harus kategori ' . ($category ?? '-') . ' yang aktif.',
+        ]);
+
+        // Baris kembar (Account + Sub COA sama) membingungkan pilihan sub-item
+        // di form Cost Request — ditolak, baik terhadap baris lama maupun antar
+        // baris baru.
+        $keyOf = fn ($accountId, $deskripsi) => (int) $accountId . '|' . strtoupper(trim((string) $deskripsi));
+
+        $result = DB::transaction(function () use ($request, $bp, $keyOf) {
+            $locked = BudgetPlan::whereKey($bp->id)->lockForUpdate()->first();
+            if (!$locked || $locked->status !== 'ACTIVE') {
+                return 'Hanya Budget Plan berstatus ACTIVE yang dapat ditambah COA.';
+            }
+
+            $existing = $locked->details()->get(['account_id', 'deskripsi'])
+                ->map(fn ($d) => $keyOf($d->account_id, $d->deskripsi))->flip();
+
+            $rows = [];
+            foreach ((array) $request->input('rows', []) as $row) {
+                $key = $keyOf($row['account_id'], $row['deskripsi']);
+                if ($existing->has($key)) {
+                    return 'COA "' . trim($row['deskripsi']) . '" dengan Account yang sama sudah ada di Budget Plan ini.';
+                }
+                $existing->put($key, true);
+                $rows[] = $row;
+            }
+
+            $names = Account::whereIn('id', array_column($rows, 'account_id'))->pluck('name', 'id');
+
+            foreach ($rows as $row) {
+                $locked->details()->create([
+                    'account_id' => (int) $row['account_id'],
+                    'category'   => 'Variable Cost',   // sama dengan syncBudgetDetails()
+                    'type'       => 'additional',       // additional = tambahan setelah budget awal
+                    'deskripsi'  => trim($row['deskripsi']),
+                    'amount'     => 0,
+                    'qty'        => 0,
+                    'unit'       => $row['unit'],
+                    'total'      => 0,
+                ]);
+            }
+
+            // Catatan modal (opsional) ditulis di depan, diikuti daftar COA yang ditambahkan.
+            $catatan = trim((string) $request->input('notes'));
+            $locked->addLog('ACTIVE', 'ACTIVE', 'coa_added', ($catatan !== '' ? $catatan . ' · ' : '')
+                . 'Tambah ' . count($rows) . ' COA: '
+                . collect($rows)->map(fn ($r) => ($names[$r['account_id']] ?? '-') . ' — ' . trim($r['deskripsi']))->implode('; '));
+
+            return count($rows);
+        });
+
+        if (is_string($result)) {
+            return back()->with('error', $result);
+        }
+
+        return redirect('/budget-plan')
+            ->with('success', $result . ' COA berhasil ditambahkan ke ' . $bp->code . ' (nilai budget 0).');
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | GET ACCOUNTS (Variable Cost) — AJAX
     |--------------------------------------------------------------------------
     */
@@ -1746,6 +2113,9 @@ class BudgetPlanController extends Controller
         if (!$bp || $bp->status !== 'ACTIVE') {
             return response()->json([]);
         }
+
+        // "Used" seluruh sub-item dimuat sekaligus (bukan per baris).
+        BudgetPlanDetail::primeCostLines($bp->details);
 
         return response()->json(
             $bp->details

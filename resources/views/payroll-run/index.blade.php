@@ -4,14 +4,29 @@
 
 <div class="content">
     <div class="container-fluid">
+      <div class="ts-index tw:flex tw:flex-col tw:gap-4 tw:py-4">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Payroll Run</h1>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
-                <li class="breadcrumb-item"><a href="#">Payroll</a></li>
+        {{-- Judul & breadcrumb topbar: shell memindahkan <h1> dan .breadcrumb pertama ke topbar
+             (tesys-shell.js hoistPageTitle); disembunyikan secara visual. --}}
+        <div class="tw:sr-only">
+            <h1>Payroll Run</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">Payroll</li>
                 <li class="breadcrumb-item active">Payroll Run</li>
             </ol>
         </div>
+
+        <x-tw.page-header title="Daftar Payroll Run"
+            description="Penggajian per periode beserta persetujuan dan pembayarannya lewat Treasury.">
+            <x-slot:actions>
+                <x-tw.button href="{{ url('/payroll-run/create') }}" class="ts-add-btn tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Buat Payroll Run</x-tw.button>
+            </x-slot:actions>
+        </x-tw.page-header>
+
+        {{-- Mobile: tombol di header disembunyikan dan diganti tombol melayang (tesys-ui-refine.css). --}}
+        <a href="{{ url('/payroll-run/create') }}" class="ts-fab" aria-label="Buat Payroll Run" title="Buat Payroll Run">
+            <i class="fas fa-plus" aria-hidden="true"></i>
+        </a>
 
         <!-- SUMMARY WORKFLOW (clickable, filter tabel Payroll Run) -->
         @php
@@ -25,19 +40,10 @@
                 ['Rejected',  $summary['rejected'],  'danger',    'REJECTED'],
             ];
         @endphp
-        <x-workflow-stepper :steps="$runSteps" :compact="true" table="runTable" field="status" />
+        <x-workflow-stepper :steps="$runSteps" :compact="true" table="runTable" field="status" :groups="[['Fase 1: Pengajuan', ['DRAFT','SUBMITTED','REJECTED']], ['Fase 2: Persetujuan', ['VERIFIED','APPROVED']], ['Fase 3: Pembayaran', ['PAID','CLOSED']]]" />
 
-        <div class="card card-primary card-outline shadow-sm mt-3">
-            <div class="card-header d-flex align-items-center">
-                <h3 class="card-title"><i class="fas fa-file-invoice-dollar mr-1"></i> Daftar Payroll Run</h3>
-                <div class="ml-auto d-flex" style="gap:8px;">
-                    <button id="refreshTable" class="btn btn-secondary btn-sm" type="button">
-                        <i class="fas fa-sync-alt mr-1"></i> Refresh
-                    </button>
-                </div>
-            </div>
-
-            <div class="card-body">
+        {{-- Kartu tunggal: toolbar + tabel + paginasi (pola Cost Request). --}}
+        <x-tw.card padding="sm">
 
                 <div class="custom-toolbar mb-3 d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
                     <div class="custom-toolbar-left d-flex align-items-center flex-wrap" style="gap:8px;">
@@ -50,79 +56,54 @@
                         </button>
                     </div>
                     <div class="custom-toolbar-right d-flex flex-wrap" style="gap:8px;">
-                        <a href="{{ url('/payroll-run/create') }}" class="btn btn-success btn-sm">
-                            <i class="fas fa-plus mr-1"></i> Buat Payroll Run
-                        </a>
+                        <x-tw.button id="refreshTable" variant="secondary" size="sm"><i class="fas fa-sync-alt" aria-hidden="true"></i> Refresh</x-tw.button>
                     </div>
                 </div>
 
                 <div class="table-responsive">
-                    <table id="runTable" class="table table-bordered table-hover table-striped mb-0">
+                    <table id="runTable" class="table table-bordered table-hover mb-0 ts-idx-tbl">
                         <thead class="bg-light">
                             <tr>
                                 <th scope="col" class="text-nowrap" style="width:1%;">No</th>
                                 <th scope="col" class="text-nowrap" style="width:1%;">Kode</th>
-                                <th scope="col">Periode / Deskripsi</th>
-                                <th scope="col" class="text-nowrap" style="width:1%;">Karyawan</th>
+                                <th scope="col" class="text-nowrap">Periode</th>
+                                <th scope="col">Deskripsi</th>
+                                <th scope="col" class="text-nowrap text-right" style="width:1%;">Karyawan</th>
                                 <th scope="col" class="text-nowrap text-right" style="width:1%;">Total</th>
                                 <th scope="col" class="text-nowrap" style="width:1%;">Status</th>
-                                <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
+                                <th scope="col" class="text-center action-column" style="width:1%;"><span class="sr-only">Aksi</span></th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($runs as $run)
-                            <tr data-status="{{ $run->status }}">
+                            <tr data-status="{{ $run->status }}" data-href="{{ url('/payroll-run/' . $run->id) }}">
                                 <td class="text-nowrap">{{ $loop->iteration }}</td>
                                 <td class="text-nowrap">
-                                    <span class="badge badge-dark px-2 py-1" style="font-size:11px;">{{ $run->code }}</span>
+                                    {{-- Klik kode = salin; detail dibuka lewat klik baris. --}}
+                                    <button type="button" class="ts-copy-code" data-code="{{ $run->code }}" title="Klik untuk menyalin kode">{{ $run->code }}</button>
                                 </td>
-                                <td>
-                                    <div style="font-size:13px;font-weight:600;">{{ $run->period_label }}</div>
-                                    @if($run->description)
-                                        <small class="text-muted">{{ $run->description }}</small>
-                                    @endif
-                                </td>
-                                <td class="text-nowrap text-center">
-                                    <span class="badge badge-secondary px-2 py-1">{{ $run->lines->count() }}</span>
-                                </td>
-                                <td class="text-nowrap text-right">
-                                    <strong>{{ $run->total_formatted }}</strong>
-                                </td>
+                                <td class="text-nowrap">{{ $run->period_label }}</td>
+                                <td class="ts-col-desc" title="{{ $run->description }}">{{ $run->description ? Str::limit($run->description, 60) : '-' }}</td>
+                                <td class="text-nowrap text-right">{{ $run->lines->count() }}</td>
+                                {{-- Nilai nol di kolom uang ditulis "-". --}}
+                                <td class="text-nowrap text-right ts-col-money">{{ (int) $run->total === 0 ? '-' : $run->total_formatted }}</td>
                                 <td class="text-nowrap">
-                                    <span class="badge badge-{{ $run->status_color }} px-2 py-1" style="font-size:10px;">
-                                        {{ $run->status }}
-                                    </span>
+                                    <x-status :status="$run->status" context="payroll-run" />
                                 </td>
                                 <td class="text-center action-column">
+                                    {{-- Detail dibuka lewat klik baris. Run yang masih bisa disunting punya dua aksi (Edit,
+                                         Hapus) = satu tombol titik tiga; selebihnya tanpa aksi (sel kosong). --}}
                                     <div class="action-buttons ts-actions">
-
-                                        {{-- AKSI UTAMA — Edit selagi run masih bisa disunting,
-                                             selebihnya Detail. Satu aksi utama per baris. --}}
-                                        @if($run->isEditable())
-                                        <a href="{{ url('/payroll-run/' . $run->id . '/edit') }}"
-                                           class="ts-action-primary is-neutral"
-                                           title="Edit" aria-label="Edit {{ $run->code }}">
-                                            <i class="fas fa-pen" aria-hidden="true"></i><span class="ts-al">Edit</span>
-                                        </a>
-                                        @else
-                                        <a href="{{ url('/payroll-run/' . $run->id) }}"
-                                           class="ts-action-primary is-neutral"
-                                           title="Detail" aria-label="Detail {{ $run->code }}">
-                                            <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Detail</span>
-                                        </a>
-                                        @endif
-
                                         @if($run->isEditable())
                                         <button type="button" class="ts-action-more"
                                                 aria-haspopup="true" aria-expanded="false"
-                                                title="Aksi lain" aria-label="Aksi lain untuk {{ $run->code }}">
+                                                title="Aksi" aria-label="Aksi untuk {{ $run->code }}">
                                             <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
                                         </button>
 
                                         <div class="ts-action-menu dropdown-menu" hidden>
-
-                                            <a href="{{ url('/payroll-run/' . $run->id) }}" class="dropdown-item">
-                                                <i class="fas fa-eye"></i>Detail
+                                            <a href="{{ url('/payroll-run/' . $run->id . '/edit') }}" class="dropdown-item">
+                                                <i class="fas fa-pen"></i>Edit
                                             </a>
 
                                             <div class="dropdown-divider"></div>
@@ -131,25 +112,22 @@
                                                     data-id="{{ $run->id }}" data-code="{{ $run->code }}">
                                                 <i class="fas fa-trash"></i>Hapus
                                             </button>
-
                                         </div>
                                         @endif
-
                                     </div>
                                 </td>
                             </tr>
                             @empty
                             <tr class="no-data">
-                                <td colspan="7" class="text-center text-muted py-4">Belum ada payroll run.</td>
+                                <td colspan="8" class="p-0"><x-empty title="Belum ada payroll run" message="Payroll run yang disiapkan HR akan tampil di sini." icon="fas fa-money-check-alt" compact /></td>
                             </tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
 
-            </div>
-        </div>
-
+        </x-tw.card>
+      </div>
     </div>
 </div>
 
@@ -161,8 +139,9 @@
 @endsection
 
 @push('styles')
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
-.card-header .btn, .card-header a.btn { border-radius:var(--radius-sm); font-weight:600; }
+#runTable tbody tr[data-href] { cursor:pointer; }
 .custom-toolbar      { display:flex; justify-content:space-between; align-items:flex-start; gap:15px; flex-wrap:wrap; }
 .custom-toolbar-left { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 .toolbar-row         { display:flex; align-items:center; gap:8px; }
@@ -211,13 +190,17 @@ $(function () {
             dom: 'rt<"d-flex justify-content-between align-items-center mt-3"i<"d-flex align-items-center"lp>>',
             columnDefs: [
                 { targets: [0], visible: false, orderable: false },
-                { responsivePriority: 1,   targets: [0, 2, 5, -1] },
-                { responsivePriority: 100, targets: [3, 4] }
+                { targets: [-1], orderable: false, searchable: false },
+                { responsivePriority: 1,   targets: [0, 1, 2, 6, -1] },
+                { responsivePriority: 100, targets: [3, 4, 5] }
             ],
             language: {
                 info: 'Menampilkan _START_ - _END_ dari _TOTAL_ data',
                 paginate: { previous: 'Sebelumnya', next: 'Berikutnya' },
-                zeroRecords: 'Data tidak ditemukan'
+                zeroRecords: '<div class="ts-empty ts-empty-compact">'
+                    + '<span class="ts-empty-ic" aria-hidden="true"><i class="fas fa-search"></i></span>'
+                    + '<p class="ts-empty-title">Tidak ada yang cocok</p>'
+                    + '<p class="ts-empty-msg">Tidak ada payroll run yang cocok dengan pencarian atau filter yang sedang aktif.</p></div>'
             }
         });
 
@@ -226,6 +209,14 @@ $(function () {
     }
 
     $('#refreshTable').on('click', function () { location.reload(); });
+
+    /* Klik di mana saja pada baris membuka detail payroll run (pola Cost Request). Kontrol di
+       dalam baris (kode yang disalin, menu aksi, kontrol responsif DataTables) bekerja sendiri. */
+    $(document).on('click', '#runTable tbody tr[data-href]', function (e) {
+        if ($(e.target).closest('a, button, input, select, textarea, label, form, .ts-actions, .ts-action-menu, td.dtr-control').length) return;
+        if (window.getSelection && String(window.getSelection()).length) return;
+        window.location.href = $(this).attr('data-href');
+    });
 
     $('#btnClearFilterRun').on('click', function () {
         if (!table) return;
@@ -240,7 +231,7 @@ $(function () {
             title: 'Hapus Payroll Run?',
             text: code + ' akan dihapus permanen.',
             icon: 'warning', showCancelButton: true,
-            confirmButtonColor: 'var(--danger)', cancelButtonColor: '#55595e',
+            confirmButtonColor: 'var(--danger)', cancelButtonColor: 'var(--text-muted)',
             confirmButtonText: 'Ya, Hapus', cancelButtonText: 'Batal'
         }).then(function (r) {
             if (r.isConfirmed) {

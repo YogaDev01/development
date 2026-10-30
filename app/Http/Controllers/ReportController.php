@@ -204,6 +204,9 @@ class ReportController extends Controller
             ->with('details.account')
             ->get()
             ->map(function ($bp) {
+                // "Used" seluruh sub-item dimuat sekaligus (bukan per baris).
+                \App\Models\BudgetPlanDetail::primeCostLines($bp->details);
+
                 $groups = $bp->details
                     ->groupBy(fn ($d) => $d->account->name ?? 'Tanpa Account')
                     ->map(function ($rows, $accountName) {

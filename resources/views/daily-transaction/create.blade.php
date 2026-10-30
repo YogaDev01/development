@@ -97,10 +97,6 @@
 
                             <hr>
 
-                            <div class="d-flex justify-content-between align-items-baseline mb-2">
-                                <span class="calc-caption">Nilai Batch (CR terpilih)</span>
-                                <strong id="calcBatchValue" style="font-size:13px;">0</strong>
-                            </div>
                             <div class="d-flex justify-content-between align-items-baseline">
                                 <span class="calc-caption">Total Nilai Batch</span>
                                 <strong id="calcGrandTotal" class="text-success" style="font-size:16px;">0</strong>
@@ -112,10 +108,11 @@
                         <div class="col-md-8 batch-col-right">
                             <div class="d-flex align-items-center flex-wrap mb-2" style="gap:6px;">
                                 <h3 class="cr-section-title mb-0"><i class="fas fa-tasks mr-1"></i> Pilih CR</h3>
-                                {{-- Cari manager (PM Internal) — menyaring grup CR di bawah. --}}
+                                {{-- Pencarian bebas — menyaring item CR di bawah (manager, judul,
+                                     kode CR, catatan/scope, kode & nomor PO, penerima). --}}
                                 <input type="text" id="inpFilterManager" class="form-control form-control-sm"
-                                       placeholder="Cari manager..." autocomplete="off"
-                                       style="width:170px;height:26px;font-size:12px;">
+                                       placeholder="Cari manager, judul, kode CR, PO..." autocomplete="off"
+                                       style="width:260px;height:26px;font-size:12px;">
                                 <button type="button" class="btn btn-xs btn-secondary" id="btnClearFilter" title="Clear filter"><i class="fas fa-eraser"></i></button>
                                 <div class="ml-auto d-flex" style="gap:6px;">
                                     <button type="button" class="btn btn-xs btn-secondary" id="btnSelectAll">Semua</button>
@@ -126,7 +123,7 @@
                             @if($availableCRs->isEmpty() && $availableRegisters->isEmpty() && $availableSecondPayments->isEmpty())
                             <div class="alert alert-warning mb-0">
                                 <i class="fas fa-exclamation-triangle mr-1"></i>
-                                Tidak ada CR berstatus APPROVED, Cost Register berstatus SUBMITTED,
+                                Tidak ada CR berstatus APPROVED, Cost Register berstatus APPROVED,
                                 maupun Second Payment yang menunggu pembayaran.
                             </div>
                             @else
@@ -164,7 +161,14 @@
                                     @foreach($group as $entry)
                                     @if($entry['kind'] === 'cr')
                                     @php $cr = $entry['row']; @endphp
-                                    <label class="cr-check-item d-flex align-items-start">
+                                    @php $crProject = $cr->budgetPlan?->project; @endphp
+                                    <label class="cr-check-item d-flex align-items-start"
+                                           data-search="{{ mb_strtolower(implode(' ', array_filter([
+                                               $pmName, $cr->code, $cr->description, $cr->notes,
+                                               $cr->po_code, $crProject?->name, $crProject?->po_number,
+                                               $crProject?->poNumbers?->pluck('po_number')->implode(' '),
+                                               $cr->beneficiary->complete_name ?? null, $cr->type->name ?? null,
+                                           ]))) }}">
                                         <input type="checkbox" name="cr_ids[]" value="{{ $cr->id }}"
                                                class="cr-checkbox mt-1"
                                                style="width:16px;height:16px;flex-shrink:0;accent-color:var(--success);">
@@ -174,7 +178,7 @@
                                                 <span class="cr-item-amount">{{ $cr->amount_formatted }}</span>
                                             </div>
                                             <div class="cr-item-beneficiary">
-                                                <span class="cr-item-code">{{ $cr->code }}</span>
+                                                <span class="cr-item-code">{{ $cr->code }}{{ $cr->po_code ? ' - ' . $cr->po_code : '' }}</span>
                                                 <i class="fas fa-user mr-1"></i>{{ $cr->beneficiary->complete_name ?? '-' }}
                                             </div>
                                         </div>
@@ -184,7 +188,15 @@
                                          Memakai .cr-checkbox + data-amount supaya masuk
                                          hitungan total batch tanpa logika terpisah. --}}
                                     @php $sp = $entry['row']; @endphp
-                                    <label class="cr-check-item d-flex align-items-start">
+                                    @php $spProject = $sp->budgetRequest?->budgetPlan?->project; @endphp
+                                    <label class="cr-check-item d-flex align-items-start"
+                                           data-search="{{ mb_strtolower(implode(' ', array_filter([
+                                               $pmName, $sp->budgetRequest->code ?? null, $sp->budgetRequest->description ?? null,
+                                               $sp->budgetRequest->notes ?? null, $sp->budgetRequest?->po_code,
+                                               $spProject?->name, $spProject?->po_number,
+                                               $spProject?->poNumbers?->pluck('po_number')->implode(' '),
+                                               $sp->budgetRequest->beneficiary->complete_name ?? null,
+                                           ]))) }}">
                                         <input type="checkbox" name="second_payment_ids[]" value="{{ $sp->id }}"
                                                class="cr-checkbox mt-1"
                                                data-amount="{{ $sp->amount }}"
@@ -198,7 +210,7 @@
                                                 <span class="cr-item-amount">{{ $sp->amount_formatted }}</span>
                                             </div>
                                             <div class="cr-item-beneficiary">
-                                                <span class="cr-item-code">{{ $sp->budgetRequest->code ?? '-' }}</span>
+                                                <span class="cr-item-code">{{ $sp->budgetRequest->code ?? '-' }}{{ $sp->budgetRequest?->po_code ? ' - ' . $sp->budgetRequest->po_code : '' }}</span>
                                                 <i class="fas fa-user mr-1"></i>{{ $sp->budgetRequest->beneficiary->complete_name ?? '-' }}
                                                 <span class="ml-2" title="Nilai pengajuan awal yang sudah dibayar">
                                                     <i class="fas fa-receipt mr-1"></i>Pengajuan awal: {{ $sp->budgetRequest->amount_formatted ?? '-' }}
@@ -213,7 +225,7 @@
                                 @endforeach
                             </div>
                             <div id="crFilterEmpty" class="alert alert-light py-2 mb-0" style="display:none;font-size:12px;">
-                                Tidak ada manager yang cocok dengan pencarian.
+                                Tidak ada CR yang cocok dengan pencarian.
                             </div>
                             {{-- MN-09 — biaya Non-CR. Bentuknya sengaja sama persis
                                  dengan daftar CR di atas, dan checkbox-nya memakai
@@ -382,6 +394,8 @@
 .cr-group-chevron { font-size:10px; width:10px; transition:transform .15s ease; }
 .cr-group.collapsed .cr-group-chevron { transform:rotate(-90deg); }
 .cr-group.collapsed .cr-group-body { display:none; }
+.cr-check-item.cr-filtered { display:none !important; }
+#selSourceFund, #selFromFund, #selToFund { height:38px; font-size:13px; }
 .cr-group-summary { font-weight:600; text-transform:none; letter-spacing:0; color:var(--info); }
 .cr-check-list .cr-group:last-child .cr-check-item:last-child { border-bottom:none; }
 
@@ -444,7 +458,6 @@ $(function () {
         });
         $('#selectedCount').text(count);
         $('#selectedTotal').text(total.toLocaleString('id-ID'));
-        $('#calcBatchValue').text(total.toLocaleString('id-ID'));
         $('#calcGrandTotal').text(total.toLocaleString('id-ID'));
         syncGroups();
     }
@@ -487,7 +500,7 @@ $(function () {
 
     $(document).on('change', '.cr-group-checkbox', function () {
         var on = $(this).is(':checked');
-        $(this).closest('.cr-group').find('.cr-group-body .cr-checkbox')
+        $(this).closest('.cr-group').find('.cr-group-body .cr-check-item:visible .cr-checkbox')
             .prop('checked', on).closest('.cr-check-item').toggleClass('selected', on);
         updateCalc();
     });
@@ -495,16 +508,23 @@ $(function () {
     // ── FILTER MANAGER (PM Internal) ──
     // Hanya menyembunyikan grup yang tidak cocok; item yang sudah tercentang
     // tetap ikut ter-submit walau grupnya tersembunyi.
+    // Pencarian per item (data-search), semua kata harus cocok. Grup tanpa item
+    // yang cocok ikut disembunyikan.
     function applyManagerFilter() {
-        var q = ($('#inpFilterManager').val() || '').toLowerCase().trim();
+        var words = ($('#inpFilterManager').val() || '').toLowerCase().split(/\s+/).filter(Boolean);
         var visible = 0;
         $('#crCheckList .cr-group').each(function () {
-            var name = $(this).find('.cr-group-header > span').first().text().toLowerCase();
-            var match = q === '' || name.indexOf(q) !== -1;
-            $(this).toggle(match);
-            if (match) visible++;
+            var shown = 0;
+            $(this).find('.cr-check-item').each(function () {
+                var hay = ($(this).attr('data-search') || '');
+                var match = words.every(function (w) { return hay.indexOf(w) !== -1; });
+                $(this).toggleClass('cr-filtered', !match);
+                if (match) shown++;
+            });
+            $(this).toggle(shown > 0);
+            if (shown > 0) visible++;
         });
-        $('#crFilterEmpty').toggle(q !== '' && visible === 0);
+        $('#crFilterEmpty').toggle(words.length > 0 && visible === 0);
     }
 
     $('#inpFilterManager').on('input', applyManagerFilter);
@@ -519,7 +539,7 @@ $(function () {
         var filtering = ($('#inpFilterManager').val() || '').trim() !== '';
         $('.cr-checkbox').filter(function () {
             var $g = $(this).closest('.cr-group');
-            return $g.length ? $g.is(':visible') : !filtering;
+            return $g.length ? $(this).closest('.cr-check-item').css('display') !== 'none' && $g.is(':visible') : !filtering;
         }).prop('checked', true).closest('.cr-check-item').addClass('selected');
         updateCalc();
     });
@@ -590,8 +610,8 @@ $(function () {
             }
 
             Swal.fire({
-                title: 'Buat Top Up?',
-                text: parseInt(amount, 10).toLocaleString('id-ID') + ' akan ditransfer dari Main Account.',
+                title: 'Buat Draft Top Up?',
+                text: parseInt(amount, 10).toLocaleString('id-ID') + ' akan ditransfer dari Main Account. Draft belum terkirim ke CEO sampai Anda menekan Submit.',
                 icon: 'question', showCancelButton: true,
                 confirmButtonColor: '#42627d', cancelButtonColor: '#55595e',
                 confirmButtonText: 'Ya, Buat', cancelButtonText: 'Batal'
@@ -611,8 +631,8 @@ $(function () {
             return;
         }
         Swal.fire({
-            title: 'Buat Batch?',
-            text: count + ' item akan dimasukkan ke dalam batch baru.',
+            title: 'Buat Draft Batch?',
+            text: count + ' item dimasukkan ke draft batch baru. Draft belum terkirim ke CEO sampai Anda menekan Submit.',
             icon: 'question', showCancelButton: true,
             confirmButtonColor: 'var(--success)', cancelButtonColor: '#55595e',
             confirmButtonText: 'Ya, Buat', cancelButtonText: 'Batal'

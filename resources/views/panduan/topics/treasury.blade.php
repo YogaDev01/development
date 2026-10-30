@@ -25,9 +25,9 @@
 <h2>Alur kerja</h2>
 <ol class="pnd-steps">
     <li>Buka <strong>Finance &rarr; Treasury</strong>, klik <strong>Buat batch</strong> (pilih tanggal &amp; tipe).</li>
-    <li><strong>Tambah item</strong> — pilih Cost Request berstatus APPROVED yang akan dibayar hari itu. Saat masuk batch, CR berpindah ke <code>QUEUED</code>.</li>
-    <li>Item bisa dikeluarkan lagi selama batch masih DRAFT (<strong>reject item</strong>).</li>
-    <li><strong>Submit batch</strong> ke approver — status menjadi <code>PENDING_APPROVER</code>.</li>
+    <li><strong>Tambah item</strong> — pilih Cost Request berstatus APPROVED yang akan dibayar hari itu. Batch tersimpan sebagai <code>DRAFT</code>: CR tetap APPROVED tetapi sudah dipesan (tidak bisa masuk batch lain).</li>
+    <li>Selama DRAFT, item bisa dikeluarkan (<strong>Keluarkan</strong>) atau seluruh draft dihapus (<strong>Hapus Draft</strong>). CEO belum bisa meng-approve draft.</li>
+    <li><strong>Submit</strong> ke approver — status menjadi <code>PENDING_APPROVER</code> dan CR di dalamnya berpindah ke <code>QUEUED</code>.</li>
     <li>Approver <strong>menyetujui</strong> (batch <code>DONE</code>) atau <strong>menolak</strong> (batch / item tertentu).</li>
     <li><strong>Mark paid</strong> — batch menjadi <code>PAID</code>. Cost Request di dalamnya berpindah: Cash Advance &rarr; <code>PAID</code>, tipe lain &rarr; <code>CLOSED</code>.</li>
 </ol>

@@ -268,6 +268,18 @@
        (mis. "Buka Semua") menekan keterangan sampai terpotong. */
     .card-header.d-flex { flex-wrap: wrap; gap: 6px; }
     .card-header.d-flex > .ml-auto { margin-left: 0 !important; }
+    /* Kelompok tombol di kepala kartu (Total + Download Template + Import +
+       Tambah Baris) juga d-flex tanpa wrap, jadi tombol terakhir keluar dari
+       layar. Selebar kepala kartu dan boleh turun baris. */
+    .card-header.d-flex > .ml-auto.d-flex { flex-wrap: wrap; width: 100%; max-width: 100%; }
+    .card-header.d-flex > .ml-auto.d-flex > .btn { flex: 0 1 auto; white-space: normal; }
+    /* Cost Request > Tambah: tipe request dan penerima dana dua baris sendiri-
+       sendiri, bukan 34% / 66% yang membuat dropdown tipe terpotong. */
+    .cr-type-ben { flex-direction: column; gap: 0 !important; }
+    .cr-type-ben > .cr-type-col,
+    .cr-type-ben > .cr-ben-col { flex: 1 1 auto !important; width: 100%; min-width: 0; }
+    /* Kotak email: min-width 140px inline tak boleh melebihi kartu. */
+    #emailTagsBox #emailTagInput { min-width: 0 !important; }
 
     /* Form filter di kepala kartu (mis. Team: cari + dua dropdown + tombol)
        berjajar dengan lebar inline tetap dan terpotong di tepi kanan. Di HP
@@ -871,6 +883,20 @@ body.tesys-ui .sidebar-clock .sidebar-close { display: none; }
         padding-block: 13px;
         line-height: 1.5;
     }
+
+    /* ---- Tab modal detail (PO, Cost Request, Treasury, Forecast, PO Monitoring):
+       satu baris, gulir mendatar. !important perlu karena markup modal memasang
+       flex-wrap:wrap inline (dipertahankan untuk desktop). */
+    body.tesys-ui .modal .nav-tabs {
+        flex-wrap: nowrap !important;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    body.tesys-ui .modal .nav-tabs::-webkit-scrollbar { display: none; }
+    body.tesys-ui .modal .nav-tabs .nav-item { flex-shrink: 0; }
+    body.tesys-ui .modal .nav-tabs .nav-link { white-space: nowrap; }
 }
 
 /* Opt-in: strip tab menempel di atas area gulir .content (Finance Summary,

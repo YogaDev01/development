@@ -18,6 +18,7 @@
 /public/fonts-manifest.dev.json
 /public/hot
 /public/storage
+/tools/tailwind/
 /storage/*.key
 /storage/pail
 /vendor
@@ -26,3 +27,8 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 **/.claude/settings.local.json
+
+# Bukti screenshot Tailwind F3 yang hanya disimpan lokal (hasil JSON tetap di-commit)
+/docs/ui/tailwind-evidence/f3/sebelum/*.png
+/docs/ui/tailwind-evidence/f3/sesudah/*.png
+/docs/ui/tailwind-evidence/f3/galeri-sesudah/*.png

@@ -167,9 +167,11 @@ class TodoListController extends Controller
             ['key' => 'bp-verify',       'label' => 'Budgeting — Verifikasi',    'icon' => 'fas fa-coins',            'tone' => 'attention', 'items' => $data['budgetingVerify']],
             ['key' => 'bp-ceo',          'label' => 'Budgeting — Approval CEO',  'icon' => 'fas fa-coins',            'tone' => 'attention', 'items' => $data['budgetingCeoApprove']],
             ['key' => 'bp-closing-due',  'label' => 'Budgeting — Ajukan Closing','icon' => 'fas fa-flag-checkered',   'tone' => 'attention', 'items' => $data['budgetingClosingDue']],
+            ['key' => 'bp-closing-verify', 'label' => 'Budgeting — Verifikasi Closing', 'icon' => 'fas fa-flag-checkered', 'tone' => 'attention', 'items' => $data['budgetingClosingVerify']],
             ['key' => 'bp-rejected',     'label' => 'Budgeting Ditolak',         'icon' => 'fas fa-undo',             'tone' => 'danger',    'items' => $data['budgetingRejected']],
             ['key' => 'reject',          'label' => 'Tindak Lanjut CR Ditolak',  'icon' => 'fas fa-undo',             'tone' => 'danger',    'items' => $data['managerRejected']],
             ['key' => 'batch-create',    'label' => 'Buat Batch Pembayaran',     'icon' => 'fas fa-layer-group',      'tone' => 'progress',  'items' => $data['treasuryBatchCreate']],
+            ['key' => 'batch-draft',     'label' => 'Ajukan Batch Draft',        'icon' => 'fas fa-paper-plane',      'tone' => 'progress',  'items' => $data['treasuryDraftSubmit']],
             ['key' => 'batch-process',   'label' => 'Proses Batch',              'icon' => 'fas fa-money-check-alt',  'tone' => 'progress',  'items' => $data['treasuryProcess']],
             ['key' => 'batch-pay',       'label' => 'Tandai Batch Paid',         'icon' => 'fas fa-money-bill-wave',  'tone' => 'progress',  'items' => $data['treasuryReadyToPay']],
             ['key' => 'second-payment',  'label' => 'Second Approval',   'icon' => 'fas fa-hand-holding-usd', 'tone' => 'progress',  'items' => $data['secondPaymentPending']],
@@ -180,6 +182,9 @@ class TodoListController extends Controller
             ['key' => 'settle-close',    'label' => 'Settlement — Penutupan',    'icon' => 'fas fa-lock',             'tone' => 'progress',  'items' => $rata($data['ceoSettlementClose'])],
             ['key' => 'po-submitted',    'label' => 'PO — Approval Finance',     'icon' => 'fas fa-file-signature',   'tone' => 'attention', 'items' => $data['poSubmitted']],
             ['key' => 'po-verified',     'label' => 'PO — Approval Approver',    'icon' => 'fas fa-file-signature',   'tone' => 'attention', 'items' => $data['poVerified']],
+            ['key' => 'po-closing',      'label' => 'PO — Verifikasi Closing',   'icon' => 'fas fa-flag-checkered',   'tone' => 'attention', 'items' => $data['poClosingVerify']],
+            ['key' => 'reg-approve',     'label' => 'Cost Register — Approval',  'icon' => 'fas fa-file-invoice-dollar', 'tone' => 'attention', 'items' => $data['costRegisterApprove']],
+            ['key' => 'reg-batch',       'label' => 'Cost Register — Masukkan ke Batch', 'icon' => 'fas fa-layer-group', 'tone' => 'progress', 'items' => $data['costRegisterBatch']],
             ['key' => 'collection',      'label' => 'Menunggu Invoice Ditagih',  'icon' => 'fas fa-file-invoice',     'tone' => 'attention', 'items' => $data['collectionWaitingInvoice']],
             ['key' => 'tt-request',      'label' => 'Trouble Ticket — Review Pengajuan', 'icon' => 'fas fa-file-invoice-dollar', 'tone' => 'attention', 'items' => $data['ticketRequestReview']],
             ['key' => 'invoice-verify',  'label' => 'Invoice — Verifikasi',      'icon' => 'fas fa-file-invoice',     'tone' => 'attention', 'items' => $data['invoiceVerify']],
@@ -230,7 +235,9 @@ class TodoListController extends Controller
             'secondPaymentGroups' => collect(),
             'budgetingHeadCheck' => collect(), 'budgetingVerify' => collect(),
             'budgetingCeoApprove' => collect(), 'budgetingRejected' => collect(),
-            'budgetingClosingDue' => collect(),
+            'budgetingClosingDue' => collect(), 'budgetingClosingVerify' => collect(),
+            'treasuryDraftSubmit' => collect(), 'costRegisterApprove' => collect(),
+            'costRegisterBatch' => collect(), 'poClosingVerify' => collect(),
             'treasuryBatchCreate' => collect(), 'treasuryBatchGroups' => collect(),
             'treasuryBatchSecond' => collect(), 'batchSourceFunds' => collect(),
             'treasuryProcess' => collect(), 'treasuryReadyToPay' => collect(),
@@ -431,7 +438,7 @@ class TodoListController extends Controller
 
                     $activeItem = $payment?->dailyTransactionItems
                         ->first(fn ($i) => $i->status === 'INCLUDED'
-                            && in_array($i->dailyTransaction?->status, ['PENDING_APPROVER', 'DONE']));
+                            && in_array($i->dailyTransaction?->status, \App\Models\DailyTransaction::ACTIVE_STATUSES));
 
                     $cr->second_payment_batch      = $activeItem?->dailyTransaction;
                     $cr->second_payment_batch_code = $activeItem?->dailyTransaction?->code;
@@ -527,6 +534,18 @@ class TodoListController extends Controller
                 ->sortBy('aging_since')->values();
         }
 
+        // Finance — Budgeting: Verifikasi Closing (CLOSING + berkas closing sudah diajukan
+        // manager -> verifyClosing()/rejectClosing()). Reminder + link-out ke Budget Plan.
+        $budgetingClosingVerify = collect();
+        if (TodoService::allows($user, 'budgetingClosingVerify')) {
+            $budgetingClosingVerify = $this->queueQuery('budgetingClosingVerify')
+                ->with(['project.customer', 'project.manager', 'costCenter'])
+                ->latest()
+                ->get()
+                ->map(fn ($bp) => $this->withAging($bp, $bp->closing_submitted_at ?? $bp->updated_at))
+                ->sortBy('aging_since')->values();
+        }
+
         // Treasury — Menunggu Proses (PENDING_APPROVER, ditandai "Submitted" di
         // model -> jadi "Approved/Done" setelah diproses CEO) & Siap Dibayar
         // (DONE, tinggal ditandai Paid oleh Treasury). Flat list per batch —
@@ -548,6 +567,39 @@ class TodoListController extends Controller
                 ->latest()
                 ->get()
                 ->map(fn ($batch) => $this->withAging($batch, $batch->approved_at ?? $batch->created_at))
+                ->sortBy('aging_since')->values();
+        }
+
+        // Treasury — Draft belum diajukan (DRAFT -> PENDING_APPROVER lewat submit()). Isinya
+        // sudah dipesan (ACTIVE_STATUSES), jadi tidak muncul lagi di "Buat Batch".
+        $treasuryDraftSubmit = collect();
+        if (TodoService::allows($user, 'treasuryDraftSubmit')) {
+            $treasuryDraftSubmit = $this->queueQuery('treasuryDraftSubmit')
+                ->with('sourceFund')->withCount('includedItems')
+                ->latest()
+                ->get()
+                ->map(fn ($batch) => $this->withAging($batch, $batch->created_at))
+                ->sortBy('aging_since')->values();
+        }
+
+        // Cost Register — Submitted menunggu Approver, dan Approved menunggu dibatch Treasury.
+        $costRegisterApprove = collect();
+        if (TodoService::allows($user, 'costRegisterApprove')) {
+            $costRegisterApprove = $this->queueQuery('costRegisterApprove')
+                ->with(['project.customer', 'inputBy', 'beneficiary'])
+                ->latest()
+                ->get()
+                ->map(fn ($reg) => $this->withAging($reg, $reg->verified_at ?? $reg->submitted_at ?? $reg->updated_at))
+                ->sortBy('aging_since')->values();
+        }
+
+        $costRegisterBatch = collect();
+        if (TodoService::allows($user, 'costRegisterBatch')) {
+            $costRegisterBatch = $this->queueQuery('costRegisterBatch')
+                ->with(['project.customer', 'inputBy', 'beneficiary'])
+                ->latest()
+                ->get()
+                ->map(fn ($reg) => $this->withAging($reg, $reg->approved_at ?? $reg->updated_at))
                 ->sortBy('aging_since')->values();
         }
 
@@ -668,6 +720,18 @@ class TodoListController extends Controller
                 ->sortBy('aging_since')->values();
         }
 
+        // Purchase Order — Closing menunggu verifikasi Finance (CLOSING -> verifyClosing()/rejectClosing()).
+        $poClosingVerify = collect();
+        if (TodoService::allows($user, 'poClosingVerify')) {
+            $poClosingVerify = $this->queueQuery('poClosingVerify')
+                ->with(['customer', 'manager'])
+                ->withCount('poNumbers')
+                ->latest()
+                ->get()
+                ->map(fn ($po) => $this->withAging($po, $po->updated_at))
+                ->sortBy('aging_since')->values();
+        }
+
         // Invoice & Cash Receipt — Menunggu Verifikasi (SUBMITTED -> VERIFIED)
         // & Menunggu Approval (VERIFIED -> APPROVED). Kedua tahap milik Finance
         // Manager; lihat catatan di $invoiceApprove.
@@ -759,10 +823,11 @@ class TodoListController extends Controller
             ->concat($secondPaymentPending)
             ->concat($budgetingHeadCheck)->concat($budgetingVerify)
             ->concat($budgetingCeoApprove)->concat($budgetingRejected)
-            ->concat($budgetingClosingDue)
-            ->concat($treasuryBatchCreate)
+            ->concat($budgetingClosingDue)->concat($budgetingClosingVerify)
+            ->concat($treasuryBatchCreate)->concat($treasuryDraftSubmit)
             ->concat($treasuryProcess)->concat($treasuryReadyToPay)
-            ->concat($poSubmitted)->concat($poVerified)
+            ->concat($costRegisterApprove)->concat($costRegisterBatch)
+            ->concat($poSubmitted)->concat($poVerified)->concat($poClosingVerify)
             ->concat($invoiceVerify)->concat($invoiceApprove)
             ->concat($collectionWaitingInvoice)
             ->concat($ticketRequestReview);
@@ -789,10 +854,11 @@ class TodoListController extends Controller
             || !empty($comingSoonRoles)
             || $budgetingHeadCheck->isNotEmpty() || $budgetingVerify->isNotEmpty()
             || $budgetingCeoApprove->isNotEmpty() || $budgetingRejected->isNotEmpty()
-            || $budgetingClosingDue->isNotEmpty()
-            || $treasuryBatchCreate->isNotEmpty()
+            || $budgetingClosingDue->isNotEmpty() || $budgetingClosingVerify->isNotEmpty()
+            || $treasuryBatchCreate->isNotEmpty() || $treasuryDraftSubmit->isNotEmpty()
             || $treasuryProcess->isNotEmpty() || $treasuryReadyToPay->isNotEmpty()
-            || $poSubmitted->isNotEmpty() || $poVerified->isNotEmpty()
+            || $costRegisterApprove->isNotEmpty() || $costRegisterBatch->isNotEmpty()
+            || $poSubmitted->isNotEmpty() || $poVerified->isNotEmpty() || $poClosingVerify->isNotEmpty()
             || $invoiceVerify->isNotEmpty() || $invoiceApprove->isNotEmpty()
             || $collectionWaitingInvoice->isNotEmpty()
             || $ticketRequestReview->isNotEmpty();
@@ -802,7 +868,8 @@ class TodoListController extends Controller
             'headSettlementCheck', 'financeSettlementVerify', 'approverSecondApprove',
             'ceoSettlementClose', 'secondPaymentPending', 'secondPaymentGroups',
             'budgetingHeadCheck', 'budgetingVerify', 'budgetingCeoApprove', 'budgetingRejected',
-            'budgetingClosingDue',
+            'budgetingClosingDue', 'budgetingClosingVerify',
+            'treasuryDraftSubmit', 'costRegisterApprove', 'costRegisterBatch', 'poClosingVerify',
             'treasuryBatchCreate', 'treasuryBatchGroups', 'treasuryBatchSecond', 'batchSourceFunds', 'treasuryProcess', 'treasuryReadyToPay', 'poSubmitted', 'poVerified',
             'invoiceVerify', 'invoiceApprove', 'collectionWaitingInvoice', 'ticketRequestReview',
             'comingSoonRoles', 'totalPending', 'maxAging', 'completedToday', 'hasAnyTask', 'hasAnySection',
@@ -1424,7 +1491,7 @@ class TodoListController extends Controller
                         ->whereDoesntHave('dailyTransactionItems', fn ($q) =>
                             $q->where('status', 'INCLUDED')
                               ->whereHas('dailyTransaction', fn ($q2) =>
-                                  $q2->whereIn('status', ['PENDING_APPROVER', 'DONE'])
+                                  $q2->whereIn('status', \App\Models\DailyTransaction::ACTIVE_STATUSES)
                               )
                         ),
                     fn ($q) => $this->scopeCrTodo($q)
@@ -1435,22 +1502,26 @@ class TodoListController extends Controller
                     ->whereHas('budgetRequest', fn ($q) => $this->scopeCrTodo($q));
 
             case 'budgetingHeadCheck': case 'budgetingVerify': case 'budgetingCeoApprove':
-            case 'budgetingClosingDue': case 'budgetingRejected':
+            case 'budgetingClosingDue': case 'budgetingRejected': case 'budgetingClosingVerify':
                 $q = BudgetPlan::query()->tap(fn ($q) => $this->scopeVisibleTo($q))->whereIn('status', $status);
                 // CLOSING yang berkas closing-nya belum diajukan (sisa data lama).
                 if ($key === 'budgetingClosingDue') {
                     $q->whereNull('closing_submitted_at');
                 }
+                // CLOSING yang sudah diajukan manager — giliran Finance (verifyClosing()).
+                if ($key === 'budgetingClosingVerify') {
+                    $q->whereNotNull('closing_submitted_at');
+                }
                 // Budget dari form PO (via_po_approval) ikut approval PO — tugasnya sudah
                 // muncul sebagai tugas PO, jadi tidak diulang di antrean Budgeting.
                 // Closing tetap alur biasa.
-                if ($key !== 'budgetingClosingDue') {
+                if (! in_array($key, ['budgetingClosingDue', 'budgetingClosingVerify'], true)) {
                     $q->where('via_po_approval', false);
                 }
 
                 return $q;
 
-            case 'treasuryProcess': case 'treasuryReadyToPay':
+            case 'treasuryProcess': case 'treasuryReadyToPay': case 'treasuryDraftSubmit':
                 $q = DailyTransaction::query()->whereIn('status', $status)->where('type', 'CASH_OUT');
                 // Batch dibatasi Access Group lewat CR di dalamnya untuk role non-K3 (guest).
                 if ($key === 'treasuryProcess' && TodoService::terbatasAccessGroup($user)) {
@@ -1461,8 +1532,22 @@ class TodoListController extends Controller
 
                 return $q;
 
-            case 'poSubmitted': case 'poVerified':
+            case 'poSubmitted': case 'poVerified': case 'poClosingVerify':
                 return Project::query()->whereIn('status', $status);
+
+            case 'costRegisterApprove':
+                return \App\Models\CostRegister::query()->whereIn('status', $status);
+
+            case 'costRegisterBatch':
+                // Query sama dengan $availableRegisters di DailyTransactionController::create().
+                return \App\Models\CostRegister::query()
+                    ->whereIn('status', $status)
+                    ->whereDoesntHave('dailyTransactionItems', fn ($q) =>
+                        $q->where('status', 'INCLUDED')
+                          ->whereHas('dailyTransaction', fn ($q2) =>
+                              $q2->whereIn('status', DailyTransaction::ACTIVE_STATUSES)
+                          )
+                    );
 
             case 'invoiceVerify': case 'invoiceApprove':
                 return Invoice::query()->whereIn('status', $status);
@@ -1805,6 +1890,7 @@ class TodoListController extends Controller
             ['budgetingVerify', 'Budgeting — Menunggu Verifikasi Finance'],
             ['budgetingCeoApprove', 'Budgeting — Menunggu Approval CEO'],
             ['budgetingClosingDue', 'Budgeting — Ajukan Closing (CLOSING belum diajukan)'],
+            ['budgetingClosingVerify', 'Budgeting — Menunggu Verifikasi Closing Finance'],
             ['budgetingRejected', 'Budgeting — Ditolak (Revise ke Draft)'],
         ] as [$k, $tahap]) {
             foreach ($d[$k] as $bp) {
@@ -1816,7 +1902,7 @@ class TodoListController extends Controller
         }
 
         // Treasury — batch
-        foreach ([['treasuryProcess', 'Treasury — Menunggu Proses'], ['treasuryReadyToPay', 'Treasury — Siap Dibayar']] as [$k, $tahap]) {
+        foreach ([['treasuryDraftSubmit', 'Treasury — Draft Belum Diajukan'], ['treasuryProcess', 'Treasury — Menunggu Proses'], ['treasuryReadyToPay', 'Treasury — Siap Dibayar']] as [$k, $tahap]) {
             $batches = \Illuminate\Database\Eloquent\Collection::make($d[$k])->loadMissing(['sourceFund', 'createdBy']);
             foreach ($batches as $batch) {
                 $rows->push($baris(
@@ -1839,6 +1925,23 @@ class TodoListController extends Controller
                 'Purchase Order', 'Purchase Order — Menunggu Approval Approver', 'po:' . $po->id, $po->code,
                 $po->customer?->name, $po->name, $po->manager?->name, $po->value, $po->status, $po->aging_label
             ));
+        }
+
+        foreach ($d['poClosingVerify'] as $po) {
+            $rows->push($baris(
+                'Purchase Order', 'Purchase Order — Menunggu Verifikasi Closing', 'po:' . $po->id, $po->code,
+                $po->customer?->name, $po->name, $po->manager?->name, $po->value, $po->status, $po->aging_label
+            ));
+        }
+
+        // Cost Register
+        foreach ([['costRegisterApprove', 'Cost Register — Menunggu Approval'], ['costRegisterBatch', 'Cost Register — Menunggu Dibatch Treasury']] as [$k, $tahap]) {
+            foreach ($d[$k] as $reg) {
+                $rows->push($baris(
+                    'Cost Register', $tahap, 'reg:' . $reg->id, $reg->project?->code, $reg->project?->customer?->name,
+                    $reg->type_label . ($reg->notes ? ' — ' . $reg->notes : ''), $reg->inputBy?->name, $reg->amount, $reg->status, $reg->aging_label
+                ));
+            }
         }
 
         // Collection — sisa nilai (= ProjectPoNumber::remainingValue()) dihitung

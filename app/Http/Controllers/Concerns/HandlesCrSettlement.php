@@ -486,6 +486,94 @@ trait HandlesCrSettlement
             ->filter(fn (BudgetRequest $cr) => $this->canViewCr($cr));
     }
 
+    /**
+     * Bulk Approve tahap SETTLEMENT dari daftar CR (Fase 4). Tiap CR dijalankan
+     * lewat aksi satuannya — aturan, kunci status, log, dan notifikasi tetap
+     * satu sumber:
+     *   REALIZED        -> headCheckSettlement          (Head)
+     *   SETTLE_CHECKED  -> financeVerifySettlement      (Finance)
+     *   SETTLE_VERIFIED -> settleApprove / Close        (Finance Manager)
+     *   SETTLE_APPROVED -> secondApprove                (Approver)
+     * `expected` (id => status yang terlihat di layar) mencegah CR yang statusnya
+     * sudah berubah ikut diproses.
+     */
+    public function settlementBulkApprove(Request $request)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        $request->validate([
+            'ids'        => 'required|array|min:1|max:50',
+            'ids.*'      => 'integer',
+            'expected'   => 'nullable|array',
+            'expected.*' => 'nullable|string|max:30',
+        ]);
+
+        $ids      = array_values(array_unique(array_map('intval', (array) $request->input('ids', []))));
+        $expected = (array) $request->input('expected', []);
+        $visible  = $this->visibleCrs($ids)->keyBy('id');
+
+        $ok     = 0;
+        $errors = [];
+
+        foreach ($ids as $id) {
+            $cr = $visible->get($id);
+            if (! $cr) {
+                $errors[] = '#' . $id . ' (tidak ditemukan atau tidak ada akses).';
+                continue;
+            }
+
+            $exp = $expected[$id] ?? null;
+            if ($exp !== null && $exp !== $cr->status) {
+                $errors[] = 'CR ' . $cr->code . ': status berubah dari ' . $exp . ' menjadi ' . $cr->status . ' — muat ulang.';
+                continue;
+            }
+
+            $roles = BudgetRequest::SETTLE_BULK_ROLES[$cr->status] ?? null;
+            if (! $roles) {
+                $errors[] = 'CR ' . $cr->code . ': status ' . $cr->status . ' bukan tahap settlement.';
+                continue;
+            }
+            if (! $user->hasRole(array_merge(['superadmin'], $roles))) {
+                $errors[] = 'CR ' . $cr->code . ': peran Anda tidak berhak pada tahap ' . $cr->status . '.';
+                continue;
+            }
+
+            $error = $this->jalankanLangkahSettlement($request, $cr);
+            if ($error) { $errors[] = $error; } else { $ok++; }
+        }
+
+        return $this->settlementBulkResponse($ok, $errors, 'di-approve');
+    }
+
+    /** Satu langkah approve settlement untuk bulk; mengembalikan pesan error atau null. */
+    private function jalankanLangkahSettlement(Request $request, BudgetRequest $cr): ?string
+    {
+        // Tanpa Expense Claim, tahap Finance Manager = Close (sama dengan bulk Close Todo List).
+        if ($cr->status === 'SETTLE_VERIFIED' && ! $cr->hasExpenseClaim()) {
+            return $this->applySettlementClose($cr, $request->notes);
+        }
+
+        $metode = match ($cr->status) {
+            'REALIZED'        => 'headCheckSettlement',
+            'SETTLE_CHECKED'  => 'financeVerifySettlement',
+            'SETTLE_VERIFIED' => 'settleApprove',
+            'SETTLE_APPROVED' => 'secondApprove',
+        };
+
+        // Aksi satuan mengembalikan redirect + flash; di sini hanya flash 'error'-nya yang dibaca.
+        session()->forget(['success', 'error']);
+        try {
+            $this->{$metode}($request, $cr->id);
+            $error = session('error');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+            $error = $e->getMessage() ?: 'akses ditolak.';
+        }
+        session()->forget(['success', 'error']);
+
+        return $error ? 'CR ' . $cr->code . ': ' . $error : null;
+    }
+
     /** Bulk Close dari To-Do List (multi-select baris). */
     public function settlementBulkClose(Request $request)
     {

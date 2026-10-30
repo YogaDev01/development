@@ -182,6 +182,9 @@ class ForecastController extends Controller
             'notes'  => $forecast->notes,
             'status' => $forecast->status,
             'status_color' => $forecast->status_color,
+            // Chip status seragam (<x-status>) untuk modal detail; status_color tetap untuk kompatibilitas.
+            'status_label' => \App\Support\WorkflowStatus::label($forecast->status, 'forecast'),
+            'status_tone'  => \App\Support\WorkflowStatus::tone($forecast->status, 'forecast'),
 
             'period'     => $forecast->date_start->format('d M Y') . ' - ' . $forecast->date_end->format('d M Y'),
             'creator'    => $forecast->creator->name ?? '-',
@@ -437,11 +440,13 @@ class ForecastController extends Controller
         // dirinya sendiri dari payload detail, jadi halamannya tidak perlu
         // dimuat ulang sama sekali. Jalur non-AJAX tetap ada sebagai cadangan
         // (JavaScript mati, atau form disubmit langsung).
+        // Dicatat sebelum cabang AJAX: jalur utama (modal) dulu kembali lebih awal
+        // sehingga aktivitasnya tidak pernah masuk audit trail.
+        UserActivityLog::record('forecast', 'update', 'Menambah realisasi Forecast: ' . ($forecast->label ?? '#' . $forecast->id), $forecast);
+
         if ($request->ajax()) {
             return response()->json(['message' => 'Realisasi ditambahkan.']);
         }
-
-        UserActivityLog::record('forecast', 'update', 'Menambah realisasi Forecast: ' . ($forecast->label ?? '#' . $forecast->id), $forecast);
 
         return redirect('/forecast?open=' . $forecast->id)->with('success', 'Realisasi ditambahkan.');
     }
@@ -474,11 +479,11 @@ class ForecastController extends Controller
             ForecastLog::record($forecast->id, 'ACTUAL_REMOVED', $catatan);
         });
 
+        UserActivityLog::record('forecast', 'update', 'Menghapus realisasi Forecast: ' . ($forecast->label ?? '#' . $forecast->id), $forecast, $catatan);
+
         if ($request->ajax()) {
             return response()->json(['message' => 'Realisasi dihapus.']);
         }
-
-        UserActivityLog::record('forecast', 'update', 'Menghapus realisasi Forecast: ' . ($forecast->label ?? '#' . $forecast->id), $forecast, $request->reason ?? $request->notes);
 
         return redirect('/forecast?open=' . $forecast->id)->with('success', 'Realisasi dihapus.');
     }

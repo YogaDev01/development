@@ -8,13 +8,28 @@
 <div class="content">
     <div class="container-fluid">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Project Master</h1>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
-                <li class="breadcrumb-item"><a href="#">Master</a></li>
+        <div class="ts-index tw:flex tw:flex-col tw:gap-4 tw:py-4">
+
+        {{-- Judul & breadcrumb topbar: shell memindahkan <h1> dan .breadcrumb pertama ke topbar
+             (tesys-shell.js hoistPageTitle); disembunyikan secara visual. --}}
+        <div class="tw:sr-only">
+            <h1>Project Master</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">Master</li>
                 <li class="breadcrumb-item active">Project</li>
             </ol>
         </div>
+
+        <x-tw.page-header title="Daftar Project"
+            description="Project beserta business group, penginput, dan statusnya.">
+            <x-slot:actions>
+                <x-tw.button id="btnTambahProject" class="ts-add-btn tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Project</x-tw.button>
+            </x-slot:actions>
+        </x-tw.page-header>
+
+        {{-- Mobile: tombol di header disembunyikan dan diganti tombol melayang (tesys-ui-refine.css). --}}
+        <button type="button" class="ts-fab" data-trigger="#btnTambahProject" aria-label="Tambah Project" title="Tambah Project"><i class="fas fa-plus" aria-hidden="true"></i></button>
+
 
         <x-stat-cards :cards="[
             ['Total Project', $summary['total'], 'primary', 'fas fa-layer-group'],
@@ -22,20 +37,9 @@
             ['Inactive', $summary['inactive'], 'secondary', 'fas fa-pause-circle'],
         ]" />
 
-        <div class="card card-primary card-outline shadow-sm">
+        {{-- Kartu tunggal: toolbar + tabel + paginasi (pola Cost Request). --}}
+        <x-tw.card padding="sm">
 
-            <!-- CARD HEADER -->
-            <div class="card-header d-flex align-items-center">
-                <h3 class="card-title"><i class="fas fa-layer-group mr-1"></i> Daftar Project</h3>
-                <div class="ml-auto d-flex" style="gap:8px;">
-                    <button id="refreshTable" class="btn btn-secondary btn-sm" type="button">
-                        <i class="fas fa-sync-alt mr-1"></i> Refresh
-                    </button>
-                </div>
-            </div>
-
-            <!-- CARD BODY -->
-            <div class="card-body">
 
                 <!-- FILTER BAR -->
                 <div class="custom-toolbar mb-3 d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
@@ -53,15 +57,13 @@
                         <a href="{{ url('/groups') }}" class="btn btn-info btn-sm">
                             <i class="fas fa-layer-group mr-1"></i> Group Master
                         </a>
-                        <button type="button" class="btn btn-success btn-sm" id="btnTambahProject">
-                            <i class="fas fa-plus mr-1"></i> Tambah Project
-                        </button>
+                        <x-tw.button id="refreshTable" variant="secondary" size="sm"><i class="fas fa-sync-alt" aria-hidden="true"></i> Refresh</x-tw.button>
                     </div>
                 </div>
 
                 <!-- TABLE -->
                 <div class="table-responsive">
-                    <table id="clusterTable" class="table table-bordered table-hover table-striped mb-0">
+                    <table id="clusterTable" class="table table-bordered table-hover mb-0 ts-idx-tbl">
                         <thead class="bg-light">
                             <tr>
                                 <th scope="col" width="5%"  class="all">No</th>
@@ -70,7 +72,7 @@
                                 <th scope="col" width="20%">Business Group</th>
                                 <th scope="col" width="10%">Input By</th>
                                 <th scope="col" width="10%">Status</th>
-                                <th scope="col" width="10%" class="text-center all action-column">Action</th>
+                                <th scope="col" width="10%" class="text-center all action-column"><span class="sr-only">Aksi</span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -101,29 +103,34 @@
                                 </td>
 
                                 <td class="text-center action-column">
+                                    {{-- Detail dibuka lewat klik baris. Dua aksi (Edit, Hapus) = satu tombol titik tiga. --}}
                                     <div class="action-buttons ts-actions">
-
-                                        <button type="button"
-                                                class="ts-action-primary is-neutral btn-edit"
-                                                data-id="{{ $cluster->id }}"
-                                                title="Edit" aria-label="Edit {{ $cluster->name ?? 'project' }}">
-                                            <i class="fas fa-pen" aria-hidden="true"></i><span class="ts-al">Edit</span>
+                                        <button type="button" class="ts-action-more"
+                                                aria-haspopup="true" aria-expanded="false"
+                                                title="Aksi" aria-label="Aksi">
+                                            <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
                                         </button>
 
-                                        {{-- Hapus ditampilkan langsung, bukan di balik menu
-                                             "aksi lain": isinya memang cuma satu perintah, jadi
-                                             menunya hanya menambah satu klik tanpa menyembunyikan
-                                             apa pun. --}}
-                                        <form action="{{ url('/cluster/' . $cluster->id) }}"
+                                        <div class="ts-action-menu dropdown-menu" hidden>
+                                            <button type="button"
+                                                class="js-row-open dropdown-item btn-edit"
+                                                data-id="{{ $cluster->id }}"
+                                                title="Edit" aria-label="Edit {{ $cluster->name ?? 'project' }}">
+                                            <i class="fas fa-pen"></i>Edit
+                                        </button>
+
+                                            <div class="dropdown-divider"></div>
+
+                                            <form action="{{ url('/cluster/' . $cluster->id) }}"
                                               method="POST" class="d-inline delete-form">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="ts-action-primary is-danger"
+                                            <button type="submit" class="dropdown-item is-danger"
                                                     title="Hapus" aria-label="Hapus {{ $cluster->name ?? 'project' }}">
-                                                <i class="fas fa-trash" aria-hidden="true"></i><span class="ts-al">Hapus</span>
+                                                <i class="fas fa-trash"></i>Hapus
                                             </button>
                                         </form>
-
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
@@ -137,10 +144,8 @@
                         </tbody>
                     </table>
                 </div>
-
-            </div>
-        </div>
-
+        </x-tw.card>
+      </div>
     </div>
 </div>
 
@@ -379,6 +384,7 @@
 @endsection
 
 @push('styles')
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
 
 .action-header-buttons { display:flex; gap:8px; }
@@ -485,6 +491,7 @@ table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before {
     .modal-body { padding:20px !important; }
 }
 
+#clusterTable tbody tr:not(:has(td[colspan])) { cursor:pointer; }
 </style>
 @endpush
 
@@ -492,6 +499,18 @@ table.dataTable.dtr-inline.collapsed > tbody > tr > th:first-child:before {
 <script>
 
 $(function () {
+
+    /* Klik di mana saja pada baris membuka detail (atau edit bila tidak ada detail) — pola Cost
+       Request. Kontrol di dalam baris (tombol, tautan, menu aksi, kontrol responsif) bekerja sendiri. */
+    $(document).on('click', '#clusterTable tbody tr', function (e) {
+        if ($(e.target).closest('a, button, input, select, textarea, label, form, .ts-actions, .ts-action-menu, td.dtr-control').length) return;
+        if (window.getSelection && String(window.getSelection()).length) return;
+        var href = $(this).attr('data-href');
+        if (href) { window.location.href = href; return; }
+        $(this).find('.js-row-open').first().trigger('click');
+    });
+    // Tombol melayang (HP) memicu tombol "Tambah" di header yang disembunyikan.
+    $('.ts-fab[data-trigger]').on('click', function () { $($(this).data('trigger')).trigger('click'); });
 
     /*
     |--------------------------------------------------------------------------

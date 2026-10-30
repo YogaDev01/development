@@ -171,6 +171,26 @@ class User extends Authenticatable
         return $this->avatar ? asset('storage/' . $this->avatar) : null;
     }
 
+    /**
+     * Peta id user => URL foto profil, satu query untuk seluruh log. User tanpa
+     * foto tidak masuk peta (layar jatuh ke avatar inisial).
+     *
+     * @param  iterable<int|null>  $ids
+     * @return array<int, string>
+     */
+    public static function avatarUrlMap(iterable $ids): array
+    {
+        $ids = collect($ids)->filter()->unique()->values();
+
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        return static::whereIn('id', $ids)->whereNotNull('avatar')->get(['id', 'avatar'])
+            ->mapWithKeys(fn ($u) => [$u->id => $u->avatar_url])
+            ->all();
+    }
+
     public function getCoverUrlAttribute(): ?string
     {
         return $this->cover ? asset('storage/' . $this->cover) : null;

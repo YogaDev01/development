@@ -1,0 +1,308 @@
+{
+ "login": true,
+ "hasil": {
+  "ca-spasi": {
+   "teks": 28,
+   "PIC": {
+    "tdL": 80,
+    "tdR": 341,
+    "trL": 37,
+    "trR": 354,
+    "sw": 322,
+    "cw": 261,
+    "luap": true,
+    "tinggi": 33,
+    "ws": "nowrap",
+    "ow": "normal",
+    "lbW": 99
+   },
+   "Requestor": {
+    "tdL": 80,
+    "tdR": 341,
+    "trL": 37,
+    "trR": 354,
+    "sw": 322,
+    "cw": 261,
+    "luap": true,
+    "tinggi": 33,
+    "ws": "nowrap",
+    "ow": "normal",
+    "lbW": 99
+   },
+   "Tanggal": {
+    "tdL": 80,
+    "tdR": 341,
+    "trL": 37,
+    "trR": 354,
+    "sw": 322,
+    "cw": 261,
+    "luap": true,
+    "tinggi": 33,
+    "ws": "nowrap",
+    "ow": "normal",
+    "lbW": 99
+   },
+   "doc": [
+    390,
+    390
+   ],
+   "wrap": [
+    365,
+    317
+   ]
+  },
+  "ca-tanpaspasi": {
+   "teks": 28,
+   "PIC": {
+    "tdL": 80,
+    "tdR": 341,
+    "trL": 37,
+    "trR": 354,
+    "sw": 367,
+    "cw": 261,
+    "luap": true,
+    "tinggi": 33,
+    "ws": "nowrap",
+    "ow": "normal",
+    "lbW": 99
+   },
+   "Requestor": {
+    "tdL": 80,
+    "tdR": 341,
+    "trL": 37,
+    "trR": 354,
+    "sw": 367,
+    "cw": 261,
+    "luap": true,
+    "tinggi": 33,
+    "ws": "nowrap",
+    "ow": "normal",
+    "lbW": 99
+   },
+   "Tanggal": {
+    "tdL": 80,
+    "tdR": 341,
+    "trL": 37,
+    "trR": 354,
+    "sw": 367,
+    "cw": 261,
+    "luap": true,
+    "tinggi": 33,
+    "ws": "nowrap",
+    "ow": "normal",
+    "lbW": 99
+   },
+   "doc": [
+    390,
+    390
+   ],
+   "wrap": [
+    410,
+    317
+   ]
+  },
+  "cp-spasi": {
+   "teks": 28,
+   "PIC": {
+    "tdL": 80,
+    "tdR": 341,
+    "trL": 37,
+    "trR": 354,
+    "sw": 322,
+    "cw": 261,
+    "luap": true,
+    "tinggi": 33,
+    "ws": "nowrap",
+    "ow": "normal",
+    "lbW": 99
+   },
+   "Requestor": {
+    "tdL": 80,
+    "tdR": 341,
+    "trL": 37,
+    "trR": 354,
+    "sw": 322,
+    "cw": 261,
+    "luap": true,
+    "tinggi": 33,
+    "ws": "nowrap",
+    "ow": "normal",
+    "lbW": 99
+   },
+   "Tanggal": {
+    "tdL": 80,
+    "tdR": 341,
+    "trL": 37,
+    "trR": 354,
+    "sw": 322,
+    "cw": 261,
+    "luap": true,
+    "tinggi": 33,
+    "ws": "nowrap",
+    "ow": "normal",
+    "lbW": 99
+   },
+   "doc": [
+    390,
+    390
+   ],
+   "wrap": [
+    365,
+    317
+   ]
+  },
+  "cp-tanpaspasi": {
+   "teks": 28,
+   "PIC": {
+    "tdL": 80,
+    "tdR": 341,
+    "trL": 37,
+    "trR": 354,
+    "sw": 367,
+    "cw": 261,
+    "luap": true,
+    "tinggi": 33,
+    "ws": "nowrap",
+    "ow": "normal",
+    "lbW": 99
+   },
+   "Requestor": {
+    "tdL": 80,
+    "tdR": 341,
+    "trL": 37,
+    "trR": 354,
+    "sw": 367,
+    "cw": 261,
+    "luap": true,
+    "tinggi": 33,
+    "ws": "nowrap",
+    "ow": "normal",
+    "lbW": 99
+   },
+   "Tanggal": {
+    "tdL": 80,
+    "tdR": 341,
+    "trL": 37,
+    "trR": 354,
+    "sw": 367,
+    "cw": 261,
+    "luap": true,
+    "tinggi": 33,
+    "ws": "nowrap",
+    "ow": "normal",
+    "lbW": 99
+   },
+   "doc": [
+    390,
+    390
+   ],
+   "wrap": [
+    410,
+    317
+   ]
+  },
+  "db-spasi": {
+   "teks": 28,
+   "PIC": {
+    "tdL": 50,
+    "tdR": 341,
+    "trL": 37,
+    "trR": 354,
+    "sw": 334,
+    "cw": 291,
+    "luap": true,
+    "tinggi": 33,
+    "ws": "nowrap",
+    "ow": "normal",
+    "lbW": 111
+   },
+   "Requestor": {
+    "tdL": 50,
+    "tdR": 341,
+    "trL": 37,
+    "trR": 354,
+    "sw": 334,
+    "cw": 291,
+    "luap": true,
+    "tinggi": 33,
+    "ws": "nowrap",
+    "ow": "normal",
+    "lbW": 111
+   },
+   "Tanggal": {
+    "tdL": 50,
+    "tdR": 341,
+    "trL": 37,
+    "trR": 354,
+    "sw": 334,
+    "cw": 291,
+    "luap": true,
+    "tinggi": 33,
+    "ws": "nowrap",
+    "ow": "normal",
+    "lbW": 111
+   },
+   "doc": [
+    390,
+    390
+   ],
+   "wrap": [
+    347,
+    317
+   ]
+  },
+  "db-tanpaspasi": {
+   "teks": 28,
+   "PIC": {
+    "tdL": 50,
+    "tdR": 341,
+    "trL": 37,
+    "trR": 354,
+    "sw": 379,
+    "cw": 291,
+    "luap": true,
+    "tinggi": 33,
+    "ws": "nowrap",
+    "ow": "normal",
+    "lbW": 111
+   },
+   "Requestor": {
+    "tdL": 50,
+    "tdR": 341,
+    "trL": 37,
+    "trR": 354,
+    "sw": 379,
+    "cw": 291,
+    "luap": true,
+    "tinggi": 33,
+    "ws": "nowrap",
+    "ow": "normal",
+    "lbW": 111
+   },
+   "Tanggal": {
+    "tdL": 50,
+    "tdR": 341,
+    "trL": 37,
+    "trR": 354,
+    "sw": 379,
+    "cw": 291,
+    "luap": true,
+    "tinggi": 33,
+    "ws": "nowrap",
+    "ow": "normal",
+    "lbW": 111
+   },
+   "doc": [
+    390,
+    390
+   ],
+   "wrap": [
+    392,
+    317
+   ]
+  }
+ },
+ "konsol": [],
+ "gagal": [],
+ "stop": 0
+}

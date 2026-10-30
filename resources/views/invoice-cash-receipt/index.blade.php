@@ -6,14 +6,34 @@
 
 <div class="content">
     <div class="container-fluid">
+      <div class="ts-index tw:flex tw:flex-col tw:gap-4 tw:py-4">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;">Collection</h1>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
-                <li class="breadcrumb-item"><a href="#">Finance</a></li>
+        {{-- Judul & breadcrumb topbar: shell memindahkan <h1> dan .breadcrumb pertama ke topbar
+             (tesys-shell.js hoistPageTitle); disembunyikan secara visual. --}}
+        <div class="tw:sr-only">
+            <h1>Collection</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">Finance</li>
                 <li class="breadcrumb-item active">Collection</li>
             </ol>
         </div>
+
+        @php $bolehBuatInv = Auth::user()->hasRole(['superadmin','admin','finance','finance_manager','collection']); @endphp
+        <x-tw.page-header title="Daftar Invoice"
+            description="Invoice per No. PO beserta persetujuan, pengiriman, dan penerimaan pembayarannya.">
+            @if($bolehBuatInv)
+            <x-slot:actions>
+                <x-tw.button href="{{ route('invoice-cash-receipt.create') }}" class="ts-add-btn tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Buat Invoice</x-tw.button>
+            </x-slot:actions>
+            @endif
+        </x-tw.page-header>
+
+        @if($bolehBuatInv)
+        {{-- Mobile: tombol di header disembunyikan dan diganti tombol melayang (tesys-ui-refine.css). --}}
+        <a href="{{ route('invoice-cash-receipt.create') }}" class="ts-fab" aria-label="Buat Invoice" title="Buat Invoice">
+            <i class="fas fa-plus" aria-hidden="true"></i>
+        </a>
+        @endif
 
         <!-- SUMMARY WORKFLOW (clickable, filter tabel Invoice) -->
         @php
@@ -30,20 +50,10 @@
                 ['Cancelled',      $summary['cancelled'],      'dark',      'CANCELLED'],
             ];
         @endphp
-        <x-workflow-stepper :steps="$invSteps" :compact="true" table="tblInvoice" field="status" />
+        <x-workflow-stepper :steps="$invSteps" :compact="true" table="tblInvoice" field="status" :groups="[['Fase 1: Pengajuan', ['DRAFT','SUBMITTED','CANCELLED']], ['Fase 2: Persetujuan', ['VERIFIED','APPROVED']], ['Fase 3: Penagihan', ['SENT','RECEIVED','PARTIALLY_PAID','OVERDUE','PAID']]]" />
 
-        <div class="card card-primary card-outline shadow-sm mt-3">
-
-            <div class="card-header d-flex align-items-center">
-                <h3 class="card-title"><i class="fas fa-file-invoice mr-1"></i> Daftar Invoice</h3>
-                <div class="ml-auto d-flex" style="gap:8px;">
-                    <button id="btnRefreshInv" class="btn btn-secondary btn-sm">
-                        <i class="fas fa-sync-alt mr-1"></i> Refresh
-                    </button>
-                </div>
-            </div>
-
-            <div class="card-body">
+        {{-- Kartu tunggal: toolbar + tabel + paginasi (pola Cost Request). --}}
+        <x-tw.card padding="sm">
 
                 {{-- Daftar dibatasi 1.000 baris terbaru (lihat Concerns\CapsLargeLists).
                      Tanpa batas, rentang data yang lebar menggambar ribuan baris ke
@@ -112,23 +122,21 @@
                             </div>
                             @endunless
                         </div>
-                        <a href="{{ route('invoice-cash-receipt.export') }}" id="btnExportInv" class="btn btn-outline-secondary btn-sm">
-                            <i class="fas fa-file-excel mr-1"></i> Export to Excel
-                        </a>
-                        @if(Auth::user()->hasRole(['superadmin','admin','finance','finance_manager','collection']))
-                        <a href="{{ route('delivery-note.index') }}" class="btn btn-outline-secondary btn-sm">
-                            <i class="fas fa-truck mr-1"></i> Surat Jalan
-                        </a>
-                        <a href="{{ route('invoice-cash-receipt.create') }}" class="btn btn-success btn-sm">
-                            <i class="fas fa-plus mr-1"></i> Buat Invoice
-                        </a>
+                        <x-tw.button href="{{ route('invoice-cash-receipt.export') }}" id="btnExportInv" variant="secondary" size="sm">
+                            <i class="fas fa-file-excel" aria-hidden="true"></i> Export Excel
+                        </x-tw.button>
+                        @if($bolehBuatInv)
+                        <x-tw.button href="{{ route('delivery-note.index') }}" variant="secondary" size="sm">
+                            <i class="fas fa-truck" aria-hidden="true"></i> Surat Jalan
+                        </x-tw.button>
                         @endif
+                        <x-tw.button id="btnRefreshInv" variant="secondary" size="sm"><i class="fas fa-sync-alt" aria-hidden="true"></i> Refresh</x-tw.button>
                     </div>
                 </div>
 
                 <!-- TABLE -->
                 <div class="inv-table-wrap" id="invTableWrap">
-                    <table id="tblInvoice" class="table table-bordered mb-0">
+                    <table id="tblInvoice" class="table table-bordered table-hover mb-0 ts-idx-tbl">
                         <thead class="bg-light">
                             <tr>
                                 <th scope="col" class="text-nowrap inv-col-code" style="width:1%;">No Invoice</th>
@@ -146,7 +154,7 @@
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Payment</th>
                                 <th scope="col" class="text-nowrap" style="width:1%;">Payment Date</th>
                                 <th scope="col" class="text-center text-nowrap" style="width:1%;">Status</th>
-                                <th scope="col" class="text-center action-column" style="width:1%;">Action</th>
+                                <th scope="col" class="text-center action-column" style="width:1%;"><span class="sr-only">Aksi</span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -178,14 +186,16 @@
                                     ->sortByDesc('received_date')
                                     ->first();
                             @endphp
-                            <tr data-id="{{ $invoice->id }}"
+                            <tr data-id="{{ $invoice->id }}" data-code="{{ $invoice->code }}"
+                                data-href="{{ route('invoice-cash-receipt.show', $invoice->id) }}"
                                 data-status="{{ $dStatus }}"
                                 data-po="{{ $invoice->po ? '[' . $invoice->po->code . '] ' . $invoice->po->name : '' }}"
                                 data-customer="{{ $invoice->po->customer->name ?? '' }}"
                                 data-pm="{{ $pmUpper !== '-' ? $pmUpper : '' }}">
 
                                 <td class="text-nowrap inv-col-code">
-                                    <a href="{{ route('invoice-cash-receipt.show', $invoice->id) }}" target="_blank" class="inv-code-link">{{ $invoice->code }}</a>
+                                    {{-- Klik kode = salin; detail dibuka lewat klik baris. --}}
+                                    <button type="button" class="ts-copy-code" data-code="{{ $invoice->code }}" title="Klik untuk menyalin kode">{{ $invoice->code }}</button>
                                     @if($invoice->is_additional)
                                         <span class="badge badge-warning" style="font-size:9px;" title="Melebihi sisa nilai kontrak PO">ADD</span>
                                     @endif
@@ -245,32 +255,33 @@
                                     @endif
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-invoice" data-raw="{{ $invoice->billed_amount ?? 0 }}">
-                                    {{ number_format($invoice->billed_amount, 0, ',', '.') }}
+                                {{-- Nilai nol di kolom uang ditulis "-". --}}
+                                <td class="text-right text-nowrap ts-col-money col-raw-invoice" data-raw="{{ $invoice->billed_amount ?? 0 }}">
+                                    {{ (int) $invoice->billed_amount === 0 ? '-' : number_format($invoice->billed_amount, 0, ',', '.') }}
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-tax" data-raw="{{ $invoice->tax_amount ?? 0 }}">
-                                    {{ number_format($invoice->tax_amount, 0, ',', '.') }}
+                                <td class="text-right text-nowrap ts-col-money col-raw-tax" data-raw="{{ $invoice->tax_amount ?? 0 }}">
+                                    {{ (int) $invoice->tax_amount === 0 ? '-' : number_format($invoice->tax_amount, 0, ',', '.') }}
                                 </td>
 
                                 {{-- Total = Invoice + Tax - Withholding Tax (captured_total,
                                      dihitung InvoiceCalculationService). WHT ditampilkan sebagai
                                      kolom tersendiri supaya selisih itu terlihat, bukan cuma
                                      muncul diam-diam sebagai Total yang lebih kecil. --}}
-                                <td class="text-right text-nowrap col-raw-wht" data-raw="{{ $invoice->withholding_tax ?? 0 }}">
+                                <td class="text-right text-nowrap ts-col-money col-raw-wht" data-raw="{{ $invoice->withholding_tax ?? 0 }}">
                                     @if(($invoice->withholding_tax ?? 0) > 0)
                                         <span style="color:var(--danger);">&minus;{{ number_format($invoice->withholding_tax, 0, ',', '.') }}</span>
                                     @else
-                                        <span class="text-muted">0</span>
+                                        <span class="text-muted">-</span>
                                     @endif
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-total" data-raw="{{ $invoice->captured_total ?? 0 }}">
-                                    <strong>{{ number_format($invoice->captured_total, 0, ',', '.') }}</strong>
+                                <td class="text-right text-nowrap ts-col-money col-raw-total" data-raw="{{ $invoice->captured_total ?? 0 }}">
+                                    {{ (int) $invoice->captured_total === 0 ? '-' : number_format($invoice->captured_total, 0, ',', '.') }}
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-received" data-raw="{{ $received }}">
-                                    {{ number_format($received, 0, ',', '.') }}
+                                <td class="text-right text-nowrap ts-col-money col-raw-received" data-raw="{{ $received }}">
+                                    {{ $received === 0 ? '-' : number_format($received, 0, ',', '.') }}
                                     @if($gap != 0 && $dStatus === 'PAID')
                                     <div style="font-size:11px;margin-top:2px;" class="{{ $gap > 0 ? 'text-warning' : 'text-danger' }}">
                                         {{ number_format($gap, 0, ',', '.') }}
@@ -315,66 +326,70 @@
                                         $adaMenu = true;
                                     @endphp
 
+                                    @php
+                                        // Satu tombol saja per baris: tepat 1 aksi = tombol aksinya; lebih dari 1 =
+                                        // satu tombol ⋮ berisi semua aksi (aksi utama di atas, mundur/merusak dipisah
+                                        // garis). Detail dibuka lewat klik baris, jadi tidak ada item "Detail".
+                                        $adaUtama = $bolehDraft || $bolehVerify || $bolehApprove || $bolehPulihkan;
+                                        $jumlahAksi = ($adaUtama ? 1 : 0) + 1 /* Komentar selalu ada */
+                                            + ($bolehDraft ? 2 : 0) + ($bolehRevisi ? 1 : 0) + ($bolehBatal ? 1 : 0);
+                                        $satuAksi = $jumlahAksi === 1;
+                                        $kls    = $satuAksi ? 'ts-action-primary' : 'dropdown-item';
+                                        $lbl    = $satuAksi ? 'ts-al' : '';
+                                        $netral = $satuAksi ? 'is-neutral' : '';
+                                        ob_start();
+                                    @endphp
+                                    @if($bolehDraft)
+                                    <form action="{{ route('invoice-cash-receipt.submit', $invoice->id) }}"
+                                          method="POST" class="frmSubmitInv {{ $satuAksi ? 'd-inline' : '' }}">
+                                        @csrf
+                                        <button type="submit" class="{{ $kls }}" title="Submit">
+                                            <i class="fas fa-paper-plane"></i><span class="{{ $lbl }}">Submit</span>
+                                        </button>
+                                    </form>
+                                    @elseif($bolehVerify)
+                                    <form action="{{ route('invoice-cash-receipt.verify', $invoice->id) }}"
+                                          method="POST" class="frmVerifyInv {{ $satuAksi ? 'd-inline' : '' }}">
+                                        @csrf
+                                        <button type="submit" class="{{ $kls }}" title="Verifikasi">
+                                            <i class="fas fa-check"></i><span class="{{ $lbl }}">Verify</span>
+                                        </button>
+                                    </form>
+                                    @elseif($bolehApprove)
+                                    <form action="{{ route('invoice-cash-receipt.approve', $invoice->id) }}"
+                                          method="POST" class="frmApproveInv {{ $satuAksi ? 'd-inline' : '' }}">
+                                        @csrf
+                                        <button type="submit" class="{{ $kls }}" title="Approve">
+                                            <i class="fas fa-check-double"></i><span class="{{ $lbl }}">Approve</span>
+                                        </button>
+                                    </form>
+                                    @elseif($bolehPulihkan)
+                                    <button type="button" class="{{ $kls }} {{ $netral }} btn-revise-inv"
+                                            data-id="{{ $invoice->id }}" data-code="{{ $invoice->code }}"
+                                            title="Kembalikan ke Draft">
+                                        <i class="fas fa-undo"></i><span class="{{ $lbl }}">Kembalikan</span>
+                                    </button>
+                                    @endif
+                                    @php $htmlUtama = ob_get_clean(); @endphp
+
                                     <div class="action-buttons ts-actions">
 
-                                        {{-- AKSI UTAMA — satu per baris, selalu bernama --}}
-
-                                        @if($bolehDraft)
-                                        <form action="{{ route('invoice-cash-receipt.submit', $invoice->id) }}"
-                                              method="POST" class="frmSubmitInv d-inline">
-                                            @csrf
-                                            <button type="submit" class="ts-action-primary" title="Submit">
-                                                <i class="fas fa-paper-plane"></i><span class="ts-al">Submit</span>
-                                            </button>
-                                        </form>
-                                        @elseif($bolehVerify)
-                                        <form action="{{ route('invoice-cash-receipt.verify', $invoice->id) }}"
-                                              method="POST" class="frmVerifyInv d-inline">
-                                            @csrf
-                                            <button type="submit" class="ts-action-primary" title="Verifikasi">
-                                                <i class="fas fa-check"></i><span class="ts-al">Verify</span>
-                                            </button>
-                                        </form>
-                                        @elseif($bolehApprove)
-                                        <form action="{{ route('invoice-cash-receipt.approve', $invoice->id) }}"
-                                              method="POST" class="frmApproveInv d-inline">
-                                            @csrf
-                                            <button type="submit" class="ts-action-primary" title="Approve">
-                                                <i class="fas fa-check-double"></i><span class="ts-al">Approve</span>
-                                            </button>
-                                        </form>
-                                        @elseif($bolehPulihkan)
-                                        <button type="button" class="ts-action-primary is-neutral btn-revise-inv"
-                                                data-id="{{ $invoice->id }}" data-code="{{ $invoice->code }}"
-                                                title="Kembalikan ke Draft">
-                                            <i class="fas fa-undo"></i><span class="ts-al">Kembalikan</span>
+                                        @if($satuAksi)
+                                        {{-- Satu-satunya aksi: Komentar (selalu ada). --}}
+                                        <button type="button" class="ts-action-primary is-neutral btn-comment-inv"
+                                                data-id="{{ $invoice->id }}" data-code="{{ $invoice->code }}">
+                                            <i class="fas fa-comment"></i><span class="ts-al">Komentar</span>
                                         </button>
-                                        @endif
-
-                                        {{-- Tanpa aksi, barisnya tetap punya jalan masuk ke detail --}}
-                                        @unless($adaAksi)
-                                        <a href="{{ url('/invoice-cash-receipt/' . $invoice->id) }}"
-                                           class="ts-action-primary is-neutral"
-                                           title="Lihat detail" aria-label="Lihat detail {{ $invoice->code }}">
-                                            <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Detail</span>
-                                        </a>
-                                        @endunless
-
-                                        {{-- AKSI LAIN — termasuk semua aksi mundur/merusak --}}
-                                        @if($adaMenu)
+                                        @else
                                         <button type="button" class="ts-action-more"
                                                 aria-haspopup="true" aria-expanded="false"
-                                                title="Aksi lain" aria-label="Aksi lain untuk {{ $invoice->code }}">
+                                                title="Aksi" aria-label="Aksi untuk {{ $invoice->code }}">
                                             <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
                                         </button>
 
                                         <div class="ts-action-menu dropdown-menu" hidden>
 
-                                            @if($adaAksi)
-                                            <a href="{{ url('/invoice-cash-receipt/' . $invoice->id) }}" class="dropdown-item">
-                                                <i class="fas fa-eye"></i>Detail
-                                            </a>
-                                            @endif
+                                            {!! $htmlUtama !!}
 
                                             <button type="button" class="dropdown-item btn-comment-inv"
                                                     data-id="{{ $invoice->id }}" data-code="{{ $invoice->code }}">
@@ -439,8 +454,8 @@
                         </tfoot>
                     </table>
                 </div>
-            </div>
-        </div>
+        </x-tw.card>
+      </div>
     </div>
 </div>
 
@@ -531,6 +546,7 @@
 @endsection
 
 @push('styles')
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
 .inv-code-link {
     display:inline-block; padding:2px 8px; border:0; border-radius:var(--radius-sm);
@@ -769,9 +785,17 @@ $(function () {
         window.history.replaceState({}, '',
             window.location.pathname + (sisa ? '?' + sisa : '') + window.location.hash);
 
-        var $link = $('#tblInvoice tbody tr[data-id="' + String(openId).replace(/[^0-9]/g, '') + '"] .inv-code-link').first();
-        if ($link.length) window.location.href = $link.attr('href');
+        var $baris = $('#tblInvoice tbody tr[data-id="' + String(openId).replace(/[^0-9]/g, '') + '"]').first();
+        if ($baris.length) window.location.href = $baris.attr('data-href');
     })();
+
+    /* Klik di mana saja pada baris membuka detail invoice (pola Cost Request). Kontrol di dalam
+       baris (kode yang disalin, tombol aksi, kontrol responsif DataTables) bekerja sendiri. */
+    $(document).on('click', '#tblInvoice tbody tr[data-href]', function (e) {
+        if ($(e.target).closest('a, button, input, select, textarea, label, form, .ts-actions, .ts-action-menu, td.dtr-control').length) return;
+        if (window.getSelection && String(window.getSelection()).length) return;
+        window.location.href = $(this).attr('data-href');
+    });
 
     // Bungkus HANYA tabelnya dengan scroller horizontal, kolom No Invoice & Action beku.
     $('#tblInvoice').wrap('<div class="inv-hscroll table-responsive"></div>');
@@ -817,11 +841,11 @@ $(function () {
             totalAmount   += parseFloat(node.querySelector('.col-raw-total')?.dataset.raw) || 0;
             totalReceived += parseFloat(node.querySelector('.col-raw-received')?.dataset.raw) || 0;
         });
-        $('#invFooterInvoice').text(Math.round(totalInvoice).toLocaleString('id-ID'));
-        $('#invFooterTax').text(Math.round(totalTax).toLocaleString('id-ID'));
-        $('#invFooterWht').text(totalWht > 0 ? '-' + Math.round(totalWht).toLocaleString('id-ID') : '0');
-        $('#invFooterTotal').text(Math.round(totalAmount).toLocaleString('id-ID'));
-        $('#invFooterReceived').text(Math.round(totalReceived).toLocaleString('id-ID'));
+        $('#invFooterInvoice').text(Math.round(totalInvoice) === 0 ? '-' : Math.round(totalInvoice).toLocaleString('id-ID'));
+        $('#invFooterTax').text(Math.round(totalTax) === 0 ? '-' : Math.round(totalTax).toLocaleString('id-ID'));
+        $('#invFooterWht').text(totalWht > 0 ? '-' + Math.round(totalWht).toLocaleString('id-ID') : '-');
+        $('#invFooterTotal').text(Math.round(totalAmount) === 0 ? '-' : Math.round(totalAmount).toLocaleString('id-ID'));
+        $('#invFooterReceived').text(Math.round(totalReceived) === 0 ? '-' : Math.round(totalReceived).toLocaleString('id-ID'));
     }
 
     /* Export Excel mengikuti filter yang SEDANG aktif di tabel — lihat

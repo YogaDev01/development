@@ -66,10 +66,16 @@ class RequestDetail extends Model
         return $this->belongsTo(BudgetPlanDetail::class, 'budget_detail_id');
     }
 
-    /** Realisasi (jika sudah diajukan) untuk baris pengajuan ini */
-    public function realization()
+    /**
+     * Baris settlement yang berasal dari item pengajuan ini. Sejak Settlement
+     * Custom COA (25 Okt 2026) satu item boleh dipecah menjadi beberapa baris
+     * (Sub COA berbeda), atau tidak punya baris sama sekali (settle 0) — jadi
+     * relasinya hasMany, bukan hasOne. Nilai biaya per sub-item jangan
+     * dihitung dari sini; pakai BudgetRequest::costUnits().
+     */
+    public function realizations()
     {
-        return $this->hasOne(BudgetRequestRealization::class, 'request_detail_id');
+        return $this->hasMany(BudgetRequestRealization::class, 'request_detail_id')->orderBy('id');
     }
 
     /** Lampiran KHUSUS baris ini (nota/bukti per item) */

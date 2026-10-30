@@ -1,0 +1,7763 @@
+{
+ "tahap": "F4",
+ "label": "sesudah",
+ "browser": "edge",
+ "base": "http://127.0.0.1:8099",
+ "waktu": "2026-10-26T17:03:20.377Z",
+ "viewport": {
+  "desktop": "1440x900",
+  "mobile": "390x844"
+ },
+ "tinggiMaksFoto": 1500,
+ "akun": {
+  "staff": "dummy.staff",
+  "superadmin": "dummy.superadmin",
+  "kosong": "dummy.maker"
+ },
+ "berkas": {
+  "viewFeedback": {
+   "index": {
+    "sha256": "cf5f019831281e1f1a01289258a147b78dc456d50b20e2e287c86861104f83b9",
+    "byte": 6103
+   },
+   "create": {
+    "sha256": "965174ebcf208e5095d9e68e091f38b32f055242a7fd5caad13065a66598c58e",
+    "byte": 6212
+   },
+   "show": {
+    "sha256": "15d2ed7d316269211b32e758dd802d417298e592be425d40aa39c64c25e4d85b",
+    "byte": 9734
+   },
+   "inbox": {
+    "sha256": "621673a58330a6ed5f9d4c97206f040efa9e0563708b31de24f614ceed6b138b",
+    "byte": 6529
+   },
+   "_disclaimer": {
+    "sha256": "42409e644deb2fd7e5113782ad6a8b3690b8caec2f4bd1ef4a77ac84f7657d3f",
+    "byte": 1012
+   }
+  },
+  "komponenTw": {
+   "badge": {
+    "sha256": "a2aeeea788899f89b99947bc246a63c7bc9537e2388076fb9d49eb341adfdd6a",
+    "byte": 3345
+   },
+   "button": {
+    "sha256": "b06063928adeff2fb6df99744618145ff780d68772402aa97acc1c18a1967e6a",
+    "byte": 8978
+   },
+   "card": {
+    "sha256": "91e9c6b61ecb372ae2604b3d549fb9bb82b4f11a288b48a24d322518419ec28b",
+    "byte": 2315
+   },
+   "input": {
+    "sha256": "41d4e07c1769186068bfa641385280c8539ec4e97acd0e6b8ec6f29738073542",
+    "byte": 4459
+   },
+   "select": {
+    "sha256": "4ff80343141592d7703d69f85cde0ba9e0632aa5a2eb7d83b87c5ffff88a2c49",
+    "byte": 3523
+   },
+   "modal": {
+    "sha256": "c68a5df45f2f92e4b9a64730951a6ccd265af7ea8deac17c22a472b07b1d5acc",
+    "byte": 4669
+   },
+   "table": {
+    "sha256": "c784cea28f5835e69406ddf4ca6bf72da819d238298830b4fea2d12ddfc44a2e",
+    "byte": 4941
+   },
+   "page-header": {
+    "sha256": "0cb50bbd9e13ba59d135c7b3d993c47db1ca8820b2376c93170de0a08103fa7d",
+    "byte": 2223
+   },
+   "stat": {
+    "sha256": "318ce99d18e2063d7b77c89f726db630513a58a9f18f51ca9a251ff128f98a68",
+    "byte": 2056
+   }
+  },
+  "tesysTwCss": {
+   "sha256": "40555b01841e6ecb0d8479932f45146bb106b76b56b7ef99bad5423307ccb5dd",
+   "byte": 12004
+  }
+ },
+ "login": [
+  {
+   "akun": "dummy.staff",
+   "navigasi": true,
+   "urlSetelahLogin": "/",
+   "berhasil": true,
+   "galatLogin": null
+  },
+  {
+   "akun": "dummy.superadmin",
+   "navigasi": true,
+   "urlSetelahLogin": "/",
+   "berhasil": true,
+   "galatLogin": null
+  },
+  {
+   "akun": "dummy.maker",
+   "navigasi": true,
+   "urlSetelahLogin": "/",
+   "berhasil": true,
+   "galatLogin": null
+  }
+ ],
+ "halaman": [
+  {
+   "id": "show-superadmin",
+   "tema": "terang",
+   "viewport": "1440x900",
+   "httpDokumen": 200,
+   "title": "Detail Submission | TESYS",
+   "url": "/feedback/22",
+   "temaAttr": "light",
+   "lang": "id",
+   "zoomHtml": "0.8",
+   "scrollWidth": 1440,
+   "clientWidth": 1440,
+   "bodyScrollWidth": 1800,
+   "innerWidth": 1440,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 1,
+    "di44": 0,
+    "kurangDari44": 1,
+    "contoh": [
+     {
+      "el": "a.tw:inline-flex",
+      "w": 30,
+      "h": 24
+     }
+    ]
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [
+    "alert alert-light border feedback-disclaimer py-2 :: Rahasia & Tidak Memengaruhi Karir Anda. Modul ini adalah kanal resmi bagi seluruh karyawan untuk menyampaikan kritik, saran, ide, concern, atau masukan langsung"
+   ],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "6cba42ff0072a3d8a720395bb16d63abce32d059d0e82b60ab53fbf231931c6c",
+   "jumlahElemenDigest": 68,
+   "digestKunci": "8f9327fd337bc8a096bb767b7477afed2a3d86ebc6f8ecd4ecde4e2a9106f95e",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 68,
+    "elemenBerkelasTw": 14,
+    "elemenBerStyleAttr": 16,
+    "kelasLegacyUnik": 31,
+    "kelasTwUnik": 45,
+    "legacyTeratas": [
+     [
+      "mb-3",
+      5
+     ],
+     [
+      "fas",
+      5
+     ],
+     [
+      "text-muted",
+      5
+     ],
+     [
+      "mr-1",
+      4
+     ],
+     [
+      "d-flex",
+      2
+     ],
+     [
+      "align-items-center",
+      2
+     ],
+     [
+      "font-weight-600",
+      2
+     ],
+     [
+      "mb-1",
+      2
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "justify-content-between",
+      1
+     ],
+     [
+      "mt-3",
+      1
+     ],
+     [
+      "flex-wrap",
+      1
+     ],
+     [
+      "mr-3",
+      1
+     ],
+     [
+      "fa-arrow-left",
+      1
+     ],
+     [
+      "alert",
+      1
+     ],
+     [
+      "alert-light",
+      1
+     ],
+     [
+      "border",
+      1
+     ],
+     [
+      "feedback-disclaimer",
+      1
+     ],
+     [
+      "py-2",
+      1
+     ],
+     [
+      "fa-lock",
+      1
+     ],
+     [
+      "row",
+      1
+     ],
+     [
+      "col-md-7",
+      1
+     ],
+     [
+      "fa-comment-dots",
+      1
+     ],
+     [
+      "fa-reply",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:border",
+      8
+     ],
+     [
+      "tw:border-border",
+      7
+     ],
+     [
+      "tw:text-text",
+      6
+     ],
+     [
+      "tw:inline-flex",
+      5
+     ],
+     [
+      "tw:items-center",
+      5
+     ],
+     [
+      "tw:whitespace-nowrap",
+      5
+     ],
+     [
+      "tw:rounded-pill",
+      4
+     ],
+     [
+      "tw:font-heading",
+      4
+     ],
+     [
+      "tw:leading-none",
+      4
+     ],
+     [
+      "tw:border-transparent",
+      4
+     ],
+     [
+      "tw:px-2",
+      4
+     ],
+     [
+      "tw:py-1",
+      4
+     ],
+     [
+      "tw:text-caption",
+      4
+     ],
+     [
+      "tw:bg-surface",
+      3
+     ],
+     [
+      "tw:rounded-md",
+      3
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 1,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 1,
+     ".breadcrumb": 0,
+     ".d-flex": 2,
+     ".text-muted": 5,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 14
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(255, 255, 255)",
+     "tw:border-border": "rgb(230, 225, 224)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 22
+   },
+   "konflikTw": {
+    "aturanTw": 167,
+    "pasanganAturanElemen": 180,
+    "propertiDicek": 388,
+    "selisih": [
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 6,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 6,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 6,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.03) 0px 1px 2px 0px",
+      "jumlah": 3,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 3,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 3,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 3,
+      "tataLetak": false,
+      "contoh": "div"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "show-superadmin",
+   "tema": "terang",
+   "viewport": "390x844",
+   "httpDokumen": 200,
+   "title": "Detail Submission | TESYS",
+   "url": "/feedback/22",
+   "temaAttr": "light",
+   "lang": "id",
+   "zoomHtml": "1",
+   "scrollWidth": 390,
+   "clientWidth": 390,
+   "bodyScrollWidth": 390,
+   "innerWidth": 390,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 1,
+    "di44": 1,
+    "kurangDari44": 0,
+    "contoh": []
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [
+    "alert alert-light border feedback-disclaimer py-2 :: Rahasia & Tidak Memengaruhi Karir Anda. Modul ini adalah kanal resmi bagi seluruh karyawan untuk menyampaikan kritik, saran, ide, concern, atau masukan langsung"
+   ],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "866f3ae57ba49c25ff3f434de45131327132c89114d89ffd0917d30d2e2d2ac8",
+   "jumlahElemenDigest": 68,
+   "digestKunci": "10f3a07477f5fb14085d8b0d57ef21b5fc41bb8e29604901323f11bac05d3573",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 68,
+    "elemenBerkelasTw": 14,
+    "elemenBerStyleAttr": 16,
+    "kelasLegacyUnik": 31,
+    "kelasTwUnik": 45,
+    "legacyTeratas": [
+     [
+      "mb-3",
+      5
+     ],
+     [
+      "fas",
+      5
+     ],
+     [
+      "text-muted",
+      5
+     ],
+     [
+      "mr-1",
+      4
+     ],
+     [
+      "d-flex",
+      2
+     ],
+     [
+      "align-items-center",
+      2
+     ],
+     [
+      "font-weight-600",
+      2
+     ],
+     [
+      "mb-1",
+      2
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "justify-content-between",
+      1
+     ],
+     [
+      "mt-3",
+      1
+     ],
+     [
+      "flex-wrap",
+      1
+     ],
+     [
+      "mr-3",
+      1
+     ],
+     [
+      "fa-arrow-left",
+      1
+     ],
+     [
+      "alert",
+      1
+     ],
+     [
+      "alert-light",
+      1
+     ],
+     [
+      "border",
+      1
+     ],
+     [
+      "feedback-disclaimer",
+      1
+     ],
+     [
+      "py-2",
+      1
+     ],
+     [
+      "fa-lock",
+      1
+     ],
+     [
+      "row",
+      1
+     ],
+     [
+      "col-md-7",
+      1
+     ],
+     [
+      "fa-comment-dots",
+      1
+     ],
+     [
+      "fa-reply",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:border",
+      8
+     ],
+     [
+      "tw:border-border",
+      7
+     ],
+     [
+      "tw:text-text",
+      6
+     ],
+     [
+      "tw:inline-flex",
+      5
+     ],
+     [
+      "tw:items-center",
+      5
+     ],
+     [
+      "tw:whitespace-nowrap",
+      5
+     ],
+     [
+      "tw:rounded-pill",
+      4
+     ],
+     [
+      "tw:font-heading",
+      4
+     ],
+     [
+      "tw:leading-none",
+      4
+     ],
+     [
+      "tw:border-transparent",
+      4
+     ],
+     [
+      "tw:px-2",
+      4
+     ],
+     [
+      "tw:py-1",
+      4
+     ],
+     [
+      "tw:text-caption",
+      4
+     ],
+     [
+      "tw:bg-surface",
+      3
+     ],
+     [
+      "tw:rounded-md",
+      3
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 1,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 1,
+     ".breadcrumb": 0,
+     ".d-flex": 2,
+     ".text-muted": 5,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 14
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(255, 255, 255)",
+     "tw:border-border": "rgb(230, 225, 224)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 22
+   },
+   "konflikTw": {
+    "aturanTw": 144,
+    "pasanganAturanElemen": 182,
+    "propertiDicek": 390,
+    "selisih": [
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 6,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 6,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 6,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.03) 0px 1px 2px 0px",
+      "jumlah": 3,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 3,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 3,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 3,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:min-h-ctl-sm | min-height",
+      "harap": "30px",
+      "nyata": "48px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "a"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "inbox",
+   "tema": "terang",
+   "viewport": "1440x900",
+   "httpDokumen": 200,
+   "title": "Feedback Inbox | TESYS",
+   "url": "/feedback-inbox",
+   "temaAttr": "light",
+   "lang": "id",
+   "zoomHtml": "0.8",
+   "scrollWidth": 1440,
+   "clientWidth": 1440,
+   "bodyScrollWidth": 1800,
+   "innerWidth": 1440,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 16,
+    "di44": 0,
+    "kurangDari44": 16,
+    "contoh": [
+     {
+      "el": "a.btn",
+      "w": 24,
+      "h": 24
+     },
+     {
+      "el": "a.btn",
+      "w": 24,
+      "h": 24
+     },
+     {
+      "el": "a.btn",
+      "w": 24,
+      "h": 24
+     },
+     {
+      "el": "a.btn",
+      "w": 24,
+      "h": 24
+     },
+     {
+      "el": "a.btn",
+      "w": 24,
+      "h": 24
+     },
+     {
+      "el": "a.btn",
+      "w": 24,
+      "h": 24
+     },
+     {
+      "el": "a.btn",
+      "w": 24,
+      "h": 24
+     },
+     {
+      "el": "a.btn",
+      "w": 24,
+      "h": 24
+     }
+    ]
+   },
+   "badge": [],
+   "dataTables": true,
+   "teksAlert": [
+    "alert alert-warning :: Halaman ini bersifat rahasia — hanya dapat diakses oleh pihak berwenang. Gunakan data ini semata untuk perbaikan komunikasi & organisasi, bukan sebagai bahan pe"
+   ],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "f637887eddad6d5219bce45620e79043259b1483eef7553a52698e60219c73b9",
+   "jumlahElemenDigest": 204,
+   "digestKunci": "f076a264b01e5f81636a6b801762df91cfc43855080314c475f011379c16ae90",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 204,
+    "elemenBerkelasTw": 30,
+    "elemenBerStyleAttr": 7,
+    "kelasLegacyUnik": 83,
+    "kelasTwUnik": 20,
+    "legacyTeratas": [
+     [
+      "fas",
+      16
+     ],
+     [
+      "fa-eye",
+      11
+     ],
+     [
+      "text-center",
+      11
+     ],
+     [
+      "dtr-control",
+      10
+     ],
+     [
+      "ts-card-title",
+      10
+     ],
+     [
+      "ts-card-status",
+      10
+     ],
+     [
+      "sorting_1",
+      10
+     ],
+     [
+      "ts-card-actions",
+      10
+     ],
+     [
+      "btn",
+      10
+     ],
+     [
+      "btn-info",
+      10
+     ],
+     [
+      "btn-sm",
+      10
+     ],
+     [
+      "ts-icon-only",
+      10
+     ],
+     [
+      "sorting",
+      7
+     ],
+     [
+      "ts-kpi",
+      5
+     ],
+     [
+      "ts-kpi-ic",
+      5
+     ],
+     [
+      "ts-kpi-text",
+      5
+     ],
+     [
+      "ts-kpi-label",
+      5
+     ],
+     [
+      "ts-kpi-value",
+      5
+     ],
+     [
+      "odd",
+      5
+     ],
+     [
+      "even",
+      5
+     ],
+     [
+      "paginate_button",
+      5
+     ],
+     [
+      "page-item",
+      5
+     ],
+     [
+      "page-link",
+      5
+     ],
+     [
+      "mt-3",
+      3
+     ],
+     [
+      "d-flex",
+      2
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:inline-flex",
+      30
+     ],
+     [
+      "tw:items-center",
+      30
+     ],
+     [
+      "tw:border",
+      30
+     ],
+     [
+      "tw:rounded-pill",
+      30
+     ],
+     [
+      "tw:font-heading",
+      30
+     ],
+     [
+      "tw:leading-none",
+      30
+     ],
+     [
+      "tw:whitespace-nowrap",
+      30
+     ],
+     [
+      "tw:px-2",
+      30
+     ],
+     [
+      "tw:py-1",
+      30
+     ],
+     [
+      "tw:text-caption",
+      30
+     ],
+     [
+      "tw:border-transparent",
+      24
+     ],
+     [
+      "tw:bg-success-bg",
+      14
+     ],
+     [
+      "tw:text-success",
+      14
+     ],
+     [
+      "tw:bg-surface-2",
+      6
+     ],
+     [
+      "tw:text-text-dim",
+      6
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 1,
+     ".card-header": 0,
+     ".table": 1,
+     ".btn": 10,
+     ".badge": 0,
+     ".alert": 1,
+     ".breadcrumb": 0,
+     ".d-flex": 2,
+     ".text-muted": 1,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 1,
+     "[class*=\"tw:\"]": 30
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "inline-flex",
+     "tw:rounded-md": "tidak-ada-elemen",
+     "tw:bg-surface": "tidak-ada-elemen",
+     "tw:border-border": "rgb(230, 225, 224)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 22
+   },
+   "konflikTw": {
+    "aturanTw": 167,
+    "pasanganAturanElemen": 595,
+    "propertiDicek": 1230,
+    "selisih": []
+   },
+   "foto": null
+  },
+  {
+   "id": "inbox",
+   "tema": "terang",
+   "viewport": "390x844",
+   "httpDokumen": 200,
+   "title": "Feedback Inbox | TESYS",
+   "url": "/feedback-inbox",
+   "temaAttr": "light",
+   "lang": "id",
+   "zoomHtml": "1",
+   "scrollWidth": 390,
+   "clientWidth": 390,
+   "bodyScrollWidth": 390,
+   "innerWidth": 390,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 16,
+    "di44": 0,
+    "kurangDari44": 16,
+    "contoh": [
+     {
+      "el": "a.btn",
+      "w": 30,
+      "h": 36
+     },
+     {
+      "el": "a.btn",
+      "w": 30,
+      "h": 36
+     },
+     {
+      "el": "a.btn",
+      "w": 30,
+      "h": 36
+     },
+     {
+      "el": "a.btn",
+      "w": 30,
+      "h": 36
+     },
+     {
+      "el": "a.btn",
+      "w": 30,
+      "h": 36
+     },
+     {
+      "el": "a.btn",
+      "w": 30,
+      "h": 36
+     },
+     {
+      "el": "a.btn",
+      "w": 30,
+      "h": 36
+     },
+     {
+      "el": "a.btn",
+      "w": 30,
+      "h": 36
+     }
+    ]
+   },
+   "badge": [],
+   "dataTables": true,
+   "teksAlert": [
+    "alert alert-warning :: Halaman ini bersifat rahasia — hanya dapat diakses oleh pihak berwenang. Gunakan data ini semata untuk perbaikan komunikasi & organisasi, bukan sebagai bahan pe"
+   ],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "9e47f2c8a3e4b5be817741f15ce8e9e06f315385949f0547b676ec88462e697b",
+   "jumlahElemenDigest": 199,
+   "digestKunci": "656f3efdbf041955cb1d7e0100d4e64ec2f7bf4908472229585375df3e215a97",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 199,
+    "elemenBerkelasTw": 30,
+    "elemenBerStyleAttr": 53,
+    "kelasLegacyUnik": 83,
+    "kelasTwUnik": 20,
+    "legacyTeratas": [
+     [
+      "fas",
+      16
+     ],
+     [
+      "fa-eye",
+      11
+     ],
+     [
+      "dtr-control",
+      10
+     ],
+     [
+      "ts-card-title",
+      10
+     ],
+     [
+      "ts-card-status",
+      10
+     ],
+     [
+      "sorting_1",
+      10
+     ],
+     [
+      "text-center",
+      10
+     ],
+     [
+      "ts-card-actions",
+      10
+     ],
+     [
+      "btn",
+      10
+     ],
+     [
+      "btn-info",
+      10
+     ],
+     [
+      "btn-sm",
+      10
+     ],
+     [
+      "ts-icon-only",
+      10
+     ],
+     [
+      "ts-kpi",
+      5
+     ],
+     [
+      "ts-kpi-ic",
+      5
+     ],
+     [
+      "ts-kpi-text",
+      5
+     ],
+     [
+      "ts-kpi-label",
+      5
+     ],
+     [
+      "ts-kpi-value",
+      5
+     ],
+     [
+      "odd",
+      5
+     ],
+     [
+      "even",
+      5
+     ],
+     [
+      "paginate_button",
+      5
+     ],
+     [
+      "page-item",
+      5
+     ],
+     [
+      "page-link",
+      5
+     ],
+     [
+      "mt-3",
+      3
+     ],
+     [
+      "d-flex",
+      2
+     ],
+     [
+      "align-items-center",
+      2
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:inline-flex",
+      30
+     ],
+     [
+      "tw:items-center",
+      30
+     ],
+     [
+      "tw:border",
+      30
+     ],
+     [
+      "tw:rounded-pill",
+      30
+     ],
+     [
+      "tw:font-heading",
+      30
+     ],
+     [
+      "tw:leading-none",
+      30
+     ],
+     [
+      "tw:whitespace-nowrap",
+      30
+     ],
+     [
+      "tw:px-2",
+      30
+     ],
+     [
+      "tw:py-1",
+      30
+     ],
+     [
+      "tw:text-caption",
+      30
+     ],
+     [
+      "tw:border-transparent",
+      24
+     ],
+     [
+      "tw:bg-success-bg",
+      14
+     ],
+     [
+      "tw:text-success",
+      14
+     ],
+     [
+      "tw:bg-surface-2",
+      6
+     ],
+     [
+      "tw:text-text-dim",
+      6
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 1,
+     ".card-header": 0,
+     ".table": 1,
+     ".btn": 10,
+     ".badge": 0,
+     ".alert": 1,
+     ".breadcrumb": 0,
+     ".d-flex": 2,
+     ".text-muted": 1,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 1,
+     "[class*=\"tw:\"]": 30
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "tidak-ada-elemen",
+     "tw:bg-surface": "tidak-ada-elemen",
+     "tw:border-border": "rgb(230, 225, 224)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 22
+   },
+   "konflikTw": {
+    "aturanTw": 144,
+    "pasanganAturanElemen": 590,
+    "propertiDicek": 1230,
+    "selisih": []
+   },
+   "foto": null
+  },
+  {
+   "id": "index-kosong",
+   "tema": "terang",
+   "viewport": "1440x900",
+   "httpDokumen": 200,
+   "title": "General Feedback | TESYS",
+   "url": "/feedback",
+   "temaAttr": "light",
+   "lang": "id",
+   "zoomHtml": "0.8",
+   "scrollWidth": 1440,
+   "clientWidth": 1440,
+   "bodyScrollWidth": 1800,
+   "innerWidth": 1440,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 2,
+    "di44": 0,
+    "kurangDari44": 2,
+    "contoh": [
+     {
+      "el": "a.tw:inline-flex",
+      "w": 126,
+      "h": 27
+     },
+     {
+      "el": "a.tw:inline-flex",
+      "w": 116,
+      "h": 24
+     }
+    ]
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "1b8066ead7dfdc43f53f37aba11de856100b48812c8b4d9d9df231e9a72306bb",
+   "jumlahElemenDigest": 50,
+   "digestKunci": "3aacc9eecf42c38f7713589635daa8782817bf725c5d079c16f45bf24fb67c2a",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 50,
+    "elemenBerkelasTw": 42,
+    "elemenBerStyleAttr": 0,
+    "kelasLegacyUnik": 5,
+    "kelasTwUnik": 83,
+    "legacyTeratas": [
+     [
+      "fas",
+      3
+     ],
+     [
+      "fa-plus",
+      2
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "fa-comment-slash",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:text-text-dim",
+      13
+     ],
+     [
+      "tw:mt-1",
+      11
+     ],
+     [
+      "tw:items-center",
+      11
+     ],
+     [
+      "tw:flex",
+      10
+     ],
+     [
+      "tw:text-caption",
+      10
+     ],
+     [
+      "tw:border-border",
+      9
+     ],
+     [
+      "tw:min-w-0",
+      9
+     ],
+     [
+      "tw:border",
+      9
+     ],
+     [
+      "tw:text-text",
+      8
+     ],
+     [
+      "tw:gap-2",
+      8
+     ],
+     [
+      "tw:font-label",
+      7
+     ],
+     [
+      "tw:leading-tight",
+      7
+     ],
+     [
+      "tw:font-heading",
+      6
+     ],
+     [
+      "tw:rounded-md",
+      6
+     ],
+     [
+      "tw:uppercase",
+      5
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 0,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 0,
+     ".breadcrumb": 0,
+     ".d-flex": 0,
+     ".text-muted": 0,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 42
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(255, 255, 255)",
+     "tw:border-border": "rgb(230, 225, 224)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 22
+   },
+   "konflikTw": {
+    "aturanTw": 167,
+    "pasanganAturanElemen": 294,
+    "propertiDicek": 566,
+    "selisih": [
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:h-2 | height",
+      "harap": "8px",
+      "nyata": "7.98828px",
+      "jumlah": 4,
+      "tataLetak": true,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:w-2 | width",
+      "harap": "8px",
+      "nyata": "7.98828px",
+      "jumlah": 4,
+      "tataLetak": true,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-accent | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(146, 35, 43, 0.14) 0px 1px 2px 0px",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-start",
+      "harap": "auto",
+      "nyata": "144.512px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-end",
+      "harap": "auto",
+      "nyata": "144.512px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:grid-cols-2 | grid-template-columns",
+      "harap": "repeat(2, minmax(0px, 1fr))",
+      "nyata": "290.996px 291.016px 290.996px 291.016px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:lg:grid-cols-4 | grid-template-columns",
+      "harap": "repeat(4, minmax(0px, 1fr))",
+      "nyata": "290.996px 291.016px 290.996px 291.016px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.03) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:h-12 | height",
+      "harap": "48px",
+      "nyata": "47.9883px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:w-12 | width",
+      "harap": "48px",
+      "nyata": "47.9883px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "index-kosong",
+   "tema": "terang",
+   "viewport": "390x844",
+   "httpDokumen": 200,
+   "title": "General Feedback | TESYS",
+   "url": "/feedback",
+   "temaAttr": "light",
+   "lang": "id",
+   "zoomHtml": "1",
+   "scrollWidth": 390,
+   "clientWidth": 390,
+   "bodyScrollWidth": 390,
+   "innerWidth": 390,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 2,
+    "di44": 2,
+    "kurangDari44": 0,
+    "contoh": []
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "ea5b5a8736b3696a6dc7333d713b29f6259e047b1009d83fc1904a7455ad8077",
+   "jumlahElemenDigest": 50,
+   "digestKunci": "8de2aebd2a76b5f15054d95fce312eec923aade1366d056b8c9107550e30f53c",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 50,
+    "elemenBerkelasTw": 42,
+    "elemenBerStyleAttr": 0,
+    "kelasLegacyUnik": 5,
+    "kelasTwUnik": 83,
+    "legacyTeratas": [
+     [
+      "fas",
+      3
+     ],
+     [
+      "fa-plus",
+      2
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "fa-comment-slash",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:text-text-dim",
+      13
+     ],
+     [
+      "tw:mt-1",
+      11
+     ],
+     [
+      "tw:items-center",
+      11
+     ],
+     [
+      "tw:flex",
+      10
+     ],
+     [
+      "tw:text-caption",
+      10
+     ],
+     [
+      "tw:border-border",
+      9
+     ],
+     [
+      "tw:min-w-0",
+      9
+     ],
+     [
+      "tw:border",
+      9
+     ],
+     [
+      "tw:text-text",
+      8
+     ],
+     [
+      "tw:gap-2",
+      8
+     ],
+     [
+      "tw:font-label",
+      7
+     ],
+     [
+      "tw:leading-tight",
+      7
+     ],
+     [
+      "tw:font-heading",
+      6
+     ],
+     [
+      "tw:rounded-md",
+      6
+     ],
+     [
+      "tw:uppercase",
+      5
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 0,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 0,
+     ".breadcrumb": 0,
+     ".d-flex": 0,
+     ".text-muted": 0,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 42
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(255, 255, 255)",
+     "tw:border-border": "rgb(230, 225, 224)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 22
+   },
+   "konflikTw": {
+    "aturanTw": 144,
+    "pasanganAturanElemen": 296,
+    "propertiDicek": 568,
+    "selisih": [
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-accent | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(146, 35, 43, 0.14) 0px 1px 2px 0px",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-start",
+      "harap": "auto",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-end",
+      "harap": "auto",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:flex-1 | flex-basis",
+      "harap": "0%",
+      "nyata": "100%",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:min-h-ctl | min-height",
+      "harap": "34px",
+      "nyata": "48px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:grid-cols-2 | grid-template-columns",
+      "harap": "repeat(2, minmax(0px, 1fr))",
+      "nyata": "169.5px 169.5px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.03) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:min-h-ctl-sm | min-height",
+      "harap": "30px",
+      "nyata": "48px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "a"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "index-kosong",
+   "tema": "gelap",
+   "viewport": "1440x900",
+   "httpDokumen": 200,
+   "title": "General Feedback | TESYS",
+   "url": "/feedback",
+   "temaAttr": "dark",
+   "lang": "id",
+   "zoomHtml": "0.8",
+   "scrollWidth": 1440,
+   "clientWidth": 1440,
+   "bodyScrollWidth": 1800,
+   "innerWidth": 1440,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 2,
+    "di44": 0,
+    "kurangDari44": 2,
+    "contoh": [
+     {
+      "el": "a.tw:inline-flex",
+      "w": 126,
+      "h": 27
+     },
+     {
+      "el": "a.tw:inline-flex",
+      "w": 116,
+      "h": 24
+     }
+    ]
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "ee8d83f0ca11e0ef826539e2b47599327df23b77aae643dc0e643479cf7c493d",
+   "jumlahElemenDigest": 50,
+   "digestKunci": "22b967cb8b7cf71e397c83b466c60521b1633d438366a7bc6a03b5444b610d5e",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 50,
+    "elemenBerkelasTw": 42,
+    "elemenBerStyleAttr": 0,
+    "kelasLegacyUnik": 5,
+    "kelasTwUnik": 83,
+    "legacyTeratas": [
+     [
+      "fas",
+      3
+     ],
+     [
+      "fa-plus",
+      2
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "fa-comment-slash",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:text-text-dim",
+      13
+     ],
+     [
+      "tw:mt-1",
+      11
+     ],
+     [
+      "tw:items-center",
+      11
+     ],
+     [
+      "tw:flex",
+      10
+     ],
+     [
+      "tw:text-caption",
+      10
+     ],
+     [
+      "tw:border-border",
+      9
+     ],
+     [
+      "tw:min-w-0",
+      9
+     ],
+     [
+      "tw:border",
+      9
+     ],
+     [
+      "tw:text-text",
+      8
+     ],
+     [
+      "tw:gap-2",
+      8
+     ],
+     [
+      "tw:font-label",
+      7
+     ],
+     [
+      "tw:leading-tight",
+      7
+     ],
+     [
+      "tw:font-heading",
+      6
+     ],
+     [
+      "tw:rounded-md",
+      6
+     ],
+     [
+      "tw:uppercase",
+      5
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 0,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 0,
+     ".breadcrumb": 0,
+     ".d-flex": 0,
+     ".text-muted": 0,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 42
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(26, 26, 30)",
+     "tw:border-border": "rgb(46, 46, 53)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 22
+   },
+   "konflikTw": {
+    "aturanTw": 167,
+    "pasanganAturanElemen": 294,
+    "propertiDicek": 566,
+    "selisih": [
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:h-2 | height",
+      "harap": "8px",
+      "nyata": "7.98828px",
+      "jumlah": 4,
+      "tataLetak": true,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:w-2 | width",
+      "harap": "8px",
+      "nyata": "7.98828px",
+      "jumlah": 4,
+      "tataLetak": true,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-accent | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.4) 0px 1px 2px 0px",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-start",
+      "harap": "auto",
+      "nyata": "144.512px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-end",
+      "harap": "auto",
+      "nyata": "144.512px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:grid-cols-2 | grid-template-columns",
+      "harap": "repeat(2, minmax(0px, 1fr))",
+      "nyata": "290.996px 291.016px 290.996px 291.016px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:lg:grid-cols-4 | grid-template-columns",
+      "harap": "repeat(4, minmax(0px, 1fr))",
+      "nyata": "290.996px 291.016px 290.996px 291.016px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.34) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:h-12 | height",
+      "harap": "48px",
+      "nyata": "47.9883px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:w-12 | width",
+      "harap": "48px",
+      "nyata": "47.9883px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "index-kosong",
+   "tema": "gelap",
+   "viewport": "390x844",
+   "httpDokumen": 200,
+   "title": "General Feedback | TESYS",
+   "url": "/feedback",
+   "temaAttr": "dark",
+   "lang": "id",
+   "zoomHtml": "1",
+   "scrollWidth": 390,
+   "clientWidth": 390,
+   "bodyScrollWidth": 390,
+   "innerWidth": 390,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 2,
+    "di44": 2,
+    "kurangDari44": 0,
+    "contoh": []
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "f1d3fb441f9d70c97087164837a6227f147888b7a208a4966336897d1e5ce56d",
+   "jumlahElemenDigest": 50,
+   "digestKunci": "843669d5abacab3d3ad8704196463795b74f83240a378f78a572391c6ee7f77d",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 50,
+    "elemenBerkelasTw": 42,
+    "elemenBerStyleAttr": 0,
+    "kelasLegacyUnik": 5,
+    "kelasTwUnik": 83,
+    "legacyTeratas": [
+     [
+      "fas",
+      3
+     ],
+     [
+      "fa-plus",
+      2
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "fa-comment-slash",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:text-text-dim",
+      13
+     ],
+     [
+      "tw:mt-1",
+      11
+     ],
+     [
+      "tw:items-center",
+      11
+     ],
+     [
+      "tw:flex",
+      10
+     ],
+     [
+      "tw:text-caption",
+      10
+     ],
+     [
+      "tw:border-border",
+      9
+     ],
+     [
+      "tw:min-w-0",
+      9
+     ],
+     [
+      "tw:border",
+      9
+     ],
+     [
+      "tw:text-text",
+      8
+     ],
+     [
+      "tw:gap-2",
+      8
+     ],
+     [
+      "tw:font-label",
+      7
+     ],
+     [
+      "tw:leading-tight",
+      7
+     ],
+     [
+      "tw:font-heading",
+      6
+     ],
+     [
+      "tw:rounded-md",
+      6
+     ],
+     [
+      "tw:uppercase",
+      5
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 0,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 0,
+     ".breadcrumb": 0,
+     ".d-flex": 0,
+     ".text-muted": 0,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 42
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(26, 26, 30)",
+     "tw:border-border": "rgb(46, 46, 53)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 22
+   },
+   "konflikTw": {
+    "aturanTw": 144,
+    "pasanganAturanElemen": 296,
+    "propertiDicek": 568,
+    "selisih": [
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-accent | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.4) 0px 1px 2px 0px",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-start",
+      "harap": "auto",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-end",
+      "harap": "auto",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:flex-1 | flex-basis",
+      "harap": "0%",
+      "nyata": "100%",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:min-h-ctl | min-height",
+      "harap": "34px",
+      "nyata": "48px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:grid-cols-2 | grid-template-columns",
+      "harap": "repeat(2, minmax(0px, 1fr))",
+      "nyata": "169.5px 169.5px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.34) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:min-h-ctl-sm | min-height",
+      "harap": "30px",
+      "nyata": "48px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "a"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "index-terisi",
+   "tema": "terang",
+   "viewport": "1440x900",
+   "httpDokumen": 200,
+   "title": "General Feedback | TESYS",
+   "url": "/feedback",
+   "temaAttr": "light",
+   "lang": "id",
+   "zoomHtml": "0.8",
+   "scrollWidth": 1440,
+   "clientWidth": 1440,
+   "bodyScrollWidth": 1800,
+   "innerWidth": 1440,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 23,
+    "di44": 0,
+    "kurangDari44": 23,
+    "contoh": [
+     {
+      "el": "a.tw:inline-flex",
+      "w": 126,
+      "h": 27
+     },
+     {
+      "el": "a.tw:inline-flex",
+      "w": 62,
+      "h": 24
+     },
+     {
+      "el": "a.tw:inline-flex",
+      "w": 62,
+      "h": 24
+     },
+     {
+      "el": "a.tw:inline-flex",
+      "w": 62,
+      "h": 24
+     },
+     {
+      "el": "a.tw:inline-flex",
+      "w": 62,
+      "h": 24
+     },
+     {
+      "el": "a.tw:inline-flex",
+      "w": 62,
+      "h": 24
+     },
+     {
+      "el": "a.tw:inline-flex",
+      "w": 62,
+      "h": 24
+     },
+     {
+      "el": "a.tw:inline-flex",
+      "w": 62,
+      "h": 24
+     }
+    ]
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "2d58831dc424ef5b2ff85107faa4b7ab89fb15ed5f627970d794bd58ca1355ab",
+   "jumlahElemenDigest": 383,
+   "digestKunci": "b29cd49b9661f7d91bb8b392ead66f1f33a6ea56b6ed6bb50db85575624e3660",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 383,
+    "elemenBerkelasTw": 282,
+    "elemenBerStyleAttr": 0,
+    "kelasLegacyUnik": 10,
+    "kelasTwUnik": 109,
+    "legacyTeratas": [
+     [
+      "fas",
+      23
+     ],
+     [
+      "ts-card-title",
+      22
+     ],
+     [
+      "ts-card-status",
+      22
+     ],
+     [
+      "ts-card-actions",
+      22
+     ],
+     [
+      "fa-eye",
+      22
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "fa-plus",
+      1
+     ],
+     [
+      "table-responsive",
+      1
+     ],
+     [
+      "ts-card-table",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:rounded-pill",
+      115
+     ],
+     [
+      "tw:text-caption",
+      98
+     ],
+     [
+      "tw:items-center",
+      96
+     ],
+     [
+      "tw:border",
+      95
+     ],
+     [
+      "tw:whitespace-nowrap",
+      91
+     ],
+     [
+      "tw:inline-flex",
+      90
+     ],
+     [
+      "tw:border-transparent",
+      75
+     ],
+     [
+      "tw:gap-2",
+      73
+     ],
+     [
+      "tw:font-heading",
+      72
+     ],
+     [
+      "tw:leading-none",
+      67
+     ],
+     [
+      "tw:px-2",
+      67
+     ],
+     [
+      "tw:py-1",
+      67
+     ],
+     [
+      "tw:font-label",
+      50
+     ],
+     [
+      "tw:leading-tight",
+      50
+     ],
+     [
+      "tw:h-2",
+      48
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 0,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 0,
+     ".breadcrumb": 0,
+     ".d-flex": 0,
+     ".text-muted": 0,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 282
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(255, 255, 255)",
+     "tw:border-border": "rgb(230, 225, 224)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 22
+   },
+   "konflikTw": {
+    "aturanTw": 167,
+    "pasanganAturanElemen": 2667,
+    "propertiDicek": 5718,
+    "selisih": [
+     {
+      "aturan": ".tw:h-2 | height",
+      "harap": "8px",
+      "nyata": "7.98828px",
+      "jumlah": 48,
+      "tataLetak": true,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:w-2 | width",
+      "harap": "8px",
+      "nyata": "7.98828px",
+      "jumlah": 48,
+      "tataLetak": true,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 48,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 48,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 48,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 48,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:w-full | width",
+      "harap": "100%",
+      "nyata": "1197.5px",
+      "jumlah": 23,
+      "tataLetak": true,
+      "contoh": "table"
+     },
+     {
+      "aturan": ".tw:[&_th]:border-b th | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 10,
+      "tataLetak": false,
+      "contoh": "th"
+     },
+     {
+      "aturan": ".tw:[&_th]:border-b th | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 10,
+      "tataLetak": false,
+      "contoh": "th"
+     },
+     {
+      "aturan": ".tw:[&_th]:border-b th | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 10,
+      "tataLetak": false,
+      "contoh": "th"
+     },
+     {
+      "aturan": ".tw:min-sm:[&_th]:border-border-strong! th | border-top-style !important",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 5,
+      "tataLetak": false,
+      "contoh": "th"
+     },
+     {
+      "aturan": ".tw:min-sm:[&_th]:border-border-strong! th | border-right-style !important",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 5,
+      "tataLetak": false,
+      "contoh": "th"
+     },
+     {
+      "aturan": ".tw:min-sm:[&_th]:border-border-strong! th | border-left-style !important",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 5,
+      "tataLetak": false,
+      "contoh": "th"
+     },
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-start",
+      "harap": "auto",
+      "nyata": "138.262px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-end",
+      "harap": "auto",
+      "nyata": "138.262px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-accent | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(146, 35, 43, 0.14) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:grid-cols-2 | grid-template-columns",
+      "harap": "repeat(2, minmax(0px, 1fr))",
+      "nyata": "290.996px 291.016px 290.996px 291.016px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:lg:grid-cols-4 | grid-template-columns",
+      "harap": "repeat(4, minmax(0px, 1fr))",
+      "nyata": "290.996px 291.016px 290.996px 291.016px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.03) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-collapse | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "table"
+     },
+     {
+      "aturan": ".tw:border-collapse | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "table"
+     },
+     {
+      "aturan": ".tw:border-collapse | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "table"
+     },
+     {
+      "aturan": ".tw:border-collapse | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "table"
+     }
+    ]
+   },
+   "foto": null,
+   "hoverBaris": {
+    "trBg": "rgb(248, 246, 245)",
+    "tdBg": "rgba(0, 0, 0, 0)",
+    "trTransition": "background 0.12s",
+    "surface2": "rgb(248, 246, 245)"
+   },
+   "fokusTab": {
+    "tabKe": 10,
+    "ketemuLihatPertama": {
+     "tag": "a",
+     "href": "http://127.0.0.1:8099/feedback/22",
+     "lbl": "Lihat detail submission: Uji Firefox F3 sesudah Ta",
+     "fv": true,
+     "outline": "solid 1.25px rgb(130, 48, 54)",
+     "offset": "1.25px"
+    },
+    "urutan": [
+     {
+      "tag": "button",
+      "href": null,
+      "lbl": "",
+      "fv": true,
+      "outline": "none 2.5px rgb(255, 255, 255)",
+      "offset": "1.25px"
+     },
+     {
+      "tag": "a",
+      "href": "/",
+      "lbl": "Terex System",
+      "fv": true,
+      "outline": "solid 1.25px rgb(146, 35, 43)",
+      "offset": "1.25px"
+     },
+     {
+      "tag": "button",
+      "href": null,
+      "lbl": "Perkecil atau perbesar menu",
+      "fv": true,
+      "outline": "none 2.5px rgb(148, 140, 142)",
+      "offset": "1.25px"
+     },
+     {
+      "tag": "button",
+      "href": null,
+      "lbl": "Cari di seluruh TESYS",
+      "fv": true,
+      "outline": "none 2.5px rgb(148, 140, 142)",
+      "offset": "1.25px"
+     },
+     {
+      "tag": "a",
+      "href": "/",
+      "lbl": "Dashboard",
+      "fv": true,
+      "outline": "solid 1.25px rgb(210, 204, 206)",
+      "offset": "-1.25px"
+     },
+     {
+      "tag": "input",
+      "href": null,
+      "lbl": "",
+      "fv": true,
+      "outline": "none 2.5px rgb(210, 204, 206)",
+      "offset": "1.25px"
+     },
+     {
+      "tag": "button",
+      "href": null,
+      "lbl": "",
+      "fv": true,
+      "outline": "none 2.5px rgb(210, 204, 206)",
+      "offset": "1.25px"
+     },
+     {
+      "tag": "button",
+      "href": null,
+      "lbl": "DS",
+      "fv": true,
+      "outline": "none 2.5px rgb(210, 204, 206)",
+      "offset": "1.25px"
+     },
+     {
+      "tag": "a",
+      "href": "http://127.0.0.1:8099/feedback/create",
+      "lbl": "Buat Submission",
+      "fv": true,
+      "outline": "solid 1.25px rgb(159, 61, 68)",
+      "offset": "1.25px"
+     },
+     {
+      "tag": "a",
+      "href": "http://127.0.0.1:8099/feedback/22",
+      "lbl": "Lihat detail submission: Uji Firefox F3 sesudah Ta",
+      "fv": true,
+      "outline": "solid 1.25px rgb(130, 48, 54)",
+      "offset": "1.25px"
+     }
+    ]
+   }
+  },
+  {
+   "id": "index-terisi",
+   "tema": "terang",
+   "viewport": "390x844",
+   "httpDokumen": 200,
+   "title": "General Feedback | TESYS",
+   "url": "/feedback",
+   "temaAttr": "light",
+   "lang": "id",
+   "zoomHtml": "1",
+   "scrollWidth": 390,
+   "clientWidth": 390,
+   "bodyScrollWidth": 390,
+   "innerWidth": 390,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 23,
+    "di44": 23,
+    "kurangDari44": 0,
+    "contoh": []
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "7dd6f0877db0a2a4ed176fda0fcf5fb65d1be7252310bea1d3c6389459b5f671",
+   "jumlahElemenDigest": 383,
+   "digestKunci": "d0a587dfc7b4b7f14300e15ab468067c6b58286aa99d60b3ceea9c10050462ee",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 383,
+    "elemenBerkelasTw": 282,
+    "elemenBerStyleAttr": 0,
+    "kelasLegacyUnik": 10,
+    "kelasTwUnik": 109,
+    "legacyTeratas": [
+     [
+      "fas",
+      23
+     ],
+     [
+      "ts-card-title",
+      22
+     ],
+     [
+      "ts-card-status",
+      22
+     ],
+     [
+      "ts-card-actions",
+      22
+     ],
+     [
+      "fa-eye",
+      22
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "fa-plus",
+      1
+     ],
+     [
+      "table-responsive",
+      1
+     ],
+     [
+      "ts-card-table",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:rounded-pill",
+      115
+     ],
+     [
+      "tw:text-caption",
+      98
+     ],
+     [
+      "tw:items-center",
+      96
+     ],
+     [
+      "tw:border",
+      95
+     ],
+     [
+      "tw:whitespace-nowrap",
+      91
+     ],
+     [
+      "tw:inline-flex",
+      90
+     ],
+     [
+      "tw:border-transparent",
+      75
+     ],
+     [
+      "tw:gap-2",
+      73
+     ],
+     [
+      "tw:font-heading",
+      72
+     ],
+     [
+      "tw:leading-none",
+      67
+     ],
+     [
+      "tw:px-2",
+      67
+     ],
+     [
+      "tw:py-1",
+      67
+     ],
+     [
+      "tw:font-label",
+      50
+     ],
+     [
+      "tw:leading-tight",
+      50
+     ],
+     [
+      "tw:h-2",
+      48
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 0,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 0,
+     ".breadcrumb": 0,
+     ".d-flex": 0,
+     ".text-muted": 0,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 282
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(255, 255, 255)",
+     "tw:border-border": "rgb(230, 225, 224)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 22
+   },
+   "konflikTw": {
+    "aturanTw": 144,
+    "pasanganAturanElemen": 2544,
+    "propertiDicek": 5440,
+    "selisih": [
+     {
+      "aturan": ".tw:[&_td]:py-cell-y td | padding-block-start",
+      "harap": "9px",
+      "nyata": "6px",
+      "jumlah": 110,
+      "tataLetak": true,
+      "contoh": "td"
+     },
+     {
+      "aturan": ".tw:[&_td]:py-cell-y td | padding-block-end",
+      "harap": "9px",
+      "nyata": "6px",
+      "jumlah": 110,
+      "tataLetak": true,
+      "contoh": "td"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 48,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 48,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 48,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 48,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:w-full | width",
+      "harap": "100%",
+      "nyata": "349px",
+      "jumlah": 23,
+      "tataLetak": true,
+      "contoh": "table"
+     },
+     {
+      "aturan": ".tw:min-h-ctl-sm | min-height",
+      "harap": "30px",
+      "nyata": "48px",
+      "jumlah": 22,
+      "tataLetak": true,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:[&_th]:border-b th | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 10,
+      "tataLetak": false,
+      "contoh": "th"
+     },
+     {
+      "aturan": ".tw:[&_th]:border-b th | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 10,
+      "tataLetak": false,
+      "contoh": "th"
+     },
+     {
+      "aturan": ".tw:[&_th]:border-b th | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 10,
+      "tataLetak": false,
+      "contoh": "th"
+     },
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-start",
+      "harap": "auto",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-end",
+      "harap": "auto",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:flex-1 | flex-basis",
+      "harap": "0%",
+      "nyata": "100%",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:min-h-ctl | min-height",
+      "harap": "34px",
+      "nyata": "48px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:shadow-accent | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(146, 35, 43, 0.14) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:grid-cols-2 | grid-template-columns",
+      "harap": "repeat(2, minmax(0px, 1fr))",
+      "nyata": "169.5px 169.5px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.03) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-collapse | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "table"
+     },
+     {
+      "aturan": ".tw:border-collapse | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "table"
+     },
+     {
+      "aturan": ".tw:border-collapse | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "table"
+     },
+     {
+      "aturan": ".tw:border-collapse | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "table"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "index-terisi",
+   "tema": "gelap",
+   "viewport": "1440x900",
+   "httpDokumen": 200,
+   "title": "General Feedback | TESYS",
+   "url": "/feedback",
+   "temaAttr": "dark",
+   "lang": "id",
+   "zoomHtml": "0.8",
+   "scrollWidth": 1440,
+   "clientWidth": 1440,
+   "bodyScrollWidth": 1800,
+   "innerWidth": 1440,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 23,
+    "di44": 0,
+    "kurangDari44": 23,
+    "contoh": [
+     {
+      "el": "a.tw:inline-flex",
+      "w": 126,
+      "h": 27
+     },
+     {
+      "el": "a.tw:inline-flex",
+      "w": 62,
+      "h": 24
+     },
+     {
+      "el": "a.tw:inline-flex",
+      "w": 62,
+      "h": 24
+     },
+     {
+      "el": "a.tw:inline-flex",
+      "w": 62,
+      "h": 24
+     },
+     {
+      "el": "a.tw:inline-flex",
+      "w": 62,
+      "h": 24
+     },
+     {
+      "el": "a.tw:inline-flex",
+      "w": 62,
+      "h": 24
+     },
+     {
+      "el": "a.tw:inline-flex",
+      "w": 62,
+      "h": 24
+     },
+     {
+      "el": "a.tw:inline-flex",
+      "w": 62,
+      "h": 24
+     }
+    ]
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "a9b8a5cdd55d0a89823fdb5b6473c83d8afb93ae33d5e95de908394572c05287",
+   "jumlahElemenDigest": 383,
+   "digestKunci": "eee720cf8d3b66495db48cdc76e839e9e6353a23a588eb96ade49fef731a587e",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 383,
+    "elemenBerkelasTw": 282,
+    "elemenBerStyleAttr": 0,
+    "kelasLegacyUnik": 10,
+    "kelasTwUnik": 109,
+    "legacyTeratas": [
+     [
+      "fas",
+      23
+     ],
+     [
+      "ts-card-title",
+      22
+     ],
+     [
+      "ts-card-status",
+      22
+     ],
+     [
+      "ts-card-actions",
+      22
+     ],
+     [
+      "fa-eye",
+      22
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "fa-plus",
+      1
+     ],
+     [
+      "table-responsive",
+      1
+     ],
+     [
+      "ts-card-table",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:rounded-pill",
+      115
+     ],
+     [
+      "tw:text-caption",
+      98
+     ],
+     [
+      "tw:items-center",
+      96
+     ],
+     [
+      "tw:border",
+      95
+     ],
+     [
+      "tw:whitespace-nowrap",
+      91
+     ],
+     [
+      "tw:inline-flex",
+      90
+     ],
+     [
+      "tw:border-transparent",
+      75
+     ],
+     [
+      "tw:gap-2",
+      73
+     ],
+     [
+      "tw:font-heading",
+      72
+     ],
+     [
+      "tw:leading-none",
+      67
+     ],
+     [
+      "tw:px-2",
+      67
+     ],
+     [
+      "tw:py-1",
+      67
+     ],
+     [
+      "tw:font-label",
+      50
+     ],
+     [
+      "tw:leading-tight",
+      50
+     ],
+     [
+      "tw:h-2",
+      48
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 0,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 0,
+     ".breadcrumb": 0,
+     ".d-flex": 0,
+     ".text-muted": 0,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 282
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(26, 26, 30)",
+     "tw:border-border": "rgb(46, 46, 53)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 22
+   },
+   "konflikTw": {
+    "aturanTw": 167,
+    "pasanganAturanElemen": 2667,
+    "propertiDicek": 5718,
+    "selisih": [
+     {
+      "aturan": ".tw:h-2 | height",
+      "harap": "8px",
+      "nyata": "7.98828px",
+      "jumlah": 48,
+      "tataLetak": true,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:w-2 | width",
+      "harap": "8px",
+      "nyata": "7.98828px",
+      "jumlah": 48,
+      "tataLetak": true,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 48,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 48,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 48,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 48,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:w-full | width",
+      "harap": "100%",
+      "nyata": "1197.5px",
+      "jumlah": 23,
+      "tataLetak": true,
+      "contoh": "table"
+     },
+     {
+      "aturan": ".tw:[&_th]:border-b th | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 10,
+      "tataLetak": false,
+      "contoh": "th"
+     },
+     {
+      "aturan": ".tw:[&_th]:border-b th | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 10,
+      "tataLetak": false,
+      "contoh": "th"
+     },
+     {
+      "aturan": ".tw:[&_th]:border-b th | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 10,
+      "tataLetak": false,
+      "contoh": "th"
+     },
+     {
+      "aturan": ".tw:min-sm:[&_th]:border-border-strong! th | border-top-style !important",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 5,
+      "tataLetak": false,
+      "contoh": "th"
+     },
+     {
+      "aturan": ".tw:min-sm:[&_th]:border-border-strong! th | border-right-style !important",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 5,
+      "tataLetak": false,
+      "contoh": "th"
+     },
+     {
+      "aturan": ".tw:min-sm:[&_th]:border-border-strong! th | border-left-style !important",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 5,
+      "tataLetak": false,
+      "contoh": "th"
+     },
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-start",
+      "harap": "auto",
+      "nyata": "138.262px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-end",
+      "harap": "auto",
+      "nyata": "138.262px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-accent | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.4) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:grid-cols-2 | grid-template-columns",
+      "harap": "repeat(2, minmax(0px, 1fr))",
+      "nyata": "290.996px 291.016px 290.996px 291.016px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:lg:grid-cols-4 | grid-template-columns",
+      "harap": "repeat(4, minmax(0px, 1fr))",
+      "nyata": "290.996px 291.016px 290.996px 291.016px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.34) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-collapse | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "table"
+     },
+     {
+      "aturan": ".tw:border-collapse | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "table"
+     },
+     {
+      "aturan": ".tw:border-collapse | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "table"
+     },
+     {
+      "aturan": ".tw:border-collapse | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "table"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "index-terisi",
+   "tema": "gelap",
+   "viewport": "390x844",
+   "httpDokumen": 200,
+   "title": "General Feedback | TESYS",
+   "url": "/feedback",
+   "temaAttr": "dark",
+   "lang": "id",
+   "zoomHtml": "1",
+   "scrollWidth": 390,
+   "clientWidth": 390,
+   "bodyScrollWidth": 390,
+   "innerWidth": 390,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 23,
+    "di44": 23,
+    "kurangDari44": 0,
+    "contoh": []
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "b32a130560970327aebe41d26b4181eb8cdf1c333e0b962c66126a6df8952832",
+   "jumlahElemenDigest": 383,
+   "digestKunci": "e12444f58d475d6bee95a31f674456bdee85964887c136afdfbd5092e0f45779",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 383,
+    "elemenBerkelasTw": 282,
+    "elemenBerStyleAttr": 0,
+    "kelasLegacyUnik": 10,
+    "kelasTwUnik": 109,
+    "legacyTeratas": [
+     [
+      "fas",
+      23
+     ],
+     [
+      "ts-card-title",
+      22
+     ],
+     [
+      "ts-card-status",
+      22
+     ],
+     [
+      "ts-card-actions",
+      22
+     ],
+     [
+      "fa-eye",
+      22
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "fa-plus",
+      1
+     ],
+     [
+      "table-responsive",
+      1
+     ],
+     [
+      "ts-card-table",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:rounded-pill",
+      115
+     ],
+     [
+      "tw:text-caption",
+      98
+     ],
+     [
+      "tw:items-center",
+      96
+     ],
+     [
+      "tw:border",
+      95
+     ],
+     [
+      "tw:whitespace-nowrap",
+      91
+     ],
+     [
+      "tw:inline-flex",
+      90
+     ],
+     [
+      "tw:border-transparent",
+      75
+     ],
+     [
+      "tw:gap-2",
+      73
+     ],
+     [
+      "tw:font-heading",
+      72
+     ],
+     [
+      "tw:leading-none",
+      67
+     ],
+     [
+      "tw:px-2",
+      67
+     ],
+     [
+      "tw:py-1",
+      67
+     ],
+     [
+      "tw:font-label",
+      50
+     ],
+     [
+      "tw:leading-tight",
+      50
+     ],
+     [
+      "tw:h-2",
+      48
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 0,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 0,
+     ".breadcrumb": 0,
+     ".d-flex": 0,
+     ".text-muted": 0,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 282
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(26, 26, 30)",
+     "tw:border-border": "rgb(46, 46, 53)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 22
+   },
+   "konflikTw": {
+    "aturanTw": 144,
+    "pasanganAturanElemen": 2544,
+    "propertiDicek": 5440,
+    "selisih": [
+     {
+      "aturan": ".tw:[&_td]:py-cell-y td | padding-block-start",
+      "harap": "9px",
+      "nyata": "6px",
+      "jumlah": 110,
+      "tataLetak": true,
+      "contoh": "td"
+     },
+     {
+      "aturan": ".tw:[&_td]:py-cell-y td | padding-block-end",
+      "harap": "9px",
+      "nyata": "6px",
+      "jumlah": 110,
+      "tataLetak": true,
+      "contoh": "td"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 48,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 48,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 48,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 48,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:w-full | width",
+      "harap": "100%",
+      "nyata": "349px",
+      "jumlah": 23,
+      "tataLetak": true,
+      "contoh": "table"
+     },
+     {
+      "aturan": ".tw:min-h-ctl-sm | min-height",
+      "harap": "30px",
+      "nyata": "48px",
+      "jumlah": 22,
+      "tataLetak": true,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:[&_th]:border-b th | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 10,
+      "tataLetak": false,
+      "contoh": "th"
+     },
+     {
+      "aturan": ".tw:[&_th]:border-b th | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 10,
+      "tataLetak": false,
+      "contoh": "th"
+     },
+     {
+      "aturan": ".tw:[&_th]:border-b th | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 10,
+      "tataLetak": false,
+      "contoh": "th"
+     },
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-start",
+      "harap": "auto",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-end",
+      "harap": "auto",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:flex-1 | flex-basis",
+      "harap": "0%",
+      "nyata": "100%",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:min-h-ctl | min-height",
+      "harap": "34px",
+      "nyata": "48px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:shadow-accent | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.4) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:grid-cols-2 | grid-template-columns",
+      "harap": "repeat(2, minmax(0px, 1fr))",
+      "nyata": "169.5px 169.5px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.34) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-collapse | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "table"
+     },
+     {
+      "aturan": ".tw:border-collapse | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "table"
+     },
+     {
+      "aturan": ".tw:border-collapse | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "table"
+     },
+     {
+      "aturan": ".tw:border-collapse | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "table"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "create-criticism",
+   "tema": "terang",
+   "viewport": "1440x900",
+   "httpDokumen": 200,
+   "title": "Buat Submission | TESYS",
+   "url": "/feedback/create",
+   "temaAttr": "light",
+   "lang": "id",
+   "zoomHtml": "0.8",
+   "scrollWidth": 1440,
+   "clientWidth": 1440,
+   "bodyScrollWidth": 1800,
+   "innerWidth": 1440,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 9,
+    "di44": 2,
+    "kurangDari44": 7,
+    "contoh": [
+     {
+      "el": "a.tw:inline-flex",
+      "w": 30,
+      "h": 24
+     },
+     {
+      "el": "select#selCategory.tw:block",
+      "w": 1157,
+      "h": 27
+     },
+     {
+      "el": "input#title.tw:block",
+      "w": 1157,
+      "h": 27
+     },
+     {
+      "el": "input#chkWilling.custom-control-input",
+      "w": 13,
+      "h": 16
+     },
+     {
+      "el": "label.custom-control-label",
+      "w": 304,
+      "h": 14
+     },
+     {
+      "el": "input#inpWhatsapp.tw:block",
+      "w": 1157,
+      "h": 27
+     },
+     {
+      "el": "button.tw:inline-flex",
+      "w": 131,
+      "h": 27
+     }
+    ]
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [
+    "alert alert-light border feedback-disclaimer  :: Rahasia & Tidak Memengaruhi Karir Anda. Modul ini adalah kanal resmi bagi seluruh karyawan untuk menyampaikan kritik, saran, ide, concern, atau masukan langsung",
+    "alert alert-warning py-2 :: Kritik harus disertai saran perbaikan — keduanya wajib diisi, tidak boleh hanya salah satu."
+   ],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "fe835f41dd754170e6a2cab7d1cef4238477c223949223d0a73f42f05cd4836a",
+   "jumlahElemenDigest": 46,
+   "digestKunci": "4206bfce049dd300928381a021d1981918dcfae55ddd42ff081fa4c44ab79243",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 46,
+    "elemenBerkelasTw": 17,
+    "elemenBerStyleAttr": 2,
+    "kelasLegacyUnik": 32,
+    "kelasTwUnik": 57,
+    "legacyTeratas": [
+     [
+      "form-group",
+      6
+     ],
+     [
+      "fas",
+      4
+     ],
+     [
+      "font-weight-600",
+      3
+     ],
+     [
+      "d-flex",
+      2
+     ],
+     [
+      "align-items-center",
+      2
+     ],
+     [
+      "mt-3",
+      2
+     ],
+     [
+      "alert",
+      2
+     ],
+     [
+      "mr-1",
+      2
+     ],
+     [
+      "text-danger",
+      2
+     ],
+     [
+      "form-control",
+      2
+     ],
+     [
+      "form-control-sm",
+      2
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "justify-content-between",
+      1
+     ],
+     [
+      "mb-3",
+      1
+     ],
+     [
+      "flex-wrap",
+      1
+     ],
+     [
+      "mr-3",
+      1
+     ],
+     [
+      "fa-arrow-left",
+      1
+     ],
+     [
+      "alert-light",
+      1
+     ],
+     [
+      "border",
+      1
+     ],
+     [
+      "feedback-disclaimer",
+      1
+     ],
+     [
+      "fa-lock",
+      1
+     ],
+     [
+      "text-muted",
+      1
+     ],
+     [
+      "alert-warning",
+      1
+     ],
+     [
+      "py-2",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:border",
+      6
+     ],
+     [
+      "tw:rounded-sm!",
+      5
+     ],
+     [
+      "tw:font-label",
+      5
+     ],
+     [
+      "tw:focus-visible:outline-2",
+      5
+     ],
+     [
+      "tw:focus-visible:outline-offset-2",
+      5
+     ],
+     [
+      "tw:focus-visible:outline-accent-text!",
+      5
+     ],
+     [
+      "tw:border-border",
+      5
+     ],
+     [
+      "tw:px-3",
+      4
+     ],
+     [
+      "tw:bg-surface",
+      4
+     ],
+     [
+      "tw:text-text",
+      4
+     ],
+     [
+      "tw:text-text-dim",
+      4
+     ],
+     [
+      "tw:text-control",
+      3
+     ],
+     [
+      "tw:leading-body",
+      3
+     ],
+     [
+      "tw:text-label",
+      3
+     ],
+     [
+      "tw:text-danger",
+      3
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 0,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 2,
+     ".breadcrumb": 0,
+     ".d-flex": 2,
+     ".text-muted": 1,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 17
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(255, 255, 255)",
+     "tw:border-border": "rgb(230, 225, 224)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 22
+   },
+   "konflikTw": {
+    "aturanTw": 167,
+    "pasanganAturanElemen": 137,
+    "propertiDicek": 256,
+    "selisih": [
+     {
+      "aturan": ".tw:text-label | font-size",
+      "harap": "12.5px",
+      "nyata": "12px",
+      "jumlah": 3,
+      "tataLetak": false,
+      "contoh": "label"
+     },
+     {
+      "aturan": ".tw:h-ctl | height",
+      "harap": "34px",
+      "nyata": "33.9844px",
+      "jumlah": 3,
+      "tataLetak": true,
+      "contoh": "select"
+     },
+     {
+      "aturan": ".tw:w-full | width",
+      "harap": "100%",
+      "nyata": "1446.52px",
+      "jumlah": 3,
+      "tataLetak": true,
+      "contoh": "select"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.03) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-accent | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(146, 35, 43, 0.14) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "button"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "create-criticism",
+   "tema": "terang",
+   "viewport": "390x844",
+   "httpDokumen": 200,
+   "title": "Buat Submission | TESYS",
+   "url": "/feedback/create",
+   "temaAttr": "light",
+   "lang": "id",
+   "zoomHtml": "1",
+   "scrollWidth": 390,
+   "clientWidth": 390,
+   "bodyScrollWidth": 390,
+   "innerWidth": 390,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 9,
+    "di44": 7,
+    "kurangDari44": 2,
+    "contoh": [
+     {
+      "el": "input#chkWilling.custom-control-input",
+      "w": 16,
+      "h": 20
+     },
+     {
+      "el": "label.custom-control-label",
+      "w": 285,
+      "h": 38
+     }
+    ]
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [
+    "alert alert-light border feedback-disclaimer  :: Rahasia & Tidak Memengaruhi Karir Anda. Modul ini adalah kanal resmi bagi seluruh karyawan untuk menyampaikan kritik, saran, ide, concern, atau masukan langsung",
+    "alert alert-warning py-2 :: Kritik harus disertai saran perbaikan — keduanya wajib diisi, tidak boleh hanya salah satu."
+   ],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "48b6c97ca6bbcc4fd77b13597db58d1e8d77a1147180e4e24b0dc155f7796b04",
+   "jumlahElemenDigest": 46,
+   "digestKunci": "40b612f670ef26ff5e03eb1dbb04b3973df3b21645ffc49447361aa029a0a42d",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 46,
+    "elemenBerkelasTw": 17,
+    "elemenBerStyleAttr": 2,
+    "kelasLegacyUnik": 32,
+    "kelasTwUnik": 57,
+    "legacyTeratas": [
+     [
+      "form-group",
+      6
+     ],
+     [
+      "fas",
+      4
+     ],
+     [
+      "font-weight-600",
+      3
+     ],
+     [
+      "d-flex",
+      2
+     ],
+     [
+      "align-items-center",
+      2
+     ],
+     [
+      "mt-3",
+      2
+     ],
+     [
+      "alert",
+      2
+     ],
+     [
+      "mr-1",
+      2
+     ],
+     [
+      "text-danger",
+      2
+     ],
+     [
+      "form-control",
+      2
+     ],
+     [
+      "form-control-sm",
+      2
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "justify-content-between",
+      1
+     ],
+     [
+      "mb-3",
+      1
+     ],
+     [
+      "flex-wrap",
+      1
+     ],
+     [
+      "mr-3",
+      1
+     ],
+     [
+      "fa-arrow-left",
+      1
+     ],
+     [
+      "alert-light",
+      1
+     ],
+     [
+      "border",
+      1
+     ],
+     [
+      "feedback-disclaimer",
+      1
+     ],
+     [
+      "fa-lock",
+      1
+     ],
+     [
+      "text-muted",
+      1
+     ],
+     [
+      "alert-warning",
+      1
+     ],
+     [
+      "py-2",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:border",
+      6
+     ],
+     [
+      "tw:rounded-sm!",
+      5
+     ],
+     [
+      "tw:font-label",
+      5
+     ],
+     [
+      "tw:focus-visible:outline-2",
+      5
+     ],
+     [
+      "tw:focus-visible:outline-offset-2",
+      5
+     ],
+     [
+      "tw:focus-visible:outline-accent-text!",
+      5
+     ],
+     [
+      "tw:border-border",
+      5
+     ],
+     [
+      "tw:px-3",
+      4
+     ],
+     [
+      "tw:bg-surface",
+      4
+     ],
+     [
+      "tw:text-text",
+      4
+     ],
+     [
+      "tw:text-text-dim",
+      4
+     ],
+     [
+      "tw:text-control",
+      3
+     ],
+     [
+      "tw:leading-body",
+      3
+     ],
+     [
+      "tw:text-label",
+      3
+     ],
+     [
+      "tw:text-danger",
+      3
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 0,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 2,
+     ".breadcrumb": 0,
+     ".d-flex": 2,
+     ".text-muted": 1,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 17
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(255, 255, 255)",
+     "tw:border-border": "rgb(230, 225, 224)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 22
+   },
+   "konflikTw": {
+    "aturanTw": 144,
+    "pasanganAturanElemen": 143,
+    "propertiDicek": 262,
+    "selisih": [
+     {
+      "aturan": ".tw:text-label | font-size",
+      "harap": "12.5px",
+      "nyata": "12px",
+      "jumlah": 3,
+      "tataLetak": false,
+      "contoh": "label"
+     },
+     {
+      "aturan": ".tw:h-ctl | height",
+      "harap": "34px",
+      "nyata": "48px",
+      "jumlah": 3,
+      "tataLetak": true,
+      "contoh": "select"
+     },
+     {
+      "aturan": ".tw:w-full | width",
+      "harap": "100%",
+      "nyata": "309px",
+      "jumlah": 3,
+      "tataLetak": true,
+      "contoh": "select"
+     },
+     {
+      "aturan": ".tw:min-h-ctl-sm | min-height",
+      "harap": "30px",
+      "nyata": "48px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.03) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:min-h-ctl | min-height",
+      "harap": "34px",
+      "nyata": "48px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "button"
+     },
+     {
+      "aturan": ".tw:shadow-accent | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(146, 35, 43, 0.14) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "button"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "create-criticism",
+   "tema": "gelap",
+   "viewport": "1440x900",
+   "httpDokumen": 200,
+   "title": "Buat Submission | TESYS",
+   "url": "/feedback/create",
+   "temaAttr": "dark",
+   "lang": "id",
+   "zoomHtml": "0.8",
+   "scrollWidth": 1440,
+   "clientWidth": 1440,
+   "bodyScrollWidth": 1800,
+   "innerWidth": 1440,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 9,
+    "di44": 2,
+    "kurangDari44": 7,
+    "contoh": [
+     {
+      "el": "a.tw:inline-flex",
+      "w": 30,
+      "h": 24
+     },
+     {
+      "el": "select#selCategory.tw:block",
+      "w": 1157,
+      "h": 27
+     },
+     {
+      "el": "input#title.tw:block",
+      "w": 1157,
+      "h": 27
+     },
+     {
+      "el": "input#chkWilling.custom-control-input",
+      "w": 13,
+      "h": 16
+     },
+     {
+      "el": "label.custom-control-label",
+      "w": 304,
+      "h": 14
+     },
+     {
+      "el": "input#inpWhatsapp.tw:block",
+      "w": 1157,
+      "h": 27
+     },
+     {
+      "el": "button.tw:inline-flex",
+      "w": 131,
+      "h": 27
+     }
+    ]
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [
+    "alert alert-light border feedback-disclaimer  :: Rahasia & Tidak Memengaruhi Karir Anda. Modul ini adalah kanal resmi bagi seluruh karyawan untuk menyampaikan kritik, saran, ide, concern, atau masukan langsung",
+    "alert alert-warning py-2 :: Kritik harus disertai saran perbaikan — keduanya wajib diisi, tidak boleh hanya salah satu."
+   ],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "0d8a6691d5f4dccc132e1186e50d06cc8e8763b7aeffa81b5e87e8a97ff2a9c7",
+   "jumlahElemenDigest": 46,
+   "digestKunci": "ed071221e95ceabd29643b9262fbd45c4db4d2c4400a6c917549aa9c005be881",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 46,
+    "elemenBerkelasTw": 17,
+    "elemenBerStyleAttr": 2,
+    "kelasLegacyUnik": 32,
+    "kelasTwUnik": 57,
+    "legacyTeratas": [
+     [
+      "form-group",
+      6
+     ],
+     [
+      "fas",
+      4
+     ],
+     [
+      "font-weight-600",
+      3
+     ],
+     [
+      "d-flex",
+      2
+     ],
+     [
+      "align-items-center",
+      2
+     ],
+     [
+      "mt-3",
+      2
+     ],
+     [
+      "alert",
+      2
+     ],
+     [
+      "mr-1",
+      2
+     ],
+     [
+      "text-danger",
+      2
+     ],
+     [
+      "form-control",
+      2
+     ],
+     [
+      "form-control-sm",
+      2
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "justify-content-between",
+      1
+     ],
+     [
+      "mb-3",
+      1
+     ],
+     [
+      "flex-wrap",
+      1
+     ],
+     [
+      "mr-3",
+      1
+     ],
+     [
+      "fa-arrow-left",
+      1
+     ],
+     [
+      "alert-light",
+      1
+     ],
+     [
+      "border",
+      1
+     ],
+     [
+      "feedback-disclaimer",
+      1
+     ],
+     [
+      "fa-lock",
+      1
+     ],
+     [
+      "text-muted",
+      1
+     ],
+     [
+      "alert-warning",
+      1
+     ],
+     [
+      "py-2",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:border",
+      6
+     ],
+     [
+      "tw:rounded-sm!",
+      5
+     ],
+     [
+      "tw:font-label",
+      5
+     ],
+     [
+      "tw:focus-visible:outline-2",
+      5
+     ],
+     [
+      "tw:focus-visible:outline-offset-2",
+      5
+     ],
+     [
+      "tw:focus-visible:outline-accent-text!",
+      5
+     ],
+     [
+      "tw:border-border",
+      5
+     ],
+     [
+      "tw:px-3",
+      4
+     ],
+     [
+      "tw:bg-surface",
+      4
+     ],
+     [
+      "tw:text-text",
+      4
+     ],
+     [
+      "tw:text-text-dim",
+      4
+     ],
+     [
+      "tw:text-control",
+      3
+     ],
+     [
+      "tw:leading-body",
+      3
+     ],
+     [
+      "tw:text-label",
+      3
+     ],
+     [
+      "tw:text-danger",
+      3
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 0,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 2,
+     ".breadcrumb": 0,
+     ".d-flex": 2,
+     ".text-muted": 1,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 17
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(26, 26, 30)",
+     "tw:border-border": "rgb(46, 46, 53)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 22
+   },
+   "konflikTw": {
+    "aturanTw": 167,
+    "pasanganAturanElemen": 137,
+    "propertiDicek": 256,
+    "selisih": [
+     {
+      "aturan": ".tw:text-label | font-size",
+      "harap": "12.5px",
+      "nyata": "12px",
+      "jumlah": 3,
+      "tataLetak": false,
+      "contoh": "label"
+     },
+     {
+      "aturan": ".tw:h-ctl | height",
+      "harap": "34px",
+      "nyata": "33.9844px",
+      "jumlah": 3,
+      "tataLetak": true,
+      "contoh": "select"
+     },
+     {
+      "aturan": ".tw:w-full | width",
+      "harap": "100%",
+      "nyata": "1446.52px",
+      "jumlah": 3,
+      "tataLetak": true,
+      "contoh": "select"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.34) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-accent | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.4) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "button"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "create-criticism",
+   "tema": "gelap",
+   "viewport": "390x844",
+   "httpDokumen": 200,
+   "title": "Buat Submission | TESYS",
+   "url": "/feedback/create",
+   "temaAttr": "dark",
+   "lang": "id",
+   "zoomHtml": "1",
+   "scrollWidth": 390,
+   "clientWidth": 390,
+   "bodyScrollWidth": 390,
+   "innerWidth": 390,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 9,
+    "di44": 7,
+    "kurangDari44": 2,
+    "contoh": [
+     {
+      "el": "input#chkWilling.custom-control-input",
+      "w": 16,
+      "h": 20
+     },
+     {
+      "el": "label.custom-control-label",
+      "w": 285,
+      "h": 38
+     }
+    ]
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [
+    "alert alert-light border feedback-disclaimer  :: Rahasia & Tidak Memengaruhi Karir Anda. Modul ini adalah kanal resmi bagi seluruh karyawan untuk menyampaikan kritik, saran, ide, concern, atau masukan langsung",
+    "alert alert-warning py-2 :: Kritik harus disertai saran perbaikan — keduanya wajib diisi, tidak boleh hanya salah satu."
+   ],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "c891a77910feb823340ff2f86a7f72002efaa4f97fd755f4f3d2daeba493f3dd",
+   "jumlahElemenDigest": 46,
+   "digestKunci": "04eeb418cd80153a28134b3beee204a7520074859319c647e938a564bf85f333",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 46,
+    "elemenBerkelasTw": 17,
+    "elemenBerStyleAttr": 2,
+    "kelasLegacyUnik": 32,
+    "kelasTwUnik": 57,
+    "legacyTeratas": [
+     [
+      "form-group",
+      6
+     ],
+     [
+      "fas",
+      4
+     ],
+     [
+      "font-weight-600",
+      3
+     ],
+     [
+      "d-flex",
+      2
+     ],
+     [
+      "align-items-center",
+      2
+     ],
+     [
+      "mt-3",
+      2
+     ],
+     [
+      "alert",
+      2
+     ],
+     [
+      "mr-1",
+      2
+     ],
+     [
+      "text-danger",
+      2
+     ],
+     [
+      "form-control",
+      2
+     ],
+     [
+      "form-control-sm",
+      2
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "justify-content-between",
+      1
+     ],
+     [
+      "mb-3",
+      1
+     ],
+     [
+      "flex-wrap",
+      1
+     ],
+     [
+      "mr-3",
+      1
+     ],
+     [
+      "fa-arrow-left",
+      1
+     ],
+     [
+      "alert-light",
+      1
+     ],
+     [
+      "border",
+      1
+     ],
+     [
+      "feedback-disclaimer",
+      1
+     ],
+     [
+      "fa-lock",
+      1
+     ],
+     [
+      "text-muted",
+      1
+     ],
+     [
+      "alert-warning",
+      1
+     ],
+     [
+      "py-2",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:border",
+      6
+     ],
+     [
+      "tw:rounded-sm!",
+      5
+     ],
+     [
+      "tw:font-label",
+      5
+     ],
+     [
+      "tw:focus-visible:outline-2",
+      5
+     ],
+     [
+      "tw:focus-visible:outline-offset-2",
+      5
+     ],
+     [
+      "tw:focus-visible:outline-accent-text!",
+      5
+     ],
+     [
+      "tw:border-border",
+      5
+     ],
+     [
+      "tw:px-3",
+      4
+     ],
+     [
+      "tw:bg-surface",
+      4
+     ],
+     [
+      "tw:text-text",
+      4
+     ],
+     [
+      "tw:text-text-dim",
+      4
+     ],
+     [
+      "tw:text-control",
+      3
+     ],
+     [
+      "tw:leading-body",
+      3
+     ],
+     [
+      "tw:text-label",
+      3
+     ],
+     [
+      "tw:text-danger",
+      3
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 0,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 2,
+     ".breadcrumb": 0,
+     ".d-flex": 2,
+     ".text-muted": 1,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 17
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(26, 26, 30)",
+     "tw:border-border": "rgb(46, 46, 53)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 22
+   },
+   "konflikTw": {
+    "aturanTw": 144,
+    "pasanganAturanElemen": 143,
+    "propertiDicek": 262,
+    "selisih": [
+     {
+      "aturan": ".tw:text-label | font-size",
+      "harap": "12.5px",
+      "nyata": "12px",
+      "jumlah": 3,
+      "tataLetak": false,
+      "contoh": "label"
+     },
+     {
+      "aturan": ".tw:h-ctl | height",
+      "harap": "34px",
+      "nyata": "48px",
+      "jumlah": 3,
+      "tataLetak": true,
+      "contoh": "select"
+     },
+     {
+      "aturan": ".tw:w-full | width",
+      "harap": "100%",
+      "nyata": "309px",
+      "jumlah": 3,
+      "tataLetak": true,
+      "contoh": "select"
+     },
+     {
+      "aturan": ".tw:min-h-ctl-sm | min-height",
+      "harap": "30px",
+      "nyata": "48px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.34) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:min-h-ctl | min-height",
+      "harap": "34px",
+      "nyata": "48px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "button"
+     },
+     {
+      "aturan": ".tw:shadow-accent | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.4) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "button"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "show-staff",
+   "tema": "terang",
+   "viewport": "1440x900",
+   "httpDokumen": 200,
+   "title": "Detail Submission | TESYS",
+   "url": "/feedback/22",
+   "temaAttr": "light",
+   "lang": "id",
+   "zoomHtml": "0.8",
+   "scrollWidth": 1440,
+   "clientWidth": 1440,
+   "bodyScrollWidth": 1800,
+   "innerWidth": 1440,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 1,
+    "di44": 0,
+    "kurangDari44": 1,
+    "contoh": [
+     {
+      "el": "a.tw:inline-flex",
+      "w": 30,
+      "h": 24
+     }
+    ]
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [
+    "alert alert-light border feedback-disclaimer py-2 :: Rahasia & Tidak Memengaruhi Karir Anda. Modul ini adalah kanal resmi bagi seluruh karyawan untuk menyampaikan kritik, saran, ide, concern, atau masukan langsung"
+   ],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "3d51697b408a90cd146e0f00e940d7ad0b50c02fcc7cc71e82486412340bc305",
+   "jumlahElemenDigest": 65,
+   "digestKunci": "ec0ffbc4d89c033ee8773092ddc29f9b9c0d412694edf77b216a942ebbd28cbc",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 65,
+    "elemenBerkelasTw": 14,
+    "elemenBerStyleAttr": 15,
+    "kelasLegacyUnik": 31,
+    "kelasTwUnik": 45,
+    "legacyTeratas": [
+     [
+      "mb-3",
+      5
+     ],
+     [
+      "fas",
+      5
+     ],
+     [
+      "text-muted",
+      5
+     ],
+     [
+      "mr-1",
+      4
+     ],
+     [
+      "d-flex",
+      2
+     ],
+     [
+      "align-items-center",
+      2
+     ],
+     [
+      "font-weight-600",
+      2
+     ],
+     [
+      "mb-1",
+      2
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "justify-content-between",
+      1
+     ],
+     [
+      "mt-3",
+      1
+     ],
+     [
+      "flex-wrap",
+      1
+     ],
+     [
+      "mr-3",
+      1
+     ],
+     [
+      "fa-arrow-left",
+      1
+     ],
+     [
+      "alert",
+      1
+     ],
+     [
+      "alert-light",
+      1
+     ],
+     [
+      "border",
+      1
+     ],
+     [
+      "feedback-disclaimer",
+      1
+     ],
+     [
+      "py-2",
+      1
+     ],
+     [
+      "fa-lock",
+      1
+     ],
+     [
+      "row",
+      1
+     ],
+     [
+      "col-md-7",
+      1
+     ],
+     [
+      "fa-comment-dots",
+      1
+     ],
+     [
+      "fa-reply",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:border",
+      8
+     ],
+     [
+      "tw:border-border",
+      7
+     ],
+     [
+      "tw:text-text",
+      6
+     ],
+     [
+      "tw:inline-flex",
+      5
+     ],
+     [
+      "tw:items-center",
+      5
+     ],
+     [
+      "tw:whitespace-nowrap",
+      5
+     ],
+     [
+      "tw:rounded-pill",
+      4
+     ],
+     [
+      "tw:font-heading",
+      4
+     ],
+     [
+      "tw:leading-none",
+      4
+     ],
+     [
+      "tw:border-transparent",
+      4
+     ],
+     [
+      "tw:px-2",
+      4
+     ],
+     [
+      "tw:py-1",
+      4
+     ],
+     [
+      "tw:text-caption",
+      4
+     ],
+     [
+      "tw:bg-surface",
+      3
+     ],
+     [
+      "tw:rounded-md",
+      3
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 1,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 1,
+     ".breadcrumb": 0,
+     ".d-flex": 2,
+     ".text-muted": 5,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 14
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(255, 255, 255)",
+     "tw:border-border": "rgb(230, 225, 224)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 22
+   },
+   "konflikTw": {
+    "aturanTw": 167,
+    "pasanganAturanElemen": 177,
+    "propertiDicek": 388,
+    "selisih": [
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 6,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 6,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 6,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.03) 0px 1px 2px 0px",
+      "jumlah": 3,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 3,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 3,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 3,
+      "tataLetak": false,
+      "contoh": "div"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "show-staff",
+   "tema": "terang",
+   "viewport": "390x844",
+   "httpDokumen": 200,
+   "title": "Detail Submission | TESYS",
+   "url": "/feedback/22",
+   "temaAttr": "light",
+   "lang": "id",
+   "zoomHtml": "1",
+   "scrollWidth": 390,
+   "clientWidth": 390,
+   "bodyScrollWidth": 390,
+   "innerWidth": 390,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 1,
+    "di44": 1,
+    "kurangDari44": 0,
+    "contoh": []
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [
+    "alert alert-light border feedback-disclaimer py-2 :: Rahasia & Tidak Memengaruhi Karir Anda. Modul ini adalah kanal resmi bagi seluruh karyawan untuk menyampaikan kritik, saran, ide, concern, atau masukan langsung"
+   ],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "b8b6e18d718d5bb5ef5a5fc42c6526475c4c7ad2214254544fecbe53a374a29b",
+   "jumlahElemenDigest": 65,
+   "digestKunci": "1982c771e549eabee96d6b17b8add2d100bdc7504bc941dcaf2a006073673738",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 65,
+    "elemenBerkelasTw": 14,
+    "elemenBerStyleAttr": 15,
+    "kelasLegacyUnik": 31,
+    "kelasTwUnik": 45,
+    "legacyTeratas": [
+     [
+      "mb-3",
+      5
+     ],
+     [
+      "fas",
+      5
+     ],
+     [
+      "text-muted",
+      5
+     ],
+     [
+      "mr-1",
+      4
+     ],
+     [
+      "d-flex",
+      2
+     ],
+     [
+      "align-items-center",
+      2
+     ],
+     [
+      "font-weight-600",
+      2
+     ],
+     [
+      "mb-1",
+      2
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "justify-content-between",
+      1
+     ],
+     [
+      "mt-3",
+      1
+     ],
+     [
+      "flex-wrap",
+      1
+     ],
+     [
+      "mr-3",
+      1
+     ],
+     [
+      "fa-arrow-left",
+      1
+     ],
+     [
+      "alert",
+      1
+     ],
+     [
+      "alert-light",
+      1
+     ],
+     [
+      "border",
+      1
+     ],
+     [
+      "feedback-disclaimer",
+      1
+     ],
+     [
+      "py-2",
+      1
+     ],
+     [
+      "fa-lock",
+      1
+     ],
+     [
+      "row",
+      1
+     ],
+     [
+      "col-md-7",
+      1
+     ],
+     [
+      "fa-comment-dots",
+      1
+     ],
+     [
+      "fa-reply",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:border",
+      8
+     ],
+     [
+      "tw:border-border",
+      7
+     ],
+     [
+      "tw:text-text",
+      6
+     ],
+     [
+      "tw:inline-flex",
+      5
+     ],
+     [
+      "tw:items-center",
+      5
+     ],
+     [
+      "tw:whitespace-nowrap",
+      5
+     ],
+     [
+      "tw:rounded-pill",
+      4
+     ],
+     [
+      "tw:font-heading",
+      4
+     ],
+     [
+      "tw:leading-none",
+      4
+     ],
+     [
+      "tw:border-transparent",
+      4
+     ],
+     [
+      "tw:px-2",
+      4
+     ],
+     [
+      "tw:py-1",
+      4
+     ],
+     [
+      "tw:text-caption",
+      4
+     ],
+     [
+      "tw:bg-surface",
+      3
+     ],
+     [
+      "tw:rounded-md",
+      3
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 1,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 1,
+     ".breadcrumb": 0,
+     ".d-flex": 2,
+     ".text-muted": 5,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 14
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(255, 255, 255)",
+     "tw:border-border": "rgb(230, 225, 224)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 22
+   },
+   "konflikTw": {
+    "aturanTw": 144,
+    "pasanganAturanElemen": 179,
+    "propertiDicek": 390,
+    "selisih": [
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 6,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 6,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 6,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.03) 0px 1px 2px 0px",
+      "jumlah": 3,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 3,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 3,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 3,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:min-h-ctl-sm | min-height",
+      "harap": "30px",
+      "nyata": "48px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "a"
+     }
+    ]
+   },
+   "foto": null
+  }
+ ],
+ "galatRunner": [],
+ "berkasFoto": [],
+ "versiBrowser": "Edg/156.0.4314.42",
+ "idShow": 22,
+ "barisIndexStaff": 22,
+ "barisIndexKosong": 0,
+ "sentinelKosong": {
+  "tabelAda": false,
+  "teks": "GENERAL · FEEDBACK Riwayat Submission Masukan, kritik, dan saran Anda kepada CEO beserta perkembangan statusnya. Buat Submission TOTAL 0 Semua submission Anda MENUNGGU 0 Submitted dan Reviewed DITANGG"
+ },
+ "penghentian": {
+  "pid": 25648,
+  "penanda": "tesys-pages-edge-UfODKj",
+  "keluarSendiri": true,
+  "menungguSisaMs": 3785,
+  "sisaProsesPenanda": 0,
+  "userDirDihapus": true
+ }
+}

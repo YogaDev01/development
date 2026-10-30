@@ -1,0 +1,49 @@
+/* =====================================================================
+   Tesys TW — masukan build UJI (bukan produksi)
+   ---------------------------------------------------------------------
+   = masukan produksi (tesys-tw.css, diimpor utuh: prefix(tw), @theme
+   inline, @custom-variant, source(none), @source) + SAFELIST UJI PoC.
+
+   Keluaran: tools/tailwind/uji/tesys-tw.uji.css (ter-ignore git). JANGAN
+   pernah ke public/ dan jangan dimuat di layout/halaman mana pun.
+   Build:  powershell -ExecutionPolicy Bypass -File scripts/build-tailwind.ps1 -Target uji
+
+   SAFELIST UJI PoC — dipakai harness/pengukuran supaya utilitas representatif
+   ikut dihasilkan walau belum ada Blade yang memakainya. Menambah kelas di
+   harness tanpa menambahkannya di sini (atau tanpa menuliskannya utuh di
+   sumber terpindai) = tidak ada CSS-nya.
+   Sintaks {a,b} diperluas oleh Tailwind menjadi tw:a tw:b …
+   ===================================================================== */
+
+@import "./tesys-tw.css";
+
+/* tata letak */
+@source inline("tw:{block,inline-block,flex,inline-flex,grid,hidden,flex-col,flex-wrap,flex-1,shrink-0,grow,items-center,items-start,justify-between,justify-end,justify-center,min-w-0,w-full,h-full,max-w-full,overflow-hidden,overflow-auto,truncate,relative,absolute,sticky,top-0,z-10,cursor-pointer,select-none,whitespace-nowrap}");
+/* lapisan fixed/overlay + satuan viewport (DILARANG dipakai di halaman;
+   hanya untuk membuktikan perilakunya di bawah zoom .8, AC-6) */
+@source inline("tw:{fixed,inset-0,left-0,right-0,bottom-0,h-screen,w-screen,h-dvh,min-h-screen}");
+/* jarak (skala --sp-*) dan ukuran token */
+@source inline("tw:{p,px,py,m,mx,my,mt,mb,ml,mr,gap}-{0,1,2,3,4,5,6,8,10,12}");
+@source inline("tw:{h,min-h}-{ctl,ctl-sm}");
+@source inline("tw:{p,px,py}-{card,card-sm,cell-x,cell-y}");
+@source inline("tw:{grid-cols-1,grid-cols-2,grid-cols-3,grid-cols-4,col-span-2}");
+/* warna */
+@source inline("tw:bg-{canvas,surface,surface-2,surface-3,accent,accent-dark,accent-tint,accent-tint-2,success-bg,warning-bg,orange-bg,danger-bg,info-bg,purple-bg,primary-bg,darkbadge-bg,charcoal}");
+@source inline("tw:text-{text,text-dim,text-faint,surface,accent,accent-text,success,warning,orange,danger,info,purple,primary,darkbadge}");
+@source inline("tw:border-{border,border-strong,accent,accent-tint-2,success,warning,danger,info}");
+@source inline("tw:bg-surface-2/50");
+/* garis, radius, bayangan */
+@source inline("tw:{border,border-0,border-t,border-b,border-l,border-r}");
+@source inline("tw:rounded-{sm,md,lg,pill,full,none}");
+@source inline("tw:shadow-{xs,sm,md,lg,accent,none}");
+/* tipografi */
+@source inline("tw:text-{page,section,sub,body,control,data,th,label,caption,kpi}");
+@source inline("tw:font-{display,body,heading,section,label,regular}");
+@source inline("tw:{leading-tight,leading-body,leading-data,tracking-micro,uppercase,tabular-nums,text-left,text-right,text-center}");
+/* keadaan, gerak, responsif, gelap */
+@source inline("tw:{hover:bg-surface-2,hover:bg-accent-dark,hover:border-border-strong,hover:text-accent,focus-visible:ring-2,focus-visible:ring-accent-ring,focus-visible:outline-none,disabled:opacity-50,disabled:cursor-not-allowed,transition,duration-(--dur-fast),ease-standar,ease-out,opacity-50}");
+@source inline("tw:{max-lg,max-md,max-sm,max-xs}:{hidden,flex-col,p-3,p-2,w-full,grid-cols-1}");
+@source inline("tw:{min-lg,md,lg}:{flex,grid-cols-3,p-6}");
+@source inline("tw:dark:{bg-surface-2,text-text}");
+/* penimpa !important (uji kaskade AC-5) */
+@source inline("tw:{p-4!,px-3!,bg-surface!,bg-accent-tint!,text-accent!,text-body!,border-border!,border-accent!,rounded-md!,hidden!}");

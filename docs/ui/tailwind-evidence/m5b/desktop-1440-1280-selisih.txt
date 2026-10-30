@@ -1,0 +1,10 @@
+## ca-1440: selisih 0
+## cp-1440: selisih 0
+## db-1440: selisih 0
+## ca-1280: selisih 0
+## cp-1280: selisih 0
+## db-1280: selisih 0
+sig-ca: sama
+sig-cp: sama
+sig-db: sama
+TOTAL selisih desktop: 0

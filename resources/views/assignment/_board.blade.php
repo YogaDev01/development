@@ -35,7 +35,7 @@
             </button>
         </div>
 
-        <ul class="nav nav-tabs" id="assignmentTabs" style="font-size:13px;">
+        <ul class="nav nav-tabs ts-pill-tabs" id="assignmentTabs" style="font-size:13px;">
             <li class="nav-item">
                 <a class="nav-link active" data-toggle="tab" href="#asgToMe">
                     Ditugaskan ke Saya <span class="badge badge-warning">{{ $assignedToMe->whereIn('status', \App\Models\Assignment::OPEN_STATUSES)->count() }}</span>
@@ -157,6 +157,8 @@
         display: flex; align-items: center; justify-content: center;
         font-size: 11px; font-weight: 700; flex-shrink: 0;
     }
+    .asg-chat-av { overflow: hidden; }
+    .asg-chat-av img { width: 100%; height: 100%; object-fit: cover; }
     .asg-av-lg { width: 38px; height: 38px; font-size: 13px; }
 
     .asg-mail-head { display: flex; gap: 12px; align-items: flex-start; }

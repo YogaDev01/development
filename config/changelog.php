@@ -26,10 +26,59 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '3.1.1',
+    'current' => '3.2.0',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '3.2.0',
+            'date'    => '2026-10-30',
+            'title'   => 'Approval Massal, Settlement Fleksibel, Draft Batch Treasury & Catatan Log',
+            'summary' => 'Approval kini bisa dilakukan massal dari daftar Cost Request, Budget Plan, PO, dan Treasury. '
+                       . 'Settlement Cash Advance lebih fleksibel (pilih Sub COA, pecah baris, baris tambahan), batch Treasury '
+                       . 'bisa disimpan sebagai Draft, Cost Register mengikuti alur Cost Payment, dan setiap tab Log punya catatan gaya chat.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Approve/Reject massal dari daftar Cost Request (tab Cash Advance & Cost Payment) untuk tahap Submitted, Checked, dan Verified; konfirmasi menampilkan total rupiah, jumlah CR NOB, dan CR dengan item takeout. CR yang statusnya sudah berubah otomatis dilewati dan dilaporkan.',
+                        'Approve massal tahap settlement Cash Advance (Head Check, Finance Verify, Finance Manager Approve/Close, Approver Second Approve) dari daftar Cost Request.',
+                        'Approve/Reject massal di daftar Budget Plan, Verify/Approve/Minta Revisi massal di daftar PO, serta Approve/Reject massal batch di daftar Treasury (maksimal 50 data per proses).',
+                        'Settlement Custom COA: tiap baris settlement boleh memilih Sub COA lain dari Budget Plan yang sama, satu item boleh dipecah menjadi beberapa baris, dan boleh ada baris tambahan tanpa item asal. Used per sub-item Budget Plan mengikuti Sub COA baris settlement.',
+                        'Form Submit Settlement dimulai kosong dengan tombol Auto Fill (menyalin item pengajuan) dan Tambah Baris; kolom Harga Satuan, Qty, dan Settle. Bila total Settle melebihi nilai pengajuan, Keterangan dan Lampiran Settlement wajib diisi.',
+                        'Batch Treasury bisa disimpan sebagai Draft: item dapat ditambah atau dikeluarkan dan draft dapat dihapus tanpa mengubah status sumbernya, lalu diajukan ke Approver lewat tombol Submit.',
+                        'Treasury: Approver kini bisa memilih Takeout (item kembali ke antrean) atau Reject (Cost Request ditolak) per item batch.',
+                        'Cost Register mengikuti alur Cost Payment: Draft → Submitted → Approved (oleh Approver) → Process → Closed, dengan rincian per item, riwayat status, catatan, dan approve/minta revisi.',
+                        'Budget Plan: tombol Tambah COA untuk menambah baris Account/Sub COA bernilai 0 pada Budget Plan yang sudah Active tanpa mengubah nilai budget.',
+                        'Catatan gaya chat di tab Log Cost Request, Budget Plan, PO, batch Treasury, dan Cost Register.',
+                        'Todo List: antrean baru untuk Finance/Approver - approval Cost Register, batch Treasury Draft, serta verifikasi closing Budget Plan dan PO.',
+                        'Lebar kolom tabel bisa diseret di lebih banyak daftar; lebar tersimpan per pengguna di peramban, klik dua kali untuk kembali ke bawaan.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Settlement yang ditolak (Head, Finance, Finance Manager, atau Approver) kini berstatus Settle Rejected, bukan kembali ke Paid; pengaju merevisi lalu mengajukan ulang lewat form yang sama.',
+                        'Drawer Cost Request dan Todo List menampilkan Perbandingan per COA / Sub COA serta Rincian Settlement per baris dengan penanda "Baris tambahan" dan "Pindah dari".',
+                        'Template dan impor Excel Rincian Settlement menambah kolom Budget Detail ID (Sub COA); template lama tetap bisa diimpor.',
+                        'Data Cost Register lama dipetakan ke alur baru: Submitted menjadi Approved (siap batch) dan Paid menjadi Closed.',
+                        'Tampilan diperhalus: font Inter, lapisan gaya baru untuk tabel, modal, tombol, dan badge di seluruh halaman, serta komponen UI baru (prefix tw:) yang dibangun tanpa proses build di server.',
+                        'Lampiran per item dan Note per baris di form settlement kini opsional.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Lampiran per baris settlement tetap menempel pada barisnya setelah settlement ditolak lalu diajukan ulang.',
+                        'Dokumentasi alur settlement dikoreksi agar sesuai perilaku aplikasi (reject berhenti di Settle Rejected).',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '3.1.1',

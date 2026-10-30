@@ -1,0 +1,1495 @@
+/* =====================================================================
+   Tesys UI — REFINE  (bahasa visual korporat-modern)
+   ---------------------------------------------------------------------
+   Lapisan TERAKHIR. Tugasnya satu: menyatukan tipografi, ukuran kontrol,
+   dan komponen bersama yang sebelumnya ditulis berlapis di tujuh berkas
+   (base, compat, luxe, shell, pages, components, datatable) dengan angka
+   yang saling menimpa — 13.5px di body, 12px di tabel, 11.5px di tombol,
+   10px di label — sehingga hierarki antar-elemen datar dan terbaca kaku.
+
+   Berkas ini TIDAK menambah warna. Semua warna tetap dari token di
+   tesys-ui-tokens.css (terang, gelap, dan aksen per-perangkat ikut jalan).
+   Yang diatur di sini hanya: muka huruf, skala ukuran, tinggi kontrol,
+   padding kartu/tabel, dan penghilangan hiasan (garis warna-warni, efek
+   angkat saat hover). Aturan memakai !important hanya di tempat berkas
+   sebelumnya sudah memasang !important pada properti yang sama.
+
+   Mengembalikan tampilan lama: lepas <link> berkas ini dari
+   layouts/app.blade.php. Tidak ada berkas lain yang bergantung padanya.
+
+   Ukuran layar ≤ 640px sengaja TIDAK disentuh (tesys-ui-mobile.css yang
+   mengatur tinggi sentuh 36–44px dan font 16px anti-zoom iOS).
+   ===================================================================== */
+
+
+/* ---------------------------------------------------------- 1. FONT
+   Inter variabel, dimuat dari server sendiri (public/fonts/inter, lisensi
+   SIL OFL 1.1 — lihat LICENSE.txt di folder itu). Sebelumnya dimuat dari
+   fonts.googleapis.com: jaringan kantor yang memblokir CDN (flatpickr
+   sudah dipindah self-host karena itu) membuat seluruh aplikasi jatuh ke
+   Segoe UI, dan angka rupiah berubah lebar di tengah halaman saat font
+   datang terlambat.
+   Subset latin sudah mencakup huruf, angka, dan tanda baca bahasa
+   Indonesia (— – · … ‘ ’ “ ”). */
+@font-face {
+    font-family: "Inter";
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url("../fonts/inter/inter-latin-wght-normal.woff2") format("woff2-variations"),
+         url("../fonts/inter/inter-latin-wght-normal.woff2") format("woff2");
+}
+
+
+/* --------------------------------------------------------- 2. TOKEN
+   Skala tipografi menurut PERAN. Token lama (--fs-*) dipakai sebagian
+   komponen lewat var(), jadi mengubah nilainya di sini ikut mengubah
+   komponen itu tanpa menyunting aturannya.
+
+     peran                 ukuran / bobot / tinggi baris
+     judul halaman         18 / 600 / 1.25     (topbar)
+     judul kartu & seksi   14.5 / 600 / 1.3
+     sub-seksi             13.5 / 600 / 1.35
+     isi                   14 / 400 / 1.5
+     kontrol (input, btn)  13 / 500 / —
+     sel tabel             12.5 / 400 / 1.45
+     header tabel          12 / 600 / 1.3      (kapital-kecil, BUKAN KAPITAL)
+     label field           12.5 / 500 / 1.3
+     metadata & waktu      12 / 400 / 1.4      (--text-faint)
+     angka KPI             24 / 600 / 1.15     (tabular)
+   Bobot 700 tidak dipakai untuk teks biasa; itu disisakan untuk angka
+   total dan peringatan supaya benar-benar menonjol. */
+:root {
+    --fs-page:     18px;
+    --fs-section:  14.5px;
+    --fs-sub:      13.5px;
+    --fs-body:     14px;
+    --fs-control:  13px;
+    --fs-data:     12.5px;
+    --fs-th:       12px;
+    --fs-label:    12.5px;
+    --fs-caption:  12px;
+    --fs-kpi:      24px;
+
+    --fw-heading:  600;
+    --fw-section:  600;
+    --fw-label:    500;
+    --fw-body:     400;
+
+    --lh-tight:    1.25;
+    --lh-body:     1.5;
+    --lh-data:     1.45;
+
+    /* Tinggi kontrol: satu skala untuk tombol, input, select, dan tab. */
+    --ctl-h:       34px;
+    --ctl-h-sm:    30px;
+
+    /* Padding kartu dan tabel. */
+    --card-pad:    20px;
+    --card-pad-sm: 16px;
+    --cell-y:      9px;
+    --cell-x:      12px;
+
+    --ls-micro:    .02em;
+}
+
+
+/* ---------------------------------------------------------- 3. DASAR */
+body.tesys-ui,
+body.tesys-ui button,
+body.tesys-ui input,
+body.tesys-ui select,
+body.tesys-ui textarea {
+    font-family: var(--font-body) !important;
+}
+body.tesys-ui {
+    font-size: var(--fs-body) !important;
+    line-height: var(--lh-body);
+    font-weight: var(--fw-body);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-kerning: normal;
+}
+
+/* Angka uang & kode transaksi: lebar digit tetap di MANA PUN muncul, bukan
+   hanya di sel rata kanan (aturan di tesys-ui-pages.css). Kode dokumen
+   (CR-…, INV-…) dan tanggal ikut sejajar, jadi kolom kode tidak bergerigi.
+   Hanya mengaktifkan fitur OpenType; tidak mengubah isi atau format. */
+body.tesys-ui .table td,
+body.tesys-ui .table th,
+body.tesys-ui table.dataTable td,
+body.tesys-ui table.dataTable th,
+body.tesys-ui .dataTables_info,
+body.tesys-ui .stat-val,
+body.tesys-ui .ts-kpi-value,
+body.tesys-ui .col-kpi-value,
+body.tesys-ui .todo-kpi-value,
+body.tesys-ui .badge,
+body.tesys-ui .ts-status,
+body.tesys-ui .num,
+body.tesys-ui .ts-num {
+    font-variant-numeric: tabular-nums lining-nums;
+}
+
+body.tesys-ui h1,
+body.tesys-ui h2,
+body.tesys-ui h3,
+body.tesys-ui h4,
+body.tesys-ui h5,
+body.tesys-ui h6 {
+    font-family: var(--font-display);
+    font-weight: var(--fw-heading);
+    line-height: var(--lh-tight);
+    letter-spacing: -.005em;
+    color: var(--text);
+}
+body.tesys-ui h1 { font-size: 20px; }
+body.tesys-ui h2 { font-size: 17px; }
+body.tesys-ui h3 { font-size: var(--fs-section); }
+body.tesys-ui h4 { font-size: var(--fs-sub); }
+body.tesys-ui h5,
+body.tesys-ui h6 { font-size: var(--fs-body); }
+
+body.tesys-ui small,
+body.tesys-ui .small,
+body.tesys-ui .text-muted { font-size: var(--fs-caption); line-height: 1.4; }
+body.tesys-ui .text-muted { color: var(--text-faint) !important; }
+
+body.tesys-ui label,
+body.tesys-ui .col-form-label {
+    font-size: var(--fs-label);
+    font-weight: var(--fw-label);
+    color: var(--text-dim);
+}
+
+
+/* ----------------------------------------------- 4. SHELL (≥ 641px) */
+@media (min-width: 641px) {
+
+    /* Sidebar: bobot 500 untuk semua butir, 600 hanya untuk yang aktif —
+       sebelumnya semua 600 sehingga butir aktif tidak berbeda dari yang lain
+       selain warna latarnya. */
+    body.tesys-ui .sidebar .nav-item,
+    body.tesys-ui .sidebar .nav-group-toggle,
+    body.tesys-ui .sidebar .nav a {
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 0;
+    }
+    body.tesys-ui .sidebar .nav-item.active { font-weight: 600; }
+    body.tesys-ui .sidebar .nav-label {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: .06em;
+    }
+    body.tesys-ui .sidebar .brand-sub { font-size: 12px; letter-spacing: .01em; }
+    body.tesys-ui .sidebar .sc-time { font-size: 18px; font-weight: 600; letter-spacing: 0; }
+
+    /* Topbar: judul lebih ringan, remah jejak tidak terlalu kecil. */
+    body.tesys-ui .topbar .page-title {
+        font-size: var(--fs-page);
+        font-weight: var(--fw-heading);
+        letter-spacing: -.01em;
+        line-height: var(--lh-tight);
+    }
+    body.tesys-ui .topbar .crumb { font-size: 11.5px; letter-spacing: .01em; }
+    body.tesys-ui .topbar .search,
+    body.tesys-ui .topbar .search input { font-size: var(--fs-control); }
+
+    /* Ruang kerja: sedikit lebih lega di sisi, jarak antar-blok 16 → 20
+       supaya KPI, filter, dan tabel terbaca sebagai tiga lapis, bukan satu. */
+    body.tesys-ui .main > .content {
+        padding: 24px 28px 64px !important;
+        gap: 20px;
+    }
+}
+
+
+/* --------------------------------------------------- 5. KARTU (≥ 641px) */
+@media (min-width: 641px) {
+    body.tesys-ui .card {
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-xs) !important;
+    }
+    body.tesys-ui .card-header {
+        padding: 14px var(--card-pad) !important;
+        min-height: 52px;
+    }
+    body.tesys-ui .card-header .card-title,
+    body.tesys-ui .card-header h3 {
+        font-size: var(--fs-section);
+        font-weight: var(--fw-section);
+        letter-spacing: -.005em;
+        line-height: var(--lh-tight);
+    }
+    body.tesys-ui .card-body { padding: var(--card-pad) !important; }
+    body.tesys-ui .card-footer { padding: 12px var(--card-pad); font-size: var(--fs-caption); }
+    /* Kartu yang isinya tabel penuh-lebar tidak diberi padding badan. */
+    body.tesys-ui .card-body.p-0 { padding: 0 !important; }
+}
+
+
+/* ------------------------------------------------------------ 6. KPI
+   SATU bentuk untuk tiga implementasi yang tadinya berbeda:
+     .ts-kpi          (x-stat-cards, 20+ halaman)
+     .col-kpi-card    (Finance Summary — blade-nya punya <style> sendiri)
+     .todo-kpi-card   (Todo List — tadinya style inline)
+   Label kalimat biasa 12.5px (bukan kapital 10px), angka 24px tabular,
+   tanpa garis warna di tepi kiri. Warna dicadangkan untuk satu hal:
+   angka yang menuntut tindakan (.is-alert / accent-bad) menjadi merah. */
+body.tesys-ui .ts-kpi,
+body.tesys-ui .col-kpi-card,
+body.tesys-ui .todo-kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left-width: 1px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-xs);
+}
+body.tesys-ui .col-kpi-card,
+body.tesys-ui .todo-kpi-card { border-left-color: var(--border); }
+
+body.tesys-ui .ts-kpi-label,
+body.tesys-ui .col-kpi-label,
+body.tesys-ui .todo-kpi-label,
+body.tesys-ui .stat-lbl {
+    font-size: var(--fs-label);
+    font-weight: var(--fw-label);
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--text-dim);
+    line-height: 1.3;
+}
+body.tesys-ui .ts-kpi-value,
+body.tesys-ui .col-kpi-value,
+body.tesys-ui .todo-kpi-value,
+body.tesys-ui .stat-val {
+    font-family: var(--font-display);
+    font-weight: 600;
+    line-height: var(--lh-tight);
+    letter-spacing: -.015em;
+    color: var(--text);
+}
+/* Nominal penuh ("136.643.000.000") tidak boleh terpotong: ukuran mengikuti
+   lebar kartu, batas atasnya 24px. Satuan cqw (container query) belum bisa
+   diandalkan di semua peramban kantor, jadi dipakai clamp berbasis viewport
+   — sama pendekatannya dengan yang sudah ada di tesys-ui-luxe.css. */
+body.tesys-ui .col-kpi-value,
+body.tesys-ui .ts-kpi-value {
+    font-size: clamp(15px, .9vw + 8px, var(--fs-kpi));
+    white-space: nowrap;
+}
+/* Peramban yang mengenal container query (sudah wajib untuk :has() dan
+   color-mix yang dipakai tema ini) menghitung ukuran dari lebar KARTU, bukan
+   lebar layar: "136.643.000.000" ≈ 8,3em, jadi 11cqw membuatnya pas persis di
+   kartu selebar apa pun, tanpa terpotong. Peramban lama tetap memakai clamp
+   di atas. */
+@supports (width: 1cqw) {
+    body.tesys-ui .col-kpi-card { container-type: inline-size; }
+    body.tesys-ui .col-kpi-value { font-size: clamp(13px, 10.5cqw, var(--fs-kpi)); }
+}
+
+/* Enam kartu sebaris hanya cukup lebar untuk nominal 12 digit mulai ±1440px.
+   Di bawah itu baris dipecah jadi 3 × 2, bukan memaksa angkanya mengecil
+   sampai tak terbaca atau terpotong (keadaan sebelumnya). */
+@media (min-width: 768px) and (max-width: 1439.98px) {
+    body.tesys-ui .col-kpi-row > .col-kpi-col { flex: 0 0 33.3333%; max-width: 33.3333%; }
+}
+body.tesys-ui .todo-kpi-value { font-size: var(--fs-kpi); }
+
+body.tesys-ui .col-kpi-accent-bad .col-kpi-value,
+body.tesys-ui .todo-kpi-card.is-alert .todo-kpi-value { color: var(--danger) !important; }
+
+/* Ikon KPI: netral. Enam nada ikon (biru/hijau/kuning/ungu…) di satu baris
+   membuat halaman terbaca seperti papan warna; arti angkanya sudah dibawa
+   oleh label, bukan warna. Hanya yang bermakna bahaya yang tetap merah. */
+body.tesys-ui .col-kpi-icon,
+body.tesys-ui .col-kpi-icon-blue,
+body.tesys-ui .col-kpi-icon-green,
+body.tesys-ui .col-kpi-icon-warn,
+body.tesys-ui .col-kpi-icon-good,
+body.tesys-ui .col-kpi-icon-purple {
+    background: var(--surface-2);
+    color: var(--text-dim);
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+}
+body.tesys-ui .col-kpi-icon-bad { background: var(--danger-bg); color: var(--danger); }
+
+body.tesys-ui .col-kpi-foot,
+body.tesys-ui .col-kpi-qty-lbl,
+body.tesys-ui .ts-kpi-sub { font-size: var(--fs-caption); color: var(--text-faint); }
+body.tesys-ui .col-kpi-qty { font-size: 12.5px; font-weight: 600; }
+
+/* Efek angkat saat hover dilepas; yang berubah cukup garis tepinya. */
+body.tesys-ui .col-kpi-clickable:hover {
+    transform: none;
+    box-shadow: var(--shadow-xs) !important;
+    border-color: var(--border-strong);
+}
+
+@media (min-width: 641px) {
+    body.tesys-ui .col-kpi-card { padding: 16px 18px 14px; }
+    body.tesys-ui .col-kpi-head { margin-bottom: 10px; }
+    body.tesys-ui .todo-kpi-card .card-body { padding: 16px 18px !important; }
+    body.tesys-ui .ts-kpi { padding: 14px 18px; }
+}
+
+
+/* ------------------------------------ 7. TOMBOL & KONTROL FORM (≥ 641px)
+   Tinggi 34 / 30px menggantikan 23–29px. Tombol di dalam sel tabel dan
+   di toolbar DataTables tetap kompak (aturan di bagian 8). */
+@media (min-width: 641px) {
+    body.tesys-ui .btn {
+        font-size: var(--fs-control) !important;
+        font-weight: 500 !important;
+        padding: 0 14px !important;
+        min-height: var(--ctl-h);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        line-height: 1.2;
+    }
+    body.tesys-ui .btn-sm {
+        font-size: 12.5px !important;
+        padding: 0 11px !important;
+        min-height: var(--ctl-h-sm);
+    }
+    body.tesys-ui .btn-xs {
+        font-size: 12px !important;
+        padding: 0 9px !important;
+        min-height: 26px;
+    }
+    body.tesys-ui .btn-lg {
+        font-size: 14px !important;
+        padding: 0 20px !important;
+        min-height: 40px;
+    }
+    body.tesys-ui .btn-primary,
+    body.tesys-ui .btn-success { font-weight: 600 !important; }
+
+    body.tesys-ui .form-control,
+    body.tesys-ui .custom-select {
+        font-size: var(--fs-control) !important;
+        height: var(--ctl-h);
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        line-height: 1.4;
+    }
+    body.tesys-ui textarea.form-control { height: auto; padding-top: 8px !important; padding-bottom: 8px !important; }
+    body.tesys-ui .form-control-sm,
+    body.tesys-ui .custom-select-sm {
+        height: var(--ctl-h-sm);
+        font-size: 12.5px !important;
+    }
+    /* <select> tunggal: compat.css memasang `body.tesys-ui select.form-control
+       { height:auto }` yang spesifisitasnya (0,2,2) mengalahkan tinggi di atas
+       (0,2,1), sementara padding vertikal sudah dinolkan — hasilnya dropdown
+       setipis teksnya. Disamakan lagi dengan tinggi input. Select multiple/size
+       tetap auto karena memang berupa daftar. */
+    body.tesys-ui select.form-control:not([multiple]):not([size]) { height: var(--ctl-h); }
+    body.tesys-ui select.form-control-sm:not([multiple]):not([size]) { height: var(--ctl-h-sm); }
+    body.tesys-ui select.form-control[multiple],
+    body.tesys-ui select.form-control[size] { padding-top: 4px !important; padding-bottom: 4px !important; }
+    body.tesys-ui .form-control::placeholder { color: var(--text-faint); opacity: 1; }
+    body.tesys-ui .ts-wrapper .ts-control,
+    body.tesys-ui .ts-wrapper.multi .ts-control { font-size: var(--fs-control) !important; }
+
+    body.tesys-ui .form-group { margin-bottom: 14px; }
+    body.tesys-ui .form-group > label,
+    body.tesys-ui label.mb-1 { margin-bottom: 5px; }
+}
+
+
+/* ---------------------------------------- 8. TABEL & DATATABLE (≥ 641px)
+   Header BUKAN kapital: kapital + jarak huruf pada 11px membuat header
+   kolom lebih berisik daripada datanya. Header 12px/600 warna redup di
+   atas isian lembut sudah cukup sebagai penanda; kapital hanya tetap
+   dipakai untuk label seksi sidebar. */
+@media (min-width: 641px) {
+    body.tesys-ui .table,
+    body.tesys-ui table.dataTable { font-size: var(--fs-data) !important; line-height: var(--lh-data); }
+
+    body.tesys-ui .table thead th,
+    body.tesys-ui table.dataTable thead th {
+        font-size: var(--fs-th) !important;
+        font-weight: 600;
+        text-transform: none;
+        letter-spacing: var(--ls-micro);
+        line-height: 1.3;
+        background: var(--surface-2) !important;
+        color: var(--text-dim) !important;
+        border-bottom: 1px solid var(--border-strong) !important;
+        padding: 10px var(--cell-x);
+    }
+    body.tesys-ui .table tbody td,
+    body.tesys-ui table.dataTable tbody td {
+        padding-top: var(--cell-y) !important;
+        padding-bottom: var(--cell-y) !important;
+        padding-left: var(--cell-x) !important;
+        padding-right: var(--cell-x) !important;
+    }
+    body.tesys-ui .table tbody tr:hover > td { background: var(--surface-2); }
+    body.tesys-ui .table tfoot td,
+    body.tesys-ui .table tfoot th { font-size: var(--fs-data); padding: 10px var(--cell-x); }
+
+    /* Footer total: label biasa, bukan kapital 11.5px. */
+    body.tesys-ui .table tfoot th {
+        font-size: var(--fs-th) !important;
+        text-transform: none;
+        letter-spacing: var(--ls-micro);
+        color: var(--text-dim);
+    }
+
+    /* Tombol aksi di dalam baris tetap kompak: 26px. */
+    body.tesys-ui .table td .btn,
+    body.tesys-ui table.dataTable td .btn {
+        min-height: 26px;
+        padding: 0 9px !important;
+        font-size: 12px !important;
+    }
+
+    /* Kotak cari, ukuran halaman, info, dan penomoran. */
+    body.tesys-ui .dataTables_wrapper .dataTables_info,
+    body.tesys-ui .dataTables_wrapper .dataTables_length,
+    body.tesys-ui .dataTables_wrapper .dataTables_filter { font-size: var(--fs-caption); color: var(--text-faint); }
+    body.tesys-ui .dataTables_wrapper .dataTables_filter input,
+    body.tesys-ui .dataTables_wrapper .dataTables_length select {
+        height: var(--ctl-h-sm);
+        font-size: 12.5px;
+    }
+    body.tesys-ui .dataTables_paginate .paginate_button,
+    body.tesys-ui .dataTables_wrapper .page-link {
+        font-size: 12.5px !important;
+        font-weight: 500;
+        min-width: 30px;
+        min-height: 30px;
+        line-height: 1.2;
+    }
+}
+
+
+/* --------------------------------------------------------- 9. TAB (≥ 641px) */
+@media (min-width: 641px) {
+    body.tesys-ui .nav-tabs .nav-link {
+        font-size: var(--fs-control);
+        font-weight: 500;
+        color: var(--text-dim);
+        padding: 10px 16px;
+    }
+    body.tesys-ui .nav-tabs .nav-link:hover { color: var(--text); }
+    body.tesys-ui .nav-tabs .nav-link.active { font-weight: 600; color: var(--accent-text); }
+}
+
+
+/* ------------------------------------------------- 10. BADGE & STATUS */
+body.tesys-ui .badge {
+    font-size: 11.5px !important;
+    font-weight: 500 !important;
+    line-height: 1.4;
+    padding: 3px 9px !important;
+    letter-spacing: 0;
+}
+body.tesys-ui .ts-status {
+    font-weight: 500;
+    letter-spacing: 0;
+}
+body.tesys-ui .ts-status-sm { font-size: 11.5px; padding: 3px 9px; }
+body.tesys-ui .ts-status-md { font-size: 12.5px; padding: 5px 12px; }
+body.tesys-ui .ts-status-desc { font-size: 11.5px; }
+
+
+/* ----------------------------------------------------- 11. MODAL & DRAWER */
+body.tesys-ui .modal-header { padding: 16px 22px; }
+body.tesys-ui .modal-header .modal-title,
+body.tesys-ui .modal-title {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -.005em;
+    line-height: var(--lh-tight);
+}
+body.tesys-ui .modal-body { padding: 20px 22px; font-size: var(--fs-data); }
+body.tesys-ui .modal-body .form-control { font-size: var(--fs-control); }
+body.tesys-ui .modal-footer { padding: 14px 22px; gap: 8px; }
+
+body.tesys-ui .ts-drawer-head { padding: 18px 22px 16px; }
+body.tesys-ui .ts-drawer-title {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -.01em;
+}
+body.tesys-ui .ts-drawer-eyebrow {
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: .02em;
+    text-transform: none;
+}
+body.tesys-ui .ts-drawer-body { padding: 20px 22px 28px; font-size: var(--fs-data); }
+body.tesys-ui .ts-drawer-foot { padding: 14px 22px; }
+body.tesys-ui .ts-dw-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--text);
+    margin-bottom: 10px;
+}
+body.tesys-ui .ts-dw-amount-label {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--text-dim);
+}
+body.tesys-ui .ts-dw-amount-value { font-size: 24px; letter-spacing: -.015em; }
+body.tesys-ui .ts-dw-kv { font-size: var(--fs-data); gap: 9px 14px; }
+body.tesys-ui .ts-tl-action { font-size: 13px; }
+body.tesys-ui .ts-tl-time { font-size: 11.5px; }
+body.tesys-ui .ts-tl-actor,
+body.tesys-ui .ts-tl-note { font-size: 12px; }
+body.tesys-ui .ts-dw-file { font-size: var(--fs-data); }
+body.tesys-ui .ts-dw-file small { font-size: 11.5px; }
+
+
+/* --------------------------------------------------- 12. GRAFIK (wadah)
+   Judul kartu grafik memakai gaya kartu biasa (bagian 5). Canvas diberi
+   jarak yang sama dengan badan kartu; legenda berukuran caption. */
+body.tesys-ui .exec-legend-item,
+body.tesys-ui .col-chart-legend { font-size: var(--fs-caption); }
+
+
+/* ---------------------------------------------- 13. STRIP STATUS (stepper)
+   Label 10.5px dan angka 11px di strip status Cost Request / PO / Budgeting
+   terlalu kecil untuk dibaca sekilas; naik ke 11.5px. Efek terangkat saat
+   hover dilepas — yang menandai kartu aktif cukup cincin aksennya. */
+@media (min-width: 641px) {
+    body.tesys-ui .wf-compact .wf-tl-label { font-size: 11.5px; letter-spacing: 0; line-height: 1.25; }
+    body.tesys-ui .wf-compact .wf-tl-node { font-size: 11.5px; font-weight: 600; min-width: 26px; padding: 3px 8px; }
+    body.tesys-ui .wf-compact .wf-tl-grid { grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); }
+    body.tesys-ui .wf-tl-step:hover { transform: none; }
+
+    /* Jarak strip → kotak pencarian: SATU nilai (16px) di PO, Budget Plan,
+       dan Cost Request. Dulu tiap halaman berbeda karena header kartu yang
+       kosong (hanya judul "Daftar …") tetap tampil sebagai garis + celah
+       ±50px di dua halaman pertama; di Cost Request tidak ada. Header kosong
+       itu kini disembunyikan di tesys-ui-datatable.css; sisa jaraknya =
+       padding bawah strip 8px + padding atas kartu 8px. */
+    body.tesys-ui .wf-compact { padding-bottom: 8px; }
+}
+
+/* Tombol aksi utama di baris & drawer (Check / Approve / Process …). */
+@media (min-width: 641px) {
+    body.tesys-ui .ts-action-primary .ts-al,
+    body.tesys-ui .ts-action-primary { font-size: 12.5px; font-weight: 600; }
+}
+
+
+/* ======================================================= 14. COST REQUEST
+   Halaman Cost Request (budget-request/index) — hierarki lima lapis:
+   judul/remah jejak (topbar) → tab kategori → strip status alur kerja →
+   toolbar → tabel. Semua aturan di bagian ini diberi awalan .cr-pane /
+   .cr-head sehingga halaman lain (PO, Budget Plan) yang
+   memakai komponen yang sama tidak ikut berubah.
+
+   Sumber kebisingan visual sebelumnya:
+     1. Tiga lapis kotak bertumpuk: kartu → bilah toolbar abu → tabel
+        dengan bayangan sendiri; garis atas kartu berwarna (card-outline).
+     2. Strip status: 15 lingkaran berwarna 7 nada + garis penghubung +
+        cincin, bersaing dengan tabel.
+     3. Tabel berborder penuh (garis vertikal tiap kolom), teks kode,
+        nominal, dan deskripsi sama-sama tebal 600–700, metadata 10px.
+     4. Baris NOB mewarnai SELURUH baris merah; footer total berwarna
+        biru/hijau; tombol aksi baris solid burgundy di setiap baris.
+   Warna tetap dari token. Hanya ≥ 641px kecuali strip status. */
+
+
+/* ---------------------------------------- 14a. TAB KATEGORI + RENTANG */
+body.tesys-ui .cr-head { margin-bottom: 0; }
+body.tesys-ui .cr-main-tabs {
+    border-bottom: 1px solid var(--border);
+    gap: 2px;
+}
+body.tesys-ui .cr-main-tabs .nav-link {
+    margin-bottom: -1px;
+    padding: 10px 14px;
+    font-size: var(--fs-control);
+    font-weight: 500;
+    color: var(--text-dim);
+    border-bottom: 2px solid transparent;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+body.tesys-ui .cr-main-tabs .nav-link > i { color: var(--text-faint); font-size: 12px; margin: 0 !important; }
+body.tesys-ui .cr-main-tabs .nav-link:hover { color: var(--text); }
+body.tesys-ui .cr-main-tabs .nav-link.active {
+    color: var(--accent-text) !important;
+    font-weight: 600;
+    border-bottom-color: var(--accent) !important;
+}
+body.tesys-ui .cr-main-tabs .nav-link.active > i { color: var(--accent-text); }
+/* Jumlah per tab: angka redam, bukan lencana berbingkai. */
+body.tesys-ui .cr-main-tabs .badge {
+    margin: 0 !important;
+    padding: 1px 7px !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: var(--surface-2);
+    color: var(--text-dim);
+}
+body.tesys-ui .cr-main-tabs .nav-link.active .badge { background: var(--accent-tint); color: var(--accent-text); }
+
+@media (min-width: 641px) {
+    body.tesys-ui .cr-head #crQuickRange,
+    body.tesys-ui .cr-head #btnRefreshCR,
+    body.tesys-ui .cr-head .tdr-input { height: var(--ctl-h-sm); min-height: var(--ctl-h-sm); }
+    body.tesys-ui .cr-head #btnRefreshCR { color: var(--text-dim); }
+}
+
+
+/* --------------------------------------- 14b. STRIP STATUS ALUR KERJA
+   Mode berfase (x-workflow-stepper :groups, .wf-phased): tahap dikelompokkan
+   ke kartu fase (Pengajuan → Persetujuan → Pembayaran → Settlement) dengan
+   chevron di antaranya. Tiap tahap berupa tile kecil: angka di atas, label
+   di bawah. Nada tile:
+     - kosong            : diredam (tepi putus-putus tipis, teks pudar)
+     - ditolak, > 0      : latar merah muda, teks merah
+     - sedang difilter   : terisi merah TESYS, teks putih
+     - lainnya           : tile netral; angka berwarna kuning/hijau sesuai nada
+   Nada berasal dari data-wf-color yang sudah dihitung komponen, jadi arti
+   tiap tahap tidak berubah. Seluruh tahap tetap tampil; bila lebar tidak
+   cukup (layar sempit) baris fase menggulir mendatar.
+   !important pada node diperlukan: .badge di tesys-ui-luxe.css memaksa
+   font-size/padding/radius dengan !important. */
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg, var(--radius-md));
+    padding: 0;
+    margin-top: 12px;
+    overflow: hidden;
+}
+/* Satu kartu, empat seksi fase dipisah garis tipis. Tile berukuran tetap
+   (seragam di semua fase); baris menggulir mendatar bila lebar tidak cukup,
+   di desktop maupun HP — tidak pernah membungkus. */
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phase-row {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+}
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phase {
+    /* Basis = isi; sisa lebar dibagi menurut jumlah tile (inline flex-grow dari
+       komponen), jadi kartu terisi penuh di layar lebar dan menggulir di sempit. */
+    flex: 1 0 auto;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 10px 14px 12px;
+}
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phase + .wf-phase,
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phase-sep + .wf-phase { border-left: 1px solid var(--border); }
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phase-sep { display: none; }
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phase-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    white-space: nowrap;
+}
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phase-steps { display: flex; gap: 6px; }
+
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step {
+    flex: 1 1 68px;
+    min-width: 68px;
+    height: 62px;
+    padding: 9px 4px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 2px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    transition: background-color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step::before,
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step::after { display: none; }
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step:hover { border-color: var(--accent-soft); transform: none; }
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step:has(.is-empty) {
+    background: transparent;
+    border-style: dashed;
+}
+
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-node,
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-node.is-empty {
+    display: block;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    min-width: 0;
+    font-size: 17px !important;
+    font-weight: 700 !important;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+    color: var(--text) !important;
+}
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-node.is-empty { font-weight: 500 !important; color: var(--text-faint) !important; }
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-node.badge-warning { color: var(--warning) !important; }
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-node.badge-success { color: var(--success) !important; }
+
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-label {
+    margin-top: 0;
+    font-size: 10.5px;
+    line-height: 1.2;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--text-dim);
+    text-align: center;
+}
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-label.is-off { color: var(--text-faint); font-weight: 400; }
+
+/* Ditolak dengan hitungan > 0: tile merah muda. */
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step[data-wf-color="danger"]:has(.badge-danger) {
+    background: var(--danger-bg);
+    border-color: var(--danger-bg);
+}
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step[data-wf-color="danger"]:has(.badge-danger) .wf-tl-node,
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step[data-wf-color="danger"]:has(.badge-danger) .wf-tl-label { color: var(--danger) !important; }
+
+/* Sedang difilter: tile terisi merah TESYS. */
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step.wf-active,
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step.wf-active:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    border-style: solid;
+    box-shadow: none;
+}
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step.wf-active .wf-tl-node,
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step.wf-active .wf-tl-label {
+    color: #fff !important;
+    text-decoration: none;
+}
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step:focus { outline: none; }
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step:focus-visible { box-shadow: 0 0 0 3px var(--accent-ring); }
+
+@media (max-width: 640px) {
+    body.tesys-ui :is(.cr-pane, .wf-host) .wf-phase { padding: 9px 10px 10px; }
+    body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step { flex-basis: 62px; min-width: 62px; }
+    body.tesys-ui :is(.cr-pane, .wf-host) .wf-phase-row { scrollbar-width: none; }
+    body.tesys-ui :is(.cr-pane, .wf-host) .wf-phase-row::-webkit-scrollbar { display: none; }
+}
+
+
+/* ------------------------------------ 14c. KARTU TUNGGAL + TOOLBAR
+   Toolbar dan tabel berbagi SATU kartu. Kartunya kini div Tailwind (x-tw.card,
+   index.blade.php), jadi aturan .cr-card lama dihapus; tombol toolbar
+   (cari/filter/kolom/export/bulk) juga komponen x-tw.button, dan wadahnya
+   (.cr-toolbar) tidak lagi memakai kelas .custom-toolbar, jadi reset
+   latar/bingkai/jarak lamanya dihapus. Yang tersisa hanya yang masih dipakai:
+   input cari (dibuat JS), tombol bawaan TesysColumnFilter (.btn di panel
+   filter), tombol hapus filter, dan penanda filter aktif. */
+@media (min-width: 641px) {
+    /* Tinggi seragam 32px untuk input cari dan tombol bawaan panel filter. */
+    body.tesys-ui .cr-pane .cr-toolbar .btn,
+    body.tesys-ui .cr-pane .cr-toolbar .form-control {
+        height: 32px;
+        min-height: 32px;
+        font-size: 12.5px !important;
+        font-weight: 500 !important;
+        padding: 0 12px !important;
+        border-radius: var(--radius-sm);
+        box-shadow: none;
+    }
+    body.tesys-ui .cr-pane .cr-toolbar .btn i { font-size: 11.5px; margin: 0 !important; }
+
+    /* Kendali sekunder: netral, bergaris tipis. */
+    body.tesys-ui .cr-pane .cr-toolbar .btn-outline-secondary {
+        background: var(--surface);
+        border-color: var(--border-strong);
+        color: var(--text-dim);
+    }
+    body.tesys-ui .cr-pane .cr-toolbar .btn-outline-secondary:hover,
+    body.tesys-ui .cr-pane .cr-toolbar .btn-outline-secondary:focus {
+        background: var(--surface-2);
+        border-color: var(--text-faint);
+        color: var(--text);
+    }
+    body.tesys-ui .cr-pane .cr-toolbar .cr-filter-toggle.cr-filter-on {
+        background: var(--accent-tint);
+        border-color: var(--accent-soft);
+        color: var(--accent-text);
+    }
+    /* Hapus filter: ikon saja, tanpa bingkai sampai disorot. */
+    body.tesys-ui .cr-pane .cr-toolbar .cr-btn-clear {
+        width: 32px;
+        padding: 0 !important;
+        background: transparent;
+        border-color: transparent;
+        color: var(--text-faint);
+    }
+    body.tesys-ui .cr-pane .cr-toolbar .cr-btn-clear:hover { background: var(--surface-2); color: var(--text); }
+
+    /* Pencarian: label "Cari :" sudah disembunyikan; ikon kaca pembesar
+       di dalam kotak, lebar 260px agar kode & deskripsi muat. */
+    body.tesys-ui .cr-pane .cr-toolbar .cr-search-box { position: relative; }
+    body.tesys-ui .cr-pane .cr-toolbar .cr-search-box::before {
+        content: "\f002";
+        font-family: "Font Awesome 5 Free", "Font Awesome 6 Free", "FontAwesome";
+        font-weight: 900;
+        font-size: 11px;
+        position: absolute;
+        left: 11px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-faint);
+        pointer-events: none;
+    }
+    body.tesys-ui .cr-pane .cr-toolbar .cr-search-box input {
+        width: 260px;
+        padding-left: 32px !important;
+        background: var(--surface);
+    }
+    body.tesys-ui .cr-pane .cr-toolbar .cr-bulk-info { font-size: 12.5px !important; color: var(--text-dim); }
+}
+
+/* Mobile: panel Filter/Kolom selebar toolbar, bukan absolut di bawah tombolnya.
+   Memulihkan perilaku lama mobile.css (.custom-toolbar-left .cr-pop*) yang tak
+   lagi berlaku sejak toolbar memakai x-tw. left/right/min-width memakai !
+   hanya karena JS index menulis left/right sebagai inline style dan _toolbar
+   menulis min-width inline (aturan lama yang sama, bukan ! baru). */
+@media (max-width: 640px) {
+    .cr-toolbar { position: relative; }
+    .cr-toolbar .cr-pop { position: static; }
+    .cr-toolbar .cr-pop-menu {
+        left: 0 !important;
+        right: 0 !important;
+        min-width: 0 !important;
+        width: auto;
+    }
+}
+
+/* Keadaan sibuk tombol bulk (x-tw.button, tanpa .btn): TesysUI.busy hanya
+   dilayani components.css untuk .btn/.ts-action-primary. Spinner memakai
+   keyframes ts-spin dan warna asli teks yang direkam busy(). */
+.cr-bulk-bar .is-busy {
+    position: relative;
+    pointer-events: none;
+    opacity: .82;
+    color: transparent !important;
+}
+.cr-bulk-bar .is-busy > * { visibility: hidden; }
+.cr-bulk-bar .is-busy::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 15px;
+    height: 15px;
+    margin: -7.5px 0 0 -7.5px;
+    border: 2px solid var(--ts-busy-color, var(--text));
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: ts-spin .7s linear infinite;
+}
+
+
+/* ------------------------------------------------------ 14d. TABEL */
+@media (min-width: 641px) {
+    /* Tanpa bayangan dan tepi tabel. */
+    body.tesys-ui .cr-pane table.cr-tbl,
+    body.tesys-ui .main > .content .cr-pane table.cr-tbl.dataTable { box-shadow: none; border: 0; }
+    /* Tanpa garis vertikal; pemisah antarbaris tipis (kelas .table/.table-bordered tetap dipasang: M5b tidak
+       mencabutnya dan dampaknya pada kartu <= 640px belum diukur; lihat docs/ui/tailwind-budget-request.md M5b). */
+    body.tesys-ui .cr-pane .cr-tbl.table-bordered th,
+    body.tesys-ui .cr-pane .cr-tbl.table-bordered td {
+        border-left: 0;
+        border-right: 0;
+        border-top: 1px solid var(--border);
+        border-bottom: 0;
+    }
+    /* th/td/tfoot, kolom beku (centang/Code/Action), baris NOB dan baris tercentang: utilitas tw
+       pada <table> (budget-request/_table.blade.php, $gayaTabel; M5a; docs/ui/tailwind-budget-request.md).
+       Tersisa di sini hanya yang milik DataTables (panah urut) dan hierarki tautan di sel. */
+    /* Ruang untuk panah urut hanya di kolom yang bisa diurutkan; dulu 26px
+       di kanan setiap judul membuat tabel meluber ±130px dan kolom Status
+       tersembunyi di balik gulir mendatar. */
+    body.tesys-ui .cr-pane .cr-tbl thead th.sorting,
+    body.tesys-ui .cr-pane .cr-tbl thead th.sorting_asc,
+    body.tesys-ui .cr-pane .cr-tbl thead th.sorting_desc { padding-right: 20px !important; }
+    body.tesys-ui .cr-pane .cr-tbl thead th.sorting::before,
+    body.tesys-ui .cr-pane .cr-tbl thead th.sorting::after,
+    body.tesys-ui .cr-pane .cr-tbl thead th.sorting_asc::before,
+    body.tesys-ui .cr-pane .cr-tbl thead th.sorting_asc::after,
+    body.tesys-ui .cr-pane .cr-tbl thead th.sorting_desc::before,
+    body.tesys-ui .cr-pane .cr-tbl thead th.sorting_desc::after { right: 7px; }
+    body.tesys-ui .cr-pane .cr-tbl thead th.sorting::before,
+    body.tesys-ui .cr-pane .cr-tbl thead th.sorting::after { opacity: .25; }
+    body.tesys-ui .cr-pane .cr-tbl .cr-number-btn,
+    body.tesys-ui .cr-pane .cr-tbl .cr-cell-link { padding: 2px 6px; }
+
+    /* Hierarki teks sel. */
+    body.tesys-ui .cr-pane .cr-tbl .cr-number-btn {
+        font-size: 12.5px;
+        font-weight: 400;
+        cursor: copy;
+        letter-spacing: 0;
+        color: var(--text);
+    }
+    body.tesys-ui .cr-pane .cr-tbl .cr-cell-link {
+        font-size: 12.5px;
+        font-weight: 500;
+        color: var(--text);
+    }
+    body.tesys-ui .cr-pane .cr-tbl .cr-number-btn:hover,
+    body.tesys-ui .cr-pane .cr-tbl .cr-number-btn:focus,
+    body.tesys-ui .cr-pane .cr-tbl .cr-cell-link:hover,
+    body.tesys-ui .cr-pane .cr-tbl .cr-cell-link:focus {
+        background: var(--accent-tint);
+        color: var(--accent-text);
+    }
+    body.tesys-ui .cr-pane .cr-tbl .cr-number-btn:focus-visible,
+    body.tesys-ui .cr-pane .cr-tbl .cr-cell-link:focus-visible { box-shadow: 0 0 0 3px var(--accent-ring); }
+    /* Nominal nol: surut, supaya angka yang bermakna yang terbaca dulu. Tetap di sini (bukan utilitas tw):
+       penanda [data-raw="0"] memerlukan tanda kutip di dalam nama kelas tw, yang tidak aman untuk
+       pemindai Tailwind/TailwindAssetTest (M5a). */
+    body.tesys-ui .cr-pane .cr-tbl td[data-raw="0"],
+    body.tesys-ui .cr-pane .cr-tbl td[data-raw="0"] .cr-cell-link { color: var(--text-faint); font-weight: 400; }
+}
+
+
+/* ------------------------------------------------------ 14e. AKSI BARIS
+   Aksi alur kerja utama (Approve/Verify/Submit/Settle…) memakai tinta
+   burgundy lembut dan terisi penuh saat disorot; aksi netral bergaris
+   tipis; aksi merusak (Reject) merah bergaris; menu "lainnya" tanpa
+   bingkai. Label tetap tersedia untuk pembaca layar (.ts-al) dan sebagai
+   tooltip (title). Kisi 32px menggantikan 36px. */
+@media (min-width: 641px) {
+    body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) .ts-actions {
+        grid-template-columns: 32px 32px;
+        grid-auto-columns: 32px;
+        gap: 4px;
+    }
+    body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) .ts-actions .ts-action-primary,
+    body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) .ts-actions .ts-action-more {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        border-radius: var(--radius-sm);
+        box-shadow: none;
+        transform: none;
+    }
+    body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) .ts-actions .ts-action-primary i,
+    body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) .ts-actions .ts-action-more i { font-size: 12px; }
+
+    body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) .ts-actions .ts-action-primary:not(.is-neutral):not(.is-danger),
+    body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) .ts-actions a.ts-action-primary:not(.is-neutral):not(.is-danger) {
+        background: var(--accent-tint);
+        border-color: var(--accent-tint-2);
+        color: var(--accent-text);
+    }
+    body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) .ts-actions .ts-action-primary:not(.is-neutral):not(.is-danger):hover,
+    body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) .ts-actions a.ts-action-primary:not(.is-neutral):not(.is-danger):hover {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+    }
+    body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) .ts-actions .ts-action-primary.is-neutral {
+        background: transparent;
+        border-color: var(--border);
+        color: var(--text-dim);
+    }
+    body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) .ts-actions .ts-action-primary.is-neutral:hover {
+        background: var(--surface-2);
+        border-color: var(--border-strong);
+        color: var(--text);
+    }
+    body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) .ts-actions .ts-action-primary.is-danger {
+        background: transparent;
+        border-color: var(--danger-bg);
+        color: var(--danger);
+    }
+    body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) .ts-actions .ts-action-primary.is-danger:hover {
+        background: var(--danger);
+        border-color: var(--danger);
+        color: var(--surface);
+    }
+    body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) .ts-actions .ts-action-more {
+        background: transparent;
+        border-color: transparent;
+        color: var(--text-faint);
+    }
+    body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) .ts-actions .ts-action-more:hover {
+        background: var(--surface-2);
+        border-color: var(--border);
+        color: var(--text);
+    }
+}
+
+
+/* ------------------------------------------- 14f. INFO & PAGINASI */
+@media (min-width: 641px) {
+    body.tesys-ui :is(.cr-pane, .ts-index) .dataTables_wrapper .row:last-child { margin-top: 12px; }
+    body.tesys-ui :is(.cr-pane, .ts-index) .dataTables_info { font-size: 12px !important; color: var(--text-faint); }
+    body.tesys-ui :is(.cr-pane, .ts-index) .dataTables_length label { font-size: 12px !important; font-weight: 500 !important; }
+    body.tesys-ui :is(.cr-pane, .ts-index) .dataTables_length select {
+        height: var(--ctl-h-sm) !important;
+        font-size: 12.5px !important;
+        font-weight: 500 !important;
+    }
+}
+
+
+/* Deskripsi CR satu baris (sudah dipotong 60 karakter di server). Utilitas
+   Tailwind pada _table.blade.php membatasi lebar 20rem dan membolehkan
+   bungkus; di desktop dikembalikan ke satu baris. Kartu mobile tidak disentuh. */
+@media (min-width: 641px) {
+    body.tesys-ui .cr-pane table td.cr-col-desc {
+        white-space: nowrap;
+        max-width: none;
+    }
+}
+
+/* Baris CR bisa diklik (membuka detail). */
+body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) tbody tr[data-id] { cursor: pointer; }
+
+/* Kolom Action: header kosong, tanpa sortir, selebar satu tombol 32px. */
+@media (min-width: 641px) {
+    body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) th.action-column,
+    body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) td.action-column {
+        width: 1%;
+        min-width: 0;
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+    body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) th.action-column::before,
+    body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) th.action-column::after { display: none; }
+    body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) .ts-actions {
+        grid-template-columns: 32px;
+        justify-content: center;
+        /* Tinggi PERSIS sebesar tombol, juga saat sel kosong, dan tanpa garis dasar teks
+           (line-height 0 di sel) supaya baris dengan/tanpa tombol sama tinggi. */
+        display: flex;
+        align-items: center;
+        height: 32px;
+        min-height: 32px;
+    }
+    body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) td.action-column {
+        line-height: 0;
+        vertical-align: middle;
+    }
+}
+
+/* Lebar kolom tabel CR tetap (table-layout: fixed): header dan kolom tidak
+   bergeser antar halaman/ukuran isi. Lebar per kolom dari kelas/data-col;
+   !important perlu karena <th> membawa style="width:1%" inline. Teks panjang
+   dipotong (ellipsis), bukan melebarkan kolom. Mode kartu mobile tidak diubah. */
+@media (min-width: 641px) {
+    body.tesys-ui .cr-pane table.cr-tbl {
+        table-layout: fixed;
+        width: 100%;
+        min-width: 1480px;
+    }
+    body.tesys-ui .cr-pane .cr-tbl th.cr-col-check  { width: 40px !important; }
+    body.tesys-ui .cr-pane .cr-tbl th.cr-col-code   { width: 175px !important; }
+    body.tesys-ui .cr-pane .cr-tbl th.cr-col-desc   { width: 400px !important; }
+    body.tesys-ui .cr-pane .cr-tbl th[data-col="jenis"]     { width: 125px !important; }
+    body.tesys-ui .cr-pane .cr-tbl th[data-col="tanggal"]   { width: 105px !important; }
+    body.tesys-ui .cr-pane .cr-tbl th[data-col="paid_at"]   { width: 125px !important; }
+    body.tesys-ui .cr-pane .cr-tbl th[data-col="pengaju"]   { width: 140px !important; }
+    body.tesys-ui .cr-pane .cr-tbl th[data-col="pic"]       { width: 120px !important; }
+    body.tesys-ui .cr-pane .cr-tbl th[data-col="request"],
+    body.tesys-ui .cr-pane .cr-tbl th[data-col="cost"],
+    body.tesys-ui .cr-pane .cr-tbl th[data-col="realisasi"],
+    body.tesys-ui .cr-pane .cr-tbl th[data-col="refund"]    { width: 108px !important; }
+    body.tesys-ui .cr-pane .cr-tbl th[data-col="claim"]     { width: 124px !important; }
+    body.tesys-ui .cr-pane .cr-tbl th[data-col="status"]    { width: 140px !important; }
+    body.tesys-ui .cr-pane .cr-tbl th[data-col="close_date"] { width: 115px !important; }
+    body.tesys-ui .cr-pane .cr-tbl th.action-column         { width: 52px !important; }
+
+    body.tesys-ui .cr-pane .cr-tbl td.cr-col-desc,
+    body.tesys-ui .cr-pane .cr-tbl td[data-lbl="Requestor"],
+    body.tesys-ui .cr-pane .cr-tbl td[data-lbl="PIC"] {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    body.tesys-ui .cr-pane .cr-tbl td.cr-col-desc > div {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
+
+/* Deskripsi & kode tidak tebal (utilitas tw:font-heading pada deskripsi ditimpa di sini). */
+body.tesys-ui .cr-pane .cr-tbl td.cr-col-desc > div { font-weight: 400; }
+
+/* Handle ubah-lebar kolom di tepi kanan header (diisi JS: crInitResize). */
+body.tesys-ui .cr-pane .cr-tbl thead th[data-col] { position: relative; }
+body.tesys-ui .cr-pane .cr-resizer {
+    position: absolute;
+    top: 0;
+    right: -3px;
+    width: 7px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 5;
+    touch-action: none;
+    user-select: none;
+}
+body.tesys-ui .cr-pane .cr-resizer::after {
+    content: "";
+    position: absolute;
+    top: 22%;
+    bottom: 22%;
+    left: 3px;
+    width: 1px;
+    background: transparent;
+    transition: background-color var(--dur-fast) var(--ease);
+}
+body.tesys-ui .cr-pane thead th:hover .cr-resizer::after { background: var(--border-strong, var(--border)); }
+body.tesys-ui .cr-pane .cr-resizer:hover::after,
+body.tesys-ui .cr-pane .cr-resizer.is-active::after { background: var(--accent); width: 2px; }
+@media (max-width: 640px) {
+    body.tesys-ui .cr-pane .cr-resizer { display: none; }
+}
+
+/* Mobile: "Tambah Request" jadi tombol melayang di kanan bawah (di atas bottom-nav);
+   tombol di header disembunyikan. Tidak tampil di tab Database (sama seperti tombol header). */
+:is(.cr-fab, .ts-fab) { display: none; }
+@media (max-width: 640px) {
+    body.tesys-ui :is(.cr-add-request, .ts-add-btn) { display: none; }
+    body.tesys-ui :is(.cr-fab, .ts-fab) {
+        position: fixed;
+        right: 16px;
+        bottom: calc(var(--ts-bnav-h, 0px) + 18px);
+        z-index: 1030;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #fff;
+        font-size: 20px;
+        box-shadow: var(--shadow-lg);
+    }
+    body.tesys-ui :is(.cr-fab, .ts-fab):hover,
+    body.tesys-ui :is(.cr-fab, .ts-fab):focus { background: var(--accent-dark); color: #fff; text-decoration: none; }
+    body.tesys-ui:has(#crTabs .nav-link[data-crtab="db"].active) .cr-fab { display: none; }
+}
+
+/* Dropdown searchable (TesysSearchableSelect): judul grup & lencana. */
+.tss-group {
+    padding: 9px 10px 3px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    cursor: default;
+    user-select: none;
+}
+.tss-group:first-child { padding-top: 4px; }
+.tss-item.tss-item-grouped { padding-left: 22px; }
+.tss-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.5;
+    vertical-align: 1px;
+    background: var(--surface-2);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+}
+.tss-badge.tss-badge-internal { background: var(--info-bg); color: var(--info); border-color: transparent; }
+.tss-badge.tss-badge-external { background: var(--surface-2); color: var(--text-dim); }
+
+/* Form Cost Request (create/edit): kolom rincian dirapatkan — Harga Satuan/Total cukup untuk
+   0.000.000.000 (10 digit) — dan Lampiran Item berupa kotak dropzone (klik / drop / paste;
+   perilakunya tetap dari JS halaman). Aturan unlayered mengalahkan utilitas tw:w-[..%]. */
+@media (min-width: 641px) {
+    /* table-layout: fixed supaya lebar kolom persis seperti di bawah (mode auto membagi sisa lebar
+       ke semua kolom dan membuat Harga/Qty/Total melebar). Deskripsi tanpa lebar = menyerap sisanya. */
+    body.tesys-ui .cr-detail-table { table-layout: fixed; min-width: 1000px; }
+    body.tesys-ui .cr-detail-table th:nth-child(1) { width: 44px; }
+    body.tesys-ui .cr-detail-table th:nth-child(2) { width: 280px; }
+    body.tesys-ui .cr-detail-table th:nth-child(3) { width: auto; }
+    body.tesys-ui .cr-detail-table th.cr-d-harga,
+    body.tesys-ui .cr-detail-table th.cr-d-total { width: 136px; }
+    body.tesys-ui .cr-detail-table th.cr-d-qty   { width: 76px; }
+    body.tesys-ui .cr-detail-table th.cr-d-att   { width: 150px; }
+    body.tesys-ui .cr-detail-table th.cr-d-aksi  { width: 56px; }
+}
+body.tesys-ui .detail-att-drop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    width: 100%;
+    min-height: 46px;
+    padding: 6px 8px;
+    border: 1px dashed var(--accent);
+    border-radius: var(--radius-md);
+    background: var(--accent-tint);
+    color: var(--accent-text);
+    font-size: 11.5px;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease);
+}
+body.tesys-ui .detail-att-drop i { font-size: 15px; }
+body.tesys-ui .detail-att-drop:hover { background: var(--accent-tint-2); }
+body.tesys-ui .detail-att-drop:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-ring); }
+
+/* Form Submit Settlement (realize): tabel rincian berlebar kolom tetap — angka (Request/Settle/
+   Variance) cukup untuk 10 digit, Qty 3 digit, Description Settle menyerap sisa lebar. */
+@media (min-width: 641px) {
+    body.tesys-ui .cr-realize-table { table-layout: fixed; min-width: 1180px; }
+    body.tesys-ui .cr-realize-table th:nth-child(1) { width: 300px; }
+    body.tesys-ui .cr-realize-table th:nth-child(2) { width: auto; }
+    body.tesys-ui .cr-realize-table th:nth-child(3),
+    body.tesys-ui .cr-realize-table th:nth-child(5) { width: 132px; }
+    body.tesys-ui .cr-realize-table th:nth-child(4) { width: 76px; }
+    body.tesys-ui .cr-realize-table th:nth-child(6) { width: 150px; }
+    body.tesys-ui .cr-realize-table th:nth-child(7) { width: 110px; }
+    body.tesys-ui .cr-realize-table th:nth-child(8) { width: 96px; }
+}
+body.tesys-ui .cr-realize-table .detail-att-cell,
+body.tesys-ui .cr-realize-table .realize-note-cell { white-space: normal; overflow-wrap: anywhere; }
+
+
+/* Submit Settlement: deskripsi CR pada kartu ringkasan. */
+body.tesys-ui .cr-settle-title { font-size: 15px; font-weight: 700; }
+
+/* Tab kategori CR bergaya pil (Cash Advance / Cost Payment / Database): tanpa garis bawah
+   per tab; tab aktif = pil bertint aksen, hover = pil abu lembut. Menimpa 14a. */
+body.tesys-ui .cr-main-tabs {
+    border-bottom: 0;
+    padding-bottom: 0;
+    gap: 6px;
+}
+body.tesys-ui .cr-main-tabs .nav-link {
+    margin-bottom: 0;
+    padding: 10px 18px;
+    font-size: 14px;
+    border: 0;
+    border-radius: var(--radius-lg, 10px);
+    background: transparent;
+    transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+body.tesys-ui .cr-main-tabs .nav-link:hover { background: var(--surface-2); color: var(--text); }
+body.tesys-ui .cr-main-tabs .nav-link.active {
+    background: var(--accent-tint) !important;
+    border-bottom-color: transparent !important;
+    color: var(--accent-text) !important;
+}
+body.tesys-ui .cr-main-tabs .badge,
+body.tesys-ui .cr-main-tabs .nav-link.active .badge {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+body.tesys-ui .cr-main-tabs .nav-link > i { font-size: 14px; }
+
+/* Tile Rejected / Settle Rejected yang sedang difilter (atau di-hover saat aktif): latar terisi
+   merah TESYS, jadi angka & label HARUS putih. Aturan "ditolak > 0" (teks danger) punya
+   spesifisitas lebih tinggi dari .wf-active sehingga teksnya ikut merah dan menyatu dengan latar. */
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step.wf-active[data-wf-color="danger"],
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step.wf-active[data-wf-color="danger"]:hover,
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step.wf-active[data-wf-color="danger"]:has(.badge-danger) {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step.wf-active[data-wf-color="danger"] .wf-tl-node,
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step.wf-active[data-wf-color="danger"] .wf-tl-label,
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step.wf-active[data-wf-color="danger"]:has(.badge-danger) .wf-tl-node,
+body.tesys-ui :is(.cr-pane, .wf-host) .wf-phased .wf-tl-step.wf-active[data-wf-color="danger"]:has(.badge-danger) .wf-tl-label {
+    color: #fff !important;
+}
+
+/* Mobile: tab kategori CR satu baris yang bisa digeser (bukan membungkus jadi dua baris), pil sedikit lebih rapat. */
+@media (max-width: 640px) {
+    body.tesys-ui .cr-main-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+    body.tesys-ui .cr-main-tabs::-webkit-scrollbar { display: none; }
+    body.tesys-ui .cr-main-tabs .nav-item { flex: 0 0 auto; }
+    body.tesys-ui .cr-main-tabs .nav-link { padding: 9px 13px; font-size: 13px; white-space: nowrap; }
+}
+
+/* Tab kategori bergaya pil untuk SEMUA halaman (ditambahkan sebagai kelas .ts-pill-tabs pada
+   <ul class="nav nav-tabs">): sama dengan tab Cost Request (.cr-main-tabs), tanpa garis bawah. */
+body.tesys-ui .ts-pill-tabs {
+    border-bottom: 0;
+    padding-bottom: 0;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+body.tesys-ui .ts-pill-tabs .nav-link {
+    margin-bottom: 0;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-dim);
+    border: 0;
+    border-radius: var(--radius-lg, 10px);
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+body.tesys-ui .ts-pill-tabs .nav-link > i { color: var(--text-faint); font-size: 14px; margin: 0 !important; }
+body.tesys-ui .ts-pill-tabs .nav-link:hover { background: var(--surface-2); color: var(--text); }
+body.tesys-ui .ts-pill-tabs .nav-link.active {
+    background: var(--accent-tint) !important;
+    border-bottom-color: transparent !important;
+    color: var(--accent-text) !important;
+    font-weight: 600;
+}
+body.tesys-ui .ts-pill-tabs .nav-link.active > i { color: var(--accent-text); }
+body.tesys-ui .ts-pill-tabs .badge {
+    margin: 0 !important;
+    padding: 1px 7px !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    background: var(--surface);
+    color: var(--text-dim);
+}
+@media (max-width: 640px) {
+    body.tesys-ui .ts-pill-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    body.tesys-ui .ts-pill-tabs::-webkit-scrollbar { display: none; }
+    body.tesys-ui .ts-pill-tabs .nav-item { flex: 0 0 auto; }
+    body.tesys-ui .ts-pill-tabs .nav-link { padding: 9px 13px; font-size: 13px; white-space: nowrap; }
+}
+
+/* Input file di halaman form (create/edit) tampil sebagai kotak unggah putus-putus warna aksen,
+   sama dengan dropzone Cost Request. Hanya tampilan; perilaku <input type="file"> tidak berubah. */
+body.tesys-ui .main > .content input[type="file"]:not(.d-none):not([hidden]):not(.custom-file-input) {
+    display: block;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px dashed var(--accent);
+    border-radius: var(--radius-md);
+    background: var(--accent-tint);
+    color: var(--text-dim);
+    font-size: 12.5px;
+    cursor: pointer;
+}
+body.tesys-ui .main > .content input[type="file"]:not(.d-none):not([hidden]):not(.custom-file-input):hover { background: var(--accent-tint-2); }
+body.tesys-ui .main > .content input[type="file"]:not(.d-none):not([hidden]):not(.custom-file-input):focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-ring); }
+body.tesys-ui .main > .content input[type="file"]::file-selector-button {
+    margin-right: 10px;
+    padding: 4px 12px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--accent-text);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* ===================================================== 15. INDEX GENERIK (.ts-index)
+   Pola halaman daftar Cost Request untuk halaman lain: pembungkus .ts-index, tabel
+   .ts-idx-tbl (aksi baris, kolom aksi, klik baris dari blok 14e/14f di atas), toolbar
+   + tabel + paginasi dalam SATU kartu x-tw.card. Lihat docs/ui/budget-request-ui-rules.md. */
+
+/* Toolbar lama (.custom-toolbar) di dalam kartu: tanpa panel/bayangan sendiri. */
+body.tesys-ui .main > .content .ts-index .custom-toolbar {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    /* Border + radius dari bilah abu (tesys-ui-shell.css) ikut dilepas; kalau tidak,
+       tersisa garis tipis yang membungkus rapat isi toolbar tanpa padding. */
+    border: 0;
+    border-radius: 0;
+}
+/* Tabel di dalam kartu tidak perlu bayangan sendiri. */
+body.tesys-ui .main > .content .ts-index table.dataTable { box-shadow: none; }
+/* Baris bisa diklik (membuka drawer detail). */
+body.tesys-ui .ts-index .ts-idx-tbl tbody tr[data-id] { cursor: pointer; }
+/* Sel teks panjang: satu baris + elipsis (isi sudah dipotong di server; judul lengkap di title). */
+body.tesys-ui .ts-index .ts-idx-tbl td.ts-col-desc { white-space: nowrap; }
+/* Angka uang: rata kanan, tidak tebal (sama dengan kolom nominal Cost Request). */
+body.tesys-ui .ts-index .ts-idx-tbl td.ts-col-money { font-variant-numeric: tabular-nums; font-weight: 500; }
+
+/* Kode dokumen yang bisa diklik untuk disalin (handler global di tesys-ui.js). */
+.ts-copy-code {
+    background: none; border: 0; padding: 2px 6px; margin: 0 -6px;
+    font: inherit; color: var(--text); font-weight: 500; letter-spacing: inherit;
+    border-radius: var(--radius-sm); cursor: pointer; font-variant-numeric: tabular-nums;
+}
+.ts-copy-code:hover { color: var(--accent-text); text-decoration: underline; background: var(--accent-tint); }
+.ts-copy-code:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-ring); }
+
+/* Handle seret lebar kolom bersama (public/js/tesys-col-resize.js). */
+body.tesys-ui .ts-idx-tbl thead th { position: relative; }
+body.tesys-ui .ts-resizer {
+    position: absolute; top: 0; right: -3px; width: 7px; height: 100%;
+    cursor: col-resize; z-index: 5; touch-action: none; user-select: none;
+}
+body.tesys-ui .ts-resizer::after {
+    content: ""; position: absolute; top: 22%; bottom: 22%; left: 3px; width: 1px;
+    background: transparent; transition: background-color var(--dur-fast) var(--ease);
+}
+body.tesys-ui thead th:hover .ts-resizer::after { background: var(--border-strong, var(--border)); }
+body.tesys-ui .ts-resizer:hover::after,
+body.tesys-ui .ts-resizer.is-active::after { background: var(--accent); width: 2px; }
+@media (max-width: 640px) { body.tesys-ui .ts-resizer { display: none; } }
+
+/* Kotak tanggal & pilihan rentang cepat setinggi tombol kecil di sebelahnya. */
+body.tesys-ui .ts-index .tdr-quick,
+body.tesys-ui .ts-index .tdr-input {
+    height: var(--ctl-h-sm, 32px);
+    padding-top: 4px;
+    padding-bottom: 4px;
+    font-size: 12.5px;
+}
+body.tesys-ui .ts-index .tdr-quick { min-width: 170px; }
+
+/* Treasury: lebar kolom tetap (>= 641px), deskripsi menyerap sisa; teks panjang dipotong. */
+@media (min-width: 641px) {
+    body.tesys-ui table#tblBatch { table-layout: fixed; width: 100%; min-width: 1180px; }
+    body.tesys-ui table#tblBatch th[data-col="kode"]     { width: 140px; }
+    body.tesys-ui table#tblBatch th[data-col="tanggal"]  { width: 100px; }
+    body.tesys-ui table#tblBatch th[data-col="type"]     { width: 90px; }
+    body.tesys-ui table#tblBatch th[data-col="kategori"] { width: 125px; }
+    body.tesys-ui table#tblBatch th[data-col="item"]     { width: 70px; }
+    body.tesys-ui table#tblBatch th[data-col="dibuat"]   { width: 115px; }
+    body.tesys-ui table#tblBatch th[data-col="total"]    { width: 125px; }
+    body.tesys-ui table#tblBatch th[data-col="status"]   { width: 120px; }
+    body.tesys-ui table#tblBatch th.action-column        { width: 52px !important; }
+    body.tesys-ui table#tblBatch th.dt-col-check         { width: 40px !important; }
+    body.tesys-ui table#tblBatch td { overflow: hidden; text-overflow: ellipsis; }
+}
+
+/* Daftar riwayat (tab Log di drawer). */
+.ts-log-list { display: flex; flex-direction: column; gap: 8px; }
+.ts-log-item { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px 12px; background: var(--surface); }
+.ts-log-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; font-size: 12px; }
+.ts-log-act { font-weight: 600; color: var(--accent-text); }
+.ts-log-who { color: var(--text); }
+.ts-log-at { margin-left: auto; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.ts-log-desc { margin-top: 4px; font-size: 12.5px; color: var(--text-dim); }
+.ts-log-notes { margin-top: 6px; padding: 6px 8px; border-radius: var(--radius-sm); background: var(--surface-2); font-size: 12px; color: var(--text); white-space: pre-wrap; }
