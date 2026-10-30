@@ -302,4 +302,32 @@
     if (window.jQuery) {
         window.jQuery(document).on('shown.bs.modal', '.modal', function () { hubungkanLabel(this); });
     }
+
+    /*
+      Klik kode dokumen bertanda .ts-copy-code = salin ke clipboard, dengan toast
+      standar. Klik tidak diteruskan ke baris tabel (yang membuka detail).
+    */
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest ? e.target.closest('.ts-copy-code') : null;
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var kode = (btn.getAttribute('data-code') || btn.textContent || '').trim();
+        function lapor(tipe, pesan) {
+            if (window.tsToast) window.tsToast(tipe, pesan);
+            else if (window.TesysUI && window.TesysUI.toast) window.TesysUI.toast(tipe, pesan);
+        }
+        function berhasil() { lapor('success', 'Kode ' + kode + ' disalin'); }
+        function gagal() { lapor('error', 'Gagal menyalin kode'); }
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(kode).then(berhasil, gagal);
+            return;
+        }
+        // Cadangan untuk koneksi non-HTTPS.
+        var ta = document.createElement('textarea');
+        ta.value = kode; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy') ? berhasil() : gagal(); } catch (err) { gagal(); }
+        document.body.removeChild(ta);
+    }, true);
 })();

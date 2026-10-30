@@ -904,7 +904,7 @@
                 width: 100%;
                 max-width: 460px;
                 margin: 0 auto;
-                gap: 30px;
+                gap: 22px;
                 align-items: stretch;
             }
 
@@ -912,10 +912,12 @@
             .page-marks .mark-ts { height: 38px; }
             .page-marks .mark-hanasta { height: 25px; }
 
-            .auth-form { order: 1; padding: 30px 24px 28px; }
-            .auth-deco { order: 2; gap: 14px; align-items: center; }
+            /* Lambang TEREX SYSTEM + keterangan platform di ATAS formulir
+               (permintaan 25 Okt 2026), bukan di bawahnya. */
+            .auth-deco { order: 1; gap: 12px; align-items: center; }
+            .auth-form { order: 2; padding: 30px 24px 28px; }
 
-            .deco-logo { width: min(300px, 78%); margin: 0 auto; }
+            .deco-logo { width: min(240px, 66%); margin: 0 auto; }
             .deco-cap {
                 width: 100%;
                 font-size: 10.5px;
@@ -945,7 +947,7 @@
             .auth-head h1 { font-size: 22px; }
             .page-marks .mark-ts { height: 34px; }
             .page-marks .mark-hanasta { height: 22px; }
-            .deco-logo { width: min(260px, 84%); }
+            .deco-logo { width: min(210px, 62%); }
             .deco-cap { font-size: 10px; letter-spacing: .16em; }
         }
 

@@ -6,401 +6,396 @@
 
 <div class="content">
     <div class="container-fluid">
+        <div class="tw:flex tw:flex-col tw:gap-5 tw:py-4">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <div class="d-flex align-items-center">
-                <a href="{{ url('/budget-request') }}" class="btn btn-secondary btn-sm mr-3">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
-                <div>
-                    <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Edit Cost Request</h1>
-                    <small class="text-muted">
-                        Kode: <strong>{{ $cr->code }}</strong>
-                        &nbsp;·&nbsp;
-                        <span class="badge badge-{{ $cr->status_color }}">{{ $cr->status }}</span>
-                    </small>
-                </div>
-            </div>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
-                <li class="breadcrumb-item"><a href="#">Finance</a></li>
-                <li class="breadcrumb-item"><a href="{{ url('/budget-request') }}">Cost Request</a></li>
-                <li class="breadcrumb-item active">Edit</li>
-            </ol>
-        </div>
-
-        {{-- Catatan revisi dari manager/finance --}}
-        @if($cr->statusLogs->first() && in_array($cr->statusLogs->first()->action_type, ['manager_revised','finance_revised']))
-        <div class="alert alert-warning mb-3">
-            <i class="fas fa-exclamation-triangle mr-2"></i>
-            <strong>Catatan Revisi:</strong>
-            {{ $cr->statusLogs->first()->notes }}
-        </div>
-        @endif
-
-        <form action="{{ url('/budget-request/' . $cr->id) }}" method="POST"
-              enctype="multipart/form-data" id="frmCR">
-            @csrf
-            @method('PUT')
-
-            <!-- SECTION 1: INFORMASI UTAMA -->
-            <div class="card card-warning card-outline shadow-sm">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="fas fa-file-invoice-dollar mr-1"></i> Informasi Cost Request
-                    </h3>
-                </div>
-
-                @if($errors->any())
-                <div class="alert alert-danger rounded-0 mb-0">
-                    <strong>Terjadi kesalahan:</strong>
-                    <ul class="mb-0 mt-2">
-                        @foreach($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-                @endif
-
-                <div class="card-body">
-                    <div class="row po-two-col ratio-70-30 form-clean">
-
-                        <!-- KOLOM KIRI -->
-                        <div class="col-md-6 po-col-left">
-
-                            <!-- BUDGET PLAN -->
-                            <div class="form-group">
-                                <label class="font-weight-600">Budget Plan <span class="text-danger">*</span></label>
-                                <select name="budget_plan_id" id="selectBudgetPlan"
-                                        class="form-control @error('budget_plan_id') is-invalid @enderror" required>
-                                    <option value="">— Pilih Budget Plan —</option>
-                                    @foreach($budgetPlans as $bp)
-                                        @php
-                                            $bpLabel = $bp->isProjectBudget()
-                                                ? ($bp->project?->customer?->initial ?? '-') . ' - [' . ($bp->project?->code ?? '-') . '] ' . $bp->description
-                                                : ($bp->costCenter?->name ?? '-') . ' - ' . $bp->description;
-                                        @endphp
-                                        <option value="{{ $bp->id }}"
-                                            data-remaining="{{ $bp->remainingAmount() }}"
-                                            data-source="{{ $bp->source_type }}"
-                                            data-label="{{ $bpLabel }}"
-                                            {{ old('budget_plan_id', $cr->budget_plan_id) == $bp->id ? 'selected' : '' }}>
-                                            {{ $bpLabel }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <small class="text-muted">
-                                    Sisa budget: <strong id="remainingBudget" class="text-success">—</strong>
-                                </small>
-                                @error('budget_plan_id')<small class="text-danger d-block">{{ $message }}</small>@enderror
-                            </div>
-
-                            <!-- TIPE + BENEFICIARY -->
-                            <div class="d-flex" style="gap:12px;">
-                                <div class="form-group" style="flex:0 0 34%;">
-                                    <label class="font-weight-600">Tipe Request <span class="text-danger">*</span></label>
-                                    <select name="type_id" id="selectType" class="form-control @error('type_id') is-invalid @enderror" required>
-                                        <option value="">— Pilih Tipe —</option>
-                                        @foreach($types as $type)
-                                            <option value="{{ $type->id }}" data-name="{{ strtolower($type->name) }}"
-                                                {{ old('type_id', $cr->type_id) == $type->id ? 'selected' : '' }}>
-                                                {{ $type->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    @error('type_id')<small class="text-danger d-block">{{ $message }}</small>@enderror
-                                </div>
-                                <div class="form-group" style="flex:1 1 auto;min-width:0;">
-                                    <label class="font-weight-600">Penerima Dana <span class="text-danger">*</span></label>
-                                    <select name="beneficiary_id" id="selectBeneficiary"
-                                            class="form-control @error('beneficiary_id') is-invalid @enderror" required>
-                                        <option value="">— Pilih Beneficiary —</option>
-                                        @foreach($beneficiaries as $ben)
-                                            @php $benLabel = trim(($ben->nickname ? $ben->nickname . ' · ' : '') . $ben->complete_name)
-                                                . ' — ' . ($ben->bank?->name ?? '-') . ' ' . ($ben->account_number ?? '-'); @endphp
-                                            <option value="{{ $ben->id }}"
-                                                data-bank="{{ $ben->bank?->name ?? '-' }}"
-                                                data-account="{{ $ben->account_number ?? '-' }}"
-                                                data-email="{{ $ben->contact ?? '' }}"
-                                                data-category="{{ $ben->category }}"
-                                                data-label="{{ $benLabel }}"
-                                                {{ old('beneficiary_id', $cr->beneficiary_id) == $ben->id ? 'selected' : '' }}>
-                                                {{ $benLabel }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    <small class="text-muted" id="beneficiaryInfo">
-                                        @if($cr->beneficiary)
-                                            <i class="fas fa-university mr-1"></i>
-                                            {{ $cr->beneficiary->bank?->name ?? '-' }} — {{ $cr->beneficiary->account_number ?? '-' }}
-                                        @endif
-                                    </small>
-                                    @error('beneficiary_id')<small class="text-danger d-block">{{ $message }}</small>@enderror
-                                </div>
-                            </div>
-
-                            <!-- DESKRIPSI -->
-                            <div class="form-group mb-0">
-                                <label class="font-weight-600">Deskripsi / Keperluan <span class="text-danger">*</span></label>
-                                <input type="text" name="description"
-                                       class="form-control @error('description') is-invalid @enderror"
-                                       value="{{ old('description', $cr->description) }}"
-                                       placeholder="Jelaskan keperluan pengajuan dana..."
-                                       autocomplete="off" required>
-                                @error('description')<small class="text-danger d-block">{{ $message }}</small>@enderror
-                            </div>
-
-                        </div>
-
-                        <!-- KOLOM KANAN -->
-                        <div class="col-md-6 po-col-right">
-
-                            <!-- PROJECT — hanya untuk budget yang bersumber dari PO -->
-                            <div class="form-group" id="clusterBox">
-                                <label class="font-weight-600">Project <span class="text-danger">*</span></label>
-                                <select name="cluster_id" id="selectCluster"
-                                        class="form-control @error('cluster_id') is-invalid @enderror" required>
-                                    <option value="">— Pilih Project —</option>
-                                    @foreach($clusters as $cluster)
-                                        <option value="{{ $cluster->id }}"
-                                            {{ old('cluster_id', $cr->cluster_id) == $cluster->id ? 'selected' : '' }}>
-                                            [{{ $cluster->code }}] {{ $cluster->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('cluster_id')<small class="text-danger d-block">{{ $message }}</small>@enderror
-                            </div>
-
-                            <!-- EMAIL NOTIFIKASI -->
-                            <div class="form-group">
-                                <label class="font-weight-600">Email Notifikasi</label>
-                                <div id="emailTagsBox" class="form-control @error('email') is-invalid @enderror"
-                                     style="height:auto;min-height:38px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 8px;cursor:text;">
-                                    <input type="text" id="emailTagInput"
-                                           style="border:none;outline:none;flex:1 1 auto;min-width:140px;padding:2px 0;"
-                                           placeholder="Tambah email...">
-                                </div>
-                                <input type="hidden" name="email" id="emailHidden" value="{{ old('email', $cr->email) }}">
-                                <small class="text-muted">Tekan Enter atau koma (,) untuk menambahkan email.</small>
-                                @error('email')<small class="text-danger d-block">{{ $message }}</small>@enderror
-                            </div>
-
-                            <!-- NOTES -->
-                            <div class="form-group mb-0">
-                                <label class="font-weight-600">Notes</label>
-                                <textarea name="notes" class="form-control" rows="2"
-                                          placeholder="Catatan tambahan...">{{ old('notes', $cr->notes) }}</textarea>
-                            </div>
-
-                        </div>
-
-                        <!-- NOB WARNING -->
-                        <div class="col-12 mt-2">
-                            <div id="nobWarning" class="alert alert-warning mb-0" style="display:none;font-size:13px;">
-                                <i class="fas fa-exclamation-triangle mr-1"></i>
-                                <strong>Perhatian:</strong> Total pengajuan melebihi sisa budget.
-                                Deskripsi akan otomatis ditambahkan prefix <strong>[NOB]</strong>.
-                            </div>
-                        </div>
-
-                        <!-- WORKFLOW INFO berdasarkan Tipe Request -->
-                        <div class="col-12 mt-2">
-                            <div id="workflowAlert" class="alert mb-0" style="display:none;font-size:13px;"></div>
-                            <div id="caQuotaAlert" class="alert mb-0 mt-2" style="display:none;font-size:13px;"></div>
-                        </div>
-
-                    </div>
-                </div>
+            {{-- Judul & breadcrumb topbar: shell memindahkan <h1> dan .breadcrumb pertama ke topbar lalu
+                 menghapusnya dari konten (tesys-shell.js hoistPageTitle); disembunyikan secara visual. --}}
+            <div class="tw:sr-only">
+                <h1>Edit Cost Request</h1>
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="#">Finance</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url('/budget-request') }}">Cost Request</a></li>
+                    <li class="breadcrumb-item active">Edit</li>
+                </ol>
             </div>
 
-            <!-- SECTION 2: RINCIAN PENGAJUAN -->
-            <div class="card card-warning card-outline shadow-sm">
-                <div class="card-header d-flex align-items-center">
-                    <h3 class="card-title"><i class="fas fa-list-ul mr-1"></i> Rincian Pengajuan</h3>
-                    <div class="ml-auto d-flex align-items-center" style="gap:8px;">
-                        <span id="totalLabel" class="badge badge-primary px-3 py-2" style="font-size:13px;">Total: 0</span>
-                        <a href="#" id="btnDownloadDetailTemplate" class="btn btn-sm btn-outline-secondary">
-                            <i class="fas fa-file-excel mr-1"></i> Download Template
-                        </a>
-                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnImportDetailExcel">
-                            <i class="fas fa-file-import mr-1"></i> Import Excel
-                        </button>
-                        <input type="file" id="importDetailFileInput" accept=".xlsx,.xls" style="display:none;">
-                        <button type="button" class="btn btn-sm btn-primary" id="btnAddDetail">
-                            <i class="fas fa-plus mr-1"></i> Tambah Baris
-                        </button>
-                    </div>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-bordered mb-0">
-                            <thead class="bg-light">
-                                <tr>
-                                    <th scope="col" style="width:4%;" class="text-center">No</th>
-                                    <th scope="col" style="width:25%;">Sub Item Budget</th>
-                                    <th scope="col" style="width:20%;">Deskripsi</th>
-                                    <th scope="col" class="text-right col-remaining" style="display:none;">Sisa Tersedia</th>
-                                    <th scope="col" style="width:12%;" class="text-right">Harga Satuan</th>
-                                    <th scope="col" style="width:6%;" class="text-center">Qty</th>
-                                    <th scope="col" style="width:12%;" class="text-right">Total</th>
-                                    <th scope="col" style="width:10%;" class="text-center">Lampiran Item <span id="itemAttRequiredBadge" class="badge badge-danger" style="display:none;">Wajib</span></th>
-                                    <th scope="col" style="width:5%;" class="text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="detailBody">
-                                <!-- Diisi oleh JS setelah sub item Budget Plan berhasil di-fetch -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        Data lama akan diganti seluruhnya saat disimpan.
-                    </small>
-                </div>
-            </div>
+            <x-tw.page-header title="Edit Cost Request"
+                description="Kode: {{ $cr->code }}">
+                <x-slot:actions>
+                    <x-status :status="$cr->status" context="budget-request" size="md" />
+                    <x-tw.button href="{{ url('/budget-request') }}" variant="secondary" class="tw:max-sm:min-h-12"><i class="fas fa-arrow-left" aria-hidden="true"></i> Kembali ke daftar</x-tw.button>
+                </x-slot:actions>
+            </x-tw.page-header>
 
-            <!-- SECTION 3: LAMPIRAN EXISTING (global/pendukung) -->
-            @if($cr->requestAttachments()->count() > 0)
-            <div class="card card-warning card-outline shadow-sm">
-                <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-paperclip mr-1"></i> Lampiran Tambahan / Pendukung (Existing)</h3>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-bordered mb-0">
-                            <thead class="bg-light">
-                                <tr>
-                                    <th scope="col" style="width:5%;" class="text-center">No</th>
-                                    <th scope="col" style="width:65%;">Nama File</th>
-                                    <th scope="col" style="width:15%;" class="text-center">Preview</th>
-                                    <th scope="col" style="width:15%;" class="text-center">Hapus</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($cr->requestAttachments()->get() as $i => $att)
-                                <tr>
-                                    <td class="text-center align-middle">{{ $i + 1 }}</td>
-                                    <td class="align-middle">
-                                        <small class="text-muted">{{ $att->original_name }}</small>
-                                        <small class="text-muted ml-2">({{ $att->size_formatted }})</small>
-                                    </td>
-                                    <td class="text-center align-middle">
-                                        <a href="{{ asset('storage/' . $att->path) }}" target="_blank"
-                                           class="btn btn-info btn-sm">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                    </td>
-                                    <td class="text-center align-middle">
-                                        <input type="checkbox" name="delete_attachments[]"
-                                               value="{{ $att->id }}"
-                                               style="width:18px;height:18px;accent-color:var(--danger);">
-                                    </td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <small class="text-danger">
-                        <i class="fas fa-exclamation-triangle mr-1"></i>
-                        Centang file yang ingin dihapus, lalu klik Simpan.
-                    </small>
+            {{-- Catatan revisi dari manager/finance --}}
+            @if($cr->statusLogs->first() && in_array($cr->statusLogs->first()->action_type, ['manager_revised','finance_revised']))
+            <div class="tw:rounded-md tw:border tw:border-warning tw:bg-warning-bg tw:p-3 tw:text-data tw:leading-body tw:text-warning">
+                <i class="fas fa-exclamation-triangle tw:mr-1" aria-hidden="true"></i>
+                <strong>Catatan Revisi:</strong>
+                {{ $cr->statusLogs->first()->notes }}
+            </div>
+            @endif
+
+            @if($errors->any())
+            <div role="alert" class="tw:rounded-md tw:border tw:border-danger tw:bg-danger-bg tw:p-3 tw:text-data tw:leading-body tw:text-danger">
+                <div class="tw:font-label">Terjadi kesalahan:</div>
+                <div class="tw:mt-1 tw:flex tw:flex-col tw:gap-1">
+                    @foreach($errors->all() as $error)
+                    <div class="tw:flex tw:gap-2"><span aria-hidden="true">&bull;</span><span>{{ $error }}</span></div>
+                    @endforeach
                 </div>
             </div>
             @endif
 
-            <!-- SECTION 4: LAMPIRAN BARU -->
-            <div class="card card-warning card-outline shadow-sm">
-                <div class="card-header d-flex align-items-center">
-                    <h3 class="card-title">
-                        <i class="fas fa-upload mr-1"></i> Tambah Lampiran Tambahan / Pendukung
-                        <span id="attRequiredBadge" class="badge badge-danger ml-1" style="display:none;">Wajib</span>
-                    </h3>
-                    <button type="button" class="btn btn-sm btn-primary ml-auto" id="btnAddAttachment">
-                        <i class="fas fa-plus mr-1"></i> Tambah Lampiran
-                    </button>
+        <form action="{{ url('/budget-request/' . $cr->id) }}" method="POST"
+              enctype="multipart/form-data" id="frmCR" class="tw:flex tw:min-w-0 tw:flex-col tw:gap-5">
+            @csrf
+            @method('PUT')
+
+            <!-- ============================================================ -->
+            <!-- SECTION 1: INFORMASI UTAMA                                    -->
+            <!-- ============================================================ -->
+            <x-tw.card>
+                <x-slot:header>
+                    <div role="heading" aria-level="2" class="tw:flex tw:items-center tw:gap-2">
+                        <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> Informasi Cost Request
+                    </div>
+                </x-slot:header>
+
+                <div class="tw:grid tw:grid-cols-1 tw:gap-x-8 tw:lg:grid-cols-3">
+
+                    <!-- KOLOM KIRI -->
+                    <div class="tw:min-w-0 tw:lg:col-span-2">
+
+                        <!-- BUDGET PLAN -->
+                        <div class="form-group">
+                            <label class="tw:text-label tw:font-label tw:text-text-dim">Budget Plan<span class="tw:text-danger" aria-hidden="true"> *</span></label>
+                            <select name="budget_plan_id" id="selectBudgetPlan"
+                                    class="form-control @error('budget_plan_id') is-invalid @enderror" required>
+                                <option value="">— Pilih Budget Plan —</option>
+                                @foreach($budgetPlans as $bp)
+                                    @php
+                                        $bpLabel = $bp->isProjectBudget()
+                                            ? ($bp->project?->customer?->initial ?? '-') . ' - [' . ($bp->project?->code ?? '-') . '] ' . $bp->description
+                                            : ($bp->costCenter?->name ?? '-') . ' - ' . $bp->description;
+                                    @endphp
+                                    <option value="{{ $bp->id }}"
+                                        data-remaining="{{ $bp->remainingAmount() }}"
+                                        data-source="{{ $bp->source_type }}"
+                                        data-label="{{ $bpLabel }}"
+                                        {{ old('budget_plan_id', $cr->budget_plan_id) == $bp->id ? 'selected' : '' }}>
+                                        {{ $bpLabel }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <div class="tw:mt-1 tw:text-caption tw:text-text-dim">
+                                Sisa budget:
+                                <strong id="remainingBudget" class="tw:tabular-nums tw:text-success">—</strong>
+                            </div>
+                            @error('budget_plan_id')<div role="alert" class="tw:mt-1 tw:text-caption tw:text-danger">{{ $message }}</div>@enderror
+                        </div>
+
+                        <!-- TIPE + BENEFICIARY -->
+                        <div class="cr-type-ben tw:flex tw:gap-3">
+                            <div class="form-group cr-type-col tw:shrink-0 tw:grow-0 tw:basis-[34%]">
+                                <label for="selectType" class="tw:text-label tw:font-label tw:text-text-dim">Tipe Request<span class="tw:text-danger" aria-hidden="true"> *</span></label>
+                                <select name="type_id" id="selectType" class="form-control @error('type_id') is-invalid @enderror" required>
+                                    <option value="">— Pilih Tipe —</option>
+                                    @foreach($types as $type)
+                                        <option value="{{ $type->id }}" data-name="{{ strtolower($type->name) }}"
+                                            {{ old('type_id', $cr->type_id) == $type->id ? 'selected' : '' }}>
+                                            {{ $type->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('type_id')<div role="alert" class="tw:mt-1 tw:text-caption tw:text-danger">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="form-group cr-ben-col tw:min-w-0 tw:flex-auto">
+                                <label class="tw:text-label tw:font-label tw:text-text-dim">Penerima Dana<span class="tw:text-danger" aria-hidden="true"> *</span></label>
+                                <select name="beneficiary_id" id="selectBeneficiary"
+                                        class="form-control @error('beneficiary_id') is-invalid @enderror" required>
+                                    <option value="">— Pilih Beneficiary —</option>
+                                    @foreach($beneficiaries as $ben)
+                                        {{-- Format: nama rekening (Bank - nomor rekening) + lencana Internal/External.
+                                             Nickname tidak tampil tapi tetap bisa dicari (data-search). --}}
+                                        @php
+                                            $benLabel = $ben->complete_name . ' (' . ($ben->bank?->name ?? '-') . ' - ' . ($ben->account_number ?? '-') . ')';
+                                            $benInternal = $ben->category === 'INTERNAL';
+                                        @endphp
+                                        <option value="{{ $ben->id }}"
+                                            data-bank="{{ $ben->bank?->name ?? '-' }}"
+                                            data-account="{{ $ben->account_number ?? '-' }}"
+                                            data-email="{{ $ben->contact ?? '' }}"
+                                            data-category="{{ $ben->category }}"
+                                            data-label="{{ $benLabel }}"
+                                            data-search="{{ $ben->nickname }}"
+                                            data-badge="{{ $benInternal ? 'Internal' : 'External' }}"
+                                            data-badge-tone="{{ $benInternal ? 'internal' : 'external' }}"
+                                            {{ old('beneficiary_id', $cr->beneficiary_id) == $ben->id ? 'selected' : '' }}>
+                                            {{ $benLabel }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="tw:mt-1 tw:text-caption tw:text-text-dim" id="beneficiaryInfo">
+                                    @if($cr->beneficiary)
+                                        <i class="fas fa-university tw:mr-1" aria-hidden="true"></i>
+                                        {{ $cr->beneficiary->bank?->name ?? '-' }} — {{ $cr->beneficiary->account_number ?? '-' }}
+                                    @endif
+                                </div>
+                                @error('beneficiary_id')<div role="alert" class="tw:mt-1 tw:text-caption tw:text-danger">{{ $message }}</div>@enderror
+                            </div>
+                        </div>
+
+                        <!-- DESKRIPSI -->
+                        <x-tw.input name="description" label="Deskripsi / Keperluan" required
+                                    :value="old('description', $cr->description)" :error="$errors->first('description')"
+                                    placeholder="Jelaskan keperluan pengajuan dana..."
+                                    autocomplete="off" class="tw:uppercase" />
+
+                    </div>
+
+                    <!-- KOLOM KANAN -->
+                    <div class="tw:min-w-0">
+
+                        <!-- PROJECT — hanya untuk budget yang bersumber dari PO -->
+                        <div class="form-group" id="clusterBox">
+                            <label for="selectCluster" class="tw:text-label tw:font-label tw:text-text-dim">Project<span class="tw:text-danger" aria-hidden="true"> *</span></label>
+                            <select name="cluster_id" id="selectCluster"
+                                    class="form-control @error('cluster_id') is-invalid @enderror" required>
+                                <option value="">— Pilih Project —</option>
+                                @foreach($clusters as $cluster)
+                                    <option value="{{ $cluster->id }}"
+                                        {{ old('cluster_id', $cr->cluster_id) == $cluster->id ? 'selected' : '' }}>
+                                        [{{ $cluster->code }}] {{ $cluster->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('cluster_id')<div role="alert" class="tw:mt-1 tw:text-caption tw:text-danger">{{ $message }}</div>@enderror
+                        </div>
+
+                        <!-- EMAIL NOTIFIKASI -->
+                        <div class="form-group">
+                            <label class="tw:text-label tw:font-label tw:text-text-dim">Email Notifikasi</label>
+                            <div id="emailTagsBox"
+                                 class="tw:text-control tw:flex tw:min-h-ctl tw:cursor-text tw:flex-wrap tw:items-center tw:gap-2 tw:rounded-sm tw:border tw:px-2 tw:py-1 tw:focus-within:border-accent-text tw:focus-within:outline-2 tw:focus-within:outline-offset-2 tw:focus-within:outline-accent-text @error('email') tw:border-danger tw:bg-danger-bg @else tw:border-border tw:bg-surface @enderror">
+                                <input type="text" id="emailTagInput"
+                                       class="tw:min-w-[140px] tw:flex-auto tw:bg-transparent tw:py-1 tw:text-text tw:placeholder:text-text-faint"
+                                       style="border:none;outline:none;"
+                                       placeholder="Tambah email...">
+                            </div>
+                            <input type="hidden" name="email" id="emailHidden" value="{{ old('email', $cr->email) }}">
+                            <div class="tw:mt-1 tw:text-caption tw:text-text-dim">Tekan Enter atau koma (,) untuk menambahkan email.</div>
+                            @error('email')<div role="alert" class="tw:mt-1 tw:text-caption tw:text-danger">{{ $message }}</div>@enderror
+                        </div>
+
+                        <!-- NOTES -->
+                        <x-tw.textarea name="notes" label="Notes" rows="2" :value="old('notes', $cr->notes)"
+                                       :error="$errors->first('notes')" placeholder="Catatan tambahan..." />
+
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="alert alert-light border mb-3" style="font-size:12px;">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        Bukti <strong>global / pendukung</strong> (bukan khusus satu item), contoh: foto undangan meeting.
-                        Nota/bukti <strong>per item</strong> di-upload di kolom <strong>“Lampiran Item”</strong> pada tabel Rincian Pengajuan.
-                        <br>
+
+                <!-- NOB indicator -->
+                <div id="nobWarning" role="alert" class="tw:mt-3 tw:rounded-md tw:border tw:border-warning tw:bg-warning-bg tw:p-3 tw:text-data tw:leading-body tw:text-warning" style="display:none;">
+                    <i class="fas fa-exclamation-triangle tw:mr-1" aria-hidden="true"></i>
+                    <strong>Perhatian:</strong> Total pengajuan melebihi sisa budget.
+                    Deskripsi akan otomatis ditambahkan prefix <strong>[NOB]</strong>.
+                </div>
+
+                <!-- WORKFLOW INFO berdasarkan Tipe Request -->
+                <div id="workflowAlert" class="tw:mt-3" style="display:none;"></div>
+                <div id="caQuotaAlert" class="tw:mt-3" style="display:none;"></div>
+            </x-tw.card>
+
+            <!-- ============================================================ -->
+            <!-- SECTION 2: RINCIAN PENGAJUAN                                  -->
+            <!-- ============================================================ -->
+            <x-tw.card padding="none">
+                <x-slot:header>
+                    <div class="cr-detail-head tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3">
+                        <div role="heading" aria-level="2" class="tw:flex tw:items-center tw:gap-2">
+                            <i class="fas fa-list-ul" aria-hidden="true"></i> Rincian Pengajuan
+                        </div>
+                        <div class="cr-detail-actions tw:flex tw:flex-wrap tw:items-center tw:gap-2">
+                            <x-tw.badge id="totalLabel" tone="primary" size="md" class="tw:tabular-nums">Total: 0</x-tw.badge>
+                            <x-tw.button href="#" id="btnDownloadDetailTemplate" variant="secondary" size="sm" class="tw:max-sm:min-h-12"><i class="fas fa-file-excel" aria-hidden="true"></i> Download Template</x-tw.button>
+                            <x-tw.button id="btnImportDetailExcel" variant="secondary" size="sm" class="tw:max-sm:min-h-12"><i class="fas fa-file-import" aria-hidden="true"></i> Import Excel</x-tw.button>
+                            <input type="file" id="importDetailFileInput" accept=".xlsx,.xls" style="display:none;">
+                            <x-tw.button id="btnAddDetail" size="sm" class="tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Baris</x-tw.button>
+                        </div>
+                    </div>
+                </x-slot:header>
+
+                <div class="table-responsive tw:pb-1">
+                    <table class="cr-detail-table tw:w-full tw:min-w-[860px] tw:border-collapse">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="tw:w-[4%] text-center">No</th>
+                                <th scope="col" class="tw:w-[25%]">Sub Item Budget</th>
+                                <th scope="col" class="tw:w-[20%]">Deskripsi</th>
+                                <th scope="col" class="text-right col-remaining" style="display:none;">Sisa Tersedia</th>
+                                <th scope="col" class="cr-d-harga tw:w-[12%] text-right">Harga Satuan</th>
+                                <th scope="col" class="cr-d-qty tw:w-[6%] text-center">Qty</th>
+                                <th scope="col" class="cr-d-total tw:w-[12%] text-right">Total</th>
+                                <th scope="col" class="cr-d-att tw:w-[10%] text-center">Lampiran Item <x-tw.badge id="itemAttRequiredBadge" tone="danger" style="display:none;">Wajib</x-tw.badge></th>
+                                <th scope="col" class="cr-d-aksi tw:w-[5%] text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detailBody">
+                            <!-- Diisi oleh JS setelah sub item Budget Plan berhasil di-fetch -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <x-slot:footer>
+                    <i class="fas fa-info-circle tw:mr-1" aria-hidden="true"></i>
+                    Data lama akan diganti seluruhnya saat disimpan.
+                </x-slot:footer>
+            </x-tw.card>
+
+            <!-- ============================================================ -->
+            <!-- SECTION 3: LAMPIRAN EXISTING (global/pendukung)               -->
+            <!-- ============================================================ -->
+            @if($cr->requestAttachments()->count() > 0)
+            <x-tw.card padding="none">
+                <x-slot:header>
+                    <div role="heading" aria-level="2" class="tw:flex tw:items-center tw:gap-2">
+                        <i class="fas fa-paperclip" aria-hidden="true"></i> Lampiran Tambahan / Pendukung (Existing)
+                    </div>
+                </x-slot:header>
+
+                <div class="table-responsive tw:pb-1">
+                    <table class="tw:w-full tw:border-collapse">
+                        <thead>
+                            <tr>
+                                <th scope="col" class="tw:w-[5%] text-center">No</th>
+                                <th scope="col" class="tw:w-[65%]">Nama File</th>
+                                <th scope="col" class="tw:w-[15%] text-center">Preview</th>
+                                <th scope="col" class="tw:w-[15%] text-center">Hapus</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($cr->requestAttachments()->get() as $i => $att)
+                            <tr>
+                                <td class="text-center align-middle">{{ $i + 1 }}</td>
+                                <td class="align-middle">
+                                    <span class="tw:text-caption tw:text-text-dim">{{ $att->original_name }}</span>
+                                    <span class="tw:ml-2 tw:text-caption tw:text-text-dim">({{ $att->size_formatted }})</span>
+                                </td>
+                                <td class="text-center align-middle">
+                                    <x-tw.button href="{{ asset('storage/' . $att->path) }}" target="_blank" variant="secondary" size="sm"
+                                                 class="tw:max-sm:min-h-12" title="Lihat {{ $att->original_name }}" aria-label="Lihat {{ $att->original_name }}"><i class="fas fa-eye" aria-hidden="true"></i></x-tw.button>
+                                </td>
+                                <td class="text-center align-middle">
+                                    <input type="checkbox" name="delete_attachments[]"
+                                           value="{{ $att->id }}"
+                                           aria-label="Hapus {{ $att->original_name }}"
+                                           class="tw:size-[18px] tw:accent-danger">
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                <x-slot:footer>
+                    <span class="tw:text-danger">
+                        <i class="fas fa-exclamation-triangle tw:mr-1" aria-hidden="true"></i>
+                        Centang file yang ingin dihapus, lalu klik Simpan.
+                    </span>
+                </x-slot:footer>
+            </x-tw.card>
+            @endif
+
+            <!-- ============================================================ -->
+            <!-- SECTION 4: LAMPIRAN BARU                                      -->
+            <!-- ============================================================ -->
+            <x-tw.card>
+                <x-slot:header>
+                    <div class="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3">
+                        <div role="heading" aria-level="2" class="tw:flex tw:items-center tw:gap-2">
+                            <i class="fas fa-upload" aria-hidden="true"></i> Tambah Lampiran Tambahan / Pendukung
+                            <x-tw.badge id="attRequiredBadge" tone="danger" style="display:none;">Wajib</x-tw.badge>
+                        </div>
+                        <x-tw.button id="btnAddAttachment" size="sm" class="tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Lampiran</x-tw.button>
+                    </div>
+                </x-slot:header>
+
+                <div class="tw:mb-4 tw:rounded-md tw:border tw:border-border tw:bg-surface-2 tw:p-3 tw:text-caption tw:leading-body tw:text-text-dim">
+                    <i class="fas fa-info-circle tw:mr-1" aria-hidden="true"></i>
+                    Bukti <strong>global / pendukung</strong> (bukan khusus satu item), contoh: foto undangan meeting.
+                    Nota/bukti <strong>per item</strong> di-upload di kolom <strong>“Lampiran Item”</strong> pada tabel Rincian Pengajuan.
+                    <div class="tw:mt-2">
                         <strong>Aturan:</strong> tipe <strong>Cash Advance</strong> wajib mengisi lampiran di sini
                         (Lampiran Item opsional, bukti final dilengkapi saat settlement). Tipe <strong>selain</strong>
                         Cash Advance sebaliknya — <strong>Lampiran Item wajib di setiap baris rincian</strong>,
                         lampiran di sini opsional.
                     </div>
-                    <div id="attUploadArea" style="display:none;">
-                        <div id="dropZoneCR" class="att-dropzone mb-3" tabindex="0">
-                            <i class="fas fa-cloud-upload-alt fa-2x mb-2 d-block"></i>
-                            <p class="mb-0">
-                                Drag &amp; drop file ke sini, paste gambar (Ctrl+V), atau
-                                <span class="text-primary" style="text-decoration:underline;cursor:pointer;" id="dropZoneBrowseCR">klik untuk pilih</span>
-                            </p>
-                            <small class="text-muted">Bisa pilih/drop/paste beberapa file sekaligus</small>
-                            <input type="file" id="dropZoneInputCR" multiple style="display:none;">
+                </div>
+
+                <div id="attUploadArea" style="display:none;">
+                    <div id="dropZoneCR" class="att-dropzone tw:mb-4" tabindex="0">
+                        <i class="fas fa-cloud-upload-alt fa-2x mb-2 d-block" aria-hidden="true"></i>
+                        <div class="tw:text-control tw:text-text">
+                            Drag &amp; drop file ke sini, paste gambar (Ctrl+V), atau
+                            <span class="tw:cursor-pointer tw:font-label tw:text-accent-text tw:underline" id="dropZoneBrowseCR" role="button" tabindex="0">klik untuk pilih</span>
                         </div>
-                        <div class="table-responsive mt-3" id="attTableWrap" style="display:none;">
-                            <table class="table table-bordered mb-0">
-                                <thead class="bg-light">
-                                    <tr>
-                                        <th scope="col" style="width:5%;" class="text-center">No</th>
-                                        <th scope="col" style="width:85%;">File</th>
-                                        <th scope="col" style="width:10%;" class="text-center">Aksi</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="attachmentBody"></tbody>
-                            </table>
-                        </div>
+                        <div class="tw:mt-1 tw:text-caption tw:text-text-dim">Bisa pilih/drop/paste beberapa file sekaligus</div>
+                        <input type="file" id="dropZoneInputCR" multiple style="display:none;">
+                    </div>
+                    <div class="table-responsive" id="attTableWrap" style="display:none;">
+                        <table class="tw:w-full tw:border-collapse">
+                            <thead>
+                                <tr>
+                                    <th scope="col" class="tw:w-[5%] text-center">No</th>
+                                    <th scope="col" class="tw:w-[85%]">File</th>
+                                    <th scope="col" class="tw:w-[10%] text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attachmentBody"></tbody>
+                        </table>
                     </div>
                 </div>
-                <div class="card-footer">
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        Format: pdf, jpg, png, doc(x), xls(x). Maks 5 MB per file.
-                    </small>
-                </div>
-            </div>
+
+                <x-slot:footer>
+                    <i class="fas fa-info-circle tw:mr-1" aria-hidden="true"></i>
+                    Format: pdf, jpg, png, doc(x), xls(x). Maks 5 MB per file.
+                </x-slot:footer>
+            </x-tw.card>
 
             <!-- ACTION -->
-            <div class="card shadow-sm">
-                <div class="card-body d-flex flex-wrap" style="gap:8px;">
-                    <a href="{{ url('/budget-request') }}" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left mr-1"></i> Kembali
-                    </a>
-                    <button type="submit" class="btn btn-warning" id="btnSaveCR">
-                        <i class="fas fa-save mr-1"></i> Simpan Perubahan
-                    </button>
-                    <small id="saveHint" class="text-danger align-self-center" style="display:none;"></small>
+            <x-tw.card padding="sm">
+                <div class="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3 tw:max-sm:flex-col-reverse tw:max-sm:items-stretch">
+                    <span id="saveHint" aria-live="off" class="tw:min-w-0 tw:flex-1 tw:text-caption tw:leading-body tw:text-danger" style="display:none;"></span>
+                    <div class="tw:flex tw:flex-wrap tw:items-center tw:gap-2 tw:max-sm:flex-col-reverse tw:max-sm:[&>*]:w-full">
+                        <x-tw.button href="{{ url('/budget-request') }}" variant="secondary" class="tw:max-sm:min-h-12"><i class="fas fa-arrow-left" aria-hidden="true"></i> Kembali</x-tw.button>
+                        <x-tw.button type="submit" id="btnSaveCR" class="tw:max-sm:min-h-12"><i class="fas fa-save" aria-hidden="true"></i> Simpan Perubahan</x-tw.button>
+                    </div>
                 </div>
-            </div>
+            </x-tw.card>
 
         </form>
 
         {{-- Submit form (terpisah) --}}
         @if($cr->isDraft() && $cr->details->count() > 0)
-        <form action="{{ url('/budget-request/' . $cr->id . '/submit') }}"
-              method="POST" id="frmSubmit">
-            @csrf
-        </form>
-        <div class="card shadow-sm border-primary">
-            <div class="card-body d-flex align-items-center justify-content-between">
-                <div>
-                    <strong class="text-primary">Siap diajukan?</strong>
-                    <p class="mb-0 text-muted" style="font-size:13px;">
+        <x-tw.card padding="sm">
+            <form action="{{ url('/budget-request/' . $cr->id . '/submit') }}"
+                  method="POST" id="frmSubmit" hidden>
+                @csrf
+            </form>
+            <div class="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3 tw:max-sm:flex-col tw:max-sm:items-stretch">
+                <div class="tw:min-w-0">
+                    <div class="tw:font-label tw:text-accent-text">Siap diajukan?</div>
+                    <div class="tw:mt-1 tw:text-data tw:leading-body tw:text-text-dim">
                         Setelah submit, CR tidak dapat diedit sampai dikembalikan oleh Manager.
-                    </p>
+                    </div>
                 </div>
-                <button type="button" class="btn btn-primary ml-3" id="btnSubmit">
-                    <i class="fas fa-paper-plane mr-1"></i> Submit ke Manager
-                </button>
+                <x-tw.button id="btnSubmit" class="tw:max-sm:min-h-12"><i class="fas fa-paper-plane" aria-hidden="true"></i> Submit ke Manager</x-tw.button>
             </div>
-        </div>
+        </x-tw.card>
         @endif
 
+        </div>
     </div>
 </div>
 
@@ -506,11 +501,27 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function buildSubItemOptions(selectedId) {
-        var html = '<option value="">— Pilih Sub Item —</option>';
+        /* Dikelompokkan per akun: judul akun (tebal, tidak bisa diklik) lalu
+           "Deskripsi (satuan)". Sisa budget sengaja tidak ditampilkan di daftar;
+           nilainya tetap ada di budgetDetails untuk sel Sisa dan aturan NOB. */
+        function h(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+        var grup = {}, urutan = [];
         budgetDetails.forEach(function (bd) {
-            var sel = (selectedId && String(selectedId) === String(bd.id)) ? ' selected' : '';
-            var label = bd.account + ' - ' + (bd.deskripsi || '-') + ' (' + (bd.unit || '-') + ') - ' + bd.remaining_formatted;
-            html += '<option value="' + bd.id + '"' + sel + '>' + label + '</option>';
+            var akun = bd.account || '-';
+            if (!grup[akun]) { grup[akun] = []; urutan.push(akun); }
+            grup[akun].push(bd);
+        });
+        var html = '<option value="">— Pilih Sub Item —</option>';
+        urutan.forEach(function (akun) {
+            html += '<optgroup label="' + h(akun) + '">';
+            grup[akun].forEach(function (bd) {
+                var sel = (selectedId && String(selectedId) === String(bd.id)) ? ' selected' : '';
+                var teks = (bd.deskripsi || '-') + ' (' + (bd.unit || '-') + ')';
+                html += '<option value="' + bd.id + '"' + sel + ' data-label="' + h(akun + ' - ' + teks) + '"'
+                      + ' data-item-label="' + h(teks) + '"'
+                      + ' data-search="' + h(akun) + '">' + h(teks) + '</option>';
+            });
+            html += '</optgroup>';
         });
         return html;
     }
@@ -576,12 +587,10 @@ document.addEventListener('DOMContentLoaded', function () {
             box.querySelectorAll('.email-tag').forEach(function (el) { el.remove(); });
             emails.forEach(function (email) {
                 var tag = document.createElement('span');
-                tag.className = 'badge badge-light border email-tag';
-                tag.style.cssText = 'font-size:12px;font-weight:500;padding:5px 8px;display:inline-flex;align-items:center;gap:6px;';
+                tag.className = 'email-tag tw:inline-flex tw:items-center tw:gap-2 tw:rounded-pill tw:border tw:border-border tw:bg-surface-2 tw:px-2 tw:py-1 tw:text-caption tw:text-text';
                 tag.textContent = email;
                 var x = document.createElement('i');
-                x.className = 'fas fa-times';
-                x.style.cssText = 'cursor:pointer;opacity:.6;font-size:10px;';
+                x.className = 'fas fa-times tw:cursor-pointer tw:text-text-faint tw:hover:text-danger';
                 x.addEventListener('click', function () {
                     emails = emails.filter(function (e) { return e !== email; });
                     sync();
@@ -773,7 +782,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 '<div class="desc-wrap">' +
                     '<input type="text" name="details[' + i + '][notes]" class="form-control form-control-sm inp-notes" maxlength="255" value="' + notesVal + '" placeholder="Deskripsi..." required>' +
                     '<button type="button" class="desc-expand" title="Lihat deskripsi lengkap" tabindex="-1"><i class="fas fa-expand-alt"></i></button>' +
-                    '<small class="desc-count text-muted">Sisa 255 karakter.</small>' +
                 '</div>' +
             '</td>' +
             '<td class="text-right cell-remaining col-remaining" style="display:none;">—</td>' +
@@ -782,13 +790,12 @@ document.addEventListener('DOMContentLoaded', function () {
             '<td><input type="text" name="details[' + i + '][total_display]" class="form-control form-control-sm text-right inp-total" value="0" readonly style="background:var(--surface-2);"></td>' +
             '<td class="align-middle detail-att-cell" data-idx="' + i + '" tabindex="0">' +
                 '<input type="file" name="details[' + i + '][attachments][]" class="d-none detail-att-input" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">' +
-                '<button type="button" class="btn btn-outline-secondary btn-sm btn-detail-att" style="white-space:nowrap;padding:2px 8px;font-size:11px;">' +
-                    '<i class="fas fa-paperclip"></i> <span class="detail-att-label">Lampiran</span></button>' +
-                '<div class="detail-att-hint text-muted" style="font-size:9px;">drop / paste / klik</div>' +
+                '<button type="button" class="btn-detail-att detail-att-drop">' +
+                    '<i class="fas fa-cloud-upload-alt" aria-hidden="true"></i><span class="detail-att-label">Lampiran</span></button>' +
                 (existAtt ? '<div class="mt-1" style="font-size:10px;line-height:1.5;">' + existAtt + '</div>' : '') +
                 '<div class="detail-att-list mt-1" style="font-size:10px;line-height:1.5;"></div>' +
             '</td>' +
-            '<td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-detail"><i class="fas fa-trash"></i></button></td>' +
+            '<td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-detail" title="Hapus baris" aria-label="Hapus baris"><i class="fas fa-trash" aria-hidden="true"></i></button></td>' +
         '</tr>';
     }
 
@@ -1167,7 +1174,7 @@ document.addEventListener('DOMContentLoaded', function () {
             '<td class="text-center align-middle row-no"></td>' +
             '<td><input type="file" name="attachments[' + i + '][file]" class="form-control-file">' +
                 '<div class="att-global-preview mt-1" style="font-size:11px;"></div></td>' +
-            '<td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-att"><i class="fas fa-trash"></i></button></td>';
+            '<td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-att" title="Hapus lampiran" aria-label="Hapus lampiran"><i class="fas fa-trash" aria-hidden="true"></i></button></td>';
         tbody.appendChild(tr);
         refreshAttTable();
 
@@ -1206,6 +1213,14 @@ document.addEventListener('DOMContentLoaded', function () {
         browse.addEventListener('click', function (e) {
             e.stopPropagation();
             input.click();
+        });
+        // role="button" harus bisa diaktifkan lewat papan ketik (Enter / Spasi).
+        browse.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                input.click();
+            }
         });
 
         input.addEventListener('change', function () {
@@ -1332,8 +1347,8 @@ document.addEventListener('DOMContentLoaded', function () {
         var ca = typeIsCashAdvance();
         var gBadge = document.getElementById('attRequiredBadge');
         var iBadge = document.getElementById('itemAttRequiredBadge');
-        if (gBadge) gBadge.style.display = ca ? 'inline-block' : 'none';
-        if (iBadge) iBadge.style.display = ca ? 'none' : 'inline-block';
+        if (gBadge) gBadge.style.display = ca ? '' : 'none';
+        if (iBadge) iBadge.style.display = ca ? 'none' : '';
     }
 
     document.getElementById('selectType').addEventListener('change', refreshAttachmentRequiredUI);
@@ -1367,8 +1382,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         var q = caQuotaState;
-        var cls = q.level === 'blocked' ? 'alert-danger'
-                : (q.level === 'warning' ? 'alert-warning' : 'alert-info');
+        var cls = q.level === 'blocked' ? 'tw:border-danger tw:bg-danger-bg tw:text-danger'
+                : (q.level === 'warning' ? 'tw:border-warning tw:bg-warning-bg tw:text-warning' : 'tw:border-info tw:bg-info-bg tw:text-info');
         var icon = q.level === 'ok' ? 'fa-info-circle' : 'fa-exclamation-triangle';
         var head = q.level === 'blocked'
                 ? 'Limit Cash Advance PIC <strong>' + q.pic_name + '</strong> sudah habis — pengajuan baru tidak bisa disimpan.'
@@ -1388,7 +1403,7 @@ document.addEventListener('DOMContentLoaded', function () {
                       ' (sisa ' + q.remaining_amount_formatted + ').';
         }
 
-        box.className = 'alert mb-0 mt-2 ' + cls;
+        box.className = 'tw:mt-3 tw:rounded-md tw:border tw:p-3 tw:text-data tw:leading-body ' + cls;
         box.innerHTML = '<i class="fas ' + icon + ' mr-1"></i> ' + head + bagian +
             ' <br><small>Jumlah pengajuan dihitung sejak CR berstatus Paid; limit (jumlah maupun nominal) pulih setelah pengajuan lewat Second Approve.</small>';
         box.style.display = 'block';
@@ -1442,12 +1457,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!sel.value) { box.style.display = 'none'; return; }
 
         if (name === 'cash advance') {
-            box.className = 'alert alert-info mb-0';
+            box.className = 'tw:mt-3 tw:rounded-md tw:border tw:border-info tw:bg-info-bg tw:p-3 tw:text-data tw:leading-body tw:text-info';
             box.innerHTML = '<i class="fas fa-route mr-1"></i> <strong>Cash Advance</strong> — workflow: ' +
                 '<strong>Process &rarr; Paid &rarr; Settle &rarr; Closed</strong>. ' +
                 'Ada tahap realisasi (settlement) setelah dana cair, jadi bukti final dilengkapi saat settle.';
         } else {
-            box.className = 'alert alert-warning mb-0';
+            box.className = 'tw:mt-3 tw:rounded-md tw:border tw:border-warning tw:bg-warning-bg tw:p-3 tw:text-data tw:leading-body tw:text-warning';
             box.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i> Workflow: ' +
                 '<strong>Process &rarr; Paid &rarr; Closed</strong> (tanpa tahap realisasi). ' +
                 'Pastikan <strong>semua bukti/evidence lengkap &amp; jelas sebelum submit</strong> — ' +
@@ -1612,6 +1627,7 @@ document.addEventListener('DOMContentLoaded', function () {
 @endsection
 
 @push('styles')
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
 
 /* Kotak deskripsi + ikon "lihat penuh" di ujung kanannya. */
@@ -1634,10 +1650,12 @@ document.addEventListener('DOMContentLoaded', function () {
     font-size: 10px; line-height: 1.2; white-space: nowrap;
 }
 
+/* Select native (Tipe, Project) setinggi kontrol lain di form ini (kotak searchable & input tw = --ctl-h). */
+select#selectType.form-control, select#selectCluster.form-control { height: var(--ctl-h); }
+
 /* Tombol X pop-up: tanpa kotak, merah. */
 .swal2-close.att-close-btn { color: var(--danger); background: transparent; box-shadow: none; border: none; outline: none; }
 .swal2-close.att-close-btn:hover, .swal2-close.att-close-btn:focus { color: var(--danger); background: transparent; box-shadow: none; outline: none; }
-.font-weight-600 { font-weight:600; }
 table td { vertical-align:middle !important; }
 
 /* Dropdown searchable kustom (TesysSearchableSelect) di dalam sel tabel — sedikit lebih ramping. */
@@ -1653,18 +1671,17 @@ td .tss-btn { padding:.25rem .5rem; font-size:13.5px; }
     border-radius: var(--radius-md);
     padding: 28px 20px;
     text-align: center;
-    color: var(--text-faint);
+    color: var(--text-dim);
     cursor: pointer;
-    transition: all .2s ease;
     background: var(--surface-2);
 }
 .att-dropzone:hover {
     border-color: var(--accent);
-    background: var(--warning-bg);
+    background: var(--accent-tint);
 }
 .att-dropzone.dragover {
     border-color: var(--accent);
-    background: var(--warning-bg);
+    background: var(--accent-tint);
     color: var(--accent-dark);
 }
 </style>

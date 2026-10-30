@@ -1379,6 +1379,9 @@ class TroubleTicketWorkflow
             'status'         => 'DRAFT',
         ]);
 
+        // Sisa sub-item (dasar NOB per baris) dimuat sekaligus untuk semua baris.
+        \App\Models\BudgetPlanDetail::primeCostLines($baris->pluck('budgetDetail')->filter());
+
         foreach ($baris as $b) {
             // Qty pengajuan maupun rincian CR sama-sama bilangan bulat: baris pindah apa adanya.
             $sisaDetail = $b->budgetDetail?->remainingAmount() ?? 0;

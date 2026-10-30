@@ -7,7 +7,7 @@
 <div class="content">
     <div class="container-fluid">
 
-        <ul class="nav nav-tabs ts-tabs-sticky mb-3" id="summaryTabs">
+        <ul class="nav nav-tabs ts-pill-tabs ts-tabs-sticky mb-3" id="summaryTabs">
             @if($canViewExecutive)
             <li class="nav-item">
                 <a class="nav-link {{ $initialTab === 'executive' ? 'active' : '' }}" id="summaryTabExecutiveLink" data-toggle="tab" href="#summaryPaneExecutive">
@@ -114,7 +114,7 @@
 
                 {{-- PROGRESS INDICATOR Contract -> PO -> Invoice -> Paid --}}
                 <div class="card shadow-sm mb-3" style="padding:14px 18px;">
-                    <div class="d-flex justify-content-between mb-1" style="font-size:11px;font-weight:600;color:var(--text-faint);">
+                    <div class="d-flex justify-content-between flex-wrap mb-1" style="font-size:11px;font-weight:600;color:var(--text-faint);column-gap:12px;">
                         <span>Contract</span><span>Released PO ({{ $kpiExecutive['pct_po'] }}%)</span><span>Invoiced ({{ $kpiExecutive['pct_invoice'] }}%)</span><span>Paid ({{ $kpiExecutive['pct_paid'] }}%)</span>
                     </div>
                     <div class="col-kpi-track" style="height:10px;position:relative;background:var(--surface-3);">
@@ -127,7 +127,7 @@
                     <div class="col-md-7 exec-chart-col">
                         <div class="card shadow-sm exec-chart-card">
                             <div class="card-header d-flex align-items-center">
-                                <h3 class="card-title" style="font-size:13px;font-weight:700;"><i class="fas fa-chart-line mr-2" style="color:var(--info);"></i>Revenue Value</h3>
+                                <h3 class="card-title"><i class="fas fa-chart-line mr-2" style="color:var(--info);"></i>Revenue Value</h3>
                                 <select id="selRevenueYear" class="form-control form-control-sm ml-auto" style="max-width:110px;font-size:11px;"></select>
                             </div>
                             <div class="card-body">
@@ -138,7 +138,7 @@
                     <div class="col-md-5 exec-chart-col">
                         <div class="card shadow-sm exec-chart-card">
                             <div class="card-header d-flex align-items-center">
-                                <h3 class="card-title" style="font-size:13px;font-weight:700;"><i class="fas fa-exchange-alt mr-2" style="color:var(--success);"></i>Cash Receipt vs Cash Out</h3>
+                                <h3 class="card-title"><i class="fas fa-exchange-alt mr-2" style="color:var(--success);"></i>Cash Receipt vs Cash Out</h3>
                                 <select id="selTreasuryYear" class="form-control form-control-sm ml-auto" style="max-width:110px;font-size:11px;"></select>
                             </div>
                             <div class="card-body">
@@ -153,7 +153,7 @@
                     <div class="col-md-4 exec-chart-col">
                         <div class="card shadow-sm exec-chart-card">
                             <div class="card-header d-flex align-items-center">
-                                <h3 class="card-title" style="font-size:13px;font-weight:700;"><i class="fas fa-chart-pie mr-2" style="color:var(--warning);"></i>Distribusi Status PO (Nilai)</h3>
+                                <h3 class="card-title"><i class="fas fa-chart-pie mr-2" style="color:var(--warning);"></i>Distribusi Status PO (Nilai)</h3>
                                 <div class="ml-auto form-check" style="font-size:11px;">
                                     <input type="checkbox" class="form-check-input" id="chkShowClosedChart">
                                     <label class="form-check-label" for="chkShowClosedChart" style="cursor:pointer;">Tampilkan Closed</label>
@@ -168,7 +168,7 @@
                     <div class="col-md-4 exec-chart-col">
                         <div class="card shadow-sm exec-chart-card">
                             <div class="card-header">
-                                <h3 class="card-title" style="font-size:13px;font-weight:700;"><i class="fas fa-tasks mr-2" style="color:var(--purple);"></i>Progress Dokumen (R / B / I / P)</h3>
+                                <h3 class="card-title"><i class="fas fa-tasks mr-2" style="color:var(--purple);"></i>Progress Dokumen (R / B / I / P)</h3>
                             </div>
                             <div class="card-body">
                                 <canvas id="chartProgress" height="180"></canvas>
@@ -179,7 +179,7 @@
                     <div class="col-md-4 exec-chart-col">
                         <div class="card shadow-sm exec-chart-card">
                             <div class="card-header d-flex align-items-center">
-                                <h3 class="card-title" style="font-size:13px;font-weight:700;"><i class="fas fa-building mr-2" style="color:#0d9488;"></i>Top Customer</h3>
+                                <h3 class="card-title"><i class="fas fa-building mr-2" style="color:var(--info);"></i>Top Customer</h3>
                                 <select id="selCustomerMetric" class="form-control form-control-sm ml-auto" style="max-width:150px;font-size:11px;">
                                     <option value="po_value">Nilai PO</option>
                                     <option value="gross_profit">Gross Profit</option>
@@ -325,7 +325,7 @@
                                         </td>
                                         <td class="text-nowrap">{{ $r['name'] }}</td>
                                         <td class="text-center text-nowrap">
-                                            <span class="badge badge-{{ $r['status_color'] }} px-2 py-1">{{ $r['status_label'] }}</span>
+                                            <x-status :status="$r['status']" context="project" />
                                         </td>
                                         <td class="text-center text-nowrap">
                                             <a href="{{ route('project-monitoring.show', $r['id']) }}" target="_blank" rel="noopener" class="exec-implement-link" title="Lihat Project Monitoring">{{ rtrim(rtrim(number_format($r['implementation'], 1, ',', '.'), '0'), ',') }}%</a>
@@ -451,7 +451,7 @@
                         // Lewat 7 hari = merah. Ambangnya lokal di sini - tidak ada
                         // aturan SLA settlement resmi di aplikasi yang bisa dirujuk.
                         $lewat = $hari > 7;
-                        return '<span style="color:' . ($lewat ? 'var(--danger)' : 'var(--muted, #6c757d)')
+                        return '<span style="color:' . ($lewat ? 'var(--danger)' : 'var(--text-muted)')
                             . ';font-weight:' . ($lewat ? '700' : '400') . ';">' . $hari . ' hari</span>';
                     };
                 @endphp
@@ -461,7 +461,7 @@
                      jadi card ini tidak digerbang role apa pun. --}}
                 <div class="card shadow-sm mb-3">
                     <div class="card-header d-flex align-items-center">
-                        <h3 class="card-title" style="font-size:13px;font-weight:700;"><i class="fas fa-money-check-alt mr-2" style="color:var(--purple);"></i>Active Cash Advance</h3>
+                        <h3 class="card-title"><i class="fas fa-money-check-alt mr-2" style="color:var(--purple);"></i>Active Cash Advance</h3>
                         <span class="badge badge-secondary ml-2">{{ $activeCaGrandQty }}</span>
                         <span class="text-muted ml-2" style="font-size:10px;">Manager &rsaquo; PIC &rsaquo; Cost Request &mdash; Paid / Settle Checked / Settle Verified</span>
 
@@ -805,20 +805,20 @@
                                 </div>
 
                                 <div class="row text-center">
-                                    <div class="col-6 col-md-3 mb-3">
-                                        <div class="font-weight-bold" style="font-size:14px;">{{ number_format($finance['total_budget'], 0, ',', '.') }}</div>
+                                    <div class="col-6 mb-3">
+                                        <div class="font-weight-bold text-nowrap num" style="font-size:14px;">{{ number_format($finance['total_budget'], 0, ',', '.') }}</div>
                                         <small class="text-muted">Total Budget</small>
                                     </div>
-                                    <div class="col-6 col-md-3 mb-3">
-                                        <div class="font-weight-bold text-warning" style="font-size:14px;">{{ number_format($finance['used'], 0, ',', '.') }}</div>
+                                    <div class="col-6 mb-3">
+                                        <div class="font-weight-bold text-nowrap num text-warning" style="font-size:14px;">{{ number_format($finance['used'], 0, ',', '.') }}</div>
                                         <small class="text-muted">Terpakai</small>
                                     </div>
-                                    <div class="col-6 col-md-3 mb-3">
-                                        <div class="font-weight-bold text-success" style="font-size:14px;">{{ number_format($finance['remaining'], 0, ',', '.') }}</div>
+                                    <div class="col-6 mb-3">
+                                        <div class="font-weight-bold text-nowrap num text-success" style="font-size:14px;">{{ number_format($finance['remaining'], 0, ',', '.') }}</div>
                                         <small class="text-muted">Sisa</small>
                                     </div>
-                                    <div class="col-6 col-md-3 mb-3">
-                                        <div class="font-weight-bold text-info" style="font-size:14px;">{{ number_format($finance['realized'], 0, ',', '.') }}</div>
+                                    <div class="col-6 mb-3">
+                                        <div class="font-weight-bold text-nowrap num text-info" style="font-size:14px;">{{ number_format($finance['realized'], 0, ',', '.') }}</div>
                                         <small class="text-muted">Realisasi ({{ rtrim(rtrim(number_format($finance['realized_of_used_pct'], 1, ',', '.'), '0'), ',') }}%)</small>
                                     </div>
                                 </div>
@@ -996,7 +996,7 @@
                     <div class="col-md-4 exec-chart-col">
                         <div class="card shadow-sm exec-chart-card">
                             <div class="card-header d-flex align-items-center">
-                                <h3 class="card-title" style="font-size:13px;font-weight:700;"><i class="fas fa-chart-bar mr-2" style="color:var(--info);"></i>Aging Overdue</h3>
+                                <h3 class="card-title"><i class="fas fa-chart-bar mr-2" style="color:var(--info);"></i>Aging Overdue</h3>
                                 <span class="ml-auto" style="font-size:11px;color:var(--text-faint);">Total: {{ $fmtFull($colKpiOverdueValue) }}</span>
                             </div>
                             <div class="card-body">
@@ -1013,7 +1013,7 @@
                     <div class="col-md-4 exec-chart-col">
                         <div class="card shadow-sm exec-chart-card">
                             <div class="card-header">
-                                <h3 class="card-title" style="font-size:13px;font-weight:700;"><i class="fas fa-chart-pie mr-2" style="color:var(--success);"></i>Status Invoice (Nilai)</h3>
+                                <h3 class="card-title"><i class="fas fa-chart-pie mr-2" style="color:var(--success);"></i>Status Invoice (Nilai)</h3>
                             </div>
                             <div class="card-body">
                                 <div class="col-donut-row">
@@ -1037,7 +1037,7 @@
                     <div class="col-md-4 exec-chart-col">
                         <div class="card shadow-sm exec-chart-card">
                             <div class="card-header d-flex align-items-center">
-                                <h3 class="card-title" style="font-size:13px;font-weight:700;"><i class="fas fa-calendar-alt mr-2" style="color:var(--warning);"></i>Upcoming Due</h3>
+                                <h3 class="card-title"><i class="fas fa-calendar-alt mr-2" style="color:var(--warning);"></i>Upcoming Due</h3>
                                 <span class="ml-auto" style="font-size:11px;color:var(--text-faint);" id="upcomingDueTotal"></span>
                             </div>
                             <div class="card-body">
@@ -1071,7 +1071,7 @@
                     <div class="col-12 exec-chart-col">
                         <div class="card shadow-sm exec-chart-card">
                             <div class="card-header d-flex align-items-center">
-                                <h3 class="card-title" style="font-size:13px;font-weight:700;"><i class="fas fa-user-tie mr-2" style="color:var(--purple);"></i>Collection Performance</h3>
+                                <h3 class="card-title"><i class="fas fa-user-tie mr-2" style="color:var(--purple);"></i>Collection Performance</h3>
                                 <div class="ml-auto d-flex align-items-center flex-wrap" style="gap:6px;">
                                     <label class="mb-0 d-flex align-items-center" style="font-size:11px;font-weight:600;color:var(--text-faint);gap:4px;cursor:pointer;">
                                         <input type="checkbox" id="cpShowRate100">Show Rate 100%
@@ -1240,7 +1240,7 @@
                     <div class="col-12 exec-chart-col">
                         <div class="card shadow-sm exec-chart-card">
                             <div class="card-header d-flex align-items-center">
-                                <h3 class="card-title" style="font-size:13px;font-weight:700;"><i class="fas fa-file-invoice-dollar mr-2" style="color:var(--info);"></i>Summary PO</h3>
+                                <h3 class="card-title"><i class="fas fa-file-invoice-dollar mr-2" style="color:var(--info);"></i>Summary PO</h3>
                                 <div class="ml-auto d-flex align-items-center flex-wrap" style="gap:6px;">
                                     <label class="mb-0 d-flex align-items-center" style="font-size:11px;font-weight:600;color:var(--text-faint);gap:4px;cursor:pointer;">
                                         <input type="checkbox" id="poShowRate100">Show Rate 100%
@@ -1411,7 +1411,7 @@
                     <div class="col-12 exec-chart-col">
                         <div class="card shadow-sm exec-chart-card">
                             <div class="card-header d-flex align-items-center flex-wrap" style="gap:6px;">
-                                <h3 class="card-title" style="font-size:13px;font-weight:700;">
+                                <h3 class="card-title">
                                     <i class="fas fa-tasks mr-2" style="color:var(--info);"></i>Summary Progress
                                 </h3>
                                 
@@ -1813,7 +1813,7 @@ a.aca-value-link:hover, a.aca-value-link:focus {
    panjang dan badge Action, sehingga seluruh kolom bergeser dan angka yang
    sedang dibandingkan pembacanya pindah tempat. Dengan lebar tetap, melipat
    dan membuka grup tidak lagi menggeser apa pun. */
-table.aca-fixed { table-layout:fixed; width:100%; }
+table.aca-fixed { table-layout:fixed; width:100%; min-width:920px; }
 
 /* Konsekuensi table-layout:fixed: teks panjang tidak lagi melebarkan kolomnya,
    jadi deskripsi CR dipotong dengan elipsis (judul lengkapnya tetap terbaca
@@ -2013,7 +2013,8 @@ td.exec-indent { padding-left:28px !important; }
 .col-kpi-icon-good { background:rgba(12,163,12,0.12); color:var(--success); }
 .col-kpi-icon-purple { background:rgba(111,66,193,0.12); color:var(--purple); }
 .col-kpi-label { font-size:10px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:var(--text-faint); white-space:nowrap; }
-.col-kpi-value { font-size:20px; font-weight:700; letter-spacing:-.01em; line-height:1.2; }
+.col-kpi-value { font-size:20px; font-weight:700; letter-spacing:-.01em; line-height:1.2; white-space:nowrap; font-variant-numeric:tabular-nums; }
+@media (max-width:575.98px) { .col-kpi-value { font-size:16px; } }
 .col-kpi-foot { font-size:10.5px; color:var(--text-faint); margin-top:6px; }
 .col-kpi-qty { font-size:12px; font-weight:700; color:var(--text); margin-top:5px; }
 .col-kpi-qty-lbl { font-weight:400; color:var(--text-faint); font-size:10.5px; }
@@ -2073,7 +2074,7 @@ td.exec-indent { padding-left:28px !important; }
 .col-status-badge { font-size:10px; font-weight:700; padding:3px 10px; border-radius:var(--radius-pill); text-transform:uppercase; letter-spacing:.02em; }
 .col-status-critical   { background:var(--danger-bg); color:var(--danger); }
 .col-status-escalation { background:var(--warning-bg); color:var(--orange); }
-.col-status-priority   { background:var(--warning-bg); color:#c98a00; }
+.col-status-priority   { background:var(--warning-bg); color:var(--warning); }
 .col-status-follow-up  { background:var(--success-bg); color:var(--success); }
 .col-status-lancar     { background:var(--surface-2); color:var(--text-faint); }
 
@@ -2167,9 +2168,9 @@ td.exec-indent { padding-left:28px !important; }
    (satu blok warna menyatu), garis tegas 2px ditaruh di sini sebagai batas
    bawah blok header, sebelum baris data. ── */
 .col-pic-table thead th.col-subhead-good { color:var(--success) !important; background:var(--success-bg) !important; border-bottom:2px solid var(--success) !important; }
-.col-pic-table thead th.col-subhead-warn { color:var(--warning) !important; background:var(--warning-bg) !important; border-bottom:2px solid #eda100 !important; }
+.col-pic-table thead th.col-subhead-warn { color:var(--warning) !important; background:var(--warning-bg) !important; border-bottom:2px solid var(--warning) !important; }
 .col-pic-table thead th.col-subhead-bad  { color:var(--danger) !important; background:var(--danger-bg) !important; border-bottom:2px solid var(--danger) !important; }
-.col-pic-table thead th.col-subhead-blue { color:var(--info) !important; background:var(--info-bg) !important; border-bottom:2px solid #2a78d6 !important; }
+.col-pic-table thead th.col-subhead-blue { color:var(--info) !important; background:var(--info-bg) !important; border-bottom:2px solid var(--info) !important; }
 
 /* ── Data cells — JELAS lebih muda dari header/sub-header (bukan beda tipis) ── */
 .col-pic-table td.col-cell-blue { background:var(--info-bg) !important; }
@@ -2194,7 +2195,7 @@ td.exec-indent { padding-left:28px !important; }
 .cp-status-badge { display:inline-block; padding:3px 10px; border-radius:var(--radius-lg); font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.02em; white-space:nowrap; }
 .cp-status-follow-up  { background:var(--info-bg); color:var(--info); }
 .cp-status-priority   { background:var(--warning-bg); color:var(--warning); }
-.cp-status-escalation { background:var(--danger-bg); color:#c9583a; }
+.cp-status-escalation { background:var(--danger-bg); color:var(--danger); }
 .cp-status-critical   { background:var(--danger); color:#fff; }
 
 /* ── Pita warna per grup 2 kolom (Total Invoice / Paid / Outstanding / Overdue) ──
@@ -2703,13 +2704,13 @@ $(function () {
        meneruskan warna biasa tanpa diubah. */
     var W = window.tesysWarna || function (v) { return v; };
 
-    var palette = ['var(--info)', '#eb6834', '#1baf7a', 'var(--warning)', '#e87ba4', '#008300', '#4a3aa7', 'var(--danger)'].map(W);
+    var palette = ['var(--info)', '#c8742f', '#47705a', '#c9a86a', '#b5657a', '#2f5d3f', 'var(--purple)', 'var(--accent)'].map(W);
     var statusPalette = { DRAFT: palette[0], SUBMITTED: palette[1], WAITING_PO: palette[2], ACTIVE: palette[3], PROGRESS_DONE: palette[4], PARTIALLY_INVOICED: palette[4], PARTIALLY_PAID: palette[5], PAID: palette[5], CLOSING: palette[6], CLOSED: palette[7] };
     var statusColorFor = { good: W('var(--success)'), warning: '#fab219', neutral: '#c3c2b7' };
-    var inkSecondary = '#52514E';
-    var gridColor = '#E1E0D9';
+    var inkSecondary = W('var(--text-dim)');
+    var gridColor = W('var(--border)');
 
-    Chart.defaults.global.defaultFontFamily = "'Nunito', -apple-system, 'Segoe UI', sans-serif";
+    Chart.defaults.global.defaultFontFamily = "'Inter', -apple-system, 'Segoe UI', sans-serif";
     Chart.defaults.global.defaultFontColor = inkSecondary;
     Chart.defaults.global.defaultFontSize = 11;
 
@@ -2808,30 +2809,33 @@ $(function () {
         if (!sorted.length) { $('#legendCustomers').html(''); return; }
 
         chartCustomers = new Chart(document.getElementById('chartCustomers').getContext('2d'), {
-            type: 'pie',
+            type: 'horizontalBar',
             data: {
                 labels: sorted.map(function (c) { return c.customer_initial; }),
                 datasets: [{
-                    data: sorted.map(function (c) { return Math.max(c[metric], 0); }),
-                    backgroundColor: sorted.map(function (c, i) { return palette[i % palette.length]; }),
-                    borderWidth: 1,
-                    borderColor: '#fff'
+                    data: sorted.map(function (c) { return c[metric]; }),
+                    backgroundColor: palette[7],
+                    borderRadius: 3,
+                    barPercentage: 0.7
                 }]
             },
             options: {
                 legend: { display: false },
                 tooltips: { callbacks: {
                     title: function (items) { return sorted[items[0].index].customer; },
-                    label: function (item, data) { return fmtRp(data.datasets[0].data[item.index]); }
-                } }
+                    label: function (item) { return fmtRp(item.xLabel); }
+                } },
+                scales: {
+                    xAxes: [{ gridLines: { color: gridColor, drawBorder: false }, ticks: {
+                        beginAtZero: true,
+                        callback: function (v) { return v >= 1000000 ? (v / 1000000) + 'jt' : v; }
+                    } }],
+                    yAxes: [{ gridLines: { display: false } }]
+                }
             }
         });
 
-        var legendHtml = '';
-        sorted.forEach(function (c, i) {
-            legendHtml += '<div class="exec-legend-item"><span class="exec-legend-swatch" style="background:' + palette[i % palette.length] + ';"></span>' + c.customer_initial + '</div>';
-        });
-        $('#legendCustomers').html(legendHtml);
+        $('#legendCustomers').html('');
     }
 
     var revenueData = JSON.parse(chartDataEl.dataset.revenue);
@@ -2861,11 +2865,11 @@ $(function () {
                 datasets: [{
                     label: 'Revenue Value',
                     data: data,
-                    borderColor: palette[0],
-                    backgroundColor: 'rgba(42,120,214,0.12)',
-                    pointBackgroundColor: palette[0],
+                    borderColor: palette[7],
+                    backgroundColor: 'rgba(146,35,43,0.08)',
+                    pointBackgroundColor: palette[7],
                     pointRadius: 3,
-                    lineTension: 0.35,
+                    lineTension: 0,
                     fill: true,
                     borderWidth: 2
                 }]
@@ -3224,7 +3228,7 @@ $(function () {
         closeExecFilterDropdowns();
 
         var $dd = $('<div class="tcf-dropdown"></div>').css({
-            position: 'absolute', zIndex: 3000, background: '#fff', border: '1px solid #d0d5dd',
+            position: 'absolute', zIndex: 3000, background: 'var(--surface)', border: '1px solid var(--border)',
             borderRadius: '6px', boxShadow: '0 6px 18px rgba(0,0,0,.12)', padding: '8px',
             width: 'max-content', minWidth: '200px', maxWidth: '320px', maxHeight: '280px',
             display: 'flex', flexDirection: 'column'
@@ -3244,9 +3248,7 @@ $(function () {
         $dd.data('tcfOwner', $btn.get(0));
         $('body').append($dd);
 
-        var offset = $btn.offset();
-        var z = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
-        $dd.css({ top: offset.top / z + $btn.outerHeight() + 4, left: offset.left / z });
+        TesysPlaceDropdown($dd, $btn);
 
         $list.on('change', '.tcf-check', function () {
             var selected = new Set();
@@ -3366,7 +3368,7 @@ $(function () {
        hidden di tab non-aktif ke-render 0x0 kalau Chart.js langsung jalan). ── */
     var Wc = window.tesysWarna || function (v) { return v; };
     var colPalette = { good: Wc('var(--success)'), warn: Wc('var(--warning)'), bad: Wc('var(--danger)'), blue: Wc('var(--info)'), neutral: '#c3c2b7' };
-    var colGridColor = '#E1E0D9';
+    var colGridColor = Wc('var(--border)');
 
     var colDataEl = document.getElementById('colChartData');
     var colAging = JSON.parse(colDataEl.dataset.aging);
@@ -3409,7 +3411,7 @@ $(function () {
 
         new Chart(document.getElementById('chartInvStatus').getContext('2d'), {
             type: 'doughnut',
-            data: { labels: labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
+            data: { labels: labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 2, borderColor: Wc('var(--surface)') }] },
             options: {
                 responsive: true, maintainAspectRatio: false,
                 legend: { display: false },

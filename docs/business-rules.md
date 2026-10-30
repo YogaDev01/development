@@ -67,6 +67,23 @@ Closing ← ClosingService reads Treasury, Invoice, Collection, Cash Receipt…
   realization > 0 uses realization" and applies it to NOB and budget usage.
   Needs Finance approval before it becomes a rule.)
 - NOB flag (`is_nob`, `nob_amount`) set by budget check (`checkNob`).
+- **Used per sub-item Budget Plan** (Settlement Custom COA, 2026-10-25) —
+  satu sumber `BudgetRequest::costUnits()` dipakai
+  `BudgetPlanDetail::usedAmount()`/`costLines()`, breakdown COA Todo List
+  (`BuildsCrWorklist`), modal & export Budget Plan, tab Budget CR, modal PO,
+  dan Daily Transaction. CA yang settlement-nya sudah diajukan (baris
+  realisasi ada — definisi yang sama dengan `effectiveCostSql()`, termasuk
+  draft yang tersimpan saat PAID) memakai baris settlement di **Sub COA
+  efektif**-nya (baris pindah/tambahan menambah Used sub-item tujuan dan
+  mengurangi asal); selainnya nilai pengajuan. `BudgetPlan::usedAmount()`
+  (header, per CR) tidak berubah. Pembagian Used / Expense Claim / Approved di
+  breakdown Todo List dihitung per unit (item asal × Sub COA efektif) dengan
+  rumus `coaSettledSplit()`/`crClaimFactor()` yang sama; untuk data satu
+  baris per item hasilnya identik dengan sebelumnya.
+- Perbedaan lama yang **dipertahankan** (bukan diubah): daftar CR di modal &
+  export Budget Plan menampilkan baris settle hanya bila nilainya > 0 (settle 0
+  tampil sebagai nilai pengajuan), sedangkan "Used" menghitung settle 0 = 0.
+  Needs confirmation apakah perbedaan ini disengaja.
 
 ### Budget Plan
 - Statuses: DRAFT, SUBMITTED, CHECKED, VERIFIED, ACTIVE, CLOSING, CLOSED, REJECTED.

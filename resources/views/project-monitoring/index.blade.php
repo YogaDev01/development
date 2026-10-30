@@ -6,14 +6,24 @@
 
 <div class="content">
     <div class="container-fluid">
+      <div class="ts-index tw:flex tw:flex-col tw:gap-4 tw:py-4">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Project Monitoring</h1>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
-                <li class="breadcrumb-item"><a href="#">Project</a></li>
+        {{-- Judul & breadcrumb topbar: shell memindahkan <h1> dan .breadcrumb pertama ke topbar
+             (tesys-shell.js hoistPageTitle); disembunyikan secara visual. --}}
+        <div class="tw:sr-only">
+            <h1>Project Monitoring</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">Project</li>
                 <li class="breadcrumb-item active">Project Monitoring</li>
             </ol>
         </div>
+
+        <x-tw.page-header title="Daftar Project Monitoring"
+            description="Progres PO (PO Received, BAST, Invoice, Payment) beserta pembaruan terakhirnya.">
+            <x-slot:actions>
+                <x-tw.button id="btnRefreshMon" variant="secondary"><i class="fas fa-sync-alt" aria-hidden="true"></i> Refresh</x-tw.button>
+            </x-slot:actions>
+        </x-tw.page-header>
 
         <x-stat-cards :cards="[
             ['Total PO Dimonitor', $summary['total'], 'primary', 'fas fa-project-diagram'],
@@ -23,18 +33,8 @@
             ['Payment Done', $summary['payment_done'], 'success', 'fas fa-money-bill-wave'],
         ]" />
 
-        <div class="card card-primary card-outline shadow-sm">
-
-            <div class="card-header d-flex align-items-center">
-                <h3 class="card-title"><i class="fas fa-project-diagram mr-1"></i> Daftar Project Monitoring</h3>
-                <div class="ml-auto d-flex" style="gap:8px;">
-                    <button type="button" class="btn btn-sm btn-secondary" onclick="location.reload()" title="Refresh">
-                        <i class="fas fa-sync-alt"></i> Refresh
-                    </button>
-                </div>
-            </div>
-
-            <div class="card-body">
+        {{-- Kartu tunggal: toolbar + tabel + paginasi (pola Cost Request). --}}
+        <x-tw.card padding="sm">
 
                 {{-- FILTER --}}
                 <div class="custom-toolbar mb-3 d-flex align-items-center flex-wrap" style="gap:8px;">
@@ -53,7 +53,7 @@
                 </div>
 
                 <div class="table-responsive">
-                    <table id="tblMonitoring" class="table table-bordered table-hover table-striped mb-0">
+                    <table id="tblMonitoring" class="table table-bordered table-hover mb-0 ts-idx-tbl">
                         <thead class="bg-light">
                             <tr>
                                 <th scope="col" class="fit-col text-center">No</th>
@@ -62,7 +62,7 @@
                                 <th scope="col" class="fit-col text-center">Implement</th>
                                 <th scope="col" class="fit-col text-center">Progress</th>
                                 <th scope="col" class="fit-col text-center">Update</th>
-                                <th scope="col" class="fit-col text-center action-column">Action</th>
+                                <th scope="col" class="fit-col text-center action-column"><span class="sr-only">Aksi</span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -76,7 +76,7 @@
                             @php
                                 $lastUpdate = $project->last_update_at ? \Carbon\Carbon::parse($project->last_update_at) : $project->created_at;
                             @endphp
-                            <tr data-pm="{{ $pmInternal }}" data-customer="{{ $project->customer->name ?? '' }}" data-status="{{ $project->status_label }}"
+                            <tr data-href="{{ route('project-monitoring.show', $project->id) }}" data-pm="{{ $pmInternal }}" data-customer="{{ $project->customer->name ?? '' }}" data-status="{{ $project->status_label }}"
                                 data-update="{{ $lastUpdate->timestamp }}">
                                 <td class="fit-col text-center">{{ $loop->iteration }}</td>
 
@@ -117,28 +117,13 @@
                                 </td>
 
                                 <td class="fit-col text-center action-column">
+                                    {{-- Detail Log dibuka lewat klik baris; satu-satunya aksi: Info Purchase Order (modal). --}}
                                     <div class="action-buttons ts-actions">
-
-                                        <a href="{{ route('project-monitoring.show', $project->id) }}"
-                                           target="_blank" rel="noopener"
-                                           class="ts-action-primary is-neutral"
-                                           title="Detail Log" aria-label="Detail log project">
-                                            <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Detail Log</span>
-                                        </a>
-
-                                        <button type="button" class="ts-action-more"
-                                                aria-haspopup="true" aria-expanded="false"
-                                                title="Aksi lain" aria-label="Aksi lain">
-                                            <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
+                                        <button type="button" class="ts-action-primary is-neutral btn-info-po"
+                                                data-id="{{ $project->id }}"
+                                                title="Info Purchase Order" aria-label="Info Purchase Order {{ $project->code }}">
+                                            <i class="fas fa-info-circle" aria-hidden="true"></i><span class="ts-al">Info PO</span>
                                         </button>
-
-                                        <div class="ts-action-menu dropdown-menu" hidden>
-                                            <button type="button" class="dropdown-item btn-info-po"
-                                                    data-id="{{ $project->id }}">
-                                                <i class="fas fa-info-circle"></i>Info Purchase Order
-                                            </button>
-                                        </div>
-
                                     </div>
                                 </td>
                             </tr>
@@ -152,8 +137,8 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
+        </x-tw.card>
+      </div>
     </div>
 </div>
 
@@ -288,7 +273,9 @@
 @endsection
 
 @push('styles')
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
+#tblMonitoring tbody tr[data-href] { cursor:pointer; }
 .fit-col             { white-space: nowrap; width: 1%; }
 .action-column       { min-width:80px !important; }
 .po-mini-badge       { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; line-height:1; padding:0; margin:0 1px; font-size:9px; font-weight:700; border-radius:50%; text-align:center; cursor:default; opacity:.92; }
@@ -362,6 +349,16 @@
 @push('scripts')
 <script>
 $(function () {
+
+    $('#btnRefreshMon').on('click', function () { location.reload(); });
+
+    /* Klik di mana saja pada baris membuka Detail Log (pola Cost Request). Kontrol di dalam baris
+       (tombol Info PO, kontrol responsif DataTables) bekerja sendiri. */
+    $(document).on('click', '#tblMonitoring tbody tr[data-href]', function (e) {
+        if ($(e.target).closest('a, button, input, select, textarea, label, form, .ts-actions, .ts-action-menu, td.dtr-control').length) return;
+        if (window.getSelection && String(window.getSelection()).length) return;
+        window.location.href = $(this).attr('data-href');
+    });
     var table = $('#tblMonitoring').DataTable({
         responsive: { details: { type: 'inline' } },
         autoWidth: false, pageLength: 10, lengthChange: true, searching: true,

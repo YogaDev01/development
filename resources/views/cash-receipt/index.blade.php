@@ -6,26 +6,36 @@
 
 <div class="content">
     <div class="container-fluid">
+      <div class="ts-index tw:flex tw:flex-col tw:gap-4 tw:py-4">
 
         @if(session('success'))
-        <div class="alert alert-success rounded-0 shadow-sm">{{ session('success') }}</div>
+        <div class="alert alert-success rounded-0 shadow-sm mb-0">{{ session('success') }}</div>
         @endif
         @if(session('error'))
-        <div class="alert alert-danger rounded-0 shadow-sm">{{ session('error') }}</div>
+        <div class="alert alert-danger rounded-0 shadow-sm mb-0">{{ session('error') }}</div>
         @endif
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <div>
-                <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Cash Receipt</h1>
-                <small class="text-muted">
-                    Batch penerimaan dana atas kumpulan invoice — cerminan Treasury, yang membatch pembayaran Cost Request.
-                </small>
-            </div>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
-                <li class="breadcrumb-item"><a href="#">Finance</a></li>
+        {{-- Judul & breadcrumb topbar: shell memindahkan <h1> dan .breadcrumb pertama ke topbar
+             (tesys-shell.js hoistPageTitle); disembunyikan secara visual. --}}
+        <div class="tw:sr-only">
+            <h1>Cash Receipt</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">Finance</li>
                 <li class="breadcrumb-item active">Cash Receipt</li>
             </ol>
         </div>
+
+        <x-tw.page-header title="Daftar Penerimaan"
+            description="Batch penerimaan dana atas kumpulan invoice — cerminan Treasury, yang membatch pembayaran Cost Request.">
+            <x-slot:actions>
+                <x-tw.button href="{{ route('cash-receipt.create') }}" class="ts-add-btn tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Catat Penerimaan</x-tw.button>
+            </x-slot:actions>
+        </x-tw.page-header>
+
+        {{-- Mobile: tombol di header disembunyikan dan diganti tombol melayang (tesys-ui-refine.css). --}}
+        <a href="{{ route('cash-receipt.create') }}" class="ts-fab" aria-label="Catat Penerimaan" title="Catat Penerimaan">
+            <i class="fas fa-plus" aria-hidden="true"></i>
+        </a>
 
         {{-- Kartu dibungkus wadah ber-id: isinya dihitung ulang dari baris yang
              terlihat setiap kali filter tabel berubah, supaya kartu dan tabel
@@ -39,17 +49,8 @@
         ]" />
         </div>
 
-        <div class="card card-primary card-outline shadow-sm mt-3">
-            <div class="card-header d-flex align-items-center flex-wrap" style="gap:8px;">
-                <h3 class="card-title"><i class="fas fa-receipt mr-1"></i> Daftar Penerimaan</h3>
-                <div class="ml-auto">
-                    <a href="{{ route('cash-receipt.create') }}" class="btn btn-success btn-sm">
-                        <i class="fas fa-plus mr-1"></i> Catat Penerimaan
-                    </a>
-                </div>
-            </div>
-
-            <div class="card-body">
+        {{-- Kartu tunggal: toolbar + tabel + paginasi (pola Cost Request). --}}
+        <x-tw.card padding="sm">
                 {{--
                      Rentang tanggal terima dikerjakan di SERVER (muat ulang dengan
                      ?date_from=&date_to=&range=); kartu, daftar, dan footer mengikuti
@@ -115,7 +116,7 @@
 
                 {{-- Tanpa ekstensi responsive DataTables (bentrok dengan toggle kolom manual): tabel digulir horizontal. --}}
                 <div class="cr-hscroll table-responsive">
-                    <table id="tblCashReceipt" class="table table-bordered table-hover table-striped mb-0">
+                    <table id="tblCashReceipt" class="table table-bordered table-hover mb-0 ts-idx-tbl">
                         <thead class="bg-light">
                             <tr>
                                 <th scope="col" class="text-nowrap">Kode</th>
@@ -127,7 +128,7 @@
                                 <th scope="col" class="text-right text-nowrap">Total Diterima</th>
                                 <th scope="col">Invoice</th>
                                 <th scope="col" class="text-center text-nowrap">Status</th>
-                                <th scope="col" class="text-center text-nowrap">Aksi</th>
+                                <th scope="col" class="text-center action-column" style="width:1%;"><span class="sr-only">Aksi</span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -135,61 +136,58 @@
                             @php
                                 $allocated   = $h->allocatedAmount();
                                 $unallocated = $h->unallocatedAmount();
-                                $stBadge = ['DRAFT' => 'badge-warning', 'ALLOCATED' => 'badge-success', 'CANCELLED' => 'badge-danger'][$h->status] ?? 'badge-secondary';
                             @endphp
                             {{-- data-* dibaca tiga pihak: TesysColumnFilter untuk
                                  menyaring, penghitung kartu, dan footer untuk menjumlah
                                  baris yang tersisa. --}}
                             <tr data-status="{{ $h->status }}"
+                                data-href="{{ route('cash-receipt.show', $h->id) }}"
                                 data-customer="{{ $h->customer->name ?? '-' }}"
                                 data-tagihan="{{ (int) $h->kolom_tagihan }}"
                                 data-pph="{{ (int) $h->kolom_pph }}"
                                 data-diterima="{{ (int) $h->kolom_diterima }}"
                                 data-invoices="{{ $h->details->count() }}"
                                 data-unallocated="{{ max(0, $unallocated) }}">
-                                <td class="text-nowrap"><strong>{{ $h->code }}</strong></td>
-                                <td class="text-nowrap">{{ $h->received_date?->format('d M Y') }}</td>
-                                <td>{{ $h->customer->name ?? '-' }}</td>
+                                <td class="text-nowrap">
+                                    {{-- Klik kode = salin; detail dibuka lewat klik baris. --}}
+                                    <button type="button" class="ts-copy-code" data-code="{{ $h->code }}" title="Klik untuk menyalin kode">{{ $h->code }}</button>
+                                </td>
+                                <td class="text-nowrap" data-order="{{ $h->received_date?->format('Y-m-d') }}">{{ $h->received_date?->format('d M Y') }}</td>
+                                <td class="ts-col-desc">{{ $h->customer->name ?? '-' }}</td>
                                 <td class="text-nowrap">{{ $h->reference_number ?: '-' }}</td>
-                                <td class="text-right text-nowrap">{{ number_format($h->kolom_tagihan, 0, ',', '.') }}</td>
-                                <td class="text-right text-nowrap">{{ number_format($h->kolom_pph, 0, ',', '.') }}</td>
-                                <td class="text-right text-nowrap"><strong>{{ number_format($h->kolom_diterima, 0, ',', '.') }}</strong></td>
+                                {{-- Nilai nol di kolom uang ditulis "-". --}}
+                                <td class="text-right text-nowrap ts-col-money">{{ (int) $h->kolom_tagihan === 0 ? '-' : number_format($h->kolom_tagihan, 0, ',', '.') }}</td>
+                                <td class="text-right text-nowrap ts-col-money">{{ (int) $h->kolom_pph === 0 ? '-' : number_format($h->kolom_pph, 0, ',', '.') }}</td>
+                                <td class="text-right text-nowrap ts-col-money">{{ (int) $h->kolom_diterima === 0 ? '-' : number_format($h->kolom_diterima, 0, ',', '.') }}</td>
                                 <td>
                                     {{-- Kode invoice ditampilkan langsung supaya penerimaan
                                          bisa ditelusuri tanpa membuka detailnya satu per
                                          satu — pola yang sama dengan Surat Jalan. --}}
-                                    @forelse($h->details->take(3) as $d)
-                                        <span class="badge badge-light border px-2 py-1" style="font-size:9.5px;">
-                                            {{ $d->invoice->code ?? '-' }}
-                                        </span>
-                                    @empty
-                                        <span class="text-muted">-</span>
-                                    @endforelse
-                                    @if($h->details->count() > 3)
-                                        <span class="text-muted" style="font-size:10px;">+{{ $h->details->count() - 3 }} lagi</span>
+                                    {{ $h->details->take(3)->map(fn ($d) => $d->invoice->code ?? '-')->implode(', ') ?: '-' }}@if($h->details->count() > 3)
+                                        <span class="text-muted" style="font-size:11px;">+{{ $h->details->count() - 3 }} lagi</span>
                                     @endif
                                     @if($unallocated > 0)
-                                        <div class="text-warning" style="font-size:10px;">
-                                            Rp {{ number_format($unallocated, 0, ',', '.') }} belum teralokasi
-                                        </div>
+                                        <span class="text-warning" style="font-size:11px;" title="Nominal belum teralokasi ke invoice">
+                                            · Rp {{ number_format($unallocated, 0, ',', '.') }} belum teralokasi
+                                        </span>
                                     @endif
                                 </td>
-                                <td class="text-center"><span class="badge {{ $stBadge }} px-2 py-1">{{ $h->status }}</span></td>
-                                <td class="text-center text-nowrap">
-                                    <a href="{{ route('cash-receipt.show', $h->id) }}" class="btn btn-sm btn-outline-primary" title="Detail">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    {{-- Sama dengan tombol Hapus di halaman detail: hanya DRAFT yang belum punya alokasi
-                                         (CashReceiptController::destroy menolak yang sudah teralokasi). --}}
-                                    @if($h->status === 'DRAFT' && $h->details->isEmpty())
-                                    <form action="{{ route('cash-receipt.destroy', $h->id) }}" method="POST" class="js-confirm-delete d-inline"
-                                          data-title="Hapus penerimaan {{ $h->code }}?" data-text="Belum ada alokasi, jadi aman dihapus.">
-                                        @csrf @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
-                                    @endif
+                                <td class="text-center"><x-status :status="$h->status" context="cash-receipt" /></td>
+                                <td class="text-center action-column">
+                                    {{-- Detail dibuka lewat klik baris. Satu-satunya aksi: Hapus, sama dengan tombol di
+                                         halaman detail — hanya DRAFT yang belum punya alokasi (CashReceiptController::destroy
+                                         menolak yang sudah teralokasi). Tanpa aksi = sel kosong. --}}
+                                    <div class="action-buttons ts-actions">
+                                        @if($h->status === 'DRAFT' && $h->details->isEmpty())
+                                        <form action="{{ route('cash-receipt.destroy', $h->id) }}" method="POST" class="js-confirm-delete d-inline"
+                                              data-title="Hapus penerimaan {{ $h->code }}?" data-text="Belum ada alokasi, jadi aman dihapus.">
+                                            @csrf @method('DELETE')
+                                            <button type="submit" class="ts-action-primary is-neutral" title="Hapus" aria-label="Hapus penerimaan {{ $h->code }}">
+                                                <i class="fas fa-trash" aria-hidden="true"></i><span class="ts-al">Hapus</span>
+                                            </button>
+                                        </form>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                             @endforeach
@@ -206,20 +204,20 @@
                                 <th class="text-right text-nowrap cr-foot-diterima"></th>
                                 <th></th>
                                 <th></th>
-                                <th></th>
+                                <th class="action-column"></th>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
-            </div>
-        </div>
-
+        </x-tw.card>
+      </div>
     </div>
 </div>
 
 @endsection
 
 @push('styles')
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
 .font-weight-600 { font-weight:600; }
 .table td, .table th { vertical-align:middle !important; }
@@ -234,6 +232,10 @@
 
 /* Tabel digulir horizontal (pola .cr-hscroll Cost Request). */
 .cr-hscroll { overflow-x:auto; }
+/* Gulir mendatar hanya pada tabel (dibungkus .ts-dt-scroll lewat JS), bukan footer info + paginasi. */
+.cr-hscroll:has(> .dataTables_wrapper) { overflow-x:visible; }
+.ts-dt-scroll { overflow-x:auto; width:100%; }
+#tblCashReceipt tbody tr[data-href] { cursor:pointer; }
 .cr-hscroll #tblCashReceipt { width:auto !important; min-width:100%; margin-bottom:0; }
 .cr-hscroll #tblCashReceipt th,
 .cr-hscroll #tblCashReceipt td { white-space:nowrap; }
@@ -265,7 +267,7 @@ $(function () {
     function getVis(key) { var v = localStorage.getItem(visKey(key)); return v === null ? true : v === '1'; }
     function setVis(key, tampil) { localStorage.setItem(visKey(key), tampil ? '1' : '0'); }
 
-    var defs = [{ targets: [9], orderable: false }];
+    var defs = [{ targets: [9], orderable: false, searchable: false }];
     Object.keys(MAP_VIS).forEach(function (k) {
         defs.push({ targets: [MAP_VIS[k]], visible: getVis(k) });
     });
@@ -290,6 +292,17 @@ $(function () {
             infoEmpty: 'Tidak ada data',
             paginate: { previous: 'Previous', next: 'Next' }
         }
+    });
+
+    // Scrollbar mendatar hanya untuk tabel (footer info + paginasi tetap diam).
+    $('#tblCashReceipt').wrap('<div class="ts-dt-scroll"></div>');
+
+    /* Klik di mana saja pada baris membuka detail penerimaan (pola Cost Request). Kontrol di
+       dalam baris (kode yang disalin, tombol Hapus) bekerja sendiri. */
+    $(document).on('click', '#tblCashReceipt tbody tr[data-href]', function (e) {
+        if ($(e.target).closest('a, button, input, select, textarea, label, form').length) return;
+        if (window.getSelection && String(window.getSelection()).length) return;
+        window.location.href = $(this).attr('data-href');
     });
 
     /* ── TOMBOL KOLOM ─────────────────────────────────────────────────── */
@@ -338,8 +351,8 @@ $(function () {
             text: $(form).data('text') || '',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#9a3030',
-            cancelButtonColor: '#55595e',
+            confirmButtonColor: 'var(--danger)',
+            cancelButtonColor: 'var(--text-muted)',
             confirmButtonText: 'Ya, Hapus',
             cancelButtonText: 'Batal'
         }).then(function (r) { if (r.isConfirmed) form.submit(); });
@@ -369,7 +382,7 @@ $(function () {
      | di sini hanya pencarian dan dropdown Status/Customer.
      */
     var rupiah = function (n) { return 'Rp ' + (n || 0).toLocaleString('id-ID'); };
-    var angka  = function (n) { return (n || 0).toLocaleString('id-ID'); };
+    var angka  = function (n) { return (n || 0) === 0 ? '-' : n.toLocaleString('id-ID'); };   // nol di kolom uang = "-"
 
     function refreshCards() {
         var jumlah = 0, total = 0, invoice = 0, sisa = 0;

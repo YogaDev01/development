@@ -368,6 +368,7 @@ class BudgetPlan extends Model
             'closing_approved'  => 'Menyetujui closing',
             'closing_rejected'  => 'Menolak closing',
             'finance_closed'    => 'Menutup',
+            'coa_added'         => 'Menambah COA pada',
         ];
         $actionKey = match ($action) {
             'created'                          => 'create',

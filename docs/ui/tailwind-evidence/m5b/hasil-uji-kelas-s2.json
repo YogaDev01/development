@@ -1,0 +1,5132 @@
+{
+ "login": true,
+ "hasil": {
+  "ca-390": [
+   {
+    "c": "tw:max-sm:flex",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "display": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:flex-col",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "flex-direction": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>thead]:sr-only",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "clip-path": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "white-space-collapse": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "text-wrap-mode": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-top-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-right-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-bottom-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-left-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "width": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "height": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "margin-top": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "margin-right": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "margin-bottom": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "margin-left": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "padding-top": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "padding-right": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "padding-bottom": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "padding-left": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "position": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "overflow-x": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "overflow-y": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody]:block",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "display": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:relative",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "position": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:block",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "display": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:mb-[10px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "margin-bottom": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:px-3",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "padding-inline-start": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "padding-inline-end": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:py-1",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "padding-block-start": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "padding-block-end": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:rounded-md",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "border-top-left-radius": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-top-right-radius": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-bottom-right-radius": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-bottom-left-radius": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:border",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "border-top-style": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-right-style": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-bottom-style": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-left-style": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-top-width": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-right-width": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-bottom-width": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-left-width": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:border-border",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "border-top-color": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-right-color": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-bottom-color": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-left-color": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:bg-surface",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "background-color": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:shadow-xs",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "box-shadow": {
+      "n": 10,
+      "ubah": 6,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr:has(>td.cr-col-check)]:pl-[42px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "padding-left": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr.row-nob]:shadow-[inset_3px_0_0_var(--danger),var(--shadow-xs)]",
+    "imp": false,
+    "entri": 1,
+    "targets": 4,
+    "prop": {
+     "box-shadow": {
+      "n": 4,
+      "ubah": 4,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr.row-nob-item]:shadow-[inset_3px_0_0_var(--warning),var(--shadow-xs)]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "box-shadow": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr:has(>td.dataTables_empty)]:border-0",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "border-top-style": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-right-style": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-bottom-style": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-left-style": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-top-width": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-right-width": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-bottom-width": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-left-width": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr:has(>td.dataTables_empty)]:bg-transparent",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "background-color": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr:has(>td.dataTables_empty)]:shadow-none",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "box-shadow": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr:has(>td.dataTables_empty)]:p-0",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "padding-top": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "padding-right": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "padding-bottom": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "padding-left": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.dataTables_empty]:block",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "display": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr>td]:flex",
+    "imp": false,
+    "entri": 1,
+    "targets": 120,
+    "prop": {
+     "display": {
+      "n": 14,
+      "ubah": 13,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr>td]:items-baseline",
+    "imp": false,
+    "entri": 1,
+    "targets": 120,
+    "prop": {
+     "align-items": {
+      "n": 14,
+      "ubah": 14,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr>td]:justify-between",
+    "imp": false,
+    "entri": 1,
+    "targets": 120,
+    "prop": {
+     "justify-content": {
+      "n": 14,
+      "ubah": 11,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr>td]:gap-3",
+    "imp": false,
+    "entri": 1,
+    "targets": 120,
+    "prop": {
+     "row-gap": {
+      "n": 14,
+      "ubah": 13,
+      "nonSama": 0
+     },
+     "column-gap": {
+      "n": 14,
+      "ubah": 13,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>:is(tbody,tfoot)>tr>*]:[padding:var(--crk-p,6px_0)]!",
+    "imp": true,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "padding-top": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "padding-right": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "padding-bottom": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "padding-left": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>:is(tbody,tfoot)>tr>*]:[border-width:var(--crk-b,0_0_1px)]!",
+    "imp": true,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "border-top-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "border-right-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "border-bottom-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "border-left-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr>td:last-child]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-b": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:content-[attr(data-lbl)]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:shrink-0",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "flex-shrink": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:basis-[38%]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "flex-basis": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:max-w-[38%]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "max-width": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:text-left",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "text-align": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:text-[11px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "font-size": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:font-section",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "font-weight": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:text-text-faint",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "color": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-desc]:grid",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "display": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-desc]:grid-cols-[minmax(0,38%)_minmax(0,1fr)]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "grid-template-columns": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-desc]:gap-x-3",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "column-gap": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-desc]:gap-y-[2px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "row-gap": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-desc]:text-right",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "text-align": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-desc]:before:row-[1/span_9]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "grid-row-start": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "grid-row-end": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-desc>*]:col-start-2",
+    "imp": false,
+    "entri": 1,
+    "targets": 20,
+    "prop": {
+     "grid-column-start": {
+      "n": 14,
+      "ubah": 14,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-code]:justify-start",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "justify-content": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-code]:flex-wrap",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "flex-wrap": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-code]:[--crk-p:6px_96px_6px_0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-p": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:absolute",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "position": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:top-2",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "top": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:right-3",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "right": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:max-w-[45%]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "max-width": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:[--crk-p:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-p": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-b": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-check]:absolute",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "position": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-check]:top-[6px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "top": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-check]:left-3",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "left": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-check]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-b": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_.cr-check-row]:size-5",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "width": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "height": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.action-column]:justify-end",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "justify-content": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.action-column]:[--crk-p:8px_0_6px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-p": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_.ts-actions]:[zoom:calc(44/36)]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "zoom": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot]:order-first",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "order": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot]:block",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "display": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot]:mb-[10px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "margin-bottom": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr]:block",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "display": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr]:rounded-md",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "border-top-left-radius": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-top-right-radius": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-bottom-right-radius": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-bottom-left-radius": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr]:border",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "border-top-style": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-right-style": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-bottom-style": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-left-style": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-top-width": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-right-width": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-bottom-width": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-left-width": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr]:border-border-strong",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "border-top-color": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-right-color": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-bottom-color": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-left-color": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr]:bg-surface-2",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "background-color": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr]:px-3",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "padding-inline-start": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "padding-inline-end": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr]:py-2",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "padding-block-start": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "padding-block-end": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th]:flex",
+    "imp": false,
+    "entri": 1,
+    "targets": 6,
+    "prop": {
+     "display": {
+      "n": 6,
+      "ubah": 4,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th]:justify-between",
+    "imp": false,
+    "entri": 1,
+    "targets": 6,
+    "prop": {
+     "justify-content": {
+      "n": 6,
+      "ubah": 6,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th]:gap-3",
+    "imp": false,
+    "entri": 1,
+    "targets": 6,
+    "prop": {
+     "row-gap": {
+      "n": 6,
+      "ubah": 6,
+      "nonSama": 0
+     },
+     "column-gap": {
+      "n": 6,
+      "ubah": 6,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th]:[--crk-p:3px_0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 6,
+    "prop": {
+     "--crk-p": {
+      "n": 6,
+      "ubah": 6,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 6,
+    "prop": {
+     "--crk-b": {
+      "n": 6,
+      "ubah": 6,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th:empty]:hidden",
+    "imp": false,
+    "entri": 1,
+    "targets": 2,
+    "prop": {
+     "display": {
+      "n": 2,
+      "ubah": 2,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_th.cr-foot-label]:uppercase",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "text-transform": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_th.cr-foot-label]:tracking-[.04em]",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "letter-spacing": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_th[data-lbl]]:before:content-[attr(data-lbl)]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_th[data-lbl]]:before:font-regular",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "font-weight": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_th[data-lbl]]:before:text-text-faint",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "color": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_th[data-lbl]]:before:normal-case",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "text-transform": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_th[data-lbl]]:text-text",
+    "imp": false,
+    "entri": 1,
+    "targets": 3,
+    "prop": {
+     "color": {
+      "n": 3,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   }
+  ],
+  "cp-390": [
+   {
+    "c": "tw:max-sm:flex",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "display": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:flex-col",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "flex-direction": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>thead]:sr-only",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "clip-path": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "white-space-collapse": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "text-wrap-mode": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-top-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-right-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-bottom-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-left-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "width": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "height": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "margin-top": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "margin-right": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "margin-bottom": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "margin-left": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "padding-top": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "padding-right": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "padding-bottom": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "padding-left": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "position": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "overflow-x": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "overflow-y": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody]:block",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "display": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:relative",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "position": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:block",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "display": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:mb-[10px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "margin-bottom": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:px-3",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "padding-inline-start": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "padding-inline-end": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:py-1",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "padding-block-start": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "padding-block-end": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:rounded-md",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "border-top-left-radius": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-top-right-radius": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-bottom-right-radius": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-bottom-left-radius": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:border",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "border-top-style": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-right-style": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-bottom-style": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-left-style": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-top-width": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-right-width": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-bottom-width": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-left-width": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:border-border",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "border-top-color": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-right-color": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-bottom-color": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-left-color": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:bg-surface",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "background-color": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:shadow-xs",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "box-shadow": {
+      "n": 10,
+      "ubah": 5,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr:has(>td.cr-col-check)]:pl-[42px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "padding-left": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr.row-nob]:shadow-[inset_3px_0_0_var(--danger),var(--shadow-xs)]",
+    "imp": false,
+    "entri": 1,
+    "targets": 5,
+    "prop": {
+     "box-shadow": {
+      "n": 5,
+      "ubah": 5,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr.row-nob-item]:shadow-[inset_3px_0_0_var(--warning),var(--shadow-xs)]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "box-shadow": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr:has(>td.dataTables_empty)]:border-0",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "border-top-style": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-right-style": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-bottom-style": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-left-style": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-top-width": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-right-width": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-bottom-width": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-left-width": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr:has(>td.dataTables_empty)]:bg-transparent",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "background-color": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr:has(>td.dataTables_empty)]:shadow-none",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "box-shadow": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr:has(>td.dataTables_empty)]:p-0",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "padding-top": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "padding-right": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "padding-bottom": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "padding-left": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.dataTables_empty]:block",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "display": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr>td]:flex",
+    "imp": false,
+    "entri": 1,
+    "targets": 100,
+    "prop": {
+     "display": {
+      "n": 14,
+      "ubah": 12,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr>td]:items-baseline",
+    "imp": false,
+    "entri": 1,
+    "targets": 100,
+    "prop": {
+     "align-items": {
+      "n": 14,
+      "ubah": 14,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr>td]:justify-between",
+    "imp": false,
+    "entri": 1,
+    "targets": 100,
+    "prop": {
+     "justify-content": {
+      "n": 14,
+      "ubah": 11,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr>td]:gap-3",
+    "imp": false,
+    "entri": 1,
+    "targets": 100,
+    "prop": {
+     "row-gap": {
+      "n": 14,
+      "ubah": 12,
+      "nonSama": 0
+     },
+     "column-gap": {
+      "n": 14,
+      "ubah": 12,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>:is(tbody,tfoot)>tr>*]:[padding:var(--crk-p,6px_0)]!",
+    "imp": true,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "padding-top": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "padding-right": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "padding-bottom": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "padding-left": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>:is(tbody,tfoot)>tr>*]:[border-width:var(--crk-b,0_0_1px)]!",
+    "imp": true,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "border-top-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "border-right-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "border-bottom-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "border-left-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr>td:last-child]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-b": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:content-[attr(data-lbl)]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:shrink-0",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "flex-shrink": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:basis-[38%]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "flex-basis": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:max-w-[38%]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "max-width": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:text-left",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "text-align": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:text-[11px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "font-size": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:font-section",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "font-weight": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:text-text-faint",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "color": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-desc]:grid",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "display": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-desc]:grid-cols-[minmax(0,38%)_minmax(0,1fr)]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "grid-template-columns": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-desc]:gap-x-3",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "column-gap": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-desc]:gap-y-[2px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "row-gap": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-desc]:text-right",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "text-align": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-desc]:before:row-[1/span_9]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "grid-row-start": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "grid-row-end": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-desc>*]:col-start-2",
+    "imp": false,
+    "entri": 1,
+    "targets": 20,
+    "prop": {
+     "grid-column-start": {
+      "n": 14,
+      "ubah": 14,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-code]:justify-start",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "justify-content": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-code]:flex-wrap",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "flex-wrap": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-code]:[--crk-p:6px_96px_6px_0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-p": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:absolute",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "position": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:top-2",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "top": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:right-3",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "right": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:max-w-[45%]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "max-width": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:[--crk-p:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-p": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-b": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-check]:absolute",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "position": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-check]:top-[6px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "top": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-check]:left-3",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "left": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-check]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-b": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_.cr-check-row]:size-5",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "width": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "height": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.action-column]:justify-end",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "justify-content": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.action-column]:[--crk-p:8px_0_6px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-p": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_.ts-actions]:[zoom:calc(44/36)]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "zoom": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot]:order-first",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "order": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot]:block",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "display": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot]:mb-[10px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "margin-bottom": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr]:block",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "display": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr]:rounded-md",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "border-top-left-radius": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-top-right-radius": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-bottom-right-radius": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-bottom-left-radius": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr]:border",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "border-top-style": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-right-style": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-bottom-style": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-left-style": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-top-width": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-right-width": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-bottom-width": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-left-width": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr]:border-border-strong",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "border-top-color": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-right-color": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-bottom-color": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-left-color": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr]:bg-surface-2",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "background-color": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr]:px-3",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "padding-inline-start": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "padding-inline-end": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr]:py-2",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "padding-block-start": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "padding-block-end": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th]:flex",
+    "imp": false,
+    "entri": 1,
+    "targets": 4,
+    "prop": {
+     "display": {
+      "n": 4,
+      "ubah": 2,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th]:justify-between",
+    "imp": false,
+    "entri": 1,
+    "targets": 4,
+    "prop": {
+     "justify-content": {
+      "n": 4,
+      "ubah": 4,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th]:gap-3",
+    "imp": false,
+    "entri": 1,
+    "targets": 4,
+    "prop": {
+     "row-gap": {
+      "n": 4,
+      "ubah": 4,
+      "nonSama": 0
+     },
+     "column-gap": {
+      "n": 4,
+      "ubah": 4,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th]:[--crk-p:3px_0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 4,
+    "prop": {
+     "--crk-p": {
+      "n": 4,
+      "ubah": 4,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 4,
+    "prop": {
+     "--crk-b": {
+      "n": 4,
+      "ubah": 4,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th:empty]:hidden",
+    "imp": false,
+    "entri": 1,
+    "targets": 2,
+    "prop": {
+     "display": {
+      "n": 2,
+      "ubah": 2,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_th.cr-foot-label]:uppercase",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "text-transform": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_th.cr-foot-label]:tracking-[.04em]",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "letter-spacing": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_th[data-lbl]]:before:content-[attr(data-lbl)]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_th[data-lbl]]:before:font-regular",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "font-weight": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_th[data-lbl]]:before:text-text-faint",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "color": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_th[data-lbl]]:before:normal-case",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "text-transform": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_th[data-lbl]]:text-text",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "color": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   }
+  ],
+  "db-390": [
+   {
+    "c": "tw:max-sm:flex",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "display": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:flex-col",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "flex-direction": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>thead]:sr-only",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "clip-path": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "white-space-collapse": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "text-wrap-mode": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-top-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-right-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-bottom-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-left-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "width": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "height": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "margin-top": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "margin-right": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "margin-bottom": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "margin-left": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "padding-top": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "padding-right": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "padding-bottom": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "padding-left": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "position": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "overflow-x": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "overflow-y": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody]:block",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "display": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:relative",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "position": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:block",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "display": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:mb-[10px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "margin-bottom": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:px-3",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "padding-inline-start": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "padding-inline-end": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:py-1",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "padding-block-start": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "padding-block-end": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:rounded-md",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "border-top-left-radius": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-top-right-radius": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-bottom-right-radius": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-bottom-left-radius": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:border",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "border-top-style": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-right-style": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-bottom-style": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-left-style": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-top-width": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-right-width": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-bottom-width": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-left-width": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:border-border",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "border-top-color": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-right-color": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-bottom-color": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     },
+     "border-left-color": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:bg-surface",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "background-color": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr]:shadow-xs",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "box-shadow": {
+      "n": 10,
+      "ubah": 6,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr:has(>td.cr-col-check)]:pl-[42px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "padding-left": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr.row-nob]:shadow-[inset_3px_0_0_var(--danger),var(--shadow-xs)]",
+    "imp": false,
+    "entri": 1,
+    "targets": 4,
+    "prop": {
+     "box-shadow": {
+      "n": 4,
+      "ubah": 4,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr.row-nob-item]:shadow-[inset_3px_0_0_var(--warning),var(--shadow-xs)]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "box-shadow": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr:has(>td.dataTables_empty)]:border-0",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "border-top-style": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-right-style": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-bottom-style": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-left-style": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-top-width": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-right-width": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-bottom-width": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "border-left-width": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr:has(>td.dataTables_empty)]:bg-transparent",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "background-color": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr:has(>td.dataTables_empty)]:shadow-none",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "box-shadow": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr:has(>td.dataTables_empty)]:p-0",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "padding-top": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "padding-right": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "padding-bottom": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "padding-left": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.dataTables_empty]:block",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "display": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr>td]:flex",
+    "imp": false,
+    "entri": 1,
+    "targets": 100,
+    "prop": {
+     "display": {
+      "n": 14,
+      "ubah": 12,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr>td]:items-baseline",
+    "imp": false,
+    "entri": 1,
+    "targets": 100,
+    "prop": {
+     "align-items": {
+      "n": 14,
+      "ubah": 14,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr>td]:justify-between",
+    "imp": false,
+    "entri": 1,
+    "targets": 100,
+    "prop": {
+     "justify-content": {
+      "n": 14,
+      "ubah": 12,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr>td]:gap-3",
+    "imp": false,
+    "entri": 1,
+    "targets": 100,
+    "prop": {
+     "row-gap": {
+      "n": 14,
+      "ubah": 12,
+      "nonSama": 0
+     },
+     "column-gap": {
+      "n": 14,
+      "ubah": 12,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>:is(tbody,tfoot)>tr>*]:[padding:var(--crk-p,6px_0)]!",
+    "imp": true,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "padding-top": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "padding-right": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "padding-bottom": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "padding-left": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>:is(tbody,tfoot)>tr>*]:[border-width:var(--crk-b,0_0_1px)]!",
+    "imp": true,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "border-top-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "border-right-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "border-bottom-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "border-left-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr>td:last-child]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-b": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:content-[attr(data-lbl)]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:shrink-0",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "flex-shrink": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:basis-[38%]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "flex-basis": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:max-w-[38%]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "max-width": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:text-left",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "text-align": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:text-[11px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "font-size": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:font-section",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "font-weight": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-lbl]]:before:text-text-faint",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "color": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-desc]:grid",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "display": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-desc]:grid-cols-[minmax(0,38%)_minmax(0,1fr)]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "grid-template-columns": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-desc]:gap-x-3",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "column-gap": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-desc]:gap-y-[2px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "row-gap": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-desc]:text-right",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "text-align": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-desc]:before:row-[1/span_9]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "grid-row-start": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "grid-row-end": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-desc>*]:col-start-2",
+    "imp": false,
+    "entri": 1,
+    "targets": 20,
+    "prop": {
+     "grid-column-start": {
+      "n": 14,
+      "ubah": 14,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-code]:justify-start",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "justify-content": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-code]:flex-wrap",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "flex-wrap": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-code]:[--crk-p:6px_96px_6px_0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-p": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:absolute",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "position": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:top-2",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "top": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:right-3",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "right": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:max-w-[45%]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "max-width": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:[--crk-p:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-p": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-b": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-check]:absolute",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "position": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-check]:top-[6px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "top": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-check]:left-3",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "left": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-check]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "--crk-b": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_.cr-check-row]:size-5",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "width": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "height": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.action-column]:justify-end",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "justify-content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.action-column]:[--crk-p:8px_0_6px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "--crk-p": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_.ts-actions]:[zoom:calc(44/36)]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "zoom": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot]:order-first",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "order": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot]:block",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "display": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot]:mb-[10px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "margin-bottom": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr]:block",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "display": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr]:rounded-md",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "border-top-left-radius": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-top-right-radius": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-bottom-right-radius": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-bottom-left-radius": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr]:border",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "border-top-style": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-right-style": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-bottom-style": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-left-style": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-top-width": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-right-width": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-bottom-width": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-left-width": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr]:border-border-strong",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "border-top-color": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-right-color": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-bottom-color": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "border-left-color": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr]:bg-surface-2",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "background-color": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr]:px-3",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "padding-inline-start": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "padding-inline-end": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr]:py-2",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "padding-block-start": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     },
+     "padding-block-end": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th]:flex",
+    "imp": false,
+    "entri": 1,
+    "targets": 3,
+    "prop": {
+     "display": {
+      "n": 3,
+      "ubah": 2,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th]:justify-between",
+    "imp": false,
+    "entri": 1,
+    "targets": 3,
+    "prop": {
+     "justify-content": {
+      "n": 3,
+      "ubah": 3,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th]:gap-3",
+    "imp": false,
+    "entri": 1,
+    "targets": 3,
+    "prop": {
+     "row-gap": {
+      "n": 3,
+      "ubah": 3,
+      "nonSama": 0
+     },
+     "column-gap": {
+      "n": 3,
+      "ubah": 3,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th]:[--crk-p:3px_0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 3,
+    "prop": {
+     "--crk-p": {
+      "n": 3,
+      "ubah": 3,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 3,
+    "prop": {
+     "--crk-b": {
+      "n": 3,
+      "ubah": 3,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th:empty]:hidden",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "display": {
+      "n": 1,
+      "ubah": 1,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_th.cr-foot-label]:uppercase",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "text-transform": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_th.cr-foot-label]:tracking-[.04em]",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "letter-spacing": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_th[data-lbl]]:before:content-[attr(data-lbl)]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_th[data-lbl]]:before:font-regular",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "font-weight": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_th[data-lbl]]:before:text-text-faint",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "color": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_th[data-lbl]]:before:normal-case",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "content": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     },
+     "text-transform": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_th[data-lbl]]:text-text",
+    "imp": false,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "color": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   }
+  ],
+  "ca-1440": [
+   {
+    "c": "tw:max-sm:[&>:is(tbody,tfoot)>tr>*]:[padding:var(--crk-p,6px_0)]!",
+    "imp": true,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "padding-top": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "padding-right": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "padding-bottom": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "padding-left": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>:is(tbody,tfoot)>tr>*]:[border-width:var(--crk-b,0_0_1px)]!",
+    "imp": true,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "border-top-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "border-right-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "border-bottom-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "border-left-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr>td:last-child]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-b": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-code]:[--crk-p:6px_96px_6px_0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-p": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:[--crk-p:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-p": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-b": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-check]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-b": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.action-column]:[--crk-p:8px_0_6px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-p": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th]:[--crk-p:3px_0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 6,
+    "prop": {
+     "--crk-p": {
+      "n": 6,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 6,
+    "prop": {
+     "--crk-b": {
+      "n": 6,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:min-sm:[&>thead>tr>th:first-child,&>tbody>tr>td:first-child:not([colspan])]:[z-index:var(--crk-z,3)]!",
+    "imp": true,
+    "entri": 2,
+    "targets": 11,
+    "prop": {
+     "z-index": {
+      "n": 11,
+      "ubah": 11,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:min-sm:[&>thead>tr>th]:[--crk-z:4]",
+    "imp": false,
+    "entri": 1,
+    "targets": 12,
+    "prop": {
+     "--crk-z": {
+      "n": 12,
+      "ubah": 12,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:min-sm:[&>tbody>tr:not(:has(:checked))>td:first-child:not([colspan])]:[box-shadow:var(--crk-sh,none)]!",
+    "imp": true,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "box-shadow": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:min-sm:[&_td.cr-col-code,&>tbody>tr:is(.row-nob,.row-nob-item)>td:first-child]:[--crk-sh:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)]",
+    "imp": false,
+    "entri": 2,
+    "targets": 14,
+    "prop": {
+     "--crk-sh": {
+      "n": 14,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   }
+  ],
+  "cp-1440": [
+   {
+    "c": "tw:max-sm:[&>:is(tbody,tfoot)>tr>*]:[padding:var(--crk-p,6px_0)]!",
+    "imp": true,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "padding-top": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "padding-right": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "padding-bottom": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "padding-left": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>:is(tbody,tfoot)>tr>*]:[border-width:var(--crk-b,0_0_1px)]!",
+    "imp": true,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "border-top-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "border-right-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "border-bottom-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "border-left-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr>td:last-child]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-b": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-code]:[--crk-p:6px_96px_6px_0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-p": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:[--crk-p:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-p": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-b": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-check]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-b": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.action-column]:[--crk-p:8px_0_6px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-p": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th]:[--crk-p:3px_0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 4,
+    "prop": {
+     "--crk-p": {
+      "n": 4,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 4,
+    "prop": {
+     "--crk-b": {
+      "n": 4,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:min-sm:[&>thead>tr>th:first-child,&>tbody>tr>td:first-child:not([colspan])]:[z-index:var(--crk-z,3)]!",
+    "imp": true,
+    "entri": 2,
+    "targets": 11,
+    "prop": {
+     "z-index": {
+      "n": 11,
+      "ubah": 11,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:min-sm:[&>thead>tr>th]:[--crk-z:4]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-z": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:min-sm:[&>tbody>tr:not(:has(:checked))>td:first-child:not([colspan])]:[box-shadow:var(--crk-sh,none)]!",
+    "imp": true,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "box-shadow": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:min-sm:[&_td.cr-col-code,&>tbody>tr:is(.row-nob,.row-nob-item)>td:first-child]:[--crk-sh:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)]",
+    "imp": false,
+    "entri": 2,
+    "targets": 15,
+    "prop": {
+     "--crk-sh": {
+      "n": 15,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   }
+  ],
+  "db-1440": [
+   {
+    "c": "tw:max-sm:[&>:is(tbody,tfoot)>tr>*]:[padding:var(--crk-p,6px_0)]!",
+    "imp": true,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "padding-top": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "padding-right": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "padding-bottom": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "padding-left": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>:is(tbody,tfoot)>tr>*]:[border-width:var(--crk-b,0_0_1px)]!",
+    "imp": true,
+    "entri": 1,
+    "targets": 1,
+    "prop": {
+     "border-top-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "border-right-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "border-bottom-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     },
+     "border-left-width": {
+      "n": 1,
+      "ubah": 0,
+      "nonSama": 1
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tbody>tr>td:last-child]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-b": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-code]:[--crk-p:6px_96px_6px_0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-p": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:[--crk-p:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-p": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td[data-card=status]]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-b": {
+      "n": 10,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.cr-col-check]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "--crk-b": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&_td.action-column]:[--crk-p:8px_0_6px]",
+    "imp": false,
+    "entri": 1,
+    "targets": 0,
+    "prop": {
+     "--crk-p": {
+      "n": 0,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th]:[--crk-p:3px_0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 3,
+    "prop": {
+     "--crk-p": {
+      "n": 3,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:max-sm:[&>tfoot>tr>th]:[--crk-b:0]",
+    "imp": false,
+    "entri": 1,
+    "targets": 3,
+    "prop": {
+     "--crk-b": {
+      "n": 3,
+      "ubah": 0,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:min-sm:[&>thead>tr>th:first-child,&>tbody>tr>td:first-child:not([colspan])]:[z-index:var(--crk-z,3)]!",
+    "imp": true,
+    "entri": 2,
+    "targets": 11,
+    "prop": {
+     "z-index": {
+      "n": 11,
+      "ubah": 11,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:min-sm:[&>thead>tr>th]:[--crk-z:4]",
+    "imp": false,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "--crk-z": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:min-sm:[&>tbody>tr:not(:has(:checked))>td:first-child:not([colspan])]:[box-shadow:var(--crk-sh,none)]!",
+    "imp": true,
+    "entri": 1,
+    "targets": 10,
+    "prop": {
+     "box-shadow": {
+      "n": 10,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   },
+   {
+    "c": "tw:min-sm:[&_td.cr-col-code,&>tbody>tr:is(.row-nob,.row-nob-item)>td:first-child]:[--crk-sh:var(--tw-inset-shadow),var(--tw-inset-ring-shadow),var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow)]",
+    "imp": false,
+    "entri": 2,
+    "targets": 14,
+    "prop": {
+     "--crk-sh": {
+      "n": 14,
+      "ubah": 10,
+      "nonSama": 0
+     }
+    }
+   }
+  ]
+ },
+ "konsol": [],
+ "gagal": [],
+ "stop": 0
+}

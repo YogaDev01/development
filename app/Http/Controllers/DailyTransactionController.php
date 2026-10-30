@@ -65,10 +65,25 @@ class DailyTransactionController extends Controller
         | angka kartu akan ikut terpotong dan berbohong. Agregat di sisi
         | basis data tetap benar berapa pun batas barisnya.
         */
-        $statusCounts = (clone $query)->toBase()
-            ->selectRaw('status, COUNT(*) as c')
-            ->groupBy('status')
-            ->pluck('c', 'status');
+        /*
+        | Dikelompokkan per tipe juga (Cash Out / Top Up) untuk tab di halaman
+        | daftar; total per status tetap jumlah seluruh tipe, sama seperti dulu.
+        */
+        $perTipe = (clone $query)->toBase()
+            ->selectRaw('type, status, COUNT(*) as c')
+            ->groupBy('type', 'status')
+            ->get();
+
+        $statusCounts = $perTipe->groupBy('status')->map(fn ($g) => (int) $g->sum('c'));
+
+        $summaryByType = [];
+        foreach (DailyTransaction::TYPES as $tipe) {
+            $baris = $perTipe->where('type', $tipe);
+            $summaryByType[$tipe] = ['total' => (int) $baris->sum('c')];
+            foreach (DailyTransaction::STATUSES as $st) {
+                $summaryByType[$tipe][$st] = (int) $baris->where('status', $st)->sum('c');
+            }
+        }
 
         /*
         | Batas render baris — lihat Concerns\CapsLargeLists. Diurutkan
@@ -80,6 +95,7 @@ class DailyTransactionController extends Controller
 
         $summary = [
             'total'            => $total,
+            'draft'            => (int) ($statusCounts['DRAFT'] ?? 0),
             'pending_approver' => (int) ($statusCounts['PENDING_APPROVER'] ?? 0),
             'done'             => (int) ($statusCounts['DONE'] ?? 0),
             'paid'             => (int) ($statusCounts['PAID'] ?? 0),
@@ -87,7 +103,7 @@ class DailyTransactionController extends Controller
         ];
 
         return view('daily-transaction.index', compact(
-            'transactions', 'summary', 'dateFrom', 'dateTo', 'truncated', 'total', 'maxRows'
+            'transactions', 'summary', 'summaryByType', 'dateFrom', 'dateTo', 'truncated', 'total', 'maxRows'
         ));
     }
 
@@ -110,10 +126,10 @@ class DailyTransactionController extends Controller
                 $q->where('status', 'INCLUDED')
                   ->whereNull('second_payment_id')
                   ->whereHas('dailyTransaction', fn($q2) =>
-                      $q2->whereIn('status', ['PENDING_APPROVER', 'DONE'])
+                      $q2->whereIn('status', DailyTransaction::ACTIVE_STATUSES)
                   )
             )
-            ->with(['type', 'cluster', 'beneficiary', 'budgetPlan.project.customer', 'budgetPlan.project.manager', 'budgetPlan.costCenter'])
+            ->with(['type', 'cluster', 'beneficiary', 'budgetPlan.project.customer', 'budgetPlan.project.manager', 'budgetPlan.project.poNumbers', 'budgetPlan.costCenter'])
             ->latest()->get();
 
         // Cash Out hanya boleh dari rekening operasional (bukan Main Account —
@@ -132,15 +148,15 @@ class DailyTransactionController extends Controller
 
         /*
         | MN-09 — biaya Non-CR yang siap masuk batch. Himpunannya sengaja sempit:
-        | hanya Cost Register berstatus SUBMITTED yang belum ada di batch aktif.
-        | Cost Register lama (yang di-backfill jadi PAID saat migrasi) tidak
+        | hanya Cost Register berstatus APPROVED yang belum ada di batch aktif.
+        | Cost Register lama (yang di-backfill jadi PAID, kini CLOSED, saat migrasi) tidak
         | ikut, karena itu catatan biaya yang sudah terjadi — bukan tagihan.
         */
         $availableRegisters = \App\Models\CostRegister::where('status', \App\Models\CostRegister::TREASURY_READY_STATUS)
             ->whereDoesntHave('dailyTransactionItems', fn ($q) =>
                 $q->where('status', 'INCLUDED')
                   ->whereHas('dailyTransaction', fn ($q2) =>
-                      $q2->whereIn('status', ['PENDING_APPROVER', 'DONE'])
+                      $q2->whereIn('status', DailyTransaction::ACTIVE_STATUSES)
                   )
             )
             ->with(['project.customer', 'beneficiary'])
@@ -154,7 +170,7 @@ class DailyTransactionController extends Controller
         */
         $availableSecondPayments = \App\Models\BudgetRequestSecondPayment::availableForBatch()
             // project.manager: dikelompokkan per PM Internal bersama CR biasa.
-            ->with(['budgetRequest.beneficiary', 'budgetRequest.budgetPlan.project.customer', 'budgetRequest.budgetPlan.project.manager'])
+            ->with(['budgetRequest.beneficiary', 'budgetRequest.budgetPlan.project.customer', 'budgetRequest.budgetPlan.project.manager', 'budgetRequest.budgetPlan.project.poNumbers'])
             ->latest()->get();
 
         return view('daily-transaction.create', compact(
@@ -229,7 +245,7 @@ class DailyTransactionController extends Controller
             }
         }
 
-        // Cost Register yang boleh masuk batch hanya yang SUBMITTED dan belum
+        // Cost Register yang boleh masuk batch hanya yang APPROVED dan belum
         // ada di batch aktif — aturan yang sama dengan Cost Request di bawah.
         if ($registerIds) {
             $invalidRegisters = \App\Models\CostRegister::whereIn('id', $registerIds)
@@ -238,7 +254,7 @@ class DailyTransactionController extends Controller
 
             if ($invalidRegisters->isNotEmpty()) {
                 return back()->with('error',
-                    'Cost Register berikut tidak berstatus SUBMITTED: #' . $invalidRegisters->implode(', #')
+                    'Cost Register berikut tidak berstatus APPROVED: #' . $invalidRegisters->implode(', #')
                 );
             }
 
@@ -246,7 +262,7 @@ class DailyTransactionController extends Controller
                 ->whereHas('dailyTransactionItems', fn ($q) =>
                     $q->where('status', 'INCLUDED')
                       ->whereHas('dailyTransaction', fn ($q2) =>
-                          $q2->whereIn('status', ['PENDING_APPROVER', 'DONE'])
+                          $q2->whereIn('status', DailyTransaction::ACTIVE_STATUSES)
                       )
                 )->pluck('id');
 
@@ -273,7 +289,7 @@ class DailyTransactionController extends Controller
                 $q->where('status', 'INCLUDED')
                   ->whereNull('second_payment_id')
                   ->whereHas('dailyTransaction', fn($q2) =>
-                      $q2->whereIn('status', ['PENDING_APPROVER', 'DONE'])
+                      $q2->whereIn('status', DailyTransaction::ACTIVE_STATUSES)
                   )
             )->pluck('code');
 
@@ -293,7 +309,8 @@ class DailyTransactionController extends Controller
         $code = DailyTransaction::generateCode(count($crIds) + count($registerIds) + count($secondPayIds));
 
         try {
-        DB::transaction(function () use ($request, $crIds, $registerIds, $secondPayIds, $code) {
+        $batchId = null;
+        DB::transaction(function () use ($request, $crIds, $registerIds, $secondPayIds, $code, &$batchId) {
             /*
             | Kunci dulu, baru tulis. Pemeriksaan di atas berjalan tanpa kunci,
             | jadi dua Treasury yang membuat batch bersamaan dari antrean yang
@@ -334,6 +351,25 @@ class DailyTransactionController extends Controller
                 }
             }
 
+            /*
+            | Batch Draft tidak mengubah status sumbernya, jadi pemeriksaan
+            | status saja tidak lagi menahan batch ganda. Keanggotaan di batch
+            | aktif (termasuk Draft) diperiksa ulang DI DALAM kunci: request
+            | kedua menunggu kunci baris di atas lalu melihat item yang baru
+            | saja dibuat request pertama.
+            */
+            $sudahAda = DailyTransactionItem::where('status', 'INCLUDED')
+                ->whereHas('dailyTransaction', fn ($q) => $q->whereIn('status', DailyTransaction::ACTIVE_STATUSES))
+                ->where(function ($q) use ($crIds, $secondPayIds, $registerIds) {
+                    $q->where(fn ($q2) => $q2->whereIn('budget_request_id', $crIds ?: [0])->whereNull('second_payment_id'))
+                      ->orWhereIn('second_payment_id', $secondPayIds ?: [0])
+                      ->orWhereIn('cost_register_id', $registerIds ?: [0]);
+                })
+                ->exists();
+            if ($sudahAda) {
+                $berubah->push('item yang sudah ada di batch aktif');
+            }
+
             if ($berubah->isNotEmpty()) {
                 throw new \DomainException(
                     'Batch dibatalkan — baris berikut baru saja diproses pengguna lain: '
@@ -347,103 +383,52 @@ class DailyTransactionController extends Controller
                 'description'     => $request->description ? strtoupper($request->description) : null,
                 'type'            => 'CASH_OUT',
                 'source_fund_id'  => $request->source_fund_id,
-                'status'          => 'PENDING_APPROVER',
+                // Draft: masih bisa diubah; status sumber baru berubah saat Submit.
+                'status'          => 'DRAFT',
                 'notes'           => $request->notes,
                 'created_by'      => Auth::id(),
             ]);
 
+            // Status sumber (CR -> QUEUED, Cost Register -> QUEUED, CR induk
+            // Second Payment -> QUEUED) TIDAK diubah di sini; lihat submit().
             foreach ($crIds as $crId) {
                 $batch->items()->create([
                     'budget_request_id' => $crId,
                     'status'            => 'INCLUDED',
                 ]);
-
-                // CR langsung QUEUED begitu batch DIBUAT/di-submit oleh Treasury —
-                // tidak lagi menunggu approve CEO. Approve CEO cuma menyetujui
-                // batch-nya (buat pembayaran), tidak lagi mengubah status CR.
-                $cr = $locked[$crId];
-                $cr->update(['status' => 'QUEUED']);
-                $cr->addLog('APPROVED', 'QUEUED', 'batched', $request->notes);
             }
 
-            // MN-09 — baris Cost Register. Statusnya ikut QUEUED supaya tidak
-            // bisa masuk ke dua batch sekaligus.
             foreach ($registerIds as $registerId) {
                 $batch->items()->create([
                     'cost_register_id' => $registerId,
                     'status'           => 'INCLUDED',
                 ]);
-
-                \App\Models\CostRegister::where('id', $registerId)->update(['status' => 'QUEUED']);
             }
 
-            /*
-            | Second Payment - statusnya TIDAK berubah di sini (tetap PENDING
-            | sampai batch benar-benar dibayar). Penguncian terhadap batch ganda
-            | dilakukan lewat baris INCLUDED-nya, bukan lewat status.
-            |
-            | budget_request_id ikut diisi supaya baris ini punya Budget Plan,
-            | penerima, dan rekening tujuan yang sama dengan CR induknya.
-            */
             foreach ($secondPayments as $sp) {
-                /*
-                | Kaki pembayaran Expense Claim: CR induknya sedang
-                | SECOND_APPROVED (menunggu Buat Batch Baru). Begitu ikut batch
-                | ia jadi QUEUED (Process) — sama seperti CR biasa yang
-                | dibatch — dan akan CLOSED saat batch ditandai PAID.
-                */
-                $indukCr = $locked[$sp->budget_request_id] ?? null;
-                $statusAwal = $indukCr?->status;
-
-                if ($indukCr && $indukCr->status === 'SECOND_APPROVED') {
-                    $indukCr->update(['status' => 'QUEUED']);
-                }
-
                 $batch->items()->create([
                     'budget_request_id' => $sp->budget_request_id,
                     'second_payment_id' => $sp->id,
                     'status'            => 'INCLUDED',
                 ]);
-
-                /*
-                | Satu kejadian = satu baris log. Sebelumnya masuk batch
-                | menulis dua log (perpindahan status dan nominal) sehingga
-                | riwayat persetujuan tampak terduplikasi.
-                */
-                $indukCr?->addLog(
-                    $statusAwal,
-                    $indukCr->status,
-                    'second_payment_batched',
-                    'Second Payment ' . $sp->amount_formatted . ' masuk batch ' . $batch->code
-                        . ($request->notes ? ' - ' . $request->notes : '')
-                );
             }
 
+            $batchId = $batch->id;
             $batch->recalculateCapturedAmount();
         });
         } catch (\DomainException $e) {
             return back()->with('error', $e->getMessage());
         }
 
-        NotifyService::send(
-            $this->approverUsers(),
-            'Batch Treasury menunggu approval',
-            Auth::user()->name . ' membuat batch ' . $code . ' ('
-                . count($crIds) . ' CR'
-                . ($registerIds ? ' + ' . count($registerIds) . ' Cost Register' : '')
-                . ($secondPayIds ? ' + ' . count($secondPayIds) . ' Second Payment' : '')
-                . ') untuk disetujui.',
-            route('daily-transaction.index'),
-            'workflow'
-        );
+        // Notifikasi ke Approver dikirim saat Submit, bukan saat Draft dibuat.
+        UserActivityLog::record('treasury', 'create', 'Membuat draft batch pembayaran #' . $code, null, null, $code);
 
-        UserActivityLog::record('treasury', 'create', 'Membuat batch pembayaran #' . $code, null, null, $code);
-
-        return redirect('/daily-transaction')
-            ->with('success', 'Batch ' . $code . ' berhasil dibuat dengan '
+        return redirect('/daily-transaction/' . $batchId)
+            ->with('success', 'Draft batch ' . $code . ' dibuat dengan '
                 . count($crIds) . ' CR'
                 . ($registerIds ? ', ' . count($registerIds) . ' Cost Register' : '')
-                . ($secondPayIds ? ', ' . count($secondPayIds) . ' Second Payment' : '') . '.');
+                . ($secondPayIds ? ', ' . count($secondPayIds) . ' Second Payment' : '')
+                . '. Periksa lalu tekan Submit untuk meminta approval CEO.');
     }
 
     /*
@@ -487,21 +472,16 @@ class DailyTransactionController extends Controller
             'source_fund_id'    => $fromFund->id,
             'to_source_fund_id' => $toFund->id,
             'captured_amount'   => $amount,
-            'status'            => 'PENDING_APPROVER',
+            'status'            => 'DRAFT',
             'notes'             => $request->notes,
             'created_by'        => Auth::id(),
         ]);
 
-        NotifyService::send(
-            $this->approverUsers(),
-            'Batch Top Up menunggu approval',
-            Auth::user()->name . ' membuat Top Up ' . $code . ' dari ' . $fromFund->name . ' ke ' . $toFund->name . ' untuk disetujui.',
-            route('daily-transaction.index'),
-            'workflow'
-        );
+        // Notifikasi ke Approver dikirim saat Submit (lihat submit()).
+        UserActivityLog::record('treasury', 'create', 'Membuat draft Top Up #' . $code, $batch);
 
-        return redirect('/daily-transaction')
-            ->with('success', 'Top Up ' . $code . ' berhasil dibuat.');
+        return redirect('/daily-transaction/' . $batch->id)
+            ->with('success', 'Draft Top Up ' . $code . ' dibuat. Periksa lalu tekan Submit untuk meminta approval CEO.');
     }
 
     /**
@@ -518,6 +498,110 @@ class DailyTransactionController extends Controller
     | SHOW JSON
     |--------------------------------------------------------------------------
     */
+
+    /** Catatan chat dikunci begitu batch berakhir (PAID / REJECTED), seperti CR yang CLOSED. */
+    private function canPostLogNote(DailyTransaction $batch): bool
+    {
+        return ! in_array($batch->status, ['PAID', 'REJECTED'], true);
+    }
+
+    /**
+     * Tab Log drawer (gaya chat, sama dengan Cost Request): aktivitas batch dari
+     * UserActivityLog modul treasury + catatan bebas, terbaru lebih dulu.
+     * Tabel yang belum dimigrasi di server tidak boleh merusak detail batch.
+     */
+    private function logsFor(DailyTransaction $batch)
+    {
+        $logs = collect();
+
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('user_activity_logs')) {
+                $logs = UserActivityLog::where('module', 'treasury')
+                    ->where(function ($q) use ($batch) {
+                        $q->where(fn ($s) => $s->where('subject_type', DailyTransaction::class)->where('subject_id', $batch->id))
+                          ->orWhere('reference', $batch->code);
+                    })
+                    ->orderBy('created_at')
+                    ->limit(100)
+                    ->get()
+                    ->map(fn ($l) => [
+                        'kind'         => 'activity',
+                        'action_label' => $l->action_label,
+                        'action_color' => $l->action_color,
+                        'actor'        => $l->actor_name ?? 'System',
+                        'user_id'      => $l->user_id,
+                        'description'  => $l->description,
+                        'notes'        => $l->notes,
+                        'at'           => $l->created_at,
+                    ]);
+            }
+
+            $notes = \App\Models\DailyTransactionLogNote::where('daily_transaction_id', $batch->id)->get()
+                ->map(fn ($n) => [
+                    'kind'         => 'note',
+                    'action_label' => 'Catatan',
+                    'action_color' => 'secondary',
+                    'actor'        => $n->actor_name ?? 'System',
+                    'user_id'      => $n->acted_by,
+                    'description'  => null,
+                    'notes'        => $n->notes,
+                    'at'           => $n->created_at,
+                ]);
+        } catch (\Throwable $e) {
+            $notes = collect();
+        }
+
+        $semua   = $logs->concat($notes)->sortBy('at')->values();
+        $avatars = User::avatarUrlMap($semua->pluck('user_id'));
+
+        return $semua->map(fn ($l) => [
+            'kind'         => $l['kind'],
+            'action_label' => $l['action_label'],
+            'action_color' => $l['action_color'],
+            'actor'        => $l['actor'],
+            'user_id'      => $l['user_id'],
+            'avatar'       => $avatars[$l['user_id']] ?? null,
+            'description'  => $l['description'],
+            'notes'        => $l['notes'],
+            'date'         => $l['at']?->format('d M Y H:i'),
+        ])->all();
+    }
+
+    /** Kirim catatan ke tab Log (gaya chat). Ditutup untuk batch PAID / REJECTED. */
+    public function storeLogNote(Request $request, $id)
+    {
+        $batch = DailyTransaction::findOrFail($id);
+
+        $data = $request->validate(['notes' => 'required|string|max:1000']);
+
+        if (! $this->canPostLogNote($batch)) {
+            return response()->json(['message' => 'Batch sudah ' . $batch->status . '; catatan baru tidak dapat ditambahkan.'], 422);
+        }
+
+        $user = Auth::user();
+        $note = \App\Models\DailyTransactionLogNote::create([
+            'daily_transaction_id' => $batch->id,
+            'acted_by'             => $user?->id,
+            'actor_name'           => $user?->name ?? 'System',
+            'actor_role'           => $user?->role?->name,
+            'notes'                => trim($data['notes']),
+        ]);
+
+        return response()->json([
+            'ok'  => true,
+            'log' => [
+                'kind'         => 'note',
+                'action_label' => 'Catatan',
+                'action_color' => 'secondary',
+                'actor'        => $note->actor_name,
+                'user_id'      => $note->acted_by,
+                'avatar'       => $user?->avatar_url,
+                'description'  => null,
+                'notes'        => $note->notes,
+                'date'         => now()->format('d M Y H:i'),
+            ],
+        ]);
+    }
 
     public function showJson($id)
     {
@@ -566,6 +650,14 @@ class DailyTransactionController extends Controller
                 'size_formatted' => $a->size_formatted,
                 'uploaded_by'    => $a->uploader->name ?? '-',
             ]),
+
+            /*
+            | Riwayat batch untuk tab Log di drawer daftar Treasury: catatan
+            | UserActivityLog modul treasury milik batch ini (dibuat, disetujui,
+            | ditolak, dibayar). Baca saja; tabel belum ada = daftar kosong.
+            */
+            'logs'              => $this->logsFor($batch),
+            'can_post_log_note' => $this->canPostLogNote($batch),
 
             'items' => $batch->items->map(fn($item) => [
                 'id'             => $item->id,
@@ -671,6 +763,92 @@ class DailyTransactionController extends Controller
 
     /*
     |--------------------------------------------------------------------------
+    | BULK APPROVE / REJECT BATCH — daftar Treasury (29 Okt 2026)
+    |--------------------------------------------------------------------------
+    | Tiap batch dijalankan lewat aksi satuannya (approve / rejectBatch), jadi
+    | aturan, log, notifikasi, dan catatan aktivitas tetap satu sumber. Hanya
+    | batch PENDING_APPROVER; `expected` (id => status yang terlihat di layar)
+    | melewati batch yang statusnya sudah berubah. Maks 50 batch per proses.
+    */
+
+    private const BULK_MAX = 50;
+
+    public function bulkApprove(Request $request)
+    {
+        return $this->bulkBatch($request, false);
+    }
+
+    public function bulkReject(Request $request)
+    {
+        $request->validate(['notes' => 'required|string|max:500']);
+
+        return $this->bulkBatch($request, true);
+    }
+
+    private function bulkBatch(Request $request, bool $tolak)
+    {
+        $request->validate([
+            'ids'        => 'required|array|min:1|max:' . self::BULK_MAX,
+            'ids.*'      => 'integer',
+            'expected'   => 'nullable|array',
+            'expected.*' => 'nullable|string|max:30',
+        ]);
+
+        $ids      = array_values(array_unique(array_map('intval', (array) $request->input('ids', []))));
+        $expected = (array) $request->input('expected', []);
+        $batches  = DailyTransaction::whereIn('id', $ids)->get()->keyBy('id');
+
+        $ok     = 0;
+        $errors = [];
+
+        foreach ($ids as $id) {
+            $batch = $batches->get($id);
+            if (! $batch) {
+                $errors[] = '#' . $id . ' (tidak ditemukan)';
+                continue;
+            }
+
+            $exp = $expected[$id] ?? null;
+            if ($exp !== null && $exp !== $batch->status) {
+                $errors[] = $batch->code . ' (status berubah dari ' . $exp . ' menjadi ' . $batch->status . ' — muat ulang)';
+                continue;
+            }
+            if (! $batch->isPendingApprover()) {
+                $errors[] = $batch->code . ' (status ' . $batch->status . ' bukan Submitted)';
+                continue;
+            }
+
+            // Aksi satuan mengembalikan redirect + flash; hanya flash 'error'-nya yang dibaca.
+            session()->forget(['success', 'error']);
+            try {
+                $tolak ? $this->rejectBatch($request, $id) : $this->approve($request, $id);
+                $error = session('error');
+            } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+                $error = $e->getMessage() ?: 'akses ditolak.';
+            }
+            session()->forget(['success', 'error']);
+
+            if ($error) {
+                $errors[] = $batch->code . ' (' . $error . ')';
+            } else {
+                $ok++;
+            }
+        }
+
+        $redirect = back();
+        if ($ok) {
+            $redirect->with('success', $ok . ' batch berhasil ' . ($tolak ? 'ditolak.' : 'di-approve.'));
+        }
+        if ($errors) {
+            $redirect->with('error', count($errors) . ' batch dilewati: ' . implode(', ', array_slice($errors, 0, 5))
+                . (count($errors) > 5 ? ', …' : '') . '.');
+        }
+
+        return $redirect;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | REJECT BATCH — seluruh batch ditolak → CR kembali ke APPROVED
     |--------------------------------------------------------------------------
     */
@@ -691,9 +869,11 @@ class DailyTransactionController extends Controller
                 // CR sudah QUEUED sejak batch dibuat — batch ditolak berarti
                 // dikembalikan lagi ke APPROVED (belum pernah masuk batch).
                 if ($item->isCostRegister()) {
-                    // Cost Register dikembalikan ke SUBMITTED supaya bisa
+                    // Cost Register dikembalikan ke APPROVED supaya bisa
                     // dimasukkan ke batch lain (MN-09).
                     $item->costRegister?->update(['status' => \App\Models\CostRegister::TREASURY_READY_STATUS]);
+                    $item->costRegister?->addLog('QUEUED', \App\Models\CostRegister::TREASURY_READY_STATUS, 'unbatched',
+                        'Batch ' . $batch->code . ' ditolak: ' . $request->notes);
                     $item->update(['status' => 'REJECTED', 'notes' => $request->notes]);
                     continue;
                 }
@@ -773,6 +953,23 @@ class DailyTransactionController extends Controller
 
     public function rejectItem(Request $request, $batchId, $itemId)
     {
+        return $this->removeItemFromBatch($request, $batchId, $itemId, false);
+    }
+
+    /**
+     * REJECT (bukan takeout): CR pembayaran pertama → REJECTED; Second Payment →
+     * CR induk SETTLE_REJECTED (Second Payment PENDING-nya dihapus, selisihnya
+     * dihitung ulang setelah settlement direvisi — sama seperti
+     * applySettlementRejectClose). Cost Register tidak punya status ditolak
+     * di sini, jadi hanya bisa di-takeout.
+     */
+    public function rejectCrItem(Request $request, $batchId, $itemId)
+    {
+        return $this->removeItemFromBatch($request, $batchId, $itemId, true);
+    }
+
+    private function removeItemFromBatch(Request $request, $batchId, $itemId, bool $reject)
+    {
         $request->validate(['notes' => 'required|string|max:500']);
 
         $batch = DailyTransaction::findOrFail($batchId);
@@ -782,18 +979,29 @@ class DailyTransactionController extends Controller
             return back()->with('error', 'Batch tidak dalam status PENDING_APPROVER.');
         }
         if ($item->status !== 'INCLUDED') {
-            return back()->with('error', 'Item ini sudah di-takeout.');
+            return back()->with('error', 'Item ini sudah dikeluarkan dari batch.');
+        }
+        if ($reject && $item->isCostRegister()) {
+            return back()->with('error', 'Cost Register tidak bisa di-reject, gunakan Takeout.');
         }
 
-        DB::transaction(function () use ($request, $batch, $item) {
-            // CR ini sudah QUEUED sejak batch dibuat — takeout langsung menolak
-            // CR-nya (bukan mengembalikan ke APPROVED dulu), sesuai perilaku lama.
+        DB::transaction(function () use ($request, $batch, $item, $reject) {
             $item->update(['status' => 'REJECTED', 'notes' => $request->notes]);
 
-            if ($item->isCostRegister()) {
-                // Cost Register yang di-takeout kembali ke SUBMITTED (MN-09),
+            if ($reject && $item->isSecondPayment()) {
+                $cr = $item->budgetRequest;
+                $item->secondPayment?->delete();
+                if ($cr->status === 'QUEUED') {
+                    $cr->update(['status' => 'SETTLE_REJECTED']);
+                }
+                $cr->addLog('QUEUED', 'SETTLE_REJECTED', 'second_payment_rejected',
+                    'Second Payment ditolak dari batch ' . $batch->code . ': ' . $request->notes);
+            } elseif ($item->isCostRegister()) {
+                // Cost Register yang di-takeout kembali ke APPROVED (MN-09),
                 // bukan REJECTED: biayanya tetap sah, hanya batch-nya berubah.
                 $item->costRegister?->update(['status' => \App\Models\CostRegister::TREASURY_READY_STATUS]);
+                $item->costRegister?->addLog('QUEUED', \App\Models\CostRegister::TREASURY_READY_STATUS, 'unbatched',
+                    'Dikeluarkan dari batch ' . $batch->code . ': ' . $request->notes);
             } elseif ($item->isSecondPayment()) {
                 // Sama seperti Cost Register: yang dikeluarkan dari batch cuma
                 // barisnya. CR induk tidak boleh ikut REJECTED - Settlement-nya
@@ -803,26 +1011,221 @@ class DailyTransactionController extends Controller
                     $item->budgetRequest, 'second_payment_takeout',
                     'Second Payment dikeluarkan dari batch ' . $batch->code . ': ' . $request->notes
                 );
-            } else {
-                $item->budgetRequest->addLog('QUEUED', 'REJECTED', 'ceo_rejected', $request->notes);
+            } elseif ($reject) {
+                $item->budgetRequest->addLog('QUEUED', 'REJECTED', 'batch_item_rejected', $request->notes);
                 $item->budgetRequest->update(['status' => 'REJECTED']);
+            } else {
+                // Takeout: CR kembali ke APPROVED (belum pernah masuk batch),
+                // cerminan reject batch, supaya bisa dibatch ulang.
+                $item->budgetRequest->addLog('QUEUED', 'APPROVED', 'batch_takeout', $request->notes);
+                $item->budgetRequest->update(['status' => 'APPROVED']);
             }
             $batch->refreshCode();
             $batch->recalculateCapturedAmount();
         });
 
-        if ($item->budgetRequest->applicant) {
-            NotifyService::send(
-                [$item->budgetRequest->applicant],
-                'Cost Request ditolak',
-                'CR ' . ($item->budgetRequest->code ?? '-') . ' ditolak (takeout dari batch ' . $batch->code . '): ' . $request->notes,
-                route('daily-transaction.index'),
-                'workflow'
-            );
+        $cr = $item->budgetRequest;
+        $kode = $cr?->code ?? '-';
+        $secondPay = $item->isSecondPayment();
+        if ($cr?->applicant) {
+            if ($reject) {
+                $judul = $secondPay ? 'Second Payment ditolak' : 'Cost Request ditolak';
+                $pesan = 'CR ' . $kode . ($secondPay
+                    ? ' ditolak dari batch ' . $batch->code . ' (Settle Rejected, mohon revisi settlement): '
+                    : ' ditolak dari batch ' . $batch->code . ': ') . $request->notes;
+            } else {
+                $judul = 'CR dikeluarkan dari batch';
+                $pesan = 'CR ' . $kode . ' dikeluarkan (takeout) dari batch ' . $batch->code
+                    . ($cr->status === 'APPROVED' ? ' dan kembali ke status APPROVED' : '') . ': ' . $request->notes;
+            }
+            NotifyService::send([$cr->applicant], $judul, $pesan, route('daily-transaction.index'), 'workflow');
         }
 
         return redirect('/daily-transaction/' . $batchId)
-            ->with('success', 'CR ' . ($item->budgetRequest->code ?? '-') . ' berhasil ditolak (takeout dari batch).');
+            ->with('success', 'CR ' . $kode . ($reject ? ' berhasil ditolak dari batch.' : ' berhasil di-takeout dari batch.'));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | DRAFT -> SUBMIT / HAPUS DRAFT / KELUARKAN ITEM DRAFT (29 Okt 2026)
+    |--------------------------------------------------------------------------
+    | Batch buatan Treasury lahir sebagai DRAFT: isinya masih bisa ditambah/
+    | dikurangi dan CEO belum bisa meng-approve. Selama Draft, Cost Request,
+    | Cost Register, dan CR induk Second Payment TIDAK berubah status (tetap
+    | APPROVED / SUBMITTED / SECOND_APPROVED); keanggotaannya di batch Draft
+    | sudah cukup mencegahnya masuk batch lain (DailyTransaction::ACTIVE_STATUSES).
+    | Baru saat Submit status sumbernya dipindah ke QUEUED, persis seperti
+    | dulu terjadi saat batch dibuat.
+    */
+
+    public function submit(Request $request, $id)
+    {
+        $batch = DailyTransaction::findOrFail($id);
+
+        if (! $batch->isDraft()) {
+            return back()->with('error', 'Hanya batch Draft yang bisa di-submit.');
+        }
+        if ($batch->isCashOut() && $batch->includedItems()->count() === 0) {
+            return back()->with('error', 'Tambahkan minimal satu item sebelum submit.');
+        }
+
+        $jumlah = ['cr' => 0, 'register' => 0, 'sp' => 0];
+
+        try {
+            DB::transaction(function () use ($batch, &$jumlah) {
+                // Batch dikunci dulu supaya dua submit bersamaan tidak sama-sama lolos.
+                $terkunci = DailyTransaction::whereKey($batch->id)->lockForUpdate()->first();
+                if (! $terkunci || ! $terkunci->isDraft()) {
+                    throw new \DomainException('Status batch sudah berubah — muat ulang halaman.');
+                }
+
+                $items = $terkunci->includedItems()->get();
+
+                $crIds       = $items->filter(fn ($i) => $i->budget_request_id && ! $i->second_payment_id)->pluck('budget_request_id')->map(fn ($v) => (int) $v)->all();
+                $spIds       = $items->filter(fn ($i) => $i->second_payment_id)->pluck('second_payment_id')->map(fn ($v) => (int) $v)->all();
+                $registerIds = $items->filter(fn ($i) => $i->cost_register_id)->pluck('cost_register_id')->map(fn ($v) => (int) $v)->all();
+
+                // Urutan kunci sama dengan storeCashOut (budget_request -> second payment -> cost register).
+                $spParentIds = \App\Models\BudgetRequestSecondPayment::whereIn('id', $spIds)->pluck('budget_request_id')->all();
+                $locked = BudgetRequest::whereIn('id', array_unique(array_merge($crIds, $spParentIds)))
+                    ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+                $secondPayments = \App\Models\BudgetRequestSecondPayment::whereIn('id', $spIds)
+                    ->orderBy('id')->lockForUpdate()->get();
+                $registers = \App\Models\CostRegister::whereIn('id', $registerIds)
+                    ->orderBy('id')->lockForUpdate()->get();
+
+                $berubah = collect($crIds)
+                    ->reject(fn ($cid) => ($locked[$cid]->status ?? null) === 'APPROVED')
+                    ->map(fn ($cid) => $locked[$cid]->code ?? '#' . $cid);
+                foreach ($secondPayments as $sp) {
+                    if ($sp->status !== 'PENDING' || ($locked[$sp->budget_request_id]->status ?? null) !== 'SECOND_APPROVED') {
+                        $berubah->push('Second Payment #' . $sp->id);
+                    }
+                }
+                foreach ($registers as $register) {
+                    if ($register->status !== \App\Models\CostRegister::TREASURY_READY_STATUS) {
+                        $berubah->push('Cost Register #' . $register->id);
+                    }
+                }
+                if ($berubah->isNotEmpty()) {
+                    throw new \DomainException(
+                        'Submit dibatalkan — status baris berikut sudah berubah: ' . $berubah->implode(', ')
+                        . '. Keluarkan baris tersebut dari Draft lalu submit lagi.'
+                    );
+                }
+
+                foreach ($crIds as $crId) {
+                    $cr = $locked[$crId];
+                    $cr->update(['status' => 'QUEUED']);
+                    $cr->addLog('APPROVED', 'QUEUED', 'batched', $terkunci->notes);
+                    $jumlah['cr']++;
+                }
+
+                foreach ($registers as $register) {
+                    $register->update(['status' => 'QUEUED']);
+                    $register->addLog('APPROVED', 'QUEUED', 'batched', $terkunci->notes);
+                    $jumlah['register']++;
+                }
+
+                // Kaki pembayaran Expense Claim: CR induk SECOND_APPROVED -> QUEUED (lihat storeCashOut lama).
+                foreach ($secondPayments as $sp) {
+                    $indukCr    = $locked[$sp->budget_request_id] ?? null;
+                    $statusAwal = $indukCr?->status;
+                    if ($indukCr && $indukCr->status === 'SECOND_APPROVED') {
+                        $indukCr->update(['status' => 'QUEUED']);
+                    }
+                    $indukCr?->addLog(
+                        $statusAwal,
+                        $indukCr->status,
+                        'second_payment_batched',
+                        'Second Payment ' . $sp->amount_formatted . ' masuk batch ' . $terkunci->code
+                            . ($terkunci->notes ? ' - ' . $terkunci->notes : '')
+                    );
+                    $jumlah['sp']++;
+                }
+
+                $terkunci->update(['status' => 'PENDING_APPROVER']);
+            });
+        } catch (\DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        $batch->refresh();
+        NotifyService::send(
+            $this->approverUsers(),
+            $batch->isTopUp() ? 'Batch Top Up menunggu approval' : 'Batch Treasury menunggu approval',
+            $batch->isTopUp()
+                ? Auth::user()->name . ' mengajukan Top Up ' . $batch->code . ' dari ' . ($batch->sourceFund->name ?? '-')
+                    . ' ke ' . ($batch->toSourceFund->name ?? '-') . ' untuk disetujui.'
+                : Auth::user()->name . ' mengajukan batch ' . $batch->code . ' ('
+                    . $jumlah['cr'] . ' CR'
+                    . ($jumlah['register'] ? ' + ' . $jumlah['register'] . ' Cost Register' : '')
+                    . ($jumlah['sp'] ? ' + ' . $jumlah['sp'] . ' Second Payment' : '')
+                    . ') untuk disetujui.',
+            route('daily-transaction.index'),
+            'workflow'
+        );
+
+        UserActivityLog::record('treasury', 'submit', 'Mengajukan batch pembayaran #' . $batch->code, $batch);
+
+        return redirect('/daily-transaction/' . $batch->id)
+            ->with('success', 'Batch ' . $batch->code . ' diajukan ke CEO untuk approval.');
+    }
+
+    /** Hapus batch Draft. Sumbernya belum pernah berubah status, jadi cukup baris batch & itemnya. */
+    public function destroy($id)
+    {
+        $batch = DailyTransaction::findOrFail($id);
+
+        if (! $batch->isDraft()) {
+            return back()->with('error', 'Hanya batch Draft yang bisa dihapus.');
+        }
+
+        $kode = $batch->code;
+        $dihapus = false;
+
+        DB::transaction(function () use ($batch, &$dihapus) {
+            $terkunci = DailyTransaction::whereKey($batch->id)->lockForUpdate()->first();
+            if (! $terkunci || ! $terkunci->isDraft()) {
+                return;
+            }
+            foreach ($terkunci->attachments as $att) {
+                Storage::disk('secure')->delete($att->path);
+                $att->delete();
+            }
+            $terkunci->items()->delete();
+            $terkunci->delete();
+            $dihapus = true;
+        });
+
+        if (! $dihapus) {
+            return back()->with('error', 'Status batch sudah berubah — muat ulang halaman.');
+        }
+
+        UserActivityLog::record('treasury', 'delete', 'Menghapus draft batch #' . $kode, null, null, $kode);
+
+        return redirect('/daily-transaction')->with('success', 'Draft batch ' . $kode . ' dihapus.');
+    }
+
+    /** Keluarkan satu item dari batch Draft (Treasury). Tanpa perubahan status sumber. */
+    public function removeDraftItem($batchId, $itemId)
+    {
+        $batch = DailyTransaction::findOrFail($batchId);
+        $item  = DailyTransactionItem::where('daily_transaction_id', $batchId)->findOrFail($itemId);
+
+        if (! $batch->isDraft()) {
+            return back()->with('error', 'Item hanya bisa dikeluarkan langsung dari batch Draft.');
+        }
+
+        DB::transaction(function () use ($batch, $item) {
+            $item->delete();
+            $batch->refreshCode();
+            $batch->recalculateCapturedAmount();
+        });
+
+        UserActivityLog::record('treasury', 'update', 'Mengeluarkan item dari draft batch #' . $batch->fresh()->code, $batch);
+
+        return redirect('/daily-transaction/' . $batchId)->with('success', 'Item dikeluarkan dari draft batch.');
     }
 
     /*
@@ -846,8 +1249,8 @@ class DailyTransactionController extends Controller
 
         $batch = DailyTransaction::findOrFail($batchId);
 
-        if (!$batch->isPendingApprover()) {
-            return back()->with('error', 'Hanya batch PENDING_APPROVER yang bisa ditambah item.');
+        if (! $batch->isDraft() && ! $batch->isPendingApprover()) {
+            return back()->with('error', 'Hanya batch Draft atau PENDING_APPROVER yang bisa ditambah item.');
         }
 
         $added = 0;
@@ -862,10 +1265,12 @@ class DailyTransactionController extends Controller
             | saja berubah. Aturan "lewati yang tidak layak" tidak berubah.
             */
             $terkunci = DailyTransaction::whereKey($batch->id)->lockForUpdate()->first();
-            if (! $terkunci || ! $terkunci->isPendingApprover()) {
+            if (! $terkunci || (! $terkunci->isDraft() && ! $terkunci->isPendingApprover())) {
                 $ditolak = true;
                 return;
             }
+            // Draft: item dipesan saja; status sumber baru berubah saat Submit.
+            $draft = $terkunci->isDraft();
 
             /*
             | Dua pemuatan MASSAL sebelum loop, bukan dua query per baris.
@@ -903,7 +1308,7 @@ class DailyTransactionController extends Controller
             $sudahMasukBatch = DailyTransactionItem::whereIn('budget_request_id', $crIds)
                 ->where('status', 'INCLUDED')
                 ->whereHas('dailyTransaction', fn ($q) =>
-                    $q->whereIn('status', ['PENDING_APPROVER', 'DONE'])
+                    $q->whereIn('status', DailyTransaction::ACTIVE_STATUSES)
                 )
                 ->pluck('budget_request_id')
                 ->map(fn ($v) => (int) $v)
@@ -922,8 +1327,10 @@ class DailyTransactionController extends Controller
 
                 // Sama seperti CR yang masuk batch sejak awal — langsung QUEUED
                 // begitu ditambahkan ke batch yang sudah di-submit.
-                $cr->update(['status' => 'QUEUED']);
-                $cr->addLog('APPROVED', 'QUEUED', 'batched', null);
+                if (! $draft) {
+                    $cr->update(['status' => 'QUEUED']);
+                    $cr->addLog('APPROVED', 'QUEUED', 'batched', null);
+                }
                 $added++;
             }
 
@@ -946,17 +1353,19 @@ class DailyTransactionController extends Controller
 
                 // Sama seperti saat batch dibuat: CR induk Expense Claim ikut
                 // jadi QUEUED (Process) begitu masuk batch.
-                $indukCr  = $locked[$sp->budget_request_id] ?? null;
-                $crStatus = $indukCr?->status;
-                if ($indukCr && $indukCr->status === 'SECOND_APPROVED') {
-                    $indukCr->update(['status' => 'QUEUED']);
+                if (! $draft) {
+                    $indukCr  = $locked[$sp->budget_request_id] ?? null;
+                    $crStatus = $indukCr?->status;
+                    if ($indukCr && $indukCr->status === 'SECOND_APPROVED') {
+                        $indukCr->update(['status' => 'QUEUED']);
+                    }
+                    // Satu baris log saja (lihat submit()): status awal -> status
+                    // sekarang, dengan nominal Second Payment-nya.
+                    $indukCr?->addLog(
+                        $crStatus, $indukCr->status, 'second_payment_batched',
+                        'Second Payment ' . $sp->amount_formatted . ' masuk batch ' . $batch->code
+                    );
                 }
-                // Satu baris log saja (lihat store()): status awal -> status
-                // sekarang, dengan nominal Second Payment-nya.
-                $indukCr?->addLog(
-                    $crStatus, $indukCr->status, 'second_payment_batched',
-                    'Second Payment ' . $sp->amount_formatted . ' masuk batch ' . $batch->code
-                );
                 $added++;
             }
 
@@ -965,7 +1374,7 @@ class DailyTransactionController extends Controller
         });
 
         if ($ditolak) {
-            return back()->with('error', 'Hanya batch PENDING_APPROVER yang bisa ditambah item.');
+            return back()->with('error', 'Hanya batch Draft atau PENDING_APPROVER yang bisa ditambah item.');
         }
 
         return back()->with('success', $added . ' baris berhasil ditambahkan ke batch.');
@@ -1036,12 +1445,13 @@ class DailyTransactionController extends Controller
             //   - Cash Advance : QUEUED → PAID  (lanjut ke tahap realisasi/Settle)
             //   - tipe lain     : QUEUED → CLOSED (tidak ada tahap realisasi)
             foreach ($batch->includedItems as $item) {
-                // MN-09 — baris Cost Register: tidak punya tahap realisasi,
-                // jadi begitu batch dibayar ia langsung PAID dan selesai.
+                // MN-09 — baris Cost Register: tidak punya tahap realisasi (seperti Cost
+                // Payment Non-CA), jadi begitu batch dibayar ia langsung CLOSED.
                 if ($item->isCostRegister()) {
                     $register = $item->costRegister;
                     if ($register && $register->status === 'QUEUED') {
-                        $register->update(['status' => 'PAID', 'paid_at' => now()]);
+                        $register->update(['status' => 'CLOSED', 'paid_at' => now()]);
+                        $register->addLog('QUEUED', 'CLOSED', 'paid', $request->payment_notes);
                     }
                     continue;
                 }
@@ -1206,6 +1616,9 @@ class DailyTransactionController extends Controller
             }
         }
 
+        // "Used" & riwayat CR seluruh sub-item dimuat sekaligus (bukan per baris).
+        \App\Models\BudgetPlanDetail::primeCostLines($bp->details);
+
         return $bp->details
             ->groupBy(fn ($d) => $d->account->name ?? '-')
             ->map(function ($details, $accName) use ($requestedByDetailId) {
@@ -1219,14 +1632,17 @@ class DailyTransactionController extends Controller
                     // Riwayat CR yang sudah PAID/REALIZED/CLOSED untuk sub-item ini (di luar CR
                     // yang ada di batch saat ini) — supaya list CR menampilkan juga CR-CR lama
                     // yang menyumbang ke nilai "Used", bukan cuma pengajuan baru di batch ini.
-                    $historyItems = $d->costRequestDetails()
-                        ->whereNotIn('id', $reqData['detail_ids'] ?: [0])
-                        ->whereHas('budgetRequest', fn ($q) => $q->disbursed())
-                        ->with(['budgetRequest.beneficiary', 'realization'])
-                        ->get()
-                        ->map(function ($od) {
-                            $cr     = $od->budgetRequest;
-                            $amount = (int) ($od->realization->total ?? $od->total);
+                    // Sumber sama dengan "Used" (BudgetPlanDetail::costLines()):
+                    // Cash Advance yang settlement-nya sudah diajukan tampil per
+                    // baris settlement di Sub COA efektifnya.
+                    $historyItems = $d->costLines()
+                        ->reject(fn ($u) => $u['request_detail']
+                            && in_array($u['request_detail']->id, $reqData['detail_ids'], true))
+                        ->map(function ($u) {
+                            $cr   = $u['budget_request'];
+                            $od   = $u['request_detail'];
+                            $show = \App\Models\BudgetPlanDetail::costLineDisplay($u);
+                            $biasa = $od && ! $show['is_added'] && ! $show['is_moved'];
 
                             return [
                                 'cr_id'             => $cr->id,
@@ -1234,14 +1650,15 @@ class DailyTransactionController extends Controller
                                 'item_id'           => null,
                                 'date_raw'          => $cr->created_at,
                                 'date_formatted'    => $cr->created_at?->format('d M Y H:i') ?? '-',
-                                'description'       => $od->notes ?: ($od->description ?: '-'),
+                                'description'       => $biasa ? ($od->notes ?: ($od->description ?: '-')) : $show['notes'],
                                 'beneficiary'       => $cr->beneficiary->nickname ?? '-',
-                                'price_formatted'   => number_format((int) $od->amount, 0, ',', '.'),
-                                'qty'               => $od->qty,
-                                'amount_formatted'  => number_format($amount, 0, ',', '.'),
+                                'price_formatted'   => number_format($show['unit_price'], 0, ',', '.'),
+                                'qty'               => $biasa ? $od->qty : $show['qty'],
+                                'amount_formatted'  => number_format($show['amount'], 0, ',', '.'),
                                 'item_status'       => 'HISTORY',
                             ];
-                        });
+                        })
+                        ->values();
 
                     return [
                         'deskripsi'           => $d->deskripsi,
@@ -1524,7 +1941,7 @@ class DailyTransactionController extends Controller
                 $q->where('status', 'INCLUDED')
                   ->whereNull('second_payment_id')
                   ->whereHas('dailyTransaction', fn($q2) =>
-                      $q2->whereIn('status', ['PENDING_APPROVER', 'DONE'])
+                      $q2->whereIn('status', DailyTransaction::ACTIVE_STATUSES)
                   )
             )
             ->with(['type', 'cluster'])
@@ -1560,7 +1977,17 @@ class DailyTransactionController extends Controller
             ->filter(fn ($v) => is_numeric($v))
             ->map(fn ($v) => (int) $v);
 
-        $transactions = DailyTransaction::with(['sourceFund', 'toSourceFund', 'includedItems'])
+        // Relasi item di-eager-load untuk sheet "Detail"; tanpa ini tiap baris
+        // memicu query sendiri saat file dibentuk.
+        $transactions = DailyTransaction::with([
+                'sourceFund', 'toSourceFund',
+                'includedItems.budgetRequest.budgetPlan.project',
+                'includedItems.budgetRequest.budgetPlan.costCenter',
+                'includedItems.budgetRequest.applicant',
+                'includedItems.budgetRequest.beneficiary',
+                'includedItems.secondPayment',
+                'includedItems.costRegister.beneficiary',
+            ])
             // Dengan daftar id, rentang tanggal TIDAK ikut membatasi: id itu sudah
             // berasal dari tabel yang rentangnya sama, dan menerapkan keduanya
             // hanya bisa membuang baris yang justru diminta user.
@@ -1633,6 +2060,50 @@ class DailyTransactionController extends Controller
         foreach (['A'=>18,'B'=>14,'C'=>40,'D'=>12,'E'=>20,'F'=>16,'G'=>14,'H'=>16,'I'=>14,'J'=>28,'K'=>28] as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
         }
+
+        /* SHEET 2 — DETAIL
+           Isi per batch sama dengan sheet "Detail" Export Data di halaman show
+           (item INCLUDED saja), ditambah kolom Kode Batch + baris Cost Register. */
+        $detail = $spreadsheet->createSheet();
+        $detail->setTitle('Detail');
+        $detail->fromArray(['Kode Batch', 'Budget Plan', 'Kode', 'Deskripsi', 'Pengaju', 'Penerima', 'Amount', 'Tanggal'], null, 'A1');
+        foreach (range('A', 'H') as $col) {
+            $detail->getStyle($col . '1')->getFont()->setBold(true);
+            $detail->getStyle($col . '1')->getFill()
+                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                ->getStartColor()->setRGB('0D1B2A');
+            $detail->getStyle($col . '1')->getFont()->getColor()->setRGB('FFFFFF');
+        }
+
+        $detailRow = 2;
+        foreach ($transactions as $trx) {
+            foreach ($trx->includedItems as $item) {
+                $cr  = $item->budgetRequest;
+                $reg = $item->costRegister;
+                if (!$cr && !$reg) continue;
+
+                $detail->setCellValueExplicit('A' . $detailRow, $trx->code, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+                $detail->fromArray([
+                    $cr ? $this->budgetPlanLabel($cr->budgetPlan) : 'Cost Register (Non-CR)',
+                    $item->sourceCode(),
+                    $item->sourceDescription(),
+                    $cr ? ($cr->applicant->name ?? '-') : '-',
+                    ($cr ? $cr->beneficiary : $reg->beneficiary)->complete_name ?? '-',
+                    (int) $item->sourceAmount(),
+                    $cr ? $cr->created_at?->format('d-m-Y') : ($reg->period?->format('m-Y') ?? '-'),
+                ], null, 'B' . $detailRow);
+                $detailRow++;
+            }
+        }
+        if ($detailRow > 2) {
+            $detail->getStyle('A2:A' . ($detailRow - 1))->getNumberFormat()
+                ->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
+        }
+        foreach (['A'=>18,'B'=>32,'C'=>18,'D'=>40,'E'=>18,'F'=>22,'G'=>16,'H'=>14] as $col => $width) {
+            $detail->getColumnDimension($col)->setWidth($width);
+        }
+
+        $spreadsheet->setActiveSheetIndex(0);
 
         $filename = 'treasury_batch_' . $dateFrom . '_' . $dateTo . '.xlsx';
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);

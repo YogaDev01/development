@@ -29,7 +29,7 @@ the rulebook; `docs/` is the map.
 | Framework  | Laravel 13 (`laravel/framework` v13.32.0 in composer.lock)          |
 | DB         | MySQL 8 (sessions, cache, queue all on the `database` driver)       |
 | Excel      | phpoffice/phpspreadsheet                                            |
-| Frontend   | Blade + Bootstrap 4.6 / AdminLTE-style shell + jQuery + DataTables; custom `public/css/tesys-ui-*.css` and `public/js/tesys-*.js`. **No Vite / no build step** (removed intentionally — see `package.json` note). |
+| Frontend   | Blade + Bootstrap 4.6 / AdminLTE-style shell + jQuery + DataTables; custom `public/css/tesys-ui-*.css` and `public/js/tesys-*.js`. **No Vite, no bundler, no Node build step** (removed intentionally — see `package.json` note). Exception: Tailwind (`tw:` prefix, `docs/ui/tailwind.md`) is built only on a developer machine via `scripts/build-tailwind.ps1` (standalone binary in gitignored `tools/tailwind/`, SHA-256 verified); the generated `public/css/tesys-tw.css` is committed and is the only Tailwind output production serves. Production never runs a compiler or installs a new runtime dependency. |
 | Tests      | PHPUnit 12, feature tests against MySQL DB `tesys_test` (`phpunit.xml`) |
 | Hosting    | Shared hosting (Hostinger) per project notes; ops guide `docs/DEPLOYMENT.md` |
 

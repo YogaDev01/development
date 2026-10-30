@@ -1,0 +1,64 @@
+{
+ "login": true,
+ "hasil": {
+  "manager-ca-1280": {
+   "baris": 0,
+   "hasCheck": false,
+   "thNo": false
+  },
+  "supervisor-ca-1280": {
+   "baris": 0,
+   "hasCheck": false,
+   "thNo": false
+  },
+  "sim-ca-tanpa-centang-1280": {
+   "tab": "tblCA",
+   "baris": 10,
+   "hasCheck": false,
+   "sw": 1274,
+   "cw": 1242,
+   "idxCode": 0,
+   "adaNo": false
+  },
+  "db-1280": {
+   "tab": "tblDB",
+   "baris": 10,
+   "hasCheck": false,
+   "sw": 1242,
+   "cw": 1242,
+   "idxCode": 0,
+   "adaNo": false
+  },
+  "manager-ca-1440": {
+   "baris": 0,
+   "hasCheck": false,
+   "thNo": false
+  },
+  "supervisor-ca-1440": {
+   "baris": 0,
+   "hasCheck": false,
+   "thNo": false
+  },
+  "sim-ca-tanpa-centang-1440": {
+   "tab": "tblCA",
+   "baris": 10,
+   "hasCheck": false,
+   "sw": 1442,
+   "cw": 1442,
+   "idxCode": 0,
+   "adaNo": false
+  },
+  "db-1440": {
+   "tab": "tblDB",
+   "baris": 10,
+   "hasCheck": false,
+   "sw": 1442,
+   "cw": 1442,
+   "idxCode": 0,
+   "adaNo": false
+  }
+ },
+ "konsol": [],
+ "gagal": [],
+ "stop": 0
+}

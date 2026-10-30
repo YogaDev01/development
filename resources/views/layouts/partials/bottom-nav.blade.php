@@ -34,7 +34,7 @@
         <button type="button" class="ts-bnav-item" data-toggle="dropdown" data-display="static"
                 aria-haspopup="true" aria-expanded="false"
                 aria-label="Pindah aplikasi, saat ini {{ $currentAppConfig['label'] }}">
-            <span class="ts-bnav-ic"><img class="ts-bnav-logo" src="{{ asset('dist/img/ts_icon.png') }}" alt=""></span>
+            <span class="ts-bnav-ic"><img class="ts-bnav-logo" width="22" height="22" src="{{ asset('dist/img/ts_icon.png') }}" alt=""></span>
             <span class="ts-bnav-label">{{ $currentAppConfig['label'] }}</span>
         </button>
         <div class="dropdown-menu ts-bnav-menu" role="menu" aria-label="Pilih aplikasi">

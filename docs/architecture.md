@@ -5,8 +5,11 @@ Verified from the codebase on 2026-10-02 (commit `70dfa9e` + uncommitted work).
 ## Stack
 
 Laravel 13 (PHP 8.3), MySQL 8, Blade + Bootstrap 4.6 + jQuery/DataTables, no
-asset build step (assets served directly from `public/css`, `public/js`,
-`public/plugins`, `public/dist`). Session, cache and queue drivers = `database`.
+Vite/bundler/Node build (assets served directly from `public/css`, `public/js`,
+`public/plugins`, `public/dist`). The only generated asset is the Tailwind stylesheet
+`public/css/tesys-tw.css`, built on a developer machine with a checksum-verified
+standalone binary (`scripts/build-tailwind.ps1`) and committed; production builds
+nothing. Session, cache and queue drivers = `database`.
 
 ## Request path
 
@@ -68,6 +71,41 @@ Global web middleware: `SecurityHeaders`, `EnsureUserActive` (`bootstrap/app.php
   `motion` → `luxe` → `mobile`. (`tesys-ui.css` is referenced more than once
   across layout files; `tesys-ui-chrome.css` is not referenced directly —
   whether it is `@import`ed: Needs confirmation.)
+- Refine layer: `public/css/tesys-ui-refine.css` is loaded **last** (after
+  `datatable`) and owns the typography scale (`--fs-*`, `--fw-*`, `--lh-*`),
+  control heights (`--ctl-h` 34px / `--ctl-h-sm` 30px), card/cell padding, and
+  the shared KPI shape (`.ts-kpi`, `.col-kpi-card`, `.todo-kpi-card`). It adds
+  no colors. Earlier layers still define the same properties several times
+  (many with `!important`), so refine repeats `!important` only where the
+  earlier rule has it. Sizes at ≤640px are intentionally left to
+  `tesys-ui-mobile.css`. Roll back by removing its `<link>` in
+  `layouts/app.blade.php`.
+  - Section 14 of the refine layer ("Cost Request") is scoped by `.cr-head` /
+    `.cr-pane` / `.cr-card` / `.cr-toolbar` (classes added in
+    `budget-request/index|_toolbar|_table|_rows|_rows_db.blade.php`), so PO and
+    Budget Plan, which share `x-workflow-stepper` and `.custom-toolbar`, are
+    unchanged. It restyles the category tabs, the workflow strip (one panel of
+    count-over-label cells, no circles/connectors; red = rejected, amber =
+    pending, green = done, rest neutral), the single card (toolbar + table),
+    row typography (`.cr-desc-main`, `.cr-meta`), NOB markers (left edge bar,
+    not whole-row color) and row actions (soft-burgundy primary, ghost
+    neutral/more, outlined danger). Presentation only — no behavior change.
+- Tailwind (F2 foundation + F3 pilot; **loaded only by the Feedback views** `feedback/index|create|show|inbox` and the Cost Request index `budget-request/index` (M1, see `docs/ui/tailwind-budget-request.md`) via `@push('styles')` + `@aset`, never by the layout or other pages): production input
+  `resources/tailwind/tesys-tw.css` builds to `public/css/tesys-tw.css` (standalone
+  binary, prefix `tw:`, no preflight, tokens mapped via `var(--…)`); the test input
+  `tesys-tw.uji.css` (safelist) builds only to gitignored `tools/tailwind/uji/` and is
+  never deployed. Components: `resources/views/components/tw/`. Rules, build, evidence:
+  `docs/ui/tailwind.md`, `docs/ui/tailwind-components.md`. Every change to a `tw:` class
+  requires `build-tailwind.ps1 -Cek` (exit 0) and committing the rebuilt file. CSS is
+  cached 1 year (`public/.htaccess`), so bump the asset version when it starts being
+  loaded. `tools/`, `scripts/`, `resources/tailwind/` and `docs/ui/tailwind-evidence/`
+  are not uploaded to the server.
+- Font: Inter variable, self-hosted in `public/fonts/inter/` (SIL OFL 1.1,
+  `LICENSE.txt` beside it; latin subset ≈ 48 KB), declared in the refine layer
+  and preloaded in the layout. Plus Jakarta Sans and the Google Fonts `<link>`
+  were removed from the app layout (`--font-display` now resolves to Inter);
+  `auth/login.blade.php` keeps its own font link. Money/code cells use
+  `font-variant-numeric: tabular-nums`.
 - JS helpers: column filters, row action menus, toolbar actions, filtered
   export, searchable select, drawer, timeline, workflow stepper, command
   palette (`tesys-command.js`), session keep-alive.

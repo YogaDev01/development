@@ -1,7 +1,7 @@
 {{-- Baris tabel Cash Advance ($mode='ca') & Cost Payment ($mode='cp'). Dimuat lewat BudgetRequestController::tab(). --}}
 @foreach($rows as $cr)
                             @php
-                                // NOB global: total pengajuan CR melebihi sisa Budget Plan -> merah + badge.
+                                // NOB global: total pengajuan CR melebihi sisa Budget Plan -> deskripsi berwarna merah.
                                 // Dibaca dari kolom is_nob (dulu: awalan teks '[NOB]' pada deskripsi).
                                 $isNob = (bool) $cr->is_nob;
                                 // NOB sub-item: hanya salah satu baris rincian yang melebihi sisa sub-item budgetnya -> kuning.
@@ -19,6 +19,11 @@
                                    pengajuan, jadi masih ada kekurangan bayar yang ditagihkan balik.
                                    Aturan settle-nya sama dengan refund. */
                                 $claim     = $mode === 'ca' ? $cr->expenseClaimAmount() : 0;
+                                /* Bulk Approve/Reject: baris boleh dicentang bila status di tahap
+                                   approval DAN peran efektif berwenang di tahap itu (STAGE_ROLES —
+                                   sumber sama dengan tombol per baris & applyReviewApprove). */
+                                $bulkOk = ! empty($canBulk) && $cr->isInBulkStage()
+                                    && Auth::user()->hasRole(array_merge(['superadmin'], \App\Models\BudgetRequest::bulkStageRoles()[$cr->status]));
                             @endphp
                             <tr data-id="{{ $cr->id }}"
                                 data-status="{{ $cr->status }}"
@@ -30,70 +35,84 @@
                                      tautan dari kartu Active Cash Advance di halaman Summary,
                                      yang mengelompokkan CA per PIC, bukan per beneficiary. --}}
                                 data-pic="{{ $cr->beneficiary?->pic?->pic ?? '' }}"
+                                data-requestor="{{ $cr->applicant?->username ? strtoupper($cr->applicant->username) : '' }}"
                                 data-nob="{{ ($isNob || $isNobItem) ? '1' : '0' }}"
+                                data-amount="{{ (int) $cr->amount }}"
+                                data-takeout="{{ $cr->details->contains(fn ($d) => $d->isTakenOut()) ? '1' : '0' }}"
                                 data-date="{{ $cr->created_at->format('Y-m-d') }}"
                                 class="{{ $isNob ? 'row-nob' : ($isNobItem ? 'row-nob-item' : '') }}">
-                                <td class="text-nowrap">{{ $loop->iteration }}</td>
+                                @if(! empty($canBulk))
+                                <td class="text-center cr-col-check">
+                                    <input type="checkbox" class="cr-check-row" value="{{ $cr->id }}"
+                                           data-elig="{{ $bulkOk ? '1' : '0' }}"
+                                           aria-label="Pilih {{ $cr->code }}"
+                                           @if(! $bulkOk)
+                                           disabled title="{{ $cr->isInBulkStage() ? 'Peran Anda tidak berwenang pada tahap ' . $cr->status : 'Status ' . $cr->status . ' bukan tahap approval (Submitted/Checked/Verified atau Settle/Settle Checked/Settle Verified/Settle Approved)' }}"
+                                           @endif>
+                                </td>
+                                @endif
+                                <td class="text-nowrap"><span class="tw:tabular-nums tw:text-text-faint">{{ $loop->iteration }}</span></td>
 
                                 <td class="text-nowrap cr-col-code">
-                                    {{-- Kode membuka drawer tinjau; sel nominal dan status tetap
-                                         membuka modal pada tab masing-masing seperti sebelumnya. --}}
-                                    <button type="button" class="cr-number-btn btn-review-cr" data-id="{{ $cr->id }}">
+                                    {{-- Klik kode = salin ke clipboard; detail dibuka lewat klik baris,
+                                         sel nominal dan status tetap membuka tab masing-masing. --}}
+                                    <button type="button" class="cr-number-btn cr-copy-code" data-code="{{ $cr->code }}" title="Klik untuk menyalin kode">
                                         {{ $cr->code }}
                                     </button>
                                 </td>
 
-                                <td class="cr-col-desc">
-                                    <div style="font-size:13px;font-weight:600;" title="{{ $cr->description }}">
-                                        @if($isNob)
-                                            <span class="badge badge-danger px-1 py-1 mr-1" style="font-size:9px;">NOB</span>
-                                        @endif
-                                        {{ Str::limit($cr->description, 60) }}
-                                    </div>
-                                    <div style="font-size:10px;color:var(--text-faint);margin-top:2px;">
-                                        {{ $cr->po_code ?? '-' }} - {{ $cr->type?->name ?? '-' }}, {{ strtoupper($cr->pm_internal_name) }}
+                                <td class="cr-col-desc" data-lbl="Description">
+                                    {{-- Satu baris: deskripsi (tebal; merah bila NOB, kuning bila NOB sub-item), dipotong 60 karakter. --}}
+                                    <div title="{{ $cr->description }}" class="tw:flex tw:flex-nowrap tw:max-sm:flex-wrap tw:items-center tw:gap-x-2 tw:gap-y-1 tw:max-sm:justify-end tw:text-control tw:font-heading tw:leading-tight {{ $isNob ? 'tw:text-danger' : ($isNobItem ? 'tw:text-warning' : 'tw:text-text') }}">
+                                        <span>{{ Str::limit($cr->description, 60) }}</span>
                                     </div>
                                 </td>
 
-                                <td class="text-nowrap" data-order="{{ $cr->created_at->format('Y-m-d') }}">
-                                    {{ $cr->created_at->format('d/m/Y') }}
+                                <td class="text-nowrap" data-order="{{ $cr->created_at->format('Y-m-d') }}" data-lbl="Tanggal">
+                                    <span class="tw:text-data tw:tabular-nums tw:text-text-dim">{{ $cr->created_at->format('d/m/Y') }}</span>
                                 </td>
 
-                                <td class="text-nowrap" data-order="{{ $cr->paid_at?->format('Y-m-d') ?? '' }}">
-                                    {{ $cr->paid_at?->format('d/m/Y') ?? '-' }}
+                                <td class="text-nowrap" data-order="{{ $cr->paid_at?->format('Y-m-d') ?? '' }}" data-lbl="Tanggal Paid">
+                                    <span class="tw:text-data tw:tabular-nums {{ $cr->paid_at ? 'tw:text-text-dim' : 'tw:text-text-faint' }}">{{ $cr->paid_at?->format('d/m/Y') ?? '-' }}</span>
                                 </td>
 
-                                <td class="text-nowrap">
-                                    {{ $cr->applicant?->username ? strtoupper($cr->applicant->username) : '-' }}
+                                <td data-lbl="Requestor">
+                                    <span class="tw:text-data tw:text-text">{{ $cr->applicant?->username ? strtoupper($cr->applicant->username) : '-' }}</span>
                                 </td>
 
-                                <td class="text-nowrap">
-                                    {{ $cr->beneficiary?->pic?->pic ?? '-' }}
-                                    <div style="font-size:10px;color:var(--text-faint);margin-top:2px;">{{ $cr->beneficiary?->nickname ?? '-' }}</div>
+                                <td data-lbl="PIC">
+                                    <div class="tw:max-sm:text-right">
+                                        {{-- Satu nilai: PIC bila ada, kalau kosong/"-" pakai beneficiary. --}}
+                                        @php
+                                            $picNama = trim((string) ($cr->beneficiary?->pic?->pic ?? ''));
+                                            $picNama = ($picNama === '' || $picNama === '-') ? trim((string) ($cr->beneficiary?->nickname ?? '')) : $picNama;
+                                        @endphp
+                                        <span class="tw:block tw:text-data tw:leading-tight tw:text-text">{{ ($picNama === '' || $picNama === '-') ? '-' : $picNama }}</span>
+                                    </div>
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-amount" data-raw="{{ $cr->amount }}" data-order="{{ $cr->amount }}">
-                                    <button type="button" class="cr-cell-link btn-detail-cr" data-id="{{ $cr->id }}" data-tab="#crPaneDetails" title="Detail Request">{{ $cr->amount_formatted }}</button>
+                                <td class="text-right text-nowrap col-raw-amount" data-lbl="Request" data-raw="{{ $cr->amount }}" data-order="{{ $cr->amount }}">
+                                    <button type="button" class="cr-cell-link btn-detail-cr tw:tabular-nums" data-id="{{ $cr->id }}" data-tab="#crPaneDetails" title="Detail Request">{{ $cr->amount > 0 ? $cr->amount_formatted : '-' }}</button>
                                 </td>
 
                                 @if($mode === 'ca')
-                                <td class="text-right text-nowrap col-raw-realisasi" data-raw="{{ $realisasi }}" data-order="{{ $realisasi }}">
-                                    <button type="button" class="cr-cell-link btn-detail-cr" data-id="{{ $cr->id }}" data-tab="#crPaneRealization" title="Detail Settlement">{{ number_format($realisasi, 0, ',', '.') }}</button>
+                                <td class="text-right text-nowrap col-raw-realisasi" data-lbl="Settlement" data-raw="{{ $realisasi }}" data-order="{{ $realisasi }}">
+                                    <button type="button" class="cr-cell-link btn-detail-cr tw:tabular-nums" data-id="{{ $cr->id }}" data-tab="#crPaneRealization" title="Detail Settlement">{{ $realisasi != 0 ? number_format($realisasi, 0, ',', '.') : '-' }}</button>
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-var {{ $refund > 0 ? 'text-var-pos' : '' }}" data-raw="{{ $refund }}" data-order="{{ $refund }}">
-                                    {{ number_format($refund, 0, ',', '.') }}
+                                <td class="text-right text-nowrap tw:tabular-nums col-raw-var {{ $refund > 0 ? 'text-var-pos' : '' }}" data-lbl="Refund" data-raw="{{ $refund }}" data-order="{{ $refund }}">
+                                    {{ $refund != 0 ? number_format($refund, 0, ',', '.') : '-' }}
                                 </td>
 
                                 {{-- Expense Claim lahir dari settlement juga, jadi selnya bisa
                                      diklik ke tab Settlement seperti kolom Request & Settlement. --}}
-                                <td class="text-right text-nowrap col-raw-claim" data-raw="{{ $claim }}" data-order="{{ $claim }}">
-                                    <button type="button" class="cr-cell-link btn-detail-cr"
-                                            data-id="{{ $cr->id }}" data-tab="#crPaneRealization" title="Detail Settlement">{{ number_format($claim, 0, ',', '.') }}</button>
+                                <td class="text-right text-nowrap col-raw-claim" data-lbl="Expense Claim" data-raw="{{ $claim }}" data-order="{{ $claim }}">
+                                    <button type="button" class="cr-cell-link btn-detail-cr tw:tabular-nums"
+                                            data-id="{{ $cr->id }}" data-tab="#crPaneRealization" title="Detail Settlement">{{ $claim != 0 ? number_format($claim, 0, ',', '.') : '-' }}</button>
                                 </td>
                                 @endif
 
-                                <td class="text-nowrap">
+                                <td class="text-nowrap" data-card="status">
                                     {{-- Label, keterangan, dan warna berasal dari App\Support\WorkflowStatus.
                                          Kelas pemicu (cr-status-link btn-detail-cr) dipertahankan supaya
                                          klik pada badge tetap membuka tab Log seperti sebelumnya. --}}
@@ -112,9 +131,11 @@
                                           Gerbang peran di bawah ini SALINAN PERSIS dari kondisi
                                           sebelumnya — tidak ada peran yang ditambah maupun
                                           dikurangi. Yang berubah hanya cara menampilkannya:
-                                          satu aksi utama bernama + menu untuk sisanya, sehingga
-                                          aksi mundur (Reject, Hapus, Cancel) tidak lagi sejajar
-                                          dan sewarna dengan aksi maju.
+                                          semua aksi yang berhak dikumpulkan ke satu daftar ($aksi);
+                                          1 aksi = satu tombol bernama, lebih dari 1 = satu tombol
+                                          titik tiga berisi semuanya (aksi mundur/merusak di bawah
+                                          pemisah). Detail dibuka lewat klik baris, jadi tidak ada
+                                          tombol/menu "Tinjau" maupun "Lihat detail".
                                         */
                                         $u = Auth::user();
                                         $st = $cr->status;
@@ -146,216 +167,94 @@
                                         $bolehTutup     = $st === 'SETTLE_VERIFIED' && !$adaClaim
                                                             && $u->hasRole(['superadmin','finance_manager']);
 
-                                        $adaAksi = $bolehSubmit || $bolehUbahDraft || $bolehHead || $bolehFinance
-                                            || $bolehCeo || $bolehRevisi || $bolehSettle || $bolehHeadSet
-                                            || $bolehFinSet || $bolehSetApp || $boleh2ndApp || $bolehTutup;
+                                        // kelas = kelas pemicu JS (dipertahankan persis); kode = ikut data-code.
+                                        $it = fn (string $kelas, string $ikon, string $label, string $judul, bool $kode = true, string $nada = '') => [
+                                            'jenis' => 'btn', 'kelas' => $kelas, 'ikon' => $ikon, 'label' => $label,
+                                            'judul' => $judul, 'kode' => $kode, 'nada' => $nada,
+                                        ];
+                                        $aksi = [];
+
+                                        // ── aksi maju ──
+                                        if ($bolehSubmit) {
+                                            $aksi[] = ['jenis' => 'form', 'url' => url('/budget-request/'.$cr->id.'/submit'), 'metode' => 'POST',
+                                                'form' => 'frmSubmitCR', 'ikon' => 'fa-paper-plane', 'label' => 'Submit', 'judul' => 'Submit ke Head', 'nada' => ''];
+                                        }
+                                        if ($bolehUbahDraft) {
+                                            $aksi[] = ['jenis' => 'link', 'url' => url('/budget-request/'.$cr->id.'/edit'),
+                                                'ikon' => 'fa-pen', 'label' => 'Edit', 'judul' => 'Edit', 'nada' => 'is-neutral'];
+                                        }
+                                        if ($bolehHead)    $aksi[] = $it('btn-head-approve', 'fa-check', 'Approve', 'Approve');
+                                        if ($bolehFinance) $aksi[] = $it('btn-finance-verify', 'fa-check-double', 'Verify', 'Verify');
+                                        if ($bolehCeo)     $aksi[] = $it('btn-ceo-approve', 'fa-check', 'Approve', 'Approve');
+                                        if ($bolehRevisi)  $aksi[] = $it('btn-manager-revise', 'fa-undo', 'Revise', 'Revise → Draft', false, 'is-neutral');
+                                        if ($bolehSettle) {
+                                            $aksi[] = ['jenis' => 'link', 'url' => route('budget-request.realize-form', $cr->id),
+                                                'ikon' => 'fa-receipt', 'label' => 'Settle', 'judul' => 'Settle', 'nada' => ''];
+                                        }
+                                        if ($bolehHeadSet) $aksi[] = $it('btn-head-check-settlement', 'fa-check-double', 'Check', 'Check → Settle Checked');
+                                        if ($bolehFinSet)  $aksi[] = $it('btn-finance-verify-settlement', 'fa-check-double', 'Verify', 'Verify → Settle Verified');
+                                        if ($bolehSetApp)  $aksi[] = $it('btn-settle-approve', 'fa-check-double', 'Settle Approve', 'Approve → Second Approve');
+                                        if ($boleh2ndApp)  $aksi[] = $it('btn-second-approve', 'fa-hand-holding-usd', 'Second Approve', 'Approve → Treasury');
+                                        if ($bolehTutup)   $aksi[] = $it('btn-ceo-close-settlement', 'fa-lock', 'Close', 'Close');
+
+                                        // ── aksi mundur / merusak ──
+                                        if ($bolehHead)    $aksi[] = $it('btn-head-reject', 'fa-times', 'Reject', 'Reject', false, 'is-danger');
+                                        if ($bolehFinance) $aksi[] = $it('btn-finance-reject', 'fa-times', 'Reject', 'Reject', false, 'is-danger');
+                                        if ($bolehCeo)     $aksi[] = $it('btn-ceo-reject', 'fa-times', 'Reject', 'Reject', false, 'is-danger');
+                                        if ($bolehSetApp)  $aksi[] = $it('btn-settle-reject', 'fa-times', 'Reject', 'Reject → Paid', true, 'is-danger');
+                                        if ($boleh2ndApp)  $aksi[] = $it('btn-second-reject', 'fa-times', 'Reject', 'Reject → Paid', true, 'is-danger');
+                                        if ($bolehHeadSet) $aksi[] = $it('btn-head-reject-settlement', 'fa-times', 'Tolak settlement', 'Tolak settlement', true, 'is-danger');
+                                        if ($bolehFinSet)  $aksi[] = $it('btn-finance-reject-settlement', 'fa-times', 'Tolak settlement', 'Tolak settlement', true, 'is-danger');
+                                        if ($bolehTutup)   $aksi[] = $it('btn-manager-reject-settlement', 'fa-times', 'Tolak settlement', 'Tolak settlement', true, 'is-danger');
+                                        if ($bolehBatal)   $aksi[] = $it('btn-manager-cancel', 'fa-ban', 'Cancel', 'Cancel', false, 'is-danger');
+                                        if ($bolehUbahDraft) {
+                                            $aksi[] = ['jenis' => 'form', 'url' => url('/budget-request/'.$cr->id), 'metode' => 'DELETE',
+                                                'form' => 'frmDeleteCR', 'ikon' => 'fa-trash', 'label' => 'Hapus', 'judul' => 'Hapus', 'nada' => 'is-danger'];
+                                        }
+
+                                        /* Satu penyaji untuk tombol tunggal ($menu=false) dan butir menu
+                                           ($menu=true); atribut data-id/data-code dan kelas pemicu sama
+                                           persis dengan markup sebelumnya. */
+                                        $gambar = function (array $a, bool $menu) use ($cr) {
+                                            $kelasDasar = $menu ? 'dropdown-item' : 'ts-action-primary';
+                                            $kelas = trim($kelasDasar.' '.($a['nada'] ?? '').' '.($a['kelas'] ?? ''));
+                                            $isi = '<i class="fas '.e($a['ikon']).'" aria-hidden="true"></i><span class="ts-al">'.e($a['label']).'</span>';
+                                            if ($a['jenis'] === 'link') {
+                                                return '<a href="'.e($a['url']).'" class="'.e($kelas).'" title="'.e($a['judul']).'">'.$isi.'</a>';
+                                            }
+                                            if ($a['jenis'] === 'form') {
+                                                $m = $a['metode'] === 'DELETE' ? method_field('DELETE') : '';
+                                                return '<form action="'.e($a['url']).'" method="POST" class="'.e($a['form']).($menu ? '' : ' d-inline').'">'
+                                                    .csrf_field().$m
+                                                    .'<button type="submit" class="'.e($kelas).'" title="'.e($a['judul']).'">'.$isi.'</button></form>';
+                                            }
+                                            $data = ' data-id="'.e($cr->id).'"'.(! empty($a['kode']) ? ' data-code="'.e($cr->code).'"' : '');
+                                            return '<button type="button" class="'.e($kelas).'"'.$data.' title="'.e($a['judul']).'">'.$isi.'</button>';
+                                        };
                                     @endphp
 
                                     <div class="action-buttons ts-actions">
-
-                                        {{-- ── AKSI UTAMA — satu per baris, selalu bernama ── --}}
-
-                                        {{-- DRAFT: manager mengajukan; supervisor hanya menyunting --}}
-                                        @if($bolehSubmit)
-                                        <form action="{{ url('/budget-request/'.$cr->id.'/submit') }}"
-                                              method="POST" class="frmSubmitCR d-inline">
-                                            @csrf
-                                            <button type="submit" class="ts-action-primary" title="Submit ke Head">
-                                                <i class="fas fa-paper-plane"></i><span class="ts-al">Submit</span>
-                                            </button>
-                                        </form>
-                                        @elseif($bolehUbahDraft)
-                                        <a href="{{ url('/budget-request/'.$cr->id.'/edit') }}"
-                                           class="ts-action-primary is-neutral" title="Edit">
-                                            <i class="fas fa-pen" aria-hidden="true"></i><span class="ts-al">Edit</span>
-                                        </a>
-                                        @endif
-
-                                        @if($bolehHead)
-                                        <button type="button" class="ts-action-primary btn-head-approve"
-                                                data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Approve">
-                                            <i class="fas fa-check"></i><span class="ts-al">Approve</span>
-                                        </button>
-                                        @endif
-
-                                        @if($bolehFinance)
-                                        <button type="button" class="ts-action-primary btn-finance-verify"
-                                                data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Verify">
-                                            <i class="fas fa-check-double"></i><span class="ts-al">Verify</span>
-                                        </button>
-                                        @endif
-
-                                        @if($bolehCeo)
-                                        <button type="button" class="ts-action-primary btn-ceo-approve"
-                                                data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Approve">
-                                            <i class="fas fa-check"></i><span class="ts-al">Approve</span>
-                                        </button>
-                                        @endif
-
-                                        @if($bolehRevisi)
-                                        <button type="button" class="ts-action-primary is-neutral btn-manager-revise"
-                                                data-id="{{ $cr->id }}" title="Revise → Draft">
-                                            <i class="fas fa-undo"></i><span class="ts-al">Revise</span>
-                                        </button>
-                                        @endif
-
-                                        @if($bolehSettle)
-                                        <a href="{{ route('budget-request.realize-form', $cr->id) }}"
-                                           class="ts-action-primary" title="Settle">
-                                            <i class="fas fa-receipt" aria-hidden="true"></i><span class="ts-al">Settle</span>
-                                        </a>
-                                        @endif
-
-                                        @if($bolehHeadSet)
-                                        <button type="button" class="ts-action-primary btn-head-check-settlement"
-                                                data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Check → Settle Checked">
-                                            <i class="fas fa-check-double"></i><span class="ts-al">Check</span>
-                                        </button>
-                                        @endif
-
-                                        @if($bolehFinSet)
-                                        <button type="button" class="ts-action-primary btn-finance-verify-settlement"
-                                                data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Verify → Settle Verified">
-                                            <i class="fas fa-check-double"></i><span class="ts-al">Verify</span>
-                                        </button>
-                                        @endif
-
-                                        @if($bolehSetApp)
-                                        <button type="button" class="ts-action-primary btn-settle-approve"
-                                                data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Approve &rarr; Second Approve">
-                                            <i class="fas fa-check-double"></i><span class="ts-al">Settle Approve</span>
-                                        </button>
-                                        <button type="button" class="ts-action-primary is-danger btn-settle-reject"
-                                                data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Reject &rarr; Paid">
-                                            <i class="fas fa-times"></i><span class="ts-al">Reject</span>
-                                        </button>
-                                        @endif
-
-                                        @if($boleh2ndApp)
-                                        <button type="button" class="ts-action-primary btn-second-approve"
-                                                data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Approve &rarr; Treasury">
-                                            <i class="fas fa-hand-holding-usd"></i><span class="ts-al">Second Approve</span>
-                                        </button>
-                                        <button type="button" class="ts-action-primary is-danger btn-second-reject"
-                                                data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Reject &rarr; Paid">
-                                            <i class="fas fa-times"></i><span class="ts-al">Reject</span>
-                                        </button>
-                                        @endif
-
-                                        @if($bolehTutup)
-                                        <button type="button" class="ts-action-primary btn-ceo-close-settlement"
-                                                data-id="{{ $cr->id }}" data-code="{{ $cr->code }}" title="Close">
-                                            <i class="fas fa-lock"></i><span class="ts-al">Close</span>
-                                        </button>
-                                        @endif
-
-                                        {{-- ── AKSI LAIN — termasuk semua aksi mundur/merusak ── --}}
-                                        @php
-                                            $adaMenu = $bolehUbahDraft || $bolehHead || $bolehFinance || $bolehCeo
-                                                || $bolehBatal || $bolehHeadSet || $bolehFinSet || $bolehTutup;
-                                        @endphp
-
-                                        @if($adaMenu)
-                                        <button type="button" class="ts-action-more"
-                                                aria-haspopup="true" aria-expanded="false"
-                                                title="Aksi lain" aria-label="Aksi lain untuk {{ $cr->code }}">
-                                            <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
-                                        </button>
-
-                                        <div class="ts-action-menu dropdown-menu" hidden>
-
-                                            {{-- Kode CR membuka drawer ringkas; "Tinjau" membuka
-                                                 modal rincian lengkap. Keduanya sengaja berbeda:
-                                                 satu untuk melirik, satu untuk memeriksa. --}}
-                                            <button type="button" class="dropdown-item btn-detail-cr"
-                                                    data-id="{{ $cr->id }}" data-tab="#crPaneInfo">
-                                                <i class="fas fa-eye"></i>Tinjau
+                                        @if(count($aksi) === 1)
+                                            {!! $gambar($aksi[0], false) !!}
+                                        @elseif(count($aksi) > 1)
+                                            <button type="button" class="ts-action-more"
+                                                    aria-haspopup="true" aria-expanded="false"
+                                                    title="Aksi lain" aria-label="Aksi lain untuk {{ $cr->code }}">
+                                                <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
                                             </button>
 
-                                            @if($bolehSubmit && $bolehUbahDraft)
-                                            <a href="{{ url('/budget-request/'.$cr->id.'/edit') }}" class="dropdown-item">
-                                                <i class="fas fa-pen"></i>Edit
-                                            </a>
-                                            @endif
-
-                                            @if($bolehHead)
-                                            <div class="dropdown-divider"></div>
-                                            <button type="button" class="dropdown-item is-danger btn-head-reject"
-                                                    data-id="{{ $cr->id }}">
-                                                <i class="fas fa-times"></i>Reject
-                                            </button>
-                                            @endif
-
-                                            @if($bolehFinance)
-                                            <div class="dropdown-divider"></div>
-                                            <button type="button" class="dropdown-item is-danger btn-finance-reject"
-                                                    data-id="{{ $cr->id }}">
-                                                <i class="fas fa-times"></i>Reject
-                                            </button>
-                                            @endif
-
-                                            @if($bolehCeo)
-                                            <div class="dropdown-divider"></div>
-                                            <button type="button" class="dropdown-item is-danger btn-ceo-reject"
-                                                    data-id="{{ $cr->id }}">
-                                                <i class="fas fa-times"></i>Reject
-                                            </button>
-                                            @endif
-
-                                            @if($bolehHeadSet)
-                                            <div class="dropdown-divider"></div>
-                                            <button type="button" class="dropdown-item is-danger btn-head-reject-settlement"
-                                                    data-id="{{ $cr->id }}" data-code="{{ $cr->code }}">
-                                                <i class="fas fa-times"></i>Tolak settlement
-                                            </button>
-                                            @endif
-
-                                            @if($bolehFinSet)
-                                            <div class="dropdown-divider"></div>
-                                            <button type="button" class="dropdown-item is-danger btn-finance-reject-settlement"
-                                                    data-id="{{ $cr->id }}" data-code="{{ $cr->code }}">
-                                                <i class="fas fa-times"></i>Tolak settlement
-                                            </button>
-                                            @endif
-
-                                            @if($bolehTutup)
-                                            <div class="dropdown-divider"></div>
-                                            <button type="button" class="dropdown-item is-danger btn-manager-reject-settlement"
-                                                    data-id="{{ $cr->id }}" data-code="{{ $cr->code }}">
-                                                <i class="fas fa-times"></i>Tolak settlement
-                                            </button>
-                                            @endif
-
-                                            @if($bolehBatal)
-                                            <div class="dropdown-divider"></div>
-                                            <button type="button" class="dropdown-item is-danger btn-manager-cancel"
-                                                    data-id="{{ $cr->id }}">
-                                                <i class="fas fa-ban"></i>Cancel
-                                            </button>
-                                            @endif
-
-                                            @if($bolehUbahDraft)
-                                            <div class="dropdown-divider"></div>
-                                            <form action="{{ url('/budget-request/'.$cr->id) }}"
-                                                  method="POST" class="frmDeleteCR">
-                                                @csrf @method('DELETE')
-                                                <button type="submit" class="dropdown-item is-danger">
-                                                    <i class="fas fa-trash"></i>Hapus
-                                                </button>
-                                            </form>
-                                            @endif
-
-                                        </div>
+                                            <div class="ts-action-menu dropdown-menu" hidden>
+                                                @php $pemisah = false; @endphp
+                                                @foreach($aksi as $a)
+                                                    @if(! $pemisah && $a['nada'] === 'is-danger' && $loop->index > 0)
+                                                        <div class="dropdown-divider"></div>
+                                                        @php $pemisah = true; @endphp
+                                                    @endif
+                                                    {!! $gambar($a, true) !!}
+                                                @endforeach
+                                            </div>
                                         @endif
-
-                                        @unless($adaAksi)
-                                        <button type="button" class="ts-action-more btn-detail-cr"
-                                                data-id="{{ $cr->id }}" data-tab="#crPaneDetails"
-                                                title="Lihat detail" aria-label="Lihat detail {{ $cr->code }}">
-                                            <i class="fas fa-eye" aria-hidden="true"></i>
-                                        </button>
-                                        @endunless
-
+                                        {{-- Tanpa aksi: sel dibiarkan kosong; detail dibuka lewat klik baris. --}}
                                     </div>
                                 </td>
                             </tr>

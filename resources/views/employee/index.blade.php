@@ -5,13 +5,28 @@
 <div class="content">
     <div class="container-fluid">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Karyawan</h1>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
-                <li class="breadcrumb-item"><a href="#">Master</a></li>
+        <div class="ts-index tw:flex tw:flex-col tw:gap-4 tw:py-4">
+
+        {{-- Judul & breadcrumb topbar: shell memindahkan <h1> dan .breadcrumb pertama ke topbar
+             (tesys-shell.js hoistPageTitle); disembunyikan secara visual. --}}
+        <div class="tw:sr-only">
+            <h1>Karyawan</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">Master</li>
                 <li class="breadcrumb-item active">Karyawan</li>
             </ol>
         </div>
+
+        <x-tw.page-header title="Daftar Karyawan"
+            description="Data karyawan internal.">
+            <x-slot:actions>
+                <x-tw.button href="{{ url('/employee/create') }}" class="ts-add-btn tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Karyawan</x-tw.button>
+            </x-slot:actions>
+        </x-tw.page-header>
+
+        {{-- Mobile: tombol di header disembunyikan dan diganti tombol melayang (tesys-ui-refine.css). --}}
+        <a href="{{ url('/employee/create') }}" class="ts-fab" aria-label="Tambah Karyawan" title="Tambah Karyawan"><i class="fas fa-plus" aria-hidden="true"></i></a>
+
 
         <x-stat-cards :cards="[
             ['Total Karyawan', $summary['total'], 'primary', 'fas fa-users'],
@@ -19,17 +34,9 @@
             ['Inactive', $summary['inactive'], 'secondary', 'fas fa-user-slash'],
         ]" />
 
-        <div class="card card-primary card-outline shadow-sm">
-            <div class="card-header d-flex align-items-center">
-                <h3 class="card-title"><i class="fas fa-users mr-1"></i> Daftar Karyawan</h3>
-                <div class="ml-auto d-flex" style="gap:8px;">
-                    <button id="refreshTable" class="btn btn-secondary btn-sm" type="button">
-                        <i class="fas fa-sync-alt mr-1"></i> Refresh
-                    </button>
-                </div>
-            </div>
+        {{-- Kartu tunggal: toolbar + tabel + paginasi (pola Cost Request). --}}
+        <x-tw.card padding="sm">
 
-            <div class="card-body">
 
                 <div class="custom-toolbar mb-3 d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
                     <div class="custom-toolbar-left d-flex align-items-center flex-wrap" style="gap:8px;">
@@ -43,9 +50,7 @@
                         <div id="empRowFilters" class="d-flex flex-wrap" style="gap:8px;"></div>
                     </div>
                     <div class="custom-toolbar-right d-flex flex-wrap" style="gap:8px;">
-                        <a href="{{ url('/employee/create') }}" class="btn btn-success btn-sm">
-                            <i class="fas fa-plus mr-1"></i> Tambah Karyawan
-                        </a>
+                        <x-tw.button id="refreshTable" variant="secondary" size="sm"><i class="fas fa-sync-alt" aria-hidden="true"></i> Refresh</x-tw.button>
                     </div>
                 </div>
 
@@ -61,7 +66,7 @@
                 </div>
                 @endif
                 <div class="table-responsive">
-                    <table id="empTable" class="table table-bordered table-hover table-striped mb-0">
+                    <table id="empTable" class="table table-bordered table-hover mb-0 ts-idx-tbl">
                         <thead class="bg-light">
                             <tr>
                                 <th scope="col" class="text-nowrap" style="width:1%;">No</th>
@@ -70,7 +75,7 @@
                                 <th scope="col" class="text-nowrap" style="width:1%;">Bank / Rekening</th>
                                 <th scope="col" class="text-nowrap" style="width:1%;">PTKP</th>
                                 <th scope="col" class="text-nowrap" style="width:1%;">Status</th>
-                                <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
+                                <th scope="col" class="text-center text-nowrap" style="width:1%;"><span class="sr-only">Aksi</span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -103,25 +108,21 @@
                                     </span>
                                 </td>
                                 <td class="text-center action-column">
+                                    {{-- Detail dibuka lewat klik baris. Dua aksi (Edit, Hapus) = satu tombol titik tiga. --}}
                                     <div class="action-buttons ts-actions">
-
-                                        <a href="{{ url('/employee/' . $emp->id . '/edit') }}"
-                                           class="ts-action-primary is-neutral"
-                                           title="Edit" aria-label="Edit {{ $emp->name }}">
-                                            <i class="fas fa-pen" aria-hidden="true"></i><span class="ts-al">Edit</span>
-                                        </a>
-
+                                        <button type="button" class="btn-show js-row-open d-none" data-id="{{ $emp->id }}" tabindex="-1" aria-hidden="true"></button>
                                         <button type="button" class="ts-action-more"
                                                 aria-haspopup="true" aria-expanded="false"
-                                                title="Aksi lain" aria-label="Aksi lain untuk {{ $emp->name }}">
+                                                title="Aksi" aria-label="Aksi untuk {{ $emp->name }}">
                                             <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
                                         </button>
 
                                         <div class="ts-action-menu dropdown-menu" hidden>
-
-                                            <button type="button" class="dropdown-item btn-show" data-id="{{ $emp->id }}">
-                                                <i class="fas fa-eye"></i>Detail
-                                            </button>
+                                            <a href="{{ url('/employee/' . $emp->id . '/edit') }}"
+                                           class="dropdown-item"
+                                           title="Edit" aria-label="Edit {{ $emp->name }}">
+                                            <i class="fas fa-pen"></i>Edit
+                                        </a>
 
                                             <div class="dropdown-divider"></div>
 
@@ -129,9 +130,7 @@
                                                     data-id="{{ $emp->id }}" data-name="{{ $emp->name }}">
                                                 <i class="fas fa-trash"></i>Hapus
                                             </button>
-
                                         </div>
-
                                     </div>
                                 </td>
                             </tr>
@@ -143,10 +142,8 @@
                         </tbody>
                     </table>
                 </div>
-
-            </div>
-        </div>
-
+        </x-tw.card>
+      </div>
     </div>
 </div>
 
@@ -214,6 +211,7 @@
 @endsection
 
 @push('styles')
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
 .card-header .btn, .card-header .btn-sm { border-radius:var(--radius-sm); font-weight:600; }
 .custom-toolbar      { display:flex; justify-content:space-between; align-items:flex-start; gap:15px; flex-wrap:wrap; }
@@ -251,12 +249,25 @@
     #customSearch input  { width:100%; }
     .ts-wrapper          { width:100% !important; min-width:0 !important; }
 }
+#empTable tbody tr:not(:has(td[colspan])) { cursor:pointer; }
 </style>
 @endpush
 
 @push('scripts')
 <script>
 $(function () {
+
+    /* Klik di mana saja pada baris membuka detail (atau edit bila tidak ada detail) — pola Cost
+       Request. Kontrol di dalam baris (tombol, tautan, menu aksi, kontrol responsif) bekerja sendiri. */
+    $(document).on('click', '#empTable tbody tr', function (e) {
+        if ($(e.target).closest('a, button, input, select, textarea, label, form, .ts-actions, .ts-action-menu, td.dtr-control').length) return;
+        if (window.getSelection && String(window.getSelection()).length) return;
+        var href = $(this).attr('data-href');
+        if (href) { window.location.href = href; return; }
+        $(this).find('.js-row-open').first().trigger('click');
+    });
+    // Tombol melayang (HP) memicu tombol "Tambah" di header yang disembunyikan.
+    $('.ts-fab[data-trigger]').on('click', function () { $($(this).data('trigger')).trigger('click'); });
 
     var table = null;
 

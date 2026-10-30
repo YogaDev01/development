@@ -7,14 +7,39 @@
 <!-- MAIN CONTENT -->
 <div class="content">
     <div class="container-fluid">
+      <div class="ts-index tw:flex tw:flex-col tw:gap-4 tw:py-4">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Purchase Order</h1>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
-                <li class="breadcrumb-item"><a href="#">Finance</a></li>
+        {{-- Judul & breadcrumb topbar: shell memindahkan <h1> dan .breadcrumb pertama ke topbar
+             (tesys-shell.js hoistPageTitle); disembunyikan secara visual. --}}
+        <div class="tw:sr-only">
+            <h1>Purchase Order</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">Finance</li>
                 <li class="breadcrumb-item active">Purchase Order</li>
             </ol>
         </div>
+
+        @php
+            $bolehTambahPO = Auth::user()->hasRole(['superadmin','head']);
+            // Centang bulk Verify/Approve/Minta Revisi hanya untuk peran yang punya tahap itu.
+            $bolehBulkPO = Auth::user()->hasRole(['superadmin','finance','finance_manager','approver']);
+        @endphp
+        <x-tw.page-header title="Daftar Purchase Order"
+            description="PO pelanggan beserta progres, margin, penagihan, dan persetujuannya.">
+            @if($bolehTambahPO)
+            <x-slot:actions>
+                <x-tw.button href="{{ url('/project/create') }}" class="ts-add-btn tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Tambah PO</x-tw.button>
+            </x-slot:actions>
+            @endif
+        </x-tw.page-header>
+
+        @if($bolehTambahPO)
+        {{-- Mobile: tombol di header disembunyikan dan diganti tombol melayang (tesys-ui-refine.css). --}}
+        <a href="{{ url('/project/create') }}" class="ts-fab" aria-label="Tambah PO" title="Tambah PO">
+            <i class="fas fa-plus" aria-hidden="true"></i>
+        </a>
+        @endif
+
 
         <!-- SUMMARY WORKFLOW (clickable, filter tabel Purchase Order) -->
         @php
@@ -39,20 +64,10 @@
                 ['Closed',        $summary['closed'],        'dark',      'CLOSED'],
             ];
         @endphp
-        <x-workflow-stepper :steps="$poSteps" :compact="true" table="projectTable" field="status" />
+        <x-workflow-stepper :steps="$poSteps" :compact="true" table="projectTable" field="status" :groups="[['Fase 1: Pengajuan', ['DRAFT','SUBMITTED','VERIFIED']], ['Fase 2: Persiapan', ['EARLY_START','WAITING_PO']], ['Fase 3: Pelaksanaan', ['ACTIVE','PROGRESS_DONE']], ['Fase 4: Penagihan', ['PARTIALLY_INVOICED','PARTIALLY_PAID','PAID','CLOSED']]]" />
 
-        <div class="card card-primary card-outline shadow-sm mt-3">
-
-            <div class="card-header d-flex align-items-center">
-                <h3 class="card-title"><i class="fas fa-file-contract mr-1"></i> Daftar Purchase Order</h3>
-                <div class="ml-auto d-flex" style="gap:8px;">
-                    <button id="refreshTable" class="btn btn-secondary btn-sm">
-                        <i class="fas fa-sync-alt mr-1"></i> Refresh
-                    </button>
-                </div>
-            </div>
-
-            <div class="card-body">
+        {{-- Kartu tunggal: toolbar + tabel + paginasi (pola Cost Request). --}}
+        <x-tw.card padding="sm">
 
                 {{-- Daftar dibatasi 1.000 baris terbaru (Concerns\CapsLargeLists);
                      angka pada stepper tetap dihitung dari seluruh data. --}}
@@ -79,6 +94,15 @@
                         <div id="poRowFilters" class="d-flex flex-wrap" style="gap:8px;"></div>
                     </div>
                     <div class="custom-toolbar-right d-flex flex-wrap align-items-center" style="gap:8px;">
+                        @if($bolehBulkPO)
+                        {{-- Bar bulk: muncul bila ada PO yang dicentang (satu status per proses). --}}
+                        <div class="po-bulk-bar d-none tw:flex-wrap tw:items-center tw:gap-2 tw:rounded-md tw:border tw:border-accent-soft tw:bg-accent-tint tw:py-1 tw:pl-3 tw:pr-1">
+                            <span class="po-bulk-info tw:font-label tw:tabular-nums"></span>
+                            <x-tw.button size="sm" class="po-bulk-approve"><i class="fas fa-check" aria-hidden="true"></i> <span class="po-bulk-approve-label">Approve</span></x-tw.button>
+                            <x-tw.button variant="danger" size="sm" class="po-bulk-revise"><i class="fas fa-undo" aria-hidden="true"></i> Minta Revisi</x-tw.button>
+                            <x-tw.button variant="ghost" size="sm" class="po-bulk-clear" title="Batalkan pilihan" aria-label="Batalkan pilihan"><i class="fas fa-times" aria-hidden="true"></i></x-tw.button>
+                        </div>
+                        @endif
                         {{-- Kolom uang (Contract, PO Value, Margin, Received Payment, Gross/Net
                              Profit, Overhead, Fixed Cost) hanya untuk Superadmin/Approver/Finance
                              Manager — daftar perannya sama dengan Project::FULL_EDIT_ROLES. Peran
@@ -125,25 +149,21 @@
                         </div>
                         @endif
                         @if(Auth::user()->hasRole(['superadmin','approver']))
-                        <a href="{{ route('project.export-excel') }}" id="btnExportPO" class="btn btn-outline-success btn-sm">
-                            <i class="fas fa-file-excel mr-1"></i> Export Excel
-                        </a>
+                        <x-tw.button href="{{ route('project.export-excel') }}" id="btnExportPO" variant="secondary" size="sm">
+                            <i class="fas fa-file-excel" aria-hidden="true"></i> Export Excel
+                        </x-tw.button>
                         @endif
-                        @if(Auth::user()->hasRole(['superadmin','head']))
-                        <a href="{{ url('/project/create') }}" class="btn btn-success btn-sm">
-                            <i class="fas fa-plus mr-1"></i> Tambah PO
-                        </a>
-                        @endif
+                        <x-tw.button id="refreshTable" variant="secondary" size="sm"><i class="fas fa-sync-alt" aria-hidden="true"></i> Refresh</x-tw.button>
                     </div>
                 </div>
 
                 <!-- TABLE -->
                 <div class="po-table-wrap" id="poTableWrap">
-                    <table id="projectTable" class="table table-bordered mb-0">
+                    <table id="projectTable" class="table table-bordered table-hover mb-0 ts-idx-tbl">
                         <thead class="bg-light">
                             <tr>
                                 <th scope="col" class="text-nowrap" style="width:1%;">No</th>
-                                <th scope="col" class="text-nowrap po-col-kode" style="width:1%;">Kode</th>
+                                <th scope="col" class="text-nowrap po-col-kode" style="width:1%;">@if($bolehBulkPO)<input type="checkbox" class="po-check-all mr-1" aria-label="Pilih semua PO yang bisa diproses" style="vertical-align:middle;">@endif Kode</th>
                                 <th scope="col">Scope of Work</th>
                                 <th scope="col" class="text-center text-nowrap" style="width:1%;">Status</th>
                                 <th scope="col" class="text-center text-nowrap" style="width:1%;">Tipe</th>
@@ -167,7 +187,7 @@
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Overhead</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Fixed Cost</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Net Profit</th>
-                                <th scope="col" class="text-center action-column" style="width:1%;">Action</th>
+                                <th scope="col" class="text-center action-column" style="width:1%;"><span class="sr-only">Aksi</span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -225,7 +245,10 @@
                                 | atribut HTML, jadi menutup tampilannya saja
                                 | tidak menutup apa pun.
                                 */
-                                $poNilai = fn ($isi) => $canSeePoValue ? $isi : '—';
+                                // Nilai nol di kolom uang tabel daftar ditulis "-".
+                                $poNilai = fn ($isi) => ! $canSeePoValue
+                                    ? '—'
+                                    : (in_array(trim((string) $isi), ['0', '-0', ''], true) ? '-' : $isi);
                                 $poRaw   = fn ($v) => $canSeePoValue ? $v : 0;
                                 $workBadge    = \App\Models\Project::progressBadge($project->workProgressStatus());
                                 $billingBadge = \App\Models\Project::progressBadge($project->billingProgressStatus());
@@ -234,7 +257,7 @@
                                 $monLabels = ['NOT_YET' => 'Not Yet', 'ON_GOING' => 'On Going', 'DONE' => 'Done'];
                                 $monLabel  = fn ($v) => $monLabels[$v] ?? $v;
                             @endphp
-                            <tr data-id="{{ $project->id }}"
+                            <tr data-id="{{ $project->id }}" data-code="{{ $project->code }}"
                                 data-status="{{ $project->status }}"
                                 data-customer="{{ $project->customer->name ?? '' }}"
                                 data-financing="{{ $project->financing ?? '' }}"
@@ -243,7 +266,18 @@
                                 <td class="text-nowrap">{{ $loop->iteration }}</td>
 
                                 <td class="text-nowrap po-col-kode">
-                                    <button type="button" class="po-code-link" data-id="{{ $project->id }}" title="Detail PO">{{ $project->code ?? '-' }}</button>
+                                    @if($bolehBulkPO)
+                                    @php
+                                        // Hak centang dihitung di server: tahap sesuai status + role (sama dengan tombol aksi).
+                                        $eligBulkPO = ($project->status === 'SUBMITTED' && Auth::user()->hasRole(['superadmin','finance','finance_manager']))
+                                            || ($project->status === 'VERIFIED' && Auth::user()->hasRole(['superadmin','approver']));
+                                    @endphp
+                                    <input type="checkbox" class="po-check-row mr-1" value="{{ $project->id }}" data-elig="{{ $eligBulkPO ? '1' : '0' }}"
+                                           style="vertical-align:middle;" aria-label="Pilih PO {{ $project->code }}"
+                                           @unless($eligBulkPO) disabled title="Tidak ada tahap approval untuk Anda pada PO ini" @endunless>
+                                    @endif
+                                    {{-- Klik kode = salin; detail dibuka lewat klik baris. --}}
+                                    <button type="button" class="ts-copy-code" data-code="{{ $project->code }}" title="Klik untuk menyalin kode">{{ $project->code ?? '-' }}</button>
                                 </td>
 
                                 <td>
@@ -421,108 +455,103 @@
                                             || $bolehClosing || $bolehVerClosing || $bolehFinanceClose || $bolehHapus;
                                     @endphp
 
+                                    @php
+                                        // Edit turun ke menu setiap kali slot aksi utama sudah dipakai cabang yang
+                                        // berada SEBELUM Edit di rantai @elseif aksi utama (peran FULL_EDIT_ROLES
+                                        // tetap punya jalan masuk, mis. Aktifkan saat Waiting PO).
+                                        $editDiMenu     = $bolehEditPenuh && ($bolehSubmit || $bolehVerify || $bolehApprove
+                                            || $bolehWaitingPo || $bolehClosing || $bolehVerClosing);
+                                        $tambahPoDiMenu = $bolehWaitingPo;
+                                        // Submit BAST menempati slot aksi utama hanya kalau slot itu masih kosong.
+                                        $bastDiMenu = $bolehBast && ($bolehSubmit || $bolehVerify || $bolehApprove || $bolehWaitingPo
+                                            || $bolehClosing || $bolehVerClosing || $bolehEditPenuh);
+                                        // Close turun ke menu kalau slot utama sudah dipakai Submit Closing.
+                                        $financeCloseDiMenu = $bolehFinanceClose && $bolehClosing;
+
+                                        // Satu tombol saja per baris: tepat 1 aksi = tombol aksinya; lebih dari 1 =
+                                        // satu tombol ⋮ berisi semua aksi (aksi utama di atas, mundur/merusak dipisah
+                                        // garis). Detail dibuka lewat klik baris, jadi tidak ada item "Detail".
+                                        $adaUtama = $bolehSubmit || $bolehVerify || $bolehApprove || $bolehWaitingPo || $bolehClosing
+                                            || $bolehFinanceClose || $bolehVerClosing || $bolehEditPenuh || $bolehBast;
+                                        $aksiTambahan = ($editDiMenu ? 1 : 0) + ($financeCloseDiMenu ? 1 : 0) + ($bastDiMenu ? 1 : 0)
+                                            + ($tambahPoDiMenu ? 1 : 0) + ($bolehRevise ? 1 : 0) + ($bolehVerClosing ? 1 : 0) + ($bolehHapus ? 1 : 0);
+                                        $jumlahAksi = ($adaUtama ? 1 : 0) + $aksiTambahan;
+                                        $satuAksi   = $jumlahAksi === 1;
+                                        $kls    = $satuAksi ? 'ts-action-primary' : 'dropdown-item';
+                                        $lbl    = $satuAksi ? 'ts-al' : '';
+                                        $netral = $satuAksi ? 'is-neutral' : '';
+                                        ob_start();
+                                    @endphp
+                                    @if($bolehSubmit)
+                                    <form action="{{ url('/project/' . $project->id . '/submit') }}"
+                                          method="POST" class="frmSubmitProject {{ $satuAksi ? 'd-inline' : '' }}" target="_blank">
+                                        @csrf
+                                        <button type="submit" class="{{ $kls }}" title="Submit ke Finance">
+                                            <i class="fas fa-paper-plane"></i><span class="{{ $lbl }}">Submit</span>
+                                        </button>
+                                    </form>
+                                    @elseif($bolehVerify)
+                                    <button type="button" class="{{ $kls }} btn-verify-po"
+                                            data-id="{{ $project->id }}" data-name="{{ $project->name }}"
+                                            title="Verifikasi">
+                                        <i class="fas fa-check"></i><span class="{{ $lbl }}">Verify</span>
+                                    </button>
+                                    @elseif($bolehApprove)
+                                    <button type="button" class="{{ $kls }} btn-approve-po"
+                                            data-id="{{ $project->id }}" data-name="{{ $project->name }}"
+                                            title="Approve">
+                                        <i class="fas fa-check-double"></i><span class="{{ $lbl }}">Approve</span>
+                                    </button>
+                                    @elseif($bolehWaitingPo)
+                                    <a href="{{ url('/project/' . $project->id . '/activate') }}"
+                                       class="{{ $kls }}" title="Lengkapi Data &amp; Aktifkan" target="_blank">
+                                        <i class="fas fa-play-circle" aria-hidden="true"></i><span class="{{ $lbl }}">Aktifkan</span>
+                                    </a>
+                                    @elseif($bolehClosing)
+                                    <button type="button" class="{{ $kls }} btn-submit-closing"
+                                            data-id="{{ $project->id }}" data-name="{{ $project->name }}"
+                                            title="Submit MoM Closing">
+                                        <i class="fas fa-file-contract"></i><span class="{{ $lbl }}">Submit Closing</span>
+                                    </button>
+                                    @elseif($bolehFinanceClose)
+                                    <button type="button" class="{{ $kls }} btn-finance-close"
+                                            data-id="{{ $project->id }}" data-name="{{ $project->name }}"
+                                            title="Tutup PO">
+                                        <i class="fas fa-lock"></i><span class="{{ $lbl }}">Close</span>
+                                    </button>
+                                    @elseif($bolehVerClosing)
+                                    <button type="button" class="{{ $kls }} btn-verify-closing"
+                                            data-id="{{ $project->id }}" data-name="{{ $project->name }}"
+                                            title="Approve Closing">
+                                        <i class="fas fa-check"></i><span class="{{ $lbl }}">Approve Closing</span>
+                                    </button>
+                                    @elseif($bolehEditPenuh)
+                                    <a href="{{ url('/project/' . $project->id . '/edit') }}"
+                                       class="{{ $kls }} {{ $netral }}" title="Edit" target="_blank">
+                                        <i class="fas fa-pen" aria-hidden="true"></i><span class="{{ $lbl }}">Edit</span>
+                                    </a>
+                                    @elseif($bolehBast)
+                                    <a href="{{ url('/project/' . $project->id . '/submit-bast') }}"
+                                       class="{{ $kls }}" title="Submit BAST" target="_blank">
+                                        <i class="fas fa-file-signature" aria-hidden="true"></i><span class="{{ $lbl }}">Submit BAST</span>
+                                    </a>
+                                    @endif
+                                    @php $htmlUtama = ob_get_clean(); @endphp
+
                                     <div class="action-buttons ts-actions">
 
-                                        {{-- Tanpa aksi, barisnya tetap punya jalan masuk ke detail --}}
-                                        @unless($adaAksi)
-                                        <button type="button" class="ts-action-primary is-neutral po-summary-link"
-                                                data-id="{{ $project->id }}"
-                                                title="Lihat detail" aria-label="Lihat detail {{ $project->code }}">
-                                            <i class="fas fa-eye" aria-hidden="true"></i>
-                                        </button>
-                                        @endunless
-
-                                        {{-- AKSI UTAMA — satu per baris, selalu bernama --}}
-
-                                        @if($bolehSubmit)
-                                        <form action="{{ url('/project/' . $project->id . '/submit') }}"
-                                              method="POST" class="frmSubmitProject d-inline" target="_blank">
-                                            @csrf
-                                            <button type="submit" class="ts-action-primary" title="Submit ke Finance">
-                                                <i class="fas fa-paper-plane"></i><span class="ts-al">Submit</span>
-                                            </button>
-                                        </form>
-                                        @elseif($bolehVerify)
-                                        <button type="button" class="ts-action-primary btn-verify-po"
-                                                data-id="{{ $project->id }}" data-name="{{ $project->name }}"
-                                                title="Verifikasi">
-                                            <i class="fas fa-check"></i><span class="ts-al">Verify</span>
-                                        </button>
-                                        @elseif($bolehApprove)
-                                        <button type="button" class="ts-action-primary btn-approve-po"
-                                                data-id="{{ $project->id }}" data-name="{{ $project->name }}"
-                                                title="Approve">
-                                            <i class="fas fa-check-double"></i><span class="ts-al">Approve</span>
-                                        </button>
-                                        @elseif($bolehWaitingPo)
-                                        <a href="{{ url('/project/' . $project->id . '/activate') }}"
-                                           class="ts-action-primary" title="Lengkapi Data &amp; Aktifkan" target="_blank">
-                                            <i class="fas fa-play-circle" aria-hidden="true"></i><span class="ts-al">Aktifkan</span>
-                                        </a>
-                                        @elseif($bolehClosing)
-                                        <button type="button" class="ts-action-primary btn-submit-closing"
-                                                data-id="{{ $project->id }}" data-name="{{ $project->name }}"
-                                                title="Submit MoM Closing">
-                                            <i class="fas fa-file-contract"></i><span class="ts-al">Submit Closing</span>
-                                        </button>
-                                        @elseif($bolehFinanceClose)
-                                        <button type="button" class="ts-action-primary btn-finance-close"
-                                                data-id="{{ $project->id }}" data-name="{{ $project->name }}"
-                                                title="Tutup PO">
-                                            <i class="fas fa-lock"></i><span class="ts-al">Close</span>
-                                        </button>
-                                        @elseif($bolehVerClosing)
-                                        <button type="button" class="ts-action-primary btn-verify-closing"
-                                                data-id="{{ $project->id }}" data-name="{{ $project->name }}"
-                                                title="Approve Closing">
-                                            <i class="fas fa-check"></i><span class="ts-al">Approve Closing</span>
-                                        </button>
-                                        @elseif($bolehEditPenuh)
-                                        <a href="{{ url('/project/' . $project->id . '/edit') }}"
-                                           class="ts-action-primary is-neutral" title="Edit" target="_blank">
-                                            <i class="fas fa-pen" aria-hidden="true"></i><span class="ts-al">Edit</span>
-                                        </a>
-                                        @elseif($bolehBast)
-                                        <a href="{{ url('/project/' . $project->id . '/submit-bast') }}"
-                                           class="ts-action-primary" title="Submit BAST" target="_blank">
-                                            <i class="fas fa-file-signature" aria-hidden="true"></i><span class="ts-al">Submit BAST</span>
-                                        </a>
-                                        @endif
-
-                                        {{-- AKSI LAIN — termasuk semua aksi mundur/merusak --}}
-                                        @php
-                                            // Edit hanya masuk menu bila slot aksi utama sudah terpakai
-                                            // Submit atau Approve, supaya tidak muncul dua kali.
-                                            // Edit turun ke menu setiap kali slot aksi utama sudah
-                                            // dipakai cabang yang berada SEBELUM Edit di rantai
-                                            // @elseif di atas. Tanpa mendaftar semuanya, peran yang
-                                            // boleh mengedit di semua status (Project::FULL_EDIT_ROLES)
-                                            // kehilangan jalan masuknya begitu barisnya punya aksi
-                                            // lain — mis. Aktifkan saat Waiting PO.
-                                            $editDiMenu     = $bolehEditPenuh && ($bolehSubmit || $bolehVerify || $bolehApprove
-                                                || $bolehWaitingPo || $bolehClosing || $bolehVerClosing);
-                                            $tambahPoDiMenu = $bolehWaitingPo;
-                                            // Submit BAST menempati slot aksi utama hanya kalau slot itu
-                                            // masih kosong; bila sudah dipakai aksi yang lebih mendesak
-                                            // (Approve Closing, dsb.) ia turun ke menu — tetap satu klik
-                                            // lebih dekat daripada harus lewat modal detail.
-                                            $bastDiMenu = $bolehBast && ($bolehSubmit || $bolehVerify || $bolehApprove || $bolehWaitingPo
-                                                || $bolehClosing || $bolehVerClosing || $bolehEditPenuh);
-                                            // Close turun ke menu kalau slot utama sudah dipakai
-                                            // Submit Closing (Head/Superadmin pada PO yang sama).
-                                            $financeCloseDiMenu = $bolehFinanceClose && $bolehClosing;
-                                            $adaMenu = $editDiMenu || $tambahPoDiMenu || $bastDiMenu || $bolehRevise
-                                                || $bolehVerClosing || $financeCloseDiMenu || $bolehHapus;
-                                        @endphp
-
-                                        @if($adaMenu)
+                                        @if($satuAksi)
+                                        {!! $htmlUtama !!}
+                                        @elseif($jumlahAksi > 1)
                                         <button type="button" class="ts-action-more"
                                                 aria-haspopup="true" aria-expanded="false"
-                                                title="Aksi lain" aria-label="Aksi lain untuk {{ $project->code }}">
+                                                title="Aksi" aria-label="Aksi untuk {{ $project->code }}">
                                             <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
                                         </button>
 
                                         <div class="ts-action-menu dropdown-menu" hidden>
+
+                                            {!! $htmlUtama !!}
 
                                             @if($editDiMenu)
                                             <a href="{{ url('/project/' . $project->id . '/edit') }}"
@@ -620,8 +649,8 @@
                     </table>
                 </div>
 
-            </div>
-        </div>
+        </x-tw.card>
+      </div>
 
     </div>
 </div>
@@ -651,7 +680,7 @@
                 <div id="projectDetailContent" style="display:none;">
                     <div class="prj-modal-flex">
                         <!-- LEFT -->
-                        <div class="prj-sidebar dm-side" style="background:var(--charcoal);padding:28px 20px;">
+                        <div class="prj-sidebar dm-side">
 
                             <div class="dm-head">
                                 <button type="button" class="close dm-close" data-dismiss="modal"
@@ -660,42 +689,9 @@
                                 <div id="prjCode" class="dm-code"></div>
                                 <h5 class="dm-title" id="mdlProjectTitle">Detail PO</h5>
                                 <small id="mdlProjectSubtitle" class="dm-sub-hidden"></small>
-
-                                <div class="dm-badges">
-                                    <span id="prjStatusBadge"></span>
-                                </div>
                             </div>
-                            <hr style="border-color:rgba(255,255,255,0.08);">
-                            <div class="mb-3">
-                                <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Customer</span>
-                                <div id="prjCustomer" class="text-white mt-1" style="font-size:12px;"></div>
-                            </div>
-                            <div class="mb-3">
-                                <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Manager</span>
-                                <div id="prjManager" class="text-white mt-1" style="font-size:12px;"></div>
-                            </div>
-                            <div class="mb-3">
-                                <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Nilai Kontrak</span>
-                                <div id="prjValue" style="color:var(--accent);font-size:18px;font-weight:700;margin-top:4px;"></div>
-                            </div>
-                            <div class="mb-3">
-                                <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Nilai PO</span>
-                                <div id="prjPoValue" class="text-white mt-1" style="font-size:13px;font-weight:600;"></div>
-                            </div>
-                            <div class="mb-3">
-                                <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Input By</span>
-                                <div id="prjInputBy" class="text-white mt-1" style="font-size:12px;"></div>
-                            </div>
-                            <div id="prjSideExtra"></div>
-                            <div class="prj-sidebar-spacer"></div>
-
-                            {{-- Aksi dokumen duduk di kaki panel gelap. Dulu ia
-                                 berada di pita footer bersama tombol Close. --}}
-                            <div class="dm-actions">
-                                <a id="prjEditBtn" href="#" class="btn btn-warning btn-sm" style="display:none;">
-                                    <i class="fas fa-edit mr-1"></i> Edit
-                                </a>
-                            </div>
+                            {{-- Customer & Manager sudah ada di daftar Info; elemen ini dijaga untuk JS lama. --}}
+                            <span id="prjCustomer" hidden></span><span id="prjManager" hidden></span>
                         </div>
 
                         <!-- RIGHT TABS -->
@@ -703,7 +699,7 @@
                             <ul class="nav nav-tabs mb-3" id="prjDetailTabs" style="border-bottom:2px solid var(--border);flex-wrap:wrap;">
                                 <li class="nav-item">
                                     <a class="nav-link active" data-toggle="tab" href="#prjPaneInfo" style="font-size:12px;font-weight:600;padding:8px 10px;">
-                                        <i class="fas fa-clipboard-list mr-1"></i> Summary
+                                        <i class="fas fa-clipboard-list mr-1"></i> Info
                                     </a>
                                 </li>
                                 <li class="nav-item">
@@ -763,6 +759,19 @@
                             <div class="tab-content">
                                 <!-- TAB SUMMARY -->
                                 <div class="tab-pane fade show active" id="prjPaneInfo">
+                                    {{-- Kartu ringkasan (pola "Nilai pengajuan" drawer Cost Request). --}}
+                                    <div class="prj-figcard mb-3">
+                                        <div class="prj-fig-label">Nilai Kontrak</div>
+                                        <div id="prjValue" class="prj-fig-big"></div>
+                                        <div class="prj-fig-chips"><span id="prjStatusBadge"></span></div>
+                                        <div class="prj-fig-sub">
+                                            <div>
+                                                <div class="prj-fig-label">Nilai PO</div>
+                                                <div id="prjPoValue" class="prj-fig-val"></div>
+                                            </div>
+                                        </div>
+                                        <div id="prjSideExtra" class="prj-fig-extra"></div>
+                                    </div>
                                     <!-- KPI strip -->
                                     <div id="prjSummaryKpi" class="mb-3"></div>
 
@@ -795,6 +804,10 @@
                                         <div class="ts-deflist-row">
                                             <span class="ts-deflist-label">Tipe</span>
                                             <span id="infoType" class="ts-deflist-value"></span>
+                                        </div>
+                                        <div class="ts-deflist-row">
+                                            <span class="ts-deflist-label">Input By</span>
+                                            <span id="prjInputBy" class="ts-deflist-value"></span>
                                         </div>
                                         @if(!Auth::user()->hasRole(['head']))
                                         <div class="ts-deflist-row">
@@ -1021,11 +1034,22 @@
                                 <!-- TAB LOG -->
                                 <div class="tab-pane fade" id="prjPaneLogs">
                                     <div id="prjLogBody" class="prj-chat"></div>
+                                    {{-- Kotak catatan gaya chat (sama dengan tab Log Cost Request); disembunyikan JS saat Closed. --}}
+                                    <form id="prjLogForm" class="prj-log-form" hidden>
+                                        <textarea id="prjLogInput" class="form-control" rows="2" maxlength="1000"
+                                                  placeholder="Tulis catatan atau update…" aria-label="Catatan log"></textarea>
+                                        <button type="submit" class="btn btn-sm btn-primary" id="prjLogSend"><i class="fas fa-paper-plane mr-1"></i> Kirim</button>
+                                    </form>
+                                    <div id="prjLogClosed" class="prj-log-closed" hidden><i class="fas fa-lock mr-1"></i> Purchase Order sudah Closed — catatan baru tidak dapat ditambahkan.</div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
+            {{-- Kaki panel: aksi dokumen (pola drawer Cost Request). Tampil/sembunyi lewat JS. --}}
+            <div class="modal-footer prj-dm-foot">
+                <a id="prjEditBtn" href="#" class="ts-action-primary" style="display:none;"><i class="fas fa-edit" aria-hidden="true"></i><span class="ts-al">Edit</span></a>
             </div>
         </div>
     </div>

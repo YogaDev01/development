@@ -66,6 +66,11 @@ class RequestStatusLog extends Model
         'second_payment_paid'         => 'Second Payment Telah Dibayar',
         'second_payment_takeout'      => 'Second Payment Di-takeout dari Batch',
         'second_payment_batch_rejected' => 'Batch Second Payment Ditolak',
+
+        // Treasury — aksi atas 1 CR di batch PENDING_APPROVER.
+        'batch_takeout'               => 'Di-takeout dari Batch → Approved',
+        'batch_item_rejected'         => 'Ditolak dari Batch',
+        'second_payment_rejected'     => 'Second Payment Ditolak → Settle Rejected',
     ];
 
     /*
@@ -107,10 +112,11 @@ class RequestStatusLog extends Model
             'head_rejected', 'finance_rejected',
             'ceo_rejected', 'cr_rejected',
             'realization_rejected', 'cancelled',
-            'all_items_takeout'                             => 'danger',
+            'all_items_takeout', 'batch_item_rejected',
+            'second_payment_rejected'                       => 'danger',
             'head_revised', 'finance_revised', 'revised',
             'realization_submitted',
-            'item_takeout', 'item_restore'                  => 'warning',
+            'item_takeout', 'item_restore', 'batch_takeout' => 'warning',
             'second_payment_paid'                           => 'success',
             'second_payment_takeout',
             'second_payment_batch_rejected'                 => 'danger',

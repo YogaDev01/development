@@ -98,13 +98,104 @@ class BudgetPlanDetail extends Model
             return $this->usedAmountCache;
         }
 
-        return $this->usedAmountCache = (int) $this->costRequestDetails()
-            ->whereHas('budgetRequest', function ($q) {
-                $q->disbursed();
+        /*
+         | Sejak Settlement Custom COA (25 Okt 2026) nilainya dari
+         | BudgetRequest::costUnits() — satu sumber per (CR, sub-item): CA yang
+         | settlement-nya sudah diajukan memakai baris settlement yang Sub COA
+         | efektifnya sub-item ini (termasuk baris yang dipindah ke sini, tidak
+         | termasuk yang dipindah keluar); selainnya nilai pengajuan.
+         */
+        return $this->usedAmountCache = (int) $this->costLines()->sum('value');
+    }
+
+    /** Cache in-memory per instance — lihat costLines(). */
+    private ?\Illuminate\Support\Collection $costLinesCache = null;
+
+    /**
+     * Unit biaya (BudgetRequest::costUnits()) milik sub-item ini dari CR yang
+     * sudah cair (scopeDisbursed), masing-masing ditambah kunci
+     * 'budget_request' (model CR-nya). Sumber "Used" sekaligus daftar riwayat
+     * CR di balik sub-item ini — keduanya pasti sejalan.
+     */
+    public function costLines(): \Illuminate\Support\Collection
+    {
+        if ($this->costLinesCache !== null) {
+            return $this->costLinesCache;
+        }
+
+        self::primeCostLines(collect([$this]));
+
+        return $this->costLinesCache;
+    }
+
+    /**
+     * Isi tampilan satu unit costLines() untuk daftar riwayat CR di balik
+     * sub-item (tab Budget CR, modal PO, Daily Transaction). Unit biasa
+     * tampil seperti dulu (catatan, harga & qty item pengajuan); unit dari
+     * baris settlement yang dipindah ke sini / baris tambahan memakai
+     * catatan baris settlement-nya dan harga = nilainya (qty 1).
+     *
+     * @param  array<string, mixed>  $unit
+     * @return array{notes: string, unit_price: int, qty: float, amount: int, is_added: bool, is_moved: bool}
+     */
+    public static function costLineDisplay(array $unit): array
+    {
+        $rd      = $unit['request_detail'];
+        $pindah  = $unit['is_added'] || $unit['is_moved'] || ! $rd;
+        $catatan = $unit['realizations']->pluck('notes')->filter()->implode('; ');
+
+        return [
+            'notes'      => $pindah ? ($catatan ?: ($rd?->notes ?: '-')) : ($rd->notes ?: '-'),
+            'unit_price' => $pindah ? (int) $unit['value'] : (int) $rd->amount,
+            'qty'        => $pindah ? 1.0 : (float) $rd->qty,
+            'amount'     => (int) $unit['value'],
+            'is_added'   => (bool) $unit['is_added'],
+            'is_moved'   => (bool) $unit['is_moved'],
+        ];
+    }
+
+    /**
+     * Muat costLines() untuk banyak sub-item sekaligus (satu set query untuk
+     * seluruh koleksi, bukan per baris) — dipakai halaman yang menelusuri
+     * semua sub-item sebuah Budget Plan.
+     *
+     * @param  \Illuminate\Support\Collection<int, self>  $details
+     */
+    public static function primeCostLines(\Illuminate\Support\Collection $details): void
+    {
+        $details = $details->filter(fn ($d) => $d && $d->id && $d->costLinesCache === null);
+        if ($details->isEmpty()) {
+            return;
+        }
+
+        $ids = $details->pluck('id')->map(fn ($id) => (int) $id)->unique()->values()->all();
+
+        $crs = BudgetRequest::disbursed()
+            ->where(function ($q) use ($ids) {
+                // Item takeout tidak pernah menyumbang (sama seperti costRequestDetails()).
+                $q->whereHas('details', fn ($d) => $d->whereIn('request_detail.budget_detail_id', $ids)->where('request_detail.status', '!=', 'TAKEOUT'));
+
+                // Baris settlement yang dipindah/ditambahkan ke sub-item ini.
+                if (BudgetRequestRealization::hasBudgetDetailColumn()) {
+                    $q->orWhereHas('realizations', fn ($r) => $r->whereIn('budget_request_realizations.budget_detail_id', $ids));
+                }
             })
-            ->with('realization')
-            ->get()
-            ->sum(fn ($d) => $d->realization->total ?? $d->total);
+            ->with(['type', 'beneficiary:id,nickname', 'details', 'realizations'])
+            ->orderBy('id')
+            ->get();
+
+        $perDetail = [];
+        foreach ($crs as $cr) {
+            foreach ($cr->costUnits() as $unit) {
+                if ($unit['budget_detail_id'] && in_array($unit['budget_detail_id'], $ids, true)) {
+                    $perDetail[$unit['budget_detail_id']][] = $unit + ['budget_request' => $cr];
+                }
+            }
+        }
+
+        foreach ($details as $d) {
+            $d->costLinesCache = collect($perDetail[(int) $d->id] ?? []);
+        }
     }
 
     /**

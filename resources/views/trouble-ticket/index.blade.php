@@ -110,7 +110,7 @@
             ['Progress',      $stats['IN_PROGRESS'],   'primary',   'IN_PROGRESS'],
             ['Waiting Approve', $stats['PROGRESS_DONE'], 'success',   'PROGRESS_DONE'],
             ['Closed',        $stats['CLOSED'],        'dark',      'CLOSED'],
-        ]" />
+        ]" :groups="[['Fase 1: Penanganan Awal', ['OPEN','REMOTE']], ['Fase 2: Kunjungan', ['PLAN','TRIP','IN_PROGRESS']], ['Fase 3: Penutupan', ['PROGRESS_DONE','CLOSED']]]" />
 
         <div class="card shadow-sm">
             <div class="card-body">

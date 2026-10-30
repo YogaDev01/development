@@ -1,0 +1,132 @@
+{
+ "login": true,
+ "h": {
+  "ca": [
+   {
+    "k": "padding: var(--crk-p",
+    "aturan": 1,
+    "el": 126,
+    "beda": 126,
+    "contoh": [
+     "6px 0px 6px 0px -> 9px 12px 9px 12px",
+     "6px 96px 6px 0px -> 9px 12px 9px 12px",
+     "0px 0px 0px 0px -> 9px 12px 9px 12px",
+     "8px 0px 6px 0px -> 9px 12px 9px 12px"
+    ]
+   },
+   {
+    "k": "border-width: var(--crk-b",
+    "aturan": 1,
+    "el": 126,
+    "beda": 33,
+    "contoh": [
+     "0px 0px 0px 0px -> 0px 0px 1px 0px",
+     "0px 0px 0px 0px -> 1px 0px 1px 0px"
+    ]
+   },
+   {
+    "k": "\\]\\:text-text\\!",
+    "aturan": 2,
+    "el": 3,
+    "beda": 3,
+    "contoh": [
+     "rgb(37, 24, 27) -> rgb(90, 79, 81)"
+    ]
+   },
+   {
+    "k": "cr-col-check\\]\\:shadow-none\\!",
+    "aturan": 1,
+    "el": 1,
+    "beda": 1,
+    "contoh": [
+     "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px -> rgb(146, 35, 43) 3px 0px 0px 0px inset, rgb(230, 225, 224) 1px 0px 0px 0px"
+    ]
+   }
+  ],
+  "cp": [
+   {
+    "k": "padding: var(--crk-p",
+    "aturan": 1,
+    "el": 104,
+    "beda": 104,
+    "contoh": [
+     "6px 0px 6px 0px -> 9px 12px 9px 12px",
+     "6px 96px 6px 0px -> 9px 12px 9px 12px",
+     "0px 0px 0px 0px -> 9px 12px 9px 12px",
+     "8px 0px 6px 0px -> 9px 12px 9px 12px"
+    ]
+   },
+   {
+    "k": "border-width: var(--crk-b",
+    "aturan": 1,
+    "el": 104,
+    "beda": 31,
+    "contoh": [
+     "0px 0px 0px 0px -> 0px 0px 1px 0px",
+     "0px 0px 0px 0px -> 1px 0px 1px 0px"
+    ]
+   },
+   {
+    "k": "\\]\\:text-text\\!",
+    "aturan": 2,
+    "el": 1,
+    "beda": 1,
+    "contoh": [
+     "rgb(37, 24, 27) -> rgb(90, 79, 81)"
+    ]
+   },
+   {
+    "k": "cr-col-check\\]\\:shadow-none\\!",
+    "aturan": 1,
+    "el": 1,
+    "beda": 1,
+    "contoh": [
+     "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px -> rgb(146, 35, 43) 3px 0px 0px 0px inset, rgb(230, 225, 224) 1px 0px 0px 0px"
+    ]
+   }
+  ],
+  "db": [
+   {
+    "k": "padding: var(--crk-p",
+    "aturan": 1,
+    "el": 103,
+    "beda": 103,
+    "contoh": [
+     "6px 96px 6px 0px -> 9px 12px 9px 12px",
+     "6px 0px 6px 0px -> 9px 12px 9px 12px",
+     "0px 0px 0px 0px -> 9px 12px 9px 12px",
+     "3px 0px 3px 0px -> 9px 12px 9px 12px"
+    ]
+   },
+   {
+    "k": "border-width: var(--crk-b",
+    "aturan": 1,
+    "el": 103,
+    "beda": 21,
+    "contoh": [
+     "0px 0px 0px 0px -> 0px 0px 1px 0px",
+     "0px 0px 0px 0px -> 1px 0px 1px 0px"
+    ]
+   },
+   {
+    "k": "\\]\\:text-text\\!",
+    "aturan": 2,
+    "el": 1,
+    "beda": 1,
+    "contoh": [
+     "rgb(37, 24, 27) -> rgb(90, 79, 81)"
+    ]
+   },
+   {
+    "k": "cr-col-check\\]\\:shadow-none\\!",
+    "aturan": 1,
+    "el": 0,
+    "beda": 0,
+    "contoh": []
+   }
+  ]
+ },
+ "konsol": [],
+ "gagal": [],
+ "stop": 0
+}

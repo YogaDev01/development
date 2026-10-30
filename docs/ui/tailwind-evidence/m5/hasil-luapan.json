@@ -1,0 +1,847 @@
+{
+ "catatan": "Satuan: scrollW/clientW = px CSS; statusKetutup* = px visual (html zoom .8 pada >=901px; di bawahnya zoom 1). statusKetutup0 = bagian kanan sel Status yang masih berada di bawah kolom Action beku saat gulir mendatar = 0 (positif = Status tertutup). statusKetutupMax = idem pada gulir maksimum. Chrome 155 headless, DB uji tesys_f3_pilot, dummy.superadmin.",
+ "sebelum": {
+  "ca-1440": {
+   "scrollW": 1544,
+   "clientW": 1442,
+   "viewW": 1440,
+   "zoom": "0.8",
+   "tableW": 1234.95,
+   "actionW": 70.38,
+   "statusTh": {
+    "l": 1314,
+    "r": 1399,
+    "w": 85
+   },
+   "actionTh": {
+    "l": 1317,
+    "r": 1388
+   },
+   "statusKetutup0": 81.33,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 85.27,
+   "statusKetutupMax": 0.33,
+   "scrollMax": 101.25,
+   "descW": 280.84,
+   "tinggiBarisMax": 46.92,
+   "tinggiBarisMed": 41.95
+  },
+  "cp-1440": {
+   "scrollW": 1442,
+   "clientW": 1442,
+   "viewW": 1440,
+   "zoom": "0.8",
+   "tableW": 1153.63,
+   "actionW": 70.38,
+   "statusTh": {
+    "l": 1234,
+    "r": 1317,
+    "w": 83
+   },
+   "actionTh": {
+    "l": 1317,
+    "r": 1388
+   },
+   "statusKetutup0": 0,
+   "barisKetutup0": 0,
+   "barisStatus": 10,
+   "statusWmax": 83.25,
+   "statusKetutupMax": 0,
+   "scrollMax": 0,
+   "descW": 368.13,
+   "tinggiBarisMax": 46.92,
+   "tinggiBarisMed": 46.92
+  },
+  "db-1440": {
+   "scrollW": 1442,
+   "clientW": 1442,
+   "viewW": 1440,
+   "zoom": "0.8",
+   "tableW": 1153.63,
+   "catatan": "tanpa kolom Action"
+  },
+  "ca-1280": {
+   "scrollW": 1544,
+   "clientW": 1242,
+   "viewW": 1280,
+   "zoom": "0.8",
+   "tableW": 1234.95,
+   "actionW": 70.38,
+   "statusTh": {
+    "l": 1314,
+    "r": 1399,
+    "w": 85
+   },
+   "actionTh": {
+    "l": 1157,
+    "r": 1228
+   },
+   "statusKetutup0": 241.33,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 85.27,
+   "statusKetutupMax": 0.33,
+   "scrollMax": 301.25,
+   "descW": 280.84,
+   "tinggiBarisMax": 46.92,
+   "tinggiBarisMed": 41.95
+  },
+  "cp-1280": {
+   "scrollW": 1345,
+   "clientW": 1242,
+   "viewW": 1280,
+   "zoom": "0.8",
+   "tableW": 1076.36,
+   "actionW": 70.38,
+   "statusTh": {
+    "l": 1157,
+    "r": 1240,
+    "w": 83
+   },
+   "actionTh": {
+    "l": 1157,
+    "r": 1228
+   },
+   "statusKetutup0": 82.73,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 83.25,
+   "statusKetutupMax": 0.73,
+   "scrollMax": 102.5,
+   "descW": 290.86,
+   "tinggiBarisMax": 46.92,
+   "tinggiBarisMed": 46.92
+  },
+  "db-1280": {
+   "scrollW": 1417,
+   "clientW": 1242,
+   "viewW": 1280,
+   "zoom": "0.8",
+   "tableW": 1133.67,
+   "catatan": "tanpa kolom Action"
+  },
+  "ca-1024": {
+   "scrollW": 1544,
+   "clientW": 922,
+   "viewW": 1024,
+   "zoom": "0.8",
+   "tableW": 1234.95,
+   "actionW": 70.38,
+   "statusTh": {
+    "l": 1314,
+    "r": 1399,
+    "w": 85
+   },
+   "actionTh": {
+    "l": 901,
+    "r": 972
+   },
+   "statusKetutup0": 497.33,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 85.27,
+   "statusKetutupMax": 0.33,
+   "scrollMax": 621.25,
+   "descW": 280.84,
+   "tinggiBarisMax": 46.92,
+   "tinggiBarisMed": 41.95
+  },
+  "cp-1024": {
+   "scrollW": 1345,
+   "clientW": 922,
+   "viewW": 1024,
+   "zoom": "0.8",
+   "tableW": 1076.36,
+   "actionW": 70.38,
+   "statusTh": {
+    "l": 1157,
+    "r": 1240,
+    "w": 83
+   },
+   "actionTh": {
+    "l": 901,
+    "r": 972
+   },
+   "statusKetutup0": 338.73,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 83.25,
+   "statusKetutupMax": 0.73,
+   "scrollMax": 422.5,
+   "descW": 290.86,
+   "tinggiBarisMax": 46.92,
+   "tinggiBarisMed": 46.92
+  },
+  "db-1024": {
+   "scrollW": 1417,
+   "clientW": 922,
+   "viewW": 1024,
+   "zoom": "0.8",
+   "tableW": 1133.67,
+   "catatan": "tanpa kolom Action"
+  },
+  "ca-768": {
+   "scrollW": 1543,
+   "clientW": 653,
+   "viewW": 768,
+   "zoom": "1",
+   "tableW": 1542.83,
+   "actionW": 88,
+   "statusTh": {
+    "l": 1401,
+    "r": 1507,
+    "w": 106
+   },
+   "actionTh": {
+    "l": 618,
+    "r": 706
+   },
+   "statusKetutup0": 889.83,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 106.11,
+   "statusKetutupMax": 0,
+   "scrollMax": 890,
+   "descW": 350.61,
+   "tinggiBarisMax": 58,
+   "tinggiBarisMed": 52.25
+  },
+  "cp-768": {
+   "scrollW": 1345,
+   "clientW": 653,
+   "viewW": 768,
+   "zoom": "1",
+   "tableW": 1344.59,
+   "actionW": 88,
+   "statusTh": {
+    "l": 1206,
+    "r": 1309,
+    "w": 104
+   },
+   "actionTh": {
+    "l": 618,
+    "r": 706
+   },
+   "statusKetutup0": 691.59,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 103.59,
+   "statusKetutupMax": 0,
+   "scrollMax": 692,
+   "descW": 363.13,
+   "tinggiBarisMax": 58,
+   "tinggiBarisMed": 58
+  },
+  "db-768": {
+   "scrollW": 1416,
+   "clientW": 653,
+   "viewW": 768,
+   "zoom": "1",
+   "tableW": 1415.72,
+   "catatan": "tanpa kolom Action"
+  },
+  "ca-641": {
+   "scrollW": 1543,
+   "clientW": 526,
+   "viewW": 641,
+   "zoom": "1",
+   "tableW": 1542.83,
+   "actionW": 88,
+   "statusTh": {
+    "l": 1401,
+    "r": 1507,
+    "w": 106
+   },
+   "actionTh": {
+    "l": 491,
+    "r": 579
+   },
+   "statusKetutup0": 1016.83,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 106.11,
+   "statusKetutupMax": 0,
+   "scrollMax": 1017,
+   "descW": 350.61,
+   "tinggiBarisMax": 58,
+   "tinggiBarisMed": 52.25
+  },
+  "cp-641": {
+   "scrollW": 1345,
+   "clientW": 526,
+   "viewW": 641,
+   "zoom": "1",
+   "tableW": 1344.59,
+   "actionW": 88,
+   "statusTh": {
+    "l": 1206,
+    "r": 1309,
+    "w": 104
+   },
+   "actionTh": {
+    "l": 491,
+    "r": 579
+   },
+   "statusKetutup0": 818.59,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 103.59,
+   "statusKetutupMax": 0,
+   "scrollMax": 819,
+   "descW": 363.13,
+   "tinggiBarisMax": 58,
+   "tinggiBarisMed": 58
+  },
+  "db-641": {
+   "scrollW": 1416,
+   "clientW": 526,
+   "viewW": 641,
+   "zoom": "1",
+   "tableW": 1415.72,
+   "catatan": "tanpa kolom Action"
+  },
+  "ca-640": {
+   "scrollW": 553,
+   "clientW": 553,
+   "viewW": 640,
+   "zoom": "1",
+   "tableW": 553,
+   "actionW": 84.13,
+   "statusTh": {
+    "l": 990,
+    "r": 1074,
+    "w": 84
+   },
+   "actionTh": {
+    "l": 39,
+    "r": 123
+   },
+   "statusKetutup0": 540,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 86.11,
+   "statusKetutupMax": 540,
+   "scrollMax": 0,
+   "descW": 118.2,
+   "tinggiBarisMax": 430.8,
+   "tinggiBarisMed": 404.8
+  },
+  "cp-640": {
+   "scrollW": 553,
+   "clientW": 553,
+   "viewW": 640,
+   "zoom": "1",
+   "tableW": 553,
+   "actionW": 84.13,
+   "statusTh": {
+    "l": 770,
+    "r": 854,
+    "w": 84
+   },
+   "actionTh": {
+    "l": 39,
+    "r": 123
+   },
+   "statusKetutup0": 540,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 83.59,
+   "statusKetutupMax": 540,
+   "scrollMax": 0,
+   "descW": 118.2,
+   "tinggiBarisMax": 363.11,
+   "tinggiBarisMed": 363.11
+  },
+  "db-640": {
+   "scrollW": 553,
+   "clientW": 553,
+   "viewW": 640,
+   "zoom": "1",
+   "tableW": 553,
+   "catatan": "tanpa kolom Action"
+  },
+  "ca-390": {
+   "scrollW": 317,
+   "clientW": 317,
+   "viewW": 390,
+   "zoom": "1",
+   "tableW": 317,
+   "actionW": 84.13,
+   "statusTh": {
+    "l": 988,
+    "r": 1072,
+    "w": 84
+   },
+   "actionTh": {
+    "l": 37,
+    "r": 121
+   },
+   "statusKetutup0": 304,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 86.11,
+   "statusKetutupMax": 304,
+   "scrollMax": 0,
+   "descW": 118.2,
+   "tinggiBarisMax": 462.05,
+   "tinggiBarisMed": 452.3
+  },
+  "cp-390": {
+   "scrollW": 317,
+   "clientW": 317,
+   "viewW": 390,
+   "zoom": "1",
+   "tableW": 317,
+   "actionW": 84.13,
+   "statusTh": {
+    "l": 768,
+    "r": 852,
+    "w": 84
+   },
+   "actionTh": {
+    "l": 37,
+    "r": 121
+   },
+   "statusKetutup0": 304,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 83.59,
+   "statusKetutupMax": 304,
+   "scrollMax": 0,
+   "descW": 118.2,
+   "tinggiBarisMax": 394.36,
+   "tinggiBarisMed": 394.36
+  },
+  "db-390": {
+   "scrollW": 317,
+   "clientW": 317,
+   "viewW": 390,
+   "zoom": "1",
+   "tableW": 317,
+   "catatan": "tanpa kolom Action"
+  }
+ },
+ "sesudah": {
+  "ca-1440": {
+   "scrollW": 1442,
+   "clientW": 1442,
+   "viewW": 1440,
+   "zoom": "0.8",
+   "tableW": 1153.63,
+   "actionW": 67.16,
+   "statusTh": {
+    "l": 1239,
+    "r": 1321,
+    "w": 82
+   },
+   "actionTh": {
+    "l": 1321,
+    "r": 1388
+   },
+   "statusKetutup0": 0,
+   "barisKetutup0": 0,
+   "barisStatus": 10,
+   "statusWmax": 82.05,
+   "statusKetutupMax": 0,
+   "scrollMax": 0,
+   "descW": 233.39,
+   "tinggiBarisMax": 56.55,
+   "tinggiBarisMed": 56.55
+  },
+  "cp-1440": {
+   "scrollW": 1442,
+   "clientW": 1442,
+   "viewW": 1440,
+   "zoom": "0.8",
+   "tableW": 1153.63,
+   "actionW": 67.16,
+   "statusTh": {
+    "l": 1241,
+    "r": 1321,
+    "w": 80
+   },
+   "actionTh": {
+    "l": 1321,
+    "r": 1388
+   },
+   "statusKetutup0": 0,
+   "barisKetutup0": 0,
+   "barisStatus": 10,
+   "statusWmax": 80.03,
+   "statusKetutupMax": 0,
+   "scrollMax": 0,
+   "descW": 404.55,
+   "tinggiBarisMax": 48.52,
+   "tinggiBarisMed": 48.52
+  },
+  "db-1440": {
+   "scrollW": 1442,
+   "clientW": 1442,
+   "viewW": 1440,
+   "zoom": "0.8",
+   "tableW": 1153.63,
+   "catatan": "tanpa kolom Action"
+  },
+  "ca-1280": {
+   "scrollW": 1438,
+   "clientW": 1242,
+   "viewW": 1280,
+   "zoom": "0.8",
+   "tableW": 1150.61,
+   "actionW": 67.16,
+   "statusTh": {
+    "l": 1236,
+    "r": 1318,
+    "w": 82
+   },
+   "actionTh": {
+    "l": 1161,
+    "r": 1228
+   },
+   "statusKetutup0": 156.98,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 82.05,
+   "statusKetutupMax": 0,
+   "scrollMax": 196.25,
+   "descW": 230.38,
+   "tinggiBarisMax": 56.55,
+   "tinggiBarisMed": 56.55
+  },
+  "cp-1280": {
+   "scrollW": 1242,
+   "clientW": 1242,
+   "viewW": 1280,
+   "zoom": "0.8",
+   "tableW": 993.63,
+   "actionW": 67.16,
+   "statusTh": {
+    "l": 1081,
+    "r": 1161,
+    "w": 80
+   },
+   "actionTh": {
+    "l": 1161,
+    "r": 1228
+   },
+   "statusKetutup0": 0,
+   "barisKetutup0": 0,
+   "barisStatus": 10,
+   "statusWmax": 80.03,
+   "statusKetutupMax": 0,
+   "scrollMax": 0,
+   "descW": 244.55,
+   "tinggiBarisMax": 56.55,
+   "tinggiBarisMed": 56.55
+  },
+  "db-1280": {
+   "scrollW": 1334,
+   "clientW": 1242,
+   "viewW": 1280,
+   "zoom": "0.8",
+   "tableW": 1067.45,
+   "catatan": "tanpa kolom Action"
+  },
+  "ca-1024": {
+   "scrollW": 1438,
+   "clientW": 922,
+   "viewW": 1024,
+   "zoom": "0.8",
+   "tableW": 1150.61,
+   "actionW": 67.16,
+   "statusTh": {
+    "l": 1236,
+    "r": 1318,
+    "w": 82
+   },
+   "actionTh": {
+    "l": 905,
+    "r": 972
+   },
+   "statusKetutup0": 412.98,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 82.05,
+   "statusKetutupMax": 0,
+   "scrollMax": 516.25,
+   "descW": 230.38,
+   "tinggiBarisMax": 56.55,
+   "tinggiBarisMed": 56.55
+  },
+  "cp-1024": {
+   "scrollW": 1224,
+   "clientW": 922,
+   "viewW": 1024,
+   "zoom": "0.8",
+   "tableW": 979.45,
+   "actionW": 67.16,
+   "statusTh": {
+    "l": 1066,
+    "r": 1146,
+    "w": 80
+   },
+   "actionTh": {
+    "l": 905,
+    "r": 972
+   },
+   "statusKetutup0": 241.83,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 80.03,
+   "statusKetutupMax": 0.83,
+   "scrollMax": 301.25,
+   "descW": 230.38,
+   "tinggiBarisMax": 56.55,
+   "tinggiBarisMed": 56.55
+  },
+  "db-1024": {
+   "scrollW": 1334,
+   "clientW": 922,
+   "viewW": 1024,
+   "zoom": "0.8",
+   "tableW": 1067.45,
+   "catatan": "tanpa kolom Action"
+  },
+  "ca-768": {
+   "scrollW": 1438,
+   "clientW": 653,
+   "viewW": 768,
+   "zoom": "1",
+   "tableW": 1438.03,
+   "actionW": 84,
+   "statusTh": {
+    "l": 1304,
+    "r": 1407,
+    "w": 102
+   },
+   "actionTh": {
+    "l": 622,
+    "r": 706
+   },
+   "statusKetutup0": 785.03,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 102.11,
+   "statusKetutupMax": 0.03,
+   "scrollMax": 785,
+   "descW": 288,
+   "tinggiBarisMax": 70.5,
+   "tinggiBarisMed": 70.5
+  },
+  "cp-768": {
+   "scrollW": 1224,
+   "clientW": 653,
+   "viewW": 768,
+   "zoom": "1",
+   "tableW": 1224.08,
+   "actionW": 84,
+   "statusTh": {
+    "l": 1093,
+    "r": 1193,
+    "w": 100
+   },
+   "actionTh": {
+    "l": 622,
+    "r": 706
+   },
+   "statusKetutup0": 571.08,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 99.59,
+   "statusKetutupMax": 0.08,
+   "scrollMax": 571,
+   "descW": 288,
+   "tinggiBarisMax": 70.5,
+   "tinggiBarisMed": 70.5
+  },
+  "db-768": {
+   "scrollW": 1334,
+   "clientW": 653,
+   "viewW": 768,
+   "zoom": "1",
+   "tableW": 1333.59,
+   "catatan": "tanpa kolom Action"
+  },
+  "ca-641": {
+   "scrollW": 1438,
+   "clientW": 526,
+   "viewW": 641,
+   "zoom": "1",
+   "tableW": 1438.03,
+   "actionW": 84,
+   "statusTh": {
+    "l": 1304,
+    "r": 1407,
+    "w": 102
+   },
+   "actionTh": {
+    "l": 495,
+    "r": 579
+   },
+   "statusKetutup0": 912.03,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 102.11,
+   "statusKetutupMax": 0.03,
+   "scrollMax": 912,
+   "descW": 288,
+   "tinggiBarisMax": 70.5,
+   "tinggiBarisMed": 70.5
+  },
+  "cp-641": {
+   "scrollW": 1224,
+   "clientW": 526,
+   "viewW": 641,
+   "zoom": "1",
+   "tableW": 1224.08,
+   "actionW": 84,
+   "statusTh": {
+    "l": 1093,
+    "r": 1193,
+    "w": 100
+   },
+   "actionTh": {
+    "l": 495,
+    "r": 579
+   },
+   "statusKetutup0": 698.08,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 99.59,
+   "statusKetutupMax": 0.08,
+   "scrollMax": 698,
+   "descW": 288,
+   "tinggiBarisMax": 70.5,
+   "tinggiBarisMed": 70.5
+  },
+  "db-641": {
+   "scrollW": 1334,
+   "clientW": 526,
+   "viewW": 641,
+   "zoom": "1",
+   "tableW": 1333.59,
+   "catatan": "tanpa kolom Action"
+  },
+  "ca-640": {
+   "scrollW": 553,
+   "clientW": 553,
+   "viewW": 640,
+   "zoom": "1",
+   "tableW": 553,
+   "actionW": 84.13,
+   "statusTh": {
+    "l": 990,
+    "r": 1074,
+    "w": 84
+   },
+   "actionTh": {
+    "l": 39,
+    "r": 123
+   },
+   "statusKetutup0": 540,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 86.11,
+   "statusKetutupMax": 540,
+   "scrollMax": 0,
+   "descW": 118.2,
+   "tinggiBarisMax": 430.8,
+   "tinggiBarisMed": 404.8
+  },
+  "cp-640": {
+   "scrollW": 553,
+   "clientW": 553,
+   "viewW": 640,
+   "zoom": "1",
+   "tableW": 553,
+   "actionW": 84.13,
+   "statusTh": {
+    "l": 770,
+    "r": 854,
+    "w": 84
+   },
+   "actionTh": {
+    "l": 39,
+    "r": 123
+   },
+   "statusKetutup0": 540,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 83.59,
+   "statusKetutupMax": 540,
+   "scrollMax": 0,
+   "descW": 118.2,
+   "tinggiBarisMax": 363.11,
+   "tinggiBarisMed": 363.11
+  },
+  "db-640": {
+   "scrollW": 553,
+   "clientW": 553,
+   "viewW": 640,
+   "zoom": "1",
+   "tableW": 553,
+   "catatan": "tanpa kolom Action"
+  },
+  "ca-390": {
+   "scrollW": 317,
+   "clientW": 317,
+   "viewW": 390,
+   "zoom": "1",
+   "tableW": 317,
+   "actionW": 84.13,
+   "statusTh": {
+    "l": 988,
+    "r": 1072,
+    "w": 84
+   },
+   "actionTh": {
+    "l": 37,
+    "r": 121
+   },
+   "statusKetutup0": 304,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 86.11,
+   "statusKetutupMax": 304,
+   "scrollMax": 0,
+   "descW": 118.2,
+   "tinggiBarisMax": 462.05,
+   "tinggiBarisMed": 452.3
+  },
+  "cp-390": {
+   "scrollW": 317,
+   "clientW": 317,
+   "viewW": 390,
+   "zoom": "1",
+   "tableW": 317,
+   "actionW": 84.13,
+   "statusTh": {
+    "l": 768,
+    "r": 852,
+    "w": 84
+   },
+   "actionTh": {
+    "l": 37,
+    "r": 121
+   },
+   "statusKetutup0": 304,
+   "barisKetutup0": 10,
+   "barisStatus": 10,
+   "statusWmax": 83.59,
+   "statusKetutupMax": 304,
+   "scrollMax": 0,
+   "descW": 118.2,
+   "tinggiBarisMax": 394.36,
+   "tinggiBarisMed": 394.36
+  },
+  "db-390": {
+   "scrollW": 317,
+   "clientW": 317,
+   "viewW": 390,
+   "zoom": "1",
+   "tableW": 317,
+   "catatan": "tanpa kolom Action"
+  }
+ }
+}

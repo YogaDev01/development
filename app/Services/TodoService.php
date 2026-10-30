@@ -62,16 +62,27 @@ class TodoService
         'treasuryBatchSecond'     => ['roles' => ['superadmin', 'treasury', 'finance', 'finance_manager'], 'total' => false],
         'treasuryProcess'         => ['roles' => ['superadmin', 'approver', 'guest'], 'status' => ['PENDING_APPROVER']],
         'treasuryReadyToPay'      => ['roles' => ['superadmin', 'treasury', 'finance', 'finance_manager'], 'status' => ['DONE']],
+        // Batch DRAFT belum diajukan ke CEO (DailyTransactionController::submit()). Item di
+        // dalamnya sudah tidak muncul di "Buat Batch", jadi tanpa antrean ini tugasnya hilang.
+        'treasuryDraftSubmit'     => ['roles' => ['superadmin', 'treasury', 'finance', 'finance_manager'], 'status' => ['DRAFT']],
+        // Cost Register — VERIFIED ("Submitted") menunggu Approver (CostRegister::APPROVE_ROLES),
+        // APPROVED yang belum masuk batch aktif menunggu Treasury (= DailyTransactionController::create()).
+        'costRegisterApprove'     => ['roles' => ['superadmin', 'approver'], 'status' => ['VERIFIED']],
+        'costRegisterBatch'       => ['roles' => ['superadmin', 'treasury', 'finance', 'finance_manager'], 'status' => ['APPROVED']],
         // Budget Plan
         'budgetingHeadCheck'      => ['roles' => ['superadmin', 'head'], 'status' => ['SUBMITTED']],
         'budgetingVerify'         => ['roles' => ['superadmin', 'finance', 'finance_manager'], 'status' => ['CHECKED']],
         'budgetingCeoApprove'     => ['roles' => ['superadmin', 'approver', 'guest'], 'status' => ['VERIFIED']],
         'budgetingClosingDue'     => ['roles' => ['superadmin', 'manager'], 'status' => ['CLOSING']],
         'budgetingRejected'       => ['roles' => ['superadmin', 'manager'], 'status' => ['REJECTED']],
+        // CLOSING yang berkas closing-nya SUDAH diajukan manager → Finance verify/reject closing.
+        'budgetingClosingVerify'  => ['roles' => ['superadmin', 'finance', 'finance_manager'], 'status' => ['CLOSING']],
         // Purchase Order, Invoice, Collection
         'poSubmitted'             => ['roles' => ['superadmin', 'finance', 'finance_manager'], 'status' => ['SUBMITTED']],
         // PO VERIFIED menunggu keputusan Approver (ProjectController::approve()); BP bundled ikut disetujui.
         'poVerified'              => ['roles' => ['superadmin', 'approver'], 'status' => ['VERIFIED']],
+        // PO CLOSING (MoM closing sudah diajukan Head) → Finance verify/reject closing.
+        'poClosingVerify'         => ['roles' => ['superadmin', 'finance', 'finance_manager'], 'status' => ['CLOSING']],
         'invoiceVerify'          => ['roles' => ['superadmin', 'finance_manager', 'accounting'], 'status' => ['SUBMITTED']],
         'invoiceApprove'          => ['roles' => ['superadmin', 'finance_manager'], 'status' => ['VERIFIED']],
         'collectionWaitingInvoice' => ['roles' => ['superadmin', 'collection']],

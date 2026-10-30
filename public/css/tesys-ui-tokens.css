@@ -46,15 +46,15 @@
        sedikit lebih gelap daripada --surface-2 (#f4f4f5) agar header tabel,
        chip, dan hover di dalam kartu tetap terbaca sebagai isian lembut,
        bukan menyatu dengan latar. */
-    --bg:            #eeeef0;
+    --bg:            #f3f1ef;
     --surface:       #ffffff;
-    --surface-2:     #f4f4f5;   /* isian lembut: header tabel, chip, hover */
-    --surface-3:     #e9e9eb;   /* isian tekan / pembatas blok             */
-    --border:        #e4e4e7;
-    --border-strong: #d0d0d5;
+    --surface-2:     #f8f6f5;   /* isian lembut: header tabel, chip, hover */
+    --surface-3:     #ece8e7;   /* isian tekan / pembatas blok             */
+    --border:        #e6e1e0;
+    --border-strong: #d6cfcf;
 
-    --text:       #202326;      /* judul & angka                          */
-    --text-dim:   #55595e;      /* teks sekunder                          */
+    --text:       #25181b;      /* judul & angka                          */
+    --text-dim:   #5a4f51;      /* teks sekunder                          */
 
     /* CATATAN KONTRAS — DIPERBAIKI.
 
@@ -73,7 +73,7 @@
 
        Hasilnya: 15,8 / 7,1 / 5,1 — tiga anak tangga yang jelas, ketiganya
        lolos AA di seluruh permukaan terang. */
-    --text-faint: #6a6e72;      /* keterangan/metadata                    */
+    --text-faint: #6f6466;      /* keterangan/metadata                    */
 
     /* =================================================================
        1b. CHROME GELAP — sidebar & topbar
@@ -98,7 +98,7 @@
        (5,8:1 di sidebar) tidak cukup di topbar, jadi topbar memakai
        #a39a9c (5,1:1).
        ================================================================= */
-    --chrome:        #180d11;   /* sidebar                                */
+    --chrome:        #1d0e13;   /* sidebar                                */
     --chrome-2:      #24171a;   /* hover item navigasi                    */
     --chrome-3:      #2e1e22;   /* item tekan / pembatas di dalam chrome  */
     --chrome-border: #241519;   /* garis pemisah chrome dengan isi        */
@@ -187,9 +187,9 @@
        kalau ia langka; begitu dipakai untuk tombol atau status, ia turun
        jadi sekadar warna kuning kedua yang bersaing dengan --warning.
        ================================================================= */
-    --gold:      #a88b5a;
-    --gold-dim:  rgba(168, 139, 90, .22);
-    --gold-line: linear-gradient(90deg, rgba(168,139,90,0), rgba(168,139,90,.55), rgba(168,139,90,0));
+    --gold:      #c9a86a;
+    --gold-dim:  rgba(201, 168, 106, .24);
+    --gold-line: linear-gradient(90deg, rgba(201,168,106,0), rgba(201,168,106,.55), rgba(201,168,106,0));
 
     /* =================================================================
        3. WARNA SEMANTIK
@@ -297,11 +297,14 @@
        pintunya secara tegas — "luxury-fashion aesthetics" masuk daftar
        hindari, dan daftar muka huruf yang disarankan seluruhnya sans.
 
-       Jadi tetap dua yang sudah ada di proyek: Plus Jakarta Sans untuk
-       judul, Inter untuk isi. Kesan mapan dikerjakan oleh hierarki,
-       proporsi, dan jarak — bukan oleh muka huruf yang menarik perhatian.
+       Jadi satu keluarga saja: Inter untuk judul maupun isi, dimuat dari
+       server sendiri (public/fonts/inter, lihat tesys-ui-refine.css).
+       Dulu judul memakai Plus Jakarta Sans dari CDN; dua keluarga membuat
+       angka di KPI dan di tabel berbeda bentuk. Kesan mapan dikerjakan oleh
+       hierarki, proporsi, dan jarak — bukan oleh muka huruf yang menarik
+       perhatian.
        ================================================================= */
-    --font-display: "Plus Jakarta Sans", -apple-system, "Segoe UI", sans-serif;
+    --font-display: "Inter", -apple-system, "Segoe UI", sans-serif;
     --font-body: "Inter", -apple-system, "Segoe UI", sans-serif;
 
     /* Jarak huruf untuk label kapital kecil (header tabel, label seksi).
@@ -324,7 +327,7 @@
     --amber-tint:   #f4e7e8;
     --amber-border: #ead2d4;
     --text-muted:   #8a8e92;
-    --border-soft:  #e4e4e7;
+    --border-soft:  #e6e1e0;
     --body-bg:      #ffffff;
     --card-bg:      #ffffff;
 
@@ -340,7 +343,7 @@
     --main-glow-0: rgba(255, 255, 255, 0);
 
     /* Pasangan alfa-nol untuk --sidebar (peluruhan di kaki menu rail). */
-    --sidebar-fade: rgba(24, 13, 17, 0);
+    --sidebar-fade: rgba(29, 14, 19, 0);
 }
 
 /* =====================================================================
@@ -489,7 +492,7 @@ body.tesys-ui *::-webkit-scrollbar-corner { background: transparent; }
 }
 .stat-card:hover { border-color: var(--border-strong); }
 .stat-ic { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex: none; }
-.stat-val { font-family: "Plus Jakarta Sans", sans-serif; font-size: 17px; font-weight: var(--fw-heading, 700); line-height: 1.15; }
+.stat-val { font-family: var(--font-display); font-size: 17px; font-weight: var(--fw-heading, 700); line-height: 1.15; }
 .stat-lbl { font-size: 10.5px; color: var(--text-faint); margin-top: 1px; }
 
 /* ------------------------------------------- STAGE STRIP (status counts) */
@@ -505,7 +508,7 @@ body.tesys-ui *::-webkit-scrollbar-corner { background: transparent; }
 .stage-item:first-child::before { display: none; }
 .stage-num {
     width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-weight: var(--fw-heading, 700); font-size: 11.5px; z-index: 1; font-family: "Plus Jakarta Sans", sans-serif;
+    font-weight: var(--fw-heading, 700); font-size: 11.5px; z-index: 1; font-family: var(--font-display);
     transition: transform .15s ease;
 }
 .stage-item:hover .stage-num { transform: scale(1.08); }

@@ -1,0 +1,199 @@
+/* =====================================================================
+   Tesys TW — Tailwind CSS v4.3.3 (BELUM dimuat di layout/halaman mana pun)
+   ---------------------------------------------------------------------
+   Masukan build PRODUKSI untuk public/css/tesys-tw.css. Berkas ini TANPA
+   safelist: hanya kelas tw: yang benar-benar tertulis utuh di sumber
+   terpindai (@source di bawah) yang ikut dihasilkan. Safelist uji ada di
+   masukan terpisah resources/tailwind/tesys-tw.uji.css (keluaran
+   tools/tailwind/uji/, tidak pernah ke public/).
+   Dokumentasi lengkap, perintah build, dan prosedur rollback:
+   docs/ui/tailwind.md.
+
+   Build (dari akar proyek):
+     powershell -ExecutionPolicy Bypass -File scripts/build-tailwind.ps1
+     powershell -ExecutionPolicy Bypass -File scripts/build-tailwind.ps1 -Target uji
+
+   ATURAN ISOLASI (jangan dilonggarkan tanpa persetujuan):
+
+   1. PREFIX WAJIB `tw:`  ->  class="tw:flex tw:p-4 tw:bg-surface".
+      Bootstrap 4 memakai nama yang sama (.container, .border, .rounded,
+      .shadow, .collapse, .flex-wrap, .invisible); tanpa prefix terjadi
+      tabrakan. Kelas Bootstrap TIDAK dicampur dengan tw: pada satu
+      properti.
+   2. TANPA PREFLIGHT. Hanya layer `theme` dan `utilities` yang diimpor
+      (bukan `@import "tailwindcss"` penuh, yang membawa reset global
+      untuk * / html / body / h1-h6 / button / img / ul).
+   3. TANPA PALET BAWAAN. `--*: initial` mengosongkan seluruh tema bawaan;
+      yang ada hanyalah pemetaan ke token tesys-ui-tokens.css /
+      tesys-ui-refine.css lewat var(--token). Tidak ada hex/px baru
+      kecuali nilai bawaan utilitas (0, 1px, 100%, 50%, rounded-full),
+      breakpoint (angka proyek +1px, lihat bawah), dan SATU pengecualian
+      terukur: --color-on-accent #fff (lihat komentarnya).
+   4. `@theme inline`: utilitas menyisipkan var(--token) langsung, bukan
+      salinan di :root. Mode gelap (html[data-theme="dark"]) dan aksen
+      per-perangkat (<style id="tesys-accent-style">) otomatis ikut,
+      termasuk bila suatu subpohon menimpa token secara lokal.
+   5. KELAS DINAMIS DILARANG. Tailwind hanya menghasilkan CSS untuk kelas
+      yang tertulis UTUH sebagai teks di sumber yang dipindai. Salah:
+      "tw:p-{{ $n }}", 'tw:bg-' + warna. Benar: peta penuh
+      ['ok' => 'tw:bg-success-bg', ...].
+
+   KASKADE: utilitas Tailwind berada di @layer utilities; CSS legacy
+   proyek tanpa @layer. Aturan legacy (tanpa !important) SELALU menang atas
+   utilitas tw: biasa pada properti yang sama (hasil uji: AC-5). Sufiks
+   `!` (tw:p-4!) memberi !important dan MENGALAHKAN bahkan !important
+   legacy yang tanpa layer — pakai hanya bila benar-benar perlu.
+   ===================================================================== */
+
+@layer theme, base, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme) prefix(tw) source(none);
+@import "tailwindcss/utilities.css" layer(utilities) prefix(tw) source(none);
+
+/* ---------------------------------------------------------------------
+   Sumber pindai (daftar putih — hanya yang tertulis di sini).
+   public/plugins, vendor, storage, node_modules TIDAK dipindai.
+   Path relatif terhadap berkas ini.
+   --------------------------------------------------------------------- */
+@source "../views";
+@source "../../public/js/tesys-*.js";
+
+/* ---------------------------------------------------------------------
+   Mode gelap mengikuti atribut proyek, bukan prefers-color-scheme.
+   :where() menjaga spesifisitas tetap 0 di atas spesifisitas kelasnya.
+   Umumnya TIDAK perlu: token sudah berganti nilai sendiri di mode gelap.
+   --------------------------------------------------------------------- */
+@custom-variant dark (&:where(html[data-theme="dark"], html[data-theme="dark"] *));
+
+/* ---------------------------------------------------------------------
+   Tema = pemetaan token. Nama sisi kiri bebas; sisi kanan WAJIB var(--…)
+   yang ada di tesys-ui-tokens.css / tesys-ui-refine.css.
+   --------------------------------------------------------------------- */
+@theme inline {
+    --*: initial;
+
+    /* Warna. Contoh: tw:bg-surface, tw:text-text-dim, tw:border-border */
+    --color-canvas:          var(--bg);
+    --color-surface:         var(--surface);
+    --color-surface-2:       var(--surface-2);
+    --color-surface-3:       var(--surface-3);
+    --color-border:          var(--border);
+    --color-border-strong:   var(--border-strong);
+    --color-text:            var(--text);
+    --color-text-dim:        var(--text-dim);
+    --color-text-faint:      var(--text-faint);
+    --color-accent:          var(--accent);
+    --color-accent-dark:     var(--accent-dark);
+    --color-accent-soft:     var(--accent-soft);
+    --color-accent-tint:     var(--accent-tint);
+    --color-accent-tint-2:   var(--accent-tint-2);
+    --color-accent-text:     var(--accent-text);
+    --color-accent-ring:     var(--accent-ring);
+    /* Teks di atas latar --accent (tombol utama). Tak ada token "putih" di
+       proyek: legacy menulis literal #fff untuk .btn-primary (tesys-ui-compat.css
+       :104 dan :424), jadi nilai yang sama dipakai di sini. Sebelumnya
+       var(--chrome-text) (#d2ccce/#d6d0d2, abu-abu terang): TERUKUR gagal 4,5:1 pada
+       aksen praset Teal/Forest/Rust (3,85-3,93; ukur CDP butir G7-kontras-teks),
+       sedangkan #fff lulus pada seluruh 8 praset di terang & gelap.
+       [UNKNOWN / NEEDS CONFIRMATION: satu-satunya hex di berkas ini; token
+       --on-accent khusus di tesys-ui-tokens.css lebih tepat untuk F3.] */
+    --color-on-accent:       #fff;
+    --color-success:        var(--success);
+    --color-success-bg:      var(--success-bg);
+    --color-warning:         var(--warning);
+    --color-warning-bg:      var(--warning-bg);
+    --color-orange:          var(--orange);
+    --color-orange-bg:       var(--orange-bg);
+    --color-danger:          var(--danger);
+    --color-danger-bg:       var(--danger-bg);
+    --color-info:            var(--info);
+    --color-info-bg:         var(--info-bg);
+    --color-purple:          var(--purple);
+    --color-purple-bg:       var(--purple-bg);
+    --color-primary:         var(--primary);
+    --color-primary-bg:      var(--primary-bg);
+    --color-darkbadge:       var(--darkbadge);
+    --color-darkbadge-bg:    var(--darkbadge-bg);
+    --color-charcoal:        var(--charcoal);
+    --color-charcoal-2:      var(--charcoal-2);
+
+    /* Jarak = skala --sp-* (kelipatan 4px) + ukuran kontrol/kartu/sel.
+       Hanya kunci di bawah yang ada: tw:p-3 -> var(--sp-3);
+       tw:p-7 TIDAK dihasilkan (sengaja). */
+    --spacing-0:      0px;
+    --spacing-1:      var(--sp-1);
+    --spacing-2:      var(--sp-2);
+    --spacing-3:      var(--sp-3);
+    --spacing-4:      var(--sp-4);
+    --spacing-5:      var(--sp-5);
+    --spacing-6:      var(--sp-6);
+    --spacing-8:      var(--sp-8);
+    --spacing-10:     var(--sp-10);
+    --spacing-12:     var(--sp-12);
+    --spacing-ctl:    var(--ctl-h);
+    --spacing-ctl-sm: var(--ctl-h-sm);
+    --spacing-card:   var(--card-pad);
+    --spacing-card-sm: var(--card-pad-sm);
+    --spacing-cell-x: var(--cell-x);
+    --spacing-cell-y: var(--cell-y);
+
+    /* Radius: tw:rounded-sm / md / lg / pill. */
+    --radius-sm:   var(--radius-sm);
+    --radius-md:   var(--radius-md);
+    --radius-lg:   var(--radius-lg);
+    --radius-pill: var(--radius-pill);
+
+    /* Bayangan: tw:shadow-xs … tw:shadow-lg, tw:shadow-accent. */
+    --shadow-xs:     var(--shadow-xs);
+    --shadow-sm:     var(--shadow-sm);
+    --shadow-md:     var(--shadow-md);
+    --shadow-lg:     var(--shadow-lg);
+    --shadow-accent: var(--shadow-accent);
+
+    /* Tipografi menurut PERAN (skala refine.css). Ukuran: tw:text-body. */
+    --text-page:    var(--fs-page);
+    --text-section: var(--fs-section);
+    --text-sub:     var(--fs-sub);
+    --text-body:    var(--fs-body);
+    --text-control: var(--fs-control);
+    --text-data:    var(--fs-data);
+    --text-th:      var(--fs-th);
+    --text-label:   var(--fs-label);
+    --text-caption: var(--fs-caption);
+    --text-kpi:     var(--fs-kpi);
+    /* Judul kepala halaman (x-tw.page-header; F4). Tak ada token proyek di antara
+       --fs-page (18px) dan --fs-kpi (24px), jadi diturunkan dari --fs-page (+15%,
+       ~20,7px) agar ikut skala refine; bukan angka px baru. */
+    --text-title:   calc(var(--fs-page) * 1.15);
+
+    --font-display: var(--font-display);
+    --font-body:    var(--font-body);
+
+    --font-weight-heading: var(--fw-heading);
+    --font-weight-section: var(--fw-section);
+    --font-weight-label:   var(--fw-label);
+    --font-weight-regular: var(--fw-body);
+
+    --leading-tight: var(--lh-tight);
+    --leading-body:  var(--lh-body);
+    --leading-data:  var(--lh-data);
+
+    --tracking-micro: var(--ls-micro);
+
+    /* Gerak: tw:transition memakai durasi/kurva token proyek. */
+    --ease-standar: var(--ease);
+    --ease-out:     var(--ease-out);
+    --default-transition-duration: var(--dur);
+    --default-transition-timing-function: var(--ease);
+
+    /* Breakpoint selaras proyek (900 / 768 / 640 / 480). Nilainya +1px
+       supaya max-* sama dengan `max-width: N` di CSS proyek (inklusif) dan
+       min-lg sama dengan `min-width: 901px` milik shell.
+         tw:max-lg: = lebar <= 900    tw:min-lg: = lebar >= 901
+         tw:max-md: = lebar <= 768    tw:max-sm: = lebar <= 640
+         tw:max-xs: = lebar <= 480 */
+    --breakpoint-xs: 481px;
+    --breakpoint-sm: 641px;
+    --breakpoint-md: 769px;
+    --breakpoint-lg: 901px;
+}

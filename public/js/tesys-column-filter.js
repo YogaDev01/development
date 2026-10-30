@@ -84,6 +84,56 @@
         $chipRow.toggle(chips.length > 0);
     }
 
+    /* Tempel panel dropdown ke tepi bawah (atau atas bila ruang kurang) $anchor.
+       Koordinat layar (fixed): <body> tidak menggulir dan <html> ber-`zoom`,
+       sehingga ukuran panel diukur dengan getBoundingClientRect() (piksel layar,
+       sama dengan field) — bukan outerHeight() yang bersatuan CSS. Panel
+       mengikuti field saat digulir dan hilang dengan sendirinya bila sudah
+       dilepas dari halaman. opts.alignRight: rata kanan terhadap field. */
+    window.TesysPlaceDropdown = function ($dd, $anchor, opts) {
+        opts = opts || {};
+        function place() {
+            var dd = $dd.get(0), anchor = $anchor.get(0);
+            if (!document.body.contains(dd)) {
+                window.removeEventListener('scroll', onScroll, true);
+                window.removeEventListener('resize', place);
+                return;
+            }
+            if (!document.body.contains(anchor)) { $dd.remove(); return; }
+            var zm = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
+            var r = anchor.getBoundingClientRect();
+            if (r.bottom < 0 || r.top > window.innerHeight) { $dd.remove(); return; }
+
+            $dd.css({ position: 'fixed', top: 0, left: 0, maxHeight: '' });
+            var box = dd.getBoundingClientRect();
+            var left = opts.alignRight ? r.right - box.width : r.left;
+            if (!opts.alignRight && left + box.width > window.innerWidth - 10) left = r.right - box.width;
+            left = Math.max(10, Math.min(left, window.innerWidth - 10 - box.width));
+
+            var below = window.innerHeight - r.bottom - 14, above = r.top - 14, top;
+            if (box.height <= below || below >= above) {
+                top = r.bottom + 4;
+                if (box.height > below) $dd.css('max-height', Math.max(140, below) / zm);
+            } else {
+                var h = box.height;
+                if (h > above) {
+                    $dd.css('max-height', Math.max(140, above) / zm);
+                    h = dd.getBoundingClientRect().height;
+                }
+                top = Math.max(10, r.top - h - 4);
+            }
+            $dd.css({ top: top / zm, left: left / zm });
+        }
+        function onScroll(ev) {
+            if ($dd.get(0).contains(ev.target)) return;
+            place();
+        }
+        place();
+        window.addEventListener('scroll', onScroll, true);
+        window.addEventListener('resize', place);
+        $dd.data('tcfPlace', place);
+    };
+
     function closeAllDropdowns() {
         $('.tcf-dropdown').remove();
         // Penjaga klik-di-luar ikut dilepas. Kalau ditinggal, handler dari
@@ -158,17 +208,7 @@
         $dd.data('tcfOwner', $icon.get(0));
         $('body').append($dd);
 
-        var offset = $icon.offset();
-        var ddWidth = $dd.outerWidth();
-        var viewportRight = $(window).scrollLeft() + $(window).width();
-        var left = offset.left;
-        if (left + ddWidth > viewportRight - 10) {
-            // Tidak cukup ruang di kanan -> rata kanan terhadap ikon
-            left = offset.left + $icon.outerWidth() - ddWidth;
-        }
-        // offset()/window = koordinat layar; css top/left ber-`zoom` (skala 80%).
-        var z = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
-        $dd.css({ top: offset.top / z + $icon.outerHeight() + 4, left: Math.max(10, left / z) });
+        TesysPlaceDropdown($dd, $icon);
 
         $search.on('input', function () {
             var q = $(this).val().toLowerCase();
@@ -409,13 +449,7 @@
         $dd.data('tcfOwner', $btn.get(0));
         $('body').append($dd);
 
-        var offset = $btn.offset();
-        var ddWidth = $dd.outerWidth();
-        var viewportRight = $(window).scrollLeft() + $(window).width();
-        var left = offset.left;
-        if (left + ddWidth > viewportRight - 10) left = offset.left + $btn.outerWidth() - ddWidth;
-        var z = parseFloat(getComputedStyle(document.documentElement).zoom) || 1;
-        $dd.css({ top: offset.top / z + $btn.outerHeight() + 4, left: Math.max(10, left / z) });
+        TesysPlaceDropdown($dd, $btn);
 
         if ($search) {
             $search.on('input', function () {

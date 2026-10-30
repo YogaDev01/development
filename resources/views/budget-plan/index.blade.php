@@ -6,14 +6,38 @@
 
 <div class="content">
     <div class="container-fluid">
+      <div class="ts-index tw:flex tw:flex-col tw:gap-4 tw:py-4">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Budgeting</h1>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
-                <li class="breadcrumb-item"><a href="#">Finance</a></li>
+        {{-- Judul & breadcrumb topbar: shell memindahkan <h1> dan .breadcrumb pertama ke topbar
+             (tesys-shell.js hoistPageTitle); disembunyikan secara visual. --}}
+        <div class="tw:sr-only">
+            <h1>Budgeting</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">Finance</li>
                 <li class="breadcrumb-item active">Budgeting</li>
             </ol>
         </div>
+
+        @php
+            $bolehTambahBP = Auth::user()->hasRole(['superadmin','manager']);
+            // Kolom centang bulk approve/reject hanya untuk peran yang punya tahap approval.
+            $bolehBulkBP = Auth::user()->hasRole(['superadmin','head','finance','finance_manager','approver']);
+        @endphp
+        <x-tw.page-header title="Budget Plan"
+            description="Anggaran per PO atau Cost Center beserta pemakaian, sisa, dan persetujuannya.">
+            @if($bolehTambahBP)
+            <x-slot:actions>
+                <x-tw.button href="{{ url('/budget-plan/create') }}" class="ts-add-btn tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Budget Plan</x-tw.button>
+            </x-slot:actions>
+            @endif
+        </x-tw.page-header>
+
+        @if($bolehTambahBP)
+        {{-- Mobile: tombol di header disembunyikan dan diganti tombol melayang (tesys-ui-refine.css). --}}
+        <a href="{{ url('/budget-plan/create') }}" class="ts-fab" aria-label="Tambah Budget Plan" title="Tambah Budget Plan">
+            <i class="fas fa-plus" aria-hidden="true"></i>
+        </a>
+        @endif
 
         <!-- SUMMARY WORKFLOW (clickable, filter tabel Budget Plan) -->
         @php
@@ -28,20 +52,10 @@
                 ['Rejected',  $summary['rejected'],  'danger',    'REJECTED'],
             ];
         @endphp
-        <x-workflow-stepper :steps="$bpSteps" :compact="true" table="tblBudgetPlan" field="status" />
+        <x-workflow-stepper :steps="$bpSteps" :compact="true" table="tblBudgetPlan" field="status" :groups="[['Fase 1: Pengajuan', ['DRAFT','SUBMITTED','REJECTED']], ['Fase 2: Persetujuan', ['CHECKED','VERIFIED']], ['Fase 3: Berjalan', ['ACTIVE','CLOSING','CLOSED']]]" />
 
-        <div class="card card-primary card-outline shadow-sm mt-3">
-
-            <div class="card-header d-flex align-items-center">
-                <h3 class="card-title"><i class="fas fa-money-check-alt mr-1"></i> Daftar Budget Plan</h3>
-                <div class="ml-auto d-flex" style="gap:8px;">
-                    <button id="btnRefreshBP" class="btn btn-secondary btn-sm">
-                        <i class="fas fa-sync-alt mr-1"></i> Refresh
-                    </button>
-                </div>
-            </div>
-
-            <div class="card-body">
+        {{-- Kartu tunggal: toolbar + tabel + paginasi (pola Cost Request). --}}
+        <x-tw.card padding="sm">
 
                 <!-- FILTER -->
                 <div class="custom-toolbar mb-3 d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
@@ -56,31 +70,40 @@
                         <div id="bpRowFilters" class="d-flex flex-wrap" style="gap:8px;"></div>
                     </div>
                     <div class="custom-toolbar-right d-flex flex-wrap" style="gap:8px;">
-                        <a href="{{ route('budget-plan.export') }}" id="btnExportBP" class="btn btn-outline-secondary btn-sm">
-                            <i class="fas fa-file-excel mr-1"></i> Export Excel
-                        </a>
-                        @if(Auth::user()->hasRole(['superadmin','manager']))
-                        <a href="{{ url('/budget-plan/create') }}" class="btn btn-success btn-sm">
-                            <i class="fas fa-plus mr-1"></i> Tambah Budget Plan
-                        </a>
+                        @if($bolehBulkBP)
+                        {{-- Bar bulk: muncul bila ada Budget Plan yang dicentang (satu status per proses). --}}
+                        <div class="bp-bulk-bar d-none tw:flex-wrap tw:items-center tw:gap-2 tw:rounded-md tw:border tw:border-accent-soft tw:bg-accent-tint tw:py-1 tw:pl-3 tw:pr-1">
+                            <span class="bp-bulk-info tw:font-label tw:tabular-nums"></span>
+                            <x-tw.button size="sm" class="bp-bulk-approve"><i class="fas fa-check" aria-hidden="true"></i> Approve</x-tw.button>
+                            <x-tw.button variant="danger" size="sm" class="bp-bulk-reject"><i class="fas fa-times" aria-hidden="true"></i> Reject</x-tw.button>
+                            <x-tw.button variant="ghost" size="sm" class="bp-bulk-clear" title="Batalkan pilihan" aria-label="Batalkan pilihan"><i class="fas fa-times" aria-hidden="true"></i></x-tw.button>
+                        </div>
                         @endif
+                        <x-tw.button id="btnRefreshBP" variant="secondary" size="sm"><i class="fas fa-sync-alt" aria-hidden="true"></i> Refresh</x-tw.button>
+                        <x-tw.button href="{{ route('budget-plan.export') }}" id="btnExportBP" variant="secondary" size="sm">
+                            <i class="fas fa-file-excel" aria-hidden="true"></i> Export Excel
+                        </x-tw.button>
                     </div>
                 </div>
 
                 <!-- TABLE -->
                 <div class="table-responsive">
-                    <table id="tblBudgetPlan" class="table table-bordered mb-0">
+                    <table id="tblBudgetPlan" class="table table-bordered table-hover mb-0 ts-idx-tbl">
                         <thead class="bg-light">
                             <tr>
+                                @if($bolehBulkBP)
+                                <th scope="col" class="all text-center dt-col-check" style="width:1%;"><input type="checkbox" class="bp-check-all" aria-label="Pilih semua Budget Plan yang bisa diproses"></th>
+                                @endif
                                 <th scope="col" class="all text-nowrap" style="width:1%;">No</th>
                                 <th scope="col" class="all text-nowrap" style="width:1%;">Code</th>
                                 <th scope="col" class="all">Description</th>
+                                <th scope="col" class="text-nowrap" style="width:1%;">PM Internal</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Budget</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Used</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Var</th>
                                 <th scope="col" class="text-center text-nowrap" style="width:1%;">Margin</th>
                                 <th scope="col" class="text-nowrap" style="width:1%;">Status</th>
-                                <th scope="col" class="text-center all action-column" style="width:1%;">Action</th>
+                                <th scope="col" class="text-center all action-column" style="width:1%;"><span class="sr-only">Aksi</span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -94,47 +117,47 @@
                             @php
                                 $bpPmInternal = strtoupper($bp->project?->pm_internal_name && $bp->project->pm_internal_name !== '-' ? $bp->project->pm_internal_name : '');
                             @endphp
-                            <tr data-id="{{ $bp->id }}"
+                            <tr data-id="{{ $bp->id }}" data-code="{{ $bp->code }}"
                                 data-status="{{ $bp->status }}"
                                 data-po="{{ $bp->project ? '[' . $bp->project->code . '] ' . $bp->project->name : '' }}"
                                 data-customer="{{ $bp->project->customer->name ?? '' }}"
                                 data-pminternal="{{ $bpPmInternal }}">
+                                @if($bolehBulkBP)
+                                @php
+                                    // Hak centang dihitung di server: tahap sesuai status + role + bukan Budget Plan "via PO".
+                                    $eligBulkBP = ! $bp->isBundled() && (
+                                        ($bp->status === 'SUBMITTED' && Auth::user()->hasRole(['superadmin','head']))
+                                        || ($bp->status === 'CHECKED' && Auth::user()->hasRole(['superadmin','finance','finance_manager']))
+                                        || ($bp->status === 'VERIFIED' && Auth::user()->hasRole(['superadmin','approver']))
+                                    );
+                                @endphp
+                                <td class="text-center dt-col-check">
+                                    <input type="checkbox" class="bp-check-row" value="{{ $bp->id }}" data-elig="{{ $eligBulkBP ? '1' : '0' }}"
+                                           aria-label="Pilih Budget Plan {{ $bp->code }}"
+                                           @unless($eligBulkBP) disabled title="Tidak ada tahap approval untuk Anda pada Budget Plan ini" @endunless>
+                                </td>
+                                @endif
                                 <td class="text-nowrap">{{ $loop->iteration }}</td>
 
                                 <td class="text-nowrap">
-                                    <button type="button" class="bp-code-link btn-detail-bp" data-id="{{ $bp->id }}" title="Detail">{{ $bp->code ?? '-' }}</button>
+                                    {{-- Klik kode = salin; detail dibuka lewat klik baris. --}}
+                                    <button type="button" class="ts-copy-code" data-code="{{ $bp->code }}" title="Klik untuk menyalin kode">{{ $bp->code ?? '-' }}</button>
                                 </td>
 
-                                 <td>
-                                    <span class="font-weight-bold">
-                                        {{ $bp->description }}
-                                    </span>
-                                    <div style="font-size:11px;color:var(--text-faint);margin-top:3px;">
-                                        @if($bp->isProjectBudget())
-                                            <span class="badge badge-light border" style="font-size:9px;">{{ $bp->project->code ?? '-' }}</span>
-                                            {{ Str::limit($bp->project->name ?? '-', 70) }}
-                                        @elseif($bp->isCostCenterBudget())
-                                            <span class="badge badge-light border" style="font-size:9px;">{{ $bp->costCenter->code ?? '-' }}</span>
-                                            {{ Str::limit($bp->costCenter->name ?? '-', 70) }}
-                                        @else
-                                            <span class="text-danger">No source fund</span>
-                                        @endif
-                                        @if($bpPmInternal)
-                                            &bull; {{ $bpPmInternal }}
-                                        @endif
-                                    </div>
+                                <td class="ts-col-desc" title="{{ $bp->description }}">{{ Str::limit($bp->description, 60) }}</td>
+
+                                <td class="text-nowrap ts-col-desc" title="{{ $bpPmInternal }}">{{ $bpPmInternal ?: '-' }}</td>
+
+                                <td class="text-right text-nowrap ts-col-money col-raw-amount" data-raw="{{ $bp->amount ?? 0 }}" data-order="{{ $bp->amount ?? 0 }}">
+                                    <button type="button" class="bp-cell-link btn-detail-bp" data-id="{{ $bp->id }}" data-tab="#bpPaneDetails" title="Lihat Budget">{{ ($bp->amount ?? 0) == 0 ? '-' : $bp->amount_formatted }}</button>
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-amount" data-raw="{{ $bp->amount ?? 0 }}" data-order="{{ $bp->amount ?? 0 }}">
-                                    <button type="button" class="bp-cell-link btn-detail-bp" data-id="{{ $bp->id }}" data-tab="#bpPaneDetails" title="Lihat Budget">{{ $bp->amount_formatted }}</button>
+                                <td class="text-right text-nowrap ts-col-money col-raw-actual" data-raw="{{ $bpActual }}" data-order="{{ $bpActual }}">
+                                    <button type="button" class="bp-cell-link btn-detail-bp" data-id="{{ $bp->id }}" data-tab="#bpPaneRequests" title="Lihat Cost">{{ $bpActual == 0 ? '-' : number_format($bpActual, 0, ',', '.') }}</button>
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-actual" data-raw="{{ $bpActual }}" data-order="{{ $bpActual }}">
-                                    <button type="button" class="bp-cell-link btn-detail-bp" data-id="{{ $bp->id }}" data-tab="#bpPaneRequests" title="Lihat Cost">{{ number_format($bpActual, 0, ',', '.') }}</button>
-                                </td>
-
-                                <td class="text-right text-nowrap col-raw-var {{ $bpVar >= 0 ? 'text-var-pos' : 'text-var-neg' }}" data-raw="{{ $bpVar }}" data-order="{{ $bpVar }}">
-                                    {{ $bpVar < 0 ? '-' : '' }}{{ number_format(abs($bpVar), 0, ',', '.') }}
+                                <td class="text-right text-nowrap ts-col-money col-raw-var {{ $bpVar >= 0 ? 'text-var-pos' : 'text-var-neg' }}" data-raw="{{ $bpVar }}" data-order="{{ $bpVar }}">
+                                    {{ $bpVar == 0 ? '-' : ($bpVar < 0 ? '-' : '') . number_format(abs($bpVar), 0, ',', '.') }}
                                 </td>
 
                                 <td class="text-center text-nowrap" data-order="{{ $bpMargin }}">
@@ -178,85 +201,98 @@
                                         // Finance boleh menutup budget yang sudah ACTIVE tanpa
                                         // menunggu pengajuan closing dari manager.
                                         $bolehTutup      = $stBp === 'ACTIVE' && $pengguna->hasRole(['superadmin','finance','finance_manager']);
+                                        // Tambah baris COA bernilai 0 ke budget ACTIVE (BudgetPlanController::addCoa).
+                                        $bolehCoa        = $stBp === 'ACTIVE' && $pengguna->hasRole(['superadmin','manager']);
 
                                         $adaAksi = $bolehDraft || $bolehHead || $bolehFinance || $bolehCeo
                                             || $bolehRevisi || $bolehClosing || $bolehVerClosing || $bolehTutup;
                                     @endphp
 
+                                    @php
+                                        // Satu tombol saja per baris: tepat 1 aksi = tombol aksinya; lebih dari 1 =
+                                        // satu tombol ⋮ berisi semua aksi (aksi utama di atas, penolakan/hapus
+                                        // dipisah garis). Detail dibuka lewat klik baris, jadi tidak ada item "Detail".
+                                        $aksiTambahan = ($bolehDraft ? 2 : 0) + (($bolehHead || $bolehFinance || $bolehCeo) ? 1 : 0)
+                                            + ($bolehVerClosing ? 1 : 0) + (($bolehTutup && $bolehClosing) ? 1 : 0)
+                                            + ($bolehCoa ? 1 : 0);
+                                        $jumlahAksi = ($adaAksi ? 1 : 0) + $aksiTambahan;
+                                        $satuAksi   = $jumlahAksi === 1;
+                                        $kls    = $satuAksi ? 'ts-action-primary' : 'dropdown-item';
+                                        $lbl    = $satuAksi ? 'ts-al' : '';
+                                        $netral = $satuAksi ? 'is-neutral' : '';
+                                        ob_start();
+                                    @endphp
+                                    @if($bolehDraft)
+                                    <form action="{{ url('/budget-plan/' . $bp->id . '/submit') }}"
+                                          method="POST" class="frmSubmitBP {{ $satuAksi ? 'd-inline' : '' }}">
+                                        @csrf
+                                        <button type="submit" class="{{ $kls }}" title="Submit ke Finance">
+                                            <i class="fas fa-paper-plane"></i><span class="{{ $lbl }}">Submit</span>
+                                        </button>
+                                    </form>
+                                    @elseif($bolehHead)
+                                    <button type="button" class="{{ $kls }} btn-approve-bp"
+                                            data-id="{{ $bp->id }}" data-stage="head" title="Approve → Checked">
+                                        <i class="fas fa-check"></i><span class="{{ $lbl }}">Approve</span>
+                                    </button>
+                                    @elseif($bolehFinance)
+                                    <button type="button" class="{{ $kls }} btn-approve-bp"
+                                            data-id="{{ $bp->id }}" data-stage="finance" title="Verify → Verified">
+                                        <i class="fas fa-check"></i><span class="{{ $lbl }}">Verify</span>
+                                    </button>
+                                    @elseif($bolehCeo)
+                                    <button type="button" class="{{ $kls }} btn-approve-bp"
+                                            data-id="{{ $bp->id }}" data-stage="ceo" title="Approve → Active">
+                                        <i class="fas fa-check"></i><span class="{{ $lbl }}">Approve</span>
+                                    </button>
+                                    @elseif($bolehRevisi)
+                                    <button type="button" class="{{ $kls }} {{ $netral }} btn-manager-revise-bp"
+                                            data-id="{{ $bp->id }}" title="Kembalikan ke Draft untuk direvisi">
+                                        <i class="fas fa-undo"></i><span class="{{ $lbl }}">Revise</span>
+                                    </button>
+                                    @elseif($bolehClosing)
+                                    <button type="button" class="{{ $kls }} btn-submit-closing-bp"
+                                            data-id="{{ $bp->id }}" data-desc="{{ $bp->description }}"
+                                            title="Submit Closing">
+                                        <i class="fas fa-flag-checkered"></i><span class="{{ $lbl }}">Submit Closing</span>
+                                    </button>
+                                    @elseif($bolehVerClosing)
+                                    <button type="button" class="{{ $kls }} btn-verify-closing-bp"
+                                            data-id="{{ $bp->id }}" title="Approve Closing → Closed">
+                                        <i class="fas fa-check-double"></i><span class="{{ $lbl }}">Approve Closing</span>
+                                    </button>
+                                    @elseif($bolehTutup)
+                                    <button type="button" class="{{ $kls }} btn-finance-close-bp"
+                                            data-id="{{ $bp->id }}" data-desc="{{ $bp->description }}"
+                                            title="Close → Closed">
+                                        <i class="fas fa-lock"></i><span class="{{ $lbl }}">Close</span>
+                                    </button>
+                                    @endif
+                                    @php $htmlUtama = ob_get_clean(); @endphp
+
                                     <div class="action-buttons ts-actions">
 
-                                        {{-- AKSI UTAMA — satu per baris, selalu bernama --}}
-
-                                        @if($bolehDraft)
-                                        <form action="{{ url('/budget-plan/' . $bp->id . '/submit') }}"
-                                              method="POST" class="frmSubmitBP d-inline">
-                                            @csrf
-                                            <button type="submit" class="ts-action-primary" title="Submit ke Finance">
-                                                <i class="fas fa-paper-plane"></i><span class="ts-al">Submit</span>
-                                            </button>
-                                        </form>
-                                        @elseif($bolehHead)
-                                        <button type="button" class="ts-action-primary btn-approve-bp"
-                                                data-id="{{ $bp->id }}" data-stage="head" title="Approve → Checked">
-                                            <i class="fas fa-check"></i><span class="ts-al">Approve</span>
-                                        </button>
-                                        @elseif($bolehFinance)
-                                        <button type="button" class="ts-action-primary btn-approve-bp"
-                                                data-id="{{ $bp->id }}" data-stage="finance" title="Verify → Verified">
-                                            <i class="fas fa-check"></i><span class="ts-al">Verify</span>
-                                        </button>
-                                        @elseif($bolehCeo)
-                                        <button type="button" class="ts-action-primary btn-approve-bp"
-                                                data-id="{{ $bp->id }}" data-stage="ceo" title="Approve → Active">
-                                            <i class="fas fa-check"></i><span class="ts-al">Approve</span>
-                                        </button>
-                                        @elseif($bolehRevisi)
-                                        <button type="button" class="ts-action-primary is-neutral btn-manager-revise-bp"
-                                                data-id="{{ $bp->id }}" title="Kembalikan ke Draft untuk direvisi">
-                                            <i class="fas fa-undo"></i><span class="ts-al">Revise</span>
-                                        </button>
-                                        @elseif($bolehClosing)
-                                        <button type="button" class="ts-action-primary btn-submit-closing-bp"
-                                                data-id="{{ $bp->id }}" data-desc="{{ $bp->description }}"
-                                                title="Submit Closing">
-                                            <i class="fas fa-flag-checkered"></i><span class="ts-al">Submit Closing</span>
-                                        </button>
-                                        @elseif($bolehVerClosing)
-                                        <button type="button" class="ts-action-primary btn-verify-closing-bp"
-                                                data-id="{{ $bp->id }}" title="Approve Closing → Closed">
-                                            <i class="fas fa-check-double"></i><span class="ts-al">Approve Closing</span>
-                                        </button>
-                                        @elseif($bolehTutup)
-                                        <button type="button" class="ts-action-primary btn-finance-close-bp"
-                                                data-id="{{ $bp->id }}" data-desc="{{ $bp->description }}"
-                                                title="Close → Closed">
-                                            <i class="fas fa-lock"></i><span class="ts-al">Close</span>
-                                        </button>
-                                        @endif
-
-                                        {{-- Tanpa aksi, barisnya tetap punya jalan masuk ke detail --}}
-                                        @unless($adaAksi)
-                                        <button type="button" class="ts-action-primary is-neutral btn-detail-bp"
-                                                data-id="{{ $bp->id }}"
-                                                title="Lihat detail" aria-label="Lihat detail {{ $bp->code }}">
-                                            <i class="fas fa-eye" aria-hidden="true"></i>
-                                        </button>
-                                        @endunless
-
-                                        {{-- AKSI LAIN — termasuk semua aksi mundur/merusak --}}
-                                        @if($adaAksi)
+                                        @if($satuAksi)
+                                        {!! $htmlUtama !!}
+                                        @elseif($jumlahAksi > 1)
                                         <button type="button" class="ts-action-more"
                                                 aria-haspopup="true" aria-expanded="false"
-                                                title="Aksi lain" aria-label="Aksi lain untuk {{ $bp->code }}">
+                                                title="Aksi" aria-label="Aksi untuk {{ $bp->code }}">
                                             <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
                                         </button>
 
                                         <div class="ts-action-menu dropdown-menu" hidden>
 
-                                            <button type="button" class="dropdown-item btn-detail-bp"
-                                                    data-id="{{ $bp->id }}">
-                                                <i class="fas fa-eye"></i>Detail
+                                            {!! $htmlUtama !!}
+
+                                            @if($bolehCoa)
+                                            <button type="button" class="dropdown-item btn-add-coa-bp"
+                                                    data-id="{{ $bp->id }}" data-code="{{ $bp->code }}"
+                                                    data-desc="{{ $bp->description }}"
+                                                    data-category="{{ $coaCategoryOf[$bp->source_type] ?? '' }}">
+                                                <i class="fas fa-plus"></i>Tambah COA
                                             </button>
+                                            @endif
 
                                             @if($bolehDraft)
                                             <a href="{{ url('/budget-plan/' . $bp->id . '/edit') }}" class="dropdown-item">
@@ -297,9 +333,8 @@
                                             @endif
 
                                             @if($bolehTutup && $bolehClosing)
-                                            {{-- Superadmin memegang dua peran sekaligus: tombol
-                                                 utamanya Submit Closing, jadi Close disediakan
-                                                 di sini agar tidak hilang. --}}
+                                            {{-- Superadmin memegang dua peran sekaligus: aksi utamanya Submit
+                                                 Closing, jadi Close disediakan di sini agar tidak hilang. --}}
                                             <div class="dropdown-divider"></div>
                                             <button type="button" class="dropdown-item btn-finance-close-bp"
                                                     data-id="{{ $bp->id }}" data-desc="{{ $bp->description }}">
@@ -332,7 +367,7 @@
                         </tbody>
                         <tfoot>
                             <tr style="background:var(--surface-2);">
-                                <th colspan="3" class="text-right" style="font-size:12px;">Total (data tampil)</th>
+                                <th colspan="{{ $bolehBulkBP ? 5 : 4 }}" class="text-right" style="font-size:12px;">Total (data tampil)</th>
                                 <th class="text-right text-nowrap" id="bpFooterAmount" style="font-size:12px;color:var(--info);"></th>
                                 <th class="text-right text-nowrap" id="bpFooterActual" style="font-size:12px;color:var(--success);"></th>
                                 <th class="text-right text-nowrap" id="bpFooterVar" style="font-size:12px;"></th>
@@ -341,8 +376,8 @@
                         </tfoot>
                     </table>
                 </div>
-            </div>
-        </div>
+        </x-tw.card>
+      </div>
     </div>
 </div>
 
@@ -374,47 +409,7 @@
                                 <h5 class="dm-title" id="mdlBPTitle">Budget Plan Detail</h5>
                                 <small id="mdlBPSubtitle" class="dm-sub-hidden"></small>
 
-                                <div class="dm-badges">
-                                    <span id="bpStatusBadge"></span>
-                                </div>
                             </div>
-                            <hr style="border-color:rgba(255,255,255,0.08);">
-                            <div class="mb-3">
-                                <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">PO Reference</span>
-                                <div id="bpProject" class="text-white mt-1" style="font-size:12px;font-weight:600;"></div>
-                            </div>
-                            <div class="mb-3" id="bpCustomerBox">
-                                <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Customer</span>
-                                <div id="bpCustomer" class="text-white mt-1" style="font-size:12px;"></div>
-                            </div>
-                            <div class="mb-3">
-                                <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Total Budget</span>
-                                <div id="bpAmount" style="color:var(--accent);font-size:18px;font-weight:700;margin-top:4px;"></div>
-                            </div>
-                            <div class="mb-3">
-                                <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Used</span>
-                                <div id="bpUsed" class="text-white mt-1" style="font-size:12px;"></div>
-                                <div style="height:5px;background:rgba(255,255,255,0.1);border-radius:var(--radius-pill);margin-top:6px;overflow:hidden;">
-                                    <div id="bpProgressBar" style="height:100%;background:var(--accent);border-radius:var(--radius-pill);transition:width .4s;width:0%;"></div>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Variance</span>
-                                <div class="d-flex align-items-center mt-1" style="gap:8px;">
-                                    <div id="bpRemaining" class="text-white" style="font-size:12px;"></div>
-                                    <span id="bpMarginBadge" class="badge px-2 py-1" style="font-size:10px;"></span>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Input By</span>
-                                <div id="bpInputBy" class="text-white mt-1" style="font-size:12px;"></div>
-                            </div>
-                            <div class="bp-sidebar-spacer"></div>
-                            <hr style="border-color:rgba(255,255,255,0.08);margin:16px 0;">
-                            <a id="bpEditBtn" href="#" class="btn btn-block"
-                               style="background:var(--accent);color:#fff;font-weight:700;font-size:13px;border-radius:var(--radius-sm);display:none;">
-                                <i class="fas fa-edit mr-1"></i> Edit
-                            </a>
                         </div>
 
                         <!-- RIGHT TABS -->
@@ -422,7 +417,7 @@
                             <ul class="nav nav-tabs mb-3" id="bpDetailTabs" style="border-bottom:2px solid var(--border);">
                                 <li class="nav-item">
                                     <a class="nav-link active" data-toggle="tab" href="#bpPaneInfo" style="font-size:13px;font-weight:600;">
-                                        <i class="fas fa-clipboard-list mr-1"></i> Summary
+                                        <i class="fas fa-clipboard-list mr-1"></i> Info
                                     </a>
                                 </li>
                                 <li class="nav-item">
@@ -460,6 +455,26 @@
 
                                 <!-- TAB SUMMARY -->
                                 <div class="tab-pane fade show active" id="bpPaneInfo">
+                                    {{-- Kartu ringkasan (pola "Nilai pengajuan" drawer Cost Request). --}}
+                                    <div class="bp-figcard mb-3">
+                                        <div class="bp-fig-label">Total Budget</div>
+                                        <div id="bpAmount" class="bp-fig-big"></div>
+                                        <div class="bp-fig-chips">
+                                            <span id="bpStatusBadge"></span>
+                                            <span id="bpMarginBadge" class="badge px-2 py-1" style="font-size:10px;"></span>
+                                        </div>
+                                        <div class="bp-fig-sub">
+                                            <div>
+                                                <div class="bp-fig-label">Used</div>
+                                                <div id="bpUsed" class="bp-fig-val"></div>
+                                            </div>
+                                            <div>
+                                                <div class="bp-fig-label">Variance</div>
+                                                <div id="bpRemaining" class="bp-fig-val"></div>
+                                            </div>
+                                        </div>
+                                        <div class="bp-fig-bar"><div id="bpProgressBar" style="height:100%;background:var(--accent);border-radius:var(--radius-pill);transition:width .4s;width:0%;"></div></div>
+                                    </div>
                                     <div class="bp-summary-cards mb-3">
                                         <div class="bp-groupcard">
                                             <div class="bp-groupcard-title">Cost Request per Status</div>
@@ -475,39 +490,19 @@
                                         </div>
                                     </div>
 
-                                    {{-- Satu informasi satu baris (.ts-deflist), sama dengan
-                                         modal Purchase Order. Pola kotak-per-informasi yang lama
-                                         membuat wadahnya lebih menonjol daripada isinya. --}}
-                                    <div class="ts-deflist mb-3">
-                                        <div class="ts-deflist-row">
-                                            <span class="ts-deflist-label">Reference</span>
-                                            <span id="infoCodeRef" class="ts-deflist-value"></span>
-                                        </div>
-                                        <div class="ts-deflist-row">
-                                            <span class="ts-deflist-label">Description</span>
-                                            <span id="infoDesc" class="ts-deflist-value"></span>
-                                        </div>
-                                        <div class="ts-deflist-row">
-                                            <span class="ts-deflist-label">PO Reference</span>
-                                            <span id="infoPO" class="ts-deflist-value"></span>
-                                        </div>
-                                        <div class="ts-deflist-row">
-                                            <span class="ts-deflist-label">Manager</span>
-                                            <span id="infoManager" class="ts-deflist-value"></span>
-                                        </div>
-                                        <div class="ts-deflist-row">
-                                            <span class="ts-deflist-label">Total Budget</span>
-                                            <span id="infoAmount" class="ts-deflist-value"></span>
-                                        </div>
-                                        <div class="ts-deflist-row">
-                                            <span class="ts-deflist-label">Approved By</span>
-                                            <span id="infoApprovedBy" class="ts-deflist-value"></span>
-                                        </div>
-                                        <div class="ts-deflist-row">
-                                            <span class="ts-deflist-label">Approved At</span>
-                                            <span id="infoApprovedAt" class="ts-deflist-value"></span>
-                                        </div>
-                                    </div>
+                                    <h6 class="ts-dw-section-title">Informasi anggaran</h6>
+                                    <dl class="ts-dw-kv mb-3">
+                                        <dt>Reference</dt><dd id="infoCodeRef"></dd>
+                                        <dt>Description</dt><dd id="infoDesc"></dd>
+                                        <dt>PO Reference</dt><dd id="infoPO"></dd>
+                                        <div class="bp-kv-box" id="bpCustomerBox"><dt>Customer</dt><dd id="bpCustomer"></dd></div>
+                                        <dt>Manager</dt><dd id="infoManager"></dd>
+                                        <dt>Input By</dt><dd id="bpInputBy"></dd>
+                                        <dt>Approved By</dt><dd id="infoApprovedBy"></dd>
+                                        <dt>Approved At</dt><dd id="infoApprovedAt"></dd>
+                                    </dl>
+                                    {{-- Duplikat nilai di atas disembunyikan; JS lama tetap menulis ke ID-nya. --}}
+                                    <span id="bpProject" hidden></span><span id="infoAmount" hidden></span>
 
                                     <button type="button" class="btn btn-sm btn-link p-0" id="bpNotesToggle" style="font-size:12px;color:var(--text-faint);text-decoration:none;">
                                         <i class="fas fa-chevron-right mr-1" id="bpNotesToggleIcon" style="font-size:10px;transition:transform .15s;display:inline-block;"></i> Notes &amp; Approver Notes
@@ -525,11 +520,6 @@
                                         </div>
                                     </div>
 
-                                    <div class="d-flex justify-content-end mt-3">
-                                        <a id="bpExportReportBtn" href="#" class="btn btn-sm btn-outline-primary" target="_blank">
-                                            <i class="fas fa-file-excel mr-1"></i> Export Report
-                                        </a>
-                                    </div>
                                 </div>
 
                                 <!-- TAB BUDGET — Account | Price | Qty | Unit | Total | Used | Variance | Notes -->
@@ -647,11 +637,24 @@
                                 <!-- TAB LOG -->
                                 <div class="tab-pane fade" id="bpPaneLogs">
                                     <div id="bpLogBody" class="bp-chat"></div>
+                                    {{-- Kotak catatan gaya chat (sama dengan tab Log Cost Request); disembunyikan JS saat Closed. --}}
+                                    <form id="bpLogForm" class="bp-log-form" hidden>
+                                        <textarea id="bpLogInput" class="form-control" rows="2" maxlength="1000"
+                                                  placeholder="Tulis catatan atau update…" aria-label="Catatan log"></textarea>
+                                        <button type="submit" class="btn btn-sm btn-primary" id="bpLogSend"><i class="fas fa-paper-plane mr-1"></i> Kirim</button>
+                                    </form>
+                                    <div id="bpLogClosed" class="bp-log-closed" hidden><i class="fas fa-lock mr-1"></i> Budget Plan sudah Closed — catatan baru tidak dapat ditambahkan.</div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {{-- Kaki panel: aksi dokumen (pola drawer Cost Request). Tampil/sembunyi lewat JS. --}}
+            <div class="modal-footer bp-dm-foot">
+                <a id="bpEditBtnFooter" href="#" class="ts-action-primary" style="display:none;"><i class="fas fa-edit" aria-hidden="true"></i><span class="ts-al">Edit</span></a>
+                <a id="bpExportReportBtn" href="#" class="ts-action-primary is-neutral" target="_blank"><i class="fas fa-file-excel" aria-hidden="true"></i><span class="ts-al">Export Report</span></a>
             </div>
 
         </div>
@@ -854,6 +857,62 @@
     </div>
 </div>
 
+{{-- MODAL TAMBAH COA — ACTIVE (nilai budget tetap, baris baru bernilai 0) --}}
+@if(!empty($coaAccounts))
+<div class="modal fade" id="mdlAddCoaBP" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
+            <div class="modal-header" style="background:var(--charcoal);border-bottom:3px solid var(--accent);">
+                <h5 class="modal-title text-white">
+                    <i class="fas fa-plus mr-2" style="color:var(--accent);"></i> Tambah COA
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+            </div>
+            <form id="frmAddCoaBP" method="POST">
+                @csrf
+                <div class="modal-body" style="padding:24px 28px;">
+                    <p id="addCoaBPText" class="text-muted mb-3"></p>
+                    <div class="alert alert-info mb-3" style="font-size:12px;">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Baris COA baru ditambahkan dengan <strong>Harga Satuan 0</strong> dan <strong>Qty 0</strong>,
+                        sehingga nilai budget tidak bertambah. Cost Request yang dibebankan ke COA ini akan tercatat NOB.
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered mb-2" id="tblAddCoaBP">
+                            <thead style="background:var(--surface-2);">
+                                <tr>
+                                    <th style="width:30%;">Account <span class="text-danger">*</span></th>
+                                    <th>Sub COA / Deskripsi <span class="text-danger">*</span></th>
+                                    <th class="text-right" style="width:12%;">Harga Satuan</th>
+                                    <th class="text-right" style="width:8%;">Qty</th>
+                                    <th style="width:15%;">Unit <span class="text-danger">*</span></th>
+                                    <th style="width:40px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnAddCoaRowBP">
+                        <i class="fas fa-plus mr-1"></i> Tambah Baris
+                    </button>
+                    <div class="form-group mb-0 mt-3">
+                        <label class="font-weight-600">Notes</label>
+                        <textarea name="notes" class="form-control" rows="4" maxlength="2000"
+                                  placeholder="Keterangan penambahan COA (tercatat di Log Budget Plan)..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer" style="background:var(--surface-2);">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save mr-1"></i> Simpan COA
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
 {{-- MODAL REJECT CLOSING --}}
 <div class="modal fade" id="mdlRejectClosingBP" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog" role="document">
@@ -903,6 +962,7 @@
 @endsection
 
 @push('styles')
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
 .text-var-pos { color:var(--success); }
 .text-var-neg { color:var(--danger); }
@@ -964,6 +1024,60 @@
 @media (max-width:767.98px) {
     .bp-modal-flex { flex-direction:column; }
     .bp-sidebar { width:100%; flex:0 0 auto; }
+}
+/* Detail Budget Plan sebagai panel samping (menempel di kanan, tinggi penuh) —
+   markup & JS modal tetap; hanya posisinya yang berubah. Ditulis dengan ID supaya
+   menang atas .modal-dialog-xxl dan aturan modal di tesys-ui-luxe.css. Panel gelap
+   ringkasan ditumpuk di atas (2 kolom), tab di bawahnya; seluruh badan menggulir. */
+#mdlDetailBP .modal-dialog {
+    position:absolute; top:0; right:0; bottom:0; margin:0;
+    width:56%; min-width:640px; max-width:100%; height:100%; min-height:0;
+    display:block; transition:transform .25s ease;
+}
+#mdlDetailBP.fade .modal-dialog { transform:translateX(100%); }
+#mdlDetailBP.show .modal-dialog { transform:none; }
+#mdlDetailBP .modal-content { height:100%; max-height:100%; border-radius:0 !important; }
+/* Gaya terang seperti drawer Cost Request: kepala putih bergaris bawah (kode kecil di
+   atas judul, tombol tutup), tab, lalu isi; kartu ringkasan angka di tab Info dan kaki
+   berisi aksi dokumen. Warna panel gelap (tesys-ui-luxe.css bagian 10) dibalik di
+   lingkup modal ini saja. */
+#mdlDetailBP .modal-body.dm-body { overflow-y:auto; display:block; background:var(--surface) !important; }
+#mdlDetailBP .bp-modal-flex { flex-direction:column; height:auto; min-height:100%; }
+#mdlDetailBP .bp-sidebar {
+    width:100%; flex:0 0 auto; min-height:0; display:block; align-self:auto;
+    background:var(--surface) !important; border-radius:0; border-bottom:1px solid var(--border);
+    padding:20px 24px 14px;
+}
+#mdlDetailBP .bp-sidebar-spacer { display:none; }
+#mdlDetailBP .bp-sidebar .dm-head { margin:0; padding-right:34px; }
+#mdlDetailBP .bp-sidebar .dm-head .dm-code { color:var(--text-faint); letter-spacing:.02em; font-size:11.5px; margin-bottom:3px; }
+#mdlDetailBP .bp-sidebar .dm-head .dm-title { color:var(--text); font-size:18px; margin:0; }
+#mdlDetailBP .bp-sidebar .dm-head .dm-close { top:0; right:0; color:var(--text-muted) !important; }
+#mdlDetailBP .bp-sidebar .dm-head .dm-close:hover { background:var(--surface-2); color:var(--text) !important; }
+#mdlDetailBP .bp-main-panel { overflow:visible; max-height:none; padding:16px 24px 24px; }
+
+/* Kartu ringkasan di tab Info (pola kartu "Nilai pengajuan"). */
+#mdlDetailBP .bp-figcard { border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px 18px; background:var(--surface); }
+#mdlDetailBP .bp-fig-label { font-size:12px; color:var(--text-dim); }
+#mdlDetailBP .bp-fig-big { font-size:28px; line-height:1.15; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; margin:2px 0 8px; }
+#mdlDetailBP .bp-fig-chips { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:10px; }
+#mdlDetailBP .bp-fig-chips:empty { display:none; }
+#mdlDetailBP .bp-fig-sub { display:flex; flex-wrap:wrap; gap:6px 32px; }
+#mdlDetailBP .bp-fig-val { font-size:13px; font-weight:600; color:var(--text); font-variant-numeric:tabular-nums; }
+#mdlDetailBP .bp-fig-bar { height:5px; background:var(--surface-2); border-radius:var(--radius-pill); margin-top:12px; overflow:hidden; }
+#mdlDetailBP .bp-fig-val.dm-calc-neg { color:var(--danger) !important; }
+#mdlDetailBP .bp-fig-val.dm-calc-pos { color:var(--success) !important; }
+#mdlDetailBP .bp-fig-val.dm-calc-zero { color:var(--text-dim) !important; }
+#mdlDetailBP .bp-kv-box { display:contents; }
+#mdlDetailBP .ts-dw-section-title { margin-top:18px; }
+
+/* Kaki: aksi dokumen di kiri, garis atas tipis (tesys-ui-luxe.css membuat kaki modal tanpa garis). */
+#mdlDetailBP .modal-footer.bp-dm-foot {
+    justify-content:flex-start; background:var(--surface) !important;
+    border-top:1px solid var(--border) !important; padding:12px 24px !important;
+}
+@media (max-width:640px) {
+    #mdlDetailBP .modal-dialog { width:100%; min-width:0; }
 }
 #bpDetailBody tr.bp-group-row,
 #bpDetailBody tr.bp-group-row td { background:var(--info-bg) !important; }
@@ -1033,9 +1147,17 @@
 .bp-chat-row.mine { align-self:flex-end; flex-direction:row-reverse; text-align:right; }
 .bp-chat-av { width:30px; height:30px; border-radius:50%; background:var(--info-bg); color:var(--text-dim); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; }
 .bp-chat-row.mine .bp-chat-av { background:var(--charcoal); color:#fff; }
+.bp-chat-av { overflow:hidden; }
+.bp-chat-av img { width:100%; height:100%; object-fit:cover; }
 .bp-chat-bubble { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:8px 12px; font-size:12px; }
 .bp-chat-row.mine .bp-chat-bubble { border-color:var(--border); }
 .bp-chat-meta { font-size:10px; color:var(--text-faint); margin-bottom:4px; }
+#tblBudgetPlan th.dt-col-check, #tblBudgetPlan td.dt-col-check { width:40px; text-align:center; }
+.bp-log-form { display:flex; gap:8px; align-items:flex-end; margin-top:16px; padding:12px 0; border-top:1px solid var(--border); position:sticky; bottom:0; background:var(--surface); }
+.bp-log-form textarea { font-size:12px; resize:none; flex:1 1 auto; }
+.bp-log-closed { margin-top:16px; padding-top:12px; border-top:1px solid var(--border); font-size:11.5px; color:var(--text-faint); }
+#bpPaneLogs.active { display:flex; flex-direction:column; }
+#bpPaneLogs #bpLogBody { margin-top:auto; }
 .bp-chat-note { margin-top:6px; font-size:11.5px; line-height:1.45; white-space:pre-line; color:var(--text); }
 .custom-toolbar      { display:flex; align-items:flex-start; gap:15px; flex-wrap:wrap; }
 .custom-toolbar-left { display:flex; flex-direction:row; align-items:center; gap:12px; flex-wrap:wrap; }
@@ -1666,16 +1788,22 @@ $(function () {
     })();
 
     /* DATATABLE */
+    var BP_ADA_CEK = {{ $bolehBulkBP ? 'true' : 'false' }};
+    var BP_OFF = BP_ADA_CEK ? 1 : 0;
     var table = $('#tblBudgetPlan').DataTable({
         responsive: { details: { type: 'inline' } },
         autoWidth: false, pageLength: 10, lengthChange: true, searching: true,
         order: [], // pertahankan urutan asli dari server (input terbaru di atas)
+        // Kolom centang bulk (bila dirender server) menggeser indeks semua kolom satu langkah.
         columnDefs: [
-            { targets: [0], visible: false, orderable: false },
-            { targets: [5], visible: false },
-            { responsivePriority: 1,   targets: [0,1,2,-1] },
-            { responsivePriority: 2,   targets: [3,4,5,6,7] },
-        ],
+            { targets: [BP_OFF + 0], visible: false, orderable: false },
+            { targets: [BP_OFF + 6], visible: false },
+            // Kolom aksi: header kosong, tanpa sortir & tanpa ikut pencarian (pola Cost Request).
+            { targets: [-1], orderable: false, searchable: false },
+            { responsivePriority: 1,   targets: [BP_OFF + 0, BP_OFF + 1, BP_OFF + 2, -1] },
+            { responsivePriority: 2,   targets: [BP_OFF + 4, BP_OFF + 5, BP_OFF + 6, BP_OFF + 7, BP_OFF + 8] },
+            { responsivePriority: 3,   targets: [BP_OFF + 3] },
+        ].concat(BP_ADA_CEK ? [{ targets: [0], orderable: false, searchable: false, responsivePriority: 1 }] : []),
         dom: 'rt<"row mt-3 align-items-center"<"col-md-6 col-12 mb-2 mb-md-0"i><"col-md-6 col-12 d-flex justify-content-end"lp>>',
         language: {
             lengthMenu: 'Page Size _MENU_',
@@ -1705,6 +1833,7 @@ $(function () {
     | Dihitung ulang tiap kali tabel di-draw (search, filter, atau paging).
     */
     function moneyFmt(v) {
+        if (Math.round(v) === 0) return '-'; // nilai nol di kolom uang tabel daftar = "-"
         var sign = v < 0 ? '-' : '';
         return sign + Math.abs(Math.round(v)).toLocaleString('id-ID');
     }
@@ -1742,6 +1871,175 @@ $(function () {
     }
 
     $('#btnRefreshBP').on('click', function () { location.reload(); });
+
+    /* ── BULK APPROVE / REJECT (pola Cost Request & Treasury) ────────────────
+       Hak centang dihitung server (data-elig). SATU status per proses, maks 50;
+       melewati batas = seluruh pilihan dibatalkan + peringatan. Pilihan yang tak
+       lagi lolos filter/tab dibuang supaya yang dikirim = yang terlihat. Server
+       memproses tiap Budget Plan lewat method approval satuan dan melewati yang
+       statusnya sudah berubah. */
+    var BP_BULK_MAX = 50;
+    var BP_TAHAP = {
+        SUBMITTED: { dari: 'Submitted', ke: 'Checked',  tolak: 'Rejected' },
+        CHECKED:   { dari: 'Checked',   ke: 'Verified', tolak: 'Rejected' },
+        VERIFIED:  { dari: 'Verified',  ke: 'Active',   tolak: 'Rejected' }
+    };
+    var bpSel = new Set();
+
+    function bpBulkInfo(tr) {
+        var $tr = $(tr);
+        return {
+            id: String($tr.attr('data-id')), status: $tr.attr('data-status'), code: $tr.attr('data-code'),
+            total: parseInt($tr.find('.col-raw-amount').attr('data-raw'), 10) || 0
+        };
+    }
+    function bpBulkToast(tipe, pesan) { if (window.tsToast) window.tsToast(tipe, pesan); }
+    function bpBulkStatusAktif() {
+        var st = null;
+        $(table.rows().nodes()).each(function () {
+            var inf = bpBulkInfo(this);
+            if (bpSel.has(inf.id)) { st = inf.status; return false; }
+        });
+        return st;
+    }
+    function bpBulkRefresh() {
+        var tampil = new Set(), jml = 0, total = 0;
+        table.rows({ search: 'applied' }).every(function () { tampil.add(bpBulkInfo(this.node()).id); });
+        bpSel.forEach(function (id) { if (!tampil.has(id)) bpSel.delete(id); });
+
+        $(table.rows().nodes()).each(function () {
+            var inf = bpBulkInfo(this);
+            $(this).find('.bp-check-row').prop('checked', bpSel.has(inf.id));
+            if (bpSel.has(inf.id)) { jml++; total += inf.total; }
+        });
+
+        var aktif = bpBulkStatusAktif() || null, kandidat = 0, dipilih = 0;
+        if (!aktif) {   // belum ada pilihan: kandidat "pilih semua" = status eligible pertama yang tampil
+            table.rows({ search: 'applied' }).every(function () {
+                var $n = $(this.node());
+                if (!aktif && $n.find('.bp-check-row').attr('data-elig') === '1') aktif = $n.attr('data-status');
+            });
+        }
+        table.rows({ search: 'applied' }).every(function () {
+            var $n = $(this.node()), inf = bpBulkInfo(this.node());
+            if ($n.find('.bp-check-row').attr('data-elig') === '1' && inf.status === aktif) {
+                kandidat++;
+                if (bpSel.has(inf.id)) dipilih++;
+            }
+        });
+        var all = document.querySelector('#tblBudgetPlan .bp-check-all');
+        if (all) {
+            all.checked = kandidat > 0 && dipilih === kandidat;
+            all.indeterminate = dipilih > 0 && dipilih < kandidat;
+        }
+        $('.bp-bulk-bar').toggleClass('d-none', jml === 0).toggleClass('d-flex', jml > 0);
+        $('.bp-bulk-info').text(jml + ' dipilih · total Rp ' + Math.round(total).toLocaleString('id-ID'));
+    }
+
+    $(document).on('change', '.bp-check-row', function () {
+        var id = String(this.value), st = $(this).closest('tr').attr('data-status');
+        if (this.checked) {
+            var aktif = bpBulkStatusAktif();
+            if (aktif && aktif !== st) {
+                this.checked = false;
+                bpBulkToast('warning', 'Pilih Budget Plan dengan status yang sama dalam satu proses (sekarang: ' + aktif + ').');
+                return;
+            }
+            if (bpSel.size >= BP_BULK_MAX) {
+                this.checked = false;
+                bpBulkToast('warning', 'Maksimal ' + BP_BULK_MAX + ' Budget Plan per proses. Persempit dengan filter lalu pilih lagi.');
+                return;
+            }
+            bpSel.add(id);
+        } else {
+            bpSel.delete(id);
+        }
+        bpBulkRefresh();
+    });
+
+    $(document).on('change', '.bp-check-all', function () {
+        if (!this.checked) { bpSel.clear(); bpBulkRefresh(); return; }
+        var aktif = bpBulkStatusAktif(), gabungan = new Set(bpSel);
+        table.rows({ search: 'applied' }).every(function () {
+            var $n = $(this.node());
+            if ($n.find('.bp-check-row').attr('data-elig') !== '1') return;
+            if (!aktif) aktif = $n.attr('data-status');
+            if ($n.attr('data-status') === aktif) gabungan.add(String($n.attr('data-id')));
+        });
+        if (gabungan.size > BP_BULK_MAX) {
+            bpSel.clear(); bpBulkRefresh();
+            bpBulkToast('warning', 'Maksimal ' + BP_BULK_MAX + ' Budget Plan per proses. Pilihan dibatalkan; persempit dengan filter lalu pilih lagi.');
+            return;
+        }
+        gabungan.forEach(function (id) { bpSel.add(id); });
+        bpBulkRefresh();
+    });
+
+    $(document).on('click', '.bp-bulk-clear', function () { bpSel.clear(); bpBulkRefresh(); });
+    table.on('draw', bpBulkRefresh);
+
+    var bpBulkKirim = false;
+    $(document).on('click', '.bp-bulk-approve, .bp-bulk-reject', function () {
+        if (bpBulkKirim) return;
+        var tolak = $(this).hasClass('bp-bulk-reject'), $btn = $(this);
+        var rows = [], total = 0, status = null;
+        $(table.rows().nodes()).each(function () {
+            var inf = bpBulkInfo(this);
+            if (bpSel.has(inf.id)) { rows.push(inf); total += inf.total; status = inf.status; }
+        });
+        if (!rows.length || !BP_TAHAP[status]) return;
+        var th = BP_TAHAP[status];
+
+        var html = '<div style="text-align:left;font-size:13px;line-height:1.7;">'
+            + '<div><strong>' + rows.length + ' Budget Plan</strong>: ' + th.dari + ' &rarr; ' + (tolak ? th.tolak : th.ke) + '</div>'
+            + '<div>Total Budget: <strong>Rp ' + Math.round(total).toLocaleString('id-ID') + '</strong></div>'
+            + '</div>';
+
+        var opsi = tolak
+            ? { title: 'Tolak ' + rows.length + ' Budget Plan?', icon: 'warning',
+                html: html + '<div class="mt-2" style="text-align:left;font-size:12px;">Alasan penolakan wajib diisi:</div>',
+                input: 'textarea', inputAttributes: { maxlength: 500, 'aria-label': 'Alasan penolakan' },
+                inputValidator: function (v) { if (!v || !v.trim()) return 'Alasan penolakan wajib diisi.'; },
+                confirmButtonColor: WARNA_BAHAYA, confirmButtonText: 'Ya, Tolak' }
+            : { title: 'Approve ' + rows.length + ' Budget Plan?', icon: 'question', html: html,
+                confirmButtonColor: WARNA_UTAMA, confirmButtonText: 'Ya, Approve' };
+        opsi.showCancelButton = true;
+        opsi.cancelButtonColor = WARNA_BATAL;
+        opsi.cancelButtonText = 'Batal';
+
+        Swal.fire(opsi).then(function (r) {
+            if (!r.isConfirmed || bpBulkKirim) return;
+            bpBulkKirim = true;
+            var $f = $('<form method="POST"></form>').attr('action', tolak
+                ? '{{ route('budget-plan.bulk-reject') }}' : '{{ route('budget-plan.bulk-approve') }}');
+            $f.append($('<input type="hidden" name="_token">').val($('meta[name="csrf-token"]').attr('content')));
+            $f.append($('<input type="hidden" name="status">').val(status));
+            rows.forEach(function (x) { $f.append($('<input type="hidden" name="ids[]">').val(x.id)); });
+            if (tolak) $f.append($('<input type="hidden" name="notes">').val(r.value));
+            $('.bp-bulk-bar button').prop('disabled', true);
+            if (window.TesysUI && TesysUI.busy) TesysUI.busy($btn[0], true);
+            $('body').append($f);
+            $f[0].submit();
+        });
+    });
+
+    // Kembali lewat tombol Back (bfcache): kunci kirim dilepas lagi.
+    window.addEventListener('pageshow', function (e) {
+        if (!e.persisted) return;
+        bpBulkKirim = false;
+        $('.bp-bulk-bar button').prop('disabled', false).each(function () {
+            if (window.TesysUI && TesysUI.busy) TesysUI.busy(this, false);
+        });
+    });
+
+    /* Klik di mana saja pada baris membuka modal detail (pola Cost Request). Kontrol
+       di dalam baris (kode yang disalin, tombol nilai/status, menu aksi, kontrol
+       responsif DataTables) tetap bekerja sendiri. */
+    $(document).on('click', '#tblBudgetPlan tbody tr[data-id]', function (e) {
+        if ($(e.target).closest('a, button, input, select, textarea, label, form, .ts-actions, .ts-action-menu, td.dtr-control, .dt-col-check').length) return;
+        if (window.getSelection && String(window.getSelection()).length) return;
+        openBPDetail($(this).data('id'));
+    });
 
     $('#btnClearFilterBP').on('click', function () {
         TesysColumnFilter.clearAll('#tblBudgetPlan');
@@ -2021,26 +2319,16 @@ $(function () {
             /* Tab Log — gaya chat: log dari user aktif di kanan, lainnya di kiri */
             var logHtml = '';
             if (d.logs.length) {
-                d.logs.slice().reverse().forEach(function (log) {
-                    var mine = log.user_id && bpCurrentUserId && log.user_id === bpCurrentUserId;
-                    var actor = log.user || 'System';
-                    var initials = actor.trim().split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase() || '?';
-                    logHtml += '<div class="bp-chat-row ' + (mine ? 'mine' : '') + '">' +
-                        '<div class="bp-chat-av">' + initials + '</div>' +
-                        '<div>' +
-                            '<div class="bp-chat-meta">' + (mine ? '' : '<strong>' + actor + '</strong> · ') + (log.role || 'system') + ' · ' + log.date + '</div>' +
-                            '<div class="bp-chat-bubble">' +
-                                '<span class="badge badge-' + log.action_color + ' px-2 py-1" style="font-size:9px;">' + log.action_label + '</span>' +
-                                (log.status_from && log.status_to ? ' <span style="font-size:10px;opacity:.75;">' + log.status_from + ' → ' + log.status_to + '</span>' : '') +
-                                (log.notes ? '<div class="bp-chat-note">' + log.notes + '</div>' : '') +
-                            '</div>' +
-                        '</div>' +
-                    '</div>';
-                });
+                d.logs.slice().reverse().forEach(function (log) { logHtml += renderBpLogRow(log); });
             } else {
-                logHtml = '<p class="text-muted py-3 mb-0">No log yet.</p>';
+                logHtml = '<p class="text-muted py-3 mb-0 bp-log-empty">No log yet.</p>';
             }
             $('#bpLogBody').html(logHtml);
+            // Kotak catatan hanya selama Budget Plan belum Closed (server menolak juga).
+            var bisaCatat = d.can_post_log_note !== false;
+            $('#bpLogForm').prop('hidden', !bisaCatat).data('id', d.id);
+            $('#bpLogClosed').prop('hidden', bisaCatat);
+            $('#bpLogInput').val('');
 
             var pendingTab = window._bpPendingTab;
             if (pendingTab && $('#bpDetailTabs a[href="' + pendingTab + '"]').length) {
@@ -2054,6 +2342,59 @@ $(function () {
             $('#bpDetailLoading').html('<p class="text-danger text-center py-4"><i class="fas fa-exclamation-triangle mr-1"></i>Failed to load data.</p>');
         });
     }
+
+    /* ── TAB LOG GAYA CHAT (riwayat workflow + catatan bebas) ── */
+    function escBp(s) { return $('<div>').text(s == null ? '' : String(s)).html(); }
+
+    function renderBpLogRow(log) {
+        var mine = log.user_id && bpCurrentUserId && log.user_id === bpCurrentUserId;
+        var isNote = log.kind === 'note';
+        var actor = log.user || 'System';
+        var initials = actor.trim().split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase() || '?';
+        var isi = isNote
+            ? '<div class="bp-chat-note" style="margin-top:0;">' + escBp(log.notes) + '</div>'
+            : '<span class="badge badge-' + escBp(log.action_color) + ' px-2 py-1" style="font-size:9px;">' + escBp(log.action_label) + '</span>'
+              + (log.status_from && log.status_to ? ' <span style="font-size:10px;opacity:.75;">' + escBp(log.status_from) + ' → ' + escBp(log.status_to) + '</span>' : '')
+              + (log.notes ? '<div class="bp-chat-note">' + escBp(log.notes) + '</div>' : '');
+        return '<div class="bp-chat-row ' + (mine ? 'mine' : '') + '">'
+            + '<div class="bp-chat-av">' + (log.avatar ? '<img src="' + escBp(log.avatar) + '" alt="">' : escBp(initials)) + '</div>'
+            + '<div><div class="bp-chat-meta">' + (mine ? '' : '<strong>' + escBp(actor) + '</strong> · ') + escBp(log.role || 'system') + ' · ' + escBp(log.date) + '</div>'
+            + '<div class="bp-chat-bubble">' + isi + '</div></div></div>';
+    }
+
+    /* Tab Log setinggi area gulir panel supaya chat menempel di bawah walau isinya sedikit. */
+    function aturTinggiLogBp(gulirKeBawah) {
+        var body = document.querySelector('#mdlDetailBP .modal-body');
+        if (!body) return;
+        var tinggi = body.clientHeight - $('#mdlDetailBP .bp-sidebar').outerHeight() - $('#bpDetailTabs').outerHeight(true) - 40;
+        $('#bpPaneLogs').css('min-height', Math.max(tinggi, 0));
+        if (gulirKeBawah) body.scrollTop = body.scrollHeight;
+    }
+    $(document).on('shown.bs.tab', '#bpDetailTabs a[data-toggle="tab"]', function () {
+        if ($(this).attr('href') === '#bpPaneLogs') aturTinggiLogBp(true);
+    });
+
+    $(document).on('submit', '#bpLogForm', function (e) {
+        e.preventDefault();
+        var $f = $(this), $in = $('#bpLogInput'), $btn = $('#bpLogSend');
+        var teks = $.trim($in.val());
+        if (!teks) { $in.focus(); return; }
+        $btn.prop('disabled', true);
+        $.post('{{ url('/budget-plan') }}/' + $f.data('id') + '/log-note', { _token: $('meta[name="csrf-token"]').attr('content'), notes: teks })
+            .done(function (res) {
+                if (!res || !res.log) return;
+                $('#bpLogBody .bp-log-empty').remove();
+                $('#bpLogBody').append(renderBpLogRow(res.log));
+                $in.val('');
+                aturTinggiLogBp(true);
+            })
+            .fail(function (xhr) {
+                var pesan = (xhr.responseJSON && (xhr.responseJSON.message || (xhr.responseJSON.errors && xhr.responseJSON.errors.notes && xhr.responseJSON.errors.notes[0])))
+                    || 'Catatan belum dapat dikirim. Coba lagi.';
+                Swal.fire({ icon: 'error', title: 'Gagal mengirim', text: pesan });
+            })
+            .always(function () { $btn.prop('disabled', false); });
+    });
 
     $(document).on('click', '.btn-detail-bp', function () {
         openBPDetail($(this).data('id'), $(this).data('tab'));
@@ -2182,6 +2523,71 @@ $(function () {
         $('#frmRejectClosingBP').attr('action', '/budget-plan/' + id + '/reject-closing');
         $('#frmRejectClosingBP textarea[name="notes"]').val('');
         $('#mdlRejectClosingBP').modal('show');
+    });
+
+    /* ── TAMBAH COA (ACTIVE) — baris baru bernilai 0 ── */
+    var COA_ACCOUNTS = @json($coaAccounts ?? []);
+    var COA_UNITS    = @json(\App\Models\BudgetPlanDetail::UNITS);
+    var coaCategory  = '';
+    var coaRowSeq    = 0;
+
+    function coaEsc(s) { return $('<div>').text(s == null ? '' : String(s)).html(); }
+
+    function addCoaRow() {
+        var i = coaRowSeq++;
+        var accOpts = '<option value="">— Pilih Account —</option>' +
+            (COA_ACCOUNTS[coaCategory] || []).map(function (a) {
+                return '<option value="' + a.id + '">' + coaEsc(a.name) + '</option>';
+            }).join('');
+        var unitOpts = '<option value="">—</option>' + COA_UNITS.map(function (u) {
+            return '<option value="' + coaEsc(u) + '">' + coaEsc(u) + '</option>';
+        }).join('');
+
+        var $tr = $('<tr>' +
+            '<td><select name="rows[' + i + '][account_id]" class="form-control form-control-sm coa-account">' + accOpts + '</select></td>' +
+            '<td><input type="text" name="rows[' + i + '][deskripsi]" class="form-control form-control-sm" maxlength="255" required></td>' +
+            '<td><input type="text" class="form-control form-control-sm text-right" value="0" disabled></td>' +
+            '<td><input type="text" class="form-control form-control-sm text-right" value="0" disabled></td>' +
+            '<td><select name="rows[' + i + '][unit]" class="form-control form-control-sm coa-unit">' + unitOpts + '</select></td>' +
+            '<td class="text-center"><button type="button" class="btn btn-sm btn-danger btn-remove-coa-row" title="Hapus baris"><i class="fas fa-trash"></i></button></td>' +
+            '</tr>');
+
+        $('#tblAddCoaBP tbody').append($tr);
+        if (window.TesysSearchableSelect) {
+            // Sama dengan form create: Account & Unit memakai dropdown searchable.
+            TesysSearchableSelect.initOne($tr.find('.coa-account'), { placeholder: '— Pilih Account —', searchPlaceholder: 'Cari Account...' });
+            TesysSearchableSelect.initOne($tr.find('.coa-unit'), { placeholder: '—', searchPlaceholder: 'Cari Unit...' });
+        }
+    }
+
+    $(document).on('click', '.btn-add-coa-bp', function () {
+        var id = $(this).data('id');
+        coaCategory = $(this).data('category') || '';
+        $('#addCoaBPText').text($(this).data('code') + ' — ' + ($(this).data('desc') || '') + ' (Account kategori ' + coaCategory + ')');
+        $('#frmAddCoaBP').attr('action', '/budget-plan/' + id + '/add-coa');
+        $('#tblAddCoaBP tbody').empty();
+        $('#frmAddCoaBP textarea[name="notes"]').val('');
+        coaRowSeq = 0;
+        addCoaRow();
+        $('#mdlAddCoaBP').modal('show');
+    });
+
+    $('#btnAddCoaRowBP').on('click', addCoaRow);
+
+    $(document).on('click', '.btn-remove-coa-row', function () {
+        if ($('#tblAddCoaBP tbody tr').length > 1) $(this).closest('tr').remove();
+    });
+
+    // <select> Account & Unit disembunyikan TesysSearchableSelect, jadi atribut
+    // required tidak bisa dipakai — dicek di sini (server tetap memvalidasi).
+    $('#frmAddCoaBP').on('submit', function (e) {
+        var kosong = function (sel) {
+            return $('#frmAddCoaBP').find(sel).filter(function () { return !$(this).val(); }).length;
+        };
+        if (kosong('.coa-account') || kosong('.coa-unit')) {
+            e.preventDefault();
+            alert('Pilih Account dan Unit di setiap baris.');
+        }
     });
 
 });

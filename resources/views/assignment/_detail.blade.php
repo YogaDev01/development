@@ -10,11 +10,18 @@
         $parts = preg_split('/\s+/', $name);
         return mb_strtoupper(mb_substr($parts[0], 0, 1) . mb_substr(end($parts), 0, 1));
     };
+    // Foto profil bila ada, selain itu inisial.
+    $avatars = \App\Models\User::avatarUrlMap(
+        $assignment->logs->pluck('actor_id')->push($assignment->assigner->id ?? null, $me)
+    );
+    $avatarOr = fn ($userId, ?string $name) => isset($avatars[$userId])
+        ? new \Illuminate\Support\HtmlString('<img src="' . e($avatars[$userId]) . '" alt="">')
+        : $initials($name);
 @endphp
 
 {{-- ===== HEADER ala email: avatar pengirim, from -> to, subjek, meta ===== --}}
 <div class="asg-mail-head">
-    <div class="asg-chat-av asg-av-lg">{{ $initials($assignment->assigner->name ?? null) }}</div>
+    <div class="asg-chat-av asg-av-lg">{{ $avatarOr($assignment->assigner->id ?? null, $assignment->assigner->name ?? null) }}</div>
     <div class="flex-grow-1 min-w-0">
         <div class="d-flex justify-content-between align-items-start flex-wrap" style="gap:6px;">
             <div>
@@ -64,7 +71,7 @@
         @if ($log->is_comment)
             @php $mine = $log->actor_id && $me && (int) $log->actor_id === (int) $me; @endphp
             <div class="asg-chat-row {{ $mine ? 'mine' : '' }}">
-                <div class="asg-chat-av">{{ $initials($log->actor_name) }}</div>
+                <div class="asg-chat-av">{{ $avatarOr($log->actor_id, $log->actor_name) }}</div>
                 <div class="min-w-0">
                     <div class="asg-chat-meta">{{ $mine ? 'Anda' : $log->actor_name }} · {{ $log->created_at?->format('d/m H:i') }}</div>
                     <div class="asg-chat-bubble">{{ $log->notes }}</div>
@@ -86,7 +93,7 @@
 @if ($assignment->can_comment)
     <form method="POST" action="{{ route('assignment.comment', $assignment) }}" class="form-assignment-comment asg-composer">
         @csrf
-        <div class="asg-chat-av">{{ $initials(auth()->user()->name ?? null) }}</div>
+        <div class="asg-chat-av">{{ $avatarOr($me, auth()->user()->name ?? null) }}</div>
         <input type="text" name="body" class="form-control form-control-sm asg-composer-input" maxlength="500"
                placeholder="Tulis komentar…" required>
         <button type="submit" class="btn btn-primary btn-sm asg-composer-send"><i class="fas fa-paper-plane"></i></button>

@@ -41,7 +41,7 @@
             'external' => ['External', 'fas fa-handshake'],
             'db'       => ['Database', 'fas fa-database'],
         ]; @endphp
-        <ul class="nav nav-tabs pic-main-tabs mt-2 mb-3" role="tablist">
+        <ul class="nav nav-tabs ts-pill-tabs pic-main-tabs mt-2 mb-3" role="tablist">
             @foreach($picTabs as $key => [$label, $icon])
                 <li class="nav-item">
                     {{-- href tetap ditulis supaya tautannya bisa dibuka di tab baru

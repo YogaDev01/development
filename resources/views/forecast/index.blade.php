@@ -95,7 +95,7 @@
                                 <td class="text-right">{{ $f->forecast_amount_formatted }}</td>
                                 <td class="text-right fc-row-actual">{{ $f->actual_amount_formatted }}</td>
                                 <td class="text-right fc-row-variance {{ $varClass }}">{{ $f->variance_formatted }} ({{ $f->achievement_pct }}%)</td>
-                                <td><span class="badge badge-{{ $f->status_color }}">{{ $f->status }}</span></td>
+                                <td><x-status :status="$f->status" context="forecast" /></td>
                                 <td class="text-center action-column">
                                     <div class="action-buttons ts-actions">
 
@@ -128,7 +128,7 @@
                                 </td>
                             </tr>
                             @empty
-                            <tr><td colspan="9" class="text-center text-muted py-4">Belum ada forecast.</td></tr>
+                            <tr><td colspan="9" class="p-0"><x-empty title="Belum ada forecast" message="Forecast yang dibuat akan tampil di sini." icon="fas fa-chart-line" compact /></td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -361,7 +361,7 @@ body.tesys-ui .modal-body.dm-body .fc-main-panel { overflow-y:auto; max-height:1
    sudah punya catatan realisasi, tanpa harus dibuka dulu. */
 .fc-entry-count {
     position:absolute; top:-5px; right:-5px; min-width:15px; height:15px; padding:0 3px;
-    border-radius:8px; background:var(--accent, #c8a24a); color:#1b1b1b;
+    border-radius:8px; background:var(--accent); color:var(--surface);
     font-size:9px; font-weight:700; line-height:15px; text-align:center;
 }
 .ts-actions .btn-fc-entries { position:relative; }
@@ -434,7 +434,7 @@ $(function () {
         Swal.fire({
             title: 'Hapus Forecast?', text: 'Data yang dihapus tidak dapat dikembalikan.',
             icon: 'warning', showCancelButton: true,
-            confirmButtonColor: '#9a3030', cancelButtonColor: '#55595e',
+            confirmButtonColor: 'var(--danger)', cancelButtonColor: 'var(--text-muted)',
             confirmButtonText: 'Ya, Hapus', cancelButtonText: 'Batal'
         }).then(function (r) { if (r.isConfirmed) form.submit(); });
     });
@@ -493,7 +493,7 @@ $(function () {
     function isiModal(d) {
         $('#fcCode').text(d.code);
         $('#fcTitle').text(d.label);
-        $('#fcStatusBadge').html('<span class="badge badge-' + esc(d.status_color) + '">' + esc(d.status) + '</span>');
+        $('#fcStatusBadge').html('<span class="ts-status ts-status-sm ts-status-' + esc(d.status_tone) + '">' + esc(d.status_label) + '</span>');
 
         $('#fcPeriod').text(d.period);
         $('#fcForecast').text(d.forecast_amount);
@@ -506,7 +506,7 @@ $(function () {
         $('#infoNotes').text(d.notes || '-');
         $('#infoPeriod').text(d.period);
         $('#infoProjects').text(d.projects.length ? d.projects.join(', ') : 'Tanpa PO');
-        $('#infoStatus').html('<span class="badge badge-' + esc(d.status_color) + '">' + esc(d.status) + '</span>');
+        $('#infoStatus').html('<span class="ts-status ts-status-sm ts-status-' + esc(d.status_tone) + '">' + esc(d.status_label) + '</span>');
         $('#infoActivated').text(d.activated_at || '-');
         $('#infoClosed').text(d.closed_at || '-');
 
@@ -743,10 +743,8 @@ $(function () {
     /* Pemberitahuan ringkas di pojok — pengganti pesan flash, yang dulu hanya
        muncul karena halamannya dimuat ulang. */
     function toast(ikon, pesan) {
-        Swal.fire({
-            toast: true, position: 'top-end', icon: ikon, title: pesan,
-            showConfirmButton: false, timer: 2200, timerProgressBar: true
-        });
+        // Toast standar aplikasi (sama dengan pesan flash).
+        if (window.tsToast) window.tsToast(ikon === 'error' ? 'error' : (ikon === 'warning' ? 'warning' : (ikon === 'info' ? 'info' : 'success')), pesan);
     }
 
     $(document).on('click', '.btn-fc-view', function () {
@@ -860,7 +858,7 @@ $(function () {
                 icon: 'info',
                 title: 'Nominal belum diisi',
                 text: 'Isi dulu nominal realisasi di kolom Actual baris ini.',
-                confirmButtonColor: '#55595e'
+                confirmButtonColor: 'var(--text-muted)'
             }).then(function () { $inp.trigger('focus'); });
             return;
         }
@@ -868,17 +866,17 @@ $(function () {
         Swal.fire({
             title: 'Keterangan Realisasi',
             html:
-                '<p style="font-size:12px;color:#6c757d;margin-bottom:10px;">'
+                '<p style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">'
                 + esc(desc) + ' — realisasi yang ditambahkan: <strong>' + (keluar ? '-' : '') + esc(parseInt(jumlah, 10).toLocaleString('id-ID'))
-                + '</strong>' + (keluar ? ' <span style="color:#dc3545;">(Keluar, dicatat sebagai pengurang)</span>' : '')
+                + '</strong>' + (keluar ? ' <span style="color:var(--danger);">(Keluar, dicatat sebagai pengurang)</span>' : '')
                 + '</p>'
                 + '<textarea id="swalNotes" class="swal2-textarea" placeholder="Keterangan (wajib)"></textarea>',
             customClass: { popup: 'fc-swal-notes' },
             showCancelButton: true,
             confirmButtonText: 'Simpan',
             cancelButtonText: 'Batal',
-            confirmButtonColor: '#28a745',
-            cancelButtonColor: '#55595e',
+            confirmButtonColor: 'var(--success)',
+            cancelButtonColor: 'var(--text-muted)',
             didOpen: function () { document.getElementById('swalNotes').focus(); },
             preConfirm: function () {
                 var ket = (document.getElementById('swalNotes').value || '').trim();
@@ -911,7 +909,7 @@ $(function () {
             title: 'Hapus realisasi ini?',
             text: 'Actual baris ini akan dihitung ulang.',
             icon: 'warning', showCancelButton: true,
-            confirmButtonColor: '#9a3030', cancelButtonColor: '#55595e',
+            confirmButtonColor: 'var(--danger)', cancelButtonColor: 'var(--text-muted)',
             confirmButtonText: 'Ya, Hapus', cancelButtonText: 'Batal'
         }).then(function (r) {
             if (!r.isConfirmed) return;
@@ -932,7 +930,7 @@ $(function () {
         Swal.fire({
             title: 'Activate Forecast?', text: 'Setelah aktif, Actual Amount bisa diisi per item.',
             icon: 'question', showCancelButton: true,
-            confirmButtonColor: 'var(--success)', cancelButtonColor: '#55595e',
+            confirmButtonColor: 'var(--success)', cancelButtonColor: 'var(--text-muted)',
             confirmButtonText: 'Ya, Activate', cancelButtonText: 'Batal'
         }).then(function (r) { if (r.isConfirmed) $('#frmActivate').submit(); });
     });
@@ -941,7 +939,7 @@ $(function () {
         Swal.fire({
             title: 'Close Forecast?', text: 'Forecast yang sudah CLOSED tidak dapat dibuka lagi.',
             icon: 'warning', showCancelButton: true,
-            confirmButtonColor: '#343a40', cancelButtonColor: '#55595e',
+            confirmButtonColor: 'var(--charcoal)', cancelButtonColor: 'var(--text-muted)',
             confirmButtonText: 'Ya, Close', cancelButtonText: 'Batal'
         }).then(function (r) { if (r.isConfirmed) $('#frmClose').submit(); });
     });

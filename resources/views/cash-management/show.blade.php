@@ -14,15 +14,11 @@
         <div class="alert alert-danger rounded-0 shadow-sm">{{ session('error') }}</div>
         @endif
 
-        @php
-            $stBadge = ['DRAFT' => 'badge-secondary', 'POSTED' => 'badge-success', 'CANCELLED' => 'badge-danger'][$cashFlow->status] ?? 'badge-secondary';
-        @endphp
-
         <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
             <div>
                 <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">
                     {{ $cashFlow->code }}
-                    <span class="badge {{ $stBadge }} ml-2" style="font-size:11px;vertical-align:middle;">{{ $cashFlow->status }}</span>
+                    <x-status :status="$cashFlow->status" context="cash-flow" size="md" class="ml-2 align-middle" />
                 </h1>
                 <small class="text-muted">{{ $cashFlow->description }}</small>
             </div>
@@ -217,8 +213,8 @@ $(function () {
             text: $(form).data('text') || '',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#9a3030',
-            cancelButtonColor: '#55595e',
+            confirmButtonColor: 'var(--danger)',
+            cancelButtonColor: 'var(--text-muted)',
             confirmButtonText: 'Ya, Lanjutkan',
             cancelButtonText: 'Batal'
         }).then(function (r) { if (r.isConfirmed) form.submit(); });

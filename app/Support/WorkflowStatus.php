@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\BudgetRequest;
+use App\Models\CostRegister;
 use App\Models\DailyTransaction;
 use App\Models\Invoice;
 use App\Models\Project;
@@ -301,7 +302,50 @@ class WorkflowStatus
             ],
         ],
 
+        /*
+          Cost Register: alur Cost Payment (Non-CA) tanpa tahap Checked — Draft langsung
+          VERIFIED (label "Submitted"). Gerbang peran: CostRegisterController
+          (submit: finance group; approve/revise: approver) dan Treasury (batch).
+        */
+        'cost-register' => [
+            'DRAFT' => [
+                'description' => 'Belum diajukan',
+                'tone'        => 'neutral',
+                'icon'        => 'fa-edit',
+            ],
+            'VERIFIED' => [
+                'description' => 'Menunggu persetujuan CEO',
+                'tone'        => 'attention',
+                'icon'        => 'fa-hourglass-half',
+            ],
+            'APPROVED' => [
+                'description' => 'Siap dibatch Treasury',
+                'tone'        => 'progress',
+                'icon'        => 'fa-check-circle',
+            ],
+            'QUEUED' => [
+                'description' => 'Masuk batch pembayaran',
+                'tone'        => 'progress',
+                'icon'        => 'fa-exchange-alt',
+            ],
+            'CLOSED' => [
+                'description' => 'Sudah dibayar',
+                'tone'        => 'done',
+                'icon'        => 'fa-check-circle',
+            ],
+            'CANCELLED' => [
+                'description' => 'Dibatalkan',
+                'tone'        => 'neutral',
+                'icon'        => 'fa-ban',
+            ],
+        ],
+
         'daily-transaction' => [
+            'DRAFT' => [
+                'description' => 'Draft Treasury — masih bisa diubah, belum diajukan ke CEO',
+                'tone'        => 'neutral',
+                'icon'        => 'fa-pen',
+            ],
             'PENDING_APPROVER' => [
                 'description' => 'Menunggu approval CEO',
                 'tone'        => 'attention',
@@ -319,6 +363,119 @@ class WorkflowStatus
             ],
             'REJECTED' => [
                 'description' => 'Batch ditolak; CR kembali ke Approved',
+                'tone'        => 'danger',
+                'icon'        => 'fa-undo',
+            ],
+        ],
+
+        /*
+          Cash Receipt (header penerimaan). Transisi: CashReceiptController —
+          store/allocate (DRAFT -> ALLOCATED), cancel (-> CANCELLED).
+        */
+        'cash-receipt' => [
+            'DRAFT' => [
+                'description' => 'Belum seluruhnya dialokasikan ke invoice',
+                'tone'        => 'attention',
+                'icon'        => 'fa-hourglass-half',
+            ],
+            'ALLOCATED' => [
+                'description' => 'Sudah dialokasikan ke invoice',
+                'tone'        => 'done',
+                'icon'        => 'fa-check-circle',
+            ],
+        ],
+
+        /*
+          Cash Management (dokumen Cash Flow manual). Transisi:
+          CashManagementController::post() (DRAFT -> POSTED), cancel().
+        */
+        'cash-flow' => [
+            'DRAFT' => [
+                'description' => 'Belum masuk buku kas',
+                'tone'        => 'neutral',
+            ],
+            'POSTED' => [
+                'description' => 'Sudah masuk buku kas',
+                'tone'        => 'done',
+                'icon'        => 'fa-check-circle',
+            ],
+        ],
+
+        /*
+          Tutup Periode — status DOKUMEN closing per bulan (Closing::STATUSES),
+          berbeda dari konteks 'closing' di atas yang menggambarkan langkah.
+          'BELUM DIREKAP' = periode tanpa baris closing (tampilan saja).
+        */
+        'period-closing' => [
+            'BELUM DIREKAP' => [
+                'description' => 'Rekap periode belum disusun',
+                'tone'        => 'neutral',
+            ],
+            'DRAFT' => [
+                'description' => 'Rekap tersusun; periode belum ditutup',
+                'tone'        => 'attention',
+                'icon'        => 'fa-hourglass-half',
+            ],
+            'CLOSED' => [
+                'description' => 'Periode ditutup',
+                'tone'        => 'done',
+                'icon'        => 'fa-lock',
+            ],
+            'REOPENED' => [
+                'description' => 'Periode dibuka kembali',
+                'tone'        => 'progress',
+                'icon'        => 'fa-lock-open',
+            ],
+        ],
+
+        /* Forecast. Realisasi hanya bisa diubah selama ACTIVE (ForecastController). */
+        'forecast' => [
+            'DRAFT' => [
+                'description' => 'Belum diaktifkan',
+                'tone'        => 'neutral',
+            ],
+            'ACTIVE' => [
+                'description' => 'Berjalan; realisasi bisa dicatat',
+                'tone'        => 'progress',
+            ],
+            'CLOSED' => [
+                'description' => 'Ditutup',
+                'tone'        => 'done',
+                'icon'        => 'fa-check-circle',
+            ],
+        ],
+
+        /* Payroll Run. Gerbang peran: PayrollRunController::*_ROLES. */
+        'payroll-run' => [
+            'DRAFT' => [
+                'description' => 'Disiapkan HR; belum diajukan',
+                'tone'        => 'neutral',
+            ],
+            'SUBMITTED' => [
+                'description' => 'Menunggu verifikasi Finance Manager',
+                'tone'        => 'attention',
+                'icon'        => 'fa-hourglass-half',
+            ],
+            'VERIFIED' => [
+                'description' => 'Menunggu persetujuan CEO',
+                'tone'        => 'attention',
+                'icon'        => 'fa-hourglass-half',
+            ],
+            'APPROVED' => [
+                'description' => 'Menunggu pembayaran Finance Manager',
+                'tone'        => 'progress',
+            ],
+            'PAID' => [
+                'description' => 'Sudah dibayar; menunggu penutupan',
+                'tone'        => 'positive',
+            ],
+            'CLOSED' => [
+                'description' => 'Selesai',
+                'tone'        => 'done',
+                'icon'        => 'fa-check-circle',
+            ],
+            'REJECTED' => [
+                'description' => 'Ditolak; HR membuka kembali ke Draft',
                 'tone'        => 'danger',
                 'icon'        => 'fa-undo',
             ],
@@ -391,7 +548,10 @@ class WorkflowStatus
             'PARTIALLY_PAID', 'PAID',
         ],
         'daily-transaction' => [
-            'PENDING_APPROVER', 'DONE', 'PAID',
+            'DRAFT', 'PENDING_APPROVER', 'DONE', 'PAID',
+        ],
+        'cost-register' => [
+            'DRAFT', 'VERIFIED', 'APPROVED', 'QUEUED', 'CLOSED',
         ],
         'trouble-ticket' => [
             'OPEN', 'REMOTE', 'PLAN', 'TRIP', 'IN_PROGRESS', 'PROGRESS_DONE', 'CLOSED',
@@ -486,6 +646,10 @@ class WorkflowStatus
 
         if ($context === 'project') {
             return Project::statusLabelFor($status);
+        }
+
+        if ($context === 'cost-register') {
+            return CostRegister::statusLabelFor($status);
         }
 
         /*

@@ -6,26 +6,36 @@
 
 <div class="content">
     <div class="container-fluid">
+      <div class="ts-index tw:flex tw:flex-col tw:gap-4 tw:py-4">
 
         @if(session('success'))
-        <div class="alert alert-success rounded-0 shadow-sm">{{ session('success') }}</div>
+        <div class="alert alert-success rounded-0 shadow-sm mb-0">{{ session('success') }}</div>
         @endif
         @if(session('error'))
-        <div class="alert alert-danger rounded-0 shadow-sm">{{ session('error') }}</div>
+        <div class="alert alert-danger rounded-0 shadow-sm mb-0">{{ session('error') }}</div>
         @endif
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <div>
-                <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Cash Management</h1>
-                <small class="text-muted">
-                    Pergerakan kas perusahaan — disusun dari Cash Receipt, Treasury, dan entri manual. Tidak ada transaksi yang dicatat dua kali.
-                </small>
-            </div>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
-                <li class="breadcrumb-item"><a href="#">Finance</a></li>
+        {{-- Judul & breadcrumb topbar: shell memindahkan <h1> dan .breadcrumb pertama ke topbar
+             (tesys-shell.js hoistPageTitle); disembunyikan secara visual. --}}
+        <div class="tw:sr-only">
+            <h1>Cash Management</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">Finance</li>
                 <li class="breadcrumb-item active">Cash Management</li>
             </ol>
         </div>
+
+        <x-tw.page-header title="Buku Kas"
+            description="Pergerakan kas perusahaan — disusun dari Cash Receipt, Treasury, dan entri manual. Tidak ada transaksi yang dicatat dua kali.">
+            <x-slot:actions>
+                <x-tw.button href="{{ route('cash-management.create') }}" class="ts-add-btn tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Cash Flow</x-tw.button>
+            </x-slot:actions>
+        </x-tw.page-header>
+
+        {{-- Mobile: tombol di header disembunyikan dan diganti tombol melayang (tesys-ui-refine.css). --}}
+        <a href="{{ route('cash-management.create') }}" class="ts-fab" aria-label="Tambah Cash Flow" title="Tambah Cash Flow">
+            <i class="fas fa-plus" aria-hidden="true"></i>
+        </a>
 
         {{-- Ringkasan berasal dari koleksi yang SAMA dengan tabel di bawah
              (CashFlowService::summarize menerima ledger yang sudah difilter),
@@ -50,8 +60,7 @@
              pernah menutup sendiri. Rentang tanggal tetap disaring di server
              karena rentang menentukan dataset-nya, dan kartu ringkasan
              dihitung ulang dari baris yang lolos filter. --}}
-        <div class="card shadow-sm mt-3">
-            <div class="card-body py-3">
+        <x-tw.card padding="sm">
                 <div class="form-row align-items-end">
                     <form method="GET" action="{{ url('/cash-management') }}" id="formFilterKas" class="form-row col-lg-4 col-md-8 col-12 p-0 m-0">
                         {{-- Satu kotak rentang (TesysDateRange): klik membuka dua
@@ -93,10 +102,9 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+        </x-tw.card>
 
-        <ul class="nav nav-tabs ts-tabs-sticky mt-3" role="tablist">
+        <ul class="nav nav-tabs ts-pill-tabs ts-tabs-sticky" role="tablist">
             <li class="nav-item">
                 <a class="nav-link active" data-toggle="tab" href="#tabLedger" role="tab">
                     <i class="fas fa-stream mr-1"></i> Buku Kas
@@ -118,10 +126,9 @@
 
             {{-- ── BUKU KAS ───────────────────────────────────────────────── --}}
             <div class="tab-pane fade show active" id="tabLedger" role="tabpanel">
-                <div class="card card-primary card-outline shadow-sm" style="border-top-left-radius:0;">
-                    <div class="card-body">
+                <x-tw.card padding="sm">
                         <div class="table-responsive">
-                            <table id="tblLedger" class="table table-bordered table-hover table-striped mb-0">
+                            <table id="tblLedger" class="table table-bordered table-hover mb-0 ts-idx-tbl">
                                 <thead class="bg-light">
                                     <tr>
                                         <th scope="col" class="text-nowrap">Tanggal</th>
@@ -193,14 +200,12 @@
                                 @endif
                             </table>
                         </div>
-                    </div>
-                </div>
+                </x-tw.card>
             </div>
 
             {{-- ── REKAP PERIODE ──────────────────────────────────────────── --}}
             <div class="tab-pane fade" id="tabPeriod" role="tabpanel">
-                <div class="card card-primary card-outline shadow-sm" style="border-top-left-radius:0;">
-                    <div class="card-body">
+                <x-tw.card padding="sm">
                         <div class="table-responsive">
                             <table class="table table-bordered table-hover mb-0">
                                 <thead class="bg-light">
@@ -217,8 +222,8 @@
                                     <tr>
                                         <td>{{ \Carbon\Carbon::createFromFormat('Y-m', $m['period'])->translatedFormat('F Y') }}</td>
                                         <td class="text-center">{{ $m['count'] }}</td>
-                                        <td class="text-right text-success">{{ number_format($m['total_in'], 0, ',', '.') }}</td>
-                                        <td class="text-right text-danger">{{ number_format($m['total_out'], 0, ',', '.') }}</td>
+                                        <td class="text-right text-success">{{ (int) $m['total_in'] === 0 ? '-' : number_format($m['total_in'], 0, ',', '.') }}</td>
+                                        <td class="text-right text-danger">{{ (int) $m['total_out'] === 0 ? '-' : number_format($m['total_out'], 0, ',', '.') }}</td>
                                         <td class="text-right {{ $m['net'] >= 0 ? 'text-success' : 'text-danger' }}">
                                             <strong>{{ number_format($m['net'], 0, ',', '.') }}</strong>
                                         </td>
@@ -251,37 +256,28 @@
                                     <tr>
                                         <td>{{ $modules[$row['label']] ?? $row['label'] }}</td>
                                         <td class="text-center">{{ $row['count'] }}</td>
-                                        <td class="text-right text-success">{{ number_format($row['in'], 0, ',', '.') }}</td>
-                                        <td class="text-right text-danger">{{ number_format($row['out'], 0, ',', '.') }}</td>
+                                        <td class="text-right text-success">{{ (int) $row['in'] === 0 ? '-' : number_format($row['in'], 0, ',', '.') }}</td>
+                                        <td class="text-right text-danger">{{ (int) $row['out'] === 0 ? '-' : number_format($row['out'], 0, ',', '.') }}</td>
                                     </tr>
                                     @endforeach
                                 </tbody>
                             </table>
                         </div>
                         @endif
-                    </div>
-                </div>
+                </x-tw.card>
             </div>
 
             {{-- ── ENTRI MANUAL ───────────────────────────────────────────── --}}
             <div class="tab-pane fade" id="tabManual" role="tabpanel">
-                <div class="card card-primary card-outline shadow-sm" style="border-top-left-radius:0;">
-                    <div class="card-header d-flex align-items-center flex-wrap" style="gap:8px;">
-                        <h3 class="card-title"><i class="fas fa-pen-square mr-1"></i> Dokumen Cash Flow Manual</h3>
-                        <div class="ml-auto">
-                            <a href="{{ route('cash-management.create') }}" class="btn btn-success btn-sm">
-                                <i class="fas fa-plus mr-1"></i> Tambah Cash Flow
-                            </a>
-                        </div>
-                    </div>
-                    <div class="card-body">
+                <x-tw.card padding="sm">
+                        <h6 class="ts-dw-section-title"><i class="fas fa-pen-square mr-1"></i> Dokumen Cash Flow Manual</h6>
                         <p class="text-muted" style="font-size:11px;">
                             Dipakai untuk pergerakan kas yang tidak punya dokumen di modul lain — setoran modal,
                             biaya bank, koreksi kas. Pembayaran Cost Request dan pelunasan invoice
                             <strong>tidak perlu diinput di sini</strong>; keduanya sudah otomatis masuk Buku Kas dari Treasury dan Cash Receipt.
                         </p>
                         <div class="table-responsive">
-                            <table id="tblManual" class="table table-bordered table-hover table-striped mb-0">
+                            <table id="tblManual" class="table table-bordered table-hover mb-0 ts-idx-tbl">
                                 <thead class="bg-light">
                                     <tr>
                                         <th scope="col" class="text-nowrap">Kode</th>
@@ -292,34 +288,28 @@
                                         <th scope="col" class="text-right text-nowrap">Cash Out</th>
                                         <th scope="col" class="text-center text-nowrap">Status</th>
                                         <th scope="col" class="text-nowrap">Dibuat Oleh</th>
-                                        <th scope="col" class="text-center text-nowrap">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @forelse($documents as $doc)
-                                    <tr>
-                                        <td class="text-nowrap"><strong>{{ $doc->code }}</strong></td>
+                                    <tr data-href="{{ route('cash-management.show', $doc->id) }}">
+                                        <td class="text-nowrap">
+                                            {{-- Klik kode = salin; detail dibuka lewat klik baris. --}}
+                                            <button type="button" class="ts-copy-code" data-code="{{ $doc->code }}" title="Klik untuk menyalin kode">{{ $doc->code }}</button>
+                                        </td>
                                         <td class="text-nowrap">{{ $doc->date?->format('d M Y') }}</td>
                                         <td>{{ $doc->description }}</td>
                                         <td class="text-nowrap">{{ $doc->sourceFund->name ?? '-' }}</td>
-                                        <td class="text-right text-nowrap text-success">{{ number_format($doc->total_in, 0, ',', '.') }}</td>
-                                        <td class="text-right text-nowrap text-danger">{{ number_format($doc->total_out, 0, ',', '.') }}</td>
+                                        <td class="text-right text-nowrap text-success">{{ (int) $doc->total_in === 0 ? '-' : number_format($doc->total_in, 0, ',', '.') }}</td>
+                                        <td class="text-right text-nowrap text-danger">{{ (int) $doc->total_out === 0 ? '-' : number_format($doc->total_out, 0, ',', '.') }}</td>
                                         <td class="text-center">
-                                            @php
-                                                $stBadge = ['DRAFT' => 'badge-secondary', 'POSTED' => 'badge-success', 'CANCELLED' => 'badge-danger'][$doc->status] ?? 'badge-secondary';
-                                            @endphp
-                                            <span class="badge {{ $stBadge }} px-2 py-1">{{ $doc->status }}</span>
+                                            <x-status :status="$doc->status" context="cash-flow" />
                                         </td>
                                         <td class="text-nowrap">{{ strtoupper($doc->createdBy->username ?? '-') }}</td>
-                                        <td class="text-center text-nowrap">
-                                            <a href="{{ route('cash-management.show', $doc->id) }}" class="btn btn-sm btn-outline-primary" title="Detail">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                        </td>
                                     </tr>
                                     @empty
                                     <tr>
-                                        <td colspan="9">
+                                        <td colspan="8">
                                             <x-empty title="Belum ada entri manual" icon="fas fa-pen-square" compact />
                                         </td>
                                     </tr>
@@ -327,19 +317,21 @@
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-                </div>
+                </x-tw.card>
             </div>
 
         </div>
 
+      </div>
     </div>
 </div>
 
 @endsection
 
 @push('styles')
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
+#tblManual tbody tr[data-href] { cursor:pointer; }
 .font-weight-600 { font-weight:600; }
 .table td, .table th { vertical-align:middle !important; }
 #tblLedger, #tblManual { width:100% !important; }
@@ -394,6 +386,13 @@ $(function () {
     try { pasangTabel(); } catch (e) { if (window.console) console.error(e); }
 
     var $formFilter = $('#formFilterKas');
+
+    /* Klik di mana saja pada baris entri manual membuka detailnya (pola Cost Request). */
+    $(document).on('click', '#tblManual tbody tr[data-href]', function (e) {
+        if ($(e.target).closest('a, button, input, select, textarea, label, td.dtr-control').length) return;
+        if (window.getSelection && String(window.getSelection()).length) return;
+        window.location.href = $(this).attr('data-href');
+    });
 
     /* ── FILTER ────────────────────────────────────────────────────────────
     | Mekanismenya sama dengan Cost Request: TesysColumnFilter membuat tombol

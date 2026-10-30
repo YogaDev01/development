@@ -41,6 +41,8 @@ class BudgetRequest extends Model
         'settlement_signature_path',
         'settlement_signer_name',
         'settlement_signed_at',
+        // Keterangan pengaju pada Submit Settlement (29 Okt 2026).
+        'settlement_notes',
         'closed_at',
         'email',
     ];
@@ -557,6 +559,269 @@ class BudgetRequest extends Model
             . ' ELSE budget_request.amount END';
     }
 
+    /**
+     * Biaya CR ini diukur dari SETTLEMENT? Aturannya sama dengan
+     * realizedCostValue() / effectiveCostSql(): Cash Advance yang
+     * settlement-nya sudah pernah diajukan (baris realisasi ada, termasuk
+     * settle 0). Selainnya biaya = nilai pengajuan.
+     */
+    public function usesSettlementCost(): bool
+    {
+        return $this->isCashAdvance() && $this->hasSettlementSubmitted();
+    }
+
+    /**
+     * SATU SUMBER nilai biaya CR per sub-item Budget Plan (Settlement Custom
+     * COA, 25 Okt 2026) — dipakai "Used" per sub-item
+     * (BudgetPlanDetail::usedAmount()/costLines()), breakdown COA Todo List
+     * (BuildsCrWorklist), modal & export Budget Plan, tab Budget CR, PO, dan
+     * Daily Transaction. Jangan menghitung ulang per baris di tempat lain.
+     *
+     * Hasilnya daftar "unit" per (item asal, sub-item efektif):
+     *   - budget_detail_id : sub-item yang menanggung biaya unit ini
+     *   - request_detail   : item pengajuan asal (null = baris tambahan)
+     *   - realizations     : baris settlement penyusun unit (kosong bila belum settle)
+     *   - base             : nilai pengajuan item asal yang tercatat di sub-item
+     *                        ini (0 untuk baris yang pindah/tambahan)
+     *   - real             : nilai settlement unit ini, atau null bila biaya CR
+     *                        belum diukur dari settlement (lihat usesSettlementCost())
+     *   - value            : nilai efektif = real ?? base
+     *   - is_added/is_moved: baris tambahan / pindah Sub COA dari item asalnya
+     *
+     * Untuk CR yang biayanya dari settlement, item yang tidak punya baris
+     * settlement di sub-item asalnya bernilai 0 (settle 0 / dipindah semua).
+     * Data lama (satu baris per item, budget_detail_id NULL) menghasilkan unit
+     * yang sama persis dengan perhitungan per item sebelumnya.
+     *
+     * Relasi `type`, `details`, dan `realizations` sebaiknya sudah di-eager-load
+     * oleh pemanggil yang memproses banyak CR.
+     *
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    public function costUnits(): \Illuminate\Support\Collection
+    {
+        if ($this->costUnitsCache !== null) {
+            return $this->costUnitsCache;
+        }
+
+        $settle    = $this->usesSettlementCost();
+        $detailsBy = $this->details->keyBy('id');
+        $units     = [];
+
+        // Item pengajuan yang masih ikut (bukan TAKEOUT) di sub-item asalnya.
+        foreach ($this->details as $d) {
+            if ($d->isTakenOut()) {
+                continue;
+            }
+
+            $bd  = $d->budget_detail_id ? (int) $d->budget_detail_id : null;
+            $key = 'rd:' . $d->id . '|bd:' . ($bd ?? 0);
+
+            $units[$key] = [
+                'key'              => $key,
+                'budget_detail_id' => $bd,
+                'request_detail'   => $d,
+                'realizations'     => collect(),
+                'base'             => (int) $d->total,
+                'real'             => $settle ? 0 : null,
+                'is_added'         => false,
+                'is_moved'         => false,
+            ];
+        }
+
+        if ($settle) {
+            foreach ($this->realizations as $r) {
+                $origin = $r->request_detail_id ? $detailsBy->get($r->request_detail_id) : null;
+                $bd     = $r->effectiveBudgetDetailId($origin);
+                $key    = ($r->request_detail_id ? 'rd:' . $r->request_detail_id : 'add') . '|bd:' . ($bd ?? 0);
+
+                if (! isset($units[$key])) {
+                    $units[$key] = [
+                        'key'              => $key,
+                        'budget_detail_id' => $bd,
+                        'request_detail'   => $origin,
+                        'realizations'     => collect(),
+                        'base'             => 0,
+                        'real'             => 0,
+                        'is_added'         => ! $r->request_detail_id,
+                        'is_moved'         => $r->request_detail_id
+                            && $bd !== ($origin?->budget_detail_id ? (int) $origin->budget_detail_id : null),
+                    ];
+                }
+
+                $units[$key]['realizations']->push($r);
+                $units[$key]['real'] += (int) $r->total;
+            }
+        }
+
+        return $this->costUnitsCache = collect($units)
+            ->map(fn ($u) => $u + ['value' => $u['real'] ?? $u['base']])
+            ->values();
+    }
+
+    /** Cache in-memory per instance untuk costUnits(). */
+    private ?\Illuminate\Support\Collection $costUnitsCache = null;
+
+    /** Buang cache costUnits() — dipanggil setelah baris settlement disimpan ulang. */
+    public function forgetCostUnits(): void
+    {
+        $this->costUnitsCache = null;
+    }
+
+    /**
+     * Isi awal baris form Settlement (halaman Submit Settlement & modal
+     * settlement Trouble Ticket) — satu sumber supaya keduanya sama:
+     *   - belum pernah disimpan  : satu baris per item (bukan TAKEOUT), Sub COA
+     *                              & nilai Settle = item asal (prefill 1:1);
+     *   - sudah ada baris tersimpan (draft / settlement ditolak): baris apa
+     *     adanya, diurutkan per item asal lalu id; item yang tidak punya baris
+     *     sama sekali tetap tampil dengan Settle 0 supaya tidak "hilang";
+     *     baris tambahan di akhir.
+     *
+     * Relasi details dan realizations.attachments sebaiknya sudah dimuat.
+     *
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    /** Kolom settlement_notes sudah ada? (jaga-jaga kode terunggah sebelum migrasinya dijalankan) */
+    public static function hasSettlementNotesColumn(): bool
+    {
+        static $ada = null;
+
+        return $ada ??= \Illuminate\Support\Facades\Schema::hasColumn('budget_request', 'settlement_notes');
+    }
+
+    public function settlementFormRows(): \Illuminate\Support\Collection
+    {
+        $included = $this->details->reject(fn ($d) => $d->isTakenOut())->values();
+        $saved    = $this->realizations;
+        $rows     = collect();
+
+        foreach ($included as $pos => $d) {
+            $milik = $saved->where('request_detail_id', $d->id)->sortBy('id')->values();
+
+            if ($saved->isEmpty() || $milik->isEmpty()) {
+                $rows->push([
+                    'id'               => null,
+                    'detail'           => $d,
+                    'orphan_detail_id' => null,
+                    'origin_position'  => $pos + 1,
+                    'budget_detail_id' => $d->budget_detail_id ? (int) $d->budget_detail_id : null,
+                    'notes'            => null,
+                    'change_note'      => null,
+                    'qty'              => (int) $d->qty,
+                    'amount'           => $saved->isEmpty() ? (int) $d->total : 0,
+                    'price'            => $saved->isEmpty() ? (int) $d->amount : 0,
+                    'attachments'      => collect(),
+                ]);
+                continue;
+            }
+
+            foreach ($milik as $r) {
+                $rows->push([
+                    'id'               => $r->id,
+                    'detail'           => $d,
+                    'orphan_detail_id' => null,
+                    'origin_position'  => $pos + 1,
+                    'budget_detail_id' => $r->effectiveBudgetDetailId($d),
+                    'notes'            => $r->notes,
+                    'change_note'      => $r->change_note,
+                    'qty'              => max(1, (int) $r->qty),
+                    'amount'           => (int) $r->total,
+                    'price'            => (int) $r->amount,
+                    'attachments'      => $r->relationLoaded('attachments') ? $r->attachments : collect(),
+                ]);
+            }
+        }
+
+        // Baris tambahan (tanpa item asal) — dan baris yatim yang item asalnya
+        // sudah tidak ikut (TAKEOUT / terhapus) — di akhir. Baris yatim tetap
+        // membawa request_detail_id-nya ('orphan_detail_id') supaya tautannya
+        // tidak hilang diam-diam: form menandainya dan server menolak dengan
+        // pesan yang jelas (lihat validateRealizationInput()).
+        $includedIds = $included->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $detailsBy   = $this->details->keyBy('id');
+        foreach ($saved->sortBy('id') as $r) {
+            if ($r->request_detail_id && in_array((int) $r->request_detail_id, $includedIds, true)) {
+                continue;
+            }
+
+            // Item asal diambil dari details yang sudah dimuat (null bila
+            // terhapus) — tanpa lazy-load requestDetail per baris.
+            $origin = $r->request_detail_id ? $detailsBy->get($r->request_detail_id) : null;
+            if ($r->request_detail_id && ! $r->relationLoaded('requestDetail')) {
+                $r->setRelation('requestDetail', $origin);
+            }
+
+            $rows->push([
+                'id'               => $r->id,
+                'detail'           => null,
+                'orphan_detail_id' => $r->request_detail_id ? (int) $r->request_detail_id : null,
+                'origin_position'  => null,
+                'budget_detail_id' => $r->effectiveBudgetDetailId($origin),
+                'notes'            => $r->notes,
+                'change_note'      => $r->change_note,
+                'qty'              => max(1, (int) $r->qty),
+                'amount'           => (int) $r->total,
+                'price'            => (int) $r->amount,
+                'attachments'      => $r->relationLoaded('attachments') ? $r->attachments : collect(),
+            ]);
+        }
+
+        return $rows->values();
+    }
+
+    /**
+     * Pilihan Sub COA untuk form Settlement: seluruh sub-item Budget Plan CR
+     * ini (termasuk tipe additional). 'available' = sisa budget sub-item
+     * DI LUAR kontribusi CR ini sendiri, dipakai peringatan "melebihi sisa
+     * budget" di form — informatif saja, tidak memblokir (keputusan 25 Okt 2026).
+     *
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    public function settlementSubItemOptions(): \Illuminate\Support\Collection
+    {
+        if (! $this->budget_plan_id) {
+            return collect();
+        }
+
+        $subItems = BudgetPlanDetail::where('budget_plan_id', $this->budget_plan_id)
+            ->with('account')
+            ->orderBy('id')
+            ->get();
+
+        BudgetPlanDetail::primeCostLines($subItems);
+
+        return $subItems->map(function ($bd) {
+            $milikSendiri = (int) $bd->costLines()
+                ->filter(fn ($u) => (int) $u['budget_request']->id === (int) $this->id)
+                ->sum('value');
+
+            return [
+                'id'        => (int) $bd->id,
+                'account'   => $bd->account?->name ?? '-',
+                'sub_coa'   => $bd->deskripsi ?: '-',
+                'label'     => trim(($bd->account?->name ?? '-') . ' — ' . ($bd->deskripsi ?: '-')),
+                'type'      => $bd->type,
+                'available' => (int) $bd->total - $bd->usedAmount() + $milikSendiri,
+            ];
+        })->values();
+    }
+
+    /**
+     * Ringkasan costUnits() per sub-item: [budget_detail_id => rupiah].
+     * Unit tanpa sub-item (data lama tanpa tautan budget detail) tidak ikut.
+     *
+     * @return array<int, int>
+     */
+    public function costByBudgetDetail(): array
+    {
+        return $this->costUnits()
+            ->filter(fn ($u) => $u['budget_detail_id'])
+            ->groupBy('budget_detail_id')
+            ->map(fn ($units) => (int) $units->sum('value'))
+            ->all();
+    }
+
     /** Selisih = Settlement (total realisasi) - Original Approved Amount. Dasar
      *  nilai Second Payment saat Settlement > nilai pengajuan awal. */
     public function getSettlementOverageAttribute(): int
@@ -827,6 +1092,30 @@ class BudgetRequest extends Model
         'VERIFIED'  => ['approver'],
     ];
 
+    /**
+     * Peran per status untuk Bulk Approve tahap SETTLEMENT di daftar CR (Fase 4).
+     * Sama dengan peran aksi satuannya: headCheckSettlement (Head),
+     * financeVerifySettlement (Finance), settleApprove / Close (Finance Manager),
+     * secondApprove (Approver).
+     */
+    public const SETTLE_BULK_ROLES = [
+        'REALIZED'        => ['head'],
+        'SETTLE_CHECKED'  => ['finance', 'finance_manager', 'cost_control'],
+        'SETTLE_VERIFIED' => ['finance_manager'],
+        'SETTLE_APPROVED' => ['approver'],
+    ];
+
+    /** Semua tahap yang bisa dicentang untuk bulk approve: pengajuan + settlement. */
+    public static function bulkStageRoles(): array
+    {
+        return self::STAGE_ROLES + self::SETTLE_BULK_ROLES;
+    }
+
+    public function isInBulkStage(): bool
+    {
+        return isset(self::bulkStageRoles()[$this->status]);
+    }
+
     public function isInApprovalStage(): bool
     {
         return in_array($this->status, self::APPROVAL_STAGES, true);
@@ -896,12 +1185,13 @@ class BudgetRequest extends Model
             'second_payment_approved', 'second_payment_ceo_approved' => 'approve',
             'head_rejected', 'finance_rejected', 'ceo_rejected',
             'cr_rejected', 'realization_rejected', 'settlement_rejected',
-            'second_payment_batch_rejected'                         => 'reject',
+            'second_payment_batch_rejected', 'batch_item_rejected',
+            'second_payment_rejected'                               => 'reject',
             'head_revised', 'finance_revised', 'revised'            => 'revise',
             'cancelled'                                             => 'cancel',
             'paid', 'second_payment_paid'                           => 'pay',
             'realization_approved', 'settlement_closed', 'closed'   => 'close',
-            'item_takeout', 'all_items_takeout', 'second_payment_takeout' => 'takeout',
+            'item_takeout', 'all_items_takeout', 'second_payment_takeout', 'batch_takeout' => 'takeout',
             'item_restore'                                          => 'restore',
             'batched', 'second_payment_batched', 'realized'         => 'process',
             default                                                 => 'update',

@@ -10,10 +10,10 @@ Read migrations, not memory, before changing anything.
 | Identity & access | `users` (incl. `notification_prefs` JSON — per-user notification opt-out, safe-by-default; `cover` — profile cover photo, like `avatar`; `default_app` — user's default app/sidebar at login, see `config/apps.php`), `roles`, `menu_items`, `role_menu_items`, `access_groups`, `access_group_details` (project / cost center / team scope) |
 | Org | `departments`, `teams`, `team_members`, `employees`, `master_pics` (linked to users/employees; CA limit `token`, `nominal`) |
 | Master | `customers`, `customer_types`, `customer_details`, `banks`, `beneficiaries`, `clusters`, `groups`, `accounts`, `cost_centers`, `source_funds`, `stages`, `request_type` |
-| Budget | `budget_plans`, `budget_plan_details`, `budget_plan_logs`, `budget_plan_attachments` |
+| Budget | `budget_plans`, `budget_plan_details`, `budget_plan_logs`, `budget_plan_log_notes` (chat notes on the Log tab, migration `2026_10_29_000400`, pending on host), `budget_plan_attachments` |
 | Cost Request | `budget_request`, `request_detail`, `request_attachments`, `request_detail_attachments`, `request_status_logs`, `budget_request_realizations`, `budget_request_realization_attachments`, `realization_detail_attachments`, `budget_request_second_payments` |
-| Treasury | `daily_transactions`, `daily_transaction_items`, `daily_transaction_attachments`, `cost_registers`, `cost_register_attachments` |
-| Purchase Order (customer PO) | `projects`, `project_details`, `project_pics`, `project_attachments`, `project_po_numbers`, `project_logs`, `project_monitoring_logs`(+attachments) |
+| Treasury | `daily_transactions`, `daily_transaction_items`, `daily_transaction_attachments`, `daily_transaction_log_notes` (chat notes on the batch Log tab, migration `2026_10_29_000300`, pending on host), `cost_registers`, `cost_register_details` (rincian per item), `cost_register_logs` (riwayat status + catatan chat), `cost_register_attachments` (migrasi `2026_10_29_000600`/`000700`, pending on host; status ENUM berubah: DRAFT, VERIFIED, APPROVED, QUEUED, CLOSED, CANCELLED) |
+| Purchase Order (customer PO) | `projects`, `project_details`, `project_pics`, `project_attachments`, `project_po_numbers`, `project_logs`, `project_log_notes` (chat notes on the Log tab, migration `2026_10_29_000500`, pending on host), `project_monitoring_logs`(+attachments) |
 | Billing & collection | `invoices`, `invoice_details`, `invoice_attachments`, `invoice_comments`, `cash_receipts`, `cash_receipt_headers`, `delivery_notes`(+items/logs/attachments) |
 | Cash management | `cash_flows`, `cash_flow_details` |
 | Forecast | `forecasts`, `forecast_details`, `forecast_actual_entries`, `forecast_logs` |
@@ -89,6 +89,15 @@ converted in place.
   Cash Management → DRAFT only; Cost Register → non-processed only; PO number →
   RELEASED only; Cash Receipt header → only without allocations. Treasury
   batches have no delete route.
+- `budget_request_realizations.budget_detail_id` (migration
+  `2026_10_25_000200`, nullable, FK → `budget_plan_details` **RESTRICT**):
+  Sub COA pilihan baris settlement (Settlement Custom COA). NULL = baris lama;
+  Sub COA efektif = `COALESCE(budget_detail_id, request_detail.budget_detail_id)`
+  (`BudgetRequestRealization::effectiveBudgetDetailId()`). Tanpa backfill.
+  Akibat RESTRICT: sub-item yang sudah dipakai baris settlement tidak bisa
+  dihapus. `request_detail_id` kini boleh NULL dengan sengaja (baris tambahan)
+  dan satu item boleh punya beberapa baris (relasi
+  `RequestDetail::realizations()`, hasMany).
 - `daily_transaction_items.budget_request_id` is intentionally NOT unique: a CR
   legitimately appears in several batches after an item/batch rejection
   (confirmed in production data, 19 cases, 2026-10-02).

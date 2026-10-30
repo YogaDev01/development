@@ -28,7 +28,7 @@
             'outsider' => ['External', 'fas fa-truck'],
             'db'       => ['Database', 'fas fa-database'],
         ]; @endphp
-        <ul class="nav nav-tabs ben-main-tabs mt-2 mb-3" role="tablist">
+        <ul class="nav nav-tabs ts-pill-tabs ben-main-tabs mt-2 mb-3" role="tablist">
             @foreach($benTabs as $key => [$label, $icon])
                 <li class="nav-item">
                     {{-- href tetap ditulis supaya bisa dibuka di tab baru dan

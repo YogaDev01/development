@@ -1,0 +1,5428 @@
+{
+ "tahap": "F4",
+ "label": "sesudah",
+ "browser": "edge",
+ "base": "http://127.0.0.1:8099",
+ "waktu": "2026-10-26T17:37:43.852Z",
+ "viewport": {
+  "desktop": "1440x900",
+  "mobile": "390x844"
+ },
+ "tinggiMaksFoto": 1500,
+ "akun": {
+  "staff": "dummy.staff",
+  "superadmin": "dummy.superadmin",
+  "kosong": "dummy.maker"
+ },
+ "berkas": {
+  "viewFeedback": {
+   "index": {
+    "sha256": "cf5f019831281e1f1a01289258a147b78dc456d50b20e2e287c86861104f83b9",
+    "byte": 6103
+   },
+   "create": {
+    "sha256": "3b2cbd7d04cd8b476db9dfea087671acfb98273f47db1bd3dd6e3f6ae8107729",
+    "byte": 10543
+   },
+   "show": {
+    "sha256": "771e05ef09d465b48f469e61eccb342f82c9dbf34409c9f1482026fba2913ced",
+    "byte": 11753
+   },
+   "inbox": {
+    "sha256": "cffe8aa107cb3abc95abb1f610e71be0c2c141fb4959d6f5ebf92609563db4cc",
+    "byte": 7077
+   },
+   "_disclaimer": {
+    "sha256": "12b4a049d8763e7ce412066a42777eea5105088fe9b7bccb72fa7d3238f03404",
+    "byte": 1970
+   }
+  },
+  "komponenTw": {
+   "badge": {
+    "sha256": "a2aeeea788899f89b99947bc246a63c7bc9537e2388076fb9d49eb341adfdd6a",
+    "byte": 3345
+   },
+   "button": {
+    "sha256": "b06063928adeff2fb6df99744618145ff780d68772402aa97acc1c18a1967e6a",
+    "byte": 8978
+   },
+   "card": {
+    "sha256": "91e9c6b61ecb372ae2604b3d549fb9bb82b4f11a288b48a24d322518419ec28b",
+    "byte": 2315
+   },
+   "input": {
+    "sha256": "41d4e07c1769186068bfa641385280c8539ec4e97acd0e6b8ec6f29738073542",
+    "byte": 4459
+   },
+   "select": {
+    "sha256": "4ff80343141592d7703d69f85cde0ba9e0632aa5a2eb7d83b87c5ffff88a2c49",
+    "byte": 3523
+   },
+   "modal": {
+    "sha256": "c68a5df45f2f92e4b9a64730951a6ccd265af7ea8deac17c22a472b07b1d5acc",
+    "byte": 4669
+   },
+   "table": {
+    "sha256": "c784cea28f5835e69406ddf4ca6bf72da819d238298830b4fea2d12ddfc44a2e",
+    "byte": 4941
+   },
+   "page-header": {
+    "sha256": "0cb50bbd9e13ba59d135c7b3d993c47db1ca8820b2376c93170de0a08103fa7d",
+    "byte": 2223
+   },
+   "stat": {
+    "sha256": "318ce99d18e2063d7b77c89f726db630513a58a9f18f51ca9a251ff128f98a68",
+    "byte": 2056
+   },
+   "textarea": {
+    "sha256": "40f78d41bae16fbc7df7bf4f32f227b4efc88682c15ca37af6a638a526ff2728",
+    "byte": 3599
+   }
+  },
+  "tesysTwCss": {
+   "sha256": "ab275d4c1d362637462bcaf7a1df904ee59f837cce27af9be33c8555858677d8",
+   "byte": 14129
+  }
+ },
+ "login": [
+  {
+   "akun": "dummy.staff",
+   "navigasi": true,
+   "urlSetelahLogin": "/",
+   "berhasil": true,
+   "galatLogin": null
+  },
+  {
+   "akun": "dummy.superadmin",
+   "navigasi": true,
+   "urlSetelahLogin": "/",
+   "berhasil": true,
+   "galatLogin": null
+  },
+  {
+   "akun": "dummy.maker",
+   "navigasi": true,
+   "urlSetelahLogin": "/",
+   "berhasil": true,
+   "galatLogin": null
+  }
+ ],
+ "halaman": [
+  {
+   "id": "show-superadmin",
+   "tema": "terang",
+   "viewport": "1440x900",
+   "httpDokumen": 200,
+   "title": "Detail Submission | TESYS",
+   "url": "/feedback/28",
+   "temaAttr": "light",
+   "lang": "id",
+   "zoomHtml": "0.8",
+   "scrollWidth": 1440,
+   "clientWidth": 1440,
+   "bodyScrollWidth": 1800,
+   "innerWidth": 1440,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 1,
+    "di44": 0,
+    "kurangDari44": 1,
+    "contoh": [
+     {
+      "el": "a.tw:inline-flex",
+      "w": 83,
+      "h": 27
+     }
+    ]
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "48dca55f578e2769262490fde8956da5eeaec960c34074b21c0d18cdbbda80db",
+   "jumlahElemenDigest": 76,
+   "digestKunci": "3aacc9eecf42c38f7713589635daa8782817bf725c5d079c16f45bf24fb67c2a",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 76,
+    "elemenBerkelasTw": 66,
+    "elemenBerStyleAttr": 0,
+    "kelasLegacyUnik": 9,
+    "kelasTwUnik": 95,
+    "legacyTeratas": [
+     [
+      "fas",
+      5
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "fa-arrow-left",
+      1
+     ],
+     [
+      "fa-comment-dots",
+      1
+     ],
+     [
+      "fa-reply",
+      1
+     ],
+     [
+      "fa-info-circle",
+      1
+     ],
+     [
+      "feedback-disclaimer",
+      1
+     ],
+     [
+      "fa-lock",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:flex",
+      20
+     ],
+     [
+      "tw:border-border",
+      20
+     ],
+     [
+      "tw:items-center",
+      19
+     ],
+     [
+      "tw:text-text",
+      18
+     ],
+     [
+      "tw:text-text-dim",
+      15
+     ],
+     [
+      "tw:border-b",
+      13
+     ],
+     [
+      "tw:border",
+      10
+     ],
+     [
+      "tw:justify-between",
+      9
+     ],
+     [
+      "tw:gap-4",
+      9
+     ],
+     [
+      "tw:rounded-pill",
+      9
+     ],
+     [
+      "tw:py-2",
+      9
+     ],
+     [
+      "tw:min-h-8",
+      8
+     ],
+     [
+      "tw:last:border-b-0",
+      8
+     ],
+     [
+      "tw:gap-2",
+      7
+     ],
+     [
+      "tw:flex-col",
+      6
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 0,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 0,
+     ".breadcrumb": 0,
+     ".d-flex": 0,
+     ".text-muted": 0,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 66
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(255, 255, 255)",
+     "tw:border-border": "rgb(230, 225, 224)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 23
+   },
+   "konflikTw": {
+    "aturanTw": 206,
+    "pasanganAturanElemen": 435,
+    "propertiDicek": 948,
+    "selisih": [
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 26,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 26,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 26,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 14,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 14,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 13,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:h-2 | height",
+      "harap": "8px",
+      "nyata": "7.98828px",
+      "jumlah": 4,
+      "tataLetak": true,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:w-2 | width",
+      "harap": "8px",
+      "nyata": "7.98828px",
+      "jumlah": 4,
+      "tataLetak": true,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.03) 0px 1px 2px 0px",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:last:border-b-0:last-child | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:last:border-b-0:last-child | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:last:border-b-0:last-child | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-start",
+      "harap": "auto",
+      "nyata": "144.512px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-end",
+      "harap": "auto",
+      "nyata": "144.512px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:grid-cols-1 | grid-template-columns",
+      "harap": "repeat(1, minmax(0px, 1fr))",
+      "nyata": "386.66px 386.66px 386.68px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:lg:grid-cols-3 | grid-template-columns",
+      "harap": "repeat(3, minmax(0px, 1fr))",
+      "nyata": "386.66px 386.66px 386.68px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-bottom-width",
+      "harap": "1.25px",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:h-8 | height",
+      "harap": "32px",
+      "nyata": "31.9922px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:w-8 | width",
+      "harap": "32px",
+      "nyata": "31.9922px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "span"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "show-superadmin",
+   "tema": "terang",
+   "viewport": "390x844",
+   "httpDokumen": 200,
+   "title": "Detail Submission | TESYS",
+   "url": "/feedback/28",
+   "temaAttr": "light",
+   "lang": "id",
+   "zoomHtml": "1",
+   "scrollWidth": 390,
+   "clientWidth": 390,
+   "bodyScrollWidth": 390,
+   "innerWidth": 390,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 1,
+    "di44": 1,
+    "kurangDari44": 0,
+    "contoh": []
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "60fedc91b91c7164b880d16d375322722b4b22864b30fe89e7db19aabdf3b11d",
+   "jumlahElemenDigest": 76,
+   "digestKunci": "8de2aebd2a76b5f15054d95fce312eec923aade1366d056b8c9107550e30f53c",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 76,
+    "elemenBerkelasTw": 66,
+    "elemenBerStyleAttr": 0,
+    "kelasLegacyUnik": 9,
+    "kelasTwUnik": 95,
+    "legacyTeratas": [
+     [
+      "fas",
+      5
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "fa-arrow-left",
+      1
+     ],
+     [
+      "fa-comment-dots",
+      1
+     ],
+     [
+      "fa-reply",
+      1
+     ],
+     [
+      "fa-info-circle",
+      1
+     ],
+     [
+      "feedback-disclaimer",
+      1
+     ],
+     [
+      "fa-lock",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:flex",
+      20
+     ],
+     [
+      "tw:border-border",
+      20
+     ],
+     [
+      "tw:items-center",
+      19
+     ],
+     [
+      "tw:text-text",
+      18
+     ],
+     [
+      "tw:text-text-dim",
+      15
+     ],
+     [
+      "tw:border-b",
+      13
+     ],
+     [
+      "tw:border",
+      10
+     ],
+     [
+      "tw:justify-between",
+      9
+     ],
+     [
+      "tw:gap-4",
+      9
+     ],
+     [
+      "tw:rounded-pill",
+      9
+     ],
+     [
+      "tw:py-2",
+      9
+     ],
+     [
+      "tw:min-h-8",
+      8
+     ],
+     [
+      "tw:last:border-b-0",
+      8
+     ],
+     [
+      "tw:gap-2",
+      7
+     ],
+     [
+      "tw:flex-col",
+      6
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 0,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 0,
+     ".breadcrumb": 0,
+     ".d-flex": 0,
+     ".text-muted": 0,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 66
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(255, 255, 255)",
+     "tw:border-border": "rgb(230, 225, 224)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 23
+   },
+   "konflikTw": {
+    "aturanTw": 182,
+    "pasanganAturanElemen": 435,
+    "propertiDicek": 947,
+    "selisih": [
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 26,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 26,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 26,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 14,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 14,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 13,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.03) 0px 1px 2px 0px",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:last:border-b-0:last-child | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:last:border-b-0:last-child | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:last:border-b-0:last-child | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-start",
+      "harap": "auto",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-end",
+      "harap": "auto",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:flex-1 | flex-basis",
+      "harap": "0%",
+      "nyata": "100%",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:min-h-ctl | min-height",
+      "harap": "34px",
+      "nyata": "48px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:grid-cols-1 | grid-template-columns",
+      "harap": "repeat(1, minmax(0px, 1fr))",
+      "nyata": "351px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-bottom-width",
+      "harap": "1px",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "span"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "inbox",
+   "tema": "terang",
+   "viewport": "1440x900",
+   "httpDokumen": 200,
+   "title": "Feedback Inbox | TESYS",
+   "url": "/feedback-inbox",
+   "temaAttr": "light",
+   "lang": "id",
+   "zoomHtml": "0.8",
+   "scrollWidth": 1440,
+   "clientWidth": 1440,
+   "bodyScrollWidth": 1800,
+   "innerWidth": 1440,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 16,
+    "di44": 0,
+    "kurangDari44": 16,
+    "contoh": [
+     {
+      "el": "a.btn",
+      "w": 24,
+      "h": 24
+     },
+     {
+      "el": "a.btn",
+      "w": 24,
+      "h": 24
+     },
+     {
+      "el": "a.btn",
+      "w": 24,
+      "h": 24
+     },
+     {
+      "el": "a.btn",
+      "w": 24,
+      "h": 24
+     },
+     {
+      "el": "a.btn",
+      "w": 24,
+      "h": 24
+     },
+     {
+      "el": "a.btn",
+      "w": 24,
+      "h": 24
+     },
+     {
+      "el": "a.btn",
+      "w": 24,
+      "h": 24
+     },
+     {
+      "el": "a.btn",
+      "w": 24,
+      "h": 24
+     }
+    ]
+   },
+   "badge": [],
+   "dataTables": true,
+   "teksAlert": [],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "2bbe0481ddac30f07abe78e789f3845f81c635d1e3d5728ab933cd18efe2fe8e",
+   "jumlahElemenDigest": 228,
+   "digestKunci": "1adbdbbf58e44ef832480eea97c97a6efd9178df9df4b7e9ee2089d547f43bc8",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 228,
+    "elemenBerkelasTw": 58,
+    "elemenBerStyleAttr": 6,
+    "kelasLegacyUnik": 76,
+    "kelasTwUnik": 56,
+    "legacyTeratas": [
+     [
+      "fas",
+      16
+     ],
+     [
+      "fa-eye",
+      11
+     ],
+     [
+      "text-center",
+      11
+     ],
+     [
+      "dtr-control",
+      10
+     ],
+     [
+      "ts-card-title",
+      10
+     ],
+     [
+      "ts-card-status",
+      10
+     ],
+     [
+      "sorting_1",
+      10
+     ],
+     [
+      "ts-card-actions",
+      10
+     ],
+     [
+      "btn",
+      10
+     ],
+     [
+      "btn-info",
+      10
+     ],
+     [
+      "btn-sm",
+      10
+     ],
+     [
+      "ts-icon-only",
+      10
+     ],
+     [
+      "sorting",
+      7
+     ],
+     [
+      "ts-kpi",
+      5
+     ],
+     [
+      "ts-kpi-ic",
+      5
+     ],
+     [
+      "ts-kpi-text",
+      5
+     ],
+     [
+      "ts-kpi-label",
+      5
+     ],
+     [
+      "ts-kpi-value",
+      5
+     ],
+     [
+      "odd",
+      5
+     ],
+     [
+      "even",
+      5
+     ],
+     [
+      "paginate_button",
+      5
+     ],
+     [
+      "page-item",
+      5
+     ],
+     [
+      "page-link",
+      5
+     ],
+     [
+      "ts-tone-neutral",
+      2
+     ],
+     [
+      "ts-tone-progress",
+      2
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:rounded-pill",
+      50
+     ],
+     [
+      "tw:text-caption",
+      31
+     ],
+     [
+      "tw:font-heading",
+      31
+     ],
+     [
+      "tw:inline-flex",
+      30
+     ],
+     [
+      "tw:items-center",
+      30
+     ],
+     [
+      "tw:border",
+      30
+     ],
+     [
+      "tw:leading-none",
+      30
+     ],
+     [
+      "tw:whitespace-nowrap",
+      30
+     ],
+     [
+      "tw:px-2",
+      30
+     ],
+     [
+      "tw:py-1",
+      30
+     ],
+     [
+      "tw:border-transparent",
+      22
+     ],
+     [
+      "tw:gap-2",
+      20
+     ],
+     [
+      "tw:h-2",
+      20
+     ],
+     [
+      "tw:w-2",
+      20
+     ],
+     [
+      "tw:shrink-0",
+      20
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 1,
+     ".card-header": 0,
+     ".table": 1,
+     ".btn": 10,
+     ".badge": 0,
+     ".alert": 0,
+     ".breadcrumb": 0,
+     ".d-flex": 1,
+     ".text-muted": 0,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 1,
+     "[class*=\"tw:\"]": 58
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "inline-flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "tidak-ada-elemen",
+     "tw:border-border": "rgb(230, 225, 224)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 23
+   },
+   "konflikTw": {
+    "aturanTw": 206,
+    "pasanganAturanElemen": 777,
+    "propertiDicek": 1580,
+    "selisih": [
+     {
+      "aturan": ".tw:h-2 | height",
+      "harap": "8px",
+      "nyata": "7.98828px",
+      "jumlah": 20,
+      "tataLetak": true,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:w-2 | width",
+      "harap": "8px",
+      "nyata": "7.98828px",
+      "jumlah": 20,
+      "tataLetak": true,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 20,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 20,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 20,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 20,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-start",
+      "harap": "auto",
+      "nyata": "138.262px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-end",
+      "harap": "auto",
+      "nyata": "138.262px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "inbox",
+   "tema": "terang",
+   "viewport": "390x844",
+   "httpDokumen": 200,
+   "title": "Feedback Inbox | TESYS",
+   "url": "/feedback-inbox",
+   "temaAttr": "light",
+   "lang": "id",
+   "zoomHtml": "1",
+   "scrollWidth": 390,
+   "clientWidth": 390,
+   "bodyScrollWidth": 390,
+   "innerWidth": 390,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 16,
+    "di44": 0,
+    "kurangDari44": 16,
+    "contoh": [
+     {
+      "el": "a.btn",
+      "w": 30,
+      "h": 36
+     },
+     {
+      "el": "a.btn",
+      "w": 30,
+      "h": 36
+     },
+     {
+      "el": "a.btn",
+      "w": 30,
+      "h": 36
+     },
+     {
+      "el": "a.btn",
+      "w": 30,
+      "h": 36
+     },
+     {
+      "el": "a.btn",
+      "w": 30,
+      "h": 36
+     },
+     {
+      "el": "a.btn",
+      "w": 30,
+      "h": 36
+     },
+     {
+      "el": "a.btn",
+      "w": 30,
+      "h": 36
+     },
+     {
+      "el": "a.btn",
+      "w": 30,
+      "h": 36
+     }
+    ]
+   },
+   "badge": [],
+   "dataTables": true,
+   "teksAlert": [],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "79566e9e28a1eafd953ed268cc49ae3ccd49863bde18958d31ca0aa0a0e02e73",
+   "jumlahElemenDigest": 223,
+   "digestKunci": "dd976c30dbfb06b2ad527cb19699ba6f6de4ef1f56c8670a5a0aa38664b8025a",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 223,
+    "elemenBerkelasTw": 58,
+    "elemenBerStyleAttr": 52,
+    "kelasLegacyUnik": 76,
+    "kelasTwUnik": 56,
+    "legacyTeratas": [
+     [
+      "fas",
+      16
+     ],
+     [
+      "fa-eye",
+      11
+     ],
+     [
+      "dtr-control",
+      10
+     ],
+     [
+      "ts-card-title",
+      10
+     ],
+     [
+      "ts-card-status",
+      10
+     ],
+     [
+      "sorting_1",
+      10
+     ],
+     [
+      "text-center",
+      10
+     ],
+     [
+      "ts-card-actions",
+      10
+     ],
+     [
+      "btn",
+      10
+     ],
+     [
+      "btn-info",
+      10
+     ],
+     [
+      "btn-sm",
+      10
+     ],
+     [
+      "ts-icon-only",
+      10
+     ],
+     [
+      "ts-kpi",
+      5
+     ],
+     [
+      "ts-kpi-ic",
+      5
+     ],
+     [
+      "ts-kpi-text",
+      5
+     ],
+     [
+      "ts-kpi-label",
+      5
+     ],
+     [
+      "ts-kpi-value",
+      5
+     ],
+     [
+      "odd",
+      5
+     ],
+     [
+      "even",
+      5
+     ],
+     [
+      "paginate_button",
+      5
+     ],
+     [
+      "page-item",
+      5
+     ],
+     [
+      "page-link",
+      5
+     ],
+     [
+      "ts-tone-neutral",
+      2
+     ],
+     [
+      "ts-tone-progress",
+      2
+     ],
+     [
+      "mb-0",
+      2
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:rounded-pill",
+      50
+     ],
+     [
+      "tw:text-caption",
+      31
+     ],
+     [
+      "tw:font-heading",
+      31
+     ],
+     [
+      "tw:inline-flex",
+      30
+     ],
+     [
+      "tw:items-center",
+      30
+     ],
+     [
+      "tw:border",
+      30
+     ],
+     [
+      "tw:leading-none",
+      30
+     ],
+     [
+      "tw:whitespace-nowrap",
+      30
+     ],
+     [
+      "tw:px-2",
+      30
+     ],
+     [
+      "tw:py-1",
+      30
+     ],
+     [
+      "tw:border-transparent",
+      22
+     ],
+     [
+      "tw:gap-2",
+      20
+     ],
+     [
+      "tw:h-2",
+      20
+     ],
+     [
+      "tw:w-2",
+      20
+     ],
+     [
+      "tw:shrink-0",
+      20
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 1,
+     ".card-header": 0,
+     ".table": 1,
+     ".btn": 10,
+     ".badge": 0,
+     ".alert": 0,
+     ".breadcrumb": 0,
+     ".d-flex": 1,
+     ".text-muted": 0,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 1,
+     "[class*=\"tw:\"]": 58
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "tidak-ada-elemen",
+     "tw:border-border": "rgb(230, 225, 224)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 23
+   },
+   "konflikTw": {
+    "aturanTw": 182,
+    "pasanganAturanElemen": 773,
+    "propertiDicek": 1581,
+    "selisih": [
+     {
+      "aturan": ".tw:rounded-pill | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 20,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 20,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 20,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 20,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-start",
+      "harap": "auto",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-end",
+      "harap": "auto",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:flex-1 | flex-basis",
+      "harap": "0%",
+      "nyata": "100%",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "create-criticism",
+   "tema": "terang",
+   "viewport": "1440x900",
+   "httpDokumen": 200,
+   "title": "Buat Submission | TESYS",
+   "url": "/feedback/create",
+   "temaAttr": "light",
+   "lang": "id",
+   "zoomHtml": "0.8",
+   "scrollWidth": 1440,
+   "clientWidth": 1440,
+   "bodyScrollWidth": 1800,
+   "innerWidth": 1440,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 9,
+    "di44": 2,
+    "kurangDari44": 7,
+    "contoh": [
+     {
+      "el": "a.tw:inline-flex",
+      "w": 130,
+      "h": 27
+     },
+     {
+      "el": "select#selCategory.tw:block",
+      "w": 601,
+      "h": 27
+     },
+     {
+      "el": "input#title.tw:block",
+      "w": 601,
+      "h": 27
+     },
+     {
+      "el": "input#chkWilling.tw:mt-0.5",
+      "w": 16,
+      "h": 16
+     },
+     {
+      "el": "input#inpWhatsapp.tw:block",
+      "w": 601,
+      "h": 27
+     },
+     {
+      "el": "a.tw:inline-flex",
+      "w": 52,
+      "h": 27
+     },
+     {
+      "el": "button.tw:inline-flex",
+      "w": 131,
+      "h": 27
+     }
+    ]
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "ee76659ea62969b44dbea90cc60bfc5712e8c8a8ba6c5d4af187d2c05a8c152d",
+   "jumlahElemenDigest": 75,
+   "digestKunci": "edea6ed25fa20bc58ec7038bfb2ecac2724a7628109c10b3b6a8de1b4f867827",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 75,
+    "elemenBerkelasTw": 64,
+    "elemenBerStyleAttr": 0,
+    "kelasLegacyUnik": 9,
+    "kelasTwUnik": 123,
+    "legacyTeratas": [
+     [
+      "form-group",
+      5
+     ],
+     [
+      "fas",
+      4
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "fa-arrow-left",
+      1
+     ],
+     [
+      "fa-info-circle",
+      1
+     ],
+     [
+      "fa-paper-plane",
+      1
+     ],
+     [
+      "feedback-disclaimer",
+      1
+     ],
+     [
+      "fa-lock",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:border-border",
+      15
+     ],
+     [
+      "tw:text-text",
+      14
+     ],
+     [
+      "tw:text-text-dim",
+      13
+     ],
+     [
+      "tw:border",
+      11
+     ],
+     [
+      "tw:flex",
+      10
+     ],
+     [
+      "tw:font-label",
+      10
+     ],
+     [
+      "tw:leading-body",
+      9
+     ],
+     [
+      "tw:text-caption",
+      8
+     ],
+     [
+      "tw:items-center",
+      8
+     ],
+     [
+      "tw:rounded-sm!",
+      8
+     ],
+     [
+      "tw:focus-visible:outline-2",
+      8
+     ],
+     [
+      "tw:focus-visible:outline-offset-2",
+      8
+     ],
+     [
+      "tw:focus-visible:outline-accent-text!",
+      8
+     ],
+     [
+      "tw:text-control",
+      8
+     ],
+     [
+      "tw:bg-surface",
+      8
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 0,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 0,
+     ".breadcrumb": 0,
+     ".d-flex": 0,
+     ".text-muted": 0,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 64
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(255, 255, 255)",
+     "tw:border-border": "rgb(230, 225, 224)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 23
+   },
+   "konflikTw": {
+    "aturanTw": 206,
+    "pasanganAturanElemen": 379,
+    "propertiDicek": 743,
+    "selisih": [
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 8,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 8,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 8,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 5,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 5,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:text-label | font-size",
+      "harap": "12.5px",
+      "nyata": "12px",
+      "jumlah": 5,
+      "tataLetak": false,
+      "contoh": "label"
+     },
+     {
+      "aturan": ".tw:w-full | width",
+      "harap": "100%",
+      "nyata": "750.82px",
+      "jumlah": 5,
+      "tataLetak": true,
+      "contoh": "select"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:h-ctl | height",
+      "harap": "34px",
+      "nyata": "33.9844px",
+      "jumlah": 3,
+      "tataLetak": true,
+      "contoh": "select"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.03) 0px 1px 2px 0px",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-start",
+      "harap": "auto",
+      "nyata": "138.262px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-end",
+      "harap": "auto",
+      "nyata": "138.262px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:grid-cols-1 | grid-template-columns",
+      "harap": "repeat(1, minmax(0px, 1fr))",
+      "nyata": "386.66px 386.66px 386.68px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:lg:grid-cols-3 | grid-template-columns",
+      "harap": "repeat(3, minmax(0px, 1fr))",
+      "nyata": "386.66px 386.66px 386.68px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-color",
+      "harap": "rgb(230, 225, 224)",
+      "nyata": "rgb(146, 35, 43)",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-color",
+      "harap": "rgb(230, 225, 224)",
+      "nyata": "rgb(146, 35, 43)",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-bottom-color",
+      "harap": "rgb(230, 225, 224)",
+      "nyata": "rgb(146, 35, 43)",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-color",
+      "harap": "rgb(230, 225, 224)",
+      "nyata": "rgb(146, 35, 43)",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:bg-surface | background-color",
+      "harap": "rgb(255, 255, 255)",
+      "nyata": "rgb(248, 246, 245)",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-accent | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(146, 35, 43, 0.14) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "button"
+     },
+     {
+      "aturan": ".tw:h-8 | height",
+      "harap": "32px",
+      "nyata": "31.9922px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:w-8 | width",
+      "harap": "32px",
+      "nyata": "31.9922px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "span"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "create-criticism",
+   "tema": "terang",
+   "viewport": "390x844",
+   "httpDokumen": 200,
+   "title": "Buat Submission | TESYS",
+   "url": "/feedback/create",
+   "temaAttr": "light",
+   "lang": "id",
+   "zoomHtml": "1",
+   "scrollWidth": 390,
+   "clientWidth": 390,
+   "bodyScrollWidth": 390,
+   "innerWidth": 390,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 9,
+    "di44": 8,
+    "kurangDari44": 1,
+    "contoh": [
+     {
+      "el": "input#chkWilling.tw:mt-0.5",
+      "w": 20,
+      "h": 20
+     }
+    ]
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "8031a3b72040929e8f728dc630b899d60c0b4c02720125d5aaf4172492e379b9",
+   "jumlahElemenDigest": 73,
+   "digestKunci": "4928be721a241669d35f7edd204de6c8d5fc5da676c43f6fc541bd1dec07a9a5",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 73,
+    "elemenBerkelasTw": 62,
+    "elemenBerStyleAttr": 0,
+    "kelasLegacyUnik": 9,
+    "kelasTwUnik": 122,
+    "legacyTeratas": [
+     [
+      "form-group",
+      5
+     ],
+     [
+      "fas",
+      4
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "fa-arrow-left",
+      1
+     ],
+     [
+      "fa-info-circle",
+      1
+     ],
+     [
+      "fa-paper-plane",
+      1
+     ],
+     [
+      "feedback-disclaimer",
+      1
+     ],
+     [
+      "fa-lock",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:border-border",
+      15
+     ],
+     [
+      "tw:text-text",
+      14
+     ],
+     [
+      "tw:text-text-dim",
+      13
+     ],
+     [
+      "tw:border",
+      11
+     ],
+     [
+      "tw:flex",
+      10
+     ],
+     [
+      "tw:font-label",
+      10
+     ],
+     [
+      "tw:leading-body",
+      9
+     ],
+     [
+      "tw:text-caption",
+      8
+     ],
+     [
+      "tw:items-center",
+      8
+     ],
+     [
+      "tw:rounded-sm!",
+      8
+     ],
+     [
+      "tw:focus-visible:outline-2",
+      8
+     ],
+     [
+      "tw:focus-visible:outline-offset-2",
+      8
+     ],
+     [
+      "tw:focus-visible:outline-accent-text!",
+      8
+     ],
+     [
+      "tw:text-control",
+      8
+     ],
+     [
+      "tw:bg-surface",
+      8
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 0,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 0,
+     ".breadcrumb": 0,
+     ".d-flex": 0,
+     ".text-muted": 0,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 62
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(255, 255, 255)",
+     "tw:border-border": "rgb(230, 225, 224)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 23
+   },
+   "konflikTw": {
+    "aturanTw": 182,
+    "pasanganAturanElemen": 382,
+    "propertiDicek": 747,
+    "selisih": [
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 8,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 8,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 8,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 5,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 5,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:text-label | font-size",
+      "harap": "12.5px",
+      "nyata": "12px",
+      "jumlah": 5,
+      "tataLetak": false,
+      "contoh": "label"
+     },
+     {
+      "aturan": ".tw:w-full | width",
+      "harap": "100%",
+      "nyata": "309px",
+      "jumlah": 5,
+      "tataLetak": true,
+      "contoh": "select"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:min-h-ctl | min-height",
+      "harap": "34px",
+      "nyata": "48px",
+      "jumlah": 3,
+      "tataLetak": true,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:h-ctl | height",
+      "harap": "34px",
+      "nyata": "48px",
+      "jumlah": 3,
+      "tataLetak": true,
+      "contoh": "select"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.03) 0px 1px 2px 0px",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:max-sm:[&>*]:w-full > * | width",
+      "harap": "100%",
+      "nyata": "309px",
+      "jumlah": 2,
+      "tataLetak": true,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-start",
+      "harap": "auto",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-end",
+      "harap": "auto",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:flex-1 | flex-basis",
+      "harap": "0%",
+      "nyata": "100%",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:grid-cols-1 | grid-template-columns",
+      "harap": "repeat(1, minmax(0px, 1fr))",
+      "nyata": "351px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-color",
+      "harap": "rgb(230, 225, 224)",
+      "nyata": "rgb(146, 35, 43)",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-color",
+      "harap": "rgb(230, 225, 224)",
+      "nyata": "rgb(146, 35, 43)",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-bottom-color",
+      "harap": "rgb(230, 225, 224)",
+      "nyata": "rgb(146, 35, 43)",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-color",
+      "harap": "rgb(230, 225, 224)",
+      "nyata": "rgb(146, 35, 43)",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:bg-surface | background-color",
+      "harap": "rgb(255, 255, 255)",
+      "nyata": "rgb(248, 246, 245)",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:max-sm:w-full | width",
+      "harap": "100%",
+      "nyata": "309px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-accent | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(146, 35, 43, 0.14) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "button"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "create-criticism",
+   "tema": "gelap",
+   "viewport": "1440x900",
+   "httpDokumen": 200,
+   "title": "Buat Submission | TESYS",
+   "url": "/feedback/create",
+   "temaAttr": "dark",
+   "lang": "id",
+   "zoomHtml": "0.8",
+   "scrollWidth": 1440,
+   "clientWidth": 1440,
+   "bodyScrollWidth": 1800,
+   "innerWidth": 1440,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 9,
+    "di44": 2,
+    "kurangDari44": 7,
+    "contoh": [
+     {
+      "el": "a.tw:inline-flex",
+      "w": 130,
+      "h": 27
+     },
+     {
+      "el": "select#selCategory.tw:block",
+      "w": 601,
+      "h": 27
+     },
+     {
+      "el": "input#title.tw:block",
+      "w": 601,
+      "h": 27
+     },
+     {
+      "el": "input#chkWilling.tw:mt-0.5",
+      "w": 16,
+      "h": 16
+     },
+     {
+      "el": "input#inpWhatsapp.tw:block",
+      "w": 601,
+      "h": 27
+     },
+     {
+      "el": "a.tw:inline-flex",
+      "w": 52,
+      "h": 27
+     },
+     {
+      "el": "button.tw:inline-flex",
+      "w": 131,
+      "h": 27
+     }
+    ]
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "806f20b6ba6a5ca571be856e6c3245a08f2ce073a4234c8768f7caf2a2b44857",
+   "jumlahElemenDigest": 75,
+   "digestKunci": "6e1287de955ee7b767434acf43005390d86f9e0b68587792cae9811a694bb91f",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 75,
+    "elemenBerkelasTw": 64,
+    "elemenBerStyleAttr": 0,
+    "kelasLegacyUnik": 9,
+    "kelasTwUnik": 123,
+    "legacyTeratas": [
+     [
+      "form-group",
+      5
+     ],
+     [
+      "fas",
+      4
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "fa-arrow-left",
+      1
+     ],
+     [
+      "fa-info-circle",
+      1
+     ],
+     [
+      "fa-paper-plane",
+      1
+     ],
+     [
+      "feedback-disclaimer",
+      1
+     ],
+     [
+      "fa-lock",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:border-border",
+      15
+     ],
+     [
+      "tw:text-text",
+      14
+     ],
+     [
+      "tw:text-text-dim",
+      13
+     ],
+     [
+      "tw:border",
+      11
+     ],
+     [
+      "tw:flex",
+      10
+     ],
+     [
+      "tw:font-label",
+      10
+     ],
+     [
+      "tw:leading-body",
+      9
+     ],
+     [
+      "tw:text-caption",
+      8
+     ],
+     [
+      "tw:items-center",
+      8
+     ],
+     [
+      "tw:rounded-sm!",
+      8
+     ],
+     [
+      "tw:focus-visible:outline-2",
+      8
+     ],
+     [
+      "tw:focus-visible:outline-offset-2",
+      8
+     ],
+     [
+      "tw:focus-visible:outline-accent-text!",
+      8
+     ],
+     [
+      "tw:text-control",
+      8
+     ],
+     [
+      "tw:bg-surface",
+      8
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 0,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 0,
+     ".breadcrumb": 0,
+     ".d-flex": 0,
+     ".text-muted": 0,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 64
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(26, 26, 30)",
+     "tw:border-border": "rgb(46, 46, 53)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 23
+   },
+   "konflikTw": {
+    "aturanTw": 206,
+    "pasanganAturanElemen": 379,
+    "propertiDicek": 743,
+    "selisih": [
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 8,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 8,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 8,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 5,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 5,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:text-label | font-size",
+      "harap": "12.5px",
+      "nyata": "12px",
+      "jumlah": 5,
+      "tataLetak": false,
+      "contoh": "label"
+     },
+     {
+      "aturan": ".tw:w-full | width",
+      "harap": "100%",
+      "nyata": "750.82px",
+      "jumlah": 5,
+      "tataLetak": true,
+      "contoh": "select"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:h-ctl | height",
+      "harap": "34px",
+      "nyata": "33.9844px",
+      "jumlah": 3,
+      "tataLetak": true,
+      "contoh": "select"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.34) 0px 1px 2px 0px",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-start",
+      "harap": "auto",
+      "nyata": "138.262px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-end",
+      "harap": "auto",
+      "nyata": "138.262px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:grid-cols-1 | grid-template-columns",
+      "harap": "repeat(1, minmax(0px, 1fr))",
+      "nyata": "386.66px 386.66px 386.68px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:lg:grid-cols-3 | grid-template-columns",
+      "harap": "repeat(3, minmax(0px, 1fr))",
+      "nyata": "386.66px 386.66px 386.68px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-color",
+      "harap": "rgb(46, 46, 53)",
+      "nyata": "rgb(226, 148, 154)",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-color",
+      "harap": "rgb(46, 46, 53)",
+      "nyata": "rgb(226, 148, 154)",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-bottom-color",
+      "harap": "rgb(46, 46, 53)",
+      "nyata": "rgb(226, 148, 154)",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-color",
+      "harap": "rgb(46, 46, 53)",
+      "nyata": "rgb(226, 148, 154)",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:bg-surface | background-color",
+      "harap": "rgb(26, 26, 30)",
+      "nyata": "rgb(33, 33, 38)",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-accent | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.4) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "button"
+     },
+     {
+      "aturan": ".tw:h-8 | height",
+      "harap": "32px",
+      "nyata": "31.9922px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:w-8 | width",
+      "harap": "32px",
+      "nyata": "31.9922px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "span"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "create-criticism",
+   "tema": "gelap",
+   "viewport": "390x844",
+   "httpDokumen": 200,
+   "title": "Buat Submission | TESYS",
+   "url": "/feedback/create",
+   "temaAttr": "dark",
+   "lang": "id",
+   "zoomHtml": "1",
+   "scrollWidth": 390,
+   "clientWidth": 390,
+   "bodyScrollWidth": 390,
+   "innerWidth": 390,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 9,
+    "di44": 8,
+    "kurangDari44": 1,
+    "contoh": [
+     {
+      "el": "input#chkWilling.tw:mt-0.5",
+      "w": 20,
+      "h": 20
+     }
+    ]
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "d94db0959a8734542fe2338a56c0c74824d97cb75939bb2ee22d856bc5b24a6c",
+   "jumlahElemenDigest": 73,
+   "digestKunci": "4516aad39fee1633fc8dd0d6e2609e49c0f94889473aaa05ac491af0a911a2e3",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 73,
+    "elemenBerkelasTw": 62,
+    "elemenBerStyleAttr": 0,
+    "kelasLegacyUnik": 9,
+    "kelasTwUnik": 122,
+    "legacyTeratas": [
+     [
+      "form-group",
+      5
+     ],
+     [
+      "fas",
+      4
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "fa-arrow-left",
+      1
+     ],
+     [
+      "fa-info-circle",
+      1
+     ],
+     [
+      "fa-paper-plane",
+      1
+     ],
+     [
+      "feedback-disclaimer",
+      1
+     ],
+     [
+      "fa-lock",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:border-border",
+      15
+     ],
+     [
+      "tw:text-text",
+      14
+     ],
+     [
+      "tw:text-text-dim",
+      13
+     ],
+     [
+      "tw:border",
+      11
+     ],
+     [
+      "tw:flex",
+      10
+     ],
+     [
+      "tw:font-label",
+      10
+     ],
+     [
+      "tw:leading-body",
+      9
+     ],
+     [
+      "tw:text-caption",
+      8
+     ],
+     [
+      "tw:items-center",
+      8
+     ],
+     [
+      "tw:rounded-sm!",
+      8
+     ],
+     [
+      "tw:focus-visible:outline-2",
+      8
+     ],
+     [
+      "tw:focus-visible:outline-offset-2",
+      8
+     ],
+     [
+      "tw:focus-visible:outline-accent-text!",
+      8
+     ],
+     [
+      "tw:text-control",
+      8
+     ],
+     [
+      "tw:bg-surface",
+      8
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 0,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 0,
+     ".breadcrumb": 0,
+     ".d-flex": 0,
+     ".text-muted": 0,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 62
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(26, 26, 30)",
+     "tw:border-border": "rgb(46, 46, 53)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 23
+   },
+   "konflikTw": {
+    "aturanTw": 182,
+    "pasanganAturanElemen": 382,
+    "propertiDicek": 747,
+    "selisih": [
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 8,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 8,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 8,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 5,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 5,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:text-label | font-size",
+      "harap": "12.5px",
+      "nyata": "12px",
+      "jumlah": 5,
+      "tataLetak": false,
+      "contoh": "label"
+     },
+     {
+      "aturan": ".tw:w-full | width",
+      "harap": "100%",
+      "nyata": "309px",
+      "jumlah": 5,
+      "tataLetak": true,
+      "contoh": "select"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:min-h-ctl | min-height",
+      "harap": "34px",
+      "nyata": "48px",
+      "jumlah": 3,
+      "tataLetak": true,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:h-ctl | height",
+      "harap": "34px",
+      "nyata": "48px",
+      "jumlah": 3,
+      "tataLetak": true,
+      "contoh": "select"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.34) 0px 1px 2px 0px",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:max-sm:[&>*]:w-full > * | width",
+      "harap": "100%",
+      "nyata": "309px",
+      "jumlah": 2,
+      "tataLetak": true,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-start",
+      "harap": "auto",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-end",
+      "harap": "auto",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:flex-1 | flex-basis",
+      "harap": "0%",
+      "nyata": "100%",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:grid-cols-1 | grid-template-columns",
+      "harap": "repeat(1, minmax(0px, 1fr))",
+      "nyata": "351px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-color",
+      "harap": "rgb(46, 46, 53)",
+      "nyata": "rgb(226, 148, 154)",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-color",
+      "harap": "rgb(46, 46, 53)",
+      "nyata": "rgb(226, 148, 154)",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-bottom-color",
+      "harap": "rgb(46, 46, 53)",
+      "nyata": "rgb(226, 148, 154)",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-color",
+      "harap": "rgb(46, 46, 53)",
+      "nyata": "rgb(226, 148, 154)",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:bg-surface | background-color",
+      "harap": "rgb(26, 26, 30)",
+      "nyata": "rgb(33, 33, 38)",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:max-sm:w-full | width",
+      "harap": "100%",
+      "nyata": "309px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:shadow-accent | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.4) 0px 1px 2px 0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "button"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "show-staff",
+   "tema": "terang",
+   "viewport": "1440x900",
+   "httpDokumen": 200,
+   "title": "Detail Submission | TESYS",
+   "url": "/feedback/28",
+   "temaAttr": "light",
+   "lang": "id",
+   "zoomHtml": "0.8",
+   "scrollWidth": 1440,
+   "clientWidth": 1440,
+   "bodyScrollWidth": 1800,
+   "innerWidth": 1440,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 1,
+    "di44": 0,
+    "kurangDari44": 1,
+    "contoh": [
+     {
+      "el": "a.tw:inline-flex",
+      "w": 83,
+      "h": 27
+     }
+    ]
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "d910867b82fd392e87e15044b3a886d1bf57129cfec7d2c06cecdf7fe26e57d7",
+   "jumlahElemenDigest": 72,
+   "digestKunci": "3aacc9eecf42c38f7713589635daa8782817bf725c5d079c16f45bf24fb67c2a",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 72,
+    "elemenBerkelasTw": 62,
+    "elemenBerStyleAttr": 0,
+    "kelasLegacyUnik": 9,
+    "kelasTwUnik": 95,
+    "legacyTeratas": [
+     [
+      "fas",
+      5
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "fa-arrow-left",
+      1
+     ],
+     [
+      "fa-comment-dots",
+      1
+     ],
+     [
+      "fa-reply",
+      1
+     ],
+     [
+      "fa-info-circle",
+      1
+     ],
+     [
+      "feedback-disclaimer",
+      1
+     ],
+     [
+      "fa-lock",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:flex",
+      19
+     ],
+     [
+      "tw:border-border",
+      19
+     ],
+     [
+      "tw:items-center",
+      18
+     ],
+     [
+      "tw:text-text",
+      16
+     ],
+     [
+      "tw:text-text-dim",
+      14
+     ],
+     [
+      "tw:border-b",
+      12
+     ],
+     [
+      "tw:border",
+      10
+     ],
+     [
+      "tw:rounded-pill",
+      9
+     ],
+     [
+      "tw:justify-between",
+      8
+     ],
+     [
+      "tw:gap-4",
+      8
+     ],
+     [
+      "tw:py-2",
+      8
+     ],
+     [
+      "tw:gap-2",
+      7
+     ],
+     [
+      "tw:min-h-8",
+      7
+     ],
+     [
+      "tw:last:border-b-0",
+      7
+     ],
+     [
+      "tw:flex-col",
+      6
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 0,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 0,
+     ".breadcrumb": 0,
+     ".d-flex": 0,
+     ".text-muted": 0,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 62
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(255, 255, 255)",
+     "tw:border-border": "rgb(230, 225, 224)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 23
+   },
+   "konflikTw": {
+    "aturanTw": 206,
+    "pasanganAturanElemen": 416,
+    "propertiDicek": 916,
+    "selisih": [
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 24,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 24,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 24,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 13,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 13,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 12,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:h-2 | height",
+      "harap": "8px",
+      "nyata": "7.98828px",
+      "jumlah": 4,
+      "tataLetak": true,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:w-2 | width",
+      "harap": "8px",
+      "nyata": "7.98828px",
+      "jumlah": 4,
+      "tataLetak": true,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.03) 0px 1px 2px 0px",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:last:border-b-0:last-child | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:last:border-b-0:last-child | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:last:border-b-0:last-child | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-start",
+      "harap": "auto",
+      "nyata": "144.512px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-end",
+      "harap": "auto",
+      "nyata": "144.512px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:grid-cols-1 | grid-template-columns",
+      "harap": "repeat(1, minmax(0px, 1fr))",
+      "nyata": "386.66px 386.66px 386.68px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:lg:grid-cols-3 | grid-template-columns",
+      "harap": "repeat(3, minmax(0px, 1fr))",
+      "nyata": "386.66px 386.66px 386.68px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-bottom-width",
+      "harap": "1.25px",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:h-8 | height",
+      "harap": "32px",
+      "nyata": "31.9922px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:w-8 | width",
+      "harap": "32px",
+      "nyata": "31.9922px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "span"
+     }
+    ]
+   },
+   "foto": null
+  },
+  {
+   "id": "show-staff",
+   "tema": "terang",
+   "viewport": "390x844",
+   "httpDokumen": 200,
+   "title": "Detail Submission | TESYS",
+   "url": "/feedback/28",
+   "temaAttr": "light",
+   "lang": "id",
+   "zoomHtml": "1",
+   "scrollWidth": 390,
+   "clientWidth": 390,
+   "bodyScrollWidth": 390,
+   "innerWidth": 390,
+   "overflowHorizontal": false,
+   "pelanggarOverflow": [],
+   "h1": [],
+   "landmark": {
+    "main": 0,
+    "nav": 2,
+    "banner": 0
+   },
+   "a11y": {
+    "kontrolTanpaNama": [],
+    "tombolTanpaNama": 0,
+    "imgTanpaAlt": 0,
+    "ariaInvalid": 0,
+    "roleAlert": 0
+   },
+   "sentuh": {
+    "total": 1,
+    "di44": 1,
+    "kurangDari44": 0,
+    "contoh": []
+   },
+   "badge": [],
+   "dataTables": false,
+   "teksAlert": [],
+   "stylesheetAktif": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "digestGaya": "3fb2ae1e74fe30739716900b92c73d4f3574297463bd516706aaa41b17fa7d46",
+   "jumlahElemenDigest": 72,
+   "digestKunci": "8de2aebd2a76b5f15054d95fce312eec923aade1366d056b8c9107550e30f53c",
+   "cssDimuat": [
+    "/plugins/fontawesome-free/css/all.min.css",
+    "/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css",
+    "/plugins/datatables-responsive/css/responsive.bootstrap4.min.css",
+    "/css/bootstrap-4.6.1.css",
+    "/plugins/tom-select/tom-select.css",
+    "/plugins/flatpickr/dist/flatpickr.min.css",
+    "/css/tesys-ui-base.css",
+    "/css/tesys-tw.css",
+    "/css/tesys-ui.css",
+    "/css/tesys-ui-tokens.css",
+    "/css/tesys-ui-components.css",
+    "/css/tesys-ui-compat.css",
+    "/css/tesys-ui-pages.css",
+    "/css/tesys-ui-shell.css",
+    "/css/tesys-ui-motion.css",
+    "/css/tesys-ui-luxe.css",
+    "/css/tesys-ui-mobile.css",
+    "/css/tesys-ui-datatable.css",
+    "/css/tesys-ui-refine.css"
+   ],
+   "jsDimuat": [
+    "/plugins/flatpickr/flatpickr.min.js",
+    "/plugins/flatpickr/dist/l10n/id.js",
+    "/plugins/sweetalert2/sweetalert2.all.min.js",
+    "/plugins/jquery/jquery.min.js",
+    "/plugins/bootstrap/js/bootstrap.bundle.min.js",
+    "/plugins/datatables/jquery.dataTables.min.js",
+    "/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js",
+    "/plugins/datatables-responsive/js/dataTables.responsive.min.js",
+    "/plugins/datatables-responsive/js/responsive.bootstrap4.min.js",
+    "/js/tesys-money-sort.js",
+    "/js/tesys-column-filter.js",
+    "/js/tesys-toolbar-actions.js",
+    "/js/tesys-timeline.js",
+    "/js/tesys-chart.js",
+    "/js/tesys-workflow.js",
+    "/js/tesys-drawer.js",
+    "/js/tesys-row-actions.js",
+    "/js/tesys-table.js",
+    "/js/tesys-searchable-select.js",
+    "/js/tesys-date-range.js",
+    "/plugins/tom-select/tom-select.complete.min.js",
+    "/js/tesys-export-filtered.js",
+    "/js/tesys-command.js",
+    "/js/tesys-session-keepalive.js",
+    "/js/tesys-ui.js",
+    "/js/tesys-shell.js",
+    "/js/tesys-clock.js",
+    "/js/tesys-icon-buttons.js",
+    "/js/tesys-pwa.js"
+   ],
+   "adaTesysTwCss": true,
+   "permintaanGalat": [],
+   "permintaanGagal": [],
+   "konsol": [],
+   "dialogNative": [],
+   "loadEventTercapai": true,
+   "sensus": {
+    "elemenTampakDiKonten": 72,
+    "elemenBerkelasTw": 62,
+    "elemenBerStyleAttr": 0,
+    "kelasLegacyUnik": 9,
+    "kelasTwUnik": 95,
+    "legacyTeratas": [
+     [
+      "fas",
+      5
+     ],
+     [
+      "content",
+      1
+     ],
+     [
+      "container-fluid",
+      1
+     ],
+     [
+      "fa-arrow-left",
+      1
+     ],
+     [
+      "fa-comment-dots",
+      1
+     ],
+     [
+      "fa-reply",
+      1
+     ],
+     [
+      "fa-info-circle",
+      1
+     ],
+     [
+      "feedback-disclaimer",
+      1
+     ],
+     [
+      "fa-lock",
+      1
+     ]
+    ],
+    "twTeratas": [
+     [
+      "tw:flex",
+      19
+     ],
+     [
+      "tw:border-border",
+      19
+     ],
+     [
+      "tw:items-center",
+      18
+     ],
+     [
+      "tw:text-text",
+      16
+     ],
+     [
+      "tw:text-text-dim",
+      14
+     ],
+     [
+      "tw:border-b",
+      12
+     ],
+     [
+      "tw:border",
+      10
+     ],
+     [
+      "tw:rounded-pill",
+      9
+     ],
+     [
+      "tw:justify-between",
+      8
+     ],
+     [
+      "tw:gap-4",
+      8
+     ],
+     [
+      "tw:py-2",
+      8
+     ],
+     [
+      "tw:gap-2",
+      7
+     ],
+     [
+      "tw:min-h-8",
+      7
+     ],
+     [
+      "tw:last:border-b-0",
+      7
+     ],
+     [
+      "tw:flex-col",
+      6
+     ]
+    ],
+    "jumlahSelektor": {
+     ".card": 0,
+     ".card-header": 0,
+     ".table": 0,
+     ".btn": 0,
+     ".badge": 0,
+     ".alert": 0,
+     ".breadcrumb": 0,
+     ".d-flex": 0,
+     ".text-muted": 0,
+     ".ts-empty": 0,
+     ".ts-action-primary": 0,
+     ".ts-actions": 0,
+     ".dataTables_wrapper": 0,
+     "[class*=\"tw:\"]": 62
+    },
+    "utilitasTwAktif": {
+     "tw:inline-flex": "flex",
+     "tw:rounded-md": "8px",
+     "tw:bg-surface": "rgb(255, 255, 255)",
+     "tw:border-border": "rgb(230, 225, 224)"
+    },
+    "tagLinkTesysTw": 1,
+    "aturanTesysTw": 23
+   },
+   "konflikTw": {
+    "aturanTw": 182,
+    "pasanganAturanElemen": 416,
+    "propertiDicek": 915,
+    "selisih": [
+     {
+      "aturan": ".tw:border-b | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 24,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 24,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 24,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 13,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 13,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 12,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-pill | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:shadow-xs | box-shadow",
+      "harap": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "nyata": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0.03) 0px 1px 2px 0px",
+      "jumlah": 4,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-b-md | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-t | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:last:border-b-0:last-child | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:last:border-b-0:last-child | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:last:border-b-0:last-child | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 2,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-start",
+      "harap": "auto",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:mx-auto | margin-inline-end",
+      "harap": "auto",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:flex-1 | flex-basis",
+      "harap": "0%",
+      "nyata": "100%",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:min-h-ctl | min-height",
+      "harap": "34px",
+      "nyata": "48px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "a"
+     },
+     {
+      "aturan": ".tw:grid-cols-1 | grid-template-columns",
+      "harap": "repeat(1, minmax(0px, 1fr))",
+      "nyata": "351px",
+      "jumlah": 1,
+      "tataLetak": true,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-border | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:border-b | border-bottom-width",
+      "harap": "1px",
+      "nyata": "0px",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "div"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-top-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-right-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-bottom-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "span"
+     },
+     {
+      "aturan": ".tw:rounded-md | border-left-style",
+      "harap": "solid",
+      "nyata": "none",
+      "jumlah": 1,
+      "tataLetak": false,
+      "contoh": "span"
+     }
+    ]
+   },
+   "foto": null
+  }
+ ],
+ "galatRunner": [],
+ "berkasFoto": [],
+ "versiBrowser": "Edg/156.0.4314.42",
+ "idShow": 28,
+ "barisIndexStaff": 28,
+ "barisIndexKosong": 0,
+ "sentinelKosong": {
+  "tabelAda": false,
+  "teks": "GENERAL · FEEDBACK Riwayat Submission Masukan, kritik, dan saran Anda kepada CEO beserta perkembangan statusnya. Buat Submission TOTAL 0 Semua submission Anda MENUNGGU 0 Submitted dan Reviewed DITANGG"
+ },
+ "penghentian": {
+  "pid": 14696,
+  "penanda": "tesys-pages-edge-sJylit",
+  "keluarSendiri": true,
+  "menungguSisaMs": 3611,
+  "sisaProsesPenanda": 0,
+  "userDirDihapus": true
+ }
+}

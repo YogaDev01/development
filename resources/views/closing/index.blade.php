@@ -6,43 +6,45 @@
 
 <div class="content">
     <div class="container-fluid">
+      <div class="ts-index tw:flex tw:flex-col tw:gap-4 tw:py-4">
 
         @if(session('success'))
-        <div class="alert alert-success rounded-0 shadow-sm">{{ session('success') }}</div>
+        <div class="alert alert-success rounded-0 shadow-sm mb-0">{{ session('success') }}</div>
         @endif
         @if(session('error'))
-        <div class="alert alert-danger rounded-0 shadow-sm">{{ session('error') }}</div>
+        <div class="alert alert-danger rounded-0 shadow-sm mb-0">{{ session('error') }}</div>
         @endif
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap" style="gap:10px;">
-            <div>
-                <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Tutup Periode</h1>
-                <small class="text-muted">
-                    Rekap transaksi finance per periode — Treasury, Invoice, Collection, Cash Receipt, Cost Request, dan Purchase Order.
-                </small>
-            </div>
-            <form method="GET" action="{{ route('closing.index') }}" class="d-flex align-items-center" style="gap:8px;">
-                <label class="mb-0 text-muted" style="font-size:11px;">Periode</label>
-                <select name="periode" class="form-control form-control-sm" style="width:auto;" onchange="this.form.submit()">
-                    @foreach($periods as $value => $label)
-                        <option value="{{ $value }}" @selected($period === $value)>{{ $label }}</option>
-                    @endforeach
-                </select>
-            </form>
+        {{-- Judul & breadcrumb topbar: shell memindahkan <h1> dan .breadcrumb pertama ke topbar
+             (tesys-shell.js hoistPageTitle); disembunyikan secara visual. --}}
+        <div class="tw:sr-only">
+            <h1>Tutup Periode</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">Finance</li>
+                <li class="breadcrumb-item active">Tutup Periode</li>
+            </ol>
         </div>
+
+        <x-tw.page-header title="Rekap Periode"
+            description="Rekap transaksi finance per periode — Treasury, Invoice, Collection, Cash Receipt, Cost Request, dan Purchase Order.">
+            <x-slot:actions>
+                <form method="GET" action="{{ route('closing.index') }}" class="d-flex align-items-center" style="gap:8px;">
+                    <label class="mb-0 text-muted" style="font-size:11px;">Periode</label>
+                    <select name="periode" class="form-control form-control-sm" style="width:auto;" onchange="this.form.submit()">
+                        @foreach($periods as $value => $label)
+                            <option value="{{ $value }}" @selected($period === $value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </form>
+            </x-slot:actions>
+        </x-tw.page-header>
 
         @php
             $status = $closing->status ?? 'BELUM DIREKAP';
-            $stBadge = [
-                'DRAFT'         => 'badge-warning',
-                'CLOSED'        => 'badge-success',
-                'REOPENED'      => 'badge-info',
-                'BELUM DIREKAP' => 'badge-secondary',
-            ][$status] ?? 'badge-secondary';
         @endphp
 
-        <div class="card shadow-sm">
-            <div class="card-body d-flex align-items-center flex-wrap" style="gap:12px;">
+        <x-tw.card padding="sm">
+            <div class="d-flex align-items-center flex-wrap" style="gap:12px;">
                 <div>
                     <div class="text-muted" style="font-size:11px;">Periode</div>
                     <strong style="font-size:15px;">
@@ -51,7 +53,7 @@
                 </div>
                 <div>
                     <div class="text-muted" style="font-size:11px;">Status</div>
-                    <span class="badge {{ $stBadge }} px-2 py-1">{{ $status }}</span>
+                    <x-status :status="$status" context="period-closing" />
                 </div>
                 @if($closing)
                 <div>
@@ -96,12 +98,12 @@
                     @endif
                 </div>
             </div>
-        </div>
+        </x-tw.card>
 
         {{-- PERIOD CONTROL — perbandingan rekap tersimpan vs keadaan data
              sekarang. Inilah yang menjawab "ada transaksi yang terlewat?". --}}
         @if($closing && $drift['has_difference'])
-        <div class="alert alert-warning rounded-0 shadow-sm mt-3" style="font-size:12px;">
+        <div class="alert alert-warning rounded-0 shadow-sm mb-0" style="font-size:12px;">
             <i class="fas fa-exclamation-triangle mr-1"></i>
             <strong>Rekap tidak lagi cocok dengan data.</strong>
             @if($drift['missing']->isNotEmpty())
@@ -126,9 +128,8 @@
         ]" />
 
         {{-- RINGKASAN PER MODUL --}}
-        <div class="card card-primary card-outline shadow-sm mt-3">
-            <div class="card-header"><h3 class="card-title"><i class="fas fa-layer-group mr-1"></i> Rekap per Modul</h3></div>
-            <div class="card-body p-0">
+        <x-tw.card padding="sm">
+            <h6 class="ts-dw-section-title"><i class="fas fa-layer-group mr-1"></i> Rekap per Modul</h6>
                 <div class="table-responsive">
                     <table class="table table-bordered mb-0">
                         <thead class="bg-light">
@@ -151,9 +152,9 @@
                             <tr @class(['table-warning' => $mismatch])>
                                 <td>{{ $row['label'] }}</td>
                                 <td class="text-center">{{ number_format($row['count']) }}</td>
-                                <td class="text-right">{{ number_format($row['amount'], 0, ',', '.') }}</td>
+                                <td class="text-right">{{ (int) $row['amount'] === 0 ? '-' : number_format($row['amount'], 0, ',', '.') }}</td>
                                 <td class="text-center">{{ $closing ? number_format($recorded->count()) : '—' }}</td>
-                                <td class="text-right">{{ $closing ? number_format($recorded->sum('amount'), 0, ',', '.') : '—' }}</td>
+                                <td class="text-right">{{ $closing ? ((int) $recorded->sum('amount') === 0 ? '-' : number_format($recorded->sum('amount'), 0, ',', '.')) : '—' }}</td>
                             </tr>
                             @endforeach
                         </tbody>
@@ -168,15 +169,14 @@
                         </tfoot>
                     </table>
                 </div>
-            </div>
-        </div>
+        </x-tw.card>
 
         {{-- DETAIL REKAP --}}
         @if($closing && $closing->details->isNotEmpty())
-        <div class="card card-primary card-outline shadow-sm">
-            <div class="card-header d-flex align-items-center flex-wrap" style="gap:8px;">
-                <h3 class="card-title"><i class="fas fa-stream mr-1"></i> Detail Rekap</h3>
-                <div class="ml-auto d-flex align-items-center" style="gap:6px;">
+        <x-tw.card padding="sm">
+            <div class="custom-toolbar mb-3 d-flex align-items-center flex-wrap" style="gap:8px;">
+                <h6 class="ts-dw-section-title mb-0 mr-auto"><i class="fas fa-stream mr-1"></i> Detail Rekap</h6>
+                <div class="d-flex align-items-center" style="gap:6px;">
                     <select id="closingModuleFilter" class="form-control form-control-sm" style="width:auto;font-size:11px;">
                         <option value="">Semua Modul</option>
                         @foreach($modules as $key => $label)
@@ -187,9 +187,8 @@
                            placeholder="Cari referensi / deskripsi" style="width:220px;font-size:11px;">
                 </div>
             </div>
-            <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table id="tblClosingDetail" class="table table-bordered table-hover table-striped mb-0">
+                    <table id="tblClosingDetail" class="table table-bordered table-hover mb-0 ts-idx-tbl">
                         <thead class="bg-light">
                             <tr>
                                 <th scope="col" class="text-nowrap">Modul</th>
@@ -216,29 +215,25 @@
                                 <td class="text-center">
                                     <span class="badge badge-secondary px-2 py-1">{{ $d->status_at_closing ?: '-' }}</span>
                                 </td>
-                                <td class="text-right text-nowrap">{{ number_format($d->amount, 0, ',', '.') }}</td>
+                                <td class="text-right text-nowrap ts-col-money">{{ (int) $d->amount === 0 ? '-' : number_format($d->amount, 0, ',', '.') }}</td>
                             </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
+        </x-tw.card>
         @elseif(!$closing)
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <x-empty title="Periode ini belum direkap"
-                         subtitle="Klik Susun Rekap untuk mengumpulkan transaksi finance pada periode ini."
-                         icon="fas fa-clipboard-list" />
-            </div>
-        </div>
+        <x-tw.card padding="sm">
+            <x-empty title="Periode ini belum direkap"
+                     subtitle="Klik Susun Rekap untuk mengumpulkan transaksi finance pada periode ini."
+                     icon="fas fa-clipboard-list" />
+        </x-tw.card>
         @endif
 
         {{-- RIWAYAT --}}
         @if($history->isNotEmpty())
-        <div class="card card-primary card-outline shadow-sm">
-            <div class="card-header"><h3 class="card-title"><i class="fas fa-history mr-1"></i> Riwayat Penutupan</h3></div>
-            <div class="card-body p-0">
+        <x-tw.card padding="sm">
+            <h6 class="ts-dw-section-title"><i class="fas fa-history mr-1"></i> Riwayat Penutupan</h6>
                 <div class="table-responsive">
                     <table class="table table-bordered mb-0">
                         <thead class="bg-light">
@@ -253,16 +248,13 @@
                         </thead>
                         <tbody>
                             @foreach($history as $h)
-                            @php
-                                $hb = ['DRAFT' => 'badge-warning', 'CLOSED' => 'badge-success', 'REOPENED' => 'badge-info'][$h->status] ?? 'badge-secondary';
-                            @endphp
                             <tr>
                                 <td>
                                     <a href="{{ route('closing.index', ['periode' => $h->period]) }}">
                                         {{ \Carbon\Carbon::createFromFormat('Y-m', $h->period)->translatedFormat('F Y') }}
                                     </a>
                                 </td>
-                                <td class="text-center"><span class="badge {{ $hb }} px-2 py-1">{{ $h->status }}</span></td>
+                                <td class="text-center"><x-status :status="$h->status" context="period-closing" /></td>
                                 <td class="text-center">{{ number_format($h->total_transaction) }}</td>
                                 <td class="text-right">{{ number_format($h->total_value, 0, ',', '.') }}</td>
                                 <td>{{ strtoupper($h->closedBy->username ?? '-') }}</td>
@@ -272,10 +264,10 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
+        </x-tw.card>
         @endif
 
+      </div>
     </div>
 </div>
 
@@ -311,6 +303,7 @@
 @endsection
 
 @push('styles')
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
 .font-weight-600 { font-weight:600; }
 .table td, .table th { vertical-align:middle !important; }
@@ -332,8 +325,8 @@ $(function () {
             text: $(form).data('text') || '',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#9a3030',
-            cancelButtonColor: '#55595e',
+            confirmButtonColor: 'var(--danger)',
+            cancelButtonColor: 'var(--text-muted)',
             confirmButtonText: 'Ya, Lanjutkan',
             cancelButtonText: 'Batal'
         }).then(function (r) { if (r.isConfirmed) form.submit(); });

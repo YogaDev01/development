@@ -352,7 +352,7 @@ body.ts-drawer-lock { overflow: hidden; }
 .ts-drawer-eyebrow:empty { display: none; }
 .ts-drawer-title {
     margin: 0;
-    font-family: "Plus Jakarta Sans", sans-serif;
+    font-family: var(--font-display);
     font-size: 16px;
     font-weight: 700;
     letter-spacing: -.01em;
@@ -847,7 +847,7 @@ body.tesys-ui .btn.is-busy { color: transparent !important; }
     white-space: nowrap;
 }
 .ts-kpi-value {
-    font-family: "Plus Jakarta Sans", sans-serif;
+    font-family: var(--font-display);
     /* UKURAN HURUF TIDAK DIATUR DI SINI.
        tesys-ui-luxe.css memuat setelah berkas ini dan memakai selektor
        `body.tesys-ui .ts-kpi-value`, yang mengalahkan `.ts-kpi-value` polos —
@@ -958,7 +958,7 @@ a.ts-queue-row:hover { background: var(--surface-2); text-decoration: none; colo
 .ts-queue-meta { display: block; font-size: 11px; color: var(--text-faint); margin-top: 1px; }
 .ts-queue-count {
     flex: none;
-    font-family: "Plus Jakarta Sans", sans-serif;
+    font-family: var(--font-display);
     font-size: 16px;
     font-weight: var(--fw-heading, 700);
     font-variant-numeric: tabular-nums;
@@ -1025,7 +1025,7 @@ a.ts-feed-row:hover { background: var(--surface-2); text-decoration: none; color
    ===================================================================== */
 .ts-release-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-2, 8px); }
 .ts-release-title {
-    font-family: "Plus Jakarta Sans", sans-serif;
+    font-family: var(--font-display);
     font-size: 13px;
     font-weight: var(--fw-section, 600);
     color: var(--text);
@@ -1149,7 +1149,7 @@ a.ts-feed-row:hover { background: var(--surface-2); text-decoration: none; color
 }
 .ts-dw-amount-value {
     display: block;
-    font-family: "Plus Jakarta Sans", sans-serif;
+    font-family: var(--font-display);
     font-size: 21px;
     font-weight: var(--fw-heading, 700);
     color: var(--text);

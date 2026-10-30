@@ -14,6 +14,7 @@ use App\Models\BudgetRequest;
 use App\Models\BudgetRequestRealization;
 use App\Models\BudgetRequestRealizationAttachment;
 use App\Models\RequestDetail;
+use App\Models\RequestLogNote;
 use App\Models\RequestAttachment;
 use App\Models\RequestType;
 use App\Models\BudgetPlan;
@@ -432,6 +433,15 @@ class BudgetRequestController extends Controller
         $existing = $cr->details()->get()->keyBy('id');
         $map = [];
 
+        // Sub-item yang dipakai form dimuat sekali, lalu "Used"-nya (dasar
+        // NOB per baris di bawah) di-prime sekaligus — bukan satu set query
+        // costLines() per baris.
+        $bdIds = collect($rows)->pluck('budget_detail_id')->filter()->map(fn ($i) => (int) $i)->unique()->values();
+        $subItems = $bdIds->isNotEmpty()
+            ? \App\Models\BudgetPlanDetail::with('account')->whereIn('id', $bdIds)->get()->keyBy('id')
+            : collect();
+        \App\Models\BudgetPlanDetail::primeCostLines($subItems);
+
         foreach ($rows as $key => $row) {
             $amount = $this->normalizeMoney($row['amount'] ?? null);
             $qty    = (int) ($row['qty'] ?? 1);
@@ -441,7 +451,7 @@ class BudgetRequestController extends Controller
             if (!$amount && blank($budgetDetailId)) continue;
 
             $budgetDetail = $budgetDetailId
-                ? \App\Models\BudgetPlanDetail::with('account')->find($budgetDetailId)
+                ? $subItems->get((int) $budgetDetailId)
                 : null;
 
             /*
@@ -640,74 +650,157 @@ class BudgetRequestController extends Controller
         return $this->stripLeadingLabel((string) $rawDescriptionFallback) ?: '-';
     }
 
-    private function syncRealizations(BudgetRequest $cr, Request $request): void
+    /**
+     * Baris form settlement yang kosong (Settle 0 DAN tanpa item asal) —
+     * dilewati saat menyimpan maupun memvalidasi, sama seperti sebelumnya.
+     */
+    private function isEmptyRealizationRow(array $row): bool
     {
-        /*
-        | Baris realisasi memang dibuat ulang tiap submit, TAPI lampirannya
-        | tidak ikut dibuang: settlement bisa ditolak (kembali ke PAID) lalu
-        | diajukan lagi, dan bukti yang sudah diunggah harus tetap ada. Karena
-        | itu lampiran lama dipetakan per request_detail_id dulu, lalu
-        | di-"pindah" ke baris realisasi yang baru dengan mengubah
-        | realization_id-nya — filenya tidak pernah disentuh.
-        |
-        | Yang benar-benar dihapus hanya lampiran yang dicentang hapus oleh
-        | user (delete_realization_attachments[]).
-        */
-        $hapusIds = array_filter((array) $request->input('delete_realization_attachments', []));
+        return ! $this->normalizeMoney($row['amount'] ?? null) && blank($row['request_detail_id'] ?? null);
+    }
 
-        /*
-        | FK realization_detail_attachments ON DELETE CASCADE: begitu baris
-        | realisasi dihapus, baris lampirannya ikut lenyap. Jadi datanya
-        | di-SNAPSHOT dulu (file di disk tidak disentuh), lalu dibuat ulang
-        | menunjuk baris realisasi yang baru.
-        */
-        $hapusIds      = array_map('strval', $hapusIds);
-        $lamaPerDetail = [];
+    /**
+     * Pasangkan tiap baris form settlement dengan baris realisasi yang SUDAH
+     * tersimpan (Settlement Custom COA, 25 Okt 2026):
+     *   1. lewat realizations[i][id] — hanya id milik CR ini yang diakui;
+     *   2. HANYA untuk form lama yang belum mengirim id sama sekali (tidak
+     *      satu baris pun membawa kunci `id`, mis. tab peramban yang terbuka
+     *      sebelum rilis): jatuh ke baris pertama yang belum terpakai dengan
+     *      request_detail_id yang sama — persis cara lampiran dulu dipetakan.
+     *      Form baru selalu mengirim kunci `id` (kosong untuk baris baru),
+     *      jadi baris hasil Pecah/import tidak pernah mengambil alih id baris
+     *      yang dihapus user beserta lampiran & e-sign-nya.
+     * Baris tanpa pasangan = baris baru.
+     *
+     * @return array<int|string, BudgetRequestRealization|null> indeks form -> baris tersimpan
+     */
+    private function matchExistingRealizations(array $rows, \Illuminate\Support\Collection $existing): array
+    {
+        $byId     = $existing->keyBy('id');
+        $claimed  = [];
+        $map      = [];
+        $formLama = collect($rows)->every(fn ($r) => ! array_key_exists('id', (array) $r));
 
-        foreach ($cr->realizations()->with('attachments')->get() as $old) {
-            foreach ($old->attachments as $att) {
-                if (in_array((string) $att->id, $hapusIds, true)) {
-                    Storage::disk('secure')->delete($att->path);
-                    continue;
-                }
-
-                $lamaPerDetail[(int) $old->request_detail_id][] = [
-                    'original_name' => $att->original_name,
-                    'stored_name'   => $att->stored_name,
-                    'path'          => $att->path,
-                    'mime_type'     => $att->mime_type,
-                    'size'          => $att->size,
-                    'uploaded_by'   => $att->uploaded_by,
-                ];
+        foreach ($rows as $i => $row) {
+            $row = (array) $row;
+            $id  = (int) ($row['id'] ?? 0);
+            if ($id && $byId->has($id) && ! isset($claimed[$id])) {
+                $map[$i]      = $byId->get($id);
+                $claimed[$id] = true;
             }
         }
 
-        $cr->realizations()->delete();
+        foreach ($rows as $i => $row) {
+            if (array_key_exists($i, $map)) {
+                continue;
+            }
 
-        foreach ((array) $request->input('realizations', []) as $i => $row) {
+            $row      = (array) $row;
+            $detailId = (int) ($row['request_detail_id'] ?? 0);
+            $hit      = null;
+
+            if ($formLama && $detailId) {
+                $hit = $existing->first(fn ($r) => ! isset($claimed[$r->id]) && (int) $r->request_detail_id === $detailId);
+            }
+
+            if ($hit) {
+                $claimed[$hit->id] = true;
+            }
+
+            $map[$i] = $hit;
+        }
+
+        return $map;
+    }
+
+    /**
+     * Simpan baris settlement (Settlement Custom COA, 25 Okt 2026).
+     *
+     * Baris di-UPSERT per realizations[i][id] (pola syncDetails()), bukan
+     * dibuat ulang tiap submit. Akibatnya lampiran per baris tetap menempel
+     * pada barisnya sendiri walau settlement ditolak lalu diajukan ulang, dan
+     * walau satu item dipecah jadi beberapa baris — tidak perlu lagi
+     * memindah lampiran lewat request_detail_id.
+     *
+     * Tiap baris boleh memilih Sub COA (sub-item Budget Plan CR ini, sudah
+     * divalidasi di validateRealizationInput()). account_id & description
+     * diturunkan dari sub-item itu ("{Akun} — {Sub COA}", sama seperti
+     * syncDetails()). Baris tanpa Sub COA terpilih memakai sub-item item
+     * asalnya; item asal lama yang tidak tertaut sub-item tetap memakai
+     * akun & deskripsi item asal seperti sebelumnya.
+     *
+     * Yang dihapus: lampiran yang dicentang hapus (delete_realization_attachments[])
+     * dan baris tersimpan yang tidak dikirim lagi (beserta berkas lampirannya,
+     * sama seperti perilaku sebelumnya untuk item yang tidak disubmit ulang).
+     *
+     * @return array<int|string, BudgetRequestRealization> indeks form -> baris tersimpan
+     */
+    private function syncRealizations(BudgetRequest $cr, Request $request): array
+    {
+        $hapusIds = array_map('strval', array_filter((array) $request->input('delete_realization_attachments', [])));
+        $rows     = (array) $request->input('realizations', []);
+        $existing = $cr->realizations()->with('attachments')->get();
+        $match    = $this->matchExistingRealizations($rows, $existing);
+        $details  = $cr->details()->get()->keyBy('id');
+        $subItems = $cr->budget_plan_id
+            ? \App\Models\BudgetPlanDetail::where('budget_plan_id', $cr->budget_plan_id)->with('account')->get()->keyBy('id')
+            : collect();
+        $hasBdCol = BudgetRequestRealization::hasBudgetDetailColumn();
+
+        // Lampiran yang dicentang hapus — hanya yang memang milik baris CR ini.
+        foreach ($existing as $old) {
+            foreach ($old->attachments as $att) {
+                if (in_array((string) $att->id, $hapusIds, true)) {
+                    Storage::disk('secure')->delete($att->path);
+                    $att->delete();
+                }
+            }
+        }
+
+        $kept = [];
+        $map  = [];
+
+        foreach ($rows as $i => $row) {
+            $row = (array) $row;
+            if ($this->isEmptyRealizationRow($row)) continue;
+
             $amount   = $this->normalizeMoney($row['amount'] ?? null);
-            $detailId = $row['request_detail_id'] ?? null;
+            $detailId = (int) ($row['request_detail_id'] ?? 0);
+            $detail   = $detailId ? $details->get($detailId) : null;
 
-            if (!$amount && blank($detailId)) continue;
+            $bdId = (int) ($row['budget_detail_id'] ?? 0)
+                ?: ($detail?->budget_detail_id ? (int) $detail->budget_detail_id : 0);
+            $bd   = $bdId ? $subItems->get($bdId) : null;
 
-            $detail = $detailId ? RequestDetail::find($detailId) : null;
-
-            $realization = $cr->realizations()->create([
+            $qty     = max(1, (int) ($row['qty'] ?? 1));
+            $payload = [
                 'request_detail_id' => $detail->id ?? null,
-                'description'       => $detail->description ?? null,
-                'account_id'        => $detail->account_id ?? null,
+                'description'       => $bd
+                    ? trim(($bd->account?->name ?? '-') . ($bd->deskripsi ? ' — ' . $bd->deskripsi : ''))
+                    : ($detail->description ?? null),
+                'account_id'        => $bd ? $bd->account_id : ($detail->account_id ?? null),
+                // Kolom Harga (amount) x Qty = Settle (total). Form tiket tanpa qty = 1,
+                // jadi total = amount seperti sebelumnya.
                 'amount'            => $amount,
-                'qty'               => 1,
-                'total'             => $amount,
+                'qty'               => $qty,
+                'total'             => $amount * $qty,
                 'notes'             => $row['notes'] ?? null,
                 'change_note'       => $row['change_note'] ?? null,
-            ]);
+            ];
 
-            // Lampiran lama milik item yang sama dibuat ulang di baris baru.
-            foreach ($lamaPerDetail[(int) ($detail->id ?? 0)] ?? [] as $att) {
-                $realization->attachments()->create($att);
+            if ($hasBdCol) {
+                $payload['budget_detail_id'] = $bd->id ?? null;
             }
-            unset($lamaPerDetail[(int) ($detail->id ?? 0)]);
+
+            $realization = $match[$i] ?? null;
+            if ($realization) {
+                $realization->update($payload);
+            } else {
+                $realization = $cr->realizations()->create($payload);
+            }
+
+            $kept[]  = $realization->id;
+            $map[$i] = $realization;
 
             $rowFiles = $request->file("realizations.$i.attachments", []);
             foreach ((array) $rowFiles as $file) {
@@ -724,13 +817,38 @@ class BudgetRequestController extends Controller
             }
         }
 
-        // Lampiran yang item-nya tidak ikut disubmit lagi tidak punya induk —
-        // barisnya sudah hilang ikut cascade, filenya dibuang di sini.
-        foreach ($lamaPerDetail as $atts) {
-            foreach ($atts as $att) {
-                Storage::disk('secure')->delete($att['path']);
+        // Baris yang tidak dikirim lagi: berkasnya dibuang, barisnya dihapus
+        // (FK realization_detail_attachments ON DELETE CASCADE ikut menghapus
+        // baris lampirannya). Tanda tangan penerima dana baris itu
+        // ("ttd-r<id>", lampiran global CR) ikut dibuang — tidak ada lagi
+        // baris yang memilikinya.
+        $dibuang = [];
+        foreach ($existing as $old) {
+            if (in_array($old->id, $kept, true)) continue;
+
+            foreach ($old->attachments as $att) {
+                if (! in_array((string) $att->id, $hapusIds, true)) {
+                    Storage::disk('secure')->delete($att->path);
+                }
             }
+            $dibuang[] = $this->signatureName($cr, $old->id);
+            $old->delete();
         }
+
+        if ($dibuang) {
+            $cr->realizationAttachments()->whereIn('original_name', $dibuang)->get()
+                ->each(function ($att) {
+                    Storage::disk('secure')->delete($att->path);
+                    $att->delete();
+                });
+        }
+
+        // Relasi & cache costUnits() yang mungkin sudah termuat pada instance
+        // ini sudah basi.
+        $cr->unsetRelation('realizations');
+        $cr->forgetCostUnits();
+
+        return $map;
     }
 
     private function storeAttachments(BudgetRequest $cr, Request $request): void
@@ -1002,7 +1120,9 @@ class BudgetRequestController extends Controller
         } else {
             // Database: read-only & ringan — nilai Settlement cukup withSum, tanpa memuat baris realisasi.
             $query->with(['type', 'budgetPlan.project.manager', 'applicant', 'beneficiary.pic'])
-                ->withSum('realizations as realization_sum', 'total');
+                ->withSum('realizations as realization_sum', 'total')
+                // Close Date = kapan Second Payment (pembayaran ke-2) dibayar.
+                ->withMax(['secondPayments as second_paid_at' => fn ($q) => $q->where('status', 'PAID')], 'paid_at');
         }
 
         $rows = $query->latest()->limit($maxRows)->get();
@@ -1287,6 +1407,82 @@ class BudgetRequestController extends Controller
         return $aksi;
     }
 
+    /**
+     * Catatan tab Log dalam bentuk yang sama dengan baris riwayat status.
+     * Tabelnya baru; bila migrasinya belum jalan di server, detail CR tetap
+     * harus terbuka — catatan saja yang kosong.
+     */
+    private function logNotesFor(BudgetRequest $cr)
+    {
+        try {
+            $notes   = RequestLogNote::where('budget_request_id', $cr->id)->get();
+            $avatars = \App\Models\User::avatarUrlMap($notes->pluck('acted_by'));
+
+            return $notes->map(fn ($n) => [
+                'avatar'       => $avatars[$n->acted_by] ?? null,
+                'kind'         => 'note',
+                'action_type'  => 'note',
+                'action_label' => 'Catatan',
+                'action_color' => 'secondary',
+                'status_from'  => null,
+                'status_to'    => null,
+                'actor'        => $n->actor_name ?? 'System',
+                'user_id'      => $n->acted_by,
+                'role'         => $n->actor_role,
+                'notes'        => $n->notes,
+                'date'         => $n->created_at->format('d M Y H:i'),
+                'ts'           => $n->created_at->toIso8601String(),
+            ]);
+        } catch (\Throwable $e) {
+            return collect();
+        }
+    }
+
+    /**
+     * Kirim catatan ke tab Log (gaya chat). Siapa pun yang boleh melihat CR
+     * boleh menulis; ditutup begitu CR berstatus CLOSED.
+     */
+    public function storeLogNote(Request $request, $id)
+    {
+        $cr = $this->findVisibleCr($id);
+
+        $data = $request->validate([
+            'notes' => 'required|string|max:1000',
+        ]);
+
+        if ($cr->status === 'CLOSED') {
+            return response()->json(['message' => 'Cost Request sudah Closed; catatan baru tidak dapat ditambahkan.'], 422);
+        }
+
+        $user = Auth::user();
+        $note = RequestLogNote::create([
+            'budget_request_id' => $cr->id,
+            'acted_by'          => $user?->id,
+            'actor_name'        => $user?->name ?? 'System',
+            'actor_role'        => $user?->role?->name,
+            'notes'             => trim($data['notes']),
+        ]);
+
+        return response()->json([
+            'ok'  => true,
+            'log' => [
+                'avatar'       => $user?->avatar_url,
+                'kind'         => 'note',
+                'action_type'  => 'note',
+                'action_label' => 'Catatan',
+                'action_color' => 'secondary',
+                'status_from'  => null,
+                'status_to'    => null,
+                'actor'        => $note->actor_name,
+                'user_id'      => $note->acted_by,
+                'role'         => $note->actor_role,
+                'notes'        => $note->notes,
+                'date'         => now()->format('d M Y H:i'),
+                'ts'           => now()->toIso8601String(),
+            ],
+        ]);
+    }
+
     public function showJson(Request $request, $id)
     {
         /*
@@ -1310,6 +1506,7 @@ class BudgetRequestController extends Controller
             'details.account', 'details.budgetDetail', 'details.attachments',
             'attachments',
             'realizations.account', 'realizations.requestDetail.account', 'realizations.requestDetail.budgetDetail', 'realizations.attachments',
+            'realizations.budgetDetail.account', 'details.budgetDetail.account',
             'realizationAttachments',
             'secondPayments.dailyTransactionItems.dailyTransaction',
             'statusLogs',
@@ -1318,6 +1515,23 @@ class BudgetRequestController extends Controller
         abort_unless($this->canViewCr($cr), 403);
 
         $bp = $cr->budgetPlan;
+        $logAvatars = \App\Models\User::avatarUrlMap($cr->statusLogs->pluck('acted_by'));
+
+        /*
+         | Dengan ?with_budget=1 sub-item yang sama termuat dua kali (lewat
+         | details.budgetDetail dan budgetPlan.details). Rincian CR diarahkan ke
+         | instance milik Budget Plan yang di-prime sekali, supaya costLines()
+         | tidak dimuat dua set untuk sub-item yang sama.
+         */
+        if ($bp && $denganBudget) {
+            \App\Models\BudgetPlanDetail::primeCostLines($bp->details);
+            $subItemById = $bp->details->keyBy('id');
+            foreach ($cr->details as $d) {
+                if ($d->budget_detail_id && $subItemById->has($d->budget_detail_id)) {
+                    $d->setRelation('budgetDetail', $subItemById->get($d->budget_detail_id));
+                }
+            }
+        }
 
         return response()->json([
             'id'               => $cr->id,
@@ -1399,7 +1613,8 @@ class BudgetRequestController extends Controller
              */
             'pic_history' => $this->picHistory($cr),
 
-            'details' => $cr->details->map(function ($d) {
+            // "Used" sub-item semua baris dimuat sekaligus (BudgetPlanDetail::primeCostLines()).
+            'details' => tap($cr->details, fn ($all) => \App\Models\BudgetPlanDetail::primeCostLines($all->pluck('budgetDetail')->filter()))->map(function ($d) {
                 $bd        = $d->budgetDetail;
                 $budget    = $bd->total ?? 0;
                 $used      = $bd?->usedAmount() ?? 0;
@@ -1449,55 +1664,81 @@ class BudgetRequestController extends Controller
                 ];
             }),
 
-            'realizations' => $cr->realizations->map(fn($r) => [
-                'request_detail_id' => $r->request_detail_id,
-                'cr_item'           => $r->requestDetail?->description ?? ($r->description ?? '-'),
-                // Keterangan yang diketik pengaju di form Cost Request. Kolom
-                // DESKRIPSI rincian ($rd->description) auto-terisi "{Akun} —
-                // {Sub COA}" begitu baris tertaut budget detail (lihat
-                // syncDetails()) — BUKAN teks bebas, jadi tidak dipakai di
-                // sini kalau ada catatan ($rd->notes), persis seperti yang
-                // ditampilkan tab Request untuk baris yang sama. Kalaupun
-                // deskripsinya dipakai (baris lama tanpa budget detail),
-                // awalan "{Akun} - " / "{Sub COA} - " tetap dibuang — info itu
-                // sudah ada di judul grup & judul tebal item di atasnya.
-                'des_request'       => $this->requestNoteLabel($r->requestDetail, $r->description),
-                // Sub COA (deskripsi budget plan detail dari baris pengajuan yang
-                // ditautkan) — judul tebal item di tab Settlement drawer.
-                'sub_coa'           => $r->requestDetail?->budgetDetail?->deskripsi
-                                        ?: ($r->requestDetail ? $this->subCoaLabel($r->requestDetail) : null),
-                // Teks baris "Settle:" di drawer — isi kolom "Description Settle"
-                // di form Submit Settlement (disimpan ke kolom notes), dengan
-                // awalan COA/Sub COA dibuang dengan alasan yang sama.
-                'des_settle'        => $this->stripLeadingLabel(
-                                            (string) ($r->notes ?: ''),
-                                            $r->account?->name,
-                                            $r->requestDetail?->budgetDetail?->deskripsi
-                                        ) ?: '-',
-                'total_cr'          => $r->requestDetail?->total ?? 0,
-                'total_cr_formatted'=> number_format($r->requestDetail?->total ?? 0, 0, ',', '.'),
-                'actual'            => $r->amount,
-                'actual_formatted'  => number_format($r->amount, 0, ',', '.'),
-                'notes'             => $r->notes,
-                // Alasan perubahan dari Description Request ke Description Settle.
-                'change_note'       => $r->change_note,
-                // Kolom lama dipertahankan agar kompatibel bila ada kode lain yang masih memakainya
-                'description'       => $r->description,
-                'account'           => $r->account?->name ?? '-',
-                'amount'            => $r->amount,
-                'amount_formatted'  => number_format($r->amount, 0, ',', '.'),
-                'qty'               => $r->qty,
-                'total'             => $r->total,
-                'total_formatted'   => number_format($r->total, 0, ',', '.'),
-                'attachments'       => $r->attachments->map(fn ($a) => [
-                    'id'             => $a->id,
-                    'original_name'  => $a->original_name,
-                    'path'           => $a->path,
-                    'is_image'       => $a->isImage(),
-                    'is_pdf'         => $a->isPdf(),
-                    'size_formatted' => $a->size_formatted,
-                ])->values(),
-            ]),
+            'realizations' => $cr->realizations->map(function ($r) {
+                // Sub COA yang BERLAKU (Settlement Custom COA, 25 Okt 2026):
+                // pilihan baris settlement, atau sub-item item asalnya untuk
+                // baris lama (budget_detail_id NULL).
+                $rd       = $r->requestDetail;
+                $efektif  = $r->budgetDetail ?? $rd?->budgetDetail;
+                $isAdded  = ! $r->request_detail_id;
+                $isMoved  = ! $isAdded && $r->effectiveBudgetDetailId($rd)
+                    !== ($rd?->budget_detail_id ? (int) $rd->budget_detail_id : null);
+
+                return [
+                    'id'                => $r->id,
+                    'request_detail_id' => $r->request_detail_id,
+                    'budget_detail_id'  => $r->effectiveBudgetDetailId($rd),
+                    'is_added'          => $isAdded,
+                    'is_moved'          => $isMoved,
+                    // Sub COA item asal — ditampilkan sebagai "Pindah dari: ...".
+                    'origin_label'      => $isMoved
+                        ? ($rd?->budgetDetail?->deskripsi ?: ($rd ? $this->subCoaLabel($rd) : null))
+                        : null,
+                    'cr_item'           => $r->requestDetail?->description ?? ($r->description ?? '-'),
+                    // Keterangan yang diketik pengaju di form Cost Request. Kolom
+                    // DESKRIPSI rincian ($rd->description) auto-terisi "{Akun} —
+                    // {Sub COA}" begitu baris tertaut budget detail (lihat
+                    // syncDetails()) — BUKAN teks bebas, jadi tidak dipakai di
+                    // sini kalau ada catatan ($rd->notes), persis seperti yang
+                    // ditampilkan tab Request untuk baris yang sama. Kalaupun
+                    // deskripsinya dipakai (baris lama tanpa budget detail),
+                    // awalan "{Akun} - " / "{Sub COA} - " tetap dibuang — info itu
+                    // sudah ada di judul grup & judul tebal item di atasnya.
+                    'des_request'       => $isAdded ? '-' : $this->requestNoteLabel($rd, $r->description),
+                    // Sub COA (deskripsi budget plan detail dari baris pengajuan yang
+                    // ditautkan) — judul tebal item di tab Settlement drawer.
+                    'sub_coa'           => $efektif?->deskripsi
+                                            ?: ($rd ? $this->subCoaLabel($rd) : null),
+                    // Teks baris "Settle:" di drawer — isi kolom "Description Settle"
+                    // di form Submit Settlement (disimpan ke kolom notes), dengan
+                    // awalan COA/Sub COA dibuang dengan alasan yang sama.
+                    'des_settle'        => $this->stripLeadingLabel(
+                                                (string) ($r->notes ?: ''),
+                                                $r->account?->name,
+                                                $efektif?->deskripsi
+                                            ) ?: '-',
+                    // Nilai Request ITEM ASAL — satu item bisa punya beberapa baris
+                    // settlement, jadi angka ini JANGAN dijumlahkan per baris
+                    // (pakai settlement_comparison untuk total per COA / Sub COA).
+                    'total_cr'          => $rd?->total ?? 0,
+                    'total_cr_formatted'=> number_format($rd?->total ?? 0, 0, ',', '.'),
+                    'actual'            => $r->total,
+                    'actual_formatted'  => number_format($r->total, 0, ',', '.'),
+                    'notes'             => $r->notes,
+                    // Alasan perubahan dari Description Request ke Description Settle.
+                    'change_note'       => $r->change_note,
+                    // Kolom lama dipertahankan agar kompatibel bila ada kode lain yang masih memakainya
+                    'description'       => $r->description,
+                    'account'           => $r->account?->name ?? ($efektif?->account?->name ?? '-'),
+                    'amount'            => $r->amount,
+                    'amount_formatted'  => number_format($r->amount, 0, ',', '.'),
+                    'qty'               => $r->qty,
+                    'total'             => $r->total,
+                    'total_formatted'   => number_format($r->total, 0, ',', '.'),
+                    'attachments'       => $r->attachments->map(fn ($a) => [
+                        'id'             => $a->id,
+                        'original_name'  => $a->original_name,
+                        'path'           => $a->path,
+                        'is_image'       => $a->isImage(),
+                        'is_pdf'         => $a->isPdf(),
+                        'size_formatted' => $a->size_formatted,
+                    ])->values(),
+                ];
+            })->values(),
+            // Perbandingan Request vs Settlement per (Akun, Sub COA), dihitung
+            // di server supaya layar tidak menjumlah total_cr per baris (yang
+            // berlipat bila satu item dipecah jadi beberapa baris settlement).
+            'settlement_comparison'       => $this->settlementComparison($cr),
             'total_realization'           => $cr->total_realization,
             'total_realization_formatted' => $cr->total_realization_formatted,
 
@@ -1507,7 +1748,7 @@ class BudgetRequestController extends Controller
             'second_payments' => $cr->secondPayments->map(function ($p) {
                 $activeItem = $p->dailyTransactionItems
                     ->first(fn ($i) => $i->status === 'INCLUDED'
-                        && in_array($i->dailyTransaction?->status, ['PENDING_APPROVER', 'DONE', 'PAID']));
+                        && in_array($i->dailyTransaction?->status, array_merge(\App\Models\DailyTransaction::ACTIVE_STATUSES, ['PAID'])));
 
                 return [
                     'id'              => $p->id,
@@ -1537,7 +1778,16 @@ class BudgetRequestController extends Controller
                 'size_formatted' => $a->size_formatted ?? null,
             ])->values(),
 
+            /*
+             | Riwayat status + catatan bebas (request_log_notes), diurutkan
+             | terbaru-dulu seperti sebelumnya. 'ts' (ISO 8601) dipakai layar
+             | untuk menyusun tanggal tiap tahap dan menghitung total waktu;
+             | 'action_type' untuk membedakan 'paid' dari transisi lain.
+             */
             'logs' => $cr->statusLogs->map(fn($l) => [
+                'avatar'       => $logAvatars[$l->acted_by] ?? null,
+                'kind'         => 'status',
+                'action_type'  => $l->action_type,
                 'action_label' => $l->action_label,
                 'action_color' => $l->action_color,
                 'status_from'  => $l->status_from,
@@ -1549,7 +1799,10 @@ class BudgetRequestController extends Controller
                 'role'         => $l->actor_role,
                 'notes'        => $l->notes,
                 'date'         => $l->created_at->format('d M Y H:i'),
-            ]),
+                'ts'           => $l->created_at->toIso8601String(),
+            ])->concat($this->logNotesFor($cr))
+              ->sortByDesc('ts')->values(),
+            'can_post_log_note' => $cr->status !== 'CLOSED',
 
             // Ringkasan Budget Plan yang terhubung — dipakai tab "Budget" pada modal detail CR,
             // struktur mengikuti BudgetPlanController::showJson() supaya konsisten.
@@ -1568,31 +1821,29 @@ class BudgetRequestController extends Controller
                 'usage_percentage' => $bp->amount > 0
                     ? round(($bp->usedAmount() / $bp->amount) * 100, 1)
                     : 0,
-                'details' => $bp->details->map(function ($d) {
+                'details' => tap($bp->details, fn ($all) => \App\Models\BudgetPlanDetail::primeCostLines($all))->map(function ($d) {
                     $used      = $d->usedAmount();
                     $remaining = $d->remainingAmount();
 
-                    $crDetails = collect();
-                    if (\Illuminate\Support\Facades\Schema::hasColumn('request_detail', 'budget_detail_id')) {
-                        $crDetails = $d->costRequestDetails()
-                            ->whereHas('budgetRequest', fn ($q) => $q->disbursed())
-                            ->with(['budgetRequest:id,code,description,beneficiary_id,created_at', 'budgetRequest.beneficiary:id,nickname', 'realization'])
-                            ->get()
-                            ->map(function ($rd) {
-                                $amount = (int) ($rd->realization?->total ?? $rd->total);
-                                return [
-                                    'cr_id'                => $rd->budgetRequest?->id ?? null,
-                                    'cr_date_formatted'    => $rd->budgetRequest?->created_at?->format('d M Y') ?? '-',
-                                    'beneficiary'          => $rd->budgetRequest?->beneficiary?->nickname ?? '-',
-                                    'notes'                => $rd->notes ?: '-',
-                                    'unit_price_formatted' => number_format((int) $rd->amount, 0, ',', '.'),
-                                    'qty'                  => (float) $rd->qty,
-                                    'amount'               => $amount,
-                                    'amount_formatted'     => number_format($amount, 0, ',', '.'),
-                                ];
-                            })
-                            ->values();
-                    }
+                    // Riwayat CR per sub-item dari sumber yang sama dengan
+                    // "Used" (BudgetPlanDetail::costLines(), per baris settlement
+                    // untuk Cash Advance yang settlement-nya sudah diajukan).
+                    $crDetails = $d->costLines()
+                        ->map(function ($u) {
+                            $cr   = $u['budget_request'];
+                            $show = \App\Models\BudgetPlanDetail::costLineDisplay($u);
+                            return [
+                                'cr_id'                => $cr->id,
+                                'cr_date_formatted'    => $cr->created_at?->format('d M Y') ?? '-',
+                                'beneficiary'          => $cr->beneficiary?->nickname ?? '-',
+                                'notes'                => $show['notes'],
+                                'unit_price_formatted' => number_format($show['unit_price'], 0, ',', '.'),
+                                'qty'                  => $show['qty'],
+                                'amount'               => $show['amount'],
+                                'amount_formatted'     => number_format($show['amount'], 0, ',', '.'),
+                            ];
+                        })
+                        ->values();
 
                     return [
                         'id'                  => $d->id,
@@ -1612,6 +1863,70 @@ class BudgetRequestController extends Controller
                 }),
             ] : null,
         ]);
+    }
+
+    /**
+     * Perbandingan Request vs Settlement per (Akun, Sub COA) untuk drawer CR
+     * & Todo List (Settlement Custom COA, 25 Okt 2026).
+     *
+     *   Request    = jumlah item pengajuan (bukan TAKEOUT) di Sub COA itu —
+     *                totalnya sama dengan amount CR, tidak terhitung ganda
+     *                walau item dipecah jadi beberapa baris settlement;
+     *   Settlement = jumlah baris settlement yang Sub COA efektifnya itu —
+     *                totalnya sama dengan total_realization;
+     *   Variance   = Request - Settlement (positif = sisa/refund).
+     *
+     * Butuh relasi details.budgetDetail.account, details.account,
+     * realizations.budgetDetail.account, realizations.requestDetail.budgetDetail
+     * (sudah dimuat showJson()).
+     */
+    private function settlementComparison(BudgetRequest $cr): array
+    {
+        $baris = [];
+
+        $kunci = function (?\App\Models\BudgetPlanDetail $bd, ?string $akun, ?string $cadangan) {
+            return $bd
+                ? ['key' => 'bd:' . $bd->id, 'account' => $bd->account?->name ?? ($akun ?: '-'), 'sub_coa' => $bd->deskripsi ?: '-']
+                : ['key' => 'acc:' . ($akun ?: '-') . '|' . ($cadangan ?: '-'), 'account' => $akun ?: '-', 'sub_coa' => $cadangan ?: '-'];
+        };
+
+        $tambah = function (array $k, int $request, int $settle) use (&$baris) {
+            $baris[$k['key']] ??= ['account' => $k['account'], 'sub_coa' => $k['sub_coa'], 'request' => 0, 'settlement' => 0];
+            $baris[$k['key']]['request']    += $request;
+            $baris[$k['key']]['settlement'] += $settle;
+        };
+
+        foreach ($cr->details as $d) {
+            if ($d->isTakenOut()) continue;
+            $tambah($kunci($d->budgetDetail, $d->account?->name, $this->subCoaLabel($d)), (int) $d->total, 0);
+        }
+
+        foreach ($cr->realizations as $r) {
+            $rd = $r->requestDetail;
+            $bd = $r->budgetDetail ?? $rd?->budgetDetail;
+            $tambah($kunci($bd, $r->account?->name, $rd ? $this->subCoaLabel($rd) : null), 0, (int) $r->total);
+        }
+
+        $fmt  = fn ($v) => number_format($v, 0, ',', '.');
+        $rows = collect($baris)->values()->map(fn ($b) => $b + [
+            'variance'             => $b['request'] - $b['settlement'],
+            'request_formatted'    => $fmt($b['request']),
+            'settlement_formatted' => $fmt($b['settlement']),
+            'variance_formatted'   => $fmt($b['request'] - $b['settlement']),
+        ]);
+
+        $request = (int) $rows->sum('request');
+        $settle  = (int) $rows->sum('settlement');
+
+        return [
+            'rows'                 => $rows->all(),
+            'request'              => $request,
+            'settlement'           => $settle,
+            'variance'             => $request - $settle,
+            'request_formatted'    => $fmt($request),
+            'settlement_formatted' => $fmt($settle),
+            'variance_formatted'   => $fmt($request - $settle),
+        ];
     }
 
     /**
@@ -1660,6 +1975,7 @@ class BudgetRequestController extends Controller
                 'realizations.account',
                 'realizations.requestDetail.account',
                 'realizations.requestDetail.budgetDetail',
+                'realizations.budgetDetail',
             ])
             ->whereIn('beneficiary_id', $beneficiaryIds)
             ->where('id', '!=', $cr->id)
@@ -1698,7 +2014,9 @@ class BudgetRequestController extends Controller
                     $rd = $r->requestDetail;
                     $items->push($meta + [
                         'account'         => $r->account?->name ?? ($rd?->account?->name ?? '-'),
-                        'sub_coa'         => $rd?->budgetDetail?->deskripsi ?? '-',
+                        // Sub COA efektif: pilihan baris settlement, atau
+                        // sub-item item asal untuk baris lama.
+                        'sub_coa'         => ($r->budgetDetail ?? $rd?->budgetDetail)?->deskripsi ?? '-',
                         'description'     => $r->description ?: ($rd ? $this->itemLabel($rd) : '-'),
                         'value'           => (int) $r->amount,
                         'value_formatted' => number_format((int) $r->amount, 0, ',', '.'),
@@ -2323,37 +2641,108 @@ class BudgetRequestController extends Controller
             fn ($c) => $c->addLog($fromStatus, 'REJECTED', $actionType, $notes));
     }
 
+    /** Batas jumlah CR per satu kali bulk review (approve/reject). */
+    private const BULK_REVIEW_MAX = 50;
+
+    /**
+     * Validasi umum bulk review. `expected` (opsional, id => STATUS) dikirim
+     * halaman index CR: CR hanya diproses bila statusnya saat dimuat sama
+     * dengan status yang dilihat user di layar. Todo List tidak mengirimnya,
+     * jadi perilakunya tetap seperti semula.
+     */
+    private function validateBulkReview(Request $request, array $extra = []): void
+    {
+        $request->validate($extra + [
+            'ids'        => 'required|array|min:1|max:' . self::BULK_REVIEW_MAX,
+            'ids.*'      => 'integer',
+            'expected'   => 'nullable|array',
+            'expected.*' => 'nullable|string|max:30',
+        ]);
+    }
+
+    /**
+     * Jalankan $apply(CR) untuk tiap id yang valid dan kumpulkan alasan CR yang
+     * dilewati. Aturan role/status tetap di applyReviewApprove/Reject; alasan
+     * di sini hanya untuk pesan ke user (id tak ditemukan dan id tanpa akses
+     * sengaja diberi pesan yang sama).
+     *
+     * @return array{0:int,1:array<int,string>} [jumlah berhasil, daftar alasan skip]
+     */
+    private function runBulkReview(Request $request, User $user, \Closure $apply): array
+    {
+        $ids      = array_values(array_unique(array_map('intval', (array) $request->input('ids', []))));
+        $expected = (array) $request->input('expected', []);
+        $visible  = $this->visibleCrs($ids)->keyBy('id');
+
+        $count   = 0;
+        $skipped = [];
+
+        foreach ($ids as $id) {
+            $cr = $visible->get($id);
+            if (! $cr) {
+                $skipped[] = '#' . $id . ' (tidak ditemukan atau tidak ada akses)';
+                continue;
+            }
+
+            $exp = $expected[$id] ?? null;
+            if ($exp !== null && $exp !== $cr->status) {
+                $skipped[] = $cr->code . ' (status berubah dari ' . $exp . ' menjadi ' . $cr->status . ' — muat ulang)';
+                continue;
+            }
+            if (! $cr->isInApprovalStage()) {
+                $skipped[] = $cr->code . ' (status ' . $cr->status . ' bukan tahap approval)';
+                continue;
+            }
+            if (! $user->hasRole(array_merge(['superadmin'], BudgetRequest::STAGE_ROLES[$cr->status]))) {
+                $skipped[] = $cr->code . ' (peran Anda tidak berhak pada tahap ' . $cr->status . ')';
+                continue;
+            }
+
+            if ($apply($cr)) {
+                $count++;
+            } else {
+                $skipped[] = $cr->code . ' (status berubah saat diproses — muat ulang)';
+            }
+        }
+
+        return [$count, $skipped];
+    }
+
+    /** Ringkas daftar CR yang dilewati jadi satu pesan error (maks 5 lalu "…"). */
+    private function bulkSkipMessage(array $skipped): string
+    {
+        $tampil = array_slice($skipped, 0, 5);
+
+        return count($skipped) . ' CR dilewati: ' . implode(', ', $tampil)
+            . (count($skipped) > 5 ? ', …' : '') . '.';
+    }
+
     public function reviewBulkApprove(Request $request)
     {
         /** @var User $user */
         $user = Auth::user();
-        $ids  = (array) $request->input('ids', []);
+        $this->validateBulkReview($request);
 
         // Hanya CR yang memang boleh dilihat user ini - sama dengan aksi
         // satuan (findVisibleCr) dan bulk settlement (visibleCrs()). Dulu id
         // dimuat apa adanya, sehingga Head bisa memproses CR di luar Access
         // Group-nya lewat POST yang dibuat sendiri.
-        $count = 0;
-        foreach ($this->visibleCrs($ids) as $cr) {
-            if ($this->applyReviewApprove($cr, $user)) $count++;
-        }
+        [$count, $skipped] = $this->runBulkReview($request, $user, fn (BudgetRequest $cr) => $this->applyReviewApprove($cr, $user));
 
-        return back()->with('success', $count . ' CR berhasil di-approve.');
+        $redirect = back()->with('success', $count . ' CR berhasil di-approve.');
+        return $skipped ? $redirect->with('error', $this->bulkSkipMessage($skipped)) : $redirect;
     }
 
     public function reviewBulkReject(Request $request)
     {
         /** @var User $user */
         $user = Auth::user();
-        $request->validate(['notes' => 'required|string|max:500']);
-        $ids = (array) $request->input('ids', []);
+        $this->validateBulkReview($request, ['notes' => 'required|string|max:500']);
 
-        $count = 0;
-        foreach ($this->visibleCrs($ids) as $cr) {
-            if ($this->applyReviewReject($cr, $user, $request->notes)) $count++;
-        }
+        [$count, $skipped] = $this->runBulkReview($request, $user, fn (BudgetRequest $cr) => $this->applyReviewReject($cr, $user, $request->notes));
 
-        return back()->with('success', $count . ' CR berhasil ditolak. Menunggu keputusan Manager (Revise/Cancel).');
+        $redirect = back()->with('success', $count . ' CR berhasil ditolak. Menunggu keputusan Manager (Revise/Cancel).');
+        return $skipped ? $redirect->with('error', $this->bulkSkipMessage($skipped)) : $redirect;
     }
 
     /*
@@ -2524,9 +2913,11 @@ class BudgetRequestController extends Controller
         // ditolak (REALIZED -> SETTLE_REJECTED) & disubmit ulang, kolom
         // "Description Settle" & "Settle" ke-prefill dari input sebelumnya
         // (bukan reset). 'statusLogs' dipakai menampilkan alasan reject
-        // terakhir di form (lihat $rejectReason di bawah).
+        // terakhir di form (lihat $rejectReason di bawah). Sub-item Budget
+        // Plan dimuat untuk pilihan Sub COA per baris (Settlement Custom COA).
         $budgetRequest = $this->findVisibleCr($id, [
-            'details.account', 'realizations.attachments', 'realizationAttachments', 'statusLogs',
+            'type', 'details.account', 'details.budgetDetail.account',
+            'realizations.attachments', 'realizationAttachments', 'statusLogs',
         ]);
 
         if (! in_array($budgetRequest->status, ['PAID', 'SETTLE_REJECTED'], true)) {
@@ -2541,7 +2932,15 @@ class BudgetRequestController extends Controller
             ? $budgetRequest->statusLogs->firstWhere('action_type', 'settlement_rejected')
             : null;
 
-        return view('budget-request.realize', compact('budgetRequest', 'rejectReason'));
+        // Settlement berdiri sendiri (29 Okt 2026): form awalnya KOSONG, tidak
+        // lagi terisi 1:1 dari item pengajuan — baris dibuat user (Tambah Baris /
+        // Auto Fill). Baris yang sudah tersimpan (draft / ditolak) tetap tampil.
+        $settleRows = $budgetRequest->realizations->isEmpty()
+            ? collect()
+            : $budgetRequest->settlementFormRows()->filter(fn ($r) => $r['id'])->values();
+        $subItems   = $budgetRequest->settlementSubItemOptions();
+
+        return view('budget-request.realize', compact('budgetRequest', 'rejectReason', 'settleRows', 'subItems'));
     }
 
     /*
@@ -2555,17 +2954,31 @@ class BudgetRequestController extends Controller
      * SETTLE_REJECTED -> REALIZED) dan simpan draft (status tidak berubah).
      * Mengembalikan response error siap-kirim kalau tidak valid, atau null
      * kalau lolos — supaya kedua pemanggil menolak dengan aturan yang sama.
+     *
+     * Settlement Custom COA (25 Okt 2026) — tiap baris boleh:
+     *   - menunjuk item asal (request_detail_id, item non-TAKEOUT milik CR
+     *     ini) atau kosong = baris tambahan;
+     *   - memilih Sub COA (budget_detail_id) yang WAJIB milik Budget Plan CR
+     *     ini. Kosong = Sub COA item asalnya; baris tambahan wajib memilih.
+     * Pelanggaran dua aturan itu ditolak juga saat simpan draft, sebelum ada
+     * apa pun yang tersimpan.
      */
     private function validateRealizationInput(Request $request, BudgetRequest $cr, bool $strict = true)
     {
         $request->validate([
             'realizations'                     => 'required|array|min:1',
-            'realizations.*.request_detail_id' => 'required|exists:request_detail,id',
+            // Baris tersimpan yang di-update (lihat syncRealizations()).
+            'realizations.*.id'                => 'nullable|integer',
+            // Kosong = baris tambahan tanpa item asal.
+            'realizations.*.request_detail_id' => 'nullable|integer',
+            'realizations.*.budget_detail_id'  => 'nullable|integer',
             // Settle boleh 0 (mis. uang dikembalikan utuh); kosong dianggap 0.
             'realizations.*.amount'            => 'nullable',
             // Sejalan dengan maxlength input di form settlement.
             'realizations.*.notes'             => 'nullable|string|max:255',
             'realizations.*.change_note'       => 'nullable|string|max:500',
+            // Qty settle (informasi; nilai uangnya tetap dari kolom Settle).
+            'realizations.*.qty'               => 'nullable|integer|min:1|max:999',
             'realizations.*.attachments'       => 'nullable|array',
             'realizations.*.attachments.*'     => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
             'realization_attachments'          => 'nullable|array',
@@ -2577,89 +2990,159 @@ class BudgetRequestController extends Controller
             'settlement_notes'                      => 'nullable|string|max:1000',
         ]);
 
-        $validDetailIds = $cr->details()->where('status', '!=', 'TAKEOUT')->pluck('id')->map(fn ($i) => (int) $i);
-        $submittedIds   = collect((array) $request->input('realizations', []))
-            ->pluck('request_detail_id')->filter()->map(fn ($i) => (int) $i);
+        $rows         = (array) $request->input('realizations', []);
+        $validDetails = $cr->details()->where('status', '!=', 'TAKEOUT')->get()->keyBy('id');
+        $submittedIds = collect($rows)->pluck('request_detail_id')->filter()->map(fn ($i) => (int) $i);
 
-        if ($submittedIds->diff($validDetailIds)->isNotEmpty()) {
+        $asing = $submittedIds->diff($validDetails->keys()->map(fn ($i) => (int) $i));
+        if ($asing->isNotEmpty()) {
+            /*
+            | Baris yatim (item asalnya sudah di-takeout) ikut terkirim apa
+            | adanya dari form — lihat BudgetRequest::settlementFormRows().
+            | Pesannya disebut terang supaya user tahu baris mana yang dihapus.
+            */
+            $takeoutIds = $cr->details()->where('status', 'TAKEOUT')->whereIn('id', $asing->all())
+                ->pluck('id')->map(fn ($i) => (int) $i)->all();
+
+            if ($takeoutIds) {
+                $noBaris = [];
+                $no      = 0;
+                foreach ($rows as $row) {
+                    $no++;
+                    if (in_array((int) (((array) $row)['request_detail_id'] ?? 0), $takeoutIds, true)) {
+                        $noBaris[] = $no;
+                    }
+                }
+
+                return back()->withInput()->with(
+                    'error',
+                    'Item asal baris no. ' . implode(', ', $noBaris) . ' sudah di-takeout dan tidak bisa disettle. Hapus baris tersebut lalu simpan lagi.'
+                );
+            }
+
             return back()->withInput()
                 ->with('error', 'Item realisasi yang dipilih tidak sesuai dengan Cost Request ini.');
         }
 
+        // Sub COA hanya dari sub-item Budget Plan CR ini sendiri.
+        $bdIds = collect($rows)->pluck('budget_detail_id')->filter()->map(fn ($i) => (int) $i);
+        $bp    = $cr->budgetPlan;
+        if ($bdIds->isNotEmpty() && (! $bp || ! $bp->ownsDetails($bdIds))) {
+            return back()->withInput()
+                ->with('error', 'Sub COA yang dipilih bukan milik Budget Plan Cost Request ini.');
+        }
+
+        $no         = 0;
+        $tanpaSub   = [];
+        $fleksibel  = false;
+        foreach ($rows as $row) {
+            $row = (array) $row;
+            // Nomor = urutan baris di form (baris kosong ikut dihitung), sama
+            // dengan nomor yang dipakai pesan di layar.
+            $no++;
+            if ($this->isEmptyRealizationRow($row)) continue;
+
+            if (blank($row['request_detail_id'] ?? null) && blank($row['budget_detail_id'] ?? null)) {
+                $tanpaSub[] = $no;
+            }
+
+            // Baris tambahan, atau Sub COA berbeda dari item asalnya.
+            $asal = $validDetails->get((int) ($row['request_detail_id'] ?? 0));
+            if (! $asal || (filled($row['budget_detail_id'] ?? null)
+                    && (int) $row['budget_detail_id'] !== (int) $asal->budget_detail_id)) {
+                $fleksibel = true;
+            }
+        }
+
+        /*
+        | Kode terunggah lebih dulu daripada migrasi 2026_10_25_000200: kolom
+        | budget_detail_id belum ada, jadi pilihan Sub COA tidak bisa disimpan.
+        | Ditolak terang-terangan daripada tersimpan diam-diam di Sub COA asal.
+        */
+        if ($fleksibel && ! BudgetRequestRealization::hasBudgetDetailColumn()) {
+            return back()->withInput()->with(
+                'error',
+                'Pindah Sub COA / baris tambahan belum bisa disimpan: migrasi database belum dijalankan. Hubungi admin.'
+            );
+        }
+
+        if ($tanpaSub) {
+            return back()->withInput()->with(
+                'error',
+                'Baris tambahan wajib memilih Sub COA. Baris yang belum dipilih: no. ' . implode(', ', $tanpaSub) . '.'
+            );
+        }
+
         // CR yang sudah cair (PAID/SETTLE_REJECTED) wajib melampirkan bukti
         // per item di tiap baris Rincian Settlement; lampiran global di sini
-        // hanya opsional. Berlaku sama untuk submit maupun simpan draft —
-        // supaya data yang tersimpan tidak pernah setengah lengkap.
-        // Simpan draft ($strict = false) sengaja melewati pemeriksaan
-        // kelengkapan: draft memang boleh setengah jadi dan dilengkapi nanti
-        // sebelum ditekan "Submit Settlement".
+        // hanya opsional. Simpan draft ($strict = false) sengaja melewati
+        // pemeriksaan kelengkapan: draft memang boleh setengah jadi dan
+        // dilengkapi nanti sebelum ditekan "Submit Settlement".
         if (! $strict) {
             return null;
         }
 
-        $missingAtt  = [];
-        $missingNote = [];
-        $no          = 0;
-        foreach ((array) $request->input('realizations', []) as $i => $row) {
-            if (! $this->normalizeMoney($row['amount'] ?? null) && blank($row['request_detail_id'] ?? null)) {
-                continue;
-            }
-            $no++;
+        /*
+        | Lampiran Item & Note per baris opsional (29 Okt 2026). Yang wajib
+        | hanya bila total Settle melebihi nilai pengajuan CR (jadi Expense
+        | Claim): Keterangan DAN Lampiran Settlement (global) di header.
+        */
+        $totalSettle = 0;
+        foreach ($rows as $row) {
+            $row = (array) $row;
+            if ($this->isEmptyRealizationRow($row)) continue;
+            $totalSettle += $this->normalizeMoney($row['amount'] ?? null) * max(1, (int) ($row['qty'] ?? 1));
+        }
 
-            /*
-            | Settle yang melebihi nilai Request berarti ada perubahan yang
-            | harus dipertanggungjawabkan (jadi Second Payment), karena itu
-            | "Note" per baris wajib diisi di kasus ini.
-            */
-            $detailRow = RequestDetail::find((int) ($row['request_detail_id'] ?? 0));
-            if ($detailRow
-                && $this->normalizeMoney($row['amount'] ?? null) > (int) $detailRow->total
-                && blank($row['change_note'] ?? null)) {
-                $missingNote[] = $no;
-            }
-
-            // Baris dengan Settle 0 tidak wajib berlampiran.
-            if (! $this->normalizeMoney($row['amount'] ?? null)) {
-                continue;
-            }
-
-            $hasFile = collect((array) $request->file("realizations.$i.attachments", []))
+        if ($totalSettle > (int) $cr->amount) {
+            $hapusGlobal = array_map('strval', array_filter((array) $request->input('delete_realization_global_attachments', [])));
+            $adaBaru     = collect((array) $request->file('realization_attachments', []))
                 ->contains(fn ($f) => $f && $f->isValid());
+            $adaLama     = $cr->realizationAttachments()
+                ->where('original_name', 'not like', 'ttd-%')
+                ->whereNotIn('id', $hapusGlobal)
+                ->exists();
 
-            // Lampiran dari submit sebelumnya (mis. settlement yang sempat
-            // ditolak) tetap dihitung, selama tidak dicentang hapus.
-            if (! $hasFile) {
-                $detailId = (int) ($row['request_detail_id'] ?? 0);
-                $hapusIds = array_filter((array) $request->input('delete_realization_attachments', []));
+            $kurang = [];
+            if (blank(trim((string) $request->input('settlement_notes')))) $kurang[] = '"Keterangan"';
+            if (! $adaBaru && ! $adaLama) $kurang[] = '"Lampiran Settlement"';
 
-                $hasFile = \App\Models\RealizationDetailAttachment::whereIn(
-                        'realization_id',
-                        $cr->realizations()->where('request_detail_id', $detailId)->pluck('id')
-                    )
-                    ->whereNotIn('id', $hapusIds ?: [0])
-                    ->exists();
+            if ($kurang) {
+                return back()->withInput()->with(
+                    'error',
+                    'Total Settle melebihi nilai pengajuan, sehingga ' . implode(' dan ', $kurang) . ' wajib diisi.'
+                );
             }
-
-            if (! $hasFile) $missingAtt[] = $no;
-        }
-
-        if ($missingAtt) {
-            return back()->withInput()->with(
-                'error',
-                'Setiap baris Rincian Settlement wajib punya "Lampiran Item". Baris yang belum berlampiran: no. '
-                . implode(', ', $missingAtt) . '.'
-            );
-        }
-
-        if ($missingNote) {
-            return back()->withInput()->with(
-                'error',
-                'Baris dengan nilai Settle melebihi Request wajib diisi "Note". Baris yang belum berisi: no. '
-                . implode(', ', $missingNote) . '.'
-            );
         }
 
         return null;
+    }
+
+    /**
+     * Nama berkas tanda tangan penerima dana untuk satu baris settlement.
+     * Sejak Settlement Custom COA (25 Okt 2026) dikunci ke ID BARIS
+     * REALISASI ("ttd-r<id>-<kode CR>.png"), bukan nomor urut baris di form —
+     * nomor urut bergeser begitu baris dipecah/ditambah/dihapus, id baris tidak.
+     */
+    private function signatureName(BudgetRequest $cr, int $realizationId): string
+    {
+        return 'ttd-r' . $realizationId . '-' . $cr->code . '.png';
+    }
+
+    /**
+     * Nomor baris tanda tangan format LAMA ("ttd-<nomor baris>-<kode CR>.png")
+     * per item asal: [request_detail_id => nomor]. Nomor baris dulu = urutan
+     * item non-TAKEOUT CR (urut id) di modal settlement tiket. Dipakai agar
+     * tanda tangan yang tersimpan sebelum rilis ini tetap diakui.
+     *
+     * @return array<int, int>
+     */
+    private function legacySignatureNumbers(BudgetRequest $cr): array
+    {
+        return $cr->details()->where('status', '!=', 'TAKEOUT')->orderBy('id')->pluck('id')
+            ->values()
+            ->mapWithKeys(fn ($id, $pos) => [(int) $id => $pos + 1])
+            ->all();
     }
 
     /**
@@ -2672,58 +3155,98 @@ class BudgetRequestController extends Controller
      *      punya lampiran DAN tanda tangan — selisih uang harus berbukti dan
      *      diakui penerimanya.
      *
+     * Sejak Settlement Custom COA (25 Okt 2026) variance dihitung per ITEM
+     * ASAL (jumlah seluruh baris item itu dibanding Request-nya) dan berlaku
+     * untuk setiap baris item tersebut; baris tambahan (Request 0) bervariance
+     * sebesar nilainya. Untuk data satu baris per item hasilnya sama dengan
+     * aturan per baris sebelumnya.
+     *
+     * Item asal (bukan TAKEOUT) yang barisnya dihapus semua dihitung Settle 0,
+     * sama seperti bila barisnya diisi 0 — aturan b tidak bisa dilewati
+     * dengan menghapus baris. Karena tidak ada baris untuk menampung bukti,
+     * simpanan ditolak; form yang dimuat ulang memunculkan lagi baris item itu.
+     *
      * Berlaku juga saat menyimpan DRAFT: draft memang boleh setengah jadi,
      * tapi tidak untuk baris yang sudah menyentuh dua hal di atas. Lampiran
-     * dan tanda tangan dari simpanan sebelumnya ikut dihitung selama tidak
-     * dicentang hapus, persis cara validateRealizationInput() menghitungnya
-     * saat Submit.
+     * dan tanda tangan dari simpanan sebelumnya pada baris yang SAMA ikut
+     * dihitung selama tidak dicentang hapus.
      */
     private function validateSettlementEvidence(Request $request, BudgetRequest $cr)
     {
+        $rows           = (array) $request->input('realizations', []);
         $signatures     = (array) $request->input('signatures', []);
-        $hapusIds       = array_filter((array) $request->input('delete_realization_attachments', []));
+        $hapusIds       = array_map('strval', array_filter((array) $request->input('delete_realization_attachments', [])));
+        $existing       = $cr->realizations()->with('attachments')->get();
+        $match          = $this->matchExistingRealizations($rows, $existing);
+        $details        = $cr->details()->with(['account', 'budgetDetail'])->get()->keyBy('id');
+        $ttdTersimpan   = $cr->realizationAttachments()->where('original_name', 'like', 'ttd-%')->pluck('original_name')->all();
+        $nomorLama      = $this->legacySignatureNumbers($cr);
         $kurangLampiran = [];
         $kurangTtd      = [];
 
-        foreach ((array) $request->input('realizations', []) as $i => $row) {
+        $settlePerItem = [];
+        // Baris pertama (urutan form) tiap item asal — satu-satunya baris yang
+        // mewarisi tanda tangan format lama, sama dengan storeSettlementSignatures().
+        $barisPertama = [];
+        foreach ($rows as $i => $row) {
+            $row = (array) $row;
+            if ($this->isEmptyRealizationRow($row) || blank($row['request_detail_id'] ?? null)) continue;
+            $settlePerItem[(int) $row['request_detail_id']] = ($settlePerItem[(int) $row['request_detail_id']] ?? 0)
+                + $this->normalizeMoney($row['amount'] ?? null);
+            $barisPertama[(int) $row['request_detail_id']] ??= $i;
+        }
+
+        // Item ikut yang tidak punya baris sama sekali = Settle 0.
+        $tanpaBaris = $details
+            ->reject(fn ($d) => $d->isTakenOut() || array_key_exists((int) $d->id, $settlePerItem) || (int) $d->total === 0)
+            ->map(fn ($d) => $this->itemLabel($d))
+            ->values()
+            ->all();
+
+        $no = 0;
+        foreach ($rows as $i => $row) {
+            $row = (array) $row;
+            // Nomor = urutan baris di form (baris kosong ikut dihitung), sama
+            // dengan nomor yang dipakai pesan di layar.
+            $no++;
+            if ($this->isEmptyRealizationRow($row)) continue;
+
             $detailId = (int) ($row['request_detail_id'] ?? 0);
             $amount   = $this->normalizeMoney($row['amount'] ?? null);
-            $detail   = $detailId ? RequestDetail::find($detailId) : null;
+            $detail   = $detailId ? $details->get($detailId) : null;
 
-            if (! $detail) {
-                continue;
-            }
+            $adaSelisih = $detail
+                ? ($settlePerItem[$detailId] ?? 0) !== (int) $detail->total
+                : $amount !== 0;
 
-            $adaSelisih = $amount !== (int) $detail->total;
-
-            // Tanda tangan baru dari form, atau yang sudah tersimpan sebelumnya.
-            $ttd = str_starts_with((string) ($signatures[$i] ?? ''), 'data:image/png;base64,')
-                || $cr->realizationAttachments()
-                    ->where('original_name', 'ttd-' . ((int) $i + 1) . '-' . $cr->code . '.png')
-                    ->exists();
+            // Tanda tangan baru dari form, atau yang sudah tersimpan untuk
+            // baris yang sama (format baru per id baris, atau format lama per
+            // nomor urut item asal).
+            $saved = $match[$i] ?? null;
+            $ttd   = str_starts_with((string) ($signatures[$i] ?? ''), 'data:image/png;base64,')
+                || ($saved && in_array($this->signatureName($cr, $saved->id), $ttdTersimpan, true))
+                || ($detail && isset($nomorLama[$detail->id])
+                    && ($barisPertama[$detail->id] ?? null) === $i
+                    && in_array('ttd-' . $nomorLama[$detail->id] . '-' . $cr->code . '.png', $ttdTersimpan, true));
 
             if (! $adaSelisih && ! ($amount && $ttd)) {
                 continue;
             }
 
             if ($adaSelisih && ! $ttd) {
-                $kurangTtd[] = (int) $i + 1;
+                $kurangTtd[] = $no;
             }
 
             $adaBerkas = collect((array) $request->file("realizations.$i.attachments", []))
                 ->contains(fn ($f) => $f && $f->isValid());
 
-            if (! $adaBerkas) {
-                $adaBerkas = \App\Models\RealizationDetailAttachment::whereIn(
-                        'realization_id',
-                        $cr->realizations()->where('request_detail_id', $detailId)->pluck('id')
-                    )
-                    ->whereNotIn('id', $hapusIds ?: [0])
-                    ->exists();
+            if (! $adaBerkas && $saved) {
+                $adaBerkas = $saved->attachments
+                    ->contains(fn ($a) => ! in_array((string) $a->id, $hapusIds, true));
             }
 
             if (! $adaBerkas) {
-                $kurangLampiran[] = (int) $i + 1;
+                $kurangLampiran[] = $no;
             }
         }
 
@@ -2737,6 +3260,11 @@ class BudgetRequestController extends Controller
             $pesan[] = '"E-sign" belum diisi pada baris no. ' . implode(', ', $kurangTtd) . '.';
         }
 
+        if ($tanpaBaris) {
+            $pesan[] = 'Item berikut tidak punya baris settlement dan dihitung Settle 0, sehingga wajib Lampiran & E-sign: '
+                . implode('; ', $tanpaBaris) . '. Baris item tersebut ditampilkan lagi di form — isi Settle-nya atau lengkapi buktinya.';
+        }
+
         return $pesan
             ? back()->withInput()->with('error', implode(' ', $pesan))
             : null;
@@ -2746,8 +3274,10 @@ class BudgetRequestController extends Controller
      * Simpan data form Settlement (realisasi + lampiran) ke database. Status
      * CR TIDAK disentuh di sini — pemanggil (submit atau simpan draft) yang
      * memutuskan transisinya.
+     *
+     * @return array<int|string, BudgetRequestRealization> indeks form -> baris tersimpan
      */
-    private function syncRealizationData(Request $request, BudgetRequest $cr): void
+    private function syncRealizationData(Request $request, BudgetRequest $cr): array
     {
         /*
         | Lampiran global settlement TIDAK lagi dihapus borongan — kalau
@@ -2763,8 +3293,15 @@ class BudgetRequestController extends Controller
                 });
         }
 
-        $this->syncRealizations($cr, $request);
+        $map = $this->syncRealizations($cr, $request);
         $this->storeRealizationAttachments($cr, $request);
+
+        // Keterangan pengaju disimpan di datanya (bukan hanya Log CR).
+        if (BudgetRequest::hasSettlementNotesColumn()) {
+            $cr->update(['settlement_notes' => trim((string) $request->input('settlement_notes')) ?: null]);
+        }
+
+        return $map;
     }
 
     public function submitRealization(Request $request, $id)
@@ -2848,21 +3385,53 @@ class BudgetRequestController extends Controller
     /**
      * Menyimpan tanda tangan penerima dana per baris settlement.
      *
-     * Dikirim sebagai data URL PNG pada `signatures[<indeks baris>]`. Tiap
-     * coretan disimpan ke disk `secure` dan dicatat sebagai LAMPIRAN GLOBAL
-     * CR (bukan lampiran item), dengan nama yang menyebut nomor barisnya —
-     * keputusan 20 Okt 2026, supaya bukti serah-terima terkumpul di satu
-     * tempat dan tidak tercampur dengan nota/bukti belanja per item.
+     * Dikirim sebagai data URL PNG pada `signatures[<indeks baris form>]`.
+     * Tiap coretan disimpan ke disk `secure` dan dicatat sebagai LAMPIRAN
+     * GLOBAL CR (bukan lampiran item) — keputusan 20 Okt 2026, supaya bukti
+     * serah-terima terkumpul di satu tempat dan tidak tercampur dengan
+     * nota/bukti belanja per item.
+     *
+     * Sejak Settlement Custom COA (25 Okt 2026) nama berkasnya dikunci ke ID
+     * baris realisasi hasil syncRealizations() ($map: indeks form -> baris),
+     * lihat signatureName(): baris yang dipecah/ditambah/dihapus tidak lagi
+     * menggeser tanda tangan ke baris lain. Tanda tangan format lama (nomor
+     * urut item) dinamai ulang sekali ke baris pertama item asalnya.
      *
      * Tanda tangan baris yang sama DIGANTI bila dikirim ulang, jadi menyimpan
      * draft berkali-kali tidak menumpuk berkas.
+     *
+     * @param  array<int|string, BudgetRequestRealization>  $map
      */
-    private function storeSettlementSignatures(Request $request, BudgetRequest $cr): void
+    private function storeSettlementSignatures(Request $request, BudgetRequest $cr, array $map): void
     {
+        // Format lama "ttd-<n>-<kode>.png" -> "ttd-r<id baris>-<kode>.png".
+        $itemPerNomor = array_flip($this->legacySignatureNumbers($cr));
+        $cr->realizationAttachments()->where('original_name', 'like', 'ttd-%-' . $cr->code . '.png')->get()
+            ->each(function ($att) use ($cr, $map, $itemPerNomor) {
+                if (! preg_match('/^ttd-(\d+)-/', (string) $att->original_name, $m)) {
+                    return;
+                }
+
+                $detailId = $itemPerNomor[(int) $m[1]] ?? null;
+                $baris    = $detailId
+                    ? collect($map)->first(fn ($r) => (int) $r->request_detail_id === (int) $detailId)
+                    : null;
+
+                if ($baris && ! $cr->realizationAttachments()->where('original_name', $this->signatureName($cr, $baris->id))->exists()) {
+                    $att->update(['original_name' => $this->signatureName($cr, $baris->id)]);
+                }
+            });
+
         foreach ((array) $request->input('signatures', []) as $i => $raw) {
             $raw = (string) $raw;
 
             if (! str_starts_with($raw, 'data:image/png;base64,')) {
+                continue;
+            }
+
+            // Baris form yang tidak tersimpan (kosong) tidak punya tanda tangan.
+            $baris = $map[$i] ?? null;
+            if (! $baris) {
                 continue;
             }
 
@@ -2872,7 +3441,7 @@ class BudgetRequestController extends Controller
                 continue;
             }
 
-            $nama = 'ttd-' . ((int) $i + 1) . '-' . $cr->code . '.png';
+            $nama = $this->signatureName($cr, $baris->id);
 
             // Tanda tangan lama untuk baris ini dibuang lebih dulu.
             $cr->realizationAttachments()->where('original_name', $nama)->get()
@@ -2936,13 +3505,16 @@ class BudgetRequestController extends Controller
             return $error;
         }
 
-        if ($error = $this->validateSettlementEvidence($request, $cr)) {
+        // Bukti per baris (lampiran + e-sign) hanya untuk draft dari modal tiket,
+        // yang punya kolom tanda tangan. Form Settlement di Cost Request tidak
+        // mewajibkannya lagi (29 Okt 2026).
+        if ($request->boolean('from_ticket') && ($error = $this->validateSettlementEvidence($request, $cr))) {
             return $error;
         }
 
         DB::transaction(function () use ($request, $cr) {
-            $this->syncRealizationData($request, $cr);
-            $this->storeSettlementSignatures($request, $cr);
+            $map = $this->syncRealizationData($request, $cr);
+            $this->storeSettlementSignatures($request, $cr, $map);
         });
 
         // Permintaan dari modal tiket cukup kembali ke halaman asalnya.
@@ -3268,7 +3840,7 @@ class BudgetRequestController extends Controller
         $query = BudgetRequest::with([
             'type', 'cluster', 'budgetPlan.project', 'budgetPlan.costCenter',
             'applicant', 'beneficiary.pic', 'details.account', 'statusLogs', 'realizations',
-            'dailyTransactionItems.dailyTransaction.sourceFund',
+            'dailyTransactionItems.dailyTransaction.sourceFund', 'secondPayments',
         ]);
 
         $this->scopeByRole($query);
@@ -3339,6 +3911,9 @@ class BudgetRequestController extends Controller
             */
             'cost'      => ['Cost',         16, fn ($cr) => $cr->realizedCostValue()],
             'status'    => ['Status',       14, fn ($cr) => $cr->status],
+            // Close Date = tanggal Second Payment (pembayaran ke-2) dibayar; '-' bila tidak ada.
+            'close_date' => ['Close Date',  16, fn ($cr) => $cr->secondPayments->where('status', 'PAID')
+                ->sortByDesc('paid_at')->first()?->paid_at?->format('d-m-Y H:i') ?? '-'],
             // Hanya untuk export tanpa cols (bentuk lengkap lama):
             'type'      => ['Tipe',         16, fn ($cr) => $cr->type?->name ?? '-'],
             'sumber'    => ['Sumber Dana',  28, fn ($cr) => $cr->budgetPlan?->isProjectBudget()
@@ -3380,7 +3955,7 @@ class BudgetRequestController extends Controller
             'code', 'tanggal', 'paid_at', 'desc', 'type', 'sumber',
             'penerima', 'pic', 'pengaju',
             'request', 'realisasi', 'refund', 'claim', 'cost',
-            'status', 'nob', 'txid', 'account', 'costtype',
+            'status', 'close_date', 'nob', 'txid', 'account', 'costtype',
         ];
 
         foreach ($activeCols as $i => $key) {
@@ -3685,21 +4260,29 @@ class BudgetRequestController extends Controller
     |--------------------------------------------------------------------------
     | TEMPLATE & IMPORT EXCEL — Rincian Settlement (realize.blade)
     |--------------------------------------------------------------------------
-    | Template berisi baris item CR apa adanya (tidak bisa tambah/kurang
-    | baris — settlement selalu 1 baris per item pengajuan). User cukup edit
-    | kolom "Actual Used", lalu import lagi; dicocokkan lewat Request Detail ID.
+    | Sejak Settlement Custom COA (25 Okt 2026) template berisi baris form
+    | settlement apa adanya (prefill 1:1 per item, atau baris draft yang sudah
+    | dipecah) + kolom Budget Detail ID (Sub COA). Baris boleh ditambah:
+    |   - Request Detail ID diisi  -> baris milik item asal itu (pecahan);
+    |   - Request Detail ID kosong -> baris tambahan, Budget Detail ID wajib.
+    | Budget Detail ID harus sub-item Budget Plan CR ini (daftar di sheet
+    | Referensi); ID dari Budget Plan lain ditolak.
     |--------------------------------------------------------------------------
     */
 
     public function downloadSettlementTemplate($id)
     {
-        $cr = $this->findVisibleCr($id, ['details']);
+        $cr = $this->findVisibleCr($id, ['details', 'realizations']);
+
+        $subItems = $cr->budget_plan_id
+            ? \App\Models\BudgetPlanDetail::where('budget_plan_id', $cr->budget_plan_id)->with('account')->orderBy('id')->get()->keyBy('id')
+            : collect();
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Rincian Settlement');
 
-        $headers = ['No', 'Request Detail ID', 'Description', 'Requested', 'Actual Used'];
+        $headers = ['No', 'Request Detail ID', 'Budget Detail ID', 'Sub COA', 'Description', 'Requested', 'Actual Used'];
         foreach ($headers as $i => $label) {
             $col = chr(65 + $i);
             $sheet->setCellValue($col . '1', $label);
@@ -3708,24 +4291,53 @@ class BudgetRequestController extends Controller
             $sheet->getStyle($col . '1')->getFont()->getColor()->setRGB('FFFFFF');
         }
 
-        $row = 2;
-        foreach ($cr->details->where('status', '!=', 'TAKEOUT')->values() as $i => $d) {
+        $row  = 2;
+        $seen = [];
+        foreach ($cr->settlementFormRows()->values() as $i => $r) {
+            $d  = $r['detail'];
+            $bd = $r['budget_detail_id'] ? $subItems->get($r['budget_detail_id']) : null;
+
             $sheet->setCellValue('A' . $row, $i + 1);
-            $sheet->setCellValueExplicit('B' . $row, $d->id, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-            $sheet->setCellValue('C' . $row, $d->description);
-            $sheet->setCellValue('D' . $row, (int) $d->total);
-            $sheet->setCellValue('E' . $row, (int) $d->total);
+            if ($d) {
+                $sheet->setCellValueExplicit('B' . $row, $d->id, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            }
+            if ($r['budget_detail_id']) {
+                $sheet->setCellValueExplicit('C' . $row, $r['budget_detail_id'], \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            }
+            $sheet->setCellValue('D' . $row, $bd ? $this->subItemLabel($bd) : '-');
+            $sheet->setCellValue('E' . $row, $d?->description ?? 'Baris tambahan');
+            // Requested hanya di baris pertama tiap item supaya tidak terbaca ganda.
+            $sheet->setCellValue('F' . $row, ($d && ! isset($seen[$d->id])) ? (int) $d->total : 0);
+            $sheet->setCellValue('G' . $row, (int) $r['amount']);
+            if ($d) {
+                $seen[$d->id] = true;
+            }
             $row++;
         }
 
-        // Kolom B ("Request Detail ID") jangan diubah manual — dipakai
-        // mencocokkan baris saat file ini di-import kembali.
         $sheet->getComment('B1')->getText()
-            ->createTextRun('Jangan ubah kolom ini — dipakai mencocokkan baris saat import.');
+            ->createTextRun('ID item pengajuan asal. Kosongkan untuk baris tambahan. Jangan ubah ID yang sudah ada.');
+        $sheet->getComment('C1')->getText()
+            ->createTextRun('ID Sub COA dari sheet Referensi. Wajib untuk baris tambahan; kosong = Sub COA item asal.');
 
-        foreach (['A' => 6, 'B' => 16, 'C' => 40, 'D' => 16, 'E' => 16] as $col => $width) {
+        foreach (['A' => 6, 'B' => 16, 'C' => 16, 'D' => 40, 'E' => 40, 'F' => 16, 'G' => 16] as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
         }
+
+        // Sheet referensi: daftar Sub COA (sub-item Budget Plan CR ini).
+        $refSheet = $spreadsheet->createSheet();
+        $refSheet->setTitle('Referensi');
+        $refSheet->setCellValue('A1', 'Budget Detail ID');
+        $refSheet->setCellValue('B1', 'Sub COA');
+        $refSheet->getStyle('A1:B1')->getFont()->setBold(true);
+        foreach ($subItems->values() as $i => $bd) {
+            $refSheet->setCellValueExplicit('A' . ($i + 2), $bd->id, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $refSheet->setCellValue('B' . ($i + 2), $this->subItemLabel($bd));
+        }
+        $refSheet->getColumnDimension('A')->setWidth(18);
+        $refSheet->getColumnDimension('B')->setWidth(50);
+
+        $spreadsheet->setActiveSheetIndex(0);
 
         $filename = 'template-settlement-' . $cr->code . '-' . now()->format('Ymd-His') . '.xlsx';
         $writer   = new Xlsx($spreadsheet);
@@ -3740,7 +4352,10 @@ class BudgetRequestController extends Controller
         $request->validate(['file' => 'required|file|mimes:xlsx,xls|max:5120']);
 
         $cr = $this->findVisibleCr($id, ['details']);
-        $validIds = $cr->details->where('status', '!=', 'TAKEOUT')->pluck('id')->map(fn ($v) => (int) $v);
+        $validDetails = $cr->details->where('status', '!=', 'TAKEOUT')->keyBy('id');
+        $subItems     = $cr->budget_plan_id
+            ? \App\Models\BudgetPlanDetail::where('budget_plan_id', $cr->budget_plan_id)->with('account')->get()->keyBy('id')
+            : collect();
 
         try {
             $spreadsheet = IOFactory::load($request->file('file')->getRealPath());
@@ -3752,28 +4367,66 @@ class BudgetRequestController extends Controller
             ], 422);
         }
 
+        /*
+        | Kolom dicari lewat judulnya, bukan posisi — template lama (tanpa
+        | Budget Detail ID: No, Request Detail ID, Description, Requested,
+        | Actual Used) tetap bisa diimpor.
+        */
+        $judul   = array_map(fn ($h) => strtoupper(trim((string) $h)), $rows[0] ?? []);
+        $kolom   = function (string $nama, ?int $bawaan) use ($judul) {
+            $k = array_search($nama, $judul, true);
+
+            return $k !== false ? $k : $bawaan;
+        };
+        $cDetail = $kolom('REQUEST DETAIL ID', 1);
+        $cSub    = $kolom('BUDGET DETAIL ID', null);
+        $cDesc   = $kolom('DESCRIPTION', 2);
+        $cActual = $kolom('ACTUAL USED', 4);
+
         $result = [];
         $errors = [];
 
         foreach ($rows as $i => $row) {
             if ($i === 0) continue; // header
 
-            [, $detailId, $desc, , $actualUsed] = array_pad($row, 5, null);
-            if (blank($detailId) && blank($actualUsed)) continue;
+            $detailId   = $row[$cDetail] ?? null;
+            $subId      = $cSub !== null ? ($row[$cSub] ?? null) : null;
+            $desc       = $row[$cDesc] ?? null;
+            $actualUsed = $row[$cActual] ?? null;
+            if (blank($detailId) && blank($subId) && blank($actualUsed)) continue;
 
-            $rowNum    = $i + 1;
-            $detailId  = (int) $detailId;
+            $rowNum   = $i + 1;
+            $detailId = blank($detailId) ? null : (int) $detailId;
+            $subId    = blank($subId) ? null : (int) $subId;
 
-            if (!$validIds->contains($detailId)) {
-                $errors[] = "Baris {$rowNum}: Request Detail ID \"{$detailId}\" tidak sesuai dengan CR ini (jangan ubah kolom ini — hanya kolom Actual Used).";
+            if ($detailId !== null && ! $validDetails->has($detailId)) {
+                $errors[] = "Baris {$rowNum}: Request Detail ID \"{$detailId}\" tidak sesuai dengan CR ini (jangan ubah ID yang sudah ada).";
                 continue;
             }
+
+            if ($subId !== null && ! $subItems->has($subId)) {
+                $errors[] = "Baris {$rowNum}: Budget Detail ID \"{$subId}\" bukan Sub COA Budget Plan CR ini (lihat sheet Referensi).";
+                continue;
+            }
+
+            if ($detailId === null && $subId === null) {
+                $errors[] = "Baris {$rowNum}: baris tambahan (tanpa Request Detail ID) wajib mengisi Budget Detail ID.";
+                continue;
+            }
+
+            if ($subId === null) {
+                $asal  = $validDetails->get($detailId);
+                $subId = $asal?->budget_detail_id ? (int) $asal->budget_detail_id : null;
+            }
+            $bd = $subId ? $subItems->get($subId) : null;
 
             $amountNum = is_numeric($actualUsed) ? (int) round((float) $actualUsed) : (int) $this->normalizeMoney((string) $actualUsed);
 
             $result[] = [
                 'row'               => $rowNum,
                 'request_detail_id' => $detailId,
+                'budget_detail_id'  => $subId,
+                'sub_coa_label'     => $bd ? $this->subItemLabel($bd) : null,
                 'description'       => $desc,
                 'amount'            => $amountNum,
             ];

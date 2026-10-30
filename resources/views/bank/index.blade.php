@@ -6,18 +6,29 @@
 <div class="content">
     <div class="container-fluid">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <div class="d-flex align-items-center">
-                <a href="{{ url('/beneficiaries') }}" class="btn btn-secondary btn-sm mr-3">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
-                <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Bank Master</h1>
-            </div>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
-                <li class="breadcrumb-item"><a href="#">Master</a></li>
+        <div class="ts-index tw:flex tw:flex-col tw:gap-4 tw:py-4">
+
+        {{-- Judul & breadcrumb topbar: shell memindahkan <h1> dan .breadcrumb pertama ke topbar
+             (tesys-shell.js hoistPageTitle); disembunyikan secara visual. --}}
+        <div class="tw:sr-only">
+            <h1>Bank Master</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">Master</li>
                 <li class="breadcrumb-item active">Bank</li>
             </ol>
         </div>
+
+        <x-tw.page-header title="Daftar Bank"
+            description="Daftar bank beserta kode dan default method pembayarannya.">
+            <x-slot:actions>
+                <x-tw.button href="{{ url('/beneficiaries') }}" variant="secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Kembali</x-tw.button>
+                <x-tw.button id="btnTambah" class="ts-add-btn tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Bank</x-tw.button>
+            </x-slot:actions>
+        </x-tw.page-header>
+
+        {{-- Mobile: tombol di header disembunyikan dan diganti tombol melayang (tesys-ui-refine.css). --}}
+        <button type="button" class="ts-fab" data-trigger="#btnTambah" aria-label="Tambah Bank" title="Tambah Bank"><i class="fas fa-plus" aria-hidden="true"></i></button>
+
 
         <x-stat-cards :cards="[
             ['Total Bank', $summary['total'], 'primary', 'fas fa-university'],
@@ -25,20 +36,9 @@
             ['Sudah Dipakai Beneficiary', $summary['in_use'], 'success', 'fas fa-link'],
         ]" />
 
-        <div class="card card-primary card-outline shadow-sm">
+        {{-- Kartu tunggal: toolbar + tabel + paginasi (pola Cost Request). --}}
+        <x-tw.card padding="sm">
 
-            <!-- CARD HEADER -->
-            <div class="card-header d-flex align-items-center">
-                <h3 class="card-title"><i class="fas fa-university mr-1"></i> Daftar Bank</h3>
-                <div class="ml-auto d-flex" style="gap:8px;">
-                    <button id="refreshTable" class="btn btn-secondary btn-sm" type="button">
-                        <i class="fas fa-sync-alt mr-1"></i> Refresh
-                    </button>
-                </div>
-            </div>
-
-            <!-- CARD BODY -->
-            <div class="card-body">
 
                 <!-- FILTER BAR -->
                 <div class="custom-toolbar mb-3 d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
@@ -53,27 +53,25 @@
                         <div id="bankRowFilters" class="d-flex flex-wrap" style="gap:8px;"></div>
                     </div>
                     <div class="custom-toolbar-right d-flex flex-wrap" style="gap:8px;">
-                        <button type="button" class="btn btn-success btn-sm" id="btnTambah">
-                            <i class="fas fa-plus mr-1"></i> Tambah Bank
-                        </button>
+                        <x-tw.button id="refreshTable" variant="secondary" size="sm"><i class="fas fa-sync-alt" aria-hidden="true"></i> Refresh</x-tw.button>
                     </div>
                 </div>
 
                 <!-- TABLE -->
                 <div class="table-responsive">
-                    <table id="bankTable" class="table table-bordered table-hover table-striped mb-0">
+                    <table id="bankTable" class="table table-bordered table-hover mb-0 ts-idx-tbl">
                         <thead class="bg-light">
                             <tr>
                                 <th scope="col" width="6%"  class="all">No</th>
                                 <th scope="col" width="20%" class="all">Kode</th>
                                 <th scope="col" class="all">Nama Bank</th>
                                 <th scope="col" width="18%" class="all">Default Method</th>
-                                <th scope="col" width="1%" class="text-center all action-column" style="white-space:nowrap;">Action</th>
+                                <th scope="col" width="1%" class="text-center all action-column" style="white-space:nowrap;"><span class="sr-only">Aksi</span></th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse($banks as $bank)
-                            <tr data-defaultmethod="{{ $bank->default_method ?? '' }}">
+                            <tr data-href="{{ url('/bank/' . $bank->id) }}" data-defaultmethod="{{ $bank->default_method ?? '' }}">
                                 <td>{{ $loop->iteration }}</td>
                                 <td>{{ $bank->code ?? '-' }}</td>
                                 <td><strong>{{ $bank->name }}</strong></td>
@@ -85,32 +83,24 @@
                                     @endif
                                 </td>
                                 <td class="text-center action-column">
+                                    {{-- Detail dibuka lewat klik baris. Dua aksi (Edit, Hapus) = satu tombol titik tiga. --}}
                                     <div class="action-buttons ts-actions">
+                                        <button type="button" class="ts-action-more"
+                                                aria-haspopup="true" aria-expanded="false"
+                                                title="Aksi" aria-label="Aksi untuk {{ $bank->name }}">
+                                            <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
+                                        </button>
 
-                                        {{-- AKSI UTAMA — Edit. Master data bukan alur kerja
-                                             persetujuan, jadi tombolnya netral: merah disimpan
-                                             untuk aksi yang benar-benar menentukan. --}}
-                                        <button type="button"
-                                                class="ts-action-primary is-neutral btn-edit"
+                                        <div class="ts-action-menu dropdown-menu" hidden>
+                                            <button type="button"
+                                                class="dropdown-item btn-edit"
                                                 data-id="{{ $bank->id }}"
                                                 data-name="{{ $bank->name }}"
                                                 data-code="{{ $bank->code }}"
                                                 data-method="{{ $bank->default_method }}"
                                                 title="Edit" aria-label="Edit {{ $bank->name }}">
-                                            <i class="fas fa-pen" aria-hidden="true"></i><span class="ts-al">Edit</span>
+                                            <i class="fas fa-pen"></i>Edit
                                         </button>
-
-                                        <button type="button" class="ts-action-more"
-                                                aria-haspopup="true" aria-expanded="false"
-                                                title="Aksi lain" aria-label="Aksi lain untuk {{ $bank->name }}">
-                                            <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
-                                        </button>
-
-                                        <div class="ts-action-menu dropdown-menu" hidden>
-
-                                            <a href="{{ url('/bank/' . $bank->id) }}" class="dropdown-item">
-                                                <i class="fas fa-eye"></i>Detail
-                                            </a>
 
                                             <div class="dropdown-divider"></div>
 
@@ -122,9 +112,7 @@
                                                     <i class="fas fa-trash"></i>Hapus
                                                 </button>
                                             </form>
-
                                         </div>
-
                                     </div>
                                 </td>
                             </tr>
@@ -138,10 +126,8 @@
                         </tbody>
                     </table>
                 </div>
-
-            </div>
-        </div>
-
+        </x-tw.card>
+      </div>
     </div>
 </div>
 
@@ -279,6 +265,7 @@
 @endsection
 
 @push('styles')
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
 
 .card-header .btn  { border-radius:var(--radius-sm); font-weight:600; }
@@ -360,6 +347,7 @@
     .modal-dialog.modal-sm { max-width:92%; margin:1rem auto; }
 }
 
+#bankTable tbody tr:not(:has(td[colspan])) { cursor:pointer; }
 </style>
 @endpush
 
@@ -367,6 +355,18 @@
 <script>
 
 $(function () {
+
+    /* Klik di mana saja pada baris membuka detail (atau edit bila tidak ada detail) — pola Cost
+       Request. Kontrol di dalam baris (tombol, tautan, menu aksi, kontrol responsif) bekerja sendiri. */
+    $(document).on('click', '#bankTable tbody tr', function (e) {
+        if ($(e.target).closest('a, button, input, select, textarea, label, form, .ts-actions, .ts-action-menu, td.dtr-control').length) return;
+        if (window.getSelection && String(window.getSelection()).length) return;
+        var href = $(this).attr('data-href');
+        if (href) { window.location.href = href; return; }
+        $(this).find('.js-row-open').first().trigger('click');
+    });
+    // Tombol melayang (HP) memicu tombol "Tambah" di header yang disembunyikan.
+    $('.ts-fab[data-trigger]').on('click', function () { $($(this).data('trigger')).trigger('click'); });
 
     /*
     |--------------------------------------------------------------------------

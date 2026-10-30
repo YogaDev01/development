@@ -598,58 +598,40 @@
                     <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body" style="font-size:13px;">
+                    {{-- Settlement Custom COA (25 Okt 2026): baris boleh dipecah ke
+                         Sub COA lain (ikon cabang), ditambah tanpa item asal, atau
+                         dihapus (Settle 0). Sub COA hanya dari Budget Plan CR ini. --}}
+                    <div class="d-flex justify-content-end mb-1">
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="ttSettleAddRow">
+                            <i class="fas fa-plus mr-1"></i> Tambah Baris
+                        </button>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-sm tt-cost-table mb-1">
                             <thead>
                                 <tr>
-                                    <th>Description Request</th>
-                                    <th style="width:22%">Description Settle</th>
-                                    <th class="text-right" style="width:8%">Qty</th>
-                                    <th class="text-right" style="width:12%">Request</th>
-                                    <th class="text-right" style="width:14%">Settle <span class="text-danger">*</span></th>
+                                    <th style="min-width:200px">Sub COA / Description Request</th>
+                                    <th style="width:20%">Description Settle</th>
+                                    <th class="text-right" style="width:6%">Qty</th>
+                                    <th class="text-right" style="width:11%">Request</th>
+                                    <th class="text-right" style="width:13%">Settle <span class="text-danger">*</span></th>
                                     <th class="text-right" style="width:10%">Variance</th>
                                     <th class="text-center" style="width:52px">Lampiran</th>
                                     <th class="text-center" style="width:52px">E-sign</th>
+                                    <th class="text-center" style="width:72px">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                @foreach($settleDetails as $i => $d)
-                                    {{-- Draft yang sudah tersimpan dipakai sebagai isi awal
-                                         (20 Okt 2026): modal boleh diisi sebagian, disimpan,
-                                         lalu dilanjutkan. Tanpa draft, Settle jatuh ke nilai
-                                         Request seperti pengisian pertama. --}}
-                                    @php($draft = $settleDrafts[$d->id] ?? null)
-                                    <tr class="tt-settle-row">
-                                        <td>
-                                            {{ $d->description }}
-                                            <input type="hidden" name="realizations[{{ $i }}][request_detail_id]" value="{{ $d->id }}">
-                                            {{-- Wajib hanya bila Settle melebihi Request; diisi lewat kolom Description Settle. --}}
-                                            <input type="hidden" name="realizations[{{ $i }}][change_note]" class="tt-settle-change" value="{{ $draft->change_note ?? '' }}">
-                                        </td>
-                                        <td><input type="text" name="realizations[{{ $i }}][notes]" class="form-control form-control-sm" maxlength="255" placeholder="Catatan settle..." value="{{ $draft->notes ?? '' }}"></td>
-                                        <td class="text-right align-middle">{{ (int) $d->qty }}</td>
-                                        <td class="text-right align-middle tt-settle-req" data-req="{{ (int) $d->total }}">{{ number_format((int) $d->total, 0, ',', '.') }}</td>
-                                        <td><input type="text" inputmode="numeric" name="realizations[{{ $i }}][amount]" class="form-control form-control-sm text-right tt-settle-amount" value="{{ number_format((int) ($draft->total ?? $d->total), 0, ',', '.') }}"></td>
-                                        <td class="text-right align-middle tt-settle-var">0</td>
-                                        {{-- Dua kolom aksi, ikon saja: kotak input berkas
-                                             bawaan peramban dan tombol berteks membuat baris
-                                             melebar jauh melebihi isinya. --}}
-                                        <td class="text-center">
-                                            <input type="file" id="ttAtt{{ $i }}" name="realizations[{{ $i }}][attachments][]" class="d-none tt-settle-file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
-                                            <button type="button" class="btn btn-outline-secondary btn-sm tt-icon-btn" title="Lampiran item" onclick="document.getElementById('ttAtt{{ $i }}').click()">
-                                                <i class="fas fa-paperclip"></i>
-                                            </button>
-                                            <div class="tt-file-count text-muted" style="font-size:10px;">{{ ($draft->attachments_count ?? 0) ? $draft->attachments_count . ' tersimpan' : '' }}</div>
-                                        </td>
-                                        <td class="text-center">
-                                            @php($sudahTtd = in_array($i + 1, $settleSignedRows ?? [], true))
-                                            <button type="button" class="btn btn-sm tt-icon-btn tt-esign-btn {{ $sudahTtd ? 'btn-success' : 'btn-outline-secondary' }}" title="E-sign penerima dana" data-row="{{ $i }}">
-                                                <i class="fas fa-signature"></i>
-                                            </button>
-                                            <input type="hidden" name="signatures[{{ $i }}]" class="tt-esign-value">
-                                            <div class="tt-esign-state text-muted" style="font-size:10px;">{{ $sudahTtd ? 'tertanda' : '' }}</div>
-                                        </td>
-                                    </tr>
+                            <tbody id="ttSettleBody">
+                                {{-- Draft yang sudah tersimpan dipakai sebagai isi awal
+                                     (20 Okt 2026); tanpa draft, satu baris per item dengan
+                                     Settle = Request. Lihat BudgetRequest::settlementFormRows(). --}}
+                                @foreach($settleRows as $i => $row)
+                                    @include('trouble-ticket._settle_row', [
+                                        'k' => $i,
+                                        'row' => $row,
+                                        'subItems' => $settleSubItems,
+                                        'sudahTtd' => $row['id'] && in_array((int) $row['id'], $settleSignedIds ?? [], true),
+                                    ])
                                 @endforeach
                             </tbody>
                             <tfoot>
@@ -660,10 +642,14 @@
                                     <th class="text-right" id="ttSettleVar">0</th>
                                     <th></th>
                                     <th></th>
+                                    <th></th>
                                 </tr>
                             </tfoot>
                         </table>
                     </div>
+                    <template id="ttSettleRowTpl">
+                        @include('trouble-ticket._settle_row', ['k' => '__K__', 'row' => null, 'subItems' => $settleSubItems, 'sudahTtd' => false])
+                    </template>
 
                     <div class="text-danger d-none" id="ttSettleErr"></div>
                 </div>
@@ -1274,14 +1260,56 @@ $(function () {
         var $form = $('#frmTtSettle');
         if (!$form.length) return;
 
+        /* Settlement Custom COA (25 Okt 2026): satu item boleh dipecah jadi
+           beberapa baris (Sub COA berbeda) dan boleh ada baris tambahan.
+           Request & Variance dihitung PER ITEM ASAL (jumlah semua barisnya)
+           dan hanya ditulis di baris pertama item itu — sama dengan aturan
+           bukti di server (validateSettlementEvidence). Baris tambahan
+           ber-Request 0, jadi variance-nya = nilainya. */
+        function barisSettle() { return $('#ttSettleBody tr.tt-settle-row'); }
+
+        function perItem() {
+            var hasil = {};
+            barisSettle().each(function () {
+                var origin = String($(this).data('origin') || '');
+                if (!origin) return;
+                hasil[origin] = hasil[origin] || { req: parseInt($(this).data('req'), 10) || 0, settle: 0, first: this };
+                hasil[origin].settle += angkaUang($(this).find('.tt-settle-amount').val());
+            });
+            return hasil;
+        }
+
+        /** Variance baris untuk aturan bukti: per item asal, atau nilainya sendiri (baris tambahan). */
+        function selisihBaris($r, grup) {
+            var origin = String($r.data('origin') || '');
+            if (!origin) return angkaUang($r.find('.tt-settle-amount').val());
+            var g = grup[origin];
+            return g ? g.settle - g.req : 0;
+        }
+
         function hitungSettle() {
-            var settle = 0, request = 0;
-            $('.tt-settle-row').each(function () {
+            var settle = 0, request = 0, grup = perItem();
+            barisSettle().each(function () {
                 var $r = $(this);
-                var req = parseInt($r.find('.tt-settle-req').data('req'), 10) || 0;
+                var origin = String($r.data('origin') || '');
                 var amt = angkaUang($r.find('.tt-settle-amount').val());
-                settle += amt; request += req;
-                $r.find('.tt-settle-var').text(rupiah.format(amt - req));
+                var g = origin ? grup[origin] : null;
+                settle += amt;
+
+                if (g && g.first === this) {
+                    request += g.req;
+                    $r.find('.tt-settle-qty').text($r.data('qty'));
+                    $r.find('.tt-settle-req').text(rupiah.format(g.req));
+                    $r.find('.tt-settle-var').text(rupiah.format(g.settle - g.req));
+                } else if (g) {
+                    $r.find('.tt-settle-qty').text('');
+                    $r.find('.tt-settle-req').text('-');
+                    $r.find('.tt-settle-var').text('-');
+                } else {
+                    $r.find('.tt-settle-qty').text('');
+                    $r.find('.tt-settle-req').text('0');
+                    $r.find('.tt-settle-var').text(rupiah.format(amt));
+                }
             });
             $('#ttSettleTotal').text(rupiah.format(settle));
             $('#ttSettleVar').text(rupiah.format(settle - request));
@@ -1292,7 +1320,62 @@ $(function () {
             hitungSettle();
             periksaLampiran();
         });
+
+        /* ---------- Sub COA, pecah / tambah / hapus baris ---------- */
+        function initSubSelect($r) {
+            if (window.TesysSearchableSelect) {
+                TesysSearchableSelect.initOne($r.find('.tt-settle-sub'), {
+                    placeholder: '— Pilih Sub COA —',
+                    searchPlaceholder: 'Cari Sub COA...'
+                });
+            }
+        }
+
+        var urutBaris = barisSettle().length;
+
+        function buatBaris($dari) {
+            var k = 'n' + (urutBaris++);
+            var tpl = document.getElementById('ttSettleRowTpl').innerHTML.replace(/__K__/g, k);
+            // trim(): jQuery hanya mengurai string HTML yang diawali "<".
+            var $r = $($.parseHTML(tpl.trim())).filter('tr.tt-settle-row').first();
+
+            if ($dari) {
+                // Pecahan item asal: ikut item & Sub COA asalnya, Settle 0.
+                ['origin', 'origin-sub', 'req', 'qty'].forEach(function (key) {
+                    $r.attr('data-' + key, $dari.attr('data-' + key)).data(key, $dari.data(key));
+                });
+                $r.find('.tt-settle-origin').val($dari.data('origin'));
+                $r.find('.tt-settle-origin-label').html($dari.find('.tt-settle-origin-label').html());
+                $r.find('.tt-settle-sub').val($dari.find('.tt-settle-sub').val() || '');
+                $r.find('.tt-split-row').show();
+                var origin = String($dari.data('origin') || '');
+                barisSettle().filter(function () { return String($(this).data('origin') || '') === origin; }).last().after($r);
+            } else {
+                $('#ttSettleBody').append($r);
+            }
+            $r.find('.tt-settle-amount').val('0');
+
+            initSubSelect($r);
+            hitungSettle();
+            periksaLampiran();
+        }
+
+        barisSettle().each(function () { initSubSelect($(this)); });
         hitungSettle();
+
+        $form.on('click', '.tt-split-row', function () { buatBaris($(this).closest('tr')); });
+        $('#ttSettleAddRow').on('click', function () { buatBaris(null); });
+        $form.on('change', '.tt-settle-sub', function () { hitungSettle(); periksaLampiran(); });
+        $form.on('click', '.tt-remove-row', function () {
+            if (!window.confirm('Hapus baris settlement ini? Lampiran yang tersimpan pada baris ini ikut terhapus saat disimpan.')) return;
+            $(this).closest('tr').remove();
+            hitungSettle();
+            periksaLampiran();
+        });
+        $form.on('click', '.tt-att-btn', function () {
+            var inp = document.getElementById($(this).data('target'));
+            if (inp) inp.click();
+        });
 
         /* ---------- HP: nominal Settle membesar saat diisi ---------- */
         /* Kolom Settle terlalu sempit di layar HP sehingga angka yang sedang
@@ -1379,12 +1462,18 @@ $(function () {
         function periksaLampiran() {
             var kurangLampiran = [], kurangTtd = [];
 
-            $('.tt-settle-row').each(function (i) {
+            var grup = perItem(), kurangSub = [];
+
+            barisSettle().each(function (i) {
                 var $r = $(this);
                 var amt = angkaUang($r.find('.tt-settle-amount').val());
-                var req = parseInt($r.find('.tt-settle-req').data('req'), 10) || 0;
-                var adaSelisih = amt !== req;
+                // Baris tambahan bernilai 0 tidak disimpan — tidak perlu bukti.
+                if (!String($r.data('origin') || '') && !amt) return;
+                var adaSelisih = selisihBaris($r, grup) !== 0;
                 var ttd = sudahTtd($r);
+
+                // Baris tambahan wajib memilih Sub COA (server menolak tanpa itu).
+                if (!String($r.data('origin') || '') && !$r.find('.tt-settle-sub').val()) kurangSub.push(i + 1);
 
                 var lampiranKurang = (adaSelisih || (amt > 0 && ttd)) && !punyaLampiran($r);
                 var ttdKurang      = adaSelisih && !ttd;
@@ -1394,7 +1483,7 @@ $(function () {
                     inp.setCustomValidity(lampiranKurang || ttdKurang ? 'Bukti baris ini belum lengkap.' : '');
                 }
 
-                $r.find('.tt-icon-btn').first()
+                $r.find('.tt-att-btn')
                     .toggleClass('btn-outline-danger', lampiranKurang)
                     .toggleClass('btn-outline-secondary', !lampiranKurang);
 
@@ -1410,6 +1499,7 @@ $(function () {
             var pesan = [];
             if (kurangLampiran.length) pesan.push('Lampiran belum diisi pada baris no. ' + kurangLampiran.join(', ') + '.');
             if (kurangTtd.length) pesan.push('E-sign belum diisi pada baris no. ' + kurangTtd.join(', ') + '.');
+            if (kurangSub.length) pesan.push('Sub COA belum dipilih pada baris tambahan no. ' + kurangSub.join(', ') + '.');
 
             $('#ttSettleErr').toggleClass('d-none', !pesan.length).text(pesan.join(' '));
 
@@ -1485,7 +1575,11 @@ $(function () {
 
         $form.on('click', '.tt-esign-btn', function () {
             $barisEsign = $(this).closest('tr');
-            $('#ttEsignRowLabel').text($barisEsign.find('td').first().text().trim());
+            // Label pad: Sub COA terpilih + keterangan item (bukan isi <select>).
+            var labelSub = $barisEsign.find('.tt-settle-sub option:selected').val()
+                ? $barisEsign.find('.tt-settle-sub option:selected').text().trim() + ' — '
+                : '';
+            $('#ttEsignRowLabel').text(labelSub + $barisEsign.find('.tt-settle-origin-label').text().trim());
             kosongkanPad();
             kembaliKeSettle = true;
             $('#mdlTtSettle')

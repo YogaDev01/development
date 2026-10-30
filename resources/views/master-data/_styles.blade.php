@@ -14,6 +14,10 @@
 | yang menggesernya, dengan scrollbar yang terlihat.
 */
 .master-page .table-responsive { overflow-x:auto; }
+/* Gulir mendatar hanya pada tabel (dibungkus .ts-dt-scroll lewat JS), bukan footer info + paginasi. */
+.master-page .table-responsive:has(> .dataTables_wrapper) { overflow-x:visible; }
+.master-page .ts-dt-scroll { overflow-x:auto; width:100%; }
+.master-page #tblMaster tbody tr:not(:has(td[colspan])) { cursor:pointer; }
 .master-page table.master-compact { width:auto !important; min-width:100%; }
 .master-page .table-responsive::-webkit-scrollbar { height:8px; }
 .master-page .table-responsive::-webkit-scrollbar-thumb { background:var(--border-strong); border-radius:4px; }

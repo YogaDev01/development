@@ -1,0 +1,3954 @@
+{
+ "s0": {
+  "#realizeForm": {
+   "n": 1,
+   "first": {
+    "tag": "form",
+    "id": "realizeForm",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#statTotalSettle": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "statTotalSettle",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "summary-stat-value text-info",
+    "inForm": false
+   }
+  },
+  "#statVariance": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "statVariance",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "summary-stat-value text-success",
+    "inForm": false
+   }
+  },
+  "#footRequestTotal": {
+   "n": 1,
+   "first": {
+    "tag": "th",
+    "id": "footRequestTotal",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-right",
+    "inForm": true
+   }
+  },
+  "#footSettleTotal": {
+   "n": 1,
+   "first": {
+    "tag": "th",
+    "id": "footSettleTotal",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-right",
+    "inForm": true
+   }
+  },
+  "#footVarianceTotal": {
+   "n": 1,
+   "first": {
+    "tag": "th",
+    "id": "footVarianceTotal",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-right text-var-pos",
+    "inForm": true
+   }
+  },
+  "#tblSettlement": {
+   "n": 1,
+   "first": {
+    "tag": "table",
+    "id": "tblSettlement",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "mb-0 table table-bordered table-hover",
+    "inForm": true
+   }
+  },
+  "#realizeBody": {
+   "n": 1,
+   "first": {
+    "tag": "tbody",
+    "id": "realizeBody",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#realizeRowTpl": {
+   "n": 1,
+   "first": {
+    "tag": "template",
+    "id": "realizeRowTpl",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#realizeSubItems": {
+   "n": 1,
+   "first": {
+    "tag": "script",
+    "id": "realizeSubItems",
+    "name": null,
+    "type": "application/json",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#btnAddSettleRow": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnAddSettleRow",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-outline-primary btn-sm",
+    "inForm": true
+   }
+  },
+  "#btnImportSettlementExcel": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnImportSettlementExcel",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-outline-primary btn-sm",
+    "inForm": true
+   }
+  },
+  "#importSettlementFileInput": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "importSettlementFileInput",
+    "name": null,
+    "type": "file",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#btnAddRealAttachment": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnAddRealAttachment",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-primary btn-sm ml-auto",
+    "inForm": true
+   }
+  },
+  "#btnAddSettleNote": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnAddSettleNote",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-primary btn-sm ml-auto",
+    "inForm": true
+   }
+  },
+  "#settleNoteArea": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "settleNoteArea",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#settleNoteEmpty": {
+   "n": 1,
+   "first": {
+    "tag": "p",
+    "id": "settleNoteEmpty",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "mb-0 text-muted",
+    "inForm": true
+   }
+  },
+  "#settlementNotes": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "settlementNotes",
+    "name": "settlement_notes",
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#realAttUploadArea": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "realAttUploadArea",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#dropZoneReal": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "dropZoneReal",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "att-dropzone mb-3",
+    "inForm": true
+   }
+  },
+  "#dropZoneBrowseReal": {
+   "n": 1,
+   "first": {
+    "tag": "span",
+    "id": "dropZoneBrowseReal",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-primary",
+    "inForm": true
+   }
+  },
+  "#dropZoneInputReal": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "dropZoneInputReal",
+    "name": null,
+    "type": "file",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#realAttTableWrap": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "realAttTableWrap",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "mt-3 table-responsive",
+    "inForm": true
+   }
+  },
+  "#realAttachmentBody": {
+   "n": 1,
+   "first": {
+    "tag": "tbody",
+    "id": "realAttachmentBody",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#submitBtn": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "submitBtn",
+    "name": null,
+    "type": "submit",
+    "req": null,
+    "dis": true,
+    "cls": "btn btn-secondary",
+    "inForm": true
+   }
+  },
+  "#saveDraftBtn": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "saveDraftBtn",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-outline-secondary",
+    "inForm": true
+   }
+  },
+  "#submitHint": {
+   "n": 1,
+   "first": {
+    "tag": "small",
+    "id": "submitHint",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "ml-1 text-muted",
+    "inForm": true
+   }
+  },
+  "tr.realize-row": {
+   "n": 4,
+   "first": {
+    "tag": "tr",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "realize-row",
+    "inForm": true
+   }
+  },
+  "tr.realize-empty": {
+   "n": 0,
+   "first": null
+  },
+  ".realize-sub-select": {
+   "n": 4,
+   "first": {
+    "tag": "select",
+    "id": null,
+    "name": "realizations[0][budget_detail_id]",
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "form-control form-control-sm realize-sub-select",
+    "inForm": true
+   }
+  },
+  ".realize-amount-input": {
+   "n": 4,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "realizations[0][amount]",
+    "type": "text",
+    "req": null,
+    "dis": null,
+    "cls": "form-control form-control-sm realize-amount-input text-right",
+    "inForm": true
+   }
+  },
+  ".realize-notes-input": {
+   "n": 4,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "realizations[0][notes]",
+    "type": "text",
+    "req": null,
+    "dis": null,
+    "cls": "form-control form-control-sm realize-notes-input",
+    "inForm": true
+   }
+  },
+  ".realize-notes-count": {
+   "n": 4,
+   "first": {
+    "tag": "small",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "d-block mt-1 realize-notes-count text-muted",
+    "inForm": true
+   }
+  },
+  ".realize-origin-label": {
+   "n": 4,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "mt-1 realize-origin-label",
+    "inForm": true
+   }
+  },
+  ".realize-moved-label": {
+   "n": 4,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "realize-moved-label text-warning",
+    "inForm": true
+   }
+  },
+  ".realize-budget-warn": {
+   "n": 4,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "realize-budget-warn text-danger",
+    "inForm": true
+   }
+  },
+  ".realize-qty-cell": {
+   "n": 4,
+   "first": {
+    "tag": "td",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "align-middle realize-qty-cell text-center text-nowrap",
+    "inForm": true
+   }
+  },
+  ".realize-request-cell": {
+   "n": 4,
+   "first": {
+    "tag": "td",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "align-middle font-weight-bold realize-request-cell text-nowrap text-primary text-right",
+    "inForm": true
+   }
+  },
+  ".realize-variance-cell": {
+   "n": 4,
+   "first": {
+    "tag": "td",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "align-middle font-weight-bold realize-variance-cell text-nowrap text-right text-var-pos",
+    "inForm": true
+   }
+  },
+  ".realize-change-note": {
+   "n": 4,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "realizations[0][change_note]",
+    "type": "hidden",
+    "req": null,
+    "dis": null,
+    "cls": "realize-change-note",
+    "inForm": true
+   }
+  },
+  ".realize-note-cell": {
+   "n": 4,
+   "first": {
+    "tag": "td",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "align-middle realize-note-cell text-center",
+    "inForm": true
+   }
+  },
+  ".note-item-preview": {
+   "n": 4,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "mt-1 note-item-preview text-muted",
+    "inForm": true
+   }
+  },
+  ".btn-note-item": {
+   "n": 4,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-note-item btn-primary btn-sm",
+    "inForm": true
+   }
+  },
+  ".btn-split-row": {
+   "n": 4,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-outline-secondary btn-sm btn-split-row ts-icon-only",
+    "inForm": true
+   }
+  },
+  ".btn-remove-row": {
+   "n": 4,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-outline-danger btn-remove-row btn-sm ts-icon-only",
+    "inForm": true
+   }
+  },
+  ".desc-wrap": {
+   "n": 4,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "desc-wrap",
+    "inForm": true
+   }
+  },
+  ".desc-expand": {
+   "n": 4,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "desc-expand",
+    "inForm": true
+   }
+  },
+  ".detail-att-cell": {
+   "n": 4,
+   "first": {
+    "tag": "td",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "detail-att-cell text-nowrap",
+    "inForm": true
+   }
+  },
+  ".detail-att-input": {
+   "n": 4,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "realizations[0][attachments][]",
+    "type": "file",
+    "req": null,
+    "dis": null,
+    "cls": "d-none detail-att-input",
+    "inForm": true
+   }
+  },
+  ".btn-detail-att": {
+   "n": 4,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-detail-att btn-outline-secondary btn-sm",
+    "inForm": true
+   }
+  },
+  ".detail-att-label": {
+   "n": 4,
+   "first": {
+    "tag": "span",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "detail-att-label",
+    "inForm": true
+   }
+  },
+  ".detail-att-hint": {
+   "n": 4,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "detail-att-hint text-muted",
+    "inForm": true
+   }
+  },
+  ".detail-att-list": {
+   "n": 4,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "detail-att-list mt-1",
+    "inForm": true
+   }
+  },
+  ".realize-att-existing": {
+   "n": 0,
+   "first": null
+  },
+  ".att-lama": {
+   "n": 0,
+   "first": null
+  },
+  ".att-lama-open": {
+   "n": 0,
+   "first": null
+  },
+  ".att-lama-del": {
+   "n": 0,
+   "first": null
+  },
+  ".del-realize-att": {
+   "n": 0,
+   "first": null
+  },
+  ".del-realize-att-global": {
+   "n": 0,
+   "first": null
+  },
+  ".realize-row-id": {
+   "n": 4,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "realizations[0][id]",
+    "type": "hidden",
+    "req": null,
+    "dis": null,
+    "cls": "realize-row-id",
+    "inForm": true
+   }
+  },
+  ".realize-origin-input": {
+   "n": 4,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "realizations[0][request_detail_id]",
+    "type": "hidden",
+    "req": null,
+    "dis": null,
+    "cls": "realize-origin-input",
+    "inForm": true
+   }
+  },
+  ".tss-btn": {
+   "n": 4,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "align-items-center btn btn-block btn-outline-secondary d-flex justify-content-between tss-btn",
+    "inForm": true
+   }
+  },
+  "a[href*=\"settlement-template\"]": {
+   "n": 1,
+   "first": {
+    "tag": "a",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-outline-secondary btn-sm",
+    "inForm": true
+   }
+  },
+  ".badge": {
+   "n": 4,
+   "first": {
+    "tag": "span",
+    "id": "notifBadge",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "badge badge-danger",
+    "inForm": false
+   }
+  },
+  "table": {
+   "n": 2,
+   "first": {
+    "tag": "table",
+    "id": "tblSettlement",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "mb-0 table table-bordered table-hover",
+    "inForm": true
+   }
+  },
+  "thead th": {
+   "n": 12,
+   "first": {
+    "tag": "th",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "tfoot th": {
+   "n": 7,
+   "first": {
+    "tag": "th",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-right",
+    "inForm": true
+   }
+  },
+  "button": {
+   "n": 68,
+   "first": {
+    "tag": "button",
+    "id": "appSwitchBtn",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "brand-mark",
+    "inForm": false
+   }
+  },
+  "h1": {
+   "n": 0,
+   "first": null
+  },
+  ".breadcrumb": {
+   "n": 0,
+   "first": null
+  },
+  ".summary-stat": {
+   "n": 3,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "summary-stat",
+    "inForm": false
+   }
+  },
+  "__names": [
+   "?|_token|hidden",
+   "?|_token|hidden",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "logout-form|_token|hidden",
+   "realizeForm|_token|hidden",
+   "realizeForm|realizations[0][amount]|text",
+   "realizeForm|realizations[0][attachments][]|file",
+   "realizeForm|realizations[0][budget_detail_id]|select-one",
+   "realizeForm|realizations[0][change_note]|hidden",
+   "realizeForm|realizations[0][id]|hidden",
+   "realizeForm|realizations[0][notes]|text",
+   "realizeForm|realizations[0][request_detail_id]|hidden",
+   "realizeForm|realizations[1][amount]|text",
+   "realizeForm|realizations[1][attachments][]|file",
+   "realizeForm|realizations[1][budget_detail_id]|select-one",
+   "realizeForm|realizations[1][change_note]|hidden",
+   "realizeForm|realizations[1][id]|hidden",
+   "realizeForm|realizations[1][notes]|text",
+   "realizeForm|realizations[1][request_detail_id]|hidden",
+   "realizeForm|realizations[2][amount]|text",
+   "realizeForm|realizations[2][attachments][]|file",
+   "realizeForm|realizations[2][budget_detail_id]|select-one",
+   "realizeForm|realizations[2][change_note]|hidden",
+   "realizeForm|realizations[2][id]|hidden",
+   "realizeForm|realizations[2][notes]|text",
+   "realizeForm|realizations[2][request_detail_id]|hidden",
+   "realizeForm|realizations[3][amount]|text",
+   "realizeForm|realizations[3][attachments][]|file",
+   "realizeForm|realizations[3][budget_detail_id]|select-one",
+   "realizeForm|realizations[3][change_note]|hidden",
+   "realizeForm|realizations[3][id]|hidden",
+   "realizeForm|realizations[3][notes]|text",
+   "realizeForm|realizations[3][request_detail_id]|hidden",
+   "realizeForm|settlement_notes|textarea"
+  ],
+  "__values": {
+   "realizations[0][id]": "",
+   "realizations[0][request_detail_id]": "517",
+   "realizations[0][budget_detail_id]": "1",
+   "realizations[0][notes]": "",
+   "realizations[0][amount]": "11.827.000",
+   "realizations[0][change_note]": "",
+   "realizations[1][id]": "",
+   "realizations[1][request_detail_id]": "518",
+   "realizations[1][budget_detail_id]": "2",
+   "realizations[1][notes]": "",
+   "realizations[1][amount]": "16.969.000",
+   "realizations[1][change_note]": "",
+   "realizations[2][id]": "",
+   "realizations[2][request_detail_id]": "519",
+   "realizations[2][budget_detail_id]": "4",
+   "realizations[2][notes]": "",
+   "realizations[2][amount]": "26.224.000",
+   "realizations[2][change_note]": "",
+   "realizations[3][id]": "",
+   "realizations[3][request_detail_id]": "520",
+   "realizations[3][budget_detail_id]": "5",
+   "realizations[3][notes]": "",
+   "realizations[3][amount]": "11.312.000",
+   "realizations[3][change_note]": "",
+   "settlement_notes": ""
+  },
+  "__ids": [
+   "appSwitch",
+   "appSwitchBtn",
+   "bnavTabsBtn",
+   "bnavTabsMenu",
+   "btnAddRealAttachment",
+   "btnAddSettleNote",
+   "btnAddSettleRow",
+   "btnImportSettlementExcel",
+   "dropZoneBrowseReal",
+   "dropZoneInputReal",
+   "dropZoneReal",
+   "footRequestTotal",
+   "footSettleTotal",
+   "footVarianceTotal",
+   "importSettlementFileInput",
+   "logout-form",
+   "navTodoBadge",
+   "navTodoList",
+   "notifBadge",
+   "notifBellToggle",
+   "notifBellWrap",
+   "notifDropdown",
+   "notifEmpty",
+   "notifList",
+   "notifMarkAllRead",
+   "realAttTableWrap",
+   "realAttUploadArea",
+   "realAttachmentBody",
+   "realizeBody",
+   "realizeForm",
+   "realizeRowTpl",
+   "realizeSubItems",
+   "saveDraftBtn",
+   "settleNoteArea",
+   "settleNoteEmpty",
+   "settlementNotes",
+   "sidebarToggle",
+   "statTotalSettle",
+   "statVariance",
+   "submitBtn",
+   "submitHint",
+   "tblSettlement",
+   "tcf-inline-style",
+   "tesysCommandData",
+   "themeToggle",
+   "tsCmd",
+   "tsCmdInput",
+   "tsCmdList",
+   "tsCmdLoading",
+   "tsCrumb",
+   "tsQuickSearch",
+   "tsQuickSearchWrap",
+   "tsSidebar",
+   "tsTitle",
+   "userBtn",
+   "userPop"
+  ],
+  "__forms": [
+   {
+    "action": null,
+    "method": "get",
+    "enctype": "application/x-www-form-urlencoded",
+    "id": "tsQuickSearchWrap"
+   },
+   {
+    "action": "http://127.0.0.1:8099/view-as/reset",
+    "method": "post",
+    "enctype": "application/x-www-form-urlencoded",
+    "id": ""
+   },
+   {
+    "action": "http://127.0.0.1:8099/view-as",
+    "method": "post",
+    "enctype": "application/x-www-form-urlencoded",
+    "id": ""
+   },
+   {
+    "action": "http://127.0.0.1:8099/logout",
+    "method": "post",
+    "enctype": "application/x-www-form-urlencoded",
+    "id": "logout-form"
+   },
+   {
+    "action": "http://127.0.0.1:8099/budget-request/217/submit-realization",
+    "method": "post",
+    "enctype": "multipart/form-data",
+    "id": "realizeForm"
+   }
+  ],
+  "__h1": [],
+  "__title": "Submit Settlement | TESYS",
+  "__rowdata": [
+   {
+    "row": "0",
+    "origin": "517",
+    "originSub": "1",
+    "req": "11827000",
+    "qty": "1"
+   },
+   {
+    "row": "1",
+    "origin": "518",
+    "originSub": "2",
+    "req": "16969000",
+    "qty": "10"
+   },
+   {
+    "row": "2",
+    "origin": "519",
+    "originSub": "4",
+    "req": "26224000",
+    "qty": "4"
+   },
+   {
+    "row": "3",
+    "origin": "520",
+    "originSub": "5",
+    "req": "11312000",
+    "qty": "1"
+   }
+  ],
+  "__tplK": 8,
+  "__tplNames": [
+   "realizations[__K__][amount]",
+   "realizations[__K__][attachments][]",
+   "realizations[__K__][budget_detail_id]",
+   "realizations[__K__][change_note]",
+   "realizations[__K__][id]",
+   "realizations[__K__][notes]",
+   "realizations[__K__][request_detail_id]"
+  ],
+  "__subitems": 970,
+  "__texts": {
+   "stat": "66.332.000",
+   "vari": "0",
+   "foot": [
+    "66.332.000",
+    "66.332.000",
+    "0"
+   ],
+   "submitDis": true,
+   "hint": "Lengkapi: Lampiran Item baris no. 1, 2, 3, 4",
+   "hintVis": "block",
+   "alerts": []
+  }
+ },
+ "a0": {
+  "stat": "66.332.000",
+  "vari": "0",
+  "variCls": "text-success",
+  "foot": [
+   "66.332.000",
+   "66.332.000",
+   "0"
+  ],
+  "footVarCls": "text-var-pos",
+  "submitDis": true,
+  "hint": "Lengkapi: Lampiran Item baris no. 1, 2, 3, 4",
+  "hintVis": "block",
+  "rows": [
+   {
+    "origin": "517",
+    "qty": "1",
+    "req": "11.827.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "11.827.000",
+    "sub": "1",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "518",
+    "qty": "10",
+    "req": "16.969.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "16.969.000",
+    "sub": "2",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Termasuk ongkos kirim ke lokasi.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "519",
+    "qty": "4",
+    "req": "26.224.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "26.224.000",
+    "sub": "4",
+    "movedVis": "none",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa -18.550.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "520",
+    "qty": "1",
+    "req": "11.312.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "11.312.000",
+    "sub": "5",
+    "movedVis": "none",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa 10.090.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   }
+  ]
+ },
+ "a1": {
+  "stat": "59.505.000",
+  "vari": "6.827.000",
+  "variCls": "text-success",
+  "foot": [
+   "66.332.000",
+   "59.505.000",
+   "6.827.000"
+  ],
+  "footVarCls": "text-var-pos",
+  "submitDis": true,
+  "hint": "Lengkapi: Lampiran Item baris no. 1, 2, 3, 4",
+  "hintVis": "block",
+  "rows": [
+   {
+    "origin": "517",
+    "qty": "1",
+    "req": "11.827.000",
+    "vari": "6.827.000",
+    "variCls": "text-var-pos",
+    "amt": "5.000.000",
+    "sub": "1",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "518",
+    "qty": "10",
+    "req": "16.969.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "16.969.000",
+    "sub": "2",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Termasuk ongkos kirim ke lokasi.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "519",
+    "qty": "4",
+    "req": "26.224.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "26.224.000",
+    "sub": "4",
+    "movedVis": "none",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa -18.550.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "520",
+    "qty": "1",
+    "req": "11.312.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "11.312.000",
+    "sub": "5",
+    "movedVis": "none",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa 10.090.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   }
+  ]
+ },
+ "a2": {
+  "stat": "25.000.001",
+  "vari": "41.331.999",
+  "variCls": "text-success",
+  "foot": [
+   "66.332.000",
+   "25.000.001",
+   "41.331.999"
+  ],
+  "footVarCls": "text-var-pos",
+  "submitDis": true,
+  "hint": "Lengkapi: Lampiran Item baris no. 1, 2, 4",
+  "hintVis": "block",
+  "rows": [
+   {
+    "origin": "517",
+    "qty": "1",
+    "req": "11.827.000",
+    "vari": "6.827.000",
+    "variCls": "text-var-pos",
+    "amt": "5.000.000",
+    "sub": "1",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "518",
+    "qty": "10",
+    "req": "16.969.000",
+    "vari": "-3.031.000",
+    "variCls": "text-var-neg",
+    "amt": "20.000.000",
+    "sub": "2",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Termasuk ongkos kirim ke lokasi.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "519",
+    "qty": "4",
+    "req": "26.224.000",
+    "vari": "26.224.000",
+    "variCls": "text-var-pos",
+    "amt": "0",
+    "sub": "4",
+    "movedVis": "none",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa -18.550.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "520",
+    "qty": "1",
+    "req": "11.312.000",
+    "vari": "11.311.999",
+    "variCls": "text-var-pos",
+    "amt": "1",
+    "sub": "5",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   }
+  ]
+ },
+ "sub0": "3|Transport — Pengiriman material ke site",
+ "sub2": "2|Material — Akomodasi tim lapangan",
+ "a3": {
+  "stat": "25.000.001",
+  "vari": "41.331.999",
+  "variCls": "text-success",
+  "foot": [
+   "66.332.000",
+   "25.000.001",
+   "41.331.999"
+  ],
+  "footVarCls": "text-var-pos",
+  "submitDis": true,
+  "hint": "Lengkapi: Lampiran Item baris no. 1, 2, 4",
+  "hintVis": "block",
+  "rows": [
+   {
+    "origin": "517",
+    "qty": "1",
+    "req": "11.827.000",
+    "vari": "6.827.000",
+    "variCls": "text-var-pos",
+    "amt": "5.000.000",
+    "sub": "3",
+    "movedVis": "block",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa 3.166.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "518",
+    "qty": "10",
+    "req": "16.969.000",
+    "vari": "-3.031.000",
+    "variCls": "text-var-neg",
+    "amt": "20.000.000",
+    "sub": "2",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Termasuk ongkos kirim ke lokasi.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "519",
+    "qty": "4",
+    "req": "26.224.000",
+    "vari": "26.224.000",
+    "variCls": "text-var-pos",
+    "amt": "0",
+    "sub": "2",
+    "movedVis": "block",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "520",
+    "qty": "1",
+    "req": "11.312.000",
+    "vari": "11.311.999",
+    "variCls": "text-var-pos",
+    "amt": "1",
+    "sub": "5",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   }
+  ]
+ },
+ "sub1": "4|Material — Perizinan dan koordinasi warga",
+ "a4": {
+  "stat": "25.007.778",
+  "vari": "41.324.222",
+  "variCls": "text-success",
+  "foot": [
+   "66.332.000",
+   "25.007.778",
+   "41.324.222"
+  ],
+  "footVarCls": "text-var-pos",
+  "submitDis": true,
+  "hint": "Lengkapi: Lampiran Item baris no. 1, 2, 3, 5",
+  "hintVis": "block",
+  "rows": [
+   {
+    "origin": "517",
+    "qty": "1",
+    "req": "11.827.000",
+    "vari": "6.819.223",
+    "variCls": "text-var-pos",
+    "amt": "5.000.000",
+    "sub": "3",
+    "movedVis": "block",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa 3.166.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "517",
+    "qty": "",
+    "req": "-",
+    "vari": "-",
+    "variCls": "",
+    "amt": "7.777",
+    "sub": "4",
+    "movedVis": "block",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa -18.550.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "518",
+    "qty": "10",
+    "req": "16.969.000",
+    "vari": "-3.031.000",
+    "variCls": "text-var-neg",
+    "amt": "20.000.000",
+    "sub": "2",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Termasuk ongkos kirim ke lokasi.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "519",
+    "qty": "4",
+    "req": "26.224.000",
+    "vari": "26.224.000",
+    "variCls": "text-var-pos",
+    "amt": "0",
+    "sub": "2",
+    "movedVis": "block",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "520",
+    "qty": "1",
+    "req": "11.312.000",
+    "vari": "11.311.999",
+    "variCls": "text-var-pos",
+    "amt": "1",
+    "sub": "5",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   }
+  ]
+ },
+ "nRows": 6,
+ "sub5": "1|Akomodasi — Transport dan mobilisasi tim",
+ "a5": {
+  "stat": "25.131.234",
+  "vari": "41.200.766",
+  "variCls": "text-success",
+  "foot": [
+   "66.332.000",
+   "25.131.234",
+   "41.200.766"
+  ],
+  "footVarCls": "text-var-pos",
+  "submitDis": true,
+  "hint": "Lengkapi: Lampiran Item baris no. 1, 2, 3, 5, 6",
+  "hintVis": "block",
+  "rows": [
+   {
+    "origin": "517",
+    "qty": "1",
+    "req": "11.827.000",
+    "vari": "6.819.223",
+    "variCls": "text-var-pos",
+    "amt": "5.000.000",
+    "sub": "3",
+    "movedVis": "block",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa 3.166.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "517",
+    "qty": "",
+    "req": "-",
+    "vari": "-",
+    "variCls": "",
+    "amt": "7.777",
+    "sub": "4",
+    "movedVis": "block",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa -18.550.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "518",
+    "qty": "10",
+    "req": "16.969.000",
+    "vari": "-3.031.000",
+    "variCls": "text-var-neg",
+    "amt": "20.000.000",
+    "sub": "2",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Termasuk ongkos kirim ke lokasi.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "519",
+    "qty": "4",
+    "req": "26.224.000",
+    "vari": "26.224.000",
+    "variCls": "text-var-pos",
+    "amt": "0",
+    "sub": "2",
+    "movedVis": "block",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "520",
+    "qty": "1",
+    "req": "11.312.000",
+    "vari": "11.311.999",
+    "variCls": "text-var-pos",
+    "amt": "1",
+    "sub": "5",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "",
+    "qty": "",
+    "req": "0",
+    "vari": "-123.456",
+    "variCls": "text-var-neg",
+    "amt": "123.456",
+    "sub": "1",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "none",
+    "label": "Baris tambahan",
+    "attLabel": "Lampiran"
+   }
+  ]
+ },
+ "swNote": "×Catatan PerubahanBaris tambahan, baris yang pindah Sub COA, atau item yang total Settle-nya melebihi Request — catatan ini wajib diisi.Sisa 500 karakter.SimpanNoBatal",
+ "noteCount": "Sisa 471 karakter.",
+ "a6": {
+  "stat": "25.131.234",
+  "vari": "41.200.766",
+  "variCls": "text-success",
+  "foot": [
+   "66.332.000",
+   "25.131.234",
+   "41.200.766"
+  ],
+  "footVarCls": "text-var-pos",
+  "submitDis": true,
+  "hint": "Lengkapi: Lampiran Item baris no. 1, 2, 3, 5, 6",
+  "hintVis": "block",
+  "rows": [
+   {
+    "origin": "517",
+    "qty": "1",
+    "req": "11.827.000",
+    "vari": "6.819.223",
+    "variCls": "text-var-pos",
+    "amt": "5.000.000",
+    "sub": "3",
+    "movedVis": "block",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa 3.166.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "517",
+    "qty": "",
+    "req": "-",
+    "vari": "-",
+    "variCls": "",
+    "amt": "7.777",
+    "sub": "4",
+    "movedVis": "block",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa -18.550.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "518",
+    "qty": "10",
+    "req": "16.969.000",
+    "vari": "-3.031.000",
+    "variCls": "text-var-neg",
+    "amt": "20.000.000",
+    "sub": "2",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Termasuk ongkos kirim ke lokasi.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "519",
+    "qty": "4",
+    "req": "26.224.000",
+    "vari": "26.224.000",
+    "variCls": "text-var-pos",
+    "amt": "0",
+    "sub": "2",
+    "movedVis": "block",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "520",
+    "qty": "1",
+    "req": "11.312.000",
+    "vari": "11.311.999",
+    "variCls": "text-var-pos",
+    "amt": "1",
+    "sub": "5",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "",
+    "qty": "",
+    "req": "0",
+    "vari": "-123.456",
+    "variCls": "text-var-neg",
+    "amt": "123.456",
+    "sub": "1",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": true,
+    "notePrev": "Catatan uji M4 baris tambaha…",
+    "splitVis": "none",
+    "label": "Baris tambahan",
+    "attLabel": "Lampiran"
+   }
+  ]
+ },
+ "noteValid": "Catatan wajib diisi untuk baris ini.",
+ "cnt250": "Sisa 5 karakter.",
+ "swDesc": [
+  true,
+  "Sisa 235 karakter."
+ ],
+ "descAfter": "Deskripsi dari pop-up",
+ "swRemove": "×!Hapus baris ini?Baris settlement ini dihapus dari form.Ya, HapusNoBatal",
+ "a8": {
+  "stat": "25.123.457",
+  "vari": "41.208.543",
+  "variCls": "text-success",
+  "foot": [
+   "66.332.000",
+   "25.123.457",
+   "41.208.543"
+  ],
+  "footVarCls": "text-var-pos",
+  "submitDis": true,
+  "hint": "Lengkapi: Lampiran Item baris no. 1, 2, 4, 5",
+  "hintVis": "block",
+  "rows": [
+   {
+    "origin": "517",
+    "qty": "1",
+    "req": "11.827.000",
+    "vari": "6.827.000",
+    "variCls": "text-var-pos",
+    "amt": "5.000.000",
+    "sub": "3",
+    "movedVis": "block",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa 3.166.000)",
+    "cnt": "Sisa 234 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "518",
+    "qty": "10",
+    "req": "16.969.000",
+    "vari": "-3.031.000",
+    "variCls": "text-var-neg",
+    "amt": "20.000.000",
+    "sub": "2",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Termasuk ongkos kirim ke lokasi.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "519",
+    "qty": "4",
+    "req": "26.224.000",
+    "vari": "26.224.000",
+    "variCls": "text-var-pos",
+    "amt": "0",
+    "sub": "2",
+    "movedVis": "block",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "520",
+    "qty": "1",
+    "req": "11.312.000",
+    "vari": "11.311.999",
+    "variCls": "text-var-pos",
+    "amt": "1",
+    "sub": "5",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "",
+    "qty": "",
+    "req": "0",
+    "vari": "-123.456",
+    "variCls": "text-var-neg",
+    "amt": "123.456",
+    "sub": "1",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": true,
+    "notePrev": "Catatan uji M4 baris tambaha…",
+    "splitVis": "none",
+    "label": "Baris tambahan",
+    "attLabel": "Lampiran"
+   }
+  ]
+ },
+ "a9": {
+  "stat": "25.123.457",
+  "vari": "41.208.543",
+  "variCls": "text-success",
+  "foot": [
+   "66.332.000",
+   "25.123.457",
+   "41.208.543"
+  ],
+  "footVarCls": "text-var-pos",
+  "submitDis": false,
+  "hint": "",
+  "hintVis": "none",
+  "rows": [
+   {
+    "origin": "517",
+    "qty": "1",
+    "req": "11.827.000",
+    "vari": "6.827.000",
+    "variCls": "text-var-pos",
+    "amt": "5.000.000",
+    "sub": "3",
+    "movedVis": "block",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa 3.166.000)",
+    "cnt": "Sisa 234 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "1 file"
+   },
+   {
+    "origin": "518",
+    "qty": "10",
+    "req": "16.969.000",
+    "vari": "-3.031.000",
+    "variCls": "text-var-neg",
+    "amt": "20.000.000",
+    "sub": "2",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Termasuk ongkos kirim ke lokasi.",
+    "attLabel": "1 file"
+   },
+   {
+    "origin": "519",
+    "qty": "4",
+    "req": "26.224.000",
+    "vari": "26.224.000",
+    "variCls": "text-var-pos",
+    "amt": "0",
+    "sub": "2",
+    "movedVis": "block",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "520",
+    "qty": "1",
+    "req": "11.312.000",
+    "vari": "11.311.999",
+    "variCls": "text-var-pos",
+    "amt": "1",
+    "sub": "5",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "1 file"
+   },
+   {
+    "origin": "",
+    "qty": "",
+    "req": "0",
+    "vari": "-123.456",
+    "variCls": "text-var-neg",
+    "amt": "123.456",
+    "sub": "1",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": true,
+    "notePrev": "Catatan uji M4 baris tambaha…",
+    "splitVis": "none",
+    "label": "Baris tambahan",
+    "attLabel": "1 file"
+   }
+  ]
+ },
+ "btnSubmitClass": "btn btn-primary",
+ "attList": [
+  "bukti-m4-0.pdf",
+  "bukti-m4-1.pdf",
+  "",
+  "bukti-m4-3.pdf",
+  "bukti-m4-4.pdf"
+ ],
+ "areaVis": "block",
+ "globalRows": [
+  "1:global-m4.pdf"
+ ],
+ "noteAreaVis": "block|none",
+ "a11": {
+  "stat": "320.123.457",
+  "vari": "-253.791.457",
+  "variCls": "text-danger",
+  "foot": [
+   "66.332.000",
+   "320.123.457",
+   "-253.791.457"
+  ],
+  "footVarCls": "text-var-neg",
+  "submitDis": false,
+  "hint": "",
+  "hintVis": "none",
+  "rows": [
+   {
+    "origin": "517",
+    "qty": "1",
+    "req": "11.827.000",
+    "vari": "-288.173.000",
+    "variCls": "text-var-neg",
+    "amt": "300.000.000",
+    "sub": "3",
+    "movedVis": "block",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa 3.166.000)",
+    "cnt": "Sisa 234 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "1 file"
+   },
+   {
+    "origin": "518",
+    "qty": "10",
+    "req": "16.969.000",
+    "vari": "-3.031.000",
+    "variCls": "text-var-neg",
+    "amt": "20.000.000",
+    "sub": "2",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Termasuk ongkos kirim ke lokasi.",
+    "attLabel": "1 file"
+   },
+   {
+    "origin": "519",
+    "qty": "4",
+    "req": "26.224.000",
+    "vari": "26.224.000",
+    "variCls": "text-var-pos",
+    "amt": "0",
+    "sub": "2",
+    "movedVis": "block",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "520",
+    "qty": "1",
+    "req": "11.312.000",
+    "vari": "11.311.999",
+    "variCls": "text-var-pos",
+    "amt": "1",
+    "sub": "5",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "1 file"
+   },
+   {
+    "origin": "",
+    "qty": "",
+    "req": "0",
+    "vari": "-123.456",
+    "variCls": "text-var-neg",
+    "amt": "123.456",
+    "sub": "1",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": true,
+    "notePrev": "Catatan uji M4 baris tambaha…",
+    "splitVis": "none",
+    "label": "Baris tambahan",
+    "attLabel": "1 file"
+   }
+  ]
+ },
+ "swSubmitVal": "×!Note belum diisiBaris tambahan, baris yang pindah Sub COA, dan item yang total Settle-nya melebihi Request wajib diisi Note. Baris: no. 1, 2, 3.OKNoCancel",
+ "a11b": {
+  "stat": "25.123.457",
+  "vari": "41.208.543",
+  "variCls": "text-success",
+  "foot": [
+   "66.332.000",
+   "25.123.457",
+   "41.208.543"
+  ],
+  "footVarCls": "text-var-pos",
+  "submitDis": false,
+  "hint": "",
+  "hintVis": "none",
+  "rows": [
+   {
+    "origin": "517",
+    "qty": "1",
+    "req": "11.827.000",
+    "vari": "6.827.000",
+    "variCls": "text-var-pos",
+    "amt": "5.000.000",
+    "sub": "3",
+    "movedVis": "block",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa 3.166.000)",
+    "cnt": "Sisa 234 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "1 file"
+   },
+   {
+    "origin": "518",
+    "qty": "10",
+    "req": "16.969.000",
+    "vari": "-3.031.000",
+    "variCls": "text-var-neg",
+    "amt": "20.000.000",
+    "sub": "2",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Termasuk ongkos kirim ke lokasi.",
+    "attLabel": "1 file"
+   },
+   {
+    "origin": "519",
+    "qty": "4",
+    "req": "26.224.000",
+    "vari": "26.224.000",
+    "variCls": "text-var-pos",
+    "amt": "0",
+    "sub": "2",
+    "movedVis": "block",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "520",
+    "qty": "1",
+    "req": "11.312.000",
+    "vari": "11.311.999",
+    "variCls": "text-var-pos",
+    "amt": "1",
+    "sub": "5",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "1 file"
+   },
+   {
+    "origin": "",
+    "qty": "",
+    "req": "0",
+    "vari": "-123.456",
+    "variCls": "text-var-neg",
+    "amt": "123.456",
+    "sub": "1",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": true,
+    "notePrev": "Catatan uji M4 baris tambaha…",
+    "splitVis": "none",
+    "label": "Baris tambahan",
+    "attLabel": "1 file"
+   }
+  ]
+ },
+ "formStateScenario": [
+  "realizations[0][id]=",
+  "realizations[0][request_detail_id]=517",
+  "realizations[0][budget_detail_id]=3",
+  "realizations[0][notes]=Deskripsi dari pop-up",
+  "realizations[0][amount]=5.000.000",
+  "realizations[0][attachments][]=FILE:bukti-m4-0.pdf",
+  "realizations[0][change_note]=",
+  "realizations[1][id]=",
+  "realizations[1][request_detail_id]=518",
+  "realizations[1][budget_detail_id]=2",
+  "realizations[1][notes]=",
+  "realizations[1][amount]=20.000.000",
+  "realizations[1][attachments][]=FILE:bukti-m4-1.pdf",
+  "realizations[1][change_note]=",
+  "realizations[2][id]=",
+  "realizations[2][request_detail_id]=519",
+  "realizations[2][budget_detail_id]=2",
+  "realizations[2][notes]=",
+  "realizations[2][amount]=0",
+  "realizations[2][attachments][]=FILE:",
+  "realizations[2][change_note]=",
+  "realizations[3][id]=",
+  "realizations[3][request_detail_id]=520",
+  "realizations[3][budget_detail_id]=5",
+  "realizations[3][notes]=",
+  "realizations[3][amount]=1",
+  "realizations[3][attachments][]=FILE:bukti-m4-3.pdf",
+  "realizations[3][change_note]=",
+  "realizations[n5][id]=",
+  "realizations[n5][request_detail_id]=",
+  "realizations[n5][budget_detail_id]=1",
+  "realizations[n5][notes]=",
+  "realizations[n5][amount]=123.456",
+  "realizations[n5][attachments][]=FILE:bukti-m4-4.pdf",
+  "realizations[n5][change_note]=Catatan uji M4 baris tambahan",
+  "realization_attachments[0]=FILE:global-m4.pdf",
+  "settlement_notes=Keterangan uji M4"
+ ],
+ "subD1": "4|Material — Perizinan dan koordinasi warga",
+ "subD0": "3|Transport — Pengiriman material ke site",
+ "d1": {
+  "stat": "66.332.000",
+  "vari": "0",
+  "variCls": "text-success",
+  "foot": [
+   "66.332.000",
+   "66.332.000",
+   "0"
+  ],
+  "footVarCls": "text-var-pos",
+  "submitDis": true,
+  "hint": "Lengkapi: Lampiran Item baris no. 1, 2, 3, 4, 5",
+  "hintVis": "block",
+  "rows": [
+   {
+    "origin": "517",
+    "qty": "1",
+    "req": "11.827.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "5.000.000",
+    "sub": "3",
+    "movedVis": "block",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa 3.166.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "517",
+    "qty": "",
+    "req": "-",
+    "vari": "-",
+    "variCls": "",
+    "amt": "6.827.000",
+    "sub": "4",
+    "movedVis": "block",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa -18.550.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "518",
+    "qty": "10",
+    "req": "16.969.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "16.969.000",
+    "sub": "2",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Termasuk ongkos kirim ke lokasi.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "519",
+    "qty": "4",
+    "req": "26.224.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "26.224.000",
+    "sub": "4",
+    "movedVis": "none",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa -18.550.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "520",
+    "qty": "1",
+    "req": "11.312.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "11.312.000",
+    "sub": "5",
+    "movedVis": "none",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa 10.090.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   }
+  ]
+ },
+ "d2": {
+  "stat": "66.332.000",
+  "vari": "0",
+  "variCls": "text-success",
+  "foot": [
+   "66.332.000",
+   "66.332.000",
+   "0"
+  ],
+  "footVarCls": "text-var-pos",
+  "submitDis": true,
+  "hint": "Lengkapi: Lampiran Item baris no. 4, 5",
+  "hintVis": "block",
+  "rows": [
+   {
+    "origin": "517",
+    "qty": "1",
+    "req": "11.827.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "5.000.000",
+    "sub": "3",
+    "movedVis": "block",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa 3.166.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": true,
+    "notePrev": "Pindah Sub COA uji M4",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "1 file"
+   },
+   {
+    "origin": "517",
+    "qty": "",
+    "req": "-",
+    "vari": "-",
+    "variCls": "",
+    "amt": "6.827.000",
+    "sub": "4",
+    "movedVis": "block",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa -18.550.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "1 file"
+   },
+   {
+    "origin": "518",
+    "qty": "10",
+    "req": "16.969.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "16.969.000",
+    "sub": "2",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 234 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Termasuk ongkos kirim ke lokasi.",
+    "attLabel": "1 file"
+   },
+   {
+    "origin": "519",
+    "qty": "4",
+    "req": "26.224.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "26.224.000",
+    "sub": "4",
+    "movedVis": "none",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa -18.550.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "520",
+    "qty": "1",
+    "req": "11.312.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "11.312.000",
+    "sub": "5",
+    "movedVis": "none",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa 10.090.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   }
+  ]
+ },
+ "formState": [
+  "realizations[0][id]=",
+  "realizations[0][request_detail_id]=517",
+  "realizations[0][budget_detail_id]=3",
+  "realizations[0][notes]=",
+  "realizations[0][amount]=5.000.000",
+  "realizations[0][attachments][]=FILE:bukti-d0.pdf",
+  "realizations[0][change_note]=Pindah Sub COA uji M4",
+  "realizations[n4][id]=",
+  "realizations[n4][request_detail_id]=517",
+  "realizations[n4][budget_detail_id]=4",
+  "realizations[n4][notes]=",
+  "realizations[n4][amount]=6.827.000",
+  "realizations[n4][attachments][]=FILE:bukti-d1.pdf",
+  "realizations[n4][change_note]=",
+  "realizations[1][id]=",
+  "realizations[1][request_detail_id]=518",
+  "realizations[1][budget_detail_id]=2",
+  "realizations[1][notes]=Settle sesuai request",
+  "realizations[1][amount]=16.969.000",
+  "realizations[1][attachments][]=FILE:bukti-d2.pdf",
+  "realizations[1][change_note]=",
+  "realizations[2][id]=",
+  "realizations[2][request_detail_id]=519",
+  "realizations[2][budget_detail_id]=4",
+  "realizations[2][notes]=",
+  "realizations[2][amount]=26.224.000",
+  "realizations[2][attachments][]=FILE:",
+  "realizations[2][change_note]=",
+  "realizations[3][id]=",
+  "realizations[3][request_detail_id]=520",
+  "realizations[3][budget_detail_id]=5",
+  "realizations[3][notes]=",
+  "realizations[3][amount]=11.312.000",
+  "realizations[3][attachments][]=FILE:",
+  "realizations[3][change_note]=",
+  "realization_attachments[0]=FILE:global-d.pdf",
+  "settlement_notes=Keterangan draft M4"
+ ],
+ "swDraft": "×?Simpan Draft Settlement?Belum lengkap (Lampiran Item baris no. 4, 5; Note baris no. 2), tapi tetap bisa disimpan. Status CR belum berubah.Ya, SimpanNoBatal",
+ "navDraft": true,
+ "urlDraft": "/budget-request",
+ "flash": [
+  "",
+  "Draft Settlement tersimpan. Status CR belum berubah — tekan \"Ajukan\" saat sudah siap.",
+  ""
+ ],
+ "aReload": {
+  "stat": "66.332.000",
+  "vari": "0",
+  "variCls": "text-success",
+  "foot": [
+   "66.332.000",
+   "66.332.000",
+   "0"
+  ],
+  "footVarCls": "text-var-pos",
+  "submitDis": true,
+  "hint": "Lengkapi: Lampiran Item baris no. 4, 5",
+  "hintVis": "block",
+  "rows": [
+   {
+    "origin": "517",
+    "qty": "1",
+    "req": "11.827.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "5.000.000",
+    "sub": "3",
+    "movedVis": "block",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa 3.166.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": true,
+    "notePrev": "Pindah Sub COA uji M4",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "517",
+    "qty": "",
+    "req": "-",
+    "vari": "-",
+    "variCls": "",
+    "amt": "6.827.000",
+    "sub": "4",
+    "movedVis": "block",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa -18.550.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "518",
+    "qty": "10",
+    "req": "16.969.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "16.969.000",
+    "sub": "2",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 234 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Termasuk ongkos kirim ke lokasi.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "519",
+    "qty": "4",
+    "req": "26.224.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "26.224.000",
+    "sub": "4",
+    "movedVis": "none",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa -18.550.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "520",
+    "qty": "1",
+    "req": "11.312.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "11.312.000",
+    "sub": "5",
+    "movedVis": "none",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa 10.090.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   }
+  ]
+ },
+ "sReload": {
+  "#realizeForm": {
+   "n": 1,
+   "first": {
+    "tag": "form",
+    "id": "realizeForm",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#statTotalSettle": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "statTotalSettle",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "summary-stat-value text-info",
+    "inForm": false
+   }
+  },
+  "#statVariance": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "statVariance",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "summary-stat-value text-success",
+    "inForm": false
+   }
+  },
+  "#footRequestTotal": {
+   "n": 1,
+   "first": {
+    "tag": "th",
+    "id": "footRequestTotal",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-right",
+    "inForm": true
+   }
+  },
+  "#footSettleTotal": {
+   "n": 1,
+   "first": {
+    "tag": "th",
+    "id": "footSettleTotal",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-right",
+    "inForm": true
+   }
+  },
+  "#footVarianceTotal": {
+   "n": 1,
+   "first": {
+    "tag": "th",
+    "id": "footVarianceTotal",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-right text-var-pos",
+    "inForm": true
+   }
+  },
+  "#tblSettlement": {
+   "n": 1,
+   "first": {
+    "tag": "table",
+    "id": "tblSettlement",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "mb-0 table table-bordered table-hover",
+    "inForm": true
+   }
+  },
+  "#realizeBody": {
+   "n": 1,
+   "first": {
+    "tag": "tbody",
+    "id": "realizeBody",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#realizeRowTpl": {
+   "n": 1,
+   "first": {
+    "tag": "template",
+    "id": "realizeRowTpl",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#realizeSubItems": {
+   "n": 1,
+   "first": {
+    "tag": "script",
+    "id": "realizeSubItems",
+    "name": null,
+    "type": "application/json",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#btnAddSettleRow": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnAddSettleRow",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-outline-primary btn-sm",
+    "inForm": true
+   }
+  },
+  "#btnImportSettlementExcel": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnImportSettlementExcel",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-outline-primary btn-sm",
+    "inForm": true
+   }
+  },
+  "#importSettlementFileInput": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "importSettlementFileInput",
+    "name": null,
+    "type": "file",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#btnAddRealAttachment": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnAddRealAttachment",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-primary btn-sm ml-auto",
+    "inForm": true
+   }
+  },
+  "#btnAddSettleNote": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "btnAddSettleNote",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-primary btn-sm ml-auto",
+    "inForm": true
+   }
+  },
+  "#settleNoteArea": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "settleNoteArea",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#settleNoteEmpty": {
+   "n": 1,
+   "first": {
+    "tag": "p",
+    "id": "settleNoteEmpty",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "mb-0 text-muted",
+    "inForm": true
+   }
+  },
+  "#settlementNotes": {
+   "n": 1,
+   "first": {
+    "tag": "textarea",
+    "id": "settlementNotes",
+    "name": "settlement_notes",
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "form-control",
+    "inForm": true
+   }
+  },
+  "#realAttUploadArea": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "realAttUploadArea",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#dropZoneReal": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "dropZoneReal",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "att-dropzone mb-3",
+    "inForm": true
+   }
+  },
+  "#dropZoneBrowseReal": {
+   "n": 1,
+   "first": {
+    "tag": "span",
+    "id": "dropZoneBrowseReal",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-primary",
+    "inForm": true
+   }
+  },
+  "#dropZoneInputReal": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": "dropZoneInputReal",
+    "name": null,
+    "type": "file",
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#realAttTableWrap": {
+   "n": 1,
+   "first": {
+    "tag": "div",
+    "id": "realAttTableWrap",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "mt-3 table-responsive",
+    "inForm": true
+   }
+  },
+  "#realAttachmentBody": {
+   "n": 1,
+   "first": {
+    "tag": "tbody",
+    "id": "realAttachmentBody",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "#submitBtn": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "submitBtn",
+    "name": null,
+    "type": "submit",
+    "req": null,
+    "dis": true,
+    "cls": "btn btn-secondary",
+    "inForm": true
+   }
+  },
+  "#saveDraftBtn": {
+   "n": 1,
+   "first": {
+    "tag": "button",
+    "id": "saveDraftBtn",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-outline-secondary",
+    "inForm": true
+   }
+  },
+  "#submitHint": {
+   "n": 1,
+   "first": {
+    "tag": "small",
+    "id": "submitHint",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "ml-1 text-muted",
+    "inForm": true
+   }
+  },
+  "tr.realize-row": {
+   "n": 5,
+   "first": {
+    "tag": "tr",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "realize-row",
+    "inForm": true
+   }
+  },
+  "tr.realize-empty": {
+   "n": 0,
+   "first": null
+  },
+  ".realize-sub-select": {
+   "n": 5,
+   "first": {
+    "tag": "select",
+    "id": null,
+    "name": "realizations[0][budget_detail_id]",
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "form-control form-control-sm realize-sub-select",
+    "inForm": true
+   }
+  },
+  ".realize-amount-input": {
+   "n": 5,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "realizations[0][amount]",
+    "type": "text",
+    "req": null,
+    "dis": null,
+    "cls": "form-control form-control-sm realize-amount-input text-right",
+    "inForm": true
+   }
+  },
+  ".realize-notes-input": {
+   "n": 5,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "realizations[0][notes]",
+    "type": "text",
+    "req": null,
+    "dis": null,
+    "cls": "form-control form-control-sm realize-notes-input",
+    "inForm": true
+   }
+  },
+  ".realize-notes-count": {
+   "n": 5,
+   "first": {
+    "tag": "small",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "d-block mt-1 realize-notes-count text-muted",
+    "inForm": true
+   }
+  },
+  ".realize-origin-label": {
+   "n": 5,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "mt-1 realize-origin-label",
+    "inForm": true
+   }
+  },
+  ".realize-moved-label": {
+   "n": 5,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "realize-moved-label text-warning",
+    "inForm": true
+   }
+  },
+  ".realize-budget-warn": {
+   "n": 5,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "realize-budget-warn text-danger",
+    "inForm": true
+   }
+  },
+  ".realize-qty-cell": {
+   "n": 5,
+   "first": {
+    "tag": "td",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "align-middle realize-qty-cell text-center text-nowrap",
+    "inForm": true
+   }
+  },
+  ".realize-request-cell": {
+   "n": 5,
+   "first": {
+    "tag": "td",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "align-middle font-weight-bold realize-request-cell text-nowrap text-primary text-right",
+    "inForm": true
+   }
+  },
+  ".realize-variance-cell": {
+   "n": 5,
+   "first": {
+    "tag": "td",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "align-middle font-weight-bold realize-variance-cell text-nowrap text-right text-var-pos",
+    "inForm": true
+   }
+  },
+  ".realize-change-note": {
+   "n": 5,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "realizations[0][change_note]",
+    "type": "hidden",
+    "req": null,
+    "dis": null,
+    "cls": "realize-change-note",
+    "inForm": true
+   }
+  },
+  ".realize-note-cell": {
+   "n": 5,
+   "first": {
+    "tag": "td",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "align-middle realize-note-cell text-center",
+    "inForm": true
+   }
+  },
+  ".note-item-preview": {
+   "n": 5,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "mt-1 note-item-preview text-muted",
+    "inForm": true
+   }
+  },
+  ".btn-note-item": {
+   "n": 5,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-note-item btn-primary btn-sm has-note",
+    "inForm": true
+   }
+  },
+  ".btn-split-row": {
+   "n": 5,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-outline-secondary btn-sm btn-split-row ts-icon-only",
+    "inForm": true
+   }
+  },
+  ".btn-remove-row": {
+   "n": 5,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-outline-danger btn-remove-row btn-sm ts-icon-only",
+    "inForm": true
+   }
+  },
+  ".desc-wrap": {
+   "n": 5,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "desc-wrap",
+    "inForm": true
+   }
+  },
+  ".desc-expand": {
+   "n": 5,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "desc-expand",
+    "inForm": true
+   }
+  },
+  ".detail-att-cell": {
+   "n": 5,
+   "first": {
+    "tag": "td",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "detail-att-cell text-nowrap",
+    "inForm": true
+   }
+  },
+  ".detail-att-input": {
+   "n": 5,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "realizations[0][attachments][]",
+    "type": "file",
+    "req": null,
+    "dis": null,
+    "cls": "d-none detail-att-input",
+    "inForm": true
+   }
+  },
+  ".btn-detail-att": {
+   "n": 5,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-detail-att btn-outline-secondary btn-sm",
+    "inForm": true
+   }
+  },
+  ".detail-att-label": {
+   "n": 5,
+   "first": {
+    "tag": "span",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "detail-att-label",
+    "inForm": true
+   }
+  },
+  ".detail-att-hint": {
+   "n": 5,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "detail-att-hint text-muted",
+    "inForm": true
+   }
+  },
+  ".detail-att-list": {
+   "n": 5,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "detail-att-list mt-1",
+    "inForm": true
+   }
+  },
+  ".realize-att-existing": {
+   "n": 3,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "mt-1 realize-att-existing",
+    "inForm": true
+   }
+  },
+  ".att-lama": {
+   "n": 4,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "att-lama text-muted",
+    "inForm": true
+   }
+  },
+  ".att-lama-open": {
+   "n": 4,
+   "first": {
+    "tag": "a",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "att-lama-open",
+    "inForm": true
+   }
+  },
+  ".att-lama-del": {
+   "n": 4,
+   "first": {
+    "tag": "i",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "att-lama-del fa-times fas ml-1 text-danger",
+    "inForm": true
+   }
+  },
+  ".del-realize-att": {
+   "n": 3,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "delete_realization_attachments[]",
+    "type": "checkbox",
+    "req": null,
+    "dis": null,
+    "cls": "d-none del-realize-att",
+    "inForm": true
+   }
+  },
+  ".del-realize-att-global": {
+   "n": 1,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "delete_realization_global_attachments[]",
+    "type": "checkbox",
+    "req": null,
+    "dis": null,
+    "cls": "d-none del-realize-att-global",
+    "inForm": true
+   }
+  },
+  ".realize-row-id": {
+   "n": 5,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "realizations[0][id]",
+    "type": "hidden",
+    "req": null,
+    "dis": null,
+    "cls": "realize-row-id",
+    "inForm": true
+   }
+  },
+  ".realize-origin-input": {
+   "n": 5,
+   "first": {
+    "tag": "input",
+    "id": null,
+    "name": "realizations[0][request_detail_id]",
+    "type": "hidden",
+    "req": null,
+    "dis": null,
+    "cls": "realize-origin-input",
+    "inForm": true
+   }
+  },
+  ".tss-btn": {
+   "n": 5,
+   "first": {
+    "tag": "button",
+    "id": null,
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "align-items-center btn btn-block btn-outline-secondary d-flex justify-content-between tss-btn",
+    "inForm": true
+   }
+  },
+  "a[href*=\"settlement-template\"]": {
+   "n": 1,
+   "first": {
+    "tag": "a",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "btn btn-outline-secondary btn-sm",
+    "inForm": true
+   }
+  },
+  ".badge": {
+   "n": 4,
+   "first": {
+    "tag": "span",
+    "id": "notifBadge",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "badge badge-danger",
+    "inForm": false
+   }
+  },
+  "table": {
+   "n": 3,
+   "first": {
+    "tag": "table",
+    "id": "tblSettlement",
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "mb-0 table table-bordered table-hover",
+    "inForm": true
+   }
+  },
+  "thead th": {
+   "n": 15,
+   "first": {
+    "tag": "th",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "",
+    "inForm": true
+   }
+  },
+  "tfoot th": {
+   "n": 7,
+   "first": {
+    "tag": "th",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "text-right",
+    "inForm": true
+   }
+  },
+  "button": {
+   "n": 75,
+   "first": {
+    "tag": "button",
+    "id": "appSwitchBtn",
+    "name": null,
+    "type": "button",
+    "req": null,
+    "dis": null,
+    "cls": "brand-mark",
+    "inForm": false
+   }
+  },
+  "h1": {
+   "n": 0,
+   "first": null
+  },
+  ".breadcrumb": {
+   "n": 0,
+   "first": null
+  },
+  ".summary-stat": {
+   "n": 3,
+   "first": {
+    "tag": "div",
+    "id": null,
+    "name": null,
+    "type": null,
+    "req": null,
+    "dis": null,
+    "cls": "summary-stat",
+    "inForm": false
+   }
+  },
+  "__names": [
+   "?|_token|hidden",
+   "?|_token|hidden",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "?|role_id|submit",
+   "logout-form|_token|hidden",
+   "realizeForm|_token|hidden",
+   "realizeForm|delete_realization_attachments[]|checkbox",
+   "realizeForm|delete_realization_attachments[]|checkbox",
+   "realizeForm|delete_realization_attachments[]|checkbox",
+   "realizeForm|delete_realization_global_attachments[]|checkbox",
+   "realizeForm|realizations[0][amount]|text",
+   "realizeForm|realizations[0][attachments][]|file",
+   "realizeForm|realizations[0][budget_detail_id]|select-one",
+   "realizeForm|realizations[0][change_note]|hidden",
+   "realizeForm|realizations[0][id]|hidden",
+   "realizeForm|realizations[0][notes]|text",
+   "realizeForm|realizations[0][request_detail_id]|hidden",
+   "realizeForm|realizations[1][amount]|text",
+   "realizeForm|realizations[1][attachments][]|file",
+   "realizeForm|realizations[1][budget_detail_id]|select-one",
+   "realizeForm|realizations[1][change_note]|hidden",
+   "realizeForm|realizations[1][id]|hidden",
+   "realizeForm|realizations[1][notes]|text",
+   "realizeForm|realizations[1][request_detail_id]|hidden",
+   "realizeForm|realizations[2][amount]|text",
+   "realizeForm|realizations[2][attachments][]|file",
+   "realizeForm|realizations[2][budget_detail_id]|select-one",
+   "realizeForm|realizations[2][change_note]|hidden",
+   "realizeForm|realizations[2][id]|hidden",
+   "realizeForm|realizations[2][notes]|text",
+   "realizeForm|realizations[2][request_detail_id]|hidden",
+   "realizeForm|realizations[3][amount]|text",
+   "realizeForm|realizations[3][attachments][]|file",
+   "realizeForm|realizations[3][budget_detail_id]|select-one",
+   "realizeForm|realizations[3][change_note]|hidden",
+   "realizeForm|realizations[3][id]|hidden",
+   "realizeForm|realizations[3][notes]|text",
+   "realizeForm|realizations[3][request_detail_id]|hidden",
+   "realizeForm|realizations[4][amount]|text",
+   "realizeForm|realizations[4][attachments][]|file",
+   "realizeForm|realizations[4][budget_detail_id]|select-one",
+   "realizeForm|realizations[4][change_note]|hidden",
+   "realizeForm|realizations[4][id]|hidden",
+   "realizeForm|realizations[4][notes]|text",
+   "realizeForm|realizations[4][request_detail_id]|hidden",
+   "realizeForm|settlement_notes|textarea"
+  ],
+  "__values": {
+   "realizations[0][id]": "247",
+   "realizations[0][request_detail_id]": "517",
+   "realizations[0][budget_detail_id]": "3",
+   "realizations[0][notes]": "",
+   "realizations[0][amount]": "5.000.000",
+   "delete_realization_attachments[]": false,
+   "realizations[0][change_note]": "Pindah Sub COA uji M4",
+   "realizations[1][id]": "248",
+   "realizations[1][request_detail_id]": "517",
+   "realizations[1][budget_detail_id]": "4",
+   "realizations[1][notes]": "",
+   "realizations[1][amount]": "6.827.000",
+   "realizations[1][change_note]": "",
+   "realizations[2][id]": "249",
+   "realizations[2][request_detail_id]": "518",
+   "realizations[2][budget_detail_id]": "2",
+   "realizations[2][notes]": "Settle sesuai request",
+   "realizations[2][amount]": "16.969.000",
+   "realizations[2][change_note]": "",
+   "realizations[3][id]": "250",
+   "realizations[3][request_detail_id]": "519",
+   "realizations[3][budget_detail_id]": "4",
+   "realizations[3][notes]": "",
+   "realizations[3][amount]": "26.224.000",
+   "realizations[3][change_note]": "",
+   "realizations[4][id]": "251",
+   "realizations[4][request_detail_id]": "520",
+   "realizations[4][budget_detail_id]": "5",
+   "realizations[4][notes]": "",
+   "realizations[4][amount]": "11.312.000",
+   "realizations[4][change_note]": "",
+   "delete_realization_global_attachments[]": false,
+   "settlement_notes": ""
+  },
+  "__ids": [
+   "appSwitch",
+   "appSwitchBtn",
+   "bnavTabsBtn",
+   "bnavTabsMenu",
+   "btnAddRealAttachment",
+   "btnAddSettleNote",
+   "btnAddSettleRow",
+   "btnImportSettlementExcel",
+   "dropZoneBrowseReal",
+   "dropZoneInputReal",
+   "dropZoneReal",
+   "footRequestTotal",
+   "footSettleTotal",
+   "footVarianceTotal",
+   "importSettlementFileInput",
+   "logout-form",
+   "navTodoBadge",
+   "navTodoList",
+   "notifBadge",
+   "notifBellToggle",
+   "notifBellWrap",
+   "notifDropdown",
+   "notifEmpty",
+   "notifList",
+   "notifMarkAllRead",
+   "realAttTableWrap",
+   "realAttUploadArea",
+   "realAttachmentBody",
+   "realizeBody",
+   "realizeForm",
+   "realizeRowTpl",
+   "realizeSubItems",
+   "saveDraftBtn",
+   "settleNoteArea",
+   "settleNoteEmpty",
+   "settlementNotes",
+   "sidebarToggle",
+   "statTotalSettle",
+   "statVariance",
+   "submitBtn",
+   "submitHint",
+   "tblSettlement",
+   "tcf-inline-style",
+   "tesysCommandData",
+   "themeToggle",
+   "tsCmd",
+   "tsCmdInput",
+   "tsCmdList",
+   "tsCmdLoading",
+   "tsCrumb",
+   "tsQuickSearch",
+   "tsQuickSearchWrap",
+   "tsSidebar",
+   "tsTitle",
+   "userBtn",
+   "userPop"
+  ],
+  "__forms": [
+   {
+    "action": null,
+    "method": "get",
+    "enctype": "application/x-www-form-urlencoded",
+    "id": "tsQuickSearchWrap"
+   },
+   {
+    "action": "http://127.0.0.1:8099/view-as/reset",
+    "method": "post",
+    "enctype": "application/x-www-form-urlencoded",
+    "id": ""
+   },
+   {
+    "action": "http://127.0.0.1:8099/view-as",
+    "method": "post",
+    "enctype": "application/x-www-form-urlencoded",
+    "id": ""
+   },
+   {
+    "action": "http://127.0.0.1:8099/logout",
+    "method": "post",
+    "enctype": "application/x-www-form-urlencoded",
+    "id": "logout-form"
+   },
+   {
+    "action": "http://127.0.0.1:8099/budget-request/217/submit-realization",
+    "method": "post",
+    "enctype": "multipart/form-data",
+    "id": "realizeForm"
+   }
+  ],
+  "__h1": [],
+  "__title": "Submit Settlement | TESYS",
+  "__rowdata": [
+   {
+    "row": "0",
+    "origin": "517",
+    "originSub": "1",
+    "req": "11827000",
+    "qty": "1"
+   },
+   {
+    "row": "1",
+    "origin": "517",
+    "originSub": "1",
+    "req": "11827000",
+    "qty": "1"
+   },
+   {
+    "row": "2",
+    "origin": "518",
+    "originSub": "2",
+    "req": "16969000",
+    "qty": "10"
+   },
+   {
+    "row": "3",
+    "origin": "519",
+    "originSub": "4",
+    "req": "26224000",
+    "qty": "4"
+   },
+   {
+    "row": "4",
+    "origin": "520",
+    "originSub": "5",
+    "req": "11312000",
+    "qty": "1"
+   }
+  ],
+  "__tplK": 8,
+  "__tplNames": [
+   "realizations[__K__][amount]",
+   "realizations[__K__][attachments][]",
+   "realizations[__K__][budget_detail_id]",
+   "realizations[__K__][change_note]",
+   "realizations[__K__][id]",
+   "realizations[__K__][notes]",
+   "realizations[__K__][request_detail_id]"
+  ],
+  "__subitems": 970,
+  "__texts": {
+   "stat": "66.332.000",
+   "vari": "0",
+   "foot": [
+    "66.332.000",
+    "66.332.000",
+    "0"
+   ],
+   "submitDis": true,
+   "hint": "Lengkapi: Lampiran Item baris no. 4, 5",
+   "hintVis": "block",
+   "alerts": []
+  }
+ },
+ "existAtt": [
+  "bukti-d0.pdf",
+  "bukti-d1.pdf",
+  "bukti-d2.pdf",
+  "global-d.pdf (12 B)"
+ ],
+ "notesReload": [
+  [
+   "",
+   "Pindah Sub COA uji M4",
+   "Pindah Sub COA uji M4",
+   true
+  ],
+  [
+   "",
+   "",
+   "",
+   false
+  ],
+  [
+   "Settle sesuai request",
+   "",
+   "",
+   false
+  ],
+  [
+   "",
+   "",
+   "",
+   false
+  ],
+  [
+   "",
+   "",
+   "",
+   false
+  ]
+ ],
+ "ketReload": [
+  "",
+  "none"
+ ],
+ "adaLama": 3,
+ "lamaDibuang": [
+  "att-lama text-muted att-lama-dibuang",
+  true,
+  "Batalkan penghapusan"
+ ],
+ "afterDel": {
+  "stat": "66.332.000",
+  "vari": "0",
+  "variCls": "text-success",
+  "foot": [
+   "66.332.000",
+   "66.332.000",
+   "0"
+  ],
+  "footVarCls": "text-var-pos",
+  "submitDis": true,
+  "hint": "Lengkapi: Lampiran Item baris no. 1, 4, 5",
+  "hintVis": "block",
+  "rows": [
+   {
+    "origin": "517",
+    "qty": "1",
+    "req": "11.827.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "5.000.000",
+    "sub": "3",
+    "movedVis": "block",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa 3.166.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": true,
+    "notePrev": "Pindah Sub COA uji M4",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "517",
+    "qty": "",
+    "req": "-",
+    "vari": "-",
+    "variCls": "",
+    "amt": "6.827.000",
+    "sub": "4",
+    "movedVis": "block",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa -18.550.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Untuk kebutuhan 2 site sekaligus.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "518",
+    "qty": "10",
+    "req": "16.969.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "16.969.000",
+    "sub": "2",
+    "movedVis": "none",
+    "warn": "none:",
+    "cnt": "Sisa 234 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Termasuk ongkos kirim ke lokasi.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "519",
+    "qty": "4",
+    "req": "26.224.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "26.224.000",
+    "sub": "4",
+    "movedVis": "none",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa -18.550.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Material - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   },
+   {
+    "origin": "520",
+    "qty": "1",
+    "req": "11.312.000",
+    "vari": "0",
+    "variCls": "text-var-pos",
+    "amt": "11.312.000",
+    "sub": "5",
+    "movedVis": "none",
+    "warn": "block:Melebihi sisa budget Sub COA ini (sisa 10.090.000)",
+    "cnt": "Sisa 255 karakter.",
+    "cntCls": "muted",
+    "noteBtnHas": false,
+    "notePrev": "",
+    "splitVis": "inline-flex",
+    "label": "Item: Akomodasi - Sesuai kebutuhan lapangan minggu ini.",
+    "attLabel": "Lampiran"
+   }
+  ]
+ },
+ "lamaBatal": [
+  false,
+  "Hapus lampiran ini"
+ ],
+ "swPreview": "×bukti-d0.pdfOKNoCancel",
+ "mobileOverflow": 0,
+ "mobileTable": [
+  1199,
+  349
+ ],
+ "mobileOverflow2": 0,
+ "rep": {
+  "login": true,
+  "konsol": [],
+  "gagal": [],
+  "stop": 0
+ }
+}

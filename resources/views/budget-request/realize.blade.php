@@ -6,216 +6,188 @@
 
 <div class="content">
     <div class="container-fluid">
+        <div class="tw:flex tw:flex-col tw:gap-5 tw:py-4">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <div class="d-flex align-items-center">
-                <a href="{{ url('/budget-request?open=' . $budgetRequest->id) }}" class="btn btn-secondary btn-sm mr-3">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
-                <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Submit Settlement</h1>
+            {{-- Judul & breadcrumb topbar: shell memindahkan <h1> dan .breadcrumb pertama ke topbar lalu
+                 menghapusnya dari konten (tesys-shell.js hoistPageTitle); disembunyikan secara visual. --}}
+            <div class="tw:sr-only">
+                <h1>Submit Settlement</h1>
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">Finance</li>
+                    <li class="breadcrumb-item"><a href="{{ url('/budget-request') }}">Cost Request</a></li>
+                    <li class="breadcrumb-item active">Settlement</li>
+                </ol>
             </div>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
-                <li class="breadcrumb-item">Finance</li>
-                <li class="breadcrumb-item"><a href="{{ url('/budget-request') }}">Cost Request</a></li>
-                <li class="breadcrumb-item active">Settlement</li>
-            </ol>
-        </div>
 
-        @php
-            $existingByDetail = $budgetRequest->realizations->keyBy('request_detail_id');
-        @endphp
+            @php
+                $kodeCr = '<button type="button" class="cr-copy-code" data-code="' . e($budgetRequest->code) . '" title="Klik untuk menyalin kode">' . e($budgetRequest->code) . '</button>';
+            @endphp
+            <x-tw.page-header title="Submit Settlement" :description="new \Illuminate\Support\HtmlString($kodeCr)">
+                <x-slot:actions>
+                    <x-tw.button href="{{ url('/budget-request?open=' . $budgetRequest->id) }}" variant="secondary" class="tw:max-sm:min-h-12"><i class="fas fa-arrow-left" aria-hidden="true"></i> Kembali ke daftar</x-tw.button>
+                </x-slot:actions>
+            </x-tw.page-header>
 
-        {{-- Alasan reject terakhir — hanya tampil kalau CR ini sedang
-             SETTLE_REJECTED, supaya pengaju langsung tahu apa yang harus
-             direvisi tanpa harus membuka tab Log. --}}
-        @if($budgetRequest->status === 'SETTLE_REJECTED' && $rejectReason)
-        <div class="alert alert-danger shadow-sm mb-3">
-            <strong><i class="fas fa-exclamation-triangle mr-1"></i> Settlement ini ditolak.</strong>
-            <div class="mt-1">{{ $rejectReason->notes }}</div>
-            <div class="mt-1" style="font-size:11px;color:var(--text-faint);">
-                {{ $rejectReason->actor_name ?? 'System' }} · {{ $rejectReason->created_at->format('d M Y H:i') }}
+            {{-- Alasan reject terakhir — hanya tampil kalau CR ini sedang
+                 SETTLE_REJECTED, supaya pengaju langsung tahu apa yang harus
+                 direvisi tanpa harus membuka tab Log. --}}
+            @if($budgetRequest->status === 'SETTLE_REJECTED' && $rejectReason)
+            <div role="alert" class="tw:rounded-md tw:border tw:border-danger tw:bg-danger-bg tw:p-3 tw:text-data tw:leading-body tw:text-danger">
+                <div class="tw:font-label"><i class="fas fa-exclamation-triangle tw:mr-1" aria-hidden="true"></i> Settlement ini ditolak.</div>
+                <div class="tw:mt-1">{{ $rejectReason->notes }}</div>
+                <div class="tw:mt-1 tw:text-caption tw:text-text-dim">
+                    {{ $rejectReason->actor_name ?? 'System' }} · {{ $rejectReason->created_at->format('d M Y H:i') }}
+                </div>
             </div>
-        </div>
-        @endif
+            @endif
 
-        <!-- REQUEST SUMMARY — strip horizontal, lebar sama dengan card di bawahnya -->
-        <div class="card card-primary card-outline shadow-sm mb-3">
-            <div class="card-body py-3">
-                <div class="row align-items-center">
-                    <div class="col-lg-5 mb-2 mb-lg-0">
-                        <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
-                            <span class="badge badge-dark px-2 py-1" style="font-size:12px;">{{ $budgetRequest->code }}</span>
-                            <x-status :status="$budgetRequest->status" context="budget-request" />
-                        </div>
-                        <div class="mt-2" style="font-size:13px;color:var(--text);">{{ $budgetRequest->description }}</div>
+            <!-- REQUEST SUMMARY — strip horizontal, lebar sama dengan kartu di bawahnya -->
+            <x-tw.card padding="sm">
+                <div class="tw:grid tw:grid-cols-1 tw:items-center tw:gap-4 tw:lg:grid-cols-5">
+                    <div class="tw:min-w-0 tw:lg:col-span-2">
+                        @php
+                            // Requestor - PIC; tanpa PIC, pakai Beneficiary langsung (sama dengan kolom PIC di daftar CR).
+                            $requestor = $budgetRequest->applicant?->username ? strtoupper($budgetRequest->applicant->username) : trim((string) ($budgetRequest->applicant?->name ?? ''));
+                            $picNama   = trim((string) ($budgetRequest->beneficiary?->pic?->pic ?? ''));
+                            $picNama   = ($picNama === '' || $picNama === '-') ? trim((string) ($budgetRequest->beneficiary?->nickname ?? '')) : $picNama;
+                            $picNama   = ($picNama === '-') ? '' : $picNama;
+                        @endphp
+                        <div class="cr-settle-title tw:leading-body tw:text-text">{{ $budgetRequest->description }}</div>
+                        <div class="tw:mt-1 tw:text-data tw:text-text-dim">{{ $requestor !== '' ? $requestor : '-' }}@if($picNama !== '') - {{ $picNama }}@endif</div>
                     </div>
-                    <div class="col-lg-7">
-                        <div class="d-flex flex-wrap summary-stat-row">
-                            <div class="summary-stat">
-                                <div class="summary-stat-label">Total Request</div>
-                                <div class="summary-stat-value text-primary">{{ number_format($budgetRequest->amount, 0, ',', '.') }}</div>
-                            </div>
-                            <div class="summary-stat">
-                                <div class="summary-stat-label">Total Settle</div>
-                                <div class="summary-stat-value text-info" id="statTotalSettle">0</div>
-                            </div>
-                            <div class="summary-stat">
-                                <div class="summary-stat-label">Variance</div>
-                                <div class="summary-stat-value" id="statVariance">0</div>
-                            </div>
+                    <div class="tw:grid tw:grid-cols-1 tw:gap-3 tw:sm:grid-cols-3 tw:lg:col-span-3">
+                        <div class="tw:min-w-0 tw:rounded-md tw:border tw:border-border tw:bg-surface-2 tw:px-4 tw:py-3">
+                            <div class="tw:text-caption tw:font-label tw:uppercase tw:tracking-micro tw:text-text-dim">Total Request</div>
+                            <div class="tw:mt-1 tw:text-kpi tw:font-heading tw:leading-tight tw:tabular-nums tw:text-text">{{ number_format($budgetRequest->amount, 0, ',', '.') }}</div>
+                        </div>
+                        <div class="tw:min-w-0 tw:rounded-md tw:border tw:border-border tw:bg-surface-2 tw:px-4 tw:py-3">
+                            <div class="tw:text-caption tw:font-label tw:uppercase tw:tracking-micro tw:text-text-dim">Total Settle</div>
+                            <div id="statTotalSettle" class="tw:mt-1 tw:text-kpi tw:font-heading tw:leading-tight tw:tabular-nums tw:text-text">0</div>
+                        </div>
+                        <div class="tw:min-w-0 tw:rounded-md tw:border tw:border-border tw:bg-surface-2 tw:px-4 tw:py-3">
+                            <div class="tw:text-caption tw:font-label tw:uppercase tw:tracking-micro tw:text-text-dim">Variance</div>
+                            <div id="statVariance" class="tw:mt-1 tw:text-kpi tw:font-heading tw:leading-tight tw:tabular-nums">0</div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+            </x-tw.card>
 
         <form id="realizeForm"
               action="{{ route('budget-request.submit-realization', $budgetRequest->id) }}"
-              method="POST" enctype="multipart/form-data">
+              method="POST" enctype="multipart/form-data" class="tw:flex tw:min-w-0 tw:flex-col tw:gap-5">
             @csrf
 
             <!-- DETAIL / SETTLEMENT PER ITEM -->
-            <div class="card shadow-sm mb-3">
-                <div class="card-header d-flex align-items-center flex-wrap" style="gap:8px;">
-                    <h3 class="card-title mb-0"><i class="fas fa-list mr-1"></i> Settlement per Item</h3>
-                    <div class="ml-auto d-flex align-items-center" style="gap:8px;">
-                        <a href="{{ url('/budget-request/' . $budgetRequest->id . '/settlement-template') }}" class="btn btn-sm btn-outline-secondary">
-                            <i class="fas fa-file-excel mr-1"></i> Download Template
-                        </a>
-                        <button type="button" class="btn btn-sm btn-outline-primary" id="btnImportSettlementExcel">
-                            <i class="fas fa-file-import mr-1"></i> Import Excel
-                        </button>
-                        <input type="file" id="importSettlementFileInput" accept=".xlsx,.xls" style="display:none;">
+            <x-tw.card padding="none">
+                <x-slot:header>
+                    <div class="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3">
+                        <div role="heading" aria-level="2" class="tw:flex tw:items-center tw:gap-2">
+                            <i class="fas fa-list-ul" aria-hidden="true"></i> Settlement per Item
+                        </div>
+                        <div class="tw:flex tw:flex-wrap tw:items-center tw:gap-2">
+                            <x-tw.button id="btnViewRequest" variant="secondary" size="sm" class="tw:max-sm:min-h-12"><i class="fas fa-eye" aria-hidden="true"></i> View Request</x-tw.button>
+                            <x-tw.button id="btnAutoFill" variant="secondary" size="sm" class="tw:max-sm:min-h-12" title="Salin seluruh rincian pengajuan menjadi baris settlement"><i class="fas fa-magic" aria-hidden="true"></i> Auto Fill</x-tw.button>
+                            <x-tw.button href="{{ url('/budget-request/' . $budgetRequest->id . '/settlement-template') }}" variant="secondary" size="sm" class="tw:max-sm:min-h-12"><i class="fas fa-file-excel" aria-hidden="true"></i> Download Template</x-tw.button>
+                            <x-tw.button id="btnImportSettlementExcel" variant="secondary" size="sm" class="tw:max-sm:min-h-12"><i class="fas fa-file-import" aria-hidden="true"></i> Import Excel</x-tw.button>
+                            <input type="file" id="importSettlementFileInput" accept=".xlsx,.xls" style="display:none;">
+                            {{-- Baris tambahan tanpa item asal (wajib pilih Sub COA & isi Note). --}}
+                            <x-tw.button id="btnAddSettleRow" size="sm" class="tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Baris</x-tw.button>
+                        </div>
                     </div>
-                </div>
-                <div class="card-body table-responsive p-0">
-                    <table class="table table-hover table-bordered mb-0" id="tblSettlement" style="font-size:12px;">
-                        <thead class="bg-light">
+                </x-slot:header>
+
+                <div class="table-responsive tw:pb-1">
+                    <table id="tblSettlement" class="cr-realize-table tw:w-full tw:min-w-[1180px] tw:border-collapse">
+                        <thead>
                             <tr>
-                                <th scope="col" style="width:22%;">Description Request</th>
-                                <th scope="col" style="width:26%;">Description Settle</th>
-                                <th scope="col" class="text-center text-nowrap" style="width:1%;">Qty</th>
-                                <th scope="col" class="text-right text-nowrap" style="width:1%;">Request</th>
-                                <th scope="col" class="text-right text-nowrap" style="width:1%;">Settle</th>
-                                <th scope="col" class="text-right text-nowrap" style="width:1%;">Variance</th>
-                                <th scope="col" class="text-center text-nowrap" style="width:1%;">Lampiran Item <span class="badge badge-danger" title="Wajib jika nilai Settle lebih dari 0">Wajib*</span></th>
-                                <th scope="col" class="text-center text-nowrap" style="width:1%;">Note <span class="badge badge-danger" title="Wajib jika nilai Settle melebihi Request">Wajib*</span></th>
+                                <th scope="col" class="tw:w-[24%]">Sub COA / Item Request</th>
+                                <th scope="col" class="tw:w-[24%]">Description Settle</th>
+                                <th scope="col" class="text-right text-nowrap tw:w-[1%]">Harga Satuan</th>
+                                <th scope="col" class="text-center text-nowrap tw:w-[1%]">Qty</th>
+                                <th scope="col" class="text-right text-nowrap tw:w-[1%]">Settle</th>
+                                <th scope="col" class="text-center text-nowrap tw:w-[1%]">Lampiran Item</th>
+                                <th scope="col" class="text-center text-nowrap tw:w-[1%]">Note</th>
+                                <th scope="col" class="text-center text-nowrap tw:w-[1%]">Aksi</th>
                             </tr>
                         </thead>
                         <tbody id="realizeBody">
-                            @forelse($budgetRequest->details->where('status', '!=', 'TAKEOUT')->values() as $i => $detail)
-                            @php $existing = $existingByDetail->get($detail->id); @endphp
-                            <tr data-detail-id="{{ $detail->id }}">
-                                <td class="align-middle realize-desc-request-cell">
-                                    {{ $detail->account?->name ?? '-' }} - {{ $detail->notes ?: '-' }}
-                                    <input type="hidden" name="realizations[{{ $i }}][request_detail_id]" value="{{ $detail->id }}">
-                                </td>
-                                <td>
-                                    <div class="desc-wrap">
-                                        <input type="text" name="realizations[{{ $i }}][notes]"
-                                               class="form-control form-control-sm realize-notes-input"
-                                               maxlength="255"
-                                               value="{{ $existing->notes ?? '' }}" placeholder="Catatan settle...">
-                                        <button type="button" class="desc-expand" title="Lihat / ubah deskripsi lengkap" tabindex="-1">
-                                            <i class="fas fa-expand-alt"></i>
-                                        </button>
-                                    </div>
-                                    {{-- Penghitung sisa karakter: ikut berubah saat mengetik dan
-                                         berubah merah begitu batasnya habis, supaya user tahu
-                                         kenapa ketikannya berhenti. --}}
-                                    <small class="realize-notes-count text-muted d-block mt-1" style="font-size:10px;"></small>
-                                </td>
-                                <td class="text-center text-nowrap align-middle">{{ rtrim(rtrim(number_format($detail->qty, 2, ',', '.'), '0'), ',') }}</td>
-                                <td class="text-right text-nowrap align-middle font-weight-bold text-primary realize-request-cell" data-raw="{{ (int) $detail->total }}">
-                                    {{ number_format($detail->total, 0, ',', '.') }}
-                                </td>
-                                <td class="text-nowrap">
-                                    <input type="text" inputmode="numeric"
-                                           name="realizations[{{ $i }}][amount]"
-                                           class="form-control form-control-sm text-right realize-amount-input"
-                                           value="{{ (int) ($existing->amount ?? $detail->total) }}" placeholder="0">
-                                </td>
-                                <td class="text-right text-nowrap align-middle font-weight-bold realize-variance-cell">0</td>
-                                <td class="text-nowrap detail-att-cell" data-idx="{{ $i }}" tabindex="0">
-                                    <input type="file" name="realizations[{{ $i }}][attachments][]" class="d-none detail-att-input" multiple
-                                           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
-                                    <button type="button" class="btn btn-outline-secondary btn-sm btn-detail-att" style="white-space:nowrap;padding:2px 8px;font-size:11px;">
-                                        <i class="fas fa-paperclip"></i> <span class="detail-att-label">Lampiran</span>
-                                    </button>
-                                    <div class="detail-att-hint text-muted" style="font-size:9px;">drop / paste / klik</div>
-                                    {{-- Lampiran dari submit sebelumnya (mis. settlement yang sempat
-                                         di-reject dan kembali ke Paid) tetap ditampilkan supaya tidak
-                                         perlu diunggah ulang. Centang untuk membuangnya. --}}
-                                    @if($existing && $existing->attachments->isNotEmpty())
-                                    <div class="mt-1 realize-att-existing" style="font-size:10px;line-height:1.5;">
-                                        @foreach($existing->attachments as $att)
-                                        {{-- Tampilannya disamakan dengan file yang baru dipilih:
-                                             nama diklik untuk memeriksa isinya, × untuk membuang
-                                             supaya bisa diganti lampiran lain. --}}
-                                        <div class="att-lama text-muted">
-                                            <input type="checkbox" name="delete_realization_attachments[]"
-                                                   value="{{ $att->id }}" class="del-realize-att d-none">
-                                            <i class="fas fa-file mr-1"></i>
-                                            <a href="#" class="att-lama-open"
-                                               data-url="{{ asset('storage/' . $att->path) }}"
-                                               data-nama="{{ $att->original_name }}">{{ $att->original_name }}</a>
-                                            <i class="fas fa-times text-danger att-lama-del ml-1" style="cursor:pointer;" title="Hapus lampiran ini"></i>
-                                        </div>
-                                        @endforeach
-                                    </div>
-                                    @endif
-                                    <div class="detail-att-list mt-1" style="font-size:10px;line-height:1.5;"></div>
-                                </td>
-                                {{-- Catatan perubahan Description Request → Description Settle.
-                                     Ikon saja supaya kolomnya tidak melebar; isinya dibuka di pop-up.
-                                     Wajib diisi kalau Settle melebihi Request (lihat validasi submit). --}}
-                                <td class="text-center align-middle realize-note-cell">
-                                    <input type="hidden" name="realizations[{{ $i }}][change_note]"
-                                           class="realize-change-note" value="{{ $existing->change_note ?? '' }}">
-                                    <button type="button" class="btn btn-sm btn-primary btn-note-item" title="Isi catatan perubahan">
-                                        <i class="fas fa-sticky-note mr-1"></i> Note
-                                    </button>
-                                    <div class="note-item-preview text-muted mt-1" style="font-size:9px;line-height:1.3;"></div>
-                                </td>
-                            </tr>
+                            {{-- Awalnya kosong; hanya baris yang sudah tersimpan (draft / ditolak) yang tampil. --}}
+                            @forelse($settleRows as $i => $row)
+                                @include('budget-request._realize_row', [
+                                    'k'           => $i,
+                                    'rowId'       => $row['id'],
+                                    'detail'      => $row['detail'],
+                                    'orphanId'    => $row['orphan_detail_id'] ?? null,
+                                    'bdId'        => $row['budget_detail_id'],
+                                    'notes'       => $row['notes'],
+                                    'changeNote'  => $row['change_note'],
+                                    'qty'         => $row['qty'] ?? null,
+                                    'amount'      => $row['price'] ?? $row['amount'],
+                                    'attachments' => $row['attachments'],
+                                ])
                             @empty
-                            <tr>
-                                <td colspan="8" class="text-center text-muted py-4">Tidak ada detail</td>
+                            <tr class="realize-empty">
+                                <td colspan="8" class="text-center tw:py-6 tw:text-data tw:text-text-dim">Belum ada baris. Klik <strong>Auto Fill</strong> untuk menyalin rincian pengajuan, atau <strong>Tambah Baris</strong>.</td>
                             </tr>
                             @endforelse
                         </tbody>
                         <tfoot>
-                            <tr style="background:var(--surface-2);">
-                                <th colspan="3" class="text-right">Subtotal</th>
-                                <th class="text-right" id="footRequestTotal">0</th>
-                                <th class="text-right" id="footSettleTotal">0</th>
-                                <th class="text-right" id="footVarianceTotal">0</th>
+                            <tr class="tw:bg-surface-2">
+                                <th colspan="4" class="text-right">Subtotal</th>
+                                <th class="text-right tw:tabular-nums" id="footSettleTotal">0</th>
+                                <th></th>
                                 <th></th>
                                 <th></th>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
-            </div>
+            </x-tw.card>
+
+            {{-- Template baris baru (Pecah / Tambah Baris / import). --}}
+            <template id="realizeRowTpl">
+                @include('budget-request._realize_row', [
+                    'k' => '__K__', 'rowId' => null, 'detail' => null, 'orphanId' => null, 'bdId' => null,
+                    'notes' => null, 'changeNote' => null, 'qty' => 1, 'amount' => 0, 'attachments' => collect(),
+                ])
+            </template>
+            <script type="application/json" id="realizeSubItems">@json($subItems->keyBy('id'))</script>
+            {{-- Rincian pengajuan (item yang ikut, bukan takeout) untuk "View Request" & "Auto Fill". --}}
+            @php
+                $reqItems = $budgetRequest->details->reject(fn ($d) => $d->isTakenOut())->mapWithKeys(fn ($d) => [$d->id => [
+                    'coa'     => $d->account?->name ?? '-',
+                    'sub_coa' => $d->budgetDetail?->deskripsi ?: '-',
+                    'budget_detail_id' => $d->budget_detail_id ? (int) $d->budget_detail_id : null,
+                    'desc'    => (string) $d->notes,
+                    'qty'     => (float) $d->qty,
+                    'price'   => (int) $d->amount,
+                    'total'   => (int) $d->total,
+                ]]);
+            @endphp
+            <script type="application/json" id="realizeReqItems">@json($reqItems)</script>
 
             <!-- BUKTI SETTLEMENT (GLOBAL) -->
-            <div class="card card-info card-outline shadow-sm mb-3">
-                <div class="card-header d-flex align-items-center">
-                    <h3 class="card-title mb-0"><i class="fas fa-check-double mr-1"></i> Bukti Settlement (Global)</h3>
-                    <button type="button" class="btn btn-sm btn-primary ml-auto" id="btnAddRealAttachment">
-                        <i class="fas fa-plus mr-1"></i> Tambah Lampiran
-                    </button>
-                </div>
-                <div class="card-body">
+            <x-tw.card>
+                <x-slot:header>
+                    <div class="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3">
+                        <div role="heading" aria-level="2" class="tw:flex tw:items-center tw:gap-2">
+                            <i class="fas fa-check-double" aria-hidden="true"></i> Bukti Settlement (Global)
+                            <x-tw.badge tone="danger" id="attWajib" style="display:none;" title="Wajib karena total Settle melebihi nilai pengajuan">Wajib*</x-tw.badge>
+                        </div>
+                        <x-tw.button id="btnAddRealAttachment" size="sm" class="tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Lampiran</x-tw.button>
+                    </div>
+                </x-slot:header>
+
+                <div>
                     @if($budgetRequest->realizationAttachments->isNotEmpty())
                     {{-- Bukti global dari submit sebelumnya — ikut dipertahankan. --}}
-                    <div class="table-responsive mb-3">
-                        <table class="table table-bordered table-sm mb-0" style="font-size:12px;">
-                            <thead class="bg-light">
+                    <div class="table-responsive tw:mb-4">
+                        <table class="tw:w-full tw:border-collapse">
+                            <thead>
                                 <tr>
-                                    <th scope="col" style="width:5%;" class="text-center">No</th>
+                                    <th scope="col" class="tw:w-[5%] text-center">No</th>
                                     <th scope="col">File (sudah diunggah)</th>
-                                    <th scope="col" style="width:10%;" class="text-center">Hapus</th>
+                                    <th scope="col" class="tw:w-[10%] text-center">Hapus</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -225,16 +197,14 @@
                                     <td class="align-middle att-lama">
                                         <input type="checkbox" name="delete_realization_global_attachments[]"
                                                value="{{ $att->id }}" class="del-realize-att-global d-none">
-                                        <i class="fas fa-file mr-1"></i>
+                                        <i class="fas fa-file tw:mr-1" aria-hidden="true"></i>
                                         <a href="#" class="att-lama-open"
                                            data-url="{{ asset('storage/' . $att->path) }}"
                                            data-nama="{{ $att->original_name }}">{{ $att->original_name }}</a>
-                                        <small class="text-muted ml-2">({{ $att->size_formatted }})</small>
+                                        <span class="tw:ml-2 tw:text-caption tw:text-text-dim">({{ $att->size_formatted }})</span>
                                     </td>
                                     <td class="text-center align-middle">
-                                        <button type="button" class="btn btn-sm btn-danger att-lama-del" title="Hapus lampiran ini">
-                                            <i class="fas fa-times"></i>
-                                        </button>
+                                        <x-tw.button variant="danger" size="sm" class="att-lama-del" title="Hapus lampiran ini" aria-label="Hapus lampiran {{ $att->original_name }}"><i class="fas fa-times" aria-hidden="true"></i></x-tw.button>
                                     </td>
                                 </tr>
                                 @endforeach
@@ -244,22 +214,22 @@
                     @endif
 
                     <div id="realAttUploadArea" style="display:none;">
-                    <div id="dropZoneReal" class="att-dropzone mb-3" tabindex="0">
-                        <i class="fas fa-cloud-upload-alt fa-2x mb-2 d-block"></i>
-                        <p class="mb-0">
+                    <div id="dropZoneReal" class="att-dropzone tw:mb-4" tabindex="0">
+                        <i class="fas fa-cloud-upload-alt fa-2x mb-2 d-block" aria-hidden="true"></i>
+                        <div class="tw:text-control tw:text-text">
                             Drag &amp; drop file ke sini, paste gambar (Ctrl+V), atau
-                            <span class="text-primary" style="text-decoration:underline;cursor:pointer;" id="dropZoneBrowseReal">klik untuk pilih</span>
-                        </p>
-                        <small class="text-muted">Bisa pilih/drop/paste beberapa file sekaligus</small>
+                            <span class="tw:cursor-pointer tw:font-label tw:text-accent-text tw:underline" id="dropZoneBrowseReal" role="button" tabindex="0">klik untuk pilih</span>
+                        </div>
+                        <div class="tw:mt-1 tw:text-caption tw:text-text-dim">Bisa pilih/drop/paste beberapa file sekaligus</div>
                         <input type="file" id="dropZoneInputReal" multiple style="display:none;">
                     </div>
-                    <div class="table-responsive mt-3" id="realAttTableWrap" style="display:none;">
-                        <table class="table table-bordered mb-0">
-                            <thead class="bg-light">
+                    <div class="table-responsive" id="realAttTableWrap" style="display:none;">
+                        <table class="tw:w-full tw:border-collapse">
+                            <thead>
                                 <tr>
-                                    <th scope="col" style="width:5%;" class="text-center">No</th>
+                                    <th scope="col" class="tw:w-[5%] text-center">No</th>
                                     <th scope="col">File</th>
-                                    <th scope="col" style="width:10%;" class="text-center">Aksi</th>
+                                    <th scope="col" class="tw:w-[10%] text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="realAttachmentBody"></tbody>
@@ -267,62 +237,60 @@
                     </div>
                     </div>
                 </div>
-                <div class="card-footer">
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        Format: PDF, JPG, PNG, DOC, XLS. Maks 10 MB per file. Foto pekerjaan, laporan, atau dokumen pendukung lainnya.
-                    </small>
-                </div>
-            </div>
+
+                <x-slot:footer>
+                    <i class="fas fa-info-circle tw:mr-1" aria-hidden="true"></i>
+                    Format: PDF, JPG, PNG, DOC, XLS. Maks 10 MB per file. Foto pekerjaan, laporan, atau dokumen pendukung lainnya.
+                </x-slot:footer>
+            </x-tw.card>
 
             {{-- KETERANGAN SETTLEMENT — opsional, ikut tercatat di Log CR bersama
                  rincian settlement yang disubmit. Polanya sama dengan lampiran:
                  kolomnya baru muncul setelah tombolnya diklik. --}}
-            <div class="card card-secondary card-outline shadow-sm mb-3">
-                <div class="card-header d-flex align-items-center">
-                    <h3 class="card-title mb-0"><i class="fas fa-comment-dots mr-1"></i> Keterangan</h3>
-                    <button type="button" class="btn btn-sm btn-primary ml-auto" id="btnAddSettleNote">
-                        <i class="fas fa-plus mr-1"></i> Tambah Keterangan
-                    </button>
-                </div>
-                <div class="card-body">
-                    <div id="settleNoteArea" style="display:none;">
-                        <textarea name="settlement_notes" id="settlementNotes" class="form-control" rows="3"
-                                  maxlength="1000" placeholder="Mis. nota hotel atas nama rekan kerja, selisih karena kenaikan tarif, dsb."></textarea>
-                        <small class="text-muted d-block mt-1">
-                            Keterangan ini ikut tersimpan di Log Cost Request bersama settlement yang disubmit. Maks 1000 karakter.
-                        </small>
+            <x-tw.card>
+                <x-slot:header>
+                    <div class="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3">
+                        <div role="heading" aria-level="2" class="tw:flex tw:items-center tw:gap-2">
+                            <i class="fas fa-comment-dots" aria-hidden="true"></i> Keterangan
+                            <x-tw.badge tone="danger" id="ketWajib" style="display:none;" title="Wajib karena total Settle melebihi nilai pengajuan">Wajib*</x-tw.badge>
+                        </div>
+                        <x-tw.button id="btnAddSettleNote" size="sm" class="tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Keterangan</x-tw.button>
                     </div>
-                    <p id="settleNoteEmpty" class="text-muted mb-0" style="font-size:12px;">
-                        Belum ada keterangan. Klik <strong>Tambah Keterangan</strong> kalau settlement ini perlu penjelasan.
-                    </p>
-                </div>
-            </div>
+                </x-slot:header>
 
-            <div class="card shadow-sm">
-                <div class="card-body d-flex align-items-center" style="gap:8px;">
-                    <button type="submit" id="submitBtn" class="btn btn-secondary" disabled>
-                        <i class="fas fa-paper-plane mr-1"></i> Submit Settlement
-                    </button>
-                    {{-- Simpan draft — data tersimpan TANPA mengajukan, status CR
-                         tetap PAID/SETTLE_REJECTED. Boleh disimpan walau belum
-                         lengkap; kelengkapan baru wajib saat Submit. --}}
-                    <button type="button" id="saveDraftBtn" class="btn btn-outline-secondary"
-                            data-action="{{ route('budget-request.save-realization-draft', $budgetRequest->id) }}">
-                        <i class="fas fa-save mr-1"></i> Simpan
-                    </button>
-                    <a href="{{ url('/budget-request?open=' . $budgetRequest->id) }}" class="btn btn-secondary">
-                        <i class="fas fa-times mr-1"></i> Cancel
-                    </a>
-                    <small id="submitHint" class="text-muted ml-1" style="display:none;"></small>
+                @php $ketAwal = old('settlement_notes', $budgetRequest->settlement_notes ?? ''); @endphp
+                <div id="settleNoteArea" style="{{ filled($ketAwal) ? '' : 'display:none;' }}">
+                    <x-tw.textarea name="settlement_notes" id="settlementNotes" rows="3" maxlength="1000" :value="$ketAwal"
+                                   placeholder="Mis. nota hotel atas nama rekan kerja, selisih karena kenaikan tarif, dsb."
+                                   hint="Keterangan ini tersimpan di data Cost Request dan ikut tercatat di Log. Wajib diisi bila total Settle melebihi nilai pengajuan. Maks 1000 karakter." />
                 </div>
-            </div>
+                <p id="settleNoteEmpty" style="{{ filled($ketAwal) ? 'display:none;' : '' }}" class="tw:m-0 tw:text-data tw:leading-body tw:text-text-dim">
+                    Belum ada keterangan. Klik <strong>Tambah Keterangan</strong> kalau settlement ini perlu penjelasan.
+                </p>
+            </x-tw.card>
+
+            <x-tw.card padding="sm">
+                <div class="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3 tw:max-sm:flex-col-reverse tw:max-sm:items-stretch">
+                    <span id="submitHint" aria-live="off" class="tw:min-w-0 tw:flex-1 tw:text-caption tw:leading-body tw:text-danger" style="display:none;"></span>
+                    <div class="tw:flex tw:flex-wrap tw:items-center tw:gap-2 tw:max-sm:flex-col-reverse tw:max-sm:[&>*]:w-full">
+                        <x-tw.button href="{{ url('/budget-request?open=' . $budgetRequest->id) }}" variant="secondary" class="tw:max-sm:min-h-12"><i class="fas fa-times" aria-hidden="true"></i> Cancel</x-tw.button>
+                        {{-- Simpan draft — data tersimpan TANPA mengajukan, status CR
+                             tetap PAID/SETTLE_REJECTED. Boleh disimpan walau belum
+                             lengkap; kelengkapan baru wajib saat Submit. --}}
+                        <x-tw.button id="saveDraftBtn" variant="secondary" class="tw:max-sm:min-h-12"
+                                     data-action="{{ route('budget-request.save-realization-draft', $budgetRequest->id) }}"><i class="fas fa-save" aria-hidden="true"></i> Simpan</x-tw.button>
+                        <x-tw.button type="submit" id="submitBtn" disabled class="tw:max-sm:min-h-12"><i class="fas fa-paper-plane" aria-hidden="true"></i> Submit Settlement</x-tw.button>
+                    </div>
+                </div>
+            </x-tw.card>
         </form>
 
+        </div>
     </div>
 </div>
 
 @endsection
+
 
 @push('scripts')
 <script>
@@ -350,35 +318,247 @@ $(function () {
     $(document).on('input', '.realize-amount-input', function () {
         this.value = fmtRp(this.value);
     });
+    $(document).on('input', '.realize-qty-input', function () {
+        this.value = this.value.replace(/\D/g, '').slice(0, 3);
+    });
+    $(document).on('blur', '.realize-qty-input', function () {
+        if (!parseInt(this.value, 10)) this.value = 1;
+    });
 
-    /* ── TOTAL / VARIANCE OTOMATIS (per baris + subtotal + ringkasan) ── */
+    /* ── TOTAL / VARIANCE OTOMATIS (per item asal + subtotal + ringkasan) ──
+       Settlement Custom COA (25 Okt 2026): satu item pengajuan boleh dipecah
+       jadi beberapa baris (Sub COA berbeda) dan boleh ada baris tambahan.
+       Request & Variance karena itu dihitung PER ITEM ASAL dan hanya ditulis
+       di baris pertama item tersebut — baris pecahan berikutnya "-" — supaya
+       nilai Request tidak terhitung ganda. Baris tambahan ber-Request 0. */
+    var SUB_ITEMS = {};
+    try { SUB_ITEMS = JSON.parse(document.getElementById('realizeSubItems').textContent || '{}') || {}; } catch (e) { SUB_ITEMS = {}; }
+
+    var REQ_TOTAL = {{ (int) $budgetRequest->amount }};   // nilai pengajuan CR (dasar aturan "Settle melebihi")
+    var REQ_ITEMS = {};
+    try { REQ_ITEMS = JSON.parse(document.getElementById('realizeReqItems').textContent || '{}') || {}; } catch (e) { REQ_ITEMS = {}; }
+
+    function realizeRows() { return $('#realizeBody tr.realize-row'); }
+
+    /* Baris tambahan bernilai 0/kosong dibuang server saat disimpan
+       (isEmptyRealizationRow) — jadi tidak perlu Sub COA maupun Note. */
+    function barisKosong($row) {
+        return !String($row.data('origin') || '') && rowTotal($row) <= 0;
+    }
+
+    /* Keterangan & Lampiran Settlement (header) wajib bila total Settle melebihi nilai pengajuan CR. */
+    function totalSettleNow() {
+        var t = 0;
+        realizeRows().each(function () { t += rowTotal($(this)); });
+        return t;
+    }
+    function adaMelebihi() { return totalSettleNow() > REQ_TOTAL; }
+
+    function lampiranGlobalKosong() {
+        var baru = $('#realAttachmentBody .real-att-input').filter(function () { return this.files && this.files.length; }).length;
+        var lama = $('.del-realize-att-global').filter(function () { return !this.checked; }).length;
+        return !baru && !lama;
+    }
+
+    function ketKosong() { return !($('#settlementNotes').val() || '').trim(); }
+
+    /* Settle satu baris = Harga Satuan x Qty. */
+    function rowTotal($row) {
+        return parseRp($row.find('.realize-amount-input').val())
+            * Math.max(1, parseInt($row.find('.realize-qty-input').val(), 10) || 1);
+    }
+
     function recalcTotalRealized() {
-        var totalRequest = 0, totalSettle = 0;
+        var totalSettle = 0, perSub = {};
 
-        $('#tblSettlement tbody tr[data-detail-id]').each(function () {
-            var $row = $(this);
-            var req  = parseFloat($row.find('.realize-request-cell').data('raw')) || 0;
-            var set  = parseRp($row.find('.realize-amount-input').val());
-            var vr   = req - set;
+        realizeRows().each(function () {
+            var $row   = $(this);
+            var origin = String($row.data('origin') || '');
+            var tot    = rowTotal($row);
+            var sub    = String($row.find('.realize-sub-select').val() || '');
+            totalSettle += tot;
+            if (sub) perSub[sub] = (perSub[sub] || 0) + tot;
 
-            totalRequest += req;
-            totalSettle  += set;
+            $row.find('.realize-total-cell').text(moneyFmt(tot));
 
-            $row.find('.realize-variance-cell')
-                .text(moneyFmt(vr))
-                .toggleClass('text-var-pos', vr >= 0)
-                .toggleClass('text-var-neg', vr < 0);
+            var asal = String($row.data('origin-sub') || '');
+            $row.find('.realize-moved-label').toggle(!!origin && !!sub && sub !== asal);
         });
 
-        var totalVariance = totalRequest - totalSettle;
+        // Peringatan (informatif, tidak memblokir): total Settle per Sub COA
+        // melebihi sisa budget sub-item itu di luar CR ini.
+        realizeRows().each(function () {
+            var $row = $(this);
+            var sub  = String($row.find('.realize-sub-select').val() || '');
+            var info = SUB_ITEMS[sub];
+            var lebih = info && (perSub[sub] || 0) > (parseInt(info.available, 10) || 0);
+            $row.find('.realize-budget-warn')
+                .toggle(!!lebih)
+                .html(lebih ? '<i class="fas fa-exclamation-triangle mr-1"></i>Melebihi sisa budget Sub COA ini (sisa ' + moneyFmt(info.available) + ')' : '');
+        });
+
+        var totalVariance = REQ_TOTAL - totalSettle;
+
+        // Keterangan & Lampiran Settlement wajib bila total Settle melebihi nilai pengajuan.
+        var melebihi = totalSettle > REQ_TOTAL;
+        $('#ketWajib, #attWajib').toggle(melebihi);
+        if (melebihi) { $('#settleNoteArea').show(); $('#settleNoteEmpty').hide(); }
 
         $('#statTotalSettle').text(moneyFmt(totalSettle));
         $('#statVariance').text(moneyFmt(totalVariance)).toggleClass('text-success', totalVariance >= 0).toggleClass('text-danger', totalVariance < 0);
-        $('#footRequestTotal').text(moneyFmt(totalRequest));
         $('#footSettleTotal').text(moneyFmt(totalSettle));
-        $('#footVarianceTotal').text(moneyFmt(totalVariance)).toggleClass('text-var-pos', totalVariance >= 0).toggleClass('text-var-neg', totalVariance < 0);
     }
-    $(document).on('input', '.realize-amount-input', recalcTotalRealized);
+    $(document).on('input', '.realize-amount-input, .realize-qty-input', recalcTotalRealized);
+    $(document).on('change', '.realize-sub-select', recalcTotalRealized);
+
+    /* ── PECAH / TAMBAH / HAPUS BARIS ─────────────────────────────────────
+       Baris baru dibuat dari <template> yang sama dengan baris server
+       (_realize_row.blade.php). Indeks form selalu baru (bukan diurutkan
+       ulang) — server membaca urutan kiriman apa adanya. */
+    var rowSeq = realizeRows().length;
+
+    function initSubSelect($row) {
+        if (window.TesysSearchableSelect) {
+            TesysSearchableSelect.initOne($row.find('.realize-sub-select'), {
+                placeholder: '— Pilih Sub COA —',
+                searchPlaceholder: 'Cari Sub COA...'
+            });
+        }
+    }
+
+    function buatBaris(opts) {
+        var k   = 'n' + (rowSeq++);
+        var tpl = document.getElementById('realizeRowTpl').innerHTML.replace(/__K__/g, k);
+        // trim(): jQuery hanya mengurai string HTML yang diawali "<".
+        var $row = $($.parseHTML(tpl.trim())).filter('tr.realize-row').first();
+        opts = opts || {};
+
+        if (opts.$from) {
+            // Pecahan item asal: ikut item & Sub COA asalnya, Settle 0.
+            var $f = opts.$from;
+            $row.attr('data-origin', $f.data('origin')).attr('data-origin-sub', $f.data('origin-sub'))
+                .attr('data-req', $f.data('req')).attr('data-qty', $f.data('qty'));
+            $row.data('origin', $f.data('origin')).data('origin-sub', $f.data('origin-sub'))
+                .data('req', $f.data('req')).data('qty', $f.data('qty'));
+            $row.find('.realize-origin-input').val($f.data('origin'));
+            $row.find('.realize-origin-label').remove();
+            $row.find('.btn-split-row').show();
+            $row.find('.realize-qty-input').val($f.data('qty') || 1);
+            $row.find('.realize-sub-select').val(opts.sub != null ? String(opts.sub) : ($f.find('.realize-sub-select').val() || ''));
+        } else if (opts.sub != null) {
+            $row.find('.realize-sub-select').val(String(opts.sub));
+        }
+
+        $row.find('.realize-amount-input').val(fmtRp(String(opts.amount || 0)));
+
+        if (opts.$after && opts.$after.length) {
+            opts.$after.after($row);
+        } else {
+            $('#realizeBody').append($row);
+        }
+        $('#realizeBody tr.realize-empty').remove();
+
+        initSubSelect($row);
+        refreshNoteCount($row.find('.realize-notes-input')[0]);
+        refreshNoteItem($row.find('.realize-note-cell'));
+        recalcTotalRealized();
+        updateSettleSubmitState();
+        return $row;
+    }
+
+    /* ── AUTO FILL: salin SELURUH rincian pengajuan menjadi baris settlement ──
+       Satu baris per item (Sub COA, deskripsi, qty, nilai). Item yang sudah
+       punya baris di form dilewati, jadi tidak ada baris yang tertimpa. */
+    $('#btnAutoFill').on('click', function () {
+        var sudah = {};
+        realizeRows().each(function () { var o = String($(this).data('origin') || ''); if (o) sudah[o] = true; });
+
+        var ditambah = 0;
+        Object.keys(REQ_ITEMS).forEach(function (id) {
+            if (sudah[id]) return;
+            var it  = REQ_ITEMS[id];
+            var sub = it.budget_detail_id ? String(it.budget_detail_id) : '';
+            var $row = buatBaris({ sub: sub || null, amount: it.price });
+
+            $row.attr({ 'data-origin': id, 'data-origin-sub': sub, 'data-req': it.total, 'data-qty': it.qty })
+                .data('origin', id).data('origin-sub', sub).data('req', it.total).data('qty', it.qty);
+            $row.find('.realize-origin-input').val(id);
+            $row.find('.realize-origin-label').remove();
+            $row.find('.btn-split-row').show();
+            $row.find('.realize-notes-input').val(String(it.desc || '').slice(0, 255));
+            $row.find('.realize-qty-input').val(Math.max(1, parseInt(it.qty, 10) || 1));
+            ditambah++;
+        });
+
+        recalcTotalRealized();
+        updateSettleSubmitState();
+
+        if (!ditambah) {
+            Swal.fire({ icon: 'info', title: 'Tidak ada yang ditambahkan', text: Object.keys(REQ_ITEMS).length ? 'Semua item pengajuan sudah punya baris di form.' : 'CR ini tidak punya item pengajuan.', confirmButtonColor: '#92232b' });
+        }
+    });
+
+    /* ── VIEW REQUEST: rincian pengajuan lengkap (read-only) ── */
+    $('#btnViewRequest').on('click', function () {
+        var ids = Object.keys(REQ_ITEMS), total = 0;
+        var body = ids.map(function (id, i) {
+            var it = REQ_ITEMS[id]; total += it.total;
+            return '<tr><td class="text-center">' + (i + 1) + '</td><td>' + esc(it.coa) + '</td><td>' + esc(it.sub_coa) + '</td><td>' + esc(it.desc || '-')
+                + '</td><td class="text-center">' + esc(String(it.qty).replace('.', ',')) + '</td><td class="text-right">' + moneyFmt(it.price)
+                + '</td><td class="text-right">' + moneyFmt(it.total) + '</td></tr>';
+        }).join('');
+        Swal.fire({
+            title: 'Rincian Pengajuan — {{ $budgetRequest->code }}',
+            html: '<div class="table-responsive" style="max-height:60vh;text-align:left;"><table class="table table-sm mb-0" style="font-size:12.5px;">'
+                + '<thead><tr><th class="text-center">No</th><th>COA</th><th>Sub COA</th><th>Deskripsi</th><th class="text-center">Qty</th><th class="text-right">Harga</th><th class="text-right">Total</th></tr></thead>'
+                + '<tbody>' + (body || '<tr><td colspan="7" class="text-center text-muted">Tidak ada item</td></tr>') + '</tbody>'
+                + '<tfoot><tr><th colspan="6" class="text-right">Total Request</th><th class="text-right">' + moneyFmt(total) + '</th></tr></tfoot></table></div>',
+            width: '960px',
+            showConfirmButton: false,
+            showCloseButton: true,
+            customClass: { closeButton: 'att-close-btn' }
+        });
+    });
+
+    $(document).on('click', '.btn-split-row', function () {
+        var $row   = $(this).closest('tr.realize-row');
+        var origin = String($row.data('origin') || '');
+        // Sisipkan setelah baris TERAKHIR item yang sama, supaya pecahannya berkumpul.
+        var $last  = realizeRows().filter(function () { return String($(this).data('origin') || '') === origin; }).last();
+        buatBaris({ $from: $row, $after: $last });
+    });
+
+    $('#btnAddSettleRow').on('click', function () {
+        buatBaris({});
+    });
+
+    /* Klik kode CR = salin ke clipboard. */
+    $(document).on('click', '.cr-copy-code', function () {
+        var kode = String($(this).data('code') || $.trim($(this).text()));
+        function toast(pesan, ikon) {
+            if (window.tsToast) window.tsToast(ikon === 'error' ? 'error' : 'success', pesan);
+        }
+        function berhasil() { toast('Kode ' + kode + ' disalin'); }
+        function gagal() { toast('Gagal menyalin kode', 'error'); }
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(kode).then(berhasil, gagal);
+            return;
+        }
+        var ta = document.createElement('textarea');
+        ta.value = kode; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy') ? berhasil() : gagal(); } catch (err) { gagal(); }
+        document.body.removeChild(ta);
+    });
+
+    $(document).on('click', '.btn-remove-row', function () {
+        // Tanpa konfirmasi: baris hanya hilang dari form dan baru berlaku saat disimpan.
+        $(this).closest('tr.realize-row').remove();
+        recalcTotalRealized();
+        updateSettleSubmitState();
+    });
+
+    realizeRows().each(function () { initSubSelect($(this)); });
     recalcTotalRealized();
 
     /* ── SISA KARAKTER "DESCRIPTION SETTLE" ───────────────────────────────── */
@@ -460,37 +640,31 @@ $(function () {
        jadi tombol aktif begitu semua baris siap — supaya jelas kapan
        settlement benar-benar boleh dikirim. */
     function updateSettleSubmitState() {
-        var $rows   = $('#tblSettlement tbody tr[data-detail-id]');
+        var $rows   = realizeRows();
         var reasons = [];
 
         if (!$rows.length) {
-            reasons.push('tidak ada item yang bisa disettle');
+            reasons.push('belum ada baris settlement (klik Auto Fill atau Tambah Baris)');
         } else {
-            var tanpaAtt = [];
+
+            // Baris tambahan wajib memilih Sub COA (ditegakkan juga di server).
+            var tanpaSub = [];
             $rows.each(function (i) {
-                var $row = $(this);
-                // Settle boleh 0; baris bernilai 0 tidak wajib berlampiran.
-                if (parseRp($row.find('.realize-amount-input').val()) <= 0) return;
-
-                var inp  = $row.find('.detail-att-input')[0];
-                var baru  = inp && inp.files && inp.files.length;
-                // Lampiran lama yang tidak dicentang hapus tetap dihitung.
-                var lama  = $row.find('.del-realize-att').filter(function () { return !this.checked; }).length;
-                if (!baru && !lama) tanpaAtt.push(i + 1);
+                if (barisKosong($(this))) return;
+                if (!String($(this).data('origin') || '') && !$(this).find('.realize-sub-select').val()) tanpaSub.push(i + 1);
             });
+            if (tanpaSub.length) reasons.push('Sub COA baris no. ' + tanpaSub.join(', '));
 
-            if (tanpaAtt.length) reasons.push('Lampiran Item baris no. ' + tanpaAtt.join(', '));
+            if (adaMelebihi() && ketKosong()) reasons.push('Keterangan (Settle melebihi pengajuan)');
+            if (adaMelebihi() && lampiranGlobalKosong()) reasons.push('Lampiran Settlement (Settle melebihi pengajuan)');
         }
 
         var siap = reasons.length === 0;
 
-        // Abu-abu selama belum lengkap, merah (warna aksi utama TESYS) begitu
-        // settlement benar-benar siap dikirim. "Simpan" TIDAK ikut gerbang ini:
-        // draft boleh disimpan setengah jalan.
-        $('#submitBtn')
-            .prop('disabled', !siap)
-            .toggleClass('btn-primary', siap)
-            .toggleClass('btn-secondary', !siap);
+        // Redup (disabled) selama belum lengkap, aktif (warna aksi utama TESYS)
+        // begitu settlement benar-benar siap dikirim. "Simpan" TIDAK ikut
+        // gerbang ini: draft boleh disimpan setengah jalan.
+        $('#submitBtn').prop('disabled', !siap);
 
         $('#submitHint')
             .text(siap ? '' : 'Lengkapi: ' + reasons.join('; '))
@@ -776,7 +950,7 @@ $(function () {
             '<td class="text-center align-middle row-no"></td>' +
             '<td><input type="file" name="realization_attachments[' + i + ']" class="form-control-file real-att-input">' +
                 '<div class="real-att-preview mt-1" style="font-size:11px;"></div></td>' +
-            '<td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-real-att"><i class="fas fa-trash"></i></button></td>';
+            '<td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-real-att" title="Hapus lampiran" aria-label="Hapus lampiran"><i class="fas fa-trash" aria-hidden="true"></i></button></td>';
         tbody.appendChild(tr);
 
         if (file) {
@@ -827,6 +1001,7 @@ $(function () {
     function renumberAttachments() {
         document.querySelectorAll('#realAttachmentBody .row-no').forEach(function (el, i) { el.textContent = i + 1; });
         refreshRealAttTable();
+        if (window.__updateSettleSubmitState) window.__updateSettleSubmitState();
     }
 
     document.addEventListener('click', function (e) {
@@ -843,6 +1018,14 @@ $(function () {
 
         zone.addEventListener('click', function () { input.click(); });
         browse.addEventListener('click', function (e) { e.stopPropagation(); input.click(); });
+        // role="button" harus bisa diaktifkan lewat papan ketik (Enter / Spasi).
+        browse.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                input.click();
+            }
+        });
 
         input.addEventListener('change', function () {
             Array.from(this.files).forEach(function (f) { addAttachmentRow(f); });
@@ -886,9 +1069,11 @@ $(function () {
     })();
 
     /* ── DOWNLOAD TEMPLATE & IMPORT EXCEL — Settlement per Item ─────────────
-       Baris tabel ini tetap (tidak bisa tambah/kurang) — import hanya
-       mengisi ulang kolom "Settle" per item, dicocokkan lewat
-       Request Detail ID (jangan diubah di file template). ── */
+       Settlement Custom COA (25 Okt 2026): baris file dicocokkan ke baris
+       form lewat Request Detail ID + Budget Detail ID (Sub COA). Baris file
+       yang tidak punya pasangan di form ditambahkan sebagai baris baru —
+       pecahan item (Request Detail ID diisi) atau baris tambahan (kosong).
+       Baris form yang tidak ada di file dibiarkan apa adanya. ── */
     $('#btnImportSettlementExcel').on('click', function () {
         $('#importSettlementFileInput').val('').trigger('click');
     });
@@ -923,11 +1108,32 @@ $(function () {
             }
 
             if (res.rows && res.rows.length) {
-                var applied = 0;
+                var applied = 0, terpakai = [];
                 res.rows.forEach(function (r) {
-                    var $row = $('tr[data-detail-id="' + r.request_detail_id + '"]');
-                    if (!$row.length) return;
-                    $row.find('.realize-amount-input').val(fmtRp(String(r.amount)));
+                    var origin = r.request_detail_id ? String(r.request_detail_id) : '';
+                    var sub    = r.budget_detail_id ? String(r.budget_detail_id) : '';
+                    var bebas  = realizeRows().filter(function () {
+                        return terpakai.indexOf(this) === -1 && String($(this).data('origin') || '') === origin;
+                    });
+                    // Pasangan terbaik: item & Sub COA sama; lalu item yang sama saja
+                    // (hanya untuk item asal — baris tambahan wajib Sub COA sama).
+                    var $row = bebas.filter(function () { return String($(this).find('.realize-sub-select').val() || '') === sub; }).first();
+                    if (!$row.length && origin) $row = bebas.first();
+
+                    if (!$row.length) {
+                        var $asal = origin
+                            ? realizeRows().filter(function () { return String($(this).data('origin') || '') === origin; })
+                            : $();
+                        $row = $asal.length
+                            ? buatBaris({ $from: $asal.first(), $after: $asal.last(), sub: sub, amount: r.amount })
+                            : buatBaris({ sub: sub, amount: r.amount });
+                    } else {
+                        $row.find('.realize-amount-input').val(fmtRp(String(r.amount)));
+                        $row.find('.realize-qty-input').val(1);
+                        if (sub) $row.find('.realize-sub-select').val(sub).trigger('tss:sync');
+                    }
+
+                    terpakai.push($row[0]);
                     applied++;
                 });
                 recalcTotalRealized();
@@ -973,17 +1179,10 @@ $(function () {
         var $cell = $(this).closest('.realize-note-cell');
         var $inp  = $cell.find('.realize-change-note');
         var $row  = $cell.closest('tr');
-        var req   = parseInt($row.find('.realize-request-cell').data('raw'), 10) || 0;
-        var settle = parseRp($row.find('.realize-amount-input').val());
-        var wajib = settle > req;
 
         Swal.fire({
             title: 'Catatan Perubahan',
-            html: (wajib
-                    ? '<div class="text-danger mb-2" style="font-size:12px;text-align:left;">'
-                      + 'Nilai Settle melebihi Request — catatan ini wajib diisi.</div>'
-                    : '')
-                + '<textarea id="noteItemInput" class="form-control" rows="5" maxlength="' + CHANGE_NOTE_MAX + '" '
+            html: '<textarea id="noteItemInput" class="form-control" rows="5" maxlength="' + CHANGE_NOTE_MAX + '" '
                 + 'placeholder="Alasan perubahan dari Description Request ke Description Settle..." '
                 + 'style="font-size:13px;width:100%;resize:vertical;">'
                 + $('<div>').text($inp.val() || '').html() + '</textarea>'
@@ -1006,10 +1205,6 @@ $(function () {
             preConfirm: function () {
                 var ta = Swal.getPopup().querySelector('#noteItemInput');
                 var v  = (ta.value || '').trim();
-                if (wajib && !v) {
-                    Swal.showValidationMessage('Catatan wajib diisi karena Settle melebihi Request.');
-                    return false;
-                }
                 return v;
             }
         }).then(function (res) {
@@ -1022,44 +1217,38 @@ $(function () {
     /* Kelengkapan baris — dipakai SAMA PERSIS oleh Submit maupun Simpan
        (draft), supaya data yang tersimpan tidak pernah setengah lengkap. */
     function cekKelengkapanBaris() {
-        // CR yang sudah PAID/SETTLE_REJECTED: tiap baris settlement wajib
-        // punya Lampiran Item.
-        var missAtt = [];
-        $('#realizeBody tr[data-detail-id]').each(function (idx) {
-            if (parseRp($(this).find('.realize-amount-input').val()) <= 0) return;
-            var inp  = this.querySelector('.detail-att-input');
-            var baru = inp && inp.files && inp.files.length;
-            var lama = $(this).find('.del-realize-att').filter(function () { return !this.checked; }).length;
-            if (!baru && !lama) missAtt.push(idx + 1);
+        // Keterangan & Lampiran Settlement (header) wajib bila total Settle melebihi nilai pengajuan.
+        var melebihi = adaMelebihi();
+        var missKet  = melebihi && ketKosong();
+        var missLamp = melebihi && lampiranGlobalKosong();
+        // Baris tambahan wajib memilih Sub COA.
+        var missSub = [];
+        realizeRows().each(function (idx) {
+            if (barisKosong($(this))) return;
+            if (!String($(this).data('origin') || '') && !$(this).find('.realize-sub-select').val()) missSub.push(idx + 1);
         });
-        // Settle melebihi Request wajib disertai catatan perubahan.
-        var missNote = [];
-        $('#realizeBody tr[data-detail-id]').each(function (idx) {
-            var req    = parseInt($(this).find('.realize-request-cell').data('raw'), 10) || 0;
-            var settle = parseRp($(this).find('.realize-amount-input').val());
-            if (settle > req && !($(this).find('.realize-change-note').val() || '').trim()) {
-                missNote.push(idx + 1);
-            }
-        });
-        return { missAtt: missAtt, missNote: missNote };
+        return { missKet: missKet, missLamp: missLamp, missSub: missSub };
     }
 
     /** true kalau ada yang kurang (dan sudah ditampilkan pop-up-nya). */
     function peringatkanKelengkapan(cek) {
-        if (cek.missAtt.length) {
+        if (cek.missSub.length) {
             Swal.fire({
                 icon: 'warning',
-                title: 'Lampiran Item belum lengkap',
-                text: 'Setiap baris Rincian Settlement wajib punya Lampiran Item. Baris belum berlampiran: no. ' + cek.missAtt.join(', ') + '.',
+                title: 'Sub COA belum dipilih',
+                text: 'Baris tambahan wajib memilih Sub COA. Baris: no. ' + cek.missSub.join(', ') + '.',
                 confirmButtonColor: '#92232b'
             });
             return true;
         }
-        if (cek.missNote.length) {
+        if (cek.missKet || cek.missLamp) {
+            var kurang = [];
+            if (cek.missKet)  kurang.push('Keterangan');
+            if (cek.missLamp) kurang.push('Lampiran Settlement');
             Swal.fire({
                 icon: 'warning',
-                title: 'Note belum diisi',
-                text: 'Baris dengan nilai Settle melebihi Request wajib diisi Note. Baris: no. ' + cek.missNote.join(', ') + '.',
+                title: 'Data header belum lengkap',
+                text: 'Total Settle melebihi nilai pengajuan, sehingga ' + kurang.join(' dan ') + ' wajib diisi.',
                 confirmButtonColor: '#92232b'
             });
             return true;
@@ -1091,10 +1280,20 @@ $(function () {
        lengkap (lampiran item / Note) — kelengkapannya baru diwajibkan saat
        Submit. Form hanya diarahkan ke route simpan-draft sebelum dikirim. */
     $('#saveDraftBtn').on('click', function () {
+        // Draft tanpa satu baris pun ditolak server (realizations wajib minimal 1).
+        if (!realizeRows().length) {
+            Swal.fire({ icon: 'info', title: 'Belum ada baris', text: 'Tambahkan minimal satu baris settlement (Auto Fill atau Tambah Baris) sebelum menyimpan.', confirmButtonColor: '#92232b' });
+            return;
+        }
         var cek   = cekKelengkapanBaris();
+        // Sub COA baris tambahan wajib juga saat simpan draft (server menolak).
+        if (cek.missSub.length) {
+            peringatkanKelengkapan({ missSub: cek.missSub, missKet: false, missLamp: false });
+            return;
+        }
         var kurang = [];
-        if (cek.missAtt.length)  kurang.push('Lampiran Item baris no. ' + cek.missAtt.join(', '));
-        if (cek.missNote.length) kurang.push('Note baris no. ' + cek.missNote.join(', '));
+        if (cek.missKet) kurang.push('Keterangan');
+        if (cek.missLamp) kurang.push('Lampiran Settlement');
 
         Swal.fire({
             title: 'Simpan Draft Settlement?',
@@ -1118,45 +1317,29 @@ $(function () {
 @endpush
 
 @push('styles')
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
-.card-header .card-title { margin-bottom: 0; font-size: 1.1rem; }
-
-/* ── Request Summary — strip horizontal ── */
-.summary-stat-row { gap: 0; }
-.summary-stat {
-    flex: 1 1 0;
-    min-width: 140px;
-    padding: 0 16px;
-    border-left: 1px solid var(--border);
-}
-.summary-stat:first-child { border-left: none; padding-left: 0; }
-.summary-stat-label { font-size: 11px; color: var(--text-faint); text-transform: uppercase; font-weight: 600; letter-spacing: .02em; }
-.summary-stat-value { font-size: 17px; font-weight: 700; margin-top: 2px; }
-
+.cr-copy-code { background:none; border:0; padding:0; margin:0; font:inherit; color:inherit; cursor:pointer; }
+.cr-copy-code:hover { color:var(--accent); text-decoration:underline; }
+.cr-copy-code:focus-visible { outline:none; box-shadow:0 0 0 3px var(--accent-ring); border-radius:var(--radius-sm); }
 .text-var-pos { color: var(--success); }
 .text-var-neg { color: var(--danger); }
 
-/* ── Tabel Settlement per Item — tampilan lebih clean & ringkas ── */
-#tblSettlement th {
-    color: var(--text-faint); font-size: 10.5px; text-transform: uppercase; letter-spacing: .02em;
-    font-weight: 700; border-bottom-width: 1px; vertical-align: middle;
-}
+/* ── Tabel Settlement per Item ── */
 #tblSettlement td { vertical-align: middle; padding: 6px 10px; }
 #tblSettlement tbody tr:hover { background: var(--surface-2); }
 #tblSettlement .form-control-sm { font-size: 12px; }
 #tblSettlement .realize-amount-input { min-width: 92px; font-weight: 600; }
 #tblSettlement .realize-notes-input { min-width: 180px; width: 100%; }
-#tblSettlement .realize-desc-request-cell {
-    max-width: 260px; white-space: normal; word-break: break-word;
-    color: var(--text-dim); font-size: 11.5px; line-height: 1.4;
-}
-#tblSettlement tfoot th { font-size: 11px; color: var(--text); border-top: 2px solid var(--border); }
+#tblSettlement .realize-desc-request-cell { max-width: 260px; white-space: normal; word-break: break-word; }
+#tblSettlement tfoot th { font-size: 11px; color: var(--text); border-top: 2px solid var(--border); padding: 8px 10px; }
+
+/* ── Sub COA per baris (Settlement Custom COA) ── */
+#tblSettlement .tss-btn { font-size: 12px; padding: 2px 8px; min-width: 200px; text-align: left; }
 
 /* ── Lampiran Item per baris (dropzone mini) ── */
 .detail-att-cell { outline: none; transition: background .15s ease; padding: 6px 8px; }
 .detail-att-cell:focus-within { background: var(--warning-bg); }
-.detail-att-hint { opacity: .6; }
-.detail-att-cell .btn-detail-att { border-radius: var(--radius-sm); }
 
 /* Kotak deskripsi + ikon "lihat penuh" di ujung kanannya. Latarnya penuh
    supaya teks panjang tidak lewat di bawah ikon. */
@@ -1170,13 +1353,9 @@ $(function () {
 }
 .desc-wrap .desc-expand:hover { color: var(--accent); }
 
-/* ── Ikon catatan perubahan per baris ── */
-/* Tombol Note mengikuti tombol aksi lain (mis. "Tambah Lampiran"): ikon +
-   tulisan, bukan ikon telanjang. Baris yang catatannya sudah terisi diberi
-   cincin tipis; isinya terlihat lewat cuplikan teks di bawah tombol. */
-.btn-note-item { white-space: nowrap; }
+/* Baris yang catatan perubahannya sudah terisi diberi cincin tipis; isinya
+   terlihat lewat cuplikan teks di bawah tombol. */
 .btn-note-item.has-note { box-shadow: 0 0 0 3px var(--accent-ring); }
-.note-item-preview { max-width: 120px; margin-left: auto; margin-right: auto; }
 
 /* Lampiran lama yang ditandai untuk dibuang saat submit. */
 .att-lama-dibuang { text-decoration: line-through; opacity: .55; }
@@ -1200,14 +1379,9 @@ $(function () {
 /* ── Bukti Settlement (Global) dropzone ── */
 .att-dropzone {
     border: 2px dashed var(--border); border-radius: var(--radius-md); padding: 28px 20px; text-align: center;
-    color: var(--text-faint); cursor: pointer; transition: all .2s ease; background: var(--surface-2);
+    color: var(--text-dim); cursor: pointer; background: var(--surface-2);
 }
-.att-dropzone:hover { border-color: var(--accent); background: var(--warning-bg); }
-.att-dropzone.dragover { border-color: var(--accent); background: var(--warning-bg); color: var(--accent-dark); }
-
-@media (max-width: 991.98px) {
-    .summary-stat { border-left: none; border-top: 1px solid var(--border); padding: 8px 0 0; margin-top: 8px; }
-    .summary-stat:first-child { border-top: none; margin-top: 0; padding-top: 0; }
-}
+.att-dropzone:hover { border-color: var(--accent); background: var(--accent-tint); }
+.att-dropzone.dragover { border-color: var(--accent); background: var(--accent-tint); color: var(--accent-dark); }
 </style>
 @endpush

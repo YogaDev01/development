@@ -168,6 +168,7 @@ Route::middleware('auth')->group(function () {
     */
    // AJAX
     Route::get('project/{id}/detail-json', [ProjectController::class, 'showJson'])->name('project.show-json');
+    Route::post('project/{id}/log-note', [ProjectController::class, 'storeLogNote'])->middleware('throttle:30,1')->name('project.log-note');
 
     // Export daftar PO ke Excel — hanya superadmin & approver.
     // POST juga didukung — export mengirim daftar ID baris hasil filter aktif
@@ -201,6 +202,13 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:superadmin,head')->group(function () {
         Route::post('project/{id}/submit',         [ProjectController::class, 'submit'])->name('project.submit');
         Route::post('project/{id}/submit-closing', [ProjectController::class, 'submitClosing'])->name('project.submit-closing');
+    });
+
+    // Bulk Verify/Approve/Minta Revisi: tiap PO diproses method satuan di bawah. Role per tahap
+    // (SUBMITTED: finance group, VERIFIED: approver) dicek ulang di ProjectController::bulkProses().
+    Route::middleware('role:superadmin,finance,finance_manager,approver')->group(function () {
+        Route::post('project/bulk-approve', [ProjectController::class, 'bulkApprove'])->name('project.bulk-approve');
+        Route::post('project/bulk-revise',  [ProjectController::class, 'bulkRevise'])->name('project.bulk-revise');
     });
 
     // Approval PO dua langkah: Finance VERIFY, lalu Approver APPROVE.
@@ -641,6 +649,7 @@ Route::middleware('auth')->group(function () {
     // Detail JSON & export report — scoping per-record (termasuk kerahasiaan
     // PAYROLL) dijaga di BudgetPlanController::canViewBudgetPlan().
     Route::get('budget-plan/{id}/detail-json',    [BudgetPlanController::class, 'showJson'])->name('budget-plan.show-json');
+    Route::post('budget-plan/{id}/log-note',      [BudgetPlanController::class, 'storeLogNote'])->middleware('throttle:30,1')->name('budget-plan.log-note');
     Route::get('budget-plan/{id}/export-report',  [BudgetPlanController::class, 'exportReport'])->name('budget-plan.export-report');
     Route::get('budget-plan/{id}/export-cost',    [BudgetPlanController::class, 'exportCost'])->name('budget-plan.export-cost');
     Route::get('budget-plan/{id}/export-budget',  [BudgetPlanController::class, 'exportBudget'])->name('budget-plan.export-budget');
@@ -655,6 +664,14 @@ Route::middleware('auth')->group(function () {
         Route::post('budget-plan/{id}/submit',         [BudgetPlanController::class, 'submit'])->name('budget-plan.submit');
         Route::post('budget-plan/{id}/submit-closing', [BudgetPlanController::class, 'submitClosing'])->name('budget-plan.submit-closing');
         Route::post('budget-plan/{id}/manager-revise', [BudgetPlanController::class, 'managerRevise'])->name('budget-plan.manager-revise');
+        // Tambah baris COA (nilai 0) ke Budget Plan ACTIVE — tidak menambah nilai budget.
+        Route::post('budget-plan/{id}/add-coa',        [BudgetPlanController::class, 'addCoa'])->name('budget-plan.add-coa');
+    });
+
+    // Bulk approve/reject: tiap Budget Plan diproses method satuan di atas (role dicek ulang di sana).
+    Route::middleware('role:superadmin,head,finance,finance_manager,approver')->group(function () {
+        Route::post('budget-plan/bulk-approve', [BudgetPlanController::class, 'bulkApprove'])->name('budget-plan.bulk-approve');
+        Route::post('budget-plan/bulk-reject',  [BudgetPlanController::class, 'bulkReject'])->name('budget-plan.bulk-reject');
     });
 
     Route::middleware('role:superadmin,head')->group(function () {
@@ -702,6 +719,7 @@ Route::middleware('auth')->group(function () {
     */
     
     Route::get('budget-request/{id}/detail-json', [BudgetRequestController::class, 'showJson'])->name('budget-request.show-json');
+    Route::post('budget-request/{id}/log-note',   [BudgetRequestController::class, 'storeLogNote'])->middleware('throttle:30,1')->name('budget-request.log-note');
     Route::post('budget-request/check-nob',       [BudgetRequestController::class, 'checkNob'])->name('budget-request.check-nob');
     // Info pagu Cash Advance per PIC (dipakai form create/edit saat beneficiary dipilih)
     Route::get('budget-request/ca-quota',        [BudgetRequestController::class, 'caQuota'])->name('budget-request.ca-quota');
@@ -805,6 +823,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:superadmin,head,finance,finance_manager,cost_control,approver')->group(function () {
         Route::post('budget-request/review-bulk-approve', [BudgetRequestController::class, 'reviewBulkApprove'])->name('budget-request.review-bulk-approve');
         Route::post('budget-request/review-bulk-reject',  [BudgetRequestController::class, 'reviewBulkReject'])->name('budget-request.review-bulk-reject');
+        // Bulk approve tahap settlement (Fase 4) dari daftar CR; peran per status dicek controller (SETTLE_BULK_ROLES).
+        Route::post('budget-request/settlement-bulk-approve', [BudgetRequestController::class, 'settlementBulkApprove'])->name('budget-request.settlement-bulk-approve');
         Route::post('budget-request/{id}/detail/{detailId}/takeout', [BudgetRequestController::class, 'takeoutDetail'])->name('budget-request.detail.takeout');
         Route::post('budget-request/{id}/detail/{detailId}/restore', [BudgetRequestController::class, 'restoreDetail'])->name('budget-request.detail.restore');
     });
@@ -1090,12 +1110,22 @@ Route::middleware('auth')->group(function () {
     | approval CEO di luar sistem, sistem ini cuma tempat mencatatnya.
     */
 
-    Route::middleware('role:superadmin,finance,finance_manager')->group(function () {
+    // Alur = Cost Payment (Non-CA): DRAFT -> VERIFIED ("Submitted") -> APPROVED -> QUEUED -> CLOSED.
+    // Melihat daftar/detail/export + menulis catatan log: finance group + approver.
+    // Role per aksi (submit/cancel: finance group; approve/revise: approver) dicek lagi di controller.
+    Route::middleware('role:superadmin,finance,finance_manager,approver')->group(function () {
         Route::get('cost-register', [CostRegisterController::class, 'index'])->name('cost-register.index');
+        Route::match(['get', 'post'], 'cost-register/export', [CostRegisterController::class, 'export'])->name('cost-register.export');
+        Route::get('cost-register/{id}/detail-json', [CostRegisterController::class, 'showJson'])->name('cost-register.show-json');
+        Route::post('cost-register/{id}/log-note', [CostRegisterController::class, 'storeLogNote'])->middleware('throttle:30,1')->name('cost-register.log-note');
+        Route::post('cost-register/{id}/approve', [CostRegisterController::class, 'approve'])->name('cost-register.approve');
+        Route::post('cost-register/{id}/revise', [CostRegisterController::class, 'revise'])->name('cost-register.revise');
+    });
+
+    Route::middleware('role:superadmin,finance,finance_manager')->group(function () {
         Route::get('cost-register/create', [CostRegisterController::class, 'create'])->name('cost-register.create');
         Route::post('cost-register', [CostRegisterController::class, 'store'])->name('cost-register.store');
         Route::delete('cost-register/{id}', [CostRegisterController::class, 'destroy'])->name('cost-register.destroy');
-        // MN-09 — alur Non-CR menuju Treasury.
         Route::post('cost-register/{id}/submit', [CostRegisterController::class, 'submit'])->name('cost-register.submit');
         Route::post('cost-register/{id}/cancel', [CostRegisterController::class, 'cancel'])->name('cost-register.cancel');
     });
@@ -1346,9 +1376,12 @@ Route::middleware('auth')->group(function () {
     
     // Approve / reject batch — tahap CEO/Approver. Cek status batch tetap di controller.
     Route::middleware('role:superadmin,approver')->group(function () {
+        Route::post('daily-transaction/bulk-approve', [DailyTransactionController::class, 'bulkApprove'])->name('daily-transaction.bulk-approve');
+        Route::post('daily-transaction/bulk-reject',  [DailyTransactionController::class, 'bulkReject'])->name('daily-transaction.bulk-reject');
         Route::post('daily-transaction/{id}/approve',                   [DailyTransactionController::class, 'approve'])->name('daily-transaction.approve');
         Route::post('daily-transaction/{id}/reject-batch',              [DailyTransactionController::class, 'rejectBatch'])->name('daily-transaction.reject-batch');
         Route::post('daily-transaction/{batchId}/reject-item/{itemId}', [DailyTransactionController::class, 'rejectItem'])->name('daily-transaction.reject-item');
+        Route::post('daily-transaction/{batchId}/reject-cr-item/{itemId}', [DailyTransactionController::class, 'rejectCrItem'])->name('daily-transaction.reject-cr-item');
     });
 
     // Kelola isi batch & tandai paid — Treasury/Finance.
@@ -1357,6 +1390,10 @@ Route::middleware('auth')->group(function () {
         Route::post('daily-transaction', [DailyTransactionController::class, 'store'])->name('daily-transaction.store');
         Route::post('daily-transaction/{id}/add-item',  [DailyTransactionController::class, 'addItem'])->name('daily-transaction.add-item');
         Route::post('daily-transaction/{id}/mark-paid', [DailyTransactionController::class, 'markPaid'])->name('daily-transaction.mark-paid');
+        // Draft batch (29 Okt 2026): ajukan ke CEO, hapus draft, keluarkan item dari draft.
+        Route::post('daily-transaction/{id}/submit',   [DailyTransactionController::class, 'submit'])->name('daily-transaction.submit');
+        Route::delete('daily-transaction/{id}',        [DailyTransactionController::class, 'destroy'])->name('daily-transaction.destroy');
+        Route::post('daily-transaction/{batchId}/draft-remove-item/{itemId}', [DailyTransactionController::class, 'removeDraftItem'])->name('daily-transaction.draft-remove-item');
     });
     
     // Tutup Periode (month-end close) — M-04, sudah tersambung ke data nyata.
@@ -1371,6 +1408,7 @@ Route::middleware('auth')->group(function () {
         Route::get('daily-transaction',                    [DailyTransactionController::class, 'index'])->name('daily-transaction.index');
         Route::match(['get', 'post'], 'daily-transaction/export', [DailyTransactionController::class, 'exportList'])->name('daily-transaction.export-list');
         Route::get('daily-transaction/{id}/detail-json',    [DailyTransactionController::class, 'showJson'])->name('daily-transaction.show-json');
+        Route::post('daily-transaction/{id}/log-note',      [DailyTransactionController::class, 'storeLogNote'])->middleware('throttle:30,1')->name('daily-transaction.log-note');
         Route::get('daily-transaction/{id}/export',         [DailyTransactionController::class, 'export'])->name('daily-transaction.export');
         Route::get('daily-transaction/{id}/export-data',    [DailyTransactionController::class, 'exportData'])->name('daily-transaction.export-data');
         Route::get('daily-transaction/{id}',                [DailyTransactionController::class, 'show'])->name('daily-transaction.show');

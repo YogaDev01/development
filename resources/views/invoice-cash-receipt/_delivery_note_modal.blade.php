@@ -102,6 +102,24 @@
         </div>
     </div>
 
+    {{-- LAMPIRAN SURAT JALAN (semua berkas, termasuk yang tidak terikat ke satu log) --}}
+    <div class="dnm-section">
+        <div class="dnm-section-title">
+            <i class="fas fa-paperclip mr-1"></i> Lampiran Surat Jalan ({{ $deliveryNote->attachments->count() }})
+        </div>
+        @if($deliveryNote->attachments->isNotEmpty())
+        <div class="dnm-chips" style="margin-top:0;">
+            @foreach($deliveryNote->attachments as $att)
+            <a href="/storage/{{ $att->file_path }}" target="_blank" class="dnm-chip">
+                <i class="fas fa-paperclip mr-1"></i>{{ $att->title ?? 'File' }}
+            </a>
+            @endforeach
+        </div>
+        @else
+        <div class="text-muted" style="font-size:12px;">Belum ada lampiran.</div>
+        @endif
+    </div>
+
     {{-- LOG & LAMPIRAN --}}
     <div class="dnm-section">
         <div class="dnm-section-title"><i class="fas fa-history mr-1"></i> Log &amp; Lampiran</div>

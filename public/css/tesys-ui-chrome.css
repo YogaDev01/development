@@ -78,7 +78,7 @@ body.tesys-ui .brand-link,
 body.tesys-ui .brand-link span,
 body.tesys-ui .brand-link .brand-text {
     color: #fff !important;
-    font-family: "Plus Jakarta Sans", sans-serif;
+    font-family: var(--font-display);
 }
 body.tesys-ui .brand-version {
     background: var(--surface) !important;
