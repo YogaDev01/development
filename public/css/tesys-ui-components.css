@@ -1239,3 +1239,21 @@ a.ts-feed-row:hover { background: var(--surface-2); text-decoration: none; color
     .tdr-pop { flex-direction: column; }
     .tdr-pop.tdr-pop-has-foot { grid-template-columns: auto; }
 }
+
+/* =====================================================================
+   SALIN KODE — nilai di samping label "Kode"/"Code" (public/js/tesys-copy-code.js)
+   Isi nilai dibungkus span inline, jadi sorotan hanya selebar teksnya.
+   Setelah diklik, teksnya berganti "Tersalin ✓" selama 2 detik.
+   (Bukan .ts-copy-code — kelas itu milik salin kode di tabel, dengan toast.)
+   ===================================================================== */
+.ts-copy-kv {
+    display: inline-block; max-width: 100%;
+    margin: -1px -5px; padding: 1px 5px; border-radius: var(--radius-sm);
+    cursor: pointer; overflow-wrap: anywhere;
+    transition: background-color var(--dur-fast, .14s) ease, color var(--dur-fast, .14s) ease;
+}
+.ts-copy-kv:hover { background: var(--accent-tint); color: var(--accent-text); text-decoration: underline; text-underline-offset: 3px; }
+.ts-copy-kv:focus { outline: none; }
+.ts-copy-kv:focus-visible { box-shadow: 0 0 0 3px var(--accent-ring); }
+.ts-copy-kv.is-copied,
+.ts-copy-kv.is-copied:hover { background: var(--success-bg); color: var(--success); text-decoration: none; font-weight: 600; cursor: default; }

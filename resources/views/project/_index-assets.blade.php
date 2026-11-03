@@ -330,38 +330,6 @@ body.tesys-ui a.po-cell-link:focus { background:var(--charcoal); color:#fff; }
 #prjPaneLogs #prjLogBody { margin-top:auto; }
 .prj-chat-note { margin-top:6px; font-size:11.5px; line-height:1.45; white-space:pre-line; color:var(--text); }
 
-/* ── IMAGE VIEWER (carousel + zoom) ── */
-#imgViewerOverlay {
-    position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:2000;
-    display:none; align-items:center; justify-content:center; flex-direction:column;
-}
-#imgViewerOverlay.show { display:flex; }
-#imgViewerStage { position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-#imgViewerImg {
-    max-width:90vw; max-height:82vh; object-fit:contain; cursor:zoom-in;
-    transition:transform .15s ease; transform-origin:center center; user-select:none; -webkit-user-drag:none;
-}
-#imgViewerImg.zoomed { cursor:grab; }
-#imgViewerImg.dragging { cursor:grabbing; transition:none; }
-#imgViewerClose {
-    position:absolute; top:16px; right:20px; z-index:10; background:rgba(255,255,255,.12); border:none; color:#fff;
-    width:38px; height:38px; border-radius:50%; font-size:20px; display:flex; align-items:center; justify-content:center; cursor:pointer;
-}
-#imgViewerClose:hover { background:rgba(255,255,255,.25); }
-.imgViewerNav {
-    position:absolute; top:50%; transform:translateY(-50%); background:rgba(255,255,255,.12); border:none; color:#fff;
-    width:44px; height:44px; border-radius:50%; font-size:20px; display:flex; align-items:center; justify-content:center; cursor:pointer;
-}
-.imgViewerNav:hover { background:rgba(255,255,255,.25); }
-#imgViewerPrev { left:16px; }
-#imgViewerNext { right:16px; }
-#imgViewerCounter { position:absolute; bottom:16px; left:50%; transform:translateX(-50%); color:#fff; font-size:12px; background:rgba(255,255,255,.12); padding:4px 12px; border-radius:var(--radius-lg); }
-#imgViewerName { position:absolute; top:20px; left:20px; z-index:10; color:#fff; font-size:12px; opacity:.85; max-width:60vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-@media (max-width:576px) {
-    .imgViewerNav { width:36px; height:36px; font-size:16px; }
-    #imgViewerPrev { left:6px; } #imgViewerNext { right:6px; }
-}
-
 .font-weight-600 { font-weight:600; }
 
 /* --- Filter dropdown: bedakan header grup vs item --- */
@@ -444,12 +412,12 @@ $(function () {
     // key -> index kolom (urutan render, kolom 0 "No" disembunyikan DataTable).
     var colVisMap = {
         type: 4, uploaded: 6, margin: 7, contract: 8, restitusi: 9, povalue: 10, budget: 11,
-        varcost: 12, invoice: 13, tax: 14, wht: 15, invtotal: 16,
-        profit: 17, overhead: 18, fixedcost: 19, netprofit: 20
+        varcost: 12, invoice: 13, tax: 14, wht: 15, invtotal: 16, cashreceipt: 17,
+        profit: 18, overhead: 19, fixedcost: 20, netprofit: 21
     };
     var colVisDefault = {
         type: true, uploaded: true, margin: true, povalue: true, contract: true, restitusi: true, budget: false,
-        varcost: false, invoice: false, tax: false, wht: false, invtotal: false,
+        varcost: false, invoice: false, tax: false, wht: false, invtotal: false, cashreceipt: true,
         profit: true, overhead: false, fixedcost: false, netprofit: true
     };
 
@@ -462,7 +430,7 @@ $(function () {
     */
     var bolehKolomFinansial = @json($bolehKolomFinansial);
     var kolomUangTerbatas = ['margin', 'contract', 'restitusi', 'povalue', 'invoice', 'tax', 'wht',
-                             'invtotal', 'profit', 'overhead', 'fixedcost', 'netprofit'];
+                             'invtotal', 'cashreceipt', 'profit', 'overhead', 'fixedcost', 'netprofit'];
     var kolomWajibTampil  = ['budget', 'varcost'];
 
     function getColVisPref(key) {
@@ -497,10 +465,10 @@ $(function () {
         columnDefs: [
             // 0=No(hidden) 1=Kode 2=Scope 3=Status 4=Tipe 5=Progress 6=Uploaded
             // 7=Margin 8=Contract 9=Restitusi 10=PO Value 11=Budget
-            // 12=Variable Cost 13=Invoice 14=PPN 15=PPH 16=Total
-            // 17=Gross Profit 18=Overhead 19=Fixed Cost 20=Net Profit 21=Action
+            // 12=Variable Cost 13=Invoice 14=PPN 15=PPH 16=Total 17=Cash Receipt
+            // 18=Gross Profit 19=Overhead 20=Fixed Cost 21=Net Profit 22=Action
             { targets: [0], visible: false, orderable: false },
-            { orderable: false, targets: [6, 7, 21] },
+            { orderable: false, targets: [6, 7, 22] },
             { targets: [4],  visible: getColVisPref('type') },
             { targets: [6],  visible: getColVisPref('uploaded') },
             { targets: [7],  visible: getColVisPref('margin') },
@@ -513,10 +481,11 @@ $(function () {
             { targets: [14], visible: getColVisPref('tax') },
             { targets: [15], visible: getColVisPref('wht') },
             { targets: [16], visible: getColVisPref('invtotal') },
-            { targets: [17], visible: getColVisPref('profit') },
-            { targets: [18], visible: getColVisPref('overhead') },
-            { targets: [19], visible: getColVisPref('fixedcost') },
-            { targets: [20], visible: getColVisPref('netprofit') }
+            { targets: [17], visible: getColVisPref('cashreceipt') },
+            { targets: [18], visible: getColVisPref('profit') },
+            { targets: [19], visible: getColVisPref('overhead') },
+            { targets: [20], visible: getColVisPref('fixedcost') },
+            { targets: [21], visible: getColVisPref('netprofit') }
         ],
         dom: 'rt<"row mt-3 align-items-center"<"col-md-6 col-12 mb-2 mb-md-0"i><"col-md-6 col-12 d-flex flex-wrap justify-content-between justify-content-md-end align-items-center gap-2"lp>>',
         language: {
@@ -576,7 +545,7 @@ $(function () {
 
     function recalcFooterPO() {
         var totalValue = 0, totalContract = 0, totalRestitusi = 0, totalBp = 0, totalCr = 0, totalProfit = 0, totalNet = 0;
-        var totalInvoice = 0, totalTax = 0, totalWht = 0, totalInvTot = 0;
+        var totalInvoice = 0, totalTax = 0, totalWht = 0, totalInvTot = 0, totalCashRcpt = 0;
         table.rows({ search: 'applied' }).every(function () {
             var node = this.node();
             totalValue    += parseFloat(node.querySelector('.col-raw-value')?.dataset.raw)    || 0;
@@ -588,6 +557,7 @@ $(function () {
             totalTax      += parseFloat(node.querySelector('.col-raw-tax')?.dataset.raw)      || 0;
             totalWht      += parseFloat(node.querySelector('.col-raw-wht')?.dataset.raw)      || 0;
             totalInvTot   += parseFloat(node.querySelector('.col-raw-invtotal')?.dataset.raw) || 0;
+            totalCashRcpt += parseFloat(node.querySelector('.col-raw-cashreceipt')?.dataset.raw) || 0;
             totalProfit   += parseFloat(node.querySelector('.col-raw-profit')?.dataset.raw)   || 0;
             totalNet      += parseFloat(node.querySelector('.col-raw-net')?.dataset.raw)      || 0;
         });
@@ -600,6 +570,7 @@ $(function () {
         $('#poFooterTax').text(moneyFmtPO(totalTax));
         $('#poFooterWht').text(moneyFmtPO(totalWht));
         $('#poFooterInvTotal').text(moneyFmtPO(totalInvTot));
+        $('#poFooterCashReceipt').text(moneyFmtPO(totalCashRcpt));
         $('#poFooterProfit').text(moneyFmtPO(totalProfit));
         $('#poFooterNet').text(moneyFmtPO(totalNet));
     }
@@ -1078,163 +1049,15 @@ $(function () {
         $('#prjClosedToggleIcon').toggleClass('rotated');
     });
 
-    /* ── IMAGE VIEWER — carousel + zoom, untuk tab Attachment ── */
-    (function () {
-        var overlay  = document.getElementById('imgViewerOverlay');
-        var stageImg = document.getElementById('imgViewerImg');
-        var counter  = document.getElementById('imgViewerCounter');
-        var images   = [];
-        var idx      = 0;
-        var zoomed   = false;
-        var isDragging = false, dragStartX = 0, dragStartY = 0, imgX = 0, imgY = 0;
-        var justSwiped = false;   // menandai klik yang sebenarnya gerakan geser
-
-        function renderViewer() {
-            var item = images[idx];
-            if (!item) return;
-            resetZoom();
-            stageImg.src = item.full;
-            $('#imgViewerName').text(item.name || '');
-            counter.textContent = (idx + 1) + ' / ' + images.length;
-            /* Panah hanya ada kalau memang ada tujuannya: tidak tampil untuk
-               lampiran tunggal, tidak ada panah kiri di lampiran pertama dan
-               tidak ada panah kanan di lampiran terakhir. */
-            var banyak = images.length > 1;
-            $('#imgViewerPrev').css('display', (banyak && idx > 0) ? 'flex' : 'none');
-            $('#imgViewerNext').css('display', (banyak && idx < images.length - 1) ? 'flex' : 'none');
-        }
-
-        function resetZoom() {
-            zoomed = false;
-            imgX = 0; imgY = 0;
-            stageImg.classList.remove('zoomed', 'dragging');
-            stageImg.style.transform = 'translate(0px, 0px) scale(1)';
-            stageImg.style.cursor = 'zoom-in';
-        }
-
-        function applyTransform() {
-            stageImg.style.transform = 'translate(' + imgX + 'px, ' + imgY + 'px) scale(' + (zoomed ? 2.4 : 1) + ')';
-        }
-
-        function openViewer(groupImages, startIndex) {
-            images = groupImages;
-            idx = startIndex;
-            renderViewer();
-            overlay.classList.add('show');
-            $('body').css('overflow', 'hidden');
-        }
-
-        function closeViewer() {
-            overlay.classList.remove('show');
-            $('body').css('overflow', '');
-        }
-
-        function showNext() { if (idx < images.length - 1) { idx++; renderViewer(); } }
-        function showPrev() { if (idx > 0) { idx--; renderViewer(); } }
-
-        // Attachment tab (tabel): tombol View untuk gambar -> carousel dalam grup tabelnya.
-        $(document).on('click', '.prj-att-view-img', function () {
-            var $btns = $(this).closest('table').find('.prj-att-view-img');
-            var groupImages = $btns.map(function () {
-                return { full: $(this).data('full'), name: $(this).data('name') };
-            }).get();
-            var startIndex = $btns.index(this);
-            openViewer(groupImages, startIndex < 0 ? 0 : startIndex);
-        });
-
-        $('#imgViewerClose').on('click', closeViewer);
-        $('#imgViewerNext').on('click', showNext);
-        $('#imgViewerPrev').on('click', showPrev);
-        $(overlay).on('click', function (e) {
-            // Klik di area kosong menutup viewer — kecuali kalau klik itu
-            // ujung dari gerakan geser antar lampiran.
-            if (justSwiped) { justSwiped = false; return; }
-            if (e.target === overlay) closeViewer();
-        });
-
-        $(document).on('keydown', function (e) {
-            if (!overlay.classList.contains('show')) return;
-            if (e.key === 'Escape') closeViewer();
-            else if (e.key === 'ArrowRight') showNext();
-            else if (e.key === 'ArrowLeft') showPrev();
-        });
-
-        stageImg.addEventListener('dblclick', function () {
-            zoomed = !zoomed;
-            if (!zoomed) { imgX = 0; imgY = 0; }
-            stageImg.classList.toggle('zoomed', zoomed);
-            stageImg.style.cursor = zoomed ? 'grab' : 'zoom-in';
-            applyTransform();
-        });
-        stageImg.addEventListener('wheel', function (e) {
-            e.preventDefault();
-            zoomed = e.deltaY < 0 ? true : false;
-            if (!zoomed) { imgX = 0; imgY = 0; }
-            stageImg.classList.toggle('zoomed', zoomed);
-            stageImg.style.cursor = zoomed ? 'grab' : 'zoom-in';
-            applyTransform();
-        }, { passive: false });
-
-        stageImg.addEventListener('mousedown', function (e) {
-            if (!zoomed) return;
-            isDragging = true;
-            dragStartX = e.clientX - imgX;
-            dragStartY = e.clientY - imgY;
-            stageImg.classList.add('dragging');
-        });
-        document.addEventListener('mousemove', function (e) {
-            if (!isDragging) return;
-            imgX = e.clientX - dragStartX;
-            imgY = e.clientY - dragStartY;
-            applyTransform();
-        });
-        document.addEventListener('mouseup', function () {
-            isDragging = false;
-            stageImg.classList.remove('dragging');
-        });
-
-        /* ── GESER KIRI/KANAN untuk pindah lampiran ─────────────────────────
-           Saat gambar TIDAK di-zoom, tarikan mendatar (mouse maupun sentuh)
-           berpindah ke lampiran sebelum/sesudahnya — pola yang sama dengan
-           galeri ponsel. Saat di-zoom, tarikan tetap menggeser gambar
-           (pan), jadi keduanya tidak saling rebutan. */
-        var SWIPE_MIN = 50;          // px, biar klik/getar kecil tidak terbaca geser
-        var swipeX = null, swipeY = null;
-
-        function swipeStart(x, y) { if (!zoomed) { swipeX = x; swipeY = y; } }
-
-        function swipeEnd(x, y) {
-            if (swipeX === null || images.length < 2) { swipeX = swipeY = null; return; }
-            var dx = x - swipeX, dy = y - swipeY;
-            swipeX = swipeY = null;
-            if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) <= Math.abs(dy)) return;
-            if (dx < 0 && idx >= images.length - 1) return;   // sudah di lampiran terakhir
-            if (dx > 0 && idx <= 0) return;                   // sudah di lampiran pertama
-            justSwiped = true;
-            if (dx < 0) showNext(); else showPrev();
-        }
-
-        stageImg.addEventListener('mousedown', function (e) { swipeStart(e.clientX, e.clientY); });
-        document.addEventListener('mouseup', function (e) {
-            if (!overlay.classList.contains('show')) { swipeX = swipeY = null; return; }
-            swipeEnd(e.clientX, e.clientY);
-        });
-
-        stageImg.addEventListener('touchstart', function (e) {
-            var t = e.changedTouches[0];
-            swipeStart(t.clientX, t.clientY);
-        }, { passive: true });
-        stageImg.addEventListener('touchend', function (e) {
-            var t = e.changedTouches[0];
-            swipeEnd(t.clientX, t.clientY);
-        }, { passive: true });
-
-        /* Geser juga boleh lewat area kosong di kiri/kanan gambar. */
-        overlay.addEventListener('mousedown', function (e) {
-            if (e.target === stageImg) return;
-            swipeStart(e.clientX, e.clientY);
-        });
-    })();
+    /* ── PENAMPIL LAMPIRAN — tombol View gambar tab Attachment (komponen bersama tesys-evidence-stage.js) ── */
+    $(document).on('click', '.prj-att-view-img', function () {
+        var $grup = $(this).closest('table').find('.prj-att-view-img');
+        var daftar = $grup.map(function () {
+            return { url: $(this).data('full'), name: $(this).data('name') };
+        }).get();
+        var mulai = $grup.index(this);
+        TesysEvidenceStage.open(daftar, mulai < 0 ? 0 : mulai);
+    });
 
     /* ── Copy-to-clipboard (tab PIC: whatsapp / email) ── */
     var _prjToastT;
@@ -1618,7 +1441,7 @@ $(function () {
                 poNumBastTotal += parseInt(p.bast_total || 0);
                 var attHtml = (p.attachments || []).length
                     ? p.attachments.map(function (a) {
-                        return '<a href="/storage/' + a.path + '" target="_blank" class="d-block"><i class="fas fa-paperclip mr-1"></i>' + (a.title || 'File') + '</a>';
+                        return '<a href="/storage/' + a.path + '" data-evidence="prj-po" target="_blank" class="d-block"><i class="fas fa-paperclip mr-1"></i>' + (a.title || 'File') + '</a>';
                     }).join('')
                     : '<span class="text-muted">-</span>';
 
@@ -1653,7 +1476,7 @@ $(function () {
                 basts.forEach(function (b) {
                     var bAtt = (b.attachments || []).length
                         ? b.attachments.map(function (a) {
-                            return '<a href="/storage/' + a.path + '" target="_blank" class="d-block"><i class="fas fa-paperclip mr-1"></i>' + (a.title || 'File') + '</a>';
+                            return '<a href="/storage/' + a.path + '" data-evidence="prj-bast" target="_blank" class="d-block"><i class="fas fa-paperclip mr-1"></i>' + (a.title || 'File') + '</a>';
                         }).join('')
                         : '<span class="text-muted">-</span>';
                     poNumHtml += '<tr class="prj-bast-row ' + grpKey + '">' +

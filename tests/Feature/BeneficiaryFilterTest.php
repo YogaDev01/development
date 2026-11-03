@@ -46,7 +46,7 @@ class BeneficiaryFilterTest extends TestCase
         $this->isiData();
 
         $res = $this->actingAs($this->userWithRole('superadmin'))
-            ->get('/beneficiaries?category=EXTERNAL')->assertOk();
+            ->get('/beneficiaries?tab=db&category=EXTERNAL')->assertOk();
 
         $this->assertSame(2, $res->viewData('beneficiaries')->count());
 
@@ -59,7 +59,7 @@ class BeneficiaryFilterTest extends TestCase
         $this->isiData();
 
         $res = $this->actingAs($this->userWithRole('superadmin'))
-            ->get('/beneficiaries?status=INACTIVE')->assertOk();
+            ->get('/beneficiaries?tab=db&status=INACTIVE')->assertOk();
 
         $this->assertSame(1, $res->viewData('beneficiaries')->count());
         $this->assertSame(1, $res->viewData('summary')['total']);
@@ -70,7 +70,7 @@ class BeneficiaryFilterTest extends TestCase
         $this->isiData();
 
         $res = $this->actingAs($this->userWithRole('superadmin'))
-            ->get('/beneficiaries?category=EXTERNAL&status=ACTIVE')->assertOk();
+            ->get('/beneficiaries?tab=db&category=EXTERNAL&status=ACTIVE')->assertOk();
 
         $this->assertSame(1, $res->viewData('beneficiaries')->count());
         $this->assertSame('DUA', $res->viewData('beneficiaries')->first()->nickname);
@@ -81,9 +81,76 @@ class BeneficiaryFilterTest extends TestCase
         $this->isiData();
 
         $res = $this->actingAs($this->userWithRole('superadmin'))
-            ->get('/beneficiaries')->assertOk();
+            ->get('/beneficiaries?tab=db')->assertOk();
 
         $this->assertSame(3, $res->viewData('beneficiaries')->count());
+    }
+
+    /* ------------------------------------------------------ PEMUATAN LAZY */
+
+    public function test_halaman_awal_hanya_memuat_baris_internal(): void
+    {
+        $this->isiData();
+
+        $res = $this->actingAs($this->userWithRole('superadmin'))
+            ->get('/beneficiaries')->assertOk();
+
+        // Tab bawaan = Internal; baris External tidak dikirim sama sekali.
+        $this->assertSame(['SATU'], $res->viewData('beneficiaries')->pluck('nickname')->all());
+        $res->assertDontSee('data-category="EXTERNAL"', false);
+
+        // Angka badge tab tetap penuh (dihitung agregat, bukan dari baris).
+        $this->assertSame(
+            ['internal' => 1, 'outsider' => 2, 'db' => 3],
+            $res->viewData('tabCounts')
+        );
+    }
+
+    public function test_tab_external_hanya_memuat_baris_bukan_internal(): void
+    {
+        $this->isiData();
+
+        $res = $this->actingAs($this->userWithRole('superadmin'))
+            ->get('/beneficiaries?tab=outsider')->assertOk();
+
+        $this->assertEqualsCanonicalizing(
+            ['DUA', 'TIGA'],
+            $res->viewData('beneficiaries')->pluck('nickname')->all()
+        );
+    }
+
+    public function test_endpoint_rows_mengembalikan_baris_satu_bagian(): void
+    {
+        $this->isiData();
+        $admin = $this->userWithRole('superadmin');
+
+        $outsider = $this->actingAs($admin)->get('/beneficiaries/rows/outsider')->assertOk()->getContent();
+        $this->assertStringContainsString('DUA', $outsider);
+        $this->assertStringContainsString('TIGA', $outsider);
+        $this->assertStringNotContainsString('SATU', $outsider);
+
+        $internal = $this->actingAs($admin)->get('/beneficiaries/rows/internal')->assertOk()->getContent();
+        $this->assertStringContainsString('SATU', $internal);
+        $this->assertStringNotContainsString('DUA', $internal);
+    }
+
+    public function test_endpoint_rows_menghormati_filter_dan_menolak_bagian_asing(): void
+    {
+        $this->isiData();
+        $admin = $this->userWithRole('superadmin');
+
+        $html = $this->actingAs($admin)->get('/beneficiaries/rows/outsider?status=INACTIVE')->getContent();
+        $this->assertStringContainsString('TIGA', $html);
+        $this->assertStringNotContainsString('DUA', $html);
+
+        $this->actingAs($admin)->get('/beneficiaries/rows/semua')->assertNotFound();
+    }
+
+    public function test_endpoint_rows_butuh_akses_menu(): void
+    {
+        $this->actingAs($this->userWithRole('treasury'))
+            ->get('/beneficiaries/rows/internal')
+            ->assertForbidden();
     }
 
     /* ------------------------------------------------------ DAFTAR PILIHAN */
@@ -125,24 +192,18 @@ class BeneficiaryFilterTest extends TestCase
         $this->assertSame(1, substr_count($html, "{ key: 'status'"));
     }
 
-    public function test_kartu_ringkasan_bisa_dihitung_ulang_di_peramban(): void
+    public function test_halaman_tidak_menampilkan_kartu_ringkasan(): void
     {
         $this->isiData();
 
         $html = $this->actingAs($this->userWithRole('superadmin'))
             ->get('/beneficiaries')->assertOk()->getContent();
 
-        /*
-        | Penjaga di tingkat sumber. Penyaringan terjadi di peramban supaya
-        | terasa seketika, jadi kartu yang dirender server harus ikut dihitung
-        | ulang — tanpa itu tabel menyisakan 1 baris sementara kartunya tetap
-        | menulis jumlah penuh. Perilakunya hanya bisa diuji lewat peramban;
-        | yang bisa dijaga di sini adalah kaitannya tidak putus.
-        */
-        $this->assertStringContainsString('id="benKpi"', $html);
-        $this->assertStringContainsString("table.on('draw', hitungUlangKartu)", $html);
+        // Kartu ringkasan sengaja dihapus; angka jumlah ada di badge tab.
+        $this->assertStringNotContainsString('id="benKpi"', $html);
+        $this->assertStringNotContainsString('hitungUlangKartu', $html);
 
-        // Baris tabel membawa atribut yang dipakai perhitungan itu.
+        // Baris tabel tetap membawa atribut yang dipakai saringan kolom.
         $this->assertStringContainsString('data-category="INTERNAL"', $html);
         $this->assertStringContainsString('data-status="ACTIVE"', $html);
     }

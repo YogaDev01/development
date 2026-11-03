@@ -648,7 +648,7 @@
                                         <td>
 
                                             <a 
-                                                href="{{ asset('storage/' . $attachment->path) }}"
+                                                href="{{ asset('storage/' . $attachment->path) }}" data-evidence="cr-att" data-evidence-name="{{ $attachment->original_name }}"
                                                 target="_blank"
                                                 class="btn btn-info btn-sm"
                                             >

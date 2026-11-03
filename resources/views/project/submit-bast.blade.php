@@ -74,7 +74,7 @@
                     <div class="mb-3">
                         <small class="text-muted d-block mb-1">Lampiran BAST sebelumnya:</small>
                         @foreach($po->bastAttachments as $att)
-                        <a href="{{ asset('storage/' . $att->file_path) }}" target="_blank" class="d-block" style="font-size:12px;">
+                        <a href="{{ asset('storage/' . $att->file_path) }}" data-evidence="bast-lama" data-evidence-name="{{ $att->title ?? $att->file_name }}" target="_blank" class="d-block" style="font-size:12px;">
                             <i class="fas fa-paperclip mr-1"></i>{{ $att->title ?? $att->file_name }}
                         </a>
                         @endforeach

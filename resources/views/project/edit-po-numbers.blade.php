@@ -89,7 +89,7 @@
                                     <td><span class="badge badge-{{ $p->status_color }}">{{ $p->status }}</span></td>
                                     <td>
                                         @forelse($p->attachments as $att)
-                                            <a href="{{ asset('storage/' . $att->file_path) }}" target="_blank" class="d-block">
+                                            <a href="{{ asset('storage/' . $att->file_path) }}" data-evidence="po-{{ $p->id }}" data-evidence-name="{{ $att->title ?? $att->file_name }}" target="_blank" class="d-block">
                                                 <i class="fas fa-paperclip mr-1"></i>{{ $att->title ?? $att->file_name }}
                                             </a>
                                         @empty

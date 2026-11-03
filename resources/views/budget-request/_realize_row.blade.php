@@ -9,6 +9,11 @@
        $orphanId    request_detail_id baris yatim (item asal sudah tidak ikut), null bila bukan
        $notes, $changeNote, $qty, $amount, $attachments
        $subItems    pilihan Sub COA (BudgetRequest::settlementSubItemOptions())
+       $isPrimary   baris pertama item pengajuan — tidak bisa dihapus (4 Nov 2026)
+
+     Baris item pengajuan ($detail) dan pecahannya: Sub COA DIKUNCI ke Sub COA
+     item asal (hidden input .realize-sub-select, bukan <select>); hanya
+     deskripsi, qty dan nilai yang disunting. Baris tambahan tetap memilih.
 
      Kolom Qty / Request / Variance diisi JavaScript per ITEM ASAL: hanya baris
      pertama tiap item yang menampilkan angkanya, supaya Request tidak
@@ -22,9 +27,15 @@
     $originSub = $detail?->budget_detail_id;
     // Baris yatim tetap membawa item asalnya supaya tautannya tidak hilang diam-diam.
     $originId  = $detail->id ?? ($orphanId ?? null);
+    $isPrimary = $isPrimary ?? false;
+    $subLabel  = $detail
+        ? ($subItems->firstWhere('id', (int) $originSub)['label']
+            ?? trim(($detail->account?->name ?? '-') . ' — ' . ($detail->budgetDetail?->deskripsi ?: '-')))
+        : null;
 @endphp
 <tr class="realize-row"
     data-row="{{ $k }}"
+    data-primary="{{ $isPrimary ? '1' : '' }}"
     data-origin="{{ $originId ?? '' }}"
     data-origin-sub="{{ $originSub ?? '' }}"
     data-req="{{ (int) ($detail->total ?? 0) }}"
@@ -32,6 +43,13 @@
     <td class="align-middle realize-desc-request-cell">
         <input type="hidden" name="realizations[{{ $k }}][id]" class="realize-row-id" value="{{ $rowId ?? '' }}">
         <input type="hidden" name="realizations[{{ $k }}][request_detail_id]" class="realize-origin-input" value="{{ $originId ?? '' }}">
+        @if($detail)
+        <input type="hidden" name="realizations[{{ $k }}][budget_detail_id]" class="realize-sub-select" value="{{ $originSub ?? '' }}">
+        <div class="realize-sub-locked" title="Sub COA item pengajuan tidak dapat diganti">
+            <span class="text-truncate">{{ $subLabel }}</span>
+            <i class="fas fa-lock" aria-hidden="true"></i>
+        </div>
+        @else
         <select name="realizations[{{ $k }}][budget_detail_id]" class="form-control form-control-sm realize-sub-select" aria-label="Sub COA">
             <option value="">— Pilih Sub COA —</option>
             {{-- Dikelompokkan per akun: judul akun (tebal, tidak bisa diklik), lalu nama Sub COA.
@@ -44,6 +62,15 @@
                 </optgroup>
             @endforeach
         </select>
+        @endif
+        {{-- Penanda pecahan: tampil (JS refreshSplitBadges) hanya bila item asal punya >1 baris. --}}
+        <div class="realize-split-badge tw:mt-1" style="display:none;">
+            @if($isPrimary)
+                <x-tw.badge tone="positive">Sub Utama</x-tw.badge>
+            @else
+                <x-tw.badge tone="attention">Sub Pecahan</x-tw.badge>
+            @endif
+        </div>
         {{-- Keterangan item asal tidak ditampilkan di bawah Sub COA; rincian lengkap lewat tombol "View Request". --}}
         @if(! $detail)
         <div class="realize-origin-label tw:mt-1 tw:text-caption tw:leading-body tw:text-text-dim">
@@ -109,6 +136,8 @@
         </div>
         @endif
         <div class="detail-att-list tw:mt-1 tw:text-caption tw:leading-body"></div>
+        {{-- Settle > 0 tanpa lampiran: wajib (ditoggle JS nomorTanpaLampiran). --}}
+        <div class="att-wajib-badge tw:mt-1 text-center" style="display:none;"><x-tw.badge tone="danger" title="Lampiran wajib karena nilai Settle baris ini lebih dari 0. Unggah bukti belanja (nota/kuitansi/foto) sebelum Submit.">Wajib</x-tw.badge></div>
     </td>
     {{-- Catatan perubahan. Ikon saja supaya kolomnya tidak melebar; isinya dibuka
          di pop-up. Wajib untuk baris tambahan, baris yang pindah Sub COA, dan item
@@ -120,8 +149,10 @@
         <div class="note-item-preview tw:mx-auto tw:mt-1 tw:max-w-[120px] tw:text-caption tw:leading-tight tw:text-text-dim"></div>
     </td>
     <td class="text-center text-nowrap align-middle">
-        <x-tw.button size="sm" variant="secondary" class="btn-split-row" title="Pecah: tambah baris Sub COA lain untuk item ini" aria-label="Pecah baris ini"
+        <x-tw.button size="sm" variant="secondary" class="btn-split-row" title="Pecah: tambah baris untuk item ini (Sub COA sama)" aria-label="Pecah baris ini"
                      style="{{ $detail ? '' : 'display:none;' }}"><i class="fas fa-code-branch" aria-hidden="true"></i></x-tw.button>
+        @unless($isPrimary)
         <x-tw.button size="sm" variant="danger" class="btn-remove-row" title="Hapus baris ini" aria-label="Hapus baris ini"><i class="fas fa-trash" aria-hidden="true"></i></x-tw.button>
+        @endunless
     </td>
 </tr>

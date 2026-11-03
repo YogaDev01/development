@@ -102,7 +102,7 @@
                     </div>
                     <div class="card-body">
                         @forelse($customer->attachments as $att)
-                            <a href="/storage/{{ $att->file_path }}" target="_blank"
+                            <a href="/storage/{{ $att->file_path }}" data-evidence="cust-att" data-evidence-name="{{ $att->title ?? basename($att->file_path) }}" target="_blank"
                                class="btn btn-outline-info btn-sm mb-1 d-block text-left text-truncate">
                                 <i class="fas fa-file mr-1"></i>{{ $att->title ?? basename($att->file_path) }}
                             </a>

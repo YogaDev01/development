@@ -133,6 +133,7 @@
                                         'tax'        => 'PPN',
                                         'wht'        => 'PPH',
                                         'invtotal'   => 'Total',
+                                        'cashreceipt' => 'Cash Receipt',
                                         'profit'     => 'Gross Profit',
                                         'overhead'   => 'Overhead',
                                         'fixedcost'  => 'Fixed Cost',
@@ -183,6 +184,7 @@
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">PPN</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;" title="PPh yang dipotong di muka — mengurangi Total">PPH</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;" title="Invoice + PPN &minus; PPH">Total</th>
+                                <th scope="col" class="text-right text-nowrap" style="width:1%;" title="Nilai Invoice (tanpa PPN &amp; PPH) dari invoice berstatus Paid">Cash Receipt</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Gross Profit</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Overhead</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Fixed Cost</th>
@@ -220,6 +222,9 @@
                                 $invTax    = (int) $invoiceAktif->sum('tax_amount');
                                 $invWht    = (int) $invoiceAktif->sum('withholding_tax');
                                 $invTotal  = (int) $invoiceAktif->sum('captured_total');
+                                // Cash Receipt = nilai Invoice (billed_amount, tanpa PPN & PPH)
+                                // khusus invoice yang sudah lunas (status PAID).
+                                $invPaid   = (int) $project->invoices->where('status', 'PAID')->sum('billed_amount');
                                 // Collection disaring lewat kotak carinya sendiri (?q=),
                                 // yang mencocokkan kolom Purchase Order berisi kode PO.
                                 $invLink = route('invoice-cash-receipt.index', ['q' => $project->code]);
@@ -388,6 +393,7 @@
                                 {!! $selInv('col-raw-tax',     $invTax,    $invTax,    'PPN seluruh invoice PO ini') !!}
                                 {!! $selInv('col-raw-wht',     $invWht,    $invWht,    'PPh dipotong di muka') !!}
                                 {!! $selInv('col-raw-invtotal', $invTotal, $invTotal,  'Invoice + PPN − PPH') !!}
+                                {!! $selInv('col-raw-cashreceipt', $invPaid, $invPaid, 'Nilai Invoice (tanpa PPN & PPH) yang sudah Paid') !!}
 
                                 <td class="text-right text-nowrap col-raw-profit" data-raw="{{ $poRaw($grossProfitTotal) }}">
                                     <button type="button" class="po-cell-link po-summary-link {{ $grossProfitTotal < 0 ? 'po-neg' : '' }}" data-id="{{ $project->id }}" title="Lihat Summary">{{ $poNilai(($grossProfitTotal < 0 ? '-' : '') . number_format(abs($grossProfitTotal), 0, ',', '.')) }}</button>
@@ -639,6 +645,7 @@
                                 <th class="text-right text-nowrap" id="poFooterTax" style="font-size:12px;color:var(--text-faint);"></th>
                                 <th class="text-right text-nowrap" id="poFooterWht" style="font-size:12px;color:var(--text-faint);"></th>
                                 <th class="text-right text-nowrap" id="poFooterInvTotal" style="font-size:12px;color:var(--success);"></th>
+                                <th class="text-right text-nowrap" id="poFooterCashReceipt" style="font-size:12px;color:var(--success);"></th>
                                 <th class="text-right text-nowrap" id="poFooterProfit" style="font-size:12px;color:var(--success);"></th>
                                 <th></th>
                                 <th></th>
@@ -1349,18 +1356,6 @@
 </div>
 
 <div id="prjCopyToast"><i class="fas fa-check mr-1"></i> Disalin ke clipboard</div>
-
-<!-- IMAGE VIEWER (carousel + zoom) -->
-<div id="imgViewerOverlay">
-    <button aria-label="Close" type="button" id="imgViewerClose" title="Close"><i class="fas fa-times"></i></button>
-    <div id="imgViewerName"></div>
-    <div id="imgViewerStage">
-        <button aria-label="Previous" type="button" class="imgViewerNav" id="imgViewerPrev" title="Previous"><i class="fas fa-chevron-left"></i></button>
-        <img id="imgViewerImg" src="" alt="">
-        <button aria-label="Next" type="button" class="imgViewerNav" id="imgViewerNext" title="Next"><i class="fas fa-chevron-right"></i></button>
-    </div>
-    <div id="imgViewerCounter"></div>
-</div>
 
 @endsection
 

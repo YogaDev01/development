@@ -2932,12 +2932,11 @@ class BudgetRequestController extends Controller
             ? $budgetRequest->statusLogs->firstWhere('action_type', 'settlement_rejected')
             : null;
 
-        // Settlement berdiri sendiri (29 Okt 2026): form awalnya KOSONG, tidak
-        // lagi terisi 1:1 dari item pengajuan — baris dibuat user (Tambah Baris /
-        // Auto Fill). Baris yang sudah tersimpan (draft / ditolak) tetap tampil.
-        $settleRows = $budgetRequest->realizations->isEmpty()
-            ? collect()
-            : $budgetRequest->settlementFormRows()->filter(fn ($r) => $r['id'])->values();
+        // Sejak 4 Nov 2026 form kembali terisi 1:1 dari item pengajuan (bukan
+        // TAKEOUT): baris item itu dikunci — tidak bisa dihapus & Sub COA-nya
+        // tetap; yang disunting hanya deskripsi, qty dan nilai. Baris tersimpan
+        // (draft / ditolak), pecahan, dan baris tambahan ikut tampil.
+        $settleRows = $budgetRequest->settlementFormRows();
         $subItems   = $budgetRequest->settlementSubItemOptions();
 
         return view('budget-request.realize', compact('budgetRequest', 'rejectReason', 'settleRows', 'subItems'));
@@ -2988,6 +2987,9 @@ class BudgetRequestController extends Controller
             'delete_realization_global_attachments' => 'nullable|array',
             // Keterangan opsional dari pengaju — ikut ditulis ke Log CR.
             'settlement_notes'                      => 'nullable|string|max:1000',
+            // Bukti transfer pengembalian dana (total Settle < nilai pengajuan).
+            'refund_proofs'                         => 'nullable|array',
+            'refund_proofs.*'                       => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png',
         ]);
 
         $rows         = (array) $request->input('realizations', []);
@@ -3034,6 +3036,7 @@ class BudgetRequestController extends Controller
 
         $no         = 0;
         $tanpaSub   = [];
+        $pindahSub  = [];
         $fleksibel  = false;
         foreach ($rows as $row) {
             $row = (array) $row;
@@ -3048,6 +3051,14 @@ class BudgetRequestController extends Controller
 
             // Baris tambahan, atau Sub COA berbeda dari item asalnya.
             $asal = $validDetails->get((int) ($row['request_detail_id'] ?? 0));
+
+            // Sub COA baris item pengajuan (termasuk pecahannya) dikunci ke
+            // Sub COA item asal (4 Nov 2026) — hanya baris tambahan yang memilih.
+            if ($asal && filled($row['budget_detail_id'] ?? null)
+                    && (int) $row['budget_detail_id'] !== (int) $asal->budget_detail_id) {
+                $pindahSub[] = $no;
+            }
+
             if (! $asal || (filled($row['budget_detail_id'] ?? null)
                     && (int) $row['budget_detail_id'] !== (int) $asal->budget_detail_id)) {
                 $fleksibel = true;
@@ -3073,50 +3084,72 @@ class BudgetRequestController extends Controller
             );
         }
 
-        // CR yang sudah cair (PAID/SETTLE_REJECTED) wajib melampirkan bukti
-        // per item di tiap baris Rincian Settlement; lampiran global di sini
-        // hanya opsional. Simpan draft ($strict = false) sengaja melewati
-        // pemeriksaan kelengkapan: draft memang boleh setengah jadi dan
-        // dilengkapi nanti sebelum ditekan "Submit Settlement".
+        if ($pindahSub) {
+            return back()->withInput()->with(
+                'error',
+                'Sub COA baris item pengajuan tidak dapat diganti. Baris: no. ' . implode(', ', $pindahSub) . '.'
+            );
+        }
+
+        // Simpan draft ($strict = false) sengaja melewati pemeriksaan
+        // kelengkapan: draft memang boleh setengah jadi dan dilengkapi nanti
+        // sebelum ditekan "Submit Settlement".
         if (! $strict) {
             return null;
         }
 
         /*
-        | Lampiran Item & Note per baris opsional (29 Okt 2026). Yang wajib
-        | hanya bila total Settle melebihi nilai pengajuan CR (jadi Expense
-        | Claim): Keterangan DAN Lampiran Settlement (global) di header.
+        | Aturan submit (4 Nov 2026):
+        |   - setiap item pengajuan (bukan TAKEOUT) wajib tetap punya baris —
+        |     baris item pengajuan tidak bisa dihapus dari form;
+        |   - baris bernilai Settle > 0 wajib punya Lampiran Item (berkas baru
+        |     atau lampiran tersimpan baris itu yang tidak dicentang hapus).
+        |     Note per baris tetap opsional.
+        | Keterangan & Lampiran Settlement (global) tidak lagi wajib, termasuk
+        | saat total Settle melebihi nilai pengajuan.
         */
-        $totalSettle = 0;
-        foreach ($rows as $row) {
-            $row = (array) $row;
-            if ($this->isEmptyRealizationRow($row)) continue;
-            $totalSettle += $this->normalizeMoney($row['amount'] ?? null) * max(1, (int) ($row['qty'] ?? 1));
+        $adaBaris = collect($rows)->pluck('request_detail_id')->filter()->map(fn ($i) => (int) $i)->all();
+        $hilang   = $validDetails->reject(fn ($d) => in_array((int) $d->id, $adaBaris, true));
+        if ($hilang->isNotEmpty()) {
+            return back()->withInput()->with(
+                'error',
+                'Baris item pengajuan tidak boleh dihapus: ' . $hilang->map(fn ($d) => $this->itemLabel($d))->implode('; ') . '.'
+            );
         }
 
-        if ($totalSettle > (int) $cr->amount) {
-            $hapusGlobal = array_map('strval', array_filter((array) $request->input('delete_realization_global_attachments', [])));
-            $adaBaru     = collect((array) $request->file('realization_attachments', []))
+        $hapusIds = array_map('strval', array_filter((array) $request->input('delete_realization_attachments', [])));
+        $match    = $this->matchExistingRealizations($rows, $cr->realizations()->with('attachments')->get());
+        $tanpaLampiran = [];
+        $no = 0;
+        foreach ($rows as $i => $row) {
+            $row = (array) $row;
+            $no++;
+            if ($this->isEmptyRealizationRow($row) || $this->normalizeMoney($row['amount'] ?? null) <= 0) continue;
+
+            $adaBerkas = collect((array) $request->file("realizations.$i.attachments", []))
                 ->contains(fn ($f) => $f && $f->isValid());
-            $adaLama     = $cr->realizationAttachments()
-                ->where('original_name', 'not like', 'ttd-%')
-                ->whereNotIn('id', $hapusGlobal)
-                ->exists();
-
-            $kurang = [];
-            if (blank(trim((string) $request->input('settlement_notes')))) $kurang[] = '"Keterangan"';
-            if (! $adaBaru && ! $adaLama) $kurang[] = '"Lampiran Settlement"';
-
-            if ($kurang) {
-                return back()->withInput()->with(
-                    'error',
-                    'Total Settle melebihi nilai pengajuan, sehingga ' . implode(' dan ', $kurang) . ' wajib diisi.'
-                );
+            $saved = $match[$i] ?? null;
+            if (! $adaBerkas && $saved) {
+                $adaBerkas = $saved->attachments->contains(fn ($a) => ! in_array((string) $a->id, $hapusIds, true));
             }
+
+            if (! $adaBerkas) {
+                $tanpaLampiran[] = $no;
+            }
+        }
+
+        if ($tanpaLampiran) {
+            return back()->withInput()->with(
+                'error',
+                '"Lampiran Item" wajib untuk baris bernilai Settle > 0. Baris yang belum dilampiri: no. ' . implode(', ', $tanpaLampiran) . '.'
+            );
         }
 
         return null;
     }
+
+    /** Prefix nama lampiran global CR untuk bukti transfer pengembalian dana. */
+    private const REFUND_PROOF_PREFIX = 'bukti-transfer-';
 
     /**
      * Nama berkas tanda tangan penerima dana untuk satu baris settlement.
@@ -3295,6 +3328,28 @@ class BudgetRequestController extends Controller
 
         $map = $this->syncRealizations($cr, $request);
         $this->storeRealizationAttachments($cr, $request);
+
+        /*
+        | Bukti transfer pengembalian dana (4 Nov 2026) — hanya diterima bila
+        | total Settle di bawah nilai pengajuan (ada sisa dana yang dikembalikan).
+        | Disimpan sebagai lampiran global CR berawalan REFUND_PROOF_PREFIX,
+        | seperti tanda tangan "ttd-", tanpa tabel/kolom baru. Opsional.
+        */
+        $totalSettle = collect($map)->sum(fn ($r) => (int) $r->total);
+        if ($totalSettle < (int) $cr->amount) {
+            foreach ((array) $request->file('refund_proofs', []) as $file) {
+                if (! $file || ! $file->isValid()) continue;
+                $path = $file->store('cost_request_realizations', 'secure');
+                $cr->realizationAttachments()->create([
+                    'original_name' => mb_substr(self::REFUND_PROOF_PREFIX . $file->getClientOriginalName(), 0, 255),
+                    'stored_name'   => basename($path),
+                    'path'          => $path,
+                    'mime_type'     => $file->getClientMimeType(),
+                    'size'          => $file->getSize(),
+                    'uploaded_by'   => Auth::id(),
+                ]);
+            }
+        }
 
         // Keterangan pengaju disimpan di datanya (bukan hanya Log CR).
         if (BudgetRequest::hasSettlementNotesColumn()) {
@@ -3478,8 +3533,8 @@ class BudgetRequestController extends Controller
      * Simpan draft Settlement TANPA mengajukan — status CR tetap PAID atau
      * SETTLE_REJECTED, pengaju bisa melanjutkan mengisi nanti lalu baru
      * menekan "Ajukan" (submitRealization). Draft boleh belum lengkap:
-     * aturan lampiran per item & Note wajib (Settle > Request) baru ditegakkan
-     * saat Submit, bukan saat menyimpan.
+     * Lampiran Item wajib (baris Settle > 0) baru ditegakkan saat Submit,
+     * bukan saat menyimpan.
      */
     public function saveRealizationDraft(Request $request, $id)
     {

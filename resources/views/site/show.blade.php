@@ -238,7 +238,7 @@
                                 <tr>
                                     <td>{{ $i + 1 }}</td>
                                     <td>
-                                        <a href="{{ url('storage/'.$doc->file_path) }}" target="_blank" rel="noopener">
+                                        <a href="{{ url('storage/'.$doc->file_path) }}" data-evidence="site-doc" data-evidence-name="{{ $doc->title }}" target="_blank" rel="noopener">
                                             <i class="fas fa-paperclip mr-1"></i>{{ $doc->title }}
                                         </a>
                                     </td>

@@ -231,7 +231,8 @@ class CashReceiptController extends Controller
             'notes'               => 'nullable|string|max:1000',
             'partial_note'        => 'nullable|string|max:1000',
             'invoice_ids'         => 'required|array|min:1',
-            'invoice_ids.*'       => 'exists:invoices,id',
+            // distinct: id ganda membuat dua receipt lolos cek sisa tagihan yang sama (dihitung sebelum receipt dibuat).
+            'invoice_ids.*'       => 'distinct|exists:invoices,id',
             'amounts'             => 'required|array',
             'withholding'         => 'nullable|array',
         ]);
@@ -703,6 +704,12 @@ class CashReceiptController extends Controller
 
         if ($header->details->isNotEmpty()) {
             return back()->with('error', 'Penerimaan yang sudah punya alokasi tidak bisa dihapus — batalkan saja supaya jejaknya tetap ada.');
+        }
+
+        // Header batal / pernah punya alokasi (detail soft-delete tidak terbaca di relasi) adalah jejak
+        // keuangan: tidak dihapus, dan berkas buktinya tidak boleh dilenyapkan.
+        if ($header->isCancelled() || $header->details()->withTrashed()->exists()) {
+            return back()->with('error', 'Penerimaan yang sudah dibatalkan atau pernah punya alokasi tidak bisa dihapus — jejaknya harus tetap ada.');
         }
 
         if ($header->proof_file) {

@@ -8,21 +8,45 @@
 <div class="content">
     <div class="container-fluid">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Beneficiary Master</h1>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
-                <li class="breadcrumb-item"><a href="#">Master</a></li>
+        <div class="ts-index tw:flex tw:flex-col tw:gap-4 tw:py-4">
+
+        {{-- Judul & breadcrumb topbar: shell memindahkan <h1> dan .breadcrumb pertama ke topbar
+             (tesys-shell.js hoistPageTitle); disembunyikan secara visual. --}}
+        <div class="tw:sr-only">
+            <h1>Beneficiary Master</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">Master</li>
                 <li class="breadcrumb-item active">Beneficiary</li>
             </ol>
         </div>
+
+        <x-tw.page-header title="Daftar Beneficiary"
+            description="Penerima dana beserta kategori, PIC, dan rekeningnya.">
+            <x-slot:actions>
+                {{-- Bank Master dijaga 'role:superadmin,admin,guest' di routes/web.php,
+                     bukan 'menu:beneficiaries'. Tanpa penjaga ini Manager — yang kini
+                     boleh membuka halaman ini — melihat tombol yang pasti 403. --}}
+                @if($canManage)
+                <x-tw.button href="{{ url('/bank') }}" variant="secondary"><i class="fas fa-university" aria-hidden="true"></i> Bank Master</x-tw.button>
+                @endif
+                {{-- Menambah terbuka untuk semua role yang lolos 'menu:beneficiaries'
+                     (termasuk Manager) — tombol ini sengaja TIDAK digerbang. --}}
+                <x-tw.button id="btnTambah" class="ts-add-btn tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Beneficiary</x-tw.button>
+            </x-slot:actions>
+        </x-tw.page-header>
+
+        {{-- Mobile: tombol di header disembunyikan dan diganti tombol melayang (tesys-ui-refine.css). --}}
+        <button type="button" class="ts-fab" data-trigger="#btnTambah" aria-label="Tambah Beneficiary" title="Tambah Beneficiary"><i class="fas fa-plus" aria-hidden="true"></i></button>
 
         {{-- Tab utama — pola yang sama dengan PIC Master. Internal paling kiri
              sekaligus tab bawaan; External = semua yang BUKAN internal
              (kategori EXTERNAL + BILLING), jadi kategori baru ikut masuk ke
              sana dengan sendirinya; Database memuat semuanya.
 
-             Seluruh baris dikirim sekali lalu dipilah di peramban: berpindah
-             tab tidak memuat ulang halaman. --}}
+             Halaman hanya memuat baris untuk tab yang sedang terbuka. Baris tab
+             lain diambil (AJAX) saat tab itu pertama kali dibuka, lalu disimpan
+             di tabel yang sama dan dipilah di peramban — jadi berpindah tab
+             tidak memuat ulang halaman. --}}
         @php $benTabs = [
             'internal' => ['Internal', 'fas fa-building'],
             'outsider' => ['External', 'fas fa-truck'],
@@ -43,34 +67,8 @@
             @endforeach
         </ul>
 
-        {{-- Angkanya dirender server untuk keadaan awal, lalu dihitung ulang di
-             peramban tiap tabel digambar supaya selalu sama dengan baris yang
-             benar-benar tampil (lihat hitungUlangKartu). Urutan kartu di bawah
-             ini mengikat: JS menunjuknya per posisi. --}}
-        <div id="benKpi">
-            <x-stat-cards :cards="[
-                ['Total Beneficiary', $summary['total'], 'primary', 'fas fa-user-friends'],
-                ['Active', $summary['active'], 'success', 'fas fa-check-circle'],
-                ['Internal', $summary['internal'], 'info', 'fas fa-building'],
-                ['External', $summary['external'], 'warning', 'fas fa-truck'],
-                ['Billing', $summary['billing'], 'secondary', 'fas fa-file-invoice'],
-            ]" />
-        </div>
-
-        <div class="card card-primary card-outline shadow-sm">
-
-            <!-- CARD HEADER -->
-            <div class="card-header d-flex align-items-center">
-                <h3 class="card-title"><i class="fas fa-user-friends mr-1"></i> List Beneficiary</h3>
-                <div class="ml-auto d-flex" style="gap:8px;">
-                    <button id="refreshTable" class="btn btn-secondary btn-sm" type="button">
-                        <i class="fas fa-sync-alt mr-1"></i> Refresh
-                    </button>
-                </div>
-            </div>
-
-            <!-- CARD BODY -->
-            <div class="card-body">
+        {{-- Kartu tunggal: toolbar + tabel + paginasi (pola Cost Request). --}}
+        <x-tw.card padding="sm">
 
                 <!-- FILTER BAR -->
                 <div class="custom-toolbar mb-3 d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
@@ -86,28 +84,11 @@
                              peramban, jadi memilihnya langsung terasa tanpa memuat
                              ulang halaman. <select> server-side yang dulu berdiri
                              sendiri di sebelah kanan sudah dihapus: dua kendali untuk
-                             satu hal bisa saling bertentangan.
-
-                             Kartu ringkasan di atas ikut dihitung ulang setiap tabel
-                             digambar (lihat hitungUlangKartu di bawah) — tanpa itu,
-                             tabel menampilkan 1 baris sementara kartunya tetap
-                             menulis 778. --}}
+                             satu hal bisa saling bertentangan. --}}
                         <div id="benRowFilters" class="d-flex flex-wrap" style="gap:8px;"></div>
                     </div>
                     <div class="custom-toolbar-right d-flex flex-wrap" style="gap:8px;">
-                        {{-- Bank Master dijaga 'role:superadmin,admin,guest' di routes/web.php,
-                             bukan 'menu:beneficiaries'. Tanpa penjaga ini Manager — yang kini
-                             boleh membuka halaman ini — melihat tombol yang pasti 403. --}}
-                        @if($canManage)
-                        <a href="{{ url('/bank') }}" class="btn btn-info btn-sm">
-                            <i class="fas fa-university mr-1"></i> Bank Master
-                        </a>
-                        @endif
-                        {{-- Menambah terbuka untuk semua role yang lolos 'menu:beneficiaries'
-                             (termasuk Manager) — tombol ini sengaja TIDAK digerbang. --}}
-                        <button type="button" class="btn btn-success btn-sm" id="btnTambah">
-                            <i class="fas fa-plus mr-1"></i> Tambah Beneficiary
-                        </button>
+                        <x-tw.button id="refreshTable" variant="secondary" size="sm"><i class="fas fa-sync-alt" aria-hidden="true"></i> Refresh</x-tw.button>
                     </div>
                 </div>
 
@@ -148,7 +129,7 @@
 
                 <!-- TABLE -->
                 <div class="table-responsive" id="beneficiaryTableWrap">
-                    <table id="beneficiaryTable" class="table table-bordered table-hover table-striped mb-0">
+                    <table id="beneficiaryTable" class="table table-bordered table-hover mb-0 ts-idx-tbl">
                         <thead class="bg-light">
                             <tr>
                                 <th scope="col" width="4%"  class="all">No</th>
@@ -164,91 +145,13 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($beneficiaries as $beneficiary)
-                            <tr data-bank="{{ $beneficiary->bank->name ?? '' }}"
-                                data-status="{{ $beneficiary->status }}"
-                                data-category="{{ $beneficiary->category }}">
-                                <td>{{ $loop->iteration }}</td>
-                                <td><strong>{{ $beneficiary->nickname }}</strong></td>
-                                <td>{{ $beneficiary->complete_name }}</td>
-                                <td>
-                                    @php
-                                        $catBadge = ['INTERNAL' => 'badge-primary', 'EXTERNAL' => 'badge-warning', 'BILLING' => 'badge-secondary'][$beneficiary->category] ?? 'badge-secondary';
-                                    @endphp
-                                    <span class="badge {{ $catBadge }} px-2 py-1">{{ $beneficiary->category }}</span>
-                                </td>
-                                <td>
-                                    @if($beneficiary->pic)
-                                        {{ $beneficiary->pic->pic }}
-                                        @if($beneficiary->pic->position)
-                                            <div class="text-muted" style="font-size:11px;">{{ $beneficiary->pic->position }}</div>
-                                        @endif
-                                    @else
-                                        <span class="text-muted">-</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    <span class="badge badge-info px-2 py-1">
-                                        {{ $beneficiary->bank->name ?? '-' }}
-                                    </span>
-                                </td>
-                                <td>{{ $beneficiary->account_number ?? '-' }}</td>
-                                <td>{{ $beneficiary->contact ?? '-' }}</td>
-                                <td>
-                                    @if($beneficiary->status == 'ACTIVE')
-                                        <span class="badge badge-success px-2 py-1">ACTIVE</span>
-                                    @else
-                                        <span class="badge badge-danger px-2 py-1">INACTIVE</span>
-                                    @endif
-                                </td>
-                                {{-- Kolomnya tetap dirender walau kosong: columnDefs DataTable
-                                     di bawah menunjuk kolom terakhir lewat targets:[-1], jadi
-                                     jumlah kolom <td> harus sama untuk setiap role. --}}
-                                <td class="text-center action-column">
-                                    @if($canManage)
-                                    <div class="action-buttons ts-actions">
-
-                                        <button type="button"
-                                                class="ts-action-primary is-neutral btn-edit"
-                                                data-id="{{ $beneficiary->id }}"
-                                                title="Edit" aria-label="Edit {{ $beneficiary->name }}">
-                                            <i class="fas fa-pen" aria-hidden="true"></i><span class="ts-al">Edit</span>
-                                        </button>
-
-                                        {{-- Hapus ditampilkan langsung, bukan disembunyikan di
-                                             balik menu "aksi lain": isinya memang cuma satu
-                                             perintah, jadi menunya hanya menambah satu klik
-                                             tanpa menyembunyikan apa pun. --}}
-                                        <form action="{{ url('/beneficiaries/' . $beneficiary->id) }}"
-                                              method="POST" class="d-inline delete-form">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="ts-action-primary is-danger"
-                                                    title="Hapus" aria-label="Hapus {{ $beneficiary->nickname }}">
-                                                <i class="fas fa-trash" aria-hidden="true"></i><span class="ts-al">Hapus</span>
-                                            </button>
-                                        </form>
-
-                                    </div>
-                                    @else
-                                    <span class="text-muted" title="Hanya Superadmin yang bisa mengubah atau menghapus">&mdash;</span>
-                                    @endif
-                                </td>
-                            </tr>
-                            @empty
-                            <tr>
-                                <td colspan="10">
-                                    <x-empty title="Belum ada data beneficiary" icon="fas fa-folder-open" compact />
-                                </td>
-                            </tr>
-                            @endforelse
+                            @include('beneficiaries._rows', ['beneficiaries' => $beneficiaries, 'canManage' => $canManage])
                         </tbody>
                     </table>
                 </div>
 
-            </div>
+        </x-tw.card>
         </div>
-
     </div>
 </div>
 
@@ -344,7 +247,7 @@
                         <!-- PIC (MN-02) -->
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label class="font-weight-600">PIC</label>
+                                <label class="font-weight-600">PIC <span class="text-danger" id="tambahPicReq" style="display:none;">*</span></label>
                                 <select name="pic_id" id="tambahPic" class="form-control">
                                     <option value="">— Pilih PIC —</option>
                                     @foreach($pics as $pic)
@@ -741,6 +644,7 @@
 @endsection
 
 @push('styles')
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
 
 .action-header-buttons { display:flex; gap:8px; }
@@ -943,7 +847,12 @@ $(function () {
         responsive: { details: { type: 'inline' } },
         autoWidth: false, pageLength: 10, lengthChange: true,
         searching: true, ordering: true, orderCellsTop: true,
+        // Urutan bawaan = urutan server (terbaru dulu). Kolom No tidak bisa
+        // diurutkan: nomornya dihitung ulang tiap tabel digambar, karena baris
+        // tab lain dimuat belakangan.
+        order: [],
         columnDefs: [
+            { orderable: false, targets: [0] },
             { responsivePriority: 1,   targets: [0, 1, -1] },
             { responsivePriority: 2,   targets: [3] },
             { responsivePriority: 100, targets: [2, 4, 5, 6, 7, 8] }
@@ -957,6 +866,7 @@ $(function () {
         language: {
             search: '', lengthMenu: 'Page Size _MENU_',
             zeroRecords: 'Data tidak ditemukan',
+            emptyTable: 'Belum ada data beneficiary',
             info: 'Menampilkan _START_ sampai _END_ dari _TOTAL_ data',
             infoEmpty: 'Tidak ada data',
             paginate: { previous: 'Previous', next: 'Next' }
@@ -980,23 +890,22 @@ $(function () {
     | toolbar (lihat #btnClearFilterBen di bawah) — bukan tombol terpisah di
     | dalam panel ini.
     */
-    var PIC_GROUPS = @json($picGroups);
+    // Diisi dari server (GET /beneficiaries/pic-groups) hanya saat kata cari
+    // cocok dengan nama PIC — bukan dikirim sekaligus di setiap muat halaman.
+    var PIC_GROUPS = [];
+    var PIC_GROUPS_URL = '{{ url("/beneficiaries/pic-groups") }}';
+    // Filter kategori/status dari URL ikut diteruskan ke semua permintaan lazy.
+    var BEN_URL_FILTERS = (function () {
+        var p = new URLSearchParams(window.location.search), o = {};
+        ['q', 'category', 'status'].forEach(function (k) { if (p.get(k)) o[k] = p.get(k); });
+        return o;
+    })();
+    var picReq = 0, picTimer = null;
 
     /* Data PIC berasal dari input pengguna (nama, jabatan, email), jadi tidak
        pernah disisipkan ke HTML tanpa dijinakkan lebih dulu. */
     function esc(nilai) {
         return $('<div>').text(nilai == null ? '' : String(nilai)).html();
-    }
-
-    function picCocok(term) {
-        var t = $.trim(term).toLowerCase();
-        // Satu huruf cocok dengan hampir semua nama — tabel akan berkedip
-        // berganti mode di tiap ketukan pertama tanpa ada gunanya.
-        if (t.length < 2) return [];
-
-        return PIC_GROUPS.filter(function (g) {
-            return String(g.pic || '').toLowerCase().indexOf(t) !== -1;
-        });
     }
 
     function aksiPicHtml(g) {
@@ -1045,19 +954,36 @@ $(function () {
         $('#picResultCount').text(groups.length);
     }
 
+    function tutupHasilPic() {
+        $('#picResultWrap').hide();
+        $('#beneficiaryTableWrap').show();
+    }
+
     function terapkanPencarian(term) {
         table.search(term).draw();
 
-        var cocok = picCocok(term);
+        // Permintaan lama yang belum kembali dibatalkan lewat nomor urut.
+        var urut = ++picReq;
+        clearTimeout(picTimer);
 
-        if (cocok.length) {
-            renderPicResult(cocok);
-            $('#picResultWrap').show();
-            $('#beneficiaryTableWrap').hide();
-        } else {
-            $('#picResultWrap').hide();
-            $('#beneficiaryTableWrap').show();
-        }
+        // Satu huruf cocok dengan hampir semua nama — tabel akan berkedip
+        // berganti mode di tiap ketukan pertama tanpa ada gunanya.
+        if ($.trim(term).length < 2) { tutupHasilPic(); return; }
+
+        picTimer = setTimeout(function () {
+            $.getJSON(PIC_GROUPS_URL, $.extend({}, BEN_URL_FILTERS, { q: $.trim(term) }))
+                .done(function (groups) {
+                    if (urut !== picReq) return;
+                    PIC_GROUPS = groups;
+                    if (groups.length) {
+                        renderPicResult(groups);
+                        $('#picResultWrap').show();
+                        $('#beneficiaryTableWrap').hide();
+                    } else {
+                        tutupHasilPic();
+                    }
+                });
+        }, 250);
     }
 
     $('#globalSearch').on('keyup', function () {
@@ -1148,9 +1074,24 @@ $(function () {
     | untuk mendaftarkan penerima dana baru, tombolnya ada di toolbar utama
     | (#btnTambah / modal Tambah Beneficiary), bukan di sini.
     */
-    var BENEFICIARY_PICKER = @json($beneficiaryPicker);
+    // Diambil saat modal dibuka pertama kali (GET /beneficiaries/picker),
+    // bukan dikirim di tiap muat halaman.
+    var BENEFICIARY_PICKER = null;
+
+    function ensurePicker(sesudah) {
+        if (BENEFICIARY_PICKER) { sesudah(); return; }
+        $.getJSON('{{ url("/beneficiaries/picker") }}')
+            .done(function (data) { BENEFICIARY_PICKER = data; sesudah(); })
+            .fail(function () {
+                $('#picAttachList').html('<div class="text-danger text-center py-4">Gagal memuat daftar beneficiary.</div>');
+            });
+    }
 
     function renderPicAttachList() {
+        if (!BENEFICIARY_PICKER) {
+            $('#picAttachList').html('<div class="text-muted text-center py-4">Memuat...</div>');
+            return;
+        }
         var picId = $('#formPicAttach').data('pic-id');
         var term  = $.trim($('#picAttachSearch').val()).toLowerCase();
 
@@ -1210,6 +1151,7 @@ $(function () {
                 .find('input[name="beneficiary_ids[]"]').remove();
             $('#picAttachSearch').val('');
             renderPicAttachList();
+            ensurePicker(renderPicAttachList);
             $('#modalPicAttach').modal('show');
             $('#modalPicAttach').one('shown.bs.modal', function () {
                 $('#picAttachSearch').focus();
@@ -1292,54 +1234,10 @@ $(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | KARTU RINGKASAN MENGIKUTI TABEL
-    |--------------------------------------------------------------------------
-    | Penyaringan terjadi di sisi peramban supaya terasa seketika, tapi kartu
-    | di atas dirender server dari SELURUH data. Tanpa perhitungan ulang ini,
-    | menyaring INTERNAL menyisakan 1 baris di tabel sementara kartunya tetap
-    | menulis 778 — dua angka untuk himpunan yang sama.
-    |
-    | Ikut berlaku untuk kotak pencarian dan saringan Bank, yang dulu memang
-    | tidak pernah menyentuh kartu sama sekali.
-    */
-    var $nilaiKartu = $('#benKpi .ts-kpi-value');
-
-    function hitungUlangKartu() {
-        var total = 0, aktif = 0, internal = 0, eksternal = 0, billing = 0;
-
-        table.rows({ search: 'applied' }).nodes().each(function (tr) {
-            total++;
-            if (tr.getAttribute('data-status') === 'ACTIVE') aktif++;
-
-            switch (tr.getAttribute('data-category')) {
-                case 'INTERNAL': internal++; break;
-                case 'EXTERNAL': eksternal++; break;
-                case 'BILLING':  billing++;  break;
-            }
-        });
-
-        // Urutannya mengikuti kartu KPI di atas: Total, Active, Internal,
-        // External, Billing. Komponen kartunya dipakai 20+ halaman dan bentuk
-        // prop-nya sengaja tidak diubah, jadi kartunya ditunjuk per posisi.
-        //
-        // (Jangan menulis nama komponennya dalam bentuk tag di komentar ini:
-        //  Blade tidak peduli itu berada di dalam komentar JavaScript, ia
-        //  tetap merendernya sebagai komponen di tengah berkas skrip.)
-        [total, aktif, internal, eksternal, billing].forEach(function (n, i) {
-            $nilaiKartu.eq(i).text(n);
-        });
-    }
-
-    table.on('draw', hitungUlangKartu);
-    hitungUlangKartu();
-
-    /*
-    |--------------------------------------------------------------------------
     | TAB — dipilah di peramban, tanpa memuat ulang halaman
     |--------------------------------------------------------------------------
     | Seluruh baris sudah ada di tabel; tab hanya menentukan baris mana yang
-    | lolos saringan. Kartu KPI ikut benar dengan sendirinya karena
-    | hitungUlangKartu() menghitung dari baris yang lolos saringan.
+    | lolos saringan.
     */
     var benActiveTab = @json($tab);
 
@@ -1367,12 +1265,72 @@ $(function () {
         return barisIkutTab(row);
     });
 
+    /*
+    | PEMUATAN LAZY — baris tab yang belum dibuka belum ada di tabel.
+    | Halaman hanya merender bagian untuk tab awalnya; bagian lain diambil
+    | sekali saat pertama dibutuhkan, lalu ditambahkan ke tabel yang sama
+    | (Database = Internal + External).
+    */
+    var benParts   = {};   // bagian yang sudah ada di tabel
+    @json($parts).forEach(function (p) { benParts[p] = true; });
+    var benLoading = {};   // permintaan yang sedang berjalan
+
+    function bagianUntukTab(tab) {
+        return tab === 'db' ? ['internal', 'outsider'] : [tab];
+    }
+
+    function muatBagian(part) {
+        if (benParts[part]) return $.Deferred().resolve().promise();
+        if (benLoading[part]) return benLoading[part];
+
+        benLoading[part] = $.get('{{ url("/beneficiaries/rows") }}/' + part, BEN_URL_FILTERS)
+            .done(function (html) {
+                var $tr = $($.parseHTML($.trim(html))).filter('tr');
+                if ($tr.length) table.rows.add($tr);
+                benParts[part] = true;
+            })
+            .always(function () { delete benLoading[part]; });
+
+        return benLoading[part];
+    }
+
+    function pastikanTabTermuat(tab) {
+        return $.when.apply($, bagianUntukTab(tab).map(muatBagian));
+    }
+
+    // Kolom No dihitung ulang tiap digambar (urutan tampil, bukan urutan muat).
+    table.on('draw.dt', function () {
+        var mulai = table.page.info().start;
+        table.column(0, { page: 'current' }).nodes().each(function (cell, i) {
+            cell.textContent = mulai + i + 1;
+        });
+    });
+
     function applyBenTab(tab, pushUrl) {
         if (['internal', 'outsider', 'db'].indexOf(tab) === -1) tab = 'internal';
-        benActiveTab = tab;
 
         $('.ben-tab').removeClass('active')
             .filter('[data-bentab="' + tab + '"]').addClass('active');
+
+        var $wrap = $('#beneficiaryTableWrap');
+        var perlu = bagianUntukTab(tab).some(function (p) { return !benParts[p]; });
+
+        if (perlu) $wrap.css('opacity', .5).attr('aria-busy', 'true');
+
+        pastikanTabTermuat(tab)
+            .done(function () { selesaiPindahTab(tab, pushUrl); })
+            .fail(function () {
+                Swal.fire({ icon: 'error', title: 'Gagal memuat data',
+                    text: 'Data tab ini tidak bisa dimuat. Coba lagi.' });
+                // Kembali ke tab yang masih terpasang di tabel.
+                $('.ben-tab').removeClass('active')
+                    .filter('[data-bentab="' + benActiveTab + '"]').addClass('active');
+            })
+            .always(function () { $wrap.css('opacity', '').removeAttr('aria-busy'); });
+    }
+
+    function selesaiPindahTab(tab, pushUrl) {
+        benActiveTab = tab;
 
         // Kolom Kategori mubazir di tab Internal — isinya pasti INTERNAL semua.
         // Disembunyikan, bukan dibuang dari markup: indeks kolom lain (dipakai
@@ -1472,13 +1430,29 @@ $(function () {
     |--------------------------------------------------------------------------
     */
 
+    // Tombol melayang (HP) memicu tombol "Tambah" di header yang disembunyikan.
+    $('.ts-fab[data-trigger]').on('click', function () { $($(this).data('trigger')).trigger('click'); });
+
     $('#btnTambah').on('click', function () {
         $('#formTambah')[0].reset();
-        $('#tambahCategory').val('EXTERNAL');
+        $('#tambahCategory').val('EXTERNAL').trigger('change');
         $('#modalTambah').modal('show');
         $('#modalTambah').one('shown.bs.modal', function () {
             $('#tambahNickname').focus();
         });
+    });
+
+    // Kategori INTERNAL → PIC wajib. Select PIC disembunyikan oleh searchable
+    // select, jadi validasi dilakukan manual (bukan atribut `required`).
+    $('#tambahCategory').on('change', function () {
+        $('#tambahPicReq').toggle($(this).val() === 'INTERNAL');
+    });
+    $('#formTambah').on('submit', function (e) {
+        if ($('#tambahCategory').val() === 'INTERNAL' && !$('#tambahPic').val()) {
+            e.preventDefault();
+            Swal.fire({ icon: 'warning', title: 'PIC wajib dipilih',
+                text: 'Beneficiary kategori INTERNAL harus memiliki PIC.' });
+        }
     });
 
     /*

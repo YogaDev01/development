@@ -25,13 +25,25 @@
             </x-slot:actions>
         </x-tw.page-header>
 
-        <x-stat-cards :cards="[
-            ['Total PO Dimonitor', $summary['total'], 'primary', 'fas fa-project-diagram'],
-            ['PO Received Done', $summary['po_received_done'], 'warning', 'fas fa-inbox'],
-            ['BAST Done', $summary['bast_done'], 'success', 'fas fa-file-signature'],
-            ['Invoice Done', $summary['invoice_done'], 'info', 'fas fa-file-invoice'],
-            ['Payment Done', $summary['payment_done'], 'success', 'fas fa-money-bill-wave'],
-        ]" />
+        {{-- Stepper status PO (pola daftar Purchase Order); klik tahap = filter tabel
+             lewat data-postatus. Tahap Closing sengaja tidak ditampilkan, sama seperti
+             halaman Purchase Order. --}}
+        @php
+            $poSteps = [
+                ['Draft',              $summary['draft'],              'secondary', 'DRAFT'],
+                ['Submitted',          $summary['submitted'],          'warning',   'SUBMITTED'],
+                ['Verified',           $summary['verified'],           'info',      'VERIFIED'],
+                ['Early Start',        $summary['early_start'],        'primary',   'EARLY_START'],
+                ['Waiting PO',         $summary['waiting_po'],         'info',      'WAITING_PO'],
+                ['Active',             $summary['active'],             'success',   'ACTIVE'],
+                ['Waiting Invoice',    $summary['progress_done'],      'warning',   'PROGRESS_DONE'],
+                ['Partially Invoiced', $summary['partially_invoiced'], 'warning',   'PARTIALLY_INVOICED'],
+                ['Partially Paid',     $summary['partially_paid'],     'info',      'PARTIALLY_PAID'],
+                ['Paid',               $summary['paid'],               'success',   'PAID'],
+                ['Closed',             $summary['closed'],             'dark',      'CLOSED'],
+            ];
+        @endphp
+        <x-workflow-stepper :steps="$poSteps" :compact="true" table="tblMonitoring" field="postatus" :groups="[['Fase 1: Pengajuan', ['DRAFT','SUBMITTED','VERIFIED']], ['Fase 2: Persiapan', ['EARLY_START','WAITING_PO']], ['Fase 3: Pelaksanaan', ['ACTIVE','PROGRESS_DONE']], ['Fase 4: Penagihan', ['PARTIALLY_INVOICED','PARTIALLY_PAID','PAID','CLOSED']]]" />
 
         {{-- Kartu tunggal: toolbar + tabel + paginasi (pola Cost Request). --}}
         <x-tw.card padding="sm">
@@ -76,7 +88,7 @@
                             @php
                                 $lastUpdate = $project->last_update_at ? \Carbon\Carbon::parse($project->last_update_at) : $project->created_at;
                             @endphp
-                            <tr data-href="{{ route('project-monitoring.show', $project->id) }}" data-pm="{{ $pmInternal }}" data-customer="{{ $project->customer->name ?? '' }}" data-status="{{ $project->status_label }}"
+                            <tr data-href="{{ route('project-monitoring.show', $project->id) }}" data-pm="{{ $pmInternal }}" data-customer="{{ $project->customer->name ?? '' }}" data-status="{{ $project->status_label }}" data-postatus="{{ $project->status }}"
                                 data-update="{{ $lastUpdate->timestamp }}">
                                 <td class="fit-col text-center">{{ $loop->iteration }}</td>
 
@@ -117,7 +129,7 @@
                                 </td>
 
                                 <td class="fit-col text-center action-column">
-                                    {{-- Detail Log dibuka lewat klik baris; satu-satunya aksi: Info Purchase Order (modal). --}}
+                                    {{-- Detail Log dibuka lewat klik baris; satu-satunya aksi: Info Purchase Order (panel samping). --}}
                                     <div class="action-buttons ts-actions">
                                         <button type="button" class="ts-action-primary is-neutral btn-info-po"
                                                 data-id="{{ $project->id }}"
@@ -142,133 +154,95 @@
     </div>
 </div>
 
-<!-- MODAL INFO PURCHASE ORDER (ringkas: Informasi, Detail, PIC) -->
-<div class="modal fade" id="mdlInfoPO" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-xl" role="document">
-        <div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
-            <div class="modal-header" style="background:var(--charcoal);border-bottom:3px solid var(--accent);padding:16px 24px;">
-                <div class="d-flex align-items-center">
-                    <div style="width:36px;height:36px;background:var(--accent);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;margin-right:12px;flex-shrink:0;">
-                        <i class="fas fa-file-contract" style="color:#fff;font-size:15px;"></i>
-                    </div>
-                    <div>
-                        <h5 class="modal-title text-white mb-0" id="poInfoTitle">Info Purchase Order</h5>
-                        <small id="poInfoSubtitle" style="color:var(--text-faint);font-size:11px;"></small>
-                    </div>
-                </div>
-                <button type="button" class="close text-white" data-dismiss="modal" style="opacity:0.7;">
-                    <span>&times;</span>
-                </button>
+{{-- PANEL SAMPING INFO PURCHASE ORDER (read-only: Informasi, Milestone, PIC) --}}
+<x-drawer id="poInfoDrawer" label="Info Purchase Order" width="max(50vw, 560px)">
+    <div id="poInfoContent" hidden>
+        <ul class="nav nav-tabs mb-3" id="poInfoTabs" style="border-bottom:2px solid var(--border);flex-wrap:wrap;">
+            <li class="nav-item">
+                <a class="nav-link active" data-toggle="tab" href="#poPaneInfo" style="font-size:12px;font-weight:600;padding:8px 10px;">
+                    <i class="fas fa-info-circle mr-1"></i> Informasi
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-toggle="tab" href="#poPaneDetails" style="font-size:12px;font-weight:600;padding:8px 10px;">
+                    <i class="fas fa-project-diagram mr-1"></i> Milestone
+                    <span id="poDetailCount" class="badge badge-secondary ml-1" style="font-size:10px;"></span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-toggle="tab" href="#poPanePics" style="font-size:12px;font-weight:600;padding:8px 10px;">
+                    <i class="fas fa-users mr-1"></i> PIC
+                    <span id="poPicCount" class="badge badge-secondary ml-1" style="font-size:10px;"></span>
+                </a>
+            </li>
+        </ul>
+        <div class="tab-content">
+            <!-- TAB INFO -->
+            <div class="tab-pane fade show active" id="poPaneInfo">
+                <table class="table table-bordered mb-0" style="font-size:13px;">
+                    <tr><th width="30%" style="background:var(--surface-2);color:var(--text-faint);font-size:11px;text-transform:uppercase;">Kode</th><td id="poInfoCode"></td></tr>
+                    <tr><th style="background:var(--surface-2);color:var(--text-faint);font-size:11px;text-transform:uppercase;">Scope of Work</th><td id="poInfoName"></td></tr>
+                    <tr><th style="background:var(--surface-2);color:var(--text-faint);font-size:11px;text-transform:uppercase;">Customer</th><td id="poInfoCustomer"></td></tr>
+                    <tr><th style="background:var(--surface-2);color:var(--text-faint);font-size:11px;text-transform:uppercase;">Term of Payment</th><td id="poInfoToP"></td></tr>
+                    <tr><th style="background:var(--surface-2);color:var(--text-faint);font-size:11px;text-transform:uppercase;">Status</th><td id="poInfoStatus"></td></tr>
+                    <tr><th style="background:var(--surface-2);color:var(--text-faint);font-size:11px;text-transform:uppercase;">Notes</th><td id="poInfoNotes" style="white-space:pre-line;"></td></tr>
+                </table>
             </div>
-            <div class="modal-body" style="padding:0;background:var(--surface-2);">
-                <div id="poInfoLoading" class="text-center py-5">
-                    <i class="fas fa-spinner fa-spin fa-2x" style="color:var(--accent);"></i>
-                    <p class="text-muted mt-3 mb-0">Memuat data...</p>
-                </div>
-                <div id="poInfoContent" style="display:none;">
-                    <div class="row no-gutters">
-                        <!-- LEFT -->
-                        <div class="col-md-3" style="background:var(--charcoal);padding:28px 20px;min-height:350px;">
-                            <div class="text-center mb-3">
-                                <div style="width:64px;height:64px;background:var(--charcoal-2);border:3px solid var(--accent);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;">
-                                    <i class="fas fa-file-contract" style="color:var(--accent);font-size:24px;"></i>
-                                </div>
-                                <div id="poCode" class="mt-2" style="font-size:10px;color:var(--text-faint);letter-spacing:0.08em;"></div>
-                                <div id="poStatusBadge" class="mt-1"></div>
-                            </div>
-                            <hr style="border-color:rgba(255,255,255,0.08);">
-                            <div class="mb-3">
-                                <span style="color:var(--text-faint);font-size:10px;text-transform:uppercase;font-weight:600;">Customer</span>
-                                <div id="poCustomer" class="text-white mt-1" style="font-size:12px;"></div>
-                            </div>
-                        </div>
-
-                        <!-- RIGHT TABS -->
-                        <div class="col-md-9" style="padding:24px;">
-                            <ul class="nav nav-tabs mb-3" id="poInfoTabs" style="border-bottom:2px solid var(--border);flex-wrap:wrap;">
-                                <li class="nav-item">
-                                    <a class="nav-link active" data-toggle="tab" href="#poPaneInfo" style="font-size:12px;font-weight:600;padding:8px 10px;">
-                                        <i class="fas fa-info-circle mr-1"></i> Informasi
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" data-toggle="tab" href="#poPaneDetails" style="font-size:12px;font-weight:600;padding:8px 10px;">
-                                        <i class="fas fa-project-diagram mr-1"></i> Milestone
-                                        <span id="poDetailCount" class="badge badge-secondary ml-1" style="font-size:10px;"></span>
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link" data-toggle="tab" href="#poPanePics" style="font-size:12px;font-weight:600;padding:8px 10px;">
-                                        <i class="fas fa-users mr-1"></i> PIC
-                                        <span id="poPicCount" class="badge badge-secondary ml-1" style="font-size:10px;"></span>
-                                    </a>
-                                </li>
-                            </ul>
-                            <div class="tab-content">
-                                <!-- TAB INFO -->
-                                <div class="tab-pane fade show active" id="poPaneInfo">
-                                    <table class="table table-bordered mb-0" style="font-size:13px;">
-                                        <tr><th width="30%" style="background:var(--surface-2);color:var(--text-faint);font-size:11px;text-transform:uppercase;">Kode</th><td id="poInfoCode"></td></tr>
-                                        <tr><th style="background:var(--surface-2);color:var(--text-faint);font-size:11px;text-transform:uppercase;">Scope of Work</th><td id="poInfoName"></td></tr>
-                                        <tr><th style="background:var(--surface-2);color:var(--text-faint);font-size:11px;text-transform:uppercase;">Customer</th><td id="poInfoCustomer"></td></tr>
-                                        <tr><th style="background:var(--surface-2);color:var(--text-faint);font-size:11px;text-transform:uppercase;">Term of Payment</th><td id="poInfoToP"></td></tr>
-                                        <tr><th style="background:var(--surface-2);color:var(--text-faint);font-size:11px;text-transform:uppercase;">Status</th><td id="poInfoStatus"></td></tr>
-                                        <tr><th style="background:var(--surface-2);color:var(--text-faint);font-size:11px;text-transform:uppercase;">Notes</th><td id="poInfoNotes" style="white-space:pre-line;"></td></tr>
-                                    </table>
-                                </div>
-
-                                <!-- TAB PROJECT DETAIL -->
-                                <div class="tab-pane fade" id="poPaneDetails">
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered mb-0" style="font-size:12px;">
-                                            <thead style="background:var(--surface-2);">
-                                                <tr>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;width:5%;">No</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;">Milestone</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;">Status</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;">Plan Start</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;">Plan End</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;">Actual Start</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;">Actual End</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;">Notes</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="poDetailBody"></tbody>
-                                        </table>
-                                    </div>
-                                </div>
-
-                                <!-- TAB PIC -->
-                                <div class="tab-pane fade" id="poPanePics">
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered mb-0" style="font-size:12px;">
-                                            <thead style="background:var(--surface-2);">
-                                                <tr>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;width:5%;">No</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;">Nama PIC</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;">Jabatan</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;">Whatsapp</th>
-                                                    <th scope="col" style="color:var(--text-faint);font-size:11px;">Email</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="poPicBody"></tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+    
+            <!-- TAB PROJECT DETAIL -->
+            <div class="tab-pane fade" id="poPaneDetails">
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0" style="font-size:12px;">
+                        <thead style="background:var(--surface-2);">
+                            <tr>
+                                <th scope="col" style="color:var(--text-faint);font-size:11px;width:5%;">No</th>
+                                <th scope="col" style="color:var(--text-faint);font-size:11px;">Milestone</th>
+                                <th scope="col" style="color:var(--text-faint);font-size:11px;">Status</th>
+                                <th scope="col" style="color:var(--text-faint);font-size:11px;">Plan Start</th>
+                                <th scope="col" style="color:var(--text-faint);font-size:11px;">Plan End</th>
+                                <th scope="col" style="color:var(--text-faint);font-size:11px;">Actual Start</th>
+                                <th scope="col" style="color:var(--text-faint);font-size:11px;">Actual End</th>
+                                <th scope="col" style="color:var(--text-faint);font-size:11px;">Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="poDetailBody"></tbody>
+                    </table>
                 </div>
             </div>
-            <div class="modal-footer" style="background:var(--surface-2);border-top:1px solid var(--border);padding:12px 24px;">
-                <small class="text-muted mr-auto"><i class="fas fa-info-circle mr-1"></i> Read-only.</small>
-                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">
-                    <i class="fas fa-times mr-1"></i> Tutup
-                </button>
+    
+            <!-- TAB PIC -->
+            <div class="tab-pane fade" id="poPanePics">
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0" style="font-size:12px;">
+                        <thead style="background:var(--surface-2);">
+                            <tr>
+                                <th scope="col" style="color:var(--text-faint);font-size:11px;width:5%;">No</th>
+                                <th scope="col" style="color:var(--text-faint);font-size:11px;">Nama PIC</th>
+                                <th scope="col" style="color:var(--text-faint);font-size:11px;">Jabatan</th>
+                                <th scope="col" style="color:var(--text-faint);font-size:11px;">Whatsapp</th>
+                                <th scope="col" style="color:var(--text-faint);font-size:11px;">Email</th>
+                            </tr>
+                        </thead>
+                        <tbody id="poPicBody"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
-</div>
+
+    <div id="poInfoError" hidden></div>
+
+    <div id="poInfoLoading">
+        <x-skeleton type="lines" :rows="2" />
+        <div style="height:14px"></div>
+        <x-skeleton type="lines" :rows="5" />
+    </div>
+
+    <x-slot:footer>
+        <small class="text-muted mr-auto"><i class="fas fa-info-circle mr-1"></i> Read-only.</small>
+        <a href="#" id="poInfoOpenLog" class="btn btn-primary btn-sm"><i class="fas fa-stream mr-1"></i> Buka Detail Log</a>
+    </x-slot:footer>
+</x-drawer>
 
 @endsection
 
@@ -355,7 +329,12 @@ $(function () {
     /* Klik di mana saja pada baris membuka Detail Log (pola Cost Request). Kontrol di dalam baris
        (tombol Info PO, kontrol responsif DataTables) bekerja sendiri. */
     $(document).on('click', '#tblMonitoring tbody tr[data-href]', function (e) {
-        if ($(e.target).closest('a, button, input, select, textarea, label, form, .ts-actions, .ts-action-menu, td.dtr-control').length) return;
+        if ($(e.target).closest('a, button, input, select, textarea, label, form, .ts-actions, .ts-action-menu').length) return;
+        /* Responsive (mode inline) memberi kelas dtr-control pada kolom pertama yang
+           terlihat — di sini Scope of Work. Sel itu hanya berfungsi sebagai tombol
+           buka-tutup rincian saat ada kolom yang disembunyikan (tabel .collapsed);
+           selain itu klik di sana tetap membuka Detail Log. */
+        if ($(e.target).closest('td.dtr-control').length && $('#tblMonitoring').hasClass('collapsed')) return;
         if (window.getSelection && String(window.getSelection()).length) return;
         window.location.href = $(this).attr('data-href');
     });
@@ -384,6 +363,16 @@ $(function () {
 
     $('#btnClearFilterMon').on('click', function () {
         TesysColumnFilter.clearAll('#tblMonitoring');
+        TesysWorkflowStepper.clear('tblMonitoring');
+    });
+
+    /* Klik tahap Closed di stepper: PO Closed disembunyikan secara default,
+       jadi "Show Closed" ikut dicentang supaya hasil saringannya tidak kosong. */
+    $(document).on('click', '[data-wf-table="tblMonitoring"] .wf-tl-step[data-status="CLOSED"]', function () {
+        if ($(this).hasClass('wf-active') && !$('#chkShowClosed').is(':checked')) {
+            $('#chkShowClosed').prop('checked', true);
+            table.draw();
+        }
     });
 
     /* ── SHOW CLOSED — default sembunyikan PO berstatus Closed ── */
@@ -398,25 +387,32 @@ $(function () {
     $('#chkShowClosed').on('change', function () { table.draw(); });
     table.draw();
 
-    /* ── MODAL INFO PURCHASE ORDER (ringkas: Informasi, Detail, PIC) ── */
+    /* ── PANEL SAMPING INFO PURCHASE ORDER (ringkas: Informasi, Milestone, PIC) ── */
     var poStatusColors = {
         'DRAFT':'secondary','SUBMITTED':'warning',
         'WAITING_PO':'info','ACTIVE':'success','CLOSED':'dark'
     };
 
+    var poInfoAktif = null;
+
     $(document).on('click', '.btn-info-po', function () {
         var id = $(this).data('id');
+        var href = $(this).closest('tr').attr('data-href') || '#';
+        $('#poInfoContent').attr('hidden', true);
+        $('#poInfoError').attr('hidden', true).empty();
         $('#poInfoLoading').show();
-        $('#poInfoContent').hide();
-        $('#mdlInfoPO').modal('show');
+        $('#poInfoDrawer-eyebrow').text('');
+        $('#poInfoDrawer-title').text('Memuat…');
+        $('#poInfoOpenLog').attr('href', href);
+        $('#poInfoTabs a:first').tab('show');
+        TesysDrawer.open('poInfoDrawer', this);
+        poInfoAktif = id;
 
         $.get('/project/' + id + '/detail-json', function (d) {
-            $('#poInfoTitle').text(d.name);
-            $('#poInfoSubtitle').text('Kode: ' + (d.code || '-'));
-
-            $('#poCode').text(d.code || '-');
-            $('#poStatusBadge').html('<span class="badge badge-' + (poStatusColors[d.status]||'secondary') + ' px-3 py-1">' + d.status_label + '</span>');
-            $('#poCustomer').text(d.customer);
+            // Respons PO yang dibuka sebelumnya diabaikan bila user sudah pindah PO.
+            if (poInfoAktif !== id) return;
+            $('#poInfoDrawer-eyebrow').text((d.code || '-') + ' · ' + (d.customer || '-'));
+            $('#poInfoDrawer-title').text(d.name);
 
             // Tab Info (umum saja — tanpa nilai kontrak/budget)
             $('#poInfoCode').html('<span class="badge badge-dark px-2 py-1">' + (d.code || '-') + '</span>');
@@ -498,17 +494,14 @@ $(function () {
             });
             $('#poPicBody').html(picHtml || '<tr><td colspan="5" class="text-center text-muted py-3">Belum ada PIC.</td></tr>');
 
-            $('#poInfoTabs a:first').tab('show');
             $('#poInfoLoading').hide();
-            $('#poInfoContent').show();
+            $('#poInfoContent').removeAttr('hidden');
         }).fail(function () {
-            $('#poInfoLoading').html('<p class="text-danger text-center py-4"><i class="fas fa-exclamation-triangle mr-1"></i>Gagal memuat data.</p>');
+            if (poInfoAktif !== id) return;
+            $('#poInfoDrawer-title').text('Info Purchase Order');
+            $('#poInfoLoading').hide();
+            $('#poInfoError').html('<p class="text-danger text-center py-4"><i class="fas fa-exclamation-triangle mr-1"></i>Gagal memuat data.</p>').removeAttr('hidden');
         });
-    });
-
-    $('#mdlInfoPO').on('hidden.bs.modal', function () {
-        $('#poInfoContent').hide();
-        $('#poInfoLoading').show();
     });
 
     // Grouping/collapse tabel Milestone (default expand)

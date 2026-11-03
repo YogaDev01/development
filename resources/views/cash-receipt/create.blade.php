@@ -148,12 +148,6 @@
                         </div>
 
                         <div class="form-group col-lg-3 col-md-6">
-                            <label class="font-weight-600">No. Referensi</label>
-                            <input type="text" name="reference_number" class="form-control form-control-sm"
-                                   value="{{ old('reference_number') }}" placeholder="No. bukti transfer">
-                        </div>
-
-                        <div class="form-group col-lg-3 col-md-6">
                             <label class="font-weight-600">Bukti Transfer</label>
                             {{-- Input file asli tetap sumber nilai (name=proof_file); zona ini hanya mengisinya
                                  dari klik, drag & drop, atau paste (Ctrl+V). --}}

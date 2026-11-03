@@ -407,14 +407,22 @@ class Invoice extends Model
             }
         }
 
+        $service = app(\App\Services\InvoiceCalculationService::class);
+        $cek     = $service->computeFor($this);
+
+        // PPh tidak berubah. Tetap perbaiki captured_total yang basi (PPh invoice sudah terisi tetapi
+        // total belum dihitung ulang, mis. data lama). Data tagihan/PPN yang tidak konsisten tidak
+        // disentuh di jalur ini: dibiarkan seperti semula, tanpa memblokir penerimaan.
         if ($baru === $lama) {
-            return null;
+            $konsisten = $cek['billed_amount'] === (int) $this->billed_amount
+                && $cek['tax_amount'] === (int) $this->tax_amount;
+            if (! $konsisten || $cek['captured_total'] === (int) $this->captured_total) {
+                return null;
+            }
         }
 
         // Pra-cek: nilai tagihan & PPN tersimpan harus sama dengan hasil service, kalau tidak
         // captured_total hasil hitung ulang akan ikut menggeser angka lain secara diam-diam.
-        $service = app(\App\Services\InvoiceCalculationService::class);
-        $cek     = $service->computeFor($this);
         if ($cek['billed_amount'] !== (int) $this->billed_amount || $cek['tax_amount'] !== (int) $this->tax_amount) {
             if ($pembalikan) {
                 // Keputusan konservatif: pembatalan/penghapusan tidak boleh terblokir oleh data invoice lama.
@@ -444,8 +452,10 @@ class Invoice extends Model
         }
 
         $fmt  = fn (int $v) => number_format($v, 0, ',', '.');
-        $pesan = 'PPh invoice diubah dari ' . $fmt($lama) . ' ke ' . $fmt((int) $this->withholding_tax)
-            . ' oleh ' . $sumber . ' (PPh aktual)';
+        $pesan = $baru === $lama
+            ? 'Total invoice dihitung ulang sesuai PPh ' . $fmt($lama) . ' oleh ' . $sumber
+            : 'PPh invoice diubah dari ' . $fmt($lama) . ' ke ' . $fmt((int) $this->withholding_tax)
+                . ' oleh ' . $sumber . ' (PPh aktual)';
 
         $this->comments()->create(['user_id' => \Illuminate\Support\Facades\Auth::id(), 'comment' => $pesan]);
         UserActivityLog::record('invoice', 'update', $pesan . ' - Invoice #' . $this->code, $this);

@@ -251,10 +251,12 @@
     </div>
 </div>
 
-{{-- DRAWER DETAIL BATCH — pola drawer Cost Request: klik baris membuka ringkasan batch
-     (Info / Item / Lampiran). Aksi lengkap (Mark Paid, tambah/tolak item) tetap di
-     halaman detail; tombolnya ada di kaki drawer. Data dari daily-transaction.show-json. --}}
-<x-drawer id="dtDrawer" label="Detail Batch" width="max(50vw, 560px)">
+{{-- DRAWER DETAIL BATCH — pola drawer Cost Request: klik baris membuka detail batch
+     lengkap (Info / Item / Log) beserta seluruh aksi halaman detail (Approve/Tolak,
+     Submit/Hapus Draft, Tandai PAID, Export Data/Batch, Takeout/Keluarkan item).
+     Info & Log dari daily-transaction.show-json; tab Item dirender server lewat
+     daily-transaction.items-html (partial yang sama dengan halaman detail). --}}
+<x-drawer id="dtDrawer" label="Detail Batch" width="50vw">
     <div id="dtDrawerContent" hidden>
         <ul class="nav nav-tabs mb-3" id="dtDetailTabs" style="border-bottom:2px solid var(--border);">
             <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#dtPaneInfo"><i class="fas fa-info-circle mr-1"></i> Info</a></li>
@@ -264,21 +266,7 @@
         <div class="tab-content">
             <div class="tab-pane fade show active" id="dtPaneInfo"></div>
             <div class="tab-pane fade" id="dtPaneItems">
-                <div class="table-responsive">
-                    <table class="table table-bordered mb-0">
-                        <thead style="background:var(--surface-2);">
-                            <tr>
-                                <th scope="col">Kode / Deskripsi</th>
-                                <th scope="col" style="width:1%;white-space:nowrap;">Tipe</th>
-                                <th scope="col" style="width:1%;white-space:nowrap;">Pengaju</th>
-                                <th scope="col" style="width:1%;white-space:nowrap;text-align:right;">Nilai</th>
-                                <th scope="col" style="width:1%;white-space:nowrap;">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="dtItemBody"></tbody>
-                        <tfoot><tr style="background:var(--surface-2);"><th colspan="3" class="text-right">Total (item aktif)</th><th class="text-right" id="dtItemTotal"></th><th></th></tr></tfoot>
-                    </table>
-                </div>
+                <div id="dtItemHost"></div>
                 <div class="mt-3">
                     <h6 class="ts-dw-section-title">
                         <i class="fas fa-paperclip mr-1"></i> Lampiran <span id="dtAttCount" class="badge badge-secondary ml-1"></span>
@@ -310,9 +298,11 @@
     </div>
 
     <x-slot:footer>
-        <div id="dtDrawerActions" class="ts-actions" style="flex:1;justify-content:flex-start;"></div>
+        <div id="dtDrawerActions" class="ts-actions" style="flex:1;justify-content:flex-start;flex-wrap:wrap;"></div>
     </x-slot:footer>
 </x-drawer>
+
+@include('daily-transaction.partials.action-modals')
 
 <!-- MODAL APPROVE BATCH -->
 <div class="modal fade" id="mdlApproveBatch" tabindex="-1" role="dialog" aria-hidden="true">
@@ -323,6 +313,7 @@
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <form id="frmApproveBatch" method="POST">
+                <input type="hidden" name="from_index" value="1">
                 @csrf
                 <div class="modal-body" style="padding:24px 28px;">
                     <p id="approveBatchText" class="text-muted mb-3"></p>
@@ -349,6 +340,7 @@
                 <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
             </div>
             <form id="frmRejectBatch" method="POST">
+                <input type="hidden" name="from_index" value="1">
                 @csrf
                 <div class="modal-body" style="padding:24px 28px;">
                     <p id="rejectBatchText" class="text-muted mb-3"></p>
@@ -476,11 +468,39 @@
 .selectize-dropdown .optgroup .option {
     padding-left: 26px !important;
 }
+
+/* Drawer membawa aksi lengkap: modal (Mark PAID, View Budget, Takeout, Approve) dan
+   konfirmasi Swal tampil DI ATAS drawer (z-index 1070), bukan di belakangnya. */
+body.ts-drawer-lock .modal { z-index: 1085; }
+body.ts-drawer-lock .modal-backdrop { z-index: 1080; }
+body.ts-drawer-lock .swal2-container { z-index: 1095; }
+#dtItemHost .table { font-size: 12px; }
+
+/* Kaki drawer: .ts-actions aslinya kisi slot 36px untuk kolom aksi tabel (label
+   disembunyikan). Di sini tombolnya berlabel, jadi kisi diganti flex yang
+   membungkus supaya tombol tidak saling menumpuk. */
+body.tesys-ui #dtDrawerActions.ts-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+body.tesys-ui #dtDrawerActions.ts-actions .ts-action-primary {
+    width: auto; min-width: 0; height: 34px; padding: 0 12px; gap: 6px; overflow: visible;
+}
+body.tesys-ui #dtDrawerActions.ts-actions .ts-action-primary .ts-al {
+    position: static; width: auto; height: auto; margin: 0; overflow: visible; clip-path: none;
+}
+#dtItemHost .dt-items-loading { padding: 8px 0; }
+
+/* Tombol kaki drawer menampilkan caption (aturan global .ts-actions
+   menyembunyikan .ts-al untuk kolom aksi tabel). */
+#dtDrawerActions .ts-action-primary { width: auto; padding: 0 12px; gap: 6px; }
+body.tesys-ui #dtDrawerActions .ts-action-primary .ts-al {
+    position: static; width: auto; height: auto; margin: 0;
+    overflow: visible; clip-path: none;
+}
 </style>
 @endpush
 
 @push('scripts')
 <script src="@aset('js/tesys-col-resize.js')"></script>
+<script src="@aset('js/tesys-treasury-batch.js')"></script>
 <script>
 $(function () {
 
@@ -670,6 +690,86 @@ $(function () {
             .always(function () { $btn.prop('disabled', false); });
     });
 
+    /* Form aksi (Mark PAID, Takeout, draft) membawa from_index=1 — lihat tesys-treasury-batch.js. */
+    window.TESYS_DT_FROM_INDEX = true;
+
+    var dtDetail = null;      // JSON batch yang sedang terbuka di drawer
+    var dtItemsUntuk = null;  // id batch yang tab Item-nya sudah dimuat
+
+    /* ?open={id} di URL selama drawer terbuka: setelah aksi (POST → back()) halaman
+       kembali ke daftar yang sama dan drawer batch itu dibuka ulang. */
+    function setOpenParam(id) {
+        try {
+            var url = new URL(window.location.href);
+            if (id) url.searchParams.set('open', id); else url.searchParams.delete('open');
+            window.history.replaceState(null, '', url.toString());
+        } catch (e) {}
+    }
+
+    /* Tab Item: tabel "Daftar CR dalam Batch" dari server (partial yang sama dengan
+       halaman detail), dimuat saat tab dibuka pertama kali. Modal View Budget-nya
+       dipindah ke <body> supaya tidak terjepit di dalam panel drawer. */
+    function muatItemsDt(id) {
+        if (dtItemsUntuk === id) return;
+        dtItemsUntuk = id;
+        $('#dtItemHost').html('<div class="dt-items-loading text-muted" style="font-size:12px;"><i class="fas fa-spinner fa-spin mr-1"></i> Memuat daftar item…</div>');
+        $.get('{{ url('/daily-transaction') }}/' + encodeURIComponent(id) + '/items-html')
+            .done(function (html) {
+                if (dtItemsUntuk !== id) return;
+                $('body > .dt-coa-modals').remove();
+                var $html = $('<div>').html(html);
+                $html.find('.dt-coa-modals').appendTo('body');
+                $('#dtItemHost').empty().append($html.contents());
+            })
+            .fail(function () {
+                dtItemsUntuk = null;
+                $('#dtItemHost').html('<p class="text-danger mb-0" style="font-size:12px;"><i class="fas fa-exclamation-triangle mr-1"></i>Daftar item belum dapat dimuat. Buka ulang tab Item.</p>');
+            });
+    }
+    $(document).on('shown.bs.tab', '#dtDetailTabs a[href="#dtPaneItems"]', function () {
+        if (dtDetail && !dtDetail.is_top_up) muatItemsDt(dtDetail.id);
+    });
+
+    /* Aksi kaki drawer — gerbang peran/status dari server (d.can), sama dengan halaman detail. */
+    function renderAksiDt(d) {
+        var can = d.can || {}, h = '', attr = ' data-id="' + escAttrDt(d.id) + '" data-code="' + escAttrDt(d.code) + '"';
+        var jml = d.is_top_up ? 'Top Up' : (d.included_count || 0) + ' CR';
+        var tombol = function (kelas, ikon, label, ekstra) {
+            return '<button type="button" class="ts-action-primary ' + kelas + '"' + (ekstra || attr) + '><i class="fas ' + ikon + '"></i><span class="ts-al">' + escDt(label) + '</span></button>';
+        };
+        if (can.approve) {
+            h += tombol('btn-approve-batch', 'fa-check', 'Approve (' + jml + ')');
+            h += tombol('is-danger btn-reject-batch', 'fa-times', 'Tolak Seluruh Batch');
+        }
+        if (can.draft) {
+            h += tombol('btn-submit-batch', 'fa-paper-plane', 'Submit ke CEO (' + (d.is_top_up ? 'Top Up' : (d.included_count || 0) + ' item') + ')');
+            h += tombol('is-danger btn-delete-batch', 'fa-trash', 'Hapus Draft');
+        }
+        if (can.mark_paid) {
+            var info = d.is_top_up ? 'Top Up ini akan ditandai PAID (transfer selesai).' : (d.included_count || 0) + ' CR dalam batch ini akan berstatus PAID.';
+            h += tombol('btn-mark-paid', 'fa-money-bill-wave', 'Tandai PAID (' + jml + ')',
+                ' data-action="{{ url('/daily-transaction') }}/' + escAttrDt(d.id) + '/mark-paid" data-info="' + escAttrDt(info) + '"');
+        }
+        if (can.export_data) {
+            h += '<a href="{{ url('/daily-transaction') }}/' + escAttrDt(d.id) + '/export-data" class="ts-action-primary is-neutral"><i class="fas fa-file-excel"></i><span class="ts-al">Export Data</span></a>';
+        }
+        if (!d.is_top_up) {
+            h += can.export_batch
+                ? '<a href="{{ url('/daily-transaction') }}/' + escAttrDt(d.id) + '/export" class="ts-action-primary is-neutral"><i class="fas fa-file-excel"></i><span class="ts-al">Export Batch</span></a>'
+                : '<button type="button" class="ts-action-primary is-neutral" disabled title="Export tidak tersedia lagi setelah batch DONE/PAID"><i class="fas fa-file-excel"></i><span class="ts-al">Export Batch</span></button>';
+        }
+        $('#dtDrawerActions').html(h);
+    }
+
+    /* ── PANGGUNG EVIDENCE (carousel di kiri drawer) — komponen bersama tesys-evidence-stage.js ── */
+    var stageEvidence = TesysEvidenceStage.attach('dtDrawer');
+
+    /* Drawer ditutup → ?open= dibuang supaya muat ulang biasa tidak membukanya lagi. */
+    $(document).on('click', '#dtDrawer [data-drawer-close]', function () { setOpenParam(null); });
+    $(document).on('keydown', function (e) {
+        if (e.key === 'Escape' && !$('.modal.show, .swal2-container, .tes-ev-overlay.show').length) setOpenParam(null);
+    });
+
     function bukaDrawerBatch(id, pemicu) {
         var $baris = pemicu ? $(pemicu).closest('tr') : $('#tblBatch tbody tr[data-id="' + id + '"]').first();
 
@@ -682,19 +782,10 @@ $(function () {
         $('#dtDetailTabs a[href="#dtPaneInfo"]').tab('show');
 
         TesysDrawer.open('dtDrawer', pemicu);
-
-        // Aksi baris (Approve/Reject) disalin sebagai tombol drawer; detail lengkap di halaman detail.
-        $('#dtDrawerActions').append(
-            '<a href="{{ url('/daily-transaction') }}/' + encodeURIComponent(id) + '" class="ts-action-primary is-neutral">'
-            + '<i class="fas fa-external-link-alt"></i><span class="ts-al">Buka Halaman Detail</span></a>');
-        var $aksi = $baris.find('.ts-action-menu').children('.dropdown-item').clone(true, true);
-        $aksi.removeClass('dropdown-item').addClass('ts-action-primary');
-        $aksi.each(function () {
-            // Label tombol: teks butir menu dibungkus .ts-al supaya gaya tombol drawer sama.
-            var $b = $(this), teks = $.trim($b.text()), ikon = $b.find('i').prop('outerHTML') || '';
-            $b.html(ikon + '<span class="ts-al">' + escDt(teks) + '</span>');
-        });
-        $('#dtDrawerActions').append($aksi);
+        dtItemsUntuk = null;
+        $('#dtItemHost').empty();
+        stageEvidence.clear();
+        setOpenParam(id);
 
         function gagal(pesan) {
             $('#dtDrawerLoading').hide();
@@ -715,7 +806,7 @@ $(function () {
                     return;
                 }
 
-                var tipe = $baris.data('type') || '';
+                var tipe = d.type_label || $baris.data('type') || '';
                 $('#dtDrawer-eyebrow').html(
                     '<button type="button" class="ts-copy-code" data-code="' + escAttrDt(d.code) + '" title="Klik untuk menyalin kode">'
                     + escDt(d.code) + '</button>' + escDt(tipe ? ' · ' + tipe : ''));
@@ -730,7 +821,12 @@ $(function () {
                     + '<dt>Status</dt><dd><span class="badge badge-' + escAttrDt(d.status_color || 'secondary') + '">' + escDt(d.status_label || d.status) + '</span></dd>'
                     + '<dt>Tanggal</dt><dd>' + escDt(isiDt(d.date)) + '</dd>'
                     + '<dt>Type</dt><dd>' + escDt(isiDt(tipe)) + '</dd>'
-                    + '<dt>Sumber Dana</dt><dd>' + escDt(sumber) + '</dd>'
+                    + (d.is_top_up
+                        ? '<dt>Dari (Main Account)</dt><dd>' + escDt(sumber) + '</dd>'
+                          + '<dt>Ke (Rekening Operasional)</dt><dd>' + escDt(isiDt(d.to_source_fund)
+                              + (d.to_source_fund_bank && d.to_source_fund_bank !== '-' ? ' · ' + d.to_source_fund_bank : '')
+                              + (d.to_source_fund_no_account && d.to_source_fund_no_account !== '-' ? ' · ' + d.to_source_fund_no_account : '')) + '</dd>'
+                        : '<dt>Sumber Dana</dt><dd>' + escDt(sumber) + '</dd>')
                     + '<dt>Total Item</dt><dd class="is-amount">' + escDt(isiDt(d.total_amount_formatted)) + '</dd>'
                     + '<dt>Biaya</dt><dd class="is-amount">' + escDt(isiDt(d.charge_formatted)) + '</dd>'
                     + '<dt>Grand Total</dt><dd class="is-amount">' + escDt(isiDt(d.grand_total_formatted)) + '</dd>'
@@ -743,30 +839,28 @@ $(function () {
                     + '</dl>';
                 $('#dtPaneInfo').html(info);
 
-                var items = d.items || [], totalAktif = 0, jmlAktif = 0;
-                var rows = items.map(function (it) {
-                    var aktif = it.status !== 'REJECTED';
-                    if (aktif) { totalAktif += (parseInt(it.cr_amount, 10) || 0); jmlAktif++; }
-                    var gaya = aktif ? '' : ' style="color:var(--text-faint);text-decoration:line-through;"';
-                    return '<tr' + gaya + '>'
-                        + '<td><div>' + (it.cr_code ? '<button type="button" class="ts-copy-code" data-code="' + escAttrDt(it.cr_code) + '" title="Klik untuk menyalin kode">' + escDt(it.cr_code) + '</button>' : '-') + '</div>'
-                        + '<div style="font-size:12px;">' + escDt(isiDt(it.cr_description)) + '</div></td>'
-                        + '<td class="text-nowrap">' + escDt(isiDt(it.cr_type)) + '</td>'
-                        + '<td class="text-nowrap">' + escDt(isiDt(it.cr_applicant)) + '</td>'
-                        + '<td class="text-nowrap text-right" style="font-variant-numeric:tabular-nums;">' + escDt(isiDt(it.cr_amount_fmt)) + '</td>'
-                        + '<td class="text-nowrap">' + escDt(it.status === 'REJECTED' ? 'Ditolak' : 'Aktif') + '</td>'
-                        + '</tr>';
-                }).join('');
-                $('#dtItemBody').html(rows || '<tr><td colspan="5" class="text-center text-muted py-3">Tidak ada item</td></tr>');
-                $('#dtItemTotal').text(totalAktif.toLocaleString('id-ID'));
-                $('#dtItemCount').text(jmlAktif);
+                $('#dtItemCount').text(d.is_top_up ? '-' : (d.included_count || 0));
+                dtDetail = d;
+                if (d.is_top_up) {
+                    // Top Up tidak berisi CR — tab Item menampilkan rincian transfer (sama dengan halaman detail).
+                    dtItemsUntuk = d.id;
+                    $('#dtItemHost').html('<dl class="ts-dw-kv">'
+                        + '<dt>Dari</dt><dd>' + escDt(sumber) + '</dd>'
+                        + '<dt>Ke</dt><dd>' + escDt(isiDt(d.to_source_fund) + (d.to_source_fund_no_account && d.to_source_fund_no_account !== '-' ? ' · ' + d.to_source_fund_no_account : '')) + '</dd>'
+                        + '<dt>Jumlah Transfer</dt><dd class="is-amount">' + escDt(isiDt(d.captured_amount_formatted)) + '</dd></dl>');
+                } else if ($('#dtPaneItems').hasClass('active')) {
+                    muatItemsDt(d.id);
+                }
+
+                renderAksiDt(d);
+                stageEvidence.render(d.evidence || []);
 
                 var atts = d.attachments || [];
                 $('#dtAttCount').text(atts.length);
                 $('#dtAttBody').html(atts.length
                     ? atts.map(function (a) {
-                        return '<a class="ts-dw-file" href="/storage/' + escAttrDt(a.path) + '" target="_blank" rel="noopener">'
-                            + '<i class="fas fa-file"></i><span>' + escDt(a.original_name) + '</span><small>' + escDt(isiDt(a.size_formatted)) + '</small></a>';
+                        return '<a class="ts-dw-file" href="/storage/' + escAttrDt(a.path) + '" data-evidence="dt-att" data-evidence-name="' + escAttrDt(a.original_name) + '" target="_blank" rel="noopener">'
+                            + '<i class="fas ' + (a.is_image ? 'fa-file-image' : 'fa-file') + '"></i><span>' + escDt(a.original_name) + '</span><small>' + escDt(isiDt(a.size_formatted)) + '</small></a>';
                     }).join('')
                     : '<p class="text-muted mb-0" style="font-size:12px;">Belum ada lampiran.</p>');
 
@@ -797,42 +891,18 @@ $(function () {
     });
 
 
-    /* ── DRAFT BATCH: Submit / Hapus / Keluarkan item ─────────────────────
-       Konfirmasi Swal lalu kirim form (POST/DELETE) ke route Draft. */
-    function kirimFormDraft(url, metode) {
-        var $f = $('<form method="POST"></form>').attr('action', url);
-        $f.append($('<input type="hidden" name="_token">').val($('meta[name="csrf-token"]').attr('content')));
-        if (metode && metode !== 'POST') $f.append($('<input type="hidden" name="_method">').val(metode));
-        $('body').append($f);
-        $f[0].submit();
-    }
+    /* Submit / Hapus Draft / Keluarkan item, Takeout, Tandai PAID, dan modal View
+       Budget ditangani public/js/tesys-treasury-batch.js (sama dengan halaman detail). */
     function warnaToken(nama, cadangan) {
         var v = getComputedStyle(document.documentElement).getPropertyValue(nama).trim();
         return v || cadangan;
     }
-    $(document).on('click', '.btn-submit-batch', function () {
-        var id = $(this).data('id'), code = $(this).data('code');
-        Swal.fire({
-            title: 'Submit batch ' + code + '?', icon: 'question',
-            text: 'Batch diajukan ke CEO untuk approval. Setelah di-submit, Cost Request di dalamnya menjadi QUEUED dan isi batch tidak bisa diubah langsung oleh Treasury.',
-            showCancelButton: true, confirmButtonText: 'Ya, Submit', cancelButtonText: 'Batal',
-            confirmButtonColor: warnaToken('--accent', '#92232b'), cancelButtonColor: warnaToken('--text-muted', '#6a6e72')
-        }).then(function (r) { if (r.isConfirmed) kirimFormDraft('{{ url('/daily-transaction') }}/' + id + '/submit', 'POST'); });
-    });
-    $(document).on('click', '.btn-delete-batch', function () {
-        var id = $(this).data('id'), code = $(this).data('code');
-        Swal.fire({
-            title: 'Hapus draft ' + code + '?', icon: 'warning',
-            text: 'Draft batch beserta daftar itemnya dihapus. Cost Request di dalamnya tetap APPROVED dan bisa dimasukkan ke batch lain.',
-            showCancelButton: true, confirmButtonText: 'Ya, Hapus', cancelButtonText: 'Batal',
-            confirmButtonColor: warnaToken('--danger', '#9a3030'), cancelButtonColor: warnaToken('--text-muted', '#6a6e72')
-        }).then(function (r) { if (r.isConfirmed) kirimFormDraft('{{ url('/daily-transaction') }}/' + id, 'DELETE'); });
-    });
 
-    // Aksi dari kaki drawer membuka modal/konfirmasi: drawer ditutup dulu supaya tidak tertutup panel.
-    $(document).on('click', '#dtDrawerActions .btn-approve-batch, #dtDrawerActions .btn-reject-batch, #dtDrawerActions .btn-submit-batch, #dtDrawerActions .btn-delete-batch', function () {
-        TesysDrawer.close('dtDrawer');
-    });
+    /* Kembali dari aksi drawer (atau tautan ?open={id}): buka ulang drawer batch tsb. */
+    (function () {
+        var buka = new URLSearchParams(window.location.search).get('open');
+        if (buka && /^\d+$/.test(buka)) bukaDrawerBatch(parseInt(buka, 10), null);
+    })();
 
     /* ── BULK APPROVE / REJECT BATCH (pola Cost Request) ────────────────────
        Hanya batch Submitted (PENDING_APPROVER) yang bisa dicentang — hak

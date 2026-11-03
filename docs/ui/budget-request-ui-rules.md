@@ -125,8 +125,10 @@ Berkas utama: `resources/views/budget-request/*.blade.php`,
   juga; UI hanya mencerminkannya.
 - Tombol **Submit nonaktif** sampai syarat lengkap + petunjuk merah berisi apa yang
   kurang; **Simpan draft** tetap boleh setengah jadi.
-- Auto Fill / View Request: tombol aksi ringan di header kartu rincian; View
-  Request membuka modal read-only berisi rincian lengkap.
+- View Request: tombol aksi ringan di header kartu rincian; membuka modal lebar
+  (`min(1280px, 94vw)`) read-only berisi rincian lengkap (COA/Sub COA satu kolom,
+  angka tidak terpotong, header menempel). Auto Fill dihapus 4 Nov 2026 — baris
+  item terisi & terkunci otomatis.
 
 ## 10. Responsif
 

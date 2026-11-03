@@ -59,6 +59,44 @@ body.tesys-ui .main > .content {
     animation: tesys-fade var(--dur-slow) var(--ease-out) .04s backwards;
 }
 
+/* Blok-blok halaman masuk BERURUTAN: memudar sambil naik sedikit, jeda 70ms
+   per blok (maks. 6 blok, sisanya ikut blok ke-6). Dua pola halaman:
+   - .container-fluid berisi banyak blok langsung (pola Bootstrap);
+   - .container-fluid berisi SATU pembungkus (pola Tailwind tw:flex) —
+     yang berurutan adalah isi pembungkus itu.
+   Dashboard (.ts-dash) diperlakukan sama.
+   transform di sini aman karena fill-mode "backwards" (lihat catatan di atas):
+   transform lepas begitu animasi selesai. Modal, FAB, dan elemen tersembunyi
+   dikecualikan karena posisinya fixed / tidak tampil. Halaman yang cocok
+   melepas fade pembungkus supaya kedua animasi tidak bertumpuk. */
+@keyframes tesys-enter {
+    from { opacity: 0; transform: translate3d(0, 12px, 0); }
+    to   { opacity: 1; transform: none; }
+}
+body.tesys-ui .main > .content:has(> .content > .container-fluid, > .ts-dash) {
+    animation: none;
+}
+body.tesys-ui .main > .content > .content > .container-fluid > :not(:only-child):not(.modal):not([class*="fab"]):not(.sr-only):not(.tw\:sr-only):not(script):not(style),
+body.tesys-ui .main > .content > .content > .container-fluid > :only-child > :not(.modal):not([class*="fab"]):not(.sr-only):not(.tw\:sr-only):not(script):not(style),
+body.tesys-ui .main > .content > .ts-dash > :not(.modal):not(script):not(style) {
+    animation: tesys-enter .45s var(--ease-out) var(--enter-delay, 0s) backwards;
+}
+body.tesys-ui .main .container-fluid > :nth-child(2),
+body.tesys-ui .main .container-fluid > :only-child > :nth-child(2),
+body.tesys-ui .main .ts-dash > :nth-child(2) { --enter-delay: .07s; }
+body.tesys-ui .main .container-fluid > :nth-child(3),
+body.tesys-ui .main .container-fluid > :only-child > :nth-child(3),
+body.tesys-ui .main .ts-dash > :nth-child(3) { --enter-delay: .14s; }
+body.tesys-ui .main .container-fluid > :nth-child(4),
+body.tesys-ui .main .container-fluid > :only-child > :nth-child(4),
+body.tesys-ui .main .ts-dash > :nth-child(4) { --enter-delay: .21s; }
+body.tesys-ui .main .container-fluid > :nth-child(5),
+body.tesys-ui .main .container-fluid > :only-child > :nth-child(5),
+body.tesys-ui .main .ts-dash > :nth-child(5) { --enter-delay: .28s; }
+body.tesys-ui .main .container-fluid > :nth-child(n+6),
+body.tesys-ui .main .container-fluid > :only-child > :nth-child(n+6),
+body.tesys-ui .main .ts-dash > :nth-child(n+6) { --enter-delay: .35s; }
+
 /* ---------------------------------------------------------------- CARD
    Kartu diam: tidak berbayang dan tidak terangkat. Yang berubah saat
    disentuh hanya garis tepinya. Halaman ERP berisi belasan kartu sekaligus;
@@ -219,6 +257,11 @@ body.tesys-ui .skeleton { animation-duration: 1.2s; }
         transition-duration: .001ms !important;
         scroll-behavior: auto !important;
     }
+    /* Durasi .001ms saja tidak cukup untuk animasi masuk: jedanya tetap
+       berlaku dan blok sempat tak terlihat selama jeda itu. */
+    body.tesys-ui .main .container-fluid > *,
+    body.tesys-ui .main .container-fluid > :only-child > *,
+    body.tesys-ui .main .ts-dash > * { animation: none !important; }
     body.tesys-ui .btn:hover,
     body.tesys-ui .card:hover,
     body.tesys-ui .card.card-clickable:hover,

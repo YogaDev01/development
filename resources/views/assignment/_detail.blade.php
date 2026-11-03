@@ -54,7 +54,7 @@
 @if ($assignment->attachments->isNotEmpty())
     <div class="asg-mail-attachments">
         @foreach ($assignment->attachments as $att)
-            <a href="{{ $att->url }}" target="_blank" rel="noopener" class="asg-attachment-chip">
+            <a href="{{ $att->url }}" data-evidence="asg-{{ $assignment->id }}" data-evidence-name="{{ $att->original_name }}" target="_blank" rel="noopener" class="asg-attachment-chip">
                 <i class="fas fa-paperclip"></i>
                 <span class="text-truncate">{{ $att->original_name }}</span>
                 <span class="text-muted">({{ number_format($att->size / 1024, 0) }} KB)</span>

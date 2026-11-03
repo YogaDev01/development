@@ -67,7 +67,7 @@
                         <span class="toolbar-label">Cari :</span>
                         <div class="toolbar-input">
                             <input type="search" id="crSearch" class="form-control form-control-sm"
-                                   placeholder="Kode / referensi / customer">
+                                   placeholder="Kode / customer">
                         </div>
                     </div>
 
@@ -83,7 +83,7 @@
                             <i class="fas fa-columns mr-1"></i> Kolom
                         </button>
                         <div class="cr-pop-menu p-2" style="min-width:200px;max-height:340px;overflow-y:auto;">
-                            @foreach(['tanggal' => 'Tanggal', 'referensi' => 'Referensi', 'tagihan' => 'Tagihan', 'pph' => 'Total PPh', 'invoice' => 'Invoice'] as $key => $label)
+                            @foreach(['tanggal' => 'Tanggal', 'tagihan' => 'Tagihan', 'pph' => 'Total PPh', 'invoice' => 'Invoice'] as $key => $label)
                             <div class="custom-control custom-checkbox">
                                 <input type="checkbox" class="custom-control-input cr-col-vis-toggle" id="crColVis_{{ $key }}" data-column="{{ $key }}">
                                 <label class="custom-control-label" for="crColVis_{{ $key }}" style="font-size:12px;">{{ $label }}</label>
@@ -122,7 +122,6 @@
                                 <th scope="col" class="text-nowrap">Kode</th>
                                 <th scope="col" class="text-nowrap">Tanggal</th>
                                 <th scope="col">Customer</th>
-                                <th scope="col" class="text-nowrap">Referensi</th>
                                 <th scope="col" class="text-right text-nowrap">Tagihan</th>
                                 <th scope="col" class="text-right text-nowrap">Total PPh</th>
                                 <th scope="col" class="text-right text-nowrap">Total Diterima</th>
@@ -154,7 +153,6 @@
                                 </td>
                                 <td class="text-nowrap" data-order="{{ $h->received_date?->format('Y-m-d') }}">{{ $h->received_date?->format('d M Y') }}</td>
                                 <td class="ts-col-desc">{{ $h->customer->name ?? '-' }}</td>
-                                <td class="text-nowrap">{{ $h->reference_number ?: '-' }}</td>
                                 {{-- Nilai nol di kolom uang ditulis "-". --}}
                                 <td class="text-right text-nowrap ts-col-money">{{ (int) $h->kolom_tagihan === 0 ? '-' : number_format($h->kolom_tagihan, 0, ',', '.') }}</td>
                                 <td class="text-right text-nowrap ts-col-money">{{ (int) $h->kolom_pph === 0 ? '-' : number_format($h->kolom_pph, 0, ',', '.') }}</td>
@@ -196,7 +194,6 @@
                         <tfoot>
                             <tr style="background:var(--surface-2);font-size:12px;">
                                 <th class="text-nowrap">Total</th>
-                                <th></th>
                                 <th></th>
                                 <th></th>
                                 <th class="text-right text-nowrap cr-foot-tagihan"></th>
@@ -262,12 +259,12 @@ $(function () {
 
     /* Kolom yang boleh disembunyikan -> indeks kolom. Kode, Customer, Total
        Diterima, Status, dan Aksi sengaja tidak ada di sini (wajib tampil). */
-    var MAP_VIS = { tanggal: 1, referensi: 3, tagihan: 4, pph: 5, invoice: 7 };
+    var MAP_VIS = { tanggal: 1, tagihan: 3, pph: 4, invoice: 6 };
     function visKey(key) { return 'crCashColVis_' + key; }
     function getVis(key) { var v = localStorage.getItem(visKey(key)); return v === null ? true : v === '1'; }
     function setVis(key, tampil) { localStorage.setItem(visKey(key), tampil ? '1' : '0'); }
 
-    var defs = [{ targets: [9], orderable: false, searchable: false }];
+    var defs = [{ targets: [8], orderable: false, searchable: false }];
     Object.keys(MAP_VIS).forEach(function (k) {
         defs.push({ targets: [MAP_VIS[k]], visible: getVis(k) });
     });

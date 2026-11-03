@@ -85,8 +85,8 @@
                             <i class="fas fa-list-ul" aria-hidden="true"></i> Settlement per Item
                         </div>
                         <div class="tw:flex tw:flex-wrap tw:items-center tw:gap-2">
+                            <x-tw.button id="btnResetSettle" variant="secondary" size="sm" class="tw:max-sm:min-h-12" title="Kembalikan baris settlement ke rincian pengajuan awal"><i class="fas fa-undo" aria-hidden="true"></i> Reset</x-tw.button>
                             <x-tw.button id="btnViewRequest" variant="secondary" size="sm" class="tw:max-sm:min-h-12"><i class="fas fa-eye" aria-hidden="true"></i> View Request</x-tw.button>
-                            <x-tw.button id="btnAutoFill" variant="secondary" size="sm" class="tw:max-sm:min-h-12" title="Salin seluruh rincian pengajuan menjadi baris settlement"><i class="fas fa-magic" aria-hidden="true"></i> Auto Fill</x-tw.button>
                             <x-tw.button href="{{ url('/budget-request/' . $budgetRequest->id . '/settlement-template') }}" variant="secondary" size="sm" class="tw:max-sm:min-h-12"><i class="fas fa-file-excel" aria-hidden="true"></i> Download Template</x-tw.button>
                             <x-tw.button id="btnImportSettlementExcel" variant="secondary" size="sm" class="tw:max-sm:min-h-12"><i class="fas fa-file-import" aria-hidden="true"></i> Import Excel</x-tw.button>
                             <input type="file" id="importSettlementFileInput" accept=".xlsx,.xls" style="display:none;">
@@ -111,15 +111,23 @@
                             </tr>
                         </thead>
                         <tbody id="realizeBody">
-                            {{-- Awalnya kosong; hanya baris yang sudah tersimpan (draft / ditolak) yang tampil. --}}
+                            {{-- Terisi otomatis 1:1 dari item pengajuan; baris pertama tiap item tidak bisa dihapus. --}}
+                            @php $sudahPrimer = []; @endphp
                             @forelse($settleRows as $i => $row)
+                                @php
+                                    $detailRow = $row['detail'];
+                                    $isPrimary = $detailRow && ! isset($sudahPrimer[$detailRow->id]);
+                                    if ($detailRow) $sudahPrimer[$detailRow->id] = true;
+                                @endphp
                                 @include('budget-request._realize_row', [
                                     'k'           => $i,
                                     'rowId'       => $row['id'],
-                                    'detail'      => $row['detail'],
+                                    'detail'      => $detailRow,
+                                    'isPrimary'   => $isPrimary,
                                     'orphanId'    => $row['orphan_detail_id'] ?? null,
                                     'bdId'        => $row['budget_detail_id'],
-                                    'notes'       => $row['notes'],
+                                    // Baris belum tersimpan: deskripsi awal = deskripsi item pengajuan.
+                                    'notes'       => $row['id'] ? $row['notes'] : ($row['notes'] ?? \Illuminate\Support\Str::limit((string) $detailRow?->notes, 255, '')),
                                     'changeNote'  => $row['change_note'],
                                     'qty'         => $row['qty'] ?? null,
                                     'amount'      => $row['price'] ?? $row['amount'],
@@ -127,7 +135,7 @@
                                 ])
                             @empty
                             <tr class="realize-empty">
-                                <td colspan="8" class="text-center tw:py-6 tw:text-data tw:text-text-dim">Belum ada baris. Klik <strong>Auto Fill</strong> untuk menyalin rincian pengajuan, atau <strong>Tambah Baris</strong>.</td>
+                                <td colspan="8" class="text-center tw:py-6 tw:text-data tw:text-text-dim">CR ini tidak punya item pengajuan. Klik <strong>Tambah Baris</strong> untuk menambah baris settlement.</td>
                             </tr>
                             @endforelse
                         </tbody>
@@ -147,12 +155,23 @@
             {{-- Template baris baru (Pecah / Tambah Baris / import). --}}
             <template id="realizeRowTpl">
                 @include('budget-request._realize_row', [
-                    'k' => '__K__', 'rowId' => null, 'detail' => null, 'orphanId' => null, 'bdId' => null,
+                    'k' => '__K__', 'rowId' => null, 'detail' => null, 'isPrimary' => false, 'orphanId' => null, 'bdId' => null,
                     'notes' => null, 'changeNote' => null, 'qty' => 1, 'amount' => 0, 'attachments' => collect(),
                 ])
             </template>
+            {{-- Baris default (tombol Reset): satu baris per item pengajuan (bukan TAKEOUT),
+                 sama dengan isi awal settlementFormRows() sebelum ada simpanan. --}}
+            <template id="realizeDefaultTpl">
+                @foreach($budgetRequest->details->reject(fn ($d) => $d->isTakenOut())->values() as $pos => $d)
+                    @include('budget-request._realize_row', [
+                        'k' => 'd' . $pos, 'rowId' => null, 'detail' => $d, 'isPrimary' => true, 'orphanId' => null,
+                        'bdId' => $d->budget_detail_id, 'notes' => \Illuminate\Support\Str::limit((string) $d->notes, 255, ''),
+                        'changeNote' => null, 'qty' => (int) $d->qty, 'amount' => (int) $d->amount, 'attachments' => collect(),
+                    ])
+                @endforeach
+            </template>
             <script type="application/json" id="realizeSubItems">@json($subItems->keyBy('id'))</script>
-            {{-- Rincian pengajuan (item yang ikut, bukan takeout) untuk "View Request" & "Auto Fill". --}}
+            {{-- Rincian pengajuan (item yang ikut, bukan takeout) untuk "View Request". --}}
             @php
                 $reqItems = $budgetRequest->details->reject(fn ($d) => $d->isTakenOut())->mapWithKeys(fn ($d) => [$d->id => [
                     'coa'     => $d->account?->name ?? '-',
@@ -166,95 +185,63 @@
             @endphp
             <script type="application/json" id="realizeReqItems">@json($reqItems)</script>
 
-            <!-- BUKTI SETTLEMENT (GLOBAL) -->
-            <x-tw.card>
+            {{-- BUKTI TRANSFER PENGEMBALIAN — hanya tampil bila total Settle di
+                 bawah nilai pengajuan (ada sisa dana dikembalikan). Opsional;
+                 tersimpan sebagai lampiran global berawalan "bukti-transfer-". --}}
+            <x-tw.card id="refundProofCard" style="display:none;">
                 <x-slot:header>
                     <div class="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3">
                         <div role="heading" aria-level="2" class="tw:flex tw:items-center tw:gap-2">
-                            <i class="fas fa-check-double" aria-hidden="true"></i> Bukti Settlement (Global)
-                            <x-tw.badge tone="danger" id="attWajib" style="display:none;" title="Wajib karena total Settle melebihi nilai pengajuan">Wajib*</x-tw.badge>
+                            <i class="fas fa-money-check-alt" aria-hidden="true"></i> Bukti Transfer Pengembalian
                         </div>
-                        <x-tw.button id="btnAddRealAttachment" size="sm" class="tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Lampiran</x-tw.button>
+                        <div class="tw:text-data tw:text-text-dim">Sisa dana dikembalikan: <strong id="refundAmount" class="tw:tabular-nums tw:text-text">0</strong></div>
                     </div>
                 </x-slot:header>
 
-                <div>
-                    @if($budgetRequest->realizationAttachments->isNotEmpty())
-                    {{-- Bukti global dari submit sebelumnya — ikut dipertahankan. --}}
-                    <div class="table-responsive tw:mb-4">
-                        <table class="tw:w-full tw:border-collapse">
-                            <thead>
-                                <tr>
-                                    <th scope="col" class="tw:w-[5%] text-center">No</th>
-                                    <th scope="col">File (sudah diunggah)</th>
-                                    <th scope="col" class="tw:w-[10%] text-center">Hapus</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($budgetRequest->realizationAttachments as $i => $att)
-                                <tr>
-                                    <td class="text-center align-middle">{{ $i + 1 }}</td>
-                                    <td class="align-middle att-lama">
-                                        <input type="checkbox" name="delete_realization_global_attachments[]"
-                                               value="{{ $att->id }}" class="del-realize-att-global d-none">
-                                        <i class="fas fa-file tw:mr-1" aria-hidden="true"></i>
-                                        <a href="#" class="att-lama-open"
-                                           data-url="{{ asset('storage/' . $att->path) }}"
-                                           data-nama="{{ $att->original_name }}">{{ $att->original_name }}</a>
-                                        <span class="tw:ml-2 tw:text-caption tw:text-text-dim">({{ $att->size_formatted }})</span>
-                                    </td>
-                                    <td class="text-center align-middle">
-                                        <x-tw.button variant="danger" size="sm" class="att-lama-del" title="Hapus lampiran ini" aria-label="Hapus lampiran {{ $att->original_name }}"><i class="fas fa-times" aria-hidden="true"></i></x-tw.button>
-                                    </td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                <div id="dropZoneRefund" class="att-dropzone" tabindex="0">
+                    <i class="fas fa-cloud-upload-alt fa-2x mb-2 d-block" aria-hidden="true"></i>
+                    <div class="tw:text-control tw:text-text">
+                        Drag &amp; drop bukti transfer ke sini, paste gambar (Ctrl+V), atau
+                        <span class="tw:cursor-pointer tw:font-label tw:text-accent-text tw:underline" id="dropZoneBrowseRefund" role="button" tabindex="0">klik untuk pilih</span>
                     </div>
-                    @endif
-
-                    <div id="realAttUploadArea" style="display:none;">
-                    <div id="dropZoneReal" class="att-dropzone tw:mb-4" tabindex="0">
-                        <i class="fas fa-cloud-upload-alt fa-2x mb-2 d-block" aria-hidden="true"></i>
-                        <div class="tw:text-control tw:text-text">
-                            Drag &amp; drop file ke sini, paste gambar (Ctrl+V), atau
-                            <span class="tw:cursor-pointer tw:font-label tw:text-accent-text tw:underline" id="dropZoneBrowseReal" role="button" tabindex="0">klik untuk pilih</span>
-                        </div>
-                        <div class="tw:mt-1 tw:text-caption tw:text-text-dim">Bisa pilih/drop/paste beberapa file sekaligus</div>
-                        <input type="file" id="dropZoneInputReal" multiple style="display:none;">
-                    </div>
-                    <div class="table-responsive" id="realAttTableWrap" style="display:none;">
-                        <table class="tw:w-full tw:border-collapse">
-                            <thead>
-                                <tr>
-                                    <th scope="col" class="tw:w-[5%] text-center">No</th>
-                                    <th scope="col">File</th>
-                                    <th scope="col" class="tw:w-[10%] text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="realAttachmentBody"></tbody>
-                        </table>
-                    </div>
-                    </div>
+                    <div class="tw:mt-1 tw:text-caption tw:text-text-dim">Bisa beberapa file sekaligus</div>
                 </div>
+                <input type="file" name="refund_proofs[]" id="refundProofInput" multiple accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+                {{-- Bukti transfer dari simpanan sebelumnya (draft / ditolak). Klik × untuk
+                     menandai hapus — baru berlaku saat disimpan, bisa dibatalkan. --}}
+                @php $refundLama = $budgetRequest->realizationAttachments->filter(fn ($a) => str_starts_with((string) $a->original_name, 'bukti-transfer-')); @endphp
+                @if($refundLama->isNotEmpty())
+                <div class="refund-proof-list">
+                    @foreach($refundLama as $att)
+                    <div class="refund-proof-item att-lama">
+                        <input type="checkbox" name="delete_realization_global_attachments[]" value="{{ $att->id }}" class="del-realize-att-global d-none">
+                        <i class="fas fa-file mr-1" aria-hidden="true"></i>
+                        <a href="#" class="att-lama-open" data-url="{{ asset('storage/' . $att->path) }}" data-nama="{{ $att->original_name }}">{{ $att->original_name }}</a>
+                        <span class="tw:text-caption tw:text-text-dim">({{ $att->size_formatted }}, tersimpan)</span>
+                        <button type="button" class="refund-proof-del att-lama-del" title="Hapus lampiran ini" aria-label="Hapus {{ $att->original_name }}"><i class="fas fa-times" aria-hidden="true"></i></button>
+                    </div>
+                    @endforeach
+                </div>
+                @endif
+                <div id="refundProofList" class="refund-proof-list"></div>
 
                 <x-slot:footer>
                     <i class="fas fa-info-circle tw:mr-1" aria-hidden="true"></i>
-                    Format: PDF, JPG, PNG, DOC, XLS. Maks 10 MB per file. Foto pekerjaan, laporan, atau dokumen pendukung lainnya.
+                    Format: PDF, JPG, PNG. Maks 10 MB per file. Bukti belanja dilampirkan per baris di kolom Lampiran Item.
                 </x-slot:footer>
             </x-tw.card>
 
-            {{-- KETERANGAN SETTLEMENT — opsional, ikut tercatat di Log CR bersama
-                 rincian settlement yang disubmit. Polanya sama dengan lampiran:
-                 kolomnya baru muncul setelah tombolnya diklik. --}}
+            {{-- LOG HISTORY NOTE — opsional, tersimpan di settlement_notes dan ikut
+                 tercatat di Log CR bersama rincian settlement yang disubmit. Kolomnya
+                 baru muncul setelah tombolnya diklik. --}}
             <x-tw.card>
                 <x-slot:header>
                     <div class="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-3">
                         <div role="heading" aria-level="2" class="tw:flex tw:items-center tw:gap-2">
-                            <i class="fas fa-comment-dots" aria-hidden="true"></i> Keterangan
-                            <x-tw.badge tone="danger" id="ketWajib" style="display:none;" title="Wajib karena total Settle melebihi nilai pengajuan">Wajib*</x-tw.badge>
+                            <i class="fas fa-comment-dots" aria-hidden="true"></i> Log History Note
+                            <span class="settle-optional tw:text-caption tw:text-text-dim">(opsional)</span>
                         </div>
-                        <x-tw.button id="btnAddSettleNote" size="sm" class="tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Keterangan</x-tw.button>
+                        <x-tw.button id="btnAddSettleNote" size="sm" class="tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Note</x-tw.button>
                     </div>
                 </x-slot:header>
 
@@ -262,10 +249,10 @@
                 <div id="settleNoteArea" style="{{ filled($ketAwal) ? '' : 'display:none;' }}">
                     <x-tw.textarea name="settlement_notes" id="settlementNotes" rows="3" maxlength="1000" :value="$ketAwal"
                                    placeholder="Mis. nota hotel atas nama rekan kerja, selisih karena kenaikan tarif, dsb."
-                                   hint="Keterangan ini tersimpan di data Cost Request dan ikut tercatat di Log. Wajib diisi bila total Settle melebihi nilai pengajuan. Maks 1000 karakter." />
+                                   hint="Note ini tersimpan di data Cost Request dan ikut tercatat di Log History. Maks 1000 karakter." />
                 </div>
                 <p id="settleNoteEmpty" style="{{ filled($ketAwal) ? 'display:none;' : '' }}" class="tw:m-0 tw:text-data tw:leading-body tw:text-text-dim">
-                    Belum ada keterangan. Klik <strong>Tambah Keterangan</strong> kalau settlement ini perlu penjelasan.
+                    Belum ada note. Klik <strong>Tambah Note</strong> kalau settlement ini perlu penjelasan di Log History.
                 </p>
             </x-tw.card>
 
@@ -346,21 +333,29 @@ $(function () {
         return !String($row.data('origin') || '') && rowTotal($row) <= 0;
     }
 
-    /* Keterangan & Lampiran Settlement (header) wajib bila total Settle melebihi nilai pengajuan CR. */
-    function totalSettleNow() {
-        var t = 0;
-        realizeRows().each(function () { t += rowTotal($(this)); });
-        return t;
-    }
-    function adaMelebihi() { return totalSettleNow() > REQ_TOTAL; }
-
-    function lampiranGlobalKosong() {
-        var baru = $('#realAttachmentBody .real-att-input').filter(function () { return this.files && this.files.length; }).length;
-        var lama = $('.del-realize-att-global').filter(function () { return !this.checked; }).length;
-        return !baru && !lama;
+    /* Lampiran Item wajib untuk baris bernilai Settle > 0 (4 Nov 2026; ditegakkan
+       juga di server saat Submit). Lampiran tersimpan yang dicentang hapus tidak dihitung. */
+    function barisTanpaLampiran($row) {
+        if (rowTotal($row) <= 0) return false;
+        var baru = ($row.find('.detail-att-input')[0] || {}).files;
+        if (baru && baru.length) return false;
+        return !$row.find('.del-realize-att').filter(function () { return !this.checked; }).length;
     }
 
-    function ketKosong() { return !($('#settlementNotes').val() || '').trim(); }
+    function nomorTanpaLampiran() {
+        var no = [];
+        realizeRows().each(function (i) {
+            var kurang = barisTanpaLampiran($(this));
+            $(this).find('.detail-att-cell').toggleClass('att-wajib-kurang', kurang);
+            $(this).find('.att-wajib-badge').toggle(kurang);
+            // Tooltip penjelasan di tombol Lampiran selama masih wajib & kosong.
+            $(this).find('.detail-att-drop').attr('title', kurang
+                ? 'Lampiran wajib karena nilai Settle baris ini lebih dari 0. Klik, drag & drop, atau paste bukti belanja sebelum Submit.'
+                : 'Tambah lampiran (klik, drag & drop, atau paste)');
+            if (kurang) no.push(i + 1);
+        });
+        return no;
+    }
 
     /* Settle satu baris = Harga Satuan x Qty. */
     function rowTotal($row) {
@@ -368,7 +363,35 @@ $(function () {
             * Math.max(1, parseInt($row.find('.realize-qty-input').val(), 10) || 1);
     }
 
+    /* Badge "Sub Utama" / "Sub Pecahan" — hanya untuk item asal yang sedang
+       dipecah (>1 baris terkunci dengan item asal yang sama). */
+    function refreshSplitBadges() {
+        var jumlah = {};
+        function asal($r) { return $r.find('.realize-sub-locked').length ? String($r.data('origin') || '') : ''; }
+        realizeRows().each(function () { var o = asal($(this)); if (o) jumlah[o] = (jumlah[o] || 0) + 1; });
+        realizeRows().each(function () {
+            var o = asal($(this));
+            $(this).find('.realize-split-badge').toggle(!!o && jumlah[o] > 1);
+        });
+    }
+
+    /* Harga Satuan 0 -> Qty tampil 0 & terkunci; Harga > 0 -> Qty bisa diubah lagi
+       (kembali ke nilai sebelumnya, minimal 1). Input dimatikan (disabled) supaya
+       tidak terkirim: server membaca qty kosong sebagai 1, Settle tetap 0. */
+    function syncQtyLock($row) {
+        var $qty = $row.find('.realize-qty-input');
+        if (parseRp($row.find('.realize-amount-input').val()) <= 0) {
+            if (!$qty.prop('disabled')) $qty.data('qty-prev', $qty.val());
+            $qty.val('0').prop('disabled', true).attr('title', 'Qty terkunci 0 karena Harga Satuan 0. Isi Harga Satuan untuk mengubah Qty.');
+        } else if ($qty.prop('disabled')) {
+            $qty.prop('disabled', false).removeAttr('title')
+                .val(Math.max(1, parseInt($qty.data('qty-prev'), 10) || 1));
+        }
+    }
+
     function recalcTotalRealized() {
+        refreshSplitBadges();
+        realizeRows().each(function () { syncQtyLock($(this)); });
         var totalSettle = 0, perSub = {};
 
         realizeRows().each(function () {
@@ -399,10 +422,12 @@ $(function () {
 
         var totalVariance = REQ_TOTAL - totalSettle;
 
-        // Keterangan & Lampiran Settlement wajib bila total Settle melebihi nilai pengajuan.
-        var melebihi = totalSettle > REQ_TOTAL;
-        $('#ketWajib, #attWajib').toggle(melebihi);
-        if (melebihi) { $('#settleNoteArea').show(); $('#settleNoteEmpty').hide(); }
+        // Form bukti transfer hanya bila total Settle di bawah nilai pengajuan.
+        // Input dimatikan saat tersembunyi supaya berkasnya tidak ikut terkirim.
+        var kurangDariRequest = totalSettle < REQ_TOTAL;
+        $('#refundProofCard').toggle(kurangDariRequest);
+        $('#refundProofInput').prop('disabled', !kurangDariRequest);
+        $('#refundAmount').text(moneyFmt(Math.max(0, totalVariance)));
 
         $('#statTotalSettle').text(moneyFmt(totalSettle));
         $('#statVariance').text(moneyFmt(totalVariance)).toggleClass('text-success', totalVariance >= 0).toggleClass('text-danger', totalVariance < 0);
@@ -418,6 +443,8 @@ $(function () {
     var rowSeq = realizeRows().length;
 
     function initSubSelect($row) {
+        // Baris item pengajuan: Sub COA terkunci (hidden input), bukan <select>.
+        if (!$row.find('select.realize-sub-select').length) return;
         if (window.TesysSearchableSelect) {
             TesysSearchableSelect.initOne($row.find('.realize-sub-select'), {
                 placeholder: '— Pilih Sub COA —',
@@ -434,7 +461,9 @@ $(function () {
         opts = opts || {};
 
         if (opts.$from) {
-            // Pecahan item asal: ikut item & Sub COA asalnya, Settle 0.
+            // Pecahan item asal: ikut item asalnya, Settle 0. Sub COA DIKUNCI
+            // ke Sub COA item asal (4 Nov 2026) — <select> diganti hidden input
+            // + tampilan terkunci yang sama dengan baris sumbernya.
             var $f = opts.$from;
             $row.attr('data-origin', $f.data('origin')).attr('data-origin-sub', $f.data('origin-sub'))
                 .attr('data-req', $f.data('req')).attr('data-qty', $f.data('qty'));
@@ -444,7 +473,13 @@ $(function () {
             $row.find('.realize-origin-label').remove();
             $row.find('.btn-split-row').show();
             $row.find('.realize-qty-input').val($f.data('qty') || 1);
-            $row.find('.realize-sub-select').val(opts.sub != null ? String(opts.sub) : ($f.find('.realize-sub-select').val() || ''));
+            var $sel = $row.find('select.realize-sub-select');
+            $('<input type="hidden" class="realize-sub-select">')
+                .attr('name', $sel.attr('name'))
+                .val(String($f.data('origin-sub') || ''))
+                .insertBefore($sel);
+            $f.find('.realize-sub-locked').first().clone().insertBefore($sel);
+            $sel.remove();
         } else if (opts.sub != null) {
             $row.find('.realize-sub-select').val(String(opts.sub));
         }
@@ -466,57 +501,34 @@ $(function () {
         return $row;
     }
 
-    /* ── AUTO FILL: salin SELURUH rincian pengajuan menjadi baris settlement ──
-       Satu baris per item (Sub COA, deskripsi, qty, nilai). Item yang sudah
-       punya baris di form dilewati, jadi tidak ada baris yang tertimpa. */
-    $('#btnAutoFill').on('click', function () {
-        var sudah = {};
-        realizeRows().each(function () { var o = String($(this).data('origin') || ''); if (o) sudah[o] = true; });
-
-        var ditambah = 0;
-        Object.keys(REQ_ITEMS).forEach(function (id) {
-            if (sudah[id]) return;
-            var it  = REQ_ITEMS[id];
-            var sub = it.budget_detail_id ? String(it.budget_detail_id) : '';
-            var $row = buatBaris({ sub: sub || null, amount: it.price });
-
-            $row.attr({ 'data-origin': id, 'data-origin-sub': sub, 'data-req': it.total, 'data-qty': it.qty })
-                .data('origin', id).data('origin-sub', sub).data('req', it.total).data('qty', it.qty);
-            $row.find('.realize-origin-input').val(id);
-            $row.find('.realize-origin-label').remove();
-            $row.find('.btn-split-row').show();
-            $row.find('.realize-notes-input').val(String(it.desc || '').slice(0, 255));
-            $row.find('.realize-qty-input').val(Math.max(1, parseInt(it.qty, 10) || 1));
-            ditambah++;
-        });
-
-        recalcTotalRealized();
-        updateSettleSubmitState();
-
-        if (!ditambah) {
-            Swal.fire({ icon: 'info', title: 'Tidak ada yang ditambahkan', text: Object.keys(REQ_ITEMS).length ? 'Semua item pengajuan sudah punya baris di form.' : 'CR ini tidak punya item pengajuan.', confirmButtonColor: '#92232b' });
-        }
-    });
-
-    /* ── VIEW REQUEST: rincian pengajuan lengkap (read-only) ── */
+    /* ── VIEW REQUEST: rincian pengajuan lengkap (read-only) ──
+       Modal lebar (hampir selebar layar); COA & Sub COA digabung satu kolom,
+       angka tidak terpotong baris, header tabel menempel saat discroll. */
     $('#btnViewRequest').on('click', function () {
-        var ids = Object.keys(REQ_ITEMS), total = 0;
+        var ids = Object.keys(REQ_ITEMS), total = 0, totalQty = 0;
         var body = ids.map(function (id, i) {
-            var it = REQ_ITEMS[id]; total += it.total;
-            return '<tr><td class="text-center">' + (i + 1) + '</td><td>' + esc(it.coa) + '</td><td>' + esc(it.sub_coa) + '</td><td>' + esc(it.desc || '-')
-                + '</td><td class="text-center">' + esc(String(it.qty).replace('.', ',')) + '</td><td class="text-right">' + moneyFmt(it.price)
-                + '</td><td class="text-right">' + moneyFmt(it.total) + '</td></tr>';
+            var it = REQ_ITEMS[id]; total += it.total; totalQty += parseFloat(it.qty) || 0;
+            return '<tr>'
+                + '<td class="vr-no">' + (i + 1) + '</td>'
+                + '<td class="vr-coa"><div class="vr-coa-name">' + esc(it.coa) + '</div><div class="vr-sub">' + esc(it.sub_coa) + '</div></td>'
+                + '<td class="vr-desc">' + esc(it.desc || '-') + '</td>'
+                + '<td class="vr-num vr-center">' + esc(String(it.qty).replace('.', ',')) + '</td>'
+                + '<td class="vr-num">' + moneyFmt(it.price) + '</td>'
+                + '<td class="vr-num vr-strong">' + moneyFmt(it.total) + '</td>'
+                + '</tr>';
         }).join('');
         Swal.fire({
             title: 'Rincian Pengajuan — {{ $budgetRequest->code }}',
-            html: '<div class="table-responsive" style="max-height:60vh;text-align:left;"><table class="table table-sm mb-0" style="font-size:12.5px;">'
-                + '<thead><tr><th class="text-center">No</th><th>COA</th><th>Sub COA</th><th>Deskripsi</th><th class="text-center">Qty</th><th class="text-right">Harga</th><th class="text-right">Total</th></tr></thead>'
-                + '<tbody>' + (body || '<tr><td colspan="7" class="text-center text-muted">Tidak ada item</td></tr>') + '</tbody>'
-                + '<tfoot><tr><th colspan="6" class="text-right">Total Request</th><th class="text-right">' + moneyFmt(total) + '</th></tr></tfoot></table></div>',
-            width: '960px',
+            html: '<div class="vr-meta"><span>' + ids.length + ' item</span><span>Total Request <strong>' + moneyFmt(REQ_TOTAL) + '</strong></span></div>'
+                + '<div class="vr-wrap"><table class="vr-table">'
+                + '<thead><tr><th class="vr-no">No</th><th>COA / Sub COA</th><th>Deskripsi</th><th class="vr-center">Qty</th><th class="vr-num">Harga Satuan</th><th class="vr-num">Total</th></tr></thead>'
+                + '<tbody>' + (body || '<tr><td colspan="6" class="vr-center vr-empty">Tidak ada item</td></tr>') + '</tbody>'
+                + '<tfoot><tr><th colspan="3" class="vr-num">Total</th><th class="vr-num vr-center">' + esc(String(totalQty).replace('.', ',')) + '</th><th></th><th class="vr-num">' + moneyFmt(total) + '</th></tr></tfoot>'
+                + '</table></div>',
+            width: 'min(1280px, 94vw)',
             showConfirmButton: false,
             showCloseButton: true,
-            customClass: { closeButton: 'att-close-btn' }
+            customClass: { popup: 'vr-popup', closeButton: 'att-close-btn' }
         });
     });
 
@@ -530,6 +542,46 @@ $(function () {
 
     $('#btnAddSettleRow').on('click', function () {
         buatBaris({});
+    });
+
+    /* ── RESET: kembalikan form ke rincian pengajuan awal ─────────────────
+       Pecahan, baris tambahan, isian, Note & lampiran item dibuang dari form;
+       baris default diambil dari <template id="realizeDefaultTpl">. Baru
+       berlaku ke database saat Simpan/Submit — baris tersimpan yang tidak
+       ada lagi di form (beserta lampirannya) dihapus server saat itu. */
+    $('#btnResetSettle').on('click', function () {
+        var adaTersimpan = realizeRows().filter(function () { return !!$(this).find('.realize-row-id').val(); }).length > 0;
+
+        Swal.fire({
+            title: 'Reset Settlement?',
+            html: 'Semua baris dikembalikan ke rincian pengajuan awal: pecahan, baris tambahan, isian deskripsi/harga/qty, Note, dan Lampiran Item dihapus dari form.'
+                + (adaTersimpan ? '<br><br><strong>Draft yang sudah tersimpan (termasuk lampiran item-nya) ikut terhapus saat Anda menekan Simpan/Submit.</strong> Batalkan dengan Cancel / muat ulang halaman sebelum menyimpan.' : ''),
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#92232b',
+            cancelButtonColor: '#55595e',
+            confirmButtonText: 'Ya, Reset',
+            cancelButtonText: 'Batal'
+        }).then(function (res) {
+            if (!res.isConfirmed) return;
+
+            var html  = document.getElementById('realizeDefaultTpl').innerHTML.trim();
+            var $rows = $($.parseHTML(html)).filter('tr.realize-row');
+
+            $('#realizeBody').empty().append($rows.length ? $rows
+                : $('<tr class="realize-empty"><td colspan="8" class="text-center tw:py-6 tw:text-data tw:text-text-dim">CR ini tidak punya item pengajuan. Klik <strong>Tambah Baris</strong> untuk menambah baris settlement.</td></tr>'));
+
+            $rows.each(function () {
+                var $row = $(this);
+                $row.find('.realize-amount-input').each(function () { this.value = fmtRp(this.value); });
+                refreshNoteCount($row.find('.realize-notes-input')[0]);
+                refreshNoteItem($row.find('.realize-note-cell'));
+            });
+
+            recalcTotalRealized();
+            updateSettleSubmitState();
+            if (window.tsToast) window.tsToast('success', 'Settlement dikembalikan ke rincian pengajuan awal');
+        });
     });
 
     /* Klik kode CR = salin ke clipboard. */
@@ -643,8 +695,10 @@ $(function () {
         var $rows   = realizeRows();
         var reasons = [];
 
+        var tanpaLampiran = nomorTanpaLampiran();
+
         if (!$rows.length) {
-            reasons.push('belum ada baris settlement (klik Auto Fill atau Tambah Baris)');
+            reasons.push('belum ada baris settlement (klik Tambah Baris)');
         } else {
 
             // Baris tambahan wajib memilih Sub COA (ditegakkan juga di server).
@@ -654,9 +708,7 @@ $(function () {
                 if (!String($(this).data('origin') || '') && !$(this).find('.realize-sub-select').val()) tanpaSub.push(i + 1);
             });
             if (tanpaSub.length) reasons.push('Sub COA baris no. ' + tanpaSub.join(', '));
-
-            if (adaMelebihi() && ketKosong()) reasons.push('Keterangan (Settle melebihi pengajuan)');
-            if (adaMelebihi() && lampiranGlobalKosong()) reasons.push('Lampiran Settlement (Settle melebihi pengajuan)');
+            if (tanpaLampiran.length) reasons.push('Lampiran Item baris no. ' + tanpaLampiran.join(', ') + ' (Settle > 0)');
         }
 
         var siap = reasons.length === 0;
@@ -914,122 +966,53 @@ $(function () {
         }
     }, true);
 
-    /* ── BUKTI SETTLEMENT (GLOBAL) — drag & drop + paste, multi-file ────────
-       Pola sama seperti "Lampiran Tambahan / Pendukung" di form Cost Request. ── */
-    var attIdx = 0;
+    /* ── BUKTI TRANSFER PENGEMBALIAN — drag & drop + paste + klik ──────────
+       Satu <input name="refund_proofs[]"> menampung semua berkas (DataTransfer),
+       daftar di bawah dropzone bisa diklik untuk dicek / dihapus. Paste hanya
+       ditangkap saat fokus di kartu ini, supaya tidak bentrok dengan lampiran lain. */
+    (function () {
+        var zone   = document.getElementById('dropZoneRefund');
+        var input  = document.getElementById('refundProofInput');
+        var browse = document.getElementById('dropZoneBrowseRefund');
+        var list   = document.getElementById('refundProofList');
+        if (!zone || !input) return;
 
-    /** Area upload disembunyikan sampai user menekan "Tambah Lampiran". */
-    function showRealAttUploadArea() {
-        var area = document.getElementById('realAttUploadArea');
-        if (area) area.style.display = '';
-    }
+        var REFUND_EXT = ['pdf', 'jpg', 'jpeg', 'png'];
 
-    /** Daftar file hanya tampil kalau memang sudah ada barisnya. */
-    function refreshRealAttTable() {
-        var wrap  = document.getElementById('realAttTableWrap');
-        var tbody = document.getElementById('realAttachmentBody');
-        if (wrap && tbody) wrap.style.display = tbody.children.length ? '' : 'none';
-    }
+        function render() {
+            list.innerHTML = Array.from(input.files || []).map(function (f, i) {
+                return '<div class="refund-proof-item"><i class="fas fa-file mr-1" aria-hidden="true"></i>'
+                    + '<a href="#" class="refund-proof-open" data-i="' + i + '" title="Lihat bukti transfer">' + esc(f.name) + '</a>'
+                    + ' <button type="button" class="refund-proof-del" data-i="' + i + '" title="Hapus" aria-label="Hapus ' + escAttr(f.name) + '"><i class="fas fa-times" aria-hidden="true"></i></button></div>';
+            }).join('');
+        }
 
-    document.getElementById('btnAddRealAttachment').addEventListener('click', function () {
-        // Cukup buka area upload-nya; baris file baru muncul setelah ada file
-        // yang benar-benar dipilih/di-drop/di-paste.
-        showRealAttUploadArea();
-        var zone = document.getElementById('dropZoneReal');
-        if (zone) zone.focus();
-    });
-
-    function addAttachmentRow(file) {
-        if (file && !tolakVideo([file]).length) return;   // video: ditolak, baris tidak dibuat
-
-        showRealAttUploadArea();
-        var i     = attIdx++;
-        var tbody = document.getElementById('realAttachmentBody');
-        var tr    = document.createElement('tr');
-        tr.innerHTML =
-            '<td class="text-center align-middle row-no"></td>' +
-            '<td><input type="file" name="realization_attachments[' + i + ']" class="form-control-file real-att-input">' +
-                '<div class="real-att-preview mt-1" style="font-size:11px;"></div></td>' +
-            '<td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-real-att" title="Hapus lampiran" aria-label="Hapus lampiran"><i class="fas fa-trash" aria-hidden="true"></i></button></td>';
-        tbody.appendChild(tr);
-
-        if (file) {
-            var input = tr.querySelector('input[type="file"]');
+        function tambah(fileList) {
+            var ok = [], tolak = [];
+            tolakVideo(fileList).forEach(function (f) {
+                (REFUND_EXT.indexOf((f.name || '').split('.').pop().toLowerCase()) !== -1 ? ok : tolak).push(f);
+            });
+            if (tolak.length) {
+                Swal.fire({ icon: 'error', title: 'Format tidak didukung', html: 'Bukti transfer hanya PDF, JPG, atau PNG:<br><strong>' + tolak.map(function (f) { return esc(f.name); }).join('<br>') + '</strong>', confirmButtonColor: '#92232b' });
+            }
+            if (!ok.length) return;
             try {
                 var dt = new DataTransfer();
-                dt.items.add(file);
+                Array.from(input.files || []).forEach(function (f) { dt.items.add(f); });
+                ok.forEach(function (f) { dt.items.add(f); });
                 input.files = dt.files;
             } catch (err) {}
+            render();
         }
 
-        renderRealAttPreview(tr.querySelector('.real-att-input'));
-        renumberAttachments();
-    }
+        var picker = document.createElement('input');
+        picker.type = 'file'; picker.multiple = true; picker.accept = input.accept;
+        picker.addEventListener('change', function () { tambah(picker.files); picker.value = ''; });
 
-    /** Nama file pada baris lampiran global — bisa diklik untuk dicek. */
-    function renderRealAttPreview(input) {
-        if (!input) return;
-        var box = input.parentElement.querySelector('.real-att-preview');
-        var f   = (input.files || [])[0];
-        if (!box) return;
-
-        box.innerHTML = f
-            ? '<i class="fas fa-file mr-1"></i><a href="#" class="real-att-open" title="Lihat lampiran">'
-                + $('<div>').text(f.name).html() + '</a>'
-            : '';
-    }
-
-    // File dipilih lewat input barisnya sendiri: tolak video & perbarui tautan.
-    document.addEventListener('change', function (e) {
-        var input = e.target.closest('.real-att-input');
-        if (!input) return;
-
-        if ((input.files || []).length && !tolakVideo(input.files).length) {
-            input.value = '';
-        }
-        renderRealAttPreview(input);
-    });
-
-    document.addEventListener('click', function (e) {
-        var a = e.target.closest('.real-att-open');
-        if (!a) return;
-        e.preventDefault();
-        var input = a.closest('td').querySelector('.real-att-input');
-        bukaFileLokal((input.files || [])[0]);
-    });
-
-    function renumberAttachments() {
-        document.querySelectorAll('#realAttachmentBody .row-no').forEach(function (el, i) { el.textContent = i + 1; });
-        refreshRealAttTable();
-        if (window.__updateSettleSubmitState) window.__updateSettleSubmitState();
-    }
-
-    document.addEventListener('click', function (e) {
-        if (e.target.closest('.btn-remove-real-att')) {
-            e.target.closest('tr').remove();
-            renumberAttachments();
-        }
-    });
-
-    (function () {
-        var zone   = document.getElementById('dropZoneReal');
-        var input  = document.getElementById('dropZoneInputReal');
-        var browse = document.getElementById('dropZoneBrowseReal');
-
-        zone.addEventListener('click', function () { input.click(); });
-        browse.addEventListener('click', function (e) { e.stopPropagation(); input.click(); });
-        // role="button" harus bisa diaktifkan lewat papan ketik (Enter / Spasi).
+        zone.addEventListener('click', function () { picker.click(); });
+        browse.addEventListener('click', function (e) { e.stopPropagation(); picker.click(); });
         browse.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                e.stopPropagation();
-                input.click();
-            }
-        });
-
-        input.addEventListener('change', function () {
-            Array.from(this.files).forEach(function (f) { addAttachmentRow(f); });
-            this.value = '';
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); picker.click(); }
         });
 
         ['dragenter', 'dragover'].forEach(function (evt) {
@@ -1039,32 +1022,36 @@ $(function () {
             zone.addEventListener(evt, function (e) { e.preventDefault(); e.stopPropagation(); zone.classList.remove('dragover'); });
         });
         zone.addEventListener('drop', function (e) {
-            var files = e.dataTransfer ? e.dataTransfer.files : null;
-            if (files && files.length) Array.from(files).forEach(function (f) { addAttachmentRow(f); });
+            if (e.dataTransfer && e.dataTransfer.files.length) tambah(e.dataTransfer.files);
         });
 
-        function handlePasteReal(e) {
-            var items = (e.clipboardData || window.clipboardData) ? (e.clipboardData || window.clipboardData).items : null;
-            if (!items) return;
-            var found = false;
-            for (var i = 0; i < items.length; i++) {
-                if (items[i].kind === 'file') {
-                    var f = items[i].getAsFile();
-                    if (f) {
-                        var ext = (f.type.split('/')[1] || 'png');
-                        addAttachmentRow(new File([f], 'pasted-image-' + Date.now() + '.' + ext, { type: f.type }));
-                        found = true;
-                    }
-                }
+        zone.addEventListener('paste', function (e) {
+            var cd = e.clipboardData || window.clipboardData;
+            if (!cd || !cd.items) return;
+            var picked = [];
+            for (var i = 0; i < cd.items.length; i++) {
+                if (cd.items[i].kind !== 'file') continue;
+                var f = cd.items[i].getAsFile();
+                if (f) picked.push(new File([f], 'pasted-' + Date.now() + '.' + (f.type.split('/')[1] || 'png'), { type: f.type }));
             }
-            if (found) e.preventDefault();
-        }
-        zone.addEventListener('paste', handlePasteReal);
-        document.addEventListener('paste', function (e) {
-            var tag = (document.activeElement && document.activeElement.tagName) || '';
-            if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-            if (document.activeElement && document.activeElement.closest && document.activeElement.closest('.detail-att-cell')) return;
-            handlePasteReal(e);
+            if (picked.length) { e.preventDefault(); tambah(picked); }
+        });
+
+        list.addEventListener('click', function (e) {
+            var open = e.target.closest('.refund-proof-open');
+            var del  = e.target.closest('.refund-proof-del');
+            if (open) {
+                e.preventDefault();
+                bukaFileLokal((input.files || [])[parseInt(open.dataset.i, 10)]);
+            } else if (del) {
+                var idx = parseInt(del.dataset.i, 10);
+                try {
+                    var dt = new DataTransfer();
+                    Array.from(input.files).forEach(function (f, i) { if (i !== idx) dt.items.add(f); });
+                    input.files = dt.files;
+                } catch (err) {}
+                render();
+            }
         });
     })();
 
@@ -1130,7 +1117,8 @@ $(function () {
                     } else {
                         $row.find('.realize-amount-input').val(fmtRp(String(r.amount)));
                         $row.find('.realize-qty-input').val(1);
-                        if (sub) $row.find('.realize-sub-select').val(sub).trigger('tss:sync');
+                        // Sub COA baris item pengajuan terkunci — hanya baris tambahan yang ikut file.
+                        if (sub) $row.find('select.realize-sub-select').val(sub).trigger('tss:sync');
                     }
 
                     terpakai.push($row[0]);
@@ -1217,17 +1205,15 @@ $(function () {
     /* Kelengkapan baris — dipakai SAMA PERSIS oleh Submit maupun Simpan
        (draft), supaya data yang tersimpan tidak pernah setengah lengkap. */
     function cekKelengkapanBaris() {
-        // Keterangan & Lampiran Settlement (header) wajib bila total Settle melebihi nilai pengajuan.
-        var melebihi = adaMelebihi();
-        var missKet  = melebihi && ketKosong();
-        var missLamp = melebihi && lampiranGlobalKosong();
+        // Lampiran Item wajib untuk baris bernilai Settle > 0.
+        var missAtt = nomorTanpaLampiran();
         // Baris tambahan wajib memilih Sub COA.
         var missSub = [];
         realizeRows().each(function (idx) {
             if (barisKosong($(this))) return;
             if (!String($(this).data('origin') || '') && !$(this).find('.realize-sub-select').val()) missSub.push(idx + 1);
         });
-        return { missKet: missKet, missLamp: missLamp, missSub: missSub };
+        return { missAtt: missAtt, missSub: missSub };
     }
 
     /** true kalau ada yang kurang (dan sudah ditampilkan pop-up-nya). */
@@ -1241,14 +1227,11 @@ $(function () {
             });
             return true;
         }
-        if (cek.missKet || cek.missLamp) {
-            var kurang = [];
-            if (cek.missKet)  kurang.push('Keterangan');
-            if (cek.missLamp) kurang.push('Lampiran Settlement');
+        if (cek.missAtt.length) {
             Swal.fire({
                 icon: 'warning',
-                title: 'Data header belum lengkap',
-                text: 'Total Settle melebihi nilai pengajuan, sehingga ' + kurang.join(' dan ') + ' wajib diisi.',
+                title: 'Lampiran Item belum lengkap',
+                text: 'Baris bernilai Settle > 0 wajib punya Lampiran Item. Baris: no. ' + cek.missAtt.join(', ') + '.',
                 confirmButtonColor: '#92232b'
             });
             return true;
@@ -1282,18 +1265,17 @@ $(function () {
     $('#saveDraftBtn').on('click', function () {
         // Draft tanpa satu baris pun ditolak server (realizations wajib minimal 1).
         if (!realizeRows().length) {
-            Swal.fire({ icon: 'info', title: 'Belum ada baris', text: 'Tambahkan minimal satu baris settlement (Auto Fill atau Tambah Baris) sebelum menyimpan.', confirmButtonColor: '#92232b' });
+            Swal.fire({ icon: 'info', title: 'Belum ada baris', text: 'Tambahkan minimal satu baris settlement (Tambah Baris) sebelum menyimpan.', confirmButtonColor: '#92232b' });
             return;
         }
         var cek   = cekKelengkapanBaris();
         // Sub COA baris tambahan wajib juga saat simpan draft (server menolak).
         if (cek.missSub.length) {
-            peringatkanKelengkapan({ missSub: cek.missSub, missKet: false, missLamp: false });
+            peringatkanKelengkapan({ missSub: cek.missSub, missAtt: [] });
             return;
         }
         var kurang = [];
-        if (cek.missKet) kurang.push('Keterangan');
-        if (cek.missLamp) kurang.push('Lampiran Settlement');
+        if (cek.missAtt.length) kurang.push('Lampiran Item baris no. ' + cek.missAtt.join(', '));
 
         Swal.fire({
             title: 'Simpan Draft Settlement?',
@@ -1337,9 +1319,68 @@ $(function () {
 /* ── Sub COA per baris (Settlement Custom COA) ── */
 #tblSettlement .tss-btn { font-size: 12px; padding: 2px 8px; min-width: 200px; text-align: left; }
 
+/* Sub COA terkunci (baris item pengajuan & pecahannya). */
+.realize-sub-locked {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    min-width: 200px; padding: 4px 8px; font-size: 12px; line-height: 1.4;
+    color: var(--text); background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: not-allowed;
+}
+.realize-sub-locked .fa-lock { color: var(--text-faint); font-size: 10px; flex-shrink: 0; }
+
 /* ── Lampiran Item per baris (dropzone mini) ── */
 .detail-att-cell { outline: none; transition: background .15s ease; padding: 6px 8px; }
 .detail-att-cell:focus-within { background: var(--warning-bg); }
+.att-wajib-badge > span { cursor: help; }
+/* Settle > 0 tapi belum ada lampiran: wajib. */
+.detail-att-cell.att-wajib-kurang .detail-att-drop { background: var(--danger-bg); box-shadow: 0 0 0 2px var(--danger); }
+
+.settle-optional { font-weight: 400; }
+
+/* ── Bukti transfer pengembalian ── */
+.refund-proof-list { margin-top: 10px; font-size: 12px; }
+.refund-proof-item { display: flex; align-items: center; gap: 4px; padding: 3px 0; color: var(--text-dim); }
+.refund-proof-del { background: none; border: 0; padding: 0 4px; color: var(--danger); cursor: pointer; }
+
+/* ── Animasi modal SweetAlert di halaman ini: fade + naik tipis, tanpa "bounce"
+   bawaan swal2-show. Prefix body supaya menang atas CSS yang disuntikkan
+   sweetalert2.all.min.js saat runtime. ── */
+@keyframes realize-modal-in  { from { opacity: 0; transform: translate3d(0, 8px, 0) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes realize-modal-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translate3d(0, 4px, 0) scale(.99); } }
+body .swal2-popup.swal2-show { animation: realize-modal-in .22s var(--ease-out) both; }
+body .swal2-popup.swal2-hide { animation: realize-modal-out .14s ease-in both; }
+/* Ikon (warning/info/question/error) bawaannya ikut memantul — diganti fade. */
+body .swal2-popup .swal2-icon.swal2-icon-show { animation: realize-modal-in .22s var(--ease-out) both; }
+body .swal2-popup .swal2-icon.swal2-icon-show .swal2-icon-content,
+body .swal2-popup .swal2-icon.swal2-icon-show .swal2-x-mark { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+    body .swal2-popup.swal2-show, body .swal2-popup.swal2-hide, body .swal2-popup .swal2-icon.swal2-icon-show { animation: none; }
+}
+
+/* ── Modal View Request ── */
+.swal2-popup.vr-popup { padding: 20px 24px 24px; }
+.vr-popup .swal2-html-container { margin: 12px 0 0; text-align: left; }
+.vr-meta { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; font-size: var(--fs-caption); color: var(--text-dim); }
+.vr-meta strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.vr-wrap { max-height: 65vh; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.vr-table { width: 100%; border-collapse: collapse; font-size: 12.5px; color: var(--text); }
+.vr-table th, .vr-table td { padding: 8px 12px; border-bottom: 1px solid var(--border-soft); vertical-align: top; }
+.vr-table thead th {
+    position: sticky; top: 0; z-index: 1; background: var(--surface-2);
+    font-size: var(--fs-caption); font-weight: 600; text-transform: uppercase; letter-spacing: .03em;
+    color: var(--text-dim); white-space: nowrap; border-bottom: 1px solid var(--border);
+}
+.vr-table tbody tr:hover { background: var(--surface-2); }
+.vr-table tfoot th { position: sticky; bottom: 0; background: var(--surface-2); border-top: 1px solid var(--border); border-bottom: 0; white-space: nowrap; }
+.vr-table .vr-no { width: 1%; text-align: center; color: var(--text-dim); white-space: nowrap; }
+.vr-table .vr-coa { width: 22%; min-width: 180px; }
+.vr-table .vr-coa-name { font-weight: 600; }
+.vr-table .vr-sub { margin-top: 2px; color: var(--text-dim); }
+.vr-table .vr-desc { min-width: 280px; line-height: 1.45; word-break: break-word; }
+.vr-table .vr-num { width: 1%; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.vr-table .vr-center { text-align: center; }
+.vr-table .vr-strong { font-weight: 600; }
+.vr-table .vr-empty { color: var(--text-dim); }
 
 /* Kotak deskripsi + ikon "lihat penuh" di ujung kanannya. Latarnya penuh
    supaya teks panjang tidak lewat di bawah ikon. */

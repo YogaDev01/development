@@ -8,6 +8,9 @@ use App\Models\Invoice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class DeliveryNoteController extends Controller
 {
@@ -48,6 +51,73 @@ class DeliveryNoteController extends Controller
         ];
 
         return view('delivery-note.index', compact('deliveryNotes', 'summary'));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | EXPORT EXCEL
+    |--------------------------------------------------------------------------
+    | Mengikuti filter aktif di tabel: browser mengirim 'ids' (lihat
+    | public/js/tesys-export-filtered.js). Tanpa 'ids' = seluruh data.
+    | Hanya memuat kolom yang sama dengan daftar (tanpa nominal keuangan).
+    */
+
+    public function exportList(Request $request)
+    {
+        $ids = collect((array) $request->input('ids', []))
+            ->filter(fn ($v) => is_numeric($v))
+            ->map(fn ($v) => (int) $v);
+
+        $deliveryNotes = DeliveryNote::with([
+                'customer:id,name',
+                'items.invoice:id,code,project_po_number_id',
+                'items.invoice.poNumber:id,po_number',
+            ])
+            ->when($ids->isNotEmpty(), fn ($q) => $q->whereIn('id', $ids))
+            ->latest()
+            ->get();
+
+        $columns = ['Kode Surat Jalan', 'Customer', 'Jml Invoice', 'Kode Invoice', 'No. PO', 'Tanggal Kirim', 'Tanggal Terima', 'Status', 'Catatan'];
+        $lastCol = chr(ord('A') + count($columns) - 1);
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Surat Jalan');
+        $sheet->fromArray($columns, null, 'A1');
+        $header = $sheet->getStyle('A1:' . $lastCol . '1');
+        $header->getFont()->setBold(true);
+        $header->getFont()->getColor()->setRGB('FFFFFF');
+        $header->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('0D1B2A');
+
+        $row = 2;
+        foreach ($deliveryNotes as $dn) {
+            $sheet->fromArray([
+                $dn->code,
+                $dn->customer->name ?? '-',
+                $dn->items->count(),
+                $dn->items->pluck('invoice.code')->filter()->implode(', ') ?: '-',
+                $dn->items->pluck('invoice.poNumber.po_number')->filter()->unique()->implode(', ') ?: '-',
+                $dn->sent_at ? $dn->sent_at->format('d/m/Y') : '-',
+                $dn->received_at ? $dn->received_at->format('d/m/Y') : '-',
+                $dn->status_label,
+                $dn->notes ?: '-',
+            ], null, 'A' . $row);
+            $row++;
+        }
+
+        $widths = ['A'=>18,'B'=>34,'C'=>12,'D'=>40,'E'=>30,'F'=>14,'G'=>14,'H'=>12,'I'=>40];
+        foreach ($widths as $col => $width) {
+            $sheet->getColumnDimension($col)->setWidth($width);
+        }
+
+        $filename = 'surat_jalan_' . now()->format('Ymd_His') . '.xlsx';
+        $writer = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
     }
 
     /*

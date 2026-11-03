@@ -947,18 +947,6 @@
     </div>
 </div>
 
-<!-- IMAGE VIEWER (carousel + zoom) -->
-<div id="imgViewerOverlay">
-    <button aria-label="Close" type="button" id="imgViewerClose" title="Close"><i class="fas fa-times"></i></button>
-    <div id="imgViewerName"></div>
-    <div id="imgViewerStage">
-        <button aria-label="Previous" type="button" class="imgViewerNav" id="imgViewerPrev" title="Previous"><i class="fas fa-chevron-left"></i></button>
-        <img id="imgViewerImg" src="" alt="">
-        <button aria-label="Next" type="button" class="imgViewerNav" id="imgViewerNext" title="Next"><i class="fas fa-chevron-right"></i></button>
-    </div>
-    <div id="imgViewerCounter"></div>
-</div>
-
 @endsection
 
 @push('styles')
@@ -1238,37 +1226,6 @@
     padding-left: 26px !important;
 }
 
-/* ── IMAGE VIEWER (carousel + zoom, ala WhatsApp) ── */
-#imgViewerOverlay {
-    position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:2000;
-    display:none; align-items:center; justify-content:center; flex-direction:column;
-}
-#imgViewerOverlay.show { display:flex; }
-#imgViewerStage { position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-#imgViewerImg {
-    max-width:90vw; max-height:82vh; object-fit:contain; cursor:zoom-in;
-    transition:transform .15s ease; transform-origin:center center; user-select:none; -webkit-user-drag:none;
-}
-#imgViewerImg.zoomed { cursor:grab; }
-#imgViewerImg.dragging { cursor:grabbing; transition:none; }
-#imgViewerClose {
-    position:absolute; top:16px; right:20px; z-index:10; background:rgba(255,255,255,.12); border:none; color:#fff;
-    width:38px; height:38px; border-radius:50%; font-size:20px; display:flex; align-items:center; justify-content:center; cursor:pointer;
-}
-#imgViewerClose:hover { background:rgba(255,255,255,.25); }
-.imgViewerNav {
-    position:absolute; top:50%; transform:translateY(-50%); background:rgba(255,255,255,.12); border:none; color:#fff;
-    width:44px; height:44px; border-radius:50%; font-size:20px; display:flex; align-items:center; justify-content:center; cursor:pointer;
-}
-.imgViewerNav:hover { background:rgba(255,255,255,.25); }
-#imgViewerPrev { left:16px; }
-#imgViewerNext { right:16px; }
-#imgViewerCounter { position:absolute; bottom:16px; left:50%; transform:translateX(-50%); color:#fff; font-size:12px; background:rgba(255,255,255,.12); padding:4px 12px; border-radius:var(--radius-lg); }
-#imgViewerName { position:absolute; top:20px; left:20px; z-index:10; color:#fff; font-size:12px; opacity:.85; max-width:60vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-@media (max-width:576px) {
-    .imgViewerNav { width:36px; height:36px; font-size:16px; }
-    #imgViewerPrev { left:6px; } #imgViewerNext { right:6px; }
-}
 </style>
 @endpush
 
@@ -1629,163 +1586,15 @@ $(function () {
         $('#bpCashAdvanceBody .' + target).toggle();
     });
 
-    /* ── IMAGE VIEWER — carousel + zoom (ala WhatsApp), untuk tab Attachment ── */
-    (function () {
-        var overlay  = document.getElementById('imgViewerOverlay');
-        var stageImg = document.getElementById('imgViewerImg');
-        var counter  = document.getElementById('imgViewerCounter');
-        var images   = [];
-        var idx      = 0;
-        var zoomed   = false;
-        var isDragging = false, dragStartX = 0, dragStartY = 0, imgX = 0, imgY = 0;
-        var justSwiped = false;   // menandai klik yang sebenarnya gerakan geser
-
-        function renderViewer() {
-            var item = images[idx];
-            if (!item) return;
-            resetZoom();
-            stageImg.src = item.full;
-            $('#imgViewerName').text(item.name || '');
-            counter.textContent = (idx + 1) + ' / ' + images.length;
-            /* Panah hanya ada kalau memang ada tujuannya: tidak tampil untuk
-               lampiran tunggal, tidak ada panah kiri di lampiran pertama dan
-               tidak ada panah kanan di lampiran terakhir. */
-            var banyak = images.length > 1;
-            $('#imgViewerPrev').css('display', (banyak && idx > 0) ? 'flex' : 'none');
-            $('#imgViewerNext').css('display', (banyak && idx < images.length - 1) ? 'flex' : 'none');
-        }
-
-        function resetZoom() {
-            zoomed = false;
-            imgX = 0; imgY = 0;
-            stageImg.classList.remove('zoomed', 'dragging');
-            stageImg.style.transform = 'translate(0px, 0px) scale(1)';
-            stageImg.style.cursor = 'zoom-in';
-        }
-
-        function applyTransform() {
-            stageImg.style.transform = 'translate(' + imgX + 'px, ' + imgY + 'px) scale(' + (zoomed ? 2.4 : 1) + ')';
-        }
-
-        function openViewer(groupImages, startIndex) {
-            images = groupImages;
-            idx = startIndex;
-            renderViewer();
-            overlay.classList.add('show');
-            $('body').css('overflow', 'hidden');
-        }
-
-        function closeViewer() {
-            overlay.classList.remove('show');
-            $('body').css('overflow', '');
-        }
-
-        function showNext() { if (idx < images.length - 1) { idx++; renderViewer(); } }
-        function showPrev() { if (idx > 0) { idx--; renderViewer(); } }
-
-        // Trigger: tombol View gambar pada tabel Attachment
-        $(document).on('click', '.bp-att-view-img', function () {
-            var $btns = $('#bpAttBody .bp-att-view-img');
-            var groupImages = $btns.map(function () {
-                return { full: $(this).data('full'), name: $(this).data('name') };
-            }).get();
-            var startIndex = $btns.index(this);
-            openViewer(groupImages, startIndex < 0 ? 0 : startIndex);
-        });
-
-        $('#imgViewerClose').on('click', closeViewer);
-        $('#imgViewerNext').on('click', showNext);
-        $('#imgViewerPrev').on('click', showPrev);
-        $(overlay).on('click', function (e) {
-            // Klik di area kosong menutup viewer — kecuali kalau klik itu
-            // ujung dari gerakan geser antar lampiran.
-            if (justSwiped) { justSwiped = false; return; }
-            if (e.target === overlay) closeViewer();
-        });
-
-        $(document).on('keydown', function (e) {
-            if (!overlay.classList.contains('show')) return;
-            if (e.key === 'Escape') closeViewer();
-            else if (e.key === 'ArrowRight') showNext();
-            else if (e.key === 'ArrowLeft') showPrev();
-        });
-
-        stageImg.addEventListener('dblclick', function () {
-            zoomed = !zoomed;
-            if (!zoomed) { imgX = 0; imgY = 0; }
-            stageImg.classList.toggle('zoomed', zoomed);
-            stageImg.style.cursor = zoomed ? 'grab' : 'zoom-in';
-            applyTransform();
-        });
-        stageImg.addEventListener('wheel', function (e) {
-            e.preventDefault();
-            zoomed = e.deltaY < 0 ? true : false;
-            if (!zoomed) { imgX = 0; imgY = 0; }
-            stageImg.classList.toggle('zoomed', zoomed);
-            stageImg.style.cursor = zoomed ? 'grab' : 'zoom-in';
-            applyTransform();
-        }, { passive: false });
-
-        stageImg.addEventListener('mousedown', function (e) {
-            if (!zoomed) return;
-            isDragging = true;
-            dragStartX = e.clientX - imgX;
-            dragStartY = e.clientY - imgY;
-            stageImg.classList.add('dragging');
-        });
-        document.addEventListener('mousemove', function (e) {
-            if (!isDragging) return;
-            imgX = e.clientX - dragStartX;
-            imgY = e.clientY - dragStartY;
-            applyTransform();
-        });
-        document.addEventListener('mouseup', function () {
-            isDragging = false;
-            stageImg.classList.remove('dragging');
-        });
-
-        /* ── GESER KIRI/KANAN untuk pindah lampiran ─────────────────────────
-           Saat gambar TIDAK di-zoom, tarikan mendatar (mouse maupun sentuh)
-           berpindah ke lampiran sebelum/sesudahnya — pola yang sama dengan
-           galeri ponsel. Saat di-zoom, tarikan tetap menggeser gambar
-           (pan), jadi keduanya tidak saling rebutan. */
-        var SWIPE_MIN = 50;          // px, biar klik/getar kecil tidak terbaca geser
-        var swipeX = null, swipeY = null;
-
-        function swipeStart(x, y) { if (!zoomed) { swipeX = x; swipeY = y; } }
-
-        function swipeEnd(x, y) {
-            if (swipeX === null || images.length < 2) { swipeX = swipeY = null; return; }
-            var dx = x - swipeX, dy = y - swipeY;
-            swipeX = swipeY = null;
-            if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) <= Math.abs(dy)) return;
-            if (dx < 0 && idx >= images.length - 1) return;   // sudah di lampiran terakhir
-            if (dx > 0 && idx <= 0) return;                   // sudah di lampiran pertama
-            justSwiped = true;
-            if (dx < 0) showNext(); else showPrev();
-        }
-
-        stageImg.addEventListener('mousedown', function (e) { swipeStart(e.clientX, e.clientY); });
-        document.addEventListener('mouseup', function (e) {
-            if (!overlay.classList.contains('show')) { swipeX = swipeY = null; return; }
-            swipeEnd(e.clientX, e.clientY);
-        });
-
-        stageImg.addEventListener('touchstart', function (e) {
-            var t = e.changedTouches[0];
-            swipeStart(t.clientX, t.clientY);
-        }, { passive: true });
-        stageImg.addEventListener('touchend', function (e) {
-            var t = e.changedTouches[0];
-            swipeEnd(t.clientX, t.clientY);
-        }, { passive: true });
-
-        /* Geser juga boleh lewat area kosong di kiri/kanan gambar. */
-        overlay.addEventListener('mousedown', function (e) {
-            if (e.target === stageImg) return;
-            swipeStart(e.clientX, e.clientY);
-        });
-    })();
+    /* ── PENAMPIL LAMPIRAN — tombol View gambar tab Attachment (komponen bersama tesys-evidence-stage.js) ── */
+    $(document).on('click', '.bp-att-view-img', function () {
+        var $grup = $('#bpAttBody .bp-att-view-img');
+        var daftar = $grup.map(function () {
+            return { url: $(this).data('full'), name: $(this).data('name') };
+        }).get();
+        var mulai = $grup.index(this);
+        TesysEvidenceStage.open(daftar, mulai < 0 ? 0 : mulai);
+    });
 
     /* DATATABLE */
     var BP_ADA_CEK = {{ $bolehBulkBP ? 'true' : 'false' }};

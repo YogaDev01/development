@@ -118,15 +118,16 @@ body.tesys-ui .main > .content table.dataTable tbody tr.selected > td:first-chil
     box-shadow: inset 3px 0 0 var(--accent), 1px 0 0 var(--border) !important;
 }
 
-/* Lapisan 4 — footer: info jumlah + pagination dalam satu panel. */
+/* Lapisan 4 — footer: info jumlah + pagination, tanpa panel/border
+   (referensi: Cost Request Index). */
 body.tesys-ui .main > .content .dataTables_wrapper > .row:last-child:not(:first-child) {
     align-items: center;
     margin-top: 10px;
-    padding: 8px 12px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-xs);
+    padding: 8px 0;
+    background: none;
+    border: 0;
+    box-shadow: none;
+    border-radius: 0;
 }
 
 /* Lapisan 5 — kolom pertama beku saat tabel digulir mendatar. Latarnya harus

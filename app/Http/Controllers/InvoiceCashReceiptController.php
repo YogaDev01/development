@@ -980,15 +980,134 @@ class InvoiceCashReceiptController extends Controller
         return back()->with('success', 'Invoice ' . $invoice->code . ' ditandai diterima. Jatuh tempo aktual dihitung otomatis.');
     }
 
+    /**
+     * Isi panel komentar di daftar invoice: informasi singkat + log bergaya chat.
+     *
+     * Panel ini terbuka untuk semua role yang boleh membuka menu Collection,
+     * sedangkan nilai invoice hanya untuk Finance & C-level. Karena itu SEMUA
+     * angka nominal (tagihan, PPN, PPh, total, pembayaran, tarif pajak) sengaja
+     * tidak dikirim — dibuang di server, bukan disembunyikan di frontend.
+     * Lampiran juga tidak ikut: dokumen invoice memuat nominal.
+     */
+    public function drawerJson($id)
+    {
+        // Tab Attachment (dokumen invoice/PO/BAST memuat nominal) hanya untuk role Finance & approval.
+        $bolehLampiran = Auth::user()->hasRole(['approver', 'finance_manager', 'finance', 'accounting', 'collection', 'superadmin']);
+
+        $invoice = Invoice::with(array_merge([
+            'po.customer', 'poNumber', 'bast', 'sourceFund.bank', 'deliveryNote.attachments',
+        ], $bolehLampiran ? ['attachments', 'po.attachments', 'poNumber.attachments'] : [],
+            \App\Support\InvoiceTimeline::relasiDibutuhkan()))->findOrFail($id);
+
+        $this->assertCanViewInvoice($invoice);
+
+        $lampiran = fn ($daftar) => collect($daftar)->map(fn ($a) => [
+            'path'          => $a->file_path,
+            'original_name' => $a->title ?? $a->file_name ?? 'File',
+        ])->values();
+
+        $grupLampiran = null;
+        if ($bolehLampiran) {
+            $noPo = $invoice->poNumber?->attachments ?? collect();
+            $grupLampiran = [
+                ['label' => 'Dokumen Pendukung Invoice', 'items' => $lampiran($invoice->attachments)],
+                ['label' => 'Lampiran PO',                'items' => $lampiran($invoice->po?->attachments?->where('type', 'general') ?? [])],
+                ['label' => 'Lampiran No. PO',            'items' => $lampiran($noPo->where('type', '!=', 'po_number_bast'))],
+                ['label' => 'Lampiran BAST',              'items' => $lampiran($noPo->where('type', 'po_number_bast'))],
+            ];
+        }
+
+        $tgl =fn ($d) => $d ? $d->format('d/m/Y') : null;
+        $dn  = $invoice->deliveryNote;
+
+        $info = [
+            'Purchase Order'      => $invoice->po ? '[' . $invoice->po->code . '] ' . $invoice->po->name : null,
+            'Customer'            => $invoice->po->customer->name ?? null,
+            'No. PO'              => $invoice->poNumber->po_number ?? null,
+            'No. BAST'            => $invoice->bast->no_bast ?? $invoice->poNumber->no_bast ?? null,
+            'No. Faktur Pajak'    => $invoice->faktur_number ?: null,
+            'Surat Jalan'         => $dn ? $dn->code . ' (' . $dn->status_label . ')' : null,
+            'Payment Term'        => $invoice->payment_term_label,
+            'Tanggal Invoice'     => $tgl($invoice->invoice_date),
+            'Jatuh Tempo (Print)' => $tgl($invoice->due_date),
+            'Tanggal Terima'      => $tgl($invoice->received_at),
+            'Jatuh Tempo Aktual'  => $tgl($invoice->actual_due_date),
+            'Rekening Tujuan'     => $invoice->sourceFund
+                ? trim(($invoice->sourceFund->bank->name ?? '') . ' ' . ($invoice->sourceFund->no_account ?? '') . ' a.n. ' . $invoice->sourceFund->name)
+                : null,
+            'Remark'              => $invoice->remark ?: null,
+            'Alasan Batal'        => $invoice->status === 'CANCELLED' ? ($invoice->cancel_reason ?: null) : null,
+        ];
+
+        // Peristiwa workflow (tanpa nominal) + komentar, urut dari yang terlama.
+        $peristiwa = \App\Support\InvoiceTimeline::untuk($invoice, true)
+            ->reject(fn ($e) => $e['badge'] === 'KOMENTAR')
+            ->map(fn ($e) => [
+                'kind'         => 'event',
+                'user_id'      => null,
+                'actor'        => $e['actor'],
+                'avatar'       => null,
+                'date'         => $e['label'],
+                'ts'           => $e['sort']->toIso8601String(),
+                'action_label' => $e['badge'],
+                'action_color' => $e['color'],
+                'lines'        => collect($e['lines'])
+                    ->map(fn ($l) => $l['teks'] !== '' ? $l['teks'] : ($l['tautan']['label'] ?? ''))
+                    ->filter()->values()->all(),
+            ]);
+
+        $avatars = \App\Models\User::avatarUrlMap($invoice->comments->pluck('user_id'));
+
+        $logs = $peristiwa
+            ->concat($invoice->comments->map(fn ($c) => $this->komentarPayload($c, $avatars[$c->user_id] ?? null)))
+            ->sortBy('ts')->values();
+
+        return response()->json([
+            'id'           => $invoice->id,
+            'code'         => $invoice->code,
+            'status'       => $invoice->display_status,
+            'status_label' => \App\Support\WorkflowStatus::label($invoice->display_status, 'invoice'),
+            'status_tone'  => \App\Support\WorkflowStatus::tone($invoice->display_status, 'invoice'),
+            'info'         => collect($info)->filter(fn ($v) => $v !== null && $v !== '')
+                ->map(fn ($v, $k) => [$k, $v])->values(),
+            'logs'         => $logs,
+            // Lampiran Surat Jalan: untuk semua role (sama seperti modal Surat Jalan di detail invoice).
+            'dn_attachments' => $dn ? $lampiran($dn->attachments) : [],
+            // null = role tidak berhak: tab Attachment tidak ditampilkan.
+            'attachment_groups' => $grupLampiran,
+        ]);
+    }
+
+    private function komentarPayload($c, ?string $avatar): array
+    {
+        return [
+            'kind'    => 'note',
+            'user_id' => $c->user_id,
+            'actor'   => $c->user->name ?? '-',
+            'avatar'  => $avatar,
+            'date'    => $c->created_at?->format('d/m/Y H:i'),
+            'ts'      => $c->created_at?->toIso8601String(),
+            'notes'   => $c->comment,
+        ];
+    }
+
     public function storeComment(Request $request, $id)
     {
         $request->validate(['comment' => 'required|string|max:2000']);
 
-        $invoice = Invoice::findOrFail($id);
-        $invoice->comments()->create([
+        // Sama seperti aksi ber-{id} lain: Manager/Head hanya untuk invoice di Access Group-nya.
+        $invoice = $this->findVisibleInvoice($id);
+        $komentar = $invoice->comments()->create([
             'user_id' => Auth::id(),
             'comment' => $request->comment,
         ]);
+
+        if ($request->expectsJson()) {
+            $komentar->load('user');
+            $avatar = \App\Models\User::avatarUrlMap([$komentar->user_id])[$komentar->user_id] ?? null;
+
+            return response()->json(['log' => $this->komentarPayload($komentar, $avatar)]);
+        }
 
         return back()->with('success', 'Komentar untuk invoice ' . $invoice->code . ' tersimpan di Log & Approval.');
     }
@@ -1092,12 +1211,16 @@ class InvoiceCashReceiptController extends Controller
             // karakter non-angka, jadi "abc" lolos validasi dan menjadi 0 -
             // pembayaran bernilai nol yang tetap tercatat sebagai pembayaran.
             'amount'         => 'required|regex:/[0-9]/',
+            // PPh aktual (opsional): menggantikan PPh invoice dan menghitung ulang Total, sama seperti
+            // form Cash Receipt multi-invoice (Invoice::sinkronPphDariCashReceipt).
+            'withholding_tax' => 'nullable|string|max:30',
             'source_fund_id' => 'nullable|exists:source_funds,id',
             'proof_file'     => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png',
             'notes'          => 'nullable|string|max:1000',
         ]);
 
         $amount = $this->normalizeMoney($request->amount);
+        $pph    = $this->normalizeMoney($request->withholding_tax);
 
         if ($amount < 1) {
             return back()->with('error', 'Nominal pembayaran harus lebih dari nol.');
@@ -1116,7 +1239,8 @@ class InvoiceCashReceiptController extends Controller
         | nilainya sendiri - lalu statusnya melompat ke PAID dengan angka yang
         | tidak bisa dijelaskan.
         */
-        $gagal = DB::transaction(function () use ($invoice, $amount, $request, $proofPath) {
+        try {
+        $gagal = DB::transaction(function () use ($invoice, $amount, $pph, $request, $proofPath) {
             // No. PO dulu, baru invoice: pembayaran memicu sinkron status No. PO (syncPaymentStatus),
             // jadi urutannya harus sama dengan jalur BAST/cancel agar tidak berpapasan.
             $this->kunciNoPo($invoice->project_po_number_id);
@@ -1128,14 +1252,28 @@ class InvoiceCashReceiptController extends Controller
                 return 'Cash Receipt hanya bisa ditambahkan untuk invoice berstatus SENT, RECEIVED, atau PARTIALLY PAID.';
             }
 
-            if ($amount > $terkunci->remainingBalance()) {
-                return 'Nominal melebihi sisa tagihan (' . number_format($terkunci->remainingBalance(), 0, ',', '.') . ').';
+            // Batas = sisa tagihan BRUTO (Invoice + PPN - diterima - PPh receipt), sama dengan form
+            // multi-invoice; tidak bergantung pada captured_total yang bisa basi.
+            $sisa = $terkunci->sisaBruto();
+            if ($amount + $pph > $sisa) {
+                return 'Nominal melebihi sisa tagihan (' . number_format($sisa, 0, ',', '.') . ').';
             }
+
+            // PPh aktual disalin ke invoice + Total dihitung ulang SEBELUM receipt disimpan,
+            // supaya hook CashReceipt::saved menyinkronkan status dari data yang konsisten.
+            $terkunci->sinkronPphDariCashReceipt(
+                'pembayaran invoice ini',
+                $pph,
+                $pph === 0 && $amount >= $sisa,
+                false,
+                $amount,
+            );
 
             CashReceipt::create([
                 'invoice_id'      => $terkunci->id,
                 'received_date'   => $request->received_date,
                 'amount'          => $amount,
+                'withholding_tax' => $pph,
                 'source_fund_id'  => $request->source_fund_id,
                 'proof_file'      => $proofPath,
                 'notes'           => $request->notes,
@@ -1144,6 +1282,9 @@ class InvoiceCashReceiptController extends Controller
 
             return null;
         });
+        } catch (\DomainException $e) {
+            $gagal = $e->getMessage();
+        }
 
         if ($gagal) {
             // Berkas bukti yang terlanjur tersimpan ikut dibersihkan supaya

@@ -50,7 +50,7 @@ class BeneficiaryPicViewTest extends TestCase
 
     /* ------------------------------------------------ RINGKASAN PER PIC */
 
-    public function test_halaman_membawa_ringkasan_per_pic(): void
+    public function test_pencarian_pic_mengembalikan_ringkasan_per_pic(): void
     {
         $pic = $this->pic('RANI FEBRIANDINI', 'Vendor Management Senior Manager');
         $this->beneficiary($pic, 'ZULBAIDHA');
@@ -59,24 +59,35 @@ class BeneficiaryPicViewTest extends TestCase
         // Tanpa PIC — tidak boleh ikut masuk ke ringkasan.
         $this->beneficiary(null, 'TANPA PIC');
 
-        $html = $this->actingAs($this->userWithRole('superadmin'))
-            ->get('/beneficiaries')->assertOk()->getContent();
+        $groups = $this->actingAs($this->userWithRole('superadmin'))
+            ->getJson('/beneficiaries/pic-groups?q=RANI')->assertOk()->json();
 
-        $this->assertStringContainsString('RANI FEBRIANDINI', $html);
-        $this->assertStringContainsString('Vendor Management Senior Manager', $html);
-        // Jumlah anggotanya ikut terkirim supaya barisnya bisa menampilkan
-        // angka. @json menulis JSON mentah di dalam <script>, bukan ter-escape.
-        $this->assertStringContainsString('"total":2', $html);
+        $this->assertCount(1, $groups);
+        $this->assertSame('RANI FEBRIANDINI', $groups[0]['pic']);
+        $this->assertSame('Vendor Management Senior Manager', $groups[0]['position']);
+        $this->assertSame(2, $groups[0]['total']);
     }
 
-    public function test_beneficiary_tanpa_pic_tidak_masuk_ringkasan(): void
+    public function test_pencarian_pic_kosong_jika_tidak_ada_yang_cocok_atau_terlalu_pendek(): void
     {
+        $this->beneficiary($this->pic('RANI FEBRIANDINI'), 'ZULBAIDHA');
         $this->beneficiary(null, 'SENDIRIAN');
+
+        $admin = $this->userWithRole('superadmin');
+
+        $this->actingAs($admin)->getJson('/beneficiaries/pic-groups?q=ZZZ')->assertOk()->assertExactJson([]);
+        // Satu huruf tidak dicari (cocok ke hampir semua nama).
+        $this->actingAs($admin)->getJson('/beneficiaries/pic-groups?q=R')->assertOk()->assertExactJson([]);
+    }
+
+    public function test_halaman_tidak_lagi_menanam_ringkasan_pic(): void
+    {
+        $this->beneficiary($this->pic('RANI FEBRIANDINI'), 'ZULBAIDHA');
 
         $html = $this->actingAs($this->userWithRole('superadmin'))
             ->get('/beneficiaries')->assertOk()->getContent();
 
-        // Satu-satunya baris tidak punya PIC, jadi ringkasannya kosong.
+        // Ringkasan diambil lazy lewat /beneficiaries/pic-groups.
         $this->assertStringContainsString('var PIC_GROUPS = [];', $html);
     }
 
@@ -98,7 +109,7 @@ class BeneficiaryPicViewTest extends TestCase
             ->update(['bank_id' => $bank->id, 'account_number' => '0817604612345']);
 
         $groups = $this->actingAs($this->userWithRole('superadmin'))
-            ->get('/beneficiaries')->assertOk()->viewData('picGroups');
+            ->getJson('/beneficiaries/pic-groups?q=RANI')->assertOk()->json();
 
         $group = collect($groups)->firstWhere('pic', 'RANI FEBRIANDINI');
 
@@ -354,18 +365,26 @@ class BeneficiaryPicViewTest extends TestCase
     public function test_pemilih_attach_tidak_ikut_tersaring_filter_layar(): void
     {
         /*
-        | Daftar pemilihnya sengaja TIDAK memakai koleksi yang sama dengan
-        | tabel utama, yang mengikuti filter kategori/status/pencarian di
-        | layar. Kalau ikut tersaring, beneficiary yang sedang disembunyikan
-        | filter (mis. sedang melihat kategori INTERNAL saja) tidak akan bisa
-        | dipilih untuk dikaitkan ke PIC manapun.
+        | Daftar pemilihnya sengaja TIDAK memakai filter kategori/status/
+        | pencarian di layar. Kalau ikut tersaring, beneficiary yang sedang
+        | disembunyikan filter (mis. sedang melihat kategori INTERNAL saja)
+        | tidak akan bisa dipilih untuk dikaitkan ke PIC manapun. Diambil lazy
+        | lewat endpoint tersendiri saat modal dibuka.
         */
         $this->beneficiary(null, 'HANYA EXTERNAL');
 
-        $html = $this->actingAs($this->userWithRole('superadmin'))
-            ->get('/beneficiaries?category=INTERNAL')->assertOk()->getContent();
+        $this->actingAs($this->userWithRole('superadmin'))
+            ->getJson('/beneficiaries/picker?category=INTERNAL')
+            ->assertOk()
+            ->assertJsonFragment(['nickname' => 'HANYA EXTERNAL']);
+    }
 
-        $this->assertStringContainsString('"nickname":"HANYA EXTERNAL"', $html);
+    public function test_manager_tidak_boleh_mengambil_daftar_pemilih(): void
+    {
+        $manager = $this->userWithRole('manager');
+        $this->giveMenuAccess($manager->role, 'beneficiaries');
+
+        $this->actingAs($manager)->getJson('/beneficiaries/picker')->assertForbidden();
     }
 
     public function test_modal_attach_tidak_menawarkan_membuat_baru(): void
