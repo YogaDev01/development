@@ -632,7 +632,7 @@
                                         <td></td>
                                         <td class="text-center aca-qty" style="font-weight:700;">{{ $g['qty'] }}</td>
                                         <td class="text-right" style="font-weight:700;">
-                                            <a href="{{ $acaCrUrl(['manager' => $g['manager'], 'pics' => $g['pics']], $g['date_from']) }}"
+                                            <a href="{{ $acaCrUrl($g['is_non_po'] ? ['pics' => $g['pics']] : ['manager' => $g['manager'], 'pics' => $g['pics']], $g['date_from']) }}"
                                                target="_blank" rel="noopener" class="aca-value-link"
                                                title="Buka Cost Request milik {{ $g['manager'] }}"><span class="aca-val">{{ $fmtRpFull($g['value']) }}</span></a>
                                         </td>

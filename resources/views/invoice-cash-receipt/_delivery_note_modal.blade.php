@@ -110,7 +110,7 @@
         @if($deliveryNote->attachments->isNotEmpty())
         <div class="dnm-chips" style="margin-top:0;">
             @foreach($deliveryNote->attachments as $att)
-            <a href="/storage/{{ $att->file_path }}" target="_blank" class="dnm-chip">
+            <a href="/storage/{{ $att->file_path }}" data-evidence="dnm-sj" data-evidence-name="{{ $att->title ?? 'File' }}" target="_blank" class="dnm-chip">
                 <i class="fas fa-paperclip mr-1"></i>{{ $att->title ?? 'File' }}
             </a>
             @endforeach
@@ -137,7 +137,7 @@
                     @if($log->attachments->isNotEmpty())
                     <div class="dnm-chips">
                         @foreach($log->attachments as $att)
-                        <a href="/storage/{{ $att->file_path }}" target="_blank" class="dnm-chip">
+                        <a href="/storage/{{ $att->file_path }}" data-evidence="dnm-log-{{ $log->id }}" data-evidence-name="{{ $att->title ?? 'File' }}" target="_blank" class="dnm-chip">
                             <i class="fas fa-paperclip mr-1"></i>{{ $att->title ?? 'File' }}
                         </a>
                         @endforeach

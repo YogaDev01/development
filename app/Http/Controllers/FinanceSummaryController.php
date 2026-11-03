@@ -707,6 +707,9 @@ class FinanceSummaryController extends Controller
     /** Status yang dianggap Cash Advance masih BERJALAN (belum tuntas). */
     private const ACTIVE_CA_STATUSES = ['PAID', 'SETTLE_CHECKED', 'SETTLE_VERIFIED'];
 
+    /** Kunci grup untuk CR Cash Advance milik Cost Center (bukan PO). */
+    private const ACA_NON_PO_KEY = 'non_po';
+
     /**
      * Pilihan urutan tabel Active Cash Advance.
      *
@@ -851,11 +854,21 @@ class FinanceSummaryController extends Controller
                 'budgetPlan',
                 fn ($bp) => $bp->whereIn('project_id', $scopedProjectIds ?: [0])
             ))
-            ->with(['beneficiary.pic', 'budgetPlan.project.manager', 'type'])
+            ->with(['beneficiary.pic', 'budgetPlan.project.manager', 'budgetPlan.costCenter', 'type'])
 
             ->orderByDesc('amount')
             ->get()
-            ->filter(fn ($cr) => $cr->budgetPlan?->project?->manager);
+            /*
+            | Dua sumber: CR milik PO (dikelompokkan per Manager PO) dan CR milik
+            | Cost Center (tanpa PO, tanpa manager) yang dikumpulkan di satu grup
+            | "NON PO". CR cost center HANYA tampil untuk role beraksesi
+            | menyeluruh: akses group dibatasi per project, jadi untuk role
+            | terbatas tidak ada dasar menentukan CR cost center mana yang boleh
+            | dilihat (sama dengan whereHas project di atas yang sudah
+            | menyingkirkannya).
+            */
+            ->filter(fn ($cr) => $cr->budgetPlan?->project?->manager
+                || ($scopedProjectIds === null && $cr->budgetPlan?->cost_center_id));
 
         /*
         | FALLBACK TANGGAL PAID. paid_at tidak selalu terisi - CR yang dibayar
@@ -924,9 +937,12 @@ class FinanceSummaryController extends Controller
             ->map(fn ($p) => ['value' => $p->code, 'label' => '[' . $p->code . '] ' . $p->name])
             ->values();
 
-        $groups = $crs->groupBy(fn ($cr) => $cr->budgetPlan->project->manager_id)
-            ->map(function ($managerCrs) use ($urutNama, $menurun, $bandingNama) {
-                $manager = $managerCrs->first()->budgetPlan->project->manager;
+        $groups = $crs->groupBy(fn ($cr) => $cr->budgetPlan->project
+                ? $cr->budgetPlan->project->manager_id
+                : self::ACA_NON_PO_KEY)
+            ->map(function ($managerCrs, $key) use ($urutNama, $menurun, $bandingNama) {
+                $isNonPo = $key === self::ACA_NON_PO_KEY;
+                $manager = $isNonPo ? null : $managerCrs->first()->budgetPlan->project->manager;
 
                 /*
                 | Lapis 2 dikelompokkan per PIC, bukan per Beneficiary. Satu PIC
@@ -981,7 +997,10 @@ class FinanceSummaryController extends Controller
                                 | satu nama PO di baris grup akan menyesatkan.
                                 */
                                 'po_code'      => $cr->budgetPlan?->project?->code,
-                                'po_name'      => $cr->budgetPlan?->project?->name,
+                                // CR cost center: kolom PO Reference memuat nama
+                                // cost center-nya (tanpa kode PO / tautan PO).
+                                'po_name'      => $cr->budgetPlan?->project?->name
+                                    ?? $cr->budgetPlan?->costCenter?->name,
                             ])
                             ->values();
 
@@ -1026,7 +1045,10 @@ class FinanceSummaryController extends Controller
                 $crTertuaMgr   = $managerCrs->pluck('created_at')->filter()->min();
 
                 return [
-                    'manager'        => strtoupper($manager->username ?? '-'),
+                    'manager'        => $isNonPo ? 'NON PO' : strtoupper($manager->username ?? '-'),
+                    // Grup NON PO tidak punya manager: tautannya tidak membawa
+                    // filter Manager, hanya daftar PIC-nya.
+                    'is_non_po'      => $isNonPo,
                     'date_from'      => $crTertuaMgr?->format('Y-m-d'),
                     /*
                     | Daftar PIC di bawah manager ini, dibawa tautan "value" ke

@@ -90,6 +90,16 @@
             </div>
         </div>
 
+        {{-- Strip task per modul — markup & kelas yang sama dengan x-workflow-stepper
+             mode berfase di halaman Cost Request (gayanya di tesys-ui-refine.css,
+             .wf-host .wf-phased). Diisi JS dari kartu section yang ada; klik tile
+             menyaring halaman ke modul itu, klik lagi untuk melepas. --}}
+        <div id="todoJump" class="wf-host todo-wf-host" hidden>
+            <div class="wf-compact wf-phased">
+                <div class="wf-phase-row"></div>
+            </div>
+        </div>
+
         <!-- TOOLBAR -->
         <div class="card shadow-sm mb-0" style="border-radius:var(--radius-lg);">
             <div class="card-body py-3 px-3">
@@ -114,8 +124,8 @@
                         <button aria-label="Refresh" type="button" class="btn btn-outline-secondary btn-sm" id="btnTodoRefresh" title="Refresh">
                             <i class="fas fa-sync-alt"></i>
                         </button>
-                        <a href="{{ route('todo-list.export') }}" id="btnExportTodo" class="btn btn-outline-secondary btn-sm">
-                            <i class="fas fa-file-excel mr-1"></i> Export
+                        <a href="{{ route('todo-list.export') }}" id="btnExportTodo" class="btn btn-outline-secondary btn-sm" title="Export semua daftar (mengikuti pencarian & filter)">
+                            <i class="fas fa-file-excel mr-1"></i> Export Semua
                         </a>
                     </div>
                 </div>
@@ -2248,58 +2258,55 @@
     </div>
 </div>
 
-{{-- ============================== DETAIL DRAWER ============================== --}}
-<div id="todoDrawerOverlay" class="todo-drawer-overlay"></div>
-<div id="todoDrawer" class="todo-drawer">
-    <div class="todo-drawer-header">
-        <div class="d-flex justify-content-between align-items-start">
-            <div>
-                <div id="todoDrwMeta" class="text-white" style="font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;opacity:.72;">CR-0000</div>
-                <div id="todoDrwCode" class="text-white" style="font-size:16px;font-weight:700;margin-top:3px;line-height:1.3;">—</div>
-                <div id="todoDrwStatusWrap" style="display:none;"></div>
-            </div>
-            <button type="button" id="todoDrwClose" class="close text-white"><span>&times;</span></button>
-        </div>
-    </div>
-    <div class="todo-drawer-body" style="padding:0;display:flex;flex-direction:column;">
-        <ul class="nav nav-tabs" style="border-bottom:2px solid var(--border);padding:0 22px;flex-shrink:0;">
-            <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#todoPaneInfo" style="font-size:12px;font-weight:600;padding:10px 12px;"><i class="fas fa-info-circle mr-1"></i>Info</a></li>
-            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#todoPaneRequest" style="font-size:12px;font-weight:600;padding:10px 12px;"><i class="fas fa-list-ul mr-1"></i>Request</a></li>
-            <li class="nav-item" id="todoTabRealisasiLi" style="display:none;"><a class="nav-link" data-toggle="tab" href="#todoPaneRealisasi" style="font-size:12px;font-weight:600;padding:10px 12px;"><i class="fas fa-receipt mr-1"></i>Settlement</a></li>
-            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#todoPaneLog" style="font-size:12px;font-weight:600;padding:10px 12px;"><i class="fas fa-history mr-1"></i>Log</a></li>
+{{-- ============================== DETAIL DRAWER ==============================
+     Komponen dan susunan yang sama dengan drawer detail di halaman Cost Request
+     (budget-request/index): kepala putih (eyebrow kode · tipe + judul), tab
+     Info / Request / Settlement / Log, log gaya chat dengan kotak catatan, dan
+     lampiran yang dibuka di viewer selebar sisa layar di kiri drawer.
+     Datanya dari endpoint yang sama (budget-request/{id}/detail-json). --}}
+<x-drawer id="todoDrawer" label="Detail Cost Request" width="max(50vw, 560px)">
+    <div id="todoDrawerContent" hidden>
+        <ul class="nav nav-tabs mb-3" id="todoDetailTabs">
+            <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#todoPaneInfo"><i class="fas fa-info-circle mr-1"></i> Info</a></li>
+            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#todoPaneRequest"><i class="fas fa-list-ul mr-1"></i> Request <span id="todoReqCount" class="badge badge-secondary ml-1"></span></a></li>
+            <li class="nav-item" id="todoTabRealisasiLi"><a class="nav-link" data-toggle="tab" href="#todoPaneRealisasi"><i class="fas fa-receipt mr-1"></i> Settlement <span id="todoRealCount" class="badge badge-secondary ml-1"></span></a></li>
+            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#todoPaneLog"><i class="fas fa-history mr-1"></i> Log</a></li>
         </ul>
-        <div class="tab-content" style="padding:20px 22px;overflow-y:auto;flex:1;">
+        <div class="tab-content">
             <div class="tab-pane fade show active" id="todoPaneInfo"></div>
             <div class="tab-pane fade" id="todoPaneRequest"></div>
             <div class="tab-pane fade" id="todoPaneRealisasi"></div>
-            <div class="tab-pane fade" id="todoPaneLog"></div>
+            <div class="tab-pane fade" id="todoPaneLog">
+                <div id="todoLogBody" class="cr-chat"></div>
+                {{-- Kotak catatan gaya chat; disembunyikan JS saat CR berstatus Closed. --}}
+                <form id="todoLogForm" class="cr-log-form" hidden>
+                    <textarea id="todoLogInput" class="form-control" rows="2" maxlength="1000"
+                              placeholder="Tulis catatan atau update…" aria-label="Catatan log"></textarea>
+                    <button type="submit" class="btn btn-sm btn-primary" id="todoLogSend"><i class="fas fa-paper-plane mr-1"></i> Kirim</button>
+                </form>
+                <div id="todoLogClosed" class="cr-log-closed" hidden><i class="fas fa-lock mr-1"></i> Cost Request sudah Closed — catatan baru tidak dapat ditambahkan.</div>
+            </div>
         </div>
-        {{-- Bar aksi workflow — isinya dibangun dari workflow_actions milik
-             detail-json, jadi tombol yang tampil persis sama dengan yang
-             diizinkan server untuk user & status ini. Disembunyikan saat CR
-             tidak punya aksi apa pun bagi user ini. --}}
-        <div id="todoDrwActions" class="todo-drawer-actions" style="display:none;"></div>
     </div>
-</div>
 
-{{-- IMAGE VIEWER (carousel + zoom, ala WhatsApp) — sama seperti di budget-request/index --}}
-<div id="imgViewerOverlay">
-    <button aria-label="Close" type="button" id="imgViewerClose" title="Close"><i class="fas fa-times"></i></button>
-    <div id="imgViewerName"></div>
-    <div id="imgViewerStage">
-        <button aria-label="Previous" type="button" class="imgViewerNav" id="imgViewerPrev" title="Previous"><i class="fas fa-chevron-left"></i></button>
-        <img id="imgViewerImg" src="" alt="">
-        {{-- File non-gambar (PDF/dokumen) tetap ikut urutan carousel, tapi
-             ditampilkan sebagai kartu logo + nama file yang bisa diklik. --}}
-        <a id="imgViewerFile" href="#" target="_blank" rel="noopener" style="display:none;">
-            <i class="fas fa-file-pdf" id="imgViewerFileIcon"></i>
-            <span id="imgViewerFileName"></span>
-            <small>Klik untuk membuka di tab baru</small>
-        </a>
-        <button aria-label="Next" type="button" class="imgViewerNav" id="imgViewerNext" title="Next"><i class="fas fa-chevron-right"></i></button>
+    <div id="todoDrawerError" hidden></div>
+
+    <div id="todoDrawerLoading">
+        <x-skeleton type="lines" :rows="2" />
+        <div style="height:14px"></div>
+        <x-skeleton type="card" />
+        <div style="height:14px"></div>
+        <x-skeleton type="lines" :rows="4" />
     </div>
-    <div id="imgViewerCounter"></div>
-</div>
+
+    {{-- Bar aksi workflow — isinya dibangun dari workflow_actions milik
+         detail-json, jadi tombol yang tampil persis sama dengan yang
+         diizinkan server untuk user & status ini. Kaki drawer disembunyikan
+         saat CR tidak punya aksi apa pun bagi user ini. --}}
+    <x-slot:footer>
+        <div id="todoDrwActions" class="todo-drawer-actions"></div>
+    </x-slot:footer>
+</x-drawer>
 
 @endsection
 
@@ -2447,19 +2454,10 @@
     .todo-toolbar-actions { margin-left:0 !important;width:100%; }
     .todo-toolbar-actions > .btn { flex:1 1 auto; }
 
-    /* ── Drawer detail CR: selebar layar. Lebar 50vw + min-width 440px
-       membuat sisi kirinya terpotong di HP. ── */
-    /* #todoDrawer di depan: aturan dasar drawer ditulis SESUDAH blok ini
-       dengan spesifisitas yang sama, jadi tanpa ID aturan HP kalah urutan. */
-    #todoDrawer.todo-drawer { width:100vw;min-width:0;max-width:100vw; }
-    #todoDrawer .todo-drawer-header { padding:14px 16px; }
-    #todoDrawer .todo-drawer-body > .nav-tabs { padding:0 8px !important; }
-    #todoDrawer .todo-drawer-body > .nav-tabs .nav-link { padding:10px 10px !important; }
-    #todoDrawer .todo-drawer-body > .tab-content { padding:14px 16px !important; }
-    #todoDrawer .todo-drawer-actions { padding:10px 16px calc(10px + env(safe-area-inset-bottom)); }
-    #todoDrawer .todo-drawer-actions .btn { flex:1 1 auto; }
-    #todoDrawer .todo-drw-amount-val { font-size:22px; }
-    #todoDrawer .todo-drw-section .todo-drw-label { flex-basis:104px; }
+    /* ── Drawer detail CR: lebar panel sudah selebar layar (x-drawer);
+       tombol aksi berbagi satu baris selebar sentuh. ── */
+    #todoDrawer .todo-drawer-actions .btn { flex:1 1 auto;min-height:40px; }
+    #todoDrawer .ts-drawer-foot { padding-bottom:calc(13px + env(safe-area-inset-bottom)); }
 
     /* ── Modal View Budget (mode card via TesysTable, lihat show.bs.modal):
        judul tidak menabrak tombol tutup, angka dalam grid dua kolom. ── */
@@ -2498,38 +2496,59 @@
     body.tesys-ui .modal[id^="mdlTodoCoa"] table.ts-card-table table.ts-card-table > tbody > tr { margin-bottom:8px; }
 }
 
-/* Detail drawer */
-.todo-drawer-overlay { display:none;position:fixed;inset:0;background:rgba(27,27,34,0.45);z-index:1050; }
-.todo-drawer {
-    display:none;position:fixed;top:0;right:0;bottom:0;width:50vw;max-width:92vw;min-width:440px;background:var(--surface);
-    z-index:1051;box-shadow:-8px 0 24px rgba(0,0,0,0.15);flex-direction:column;
-}
-.todo-drawer-header { background:var(--charcoal);padding:18px 22px;border-bottom:3px solid var(--accent);flex-shrink:0; }
-.todo-drawer-body { padding:20px 22px;overflow-y:auto;flex:1; }
-.todo-drawer-body .nav-tabs .nav-link { color:var(--text-faint);border:none;border-bottom:2px solid transparent; }
-.todo-drawer-body .nav-tabs .nav-link.active { color:var(--text);border-bottom-color:var(--accent);background:transparent; }
-/* Bar aksi drawer — menempel di dasar panel, tidak ikut tergulir bersama isi
-   tab, supaya tombol Approve/Reject tetap terjangkau pada CR berisi banyak
-   rincian. */
-.todo-drawer-actions {
-    flex-shrink:0;padding:12px 22px;background:var(--surface-2);border-top:1px solid var(--border);
-    display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;
-}
+/* ── DETAIL DRAWER (x-drawer) — gaya isi disamakan dengan drawer Cost Request ── */
+/* Bar aksi drawer di kaki panel — tidak ikut tergulir bersama isi tab, supaya
+   tombol Approve/Reject tetap terjangkau pada CR berisi banyak rincian. */
+.todo-drawer-actions { flex:1;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap; }
 .todo-drawer-actions .btn { font-size:12px;font-weight:600;padding:6px 16px; }
-/* Drawer duduk di z-index 1051 — di ATAS modal Bootstrap bawaan (1050).
-   Modal konfirmasi yang dipanggil DARI drawer karena itu perlu dinaikkan,
-   berikut backdrop-nya, kalau tidak ia muncul di belakang panel. */
-#mdlDrwAction { z-index:1080; }
-/* Berlaku untuk SEMUA modal yang dibuka selagi drawer terbuka (View Budget,
-   Detail Budget, konfirmasi aksi) — bukan cuma #mdlDrwAction, kalau tidak
-   modalnya tertutup panel drawer. */
-body.todo-drawer-open .modal { z-index:1080; }
-body.todo-drawer-open .modal-backdrop { z-index:1070; }
+/* Drawer (x-drawer) duduk di z-index 1070 — di ATAS modal Bootstrap bawaan
+   (1050). Modal yang dibuka selagi drawer terbuka (View Budget, Detail
+   Budget, konfirmasi aksi) dinaikkan, berikut backdrop-nya, kalau tidak ia
+   muncul di belakang panel. */
+body:has(#todoDrawer.is-open) .modal { z-index:1080; }
+body:has(#todoDrawer.is-open) .modal-backdrop { z-index:1075; }
 /* Kebalikannya juga terjadi: drawer CR bisa dibuka DARI dalam modal View
    Budget (tombol view per CR). Yang terakhir dibuka harus menang, jadi drawer
    naik di atas modal selama kelas ini terpasang. */
-body.todo-drawer-top .todo-drawer { z-index:1091; }
-body.todo-drawer-top .todo-drawer-overlay { z-index:1090; }
+body.todo-drawer-top #todoDrawer { z-index:1091; }
+
+/* Tab drawer: satu baris, bisa digeser mendatar tanpa scrollbar, dan tetap di
+   atas saat isi digulir. Offset -18px = padding-top .ts-drawer-body. */
+#todoDetailTabs { border-bottom:2px solid var(--border);flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none;
+    position:sticky;top:-18px;margin-top:-18px;padding-top:18px;z-index:5;background:var(--surface); }
+#todoDetailTabs::-webkit-scrollbar { display:none; }
+#todoDetailTabs .nav-item { flex:0 0 auto; }
+#todoDetailTabs .nav-link { white-space:nowrap;color:var(--text-faint);border:none;border-bottom:2px solid transparent;border-radius:0;padding:8px 12px;font-size:12.5px;font-weight:600; }
+#todoDetailTabs .nav-link.active { color:var(--accent) !important;border-bottom-color:var(--accent) !important;background:transparent !important;font-weight:700; }
+
+/* Kode CR di kepala drawer: klik untuk menyalin. */
+.cr-copy-code { background:none;border:0;padding:0;margin:0;font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;cursor:pointer; }
+.cr-copy-code:hover { color:var(--accent);text-decoration:underline; }
+.cr-copy-code:focus-visible { outline:none;box-shadow:0 0 0 3px var(--accent-ring);border-radius:var(--radius-sm); }
+
+/* Tab Log — gaya chat sama dengan Cost Request / Purchase Order: log user yang
+   sedang login rata kanan ("mine"), lainnya rata kiri, avatar inisial. Chat
+   menempel di bawah (terlama di atas), kotak kirim selalu terlihat. */
+.cr-chat { display:flex;flex-direction:column;gap:14px;padding:4px 2px; }
+.cr-chat-row { display:flex;gap:10px;max-width:78%; }
+.cr-chat-row.mine { align-self:flex-end;flex-direction:row-reverse;text-align:right; }
+.cr-chat-av { width:30px;height:30px;border-radius:50%;background:var(--info-bg);color:var(--text-dim);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;overflow:hidden; }
+.cr-chat-row.mine .cr-chat-av { background:var(--charcoal);color:#fff; }
+.cr-chat-av img { width:100%;height:100%;object-fit:cover; }
+.cr-chat-bubble { background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:8px 12px;font-size:12px; }
+.cr-chat-meta { font-size:10px;color:var(--text-faint);margin-bottom:4px; }
+.cr-chat-note { margin-top:6px;font-size:11.5px;line-height:1.45;white-space:pre-line;color:var(--text); }
+#todoPaneLog.active { display:flex;flex-direction:column; }
+#todoPaneLog #todoLogBody { margin-top:auto; }
+#todoPaneLog .cr-log-form, #todoPaneLog .cr-log-closed { position:sticky;bottom:-24px;margin-bottom:-24px;padding-bottom:24px;background:var(--surface); }
+.cr-log-form { display:flex;gap:8px;align-items:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid var(--border); }
+.cr-log-form textarea { font-size:12px;resize:none;flex:1 1 auto; }
+.cr-log-closed { margin-top:16px;padding-top:12px;border-top:1px solid var(--border);font-size:11.5px;color:var(--text-faint); }
+
+/* Teks deskripsi panjang di tab Settlement: satu baris dengan "…", melebar
+   penuh saat barisnya disorot. */
+#todoRealBody .cr-clip { display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis; }
+#todoRealBody tr:hover .cr-clip { -webkit-line-clamp:unset;overflow:visible;white-space:normal; }
 /* Lebar kolom dikunci: dengan layout otomatis, baris grup ber-colspan dan
    baris anak yang muncul/hilang membuat kolom bergeser tiap kali grup dibuka. */
 .todo-flat-section .card-body table,
@@ -2548,34 +2567,6 @@ body.todo-drawer-top .todo-drawer-overlay { z-index:1090; }
 .todo-sort-th:hover { color:var(--accent); }
 .todo-sort-ic { font-size:9px; opacity:.35; margin-left:2px; }
 .todo-sort-th[data-dir] .todo-sort-ic { opacity:1; color:var(--accent); }
-.todo-drw-row { margin-bottom:14px; }
-/* Chip Chart of Account pada tab Info drawer — bentuknya mengikuti badge
-   status yang sudah dipakai di tab Log: pil lembut, bukan kotak tabel. */
-.todo-coa-chips { display:flex;flex-wrap:wrap;gap:6px;margin-top:2px; }
-.todo-coa-chip {
-    display:inline-flex;align-items:baseline;gap:6px;
-    background:rgba(200,39,46,0.10);color:var(--accent);
-    border:1px solid rgba(200,39,46,0.22);border-radius:999px;
-    padding:3px 10px;font-size:11.5px;font-weight:700;line-height:1.3;
-}
-.todo-drw-label { font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);font-weight:700;margin-bottom:3px; }
-
-/* Kartu NILAI PENGAJUAN di puncak tab Info (meniru modal detail Cost Request). */
-.todo-drw-amount-card { border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface-2);padding:16px 18px;margin-bottom:18px; }
-.todo-drw-amount-label { font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);font-weight:700;margin-bottom:6px; }
-.todo-drw-amount-val { font-size:26px;font-weight:800;color:var(--text);line-height:1.05; }
-.todo-drw-amount-badges { display:flex;flex-wrap:wrap;gap:6px;margin-top:10px; }
-
-/* Section Info (Chart of Account / Informasi Pengajuan / Tanggal). */
-.todo-drw-section { margin-bottom:18px; }
-.todo-drw-section-title { font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);font-weight:700;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border); }
-.todo-drw-section .todo-coa-chips { margin-top:0; }
-/* Baris key-value dua kolom di dalam section (label kiri, nilai kanan). */
-.todo-drw-section .todo-drw-row { display:flex;gap:14px;align-items:baseline;margin-bottom:9px; }
-.todo-drw-section .todo-drw-row:last-child { margin-bottom:0; }
-.todo-drw-section .todo-drw-label { flex:0 0 120px;margin-bottom:0;text-transform:none;letter-spacing:0;font-weight:400;font-size:12px;color:var(--text-faint); }
-.todo-drw-section .todo-drw-value { flex:1;min-width:0;font-size:12.5px;word-break:break-word; }
-
 /* Riwayat pengajuan PIC — pohon COA/Sub COA/item di tab Info. */
 .todo-pichist-wrap { max-height:320px; overflow:auto; border:1px solid var(--border); border-radius:var(--radius-md); margin-top:6px; }
 .todo-pichist-table { width:100%; margin-bottom:0; }
@@ -2592,64 +2583,120 @@ tr.td-grp-row:hover, tr.td-grp-row:hover td { background:var(--surface-3) !impor
 .td-grp-caret { font-size:10px; color:var(--text-faint); transition:transform .15s ease; display:inline-block; }
 .td-grp-caret.rotated { transform:rotate(90deg); }
 td.td-grp-indent { padding-left:32px !important; }
-.todo-drw-value { font-size:13px;color:var(--text); }
-.todo-timeline { list-style:none;margin:0;padding:0; }
-.todo-timeline li { position:relative;padding-left:24px;padding-bottom:16px;font-size:12px;color:var(--text-faint); }
-.todo-timeline li:last-child { padding-bottom:0; }
-.todo-timeline li::before { content:'';position:absolute;left:4px;top:3px;width:9px;height:9px;border-radius:50%;background:var(--surface-3); }
-.todo-timeline li::after { content:'';position:absolute;left:8px;top:14px;bottom:0;width:1px;background:var(--surface-3); }
-.todo-timeline li:last-child::after { display:none; }
-.todo-timeline li.done { color:var(--success); }
-.todo-timeline li.done::before { background:var(--success); }
-.todo-timeline li.current { color:var(--text);font-weight:700; }
-.todo-timeline li.current::before { background:var(--accent);box-shadow:0 0 0 3px rgba(200,39,46,0.25); }
 
-/* Grid lampiran (Supporting Documents) — sama seperti tab Request/Realization di Cost Request */
-.cr-att-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(120px, 1fr)); gap:10px; margin-top:8px; }
-.cr-att-card { border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; background:var(--surface); }
-.cr-att-thumb { width:100%; height:90px; object-fit:cover; display:block; cursor:pointer; background:var(--surface-2); }
-.cr-att-icon { width:100%; height:90px; display:flex; align-items:center; justify-content:center; background:var(--surface-2); color:var(--text-faint); font-size:26px; }
-.cr-att-name { font-size:10.5px; padding:5px 6px; color:var(--text); word-break:break-word; border-top:1px solid var(--border); }
+/* Grid lampiran — sama seperti tab Request/Settlement di Cost Request: seluruh
+   kartu adalah tombol yang membuka carousel. */
+.cr-att-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:12px; margin-top:8px; }
+.cr-att-card { display:block; width:100%; padding:0; text-align:left; border:1px solid var(--border); border-radius:var(--radius-md); overflow:hidden; background:var(--surface); cursor:pointer; transition:border-color .12s ease, box-shadow .12s ease; }
+.cr-att-card:hover, .cr-att-card:focus-visible { border-color:var(--accent-soft); box-shadow:var(--shadow-sm); outline:none; }
+.cr-att-thumb { width:100%; height:120px; object-fit:cover; display:block; background:var(--surface-2); }
+.cr-att-icon { width:100%; height:120px; display:flex; align-items:center; justify-content:center; background:var(--surface-2); color:var(--text-faint); font-size:30px; }
+.cr-att-name { display:block; font-size:11px; padding:6px 8px; color:var(--text); word-break:break-word; border-top:1px solid var(--border); }
+.cr-att-meta { display:block; padding:0 8px 6px; font-size:10.5px; color:var(--text-faint); }
 
-/* Image viewer (carousel + zoom, ala WhatsApp) — sama seperti di budget-request/index */
-#imgViewerOverlay {
-    position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:2000;
-    display:none; align-items:center; justify-content:center; flex-direction:column;
+/* ── BARIS DATA: seluruh baris membuka detail (lihat handler tr.todo-row) ── */
+#todoApp tr.todo-row { cursor:pointer; }
+#todoApp tr.todo-row:hover > td { background:var(--surface-2); }
+#todoApp tr.todo-row:focus { outline:none; }
+#todoApp tr.todo-row:focus-visible > td { box-shadow:inset 0 2px 0 var(--accent-ring), inset 0 -2px 0 var(--accent-ring); }
+/* Baris yang dicentang untuk bulk approve/reject tetap terlihat terpilih. */
+#todoApp tr.todo-row:has(.todo-check:checked) > td,
+#todoApp tr.todo-row:has(.tl-batch-check:checked) > td { background:var(--accent-tint); }
+
+/* ── STRIP TASK PER MODUL — gaya dari tesys-ui-refine.css (.wf-host .wf-phased).
+   Di sini hanya jarak ke kartu berikutnya, kursor tile, dan kelas penyaring modul. ── */
+.todo-wf-host { margin-bottom:14px; }
+.todo-wf-host[hidden] { display:none; }
+body.tesys-ui .todo-wf-host .wf-phased { margin-top:0; }
+.todo-wf-host .wf-tl-step { cursor:pointer;user-select:none; }
+/* Kartu section di luar modul yang sedang dipilih di strip. Kelas, bukan
+   .hide(), supaya tidak bentrok dengan cari/filter yang memakai .toggle(). */
+#todoApp .todo-mod-hidden { display:none !important; }
+
+/* ── KARTU SECTION ala kartu tabel Cost Request: judul, baris toolbar
+   (cari & filter kiri, export kanan), lalu tabel — semuanya di dalam satu
+   kartu bertepi tipis tanpa garis pemisah kepala. ── */
+body.tesys-ui #todoApp .card.todo-sec-card { padding:0 !important;overflow:clip; }
+body.tesys-ui #todoApp .todo-sec-card > .card-header { border-bottom:0 !important;padding:14px 16px 0 !important; }
+body.tesys-ui #todoApp .todo-sec-card > .card-header .card-title {
+    float:none;display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;font-size:14px;font-weight:700;color:var(--text);
 }
-#imgViewerOverlay.show { display:flex; }
-#imgViewerStage { position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-#imgViewerImg {
-    max-width:90vw; max-height:82vh; object-fit:contain; cursor:zoom-in;
-    transition:transform .15s ease; transform-origin:center center; user-select:none; -webkit-user-drag:none;
+#todoApp .todo-sec-card > .card-header .card-title > i { color:var(--text-faint);margin-right:2px !important; }
+#todoApp .todo-sec-card.card-danger > .card-header .card-title > i { color:var(--danger); }
+#todoApp .todo-sec-card > .card-header .card-title .badge,
+#todoApp .todo-sec-card > .card-header .card-title .text-muted { margin-left:0 !important; }
+body.tesys-ui #todoApp .todo-sec-card > .card-body { padding:0 16px 16px !important; }
+/* Bulk bar ikut masuk ke dalam bidang kartu. */
+#todoApp .todo-sec-card > .todo-bulk-bar { margin:0 16px 10px;border:1px solid var(--border);border-radius:var(--radius-sm); }
+
+/* Toolbar per tabel: semua kendali rapat di kiri (cari, filter, export,
+   expand), sama dengan bilah kendali tabel Cost Request. */
+.todo-sec-bar { display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 16px 12px; }
+.todo-sec-left { display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0; }
+/* Kotak cari dibuat sendiri (bukan .form-control). Gaya input bawaan tema
+   (tepi, bayangan fokus, padding ber-!important) dinolkan pada input di
+   dalamnya — kalau tidak, muncul kotak kedua di dalam kotak cari. */
+.todo-sec-search {
+    display:flex;align-items:center;gap:7px;width:240px;height:30px;margin:0;padding:0 9px;
+    border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);
+    font-weight:400;cursor:text;transition:border-color .12s ease, box-shadow .12s ease;
 }
-#imgViewerFile {
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
-    background:#fff; color:var(--text); border-radius:var(--radius-lg);
-    padding:40px 48px; max-width:80vw; text-decoration:none;
+.todo-sec-search:focus-within { border-color:var(--accent-soft);box-shadow:0 0 0 3px var(--accent-ring); }
+/* Kotak cari berupa <label>: tema memberi setiap label margin-bottom 5px
+   (tesys-ui-compat.css), yang membuatnya terangkat dari tombol di sebelahnya. */
+body.tesys-ui #todoApp label.todo-sec-search { margin:0;box-sizing:border-box;line-height:1;font-size:12px; }
+.todo-sec-search-ic { flex:none;display:inline-flex;color:var(--text-faint);font-size:11px; }
+body.tesys-ui #todoApp .todo-sec-search input.todo-sec-q,
+body.tesys-ui #todoApp .todo-sec-search input.todo-sec-q:focus {
+    flex:1 1 auto;min-width:0;width:auto;height:100% !important;min-height:0 !important;margin:0 !important;padding:0 !important;
+    border:0 !important;border-radius:0 !important;outline:0 !important;box-shadow:none !important;background:transparent !important;
+    font-size:12px !important;color:var(--text);-webkit-appearance:none;appearance:none;
 }
-#imgViewerFile:hover { background:var(--surface-2); }
-#imgViewerFile i { font-size:72px; color:var(--danger); }
-#imgViewerFile span { font-size:14px; font-weight:600; word-break:break-all; text-align:center; }
-#imgViewerFile small { font-size:11px; color:var(--text-faint); }
-#imgViewerImg.zoomed { cursor:grab; }
-#imgViewerImg.dragging { cursor:grabbing; transition:none; }
-#imgViewerClose {
-    position:absolute; top:16px; right:20px; z-index:10; background:rgba(255,255,255,.12); border:none; color:#fff;
-    width:38px; height:38px; border-radius:50%; font-size:20px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+.todo-sec-q::placeholder { color:var(--text-faint); }
+.todo-sec-q::-webkit-search-decoration { -webkit-appearance:none; }
+.todo-sec-bar .btn-sm { height:30px;font-size:12px;display:inline-flex;align-items:center;gap:5px; }
+.todo-sec-filter-n { background:var(--accent);color:#fff;font-size:9.5px; }
+.todo-sec-filter-btn.todo-filter-active { border-color:var(--accent);color:var(--accent-text);background:var(--accent-tint); }
+.todo-sec-count { font-size:11px;color:var(--text-faint);font-variant-numeric:tabular-nums;white-space:nowrap; }
+.todo-sec-count[hidden] { display:none; }
+.todo-sec-nomatch { margin-top:10px;padding:14px 16px;font-size:12px;color:var(--text-faint);border:1px dashed var(--border);border-radius:var(--radius-sm);background:var(--surface-2); }
+.todo-sec-nomatch[hidden] { display:none; }
+
+/* Panel Filter — sama dengan panel Filter Cost Request: judul, grid dua
+   kolom tombol field (gaya .tcf-row-btn global), Reset di kaki. */
+.todo-fp {
+    position:absolute;z-index:3000;min-width:420px;max-width:calc(100vw - 24px);padding:16px;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:0 8px 24px rgba(0,0,0,.14);
 }
-#imgViewerClose:hover { background:rgba(255,255,255,.25); }
-.imgViewerNav {
-    position:absolute; top:50%; transform:translateY(-50%); background:rgba(255,255,255,.12); border:none; color:#fff;
-    width:44px; height:44px; border-radius:50%; font-size:20px; display:flex; align-items:center; justify-content:center; cursor:pointer;
+.todo-fp .tcf-pop-title { font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint);margin-bottom:10px; }
+.todo-fp-grid { display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:8px; }
+.todo-fp .tcf-row-btn { width:100%;justify-content:center;overflow:hidden;white-space:nowrap; }
+.todo-fp .tcf-row-btn.is-open:not(.tcf-row-active) { border-color:var(--accent-soft);background:var(--surface-2); }
+.todo-fp .tcf-pop-foot { margin-top:12px;padding-top:10px;border-top:1px solid var(--border); }
+/* Daftar pilihan satu field (dibuka dari tombol field). */
+.todo-sec-list-pop {
+    position:absolute;z-index:3010;display:flex;flex-direction:column;width:max-content;min-width:220px;max-width:340px;max-height:320px;padding:8px;
+    background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--radius-sm);box-shadow:0 6px 18px rgba(0,0,0,.12);
 }
-.imgViewerNav:hover { background:rgba(255,255,255,.25); }
-#imgViewerPrev { left:16px; }
-#imgViewerNext { right:16px; }
-#imgViewerCounter { position:absolute; bottom:16px; left:50%; transform:translateX(-50%); color:#fff; font-size:12px; background:rgba(255,255,255,.12); padding:4px 12px; border-radius:var(--radius-lg); }
-#imgViewerName { position:absolute; top:20px; left:20px; z-index:10; color:#fff; font-size:12px; opacity:.85; max-width:60vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-@media (max-width:576px) {
-    .imgViewerNav { width:36px; height:36px; font-size:16px; }
-    #imgViewerPrev { left:6px; } #imgViewerNext { right:6px; }
+.todo-sec-list-pop .tcf-list { overflow-y:auto;overflow-x:hidden;max-height:220px;padding-right:6px; }
+.todo-sec-list-pop .tcf-item { display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:12px;font-weight:400;cursor:pointer; }
+.todo-sec-list-pop .todo-sec-list-empty { font-size:12px;padding:4px 2px; }
+.todo-sec-list-pop .todo-sec-list-empty[hidden] { display:none; }
+.todo-sec-pop-v { flex:1 1 auto;min-width:0; }
+.todo-sec-pop-n { flex:none;padding-left:10px;font-size:10.5px;color:var(--text-faint);font-variant-numeric:tabular-nums; }
+/* Kode yang baru disalin. */
+.cr-number-btn.is-copied { color:var(--success) !important;background:var(--success-bg, var(--surface-2)) !important; }
+@media (max-width:640px) {
+    body.tesys-ui #todoApp .todo-sec-card > .card-header { padding:12px 12px 0 !important; }
+    body.tesys-ui #todoApp .todo-sec-card > .card-body { padding:0 10px 10px !important; }
+    #todoApp .todo-sec-card > .todo-bulk-bar { margin:0 10px 8px; }
+    .todo-sec-bar { padding:8px 12px 10px; }
+    .todo-sec-left { flex:1 1 100%; }
+    .todo-sec-search { flex:1 1 100%;width:auto;height:38px; }
+    .todo-sec-bar .todo-sec-lbl { display:none; } /* ikon saja; title tetap ada */
+    .todo-sec-bar .btn-sm { height:38px;min-width:40px;justify-content:center; }
+    .todo-fp { min-width:0;width:calc(100vw - 24px); }
+    .todo-fp-grid { grid-template-columns:1fr; }
 }
 
 /* Filter checklist — gaya sama dengan halaman Cost Request (TesysColumnFilter) */
@@ -3553,7 +3600,7 @@ $(function () {
     /* ── WORKLIST — Expand/Collapse All (per section) ── */
     $(document).on('click', '.todo-toggle-all', function () {
         var $btn = $(this);
-        var $section = $btn.closest('.todo-worklist');
+        var $section = $btn.closest('.todo-worklist, .todo-flat-section');
         var expanding = $btn.data('state') !== 'expanded';
 
         // Dua lapis (PO -> Budget Plan), jadi keduanya ikut dibuka/ditutup —
@@ -3561,9 +3608,17 @@ $(function () {
         // masih tertutup.
         $section.find('.todo-po-row, .todo-group-row').each(function () {
             var target = $(this).data('target');
-            $('.' + target).toggle(expanding);
+            // Baris yang sedang tersaring cari/filter tetap tersembunyi.
+            $section.find('.' + target).not('.todo-filtered-out').toggle(expanding);
             $(this).find('.todo-caret').toggleClass('rotated', expanding);
         });
+        if (expanding) {
+            // Lapis grup yang seluruh isinya tersaring ikut disembunyikan lagi.
+            $section.find('.todo-group-row, .todo-po-row').each(function () {
+                var $anak = $section.find('.' + $(this).data('target'));
+                if ($anak.length && !$anak.not('.todo-filtered-out').length) $(this).hide();
+            });
+        }
         $btn.data('state', expanding ? 'expanded' : 'collapsed');
         $btn.html(expanding ? '<i class="fas fa-compress-alt mr-1"></i>Collapse All' : '<i class="fas fa-expand-alt mr-1"></i>Expand All');
     });
@@ -3607,7 +3662,9 @@ $(function () {
     });
     $(document).on('change', '.todo-check-all', function () {
         var $section = $(this).closest('.todo-worklist');
-        $section.find('.todo-check').prop('checked', $(this).is(':checked'));
+        // Hanya baris yang lolos cari/filter — CR yang sedang tersembunyi oleh
+        // filter tidak ikut terpilih untuk bulk approve/reject tanpa terlihat.
+        $section.find('.todo-row').not('.todo-filtered-out').find('.todo-check').prop('checked', $(this).is(':checked'));
         updateBulkBar($section);
     });
 
@@ -3617,7 +3674,8 @@ $(function () {
     });
     $(document).on('change', '.todo-check-group', function () {
         var $section = $(this).closest('.todo-worklist');
-        groupLeaves($(this).data('group')).prop('checked', $(this).is(':checked'));
+        groupLeaves($(this).data('group')).filter(function () { return !$(this).closest('.todo-row').hasClass('todo-filtered-out'); })
+            .prop('checked', $(this).is(':checked'));
         updateBulkBar($section);
     });
 
@@ -3926,96 +3984,131 @@ $(function () {
         applyTodoFilters();
     });
 
+    /* Kartu section yang berisi tabel worklist. Sebagian kartu punya dua kelas
+       sekaligus (flat + worklist) — himpunan jQuery tidak menggandakannya. */
+    function todoSections() { return $('#todoApp').find('.todo-worklist, .todo-flat-section'); }
+
+    /* Keadaan cari/filter per tabel (toolbar di kepala tiap kartu):
+       { q: 'teks', cols: { <indeks kolom>: Set(nilai) } } */
+    function todoSecState($sec) {
+        var st = $sec.data('todoSec');
+        if (!st) { st = { q: '', cols: {} }; $sec.data('todoSec', st); }
+        return st;
+    }
+    function todoSecActive(st) {
+        return !!(st.q || Object.keys(st.cols).some(function (k) { return st.cols[k].size > 0; }));
+    }
+
+    // Teks sel kolom ke-i pada baris data (baris data tidak memakai colspan).
+    function todoCellText(tr, idx) {
+        var td = tr.children[idx];
+        return td ? $.trim($(td).text()).replace(/\s+/g, ' ') : '';
+    }
+    // Nilai field filter tabel: "c:<indeks kolom>" atau "d:<atribut data-*>".
+    function todoFieldValue(tr, key) {
+        if (key.indexOf('d:') === 0) return $.trim(tr.getAttribute('data-' + key.slice(2)) || '');
+        return todoCellText(tr, parseInt(key.slice(2), 10));
+    }
+
+    function todoRowPassesSection(tr, st) {
+        if (st.q) {
+            var hay = (($(tr).data('search') || '') + ' ' + $(tr).text()).toLowerCase();
+            if (hay.indexOf(st.q) === -1) return false;
+        }
+        for (var k in st.cols) {
+            if (!st.cols.hasOwnProperty(k) || !st.cols[k].size) continue;
+            if (!st.cols[k].has(todoFieldValue(tr, k))) return false;
+        }
+        return true;
+    }
+
+    /* Kembalikan satu section ke keadaan awal: lapis PO tampil, lapis Budget
+       Plan & baris CR di section GROUPED tertutup.
+
+       Kenapa ditutup, bukan dibiarkan apa adanya: selama pencarian tadi,
+       induk dari setiap baris yang cocok sengaja dipaksa terbuka. Kalau
+       keadaan itu ditinggalkan begitu saja, melepas filter menyisakan pohon
+       setengah terbuka yang tidak pernah diminta siapa pun. */
+    function todoResetSection($sec) {
+        $sec.show();
+        $sec.find('.todo-row').removeClass('todo-filtered-out');
+        $sec.find('.todo-po-row').show();
+        if (!$sec.find('.todo-po-row').length) {
+            // Section tanpa lapis PO (pola lama): header grup tampil, baris flat tampil.
+            $sec.find('.todo-group-row').show();
+            if ($sec.hasClass('todo-flat-section')) $sec.find('.todo-row').show();
+        } else {
+            $sec.find('.todo-group-row, .todo-row').hide();
+            $sec.find('.todo-caret').removeClass('rotated');
+        }
+        $sec.find('.todo-sec-nomatch').prop('hidden', true);
+        $sec.find('.todo-sec-count').prop('hidden', true);
+    }
+
     function applyTodoFilters() {
         var q = ($('#todoSearch').val() || '').toLowerCase().trim();
         var activeFields = Object.keys(todoFilterState).filter(function (k) { return todoFilterState[k].size > 0; });
-        var filtering = !!(q || activeFields.length);
+        var globalOn = !!(q || activeFields.length);
 
-        $('#btnTodoClearFilter').toggle(filtering);
+        $('#btnTodoClearFilter').toggle(globalOn);
 
-        if (!filtering) {
-            $('.todo-row').removeClass('todo-filtered-out');
-            /* Filter dilepas. Kartu section dan lapis PO dikembalikan tampil;
-               lapis Budget Plan & baris CR di dalam section GROUPED dikembalikan
-               tertutup.
+        var anyGlobal = false;
+        todoSections().each(function () {
+            var $sec = $(this);
+            var st = todoSecState($sec);
+            var secOn = todoSecActive(st);
+            $sec.find('.todo-sec-bar').toggleClass('is-filtering', secOn);
 
-               Kenapa ditutup, bukan dibiarkan apa adanya: selama pencarian tadi,
-               induk dari setiap baris yang cocok sengaja dipaksa terbuka. Kalau
-               keadaan itu ditinggalkan begitu saja, melepas filter menyisakan
-               pohon setengah terbuka yang tidak pernah diminta siapa pun. Dan
-               tanpa .todo-po-row di daftar show() ini, lapis PO tidak pernah
-               kembali sama sekali — daftarnya tampak kosong. */
-            $('.todo-worklist, .todo-flat-section, .todo-po-row').show();
+            /* Section yang tidak sedang disaring dibiarkan apa adanya (grup yang
+               dibuka user tetap terbuka) — hanya dikembalikan ke keadaan awal
+               tepat saat filternya baru saja dilepas. */
+            if (!globalOn && !secOn) {
+                if (st.wasOn) todoResetSection($sec);
+                st.wasOn = false;
+                return;
+            }
+            st.wasOn = true;
 
-            $('.todo-worklist').each(function () {
-                var $section = $(this);
-                if (!$section.find('.todo-po-row').length) {
-                    // Section tanpa lapis PO (pola lama) — perilaku lamanya
-                    // dipertahankan: header grup tampil, isinya tidak disentuh.
-                    $section.find('.todo-group-row').show();
-                    return;
-                }
-                $section.find('.todo-group-row, .todo-row').hide();
-                $section.find('.todo-caret').removeClass('rotated');
+            var total = 0, lolosGlobal = 0, lolos = 0;
+            $sec.find('.todo-row').each(function () {
+                var $row = $(this);
+                var g = true;
+                if (q && ($row.data('search') || '').toString().indexOf(q) === -1) g = false;
+                activeFields.forEach(function (field) {
+                    if (!todoFilterState[field].has(($row.data(field) || '').toString())) g = false;
+                });
+                var match = g && (!secOn || todoRowPassesSection(this, st));
+                $row.toggle(match).toggleClass('todo-filtered-out', !match);
+                total++;
+                if (g) lolosGlobal++;
+                if (match) lolos++;
             });
 
-            // Baris di tabel flat yang sudah ter-grouping PO kembali tertutup
-            // di bawah induknya; sisanya (tanpa lapis PO) tetap tampil.
-            $('.todo-flat-section').each(function () {
-                var $sec = $(this);
-                if ($sec.find('.todo-po-row').length) {
-                    $sec.find('.todo-row').hide();
-                    $sec.find('.todo-caret').removeClass('rotated');
-                } else {
-                    $sec.find('.todo-row').show();
-                }
+            // Header Budget Plan disembunyikan kalau semua CR anaknya tersaring habis.
+            $sec.find('.todo-group-row').each(function () {
+                var $children = $sec.find('.' + $(this).data('target'));
+                $(this).toggle($children.filter(':visible').length > 0 || $children.length === 0);
+            });
+            // Lalu header PO (MN-03) — dinilai SETELAH header Budget Plan, karena
+            // yang menentukan adalah ada-tidaknya budget plan yang masih tampil.
+            $sec.find('.todo-po-row').each(function () {
+                var $plans = $sec.find('.' + $(this).data('target'));
+                $(this).toggle($plans.filter(':visible').length > 0 || $plans.length === 0);
             });
 
-            $('#todoNoMatch').hide();
-            return;
-        }
-
-        var anyVisible = false;
-        $('.todo-row').each(function () {
-            var $row = $(this);
-            var match = true;
-            if (q && ($row.data('search') || '').toString().indexOf(q) === -1) match = false;
-            activeFields.forEach(function (field) {
-                var val = ($row.data(field) || '').toString();
-                if (!todoFilterState[field].has(val)) match = false;
-            });
-            $row.toggle(match).toggleClass('todo-filtered-out', !match);
-            if (match) anyVisible = true;
+            /* Pencarian global yang tidak menyisakan baris menyembunyikan kartu
+               seluruhnya (seperti sebelumnya). Filter milik tabel itu sendiri
+               TIDAK menyembunyikan kartunya — toolbar-nya harus tetap terjangkau
+               untuk melepas filter — melainkan menampilkan pesan di dalam kartu. */
+            $sec.toggle(!globalOn || lolosGlobal > 0);
+            $sec.find('.todo-sec-nomatch').prop('hidden', !(secOn && lolos === 0 && (!globalOn || lolosGlobal > 0)));
+            $sec.find('.todo-sec-count').prop('hidden', !secOn)
+                .text(lolos + ' dari ' + total);
+            if (lolosGlobal > 0) anyGlobal = true;
         });
 
-        // Header Budget Plan disembunyikan kalau semua CR anaknya tersaring habis.
-        $('.todo-group-row').each(function () {
-            var target = $(this).data('target');
-            var $children = $('.' + target);
-            var visible = $children.filter(':visible').length > 0;
-            $(this).toggle(visible || $children.length === 0);
-        });
-
-        // Lalu header PO (MN-03) — dinilai SETELAH header Budget Plan, karena
-        // yang menentukan adalah ada-tidaknya budget plan yang masih tampil.
-        $('.todo-po-row').each(function () {
-            var target = $(this).data('target');
-            var $plans = $('.' + target);
-            $(this).toggle($plans.filter(':visible').length > 0 || $plans.length === 0);
-        });
-
-        // Card section (grouped maupun flat) ikut disembunyikan kalau kosong total.
-        $('.todo-worklist').each(function () {
-            var hasVisible = $(this).find('.todo-row:visible').length > 0;
-            $(this).toggle(hasVisible);
-        });
-        $('.todo-flat-section').each(function () {
-            var hasVisible = $(this).find('.todo-row:visible').length > 0;
-            $(this).toggle(hasVisible);
-        });
-
-        $('#todoNoMatch').toggle(!anyVisible);
-        $('#todoEmptyState').hide();
+        $('#todoNoMatch').toggle(globalOn && !anyGlobal);
+        if (globalOn) $('#todoEmptyState').hide();
     }
     $('#todoSearch').on('keyup', applyTodoFilters);
 
@@ -4063,459 +4156,479 @@ $(function () {
         }
     });
 
+    /* ── TOOLBAR PER TABEL: Cari · Filter · Export ─────────────────────────
+       Satu baris toolbar di dalam setiap kartu worklist, di atas tabelnya —
+       susunan yang sama dengan toolbar tabel Cost Request (cari & filter di
+       kiri, export di kanan). Tabel Todo List bukan DataTables (baris
+       bertingkat PO → Budget Plan → item dengan buka/tutup sendiri), jadi
+       pencarian & filternya memakai mesin yang sama dengan filter global di
+       atas (applyTodoFilters) — hanya cakupannya satu tabel.
+       - Cari  : teks bebas di baris tabel itu (kode, deskripsi, nama, PO, …).
+       - Filter: checklist nilai per field. Field diambil dari kolom kategori
+                 yang ada di tabel itu (Beneficiary/PIC, PO, Kategori, …) dan
+                 dari atribut baris (Manager = data-pm, PO = data-po) untuk
+                 tabel yang tidak menampilkan kolomnya.
+       - Export: Excel berisi baris tabel itu yang lolos cari/filter, lewat
+                 endpoint export yang sudah ada (ids "modul:id"). */
+
+    // Kolom kategori yang layak difilter, dicocokkan dengan judul kolomnya.
+    var TODO_SEC_COLS = [
+        { re: /^(beneficiary|pic|beneficiary \/ pic)$/i, label: 'Beneficiary / PIC', urut: 1 },
+        { re: /^manager$/i,                              label: 'Manager',           urut: 2 },
+        { re: /^(po|no\. po)$/i,                         label: 'PO',                urut: 3 },
+        { re: /^(kategori|type|tipe)$/i,                 label: null,                urut: 4 },
+        { re: /^(input by|requestor|pemohon)$/i,         label: null,                urut: 5 },
+        { re: /^(status|bank|customer)$/i,               label: null,                urut: 6 }
+    ];
+    // Atribut baris sebagai cadangan bila kolomnya tidak ditampilkan tabel itu.
+    var TODO_SEC_ATTRS = [
+        { attr: 'pm', label: 'Manager', urut: 2 },
+        { attr: 'po', label: 'PO',      urut: 3 }
+    ];
+
+    function todoSecFields($sec) {
+        var $ths = $sec.find('.card-body table').first().find('thead tr').first().children('th');
+        var rows = $sec.find('.todo-row').toArray();
+        var fields = [], dipakai = {};
+
+        $ths.each(function (i) {
+            if ((parseInt($(this).attr('colspan'), 10) || 1) > 1) return;
+            var judul = $.trim($(this).clone().find('i, .todo-sort-ic').remove().end().text());
+            for (var j = 0; j < TODO_SEC_COLS.length; j++) {
+                var c = TODO_SEC_COLS[j];
+                if (!c.re.test(judul)) continue;
+                var label = c.label || judul;
+                if (dipakai[label]) return;
+                dipakai[label] = true;
+                fields.push({ key: 'c:' + i, label: label, urut: c.urut });
+                return;
+            }
+        });
+        TODO_SEC_ATTRS.forEach(function (a) {
+            if (dipakai[a.label]) return;
+            var ada = rows.some(function (tr) { return $.trim(tr.getAttribute('data-' + a.attr) || '') !== ''; });
+            if (!ada) return;
+            dipakai[a.label] = true;
+            fields.push({ key: 'd:' + a.attr, label: a.label, urut: a.urut });
+        });
+        fields.sort(function (x, y) { return x.urut - y.urut; });
+
+        // Nilai unik + jumlah baris per nilai.
+        fields.forEach(function (f) {
+            var hitung = {};
+            rows.forEach(function (tr) {
+                var v = todoFieldValue(tr, f.key);
+                if (!v) return;
+                hitung[v] = (hitung[v] || 0) + 1;
+            });
+            f.counts = hitung;
+            f.values = Object.keys(hitung).sort(function (a, b) { return a.localeCompare(b, 'id'); });
+        });
+        return fields.filter(function (f) { return f.values.length > 0; });
+    }
+
+    function todoSecFilterCount(st) {
+        return Object.keys(st.cols).reduce(function (t, k) { return t + (st.cols[k].size ? 1 : 0); }, 0);
+    }
+
+    function todoSecSyncButton($sec) {
+        var st = todoSecState($sec);
+        var n = todoSecFilterCount(st);
+        $sec.find('.todo-sec-filter-btn').toggleClass('todo-filter-active', n > 0)
+            .find('.todo-sec-filter-n').text(n || '').prop('hidden', !n);
+        $sec.find('.todo-sec-reset').prop('hidden', !todoSecActive(st));
+    }
+
+    /* Panel Filter tabel — bentuk sama dengan panel Filter di Cost Request
+       (TesysColumnFilter): judul FILTER, grid tombol per field, tombol Reset.
+       Tiap tombol field membuka daftar bercentang ber-kotak-cari di bawahnya;
+       pilihan langsung berlaku tanpa tombol Terapkan. */
+    function todoSecCloseList() {
+        $('.todo-sec-list-pop').remove();
+        $('.todo-fp .tcf-row-btn').removeClass('is-open');
+    }
+    function todoSecCloseFilter() {
+        todoSecCloseList();
+        $('.todo-fp').remove();
+        $('.todo-sec-filter-btn').attr('aria-expanded', 'false');
+        $(document).off('.todoSecOutside');
+    }
+
+    function todoSecFieldButton($btn, f, sel) {
+        $btn.toggleClass('tcf-row-active', sel.size > 0)
+            .html(todoEscHtml(f.label) + (sel.size ? ' <span class="col-mf-badge">' + sel.size + '</span>' : '') +
+                  ' <i class="fas fa-caret-down ml-1" aria-hidden="true"></i>');
+    }
+
+    function todoSecOpenList($sec, $panel, $fbtn, f) {
+        var milikIni = $('.todo-sec-list-pop').data('todoOwner') === $fbtn.get(0);
+        todoSecCloseList();
+        if (milikIni) return; // klik kedua pada tombol yang sama = tutup
+
+        var st = todoSecState($sec);
+        var sel = st.cols[f.key] || new Set();
+        var $dd = $('<div class="tcf-dropdown todo-sec-list-pop" role="dialog"></div>').attr('aria-label', 'Filter ' + f.label);
+        var $find = $('<input type="text" class="form-control form-control-sm mb-2" placeholder="Cari...">').attr('aria-label', 'Cari ' + f.label);
+        var $list = $('<div class="tcf-list"></div>');
+        f.values.forEach(function (v) {
+            var $lbl = $('<label class="tcf-item"></label>');
+            $('<input type="checkbox" class="tcf-check">').val(v).prop('checked', sel.has(v)).appendTo($lbl);
+            $('<span class="todo-sec-pop-v"></span>').text(v).appendTo($lbl);
+            $('<span class="todo-sec-pop-n"></span>').text(f.counts[v]).appendTo($lbl);
+            $list.append($lbl);
+        });
+        var $kosong = $('<div class="text-muted todo-sec-list-empty" hidden>Tidak ada yang cocok</div>');
+        $dd.append($find, $list, $kosong).data('todoOwner', $fbtn.get(0));
+        $('body').append($dd);
+        $fbtn.addClass('is-open');
+        TesysPlaceDropdown($dd, $fbtn);
+        $find.trigger('focus');
+
+        $find.on('input', function () {
+            var q = $.trim($(this).val()).toLowerCase();
+            var ada = 0;
+            $list.find('label').each(function () {
+                var cocok = $(this).find('.todo-sec-pop-v').text().toLowerCase().indexOf(q) !== -1;
+                $(this).toggle(cocok);
+                if (cocok) ada++;
+            });
+            $kosong.prop('hidden', ada > 0);
+        });
+        $list.on('change', '.tcf-check', function () {
+            var set = new Set();
+            $list.find('.tcf-check:checked').each(function () { set.add($(this).val()); });
+            if (set.size) st.cols[f.key] = set; else delete st.cols[f.key];
+            todoSecFieldButton($fbtn, f, set);
+            todoSecSyncButton($sec);
+            applyTodoFilters();
+        });
+    }
+
+    function todoSecOpenFilter($sec, $btn) {
+        var milikIni = $('.todo-fp').data('todoOwner') === $btn.get(0);
+        todoSecCloseFilter();
+        closeTodoFilterDropdowns();
+        if (milikIni) return;
+
+        var st = todoSecState($sec);
+        var fields = todoSecFields($sec);
+        var $panel = $('<div class="todo-fp" role="dialog" aria-label="Filter tabel"></div>');
+        $panel.append('<div class="tcf-pop-title">FILTER</div>');
+        if (!fields.length) {
+            $panel.append('<div class="text-muted" style="font-size:12px;">Tabel ini tidak punya kolom kategori untuk difilter. Gunakan kotak cari.</div>');
+        } else {
+            var $grid = $('<div class="todo-fp-grid"></div>').appendTo($panel);
+            fields.forEach(function (f) {
+                var $fbtn = $('<button type="button" class="btn btn-sm btn-outline-secondary tcf-row-btn"></button>');
+                todoSecFieldButton($fbtn, f, st.cols[f.key] || new Set());
+                $fbtn.on('click', function (e) {
+                    e.stopPropagation();
+                    todoSecOpenList($sec, $panel, $fbtn, f);
+                });
+                $grid.append($fbtn);
+            });
+            $('<div class="tcf-pop-foot"><button type="button" class="btn btn-primary btn-sm todo-fp-reset"><i class="fas fa-undo mr-1"></i>Reset</button></div>')
+                .appendTo($panel)
+                .on('click', '.todo-fp-reset', function () {
+                    st.cols = {};
+                    todoSecCloseList();
+                    $grid.find('.tcf-row-btn').each(function (i) { todoSecFieldButton($(this), fields[i], new Set()); });
+                    todoSecSyncButton($sec);
+                    applyTodoFilters();
+                });
+        }
+
+        $panel.data('todoOwner', $btn.get(0));
+        $('body').append($panel);
+        $btn.attr('aria-expanded', 'true');
+        TesysPlaceDropdown($panel, $btn);
+
+        // Klik di luar panel & daftar menutup; Escape menutup daftar dulu, lalu panel.
+        setTimeout(function () {
+            $(document).on('click.todoSecOutside', function (e) {
+                var $t = $(e.target);
+                if ($t.closest('.todo-sec-list-pop').length) return;
+                if ($t.closest('.todo-fp').length) { if (!$t.closest('.tcf-row-btn').length) todoSecCloseList(); return; }
+                if ($t.closest('.todo-sec-filter-btn').length) return;
+                todoSecCloseFilter();
+            });
+            $(document).on('keydown.todoSecOutside', function (e) {
+                if (e.key !== 'Escape') return;
+                if ($('.todo-sec-list-pop').length) todoSecCloseList(); else todoSecCloseFilter();
+            });
+            $(window).on('resize.todoSecOutside', todoSecCloseFilter);
+        }, 0);
+    }
+
+    function todoSecExport($sec) {
+        var ids = [];
+        $sec.find('.todo-row').not('.todo-filtered-out').each(function () {
+            var k = $(this).attr('data-export-key');
+            if (k && ids.indexOf(k) === -1) ids.push(k);
+        });
+        if (!ids.length) {
+            Swal.fire({ icon: 'info', title: 'Tidak ada baris untuk diekspor',
+                text: 'Tidak ada baris di tabel ini yang sesuai dengan pencarian/filter yang sedang aktif.' });
+            return;
+        }
+        var $f = $('<form method="POST"></form>').attr('action', $('#btnExportTodo').attr('href'));
+        $f.append($('<input type="hidden" name="_token">').val($('meta[name="csrf-token"]').attr('content')));
+        ids.forEach(function (id) { $f.append($('<input type="hidden" name="ids[]">').val(id)); });
+        $('body').append($f);
+        $f[0].submit();
+        $f.remove();
+    }
+
+    (function pasangToolbarTabel() {
+        todoSections().each(function () {
+            var $sec = $(this);
+            var $head = $sec.children('.card-header').first();
+            if (!$head.length || !$sec.find('.todo-row').length || $sec.find('.todo-sec-bar').length) return;
+            var judul = $.trim($head.find('.card-title').first().clone().children('.badge, .text-muted').remove().end().text());
+
+            $sec.addClass('todo-sec-card');
+            var $bar = $(
+                '<div class="todo-sec-bar">' +
+                    '<div class="todo-sec-left">' +
+                        '<label class="todo-sec-search">' +
+                            '<span class="todo-sec-search-ic" aria-hidden="true"><i class="fas fa-search"></i></span>' +
+                            '<input type="search" class="todo-sec-q" placeholder="Cari di tabel ini…" aria-label="Cari di tabel ' + todoEscHtml(judul) + '">' +
+                        '</label>' +
+                        '<button type="button" class="btn btn-outline-secondary btn-sm todo-sec-filter-btn" title="Filter" aria-haspopup="dialog" aria-expanded="false">' +
+                            '<i class="fas fa-filter" aria-hidden="true"></i><span class="todo-sec-lbl">Filter</span>' +
+                            '<span class="badge badge-pill todo-sec-filter-n" hidden></span>' +
+                        '</button>' +
+                        '<button type="button" class="btn btn-outline-secondary btn-sm todo-sec-reset" title="Reset cari & filter tabel ini" hidden>' +
+                            '<i class="fas fa-eraser" aria-hidden="true"></i>' +
+                        '</button>' +
+                        '<button type="button" class="btn btn-outline-secondary btn-sm todo-sec-export" title="Export tabel ini ke Excel">' +
+                            '<i class="fas fa-file-excel" aria-hidden="true"></i><span class="todo-sec-lbl">Export</span>' +
+                        '</button>' +
+                        '<span class="todo-sec-count" hidden></span>' +
+                    '</div>' +
+                '</div>');
+            $head.after($bar);
+
+            /* Expand/Collapse All untuk tabel bergrup (lapis PO / Budget Plan,
+               termasuk yang dikelompokkan JS) — dipindah ke toolbar ini; tabel
+               bergrup yang belum punya ikut mendapatkannya. */
+            if ($sec.find('.todo-po-row, .todo-group-row').length) {
+                var $lama = $sec.find('.todo-toggle-all').first();
+                var $tgl = $lama.length ? $lama : $('<button type="button" data-state="collapsed"></button>')
+                    .html('<i class="fas fa-expand-alt mr-1"></i>Expand All');
+                var $wadahLama = $lama.parent();
+                $tgl.attr('class', 'btn btn-outline-secondary btn-sm todo-toggle-all').removeAttr('style')
+                    .attr('title', 'Buka/tutup semua grup');
+                $bar.find('.todo-sec-export').after($tgl); // urutan: Cari · Filter · Export · Expand All
+                if ($wadahLama.length && !$wadahLama.children().length) $wadahLama.remove();
+            }
+
+            // Pesan "tidak ada yang cocok" milik tabel ini, di bawah tabelnya.
+            $sec.find('.card-body').first().append(
+                '<div class="todo-sec-nomatch" hidden><i class="fas fa-filter mr-1" aria-hidden="true"></i>' +
+                'Tidak ada baris yang cocok dengan pencarian/filter tabel ini. ' +
+                '<button type="button" class="btn btn-link btn-sm p-0 align-baseline todo-sec-reset-link">Reset</button></div>');
+
+            var tunda = null;
+            $bar.on('input', '.todo-sec-q', function () {
+                var v = $(this).val();
+                clearTimeout(tunda);
+                tunda = setTimeout(function () {
+                    todoSecState($sec).q = $.trim(v).toLowerCase();
+                    todoSecSyncButton($sec);
+                    applyTodoFilters();
+                }, 160);
+            });
+            $bar.on('click', '.todo-sec-filter-btn', function (e) {
+                e.stopPropagation();
+                todoSecOpenFilter($sec, $(this));
+            });
+            $bar.on('click', '.todo-sec-export', function () { todoSecExport($sec); });
+            $sec.on('click', '.todo-sec-reset, .todo-sec-reset-link', function () {
+                var st = todoSecState($sec);
+                st.q = ''; st.cols = {};
+                $bar.find('.todo-sec-q').val('');
+                todoSecCloseFilter();
+                todoSecSyncButton($sec);
+                applyTodoFilters();
+            });
+        });
+    })();
+
+    /* ── STRIP TASK PER MODUL ──
+       Tile per modul (jumlah task = badge judul kartu section), dikelompokkan
+       per fase seperti strip status di halaman Cost Request. Klik tile
+       menyaring halaman: hanya daftar modul itu yang tampil (tile terisi
+       merah); klik lagi untuk menampilkan semua. */
+    (function pasangStripModul() {
+        var $host = $('#todoJump');
+        var $secs = todoSections().filter('[id^="tl-"]');
+        if (!$secs.length) return;
+
+        // Modul ditentukan dari id kartu (#tl-<key>); fase = kelompok tile.
+        var MODUL = [
+            { re: /^tl-(head|cost_control|ceo|reject)/, nama: 'Cost Request',   fase: 'Cost Request' },
+            { re: /^tl-(settle|second-payment)/,        nama: 'Settlement',     fase: 'Cost Request' },
+            { re: /^tl-bp-/,                            nama: 'Budgeting',      fase: 'Budgeting & PO' },
+            { re: /^tl-po-/,                            nama: 'Purchase Order', fase: 'Budgeting & PO' },
+            { re: /^tl-batch-/,                         nama: 'Treasury',       fase: 'Pembayaran' },
+            { re: /^tl-reg-/,                           nama: 'Cost Register',  fase: 'Pembayaran' },
+            { re: /^tl-invoice-/,                       nama: 'Invoice',        fase: 'Penagihan' },
+            { re: /^tl-collection/,                     nama: 'Collection',     fase: 'Penagihan' },
+            { re: /^tl-tt-/,                            nama: 'Trouble Ticket', fase: 'Lainnya' }
+        ];
+        var URUT_FASE = ['Cost Request', 'Budgeting & PO', 'Pembayaran', 'Penagihan', 'Lainnya'];
+
+        var perNama = {}, perFase = {};
+        $secs.each(function () {
+            var id = this.id;
+            var m = MODUL.filter(function (x) { return x.re.test(id); })[0] || { nama: 'Lainnya', fase: 'Lainnya' };
+            if (!perNama[m.nama]) {
+                perNama[m.nama] = { nama: m.nama, ids: [], total: 0, urut: MODUL.indexOf(m) };
+                (perFase[m.fase] = perFase[m.fase] || []).push(perNama[m.nama]);
+            }
+            perNama[m.nama].ids.push(id);
+            perNama[m.nama].total += parseInt($.trim($(this).children('.card-header').find('.card-title .badge').first().text()), 10) || 0;
+        });
+
+        var $row = $host.find('.wf-phase-row');
+        URUT_FASE.forEach(function (fase) {
+            var tiles = perFase[fase];
+            if (!tiles) return;
+            tiles.sort(function (x, y) { return x.urut - y.urut; });
+            var $phase = $('<section class="wf-phase"></section>').css('flex-grow', tiles.length)
+                .append($('<div class="wf-phase-title"></div>').text(fase));
+            var $steps = $('<div class="wf-phase-steps"></div>');
+            tiles.forEach(function (t) {
+                // Satu kata per baris, seperti label strip Cost Request.
+                var label = t.nama.split(/\s+/).map(function (w) { return todoEscHtml(w); }).join('<br>');
+                $('<div class="wf-tl-step" role="button" tabindex="0" aria-pressed="false"></div>')
+                    .attr({ 'data-ids': t.ids.join(' '), 'data-wf-color': 'secondary', title: t.nama + ': ' + t.total + ' task' })
+                    .html('<span class="badge wf-tl-node ' + (t.total ? 'badge-secondary' : 'is-empty') + '">' + t.total + '</span>' +
+                          '<div class="wf-tl-label ' + (t.total ? 'is-on' : 'is-off') + '">' + label + '</div>')
+                    .appendTo($steps);
+            });
+            $row.append($phase.append($steps));
+        });
+        $host.prop('hidden', false);
+
+        function pilih($step) {
+            var aktif = !$step.hasClass('wf-active');
+            $host.find('.wf-tl-step').removeClass('wf-active').attr('aria-pressed', 'false');
+            $secs.removeClass('todo-mod-hidden');
+            if (aktif) {
+                var ids = ($step.attr('data-ids') || '').split(' ');
+                $step.addClass('wf-active').attr('aria-pressed', 'true');
+                $secs.each(function () { $(this).toggleClass('todo-mod-hidden', ids.indexOf(this.id) === -1); });
+                var el = document.getElementById(ids[0]);
+                if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            }
+        }
+        $host.on('click', '.wf-tl-step', function () { pilih($(this)); });
+        $host.on('keydown', '.wf-tl-step', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pilih($(this)); }
+        });
+    })();
+
+    /* ── KLIK KODE = SALIN KODE ──
+       Kode (CR, batch, PO, invoice, …) di tabel kini menyalin dirinya ke
+       clipboard; membuka detail cukup dengan klik barisnya (handler
+       tr.todo-row). Dipasang di fase capture pada #todoApp supaya handler
+       pembuka lama pada tombol/tautan kode tidak ikut berjalan. Saat baris
+       yang membuka detail, tanda todoBukaBaris mengizinkan klik itu lewat. */
+    var todoBukaBaris = false;
+    function todoSalin(teks, selesai) {
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(teks).then(selesai, function () {});
+            return;
+        }
+        var t = document.createElement('textarea');
+        t.value = teks; t.style.position = 'fixed'; t.style.opacity = '0';
+        document.body.appendChild(t); t.select();
+        try { document.execCommand('copy'); selesai(); } catch (err) {}
+        document.body.removeChild(t);
+    }
+    var todoAppEl = document.getElementById('todoApp');
+    if (todoAppEl) {
+        todoAppEl.addEventListener('click', function (e) {
+            if (todoBukaBaris) return;
+            var btn = e.target.closest && e.target.closest('tr.todo-row .cr-number-btn');
+            if (!btn || !todoAppEl.contains(btn)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            var $b = $(btn);
+            if ($b.data('todoCopying')) return;
+            var kode = $.trim($b.attr('data-code') || $b.text());
+            if (!$b.attr('data-code')) $b.attr('data-code', kode);
+            todoSalin(kode, function () {
+                $b.data('todoCopying', true).addClass('is-copied')
+                  .css('min-width', $b.outerWidth() + 'px').text('Tersalin ✓');
+                setTimeout(function () {
+                    $b.text(kode).removeClass('is-copied').css('min-width', '').data('todoCopying', false);
+                }, 1100);
+            });
+        }, true);
+        $('#todoApp tr.todo-row .cr-number-btn').attr('title', 'Klik untuk menyalin kode');
+    }
+
     $('#btnTodoRefresh').on('click', function () { location.reload(); });
 
-    /* ============================== DETAIL DRAWER ============================== */
-    var todoStatusColors = {
-        DRAFT:'secondary', SUBMITTED:'warning', CHECKED:'info', VERIFIED:'primary',
-        APPROVED:'success', QUEUED:'warning', PAID:'success', REALIZED:'primary',
-        CLOSED:'dark', REJECTED:'danger', CANCELLED:'dark'
-    };
-    var todoTimelineSteps = ['DRAFT','SUBMITTED','CHECKED','VERIFIED','APPROVED','QUEUED','PAID','REALIZED','CLOSED'];
-    var todoTimelineLabels = {
-        DRAFT:'Draft', SUBMITTED:'Submitted', CHECKED:'Checked', VERIFIED:'Verified',
-        APPROVED:'Approved', QUEUED:'Process', PAID:'Paid', REALIZED:'Settle', CLOSED:'Closed'
-    };
+    /* ============================== DETAIL DRAWER ==============================
+       Susunan & gaya disamakan dengan drawer detail di halaman Cost Request
+       (budget-request/index.blade.php): kepala putih x-drawer, kartu nilai +
+       alur dokumen (TesysWorkflow), tab Request/Settlement dikelompokkan per
+       Chart of Account, lampiran sebagai kartu yang membuka carousel di sisa
+       layar kiri, dan tab Log gaya chat dengan kotak catatan. Data tetap dari
+       endpoint yang sudah ada — tidak ada query, route, atau aturan baru. */
 
-    function todoDrwRow(label, value) {
-        if (!value) return '';
-        return '<div class="todo-drw-row"><div class="todo-drw-label">' + label + '</div><div class="todo-drw-value">' + value + '</div></div>';
+    // Keterangan status berasal dari App\Support\WorkflowStatus (satu sumber
+    // dengan tabel, drawer, dan halaman show Cost Request).
+    var todoStatusMeta = @json(collect(\App\Models\BudgetRequest::STATUSES)->mapWithKeys(fn ($s) => [
+        $s => \App\Support\WorkflowStatus::meta($s, 'budget-request'),
+    ]));
+    var todoCurrentUserId = parseInt('{{ (int) Auth::id() }}', 10) || 0;
+    var todoDrawerId = null;
+
+    function esc(s) { return $(document.createElement('span')).text(s == null ? '' : s).html(); }
+    function escAttr(s) { return esc(s).replace(/"/g, '&quot;'); }
+
+    function setTabCount(sel, n) {
+        var el = $(sel);
+        if (n && n > 0) { el.text(n).show(); }
+        else { el.text('').hide(); }
     }
 
-    // Grid thumbnail lampiran (gambar = klik buka carousel, non-gambar = ikon + link) —
-    // pola sama persis dengan tab Request/Realization di halaman Cost Request.
-    function renderAttGrid(atts) {
-        if (!atts || !atts.length) return '<p class="text-muted py-2 mb-0" style="font-size:12px;">Belum ada lampiran.</p>';
-        var html = '<div class="cr-att-grid">';
-        atts.forEach(function (a) {
+    /* Keadaan kosong ringkas untuk ruang sempit di dalam drawer. */
+    function kosongRingkas(pesan) {
+        return '<div class="ts-empty ts-empty-compact"><p class="ts-empty-msg">' + esc(pesan) + '</p></div>';
+    }
+
+    function drawerKV(pasangan) {
+        var html = '<dl class="ts-dw-kv">';
+        pasangan.forEach(function (p) {
+            if (p[1] === null || p[1] === undefined || p[1] === '') return;
+            html += '<dt>' + esc(p[0]) + '</dt><dd' + (p[2] ? ' class="is-amount"' : '') + '>' + esc(p[1]) + '</dd>';
+        });
+        return html + '</dl>';
+    }
+
+    /* Kartu lampiran: gambar tampil sebagai thumbnail, file lain sebagai ikon.
+       Klik kartu membuka carousel untuk seluruh lampiran satu grup. */
+    window.__crAttGroups = {};
+    function renderAttGrid(atts, grup) {
+        if (!atts || !atts.length) return kosongRingkas('Belum ada lampiran.');
+        window.__crAttGroups[grup] = atts;
+        return '<div class="cr-att-grid">' + atts.map(function (a, i) {
             var url = '/storage/' + a.path;
-            if (a.is_image) {
-                html += '<div class="cr-att-card">' +
-                    '<img loading="lazy" src="' + url + '" class="cr-att-thumb" data-full="' + url + '" data-name="' + esc(a.original_name) + '">' +
-                    '<div class="cr-att-name">' + esc(a.original_name) + '</div>' +
-                '</div>';
-            } else {
-                var icon = a.is_pdf ? 'fa-file-pdf' : 'fa-file-alt';
-                html += '<div class="cr-att-card">' +
-                    '<a href="' + url + '" target="_blank" rel="noopener" class="cr-att-icon"><i class="fas ' + icon + '"></i></a>' +
-                    '<div class="cr-att-name">' + esc(a.original_name) + '</div>' +
-                '</div>';
-            }
-        });
-        html += '</div>';
-        return html;
-    }
-
-    function openCrDrawer(id) {
-        $('#todoDrawerOverlay, #todoDrawer').css('display', 'flex').hide().fadeIn(150);
-        $('#todoPaneInfo, #todoPaneRequest, #todoPaneRealisasi, #todoPaneLog').html('<div class="text-center text-muted py-5"><i class="fas fa-spinner fa-spin mr-1"></i> Memuat...</div>');
-        $('.todo-drawer-body .nav-link[href="#todoPaneInfo"]').tab('show');
-        $('#todoTabRealisasiLi').hide();
-        $('#todoDrwMeta').text('CR-...');
-        $('#todoDrwCode').text('Memuat...');
-        $('#todoDrwStatusWrap').html('');
-        $('#todoDrwActions').hide().empty();
-        $('body').addClass('todo-drawer-open')
-                 // Dibuka dari dalam modal -> drawer harus menimpa modalnya.
-                 .toggleClass('todo-drawer-top', $('.modal.show').length > 0);
-
-        $.get('/budget-request/' + id + '/detail-json', function (d) {
-            // Top bar: baris kecil "{CR code} · {TIPE}" lalu judul besar =
-            // deskripsi pengajuan (meniru modal detail Cost Request).
-            $('#todoDrwMeta').text(d.code + ' · ' + (d.type || '-').toUpperCase());
-            $('#todoDrwCode').text(d.description || d.code);
-            $('#todoDrwStatusWrap').html('');
-
-            /* ── TAB INFO ── */
-            var info = '';
-
-            /* NILAI PENGAJUAN — kartu amount berlabel, dengan badge tipe & status. */
-            info += '<div class="todo-drw-amount-card">' +
-                '<div class="todo-drw-amount-label">Nilai Pengajuan</div>' +
-                '<div class="todo-drw-amount-val">' + esc(d.amount_formatted) + '</div>' +
-                '<div class="todo-drw-amount-badges">' +
-                    '<span class="badge badge-light border" style="font-size:10.5px;">' + esc(d.type) + '</span>' +
-                    '<span class="badge badge-' + (todoStatusColors[d.status] || 'secondary') + '" style="font-size:10.5px;">' + esc(d.status_label || d.status) + '</span>' +
-                '</div>' +
-            '</div>';
-
-            /* CHART OF ACCOUNT — daftar akun unik yang dipotong CR ini. */
-            var coaChips = [], coaSeen = {};
-            (d.details || []).forEach(function (it) {
-                var akun = it.account || '-';
-                if (coaSeen[akun]) return;
-                coaSeen[akun] = true;
-                coaChips.push('<span class="todo-coa-chip">' + esc(akun) + '</span>');
-            });
-            if (coaChips.length) {
-                info += '<div class="todo-drw-section">' +
-                    '<div class="todo-drw-section-title">Chart of Account</div>' +
-                    '<div class="todo-coa-chips">' + coaChips.join('') + '</div>' +
-                '</div>';
-            }
-
-            /* INFORMASI PENGAJUAN — Beneficiary menampilkan PIC-nya; Bank Account
-               memuat nama beneficiary + bank & no. rekening; PO/Budget dilebur
-               jadi satu baris Reference (Kode - Scope of Work). */
-            var referensi = (d.code_reference && d.code_reference !== '-')
-                ? d.code_reference + (d.reference_scope && d.reference_scope !== '-' ? ' - ' + d.reference_scope : '')
-                : (d.reference_scope || '-');
-            var bankAccount = (d.beneficiary && d.bank && d.bank !== '-')
-                ? esc(d.beneficiary) + ' <span class="text-muted">(' + esc(d.bank) + (d.account_number && d.account_number !== '-' ? ' - ' + esc(d.account_number) : '') + ')</span>'
-                : esc(d.beneficiary || '-');
-            info += '<div class="todo-drw-section">' +
-                '<div class="todo-drw-section-title">Informasi Pengajuan</div>';
-            info += todoDrwRow('Requestor', esc(d.applicant));
-            info += todoDrwRow('Beneficiary', esc(d.pic));
-            info += todoDrwRow('Bank Account', bankAccount);
-            info += todoDrwRow('Reference', esc(referensi));
-            if (d.email) info += todoDrwRow('Email', esc(d.email));
-            if (d.notes) info += todoDrwRow('Notes', esc(d.notes));
-            info += '</div>';
-
-            /* TANGGAL — dipisah supaya mudah dipindai sendiri. */
-            info += '<div class="todo-drw-section">' +
-                '<div class="todo-drw-section-title">Tanggal</div>';
-            info += todoDrwRow('Dibuat', esc(d.created_at));
-            if (d.submitted_at) info += todoDrwRow('Diajukan', esc(d.submitted_at));
-            if (d.approved_at) info += todoDrwRow('Disetujui', esc(d.approved_at));
-            if (d.paid_at) info += todoDrwRow('Dibayar', esc(d.paid_at));
-            info += '</div>';
-
-            /* Riwayat pengajuan PIC ini di PO ini — satu PIC bisa punya banyak
-               beneficiary. Disusun pohon COA → Sub COA → item (lihat
-               picHistory() di server); nilai & sumber baris sudah dihitung di
-               sana (Cash Advance dari settlement, non-CA dari pengajuan).
-               Beneficiary CR ini belum tentu punya PIC master (has_pic) —
-               kalau tidak, judul panel ikut berganti jadi "Beneficiary" supaya
-               tidak menyebut nama beneficiary sebagai "PIC". */
-            var ph = d.pic_history || {};
-            var phItems = ph.items || [];
-            var phJudul = ph.has_pic ? 'Riwayat Pengajuan PIC Ini di PO Ini' : 'Riwayat Pengajuan Beneficiary Ini di PO Ini';
-            var phKosong = ph.has_pic ? 'PIC ini' : 'beneficiary ini';
-            info += '<div class="todo-drw-row" style="margin-top:18px;">' +
-                '<div class="todo-drw-label">' + phJudul +
-                    (ph.pic_name ? ' <span class="text-muted" style="font-weight:400;text-transform:none;letter-spacing:0;">— ' + esc(ph.pic_name) + '</span>' : '') +
-                '</div>';
-            if (phItems.length) {
-                window.__picHist = ph;
-                info += '<div class="todo-pichist-wrap" id="todoPicHist"></div>';
-            } else {
-                window.__picHist = null;
-                info += '<div class="text-muted" style="font-size:12px;">Belum ada pengajuan lain yang sudah dibayar untuk ' + phKosong + ' di PO ini.</div>';
-            }
-            info += '</div>';
-
-            $('#todoPaneInfo').html(info);
-            renderPicHist();
-
-            /* ── BAR AKSI WORKFLOW ── */
-            renderDrawerActions(d);
-
-            /* -- TAB REQUEST (rincian item pengajuan + attachment) --
-               Susunan kolom & pengelompokan per Chart of Account dibuat sama
-               persis dengan drawer di modul Cost Request. */
-            var reqHtml = '';
-            var canModerate = !!d.can_moderate_items;
-            window.__crDetailAtt = {};
-            var anyAtt = (d.details || []).some(function (x) { return x.attachments && x.attachments.length; });
-            var showAksi = canModerate || anyAtt;
-            if (d.details && d.details.length) {
-                var reqGroups = groupByAccount(d.details);
-                reqHtml += '<div class="d-flex justify-content-end mb-2">' +
-                    '<button type="button" class="btn btn-xs btn-outline-secondary td-grp-expand" data-body="todoReqBody"><i class="fas fa-angle-double-down mr-1"></i>Expand All</button>&nbsp;' +
-                    '<button type="button" class="btn btn-xs btn-outline-secondary td-grp-collapse" data-body="todoReqBody"><i class="fas fa-angle-double-up mr-1"></i>Collapse All</button>' +
-                    '</div>';
-                reqHtml += '<div class="table-responsive"><table class="table table-sm table-bordered mb-0" style="font-size:11.5px;">' +
-                    '<thead class="bg-light"><tr>' +
-                        '<th scope="col">Chart of Account / Description</th>' +
-                        '<th scope="col" class="text-right text-nowrap" style="width:14%;">Price</th>' +
-                        '<th scope="col" class="text-center text-nowrap" style="width:7%;">Qty</th>' +
-                        '<th scope="col" class="text-right text-nowrap" style="width:16%;">Total</th>' +
-                        (showAksi ? '<th scope="col" class="text-center text-nowrap" style="width:100px;">Aksi</th>' : '') +
-                    '</tr></thead><tbody id="todoReqBody">';
-                var reqTotal = 0, reqPrice = 0, reqQty = 0;
-                reqGroups.forEach(function (grp, gi) {
-                    var gClass = 'td-req-grp-' + gi;
-                    // Item takeout tidak ikut dijumlah di mana pun supaya subtotal
-                    // grup dan total bawah konsisten dengan nilai CR yang diproses.
-                    var gTotal = 0, gPrice = 0, gQty = 0;
-                    grp.items.forEach(function (x) {
-                        if (x.is_takeout) return;
-                        gTotal += parseFloat(x.total) || 0;
-                        gPrice += parseFloat(x.amount) || 0;
-                        gQty   += parseFloat(x.qty) || 0;
-                    });
-                    reqPrice += gPrice; reqQty += gQty;
-
-                    reqHtml += '<tr class="td-grp-row" data-target="' + gClass + '">' +
-                        '<td style="font-weight:700;">' +
-                            '<i class="fas fa-chevron-right mr-2 td-grp-caret"></i>' +
-                            esc(grp.account) + ' <span class="badge badge-secondary ml-1" style="font-size:9px;">' + grp.items.length + '</span>' +
-                        '</td>' +
-                        '<td class="text-right text-nowrap" style="font-weight:700;">' + esc(Math.round(gPrice).toLocaleString('id-ID')) + '</td>' +
-                        '<td class="text-center" style="font-weight:700;">' + esc(gQty.toLocaleString('id-ID')) + '</td>' +
-                        '<td class="text-right text-nowrap" style="font-weight:700;">' + esc(Math.round(gTotal).toLocaleString('id-ID')) + '</td>' +
-                        (showAksi ? '<td></td>' : '') +
-                    '</tr>';
-
-                    grp.items.forEach(function (item) {
-                        var isTakeout = !!item.is_takeout;
-                        // Item yang di-takeout tidak ikut dibawa proses, jadi tidak
-                        // ikut dijumlah di total.
-                        if (!isTakeout) reqTotal += parseFloat(item.total) || 0;
-
-                        var rowStyle = isTakeout
-                            ? 'color:var(--text-faint);background:var(--surface-2);'
-                            : (item.is_nob ? 'color:var(--danger);' : '');
-                        var strike = isTakeout ? 'text-decoration:line-through;' : '';
-                        var badge = isTakeout
-                            ? ' <span class="badge badge-warning" style="font-size:9px;" title="' + escAttr(item.takeout_notes || '') + '">Takeout &middot; ' + esc(item.takeout_stage_label || '-') + '</span>'
-                            : '';
-
-                        var atts = item.attachments || [];
-                        window.__crDetailAtt[item.id] = atts;
-                        // Jumlah evidence (lampiran) ditempel di sebelah Sub COA.
-                        var evi = atts.length
-                            ? ' <span class="badge badge-light border text-muted" style="font-size:9px;"><i class="fas fa-paperclip mr-1"></i>' + atts.length + '</span>'
-                            : '';
-                        var subCoa = item.sub_coa || item.item_label || item.description || '-';
-                        // Catatan baris tampil sebagai deskripsi di bawah Sub COA —
-                        // hanya kalau Sub COA memang dari budget detail (item_label
-                        // sudah memuat catatan di dalamnya).
-                        var noteLine = (item.sub_coa && item.notes)
-                            ? '<div class="text-muted" style="font-size:11px;' + strike + '">' + esc(item.notes) + '</div>'
-                            : '';
-
-                        var tdBtnStyle = 'white-space:nowrap;padding:2px 8px;font-size:11px;line-height:1.4;';
-                        var actInner = '';
-                        // Tombol aksi selalu ikon saja (tanpa teks) supaya kolom
-                        // Aksi ringkas dan seragam dengan tab Settlement.
-                        var iconOnly = true;
-                        if (atts.length) {
-                            actInner += '<button type="button" class="btn btn-info btn-view-detail-att mr-1" style="' + tdBtnStyle + '" data-detail="' + item.id + '" title="Lihat lampiran"><i class="fas fa-eye"></i>' + (iconOnly ? '' : ' View') + '</button>';
-                        }
-                        if (canModerate) {
-                            actInner += isTakeout
-                                ? '<button type="button" class="btn btn-outline-secondary td-restore-detail" style="' + tdBtnStyle + '" data-cr="' + d.id + '" data-detail="' + item.id + '" title="Kembalikan"><i class="fas fa-undo"></i>' + (iconOnly ? '' : ' Restore') + '</button>'
-                                : '<button type="button" class="btn btn-outline-danger td-takeout-detail" style="' + tdBtnStyle + '" data-cr="' + d.id + '" data-detail="' + item.id + '" data-desc="' + escAttr(item.description || '') + '" title="Takeout"><i class="fas fa-cut"></i>' + (iconOnly ? '' : ' Takeout') + '</button>';
-                        }
-                        var act = showAksi ? '<td class="text-center text-nowrap">' + actInner + '</td>' : '';
-
-                        reqHtml += '<tr class="' + gClass + '" style="display:none;' + rowStyle + '">' +
-                            '<td class="td-grp-indent" style="' + strike + '">' +
-                                '<div style="font-weight:600;">' + esc(subCoa) + evi + badge + '</div>' +
-                                noteLine +
-                                (isTakeout && item.takeout_notes ? '<small class="text-muted" style="text-decoration:none;">Alasan: ' + esc(item.takeout_notes) + '</small>' : '') +
-                            '</td>' +
-                            '<td class="text-right text-nowrap" style="' + strike + '">' + esc(item.amount_formatted) + '</td>' +
-                            '<td class="text-center" style="' + strike + '">' + esc(item.qty) + '</td>' +
-                            '<td class="text-right text-nowrap" style="' + strike + '"><strong>' + esc(item.total_formatted) + '</strong></td>' +
-                            act +
-                        '</tr>';
-                    });
-                });
-                reqHtml += '</tbody>' +
-                    '<tfoot><tr style="background:var(--surface-2);">' +
-                        '<th class="text-right">Total (item aktif)</th>' +
-                        '<th class="text-right text-nowrap">' + esc(Math.round(reqPrice).toLocaleString('id-ID')) + '</th>' +
-                        '<th class="text-center">' + esc(reqQty.toLocaleString('id-ID')) + '</th>' +
-                        '<th class="text-right text-nowrap">' + esc(Math.round(reqTotal).toLocaleString('id-ID')) + '</th>' +
-                        (showAksi ? '<th></th>' : '') +
-                    '</tr></tfoot>' +
-                    '</table></div>';
-            } else {
-                reqHtml = '<p class="text-muted py-2 mb-0" style="font-size:12px;">Belum ada rincian item.</p>';
-            }
-            reqHtml += '<div class="todo-drw-row" style="margin-top:14px;"><div class="todo-drw-label">ATTACHMENTS</div>' + renderAttGrid(d.attachments) + '</div>';
-            $('#todoPaneRequest').html(reqHtml);
-
-            /* ── TAB REALISASI (rincian realisasi + refund + bukti) — hanya
-               muncul kalau CR ini sudah punya data realisasi (status REALIZED/
-               CLOSED), memakai field yang sudah dikirim showJson() ── */
-            var hasRealisasi = (d.realizations && d.realizations.length) || (d.realization_attachments && d.realization_attachments.length);
-            $('#todoTabRealisasiLi').toggle(!!hasRealisasi);
-            if (hasRealisasi) {
-                var realHtml = '';
-                // Lampiran per item tidak digelar inline - cukup satu ikon view
-                // di kolom Action, sama dengan drawer Cost Request.
-                window.__crRealAtt = {};
-                if (d.realizations && d.realizations.length) {
-                    /* Perbandingan per COA / Sub COA — angka dari server
-                       (settlement_comparison), BUKAN jumlah total_cr per baris:
-                       satu item bisa dipecah jadi beberapa baris settlement
-                       (Settlement Custom COA), dan total_cr adalah nilai item
-                       asalnya sehingga akan terhitung berkali-kali. */
-                    var cmp = d.settlement_comparison || { rows: [] };
-                    function tdVar(n) {
-                        n = Math.round(n || 0);
-                        if (n === 0) return '<span class="text-muted">0</span>';
-                        return '<span style="color:' + (n > 0 ? 'var(--success)' : 'var(--danger)') + ';font-weight:600;">'
-                            + esc((n > 0 ? '' : '-') + Math.abs(n).toLocaleString('id-ID')) + '</span>';
-                    }
-                    realHtml += '<div class="todo-drw-label" style="margin-bottom:6px;">Perbandingan per COA / Sub COA</div>';
-                    realHtml += '<div class="table-responsive mb-3"><table class="table table-sm table-bordered mb-0" style="font-size:11.5px;">' +
-                        '<thead class="bg-light"><tr>' +
-                            '<th scope="col">COA / Sub COA</th>' +
-                            '<th scope="col" class="text-right text-nowrap" style="width:16%;">Request</th>' +
-                            '<th scope="col" class="text-right text-nowrap" style="width:16%;">Settlement</th>' +
-                            '<th scope="col" class="text-right text-nowrap" style="width:14%;">Var</th>' +
-                        '</tr></thead><tbody>';
-                    (cmp.rows || []).forEach(function (c) {
-                        realHtml += '<tr>' +
-                            '<td><div style="font-weight:600;">' + esc(c.sub_coa || '-') + '</div>' +
-                                '<div class="text-muted" style="font-size:11px;">' + esc(c.account || '-') + '</div></td>' +
-                            '<td class="text-right text-nowrap">' + esc(c.request_formatted) + '</td>' +
-                            '<td class="text-right text-nowrap"><strong>' + esc(c.settlement_formatted) + '</strong></td>' +
-                            '<td class="text-right text-nowrap">' + tdVar(c.variance) + '</td>' +
-                        '</tr>';
-                    });
-                    realHtml += '</tbody><tfoot><tr style="background:var(--surface-2);">' +
-                        '<th class="text-right">Total</th>' +
-                        '<th class="text-right text-nowrap">' + esc(cmp.request_formatted || '0') + '</th>' +
-                        '<th class="text-right text-nowrap">' + esc(cmp.settlement_formatted || '0') + '</th>' +
-                        '<th class="text-right text-nowrap">' + tdVar(cmp.variance) + '</th>' +
-                        '</tr></tfoot></table></div>';
-
-                    /* Rincian Settlement: Request item asal hanya ditulis pada
-                       baris PERTAMA item itu; baris pecahan berikutnya "-". */
-                    var sudahTampil = {};
-                    d.realizations.forEach(function (r) {
-                        r._reqShown = null;
-                        if (r.request_detail_id && !sudahTampil[r.request_detail_id]) {
-                            sudahTampil[r.request_detail_id] = true;
-                            r._reqShown = parseFloat(r.total_cr) || 0;
-                        }
-                    });
-
-                    var realGroups = groupByAccount(d.realizations);
-                    var realNo = 0, realReq = 0, realSettle = 0;
-                    realHtml += '<div class="d-flex align-items-center mb-2">' +
-                        '<div class="todo-drw-label mr-auto">Rincian Settlement</div>' +
-                        '<button type="button" class="btn btn-xs btn-outline-secondary td-grp-expand" data-body="todoRealBody"><i class="fas fa-angle-double-down mr-1"></i>Expand All</button>&nbsp;' +
-                        '<button type="button" class="btn btn-xs btn-outline-secondary td-grp-collapse" data-body="todoRealBody"><i class="fas fa-angle-double-up mr-1"></i>Collapse All</button>' +
-                        '</div>';
-                    realHtml += '<div class="table-responsive"><table class="table table-sm table-bordered mb-0" style="font-size:11.5px;">' +
-                        '<thead class="bg-light"><tr>' +
-                            '<th scope="col">Chart of Account / Description</th>' +
-                            '<th scope="col" class="text-right text-nowrap" style="width:14%;">Request</th>' +
-                            '<th scope="col" class="text-right text-nowrap" style="width:14%;">Settlement</th>' +
-                            '<th scope="col" class="text-center text-nowrap" style="width:100px;">Action</th>' +
-                        '</tr></thead><tbody id="todoRealBody">';
-                    realGroups.forEach(function (grp, gi) {
-                        var gClass = 'td-real-grp-' + gi;
-                        var gReq = 0, gSettle = 0;
-                        grp.items.forEach(function (x) {
-                            gReq    += x._reqShown || 0;
-                            gSettle += parseFloat(x.actual) || 0;
-                        });
-                        realReq += gReq; realSettle += gSettle;
-
-                        realHtml += '<tr class="td-grp-row" data-target="' + gClass + '">' +
-                            '<td style="font-weight:700;">' +
-                                '<i class="fas fa-chevron-right mr-2 td-grp-caret"></i>' +
-                                esc(grp.account) + ' <span class="badge badge-secondary ml-1" style="font-size:9px;">' + grp.items.length + '</span>' +
-                            '</td>' +
-                            '<td class="text-right text-nowrap" style="font-weight:700;">' + esc(Math.round(gReq).toLocaleString('id-ID')) + '</td>' +
-                            '<td class="text-right text-nowrap" style="font-weight:700;">' + esc(Math.round(gSettle).toLocaleString('id-ID')) + '</td>' +
-                            '<td></td>' +
-                        '</tr>';
-
-                        grp.items.forEach(function (r) {
-                            var ri = realNo++;
-                            var itemAtts = r.attachments || [];
-                            window.__crRealAtt[ri] = itemAtts;
-                            var aksi = itemAtts.length
-                                ? '<button type="button" class="btn btn-info btn-view-real-att" style="white-space:nowrap;padding:2px 8px;font-size:11px;line-height:1.4;" data-row="' + ri + '" title="Lihat lampiran item (' + itemAtts.length + ')"><i class="fas fa-eye"></i></button>'
-                                : '<span class="text-muted">-</span>';
-                            // Evidence (lampiran) ditempel di sebelah Sub COA.
-                            var evi = itemAtts.length
-                                ? ' <span class="badge badge-light border text-muted" style="font-size:9px;"><i class="fas fa-paperclip mr-1"></i>' + itemAtts.length + '</span>'
-                                : '';
-                            // Baris tambahan / pindah Sub COA (Settlement Custom COA).
-                            var asal = r.is_added
-                                ? ' <span class="badge badge-info" style="font-size:9px;">Baris tambahan</span>'
-                                : (r.is_moved ? ' <span class="badge badge-warning" style="font-size:9px;">Pindah dari: ' + esc(r.origin_label || '-') + '</span>' : '');
-                            var subCoa = r.sub_coa || r.des_request || r.cr_item || '-';
-                            // Empat baris: Sub COA (tebal) + jumlah lampiran, lalu
-                            // Deskripsi dari form pengajuan (Request), Description
-                            // Settle dari form Submit Settlement (Settle), dan
-                            // catatan perubahannya (Notes).
-                            var desSettle = r.des_settle || '-';
-                            realHtml += '<tr class="' + gClass + '" style="display:none;">' +
-                                '<td class="td-grp-indent">' +
-                                    '<div style="font-weight:600;">' + esc(subCoa) + evi + asal + '</div>' +
-                                    '<div class="text-muted" style="font-size:11px;"><span style="font-size:10px;font-weight:700;">Request:</span> ' + esc(r.des_request || r.cr_item || '-') + '</div>' +
-                                    '<div class="text-muted" style="font-size:11px;"><span style="font-size:10px;font-weight:700;">Settle:</span> ' + esc(desSettle) + '</div>' +
-                                    '<div class="text-muted" style="font-size:11px;"><span style="font-size:10px;font-weight:700;">Notes:</span> ' + esc(r.change_note || '-') + '</div>' +
-                                '</td>' +
-                                '<td class="text-right text-nowrap">' + (r._reqShown !== null ? esc(r.total_cr_formatted) : '<span class="text-muted">-</span>') + '</td>' +
-                                '<td class="text-right text-nowrap"><strong>' + esc(r.actual_formatted) + '</strong></td>' +
-                                '<td class="text-center text-nowrap">' + aksi + '</td>' +
-                            '</tr>';
-                        });
-                    });
-                    realHtml += '</tbody><tfoot><tr style="background:var(--surface-2);">' +
-                        '<th class="text-right">Total</th>' +
-                        '<th class="text-right text-nowrap">' + esc(Math.round(realReq).toLocaleString('id-ID')) + '</th>' +
-                        '<th class="text-right text-nowrap">' + esc(Math.round(realSettle).toLocaleString('id-ID')) + '</th>' +
-                        '<th></th>' +
-                        '</tr></tfoot></table></div>';
-                } else {
-                    realHtml += '<p class="text-muted py-2 mb-0" style="font-size:12px;">Belum ada rincian realisasi.</p>';
-                }
-                /* Settlement yang MELEBIHI pengajuan bukan refund — itu kekurangan
-                   bayar yang diselesaikan lewat Second Payment (istilah yang sudah
-                   dipakai modul ini). Menamainya "Refund" dengan angka 0 menutupi
-                   bahwa masih ada kewajiban yang belum dibayar. */
-                var lebihBayar = parseInt(d.settlement_overage, 10) || 0;
-                if (lebihBayar > 0) {
-                    realHtml += '<div class="todo-drw-row" style="margin-top:14px;"><div class="todo-drw-label">Second Approval (Settlement − Pengajuan)</div>' +
-                        '<div class="todo-drw-value" style="font-weight:700;color:var(--warning);">' + esc(d.settlement_overage_formatted) + '</div></div>';
-                } else {
-                    var refundColor = d.refund > 0 ? 'var(--success)' : 'var(--text)';
-                    realHtml += '<div class="todo-drw-row" style="margin-top:14px;"><div class="todo-drw-label">Refund (Pengajuan − Settlement)</div>' +
-                        '<div class="todo-drw-value" style="font-weight:700;color:' + refundColor + ';">' + esc(d.refund_formatted) + '</div></div>';
-                }
-                realHtml += '<div class="todo-drw-row" style="margin-top:14px;"><div class="todo-drw-label">ATTACHMENTS (GLOBAL)</div>' + renderAttGrid(d.realization_attachments) + '</div>';
-                $('#todoPaneRealisasi').html(realHtml);
-            }
-
-            /* ── TAB LOG (approval history + timeline) ── */
-            var logHtml = '';
-            if (d.logs && d.logs.length) {
-                var hist = d.logs.map(function (l) {
-                    return '<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:11.5px;">' +
-                        '<div><span class="badge badge-' + (l.action_color || 'secondary') + '" style="font-size:9px;">' + esc(l.action_label || ((l.status_from_label || l.status_from) + ' → ' + (l.status_to_label || l.status_to))) + '</span> ' +
-                        '<span class="text-muted">' + esc(l.date) + '</span></div>' +
-                        '<div class="text-muted" style="margin-top:2px;">' + esc(l.actor || 'System') + (l.notes ? ' — ' + esc(l.notes) : '') + '</div>' +
-                        '</div>';
-                }).join('');
-                logHtml += '<div class="todo-drw-row"><div class="todo-drw-label">Approval History</div>' + hist + '</div>';
-            } else {
-                logHtml += '<div class="todo-drw-row"><div class="todo-drw-label">Approval History</div><div class="text-muted" style="font-size:12px;">Belum ada riwayat.</div></div>';
-            }
-
-            logHtml += '<div class="todo-drw-row"><div class="todo-drw-label">Timeline</div>';
-            if (d.status === 'REJECTED' || d.status === 'CANCELLED') {
-                var reasonLog = (d.logs || []).find(function (l) { return l.status_to === d.status; });
-                logHtml += '<div class="alert alert-' + (d.status === 'REJECTED' ? 'danger' : 'dark') + ' py-2 px-3" style="font-size:12px;">' +
-                    '<i class="fas fa-exclamation-triangle mr-1"></i> CR ini <strong>' + d.status + '</strong>' +
-                    (reasonLog && reasonLog.notes ? ': ' + esc(reasonLog.notes) : '') + '</div>';
-            } else {
-                var curIdx = todoTimelineSteps.indexOf(d.status);
-                logHtml += '<ul class="todo-timeline">';
-                todoTimelineSteps.forEach(function (step, i) {
-                    var cls = i < curIdx ? 'done' : (i === curIdx ? 'current' : '');
-                    logHtml += '<li class="' + cls + '">' + todoTimelineLabels[step] + '</li>';
-                });
-                logHtml += '</ul>';
-            }
-            logHtml += '</div>';
-            $('#todoPaneLog').html(logHtml);
-        }).fail(function () {
-            $('#todoPaneInfo, #todoPaneRequest, #todoPaneLog').html('<div class="text-center text-danger py-5">Gagal memuat detail CR.</div>');
-        });
+            var thumb = a.is_image
+                ? '<img loading="lazy" src="' + escAttr(url) + '" alt="" class="cr-att-thumb">'
+                : '<span class="cr-att-icon"><i class="fas ' + (a.is_pdf ? 'fa-file-pdf' : 'fa-file-alt') + '"></i></span>';
+            return '<button type="button" class="cr-att-card" data-group="' + grup + '" data-idx="' + i + '" title="Buka lampiran">'
+                + thumb
+                + '<span class="cr-att-name">' + esc(a.original_name) + '</span>'
+                + (a.size_formatted ? '<span class="cr-att-meta">' + esc(a.size_formatted) + '</span>' : '')
+                + '</button>';
+        }).join('') + '</div>';
     }
 
     /* Kelompokkan baris (detail CR / realisasi) per Chart of Account, urutan
@@ -4530,8 +4643,635 @@ $(function () {
         return order.map(function (acc) { return { account: acc, items: map[acc] }; });
     }
 
-    function esc(s) { return $(document.createElement('span')).text(s == null ? '' : s).html(); }
-    function escAttr(s) { return esc(s).replace(/"/g, '&quot;'); }
+    // Var = Request - Settlement. Hijau = sisa, merah = lebih.
+    function fmtVar(n) {
+        n = Math.round(n || 0);
+        if (n === 0) return '<span class="text-muted">0</span>';
+        return '<span style="color:' + (n > 0 ? 'var(--success)' : 'var(--danger)') + ';font-weight:600;">'
+            + esc((n > 0 ? '' : '-') + Math.abs(n).toLocaleString('id-ID')) + '</span>';
+    }
+
+    function expandAllBtn(body) {
+        return '<div class="d-flex justify-content-end mb-2">' +
+            '<button type="button" class="btn btn-xs btn-outline-secondary td-grp-toggle-all" data-body="' + body + '" data-expanded="0">' +
+            '<i class="fas fa-angle-double-down mr-1"></i>Expand All</button></div>';
+    }
+
+    /* Lini masa tahap CR dari log status — sama dengan drawer Cost Request.
+       Memakai kejadian TERBARU tiap tahap dan hanya yang terjadi setelah
+       pengajuan terakhir, supaya CR yang pernah ditolak lalu diajukan ulang
+       tidak menampilkan tanggal dari putaran lama. */
+    function bangunLiniMasa(d) {
+        var logs = (d.logs || []).filter(function (l) { return l.kind !== 'note'; }); // terbaru dulu
+        function cari(fn) { for (var i = 0; i < logs.length; i++) { if (fn(logs[i])) return logs[i]; } return null; }
+
+        var diajukan = cari(function (l) { return l.status_to === 'SUBMITTED'; });
+        var mulai = diajukan ? Date.parse(diajukan.ts) : null;
+
+        function tahap(label, fn, cadangan) {
+            var l = cari(function (x) { return fn(x) && (mulai === null || Date.parse(x.ts) >= mulai); });
+            if (l) return { label: label, date: l.date, ts: Date.parse(l.ts) };
+            return cadangan ? { label: label, date: cadangan, ts: null } : null;
+        }
+        function status(kode) { return function (l) { return l.status_to === kode; }; }
+
+        var daftar = [
+            tahap('Dibuat', function () { return false; }, d.created_at),
+            tahap('Diajukan', status('SUBMITTED'), d.submitted_at),
+            tahap('Dicheck', status('CHECKED')),
+            tahap('Diverifikasi', status('VERIFIED')),
+            tahap('Di-approve', status('APPROVED')),
+            tahap('Diproses', status('QUEUED')),
+            tahap('Dibayar', function (l) { return l.action_type === 'paid'; }, d.paid_at)
+        ];
+        if (d.is_cash_advance) {
+            daftar.push(
+                tahap('Settle', status('REALIZED')),
+                tahap('Settle: Dicheck', status('SETTLE_CHECKED')),
+                tahap('Settle: Diverifikasi', status('SETTLE_VERIFIED')),
+                tahap('Settle: Di-approve', status('SETTLE_APPROVED')),
+                tahap('2nd Payment', status('SECOND_APPROVED'))
+            );
+        }
+        var closed = d.status === 'CLOSED' ? tahap('Closed', status('CLOSED')) : null;
+        daftar.push(closed);
+
+        var baris = daftar.filter(Boolean).map(function (t) { return [t.label, t.date]; });
+
+        // Total waktu: diajukan → closed; selama belum closed dihitung sampai sekarang.
+        if (mulai !== null) {
+            var selesai = closed && closed.ts ? closed.ts : Date.now();
+            var menit = Math.max(0, Math.floor((selesai - mulai) / 60000));
+            var hari = Math.floor(menit / 1440), jam = Math.floor((menit % 1440) / 60), mnt = menit % 60;
+            var teks = (hari ? hari + ' hari ' : '') + (jam || hari ? jam + ' jam ' : '') + mnt + ' menit';
+            baris.push([closed && closed.ts ? 'Total waktu (Diajukan → Closed)' : 'Berjalan sejak Diajukan', teks]);
+        }
+        return baris;
+    }
+
+    /* Satu baris chat di tab Log. Catatan bebas di-escape; riwayat status
+       dirender seperti di drawer Cost Request. */
+    function renderLogRow(log) {
+        var mine = log.user_id && todoCurrentUserId && log.user_id === todoCurrentUserId;
+        var isNote = log.kind === 'note';
+        var actor = log.actor || 'System';
+        var initials = actor.trim().split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase() || '?';
+        return '<div class="cr-chat-row ' + (mine ? 'mine' : '') + '">' +
+            '<div class="cr-chat-av">' + (log.avatar ? '<img src="' + escAttr(log.avatar) + '" alt="">' : esc(initials)) + '</div>' +
+            '<div>' +
+                '<div class="cr-chat-meta"><strong>' + esc(actor) + '</strong> · ' + esc(log.date) + '</div>' +
+                '<div class="cr-chat-bubble">' +
+                    (isNote
+                        ? '<div class="cr-chat-note" style="margin-top:0;">' + esc(log.notes) + '</div>'
+                        : '<span class="badge badge-' + esc(log.action_color || 'secondary') + ' px-2 py-1" style="font-size:9px;">' + esc(log.action_label) + '</span>' +
+                          (log.status_from && log.status_to ? ' <span style="font-size:10px;opacity:.75;">' + esc(log.status_from_label || log.status_from) + ' → ' + esc(log.status_to_label || log.status_to) + '</span>' : '') +
+                          (log.notes ? '<div class="cr-chat-note">' + esc(log.notes) + '</div>' : '')) +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    }
+
+    /* Tab Log setinggi area gulir drawer supaya chat menempel di bawah walau
+       isinya sedikit; lalu gulir ke pesan terbaru. */
+    function aturTinggiLog(gulirKeBawah) {
+        var body = document.getElementById('todoDrawer-body');
+        var $tabs = $('#todoDetailTabs');
+        if (!body || !$tabs.length) return;
+        var cs = getComputedStyle(body);
+        var tinggi = body.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)
+                   - $tabs.outerHeight() - parseFloat($tabs.css('margin-bottom')) - parseFloat($tabs.css('margin-top'));
+        $('#todoPaneLog').css('min-height', Math.max(tinggi, 0));
+        if (gulirKeBawah) body.scrollTop = body.scrollHeight;
+    }
+    $(document).on('shown.bs.tab', '#todoDetailTabs a[data-toggle="tab"]', function () {
+        this.scrollIntoView({ block: 'nearest', inline: 'nearest' }); // tab aktif selalu terlihat
+        if ($(this).attr('href') === '#todoPaneLog') aturTinggiLog(true);
+    });
+    $(window).on('resize', function () { if ($('#todoPaneLog').hasClass('active')) aturTinggiLog(false); });
+
+    /* Mobile: geser kiri/kanan pada isi drawer untuk pindah tab. Di tab Info,
+       geser kanan menutup drawer. Gesekan yang dimulai di tabel/tab/kotak
+       isian dibiarkan (itu gulir mendatar atau mengetik). */
+    (function () {
+        var x0 = null, y0 = null, abaikan = false;
+        $(document).on('touchstart', '#todoDrawer-body', function (e) {
+            var t = e.originalEvent.touches[0];
+            x0 = t.clientX; y0 = t.clientY;
+            abaikan = window.innerWidth > 768 || e.originalEvent.touches.length > 1 ||
+                $(e.target).closest('.table-responsive, .todo-pichist-wrap, #todoDetailTabs, textarea, input, select').length > 0;
+        });
+        $(document).on('touchend', '#todoDrawer-body', function (e) {
+            if (x0 === null || abaikan) { x0 = null; return; }
+            var t = e.originalEvent.changedTouches[0];
+            var dx = t.clientX - x0, dy = t.clientY - y0;
+            x0 = null;
+            if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+            var $tabs = $('#todoDetailTabs li:visible a');
+            var i = $tabs.index($tabs.filter('.active'));
+            if (dx < 0) {
+                if ($tabs[i + 1]) $($tabs[i + 1]).tab('show');
+            } else if (i > 0) {
+                $($tabs[i - 1]).tab('show');
+            } else {
+                TesysDrawer.close('todoDrawer');
+            }
+        });
+    })();
+
+    $(document).on('submit', '#todoLogForm', function (e) {
+        e.preventDefault();
+        var $f = $(this), $in = $('#todoLogInput'), $btn = $('#todoLogSend');
+        var teks = $.trim($in.val());
+        if (!teks) { $in.focus(); return; }
+        $btn.prop('disabled', true);
+        $.post('{{ url('/budget-request') }}/' + $f.data('id') + '/log-note', { _token: $('meta[name="csrf-token"]').attr('content'), notes: teks })
+            .done(function (res) {
+                if (!res || !res.log) return;
+                $('#todoLogBody .ts-empty').remove();
+                $('#todoLogBody').append(renderLogRow(res.log));
+                $in.val('');
+                var body = document.getElementById('todoDrawer-body');
+                if (body) body.scrollTop = body.scrollHeight;
+            })
+            .fail(function (xhr) {
+                var pesan = (xhr.responseJSON && (xhr.responseJSON.message || (xhr.responseJSON.errors && xhr.responseJSON.errors.notes && xhr.responseJSON.errors.notes[0])))
+                    || 'Catatan belum dapat dikirim. Coba lagi.';
+                Swal.fire({ icon: 'error', title: 'Gagal mengirim', text: pesan });
+            })
+            .always(function () { $btn.prop('disabled', false); });
+    });
+
+    // Salin kode CR ke clipboard saat kode di kepala drawer diklik.
+    $(document).on('click', '#todoDrawer .cr-copy-code', function () {
+        var btn = this, kode = $(btn).data('code'), asli = $(btn).text();
+        function selesai() {
+            $(btn).text('Tersalin ✓');
+            setTimeout(function () { $(btn).text(asli); }, 1200);
+        }
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(kode).then(selesai);
+        } else {
+            var t = document.createElement('textarea');
+            t.value = kode; t.style.position = 'fixed'; t.style.opacity = '0';
+            document.body.appendChild(t); t.select();
+            try { document.execCommand('copy'); selesai(); } catch (err) {}
+            document.body.removeChild(t);
+        }
+    });
+
+    /* ── TAB INFO ── */
+    function isiInfo(d) {
+        var meta = todoStatusMeta[d.status] || { label: d.status_label || d.status, description: null, tone: 'neutral' };
+        var html = '';
+
+        // Badge tipe: Cash Advance burgundy lembut, selain itu biru lembut.
+        var tipeBadge = '';
+        if (d.type) {
+            var gayaTipe = d.is_cash_advance
+                ? 'background:var(--accent-tint);color:var(--accent-text);border:1px solid var(--accent-tint-2);'
+                : 'background:var(--info-bg);color:var(--info);border:1px solid var(--info-bg);';
+            tipeBadge = '<span style="' + gayaTipe + 'font-size:10px;font-weight:700;padding:2px 8px;border-radius:var(--radius-sm);white-space:nowrap;">'
+                      + esc(d.type) + '</span>';
+        }
+        if (d.is_nob) tipeBadge += ' <span class="badge badge-danger" style="font-size:10px;">NOB</span>';
+
+        // Settlement/Second Payment/Refund hanya ditampilkan kalau nilainya > 0.
+        var sisi = '';
+        if ((parseInt(d.total_realization, 10) || 0) > 0) {
+            sisi += '<span class="ts-dw-amount-side"><span>Settlement</span><strong>' + esc(d.total_realization_formatted) + '</strong></span>';
+        }
+        if ((parseInt(d.settlement_overage, 10) || 0) > 0) {
+            sisi += '<span class="ts-dw-amount-side"><span>Second Payment</span><strong>' + esc(d.settlement_overage_formatted) + '</strong></span>';
+        } else if ((parseInt(d.refund, 10) || 0) > 0) {
+            sisi += '<span class="ts-dw-amount-side"><span>Refund</span><strong>' + esc(d.refund_formatted) + '</strong></span>';
+        }
+
+        html += '<div class="ts-dw-section"><div class="ts-dw-amount">'
+             +    '<span class="ts-dw-amount-main">'
+             +      '<span class="ts-dw-amount-label">Nilai pengajuan</span>'
+             +      '<span class="ts-dw-amount-value">' + esc(d.amount_formatted || '-') + '</span>'
+             +      '<span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px;">'
+             +        tipeBadge
+             +        '<span class="ts-status ts-status-' + esc(meta.tone) + ' ts-status-sm"' + (meta.description ? ' title="' + escAttr(meta.description) + '"' : '') + '>' + esc(meta.label) + '</span>'
+             +      '</span>'
+             +    '</span>'
+             +    sisi
+             +  '</div>'
+             +  (window.TesysWorkflow ? TesysWorkflow.render('budget-request', d.status) : '')
+             +  '</div>';
+
+        // Chart of Account unik yang dipakai CR.
+        var coaUnik = [];
+        (d.details || []).forEach(function (det) {
+            var acc = det.account || '';
+            if (acc && acc !== '-' && coaUnik.indexOf(acc) === -1) coaUnik.push(acc);
+        });
+        if (coaUnik.length) {
+            html += '<div class="ts-dw-section"><p class="ts-dw-section-title">Chart of Account</p>'
+                 +  '<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+            coaUnik.forEach(function (acc) {
+                html += '<span style="background:var(--surface-2);color:var(--text-dim);border:1px solid var(--border);font-size:11px;font-weight:600;'
+                     +  'padding:3px 10px;border-radius:var(--radius-sm);">' + esc(acc) + '</span>';
+            });
+            html += '</div></div>';
+        }
+
+        // Informasi pengajuan — Purchase Order / Budget Plan dilebur jadi satu
+        // baris Reference (Kode - Scope of Work).
+        var referensi = (d.code_reference && d.code_reference !== '-')
+            ? d.code_reference + (d.reference_scope && d.reference_scope !== '-' ? ' - ' + d.reference_scope : '')
+            : (d.reference_scope || null);
+        html += '<div class="ts-dw-section"><p class="ts-dw-section-title">Informasi pengajuan</p>'
+             + drawerKV([
+                 ['Kode', d.code],
+                 ['Description', d.description],
+                 ['Payment Notes', d.payment_notes],
+                 ['Notes', d.notes],
+                 ['Requestor', d.applicant],
+                 ['Beneficiary', d.pic],
+                 ['Bank Account', d.beneficiary && d.bank && d.bank !== '-'
+                     ? d.beneficiary + ' (' + d.bank + (d.account_number && d.account_number !== '-' ? ' - ' + d.account_number : '') + ')'
+                     : (d.beneficiary || null)],
+                 ['Reference', referensi],
+                 ['Email', d.email],
+               ])
+             + '</div>';
+
+        var tl = bangunLiniMasa(d);
+        html += '<div class="ts-dw-section"><p class="ts-dw-section-title">Tanggal</p>'
+             + (tl.length ? drawerKV(tl) : kosongRingkas('Belum diajukan.'))
+             + '</div>';
+
+        /* Riwayat pengajuan PIC ini di PO ini — satu PIC bisa punya banyak
+           beneficiary. Disusun pohon COA → Sub COA → item (lihat picHistory()
+           di server); nilai & sumber baris sudah dihitung di sana (Cash
+           Advance dari settlement, non-CA dari pengajuan). Beneficiary CR ini
+           belum tentu punya PIC master (has_pic) — kalau tidak, judul panel
+           ikut berganti jadi "Beneficiary". */
+        var ph = d.pic_history || {};
+        var phItems = ph.items || [];
+        var phJudul = ph.has_pic ? 'Riwayat pengajuan PIC ini di PO ini' : 'Riwayat pengajuan beneficiary ini di PO ini';
+        var phKosong = ph.has_pic ? 'PIC ini' : 'beneficiary ini';
+        html += '<div class="ts-dw-section"><p class="ts-dw-section-title">' + esc(phJudul) +
+                (ph.pic_name ? ' <span style="font-weight:400;text-transform:none;letter-spacing:0;">— ' + esc(ph.pic_name) + '</span>' : '') +
+                '</p>';
+        if (phItems.length) {
+            window.__picHist = ph;
+            html += '<div class="todo-pichist-wrap" id="todoPicHist"></div>';
+        } else {
+            window.__picHist = null;
+            html += kosongRingkas('Belum ada pengajuan lain yang sudah dibayar untuk ' + phKosong + ' di PO ini.');
+        }
+        html += '</div>';
+
+        $('#todoPaneInfo').html(html);
+        renderPicHist();
+    }
+
+    /* ── TAB REQUEST (rincian item pengajuan + attachment) ── */
+    function isiRequest(d) {
+        var canModerate = !!d.can_moderate_items;
+        window.__crDetailAtt = {};
+        var details = d.details || [];
+        setTabCount('#todoReqCount', details.length);
+        var anyAtt = details.some(function (x) { return x.attachments && x.attachments.length; });
+        var showAksi = canModerate || anyAtt;
+        var html = '';
+
+        if (details.length) {
+            html += expandAllBtn('todoReqBody');
+            html += '<div class="table-responsive"><table class="table table-bordered mb-0">' +
+                '<thead style="background:var(--surface-2);"><tr>' +
+                    '<th scope="col">Chart of Account / Description</th>' +
+                    '<th scope="col" class="text-right text-nowrap" style="width:13%;">Price</th>' +
+                    '<th scope="col" class="text-center text-nowrap" style="width:6%;">Qty</th>' +
+                    '<th scope="col" class="text-right text-nowrap" style="width:14%;">Total</th>' +
+                    (showAksi ? '<th scope="col" class="text-center text-nowrap" style="width:1%;">Aksi</th>' : '') +
+                '</tr></thead><tbody id="todoReqBody">';
+            var grand = 0;
+            groupByAccount(details).forEach(function (grp, gi) {
+                var gClass = 'td-req-grp-' + gi;
+                // Item takeout tidak ikut dijumlah supaya subtotal grup dan total
+                // bawah konsisten dengan nilai CR yang diproses.
+                var gTotal = grp.items.reduce(function (t, x) { return t + (x.is_takeout ? 0 : (parseFloat(x.total) || 0)); }, 0);
+
+                html += '<tr class="td-grp-row" data-target="' + gClass + '">' +
+                    '<td style="font-weight:700;"><i class="fas fa-chevron-right mr-2 td-grp-caret"></i>' +
+                        esc(grp.account) + ' <span class="badge badge-secondary ml-1" style="font-size:9px;">' + grp.items.length + '</span></td>' +
+                    '<td></td><td></td>' +
+                    '<td class="text-right text-nowrap" style="font-weight:700;">' + esc(Math.round(gTotal).toLocaleString('id-ID')) + '</td>' +
+                    (showAksi ? '<td></td>' : '') +
+                '</tr>';
+
+                grp.items.forEach(function (item) {
+                    var isTakeout = !!item.is_takeout;
+                    if (!isTakeout) grand += parseFloat(item.total) || 0;
+
+                    var rowStyle = isTakeout
+                        ? 'color:var(--text-faint);background:var(--surface-2);'
+                        : (item.is_nob ? 'color:var(--danger);' : '');
+                    var strike = isTakeout ? 'text-decoration:line-through;' : '';
+                    var badge = isTakeout
+                        ? ' <span class="badge badge-warning" style="font-size:9px;" title="' + escAttr(item.takeout_notes || '') + '">Takeout &middot; ' + esc(item.takeout_stage_label || '-') + '</span>'
+                        : '';
+
+                    var atts = item.attachments || [];
+                    window.__crDetailAtt[item.id] = atts;
+                    var evi = atts.length
+                        ? ' <span class="badge badge-light border text-muted" style="font-size:9px;"><i class="fas fa-paperclip mr-1"></i>' + atts.length + '</span>'
+                        : '';
+                    // Dua baris: Sub COA di atas, catatan baris sebagai deskripsi kecil.
+                    var subCoa = item.sub_coa || item.item_label || item.description || '-';
+                    var noteLine = (item.sub_coa && item.notes)
+                        ? '<div style="color:var(--text-faint);font-size:11px;margin-top:2px;">' + esc(item.notes) + '</div>'
+                        : '';
+
+                    var btnStyle = 'white-space:nowrap;padding:2px 8px;font-size:11px;line-height:1.4;';
+                    var actInner = '';
+                    if (atts.length) {
+                        actInner += '<button type="button" class="btn btn-info btn-view-detail-att mr-1" style="' + btnStyle + '" data-detail="' + item.id + '" title="Lihat lampiran"><i class="fas fa-eye"></i></button>';
+                    }
+                    if (canModerate) {
+                        actInner += isTakeout
+                            ? '<button type="button" class="btn btn-outline-secondary td-restore-detail" style="' + btnStyle + '" data-cr="' + d.id + '" data-detail="' + item.id + '" title="Kembalikan item"><i class="fas fa-undo"></i></button>'
+                            : '<button type="button" class="btn btn-outline-danger td-takeout-detail" style="' + btnStyle + '" data-cr="' + d.id + '" data-detail="' + item.id + '" data-desc="' + escAttr(item.description || '') + '" title="Takeout item"><i class="fas fa-cut"></i></button>';
+                    }
+
+                    html += '<tr class="' + gClass + '" style="display:none;' + rowStyle + '">' +
+                        '<td class="td-grp-indent" style="' + strike + '">' +
+                            '<div style="font-weight:600;">' + esc(subCoa) + badge + evi + '</div>' +
+                            noteLine +
+                            (isTakeout && item.takeout_notes ? '<small class="text-muted" style="text-decoration:none;display:block;margin-top:2px;">Alasan: ' + esc(item.takeout_notes) + '</small>' : '') +
+                        '</td>' +
+                        '<td class="text-right text-nowrap" style="' + strike + '">' + esc(item.amount_formatted) + '</td>' +
+                        '<td class="text-center" style="' + strike + '">' + esc(item.qty) + '</td>' +
+                        '<td class="text-right text-nowrap" style="' + strike + '"><strong>' + esc(item.total_formatted) + '</strong></td>' +
+                        (showAksi ? '<td class="text-center text-nowrap">' + actInner + '</td>' : '') +
+                    '</tr>';
+                });
+            });
+            html += '</tbody><tfoot><tr style="background:var(--surface-2);">' +
+                '<th colspan="3" class="text-right">Total (item aktif)</th>' +
+                '<th class="text-right text-nowrap" style="color:var(--info);">' + esc(Math.round(grand).toLocaleString('id-ID')) + '</th>' +
+                (showAksi ? '<th></th>' : '') +
+                '</tr></tfoot></table></div>';
+        } else {
+            html += kosongRingkas('Belum ada rincian item.');
+        }
+
+        var atts = d.attachments || [];
+        html += '<div class="mt-3"><h6 class="ts-dw-section-title"><i class="fas fa-paperclip mr-1"></i> Attachment' +
+            (atts.length ? ' <span class="badge badge-secondary ml-1">' + atts.length + '</span>' : '') + '</h6>' +
+            renderAttGrid(atts, 'req') + '</div>';
+        $('#todoPaneRequest').html(html);
+    }
+
+    /* ── TAB SETTLEMENT — hanya untuk Cash Advance (jenis lain tidak punya
+       tahap settlement, jadi tabnya disembunyikan, bukan ditampilkan kosong). */
+    function isiSettlement(d) {
+        var $tab = $('#todoTabRealisasiLi');
+        var real = d.realizations || [];
+        setTabCount('#todoRealCount', real.length);
+        if (!d.is_cash_advance) {
+            $tab.hide();
+            if ($('#todoPaneRealisasi').hasClass('active')) $('#todoDetailTabs a[href="#todoPaneInfo"]').tab('show');
+            $('#todoPaneRealisasi').empty();
+            return;
+        }
+        $tab.show();
+        window.__crRealAtt = {};
+
+        if (!real.length) {
+            $('#todoPaneRealisasi').html(
+                '<div class="text-center text-muted py-4"><i class="fas fa-receipt d-block mb-2"></i> Belum ada data settlement.</div>');
+            return;
+        }
+
+        var html = '';
+        /* Total Request / Settlement / Var dari server (settlement_comparison):
+           satu item bisa dipecah jadi beberapa baris settlement (Settlement
+           Custom COA), jadi total_cr per baris tidak boleh dijumlah begitu saja. */
+        var cmp = d.settlement_comparison || { rows: [] };
+
+        // Request item asal hanya ditulis di baris PERTAMA item itu; Var-nya =
+        // Request item - jumlah seluruh baris settlement item tersebut.
+        var settlePerItem = {}, sudahTampil = {};
+        real.forEach(function (r) {
+            if (r.request_detail_id) settlePerItem[r.request_detail_id] = (settlePerItem[r.request_detail_id] || 0) + (r.actual || 0);
+        });
+        real.forEach(function (r) {
+            r._reqShown = null;
+            if (r.request_detail_id && !sudahTampil[r.request_detail_id]) {
+                sudahTampil[r.request_detail_id] = true;
+                r._reqShown = r.total_cr || 0;
+                r._varShown = (r.total_cr || 0) - (settlePerItem[r.request_detail_id] || 0);
+            }
+        });
+
+        html += '<h6 class="ts-dw-section-title"><i class="fas fa-list mr-1"></i> Rincian Settlement</h6>';
+        html += expandAllBtn('todoRealBody');
+        html += '<div class="table-responsive"><table class="table table-bordered mb-0">' +
+            '<thead style="background:var(--surface-2);"><tr>' +
+                '<th scope="col">Chart of Account / Description</th>' +
+                '<th scope="col" class="text-right text-nowrap" style="width:13%;">Request</th>' +
+                '<th scope="col" class="text-right text-nowrap" style="width:13%;">Settlement</th>' +
+                '<th scope="col" class="text-right text-nowrap" style="width:12%;">Var</th>' +
+                '<th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>' +
+            '</tr></thead><tbody id="todoRealBody">';
+
+        var nomor = 0, rGrand = 0;
+        groupByAccount(real).forEach(function (grp, gi) {
+            var gClass = 'td-real-grp-' + gi;
+            var gReq    = grp.items.reduce(function (t, x) { return t + (x._reqShown || 0); }, 0);
+            var gSettle = grp.items.reduce(function (t, x) { return t + (x.actual || 0); }, 0);
+
+            html += '<tr class="td-grp-row" data-target="' + gClass + '">' +
+                '<td style="font-weight:700;"><i class="fas fa-chevron-right mr-2 td-grp-caret"></i>' +
+                    esc(grp.account) + ' <span class="badge badge-secondary ml-1" style="font-size:9px;">' + grp.items.length + '</span></td>' +
+                '<td class="text-right text-nowrap" style="font-weight:700;">' + esc(gReq.toLocaleString('id-ID')) + '</td>' +
+                '<td class="text-right text-nowrap" style="font-weight:700;">' + esc(gSettle.toLocaleString('id-ID')) + '</td>' +
+                '<td class="text-right text-nowrap" style="font-weight:700;">' + fmtVar(gReq - gSettle) + '</td>' +
+                '<td></td>' +
+            '</tr>';
+
+            grp.items.forEach(function (r) {
+                var ri = nomor++;
+                rGrand += r.total || 0;
+                var itemAtts = r.attachments || [];
+                window.__crRealAtt[ri] = itemAtts;
+                var aksi = itemAtts.length
+                    ? '<button type="button" class="btn btn-info btn-view-real-att" style="white-space:nowrap;padding:2px 8px;font-size:11px;line-height:1.4;" data-row="' + ri + '" title="Lihat lampiran item (' + itemAtts.length + ')"><i class="fas fa-eye"></i></button>'
+                    : '<span class="text-muted" style="font-size:11px;">-</span>';
+                var attR = itemAtts.length
+                    ? ' <span class="badge badge-light border text-muted" style="font-size:9px;"><i class="fas fa-paperclip mr-1"></i>' + itemAtts.length + '</span>'
+                    : '';
+                // Baris tambahan / pindah Sub COA (Settlement Custom COA).
+                var asal = r.is_added
+                    ? ' <span class="badge badge-info" style="font-size:9px;">Baris tambahan</span>'
+                    : (r.is_moved ? ' <span class="badge badge-warning" style="font-size:9px;">Pindah dari: ' + esc(r.origin_label || '-') + '</span>' : '');
+
+                html += '<tr class="' + gClass + '" style="display:none;">' +
+                    '<td class="td-grp-indent">' +
+                        '<div style="font-weight:600;">' + esc(r.sub_coa || r.des_request || r.cr_item || '-') + attR + asal + '</div>' +
+                        '<div class="cr-clip" style="font-size:11px;"><span class="text-muted">Request:</span> ' + esc(r.des_request || r.cr_item || '-') + '</div>' +
+                        '<div class="cr-clip" style="font-size:11px;"><span class="text-muted">Settle:</span> ' + esc(r.des_settle || '-') + '</div>' +
+                        '<div class="cr-clip" style="font-size:11px;"><span class="text-muted">Note:</span> ' + esc(r.change_note || '-') + '</div>' +
+                    '</td>' +
+                    '<td class="text-right text-nowrap">' + (r._reqShown !== null ? esc((r._reqShown || 0).toLocaleString('id-ID')) : '<span class="text-muted">-</span>') + '</td>' +
+                    '<td class="text-right text-nowrap"><strong>' + esc(r.actual_formatted) + '</strong></td>' +
+                    '<td class="text-right text-nowrap">' + (r._reqShown !== null ? fmtVar(r._varShown) : (r.is_added ? fmtVar(-(r.actual || 0)) : '<span class="text-muted">-</span>')) + '</td>' +
+                    '<td class="text-center">' + aksi + '</td>' +
+                '</tr>';
+            });
+        });
+        html += '</tbody><tfoot><tr style="background:var(--surface-2);">' +
+            '<th class="text-right">Total</th>' +
+            '<th class="text-right text-nowrap">' + esc(cmp.request_formatted || '0') + '</th>' +
+            '<th class="text-right text-nowrap" style="color:var(--success);">' + esc(rGrand.toLocaleString('id-ID')) + '</th>' +
+            '<th class="text-right text-nowrap">' + fmtVar(cmp.variance) + '</th>' +
+            '<th></th>' +
+            '</tr></tfoot></table></div>';
+
+        /* Perbandingan per COA / Sub COA — dipertahankan dari Todo List versi
+           sebelumnya karena dipakai approver menilai selisih per Sub COA. */
+        if ((cmp.rows || []).length) {
+            html += '<div class="mt-3"><h6 class="ts-dw-section-title"><i class="fas fa-balance-scale mr-1"></i> Perbandingan per COA / Sub COA</h6>' +
+                '<div class="table-responsive"><table class="table table-bordered mb-0">' +
+                '<thead style="background:var(--surface-2);"><tr>' +
+                    '<th scope="col">COA / Sub COA</th>' +
+                    '<th scope="col" class="text-right text-nowrap" style="width:16%;">Request</th>' +
+                    '<th scope="col" class="text-right text-nowrap" style="width:16%;">Settlement</th>' +
+                    '<th scope="col" class="text-right text-nowrap" style="width:14%;">Var</th>' +
+                '</tr></thead><tbody>';
+            cmp.rows.forEach(function (c) {
+                html += '<tr>' +
+                    '<td><div style="font-weight:600;">' + esc(c.sub_coa || '-') + '</div>' +
+                        '<div class="text-muted" style="font-size:11px;">' + esc(c.account || '-') + '</div></td>' +
+                    '<td class="text-right text-nowrap">' + esc(c.request_formatted) + '</td>' +
+                    '<td class="text-right text-nowrap"><strong>' + esc(c.settlement_formatted) + '</strong></td>' +
+                    '<td class="text-right text-nowrap">' + fmtVar(c.variance) + '</td>' +
+                '</tr>';
+            });
+            html += '</tbody><tfoot><tr style="background:var(--surface-2);">' +
+                '<th class="text-right">Total</th>' +
+                '<th class="text-right text-nowrap">' + esc(cmp.request_formatted || '0') + '</th>' +
+                '<th class="text-right text-nowrap">' + esc(cmp.settlement_formatted || '0') + '</th>' +
+                '<th class="text-right text-nowrap">' + fmtVar(cmp.variance) + '</th>' +
+                '</tr></tfoot></table></div></div>';
+        }
+
+        html += '<div class="mt-3"><h6 class="ts-dw-section-title"><i class="fas fa-paperclip mr-1"></i> Settlement Attachment (Global)</h6>' +
+            renderAttGrid(d.realization_attachments, 'real') + '</div>';
+
+        // Second Payment — hanya tampil kalau Settlement melebihi pengajuan awal.
+        var sp = d.second_payments || [];
+        if (sp.length) {
+            html += '<div class="mt-3"><h6 class="ts-dw-section-title"><i class="fas fa-hand-holding-usd mr-1"></i> Second Payment</h6>' +
+                '<table class="table table-sm table-bordered mb-0" style="font-size:11.5px;"><tbody>' +
+                '<tr><td>Original Request</td><td class="text-right"><strong>' + esc(d.amount_formatted) + '</strong></td></tr>' +
+                '<tr><td>Settlement</td><td class="text-right"><strong>' + esc(d.total_realization_formatted) + '</strong></td></tr>' +
+                sp.map(function (p) {
+                    var badge;
+                    if (p.status === 'PAID') {
+                        badge = '<span class="badge badge-success">Paid' + (p.paid_at ? ' — ' + esc(p.paid_at) : '') + '</span>'
+                              + (p.batch_code ? ' <span class="badge badge-light border">' + esc(p.batch_code) + '</span>' : '');
+                    } else if (p.batch_code) {
+                        badge = '<span class="badge badge-info">Menunggu pembayaran batch ' + esc(p.batch_code) + '</span>';
+                    } else {
+                        badge = '<span class="badge badge-warning">Belum masuk batch Treasury</span>';
+                    }
+                    return '<tr><td>Additional Payment</td><td class="text-right"><strong>' + esc(p.amount_formatted) + '</strong> ' + badge + '</td></tr>';
+                }).join('') +
+                '</tbody></table></div>';
+        }
+        $('#todoPaneRealisasi').html(html);
+    }
+
+    /* ── TAB LOG — gaya chat, terlama di atas; kotak catatan selama CR belum
+       Closed (server menolak juga). ── */
+    function isiLog(d) {
+        var logHtml = '';
+        (d.logs || []).slice().reverse().forEach(function (log) { logHtml += renderLogRow(log); });
+        $('#todoLogBody').html(logHtml || kosongRingkas('Belum ada riwayat persetujuan.'));
+        var bisaCatat = d.can_post_log_note !== false;
+        $('#todoLogForm').prop('hidden', !bisaCatat).data('id', d.id);
+        $('#todoLogClosed').prop('hidden', bisaCatat);
+        $('#todoLogInput').val('');
+        if ($('#todoPaneLog').hasClass('active')) aturTinggiLog(true);
+    }
+
+    /* Carousel lampiran di kiri drawer (layar >= 1200px) — komponen bersama tesys-evidence-stage.js. */
+    var stageEvidence = TesysEvidenceStage.attach('todoDrawer');
+
+    function openCrDrawer(id, pemicu) {
+        todoDrawerId = id;
+
+        $('#todoDrawerContent').attr('hidden', true);
+        $('#todoDrawerError').attr('hidden', true).empty();
+        $('#todoDrawerLoading').show();
+        $('#todoDrawer-eyebrow').text('');
+        $('#todoDrawer-title').text('Memuat…');
+        $('#todoDrwActions').empty();
+        $('#todoDrawer-foot').hide();
+
+        /* Dibuka dari dalam modal (mis. tombol view di View Budget) -> drawer
+           harus menimpa modalnya. Penjaga fokus modal Bootstrap dilepas supaya
+           kotak catatan di drawer tetap bisa diketik. */
+        var dariModal = $('.modal.show').length > 0;
+        $('body').toggleClass('todo-drawer-top', dariModal);
+        if (dariModal) $(document).off('focusin.bs.modal');
+
+        TesysDrawer.open('todoDrawer', pemicu);
+        stageEvidence.clear();
+
+        function tampilkanGagal(pesan) {
+            $('#todoDrawerLoading').hide();
+            $('#todoDrawer-title').text('Detail Cost Request');
+            $('#todoDrawerError').html(
+                '<div class="ts-empty">'
+                + '<span class="ts-empty-ic"><i class="fas fa-exclamation-triangle"></i></span>'
+                + '<p class="ts-empty-title">Detail belum dapat dimuat</p>'
+                + '<p class="ts-empty-msg">' + esc(pesan) + '</p>'
+                + '<div class="ts-empty-action"><button type="button" class="ts-action-primary is-neutral" id="todoDrawerRetry">'
+                + '<i class="fas fa-redo"></i><span class="ts-al">Coba lagi</span></button></div></div>'
+            ).removeAttr('hidden');
+        }
+
+        $.get('{{ url('/budget-request') }}/' + id + '/detail-json')
+            .done(function (d) {
+                /* Saat sesi habis, Laravel mengalihkan permintaan AJAX ke halaman
+                   login (HTML berstatus 200) — tanpa penjagaan ini drawer merender
+                   isi kosong seolah datanya memang tidak ada. */
+                if (!d || typeof d !== 'object' || !d.code) {
+                    tampilkanGagal('Sesi Anda mungkin sudah berakhir. Muat ulang halaman, lalu masuk kembali.');
+                    return;
+                }
+                if (String(id) !== String(todoDrawerId)) return; // drawer sudah dibuka untuk CR lain
+
+                $('#todoDrawer-eyebrow').html(
+                    '<button type="button" class="cr-copy-code" data-code="' + escAttr(d.code) + '" title="Klik untuk menyalin kode">'
+                    + esc(d.code) + '</button>' + esc(d.type ? ' · ' + d.type : ''));
+                $('#todoDrawer-title').text(d.description || d.code);
+
+                isiInfo(d);
+                isiRequest(d);
+                isiSettlement(d);
+                isiLog(d);
+                renderDrawerActions(d);
+                stageEvidence.render(TesysEvidenceStage.fromCostRequest(d));
+
+                $('#todoDrawerContent').removeAttr('hidden');
+                $('#todoDrawerLoading').hide();
+                $('#todoDetailTabs a:first').tab('show');
+            })
+            .fail(function () {
+                tampilkanGagal('Sambungan ke server terputus atau data sedang tidak tersedia.');
+            });
+    }
+
+    $(document).on('click', '#todoDrawerRetry', function () {
+        if (todoDrawerId) openCrDrawer(todoDrawerId);
+    });
 
     /* ── AKSI WORKFLOW DARI DRAWER ──────────────────────────────────────────
        Daftar aksinya datang dari server (workflow_actions pada detail-json),
@@ -4629,14 +5369,15 @@ $(function () {
         var list = d.workflow_actions || [];
         todoDrwActions = {};
         var html = drawerSelectButton();
-        if (!list.length && !html) { $('#todoDrwActions').hide().empty(); return; }
+        if (!list.length && !html) { $('#todoDrwActions').empty(); $('#todoDrawer-foot').hide(); return; }
 
         list.forEach(function (a) {
             todoDrwActions[a.key] = a;
             html += '<button type="button" class="btn btn-' + esc(a.variant) + ' todo-drw-action" data-key="' + escAttr(a.key) + '">' +
                 '<i class="fas ' + esc(a.icon) + ' mr-1"></i>' + esc(a.label) + '</button>';
         });
-        $('#todoDrwActions').html(html).css('display', 'flex');
+        $('#todoDrwActions').html(html);
+        $('#todoDrawer-foot').show();
     }
 
     $(document).on('click', '.todo-drw-action', function () {
@@ -4677,7 +5418,34 @@ $(function () {
 
     $(document).on('click', '.todo-open-drawer', function () {
         $todoDrwCheck = $(this).closest('tr').find('.todo-check').first();
-        openCrDrawer($(this).data('id'));
+        openCrDrawer($(this).data('id'), this);
+    });
+
+    /* Klik di mana saja pada baris data membuka detailnya — pola yang sama
+       dengan tabel Cost Request. Yang dipicu adalah pembuka utama baris itu
+       (drawer CR, modal Budget Plan, atau tautan halaman detail modul lain),
+       jadi tidak ada tujuan baru. Kontrol di dalam baris (tombol, tautan,
+       centang, menu aksi) tetap bekerja sendiri, dan seleksi teks tidak
+       dianggap klik. */
+    $(document).on('click', '#todoApp tr.todo-row', function (e) {
+        if ($(e.target).closest('a, button, input, select, textarea, label, form, .ts-actions, .ts-action-menu, .dropdown-menu').length) return;
+        if (window.getSelection && String(window.getSelection()).length) return;
+        todoBukaDetailBaris(this, e.ctrlKey || e.metaKey);
+    });
+    // Baris bisa difokus dengan Tab dan dibuka dengan Enter — pengganti klik
+    // kode, yang kini menyalin kodenya.
+    function todoBukaDetailBaris(tr, tabBaru) {
+        var $buka = $(tr).find('.todo-open-drawer, .todo-bp-detail, a.cr-number-btn').first();
+        if (!$buka.length) return;
+        if ($buka.is('a') && tabBaru) { window.open($buka.attr('href'), '_blank'); return; }
+        todoBukaBaris = true;
+        try { $buka[0].click(); } finally { todoBukaBaris = false; }
+    }
+    $('#todoApp tr.todo-row').attr('tabindex', 0);
+    $(document).on('keydown', '#todoApp tr.todo-row', function (e) {
+        if (e.key !== 'Enter' || e.target !== this) return;
+        e.preventDefault();
+        todoBukaDetailBaris(this, e.ctrlKey || e.metaKey);
     });
 
     // Pilih/batal pilih baris asal lalu tutup drawer, supaya user bisa lanjut
@@ -4685,12 +5453,7 @@ $(function () {
     $(document).on('click', '.todo-drw-select', function () {
         if (!$todoDrwCheck.length) return;
         $todoDrwCheck.prop('checked', !$todoDrwCheck.is(':checked')).trigger('change');
-        $('#todoDrawerOverlay, #todoDrawer').fadeOut(150);
-        $('body').removeClass('todo-drawer-open todo-drawer-top');
-    });
-    $('#todoDrwClose, #todoDrawerOverlay').on('click', function () {
-        $('#todoDrawerOverlay, #todoDrawer').fadeOut(150);
-        $('body').removeClass('todo-drawer-open todo-drawer-top');
+        TesysDrawer.close('todoDrawer');
     });
 
     /* ── TAKEOUT / RESTORE SUB-ITEM (dari drawer approval) ── */
@@ -4757,80 +5520,22 @@ $(function () {
         });
     });
 
-    /* ── IMAGE VIEWER — carousel + zoom (ala WhatsApp), untuk Supporting Documents ── */
+    /* ── PENAMPIL LAMPIRAN — pemicu klik kartu/tombol lampiran (komponen bersama) ── */
     (function () {
-        var overlay  = document.getElementById('imgViewerOverlay');
-        var stageImg = document.getElementById('imgViewerImg');
-        var counter  = document.getElementById('imgViewerCounter');
-        var images   = [];
-        var idx      = 0;
-        var zoomed   = false;
-        var isDragging = false, dragStartX = 0, dragStartY = 0, imgX = 0, imgY = 0;
-        var justSwiped = false;   // menandai klik yang sebenarnya gerakan geser
-
-        function renderViewer() {
-            var item = images[idx];
-            if (!item) return;
-            resetZoom();
-
-            /* Lampiran non-gambar tidak bisa digambar di <img>; slide-nya diganti
-               kartu logo + nama file, posisinya tetap sesuai urutan unggahan. */
-            if (item.is_image === false) {
-                stageImg.style.display = 'none';
-                $('#imgViewerFile').css('display', 'flex').attr('href', item.full);
-                $('#imgViewerFileIcon').attr('class', 'fas ' + (item.is_pdf ? 'fa-file-pdf' : 'fa-file-alt'));
-                $('#imgViewerFileName').text(item.name || '');
-            } else {
-                $('#imgViewerFile').hide();
-                stageImg.style.display = '';
-                stageImg.src = item.full;
-            }
-
-            $('#imgViewerName').text(item.name || '');
-            counter.textContent = (idx + 1) + ' / ' + images.length;
-            /* Panah hanya ada kalau memang ada tujuannya: tidak tampil untuk
-               lampiran tunggal, tidak ada panah kiri di lampiran pertama dan
-               tidak ada panah kanan di lampiran terakhir. */
-            var banyak = images.length > 1;
-            $('#imgViewerPrev').css('display', (banyak && idx > 0) ? 'flex' : 'none');
-            $('#imgViewerNext').css('display', (banyak && idx < images.length - 1) ? 'flex' : 'none');
+        // Penampil lampiran = komponen bersama (public/js/tesys-evidence-stage.js).
+        function openViewer(daftar, mulai) {
+            TesysEvidenceStage.open((daftar || []).map(function (a) {
+                return { url: a.full, name: a.name, is_image: a.is_image, is_pdf: a.is_pdf };
+            }), mulai);
         }
 
-        function resetZoom() {
-            zoomed = false;
-            imgX = 0; imgY = 0;
-            stageImg.classList.remove('zoomed', 'dragging');
-            stageImg.style.transform = 'translate(0px, 0px) scale(1)';
-            stageImg.style.cursor = 'zoom-in';
-        }
-
-        function applyTransform() {
-            stageImg.style.transform = 'translate(' + imgX + 'px, ' + imgY + 'px) scale(' + (zoomed ? 2.4 : 1) + ')';
-        }
-
-        function openViewer(groupImages, startIndex) {
-            images = groupImages;
-            idx = startIndex;
-            renderViewer();
-            overlay.classList.add('show');
-            $('body').css('overflow', 'hidden');
-        }
-
-        function closeViewer() {
-            overlay.classList.remove('show');
-            $('body').css('overflow', '');
-        }
-
-        function showNext() { if (idx < images.length - 1) { idx++; renderViewer(); } }
-        function showPrev() { if (idx > 0) { idx--; renderViewer(); } }
-
-        $(document).on('click', '.cr-att-thumb', function () {
-            var $group = $(this).closest('.cr-att-grid');
-            var groupImages = $group.find('.cr-att-thumb').map(function () {
-                return { full: $(this).data('full'), name: $(this).data('name') };
-            }).get();
-            var startIndex = $group.find('.cr-att-thumb').index(this);
-            openViewer(groupImages, startIndex < 0 ? 0 : startIndex);
+        // Klik kartu lampiran (Request, Settlement): seluruh lampiran satu grup
+        // masuk carousel; gambar jadi slide, file lain kartu logo + nama.
+        $(document).on('click', '.cr-att-card', function () {
+            var daftar = (window.__crAttGroups && window.__crAttGroups[$(this).data('group')]) || [];
+            openViewer(daftar.map(function (a) {
+                return { full: '/storage/' + a.path, name: a.original_name, is_image: !!a.is_image, is_pdf: !!a.is_pdf };
+            }), parseInt($(this).data('idx'), 10) || 0);
         });
 
         /* Semua lampiran satu baris masuk ke carousel dengan urutan seperti saat
@@ -4868,107 +5573,22 @@ $(function () {
             $sub.toggle(expanding);
             $(this).find('.td-grp-caret').toggleClass('rotated', expanding);
         });
-        $(document).on('click', '.td-grp-expand, .td-grp-collapse', function () {
-            var expand = $(this).hasClass('td-grp-expand');
-            var $body  = $('#' + $(this).data('body'));
+        /* Satu tombol Expand/Collapse All: label & ikonnya berganti mengikuti
+           keadaan (sama dengan drawer Cost Request). */
+        $(document).on('click', '.td-grp-toggle-all', function () {
+            var $btn   = $(this);
+            var expand = !$btn.data('expanded');
+            var $body  = $('#' + $btn.data('body'));
             $body.find('.td-grp-row').each(function () {
                 $body.find('.' + $(this).data('target')).toggle(expand);
                 $(this).find('.td-grp-caret').toggleClass('rotated', expand);
             });
+            $btn.data('expanded', expand ? 1 : 0)
+                .html(expand
+                    ? '<i class="fas fa-angle-double-up mr-1"></i>Collapse All'
+                    : '<i class="fas fa-angle-double-down mr-1"></i>Expand All');
         });
 
-        $('#imgViewerClose').on('click', closeViewer);
-        $('#imgViewerNext').on('click', showNext);
-        $('#imgViewerPrev').on('click', showPrev);
-        $(overlay).on('click', function (e) {
-            // Klik di area kosong menutup viewer — kecuali kalau klik itu
-            // ujung dari gerakan geser antar lampiran.
-            if (justSwiped) { justSwiped = false; return; }
-            if (e.target === overlay) closeViewer();
-        });
-
-        $(document).on('keydown', function (e) {
-            if (!overlay.classList.contains('show')) return;
-            if (e.key === 'Escape') closeViewer();
-            else if (e.key === 'ArrowRight') showNext();
-            else if (e.key === 'ArrowLeft') showPrev();
-        });
-
-        stageImg.addEventListener('dblclick', function () {
-            zoomed = !zoomed;
-            if (!zoomed) { imgX = 0; imgY = 0; }
-            stageImg.classList.toggle('zoomed', zoomed);
-            stageImg.style.cursor = zoomed ? 'grab' : 'zoom-in';
-            applyTransform();
-        });
-        stageImg.addEventListener('wheel', function (e) {
-            e.preventDefault();
-            zoomed = e.deltaY < 0 ? true : false;
-            if (!zoomed) { imgX = 0; imgY = 0; }
-            stageImg.classList.toggle('zoomed', zoomed);
-            stageImg.style.cursor = zoomed ? 'grab' : 'zoom-in';
-            applyTransform();
-        }, { passive: false });
-
-        stageImg.addEventListener('mousedown', function (e) {
-            if (!zoomed) return;
-            isDragging = true;
-            dragStartX = e.clientX - imgX;
-            dragStartY = e.clientY - imgY;
-            stageImg.classList.add('dragging');
-        });
-        document.addEventListener('mousemove', function (e) {
-            if (!isDragging) return;
-            imgX = e.clientX - dragStartX;
-            imgY = e.clientY - dragStartY;
-            applyTransform();
-        });
-        document.addEventListener('mouseup', function () {
-            isDragging = false;
-            stageImg.classList.remove('dragging');
-        });
-
-        /* ── GESER KIRI/KANAN untuk pindah lampiran ─────────────────────────
-           Saat gambar TIDAK di-zoom, tarikan mendatar (mouse maupun sentuh)
-           berpindah ke lampiran sebelum/sesudahnya — pola yang sama dengan
-           galeri ponsel. Saat di-zoom, tarikan tetap menggeser gambar
-           (pan), jadi keduanya tidak saling rebutan. */
-        var SWIPE_MIN = 50;          // px, biar klik/getar kecil tidak terbaca geser
-        var swipeX = null, swipeY = null;
-
-        function swipeStart(x, y) { if (!zoomed) { swipeX = x; swipeY = y; } }
-
-        function swipeEnd(x, y) {
-            if (swipeX === null || images.length < 2) { swipeX = swipeY = null; return; }
-            var dx = x - swipeX, dy = y - swipeY;
-            swipeX = swipeY = null;
-            if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) <= Math.abs(dy)) return;
-            if (dx < 0 && idx >= images.length - 1) return;   // sudah di lampiran terakhir
-            if (dx > 0 && idx <= 0) return;                   // sudah di lampiran pertama
-            justSwiped = true;
-            if (dx < 0) showNext(); else showPrev();
-        }
-
-        stageImg.addEventListener('mousedown', function (e) { swipeStart(e.clientX, e.clientY); });
-        document.addEventListener('mouseup', function (e) {
-            if (!overlay.classList.contains('show')) { swipeX = swipeY = null; return; }
-            swipeEnd(e.clientX, e.clientY);
-        });
-
-        stageImg.addEventListener('touchstart', function (e) {
-            var t = e.changedTouches[0];
-            swipeStart(t.clientX, t.clientY);
-        }, { passive: true });
-        stageImg.addEventListener('touchend', function (e) {
-            var t = e.changedTouches[0];
-            swipeEnd(t.clientX, t.clientY);
-        }, { passive: true });
-
-        /* Geser juga boleh lewat area kosong di kiri/kanan gambar. */
-        overlay.addEventListener('mousedown', function (e) {
-            if (e.target === stageImg) return;
-            swipeStart(e.clientX, e.clientY);
-        });
     })();
 
 });

@@ -408,7 +408,15 @@ Route::middleware('auth')->group(function () {
         Route::get('beneficiaries',  [BeneficiaryController::class, 'index'])->name('beneficiaries.index');
         Route::post('beneficiaries', [BeneficiaryController::class, 'store'])->name('beneficiaries.store');
 
+        // Pemuatan lazy untuk halaman index: baris tab External/Database dan
+        // ringkasan per PIC diambil saat dibutuhkan, bukan di tiap muat halaman.
+        Route::get('beneficiaries/rows/{part}', [BeneficiaryController::class, 'rows'])->name('beneficiaries.rows');
+        Route::get('beneficiaries/pic-groups',  [BeneficiaryController::class, 'picGroups'])->name('beneficiaries.pic-groups');
+
         Route::middleware('role:superadmin')->group(function () {
+            // Daftar pemilih "Tambahkan Beneficiary" di modal Detail PIC.
+            Route::get('beneficiaries/picker', [BeneficiaryController::class, 'picker'])->name('beneficiaries.picker');
+
             // AJAX pengisi modal Edit — ikut dikunci. Tanpa ini, data lengkap
             // (nomor rekening, kontak) masih bisa ditarik lewat URL oleh role
             // yang tombol Edit-nya sudah disembunyikan.
@@ -1003,6 +1011,12 @@ Route::middleware('auth')->group(function () {
             [InvoiceCashReceiptController::class, 'storeComment']
         )->name('invoice-cash-receipt.comment');
 
+        // Panel komentar di daftar: info singkat (tanpa nominal) + log chat.
+        Route::get(
+            'invoice-cash-receipt/{id}/drawer-json',
+            [InvoiceCashReceiptController::class, 'drawerJson']
+        )->name('invoice-cash-receipt.drawer-json');
+
         Route::get(
             'invoice-cash-receipt',
             [InvoiceCashReceiptController::class, 'index']
@@ -1048,6 +1062,8 @@ Route::middleware('auth')->group(function () {
     // menyembunyikan menunya sementara URL-nya tetap bisa dibuka.
     Route::middleware('menu:delivery-note')->group(function () {
         Route::get('delivery-note', [DeliveryNoteController::class, 'index'])->name('delivery-note.index');
+        // POST juga didukung — export mengirim id baris hasil filter aktif (tesys-export-filtered.js).
+        Route::match(['get', 'post'], 'delivery-note/export', [DeliveryNoteController::class, 'exportList'])->name('delivery-note.export');
         Route::get('delivery-note/create', [DeliveryNoteController::class, 'create'])->name('delivery-note.create');
         Route::post('delivery-note', [DeliveryNoteController::class, 'store'])->name('delivery-note.store');
         Route::get('delivery-note/{id}', [DeliveryNoteController::class, 'show'])->name('delivery-note.show');
@@ -1408,6 +1424,7 @@ Route::middleware('auth')->group(function () {
         Route::get('daily-transaction',                    [DailyTransactionController::class, 'index'])->name('daily-transaction.index');
         Route::match(['get', 'post'], 'daily-transaction/export', [DailyTransactionController::class, 'exportList'])->name('daily-transaction.export-list');
         Route::get('daily-transaction/{id}/detail-json',    [DailyTransactionController::class, 'showJson'])->name('daily-transaction.show-json');
+        Route::get('daily-transaction/{id}/items-html',     [DailyTransactionController::class, 'itemsHtml'])->name('daily-transaction.items-html');
         Route::post('daily-transaction/{id}/log-note',      [DailyTransactionController::class, 'storeLogNote'])->middleware('throttle:30,1')->name('daily-transaction.log-note');
         Route::get('daily-transaction/{id}/export',         [DailyTransactionController::class, 'export'])->name('daily-transaction.export');
         Route::get('daily-transaction/{id}/export-data',    [DailyTransactionController::class, 'exportData'])->name('daily-transaction.export-data');

@@ -198,7 +198,7 @@
                                     @if($log->attachments->isNotEmpty())
                                     <div class="dn-timeline-attachments">
                                         @foreach($log->attachments as $att)
-                                        <a href="/storage/{{ $att->file_path }}" target="_blank" class="dn-evidence-chip">
+                                        <a href="/storage/{{ $att->file_path }}" data-evidence="dn-log-{{ $log->id }}" data-evidence-name="{{ $att->title ?? 'File' }}" target="_blank" class="dn-evidence-chip">
                                             <i class="fas fa-paperclip mr-1"></i>{{ $att->title ?? 'File' }}
                                         </a>
                                         @endforeach

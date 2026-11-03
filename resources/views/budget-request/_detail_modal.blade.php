@@ -197,7 +197,7 @@ $(function () {
                 if (d.realization_attachments && d.realization_attachments.length) {
                     raHtml = '<div class="mt-2"><strong style="font-size:12px;">Lampiran Realisasi:</strong>';
                     d.realization_attachments.forEach(function(a) {
-                        raHtml += '<div class="d-flex align-items-center mt-1" style="gap:8px;"><span style="font-size:12px;">' + a.original_name + '</span><a href="/storage/' + a.path + '" target="_blank" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a></div>';
+                        raHtml += '<div class="d-flex align-items-center mt-1" style="gap:8px;"><span style="font-size:12px;">' + a.original_name + '</span><a href="/storage/' + a.path + '" data-evidence="crd-real" data-evidence-name="' + String(a.original_name).replace(/"/g, '&quot;') + '" target="_blank" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a></div>';
                     });
                     raHtml += '</div>';
                 }
@@ -213,7 +213,7 @@ $(function () {
             if (atts.length) {
                 attHtml += '<div class="table-responsive"><table class="table table-bordered mb-3" style="font-size:12px;"><tbody>';
                 atts.forEach(function(a, i) {
-                    attHtml += '<tr><td width="5%" class="text-center">' + (i+1) + '</td><td>' + a.original_name + '</td><td width="10%" class="text-center"><a href="/storage/' + a.path + '" target="_blank" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a></td></tr>';
+                    attHtml += '<tr><td width="5%" class="text-center">' + (i+1) + '</td><td>' + a.original_name + '</td><td width="10%" class="text-center"><a href="/storage/' + a.path + '" data-evidence="crd-req" data-evidence-name="' + String(a.original_name).replace(/"/g, '&quot;') + '" target="_blank" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a></td></tr>';
                 });
                 attHtml += '</tbody></table></div>';
             }

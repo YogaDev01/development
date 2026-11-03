@@ -1,0 +1,80 @@
+/* =====================================================================
+   Tesys — Evidence Stage (carousel lampiran)
+   ---------------------------------------------------------------------
+   Dua mode dari satu markup & satu JS (public/js/tesys-evidence-stage.js):
+     .tes-ev-side     panggung di kiri drawer (layar >= 1200px)
+     .tes-ev-overlay  layar penuh; bila drawer terbuka, hanya selebar
+                      ruang di kiri panel drawer
+
+   Warna "di atas gelap" memakai putih transparan seperti panggung evidence
+   Treasury sebelumnya; aksen memakai token --accent.
+   ===================================================================== */
+
+/* ── Bagian yang dipakai kedua mode ── */
+.tes-ev-head { display: flex; align-items: center; gap: 12px; min-height: 34px; }
+.tes-ev-cap { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.tes-ev-src { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; opacity: .7; }
+.tes-ev-name { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tes-ev-count { font-size: 12px; background: rgba(255,255,255,.12); padding: 3px 10px; border-radius: var(--radius-lg); white-space: nowrap; }
+.tes-ev-btn {
+    flex: none; width: 34px; height: 34px; border-radius: 50%; border: 0; padding: 0;
+    color: #fff; background: rgba(255,255,255,.12);
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.tes-ev-btn:hover { color: #fff; background: rgba(255,255,255,.25); text-decoration: none; }
+.tes-ev-main { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; gap: 10px; }
+.tes-ev-view {
+    flex: 1 1 auto; height: 100%; min-width: 0; display: flex; align-items: center; justify-content: center;
+    overflow: hidden; border-radius: var(--radius-lg); background: rgba(0,0,0,.35);
+}
+.tes-ev-view img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: zoom-in; user-select: none; -webkit-user-drag: none; }
+.tes-ev-view.is-zoomed { overflow: auto; align-items: flex-start; justify-content: flex-start; }
+.tes-ev-view.is-zoomed img { max-width: none; max-height: none; cursor: zoom-out; }
+.tes-ev-view iframe { width: 100%; height: 100%; border: 0; background: var(--surface); }
+.tes-ev-file { text-align: center; font-size: 13px; opacity: .85; padding: 24px; word-break: break-word; }
+.tes-ev-file i { font-size: 42px; display: block; margin-bottom: 12px; opacity: .7; }
+.tes-ev-file a { color: #fff; text-decoration: underline; }
+.tes-ev-nav {
+    flex: none; width: 40px; height: 40px; border-radius: 50%; border: 0; cursor: pointer;
+    background: rgba(255,255,255,.12); color: #fff; display: flex; align-items: center; justify-content: center;
+}
+.tes-ev-nav:hover { background: rgba(255,255,255,.25); }
+.tes-ev-nav[disabled] { opacity: .25; cursor: default; }
+.tes-ev-thumbs { flex: none; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.tes-ev-thumbs[hidden] { display: none; }
+.tes-ev-thumb {
+    flex: none; width: 64px; height: 64px; border-radius: var(--radius-md); border: 2px solid transparent;
+    background: rgba(255,255,255,.1); overflow: hidden; display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 20px; padding: 0; cursor: pointer;
+}
+.tes-ev-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.tes-ev-thumb.is-active { border-color: var(--accent); }
+
+/* ── Mode samping drawer ── */
+.tes-ev-side { display: none; }
+@media (min-width: 1200px) {
+    .ts-drawer-root.has-evidence .tes-ev-side {
+        position: absolute; top: 0; bottom: 0; left: 0;
+        right: min(var(--tes-ev-w, 560px), calc(100vw - 32px));
+        display: flex; flex-direction: column; gap: 12px; padding: 20px 24px;
+        color: #fff; opacity: 0; transition: opacity var(--dur, .22s) ease;
+    }
+    .ts-drawer-root.has-evidence.is-open .tes-ev-side { opacity: 1; }
+    /* Ada evidence: scrim digelapkan supaya gambar terbaca nyaman. */
+    .ts-drawer-root.has-evidence .ts-drawer-scrim { background: rgba(20, 20, 30, .88); }
+}
+
+/* ── Mode layar penuh ── */
+.tes-ev-overlay {
+    position: fixed; inset: 0; z-index: 2000; display: none; flex-direction: column; gap: 12px;
+    padding: 16px 24px; color: #fff; background: rgba(0,0,0,.92);
+}
+.tes-ev-overlay.show { display: flex; }
+@media (max-width: 576px) {
+    .tes-ev-overlay { padding: 12px; }
+    .tes-ev-nav { width: 36px; height: 36px; }
+    .tes-ev-thumb { width: 52px; height: 52px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .tes-ev-side { transition: none; }
+}

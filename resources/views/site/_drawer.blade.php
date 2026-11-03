@@ -294,7 +294,7 @@
         @forelse($site->documents as $doc)
             <div class="d-flex justify-content-between align-items-start py-2" style="border-bottom:1px solid var(--border-soft);font-size:12.5px;">
                 <div style="min-width:0;">
-                    <a href="{{ url('storage/'.$doc->file_path) }}" target="_blank" rel="noopener" style="font-weight:600;">
+                    <a href="{{ url('storage/'.$doc->file_path) }}" data-evidence="site-doc" data-evidence-name="{{ $doc->title }}" target="_blank" rel="noopener" style="font-weight:600;">
                         <i class="fas fa-paperclip mr-1"></i>{{ $doc->title }}
                     </a>
                     <div class="text-muted" style="font-size:11px;">

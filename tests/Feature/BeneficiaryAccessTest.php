@@ -169,6 +169,40 @@ class BeneficiaryAccessTest extends TestCase
             ->assertJsonPath('id', $ben->id);
     }
 
+    public function test_beneficiary_internal_wajib_punya_pic(): void
+    {
+        $this->actingAs($this->managerUser())
+            ->post('/beneficiaries', [
+                'nickname'      => 'Karyawan',
+                'complete_name' => 'Karyawan Internal',
+                'category'      => 'INTERNAL',
+                'status'        => 'ACTIVE',
+            ])
+            ->assertSessionHasErrors('pic_id');
+
+        $this->assertDatabaseMissing('beneficiaries', ['nickname' => 'KARYAWAN']);
+    }
+
+    public function test_nomor_rekening_ganda_ditolak_saat_tambah(): void
+    {
+        $payload = [
+            'nickname'       => 'Pertama',
+            'complete_name'  => 'Penerima Pertama',
+            'category'       => 'EXTERNAL',
+            'status'         => 'ACTIVE',
+            'account_number' => '814301017409532',
+        ];
+
+        $user = $this->managerUser();
+        $this->actingAs($user)->post('/beneficiaries', $payload)->assertRedirect('/beneficiaries');
+
+        $this->actingAs($user)
+            ->post('/beneficiaries', array_merge($payload, ['nickname' => 'Kedua']))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseMissing('beneficiaries', ['nickname' => 'KEDUA']);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Role tanpa akses menu sama sekali
@@ -195,12 +229,12 @@ class BeneficiaryAccessTest extends TestCase
         $this->makeBeneficiary();
 
         $this->actingAs($this->userWithRole('superadmin'))
-            ->get('/beneficiaries')
+            ->get('/beneficiaries?tab=db')
             ->assertSee('btn-edit')
             ->assertSee('Bank Master');
 
         $this->actingAs($this->managerUser())
-            ->get('/beneficiaries')
+            ->get('/beneficiaries?tab=db')
             ->assertDontSee('btn-edit')
             ->assertDontSee('Bank Master')
             // Menambah tetap terbuka.

@@ -70,6 +70,10 @@
                             title="Clear Filter" aria-label="Clear Filter">
                         <i class="fas fa-eraser"></i>
                     </button>
+
+                    <x-tw.button href="{{ route('delivery-note.export') }}" id="btnExportDN" variant="secondary" size="sm">
+                        <i class="fas fa-file-excel" aria-hidden="true"></i> Export Excel
+                    </x-tw.button>
                 </div>
 
                 <div class="table-responsive">
@@ -89,7 +93,8 @@
                             {{-- data-* dibaca dua pihak: TesysColumnFilter untuk
                                  menyaring, dan penghitung kartu untuk menjumlah
                                  baris yang tersisa. --}}
-                            <tr data-status="{{ $dn->status_label }}"
+                            <tr data-id="{{ $dn->id }}"
+                                data-status="{{ $dn->status_label }}"
                                 data-customer="{{ $dn->customer->name ?? '-' }}"
                                 data-href="{{ route('delivery-note.show', $dn->id) }}">
                                 <td class="text-nowrap">
@@ -212,6 +217,11 @@ $(function () {
     }
 
     table.on('draw', refreshCards);
+
+    /* Export Excel mengikuti filter yang SEDANG aktif — lihat public/js/tesys-export-filtered.js. */
+    if (window.TesysExportFiltered) {
+        TesysExportFiltered.wire('#btnExportDN', table, '{{ route('delivery-note.export') }}');
+    }
 
     /* Klik di mana saja pada baris membuka detail surat jalan (pola Cost Request). Kontrol di
        dalam baris (kode yang disalin, tautan, kontrol responsif DataTables) bekerja sendiri. */

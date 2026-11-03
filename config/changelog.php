@@ -26,10 +26,53 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '3.2.0',
+    'current' => '3.2.1',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '3.2.1',
+            'date'    => '2026-11-04',
+            'title'   => 'Penyempurnaan Settlement, Treasury, Tampilan Tabel & Perbaikan PPh Invoice',
+            'summary' => 'Form Settlement kembali terisi dari item pengajuan dengan Sub COA terkunci, batch Treasury punya drawer di daftar, '
+                       . 'daftar Beneficiary lebih ringan, Surat Jalan bisa diexport, dan footer tabel di semua halaman tampil lebih bersih.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Settlement: bila total Settle lebih kecil dari nilai pengajuan, tersedia form opsional Bukti Transfer Pengembalian (PDF/JPG/PNG, maks. 10 MB).',
+                        'Settlement: badge Sub Utama / Sub Pecahan pada baris item yang dipecah dan badge Wajib pada Lampiran Item yang belum diisi.',
+                        'Treasury: detail batch tampil di drawer pada daftar, dengan aksi Submit, Hapus draft, Keluarkan item, Takeout/Reject, dan Tandai PAID.',
+                        'Penampil lampiran (carousel evidence) bersama di drawer dan halaman detail; klik gambar untuk zoom, PDF tampil langsung.',
+                        'Nilai di samping label Kode (Kode, Kode PO, Batch Code) bisa diklik untuk disalin.',
+                        'Export Excel daftar Surat Jalan, mengikuti filter yang aktif di tabel.',
+                        'Daftar Invoice & Cash Receipt: panel komentar/log berupa drawer dengan info singkat.',
+                        'Form pembayaran di halaman invoice kini punya kolom PPh opsional.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Form Submit Settlement kembali terisi 1:1 dari item pengajuan (tombol Auto Fill dihapus); Sub COA baris item dan pecahannya dikunci sesuai item asal, hanya baris tambahan yang boleh memilih Sub COA.',
+                        'Lampiran Item wajib untuk baris Settle > 0 saat Submit (draft tidak wajib); Keterangan (kini "Log History Note") dan Lampiran Settlement global tidak lagi wajib. Kartu Bukti Settlement global dihapus dari form.',
+                        'Footer tabel (info jumlah, Page Size, Previous/Next) di semua halaman daftar tampil tanpa border/panel, mengikuti Cost Request.',
+                        'Daftar Beneficiary memuat baris per tab secara lazy sehingga halaman lebih ringan.',
+                        'Master PIC: kolom Token dan Nominal dihapus dari form dan pencarian.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Total invoice (captured_total) kini selalu mengikuti PPh saat sinkron dari Cash Receipt, termasuk pada data lama yang sudah basi; ditambah perintah invoice:repair-captured-total (dry run, --apply untuk menyimpan) yang dijalankan manusia.',
+                        'Cash Receipt: pembuatan menolak invoice ganda, dan header yang CANCELLED atau pernah punya alokasi tidak bisa dihapus.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '3.2.0',

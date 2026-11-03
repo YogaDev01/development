@@ -603,6 +603,62 @@ class DailyTransactionController extends Controller
         ]);
     }
 
+    private function isImagePath(?string $path): bool
+    {
+        return (bool) preg_match('/\.(jpe?g|png|gif|webp)$/i', (string) $path);
+    }
+
+    /**
+     * Evidence untuk panggung carousel di samping drawer: bukti pembayaran
+     * batch, lalu lampiran tiap baris yang masih INCLUDED (lampiran CR, lampiran
+     * per item CR, lampiran Cost Register). Berkas tetap dilayani lewat
+     * SecureFileController (/storage/{path}) + FileAccess.
+     */
+    private function evidenceFor(DailyTransaction $batch): array
+    {
+        $out = [];
+        $add = function (?string $path, ?string $name, string $source) use (&$out) {
+            if (!$path) return;
+            $out[] = [
+                'name'     => $name ?: basename($path),
+                'url'      => url('/storage/' . $path),
+                'is_image' => $this->isImagePath($path),
+                'is_pdf'   => (bool) preg_match('/\.pdf$/i', $path),
+                'source'   => $source,
+            ];
+        };
+
+        foreach ($batch->attachments as $a) {
+            $add($a->path, $a->original_name, 'Bukti Pembayaran');
+        }
+
+        foreach ($batch->items->where('status', 'INCLUDED') as $item) {
+            if ($item->isCostRegister()) {
+                foreach ($item->costRegister?->attachments ?? [] as $a) {
+                    $add($a->file_path, $a->title, $item->sourceCode());
+                }
+                continue;
+            }
+
+            // Baris Second Payment memakai CR yang sama — lampirannya tidak diulang.
+            if ($item->isSecondPayment()) continue;
+
+            $cr = $item->budgetRequest;
+            if (!$cr) continue;
+            foreach ($cr->attachments as $a) {
+                $add($a->path, $a->original_name, $cr->code);
+            }
+            foreach ($cr->details as $d) {
+                if ($d->status === 'TAKEOUT') continue;
+                foreach ($d->attachments as $a) {
+                    $add($a->path, $a->original_name, $cr->code . ' · ' . ($d->description ?: 'Item'));
+                }
+            }
+        }
+
+        return $out;
+    }
+
     public function showJson($id)
     {
         /** @var DailyTransaction $batch */
@@ -613,19 +669,47 @@ class DailyTransactionController extends Controller
             'items.budgetRequest.cluster',
             'items.budgetRequest.beneficiary.bank',
             'items.budgetRequest.applicant',
+            'items.budgetRequest.attachments',
+            'items.budgetRequest.details.attachments',
+            'items.costRegister.attachments',
             'items.secondPayment',
             'sourceFund.bank',
             'toSourceFund.bank',
         ])->findOrFail($id);
+
+        $user     = Auth::user();
+        $treasury = $user->hasRole(['superadmin', 'finance', 'finance_manager', 'treasury']);
 
         return response()->json([
             'id'                        => $batch->id,
             'code'                      => $batch->code,
             'date'                      => $batch->date->format('d M Y'),
             'description'               => $batch->description,
+            'type'                      => $batch->type,
+            'type_label'                => $batch->type_label,
+            'is_top_up'                 => $batch->isTopUp(),
             'source_fund'               => $batch->sourceFund->name ?? '-',
             'source_fund_bank'          => $batch->sourceFund->bank->name ?? '-',
             'source_fund_no_account'    => $batch->sourceFund->no_account ?? '-',
+            'to_source_fund'            => $batch->toSourceFund->name ?? '-',
+            'to_source_fund_bank'       => $batch->toSourceFund->bank->name ?? '-',
+            'to_source_fund_no_account' => $batch->toSourceFund->no_account ?? '-',
+
+            /*
+            | Aksi drawer daftar — gerbang peran & status disalin apa adanya dari
+            | halaman show (daily-transaction/show.blade.php). Route tetap
+            | memeriksa ulang; flag ini hanya menentukan tombol yang tampil.
+            */
+            'can' => [
+                'approve'      => $batch->isPendingApprover() && $user->hasRole(['superadmin', 'approver']),
+                'draft'        => $batch->isDraft() && $treasury,
+                'mark_paid'    => $batch->isDone() && $treasury,
+                'export_data'  => $batch->isCashOut(),
+                'export_batch' => $batch->isCashOut() && !in_array($batch->status, ['DONE', 'PAID'], true),
+            ],
+
+            // Panggung evidence di samping drawer (gambar/PDF), lihat evidenceFor().
+            'evidence' => $this->evidenceFor($batch),
             'charge_formatted'          => $batch->charge_formatted,
             'captured_amount_formatted' => $batch->captured_amount_formatted,
             'grand_total_formatted'     => $batch->grand_total_formatted,
@@ -649,6 +733,7 @@ class DailyTransactionController extends Controller
                 'path'           => $a->path,
                 'size_formatted' => $a->size_formatted,
                 'uploaded_by'    => $a->uploader->name ?? '-',
+                'is_image'       => $this->isImagePath($a->path),
             ]),
 
             /*
@@ -757,7 +842,7 @@ class DailyTransactionController extends Controller
 
         UserActivityLog::record('treasury', 'approve', 'Menyetujui batch pembayaran #' . $batch->code, $batch, $request->notes);
 
-        return redirect('/daily-transaction/' . $id)
+        return $this->redirectToBatch($request, $id)
             ->with('success', $successMsg);
     }
 
@@ -916,7 +1001,7 @@ class DailyTransactionController extends Controller
 
         UserActivityLog::record('treasury', 'reject', 'Menolak batch pembayaran #' . $batch->code, $batch, $request->notes);
 
-        return redirect('/daily-transaction')
+        return ($request->boolean('from_index') ? back() : redirect('/daily-transaction'))
             ->with('success', $successMsg);
     }
 
@@ -1041,7 +1126,7 @@ class DailyTransactionController extends Controller
             NotifyService::send([$cr->applicant], $judul, $pesan, route('daily-transaction.index'), 'workflow');
         }
 
-        return redirect('/daily-transaction/' . $batchId)
+        return $this->redirectToBatch($request, $batchId)
             ->with('success', 'CR ' . $kode . ($reject ? ' berhasil ditolak dari batch.' : ' berhasil di-takeout dari batch.'));
     }
 
@@ -1168,7 +1253,7 @@ class DailyTransactionController extends Controller
 
         UserActivityLog::record('treasury', 'submit', 'Mengajukan batch pembayaran #' . $batch->code, $batch);
 
-        return redirect('/daily-transaction/' . $batch->id)
+        return $this->redirectToBatch($request, $batch->id)
             ->with('success', 'Batch ' . $batch->code . ' diajukan ke CEO untuk approval.');
     }
 
@@ -1225,7 +1310,7 @@ class DailyTransactionController extends Controller
 
         UserActivityLog::record('treasury', 'update', 'Mengeluarkan item dari draft batch #' . $batch->fresh()->code, $batch);
 
-        return redirect('/daily-transaction/' . $batchId)->with('success', 'Item dikeluarkan dari draft batch.');
+        return $this->redirectToBatch(request(), $batchId)->with('success', 'Item dikeluarkan dari draft batch.');
     }
 
     /*
@@ -1538,7 +1623,7 @@ class DailyTransactionController extends Controller
 
         UserActivityLog::record('treasury', 'pay', 'Menandai batch #' . $batch->code . ' telah dibayar (PAID)', $batch, $request->payment_notes);
 
-        return redirect('/daily-transaction/' . $id)
+        return $this->redirectToBatch($request, $id)
             ->with('success', 'Batch ' . $batch->code . ' berhasil ditandai PAID.');
     }
 
@@ -1870,30 +1955,90 @@ class DailyTransactionController extends Controller
     |--------------------------------------------------------------------------
     */
 
+    /** Relasi untuk "Daftar CR dalam Batch" (halaman show & tab Item drawer daftar). */
+    private const ITEM_LIST_RELATIONS = [
+        'createdBy', 'approvedBy', 'paidBy',
+        'attachments.uploader',
+        'items.budgetRequest.type',
+        'items.budgetRequest.cluster',
+        'items.budgetRequest.beneficiary.bank',
+        'items.budgetRequest.applicant',
+        'items.budgetRequest.budgetPlan.project.customer',
+        'items.budgetRequest.budgetPlan.project.manager',
+        'items.budgetRequest.budgetPlan.costCenter',
+        'items.budgetRequest.details',
+        // MN-09 — baris Cost Register ikut di-eager-load; tanpa ini tiap
+        // baris Non-CR memicu query sendiri saat dirender.
+        'items.costRegister.beneficiary',
+        'items.costRegister.project',
+        'items.secondPayment',
+        'sourceFund.bank',
+        'toSourceFund.bank',
+    ];
+
     public function show($id)
     {
         /** @var DailyTransaction $batch */
-        $batch = DailyTransaction::with([
-            'createdBy', 'approvedBy', 'paidBy',
-            'attachments.uploader',
-            'items.budgetRequest.type',
-            'items.budgetRequest.cluster',
-            'items.budgetRequest.beneficiary.bank',
-            'items.budgetRequest.applicant',
-            'items.budgetRequest.budgetPlan.project.customer',
-            'items.budgetRequest.budgetPlan.project.manager',
-            'items.budgetRequest.budgetPlan.costCenter',
-            'items.budgetRequest.details',
-            // MN-09 — baris Cost Register ikut di-eager-load; tanpa ini tiap
-            // baris Non-CR memicu query sendiri saat dirender.
-            'items.costRegister.beneficiary',
-            'items.costRegister.project',
-            'items.secondPayment',
-            'sourceFund.bank',
-            'toSourceFund.bank',
-        ])->findOrFail($id);
+        $batch = DailyTransaction::with(self::ITEM_LIST_RELATIONS)->findOrFail($id);
 
-        $groupedItems = $batch->items->groupBy(function ($item) {
+        $groupedItems = $this->groupBatchItems($batch);
+
+        $availableCRs = BudgetRequest::where('status', 'APPROVED')
+            ->whereDoesntHave('dailyTransactionItems', fn($q) =>
+                // whereNull: baris Second Payment juga menunjuk ke CR ini, tapi
+                // ia membayar kekurangan Settlement - bukan pengajuan awalnya.
+                // Tanpa filter ini, CR yang punya Second Payment di batch aktif
+                // akan dikira sudah dibatch.
+                $q->where('status', 'INCLUDED')
+                  ->whereNull('second_payment_id')
+                  ->whereHas('dailyTransaction', fn($q2) =>
+                      $q2->whereIn('status', DailyTransaction::ACTIVE_STATUSES)
+                  )
+            )
+            ->with(['type', 'cluster'])
+            ->latest()->get();
+
+        $availableSecondPayments = \App\Models\BudgetRequestSecondPayment::availableForBatch()
+            ->with(['budgetRequest.beneficiary'])
+            ->latest()->get();
+
+        return view('daily-transaction.show', compact(
+            'batch', 'availableCRs', 'availableSecondPayments', 'groupedItems'
+        ));
+    }
+
+    /**
+     * Tab Item drawer daftar Treasury: tabel "Daftar CR dalam Batch" yang sama
+     * persis dengan halaman show (grouping per Budget Plan/PO + modal View
+     * Budget), dirender server dan dimuat saat tab dibuka.
+     */
+    public function itemsHtml($id)
+    {
+        /** @var DailyTransaction $batch */
+        $batch = DailyTransaction::with(self::ITEM_LIST_RELATIONS)->findOrFail($id);
+
+        return view('daily-transaction.partials.items', [
+            'batch'        => $batch,
+            'groupedItems' => $this->groupBatchItems($batch),
+        ]);
+    }
+
+    /**
+     * Aksi yang dipicu dari drawer daftar (form membawa from_index=1) kembali ke
+     * daftar — URL daftar memuat ?open={id} sehingga drawer dibuka ulang.
+     * Dari halaman show tetap kembali ke halaman show seperti sebelumnya.
+     */
+    private function redirectToBatch(Request $request, $id)
+    {
+        return $request->boolean('from_index')
+            ? back()
+            : redirect('/daily-transaction/' . $id);
+    }
+
+    /** Grouping item batch per Budget Plan/PO (Cost Register satu grup sendiri). */
+    private function groupBatchItems(DailyTransaction $batch)
+    {
+        return $batch->items->groupBy(function ($item) {
             // Baris Cost Register tidak punya Budget Plan — dikumpulkan dalam
             // satu grup tersendiri supaya tidak tercampur ke grup "tanpa
             // budget plan" milik Cost Request (MN-09).
@@ -1931,29 +2076,6 @@ class DailyTransactionController extends Controller
                 'coa_groups'  => $bp ? $this->buildCoaBreakdown($bp, $groupItems) : collect(),
             ];
         })->sortBy('label')->values();
-
-        $availableCRs = BudgetRequest::where('status', 'APPROVED')
-            ->whereDoesntHave('dailyTransactionItems', fn($q) =>
-                // whereNull: baris Second Payment juga menunjuk ke CR ini, tapi
-                // ia membayar kekurangan Settlement - bukan pengajuan awalnya.
-                // Tanpa filter ini, CR yang punya Second Payment di batch aktif
-                // akan dikira sudah dibatch.
-                $q->where('status', 'INCLUDED')
-                  ->whereNull('second_payment_id')
-                  ->whereHas('dailyTransaction', fn($q2) =>
-                      $q2->whereIn('status', DailyTransaction::ACTIVE_STATUSES)
-                  )
-            )
-            ->with(['type', 'cluster'])
-            ->latest()->get();
-
-        $availableSecondPayments = \App\Models\BudgetRequestSecondPayment::availableForBatch()
-            ->with(['budgetRequest.beneficiary'])
-            ->latest()->get();
-
-        return view('daily-transaction.show', compact(
-            'batch', 'availableCRs', 'availableSecondPayments', 'groupedItems'
-        ));
     }
 
     /*
@@ -2127,6 +2249,7 @@ class DailyTransactionController extends Controller
         $batch = DailyTransaction::with([
             'items.budgetRequest.beneficiary.bank',
             'items.secondPayment',
+            'items.costRegister.beneficiary.bank',
         ])->findOrFail($id);
 
         // Export tersedia sebelum batch selesai diproses bank — begitu DONE/PAID,
@@ -2162,6 +2285,36 @@ class DailyTransactionController extends Controller
 
         $row = 2;
         foreach ($items as $item) {
+            /*
+            | Baris Cost Register (Non-CR, MN-09) tidak punya budgetRequest.
+            | Dulu baris ini dilewati, sehingga batch berisi Non-CR menghasilkan
+            | file transfer kosong / kurang. Penerimanya diambil dari Cost
+            | Register; Reference memakai kode CREG-xxxxx (tanpa email).
+            */
+            if ($item->isCostRegister()) {
+                $reg = $item->costRegister;
+                if (!$reg) continue;
+
+                $benef = $reg->beneficiary;
+                $bank  = $benef->bank ?? null;
+
+                $sheet->fromArray([
+                    $bank->default_method ?? '',
+                    $benef->account_number ?? '',
+                    'IDR',
+                    (int) $item->sourceAmount(),
+                    $benef->complete_name ?? '',
+                    $bank->name ?? '',
+                    $bank->code ?? '',
+                    'OUR',
+                    $item->sourceCode(),
+                    \Illuminate\Support\Str::limit($item->sourceDescription(), 150, ''),
+                    '',
+                ], null, 'A' . $row);
+                $row++;
+                continue;
+            }
+
             $cr = $item->budgetRequest;
             if (!$cr) continue;
 

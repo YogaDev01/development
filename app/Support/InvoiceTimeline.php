@@ -43,7 +43,12 @@ use Illuminate\Support\Collection;
 final class InvoiceTimeline
 {
     /** @return Collection<int, array<string, mixed>> */
-    public static function untuk(Invoice $invoice): Collection
+    /**
+     * @param bool $tanpaNilai true = baris pembayaran hanya memuat catatannya
+     *                         (nominal & PPh dibuang) — dipakai panel komentar di
+     *                         daftar invoice yang terbuka untuk akses umum.
+     */
+    public static function untuk(Invoice $invoice, bool $tanpaNilai = false): Collection
     {
         $peristiwa = collect();
 
@@ -123,11 +128,13 @@ final class InvoiceTimeline
         foreach ($invoice->cashReceipts as $cr) {
             $lines = [];
 
-            $lines[] = ['teks' => self::rupiah($cr->amount) . ' diterima'
-                . ($cr->sourceFund ? ' via ' . $cr->sourceFund->name : '')];
+            if (! $tanpaNilai) {
+                $lines[] = ['teks' => self::rupiah($cr->amount) . ' diterima'
+                    . ($cr->sourceFund ? ' via ' . $cr->sourceFund->name : '')];
 
-            if ($cr->withholding_tax > 0) {
-                $lines[] = ['teks' => 'PPh Ps.4(2) di-settle: ' . self::rupiah($cr->withholding_tax)];
+                if ($cr->withholding_tax > 0) {
+                    $lines[] = ['teks' => 'PPh Ps.4(2) di-settle: ' . self::rupiah($cr->withholding_tax)];
+                }
             }
 
             if ($cr->notes) {

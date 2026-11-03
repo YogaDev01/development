@@ -29,7 +29,7 @@
                         @elseif($att->isVideo())
                             <video src="{{ asset('storage/'.$att->file_path) }}" class="chat-att-video" controls preload="none"></video>
                         @elseif($att->isPdf())
-                            <a href="{{ asset('storage/'.$att->file_path) }}" target="_blank" rel="noopener" class="chat-att-file">
+                            <a href="{{ asset('storage/'.$att->file_path) }}" data-evidence data-evidence-type="pdf" data-evidence-name="{{ $att->file_name }}" target="_blank" rel="noopener" class="chat-att-file">
                                 <i class="fas fa-file-pdf mr-1"></i>{{ $att->file_name }}
                             </a>
                         @else

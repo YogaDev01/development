@@ -160,12 +160,24 @@ class ProjectMonitoringController extends Controller
             }
         });
 
+        /*
+        | Hitungan per status PO untuk stepper (sama dengan daftar Purchase
+        | Order), tetapi hanya dari PO yang boleh dilihat user di halaman ini.
+        */
+        $statusCounts = $projects->countBy('status');
+
         $summary = [
-            'total'            => $projects->count(),
-            'po_received_done' => $projects->where('monitoring_po_received_status', 'DONE')->count(),
-            'bast_done'        => $projects->where('monitoring_bast_status', 'DONE')->count(),
-            'invoice_done'     => $projects->where('monitoring_invoice_status', 'DONE')->count(),
-            'payment_done'     => $projects->where('monitoring_payment_status', 'DONE')->count(),
+            'draft'              => (int) ($statusCounts['DRAFT'] ?? 0),
+            'submitted'          => (int) ($statusCounts['SUBMITTED'] ?? 0),
+            'verified'           => (int) ($statusCounts['VERIFIED'] ?? 0),
+            'early_start'        => (int) ($statusCounts['EARLY_START'] ?? 0),
+            'waiting_po'         => (int) ($statusCounts['WAITING_PO'] ?? 0),
+            'active'             => (int) ($statusCounts['ACTIVE'] ?? 0),
+            'progress_done'      => (int) ($statusCounts['PROGRESS_DONE'] ?? 0),
+            'partially_invoiced' => (int) ($statusCounts['PARTIALLY_INVOICED'] ?? 0),
+            'partially_paid'     => (int) ($statusCounts['PARTIALLY_PAID'] ?? 0),
+            'paid'               => (int) ($statusCounts['PAID'] ?? 0),
+            'closed'             => (int) ($statusCounts['CLOSED'] ?? 0),
         ];
 
         return view('project-monitoring.index', compact('projects', 'summary'));
@@ -603,7 +615,8 @@ class ProjectMonitoringController extends Controller
             return back()->with('error', 'Total bobot milestone harus tepat 100 (saat ini ' . $total . ').');
         }
 
-        $detailIds = ProjectDetail::where('project_id', $project->id)->pluck('id')->all();
+        $details   = ProjectDetail::with('stage')->where('project_id', $project->id)->get()->keyBy('id');
+        $detailIds = $details->keys()->all();
 
         /*
         | Bobot ditulis DI DALAM satu transaksi, dan dikelompokkan per nilai.
@@ -628,9 +641,27 @@ class ProjectMonitoringController extends Controller
             $perBobot[(int) $weight][] = $detailId;
         }
 
-        DB::transaction(function () use ($perBobot, $project) {
+        DB::transaction(function () use ($perBobot, $project, $details) {
             foreach ($perBobot as $bobot => $ids) {
                 ProjectDetail::whereIn('id', $ids)->update(['weight' => $bobot]);
+
+                // Log per milestone: hanya yang bobotnya benar-benar berubah.
+                foreach ($ids as $detailId) {
+                    $detail = $details[$detailId];
+                    $lama   = (float) $detail->weight;
+                    if ($lama === (float) $bobot) continue;
+
+                    ProjectMonitoringLog::create([
+                        'project_id'        => $project->id,
+                        'cluster_id'        => $detail->cluster_id,
+                        'project_detail_id' => $detail->id,
+                        'user_id'           => Auth::id(),
+                        'type'              => 'SYSTEM',
+                        'message'           => Auth::user()->name . ' mengubah bobot milestone "'
+                            . ($detail->stage->name ?? 'Milestone') . '" dari '
+                            . rtrim(rtrim(number_format($lama, 2, ',', ''), '0'), ',') . ' menjadi ' . $bobot . '.',
+                    ]);
+                }
             }
 
             ProjectMonitoringLog::create([

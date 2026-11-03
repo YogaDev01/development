@@ -466,7 +466,7 @@
                                                     <td class="text-center">{{ $loop->iteration }}</td>
                                                     <td>{{ $a->title ?? $a->file_name }}</td>
                                                     <td class="text-center">
-                                                        <a href="/storage/{{ $a->file_path }}" target="_blank" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a>
+                                                        <a href="/storage/{{ $a->file_path }}" data-evidence="icr-1" data-evidence-name="{{ $a->title ?? $a->file_name }}" target="_blank" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a>
                                                     </td>
                                                 </tr>
                                                 @empty
@@ -493,7 +493,7 @@
                                                     <td class="text-center">{{ $loop->iteration }}</td>
                                                     <td>{{ $a->title ?? $a->file_name }}</td>
                                                     <td class="text-center">
-                                                        <a href="/storage/{{ $a->file_path }}" target="_blank" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a>
+                                                        <a href="/storage/{{ $a->file_path }}" data-evidence="icr-2" data-evidence-name="{{ $a->title ?? $a->file_name }}" target="_blank" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a>
                                                     </td>
                                                 </tr>
                                                 @empty
@@ -520,7 +520,7 @@
                                                     <td class="text-center">{{ $loop->iteration }}</td>
                                                     <td>{{ $a->title ?? $a->file_name }}</td>
                                                     <td class="text-center">
-                                                        <a href="/storage/{{ $a->file_path }}" target="_blank" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a>
+                                                        <a href="/storage/{{ $a->file_path }}" data-evidence="icr-3" data-evidence-name="{{ $a->title ?? $a->file_name }}" target="_blank" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a>
                                                     </td>
                                                 </tr>
                                                 @empty
@@ -551,7 +551,7 @@
                                                 <td>{{ $a->title ?? $a->file_name }}</td>
                                                 <td><small class="text-muted">{{ $a->inputBy->name ?? '-' }}</small></td>
                                                 <td class="text-center">
-                                                    <a href="/storage/{{ $a->file_path }}" target="_blank" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a>
+                                                    <a href="/storage/{{ $a->file_path }}" data-evidence="icr-4" data-evidence-name="{{ $a->title ?? $a->file_name }}" target="_blank" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a>
                                                 </td>
                                             </tr>
                                             @empty
@@ -615,7 +615,7 @@
                                                 <td><small class="text-muted">{{ $cr->inputBy->name ?? '-' }}</small></td>
                                                 <td class="text-center">
                                                     @if($cr->proof_file)
-                                                    <a href="/storage/{{ $cr->proof_file }}" target="_blank" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a>
+                                                    <a href="/storage/{{ $cr->proof_file }}" data-evidence="icr-proof" data-evidence-name="Bukti Penerimaan" target="_blank" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a>
                                                     @else
                                                     <span class="text-muted">-</span>
                                                     @endif
@@ -810,7 +810,7 @@
                 <div class="modal-body" style="padding:24px 28px;">
 
                     <div class="alert alert-light border mb-3" style="font-size:12px;">
-                        Sisa tagihan saat ini (Rupiah): <strong>{{ number_format($balance, 0, ',', '.') }}</strong>
+                        Sisa tagihan bruto (Invoice + PPN &minus; diterima &minus; PPh): <strong>{{ number_format($invoice->sisaBruto(), 0, ',', '.') }}</strong>
                     </div>
 
                     <div class="form-group">
@@ -823,6 +823,13 @@
                         <label class="font-weight-600">Jumlah <span class="text-danger">*</span></label>
                         <input type="text" name="amount" id="inpCrAmount" class="form-control form-control-sm text-right"
                                placeholder="0" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="font-weight-600">PPh</label>
+                        <input type="text" name="withholding_tax" id="inpCrPph" class="form-control form-control-sm text-right"
+                               placeholder="0">
+                        <small class="text-muted">Opsional. PPh aktual menggantikan PPh invoice dan menghitung ulang Total.</small>
                     </div>
 
                     <div class="form-group">
@@ -1043,7 +1050,7 @@ $(function () {
         return v.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
 
-    $('#inpCrAmount').on('input', function () { this.value = fmt(this.value); });
+    $('#inpCrAmount, #inpCrPph').on('input', function () { this.value = fmt(this.value); });
     $('#inpSettleTax').on('input', function () { this.value = fmt(this.value); });
 
     $('#btnAddCashReceipt').on('click', function () {

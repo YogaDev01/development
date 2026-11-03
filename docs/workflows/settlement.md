@@ -76,8 +76,30 @@ Hanya Cash Advance (hanya CA yang punya settlement).
   pesan nomor baris sampai baris itu dihapus. Baris tambahan bernilai 0/kosong
   dibuang saat disimpan (tidak perlu Sub COA/Note). Nomor baris di pesan =
   urutan baris di form.
-- **Settlement berdiri sendiri (sejak 29 Okt 2026).** Form Submit Settlement
-  awalnya **kosong**; baris dibuat lewat Tambah Baris atau **Auto Fill** (menyalin
+- **Baris item terkunci (sejak 4 Nov 2026, menggantikan sebagian butir 29 Okt di
+  bawah).** Form Submit Settlement kembali **terisi 1:1** dari item pengajuan
+  (bukan TAKEOUT) lewat `settlementFormRows()`; tombol Auto Fill dihapus. Baris
+  pertama tiap item **tidak bisa dihapus** dan **Sub COA baris item + pecahannya
+  dikunci** ke Sub COA item asal — yang disunting hanya deskripsi, qty, nilai.
+  Server menolak (submit & draft) baris item yang Sub COA-nya berbeda dari item
+  asal, dan saat Submit menolak item yang tidak punya baris. Hanya **Tambah
+  Baris** (baris tambahan) yang memilih Sub COA. **Lampiran Item wajib saat
+  Submit untuk baris bernilai Settle > 0** (draft tidak mewajibkan); Note per baris
+  opsional. **Keterangan** (label kini "Log History Note") dan **Lampiran
+  Settlement (global)** tidak lagi wajib, termasuk saat total Settle > pengajuan.
+  Bila total Settle **< nilai pengajuan**, muncul form opsional **Bukti Transfer
+  Pengembalian** (drag-drop/paste/pilih; PDF/JPG/PNG ≤ 10 MB, field
+  `refund_proofs[]`), disimpan sebagai lampiran global CR berawalan
+  `bukti-transfer-` (tanpa tabel/kolom baru); diabaikan server bila total ≥ pengajuan.
+  Kartu **Bukti Settlement (Global) dihapus dari form** (4 Nov 2026): evidence
+  hanya per baris (Lampiran Item) + bukti transfer pengembalian. Bukti transfer
+  tersimpan tampil (dan bisa dihapus) di kartu Bukti Transfer. Lampiran global
+  lama lainnya tetap tersimpan & terlihat di detail CR, hanya tidak dikelola di
+  form ini; server masih menerima `realization_attachments[]` (tidak dikirim form).
+  Baris item yang sedang dipecah diberi badge **Sub Utama** (baris pertama) /
+  **Sub Pecahan**; kolom lampiran yang wajib tapi kosong diberi badge **Wajib**.
+- **Settlement berdiri sendiri (sejak 29 Okt 2026; sebagian diganti 4 Nov, lihat
+  di atas).** Form Submit Settlement awalnya **kosong**; baris dibuat lewat Tambah Baris atau **Auto Fill** (menyalin
   seluruh item pengajuan yang belum punya baris). Kolom Request dihapus. Lampiran
   Item dan Note per baris **opsional**. Bila **total Settle > nilai pengajuan CR**
   (`budget_request.amount`, dasar yang sama dengan `expenseClaimAmount()`), maka

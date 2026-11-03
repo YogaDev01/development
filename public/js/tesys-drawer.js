@@ -92,7 +92,9 @@
 
         if (e.key === 'Escape') {
             // Viewer lampiran (carousel) yang sedang terbuka menutup dirinya sendiri dulu.
-            if (document.querySelector('#imgViewerOverlay.show')) return;
+            if (document.querySelector('.tes-ev-overlay.show')) return;
+            // Modal / konfirmasi Swal yang dibuka dari dalam drawer menutup dirinya sendiri dulu.
+            if (document.querySelector('.modal.show, .swal2-container')) return;
             e.preventDefault();
             close();
             return;

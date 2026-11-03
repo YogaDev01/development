@@ -467,6 +467,9 @@ $(function () {
         if ($(this).attr('href') === '#regPaneLog') aturTinggiLogReg(true);
     });
 
+    /* Carousel lampiran di kiri drawer (layar >= 1200px) — komponen bersama tesys-evidence-stage.js. */
+    var stageEvidence = TesysEvidenceStage.attach('regDrawer');
+
     function bukaDrawerReg(id, pemicu) {
         var $baris = pemicu ? $(pemicu).closest('tr') : $('#tblCostRegister tbody tr[data-id="' + id + '"]').first();
 
@@ -478,6 +481,7 @@ $(function () {
         $('#regDrawerActions').empty();
         $('#regDetailTabs a[href="#regPaneInfo"]').tab('show');
         TesysDrawer.open('regDrawer', pemicu);
+        stageEvidence.clear();
 
         // Aksi baris (Ajukan/Approve/Revisi/Batalkan/Hapus) disalin sebagai tombol drawer.
         var $aksi = $baris.find('.ts-actions').children(':not(.ts-action-more):not(.ts-action-menu)')
@@ -537,8 +541,10 @@ $(function () {
                 var atts = d.attachments || [];
                 $('#regAttCount').text(atts.length);
                 $('#regAttBody').html(atts.length ? atts.map(function (a) {
-                    return '<a class="ts-dw-file" href="/storage/' + escAttrReg(a.path) + '" target="_blank" rel="noopener"><i class="fas fa-file"></i><span>' + escReg(a.title) + '</span></a>';
+                    return '<a class="ts-dw-file" href="/storage/' + escAttrReg(a.path) + '" data-evidence="reg-att" data-evidence-name="' + escAttrReg(a.title) + '" target="_blank" rel="noopener"><i class="fas fa-file"></i><span>' + escReg(a.title) + '</span></a>';
                 }).join('') : '<p class="text-muted mb-0" style="font-size:12px;">Belum ada lampiran.</p>');
+
+                stageEvidence.render(TesysEvidenceStage.fromAttachments(d.attachments, 'Lampiran'));
 
                 var logs = (d.logs || []).slice().reverse();
                 $('#regLogBody').html(logs.length ? logs.map(renderLogRowReg).join('')

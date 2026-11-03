@@ -8,13 +8,27 @@
 <div class="content">
     <div class="container-fluid">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">PIC Master</h1>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
-                <li class="breadcrumb-item"><a href="#">Master</a></li>
+        <div class="ts-index tw:flex tw:flex-col tw:gap-4 tw:py-4">
+
+        {{-- Judul & breadcrumb topbar: shell memindahkan <h1> dan .breadcrumb pertama ke topbar
+             (tesys-shell.js hoistPageTitle); disembunyikan secara visual. --}}
+        <div class="tw:sr-only">
+            <h1>PIC Master</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item">Master</li>
                 <li class="breadcrumb-item active">PIC</li>
             </ol>
         </div>
+
+        <x-tw.page-header title="Daftar PIC"
+            description="Penanggung jawab internal maupun eksternal beserta kontak dan akun penghubungnya.">
+            <x-slot:actions>
+                <x-tw.button id="btnTambah" class="ts-add-btn tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Tambah PIC</x-tw.button>
+            </x-slot:actions>
+        </x-tw.page-header>
+
+        {{-- Mobile: tombol di header disembunyikan dan diganti tombol melayang (tesys-ui-refine.css). --}}
+        <button type="button" class="ts-fab" data-trigger="#btnTambah" aria-label="Tambah PIC" title="Tambah PIC"><i class="fas fa-plus" aria-hidden="true"></i></button>
 
         {{-- Nama akun/karyawan contoh masih berlabel "DUMMY" di basis data. Kata
              itu dibuang untuk TAMPILAN saja — nilai yang dikirim tetap id-nya,
@@ -25,6 +39,7 @@
                 $bersih = trim(preg_replace('/\s{2,}/', ' ', preg_replace('/\bdummy\b[\s._-]*/i', '', (string) $v)));
                 return $bersih !== '' ? $bersih : (string) $v;
             };
+
         @endphp
 
         {{-- Tab utama. Internal paling kiri sekaligus tab bawaan: daftar itulah
@@ -56,32 +71,8 @@
             @endforeach
         </ul>
 
-        {{-- Kartu menerangkan isi tab yang sedang terbuka. Pecahan per jenis
-             tidak diulang di sini — itu sudah dipegang tab dan filter Type. --}}
-        <x-stat-cards :cards="[
-            ['Total PIC', $summary['total'], 'primary', 'fas fa-id-badge'],
-            ['Active', $summary['active'], 'success', 'fas fa-check-circle'],
-            ['Inactive', $summary['inactive'], $summary['inactive'] > 0 ? 'warning' : 'secondary', 'fas fa-ban'],
-            ['Internal Tanpa Akun', $summary['unlinked'], $summary['unlinked'] > 0 ? 'danger' : 'secondary', 'fas fa-user-slash'],
-        ]" />
-
-        <div class="card card-primary card-outline shadow-sm">
-
-            <!-- CARD HEADER -->
-            <div class="card-header d-flex align-items-center">
-                <h3 class="card-title">
-                    <i class="fas fa-id-badge mr-1"></i>
-                    Daftar PIC <span id="picTabLabel">{{ $tab === 'db' ? '' : $picTabs[$tab][0] }}</span>
-                </h3>
-                <div class="ml-auto d-flex" style="gap:8px;">
-                    <button id="refreshTable" class="btn btn-secondary btn-sm" type="button">
-                        <i class="fas fa-sync-alt mr-1"></i> Refresh
-                    </button>
-                </div>
-            </div>
-
-            <!-- CARD BODY -->
-            <div class="card-body">
+        {{-- Kartu tunggal: toolbar + tabel + paginasi (pola Beneficiary / Cost Request). --}}
+        <x-tw.card padding="sm">
 
                 <!-- FILTER BAR -->
                 <div class="custom-toolbar mb-3 d-flex justify-content-between align-items-center flex-wrap" style="gap:10px;">
@@ -117,25 +108,22 @@
                         </span>
                     </div>
                     <div class="custom-toolbar-right d-flex flex-wrap" style="gap:8px;">
-                        <button type="button" class="btn btn-success btn-sm" id="btnTambah">
-                            <i class="fas fa-plus mr-1"></i> Tambah PIC
-                        </button>
+                        <x-tw.button id="refreshTable" variant="secondary" size="sm"><i class="fas fa-sync-alt" aria-hidden="true"></i> Refresh</x-tw.button>
                     </div>
                 </div>
 
                 <!-- TABLE -->
                 <div class="table-responsive">
-                    <table id="picTable" class="table table-bordered table-hover table-striped mb-0">
+                    <table id="picTable" class="table table-bordered table-hover mb-0 ts-idx-tbl">
                         <thead class="bg-light">
                             <tr>
+                                <th scope="col" width="4%" class="all">No</th>
                                 <th scope="col" width="11%" class="all">Type</th>
                                 <th scope="col" width="20%" class="all">Nama PIC</th>
                                 <th scope="col" width="15%">Jabatan</th>
                                 <th scope="col" width="14%">Phone</th>
                                 <th scope="col" width="14%">Email</th>
                                 <th scope="col" width="8%">Bank</th>
-                                <th scope="col" width="8%">Token</th>
-                                <th scope="col" width="9%" class="text-right">Nominal</th>
                                 <th scope="col" width="7%">Status</th>
                                 <th scope="col" width="10%" class="text-center all action-column">Action</th>
                             </tr>
@@ -143,12 +131,11 @@
                         <tbody>
                             @forelse($pics as $pic)
                             <tr data-type="{{ $pic->type_label }}" data-typekey="{{ $pic->type }}" data-status="{{ $pic->status }}">
+                                <td>{{ $loop->iteration }}</td>
                                 <td>
                                     {{-- Label & warnanya diambil dari MasterPic::TYPES, jadi
                                          menambah jenis baru tidak perlu menyentuh baris ini. --}}
-                                    <span class="badge {{ \App\Models\MasterPic::TYPE_BADGES[$pic->type] ?? 'badge-light' }} px-2 py-1">
-                                        {{ $pic->type_label }}
-                                    </span>
+                                    <span class="badge {{ \App\Models\MasterPic::TYPE_BADGES[$pic->type] ?? 'badge-light' }} px-2 py-1">{{ $pic->type_label }}</span>
                                 </td>
                                 <td>
                                     <strong>{{ $pic->pic }}</strong>
@@ -170,24 +157,7 @@
                                 <td data-order="{{ $pic->beneficiaries_count > 0 ? 1 : 0 }}">
                                     @if($pic->beneficiaries_count > 0)
                                         <span class="badge badge-info px-2 py-1" style="font-size:10px;"
-                                              title="{{ $pic->beneficiaries_count }} beneficiary terhubung ke PIC ini">
-                                            In-House
-                                        </span>
-                                    @else
-                                        <span class="text-muted">-</span>
-                                    @endif
-                                </td>
-                                {{-- Hanya dibaca di sini. Mengubahnya lewat modal Edit,
-                                     sejalan dengan kolom lain di baris ini. --}}
-                                <td>{{ $pic->token ?: '-' }}</td>
-                                <td class="text-right" data-order="{{ $pic->nominal !== null ? (float) $pic->nominal : -1 }}">
-                                    @if($pic->nominal !== null)
-                                        {{-- Pemisah ribuan titik, desimal koma. Desimal hanya
-                                             ditulis kalau memang ada — ",00" di setiap baris
-                                             menambah lebar kolom tanpa menambah keterangan. --}}
-                                        {{ fmod((float) $pic->nominal, 1) == 0.0
-                                            ? number_format((float) $pic->nominal, 0, ',', '.')
-                                            : number_format((float) $pic->nominal, 2, ',', '.') }}
+                                              title="{{ $pic->beneficiaries_count }} beneficiary terhubung ke PIC ini">In-House</span>
                                     @else
                                         <span class="text-muted">-</span>
                                     @endif
@@ -229,7 +199,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="10">
+                                <td colspan="9">
                                     <x-empty title="Belum ada data PIC" icon="fas fa-folder-open" compact />
                                 </td>
                             </tr>
@@ -238,9 +208,8 @@
                     </table>
                 </div>
 
-            </div>
+        </x-tw.card>
         </div>
-
     </div>
 </div>
 
@@ -325,28 +294,6 @@
                                 <input type="email" name="email" id="tambahEmail"
                                        class="form-control"
                                        placeholder="Masukkan email"
-                                       autocomplete="off">
-                            </div>
-                        </div>
-
-                        <!-- TOKEN -->
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="font-weight-600">Token</label>
-                                <input type="text" name="token" id="tambahToken"
-                                       class="form-control" maxlength="100"
-                                       placeholder="Masukkan token"
-                                       autocomplete="off">
-                            </div>
-                        </div>
-
-                        <!-- NOMINAL -->
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="font-weight-600">Nominal</label>
-                                <input type="text" name="nominal" id="tambahNominal"
-                                       class="form-control text-right money-input"
-                                       inputmode="decimal" placeholder="0"
                                        autocomplete="off">
                             </div>
                         </div>
@@ -486,26 +433,6 @@
                                 </div>
                             </div>
 
-                            <!-- TOKEN -->
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="font-weight-600">Token</label>
-                                    <input type="text" name="token" id="editToken"
-                                           class="form-control" maxlength="100"
-                                           autocomplete="off">
-                                </div>
-                            </div>
-
-                            <!-- NOMINAL -->
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="font-weight-600">Nominal</label>
-                                    <input type="text" name="nominal" id="editNominal"
-                                           class="form-control text-right money-input"
-                                           inputmode="decimal" autocomplete="off">
-                                </div>
-                            </div>
-
                             <!-- AKUN USER (M-02) -->
                             <div class="col-md-6">
                                 <div class="form-group">
@@ -568,6 +495,7 @@
 @endsection
 
 @push('styles')
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
 
 /* Jarak antar isian di modal PIC dibuat seragam: tinggi tiap kolom disamakan
@@ -615,8 +543,6 @@
 .table td,.table th { vertical-align:middle !important; }
 .action-column      { white-space:nowrap !important; min-width:80px !important; }
 
-/* Kolom uang dibaca dengan membandingkan digitnya, jadi angkanya rata kanan. */
-.money-input { font-variant-numeric: tabular-nums; }
 .action-buttons     { display:flex; align-items:center; justify-content:center; flex-wrap:nowrap; gap:4px; }
 .action-buttons .btn { flex-shrink:0; }
 
@@ -699,7 +625,6 @@ $(function () {
     // Tab yang sedang terbuka. Dipakai juga oleh modal Tambah (jenis bawaan),
     // jadi dideklarasikan sebelum handler mana pun dipasang.
     var activeTab = '{{ $tab }}';
-    var PIC_SUMMARIES = @json($summaries);
 
     /*
     |--------------------------------------------------------------------------
@@ -758,12 +683,6 @@ $(function () {
             $('#editPosition').val(res.position ?? '');
             $('#editPhone').val(res.phone ?? '');
             $('#editEmail').val(res.email ?? '');
-            $('#editToken').val(res.token ?? '');
-            // Nilai dari server selalu berdesimal dua ("100000000.00"). Desimal
-            // nol dibuang supaya yang terlihat sama dengan yang tertulis di tabel.
-            $('#editNominal').val(res.nominal !== null && res.nominal !== undefined
-                ? formatMoney(String(res.nominal).replace(/\.00$/, '').replace('.', ','))
-                : '');
             $('#editUser').val(res.user_id ?? '');
             $('#editEmployee').val(res.employee_id ?? '');
             $('#editStatus').val(res.status);
@@ -800,58 +719,6 @@ $(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | NOMINAL — pemisah ribuan
-    |
-    | Kotaknya bertipe text, bukan number: input number tidak bisa menampilkan
-    | titik pemisah, dan tampilannya ikut berubah-ubah mengikuti locale browser
-    | ("100000000,00" pada tangkapan layar sebelumnya). Yang dikirim ke server
-    | tetap angka polos — lihat handler submit di bawah.
-    |--------------------------------------------------------------------------
-    */
-
-    function formatMoney(raw) {
-        let v = String(raw ?? '').replace(/[^\d,.-]/g, '');
-        if (v === '') return '';
-
-        // Titik dianggap pemisah ribuan, koma pemisah desimal.
-        v = v.replace(/\./g, '');
-        let parts  = v.split(',');
-        let intRaw = parts[0].replace(/\D/g, '');
-        let dec    = parts.length > 1 ? parts[1].replace(/\D/g, '').slice(0, 2) : null;
-
-        if (intRaw === '') intRaw = '0';
-        let int = intRaw.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-
-        return dec !== null ? int + ',' + dec : int;
-    }
-
-    // Angka polos untuk dikirim ke server: "100.000.000,50" -> "100000000.50"
-    function unformatMoney(raw) {
-        let v = String(raw ?? '').trim();
-        if (v === '') return '';
-        return v.replace(/\./g, '').replace(',', '.');
-    }
-
-    $(document).on('input', '.money-input', function () {
-        let el  = this;
-        let end = el.value.length - el.selectionStart;   // jarak kursor dari kanan
-        el.value = formatMoney(el.value);
-        // Kursor dikembalikan diukur dari kanan, supaya titik yang baru
-        // disisipkan tidak melompatkan kursor ke ujung.
-        let pos = Math.max(0, el.value.length - end);
-        try { el.setSelectionRange(pos, pos); } catch (e) {}
-    });
-
-    // Kedua form dikirim biasa (bukan AJAX), jadi nilainya dipoloskan tepat
-    // sebelum berangkat — kalau tidak, "100.000.000" gagal validasi numeric.
-    $(document).on('submit', '#formTambah, #formEdit', function () {
-        $(this).find('.money-input').each(function () {
-            this.value = unformatMoney(this.value);
-        });
-    });
-
-    /*
-    |--------------------------------------------------------------------------
     | DATATABLE (dibungkus try-catch — kalau gagal, modal Tambah/Edit
     | di atas tetap jalan normal, tabel jatuh ke tampilan HTML polos)
     |--------------------------------------------------------------------------
@@ -863,12 +730,15 @@ $(function () {
         responsive: { details: { type: 'inline' } },
         autoWidth: false, pageLength: 10, lengthChange: true,
         searching: true, ordering: true, orderCellsTop: true,
+        order: [],
         columnDefs: [
-            // Indeks kolom: 0 Type, 1 Nama PIC, 2 Jabatan, 3 Phone, 4 Email,
-            // 5 Bank, 6 Token, 7 Nominal, 8 Status, 9 Action.
-            { responsivePriority: 1,   targets: [0, 1, -1] },
-            { responsivePriority: 3,   targets: [5, 6, 7] },
-            { responsivePriority: 100, targets: [2, 3, 4, 8] }
+            // Indeks kolom: 0 No, 1 Type, 2 Nama PIC, 3 Jabatan, 4 Phone,
+            // 5 Email, 6 Bank, 7 Status, 8 Action. Kolom No tidak bisa diurutkan:
+            // nomornya dihitung ulang tiap tabel digambar.
+            { orderable: false,        targets: [0] },
+            { responsivePriority: 1,   targets: [0, 2, -1] },
+            { responsivePriority: 3,   targets: [6] },
+            { responsivePriority: 100, targets: [1, 3, 4, 5, 7] }
         ],
         dom:
             'rt' +
@@ -883,6 +753,14 @@ $(function () {
             infoEmpty: 'Tidak ada data',
             paginate: { previous: 'Previous', next: 'Next' }
         }
+    });
+
+    // Kolom No dihitung ulang tiap digambar (urutan tampil, bukan urutan muat).
+    picTable.on('draw.dt', function () {
+        var mulai = picTable.page.info().start;
+        picTable.column(0, { page: 'current' }).nodes().each(function (cell, i) {
+            cell.textContent = mulai + i + 1;
+        });
     });
 
     $('#picTable_filter').hide();
@@ -929,10 +807,8 @@ $(function () {
         return activeTab === 'internal' ? jenis === 'internal' : jenis !== 'internal';
     });
 
-    var PIC_TAB_LABEL = { internal: 'Internal', external: 'External', db: '' };
-
     function applyTab(tab, pushUrl) {
-        if (!PIC_TAB_LABEL.hasOwnProperty(tab)) tab = 'internal';
+        if (['internal', 'external', 'db'].indexOf(tab) === -1) tab = 'internal';
         activeTab = tab;
 
         $('.pic-tab').removeClass('active')
@@ -942,8 +818,8 @@ $(function () {
         // (dipakai columnDefs & data-order) jadi tidak ikut bergeser.
         // Type mubazir di tab Internal; di Database rincian kontak dilepas
         // supaya barisnya tetap terbaca.
-        picTable.column(0).visible(tab !== 'internal', false);
-        [3, 4].forEach(function (i) { picTable.column(i).visible(tab !== 'db', false); });
+        picTable.column(1).visible(tab !== 'internal', false);
+        [4, 5].forEach(function (i) { picTable.column(i).visible(tab !== 'db', false); });
         picTable.columns.adjust();
 
         // Filter Type tidak menyaring apa pun di tab Internal. Sisa pilihan dari
@@ -958,13 +834,6 @@ $(function () {
         }
 
         $('#picUnlinkedWrap').toggle(tab !== 'external');
-        $('#picTabLabel').text(PIC_TAB_LABEL[tab]);
-
-        var ringkas = PIC_SUMMARIES[tab] || {};
-        $('.ts-kpi-row .ts-kpi').each(function (i) {
-            var nilai = [ringkas.total, ringkas.active, ringkas.inactive, ringkas.unlinked][i];
-            if (nilai !== undefined) $(this).find('.ts-kpi-value').text(nilai);
-        });
 
         picTable.page('first').draw();
 

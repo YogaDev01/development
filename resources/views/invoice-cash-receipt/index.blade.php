@@ -459,32 +459,45 @@
     </div>
 </div>
 
-{{-- MODAL KOMENTAR --}}
-<div class="modal fade" id="mdlCommentInv" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
-            <div class="modal-header" style="background:var(--charcoal);border-bottom:3px solid var(--accent);">
-                <h5 class="modal-title text-white"><i class="fas fa-comment mr-2" style="color:var(--accent);"></i> Komentar Invoice</h5>
-                <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+{{-- DRAWER KOMENTAR: info singkat invoice (TANPA nominal — akses umum) + log gaya chat.
+     Isi dari /invoice-cash-receipt/{id}/drawer-json; siapa pun yang bisa membuka daftar ini boleh menulis. --}}
+<x-drawer id="invDrawer" label="Detail & komentar invoice" width="max(40vw, 520px)">
+    <div id="invDrawerContent" hidden>
+        <ul class="nav nav-tabs mb-3" id="invDetailTabs" style="border-bottom:2px solid var(--border);">
+            <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#invPaneInfo"><i class="fas fa-info-circle mr-1"></i> Info</a></li>
+            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#invPaneLogs"><i class="fas fa-comments mr-1"></i> Log</a></li>
+            {{-- Tampil hanya bila server mengirim attachment_groups (role Finance & approval). --}}
+            <li class="nav-item" id="invTabAttLi" hidden><a class="nav-link" data-toggle="tab" href="#invPaneAtt"><i class="fas fa-paperclip mr-1"></i> Attachment</a></li>
+        </ul>
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="invPaneInfo"></div>
+            <div class="tab-pane fade" id="invPaneAtt"></div>
+            <div class="tab-pane fade" id="invPaneLogs">
+                <div id="invLogBody" class="inv-chat"></div>
+                <form id="invLogForm" class="inv-log-form">
+                    <textarea id="invLogInput" class="form-control" rows="2" maxlength="2000"
+                              placeholder="Tulis komentar…" aria-label="Komentar invoice"></textarea>
+                    <button type="submit" class="btn btn-sm btn-primary" id="invLogSend"><i class="fas fa-paper-plane mr-1"></i> Kirim</button>
+                </form>
             </div>
-            <form id="frmCommentInv" method="POST">
-                @csrf
-                <div class="modal-body" style="padding:24px 28px;">
-                    <p id="commentInvText" class="text-muted mb-3"></p>
-                    <div class="form-group mb-0">
-                        <label class="font-weight-600">Komentar <span class="text-danger">*</span></label>
-                        <textarea name="comment" class="form-control" rows="4" maxlength="2000"
-                                  placeholder="Tulis komentar..." required></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer" style="background:var(--surface-2);">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane mr-1"></i> Kirim</button>
-                </div>
-            </form>
         </div>
     </div>
-</div>
+    <div id="invDrawerError" hidden></div>
+    <div id="invDrawerLoading">
+        <x-skeleton type="lines" :rows="2" />
+        <div style="height:14px"></div>
+        <x-skeleton type="card" />
+    </div>
+
+    {{-- Halaman detail penuh memuat nominal: tombolnya hanya untuk role yang berhak melihatnya. --}}
+    @if(Auth::user()->hasRole(['approver','finance_manager','finance','accounting','collection','superadmin']))
+    <x-slot:footer>
+        <a href="#" id="invDrawerDetailLink" class="ts-action-primary" style="text-decoration:none;">
+            <i class="fas fa-external-link-alt"></i><span class="ts-al">Lihat Detail</span>
+        </a>
+    </x-slot:footer>
+    @endif
+</x-drawer>
 
 {{-- MODAL REVISE --}}
 <div class="modal fade" id="mdlReviseInv" tabindex="-1" role="dialog" aria-hidden="true">
@@ -595,38 +608,44 @@
 #tblInvoice tbody tr:hover { background-color:var(--surface) !important; }
 #tblInvoice tbody td { background-color:var(--surface); }
 
-/* ── TABEL: scroll horizontal, kolom No Invoice & Action beku ── */
+/* ── TABEL: scroll horizontal, hanya kolom Action yang beku (No Invoice tidak lagi dibekukan) ── */
 .inv-hscroll { overflow-x:auto; }
 .inv-hscroll #tblInvoice { width:auto !important; min-width:100%; margin-bottom:0; }
 .inv-hscroll #tblInvoice th,
 .inv-hscroll #tblInvoice td { white-space:nowrap; }
 
-/* Kolom Code & Action dibekukan di tepi kiri/kanan — termasuk sel header dan
-   footer-nya. position:sticky pada <th> perlu !important karena CSS DataTables
+/* Kolom Action dibekukan di tepi kanan — termasuk sel header dan footer-nya.
+   position:sticky pada <th> perlu !important karena CSS DataTables
    memasang position:relative pada setiap header yang bisa diurutkan
    (table.dataTable>thead .sorting), yang kalau menang akan membatalkan freeze
    di baris header saja: datanya beku, judul kolomnya ikut menggeser.
    Latar sel wajib pekat, kalau tidak isi kolom lain terlihat menembusnya. */
-.inv-hscroll #tblInvoice th.inv-col-code,
-.inv-hscroll #tblInvoice td.inv-col-code {
-    position:sticky !important; left:0; z-index:3;
-    background:var(--surface);
-    box-shadow:2px 0 6px -2px rgba(0,0,0,.18);
-}
 .inv-hscroll #tblInvoice th.action-column,
 .inv-hscroll #tblInvoice td.action-column {
     position:sticky !important; right:0; z-index:3;
     background:var(--surface);
     box-shadow:-2px 0 6px -2px rgba(0,0,0,.18);
 }
-.inv-hscroll #tblInvoice thead th.inv-col-code,
 .inv-hscroll #tblInvoice thead th.action-column,
-.inv-hscroll #tblInvoice tfoot th.inv-col-code,
 .inv-hscroll #tblInvoice tfoot th.action-column {
     background:var(--surface-2) !important; z-index:4;
 }
-.inv-hscroll #tblInvoice tbody tr:hover > td.inv-col-code,
 .inv-hscroll #tblInvoice tbody tr:hover > td.action-column { background:var(--surface-2); }
+
+/* Drawer komentar — chat: pesan sendiri rata kanan, lainnya kiri (pola .cr-chat di Cost Request). */
+.inv-chat { display:flex; flex-direction:column; gap:14px; padding:4px 2px; }
+.inv-chat-row { display:flex; gap:10px; max-width:84%; }
+.inv-chat-row.mine { align-self:flex-end; flex-direction:row-reverse; text-align:right; }
+.inv-chat-av { width:30px; height:30px; border-radius:50%; background:var(--info-bg); color:var(--text-dim); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; overflow:hidden; }
+.inv-chat-row.mine .inv-chat-av { background:var(--charcoal); color:#fff; }
+.inv-chat-av img { width:100%; height:100%; object-fit:cover; }
+.inv-chat-bubble { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:8px 12px; font-size:12px; }
+.inv-chat-meta { font-size:10px; color:var(--text-faint); margin-bottom:4px; }
+.inv-chat-note { margin-top:6px; font-size:11.5px; line-height:1.45; white-space:pre-line; color:var(--text); }
+#invPaneLogs.active { display:flex; flex-direction:column; }
+#invPaneLogs #invLogBody { margin-top:auto; }
+.inv-log-form { display:flex; gap:8px; align-items:flex-end; margin-top:16px; padding-top:12px; border-top:1px solid var(--border); position:sticky; bottom:-28px; margin-bottom:-28px; padding-bottom:28px; background:var(--surface); }
+.inv-log-form textarea { font-size:12px; resize:none; flex:1 1 auto; }
 
 .dataTables_wrapper .row:last-child { margin-top:18px; align-items:center; }
 .dataTables_info { padding-top:0 !important; font-size:14px; color:var(--text-faint); }
@@ -789,12 +808,12 @@ $(function () {
         if ($baris.length) window.location.href = $baris.attr('data-href');
     })();
 
-    /* Klik di mana saja pada baris membuka detail invoice (pola Cost Request). Kontrol di dalam
+    /* Klik di mana saja pada baris membuka drawer detail invoice (pola Cost Request). Kontrol di dalam
        baris (kode yang disalin, tombol aksi, kontrol responsif DataTables) bekerja sendiri. */
     $(document).on('click', '#tblInvoice tbody tr[data-href]', function (e) {
         if ($(e.target).closest('a, button, input, select, textarea, label, form, .ts-actions, .ts-action-menu, td.dtr-control').length) return;
         if (window.getSelection && String(window.getSelection()).length) return;
-        window.location.href = $(this).attr('data-href');
+        bukaDrawerInv($(this).data('id'), $(this).data('code'), this, 'info'); // klik baris -> tab Info
     });
 
     // Bungkus HANYA tabelnya dengan scroller horizontal, kolom No Invoice & Action beku.
@@ -915,7 +934,7 @@ $(function () {
         if (tombol && window.TesysUI && TesysUI.busy) TesysUI.busy(tombol, true);
     }
 
-    $(document).on('submit', '#frmReviseInv, #frmCancelInv, #frmCommentInv', function () { sibukkan(this); });
+    $(document).on('submit', '#frmReviseInv, #frmCancelInv', function () { sibukkan(this); });
 
     /* SUBMIT CONFIRM */
     $(document).on('submit', '.frmSubmitInv', function (e) {
@@ -945,13 +964,143 @@ $(function () {
         .then(function(r){ if(r.isConfirmed) { sibukkan(form); form.submit(); } });
     });
 
-    /* ── KOMENTAR ── */
+    /* ── KOMENTAR: drawer info singkat (tanpa nominal) + log chat ── */
+    var currentUserId = parseInt('{{ (int) Auth::id() }}', 10) || 0;
+    var invDrawerId = null;
+
+    function esc(s) { return $('<div>').text(s == null ? '' : String(s)).html(); }
+
+    function renderInvLogRow(log) {
+        var mine = log.user_id && currentUserId && log.user_id === currentUserId;
+        var isNote = log.kind === 'note';
+        var actor = log.actor || '-';
+        var initials = actor.trim().split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase() || '?';
+        var isi;
+        if (isNote) {
+            isi = '<div class="inv-chat-note" style="margin-top:0;">' + esc(log.notes) + '</div>';
+        } else {
+            isi = '<span class="badge badge-' + esc(log.action_color) + ' px-2 py-1" style="font-size:9px;">' + esc(log.action_label) + '</span>';
+            (log.lines || []).forEach(function (t) { isi += '<div class="inv-chat-note">' + esc(t) + '</div>'; });
+        }
+        return '<div class="inv-chat-row ' + (mine ? 'mine' : '') + '">' +
+            '<div class="inv-chat-av">' + (log.avatar ? '<img src="' + esc(log.avatar) + '" alt="">' : esc(initials)) + '</div>' +
+            '<div><div class="inv-chat-meta"><strong>' + esc(actor) + '</strong> · ' + esc(log.date) + '</div>' +
+            '<div class="inv-chat-bubble">' + isi + '</div></div></div>';
+    }
+
+    /* Tab Log setinggi area gulir drawer supaya chat menempel di bawah; lalu gulir ke pesan terbaru. */
+    function aturTinggiInvLog(gulirKeBawah) {
+        var body = document.getElementById('invDrawer-body');
+        var $tabs = $('#invDetailTabs');
+        if (!body || !$tabs.length) return;
+        var cs = getComputedStyle(body);
+        var tinggi = body.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom)
+                   - $tabs.outerHeight() - parseFloat($tabs.css('margin-bottom')) - parseFloat($tabs.css('margin-top'));
+        $('#invPaneLogs').css('min-height', Math.max(tinggi, 0));
+        if (gulirKeBawah) body.scrollTop = body.scrollHeight;
+    }
+    $(document).on('shown.bs.tab', '#invDetailTabs a[data-toggle="tab"]', function () {
+        if ($(this).attr('href') === '#invPaneLogs') aturTinggiInvLog(true);
+    });
+    $(window).on('resize', function () { if ($('#invPaneLogs').hasClass('active')) aturTinggiInvLog(false); });
+
+    /* Carousel lampiran Surat Jalan di kiri drawer (layar >= 1200px) — komponen bersama tesys-evidence-stage.js. */
+    var stageInv = TesysEvidenceStage.attach('invDrawer');
+
     $(document).on('click', '.btn-comment-inv', function () {
-        var id = $(this).data('id');
-        $('#commentInvText').text('Komentar untuk invoice ' + $(this).data('code') + ' akan tercatat di Log & Approval.');
-        $('#frmCommentInv').attr('action', '/invoice-cash-receipt/' + id + '/comment');
-        $('#frmCommentInv textarea[name="comment"]').val('');
-        $('#mdlCommentInv').modal('show');
+        bukaDrawerInv($(this).data('id'), $(this).data('code'), this, 'log'); // tombol Komentar -> tab Log
+    });
+
+    function renderLampiranInv(groups, idInv) {
+        var html = '', ada = false;
+        groups.forEach(function (g, gi) {
+            if (!g.items.length) return;
+            ada = true;
+            html += '<h6 class="ts-dw-section-title"><i class="fas fa-paperclip mr-1"></i> ' + esc(g.label) +
+                ' <span class="badge badge-secondary ml-1">' + g.items.length + '</span></h6><div class="mb-3">';
+            g.items.forEach(function (a) {
+                html += '<a href="/storage/' + esc(a.path) + '" data-evidence="inv-' + idInv + '-' + gi + '" data-evidence-name="' + esc(a.original_name) +
+                    '" target="_blank" class="d-block py-1" style="font-size:12.5px;"><i class="fas fa-file-alt mr-2 text-muted"></i>' + esc(a.original_name) + '</a>';
+            });
+            html += '</div>';
+        });
+        return ada ? html : '<div class="text-muted text-center py-3" style="font-size:12px;">Belum ada lampiran.</div>';
+    }
+
+    function bukaDrawerInv(id, kode, pemicu, tab) {
+        invDrawerId = id;
+        stageInv.clear();
+        $('#invTabAttLi').attr('hidden', true);
+        $('#invDrawerDetailLink').attr('href', '/invoice-cash-receipt/' + id);
+
+        $('#invDrawerContent').attr('hidden', true);
+        $('#invDrawerError').attr('hidden', true).empty();
+        $('#invDrawerLoading').show();
+        $('#invDrawer-eyebrow').text('Invoice');
+        $('#invDrawer-title').text(kode || 'Memuat…');
+
+        // Menu titik tiga ditutup oleh drawer yang membukanya; pemicu dipakai untuk mengembalikan fokus.
+        TesysDrawer.open('invDrawer', pemicu);
+
+        $.getJSON('/invoice-cash-receipt/' + id + '/drawer-json')
+            .done(function (d) {
+                if (invDrawerId !== id) return; // drawer sudah dipindah ke invoice lain
+                $('#invDrawer-title').text(d.code);
+
+                var kv = '<dl class="ts-dw-kv">';
+                (d.info || []).forEach(function (p) { kv += '<dt>' + esc(p[0]) + '</dt><dd>' + esc(p[1]) + '</dd>'; });
+                kv += '</dl>';
+                $('#invPaneInfo').html(
+                    '<div class="mb-3"><span class="badge badge-' + esc(d.status_tone) + ' px-2 py-1">' + esc(d.status_label) + '</span></div>' + kv);
+
+                var html = '';
+                (d.logs || []).forEach(function (l) { html += renderInvLogRow(l); });
+                $('#invLogBody').html(html || '<div class="text-muted text-center py-3" style="font-size:12px;">Belum ada riwayat.</div>');
+                $('#invLogInput').val('');
+
+                $('#invDrawerLoading').hide();
+                $('#invDrawerContent').attr('hidden', false);
+                // Tab Attachment hanya ada bila server mengirimnya (role berhak).
+                var bolehAtt = Array.isArray(d.attachment_groups);
+                $('#invTabAttLi').attr('hidden', !bolehAtt);
+                $('#invPaneAtt').html(bolehAtt ? renderLampiranInv(d.attachment_groups, d.id) : '');
+
+                // Surat Jalan (bila ada) langsung tampil di carousel.
+                if (d.dn_attachments && d.dn_attachments.length) {
+                    stageInv.render(TesysEvidenceStage.fromAttachments(d.dn_attachments, 'Surat Jalan'));
+                }
+
+                $('#invDetailTabs a[href="' + (tab === 'log' ? '#invPaneLogs' : '#invPaneInfo') + '"]').tab('show');
+                if (tab === 'log') aturTinggiInvLog(true);
+            })
+            .fail(function (xhr) {
+                $('#invDrawerLoading').hide();
+                var pesan = xhr.status === 403 ? 'Anda tidak berhak melihat invoice ini.' : 'Detail invoice belum dapat dimuat. Coba lagi.';
+                $('#invDrawerError').attr('hidden', false).html('<div class="alert alert-danger mb-0">' + esc(pesan) + '</div>');
+            });
+    }
+
+    $(document).on('submit', '#invLogForm', function (e) {
+        e.preventDefault();
+        var $in = $('#invLogInput'), $btn = $('#invLogSend');
+        var teks = $.trim($in.val());
+        if (!teks) { $in.focus(); return; }
+        $btn.prop('disabled', true);
+        $.ajax({
+            url: '/invoice-cash-receipt/' + invDrawerId + '/comment', method: 'POST', dataType: 'json',
+            data: { _token: $('meta[name="csrf-token"]').attr('content'), comment: teks }
+        }).done(function (res) {
+            if (!res || !res.log) return;
+            $('#invLogBody .text-muted').remove();
+            $('#invLogBody').append(renderInvLogRow(res.log));
+            $in.val('');
+            var body = document.getElementById('invDrawer-body');
+            if (body) body.scrollTop = body.scrollHeight;
+        }).fail(function (xhr) {
+            var pesan = (xhr.responseJSON && (xhr.responseJSON.message || (xhr.responseJSON.errors && xhr.responseJSON.errors.comment && xhr.responseJSON.errors.comment[0])))
+                || 'Komentar belum dapat dikirim. Coba lagi.';
+            Swal.fire({ icon: 'error', title: 'Gagal mengirim', text: pesan });
+        }).always(function () { $btn.prop('disabled', false); });
     });
 
     /* ── REVISE ── */

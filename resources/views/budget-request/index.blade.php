@@ -422,30 +422,15 @@
 
 {{-- accounts JSON untuk realisasi --}}
 
-<!-- IMAGE VIEWER (carousel + zoom) -->
-<div id="imgViewerOverlay">
-    <button aria-label="Close" type="button" id="imgViewerClose" title="Close"><i class="fas fa-times"></i></button>
-    <div id="imgViewerName"></div>
-    <div id="imgViewerStage">
-        <button aria-label="Previous" type="button" class="imgViewerNav" id="imgViewerPrev" title="Previous"><i class="fas fa-chevron-left"></i></button>
-        <img id="imgViewerImg" src="" alt="">
-        {{-- File non-gambar (PDF/dokumen) tetap ikut urutan carousel, tapi
-             ditampilkan sebagai kartu logo + nama file yang bisa diklik. --}}
-        <a id="imgViewerFile" href="#" target="_blank" rel="noopener" style="display:none;">
-            <i class="fas fa-file-pdf" id="imgViewerFileIcon"></i>
-            <span id="imgViewerFileName"></span>
-            <small>Klik untuk membuka di tab baru</small>
-        </a>
-        <button aria-label="Next" type="button" class="imgViewerNav" id="imgViewerNext" title="Next"><i class="fas fa-chevron-right"></i></button>
-    </div>
-    <div id="imgViewerCounter"></div>
-</div>
-
 @endsection
 
 @push('styles')
 <link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
+
+/* Tabel yang baru tiba lewat AJAX ikut memudar, bukan muncul mendadak
+   (animasi masuk halaman sendiri ada di tesys-ui-motion.css). */
+.cr-tab-host.cr-tab-in { animation: tesys-enter .35s var(--ease-out) backwards; }
 
 .text-var-pos { color:var(--success); }
 .text-var-neg { color:var(--danger); }
@@ -609,8 +594,7 @@
 .table td,.table th  { vertical-align:middle !important; }
 .action-buttons      { display:flex; align-items:center; justify-content:center; gap:3px; flex-wrap:nowrap; }
 .font-weight-600     { font-weight:600; }
-.dataTables_wrapper .row:last-child { margin-top:18px; align-items:center; }
-.dataTables_info { padding-top:0 !important; font-size:14px; color:var(--text-faint); }
+.dataTables_wrapper .row:last-child { margin-top:18px; align-items:center; }.dataTables_info { padding-top:0 !important; font-size:14px; color:var(--text-faint); }
 .dataTables_length { display:flex; align-items:center; margin-left:18px; }
 .dataTables_length label { display:flex; align-items:center; gap:10px; margin-bottom:0; font-size:14px; font-weight:600; color:var(--text-faint); }
 .dataTables_length select { appearance:none !important; background-color:var(--surface) !important; color:var(--text-dim) !important; border:1px solid var(--border) !important; border-radius:var(--radius-sm) !important; padding:4px 30px 4px 10px !important; height:36px !important; min-width:72px !important; font-size:14px !important; font-weight:600 !important; cursor:pointer; box-shadow:none !important; }
@@ -656,49 +640,6 @@
 .ts-dropdown .optgroup .option,
 .selectize-dropdown .optgroup .option {
     padding-left: 26px !important;
-}
-
-/* ── IMAGE VIEWER (carousel + zoom, ala WhatsApp) ── */
-#imgViewerOverlay {
-    position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:2000;
-    display:none; align-items:center; justify-content:center; flex-direction:column;
-}
-#imgViewerOverlay.show { display:flex; }
-#imgViewerStage { position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-#imgViewerImg {
-    max-width:92%; max-height:calc(100% - 96px); object-fit:contain; cursor:zoom-in;
-    transition:transform .15s ease; transform-origin:center center; user-select:none; -webkit-user-drag:none;
-}
-#imgViewerFile {
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
-    background:#fff; color:var(--text); border-radius:var(--radius-lg);
-    padding:40px 48px; max-width:80vw; text-decoration:none;
-}
-#imgViewerFile:hover { background:var(--surface-2); }
-/* Saat drawer detail terbuka, viewer hanya menempati ruang di sebelah kirinya (lihat openViewer)
-   supaya data di drawer tetap terbaca & lampiran lain bisa dipilih dari drawer. */
-#imgViewerFile i { font-size:72px; color:var(--danger); }
-#imgViewerFile span { font-size:14px; font-weight:600; word-break:break-all; text-align:center; }
-#imgViewerFile small { font-size:11px; color:var(--text-faint); }
-#imgViewerImg.zoomed { cursor:grab; }
-#imgViewerImg.dragging { cursor:grabbing; transition:none; }
-#imgViewerClose {
-    position:absolute; top:16px; right:20px; z-index:10; background:rgba(255,255,255,.12); border:none; color:#fff;
-    width:38px; height:38px; border-radius:50%; font-size:20px; display:flex; align-items:center; justify-content:center; cursor:pointer;
-}
-#imgViewerClose:hover { background:rgba(255,255,255,.25); }
-.imgViewerNav {
-    position:absolute; top:50%; transform:translateY(-50%); background:rgba(255,255,255,.12); border:none; color:#fff;
-    width:44px; height:44px; border-radius:50%; font-size:20px; display:flex; align-items:center; justify-content:center; cursor:pointer;
-}
-.imgViewerNav:hover { background:rgba(255,255,255,.25); }
-#imgViewerPrev { left:16px; }
-#imgViewerNext { right:16px; }
-#imgViewerCounter { position:absolute; bottom:16px; left:50%; transform:translateX(-50%); color:#fff; font-size:12px; background:rgba(255,255,255,.12); padding:4px 12px; border-radius:var(--radius-lg); }
-#imgViewerName { position:absolute; top:20px; left:20px; z-index:10; color:#fff; font-size:12px; opacity:.85; max-width:60vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-@media (max-width:576px) {
-    .imgViewerNav { width:36px; height:36px; font-size:16px; }
-    #imgViewerPrev { left:6px; } #imgViewerNext { right:6px; }
 }
 
 /* Panel filter gabungan: dua kolom, rapat, dan tidak terpotong kontainer. */
@@ -1204,7 +1145,7 @@ $(function () {
         cfg.loading = true;
         $.get($host.data('url'), { date_from: CR_DATE_FROM, date_to: CR_DATE_TO })
             .done(function (html) {
-                $host.html(html);
+                $host.html(html).addClass('cr-tab-in');
                 cfg.loaded = true;
                 initCrTable(tab);
                 crSyncCounts(tab);
@@ -1774,86 +1715,14 @@ $(function () {
         else { el.text('').hide(); }
     }
 
-    /* ── IMAGE VIEWER — carousel + zoom (ala WhatsApp), untuk tab Request & Realization ── */
+    /* ── PENAMPIL LAMPIRAN — pemicu klik kartu/tombol lampiran (komponen bersama) ── */
     (function () {
-        var overlay  = document.getElementById('imgViewerOverlay');
-        var stageImg = document.getElementById('imgViewerImg');
-        var counter  = document.getElementById('imgViewerCounter');
-        var images   = [];
-        var idx      = 0;
-        var zoomed   = false;
-        var isDragging = false, dragStartX = 0, dragStartY = 0, imgX = 0, imgY = 0;
-        var justSwiped = false;   // menandai klik yang sebenarnya gerakan geser
-
-        function renderViewer() {
-            var item = images[idx];
-            if (!item) return;
-            resetZoom();
-
-            /* Lampiran non-gambar tidak bisa digambar di <img>; slide-nya diganti
-               kartu logo + nama file, posisinya tetap sesuai urutan unggahan. */
-            if (item.is_image === false) {
-                stageImg.style.display = 'none';
-                $('#imgViewerFile').css('display', 'flex').attr('href', item.full);
-                $('#imgViewerFileIcon').attr('class', 'fas ' + (item.is_pdf ? 'fa-file-pdf' : 'fa-file-alt'));
-                $('#imgViewerFileName').text(item.name || '');
-            } else {
-                $('#imgViewerFile').hide();
-                stageImg.style.display = '';
-                stageImg.src = item.full;
-            }
-
-            $('#imgViewerName').text(item.name || '');
-            counter.textContent = (idx + 1) + ' / ' + images.length;
-            /* Panah hanya ada kalau memang ada tujuannya: tidak tampil untuk
-               lampiran tunggal, tidak ada panah kiri di lampiran pertama dan
-               tidak ada panah kanan di lampiran terakhir. */
-            var banyak = images.length > 1;
-            $('#imgViewerPrev').css('display', (banyak && idx > 0) ? 'flex' : 'none');
-            $('#imgViewerNext').css('display', (banyak && idx < images.length - 1) ? 'flex' : 'none');
+        // Penampil lampiran = komponen bersama (public/js/tesys-evidence-stage.js).
+        function openViewer(daftar, mulai) {
+            TesysEvidenceStage.open((daftar || []).map(function (a) {
+                return { url: a.full, name: a.name, is_image: a.is_image, is_pdf: a.is_pdf };
+            }), mulai);
         }
-
-        function resetZoom() {
-            zoomed = false;
-            imgX = 0; imgY = 0;
-            stageImg.classList.remove('zoomed', 'dragging');
-            stageImg.style.transform = 'translate(0px, 0px) scale(1)';
-            stageImg.style.cursor = 'zoom-in';
-        }
-
-        function applyTransform() {
-            stageImg.style.transform = 'translate(' + imgX + 'px, ' + imgY + 'px) scale(' + (zoomed ? 2.4 : 1) + ')';
-        }
-
-        function openViewer(groupImages, startIndex) {
-            images = (groupImages || []).filter(function (it) { return it && it.full; });
-            if (!images.length) return; // jangan buka overlay kosong
-            idx = Math.min(Math.max(startIndex || 0, 0), images.length - 1);
-            renderViewer();
-            // Drawer terbuka (layar lebar): viewer mengisi ruang kosong di kirinya, selebar sisa
-            // setelah panel drawer. Layar sempit: tetap layar penuh seperti semula.
-            var panel = document.querySelector('.ts-drawer-root.is-open .ts-drawer-panel');
-            var lebar = panel ? panel.style.getPropertyValue('--drawer-w').trim() : '';
-            overlay.style.right = (lebar && window.innerWidth > 640)
-                ? 'min(' + lebar + ', calc(100vw - 32px))'
-                : '';
-            overlay.classList.add('show');
-            $('body').css('overflow', 'hidden');
-        }
-
-        function closeViewer() {
-            overlay.classList.remove('show');
-            overlay.style.right = '';
-            $('body').css('overflow', '');
-        }
-
-        // Drawer ditutup (tombol silang / area gelap) -> viewer ikut tertutup.
-        $(document).on('click', '[data-drawer-close]', function () {
-            if (overlay.classList.contains('show')) closeViewer();
-        });
-
-        function showNext() { if (idx < images.length - 1) { idx++; renderViewer(); } }
-        function showPrev() { if (idx > 0) { idx--; renderViewer(); } }
 
         // Trigger: klik kartu lampiran (Info, Request, Settlement). Seluruh
         // lampiran satu grup masuk carousel; gambar jadi slide, file lain kartu nama.
@@ -1925,98 +1794,6 @@ $(function () {
             bukaLampiran((window.__crRealAtt && window.__crRealAtt[$(this).data('row')]) || []);
         });
 
-        $('#imgViewerClose').on('click', closeViewer);
-        $('#imgViewerNext').on('click', showNext);
-        $('#imgViewerPrev').on('click', showPrev);
-        $(overlay).on('click', function (e) {
-            // Klik di area kosong menutup viewer — kecuali kalau klik itu
-            // ujung dari gerakan geser antar lampiran.
-            if (justSwiped) { justSwiped = false; return; }
-            if (e.target === overlay) closeViewer();
-        });
-
-        $(document).on('keydown', function (e) {
-            if (!overlay.classList.contains('show')) return;
-            if (e.key === 'Escape') closeViewer();
-            else if (e.key === 'ArrowRight') showNext();
-            else if (e.key === 'ArrowLeft') showPrev();
-        });
-
-        stageImg.addEventListener('dblclick', function () {
-            zoomed = !zoomed;
-            if (!zoomed) { imgX = 0; imgY = 0; }
-            stageImg.classList.toggle('zoomed', zoomed);
-            stageImg.style.cursor = zoomed ? 'grab' : 'zoom-in';
-            applyTransform();
-        });
-        stageImg.addEventListener('wheel', function (e) {
-            e.preventDefault();
-            zoomed = e.deltaY < 0 ? true : false;
-            if (!zoomed) { imgX = 0; imgY = 0; }
-            stageImg.classList.toggle('zoomed', zoomed);
-            stageImg.style.cursor = zoomed ? 'grab' : 'zoom-in';
-            applyTransform();
-        }, { passive: false });
-
-        stageImg.addEventListener('mousedown', function (e) {
-            if (!zoomed) return;
-            isDragging = true;
-            dragStartX = e.clientX - imgX;
-            dragStartY = e.clientY - imgY;
-            stageImg.classList.add('dragging');
-        });
-        document.addEventListener('mousemove', function (e) {
-            if (!isDragging) return;
-            imgX = e.clientX - dragStartX;
-            imgY = e.clientY - dragStartY;
-            applyTransform();
-        });
-        document.addEventListener('mouseup', function () {
-            isDragging = false;
-            stageImg.classList.remove('dragging');
-        });
-
-        /* ── GESER KIRI/KANAN untuk pindah lampiran ─────────────────────────
-           Saat gambar TIDAK di-zoom, tarikan mendatar (mouse maupun sentuh)
-           berpindah ke lampiran sebelum/sesudahnya — pola yang sama dengan
-           galeri ponsel. Saat di-zoom, tarikan tetap menggeser gambar
-           (pan), jadi keduanya tidak saling rebutan. */
-        var SWIPE_MIN = 50;          // px, biar klik/getar kecil tidak terbaca geser
-        var swipeX = null, swipeY = null;
-
-        function swipeStart(x, y) { if (!zoomed) { swipeX = x; swipeY = y; } }
-
-        function swipeEnd(x, y) {
-            if (swipeX === null || images.length < 2) { swipeX = swipeY = null; return; }
-            var dx = x - swipeX, dy = y - swipeY;
-            swipeX = swipeY = null;
-            if (Math.abs(dx) < SWIPE_MIN || Math.abs(dx) <= Math.abs(dy)) return;
-            if (dx < 0 && idx >= images.length - 1) return;   // sudah di lampiran terakhir
-            if (dx > 0 && idx <= 0) return;                   // sudah di lampiran pertama
-            justSwiped = true;
-            if (dx < 0) showNext(); else showPrev();
-        }
-
-        stageImg.addEventListener('mousedown', function (e) { swipeStart(e.clientX, e.clientY); });
-        document.addEventListener('mouseup', function (e) {
-            if (!overlay.classList.contains('show')) { swipeX = swipeY = null; return; }
-            swipeEnd(e.clientX, e.clientY);
-        });
-
-        stageImg.addEventListener('touchstart', function (e) {
-            var t = e.changedTouches[0];
-            swipeStart(t.clientX, t.clientY);
-        }, { passive: true });
-        stageImg.addEventListener('touchend', function (e) {
-            var t = e.changedTouches[0];
-            swipeEnd(t.clientX, t.clientY);
-        }, { passive: true });
-
-        /* Geser juga boleh lewat area kosong di kiri/kanan gambar. */
-        overlay.addEventListener('mousedown', function (e) {
-            if (e.target === stageImg) return;
-            swipeStart(e.clientX, e.clientY);
-        });
     })();
 
     function esc(s) { return $('<div>').text(s == null ? '' : String(s)).html(); }
@@ -2534,6 +2311,9 @@ $(function () {
         return { baris: baris };
     }
 
+    /* Carousel lampiran di kiri drawer (layar >= 1200px) — komponen bersama tesys-evidence-stage.js. */
+    var stageEvidence = TesysEvidenceStage.attach('crDrawer');
+
     function openCRDrawer(id, pemicu, tab) {
         crDrawerId = id;
 
@@ -2545,6 +2325,7 @@ $(function () {
         $('#crDrawerActions').empty();
 
         TesysDrawer.open('crDrawer', pemicu);
+        stageEvidence.clear();
 
         // Aksi baris disalin apa adanya, termasuk form dan token CSRF-nya.
         var baris = pemicu ? $(pemicu).closest('tr') : $('.cr-tbl:not([data-tab="db"]) tbody tr[data-id="' + id + '"]').first();
@@ -2692,6 +2473,7 @@ $(function () {
                 $('#crDrawerContent').removeAttr('hidden');
                 $('#crDrawerLoading').hide();
                 isiPanelCR(d, tab);
+                if (String(id) === String(crDrawerId)) stageEvidence.render(TesysEvidenceStage.fromCostRequest(d));
             })
             .fail(function () {
                 tampilkanGagal('Sambungan ke server terputus atau data sedang tidak tersedia.');

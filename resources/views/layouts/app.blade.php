@@ -171,6 +171,7 @@
     <link rel="stylesheet" href="@aset('css/tesys-ui-pages.css')">
     <link rel="stylesheet" href="@aset('css/tesys-ui-shell.css')">
     <link rel="stylesheet" href="@aset('css/tesys-ui-motion.css')">
+    <link rel="stylesheet" href="@aset('css/tesys-evidence-stage.css')">
 
     {{-- Lapis luxe: chrome gelap (sidebar + topbar) di atas isi terang.
          Dimuat paling akhir karena beberapa aturan sidebar di tesys-ui.css
@@ -709,6 +710,12 @@
 
 <!-- TESYS DRAWER (panel tinjau dari kanan) -->
 <script src="@aset('js/tesys-drawer.js')"></script>
+
+<!-- TESYS EVIDENCE STAGE (carousel lampiran: samping drawer + layar penuh) -->
+<script src="@aset('js/tesys-evidence-stage.js')"></script>
+
+<!-- TESYS COPY CODE (nilai di samping label "Kode"/"Code" bisa diklik untuk disalin) -->
+<script src="@aset('js/tesys-copy-code.js')"></script>
 
 <!-- TESYS ROW ACTIONS (menu aksi pada kolom tabel) -->
 <script src="@aset('js/tesys-row-actions.js')"></script>
