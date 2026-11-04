@@ -130,6 +130,12 @@
                             <i class="fas fa-truck" aria-hidden="true"></i> Surat Jalan
                         </x-tw.button>
                         @endif
+                        {{-- Filter "Last Update Time" (TesysDateRange, server-side; kosong = semua data). --}}
+                        <div class="d-flex align-items-center flex-wrap inv-date-range" style="gap:6px;">
+                            <input type="text" id="invDateRange" class="form-control form-control-sm tdr-input" readonly aria-label="Rentang tanggal">
+                            <input type="hidden" id="invDateFrom" value="{{ $dateFrom ?? '' }}">
+                            <input type="hidden" id="invDateTo" value="{{ $dateTo ?? '' }}">
+                        </div>
                         <x-tw.button id="btnRefreshInv" variant="secondary" size="sm"><i class="fas fa-sync-alt" aria-hidden="true"></i> Refresh</x-tw.button>
                     </div>
                 </div>
@@ -908,6 +914,51 @@ $(function () {
     })();
 
     $('#btnRefreshInv').on('click', function () { location.reload(); });
+
+    /* ── FILTER "LAST UPDATE TIME" ─────────────────────────────────────────
+    | Komponen bersama TesysDateRange (sama seperti Cost Request / Treasury) dengan
+    | dropdown rentang cepat. Filternya server-side (?date_from=&date_to=&range=)
+    | pada kolom updated_at; TANPA pilihan = semua data (tidak ada batas bawaan).
+    | Pilihan cepat langsung memuat ulang; "Custom..." memakai tombol Terapkan. */
+    (function () {
+        var siap = false;
+        function muatUlang(from, to, range) {
+            var url = new URL(window.location.href);
+            if (from && to) {
+                url.searchParams.set('date_from', from);
+                url.searchParams.set('date_to', to);
+                url.searchParams.set('range', range || 'custom');
+            } else {
+                url.searchParams.delete('date_from');
+                url.searchParams.delete('date_to');
+                url.searchParams.delete('range');
+            }
+            window.location.href = url.toString();
+        }
+
+        var periode = (typeof TesysDateRange === 'object')
+            ? TesysDateRange.init({
+                input: '#invDateRange', from: '#invDateFrom', to: '#invDateTo',
+                quick: true, quickLabel: 'Last Update Time',
+                onApply: function (from, to, range) {
+                    // Nilai awal ditulis saat inisialisasi; "custom" menunggu tombol Terapkan.
+                    if (!siap || range === 'custom') return;
+                    muatUlang(from, to, range);
+                },
+                onClear: function () { muatUlang('', '', ''); },
+                applyButton: { label: 'Terapkan', onClick: function (from, to) { muatUlang(from, to, 'custom'); } }
+            })
+            : null;
+        siap = true;
+
+        if (!periode) {
+            console.warn('TesysDateRange tidak tersedia - filter tanggal beralih ke mode input manual.');
+            $('#invDateRange').remove();
+            $('#invDateFrom, #invDateTo').attr('type', 'text')
+                .addClass('form-control form-control-sm').attr('placeholder', 'YYYY-MM-DD')
+                .on('change', function () { muatUlang($('#invDateFrom').val(), $('#invDateTo').val(), 'custom'); });
+        }
+    })();
 
     $('#btnClearFilterInv').on('click', function () {
         TesysColumnFilter.clearAll('#tblInvoice');

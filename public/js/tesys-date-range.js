@@ -28,6 +28,9 @@
 | popup (di bawah kedua kalender). Klik menutup popup lalu memanggil onClick.
 | Dipakai halaman yang menerapkan filter lewat tombol, bukan tiap tanggal berubah.
 |
+| quickLabel (opsional): teks pilihan kosong di dropdown cepat (default "Last Update").
+| onClear (opsional): dipanggil saat dropdown cepat dikembalikan ke pilihan kosong.
+|
 | onApply dipanggil tiap kali kedua tanggal berubah. Modul yang punya tombol
 | "Terapkan" sendiri cukup mengabaikannya dan membaca input hidden-nya.
 |
@@ -285,7 +288,7 @@
            untuk modul yang memakai form. */
         if (opts.quick) {
             var pilihan = [
-                ['',     'Last Update'],
+                ['',     opts.quickLabel || 'Last Update'],
                 ['12h',  '12 jam terakhir'],
                 ['1d',   '1 hari terakhir'],
                 ['3d',   '3 hari terakhir'],
@@ -316,7 +319,12 @@
 
                 if (v === 'custom') { buka(); return; }
                 tutup();
-                if (!v) return;
+                if (!v) {
+                    // Halaman yang filternya opsional (Collection, Delivery Note) perlu tahu
+                    // saat pilihan dikosongkan, untuk melepas filter.
+                    if (typeof opts.onClear === 'function') { opts.onClear(); }
+                    return;
+                }
 
                 var kini  = new Date();
                 var mulai = new Date(kini.getTime());

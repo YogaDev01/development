@@ -27,9 +27,10 @@
     flex: 1 1 auto; height: 100%; min-width: 0; display: flex; align-items: center; justify-content: center;
     overflow: hidden; border-radius: var(--radius-lg); background: rgba(0,0,0,.35);
 }
-.tes-ev-view img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: zoom-in; user-select: none; -webkit-user-drag: none; }
-.tes-ev-view.is-zoomed { overflow: auto; align-items: flex-start; justify-content: flex-start; }
-.tes-ev-view.is-zoomed img { max-width: none; max-height: none; cursor: zoom-out; }
+.tes-ev-view img { max-width: 100%; max-height: 100%; object-fit: contain; cursor: zoom-in; user-select: none; -webkit-user-drag: none; transform-origin: center center; will-change: transform; }
+/* Zoom lewat transform (scroll = zoom, seret = geser) — lihat Stage.zoomGambar(). */
+.tes-ev-view.is-zoomed img { cursor: grab; touch-action: none; }
+.tes-ev-view.is-dragging img { cursor: grabbing; }
 .tes-ev-view iframe { width: 100%; height: 100%; border: 0; background: var(--surface); }
 .tes-ev-file { text-align: center; font-size: 13px; opacity: .85; padding: 24px; word-break: break-word; }
 .tes-ev-file i { font-size: 42px; display: block; margin-bottom: 12px; opacity: .7; }
@@ -48,7 +49,14 @@
     color: #fff; font-size: 20px; padding: 0; cursor: pointer;
 }
 .tes-ev-thumb img { width: 100%; height: 100%; object-fit: cover; }
-.tes-ev-thumb.is-active { border-color: var(--accent); }
+.tes-ev-thumb.is-active { border-color: #fff; border-width: 4px; }
+
+/* Grup lampiran satu item (>1 berkas): bingkai primary menyambung antar thumbnail. */
+.tes-ev-thumb.is-grouped { border-color: var(--primary, var(--accent)); border-width: 4px; border-radius: 0; margin-left: -8px; }
+.tes-ev-thumb.is-grouped.is-group-start { border-radius: var(--radius-md) 0 0 var(--radius-md); margin-left: 0; }
+.tes-ev-thumb.is-grouped.is-group-end { border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+.tes-ev-thumb.is-grouped.is-group-start.is-group-end { border-radius: var(--radius-md); }
+.tes-ev-thumb.is-grouped.is-active { border-color: #fff; }
 
 /* ── Mode samping drawer ── */
 .tes-ev-side { display: none; }

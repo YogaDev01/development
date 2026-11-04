@@ -37,6 +37,7 @@ class InvoiceCashReceiptController extends Controller
     use Concerns\LocksPoNumbers;
 
     use \App\Http\Controllers\Concerns\CapsLargeLists;
+    use Concerns\FiltersByUpdatedRange;
 
     /** Role — penerima notifikasi tiap tahap workflow invoice. */
     private function usersWithRole(string ...$roles)
@@ -66,7 +67,7 @@ class InvoiceCashReceiptController extends Controller
     // catatan di sana soal kenapa GlobalSearchController tidak boleh
     // me-resolve controller ini dari container.
 
-    public function index()
+    public function index(Request $request)
     {
         /** @var User $user */
         $user = Auth::user();
@@ -77,6 +78,10 @@ class InvoiceCashReceiptController extends Controller
         // invoice seperti sebelumnya.
         $query = Invoice::with(['po.customer', 'po.manager', 'poNumber', 'bast', 'cashReceipts']);
         $this->scopeInvoiceVisibleTo($query);
+
+        // Filter "Last Update Time" (opsional). Dipasang SEBELUM agregat di bawah supaya
+        // stepper status selalu sama dengan isi tabel; tanpa parameter = semua data.
+        [$dateFrom, $dateTo] = $this->applyUpdatedRange($query, $request);
 
         /*
         | Ringkasan dihitung lewat agregat, bukan dari koleksi baris.
@@ -131,7 +136,7 @@ class InvoiceCashReceiptController extends Controller
             'overdue'         => $overdue,
         ];
 
-        return view('invoice-cash-receipt.index', compact('invoices', 'summary', 'truncated', 'total', 'maxRows'));
+        return view('invoice-cash-receipt.index', compact('invoices', 'summary', 'truncated', 'total', 'maxRows', 'dateFrom', 'dateTo'));
     }
 
     /*

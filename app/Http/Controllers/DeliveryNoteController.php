@@ -14,13 +14,15 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class DeliveryNoteController extends Controller
 {
+    use Concerns\FiltersByUpdatedRange;
+
     /*
     |--------------------------------------------------------------------------
     | INDEX
     |--------------------------------------------------------------------------
     */
 
-    public function index()
+    public function index(Request $request)
     {
         /*
          | Penyaringan dikerjakan di browser (DataTables + TesysColumnFilter),
@@ -40,9 +42,12 @@ class DeliveryNoteController extends Controller
                 'items.invoice:id,code,project_po_number_id',
                 'items.invoice.poNumber:id,po_number',
             ])
-            ->withCount('items')
-            ->latest()
-            ->get();
+            ->withCount('items');
+
+        // Filter "Last Update Time" (opsional; tanpa parameter = semua data).
+        [$dateFrom, $dateTo] = $this->applyUpdatedRange($deliveryNotes, $request);
+
+        $deliveryNotes = $deliveryNotes->latest()->get();
 
         $summary = [
             'total'    => $deliveryNotes->count(),
@@ -50,7 +55,7 @@ class DeliveryNoteController extends Controller
             'received' => $deliveryNotes->where('status', 'RECEIVED')->count(),
         ];
 
-        return view('delivery-note.index', compact('deliveryNotes', 'summary'));
+        return view('delivery-note.index', compact('deliveryNotes', 'summary', 'dateFrom', 'dateTo'));
     }
 
     /*

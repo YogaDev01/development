@@ -3434,14 +3434,23 @@ $(function () {
 
                 // Baris anak dikenali dari class yang sama dengan data-target
                 // induknya — pola yang sudah dipakai buka/tutup grup.
+                // Baris sub-item menautkan daftar "N CR"-nya lewat tombol .todo-si-toggle
+                // DI DALAM selnya (bukan data-target pada <tr>). Tanpa ini baris daftar CR
+                // dianggap baris puncak dan ikut terurut sendiri — terlempar ke bawah
+                // Chart of Account lain.
+                function targetAnak(tr) {
+                    return $(tr).attr('data-target')
+                        || $(tr).children('td').first().find('.todo-si-toggle').first().attr('data-target');
+                }
+
                 var kelasAnak = {};
                 semua.forEach(function (tr) {
-                    var t = $(tr).attr('data-target');
+                    var t = targetAnak(tr);
                     if (t) kelasAnak[t] = true;
                 });
 
                 function anakDari(tr) {
-                    var t = $(tr).attr('data-target');
+                    var t = targetAnak(tr);
                     if (!t) return [];
                     return semua.filter(function (x) { return x !== tr && $(x).hasClass(t); });
                 }

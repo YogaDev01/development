@@ -10,11 +10,24 @@
       $groups : Collection PO-level yang sama dengan _worklist_section
 --}}
 {{-- MODAL VIEW BUDGET — breakdown Chart of Account per Budget Plan --}}
+@once
+<style>
+    /* Rincian CR di modal Budget: Description membungkus ke beberapa baris (tanpa gulir mendatar).
+       Layout fixed supaya lebar tabel tidak ditentukan panjang teks; kolom lain berlebar tetap. */
+    @media (min-width: 901px) {
+        .todo-cr-items { table-layout: fixed; width: 100% !important; }
+        .todo-cr-items td, .todo-cr-items th { vertical-align: top; }
+    }
+    .todo-cr-items td[data-card="title"], .todo-cr-items td.todo-cr-desc { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
+</style>
+@endonce
 @foreach($groups as $poi => $poGroup)
 @foreach($poGroup['plans'] as $pi => $group)
 @php $gi = $poi . '-' . $pi; @endphp
 <div class="modal fade" id="mdlTodoCoa-{{ $key }}-{{ $gi }}" tabindex="-1" role="dialog" aria-hidden="true">
-    <div class="modal-dialog modal-xl" role="document">
+    {{-- align-items:flex-start: rata ATAS-tengah (aturan global memusatkan vertikal, sehingga
+         modal "melompat" naik-turun saat baris CoA dibuka/ditutup). --}}
+    <div class="modal-dialog modal-xl" role="document" style="align-items:flex-start;">
         <div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
             <div class="modal-header" style="background:var(--charcoal);border-bottom:3px solid var(--accent);">
                 <div>
@@ -106,16 +119,19 @@
                         @if(count($sub['cr_items']))
                         <tr class="{{ $subClass }}-row" style="display:none;">
                             <td colspan="7" style="background:var(--surface-2);padding:10px 14px 10px 48px;">
-                                <table class="table table-sm table-bordered mb-0" style="width:auto;max-width:100%;font-size:11px;color:var(--text);">
+                                <table class="table table-sm table-bordered mb-0 todo-cr-items" style="width:auto;max-width:100%;font-size:11px;color:var(--text);">
+                                    <colgroup>
+                                        <col style="width:118px;"><col><col style="width:150px;"><col style="width:96px;"><col style="width:112px;"><col style="width:84px;">
+                                    </colgroup>
                                     <thead style="background:var(--surface-2);">
                                         <tr>
-                                            <th scope="col" class="text-nowrap" style="width:1%;">Date</th>
+                                            <th scope="col" class="text-nowrap">Date</th>
                                             {{-- data-card: di HP (mode card) Description jadi judul, Takeout jadi baris aksi. --}}
                                             <th scope="col" data-card="title">Description</th>
-                                            <th scope="col" class="text-nowrap" style="width:1%;">Beneficiary</th>
-                                            <th scope="col" class="text-right text-nowrap" style="width:1%;">Amount</th>
-                                            <th scope="col" class="text-nowrap" style="width:1%;">Status</th>
-                                            <th scope="col" class="text-center text-nowrap action-column" style="width:1%;">Takeout</th>
+                                            <th scope="col" class="text-nowrap">Beneficiary</th>
+                                            <th scope="col" class="text-right text-nowrap">Amount</th>
+                                            <th scope="col" class="text-nowrap">Status</th>
+                                            <th scope="col" class="text-center text-nowrap action-column">Takeout</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -138,7 +154,7 @@
                                         @endphp
                                         <tr @if($cri['is_history']) style="color:var(--text-faint);" @endif class="{{ $criNobClass }}">
                                             <td class="text-nowrap" style="{{ $criCoret }}">{{ $cri['date_formatted'] }}</td>
-                                            <td style="{{ $criCoret }}">
+                                            <td class="todo-cr-desc" style="{{ $criCoret }}">
                                                 {{ $cri['description'] }}
                                                 @if($criTakeout)
                                                 <span class="badge badge-warning" style="font-size:8px;text-decoration:none;" title="{{ $cri['takeout_notes'] }}">Takeout &middot; {{ $cri['takeout_stage_label'] ?? '-' }}</span>
@@ -162,7 +178,7 @@
                                                 <br><small class="text-muted" style="text-decoration:none;">Alasan: {{ $cri['takeout_notes'] }}</small>
                                                 @endif
                                             </td>
-                                            <td class="text-nowrap" style="{{ $criCoret }}">{{ $cri['beneficiary'] }}</td>
+                                            <td style="{{ $criCoret }}overflow-wrap:anywhere;">{{ $cri['beneficiary'] }}</td>
                                             <td class="text-right text-nowrap" style="{{ $criCoret }}"><strong>{{ $cri['amount_formatted'] }}</strong></td>
                                             <td class="text-nowrap">
                                                 <span class="badge badge-secondary" style="font-size:9px;">{{ \App\Models\BudgetRequest::statusLabelFor($cri['status']) }}</span>

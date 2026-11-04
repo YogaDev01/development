@@ -4,6 +4,23 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [3.2.2] - 2026-11-05 — Carousel Evidence Lebih Nyaman, Filter Last Update Time & Perbaikan Modal View Budget
+
+Carousel lampiran bisa di-zoom dan digeser seperti WhatsApp dengan judul berisi deskripsi data, Collection dan Delivery Note punya filter Last Update Time, serta beberapa perbaikan modal View Budget dan form Settlement.
+
+### Baru
+- Carousel evidence: scroll untuk zoom di posisi kursor, seret untuk menggeser, klik dua kali untuk zoom/reset; tombol tutup di header carousel samping.
+- Carousel evidence: thumbnail terpilih bergaris putih tebal, dan lampiran satu item yang lebih dari satu diberi highlight grup (primary); judul header kini berisi deskripsi data (Sub COA/catatan), bukan nama file.
+- Collection dan Delivery Note: filter Last Update Time (12 jam s/d 1 tahun, Custom) seperti di Cost Request; tanpa pilihan semua data tetap tampil.
+
+### Berubah
+- Thumbnail carousel dimuat saat terlihat dan paling banyak 3 sekaligus, mengurangi beban server saat evidence sering dibuka-tutup.
+- Modal View Budget (Todo List): posisi rata atas-tengah, dan deskripsi CR panjang tampil multi-baris tanpa scrollbar mendatar.
+- Form Settlement: nama lampiran yang panjang dipotong (…) agar tombol hapus (X) selalu terlihat dan bisa diklik.
+
+### Perbaikan
+- Modal View Budget (Todo List): daftar CR dari sub COA kini tetap di bawah sub COA-nya (sebelumnya bisa muncul di bawah Chart of Account lain setelah sortir).
+
 ## [3.2.1] - 2026-11-04 — Penyempurnaan Settlement, Treasury, Tampilan Tabel & Perbaikan PPh Invoice
 
 Form Settlement kembali terisi dari item pengajuan dengan Sub COA terkunci, batch Treasury punya drawer di daftar, daftar Beneficiary lebih ringan, Surat Jalan bisa diexport, dan footer tabel di semua halaman tampil lebih bersih.

@@ -26,10 +26,44 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '3.2.1',
+    'current' => '3.2.2',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '3.2.2',
+            'date'    => '2026-11-05',
+            'title'   => 'Carousel Evidence Lebih Nyaman, Filter Last Update Time & Perbaikan Modal View Budget',
+            'summary' => 'Carousel lampiran bisa di-zoom dan digeser seperti WhatsApp dengan judul berisi deskripsi data, Collection dan Delivery Note punya filter Last Update Time, serta beberapa perbaikan modal View Budget dan form Settlement.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Carousel evidence: scroll untuk zoom di posisi kursor, seret untuk menggeser, klik dua kali untuk zoom/reset; tombol tutup di header carousel samping.',
+                        'Carousel evidence: thumbnail terpilih bergaris putih tebal, dan lampiran satu item yang lebih dari satu diberi highlight grup (primary); judul header kini berisi deskripsi data (Sub COA/catatan), bukan nama file.',
+                        'Collection dan Delivery Note: filter Last Update Time (12 jam s/d 1 tahun, Custom) seperti di Cost Request; tanpa pilihan semua data tetap tampil.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Thumbnail carousel dimuat saat terlihat dan paling banyak 3 sekaligus, mengurangi beban server saat evidence sering dibuka-tutup.',
+                        'Modal View Budget (Todo List): posisi rata atas-tengah, dan deskripsi CR panjang tampil multi-baris tanpa scrollbar mendatar.',
+                        'Form Settlement: nama lampiran yang panjang dipotong (…) agar tombol hapus (X) selalu terlihat dan bisa diklik.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Modal View Budget (Todo List): daftar CR dari sub COA kini tetap di bawah sub COA-nya (sebelumnya bisa muncul di bawah Chart of Account lain setelah sortir).',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '3.2.1',

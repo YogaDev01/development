@@ -877,10 +877,10 @@ $(function () {
         var files = Array.from(input.files || []);
         label.textContent = files.length ? (files.length + ' file') : 'Lampiran';
         list.innerHTML = files.map(function (f, idx) {
-            return '<div class="text-muted"><i class="fas fa-file mr-1"></i>' +
-                '<a href="#" class="detail-att-open" data-i="' + idx + '" title="Lihat lampiran">' +
-                f.name.replace(/</g, '&lt;') + '</a>' +
-                ' <i class="fas fa-times text-danger detail-att-del" data-i="' + idx + '" style="cursor:pointer;"></i></div>';
+            var nm = f.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+            return '<div class="text-muted att-row"><i class="fas fa-file mr-1"></i>' +
+                '<a href="#" class="detail-att-open" data-i="' + idx + '" title="' + nm + '">' + nm + '</a>' +
+                ' <i class="fas fa-times text-danger detail-att-del ml-1" data-i="' + idx + '" style="cursor:pointer;" title="Hapus lampiran ini"></i></div>';
         }).join('');
         if (window.__updateSettleSubmitState) window.__updateSettleSubmitState();
     }
@@ -1400,6 +1400,12 @@ body .swal2-popup .swal2-icon.swal2-icon-show .swal2-x-mark { animation: none; }
 
 /* Lampiran lama yang ditandai untuk dibuang saat submit. */
 .att-lama-dibuang { text-decoration: line-through; opacity: .55; }
+
+/* Baris lampiran item: nama panjang dipotong (…) supaya tombol X selalu terlihat & bisa diklik. */
+.att-row { display: flex; align-items: center; min-width: 0; }
+.att-row > i { flex: none; }
+.att-row > a { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.att-row > .att-lama-del, .att-row > .detail-att-del { padding: 2px 4px; }
 
 /* Tombol X pratinjau lampiran: tanpa kotak/latar, merah saja. */
 .swal2-close.att-close-btn {
