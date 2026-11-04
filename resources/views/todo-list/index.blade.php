@@ -5056,19 +5056,24 @@ $(function () {
         // Request item asal hanya ditulis di baris PERTAMA item itu. Var-nya =
         // Request item - jumlah seluruh baris settlement item tersebut, jadi
         // ditulis di baris TERAKHIR item (setelah semua pecahan terlihat).
-        var settlePerItem = {}, sudahTampil = {}, barisTerakhir = {};
+        var settlePerItem = {}, sudahTampil = {}, barisTerakhir = {}, jumlahBaris = {};
         real.forEach(function (r) {
             if (r.request_detail_id) {
                 settlePerItem[r.request_detail_id] = (settlePerItem[r.request_detail_id] || 0) + (r.actual || 0);
+                jumlahBaris[r.request_detail_id] = (jumlahBaris[r.request_detail_id] || 0) + 1;
                 barisTerakhir[r.request_detail_id] = r;
             }
         });
         real.forEach(function (r) {
             r._reqShown = null;
             r._varShown = null;
+            r._pecah = '';
             if (r.request_detail_id && !sudahTampil[r.request_detail_id]) {
                 sudahTampil[r.request_detail_id] = true;
                 r._reqShown = r.total_cr || 0;
+                if (jumlahBaris[r.request_detail_id] > 1) r._pecah = 'utama';
+            } else if (r.request_detail_id && jumlahBaris[r.request_detail_id] > 1) {
+                r._pecah = 'pecahan';
             }
             if (r.request_detail_id && barisTerakhir[r.request_detail_id] === r) {
                 r._varShown = (r.total_cr || 0) - (settlePerItem[r.request_detail_id] || 0);
@@ -5115,7 +5120,11 @@ $(function () {
                 // Baris tambahan / pindah Sub COA (Settlement Custom COA).
                 var asal = r.is_added
                     ? ' <span class="badge badge-info" style="font-size:9px;">Baris tambahan</span>'
-                    : (r.is_moved ? ' <span class="badge badge-warning" style="font-size:9px;">Pindah dari: ' + esc(r.origin_label || '-') + '</span>' : '');
+                    : (r._pecah === 'utama'
+                        ? ' <span class="badge badge-success" style="font-size:9px;">Sub Utama</span>'
+                        : (r._pecah === 'pecahan'
+                            ? ' <span class="badge badge-warning" style="font-size:9px;">Sub Pecahan</span>'
+                            : '')) + (r.is_moved ? ' <span class="badge badge-warning" style="font-size:9px;">Pindah dari: ' + esc(r.origin_label || '-') + '</span>' : '');
 
                 html += '<tr class="' + gClass + '" style="display:none;">' +
                     '<td class="td-grp-indent">' +
