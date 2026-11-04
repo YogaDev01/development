@@ -124,6 +124,8 @@
                                 <th scope="col" width="14%">Phone</th>
                                 <th scope="col" width="14%">Email</th>
                                 <th scope="col" width="8%">Bank</th>
+                                <th scope="col" width="8%">Token</th>
+                                <th scope="col" width="9%" class="text-right">Nominal</th>
                                 <th scope="col" width="7%">Status</th>
                                 <th scope="col" width="10%" class="text-center all action-column">Action</th>
                             </tr>
@@ -158,6 +160,20 @@
                                     @if($pic->beneficiaries_count > 0)
                                         <span class="badge badge-info px-2 py-1" style="font-size:10px;"
                                               title="{{ $pic->beneficiaries_count }} beneficiary terhubung ke PIC ini">In-House</span>
+                                    @else
+                                        <span class="text-muted">-</span>
+                                    @endif
+                                </td>
+                                {{-- Hanya dibaca di sini. Mengubahnya lewat modal Edit,
+                                     sejalan dengan kolom lain di baris ini. --}}
+                                <td>{{ $pic->token ?: '-' }}</td>
+                                <td class="text-right" data-order="{{ $pic->nominal !== null ? (float) $pic->nominal : -1 }}">
+                                    @if($pic->nominal !== null)
+                                        {{-- Pemisah ribuan titik, desimal koma. Desimal hanya
+                                             ditulis kalau memang ada. --}}
+                                        {{ fmod((float) $pic->nominal, 1) == 0.0
+                                            ? number_format((float) $pic->nominal, 0, ',', '.')
+                                            : number_format((float) $pic->nominal, 2, ',', '.') }}
                                     @else
                                         <span class="text-muted">-</span>
                                     @endif
@@ -199,7 +215,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="9">
+                                <td colspan="11">
                                     <x-empty title="Belum ada data PIC" icon="fas fa-folder-open" compact />
                                 </td>
                             </tr>
@@ -294,6 +310,28 @@
                                 <input type="email" name="email" id="tambahEmail"
                                        class="form-control"
                                        placeholder="Masukkan email"
+                                       autocomplete="off">
+                            </div>
+                        </div>
+
+                        <!-- TOKEN (hanya tipe internal) -->
+                        <div class="col-md-6 pic-internal-only">
+                            <div class="form-group">
+                                <label class="font-weight-600">Token</label>
+                                <input type="text" name="token" id="tambahToken"
+                                       class="form-control" maxlength="100"
+                                       placeholder="Masukkan token"
+                                       autocomplete="off">
+                            </div>
+                        </div>
+
+                        <!-- NOMINAL (hanya tipe internal) -->
+                        <div class="col-md-6 pic-internal-only">
+                            <div class="form-group">
+                                <label class="font-weight-600">Nominal</label>
+                                <input type="text" name="nominal" id="tambahNominal"
+                                       class="form-control text-right money-input"
+                                       inputmode="decimal" placeholder="0"
                                        autocomplete="off">
                             </div>
                         </div>
@@ -433,6 +471,26 @@
                                 </div>
                             </div>
 
+                            <!-- TOKEN (hanya tipe internal) -->
+                            <div class="col-md-6 pic-internal-only">
+                                <div class="form-group">
+                                    <label class="font-weight-600">Token</label>
+                                    <input type="text" name="token" id="editToken"
+                                           class="form-control" maxlength="100"
+                                           autocomplete="off">
+                                </div>
+                            </div>
+
+                            <!-- NOMINAL (hanya tipe internal) -->
+                            <div class="col-md-6 pic-internal-only">
+                                <div class="form-group">
+                                    <label class="font-weight-600">Nominal</label>
+                                    <input type="text" name="nominal" id="editNominal"
+                                           class="form-control text-right money-input"
+                                           inputmode="decimal" autocomplete="off">
+                                </div>
+                            </div>
+
                             <!-- AKUN USER (M-02) -->
                             <div class="col-md-6">
                                 <div class="form-group">
@@ -517,6 +575,8 @@
 .action-header-buttons { display:flex; gap:8px; }
 .card-header .btn      { border-radius:var(--radius-sm); font-weight:600; }
 .font-weight-600       { font-weight:600; }
+/* Kolom uang dibaca dengan membandingkan digitnya, jadi angkanya rata kanan. */
+.money-input { font-variant-numeric: tabular-nums; }
 
 /* TOOLBAR */
 .custom-toolbar      { display:flex; justify-content:space-between; align-items:flex-start; gap:15px; flex-wrap:wrap; }
@@ -658,6 +718,7 @@ $(function () {
         // Jenisnya disetel mengikuti tab yang sedang dibuka — PIC yang ditambah
         // dari tab Internal hampir selalu internal. Masih bisa diganti.
         if (activeTab === 'internal') $('#tambahType').val('internal');
+        sinkronFieldInternal('#formTambah');
         // reset() hanya mengubah <select> yang tersembunyi — tombolnya masih
         // memajang pilihan sebelumnya sampai diberitahu.
         $('#tambahUser, #tambahEmployee').trigger('tss:sync');
@@ -683,10 +744,17 @@ $(function () {
             $('#editPosition').val(res.position ?? '');
             $('#editPhone').val(res.phone ?? '');
             $('#editEmail').val(res.email ?? '');
+            $('#editToken').val(res.token ?? '');
+            // Nilai dari server selalu berdesimal dua ("100000000.00"). Desimal
+            // nol dibuang supaya yang terlihat sama dengan yang tertulis di tabel.
+            $('#editNominal').val(res.nominal !== null && res.nominal !== undefined
+                ? formatMoney(String(res.nominal).replace(/\.00$/, '').replace('.', ','))
+                : '');
             $('#editUser').val(res.user_id ?? '');
             $('#editEmployee').val(res.employee_id ?? '');
             $('#editStatus').val(res.status);
             $('#editUser, #editEmployee').trigger('tss:sync');
+            sinkronFieldInternal('#formEdit');
 
             $('#editLoading').hide();
             $('#editFields').show();
@@ -699,6 +767,70 @@ $(function () {
             $('#editLoading').html(
                 '<p class="text-danger"><i class="fas fa-exclamation-triangle mr-1"></i>Gagal memuat data. Silakan coba lagi.</p>'
             );
+        });
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | NOMINAL — pemisah ribuan
+    |
+    | Kotaknya bertipe text, bukan number: input number tidak bisa menampilkan
+    | titik pemisah, dan tampilannya ikut berubah-ubah mengikuti locale browser.
+    | Yang dikirim ke server tetap angka polos — lihat handler submit di bawah.
+    |--------------------------------------------------------------------------
+    */
+
+    // Token & Nominal hanya berlaku untuk PIC internal. Untuk tipe lain field
+    // disembunyikan dan dikosongkan, supaya tidak ikut terkirim.
+    function sinkronFieldInternal(form) {
+        let $f = $(form);
+        let internal = $f.find('select[name="type"]').val() === 'internal';
+        let $box = $f.find('.pic-internal-only');
+        $box.toggle(internal);
+        if (!internal) $box.find('input').val('');
+    }
+    $(document).on('change', '#tambahType, #editType', function () {
+        sinkronFieldInternal($(this).closest('form'));
+    });
+
+    function formatMoney(raw) {
+        let v = String(raw ?? '').replace(/[^\d,.-]/g, '');
+        if (v === '') return '';
+
+        // Titik dianggap pemisah ribuan, koma pemisah desimal.
+        v = v.replace(/\./g, '');
+        let parts  = v.split(',');
+        let intRaw = parts[0].replace(/\D/g, '');
+        let dec    = parts.length > 1 ? parts[1].replace(/\D/g, '').slice(0, 2) : null;
+
+        if (intRaw === '') intRaw = '0';
+        let int = intRaw.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+        return dec !== null ? int + ',' + dec : int;
+    }
+
+    // Angka polos untuk dikirim ke server: "100.000.000,50" -> "100000000.50"
+    function unformatMoney(raw) {
+        let v = String(raw ?? '').trim();
+        if (v === '') return '';
+        return v.replace(/\./g, '').replace(',', '.');
+    }
+
+    $(document).on('input', '.money-input', function () {
+        let el  = this;
+        let end = el.value.length - el.selectionStart;   // jarak kursor dari kanan
+        el.value = formatMoney(el.value);
+        // Kursor dikembalikan diukur dari kanan, supaya titik yang baru
+        // disisipkan tidak melompatkan kursor ke ujung.
+        let pos = Math.max(0, el.value.length - end);
+        try { el.setSelectionRange(pos, pos); } catch (e) {}
+    });
+
+    // Kedua form dikirim biasa (bukan AJAX), jadi nilainya dipoloskan tepat
+    // sebelum berangkat — kalau tidak, "100.000.000" gagal validasi numeric.
+    $(document).on('submit', '#formTambah, #formEdit', function () {
+        $(this).find('.money-input').each(function () {
+            this.value = unformatMoney(this.value);
         });
     });
 
@@ -733,12 +865,12 @@ $(function () {
         order: [],
         columnDefs: [
             // Indeks kolom: 0 No, 1 Type, 2 Nama PIC, 3 Jabatan, 4 Phone,
-            // 5 Email, 6 Bank, 7 Status, 8 Action. Kolom No tidak bisa diurutkan:
-            // nomornya dihitung ulang tiap tabel digambar.
+            // 5 Email, 6 Bank, 7 Token, 8 Nominal, 9 Status, 10 Action. Kolom No
+            // tidak bisa diurutkan: nomornya dihitung ulang tiap tabel digambar.
             { orderable: false,        targets: [0] },
             { responsivePriority: 1,   targets: [0, 2, -1] },
-            { responsivePriority: 3,   targets: [6] },
-            { responsivePriority: 100, targets: [1, 3, 4, 5, 7] }
+            { responsivePriority: 3,   targets: [6, 7, 8] },
+            { responsivePriority: 100, targets: [1, 3, 4, 5, 9] }
         ],
         dom:
             'rt' +
@@ -820,6 +952,8 @@ $(function () {
         // supaya barisnya tetap terbaca.
         picTable.column(1).visible(tab !== 'internal', false);
         [4, 5].forEach(function (i) { picTable.column(i).visible(tab !== 'db', false); });
+        // Token & Nominal hanya berlaku untuk PIC internal.
+        [7, 8].forEach(function (i) { picTable.column(i).visible(tab === 'internal', false); });
         picTable.columns.adjust();
 
         // Filter Type tidak menyaring apa pun di tab Internal. Sisa pilihan dari

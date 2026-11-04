@@ -23,11 +23,12 @@ Form Settlement kembali terisi dari item pengajuan dengan Sub COA terkunci, batc
 - Lampiran Item wajib untuk baris Settle > 0 saat Submit (draft tidak wajib); Keterangan (kini "Log History Note") dan Lampiran Settlement global tidak lagi wajib. Kartu Bukti Settlement global dihapus dari form.
 - Footer tabel (info jumlah, Page Size, Previous/Next) di semua halaman daftar tampil tanpa border/panel, mengikuti Cost Request.
 - Daftar Beneficiary memuat baris per tab secara lazy sehingga halaman lebih ringan.
-- Master PIC: kolom Token dan Nominal dihapus dari form dan pencarian.
+- Master PIC: Token dan Nominal hanya tampil untuk PIC internal; Nominal memakai pemisah ribuan dan Token ikut pencarian.
 
 ### Perbaikan
 - Total invoice (captured_total) kini selalu mengikuti PPh saat sinkron dari Cash Receipt, termasuk pada data lama yang sudah basi; ditambah perintah `invoice:repair-captured-total` (dry run, `--apply` untuk menyimpan) yang dijalankan manusia.
 - Cash Receipt: pembuatan menolak invoice ganda, dan header yang CANCELLED atau pernah punya alokasi tidak bisa dihapus.
+- Rincian Settlement (modal Cost Request & Todo List): untuk item yang dipecah jadi beberapa baris, kolom Var kini tampil di baris terakhir item, bukan di baris pertama yang angkanya belum lengkap. Nilainya tidak berubah.
 
 ## [3.2.0] - 2026-10-30 — Approval Massal, Settlement Fleksibel, Draft Batch Treasury & Catatan Log
 
