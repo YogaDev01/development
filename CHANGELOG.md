@@ -28,8 +28,7 @@ Form Settlement kembali terisi dari item pengajuan dengan Sub COA terkunci, batc
 ### Perbaikan
 - Total invoice (captured_total) kini selalu mengikuti PPh saat sinkron dari Cash Receipt, termasuk pada data lama yang sudah basi; ditambah perintah `invoice:repair-captured-total` (dry run, `--apply` untuk menyimpan) yang dijalankan manusia.
 - Cash Receipt: pembuatan menolak invoice ganda, dan header yang CANCELLED atau pernah punya alokasi tidak bisa dihapus.
-- Rincian Settlement (modal Cost Request & Todo List): untuk item yang dipecah jadi beberapa baris, kolom Var kini tampil di baris terakhir item, bukan di baris pertama yang angkanya belum lengkap. Nilainya tidak berubah.
-- Rincian Settlement (modal Cost Request & Todo List): item yang dipecah kini diberi badge Sub Utama (baris pertama) dan Sub Pecahan (baris lanjutan).
+- Rincian Settlement (modal Cost Request & Todo List): untuk item yang dipecah jadi beberapa baris, kolom Var kini dihitung per baris (Request baris − Settlement baris; baris pecahan: 0 − Settlement), bukan digabung di satu baris. Jumlah Var dan total grup/footer tidak berubah.
 
 ## [3.2.0] - 2026-10-30 — Approval Massal, Settlement Fleksibel, Draft Batch Treasury & Catatan Log
 
