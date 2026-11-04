@@ -123,13 +123,13 @@
         @if(($attachments ?? collect())->isNotEmpty())
         <div class="realize-att-existing tw:mt-1 tw:text-caption tw:leading-body">
             @foreach($attachments as $att)
-            <div class="att-lama tw:text-text-dim">
+            <div class="att-lama att-row tw:text-text-dim">
                 <input type="checkbox" name="delete_realization_attachments[]"
                        value="{{ $att->id }}" class="del-realize-att d-none">
                 <i class="fas fa-file tw:mr-1" aria-hidden="true"></i>
                 <a href="#" class="att-lama-open"
                    data-url="{{ asset('storage/' . $att->path) }}"
-                   data-nama="{{ $att->original_name }}">{{ $att->original_name }}</a>
+                   data-nama="{{ $att->original_name }}" title="{{ $att->original_name }}">{{ $att->original_name }}</a>
                 <i class="fas fa-times text-danger att-lama-del ml-1" style="cursor:pointer;" title="Hapus lampiran ini"></i>
             </div>
             @endforeach

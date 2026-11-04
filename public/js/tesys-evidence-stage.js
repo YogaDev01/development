@@ -6,7 +6,9 @@
    baris thumbnail. Gambar dengan klik-zoom, PDF lewat iframe, berkas lain
    berupa tautan "Buka berkas".
 
-   Item: { name, url, is_image, is_pdf, source }
+   Item: { name, url, is_image, is_pdf, source, desc, group }
+     desc  = deskripsi data (mis. Sub COA + catatan) untuk judul header; kosong → nama berkas.
+     group = kunci pengelompok; >1 lampiran se-group di-highlight primary di thumbnail.
      url selalu /storage/{path} (SecureFileController + FileAccess).
      is_image / is_pdf boleh dikosongkan — ditebak dari ekstensi url.
 
@@ -72,6 +74,52 @@
         try { return decodeURIComponent(p[p.length - 1]) || 'Berkas'; } catch (e) { return p[p.length - 1] || 'Berkas'; }
     }
 
+    /* ── Pemuat thumbnail: terjadwal, bukan serentak ──
+       Setiap gambar lampiran dilayani PHP (sesi + hak akses + stream), jadi 13 thumbnail
+       sekaligus = 13 proses PHP paralel. Buka-tutup berulang menumpuknya (permintaan yang
+       dibatalkan browser tetap diselesaikan server) dan hosting bersama jadi lambat.
+       Di sini: thumbnail baru diminta saat terlihat (IntersectionObserver) dan paling
+       banyak MAKS_THUMB yang berjalan bersamaan; yang tak terlihat / sudah dibuang tidak
+       pernah diminta, yang sedang jalan dibatalkan. */
+    var MAKS_THUMB = 3;
+    var antrianThumb = [];
+    var thumbAktif = 0;
+
+    function jalankanThumb() {
+        while (thumbAktif < MAKS_THUMB && antrianThumb.length) {
+            var im = antrianThumb.shift();
+            if (!im.isConnected || im._tesMulai) continue;
+            im._tesMulai = true;
+            thumbAktif++;
+            (function (g) {
+                var selesai = false, timer = null;
+                function beres() {
+                    if (selesai) return;
+                    selesai = true; clearTimeout(timer); g._tesSelesai = null;
+                    thumbAktif--; jalankanThumb();
+                }
+                g._tesSelesai = beres;
+                g.addEventListener('load', beres);
+                g.addEventListener('error', beres);
+                timer = setTimeout(beres, 10000); // jaring pengaman: slot tak boleh macet
+                g.src = g.getAttribute('data-src');
+            })(im);
+        }
+    }
+
+    function antrikanThumb(im) {
+        antrianThumb.push(im);
+        jalankanThumb();
+    }
+
+    // Batalkan unduhan thumbnail yang dibuang (drawer ditutup / daftar diganti).
+    function lepasThumb(im) {
+        if (!im || im.tagName !== 'IMG') return;
+        var i = antrianThumb.indexOf(im);
+        if (i >= 0) antrianThumb.splice(i, 1);
+        if (im._tesSelesai) { im.removeAttribute('src'); im._tesSelesai(); }
+    }
+
     function normalisasi(items) {
         var hasil = [];
         (items || []).forEach(function (it) {
@@ -86,16 +134,20 @@
                 url: url,
                 is_image: !!isImage,
                 is_pdf: !!isPdf && !isImage,
-                source: it.source ? String(it.source) : ''
+                source: it.source ? String(it.source) : '',
+                desc: it.desc ? String(it.desc) : '',
+                group: it.group ? String(it.group) : ''
             });
         });
         return hasil;
     }
 
     // Lampiran dari JSON drawer ({path, original_name|title, is_image?, is_pdf?}) -> item carousel.
-    function dariLampiran(atts, source) {
+    function dariLampiran(atts, source, desc, group) {
         return (atts || []).map(function (a) {
             return {
+                desc: desc || '',
+                group: group || '',
                 url: a.path ? '/storage/' + a.path : '',
                 name: a.original_name || a.title || '',
                 is_image: a.is_image == null ? null : !!a.is_image,
@@ -108,10 +160,17 @@
     // Seluruh lampiran satu Cost Request (payload detail-json): Request, item Request, item Settlement, Settlement global.
     function dariCostRequest(d) {
         d = d || {};
-        var hasil = dariLampiran(d.attachments, 'Lampiran Request');
-        (d.details || []).forEach(function (x) { hasil = hasil.concat(dariLampiran(x.attachments, 'Item Request')); });
-        (d.realizations || []).forEach(function (x) { hasil = hasil.concat(dariLampiran(x.attachments, 'Item Settlement')); });
-        return hasil.concat(dariLampiran(d.realization_attachments, 'Lampiran Settlement'));
+        function gabung(a, b) { a = (a || '').trim(); b = (b || '').trim(); return a && b && a !== b ? a + ' · ' + b : (a || b); }
+        var hasil = dariLampiran(d.attachments, 'Lampiran Request', 'Lampiran umum pengajuan');
+        (d.details || []).forEach(function (x) {
+            hasil = hasil.concat(dariLampiran(x.attachments, 'Item Request',
+                gabung(x.sub_coa || x.item_label || x.description, x.notes), 'req-' + x.id));
+        });
+        (d.realizations || []).forEach(function (x) {
+            hasil = hasil.concat(dariLampiran(x.attachments, 'Item Settlement',
+                gabung(x.sub_coa || x.cr_item, x.des_settle !== '-' ? x.des_settle : ''), 'set-' + x.id));
+        });
+        return hasil.concat(dariLampiran(d.realization_attachments, 'Lampiran Settlement', 'Lampiran umum settlement'));
     }
 
     function lebarDrawerTerbuka() {
@@ -165,9 +224,6 @@
             self.idx = parseInt(t.getAttribute('data-idx'), 10) || 0;
             self.tampil();
         });
-        self.view.addEventListener('click', function (e) {
-            if (e.target.tagName === 'IMG') self.view.classList.toggle('is-zoomed');
-        });
 
         // Geser mendatar (sentuh) pindah lampiran selama gambar tidak di-zoom.
         var sx = null, sy = null;
@@ -188,16 +244,41 @@
         this.items = normalisasi(items);
         this.idx = Math.min(Math.max(startIdx || 0, 0), Math.max(this.items.length - 1, 0));
         var self = this;
-        while (this.thumbs.firstChild) this.thumbs.removeChild(this.thumbs.firstChild);
+        if (this.pengamatThumb) { this.pengamatThumb.disconnect(); this.pengamatThumb = null; }
+        while (this.thumbs.firstChild) {
+            lepasThumb(this.thumbs.firstChild.querySelector('img'));
+            this.thumbs.removeChild(this.thumbs.firstChild);
+        }
+        var pengamat = null;
+        if (window.IntersectionObserver) {
+            pengamat = this.pengamatThumb = new IntersectionObserver(function (entri) {
+                entri.forEach(function (en) {
+                    if (!en.isIntersecting) return;
+                    pengamat.unobserve(en.target);
+                    antrikanThumb(en.target);
+                });
+            }, { root: this.thumbs, rootMargin: '0px 160px' });
+        }
         this.items.forEach(function (it, i) {
-            var b = el('button', 'tes-ev-thumb', { type: 'button', 'data-idx': String(i), title: (it.source ? it.source + ' · ' : '') + it.name });
+            var b = el('button', 'tes-ev-thumb', { type: 'button', 'data-idx': String(i), title: (it.source ? it.source + ' · ' : '') + (it.desc || it.name) });
             if (it.is_image) {
-                var im = el('img', '', { src: it.url, alt: '', loading: 'lazy' });
+                var im = el('img', '', { 'data-src': it.url, alt: '', decoding: 'async', fetchpriority: 'low' });
                 b.appendChild(im);
+                if (pengamat) pengamat.observe(im); else antrikanThumb(im);
             } else {
                 b.appendChild(ikon('fas ' + (it.is_pdf ? 'fa-file-pdf' : 'fa-file-alt')));
             }
             self.thumbs.appendChild(b);
+        });
+        // Item dengan >1 lampiran: thumbnail-nya diberi highlight grup (warna primary).
+        var hitungGrup = {};
+        this.items.forEach(function (it) { if (it.group) hitungGrup[it.group] = (hitungGrup[it.group] || 0) + 1; });
+        this.items.forEach(function (it, i) {
+            if (!it.group || hitungGrup[it.group] < 2) return;
+            var t = self.thumbs.children[i], p = self.items[i - 1], n = self.items[i + 1];
+            t.classList.add('is-grouped');
+            if (!p || p.group !== it.group) t.classList.add('is-group-start');
+            if (!n || n.group !== it.group) t.classList.add('is-group-end');
         });
         this.thumbs.hidden = this.sembunyikanThumbTunggal && this.items.length < 2;
         this.tampil();
@@ -224,13 +305,16 @@
         }
         this.src.textContent = it.source;
         this.src.style.display = it.source ? '' : 'none';
-        this.nama.textContent = it.name;
+        this.nama.textContent = it.desc || it.name;
+        this.nama.title = it.name;
         this.hitung.textContent = (this.idx + 1) + ' / ' + n;
         this.buka.setAttribute('href', it.url);
         this.buka.style.display = '';
 
         if (it.is_image) {
-            this.view.appendChild(el('img', '', { src: it.url, alt: it.name, title: 'Klik untuk memperbesar', draggable: 'false' }));
+            var gbr = el('img', '', { src: it.url, alt: it.name, title: 'Scroll untuk zoom · seret untuk menggeser · klik dua kali untuk reset', draggable: 'false', decoding: 'async', fetchpriority: 'high' });
+            this.view.appendChild(gbr);
+            this.zoomGambar(gbr);
         } else if (it.is_pdf) {
             this.view.appendChild(el('iframe', '', { src: it.url, title: it.name }));
         } else {
@@ -244,6 +328,69 @@
             f.appendChild(w);
             this.view.appendChild(f);
         }
+    };
+
+    // Zoom ala WhatsApp: scroll = zoom di posisi kursor, seret = geser, klik dua kali = zoom/reset.
+    // Gambar selalu di tengah area tampil, jadi transform-origin tengah dipakai sebagai acuan.
+    Stage.prototype.zoomGambar = function (img) {
+        var view = this.view, MAX = 6, s = 1, tx = 0, ty = 0, drag = null, geser = false;
+
+        function batas() {
+            var mx = Math.max(0, (img.offsetWidth * s - view.clientWidth) / 2);
+            var my = Math.max(0, (img.offsetHeight * s - view.clientHeight) / 2);
+            tx = Math.min(mx, Math.max(-mx, tx));
+            ty = Math.min(my, Math.max(-my, ty));
+        }
+        function terapkan() {
+            if (s <= 1.001) { s = 1; tx = ty = 0; }
+            batas();
+            img.style.transform = s === 1 ? '' : 'translate(' + tx + 'px,' + ty + 'px) scale(' + s + ')';
+            view.classList.toggle('is-zoomed', s > 1);
+        }
+        function zoomKe(baru, cx, cy) {
+            baru = Math.min(MAX, Math.max(1, baru));
+            var r = view.getBoundingClientRect();
+            var px = cx - (r.left + r.width / 2), py = cy - (r.top + r.height / 2);
+            tx = px - (px - tx) * baru / s;
+            ty = py - (py - ty) * baru / s;
+            s = baru;
+            terapkan();
+        }
+
+        img.addEventListener('wheel', function (e) {
+            e.preventDefault();
+            var d = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+            zoomKe(s * Math.exp(-d * 0.0015), e.clientX, e.clientY);
+        }, { passive: false });
+
+        img.addEventListener('dblclick', function (e) {
+            e.preventDefault();
+            if (s > 1) zoomKe(1, e.clientX, e.clientY); else zoomKe(2.5, e.clientX, e.clientY);
+        });
+
+        img.addEventListener('pointerdown', function (e) {
+            if (e.button !== 0 || s <= 1) return;
+            drag = { x: e.clientX, y: e.clientY, tx: tx, ty: ty };
+            geser = false;
+            try { img.setPointerCapture(e.pointerId); } catch (x) {}
+            view.classList.add('is-dragging');
+            e.preventDefault();
+        });
+        img.addEventListener('pointermove', function (e) {
+            if (!drag) return;
+            tx = drag.tx + (e.clientX - drag.x);
+            ty = drag.ty + (e.clientY - drag.y);
+            geser = true;
+            terapkan();
+        });
+        function selesai(e) {
+            if (!drag) return;
+            drag = null;
+            view.classList.remove('is-dragging');
+            try { img.releasePointerCapture(e.pointerId); } catch (x) {}
+        }
+        img.addEventListener('pointerup', selesai);
+        img.addEventListener('pointercancel', selesai);
     };
 
     Stage.prototype.geser = function (arah) {
@@ -265,6 +412,11 @@
         var box = el('div', 'tes-ev-side', { 'aria-label': 'Evidence' });
         var stage = new Stage(box);
         root.appendChild(box);
+
+        // Tutup carousel saja (drawer tetap terbuka); muncul lagi saat drawer memuat data baru.
+        var tutup = tombolIkon('tes-ev-btn', 'fas fa-times', 'Tutup carousel');
+        stage.head.appendChild(tutup);
+        tutup.addEventListener('click', function () { root.classList.remove('has-evidence'); });
 
         function sinkronLebar() {
             var panel = root.querySelector('.ts-drawer-panel');
