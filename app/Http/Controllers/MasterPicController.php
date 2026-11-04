@@ -50,6 +50,7 @@ class MasterPicController extends Controller
                     ->orWhere('position', 'like', $like)
                     ->orWhere('phone', 'like', $like)
                     ->orWhere('email', 'like', $like)
+                    ->orWhere('token', 'like', $like)
                     ->orWhereHas('user', fn ($r) => $r->where('username', 'like', $like)->orWhere('name', 'like', $like)));
             })
             ->latest()
@@ -116,6 +117,10 @@ class MasterPicController extends Controller
             'position'    => 'nullable|string|max:255',
             'phone'       => 'nullable|string|max:50',
             'email'       => 'nullable|email|max:255',
+            // Token bebas huruf/angka; nominal boleh kosong tapi kalau diisi
+            // harus angka >= 0. Lihat migrasi 2026_09_25_000010.
+            'token'       => 'nullable|string|max:100',
+            'nominal'     => 'nullable|numeric|min:0',
             'status'      => 'required|in:ACTIVE,INACTIVE',
             // M-02 — penghubung ke orang sebenarnya (opsional).
             'user_id'     => 'nullable|exists:users,id',
@@ -128,6 +133,8 @@ class MasterPicController extends Controller
             'position'    => $request->position,
             'phone'       => $request->phone,
             'email'       => $request->email,
+            'token'       => $request->token ?: null,
+            'nominal'     => $request->filled('nominal') ? $request->nominal : null,
             'status'      => $request->status,
             'user_id'     => $request->user_id ?: null,
             'employee_id' => $request->employee_id ?: null,
@@ -157,6 +164,8 @@ class MasterPicController extends Controller
             'position' => $pic->position,
             'phone'    => $pic->phone,
             'email'       => $pic->email,
+            'token'       => $pic->token,
+            'nominal'     => $pic->nominal,
             'status'      => $pic->status,
             'user_id'     => $pic->user_id,
             'employee_id' => $pic->employee_id,
@@ -174,6 +183,10 @@ class MasterPicController extends Controller
             'position'    => 'nullable|string|max:255',
             'phone'       => 'nullable|string|max:50',
             'email'       => 'nullable|email|max:255',
+            // Token bebas huruf/angka; nominal boleh kosong tapi kalau diisi
+            // harus angka >= 0. Lihat migrasi 2026_09_25_000010.
+            'token'       => 'nullable|string|max:100',
+            'nominal'     => 'nullable|numeric|min:0',
             'status'      => 'required|in:ACTIVE,INACTIVE',
             // M-02 — penghubung ke orang sebenarnya (opsional).
             'user_id'     => 'nullable|exists:users,id',
@@ -188,6 +201,8 @@ class MasterPicController extends Controller
             'position'    => $request->position,
             'phone'       => $request->phone,
             'email'       => $request->email,
+            'token'       => $request->token ?: null,
+            'nominal'     => $request->filled('nominal') ? $request->nominal : null,
             'status'      => $request->status,
             'user_id'     => $request->user_id ?: null,
             'employee_id' => $request->employee_id ?: null,

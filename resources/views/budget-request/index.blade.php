@@ -1971,19 +1971,25 @@ $(function () {
                 $('#crRealizationVarTotal').html(fmtVar(cmp.variance));
 
                 // Rincian Settlement: Request item asal hanya ditulis di baris
-                // PERTAMA item itu (baris pecahan berikutnya "-"), Var-nya =
-                // Request item - jumlah seluruh baris settlement item tersebut.
-                var settlePerItem = {}, sudahTampil = {};
+                // PERTAMA item itu (baris pecahan berikutnya "-"). Var-nya =
+                // Request item - jumlah SELURUH baris settlement item tersebut,
+                // jadi ditulis di baris TERAKHIR item (setelah semua pecahan
+                // terlihat), bukan di baris pertama yang angkanya belum lengkap.
+                var settlePerItem = {}, sudahTampil = {}, barisTerakhir = {};
                 d.realizations.forEach(function (r) {
                     if (r.request_detail_id) {
                         settlePerItem[r.request_detail_id] = (settlePerItem[r.request_detail_id] || 0) + (r.actual || 0);
+                        barisTerakhir[r.request_detail_id] = r;
                     }
                 });
                 d.realizations.forEach(function (r) {
                     r._reqShown = null;
+                    r._varShown = null;
                     if (r.request_detail_id && !sudahTampil[r.request_detail_id]) {
                         sudahTampil[r.request_detail_id] = true;
                         r._reqShown = r.total_cr || 0;
+                    }
+                    if (r.request_detail_id && barisTerakhir[r.request_detail_id] === r) {
                         r._varShown = (r.total_cr || 0) - (settlePerItem[r.request_detail_id] || 0);
                     }
                 });
@@ -2048,7 +2054,7 @@ $(function () {
                         + '</td>'
                         + '<td class="text-right">' + (r._reqShown !== null ? (r._reqShown || 0).toLocaleString('id-ID') : '<span class="text-muted">-</span>') + '</td>'
                         + '<td class="text-right"><strong>' + r.actual_formatted + '</strong></td>'
-                        + '<td class="text-right">' + (r._reqShown !== null ? fmtVar(r._varShown) : (r.is_added ? fmtVar(-(r.actual || 0)) : '<span class="text-muted">-</span>')) + '</td>'
+                        + '<td class="text-right">' + (r._varShown !== null ? fmtVar(r._varShown) : (r.is_added ? fmtVar(-(r.actual || 0)) : '<span class="text-muted">-</span>')) + '</td>'
                         + '<td class="text-center">' + aksi + '</td>'
                         + '</tr>';
                   });
