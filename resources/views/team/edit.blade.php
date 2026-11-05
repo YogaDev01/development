@@ -2,6 +2,8 @@
 
 @section('title', 'Edit Team')
 
+@php $denganStruktur = \App\Models\Team::supportsStructure(); @endphp
+
 @section('content')
 
 <div class="content">
@@ -71,35 +73,77 @@
                         <div class="col-md-2">
                             <div class="form-group">
                                 <label class="font-weight-600">Status <span class="text-danger">*</span></label>
+                                @if($isSuperadmin)
                                 <select name="status" class="form-control" required>
                                     <option value="ACTIVE" {{ old('status', $team->status) === 'ACTIVE' ? 'selected' : '' }}>ACTIVE</option>
                                     <option value="INACTIVE" {{ old('status', $team->status) === 'INACTIVE' ? 'selected' : '' }}>INACTIVE</option>
                                 </select>
+                                @else
+                                {{-- Status team menentukan akses anggota: hanya superadmin (diabaikan server bila dikirim lainnya). --}}
+                                <input type="hidden" name="status" value="{{ $team->status }}">
+                                <input type="text" class="form-control" value="{{ $team->status }}" readonly aria-label="Status team">
+                                <small class="text-muted d-block mt-1">Diatur Superadmin.</small>
+                                @endif
                             </div>
                         </div>
+                        @if($denganStruktur)
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label class="font-weight-600">Induk Team</label>
+                                @if($canEditParent)
+                                <select name="parent_team_id" class="form-control @error('parent_team_id') is-invalid @enderror">
+                                    <option value="">&mdash; Tanpa Induk &mdash;</option>
+                                    @foreach($parentOptions as $p)
+                                    <option value="{{ $p->id }}" {{ (string) old('parent_team_id', $team->parent_team_id) === (string) $p->id ? 'selected' : '' }}>{{ $p->name }} ({{ $p->code }}){{ $p->status !== 'ACTIVE' ? ' — INACTIVE' : '' }}</option>
+                                    @endforeach
+                                </select>
+                                @error('parent_team_id')<small class="text-danger d-block">{{ $message }}</small>@enderror
+                                <small class="text-muted d-block mt-1">Hanya untuk struktur organisasi; tidak memberi akses data.</small>
+                                @else
+                                <input type="text" class="form-control" value="{{ $team->parent->name ?? '— Tanpa Induk —' }}" readonly>
+                                <small class="text-muted d-block mt-1">Induk team diatur Superadmin.</small>
+                                @endif
+                            </div>
+                        </div>
+                        @endif
                     </div>
                 </div>
             </div>
 
+            @include('team._access_groups')
+
             <div class="card card-primary card-outline shadow-sm">
                 <div class="card-header d-flex align-items-center">
                     <h3 class="card-title">Team Members</h3>
+                    @unless($membersLocked)
                     <button type="button" class="btn btn-sm btn-primary ml-auto" id="btnAddMember">
                         <i class="fas fa-plus mr-1"></i> Tambah Member
                     </button>
+                    @endunless
                 </div>
                 <div class="card-body p-0">
+                    @error('members')<div class="alert alert-danger m-3 mb-0" role="alert">{{ $message }}</div>@enderror
+                    <div class="px-3 pt-3 text-muted" style="font-size:11.5px;">
+                        @if($membersLocked)
+                        Team ini memiliki Akses PO, jadi menambah atau mengeluarkan anggota hanya dapat dilakukan Superadmin.
+                        Anda tetap dapat mengubah posisi, level, dan primary.
+                        @else
+                        Hanya anggota aktif yang ditampilkan. Menghapus baris atau memilih INACTIVE = anggota keluar dari team;
+                        datanya tetap tersimpan sebagai riwayat di halaman Detail.
+                        @endif
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
                                     <th scope="col" style="width:1%;">No</th>
-                                    <th scope="col" style="width:22%;">User</th>
-                                    <th scope="col" style="width:16%;">Position</th>
-                                    <th scope="col" style="width:9%;">Level</th>
-                                    <th scope="col" style="width:15%;">CA Limit</th>
-                                    <th scope="col" style="width:12%;">Join Date</th>
-                                    <th scope="col" style="width:10%;">Status</th>
+                                    <th scope="col" style="width:30%;">User</th>
+                                    <th scope="col" style="width:24%;">Position</th>
+                                    <th scope="col" style="width:10%;">Level</th>
+                                    @if($denganStruktur)
+                                    <th scope="col" class="text-center" style="width:10%;" title="Team utama user (maksimal satu per user)">Primary</th>
+                                    @endif
+                                    <th scope="col" style="width:12%;">Status</th>
                                     <th scope="col" style="width:5%;"></th>
                                 </tr>
                             </thead>
@@ -125,50 +169,81 @@
         'label' => strtoupper($u->username) . ' (' . $u->name . ')',
     ])->values();
 
-    $existingMembersData = $team->members->map(fn ($m) => [
-        'user_id'  => $m->user_id,
-        'position' => $m->position,
-        'level'    => $m->level,
-        'ca_limit' => $m->ca_limit,
-        'join_at'  => $m->join_at?->format('Y-m-d'),
-        'status'   => $m->status,
+    $existingMembersData = $team->activeMembers->map(fn ($m) => [
+        'id'         => $m->id,
+        'user_id'    => $m->user_id,
+        // Label dari relasi (bukan daftar user ACTIVE), supaya anggota yang
+        // akunnya sudah nonaktif tetap terbaca dan ditandai.
+        'label'      => strtoupper($m->user->username ?? ('#' . $m->user_id)) . ' (' . ($m->user->name ?? '-') . ')'
+                        . (($m->user->status ?? 'ACTIVE') !== 'ACTIVE' ? ' — akun nonaktif' : ''),
+        'inactive'   => ($m->user->status ?? 'ACTIVE') !== 'ACTIVE',
+        'position'   => $m->position,
+        'level'      => $m->level,
+        'is_primary' => (bool) ($m->is_primary ?? false),
+        'status'     => $m->status,
     ])->values();
 @endphp
 
 @push('scripts')
+@include('team._form_select_search')
 <script>
 $(function () {
+    // Semua teks dari data (nama, posisi) di-escape sebelum disisipkan ke HTML.
+    function esc(s) { return $('<div>').text(s == null ? '' : String(s)).html().replace(/"/g, '&quot;'); }
+
+    var users = @json($userOptionsData);
     var userOptions = '<option value="">— Pilih User —</option>' +
-        @json($userOptionsData)
-            .map(function (u) { return '<option value="' + u.id + '">' + u.label + '</option>'; }).join('');
+        users.map(function (u) { return '<option value="' + esc(u.id) + '">' + esc(u.label) + '</option>'; }).join('');
 
     var existingMembers = @json($existingMembersData);
 
     var memberIdx = 0;
+    var denganPrimary = @json($denganStruktur);
+    // Team ber-Akses PO & bukan superadmin: anggota tidak bisa ditambah/dikeluarkan.
+    var terkunci = @json($membersLocked);
 
-    function fmtRp(v) {
-        v = (v || '').toString().replace(/\D/g, '');
-        return v ? parseInt(v).toLocaleString('id-ID') : '';
+    function labelUser(id) {
+        var u = users.find(function (x) { return String(x.id) === String(id); });
+        return u ? u.label : ('#' + id);
     }
 
     function makeMemberRow(i, prefill) {
         prefill = prefill || {};
+        var kunci = terkunci && prefill.id;
         var opts = userOptions;
-        if (prefill.user_id) {
-            opts = opts.replace('value="' + prefill.user_id + '"', 'value="' + prefill.user_id + '" selected');
+        // Anggota yang akunnya nonaktif tidak ada di daftar user ACTIVE:
+        // tampilkan tetap supaya bisa dipilih INACTIVE / dihapus barisnya.
+        if (prefill.inactive) {
+            opts += '<option value="' + esc(prefill.user_id) + '">' + esc(prefill.label) + '</option>';
         }
-        return '<tr class="member-row">' +
-            '<td class="text-center align-middle member-row-no"></td>' +
-            '<td><select name="members[' + i + '][user_id]" class="form-control form-control-sm" required>' + opts + '</select></td>' +
-            '<td><input type="text" name="members[' + i + '][position]" class="form-control form-control-sm" value="' + (prefill.position || '') + '" placeholder="Leader/Supervisor/..."></td>' +
-            '<td><input type="number" min="0" step="1" name="members[' + i + '][level]" class="form-control form-control-sm text-center" value="' + (prefill.level ?? 0) + '" required></td>' +
-            '<td><input type="text" name="members[' + i + '][ca_limit]" class="form-control form-control-sm text-right member-ca-limit" value="' + fmtRp(prefill.ca_limit) + '" placeholder="0"></td>' +
-            '<td><input type="date" name="members[' + i + '][join_at]" class="form-control form-control-sm" value="' + (prefill.join_at || '') + '"></td>' +
-            '<td><select name="members[' + i + '][status]" class="form-control form-control-sm">' +
+        if (prefill.user_id) {
+            opts = opts.replace('value="' + esc(prefill.user_id) + '"', 'value="' + esc(prefill.user_id) + '" selected');
+        }
+        var kolomUser = kunci
+            ? '<td class="align-middle' + (prefill.inactive ? ' text-danger' : '') + '"><input type="hidden" name="members[' + i + '][user_id]" value="' + esc(prefill.user_id) + '">' + esc(prefill.label || labelUser(prefill.user_id)) + '</td>'
+            : '<td><select name="members[' + i + '][user_id]" class="form-control form-control-sm" required>' + opts + '</select></td>';
+        var kolomStatus = kunci
+            ? '<td class="align-middle"><input type="hidden" name="members[' + i + '][status]" value="ACTIVE">ACTIVE</td>'
+            : '<td><select name="members[' + i + '][status]" class="form-control form-control-sm">' +
                 '<option value="ACTIVE"' + (prefill.status !== 'INACTIVE' ? ' selected' : '') + '>ACTIVE</option>' +
                 '<option value="INACTIVE"' + (prefill.status === 'INACTIVE' ? ' selected' : '') + '>INACTIVE</option>' +
-            '</select></td>' +
-            '<td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-member"><i class="fas fa-trash"></i></button></td>' +
+              '</select></td>';
+        return '<tr class="member-row">' +
+            // Nomor urut di span sendiri: renumberMembers() hanya mengganti
+            // teks span, hidden id tetap terkirim.
+            '<td class="text-center align-middle"><span class="member-row-no"></span>' +
+                (prefill.id ? '<input type="hidden" name="members[' + i + '][id]" value="' + esc(prefill.id) + '">' : '') +
+            '</td>' +
+            kolomUser +
+            '<td><input type="text" name="members[' + i + '][position]" class="form-control form-control-sm" value="' + esc(prefill.position || '') + '" placeholder="Leader/Supervisor/..."></td>' +
+            '<td><input type="number" min="0" step="1" name="members[' + i + '][level]" class="form-control form-control-sm text-center" value="' + esc(prefill.level ?? 0) + '" required></td>' +
+            (denganPrimary
+                ? '<td class="text-center align-middle"><input type="checkbox" name="members[' + i + '][is_primary]" value="1" aria-label="Team primary"' + (prefill.is_primary ? ' checked' : '') + '></td>'
+                : '') +
+            kolomStatus +
+            '<td class="text-center align-middle">' +
+                (kunci ? '' : '<button type="button" class="btn btn-danger btn-sm btn-remove-member" title="Keluarkan dari team"><i class="fas fa-trash"></i></button>') +
+            '</td>' +
         '</tr>';
     }
 
@@ -184,10 +259,12 @@ $(function () {
         $('#memberBody').html(makeMemberRow(memberIdx++, null));
     }
     renumberMembers();
+    teamPasangCari($('#memberBody').closest('form'));
 
     $('#btnAddMember').on('click', function () {
         $('#memberBody').append(makeMemberRow(memberIdx++, null));
         renumberMembers();
+        teamPasangCari('#memberBody');
     });
 
     $(document).on('click', '.btn-remove-member', function () {
@@ -199,15 +276,6 @@ $(function () {
         renumberMembers();
     });
 
-    $(document).on('input', '.member-ca-limit', function () {
-        this.value = fmtRp(this.value);
-    });
-
-    $('#frmTeam').on('submit', function () {
-        $('.member-ca-limit').each(function () {
-            this.value = this.value.replace(/\./g, '');
-        });
-    });
 });
 </script>
 @endpush

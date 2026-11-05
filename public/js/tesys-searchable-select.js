@@ -20,6 +20,8 @@
 | Opsi:
 |   placeholder       — teks tombol/placeholder saat belum ada yang dipilih
 |   searchPlaceholder — placeholder input pencarian di dalam panel
+|   allowEmpty        — true: opsi bernilai kosong ikut tampil di daftar, supaya
+|                        pilihan bisa dikosongkan lagi (single select)
 |   onChange          — dipanggil langsung (selectEl) setiap kali pilihan berubah,
 |                        tidak bergantung pada bubbling event 'change'
 |
@@ -206,7 +208,7 @@
                 var val = $opt.val();
                 // Opsi kosong = placeholder; opsi disabled = disaring dropdown
                 // dependen (mis. Sub-RCA yang bukan milik RCA terpilih).
-                if (!val || $opt.prop('disabled')) return;
+                if ((!val && !opts.allowEmpty) || $opt.prop('disabled')) return;
                 var $item = $('<div class="tss-item"></div>').text($opt.attr('data-item-label') || optionLabel($opt)).attr('data-value', val);
                 if (dalamGrup) $item.addClass('tss-item-grouped');
                 if ($opt.attr('data-search')) $item.attr('data-search', $opt.attr('data-search'));

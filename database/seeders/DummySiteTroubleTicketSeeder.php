@@ -199,7 +199,6 @@ class DummySiteTroubleTicketSeeder extends Seeder
                 [
                     'position'   => 'Teknisi',
                     'level'      => 1,
-                    'join_at'    => $now->copy()->subMonths(6)->toDateString(),
                     'status'     => 'ACTIVE',
                     'created_at' => $now,
                     'updated_at' => $now,

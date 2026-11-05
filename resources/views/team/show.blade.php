@@ -40,8 +40,16 @@
     .tm-node.is-inactive .tm-avatar { background: var(--surface-2); color: var(--text-dim); border-color: var(--border); }
     .tm-node-name { font-size: var(--fs-body); font-weight: 700; color: var(--text); word-break: break-word; }
     .tm-node-pos { font-size: var(--fs-label); color: var(--text-dim); margin-bottom: var(--sp-2); }
-    .tm-node-limit { margin-top: var(--sp-2); padding-top: var(--sp-2); border-top: 1px dashed var(--border); font-size: var(--fs-caption); color: var(--text-faint); }
-    .tm-node-limit strong { display: block; font-size: var(--fs-data); color: var(--text); font-variant-numeric: tabular-nums; }
+
+    .tm-log { list-style: none; margin: 0; padding: 0; }
+    .tm-log li { display: flex; gap: var(--sp-3); padding: var(--sp-3) 0; border-bottom: 1px solid var(--border); }
+    .tm-log li:last-child { border-bottom: 0; }
+    .tm-log-time { flex: 0 0 120px; font-size: var(--fs-caption); color: var(--text-faint); font-variant-numeric: tabular-nums; }
+    .tm-log-title { font-size: var(--fs-body); font-weight: 600; color: var(--text); }
+    .tm-log-meta { font-size: var(--fs-caption); color: var(--text-dim); }
+    .tm-log-diff { margin-top: 2px; font-size: var(--fs-label); color: var(--text-dim); word-break: break-word; }
+    .tm-log-note { margin-top: 2px; font-size: var(--fs-label); color: var(--text); font-style: italic; }
+    .tm-sub { display: inline-block; margin: 0 4px 4px 0; }
 
     .tm-chip { display: inline-block; padding: 1px 8px; border-radius: var(--radius-pill); font-size: var(--fs-caption); font-weight: 600; }
     .tm-chip-ok { background: var(--success-bg); color: var(--success); }
@@ -59,6 +67,8 @@
     @media (max-width: 640px) {
         .tm-panel-body { padding: var(--sp-4) var(--sp-3); }
         .tm-node { width: 100%; max-width: 320px; }
+        .tm-log li { flex-direction: column; gap: 2px; }
+        .tm-log-time { flex: none; }
     }
 </style>
 @endpush
@@ -69,6 +79,19 @@
     $activeCount = $team->members->where('status', 'ACTIVE')->count();
     $leaderName = strtoupper($team->leader->username ?? '-');
     $initial = fn ($name) => mb_strtoupper(mb_substr(trim((string) $name) !== '' ? $name : '-', 0, 1));
+    $denganStruktur = \App\Models\Team::supportsStructure();
+    // Nilai riwayat ditampilkan apa adanya; array [lama, baru] jadi "lama → baru".
+    $fmtLog = function ($v) {
+        if (is_array($v) && array_is_list($v) && count($v) === 2) {
+            return ($v[0] === null || $v[0] === '' ? '—' : (is_bool($v[0]) ? ($v[0] ? 'Ya' : 'Tidak') : $v[0]))
+                . ' → '
+                . ($v[1] === null || $v[1] === '' ? '—' : (is_bool($v[1]) ? ($v[1] ? 'Ya' : 'Tidak') : $v[1]));
+        }
+        return is_array($v) ? implode(', ', array_map(fn ($x) => is_scalar($x) ? $x : json_encode($x), $v)) : (string) $v;
+    };
+    $labelField = ['name' => 'Nama', 'department_id' => 'Department', 'customer_id' => 'Customer', 'leader' => 'Leader',
+        'parent' => 'Induk', 'status' => 'Status', 'position' => 'Posisi', 'level' => 'Level', 'is_primary' => 'Primary',
+        'user_id' => 'User', 'members' => 'Anggota', 'ditambah' => 'Ditambah', 'dicabut' => 'Dicabut'];
 @endphp
 
 <div class="content">
@@ -105,6 +128,47 @@
                             <span class="tm-info-ico"><i class="fas fa-users"></i></span>
                             <div><div class="tm-info-label">Total Member Aktif</div><div class="tm-info-value">{{ $activeCount }}</div></div>
                         </div>
+                        <div class="tm-info-row">
+                            <span class="tm-info-ico"><i class="fas fa-key"></i></span>
+                            <div>
+                                <div class="tm-info-label">Akses PO (Access Group)</div>
+                                <div class="tm-info-value">
+                                    @forelse($team->accessGroupLinks->pluck('accessGroup')->filter()->unique('id') as $ag)
+                                    <span class="tm-sub">{{ $ag->name }} <span class="text-muted">· {{ $ag->po_count }} PO</span></span>
+                                    @empty
+                                    -
+                                    @endforelse
+                                </div>
+                            </div>
+                        </div>
+                        @if($denganStruktur)
+                        <div class="tm-info-row">
+                            <span class="tm-info-ico"><i class="fas fa-level-up-alt"></i></span>
+                            <div>
+                                <div class="tm-info-label">Induk Team</div>
+                                <div class="tm-info-value">
+                                    @if($team->parent)
+                                    <a href="{{ url('/team/' . $team->parent->id) }}">{{ $team->parent->name }}</a>
+                                    @else
+                                    -
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tm-info-row">
+                            <span class="tm-info-ico"><i class="fas fa-project-diagram"></i></span>
+                            <div>
+                                <div class="tm-info-label">Sub-Team</div>
+                                <div class="tm-info-value">
+                                    @forelse($team->children as $c)
+                                    <a href="{{ url('/team/' . $c->id) }}" class="tm-sub">{{ $c->name }}@if($c->status !== 'ACTIVE') <span class="text-muted">(INACTIVE)</span>@endif</a>
+                                    @empty
+                                    -
+                                    @endforelse
+                                </div>
+                            </div>
+                        </div>
+                        @endif
                     </div>
                     @if(Auth::user()->hasRole('superadmin') || (int) Auth::id() === (int) $team->leader_id)
                     <div class="tm-profile-foot">
@@ -122,6 +186,9 @@
                     <ul class="nav tm-tabs" id="teamTabs" role="tablist">
                         <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#paneOrgChart"><i class="fas fa-sitemap mr-1"></i> Organization Chart</a></li>
                         <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#paneMembers"><i class="fas fa-users mr-1"></i> Team Members<span class="tm-tab-count">{{ $team->members->count() }}</span></a></li>
+                        @if($denganStruktur)
+                        <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#paneHistory"><i class="fas fa-history mr-1"></i> Riwayat<span class="tm-tab-count">{{ $team->logs->count() }}</span></a></li>
+                        @endif
                     </ul>
                     <div class="tm-panel-body">
                         <div class="tab-content">
@@ -139,9 +206,6 @@
                                             <div class="tm-node-name">{{ $uname }}</div>
                                             <div class="tm-node-pos">{{ $m->position ?? '-' }}</div>
                                             <span class="tm-chip {{ $m->status === 'ACTIVE' ? 'tm-chip-ok' : 'tm-chip-off' }}">{{ $m->status }}</span>
-                                            @if($m->ca_limit)
-                                            <div class="tm-node-limit">CA Limit<strong>{{ $m->ca_limit_formatted }}</strong></div>
-                                            @endif
                                         </div>
                                         @endforeach
                                     </div>
@@ -158,28 +222,55 @@
                                         <thead>
                                             <tr>
                                                 <th scope="col">User</th><th scope="col">Position</th><th scope="col" class="text-center">Level</th>
-                                                <th scope="col" class="text-right">CA Limit</th><th scope="col">Join</th><th scope="col">Left</th><th scope="col">Status</th>
+                                                @if($denganStruktur)<th scope="col" class="text-center">Primary</th>@endif
+                                                <th scope="col">Status</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @forelse($team->members as $m)
+                                            {{-- Anggota aktif dulu, lalu riwayat (INACTIVE). --}}
+                                            @forelse($team->members->sortBy(fn ($m) => [$m->status === 'ACTIVE' ? 0 : 1, $m->level]) as $m)
                                             @php $uname = strtoupper($m->user->username ?? '-'); @endphp
                                             <tr>
                                                 <td><span class="tm-user"><span class="tm-avatar tm-avatar-sm">{{ $initial($uname) }}</span>{{ $uname }}</span></td>
                                                 <td>{{ $m->position ?? '-' }}</td>
                                                 <td class="text-center">{{ $m->level }}</td>
-                                                <td class="text-right" style="font-variant-numeric:tabular-nums;">{{ $m->ca_limit_formatted ?? '-' }}</td>
-                                                <td>{{ $m->join_at?->format('d M Y') ?? '-' }}</td>
-                                                <td>{{ $m->left_at?->format('d M Y') ?? '-' }}</td>
+                                                @if($denganStruktur)
+                                                <td class="text-center">@if($m->is_primary)<span class="tm-chip tm-chip-ok">Primary</span>@else - @endif</td>
+                                                @endif
                                                 <td><span class="tm-chip {{ $m->status === 'ACTIVE' ? 'tm-chip-ok' : 'tm-chip-off' }}">{{ $m->status }}</span></td>
                                             </tr>
                                             @empty
-                                            <tr><td colspan="7"><div class="tm-empty"><i class="fas fa-users"></i>Belum ada member.</div></td></tr>
+                                            <tr><td colspan="{{ $denganStruktur ? 5 : 4 }}"><div class="tm-empty"><i class="fas fa-users"></i>Belum ada member.</div></td></tr>
                                             @endforelse
                                         </tbody>
                                     </table>
                                 </div>
                             </div>
+
+                            @if($denganStruktur)
+                            <!-- RIWAYAT -->
+                            <div class="tab-pane fade" id="paneHistory">
+                                @if($team->logs->isEmpty())
+                                <div class="tm-empty"><i class="fas fa-history"></i>Belum ada riwayat perubahan. Riwayat mulai tercatat sejak pembaruan struktur Team.</div>
+                                @else
+                                <ul class="tm-log">
+                                    @foreach($team->logs as $log)
+                                    <li>
+                                        <div class="tm-log-time">{{ $log->created_at?->format('d M Y H:i') }}</div>
+                                        <div style="min-width:0;">
+                                            <div class="tm-log-title">{{ $log->action_label }}@if(!empty($log->changes['user'])) &mdash; {{ $log->changes['user'] }}@endif</div>
+                                            <div class="tm-log-meta">oleh {{ $log->user_name ?? 'System' }}@if($log->role) ({{ $log->role }})@endif</div>
+                                            @foreach(($log->changes['fields'] ?? collect($log->changes ?? [])->except('user')->all()) as $field => $val)
+                                            <div class="tm-log-diff">{{ $labelField[$field] ?? $field }}: {{ $fmtLog($val) }}</div>
+                                            @endforeach
+                                            @if($log->notes)<div class="tm-log-note">{{ $log->notes }}</div>@endif
+                                        </div>
+                                    </li>
+                                    @endforeach
+                                </ul>
+                                @endif
+                            </div>
+                            @endif
 
                         </div>
                     </div>

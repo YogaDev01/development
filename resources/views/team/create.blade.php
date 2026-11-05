@@ -2,6 +2,8 @@
 
 @section('title', 'Tambah Team')
 
+@php $denganPrimary = \App\Models\Team::supportsStructure(); @endphp
+
 @section('content')
 
 <div class="content">
@@ -68,9 +70,26 @@
                                 <small class="text-muted d-block mt-1">Leader wajib juga tercatat sebagai member ACTIVE di bawah.</small>
                             </div>
                         </div>
+                        @if(\App\Models\Team::supportsStructure())
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label class="font-weight-600">Induk Team</label>
+                                <select name="parent_team_id" class="form-control @error('parent_team_id') is-invalid @enderror">
+                                    <option value="">&mdash; Tanpa Induk &mdash;</option>
+                                    @foreach($parentOptions as $p)
+                                    <option value="{{ $p->id }}" {{ old('parent_team_id') == $p->id ? 'selected' : '' }}>{{ $p->name }} ({{ $p->code }})</option>
+                                    @endforeach
+                                </select>
+                                @error('parent_team_id')<small class="text-danger d-block">{{ $message }}</small>@enderror
+                                <small class="text-muted d-block mt-1">Hanya untuk struktur organisasi; tidak memberi akses data.</small>
+                            </div>
+                        </div>
+                        @endif
                     </div>
                 </div>
             </div>
+
+            @include('team._access_groups')
 
             <div class="card card-primary card-outline shadow-sm">
                 <div class="card-header d-flex align-items-center">
@@ -80,17 +99,19 @@
                     </button>
                 </div>
                 <div class="card-body p-0">
+                    @error('members')<div class="alert alert-danger m-3 mb-0" role="alert">{{ $message }}</div>@enderror
                     <div class="table-responsive">
                         <table class="table table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
                                     <th scope="col" style="width:1%;">No</th>
-                                    <th scope="col" style="width:22%;">User</th>
-                                    <th scope="col" style="width:16%;">Position</th>
-                                    <th scope="col" style="width:9%;">Level</th>
-                                    <th scope="col" style="width:15%;">CA Limit</th>
-                                    <th scope="col" style="width:12%;">Join Date</th>
-                                    <th scope="col" style="width:10%;">Status</th>
+                                    <th scope="col" style="width:30%;">User</th>
+                                    <th scope="col" style="width:24%;">Position</th>
+                                    <th scope="col" style="width:10%;">Level</th>
+                                    @if($denganPrimary)
+                                    <th scope="col" class="text-center" style="width:10%;" title="Team utama user (maksimal satu per user)">Primary</th>
+                                    @endif
+                                    <th scope="col" style="width:12%;">Status</th>
                                     <th scope="col" style="width:5%;"></th>
                                 </tr>
                             </thead>
@@ -118,18 +139,18 @@
 @endphp
 
 @push('scripts')
+@include('team._form_select_search')
 <script>
 $(function () {
+    // Teks dari data di-escape sebelum disisipkan ke HTML.
+    function esc(s) { return $('<div>').text(s == null ? '' : String(s)).html().replace(/"/g, '&quot;'); }
+
     var userOptions = '<option value="">— Pilih User —</option>' +
         @json($userOptionsData)
-            .map(function (u) { return '<option value="' + u.id + '">' + u.label + '</option>'; }).join('');
+            .map(function (u) { return '<option value="' + esc(u.id) + '">' + esc(u.label) + '</option>'; }).join('');
 
     var memberIdx = 0;
-
-    function fmtRp(v) {
-        v = (v || '').toString().replace(/\D/g, '');
-        return v ? parseInt(v).toLocaleString('id-ID') : '';
-    }
+    var denganPrimary = @json($denganPrimary);
 
     function makeMemberRow(i, prefill) {
         prefill = prefill || {};
@@ -140,10 +161,11 @@ $(function () {
         return '<tr class="member-row">' +
             '<td class="text-center align-middle member-row-no"></td>' +
             '<td><select name="members[' + i + '][user_id]" class="form-control form-control-sm" required>' + opts + '</select></td>' +
-            '<td><input type="text" name="members[' + i + '][position]" class="form-control form-control-sm" value="' + (prefill.position || '') + '" placeholder="Leader/Supervisor/..."></td>' +
+            '<td><input type="text" name="members[' + i + '][position]" class="form-control form-control-sm" value="' + esc(prefill.position || '') + '" placeholder="Leader/Supervisor/..."></td>' +
             '<td><input type="number" min="0" step="1" name="members[' + i + '][level]" class="form-control form-control-sm text-center" value="' + (prefill.level ?? 0) + '" required></td>' +
-            '<td><input type="text" name="members[' + i + '][ca_limit]" class="form-control form-control-sm text-right member-ca-limit" value="' + (prefill.ca_limit || '') + '" placeholder="0"></td>' +
-            '<td><input type="date" name="members[' + i + '][join_at]" class="form-control form-control-sm" value="' + (prefill.join_at || '') + '"></td>' +
+            (denganPrimary
+                ? '<td class="text-center align-middle"><input type="checkbox" name="members[' + i + '][is_primary]" value="1" aria-label="Team primary"' + (prefill.is_primary ? ' checked' : '') + '></td>'
+                : '') +
             '<td><select name="members[' + i + '][status]" class="form-control form-control-sm">' +
                 '<option value="ACTIVE"' + (prefill.status !== 'INACTIVE' ? ' selected' : '') + '>ACTIVE</option>' +
                 '<option value="INACTIVE"' + (prefill.status === 'INACTIVE' ? ' selected' : '') + '>INACTIVE</option>' +
@@ -159,6 +181,7 @@ $(function () {
     $('#btnAddMember').on('click', function () {
         $('#memberBody').append(makeMemberRow(memberIdx++, null));
         renumberMembers();
+        teamPasangCari('#memberBody');
     });
 
     $(document).on('click', '.btn-remove-member', function () {
@@ -170,25 +193,16 @@ $(function () {
         renumberMembers();
     });
 
-    $(document).on('input', '.member-ca-limit', function () {
-        this.value = fmtRp(this.value);
-    });
-
     // Baris pertama: default leader (kalau sudah dipilih)
     $('#btnAddMember').trigger('click');
+    teamPasangCari($('#memberBody').closest('form'));
 
     $('#selLeader').on('change', function () {
         var val = $(this).val();
         var firstSelect = $('.member-row:first select[name^="members"][name$="[user_id]"]');
         if (val && firstSelect.length && !firstSelect.val()) {
-            firstSelect.val(val);
+            firstSelect.val(val).trigger('tss:sync');
         }
-    });
-
-    $('#frmTeam').on('submit', function () {
-        $('.member-ca-limit').each(function () {
-            this.value = this.value.replace(/\./g, '');
-        });
     });
 });
 </script>

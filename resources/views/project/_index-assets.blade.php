@@ -1914,7 +1914,10 @@ $(function () {
             // Kotak catatan hanya selama PO belum Closed (server menolak juga).
             var bisaCatat = d.can_post_log_note !== false;
             $('#prjLogForm').prop('hidden', !bisaCatat).data('id', d.id);
-            $('#prjLogClosed').prop('hidden', bisaCatat);
+            // read_only = dibuka karena pernah ditindak (tanpa akses aktif).
+            $('#prjLogClosed').prop('hidden', bisaCatat).html(d.read_only
+                ? '<i class="fas fa-eye mr-1"></i> Mode baca saja — Anda pernah menindak Purchase Order ini, tetapi tidak lagi memiliki akses aktif.'
+                : '<i class="fas fa-lock mr-1"></i> Purchase Order sudah Closed — catatan baru tidak dapat ditambahkan.');
             $('#prjLogInput').val('');
 
             var pendingTab = window._prjPendingTab;

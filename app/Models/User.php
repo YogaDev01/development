@@ -378,29 +378,238 @@ class User extends Authenticatable
         return $this->hasMany(TeamMember::class, 'user_id');
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | AKSES DATA — satu sumber kebenaran (blueprint 2026-11-06, K2/K3/K5)
+    |--------------------------------------------------------------------------
+    | Akses = Access Group individu (users.access_group_id)
+    |       ∪ Access Group yang dipasang ke Team ACTIVE tempat user menjadi
+    |         anggota ACTIVE (access_group_details.team_id).
+    |
+    | Struktur organisasi (leader, induk team) TIDAK ikut menentukan akses:
+    | memimpin team, atau menjadi induk team lain, tidak memberi apa pun.
+    |
+    | Hasilnya di-memo per instance (review MEDIUM-5): satu permintaan bisa
+    | memanggil scope ini belasan kali (scopeByRole, Todo List, bulk per CR).
+    | Memo dikunci pada access_group_id saat dihitung dan dibuang oleh
+    | refresh() / forgetAccessCache() — perubahan keanggotaan team di tengah
+    | permintaan yang sama tidak terlihat sampai memo dibuang.
+    */
+
+    /** @var array<string, \Illuminate\Support\Collection> */
+    protected array $accessMemo = [];
+
+    protected ?int $accessMemoGroupId = null;
+
+    /** Buang memo akses (dipakai bila akses diubah di instance yang sama). */
+    public function forgetAccessCache(): static
+    {
+        $this->accessMemo = [];
+
+        return $this;
+    }
+
+    public function refresh()
+    {
+        $this->forgetAccessCache();
+
+        return parent::refresh();
+    }
+
+    private function accessMemo(string $key, \Closure $hitung): \Illuminate\Support\Collection
+    {
+        if ($this->accessMemoGroupId !== ($this->access_group_id === null ? null : (int) $this->access_group_id)) {
+            $this->accessMemo = [];
+            $this->accessMemoGroupId = $this->access_group_id === null ? null : (int) $this->access_group_id;
+        }
+
+        return $this->accessMemo[$key] ??= $hitung();
+    }
+
+    /** ID Access Group yang berlaku untuk user ini (individu + via team). */
+    public function accessibleAccessGroupIds(): \Illuminate\Support\Collection
+    {
+        return $this->accessMemo('groups', fn () => $this->computeAccessibleAccessGroupIds());
+    }
+
+    private function computeAccessibleAccessGroupIds(): \Illuminate\Support\Collection
+    {
+        $viaTeams = AccessGroupDetail::query()
+            ->whereNotNull('team_id')
+            ->whereIn('team_id', TeamMember::query()
+                ->join('teams', 'teams.id', '=', 'team_members.team_id')
+                ->where('team_members.user_id', $this->id)
+                ->where('team_members.status', 'ACTIVE')
+                ->where('teams.status', 'ACTIVE')
+                ->select('team_members.team_id'))
+            ->pluck('access_group_id');
+
+        return collect([$this->access_group_id])
+            ->concat($viaTeams)
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+    }
+
     /**
-     * Semua project id (PO) yang bisa diakses user ini: langsung dari access
-     * group-nya sendiri (project_id di access_group_details), DITAMBAH
-     * project id yang bisa diakses lewat access group manapun yang di-assign
-     * ke Team tempat user ini jadi member ACTIVE (team_id di
-     * access_group_details) — lihat dokumen Major A "Team -> Access Group ->
-     * PO". Union, BUKAN pengganti — assignment access group langsung tetap
-     * berlaku seperti sekarang, ini cuma menambah jalur baru.
+     * Semua project id (PO) yang bisa diakses user ini lewat Access Group
+     * individu ATAU Access Group team ACTIVE-nya. Team INACTIVE (atau
+     * membership INACTIVE) tidak lagi memberi akses.
      */
     public function accessibleProjectIds(): \Illuminate\Support\Collection
     {
-        $direct = $this->accessGroup ? $this->accessGroup->projectIds() : collect();
+        return $this->accessGroupDetailIds('project_id');
+    }
 
-        $teamIds = $this->teamMemberships()->where('status', 'ACTIVE')->pluck('team_id');
-        if ($teamIds->isEmpty()) {
-            return $direct;
+    /**
+     * Boleh melihat PO $projectId (detail JSON & lampiran)?
+     *
+     *  - Role PO_FULL_SCOPE: semua PO. Fungsi Finance yang ditambahkan
+     *    6 Nov 2026 (PO_FULL_SCOPE_MENU_GATED) hanya bila punya menu list-po;
+     *    tanpa menu mereka diperlakukan seperti role lain.
+     *  - Selainnya: PO di Access Group individu ∪ team ACTIVE.
+     *
+     * Jalur baca-saja "pernah ditindak" (Project::wasActedOnBy) ditambahkan
+     * oleh pemanggilnya, bukan di sini.
+     */
+    public function canSeeProject(int $projectId): bool
+    {
+        if ($this->hasRole(\App\Support\AccessRoles::PO_FULL_SCOPE)) {
+            $tanpaMenu = $this->hasRole(\App\Support\AccessRoles::PO_FULL_SCOPE_MENU_GATED)
+                && ! $this->effectiveRole()?->hasMenu('list-po');
+
+            if (! $tanpaMenu) {
+                return true;
+            }
         }
 
-        $viaTeams = AccessGroup::whereHas('details', fn ($q) => $q->whereIn('team_id', $teamIds))
-            ->get()
-            ->flatMap(fn ($ag) => $ag->projectIds());
+        return $this->accessibleProjectIds()->contains($projectId);
+    }
 
-        return $direct->concat($viaTeams)->unique()->values();
+    /**
+     * Cost center (overhead dll.) yang bisa diakses user ini — pasangan
+     * accessibleProjectIds(), dengan jalur yang sama (individu ∪ team).
+     */
+    public function accessibleCostCenterIds(): \Illuminate\Support\Collection
+    {
+        return $this->accessGroupDetailIds('cost_center_id');
+    }
+
+    private function accessGroupDetailIds(string $column): \Illuminate\Support\Collection
+    {
+        return $this->accessMemo($column, fn () => $this->computeAccessGroupDetailIds($column));
+    }
+
+    private function computeAccessGroupDetailIds(string $column): \Illuminate\Support\Collection
+    {
+        $groupIds = $this->accessibleAccessGroupIds();
+        if ($groupIds->isEmpty()) {
+            return collect();
+        }
+
+        return AccessGroupDetail::query()
+            ->whereIn('access_group_id', $groupIds)
+            ->whereNotNull($column)
+            ->pluck($column)
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | KONTEKS ORGANISASI — dibekukan di baris log status (blueprint K6)
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Team primary, department, posisi & level user SAAT INI, plus kode semua
+     * team ACTIVE-nya. Dipanggil addLog() saat aksi terjadi; hasilnya
+     * disimpan di kolom actor_org_context sehingga perubahan organisasi
+     * berikutnya tidak mengubah histori. Primary tidak ditebak: bila belum
+     * ditetapkan, primary_team = null.
+     */
+    public function orgContext(): array
+    {
+        $rows = TeamMember::query()
+            ->join('teams', 'teams.id', '=', 'team_members.team_id')
+            ->leftJoin('departments', 'departments.id', '=', 'teams.department_id')
+            ->where('team_members.user_id', $this->id)
+            ->where('team_members.status', 'ACTIVE')
+            ->where('teams.status', 'ACTIVE')
+            ->orderBy('teams.code')
+            ->get([
+                'teams.id as team_id', 'teams.code', 'teams.name',
+                'departments.id as department_id', 'departments.name as department_name',
+                'team_members.position', 'team_members.level', 'team_members.is_primary',
+            ]);
+
+        $primary = $rows->first(fn ($r) => (bool) $r->is_primary);
+
+        return [
+            'primary_team' => $primary ? ['id' => (int) $primary->team_id, 'code' => $primary->code, 'name' => $primary->name] : null,
+            'department'   => $primary && $primary->department_id
+                ? ['id' => (int) $primary->department_id, 'name' => $primary->department_name]
+                : null,
+            'position'     => $primary?->position,
+            'level'        => $primary ? (int) $primary->level : null,
+            'teams'        => $rows->pluck('code')->values()->all(),
+        ];
+    }
+
+    /**
+     * ['actor_org_context' => …] untuk baris log $table, atau [] bila kolomnya
+     * / struktur team belum dimigrasi (kode di-upload sebelum migrate) atau
+     * tidak ada pelaku. Gagal-aman: konteks yang gagal dihitung tidak boleh
+     * menggagalkan transisi status dokumen — kolomnya dibiarkan NULL.
+     */
+    public static function orgContextAttribute(?self $user, string $table): array
+    {
+        static $kolomAda = [];
+
+        if (! $user) {
+            return [];
+        }
+
+        $kolomAda[$table] ??= Team::supportsStructure()
+            && \Illuminate\Support\Facades\Schema::hasColumn($table, 'actor_org_context');
+
+        if (! $kolomAda[$table]) {
+            return [];
+        }
+
+        try {
+            return ['actor_org_context' => $user->orgContext()];
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Gagal menghitung actor_org_context', [
+                'table' => $table, 'user_id' => $user->id, 'message' => $e->getMessage(),
+            ]);
+
+            return [];
+        }
+    }
+
+    /**
+     * Kebalikan accessibleProjectIds(): user yang punya akses ke PO $projectId
+     * lewat Access Group individu ATAU team ACTIVE-nya. Role ber-scope penuh
+     * TIDAK termasuk — pemanggil menambahkannya sendiri bila perlu.
+     */
+    public function scopeWithProjectAccess($query, int $projectId)
+    {
+        $groupIds = AccessGroupDetail::query()->where('project_id', $projectId)->select('access_group_id');
+
+        return $query->where(fn ($q) => $q
+            ->whereIn('users.access_group_id', $groupIds)
+            ->orWhereIn('users.id', TeamMember::query()
+                ->join('teams', 'teams.id', '=', 'team_members.team_id')
+                ->where('team_members.status', 'ACTIVE')
+                ->where('teams.status', 'ACTIVE')
+                ->whereIn('team_members.team_id', AccessGroupDetail::query()
+                    ->whereNotNull('team_id')
+                    ->whereIn('access_group_id', AccessGroupDetail::query()->where('project_id', $projectId)->select('access_group_id'))
+                    ->select('team_id'))
+                ->select('team_members.user_id')));
     }
 
     /**

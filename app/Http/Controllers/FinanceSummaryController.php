@@ -23,8 +23,8 @@ class FinanceSummaryController extends Controller
     /** Arti tiap kelompok status ada di App\Support\BudgetConsumption. */
     private const USED_STATUSES = \App\Support\BudgetConsumption::REPORTED;
 
-    /** Role yang boleh melihat nilai PO */
-    private const PO_VALUE_ROLES = ['superadmin', 'approver', 'finance', 'finance_manager', 'head', 'guest'];
+    /** Role yang boleh melihat nilai PO — dirujuk dari AccessRoles, bukan disalin. */
+    private const PO_VALUE_ROLES = \App\Support\AccessRoles::PO_VALUE;
 
     /**
      * Jendela tahun untuk grafik & breakdown bulanan di tab Executive.
@@ -781,9 +781,8 @@ class FinanceSummaryController extends Controller
             return null;
         }
 
-        return $user->accessGroup
-            ? $user->accessGroup->details->pluck('project_id')->all()
-            : [];
+        // Access Group individu ∪ Access Group team ACTIVE — sama dengan daftar PO.
+        return $user->accessibleProjectIds()->all();
     }
 
     /**

@@ -108,8 +108,8 @@ trait BuildsCrWorklist
     /** ID cost center overhead yang boleh diakses user (kosong = tak ada) */
     private function accessibleOverheadCostCenterIds(): \Illuminate\Support\Collection
     {
-        $user = Auth::user();
-        return $user->accessGroup ? $user->accessGroup->costCenterIds() : collect();
+        // Access Group individu ∪ Access Group team ACTIVE (User::accessibleCostCenterIds()).
+        return Auth::user()->accessibleCostCenterIds();
     }
 
     private function canSeePayroll(): bool

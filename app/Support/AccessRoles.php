@@ -39,9 +39,26 @@ final class AccessRoles
      * halaman List PO untuk melewatinya.
      *
      * Daftar ini sengaja PENDEK. Peran lain tetap bisa membuka halamannya,
-     * hanya melihat PO yang memang ada di Access Group-nya.
+     * hanya melihat PO yang memang ada di Access Group-nya (individu ∪ team).
+     *
+     * 6 Nov 2026 (blueprint team-akses-organisasi, K4): fungsi Finance —
+     * cost_control, collection, treasury, accounting — melihat SELURUH PO.
+     * Halaman tetap digerbang menu (menu:list-po dll.), jadi peran tanpa menu
+     * tidak otomatis bisa membukanya. 'finance' umum sengaja TIDAK ditambah.
+     * Hanya hak MELIHAT — tombol aksi PO tetap mengikuti daftar perannya sendiri.
      */
-    public const PO_FULL_SCOPE = ['superadmin', 'approver', 'finance_manager'];
+    public const PO_FULL_SCOPE = [
+        'superadmin', 'approver', 'finance_manager',
+        'cost_control', 'collection', 'treasury', 'accounting',
+    ];
+
+    /**
+     * Bagian PO_FULL_SCOPE yang WAJIB punya menu 'list-po' untuk melihat
+     * detail PO lewat URL langsung (detail-json tidak digerbang menu).
+     * Keputusan K4: fungsi Finance tetap dibatasi menu. Peran full scope
+     * lama (superadmin/approver/finance_manager) tidak terpengaruh.
+     */
+    public const PO_FULL_SCOPE_MENU_GATED = ['cost_control', 'collection', 'treasury', 'accounting'];
 
     /**
      * Melihat kolom bernilai uang pada PO (Contract, PO Value, Payment,
@@ -52,8 +69,15 @@ final class AccessRoles
      * melihat nilai PO. Yang di luar daftar ini melihat kolomnya tetap ada
      * (agar indeks kolom, filter dan ekspor tidak bergeser) tapi isinya
      * ditutup.
+     *
+     * FinanceSummaryController::PO_VALUE_ROLES kini MERUJUK konstanta ini,
+     * jadi keduanya tidak bisa lagi berbeda. Fungsi Finance (K4) ditambah
+     * 6 Nov 2026 — ikut berlaku di Finance Summary.
      */
-    public const PO_VALUE = ['superadmin', 'approver', 'finance', 'finance_manager', 'head', 'guest'];
+    public const PO_VALUE = [
+        'superadmin', 'approver', 'finance', 'finance_manager', 'head', 'guest',
+        'cost_control', 'collection', 'treasury', 'accounting',
+    ];
 
     /**
      * Melihat KOLOM uang di Daftar Purchase Order sama sekali.
@@ -61,9 +85,13 @@ final class AccessRoles
      * Lebih ketat daripada PO_VALUE: di sana kolomnya tetap ada tapi isinya
      * ditutup, di sini kolomnya tidak dirender sama sekali - termasuk dropdown
      * "Kolom" yang isinya memang cuma kolom-kolom itu. Peran di luar daftar ini
-     * hanya melihat Budget & Variable Cost.
+     * hanya melihat Budget & Variable Cost. Fungsi Finance (K4) ditambah
+     * 6 Nov 2026.
      */
-    public const PO_MONEY_COLUMNS = ['superadmin', 'approver', 'finance_manager'];
+    public const PO_MONEY_COLUMNS = [
+        'superadmin', 'approver', 'finance_manager',
+        'cost_control', 'collection', 'treasury', 'accounting',
+    ];
 
     /**
      * Boleh MENGUBAH Purchase Order pada status apa pun.

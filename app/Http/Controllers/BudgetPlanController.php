@@ -94,8 +94,9 @@ class BudgetPlanController extends Controller
             ->select('projects.*');
 
         if (!in_array($role, ['superadmin', 'finance', 'finance_manager', 'admin'])) {
-            if ($user->accessGroup) {
-                $projectIds = $user->accessGroup->details->pluck('project_id');
+            // Access Group individu ∪ team ACTIVE (User::accessibleProjectIds()).
+            $projectIds = $user->accessibleProjectIds();
+            if ($projectIds->isNotEmpty()) {
                 $query->whereIn('projects.id', $projectIds);
             } else {
                 $query->whereRaw('1=0'); // tidak ada akses
@@ -133,10 +134,7 @@ class BudgetPlanController extends Controller
             if (in_array($role, self::BP_PROJECT_PRIVILEGED_ROLES)) {
                 return true;
             }
-            $projectIds = $user->accessGroup
-                ? $user->accessGroup->details->pluck('project_id')->filter()->map(fn ($i) => (int) $i)
-                : collect();
-            return $projectIds->contains((int) $bp->project_id);
+            return $user->accessibleProjectIds()->contains((int) $bp->project_id);
         }
 
         if ($bp->isCostCenterBudget()) {
