@@ -144,17 +144,13 @@
                     <div class="tab-pane fade" id="paneAccess">
                         <p class="text-muted" style="font-size:12px;">
                             Daftar Purchase Order (Scope of Work) yang dapat diakses melalui Access Group
-                            <strong>{{ $user->accessGroup->name ?? '-' }}</strong>.
+                            <strong>{{ $user->accessGroup->name ?? '-' }}</strong> dan Access Group dari Team aktif Anda.
                         </p>
 
                         @if($accessibleProjects->isEmpty())
                         <div class="text-center text-muted py-4">
                             <i class="fas fa-folder-open d-block mb-2" style="font-size:22px;"></i>
-                            @if(!$user->accessGroup)
-                                Belum ada Access Group yang ditetapkan untuk akun ini.
-                            @else
-                                Belum ada Purchase Order pada Access Group ini.
-                            @endif
+                            Belum ada Purchase Order dari Access Group individu maupun Team Anda.
                         </div>
                         @else
                         <div class="table-responsive">

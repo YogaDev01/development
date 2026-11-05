@@ -581,7 +581,9 @@ Route::middleware('auth')->group(function () {
         Route::resource('user', UserController::class)->except(['index', 'show']);
         Route::resource('accessgroup', AccessGroupController::class)->except(['index', 'show']);
         Route::post('team',        [TeamController::class, 'store'])->name('team.store');
-        Route::delete('team/{id}', [TeamController::class, 'destroy'])->name('team.destroy');
+        // Team tidak dihapus permanen (riwayat anggota ikut hilang) — hanya
+        // diaktifkan/nonaktifkan. Keputusan 2026-11-06.
+        Route::patch('team/{id}/status', [TeamController::class, 'updateStatus'])->name('team.status');
         Route::post('department',        [DepartmentController::class, 'store'])->name('department.store');
         Route::put('department/{id}',    [DepartmentController::class, 'update'])->name('department.update');
         Route::delete('department/{id}', [DepartmentController::class, 'destroy'])->name('department.destroy');
@@ -613,6 +615,8 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('menu:team')->group(function () {
         Route::get('team',      [TeamController::class, 'index'])->name('team.index');
+        // Struktur organisasi (tampilan saja) — WAJIB sebelum team/{id}.
+        Route::get('team/structure', [TeamController::class, 'structure'])->name('team.structure');
         Route::get('team/{id}', [TeamController::class, 'show'])->name('team.show');
     });
 

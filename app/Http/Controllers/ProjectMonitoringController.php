@@ -10,7 +10,6 @@ use App\Models\ProjectDetail;
 use App\Models\ProjectMonitoringLog;
 use App\Models\Cluster;
 use App\Models\User;
-use App\Models\AccessGroupDetail;
 use App\Models\RequestStatusLog;
 use App\Services\NotifyService;
 
@@ -118,19 +117,15 @@ class ProjectMonitoringController extends Controller
     }
 
     /**
-     * User yang bisa di-mention untuk PO ini: user > access_group_id >
-     * access_group_details > project_id (yang aksesnya memang mencakup PO
-     * ini), ditambah role privileged yang bisa mengakses semua PO.
+     * User yang bisa di-mention untuk PO ini: user yang aksesnya mencakup PO
+     * ini (Access Group individu ∪ team ACTIVE — User::scopeWithProjectAccess),
+     * ditambah role privileged yang bisa mengakses semua PO.
      */
     private function mentionableUsers(int $projectId)
     {
-        $accessGroupIds = AccessGroupDetail::where('project_id', $projectId)
-            ->pluck('access_group_id')
-            ->unique();
-
         return User::where('status', 'ACTIVE')
-            ->where(function ($q) use ($accessGroupIds) {
-                $q->whereIn('access_group_id', $accessGroupIds)
+            ->where(function ($q) use ($projectId) {
+                $q->withProjectAccess($projectId)
                   ->orWhereHas('role', fn ($r) => $r->whereRaw('LOWER(name) IN (\'' . implode("','", self::MENTION_BYPASS_ROLES) . '\')'));
             })
             ->orderBy('name')

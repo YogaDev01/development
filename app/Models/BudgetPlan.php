@@ -348,7 +348,8 @@ class BudgetPlan extends Model
             'user_id'        => $user?->id,
             'user_name'      => $user?->name ?? 'System',
             'role'           => $user?->role?->name,
-        ]);
+        // Konteks organisasi pelaku saat aksi — dibekukan di baris log.
+        ] + User::orgContextAttribute($user, 'budget_plan_logs'));
 
         /*
         | Audit trail terpusat (UserActivityLog). Titik tunggal semua transisi

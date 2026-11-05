@@ -24,6 +24,29 @@ Verified 2026-10-02 from `bootstrap/app.php`, `routes/web.php`,
 3. In-controller `hasRole()` checks (duplicate route gates, e.g. `headApprove`).
 4. Record visibility: Access Groups (`findVisibleCr`, `scopeByRole`,
    `ScopesBudgetPlanVisibility`, `ScopesInvoiceVisibility`, `AccessRoles::PO_FULL_SCOPE`).
+   Sumber tunggal sejak 2026-11-06: `User::accessibleProjectIds()` /
+   `accessibleCostCenterIds()` = Access Group individu (`users.access_group_id`)
+   ∪ Access Group yang dipasang ke Team ACTIVE tempat user menjadi anggota ACTIVE
+   (`access_group_details.team_id`). Kebalikannya: `User::scopeWithProjectAccess()`.
+   Leader/induk team tidak memberi akses. Akses PO team hanya diubah superadmin
+   (form Team, bagian Akses PO, atau halaman Access Group — tabel yang sama).
+   `PO_FULL_SCOPE`/`PO_VALUE`/`PO_MONEY_COLUMNS` mencakup cost_control, collection,
+   treasury, accounting (tetap digerbang menu); `finance` umum tidak.
+   Jalur **baca-saja** (2026-11-06, K7): pelaku yang pernah menindak dokumen
+   (`BudgetRequest::wasActedOnBy()` dari `request_status_logs.acted_by`,
+   `Project::wasActedOnBy()` dari `project_logs.user_id`) tetap boleh membuka
+   detail JSON & lampirannya (`FileAccess`) walau aksesnya tidak aktif lagi.
+   Respons memuat `read_only: true`, aksi workflow kosong, catatan log ditolak.
+   Aksi tetap lewat `findVisibleCr()` / `canViewProjectJson()` — tidak melebar.
+   Daftar (index) tidak menampilkan dokumen itu.
+   Lampiran PO/BAST (`FileAccess::allowsProject`, sejak 2026-11-06) = `User::canSeeProject()`
+   ∪ pernah menindak ∪ (bukan manager/head dan punya menu `invoice-cash-receipt`, sama dengan
+   keterlihatan invoice). Lampiran Budget Plan (`allowsBudgetPlan`) = `scopeVisibleTo()` Budget
+   Plan (termasuk PAYROLL hanya role payroll). Sebelumnya semua role selain manager/head lolos.
+   Halaman Budgeting & PO tetap digerbang menu; menurut pemilik, role supervisor ke bawah memang
+   tidak diberi menu tersebut. Keputusan pemilik 2026-11-06: pembatasan supervisor ke bawah
+   **cukup lewat menu** — tidak ada blokir data berbasis role; anggota team ber-Access Group
+   tetap bisa membuka detail/lampiran PO lewat tautan langsung.
 5. Files: `SecureFileController` → `FileAccess` (reuses the same visibility
    scopes; default = must be logged in).
 

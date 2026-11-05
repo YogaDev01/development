@@ -15,10 +15,13 @@ class BudgetPlanLog extends Model
         'user_id',
         'user_name',
         'role',
+        // Konteks organisasi pelaku saat aksi (migrasi 2026_11_06_000300).
+        'actor_org_context',
     ];
 
     protected $casts = [
-        'created_at' => 'datetime',
+        'created_at'        => 'datetime',
+        'actor_org_context' => 'array',
     ];
 
     public const ACTIONS = [

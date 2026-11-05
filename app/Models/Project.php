@@ -1034,6 +1034,22 @@ class Project extends Model
         return $hasil;
     }
 
+    /**
+     * Apakah $user pernah menindak PO ini (ada baris project_logs atas
+     * namanya)? Dasar jalur BACA-SAJA detail & lampiran (keputusan
+     * 2026-11-06, K7). Tidak pernah dipakai untuk mengizinkan aksi.
+     */
+    public function wasActedOnBy(?User $user): bool
+    {
+        if (! $user || ! $this->getKey()) {
+            return false;
+        }
+
+        return ProjectLog::where('project_id', $this->getKey())
+            ->where('user_id', $user->id)
+            ->exists();
+    }
+
     public function addLog(
         string $from,
         string $to,
@@ -1051,7 +1067,8 @@ class Project extends Model
             'user_id'     => $user?->id,
             'user_name'   => $user?->name ?? 'System',
             'role'        => $user?->role?->name,
-        ]);
+        // Konteks organisasi pelaku saat aksi — dibekukan di baris log.
+        ] + User::orgContextAttribute($user, 'project_logs'));
 
         /*
         | Audit trail terpusat (UserActivityLog). Titik tunggal semua transisi

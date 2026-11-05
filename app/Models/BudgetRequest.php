@@ -1132,6 +1132,23 @@ class BudgetRequest extends Model
         return in_array($role, self::STAGE_ROLES[$this->status] ?? [], true);
     }
 
+    /**
+     * Apakah $user pernah menindak CR ini (ada baris log status atas namanya)?
+     * Dasar jalur BACA-SAJA detail & lampiran (keputusan 2026-11-06, K7):
+     * pelaku tetap bisa membuka dokumen yang pernah ia tindak walau sudah
+     * pindah team. Tidak pernah dipakai untuk mengizinkan aksi.
+     */
+    public function wasActedOnBy(?User $user): bool
+    {
+        if (! $user || ! $this->getKey()) {
+            return false;
+        }
+
+        return RequestStatusLog::where('budget_request_id', $this->getKey())
+            ->where('acted_by', $user->id)
+            ->exists();
+    }
+
     public function addLog(
         string $statusFrom,
         string $statusTo,
@@ -1150,7 +1167,9 @@ class BudgetRequest extends Model
             'actor_name'       => $user?->name ?? 'System',
             'actor_role'       => $user?->role?->name,
             'request_snapshot' => $snapshot,
-        ]);
+        // Konteks organisasi pelaku SAAT AKSI (team/department/posisi) —
+        // dibekukan di baris log, tidak ikut berubah bila struktur berubah.
+        ] + User::orgContextAttribute($user, 'request_status_logs'));
 
         /*
         | Audit trail terpusat (UserActivityLog).

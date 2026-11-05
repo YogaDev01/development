@@ -51,9 +51,6 @@
                 @if((int)($m->user->id ?? 0) === (int)$user->id)
                 <span class="badge badge-warning mt-1" style="font-size:9px;">Anda</span>
                 @endif
-                @if($m->ca_limit)
-                <div class="text-muted mt-1" style="font-size:9.5px;">CA: {{ $m->ca_limit_formatted }}</div>
-                @endif
             </div>
             @endforeach
         </div>

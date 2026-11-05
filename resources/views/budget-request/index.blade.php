@@ -2109,7 +2109,10 @@ $(function () {
             // Kotak catatan hanya selama CR belum Closed (server menolak juga).
             var bisaCatat = d.can_post_log_note !== false;
             $('#crLogForm').prop('hidden', !bisaCatat).data('id', d.id);
-            $('#crLogClosed').prop('hidden', bisaCatat);
+            // read_only = dibuka karena pernah ditindak (tanpa akses aktif).
+            $('#crLogClosed').prop('hidden', bisaCatat).html(d.read_only
+                ? '<i class="fas fa-eye mr-1"></i> Mode baca saja — Anda pernah menindak Cost Request ini, tetapi tidak lagi memiliki akses aktif.'
+                : '<i class="fas fa-lock mr-1"></i> Cost Request sudah Closed — catatan baru tidak dapat ditambahkan.');
             $('#crLogInput').val('');
             if ($('#crPaneLogs').hasClass('active')) aturTinggiLog(true);
 

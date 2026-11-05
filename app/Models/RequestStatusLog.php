@@ -20,11 +20,14 @@ class RequestStatusLog extends Model
         'actor_name',
         'actor_role',
         'request_snapshot',
+        // Konteks organisasi pelaku saat aksi (migrasi 2026_11_06_000300).
+        'actor_org_context',
     ];
 
     protected $casts = [
-        'created_at'       => 'datetime',
-        'request_snapshot' => 'array',
+        'created_at'        => 'datetime',
+        'request_snapshot'  => 'array',
+        'actor_org_context' => 'array',
     ];
 
     public const ACTION_TYPES = [

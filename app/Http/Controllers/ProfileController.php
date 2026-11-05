@@ -29,11 +29,14 @@ class ProfileController extends Controller
     {
         /** @var User $user */
         $user = Auth::user();
-        $user->load('role', 'accessGroup.projects.customer');
+        $user->load('role', 'accessGroup');
 
-        $accessibleProjects = $user->accessGroup
-            ? $user->accessGroup->projects
-            : collect();
+        // PO yang bisa diakses: Access Group individu ∪ Access Group team
+        // ACTIVE — sumber yang sama dengan daftar PO (User::accessibleProjectIds()).
+        $accessibleProjects = \App\Models\Project::with('customer')
+            ->whereIn('id', $user->accessibleProjectIds()->all() ?: [0])
+            ->orderBy('name')
+            ->get();
 
         $projectLogs = ProjectMonitoringLog::where('user_id', $user->id)
             ->with('project')

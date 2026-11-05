@@ -915,9 +915,8 @@ class BudgetRequestController extends Controller
         $overheadPrivileged = $this->overheadPrivileged();
         $overheadCcIds      = $this->accessibleOverheadCostCenterIds();
 
-        $projectIds = $user->accessGroup
-            ? $user->accessGroup->details->pluck('project_id')->filter()->values()
-            : collect();
+        // Sama dengan daftar PO & CR: Access Group individu ∪ team ACTIVE.
+        $projectIds = $user->accessibleProjectIds();
 
         return BudgetPlan::where('status', 'ACTIVE')
             ->where(function ($q) use ($projectPrivileged, $projectIds, $canPayroll, $overheadPrivileged, $overheadCcIds) {
@@ -1512,7 +1511,16 @@ class BudgetRequestController extends Controller
             'statusLogs',
         ])->findOrFail($id);
 
-        abort_unless($this->canViewCr($cr), 403);
+        /*
+         | Jalur BACA-SAJA (keputusan 2026-11-06, K7): pelaku yang pernah
+         | menindak CR ini (punya baris log status atas namanya) tetap boleh
+         | membuka detailnya walau sudah pindah team / kehilangan akses
+         | proyek. Aksi apa pun tetap lewat findVisibleCr() — tidak berubah —
+         | jadi di sini semua aksi dimatikan dan respons ditandai read_only.
+         */
+        $bolehLihat = $this->canViewCr($cr);
+        $hanyaBaca  = ! $bolehLihat && $cr->wasActedOnBy(Auth::user());
+        abort_unless($bolehLihat || $hanyaBaca, 403);
 
         $bp = $cr->budgetPlan;
         $logAvatars = \App\Models\User::avatarUrlMap($cr->statusLogs->pluck('acted_by'));
@@ -1546,7 +1554,9 @@ class BudgetRequestController extends Controller
             'status_color'     => $cr->status_color,
             'is_cash_advance'  => $cr->isCashAdvance(),
             // Apakah user yang login boleh takeout/restore item pada tahap CR ini.
-            'can_moderate_items' => $cr->canModerateItems(Auth::user()),
+            'can_moderate_items' => ! $hanyaBaca && $cr->canModerateItems(Auth::user()),
+            // true = dibuka lewat jalur "pernah ditindak" (tanpa aksi apa pun).
+            'read_only'          => $hanyaBaca,
             /*
              | Aksi workflow yang BOLEH dilakukan user ini pada CR ini sekarang.
              | Dihitung di server, bukan ditebak di JavaScript: gerbang role &
@@ -1554,7 +1564,7 @@ class BudgetRequestController extends Controller
              | kalau daftar ini dibangun di layar, cepat atau lambat tombolnya
              | muncul untuk orang yang lalu ditolak 403 saat menekannya.
              */
-            'workflow_actions' => $this->workflowActions($cr, Auth::user()),
+            'workflow_actions' => $hanyaBaca ? [] : $this->workflowActions($cr, Auth::user()),
             'is_nob'           => (bool) $cr->is_nob,
             'type'             => $cr->type?->name ?? '-',
             'cluster'          => $cr->cluster?->name ?? '-',
@@ -1802,7 +1812,7 @@ class BudgetRequestController extends Controller
                 'ts'           => $l->created_at->toIso8601String(),
             ])->concat($this->logNotesFor($cr))
               ->sortByDesc('ts')->values(),
-            'can_post_log_note' => $cr->status !== 'CLOSED',
+            'can_post_log_note' => ! $hanyaBaca && $cr->status !== 'CLOSED',
 
             // Ringkasan Budget Plan yang terhubung — dipakai tab "Budget" pada modal detail CR,
             // struktur mengikuti BudgetPlanController::showJson() supaya konsisten.

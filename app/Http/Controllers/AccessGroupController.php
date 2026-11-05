@@ -169,6 +169,12 @@ class AccessGroupController extends Controller
 
         DB::transaction(function () use ($validated, &$accessGroup) {
 
+            // Kunci baris team yang dipasang LEBIH DULU (urutan kunci sama
+            // dengan TeamController::update): pemeriksaan "team ber-Akses PO
+            // hanya superadmin yang mengubah anggota" tidak boleh lolos di
+            // sela pemasangan Access Group ini.
+            \App\Models\Team::whereIn('id', $validated['team_ids'] ?? [])->lockForUpdate()->get(['id']);
+
             /*
             |--------------------------------------------------------------------------
             | CREATE ACCESS GROUP
@@ -470,6 +476,9 @@ class AccessGroupController extends Controller
             $accessGroup
 
         ) {
+
+            // Kunci baris team yang dipasang lebih dulu — lihat store().
+            \App\Models\Team::whereIn('id', $validated['team_ids'] ?? [])->lockForUpdate()->get(['id']);
 
             /*
             |--------------------------------------------------------------------------

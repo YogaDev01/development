@@ -4,6 +4,8 @@
 
 @section('content')
 
+@php $denganInduk = \App\Models\Team::supportsStructure(); @endphp
+
 <div class="content">
     <div class="container-fluid">
 
@@ -21,6 +23,23 @@
             ['Total Member Aktif', $summary['members'], 'info', 'fas fa-users'],
         ]" />
 
+        {{-- Dua tab: Database (daftar team) & Organisasi (ringkasan + struktur
+             keseluruhan). Tab aktif diingat lewat hash URL (#organisasi). --}}
+        <ul class="nav nav-tabs mb-3" id="teamTabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" id="tabDatabase" data-toggle="tab" href="#paneDatabase" role="tab" aria-controls="paneDatabase" aria-selected="true">
+                    <i class="fas fa-database mr-1"></i> Database
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="tabOrganisasi" data-toggle="tab" href="#paneOrganisasi" role="tab" aria-controls="paneOrganisasi" aria-selected="false">
+                    <i class="fas fa-sitemap mr-1"></i> Organisasi
+                </a>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+        <div class="tab-pane fade show active" id="paneDatabase" role="tabpanel" aria-labelledby="tabDatabase">
         <div class="card card-primary card-outline shadow-sm">
             <div class="card-header d-flex align-items-center flex-wrap">
                 <h3 class="card-title"><i class="fas fa-sitemap mr-1"></i> Daftar Team</h3>
@@ -71,9 +90,13 @@
                                 <th scope="col" class="text-nowrap" style="width:1%;">Kode</th>
                                 <th scope="col">Nama</th>
                                 <th scope="col" class="text-nowrap">Department</th>
+                                @if($denganInduk)
+                                <th scope="col" class="text-nowrap">Induk</th>
+                                @endif
                                 <th scope="col" class="text-nowrap">Leader</th>
                                 <th scope="col">Anggota</th>
                                 <th scope="col" class="text-center text-nowrap" style="width:1%;">Member</th>
+                                <th scope="col" class="text-center text-nowrap" style="width:1%;" title="Jumlah Access Group yang dipasang ke team">Akses PO</th>
                                 <th scope="col" class="text-nowrap" style="width:1%;">Status</th>
                                 <th scope="col" class="text-center text-nowrap" style="width:1%;">Action</th>
                             </tr>
@@ -85,6 +108,9 @@
                                 <td><span class="badge badge-dark px-2 py-1">{{ $team->code }}</span></td>
                                 <td style="font-weight:600;">{{ $team->name }}</td>
                                 <td>{{ $team->department->name ?? '-' }}</td>
+                                @if($denganInduk)
+                                <td>{{ $team->parent->name ?? '-' }}</td>
+                                @endif
                                 <td>{{ strtoupper($team->leader->username ?? '-') }}</td>
                                 <td>
                                     {{-- M-02 — relasi Team -> anggota ditampilkan langsung
@@ -102,11 +128,12 @@
                                     @endif
                                 </td>
                                 <td class="text-center"><span class="badge badge-secondary px-2 py-1">{{ $team->active_members_count }}</span></td>
+                                <td class="text-center">{{ $team->access_group_links_count ?: '-' }}</td>
                                 <td><span class="badge badge-{{ $team->status_color }} px-2 py-1">{{ $team->status }}</span></td>
                                 <td class="text-center action-column">
                                     @php
                                         $bolehEditTeam  = Auth::user()->hasRole('superadmin') || (int) Auth::id() === (int) $team->leader_id;
-                                        $bolehHapusTeam = Auth::user()->hasRole('superadmin');
+                                        $bolehStatusTeam = Auth::user()->hasRole('superadmin');
                                     @endphp
                                     <div class="action-buttons ts-actions">
 
@@ -125,7 +152,7 @@
                                         </a>
                                         @endif
 
-                                        @if($bolehEditTeam || $bolehHapusTeam)
+                                        @if($bolehEditTeam || $bolehStatusTeam)
                                         <button type="button" class="ts-action-more"
                                                 aria-haspopup="true" aria-expanded="false"
                                                 title="Aksi lain" aria-label="Aksi lain untuk {{ $team->name }}">
@@ -140,13 +167,18 @@
                                             </a>
                                             @endif
 
-                                            @if($bolehHapusTeam)
+                                            {{-- Team tidak dihapus permanen: riwayat anggotanya
+                                                 ikut hilang. Gantinya Aktifkan / Nonaktifkan. --}}
+                                            @if($bolehStatusTeam)
                                             @if($bolehEditTeam)<div class="dropdown-divider"></div>@endif
-                                            <form action="{{ url('/team/' . $team->id) }}" method="POST" class="delete-form">
+                                            @php $keAktif = $team->status !== 'ACTIVE'; @endphp
+                                            <form action="{{ route('team.status', $team->id) }}" method="POST" class="status-form"
+                                                  data-team="{{ $team->name }}" data-aktif="{{ $keAktif ? 1 : 0 }}">
                                                 @csrf
-                                                @method('DELETE')
-                                                <button aria-label="Hapus" type="submit" class="dropdown-item is-danger">
-                                                    <i class="fas fa-trash"></i>Hapus
+                                                @method('PATCH')
+                                                <input type="hidden" name="status" value="{{ $keAktif ? 'ACTIVE' : 'INACTIVE' }}">
+                                                <button type="submit" class="dropdown-item {{ $keAktif ? '' : 'is-danger' }}">
+                                                    <i class="fas {{ $keAktif ? 'fa-toggle-on' : 'fa-toggle-off' }}"></i>{{ $keAktif ? 'Aktifkan' : 'Nonaktifkan' }}
                                                 </button>
                                             </form>
                                             @endif
@@ -158,7 +190,7 @@
                                 </td>
                             </tr>
                             @empty
-                            <tr><td colspan="9" class="text-center text-muted py-4">Tidak ada team yang cocok dengan filter ini.</td></tr>
+                            <tr><td colspan="{{ $denganInduk ? 11 : 10 }}" class="text-center text-muted py-4">Tidak ada team yang cocok dengan filter ini.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -171,24 +203,64 @@
                 </div>
             </div>
         </div>
+        </div>{{-- /paneDatabase --}}
+
+        <div class="tab-pane fade" id="paneOrganisasi" role="tabpanel" aria-labelledby="tabOrganisasi">
+            <div class="card card-primary card-outline shadow-sm">
+                <div class="card-header d-flex align-items-center flex-wrap">
+                    <h3 class="card-title"><i class="fas fa-sitemap mr-1"></i> Struktur Organisasi</h3>
+                    <span class="ml-auto text-muted" style="font-size:11.5px;">Ringkasan &amp; struktur keseluruhan team ACTIVE</span>
+                </div>
+                <div class="card-body">
+                    @include('team._organization')
+                </div>
+            </div>
+        </div>{{-- /paneOrganisasi --}}
+        </div>{{-- /tab-content --}}
 
     </div>
 </div>
+
+{{-- Di luar .tab-pane supaya panel tidak ikut tersembunyi saat tab berganti. --}}
+<x-drawer id="osPerson" title="Profil Organisasi" width="420px" label="Profil organisasi">
+    <div id="osPersonBody"></div>
+</x-drawer>
 
 @endsection
 
 @push('scripts')
 <script>
 $(function () {
-    $('.delete-form').submit(function (e) {
+    // Tab aktif diingat lewat hash (#organisasi) — juga dipakai redirect
+    // dari URL lama /team/structure. Hash anchor node (#team-…) diabaikan.
+    if (location.hash === '#organisasi') {
+        $('#tabOrganisasi').tab('show');
+    }
+    $('#teamTabs a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+        var hash = e.target.id === 'tabOrganisasi' ? '#organisasi' : '';
+        history.replaceState(null, '', location.pathname + location.search + hash);
+    });
+
+    $('.status-form').submit(function (e) {
         e.preventDefault();
         var form = this;
+        var aktif = $(form).data('aktif') == 1;
+        var nama = $(form).data('team');
         Swal.fire({
-            title: 'Hapus Team?', text: 'Data yang dihapus tidak dapat dikembalikan.',
-            icon: 'warning', showCancelButton: true,
-            confirmButtonColor: '#9a3030', cancelButtonColor: '#55595e',
-            confirmButtonText: 'Ya, Hapus', cancelButtonText: 'Batal'
-        }).then(function (r) { if (r.isConfirmed) form.submit(); });
+            // titleText (bukan title): nama team diperlakukan sebagai teks, bukan HTML.
+            titleText: (aktif ? 'Aktifkan' : 'Nonaktifkan') + ' Team ' + nama + '?',
+            text: aktif
+                ? 'Team dapat dipakai kembali.'
+                : 'Team berhenti dipakai. Anggota dan riwayatnya tetap tersimpan.',
+            icon: aktif ? 'question' : 'warning', showCancelButton: true,
+            input: 'text', inputPlaceholder: 'Catatan (opsional)',
+            confirmButtonColor: aktif ? '#92232b' : '#9a3030', cancelButtonColor: '#55595e',
+            confirmButtonText: aktif ? 'Ya, Aktifkan' : 'Ya, Nonaktifkan', cancelButtonText: 'Batal'
+        }).then(function (r) {
+            if (!r.isConfirmed) return;
+            if (r.value) $('<input type="hidden" name="notes">').val(r.value).appendTo(form);
+            form.submit();
+        });
     });
 });
 </script>

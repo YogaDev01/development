@@ -68,9 +68,8 @@ trait ScopesBudgetPlanVisibility
 
     protected function bpAccessibleOverheadCostCenterIds(): Collection
     {
-        $user = Auth::user();
-
-        return $user->accessGroup ? $user->accessGroup->costCenterIds() : collect();
+        // Access Group individu ∪ Access Group team ACTIVE (User::accessibleCostCenterIds()).
+        return Auth::user()->accessibleCostCenterIds();
     }
 
     protected function bpCanSeeOverhead(): bool
@@ -92,9 +91,8 @@ trait ScopesBudgetPlanVisibility
         $user = Auth::user();
         $role = strtolower($user->role->name ?? '');
 
-        $projectIds = $user->accessGroup
-            ? $user->accessGroup->details->pluck('project_id')->filter()->values()
-            : collect();
+        // Sama dengan daftar PO: Access Group individu ∪ team ACTIVE.
+        $projectIds = $user->accessibleProjectIds();
 
         $overheadPrivileged = $this->bpOverheadPrivileged();
         $overheadCcIds      = $this->bpAccessibleOverheadCostCenterIds();

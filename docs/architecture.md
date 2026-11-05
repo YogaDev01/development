@@ -359,6 +359,30 @@ The legacy `workflow`/`milestone`/`mention` categories (`User::NOTIFICATION_CATE
 still exist for `wantsNotification()` back-compat but are no longer surfaced in
 the UI; `general` is never muted.
 
+### Team & Struktur Organisasi (`TeamController` + `resources/views/team/`)
+
+Blueprint: `docs/plans/2026-11-06-team-akses-organisasi.md` (K1–K10). Ringkas:
+- **Akses data** = Access Group individu ∪ Access Group team ACTIVE (`User::accessibleProjectIds()` /
+  `accessibleCostCenterIds()`); akses PO team diatur superadmin di form Team (bagian Akses PO,
+  `_access_groups.blade.php`) atau halaman Access Group (tabel yang sama).
+- **Daftar Team = 2 tab** (`team/index`): **Database** (tabel team, filter, pagination) dan
+  **Organisasi** (`_organization.blade.php`, hash `#organisasi`): KPI (team aktif, orang unik,
+  leader, multi-team), chart bar "Orang per Department" (satu seri, warna `--accent`, label
+  langsung + `title` hover), lalu **bagan organisasi atas → bawah berbasis orang**
+  (`TeamController::buildOrgChart()`, partial rekursif `_org_card` / `_org_block`): foto bulat
+  + label jabatan & nama. Penyambungan team: (1) leader team A yang juga anggota team B → team
+  A di bawah kartunya di B; (2) bila tidak, Induk Team; (3) selain itu akar (leader beberapa
+  team akar tampil sekali). Lingkaran diputus. Anggota per baris menurut `level`. Garis
+  digambar JS sebagai SVG dari `data-up`; orang yang sama di beberapa tempat dihubungkan garis
+  putus-putus + badge "Di N tempat". Bentang/ciut per kartu, zoom 40–140%, pencarian, "Posisi
+  Anda", drawer profil (`x-drawer`, tanpa data kontak). Hanya tampilan, tidak memberi akses.
+  Bagan menggulir mendatar di dalam bingkainya sendiri (bukan halaman). `GET team/structure` (lama) dialihkan ke `/team#organisasi`. Data dari
+  `TeamController::organizationData()`. ≤640px: KPI 2 kolom, bar ditumpuk, kartu orang satu kolom.
+- **Riwayat**: membership tidak pernah dihapus (keluar = INACTIVE); `team_logs` immutable; team
+  hanya Aktif/Nonaktif. Log status dokumen membekukan `actor_org_context`; pelaku yang pernah
+  menindak CR/PO tetap bisa membacanya (`read_only`).
+- Verifikasi browser halaman Team/Struktur: **NOT VERIFIED** (migrasi belum dijalankan).
+
 ### Assignment (`AssignmentController` + `resources/views/assignment/`)
 
 Free-form task assignment between users — the first **persistent** data source on

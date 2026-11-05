@@ -132,8 +132,6 @@ class TeamStrukturOrganisasiSeeder extends Seeder
                             'position' => $jabatan,
                             'level' => $level,
                             'status' => 'ACTIVE',
-                            'join_at' => now()->toDateString(),
-                            'left_at' => null,
                         ],
                     );
 

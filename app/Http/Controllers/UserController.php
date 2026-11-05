@@ -495,7 +495,7 @@ class UserController extends Controller
 
         if (\App\Models\TeamMember::where('user_id', $user->id)->exists()) {
             return redirect('/user')
-                ->with('error', 'User tidak dapat dihapus karena masih tercatat sebagai anggota Team. Keluarkan dari Team lebih dulu, atau nonaktifkan saja.');
+                ->with('error', 'User tidak dapat dihapus karena memiliki riwayat keanggotaan Team (riwayat tidak pernah dihapus). Nonaktifkan saja.');
         }
 
         /*

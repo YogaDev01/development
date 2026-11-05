@@ -245,11 +245,9 @@ class ProjectController extends Controller
      */
     private function canViewProjectJson(Project $project): bool
     {
-        if ($this->hasFullPoScope()) {
-            return true;
-        }
-
-        return Auth::user()->accessibleProjectIds()->contains($project->id);
+        // Aturannya satu sumber di User::canSeeProject() — dipakai juga
+        // FileAccess (lampiran PO), supaya detail & lampiran tidak berbeda.
+        return Auth::user()->canSeeProject((int) $project->id);
     }
 
     /**
@@ -942,7 +940,15 @@ class ProjectController extends Controller
             'poNumbers.basts.parent.attachments',
         ])->findOrFail($id);
 
-        abort_unless($this->canViewProjectJson($project), 403);
+        /*
+         | Jalur BACA-SAJA (keputusan 2026-11-06, K7): pelaku yang pernah
+         | menindak PO ini (baris project_logs atas namanya) tetap boleh
+         | membuka detailnya walau aksesnya sudah tidak aktif. Aksi & catatan
+         | log tetap memakai canViewProjectJson() — tidak berubah.
+         */
+        $bolehLihat = $this->canViewProjectJson($project);
+        $hanyaBaca  = ! $bolehLihat && $project->wasActedOnBy(Auth::user());
+        abort_unless($bolehLihat || $hanyaBaca, 403);
 
         $rp = fn ($v) => number_format((int) $v, 0, ',', '.');
 
@@ -979,10 +985,12 @@ class ProjectController extends Controller
         $restitusi      = (int) ($project->restitusi ?? 0);
         $contractSelisih = (int) $project->contract - ($bastTotal + $restitusi);
 
-        // Users with access to this project via access groups
-        $accessUsers = \App\Models\User::whereHas('accessGroup.details', function($q) use ($project) {
-            $q->where('project_id', $project->id);
-        })->with('role')->get();
+        // User yang punya akses ke PO ini: Access Group individu ∪ team ACTIVE
+        // (User::scopeWithProjectAccess, kebalikan accessibleProjectIds()).
+        $accessUsers = \App\Models\User::withProjectAccess($project->id)
+            ->with(['role', 'accessGroup'])
+            ->get();
+        $agPoIds = $project->accessGroupLinks()->pluck('access_group_id')->map(fn ($i) => (int) $i)->all();
 
         // Budget plans linked to this project
         $budgetPlans = \App\Models\BudgetPlan::where('project_id', $project->id)
@@ -1083,7 +1091,11 @@ class ProjectController extends Controller
                 'name'       => $u->name,
                 'email'      => $u->email,
                 'role'       => $u->role->name ?? '-',
-                'access_group' => $u->accessGroup->name ?? '-',
+                // Akses individu tampil nama Access Group-nya; selain itu
+                // aksesnya datang dari Team.
+                'access_group' => in_array((int) $u->access_group_id, $agPoIds, true)
+                    ? ($u->accessGroup->name ?? '-')
+                    : 'Via Team',
             ]),
 
             'budget_plans' => $budgetPlans->map(fn($bp) => [
@@ -1266,7 +1278,9 @@ class ProjectController extends Controller
             ]),
 
             'logs'              => $this->logsFor($project),
-            'can_post_log_note' => $this->canPostLogNote($project),
+            'can_post_log_note' => ! $hanyaBaca && $this->canPostLogNote($project),
+            // true = dibuka lewat jalur "pernah ditindak" (tanpa aksi apa pun).
+            'read_only'         => $hanyaBaca,
         ]);
     }
 

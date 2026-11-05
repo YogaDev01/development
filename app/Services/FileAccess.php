@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Http\Controllers\Concerns\BuildsCrWorklist;
+use App\Http\Controllers\Concerns\ScopesBudgetPlanVisibility;
 use App\Http\Controllers\ProjectMonitoringController;
 use App\Models\BudgetPlanAttachment;
 use App\Models\BudgetRequest;
@@ -40,6 +41,8 @@ use Illuminate\Support\Facades\Auth;
 class FileAccess
 {
     use BuildsCrWorklist;
+    // Aturan keterlihatan Budget Plan (lampiran BP) — sama dengan daftarnya.
+    use ScopesBudgetPlanVisibility;
 
     /**
      * Apakah user yang sedang login boleh membuka berkas pada path ini.
@@ -201,7 +204,13 @@ class FileAccess
         $query = BudgetRequest::whereKey($crId);
         $this->scopeByRole($query);
 
-        return $query->exists();
+        if ($query->exists()) {
+            return true;
+        }
+
+        // Jalur BACA-SAJA (K7): pelaku yang pernah menindak CR ini tetap boleh
+        // membuka lampirannya — sama dengan detail CR (BudgetRequestController::showJson).
+        return (new BudgetRequest)->forceFill(['id' => $crId])->wasActedOnBy(Auth::user());
     }
 
     /** Lampiran invoice & bukti cash receipt mengikuti keterlihatan invoicenya. */
@@ -297,42 +306,64 @@ class FileAccess
         return \App\Models\TroubleTicket::visibleTo(Auth::user())->whereKey($ticketId)->exists();
     }
 
-    /** Lampiran PO/BAST mengikuti Access Group proyek untuk manager & head. */
+    /**
+     * Lampiran PO/BAST — scope yang sama dengan detail PO (review MEDIUM-3,
+     * 6 Nov 2026). Sebelumnya semua role selain manager/head boleh membuka
+     * lampiran PO mana pun asalkan tahu path-nya.
+     *
+     * Boleh bila salah satu:
+     *  1) PO terlihat di detail (User::canSeeProject — full scope / Access
+     *     Group individu ∪ team);
+     *  2) pernah menindak PO ini (jalur baca-saja K7);
+     *  3) boleh membuka halaman Invoice & Cash Receipt dan BUKAN manager/head
+     *     — aturan yang sama dengan keterlihatan invoice
+     *     (ScopesInvoiceVisibility / allowsInvoice): pemegang menu invoice di
+     *     luar manager/head melihat semua invoice, dan BAST/No. PO dibuka dari
+     *     sana saat menagih.
+     * Role tanpa salah satu di atas (mis. tanpa menu PO/Invoice dan tanpa
+     * Access Group) ditolak.
+     */
     private function allowsProject(string $path): bool
     {
         /** @var User $user */
         $user = Auth::user();
 
-        if (! $user->hasRole(['manager', 'head'])) {
+        $projectId = ProjectAttachment::where('file_path', $path)->value('project_id');
+
+        if (! $projectId) {
+            return false;
+        }
+
+        if ($user->canSeeProject((int) $projectId)) {
             return true;
         }
 
-        $projectId = ProjectAttachment::where('file_path', $path)->value('project_id');
+        if ((new \App\Models\Project)->forceFill(['id' => $projectId])->wasActedOnBy($user)) {
+            return true;
+        }
 
-        return $projectId && $user->accessibleProjectIds()->contains($projectId);
+        return ! $user->hasRole(['manager', 'head']) && $this->allowsMenu('invoice-cash-receipt');
     }
 
     /**
-     * Lampiran Budget Plan: proyeknya dicek untuk manager & head; budget
-     * overhead/payroll (tanpa project_id) mengikuti aturan dasar.
+     * Lampiran Budget Plan — scope yang sama dengan daftar & detail Budget
+     * Plan (ScopesBudgetPlanVisibility::scopeVisibleTo): budget proyek per
+     * Access Group (individu ∪ team), overhead per cost center, PAYROLL hanya
+     * role payroll. Sebelumnya semua role selain manager/head — dan budget
+     * overhead/payroll untuk siapa pun — boleh membuka lampirannya
+     * (review MEDIUM-3, 6 Nov 2026).
      */
     private function allowsBudgetPlan(string $path): bool
     {
-        /** @var User $user */
-        $user = Auth::user();
+        $bpId = BudgetPlanAttachment::where('path', $path)->value('budget_plan_id');
 
-        if (! $user->hasRole(['manager', 'head'])) {
-            return true;
+        if (! $bpId) {
+            return false;
         }
 
-        $projectId = BudgetPlanAttachment::where('path', $path)
-            ->join('budget_plans', 'budget_plans.id', '=', 'budget_plan_attachments.budget_plan_id')
-            ->value('budget_plans.project_id');
+        $query = \App\Models\BudgetPlan::whereKey($bpId);
+        $this->scopeVisibleTo($query);
 
-        if (! $projectId) {
-            return true;
-        }
-
-        return $user->accessibleProjectIds()->contains($projectId);
+        return $query->exists();
     }
 }
