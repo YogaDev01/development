@@ -185,6 +185,7 @@
 @endphp
 
 @push('scripts')
+@include('team._form_select_search')
 <script>
 $(function () {
     // Semua teks dari data (nama, posisi) di-escape sebelum disisipkan ke HTML.
@@ -258,10 +259,12 @@ $(function () {
         $('#memberBody').html(makeMemberRow(memberIdx++, null));
     }
     renumberMembers();
+    teamPasangCari($('#memberBody').closest('form'));
 
     $('#btnAddMember').on('click', function () {
         $('#memberBody').append(makeMemberRow(memberIdx++, null));
         renumberMembers();
+        teamPasangCari('#memberBody');
     });
 
     $(document).on('click', '.btn-remove-member', function () {

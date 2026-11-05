@@ -6,6 +6,26 @@
       "runtimeExecutable": "C:\\laragon\\bin\\php\\php-8.3.30-Win32-vs16-x64\\php.exe",
       "runtimeArgs": ["artisan", "serve", "--port=8000"],
       "port": 8000
+    },
+    {
+      "name": "tesys-f3-pilot",
+      "runtimeExecutable": "C:\\laragon\\bin\\git\\usr\\bin\\env.exe",
+      "runtimeArgs": [
+        "MSYS_NO_PATHCONV=1",
+        "APP_ENV=local", "APP_DEBUG=true",
+        "APP_CONFIG_CACHE=/Users/yoga0/AppData/Local/Temp/claude/C--laragon-www-tesys/edc2291e-378a-4b0c-841b-721d40a52e8e/scratchpad/f3-nocache/config.php",
+        "APP_ROUTES_CACHE=/Users/yoga0/AppData/Local/Temp/claude/C--laragon-www-tesys/edc2291e-378a-4b0c-841b-721d40a52e8e/scratchpad/f3-nocache/routes.php",
+        "APP_SERVICES_CACHE=/Users/yoga0/AppData/Local/Temp/claude/C--laragon-www-tesys/edc2291e-378a-4b0c-841b-721d40a52e8e/scratchpad/f3-nocache/services.php",
+        "APP_PACKAGES_CACHE=/Users/yoga0/AppData/Local/Temp/claude/C--laragon-www-tesys/edc2291e-378a-4b0c-841b-721d40a52e8e/scratchpad/f3-nocache/packages.php",
+        "APP_EVENTS_CACHE=/Users/yoga0/AppData/Local/Temp/claude/C--laragon-www-tesys/edc2291e-378a-4b0c-841b-721d40a52e8e/scratchpad/f3-nocache/events.php",
+        "DB_CONNECTION=mysql", "DB_HOST=127.0.0.1", "DB_PORT=3306", "DB_DATABASE=tesys_f3_pilot", "DB_URL=",
+        "SESSION_DRIVER=file", "CACHE_STORE=file", "QUEUE_CONNECTION=sync",
+        "MAIL_MAILER=log", "FONNTE_ENABLED=false",
+        "C:\\laragon\\bin\\php\\php-8.3.30-Win32-vs16-x64\\php.exe",
+        "-S", "127.0.0.1:8099", "-t", "public",
+        "C:\\Users\\yoga0\\AppData\\Local\\Temp\\claude\\C--laragon-www-tesys\\edc2291e-378a-4b0c-841b-721d40a52e8e\\scratchpad\\f3-router.php"
+      ],
+      "port": 8099
     }
   ]
 }

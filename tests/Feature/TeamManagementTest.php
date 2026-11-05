@@ -205,6 +205,7 @@ class TeamManagementTest extends TestCase
             ->assertOk()
             ->assertSee('id="paneDatabase"', false)
             ->assertSee('id="paneOrganisasi"', false)
+            ->assertSee('id="tdPanel-' . $induk->id . '"', false)
             ->assertSee('Orang per Department')
             ->assertSee('id="team-' . $induk->id . '"', false);
 
@@ -221,8 +222,14 @@ class TeamManagementTest extends TestCase
 
         $html = $this->actingAs($this->admin)->get('/team')->assertOk()->getContent();
 
-        // Yoga tampil SEKALI (di Team B), dan Team A digantung di bawah kartunya.
-        $this->assertSame(1, substr_count($html, 'data-user="' . $yoga->id . '"'));
+        // Yoga tampil SEKALI di bagan leader, dan Team A digantung di bawah kartunya.
+        // (Isi Detail Member ada di <template> setelah bagan, jadi dihitung terpisah.)
+        $bagan = strstr($html, 'id="ocTeamTemplates"', true);
+        $this->assertSame(1, substr_count($bagan, 'data-user="' . $yoga->id . '"'));
+        // Anggota biasa tidak tampil di bagan leader, hanya di Detail Member team-nya.
+        $this->assertStringNotContainsString('data-user="' . $this->memberA->id . '"', $bagan);
+        $this->assertStringContainsString('id="ocTeamTpl-' . $teamA->id . '"', $html);
+        $this->assertStringContainsString('data-user="' . $this->memberA->id . '"', $html);
         $kartuYoga = strpos($html, 'data-user="' . $yoga->id . '"');
         $blokA     = strpos($html, 'id="team-' . $teamA->id . '"');
         $this->assertNotFalse($blokA);

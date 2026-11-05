@@ -56,18 +56,17 @@ class TeamController extends Controller
                     ->orWhereHas('activeMembers.user', fn ($r) => $r->where('username', 'like', $like)->orWhere('name', 'like', $like)));
             });
 
-        // Ringkasan dihitung dari himpunan yang SAMA dengan daftar (sebelum
-        // dipotong halaman), bukan dari query lain — supaya angka kartu dan
-        // isi tabel tidak pernah bercerita berbeda.
-        $scoped = (clone $baseQuery)->get();
+        // Tab Database berupa pohon, jadi seluruh team hasil filter dimuat
+        // sekaligus. Ringkasan dihitung dari himpunan yang SAMA dengan pohon.
+        $teams = $baseQuery->orderBy('name')->get();
 
         $summary = [
-            'total'   => $scoped->count(),
-            'active'  => $scoped->where('status', 'ACTIVE')->count(),
-            'members' => $scoped->sum('active_members_count'),
+            'total'   => $teams->count(),
+            'active'  => $teams->where('status', 'ACTIVE')->count(),
+            'members' => $teams->sum('active_members_count'),
         ];
 
-        $teams = $baseQuery->orderBy('name')->paginate(15)->withQueryString();
+        $teamTree = $this->buildTeamTree($teams, $this->orgAttachments($teams));
 
         $departments = Department::where('status', 'ACTIVE')->orderBy('name')->get();
 
@@ -78,7 +77,7 @@ class TeamController extends Controller
         ];
 
         // Tab "Organisasi" (struktur keseluruhan) dirender di halaman yang sama.
-        return view('team.index', compact('teams', 'summary', 'departments', 'filters') + $this->organizationData());
+        return view('team.index', compact('teamTree', 'summary', 'departments', 'filters') + $this->organizationData());
     }
 
     /*
@@ -206,8 +205,11 @@ class TeamController extends Controller
         $teams = Team::where('status', 'ACTIVE')->with($relasi)->orderBy('name')->get();
         $meId  = (int) Auth::id();
 
-        // Bagan organisasi berbasis orang (lihat buildOrgChart()).
-        $orgChart = $this->buildOrgChart($teams, $meId);
+        // Bagan organisasi berbasis orang (lihat buildOrgChart()), dua tampilan:
+        // Leader View (hanya leader) dan Detail Member (satu team terpilih).
+        $attach   = $this->orgAttachments($teams);
+        $orgChart = $this->leaderChart($this->buildOrgChart($teams, $attach, $meId));
+        $orgTeams = $this->buildTeamViews($teams, $attach, $meId);
 
         // Profil ringkas per user untuk drawer (tanpa data kontak).
         $people = [];
@@ -268,11 +270,36 @@ class TeamController extends Controller
             'max_people'  => max(1, (int) $perDept->max('people')),
         ];
 
-        return compact('orgChart', 'people', 'meId', 'myTeams', 'orgSummary');
+        return compact('orgChart', 'orgTeams', 'people', 'meId', 'myTeams', 'orgSummary');
     }
 
     /**
-     * Bagan organisasi berbasis ORANG (atas → bawah), dari team ACTIVE.
+     * Pohon team untuk tab Database, memakai penyambungan yang sama dengan bagan.
+     * 'orang' = user_id unik di team ini beserta seluruh sub-team-nya.
+     *
+     * @return array<int, array{team:Team, children:array, orang:array<int, int>}>  simpul akar
+     */
+    private function buildTeamTree(\Illuminate\Support\Collection $teams, array $attach): array
+    {
+        $anak = $teams->groupBy(fn ($t) => $attach[$t->id]['team'] ?? 0);
+
+        $simpul = function (Team $t) use (&$simpul, $anak) {
+            $children = ($anak[(int) $t->id] ?? collect())->map(fn ($x) => $simpul($x))->values()->all();
+
+            return [
+                'team'     => $t,
+                'children' => $children,
+                'orang'    => $t->activeMembers->pluck('user_id')->map(fn ($i) => (int) $i)
+                    ->merge(collect($children)->pluck('orang')->flatten())
+                    ->unique()->values()->all(),
+            ];
+        };
+
+        return ($anak[0] ?? collect())->map(fn ($t) => $simpul($t))->values()->all();
+    }
+
+    /**
+     * Tempat tiap team di bagan: [team_id => ['type' => member|parent|root, 'team' => id]].
      *
      * Aturan penyambungan team (hanya tampilan — tidak memberi akses, K3):
      *  1. Leader team T yang juga ANGGOTA (bukan leader) team B → team T
@@ -282,18 +309,10 @@ class TeamController extends Controller
      *     level terkecil, lalu nama team.
      *  2. Bila tidak ada (1), Induk Team (parent_team_id) → team T beserta
      *     kartu leader-nya digantung di bawah leader team induk.
-     *  3. Selain itu team menjadi akar. Leader yang memimpin beberapa team
-     *     akar tampil SEKALI dengan seluruh team-nya di bawahnya.
+     *  3. Selain itu team menjadi akar.
      * Penyambungan yang membentuk lingkaran diputus (team menjadi akar).
-     *
-     * Di dalam satu team, anggota disusun per baris menurut level
-     * (team_members.level, kecil = lebih tinggi). Orang yang tetap muncul
-     * di lebih dari satu tempat (anggota biasa di dua team) ditandai dan
-     * dihubungkan garis putus-putus di layar (data-user sama).
-     *
-     * @return array<int, array>  kartu akar (rekursif: card → blocks → rows → card)
      */
-    private function buildOrgChart(\Illuminate\Support\Collection $teams, int $meId): array
+    private function orgAttachments(\Illuminate\Support\Collection $teams): array
     {
         $byId = $teams->keyBy('id');
 
@@ -339,26 +358,46 @@ class TeamController extends Controller
             }
         }
 
+        return $attach;
+    }
+
+    /** Satu kartu orang di bagan (Leader View maupun Detail Member). */
+    private function orgCard($user, Team $team, string $role, ?string $position, int $level, array $children, int $meId, string $key): array
+    {
+        return [
+            'key'       => $key,
+            'user_id'   => (int) $user->id,
+            'name'      => $user->name,
+            'avatar'    => $user->avatar_url,
+            'role'      => $role,               // 'leader' | 'member'
+            'position'  => $position,
+            'level'     => $level,
+            'team_id'   => (int) $team->id,
+            'team_code' => $team->code,
+            'team_name' => $team->name,
+            'is_me'     => (int) $user->id === $meId,
+            'children'  => $children,           // blok di bawah kartu ini
+        ];
+    }
+
+    /**
+     * Bagan organisasi berbasis ORANG (atas → bawah), dari team ACTIVE, memakai
+     * penyambungan orgAttachments(). Leader yang memimpin beberapa team akar
+     * tampil SEKALI dengan seluruh team-nya di bawahnya.
+     *
+     * Di dalam satu team, anggota disusun per baris menurut level
+     * (team_members.level, kecil = lebih tinggi).
+     *
+     * @return array<int, array>  kartu akar (rekursif: card → blocks → rows → card)
+     */
+    private function buildOrgChart(\Illuminate\Support\Collection $teams, array $attach, int $meId): array
+    {
         $leaderRow = fn (Team $t) => $t->activeMembers->first(fn ($m) => (int) $m->user_id === (int) $t->leader_id);
         $dipakai   = []; // team yang sudah dirender (penjaga data ganda)
         $kunci     = 0;
 
-        $card = function ($user, Team $team, string $role, ?string $position, int $level, array $children) use ($meId, &$kunci) {
-            return [
-                'key'       => 'oc' . (++$kunci),
-                'user_id'   => (int) $user->id,
-                'name'      => $user->name,
-                'avatar'    => $user->avatar_url,
-                'role'      => $role,               // 'leader' | 'member'
-                'position'  => $position,
-                'level'     => $level,
-                'team_id'   => (int) $team->id,
-                'team_code' => $team->code,
-                'team_name' => $team->name,
-                'is_me'     => (int) $user->id === $meId,
-                'children'  => $children,           // blok di bawah kartu ini
-            ];
-        };
+        $card = fn ($user, Team $team, string $role, ?string $position, int $level, array $children) =>
+            $this->orgCard($user, $team, $role, $position, $level, $children, $meId, 'oc' . (++$kunci));
 
         // Blok "anggota team T" (tanpa kartu leader) + team yang diinduk ke T.
         $blocksOf = null;
@@ -435,6 +474,94 @@ class TeamController extends Controller
         }
 
         return $akar;
+    }
+
+    /**
+     * Leader View: pohon buildOrgChart() tanpa anggota biasa. Kartu yang
+     * tersisa hanya orang yang memimpin team; 'teams' = team yang dipimpinnya
+     * (pintu masuk ke Detail Member), 'children' = kartu leader di bawahnya.
+     * Team tanpa leader tetap tampil sebagai akar 'orphan'.
+     *
+     * @return array<int, array>
+     */
+    private function leaderChart(array $akar): array
+    {
+        $pangkas = function (array $blok) use (&$pangkas) {
+            $hasil = ['teams' => [], 'children' => []];
+            $kartu = function (array $c) use (&$pangkas) {
+                return array_merge($c, ['role' => 'leader'], $pangkas($c['children']));
+            };
+
+            foreach ($blok as $b) {
+                if ($b['kind'] === 'leader') {
+                    $hasil['children'][] = $kartu($b['card']);
+                    continue;
+                }
+                $hasil['teams'][] = $b['team'];
+                foreach ($b['rows'] as $row) {
+                    foreach ($row as $c) {
+                        if (! empty($c['children'])) {
+                            $hasil['children'][] = $kartu($c);
+                        }
+                    }
+                }
+            }
+
+            return $hasil;
+        };
+
+        return array_map(fn ($r) => ! empty($r['orphan'])
+            ? ['orphan' => true] + $pangkas($r['blocks'])
+            : array_merge($r, $pangkas($r['children'])), $akar);
+    }
+
+    /**
+     * Detail Member: isi satu team — leader, anggota per level, serta team di
+     * atas & di bawahnya (dari orgAttachments()) untuk berpindah team.
+     *
+     * @return array<int, array>  urut nama team
+     */
+    private function buildTeamViews(\Illuminate\Support\Collection $teams, array $attach, int $meId): array
+    {
+        $byId     = $teams->keyBy('id');
+        $ledBy    = $teams->filter(fn ($t) => $t->leader_id)->groupBy(fn ($t) => (int) $t->leader_id);
+        $subTeams = $teams->filter(fn ($t) => isset($attach[$t->id]['team']))->groupBy(fn ($t) => $attach[$t->id]['team']);
+        $ringkas  = fn (Team $t) => ['id' => (int) $t->id, 'name' => $t->name];
+
+        return $teams->map(function (Team $t) use ($attach, $byId, $ledBy, $subTeams, $ringkas, $meId) {
+            $leaderId = (int) $t->leader_id;
+            $lr       = $t->activeMembers->first(fn ($m) => (int) $m->user_id === $leaderId);
+            $kartu    = fn ($user, string $role, ?string $position, int $level) =>
+                $this->orgCard($user, $t, $role, $position, $level, [], $meId, 'tv' . $t->id . '-' . $user->id);
+
+            $tiers = $t->activeMembers
+                ->filter(fn ($m) => $m->user && (int) $m->user_id !== $leaderId)
+                ->sortBy(fn ($m) => [(int) $m->level, $m->user->name])
+                ->groupBy(fn ($m) => (int) $m->level)
+                ->map(fn ($g, $level) => [
+                    'level' => (int) $level,
+                    'cards' => $g->map(fn ($m) => $kartu($m->user, 'member', $m->position, (int) $m->level) + [
+                        'led' => ($ledBy[(int) $m->user_id] ?? collect())->pluck('name')->all(),
+                    ])->values()->all(),
+                ])
+                ->values()
+                ->all();
+
+            $indukId = $attach[$t->id]['team'] ?? null;
+            $atas    = $indukId ? $byId->get($indukId) : null;
+
+            return [
+                'id'         => (int) $t->id,
+                'code'       => $t->code,
+                'name'       => $t->name,
+                'department' => $t->department->name ?? null,
+                'count'      => $t->activeMembers->count(),
+                'leader'     => $t->leader ? $kartu($t->leader, 'leader', $lr?->position, (int) ($lr?->level ?? 0)) : null,
+                'tiers'      => $tiers,
+                'up'         => $atas ? $ringkas($atas) : null,
+                'subs'       => ($subTeams[(int) $t->id] ?? collect())->map($ringkas)->values()->all(),
+            ];
+        })->values()->all();
     }
 
     /*

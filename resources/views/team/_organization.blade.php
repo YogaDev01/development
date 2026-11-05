@@ -1,15 +1,17 @@
 {{--
     Tab "Organisasi" pada daftar Team (team.index): ringkasan organisasi,
-    chart orang per department, dan BAGAN ORGANISASI atas → bawah.
+    chart orang per department, dan BAGAN ORGANISASI dengan dua mode:
+      - Leader View: pohon atas → bawah, hanya orang yang memimpin team.
+      - Detail Member: satu team terpilih (leader + anggota per level).
 
-    Variabel (TeamController::organizationData): $orgChart, $people, $meId,
-    $myTeams, $orgSummary.
+    Variabel (TeamController::organizationData): $orgChart, $orgTeams, $people,
+    $meId, $myTeams, $orgSummary.
 
     Bagan berbasis orang: team tersambung lewat orang yang sama (leader team
     A yang juga anggota team B → team A di bawah kartunya di team B), lalu
     Induk Team. HANYA tampilan: tidak memberi akses data (blueprint K3).
-    Garis penghubung digambar JS sebagai SVG dari atribut data-up, jadi
-    markup tetap berupa daftar bersarang biasa. Drawer profil (#osPerson)
+    Garis penghubung Leader View digambar JS sebagai SVG dari atribut data-up,
+    jadi markup tetap berupa daftar bersarang biasa. Drawer profil (#osPerson)
     dirender di team.index, di luar .tab-pane.
 --}}
 @push('styles')
@@ -36,6 +38,8 @@
     .os-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3); }
     .os-toolbar .form-control { max-width: 260px; }
     .os-toolbar .os-zoom { display: inline-flex; gap: 4px; margin-left: auto; }
+    .os-teampick { flex: 0 1 280px; min-width: 200px; }
+    .os-hits { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: var(--sp-3); font-size: var(--fs-caption); color: var(--text-dim); }
     .os-me { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius-md); padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-4); font-size: var(--fs-body); color: var(--text); }
     .os-me-label { font-size: var(--fs-caption); font-weight: 600; letter-spacing: var(--ls-micro); text-transform: uppercase; color: var(--text-faint); margin-right: var(--sp-2); }
     .os-me a { display: inline-block; margin: 2px 6px 2px 0; padding: 1px 10px; border-radius: var(--radius-pill); background: var(--accent-tint); color: var(--accent-text); font-size: var(--fs-label); font-weight: 600; }
@@ -55,12 +59,6 @@
     .oc-node { display: flex; flex-direction: column; align-items: center; position: relative; }
     .oc-children { display: flex; gap: 32px; align-items: flex-start; justify-content: center; margin-top: 40px; }
     .oc-children[hidden] { display: none; }
-    .oc-block { display: flex; flex-direction: column; align-items: center; padding: 6px 12px 12px; border: 1px dashed var(--border-strong); border-radius: var(--radius-md); }
-    .oc-team-tag { align-self: flex-start; margin-bottom: 30px; font-size: var(--fs-caption); font-weight: 700; color: var(--text); white-space: nowrap; }
-    .oc-team-tag span { font-weight: 500; color: var(--text-dim); }
-    .oc-team-tag:hover { color: var(--accent-text); }
-    .oc-row { display: flex; gap: 20px; align-items: flex-start; justify-content: center; }
-    .oc-row + .oc-row { margin-top: 40px; }
     .oc-empty { font-size: var(--fs-caption); color: var(--text-faint); padding: var(--sp-2); }
 
     .oc-card { width: 150px; display: flex; flex-direction: column; align-items: center; background: transparent; border: 0; padding: 0; color: var(--text); position: relative; z-index: 1; }
@@ -85,6 +83,29 @@
     .oc-toggle:hover { color: var(--accent-text); border-color: var(--accent-soft); }
     .oc-toggle + .oc-children { margin-top: 26px; }
 
+    /* Tombol team: buka team itu di mode Detail Member. */
+    .oc-teams { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; margin-top: 4px; max-width: 170px; }
+    .oc-orphan { font-size: var(--fs-caption); font-weight: 600; color: var(--text-faint); }
+    .oc-teamlink { max-width: 170px; padding: 1px 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-pill); background: var(--surface); color: var(--text); font-size: var(--fs-caption); font-weight: 600; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .oc-teamlink span { color: var(--text-dim); font-weight: 500; }
+    .oc-teamlink:hover, .oc-teamlink:focus-visible { border-color: var(--accent-soft); background: var(--accent-tint); color: var(--accent-text); }
+
+    /* ---------- Detail Member: satu team, anggota membungkus ke bawah (tanpa scroll mendatar). ---------- */
+    .ot-view { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); padding: var(--sp-4); }
+    .ot-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--sp-2); }
+    .ot-title { font-size: var(--fs-body); font-weight: 700; color: var(--text); }
+    .ot-sub { font-size: var(--fs-caption); color: var(--text-dim); }
+    .ot-nav { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); margin-top: var(--sp-2); }
+    .ot-nav-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+    .ot-nav-label { font-size: var(--fs-caption); color: var(--text-faint); }
+    .ot-body { display: flex; flex-direction: column; align-items: center; margin-top: var(--sp-4); }
+    .ot-tier { position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; padding-top: 28px; margin-top: 6px; }
+    .ot-tier::before { content: ''; position: absolute; top: 0; left: 50%; height: 28px; border-left: 2px solid var(--accent); }
+    .ot-tier-label { padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface-2); color: var(--text-dim); font-size: var(--fs-caption); font-weight: 600; line-height: 20px; }
+    .ot-cards { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-4) 20px; margin-top: var(--sp-3); }
+    .ot-view .oc-card { width: 170px; }
+    .ot-view .oc-tags, .ot-view .oc-tag { max-width: 170px; }
+
     /* Drawer profil */
     .os-dr-head { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-4); }
     .os-dr-photo { flex: 0 0 48px; width: 48px; height: 48px; border-radius: 50%; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; background: var(--surface-2); border: 2px solid var(--accent); color: var(--text-dim); font-weight: 700; }
@@ -105,6 +126,7 @@
         .os-bar-row { grid-template-columns: 1fr; gap: 2px; padding: var(--sp-1) 0; }
         .os-toolbar .form-control { max-width: none; flex: 1 1 100%; }
         .os-toolbar .os-zoom { margin-left: 0; }
+        .os-teampick { flex: 1 1 100%; }
         .oc-viewport { max-height: 70vh; }
         .oc-canvas { padding: var(--sp-4); }
     }
@@ -163,42 +185,69 @@
 @endif
 
 {{-- BAGAN ORGANISASI --}}
+@if(empty($orgChart))
+    <x-empty icon="fas fa-sitemap" title="Belum ada team aktif" message="Tambahkan team untuk membentuk bagan organisasi." />
+@else
 <div class="os-toolbar">
+    <div class="btn-group btn-group-sm" role="group" aria-label="Mode bagan organisasi">
+        <button type="button" class="btn btn-outline-secondary active" data-org-mode="leader" aria-pressed="true"><i class="fas fa-user-tie mr-1"></i> Leader View</button>
+        <button type="button" class="btn btn-outline-secondary" data-org-mode="member" aria-pressed="false"><i class="fas fa-users mr-1"></i> Detail Member</button>
+    </div>
+    <div class="os-teampick" data-org-only="member" hidden>
+        <select id="osTeam" class="form-control form-control-sm" aria-label="Pilih team">
+            @foreach($orgTeams as $t)
+            <option value="{{ $t['id'] }}" data-search="{{ $t['code'] }}">{{ $t['name'] }}</option>
+            @endforeach
+        </select>
+    </div>
     <input type="search" id="osSearch" class="form-control form-control-sm" placeholder="Cari nama / jabatan / team" aria-label="Cari di bagan organisasi">
-    <button type="button" class="btn btn-outline-secondary btn-sm" id="osExpand"><i class="fas fa-expand-alt mr-1"></i> Bentangkan semua</button>
-    <button type="button" class="btn btn-outline-secondary btn-sm" id="osCollapse"><i class="fas fa-compress-alt mr-1"></i> Ciutkan semua</button>
-    <span class="os-zoom" role="group" aria-label="Perbesar / perkecil bagan">
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="osExpand" data-org-only="leader"><i class="fas fa-expand-alt mr-1"></i> Bentangkan semua</button>
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="osCollapse" data-org-only="leader"><i class="fas fa-compress-alt mr-1"></i> Ciutkan semua</button>
+    <span class="os-zoom" role="group" aria-label="Perbesar / perkecil bagan" data-org-only="leader">
         <button type="button" class="btn btn-outline-secondary btn-sm" data-zoom="-1" title="Perkecil bagan"><i class="fas fa-search-minus"></i></button>
         <button type="button" class="btn btn-outline-secondary btn-sm" data-zoom="0" title="Ukuran normal">100%</button>
         <button type="button" class="btn btn-outline-secondary btn-sm" data-zoom="1" title="Perbesar bagan"><i class="fas fa-search-plus"></i></button>
     </span>
 </div>
 
-<p class="os-note">
+<p class="os-note" data-org-only="leader">
     <span class="os-legend"><i></i> atasan → bawahan</span>
-    <span class="os-legend"><i class="is-dash"></i> orang yang sama di team lain</span>
-    Team tersambung lewat orang yang sama (leader suatu team yang juga anggota team lain), lalu Induk Team.
+    Hanya leader yang tampil. Klik nama team di bawah kartu untuk melihat anggotanya (angka = jumlah orang).
     Hanya team ACTIVE &middot; bagan <strong>tidak</strong> memberi akses data.
 </p>
+<p class="os-note" data-org-only="member" hidden>
+    Menampilkan satu team: leader dan anggotanya per level. Hanya team ACTIVE &middot; bagan <strong>tidak</strong> memberi akses data.
+</p>
 
-@if(empty($orgChart))
-    <x-empty icon="fas fa-sitemap" title="Belum ada team aktif" message="Tambahkan team untuk membentuk bagan organisasi." />
-@else
+<div class="os-hits" id="osHits" hidden></div>
+
 <div class="oc-viewport" id="ocViewport">
     <div class="oc-canvas" id="ocCanvas">
         <svg class="oc-lines" id="ocLines" aria-hidden="true"></svg>
         @foreach($orgChart as $root)
             @if(! empty($root['orphan']))
                 <div class="oc-node">
-                    @foreach($root['blocks'] as $blok)
-                        @include('team._org_block', ['blok' => $blok, 'parentKey' => 'orphan' . $loop->parent->index])
-                    @endforeach
+                    <span class="oc-orphan">Tanpa leader</span>
+                    @include('team._org_team_links', ['teams' => $root['teams']])
+                    @if($root['children'])
+                    <div class="oc-children">
+                        @foreach($root['children'] as $anak)
+                            @include('team._org_card', ['card' => $anak, 'up' => null])
+                        @endforeach
+                    </div>
+                    @endif
                 </div>
             @else
                 @include('team._org_card', ['card' => $root, 'up' => null])
             @endif
         @endforeach
     </div>
+</div>
+<div class="ot-view" id="ocTeamView" hidden></div>
+<div id="ocTeamTemplates">
+    @foreach($orgTeams as $t)
+        @include('team._org_team', ['team' => $t])
+    @endforeach
 </div>
 <div id="osNoResult" hidden class="mt-2">
     <x-empty icon="fas fa-search" title="Tidak ada yang cocok" message="Coba kata kunci lain." compact />
@@ -212,18 +261,25 @@ $(function () {
     var canvas = document.getElementById('ocCanvas');
     if (!canvas) return;
     var svg = document.getElementById('ocLines');
+    var viewport = document.getElementById('ocViewport');
+    var view = document.getElementById('ocTeamView');
     var $canvas = $(canvas);
+    var $team = $('#osTeam');
     var skala = 1;
+    var mode = 'leader';
+    var sudahPas = false;
     var NS = 'http://www.w3.org/2000/svg';
 
     function esc(s) { return $('<div>').text(s == null ? '' : String(s)).html().replace(/"/g, '&quot;'); }
 
-    // Posisi elemen relatif terhadap kanvas, dalam satuan kanvas (sebelum skala).
+    // Posisi elemen relatif terhadap kanvas, dalam satuan kanvas. Rasio diukur
+    // dari kanvas supaya mencakup skala bagan DAN zoom CSS pada layout.
     function kotak(el) {
         var c = canvas.getBoundingClientRect(), r = el.getBoundingClientRect();
+        var f = c.width / canvas.offsetWidth;
         return {
-            x: (r.left - c.left) / skala, y: (r.top - c.top) / skala,
-            w: r.width / skala, h: r.height / skala
+            x: (r.left - c.left) / f, y: (r.top - c.top) / f,
+            w: r.width / f, h: r.height / f
         };
     }
     function terlihat(el) { return el.offsetParent !== null; }
@@ -237,9 +293,9 @@ $(function () {
 
     /*
      | Gambar ulang seluruh garis:
-     |  - atasan → bawahan: dari bawah kartu/baris induk turun, lalu "bus"
-     |    mendatar di atas anak-anaknya, lalu turun ke tiap anak;
-     |  - orang yang sama di beberapa tempat: garis putus-putus antar-kartu.
+     |  - atasan → bawahan: dari bawah kartu induk turun, lalu "bus" mendatar
+     |    di atas anak-anaknya, lalu turun ke tiap anak;
+     |  - leader yang sama di beberapa tempat: garis putus-putus antar-kartu.
      */
     function gambar() {
         svg.innerHTML = '';
@@ -253,25 +309,10 @@ $(function () {
         });
 
         Object.keys(grup).forEach(function (up) {
-            var jenis = up.slice(0, 4), id = up.slice(5);
-            var px, py;
-            if (jenis === 'card') {
-                var label = canvas.querySelector('.oc-card[data-key="' + id + '"] .oc-label');
-                if (!label || !terlihat(label)) return;
-                var a = kotak(label);
-                px = a.x + a.w / 2; py = a.y + a.h;
-            } else {
-                // Baris di atasnya: garis turun dari tengah baris, tepat di
-                // bawah kartu-kartunya (bukan di bawah sub-bagan kartu itu),
-                // sehingga tampak menyambung batang dari atasan.
-                var row = canvas.querySelector('.oc-row[data-row="' + id + '"]');
-                if (!row || !terlihat(row)) return;
-                var r = kotak(row);
-                px = r.x + r.w / 2;
-                py = Math.max.apply(null, Array.prototype.map.call(
-                    row.querySelectorAll(':scope > .oc-node > .oc-card'),
-                    function (c) { var k = kotak(c); return k.y + k.h; }));
-            }
+            var label = canvas.querySelector('.oc-card[data-key="' + up.slice(5) + '"] .oc-label');
+            if (!label || !terlihat(label)) return;
+            var a = kotak(label);
+            var px = a.x + a.w / 2, py = a.y + a.h;
             var anak = grup[up].map(function (el) { var b = kotak(el.querySelector('.oc-photo')); return { x: b.x + b.w / 2, y: b.y }; });
             var atasAnak = Math.min.apply(null, anak.map(function (k) { return k.y; }));
             var bus = Math.max(py + 8, atasAnak - 14);
@@ -327,7 +368,7 @@ $(function () {
     function setOpen(node, open) {
         var kids = node.querySelector(':scope > .oc-children');
         var btn = node.querySelector(':scope > .oc-toggle');
-        if (!kids) return;
+        if (!kids || !btn) return;
         kids.hidden = !open;
         btn.setAttribute('aria-expanded', open ? 'true' : 'false');
         btn.innerHTML = open ? '<i class="fas fa-minus" aria-hidden="true"></i>' : '<i class="fas fa-plus" aria-hidden="true"></i>';
@@ -356,6 +397,44 @@ $(function () {
         setSkala(arah === 0 ? 1 : skala + arah * 0.1);
     });
 
+    // Tampilan awal: kecilkan sampai seluruh lebar bagan muat, lalu ke tengah.
+    function pasKan() {
+        if (sudahPas || !terlihat(canvas)) return;
+        sudahPas = true;
+        setSkala(Math.min(1, Math.floor(viewport.clientWidth / canvas.scrollWidth * 10) / 10));
+        viewport.scrollLeft = (viewport.scrollWidth - viewport.clientWidth) / 2;
+    }
+
+    function setMode(m) {
+        mode = m;
+        $('[data-org-mode]').each(function () {
+            var aktif = this.dataset.orgMode === m;
+            $(this).toggleClass('active', aktif).attr('aria-pressed', aktif ? 'true' : 'false');
+        });
+        $('[data-org-only]').each(function () { this.hidden = this.dataset.orgOnly !== m; });
+        viewport.hidden = m !== 'leader';
+        view.hidden = m !== 'member';
+        if (m === 'leader') { gambar(); pasKan(); }
+    }
+
+    // Detail Member: salin isi team terpilih dari <template>-nya.
+    function bukaTeam(id) {
+        var tpl = document.getElementById('ocTeamTpl-' + id);
+        if (!tpl) return;
+        $team.val(String(id)).trigger('tss:sync');
+        view.innerHTML = '';
+        view.appendChild(tpl.content.cloneNode(true));
+        view.querySelectorAll('.oc-card').forEach(function (el) {
+            var p = people[el.dataset.user], t = el.querySelector('.oc-tag.is-dup');
+            if (p && p.teams.length > 1) {
+                t.hidden = false;
+                t.textContent = 'Di ' + p.teams.length + ' team';
+            }
+        });
+        setMode('member');
+        cari(false);
+    }
+
     function bukaJalur(el) {
         $(el).parents('.oc-node').each(function () { setOpen(this, true); });
     }
@@ -363,34 +442,67 @@ $(function () {
         el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
     }
 
-    // Lompat ke kartu milik user di team tertentu.
-    $('.os-jump').on('click', function (e) {
-        var meId = @json($meId);
-        var el = canvas.querySelector('.oc-card[data-user="' + meId + '"][data-team="' + $(this).data('team') + '"]')
-            || canvas.querySelector('#team-' + $(this).data('team'));
-        if (!el) return;
-        e.preventDefault();
-        bukaJalur(el); gambar(); gulirKe(el);
-        el.focus && el.focus({ preventScroll: true });
-    });
-
-    // Pencarian: sorot kartu yang cocok, buka jalurnya, gulir ke yang pertama.
-    $('#osSearch').on('input', function () {
-        var q = this.value.trim().toLowerCase();
+    /*
+     | Pencarian: sorot kartu yang cocok di tampilan aktif. Orang yang tidak
+     | tampil di situ (anggota saat Leader View, team lain saat Detail Member)
+     | didaftar sebagai tombol yang membuka team-nya.
+     */
+    function cari(gulir) {
+        var q = $('#osSearch').val().trim().toLowerCase();
+        var wadah = mode === 'leader' ? canvas : view;
         var cocok = [];
-        canvas.querySelectorAll('.oc-card').forEach(function (el) {
+        wadah.querySelectorAll('.oc-card').forEach(function (el) {
             var hit = !!q && String(el.dataset.search).indexOf(q) !== -1;
             el.classList.toggle('is-hit', hit);
             if (hit) cocok.push(el);
         });
-        cocok.forEach(bukaJalur);
-        $('#osNoResult').prop('hidden', !q || cocok.length > 0);
-        gambar();
-        if (cocok.length) gulirKe(cocok[0]);
+        if (mode === 'leader') cocok.forEach(bukaJalur);
+
+        var lain = [];
+        if (q) {
+            Object.keys(people).forEach(function (u) {
+                if (wadah.querySelector('.oc-card[data-user="' + u + '"]')) return;
+                people[u].teams.forEach(function (t) {
+                    var teks = [people[u].name, t.position, t.name, t.code].join(' ').toLowerCase();
+                    if (teks.indexOf(q) !== -1) lain.push({ orang: people[u].name, team: t });
+                });
+            });
+        }
+        var html = lain.slice(0, 8).map(function (x) {
+            return '<button type="button" class="oc-teamlink" data-team="' + esc(x.team.id) + '">' + esc(x.orang) + ' <span>' + esc(x.team.name) + '</span></button>';
+        }).join('');
+        $('#osHits').html(lain.length ? 'Ada di team: ' + html + (lain.length > 8 ? ' +' + (lain.length - 8) + ' lainnya' : '') : '').prop('hidden', !lain.length);
+
+        $('#osNoResult').prop('hidden', !q || cocok.length > 0 || lain.length > 0);
+        if (mode === 'leader') gambar();
+        if (gulir && cocok.length) gulirKe(cocok[0]);
+    }
+    $('#osSearch').on('input', function () { cari(true); });
+
+    // Ganti mode. Detail Member dibuka di team terakhir, lalu team sendiri.
+    var timSaya = @json($myTeams->sortByDesc('is_primary')->pluck('id')->values());
+    $('[data-org-mode]').on('click', function () {
+        if (this.dataset.orgMode === 'leader') {
+            setMode('leader');
+            cari(false);
+        } else {
+            bukaTeam(view.firstChild ? $team.val() : (timSaya[0] || $team.val()));
+        }
+    });
+    if (window.TesysSearchableSelect) {
+        TesysSearchableSelect.init('#osTeam', { placeholder: '— Pilih team —', searchPlaceholder: 'Cari team…' });
+    }
+    $team.on('change', function () { bukaTeam(this.value); });
+
+    // Nama team (kartu leader, navigasi, hasil cari) & "Posisi Anda" → Detail Member.
+    $('#paneOrganisasi').on('click', '.oc-teamlink[data-team]', function () { bukaTeam(this.dataset.team); });
+    $('.os-jump').on('click', function (e) {
+        e.preventDefault();
+        bukaTeam($(this).data('team'));
     });
 
     // Drawer profil organisasi (data dari server, tanpa kontak).
-    $canvas.on('click', '.oc-card', function () {
+    $canvas.add(view).on('click', '.oc-card', function () {
         var p = people[this.dataset.user];
         if (!p) return;
         var foto = p.avatar
@@ -416,8 +528,8 @@ $(function () {
 
     // Garis digambar saat tab Organisasi terlihat (ukuran 0 saat tersembunyi),
     // setelah foto termuat, dan saat ukuran layar berubah.
-    $('#tabOrganisasi').on('shown.bs.tab', gambar);
-    if (terlihat(canvas)) gambar();
+    $('#tabOrganisasi').on('shown.bs.tab', function () { gambar(); pasKan(); });
+    if (terlihat(canvas)) { gambar(); pasKan(); }
     canvas.querySelectorAll('.oc-photo img').forEach(function (img) { if (!img.complete) img.addEventListener('load', gambar, { once: true }); });
     var tunda;
     $(window).on('resize', function () { clearTimeout(tunda); tunda = setTimeout(gambar, 120); });

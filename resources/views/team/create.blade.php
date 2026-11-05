@@ -139,6 +139,7 @@
 @endphp
 
 @push('scripts')
+@include('team._form_select_search')
 <script>
 $(function () {
     // Teks dari data di-escape sebelum disisipkan ke HTML.
@@ -180,6 +181,7 @@ $(function () {
     $('#btnAddMember').on('click', function () {
         $('#memberBody').append(makeMemberRow(memberIdx++, null));
         renumberMembers();
+        teamPasangCari('#memberBody');
     });
 
     $(document).on('click', '.btn-remove-member', function () {
@@ -193,12 +195,13 @@ $(function () {
 
     // Baris pertama: default leader (kalau sudah dipilih)
     $('#btnAddMember').trigger('click');
+    teamPasangCari($('#memberBody').closest('form'));
 
     $('#selLeader').on('change', function () {
         var val = $(this).val();
         var firstSelect = $('.member-row:first select[name^="members"][name$="[user_id]"]');
         if (val && firstSelect.length && !firstSelect.val()) {
-            firstSelect.val(val);
+            firstSelect.val(val).trigger('tss:sync');
         }
     });
 });
