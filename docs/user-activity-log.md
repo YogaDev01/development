@@ -29,6 +29,13 @@ authenticated user/session — tidak pernah dari input request.
 - Guard `supportsSecurityColumns()` / `hasColumn('users','last_login_at')` menambah satu query
   `information_schema` per request yang mencatat aktivitas (dua per login). **Sementara**: hapus guard
   setelah migrasi `2026_11_07_000500` dipastikan berjalan di host.
+- 2026-11-07 (D18/D11): module baru `file` (Lampiran) dan `security` (Keamanan); aksi baru
+  `access_denied` dan `print`. `export`/`print` dicatat otomatis oleh middleware
+  `RecordSecurityEvents` untuk route `*.export*`/`*.print`; controller yang mencatat export-nya
+  sendiri (Cost Register) menandai request lewat `record()` sehingga tidak dicatat ganda.
+  `SECURITY_ONLY_ACTIONS` (login_failed, lockout, revoke_session, access_denied) disembunyikan dari
+  `feedFor()` dan filter Profil — feed pribadi tetap seperti sebelumnya; export/unduh milik user
+  sendiri memang tampil di feed-nya.
 - `users.last_login_at` / `last_login_ip` diisi saat login berhasil (query builder, tanpa
   mengubah `updated_at`).
 

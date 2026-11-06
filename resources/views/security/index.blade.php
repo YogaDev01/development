@@ -32,12 +32,7 @@
             </x-slot:actions>
         </x-tw.page-header>
 
-        @if(session('success'))
-            <div class="alert alert-success mb-0">{{ session('success') }}</div>
-        @endif
-        @if(session('error'))
-            <div class="alert alert-danger mb-0">{{ session('error') }}</div>
-        @endif
+        {{-- Pesan sukses/gagal ditampilkan layout (tesysFlashSuccess/Error). --}}
 
         <x-stat-cards :cards="[
             ['User Online', $sessionsEnabled ? $summary['active_users'] : '-', 'primary', 'fas fa-user-check', $sessionsEnabled ? 'sesi belum kedaluwarsa' : 'driver sesi bukan database'],

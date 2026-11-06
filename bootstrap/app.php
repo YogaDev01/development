@@ -26,6 +26,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\SecurityHeaders::class,
             \App\Http\Middleware\EnsureUserActive::class,
+            // Jejak audit export/cetak (D18) & akses ditolak (D11). Hanya
+            // mengamati respons, tidak mengubahnya — lihat kelasnya.
+            \App\Http\Middleware\RecordSecurityEvents::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

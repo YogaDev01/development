@@ -73,6 +73,8 @@ class UserActivityLog extends Model
         'user_access' => 'User & Access',
         'master_data' => 'Master Data',
         'trouble_ticket' => 'Trouble Ticket',
+        'file' => 'Lampiran',
+        'security' => 'Keamanan',
     ];
 
     public const ACTIONS = [
@@ -81,6 +83,8 @@ class UserActivityLog extends Model
         'login_failed' => 'Login Gagal',
         'lockout' => 'Login Diblokir',
         'revoke_session' => 'Cabut Sesi',
+        'access_denied' => 'Akses Ditolak',
+        'print' => 'Cetak',
         'view' => 'Lihat',
         'create' => 'Buat',
         'update' => 'Ubah',
@@ -109,7 +113,7 @@ class UserActivityLog extends Model
      * itu sendiri (login gagal tanpa sesi, pencabutan sesi oleh superadmin),
      * jadi tidak ditawarkan di filter Activity Log Profil.
      */
-    public const SECURITY_ONLY_ACTIONS = ['login_failed', 'lockout', 'revoke_session'];
+    public const SECURITY_ONLY_ACTIONS = ['login_failed', 'lockout', 'revoke_session', 'access_denied'];
 
     /*
     |--------------------------------------------------------------------------
@@ -141,6 +145,12 @@ class UserActivityLog extends Model
     ): ?self {
         try {
             $user = Auth::user();
+
+            // Penanda untuk RecordSecurityEvents: controller yang mencatat
+            // export-nya sendiri tidak dicatat dua kali oleh middleware.
+            if ($action === 'export') {
+                request()?->attributes->set('activity.export_logged', true);
+            }
 
             $subjectType = $subject ? get_class($subject) : null;
             $subjectId = $subject?->getKey();
@@ -290,7 +300,10 @@ class UserActivityLog extends Model
      */
     public static function feedFor(int $userId, array $filters = [], int $perPage = 25)
     {
-        $query = self::where('user_id', $userId);
+        // Aksi khusus konsol Keamanan (mis. akses ditolak) tidak ditampilkan
+        // di feed pribadi — tampilan Activity Log Profil tetap seperti dulu.
+        $query = self::where('user_id', $userId)
+            ->whereNotIn('action', self::SECURITY_ONLY_ACTIONS);
 
         self::applyFilters($query, $filters);
 
@@ -398,7 +411,7 @@ class UserActivityLog extends Model
             'approve', 'verify', 'pay', 'settle', 'close',
             'process', 'restore' => 'success',
             'reject', 'cancel', 'delete', 'takeout',
-            'login_failed', 'lockout' => 'danger',
+            'login_failed', 'lockout', 'access_denied' => 'danger',
             'revoke_session' => 'warning',
             'revise', 'check' => 'warning',
             'login' => 'primary',

@@ -69,6 +69,8 @@ class SecureFileController extends Controller
 
         $mime = $disk->mimeType($path) ?: 'application/octet-stream';
 
+        $this->recordDownload($request, $path);
+
         /*
         | Berkas yang tidak dikenali dipaksa unduh, bukan ditampilkan. HTML atau
         | SVG yang tampil inline berjalan pada origin aplikasi — artinya berkas
@@ -88,5 +90,45 @@ class SecureFileController extends Controller
             // gambar lewat PHP+MySQL — pemicu lonjakan CPU 100% di Hostinger.
             'Cache-Control'          => 'private, max-age=604800',
         ], $disposition);
+    }
+
+    /** Folder yang dimuat otomatis di banyak halaman (bukan dokumen bisnis). */
+    private const UNLOGGED_FOLDERS = ['avatars', 'covers'];
+
+    /** Satu catatan per user + berkas per jendela ini (detik). */
+    private const DOWNLOAD_WINDOW = 600;
+
+    /**
+     * Jejak audit buka/unduh lampiran (D18, disetujui pemilik 2026-11-07).
+     *
+     * Foto profil & sampul dilewati: tampil di daftar, notifikasi, dan bagan
+     * organisasi, jadi mencatatnya berarti puluhan baris per halaman. Berkas
+     * yang sama oleh user yang sama dicatat paling banyak sekali per 10 menit.
+     * Gagal-aman: pencatatan tidak pernah menggagalkan pengiriman berkas.
+     */
+    private function recordDownload(Request $request, string $path): void
+    {
+        try {
+            $user   = $request->user();
+            $folder = explode('/', $path)[0] ?? '';
+
+            if (! $user || in_array($folder, self::UNLOGGED_FOLDERS, true)) {
+                return;
+            }
+
+            if (! \Illuminate\Support\Facades\Cache::add('secdl:' . sha1($user->getKey() . '|' . $path), 1, self::DOWNLOAD_WINDOW)) {
+                return;
+            }
+
+            \App\Models\UserActivityLog::record(
+                'file',
+                'download',
+                'Membuka lampiran ' . mb_substr(basename($path), 0, 120),
+                null,
+                $folder,
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Gagal mencatat unduhan lampiran', ['message' => $e->getMessage()]);
+        }
     }
 }

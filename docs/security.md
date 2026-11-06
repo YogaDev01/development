@@ -17,7 +17,17 @@ Verified 2026-10-02 from `bootstrap/app.php`, `routes/web.php`,
   Aktif (tabel `sessions`, hanya bila `SESSION_DRIVER=database`). Aksi: cabut satu sesi (dikenali lewat
   sha256 id sesi) dan putus semua sesi user lain; keduanya merotasi `remember_token` agar "Ingat saya"
   tidak langsung memulihkan sesi. Sesi sendiri tidak bisa dicabut dari konsol. Tercatat sebagai
-  `revoke_session`. Lihat `docs/security/access-matrix.md` dan
+  `revoke_session`.
+- **Jejak export/unduh & akses ditolak (2026-11-07, D18/D11):** middleware global
+  `RecordSecurityEvents` (grup web, setelah `EnsureUserActive`) hanya mengamati respons:
+  route bernama `*.export*` / `*.print` yang sukses → `export`/`print`; respons 403 untuk user
+  login → `access_denied` (module `security`, maks. 1 baris per user+URL per menit). Unduhan
+  lampiran dicatat di `SecureFileController` (module `file`, `download`, maks. 1 per user+berkas
+  per 10 menit; `avatars/`, `covers/` dilewati). Tidak ada respons yang diubah.
+- **Tambah role (2026-11-07, D3):** `POST /role` (`role:superadmin`). Role baru tanpa menu
+  (default deny); nama yang dipakai kode (`RoleController::RESERVED_NAMES` ∪ semua nama di
+  gerbang `role:`) ditolak agar tidak mewarisi kewenangan hardcoded; nama tidak bisa diubah.
+  Lihat `docs/security/access-matrix.md` dan
   `docs/plans/2026-11-06-security-access-control.md`.
 
 ## Roles (as used in route gates)

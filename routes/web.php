@@ -1314,6 +1314,7 @@ Route::middleware('auth')->group(function () {
     */
     Route::middleware('role:superadmin')->group(function () {
         Route::get('role',              [RoleController::class, 'index'])->name('role.index');
+        Route::post('role',             [RoleController::class, 'store'])->name('role.store');
         Route::get('role/{id}/edit-data',[RoleController::class, 'getEditData'])->name('role.edit-data');
         Route::get('role/{id}/edit',    [RoleController::class, 'edit'])->name('role.edit');
         Route::put('role/{id}',         [RoleController::class, 'update'])->name('role.update');

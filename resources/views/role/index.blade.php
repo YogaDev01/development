@@ -24,6 +24,10 @@
             description="Role pengguna dan pengaturan akses menu per role.">
             <x-slot:actions>
                 <x-tw.button href="{{ url('/user') }}" variant="secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Kembali</x-tw.button>
+                {{-- Tambah role (D3, 2026-11-07): route role.store, role:superadmin — sama dengan halaman ini. --}}
+                <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modalTambahRole">
+                    <i class="fas fa-plus mr-1" aria-hidden="true"></i> Tambah Role
+                </button>
                 <x-tw.button id="refreshTable" variant="secondary" size="sm"><i class="fas fa-sync-alt" aria-hidden="true"></i> Refresh</x-tw.button>
             </x-slot:actions>
         </x-tw.page-header>
@@ -246,6 +250,51 @@
         </div>
     </div>
 </div>
+
+{{-- MODAL TAMBAH ROLE — role baru tidak punya akses menu apa pun (default deny). --}}
+<div class="modal fade" id="modalTambahRole" tabindex="-1" role="dialog" aria-labelledby="modalTambahRoleTitle" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" style="border-radius:var(--radius-lg); overflow:hidden;">
+            <form method="POST" action="{{ route('role.store') }}">
+                @csrf
+                <div class="modal-header" style="background:var(--charcoal); border-bottom:3px solid var(--accent);">
+                    <h5 class="modal-title text-white" id="modalTambahRoleTitle">
+                        <i class="fas fa-user-tag mr-2" aria-hidden="true"></i> Tambah Role
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Tutup">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group mb-2">
+                        <label for="newRoleName" class="font-weight-600">Nama Role</label>
+                        <input type="text" name="name" id="newRoleName" class="form-control form-control-sm @error('name') is-invalid @enderror"
+                               value="{{ old('name') }}" required maxlength="40" pattern="[a-z][a-z0-9_]{2,39}" autocomplete="off"
+                               placeholder="mis. auditor_internal">
+                        @error('name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                        <small class="form-text text-muted">Huruf kecil, angka, dan garis bawah; 3–40 karakter, diawali huruf.</small>
+                    </div>
+                    <div class="alert alert-warning mb-0" style="font-size:12px;">
+                        <i class="fas fa-info-circle mr-1" aria-hidden="true"></i>
+                        Role baru dibuat <strong>tanpa akses menu apa pun</strong> dan tidak mendapat kewenangan bawaan role lain.
+                        Setelah dibuat, atur menunya lewat tombol <strong>Atur Menu Access</strong> di tabel.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save mr-1" aria-hidden="true"></i> Simpan Role</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@if($errors->has('name'))
+    @push('scripts')
+    <script>$(function () { $('#modalTambahRole').modal('show'); });</script>
+    @endpush
+@endif
 
 @endsection
 

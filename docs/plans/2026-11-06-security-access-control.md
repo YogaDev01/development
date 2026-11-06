@@ -383,7 +383,7 @@ Test dijalankan **hanya atas permintaan pengguna** setelah prosedur CLAUDE.md §
 |---|---|---|---|---|
 | **D1** | Menambah layer baru `Authorizer`/`DataScope`/`CheckPermission`/`SecuritySettings` | Tidak terlihat (arsitektur) — tapi melanggar default CLAUDE.md §3 | HIGH | **Setujui** — prasyarat seluruh roadmap |
 | **D2** | Cutover gerbang `role:` → `perm:` per modul | Seharusnya tidak ada; risiko regresi | HIGH | Setujui bertahap per modul |
-| **D3** | UI tambah role baru | Superadmin bisa membuat role; role baru default tanpa hak | HIGH | Setujui |
+| **D3** ✅ 2026-11-07 | UI tambah role baru | Superadmin bisa membuat role; role baru default tanpa hak | HIGH | Setujui |
 | **D4** | Scope Own Team / Own Department / Selected / Division | Butuh kolom org pemilik di tabel transaksi + aturan pengisian + master Division; daftar data user bisa menyempit/melebar | HIGH (+CRITICAL bila backfill) | **Tunda**; pakai Access Group (sudah berbasis team) |
 | **D5** | Larangan self-approval (pengaju ≠ approver) | Approver yang juga pengaju tidak bisa approve dokumennya sendiri; butuh jalur alternatif | HIGH | Putuskan per modul; mulai mode "peringatan + log" |
 | **D6** | Threshold nominal, urutan approval, delegasi | Mengubah tahap/penyetuju CR/BP/Treasury, Todo List, notifikasi | HIGH/CRITICAL | Tunda ke proyek terpisah |
@@ -391,14 +391,14 @@ Test dijalankan **hanya atas permintaan pengguna** setelah prosedur CLAUDE.md §
 | **D8** | Membatasi API ekspor publik dengan scope | Power Query eksternal bisa berhenti/berkurang datanya | HIGH | Tidak diubah; cukup audit pemakaian token |
 | **D9** | Menu registry pindah ke DB (label/urutan/aktif dari UI) | Sidebar bisa berubah urutan/nama | HIGH | Tetap config; DB hanya hak (seperti sekarang) |
 | **D10** | Menu otomatis disembunyikan bila tidak punya permission `view` | Menu bisa hilang untuk sebagian role | HIGH | Tidak; menu tetap `role_menu_items` |
-| **D11** | Mencatat semua 403 / akses ditolak | Tidak terlihat; beban insert | MEDIUM | Setujui dengan sampling/batas per menit |
+| **D11** ✅ 2026-11-07 (1 baris/user+URL/menit) | Mencatat semua 403 / akses ditolak | Tidak terlihat; beban insert | MEDIUM | Setujui dengan sampling/batas per menit |
 | **D12** | Membatasi superadmin (mis. tidak boleh approve/bayar) | Superadmin kehilangan kemampuan yang dipakai sekarang | HIGH | Putuskan pemilik |
 | **D13** | Multi-role per user | Model `users.role_id` tunggal → semua `hasRole()` terdampak | HIGH | Tunda |
 | **D14** | Mapping `employees` ↔ `users` | Form user bertambah field | MEDIUM | Opsional, additive |
 | **D15** | Role gate untuk Closing | Pemegang menu Closing non-finance bisa kehilangan akses | HIGH | Cek dulu siapa pemegang menu |
 | **D16** | Mempersempit Cash Receipt delete | Role yang kini bisa menghapus tidak bisa lagi | HIGH | Putuskan pemilik |
 | **D17** | Notifikasi Head hanya ke Head terkait | Head lain berhenti menerima notifikasi | HIGH | Proyek terpisah |
-| **D18** | Pencatatan `export`/`download` di audit | Tidak terlihat; +1 insert per ekspor/unduh | MEDIUM | Setujui |
+| **D18** ✅ 2026-11-07 | Pencatatan `export`/`download` di audit | Tidak terlihat; +1 insert per ekspor/unduh | MEDIUM | Setujui |
 | **D19** ✅ 2026-11-07 (F-1…F-4 ditutup; F-5 diganti aturan CA baru) | Menutup temuan Fase 0 F-1/F-3/F-4/F-5 (`docs/security/access-matrix.md` §7) dan menghapus route mati F-2 | User di luar Access Group tidak lagi melihat PO di Global Search, rincian/sisa Budget Plan, dan kuota CA beneficiary lain; form CR milik user yang berhak tidak berubah | HIGH | Setujui (memakai fungsi visibilitas yang sudah ada) |
 
 Butir di luar tabel ini (Fase 0, 1, 2 shadow, 4 parity, 6 tampilan, 8, 9) **tidak** mengubah workflow/UX user biasa;

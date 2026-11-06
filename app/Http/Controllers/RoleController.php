@@ -37,6 +37,71 @@ class RoleController extends Controller
 
     /*
     |--------------------------------------------------------------------------
+    | STORE — tambah role baru (D3, disetujui pemilik 2026-11-07)
+    |--------------------------------------------------------------------------
+    | Kewenangan di TESYS masih banyak yang ditulis sebagai nama role di kode
+    | (gerbang route role:, AccessRoles, STAGE_ROLES, kondisi Blade, ...).
+    | Role baru yang namanya kebetulan sama dengan salah satu nama itu akan
+    | langsung mewarisi kewenangannya — misalnya role "guest" baru otomatis
+    | melihat nilai PO. Karena itu nama yang dipakai kode ditolak, dan role
+    | baru dibuat TANPA menu apa pun (default deny). Nama tidak bisa diubah
+    | setelah dibuat (mengganti nama = mengganti kewenangan).
+    */
+
+    /** Nama role yang dibaca langsung oleh kode di luar gerbang route. */
+    private const RESERVED_NAMES = [
+        'superadmin', 'approver', 'head', 'manager', 'supervisor', 'finance',
+        'finance_manager', 'cost_control', 'treasury', 'accounting', 'collection',
+        'admin', 'hr', 'guest', 'teknisi', 'staff',
+    ];
+
+    public function store(Request $request)
+    {
+        $request->merge(['name' => strtolower(trim((string) $request->input('name')))]);
+
+        $request->validate([
+            'name' => ['required', 'string', 'regex:/^[a-z][a-z0-9_]{2,39}$/', 'unique:roles,name'],
+        ], [
+            'name.regex'  => 'Nama role hanya huruf kecil, angka, dan garis bawah; 3–40 karakter, diawali huruf.',
+            'name.unique' => 'Role dengan nama ini sudah ada.',
+        ]);
+
+        if (in_array($request->name, $this->reservedNames(), true)) {
+            return back()->withInput()->withErrors([
+                'name' => 'Nama ini dipakai aturan bawaan aplikasi dan tidak dapat dipakai untuk role baru.',
+            ]);
+        }
+
+        $role = Role::create(['name' => $request->name, 'status' => 'ACTIVE']);
+
+        UserActivityLog::record('user_access', 'create', 'Menambah role ' . $role->name . ' (tanpa akses menu)', $role, null, null, [
+            ['label' => 'Role', 'from' => '-', 'to' => $role->name],
+        ]);
+
+        return redirect()->route('role.index')
+            ->with('success', 'Role ' . $role->name . ' dibuat tanpa akses menu. Atur menunya lewat tombol Atur Menu Access.');
+    }
+
+    /** RESERVED_NAMES ∪ setiap nama role yang dipakai gerbang role: di route. */
+    private function reservedNames(): array
+    {
+        $dariRoute = [];
+
+        foreach (app('router')->getRoutes()->getRoutes() as $route) {
+            foreach ($route->gatherMiddleware() as $m) {
+                if (is_string($m) && str_starts_with($m, 'role:')) {
+                    foreach (explode(',', substr($m, 5)) as $nama) {
+                        $dariRoute[] = strtolower(trim($nama));
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique(array_merge(self::RESERVED_NAMES, $dariRoute)));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | EDIT — form checklist menu untuk satu role
     |--------------------------------------------------------------------------
     */

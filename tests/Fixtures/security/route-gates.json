@@ -1729,6 +1729,10 @@
         "auth",
         "menu:region"
     ],
+    "POST /role": [
+        "auth",
+        "role:superadmin"
+    ],
     "POST /security/sessions/revoke": [
         "auth",
         "role:superadmin"
