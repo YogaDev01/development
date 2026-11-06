@@ -24,6 +24,7 @@ use App\Support\WorkflowStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
@@ -265,8 +266,8 @@ class TroubleTicketController extends Controller
             // pilihan yang menghasilkan site kosong.
             'customers' => $customers,
             /* Satu customer saja: kotak pilihan diganti teks baca-saja.
-               Lebih dari satu team dengan customer berbeda tetap memilih,
-               hanya daftarnya yang menyempit. */
+               Lebih dari satu customer (dari satu team atau beberapa team)
+               tetap memilih, hanya daftarnya yang menyempit. */
             'customerTerkunci' => $customerIds->isNotEmpty() && $customers->count() === 1
                 ? $customers->first()
                 : null,
@@ -297,13 +298,17 @@ class TroubleTicketController extends Controller
             return collect();
         }
 
-        return Team::query()
+        $teams = Team::query()
             ->where('teams.status', 'ACTIVE')
-            ->whereNotNull('customer_id')
             ->where(fn ($q) => $q
                 ->where('leader_id', $user->id)
-                ->orWhereHas('members', fn ($m) => $m->where('user_id', $user->id)->where('status', 'ACTIVE')))
-            ->pluck('customer_id')
+                ->orWhereHas('members', fn ($m) => $m->where('user_id', $user->id)->where('status', 'ACTIVE')));
+
+        $customerIds = Team::supportsCustomerList()
+            ? DB::table('team_customers')->whereIn('team_id', $teams->select('teams.id'))->pluck('customer_id')
+            : $teams->whereNotNull('customer_id')->pluck('customer_id');
+
+        return $customerIds
             ->map(fn ($id) => (int) $id)
             ->unique()
             ->values();

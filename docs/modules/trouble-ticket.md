@@ -315,13 +315,17 @@ notifikasi tidak terkirim dua kali. Error keadaan = `ValidationException`
   Trip dicabut; `POST {ticket}/plan` tetap menerima `TRIP` untuk integrasi.
 - **Customer mengikuti team pembuat tiket** (19 Okt 2026): form Buat Trouble
   Ticket tidak lagi menanyakan customer bila pembuatnya anggota ACTIVE (atau
-  leader) sebuah team ACTIVE yang kolom `teams.customer_id`-nya terisi
-  (migrasi `2026_10_19_000300`, diisi di Master Data > Team). Satu customer →
-  kotaknya baca-saja dan daftar site langsung menyempit ke customer itu;
-  beberapa team dengan customer berbeda → tetap memilih, hanya daftarnya yang
-  menyempit; tanpa team (mis. superadmin) → perilaku lama. Penegakannya ada di
-  `store()`: site di luar customer team pembuat ditolak (`site_id`), jadi
-  kiriman browser tidak bisa menembusnya.
+  leader) sebuah team ACTIVE yang customer-nya terisi (diisi di Master Data >
+  Team). Sejak 6 Nov 2026 satu team boleh punya beberapa customer: daftarnya di
+  tabel `team_customers` (migrasi `2026_11_06_000500`), sedangkan
+  `teams.customer_id` hanya menyimpan customer pertama dan dibaca selama migrasi
+  itu belum dijalankan. Satu customer → kotaknya baca-saja dan daftar site
+  langsung menyempit ke customer itu; lebih dari satu customer (dari satu team
+  atau beberapa team) → tetap memilih, hanya daftarnya yang menyempit; tanpa
+  team (mis. superadmin) → perilaku lama. Penegakannya ada di `store()`: site di
+  luar customer team pembuat ditolak (`site_id`), jadi kiriman browser tidak
+  bisa menembusnya. Batas Budget Plan teknisi memakai daftar yang sama, jadi
+  teknisi team multi-customer dapat memilih Budget Plan semua customer team-nya.
 - **Notifikasi tiket baru**: teknisi yang ditugaskan **dan seluruh PIC internal
   site** (`sitePicUsers()`).
 

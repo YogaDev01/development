@@ -50,6 +50,7 @@ return [
                         'Penanda keuangan di daftar tiket dan filter "Keuangan terbuka"; tiket CLOSED tetap bisa menyelesaikan urusan dananya.',
                         'Todo List: antrean Trouble Ticket — CR draft dari tiket, revisi pengajuan, settlement jatuh tempo, review settlement, dan approve close.',
                         'Profil: bagan team menampilkan team induk dan sub-team langsung.',
+                        'Master Data Team: satu team bisa melayani beberapa customer; form Buat Trouble Ticket dan Budget Plan teknisi mengikuti semua customer team-nya (migrasi 2026_11_06_000500).',
                     ],
                 ],
                 [
