@@ -27,6 +27,10 @@ Verified 2026-10-02 from `bootstrap/app.php`, `routes/web.php`,
 - **Tambah role (2026-11-07, D3):** `POST /role` (`role:superadmin`). Role baru tanpa menu
   (default deny); nama yang dipakai kode (`RoleController::RESERVED_NAMES` ∪ semua nama di
   gerbang `role:`) ditolak agar tidak mewarisi kewenangan hardcoded; nama tidak bisa diubah.
+- **Mesin permission — mode shadow (2026-11-07, Fase 2):** registry `config/permissions.php` (1 entri per route
+  bergerbang `role:`), hak di `role_permissions`. `ShadowPermission` hanya membandingkan dengan gerbang lama dan
+  mencatat selisih ke `permission_shadow_logs` bila `SECURITY_PERMISSION_MODE=shadow`; gerbang `role:` lama tetap
+  yang memutuskan. Route baru bergerbang `role:` wajib didaftarkan lewat generator (dijaga `PermissionRegistryTest`).
   Lihat `docs/security/access-matrix.md` dan
   `docs/plans/2026-11-06-security-access-control.md`.
 

@@ -22,8 +22,10 @@ class CashAdvanceQuota
         $ben = $beneficiaryId ? Beneficiary::with('pic')->find($beneficiaryId) : null;
         if (! $ben || ! $ben->pic_id) return null;
 
-        // Batas dari Master PIC. Token bebas huruf/angka, jadi hanya dipakai
-        // kalau isinya memang angka; kosong/0 = aspek itu tanpa batas.
+        // Batas dari Master PIC. Token hanya dipakai kalau isinya angka;
+        // kosong/0 = aspek itu tanpa batas DI SINI. Sejak 2026-11-07 Cash
+        // Advance sendiri mensyaratkan Token > 0 (eligibilityError()), jadi
+        // "tanpa batas jumlah" hanya tersisa untuk tampilan kuota.
         $pic         = $ben->pic;
         $limitCount  = is_numeric($pic?->token) ? (int) $pic->token : null;
         $limitAmount = $pic?->nominal !== null ? (int) $pic->nominal : null;
@@ -104,7 +106,11 @@ class CashAdvanceQuota
     {
         $ben = $beneficiaryId ? Beneficiary::with('pic')->find($beneficiaryId) : null;
 
-        if (! $ben || $ben->category !== 'INTERNAL') {
+        if (! $ben) {
+            return 'Cash Advance wajib memilih beneficiary kategori Internal.';
+        }
+
+        if ($ben->category !== 'INTERNAL') {
             return 'Cash Advance hanya untuk beneficiary kategori Internal.';
         }
 
@@ -115,7 +121,7 @@ class CashAdvanceQuota
 
         $token = $ben->pic->token;
         if (! is_numeric($token) || (int) $token < 1) {
-            return 'Token (limit jumlah Cash Advance) PIC "' . ($ben->pic->pic ?? '-') . '" belum diisi. '
+            return 'Token (limit jumlah Cash Advance) PIC "' . ($ben->pic->pic ?? '-') . '" belum diisi atau bukan angka lebih dari 0. '
                 . 'Isi Token di Master PIC sebelum mengajukan Cash Advance.';
         }
 

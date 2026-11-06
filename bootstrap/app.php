@@ -29,6 +29,10 @@ return Application::configure(basePath: dirname(__DIR__))
             // Jejak audit export/cetak (D18) & akses ditolak (D11). Hanya
             // mengamati respons, tidak mengubahnya — lihat kelasnya.
             \App\Http\Middleware\RecordSecurityEvents::class,
+            // Mode shadow mesin permission (Fase 2): hanya membandingkan &
+            // mencatat selisih, tidak pernah memutuskan. Mati bila
+            // SECURITY_PERMISSION_MODE bukan 'shadow' (bawaan: off).
+            \App\Http\Middleware\ShadowPermission::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

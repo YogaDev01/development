@@ -226,7 +226,7 @@ Trouble Ticket); **Organizational Owner** = unit pemilik (belum ada kolomnya). P
    menghitung hasil mesin, membandingkan dengan gerbang lama, menulis selisih ke `permission_shadow_logs`,
    **tidak** memengaruhi respons. Satu insert hanya saat berbeda (beban rendah).
 4. **Cutover per modul** (urut risiko rendah → tinggi: Master Data → Report → Budget Plan → PO → Invoice →
-   CR → Treasury). Syarat: selisih 0 selama periode UAT yang ditentukan pemilik, golden test lulus, persetujuan
+   CR → Treasury). Syarat: selisih 0 selama periode UAT (2 minggu untuk CR & Treasury, 1 minggu modul lain — keputusan 2026-11-07), golden test lulus, persetujuan
    tertulis. Gerbang `role:` lama **tetap di route** sampai satu rilis setelah cutover.
 5. **Tidak membuka akses lebih luas selama migrasi**: bila mesin dan gerbang lama berbeda, yang berlaku
    adalah **yang lebih ketat** (AND), bukan yang lebih longgar.
@@ -273,7 +273,33 @@ untuk fase berikutnya. Setiap fase berakhir dengan laporan Executor + Reviewer.
 - Test: login gagal tercatat; revoke → request berikutnya user tsb redirect login; non-superadmin 403 ke konsol.
 - Rollback: `down()` drop kolom; matikan menu.
 
-### Fase 2 — Registry & mesin permission, shadow mode (HIGH, butuh D1)
+### Fase 2 — Registry & mesin permission, shadow mode (HIGH, butuh D1) — **DIIMPLEMENTASI 2026-11-07**
+- Registry `config/permissions.php` (dibangkitkan `scripts/security/permissions-registry.php`): **1 permission per route
+  bergerbang `role:`** (223), kunci = nama route (atau `METHOD /uri`). Lapis `menu:` tidak masuk registry — akses halaman
+  tetap `role_menu_items`. Label modul/permission bisa dirapikan di Fase 3.
+- `role_permissions` (+ `revoked_at`: pencabutan tidak menghapus baris, jadi sinkron tidak menghidupkannya lagi),
+  `permission_shadow_logs`. Migrasi `2026_11_07_000600` (tabel) & `000700` (isi parity dari `seed_roles`).
+- `App\Support\Authorizer`: `allows()` (effectiveRole, tanpa bypass superadmin — sama dengan `hasRole()`, default deny),
+  `legacyAllows()`, `syncSeed()`; command `security:sync-permissions` (bawaan dry-run, `--apply` untuk menulis).
+- `ShadowPermission` (grup web) membandingkan & mencatat selisih bila `SECURITY_PERMISSION_MODE=shadow`
+  (`config/security.php`, bawaan `off` → nol query). Tidak pernah mengubah respons.
+- Konsol Keamanan: tab **Shadow Permission** (selisih 14 hari per permission/role).
+- Test: `PermissionRegistryTest` (registry = gerbang route), `AuthorizerParityTest` (223 permission × semua role identik
+  dengan gerbang lama, View As, sinkron, shadow tidak mengubah respons).
+- Urutan deploy: upload → `migrate` → `optimize:clear` → (cek tab Shadow: baris role_permissions > 0) →
+  `SECURITY_PERMISSION_MODE=shadow` di `.env` → `config:clear`. Bila ada role yang dibuat setelah migrasi:
+  `php artisan security:sync-permissions` (dry-run) lalu `--apply`.
+- Catatan review 2026-11-07 (sudah ditangani: dedupe log tanpa tabel cache, peringatan seed 0 baris, shadow diam bila
+  tabel belum ada, pesan CA diperjelas). Sisa yang perlu diketahui:
+  - **Jangan rollback migrasi `000700` setelah ada pencabutan hak** — `down()` mengosongkan role_permissions termasuk
+    tanda `revoked_at`.
+  - Dua role di DB yang hanya beda huruf besar (mis. `Finance` & `finance`) akan memberi selisih shadow palsu.
+  - D18 belum mencakup unduhan Trouble Ticket yang tidak lewat `/storage` (`TroubleTicketController::download`,
+    kwitansi PDF, `downloadRequestAttachment`).
+  - Potential future improvement: `BudgetRequestController::downloadDetailTemplate` menulis label sub-item Budget Plan
+    mana pun tanpa cek visibilitas (sejenis F-3); `ca-quota` masih terbuka.
+  - F-5: draft Cash Advance dari approval biasa Trouble Ticket tetap dibuat tanpa cek syarat, lalu tertahan saat
+    simpan/submit sampai Token PIC diisi. Hitung dampaknya di produksi sebelum rilis.
 - File baru: `config/permissions.php`, `app/Support/Authorizer.php`, `app/Http/Middleware/CheckPermission.php`,
   migrasi `role_permissions`, `permission_shadow_logs`, seed parity.
 - `bootstrap/app.php` alias `perm`. Route **ditambah** `perm:` di samping `role:` (tidak mengganti).
@@ -406,11 +432,16 @@ yang baru hanyalah konsol keamanan khusus superadmin.
 
 ## 10. Pertanyaan pemblokir
 
-1. Persetujuan D1 (layer baru) — tanpa ini roadmap berhenti di Fase 1.
-2. Siapa pemegang role di produksi (khususnya superadmin ganda, approver) — `docs/security.md`: Needs confirmation.
-3. Backup produksi: jadwal, lokasi, siapa yang menjalankan, kapan terakhir diuji restore.
-4. Periode UAT shadow mode per modul (mis. 1–2 minggu) sebelum enforce.
-5. Apakah konsol keamanan boleh diberikan ke role selain superadmin (mis. `guest` auditor baca-saja)?
+1. ~~Persetujuan D1~~ — disetujui 2026-11-07.
+2. Siapa pemegang role di produksi — pemilik setuju menjalankan query baca-saja (2026-11-07);
+   hasil: **menunggu**.
+3. Backup produksi — dijawab 2026-11-07: seminggu sekali, disimpan di "local storage". Gap terhadap
+   standar dicatat di `docs/security/backup-recovery.md` (lokasi persis, isi, retensi, uji restore:
+   NEEDS CONFIRMATION).
+4. Periode UAT shadow mode per modul — dijawab 2026-11-07 ("ikut saran"): **2 minggu** tanpa selisih
+   untuk modul yang menggerakkan uang (Cost Request, Treasury); **1 minggu** untuk modul lain. Hitungan
+   dimulai ulang bila ada selisih yang diperbaiki. Cutover tetap butuh persetujuan per modul (Deliverable 4).
+5. Konsol keamanan — dijawab 2026-11-07: **cukup superadmin** (sesuai implementasi sekarang).
 
 ## 11. Potential future improvement (di luar scope)
 

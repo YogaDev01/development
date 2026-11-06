@@ -5,7 +5,6 @@ namespace App\Http\Middleware;
 use App\Models\UserActivityLog;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -83,17 +82,25 @@ class RecordSecurityEvents
      */
     private function recordDenied(Request $request, int $userId): void
     {
-        $path = '/' . ltrim($request->path(), '/');
-        $key  = 'secdenied:' . sha1($userId . '|' . $request->method() . '|' . $path);
+        $path      = '/' . ltrim($request->path(), '/');
+        $deskripsi = 'Akses ditolak: ' . $request->method() . ' ' . mb_substr($path, 0, 200);
 
-        if (! Cache::add($key, 1, self::DENIED_WINDOW)) {
+        // Dedupe lewat log itu sendiri, bukan Cache::add (cache driver
+        // database menumpuk kunci sekali pakai). Hanya jalan pada respons 403.
+        $sudah = UserActivityLog::where('user_id', $userId)
+            ->where('created_at', '>=', now()->subSeconds(self::DENIED_WINDOW))
+            ->where('action', 'access_denied')
+            ->where('description', $deskripsi)
+            ->exists();
+
+        if ($sudah) {
             return;
         }
 
         UserActivityLog::record(
             'security',
             'access_denied',
-            'Akses ditolak: ' . $request->method() . ' ' . mb_substr($path, 0, 200),
+            $deskripsi,
             null,
             $request->route()?->getName(),
         );

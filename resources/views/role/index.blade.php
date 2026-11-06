@@ -25,9 +25,7 @@
             <x-slot:actions>
                 <x-tw.button href="{{ url('/user') }}" variant="secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Kembali</x-tw.button>
                 {{-- Tambah role (D3, 2026-11-07): route role.store, role:superadmin — sama dengan halaman ini. --}}
-                <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modalTambahRole">
-                    <i class="fas fa-plus mr-1" aria-hidden="true"></i> Tambah Role
-                </button>
+                <x-tw.button size="sm" data-toggle="modal" data-target="#modalTambahRole"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Role</x-tw.button>
                 <x-tw.button id="refreshTable" variant="secondary" size="sm"><i class="fas fa-sync-alt" aria-hidden="true"></i> Refresh</x-tw.button>
             </x-slot:actions>
         </x-tw.page-header>

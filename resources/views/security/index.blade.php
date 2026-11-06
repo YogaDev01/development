@@ -59,9 +59,14 @@
                         <i class="fas fa-desktop mr-1" aria-hidden="true"></i> Sesi Aktif
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ $tab === 'shadow' ? 'active' : '' }}" href="{{ route('security.index', ['tab' => 'shadow']) }}">
+                        <i class="fas fa-user-secret mr-1" aria-hidden="true"></i> Shadow Permission
+                    </a>
+                </li>
             </ul>
 
-            @if($tab !== 'sessions')
+            @if(in_array($tab, ['audit', 'login'], true))
                 {{-- FILTER (GET, server-side) --}}
                 <form method="GET" action="{{ route('security.index') }}" class="form-row align-items-end mb-3">
                     <input type="hidden" name="tab" value="{{ $tab }}">
@@ -185,7 +190,7 @@
                     <div class="mt-3">{{ $logs->links() }}</div>
                 @endif
 
-            @else
+            @elseif($tab === 'sessions')
                 {{-- SESI AKTIF --}}
                 @if(! $sessionsEnabled)
                     <x-empty title="Sesi tidak dapat ditampilkan"
@@ -240,6 +245,67 @@
                                             </form>
                                         @endif
                                     </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+            @else
+                {{-- SHADOW PERMISSION (Fase 2) --}}
+                <p class="text-muted" style="font-size:12px;">
+                    Mesin permission baru dijalankan di samping aturan lama. Aturan lama <strong>tetap</strong> yang
+                    memutuskan; di sini hanya dicatat setiap kali jawaban keduanya berbeda.
+                    Satu modul baru boleh dialihkan ke mesin baru setelah tanpa selisih selama 2 minggu
+                    (Cost Request &amp; Treasury) atau 1 minggu (modul lain), dan disetujui pemilik.
+                </p>
+                <div class="d-flex flex-wrap mb-3" style="gap:8px;font-size:12px;">
+                    <span class="badge badge-{{ $shadow['mode'] === 'shadow' ? 'success' : 'secondary' }} px-2 py-1">
+                        Mode: {{ strtoupper($shadow['mode']) }}
+                    </span>
+                    <span class="badge badge-light border px-2 py-1">Permission terdaftar: {{ $shadow['registered'] }}</span>
+                    <span class="badge badge-light border px-2 py-1">Baris role_permissions: {{ $shadow['grant_rows'] }}</span>
+                    <span class="badge badge-{{ $shadow['total_14d'] ? 'warning' : 'light border' }} px-2 py-1">Selisih 14 hari: {{ $shadow['total_14d'] }}</span>
+                </div>
+
+                @if(! $shadow['ready'])
+                    <x-empty title="Tabel permission belum ada"
+                             message="Migrasi 2026_11_07_000600 dan 000700 belum dijalankan di lingkungan ini."
+                             icon="fas fa-user-secret" />
+                @elseif($shadow['grant_rows'] === 0)
+                    <x-empty title="role_permissions masih kosong"
+                             message="Seed parity belum mengisi apa pun. Jalankan php artisan security:sync-permissions (dry-run) lalu --apply sebelum menyalakan mode shadow."
+                             icon="fas fa-exclamation-triangle" />
+                @elseif($shadow['mode'] !== 'shadow')
+                    <x-empty title="Mode shadow belum aktif"
+                             message="Setel SECURITY_PERMISSION_MODE=shadow lalu config:clear untuk mulai membandingkan."
+                             icon="fas fa-user-secret" />
+                @elseif($shadow['rows']->isEmpty())
+                    <x-empty title="Tidak ada selisih" message="Belum ada jawaban mesin baru yang berbeda dari aturan lama dalam 14 hari terakhir." icon="fas fa-check-circle" />
+                @else
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm mb-0" style="font-size:12.5px;">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th scope="col">Permission (route)</th>
+                                    <th scope="col">Role</th>
+                                    <th scope="col">Aturan lama</th>
+                                    <th scope="col">Mesin baru</th>
+                                    <th scope="col" class="text-right">Kejadian</th>
+                                    <th scope="col" class="text-right">User</th>
+                                    <th scope="col">Terakhir</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($shadow['rows'] as $row)
+                                <tr>
+                                    <td><code>{{ $row->permission_key }}</code></td>
+                                    <td>{{ $row->role_name ?: '-' }}</td>
+                                    <td><span class="badge badge-{{ $row->legacy_allowed ? 'success' : 'danger' }}">{{ $row->legacy_allowed ? 'Izinkan' : 'Tolak' }}</span></td>
+                                    <td><span class="badge badge-{{ $row->engine_allowed ? 'success' : 'danger' }}">{{ $row->engine_allowed ? 'Izinkan' : 'Tolak' }}</span></td>
+                                    <td class="text-right">{{ $row->jumlah }}</td>
+                                    <td class="text-right">{{ $row->user_unik }}</td>
+                                    <td class="text-nowrap">{{ \Carbon\Carbon::parse($row->terakhir)->format('d M Y H:i') }}</td>
                                 </tr>
                                 @endforeach
                             </tbody>

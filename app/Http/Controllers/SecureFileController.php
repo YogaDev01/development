@@ -116,17 +116,22 @@ class SecureFileController extends Controller
                 return;
             }
 
-            if (! \Illuminate\Support\Facades\Cache::add('secdl:' . sha1($user->getKey() . '|' . $path), 1, self::DOWNLOAD_WINDOW)) {
+            $deskripsi = 'Membuka lampiran ' . mb_substr(basename($path), 0, 120);
+
+            // Dedupe lewat log itu sendiri (indeks user_id+created_at), bukan
+            // Cache::add — cache memakai driver database, dan kunci sekali
+            // pakai akan menumpuk di tabel cache tanpa pernah dibersihkan.
+            $sudah = \App\Models\UserActivityLog::where('user_id', $user->getKey())
+                ->where('created_at', '>=', now()->subSeconds(self::DOWNLOAD_WINDOW))
+                ->where('action', 'download')
+                ->where('description', $deskripsi)
+                ->exists();
+
+            if ($sudah) {
                 return;
             }
 
-            \App\Models\UserActivityLog::record(
-                'file',
-                'download',
-                'Membuka lampiran ' . mb_substr(basename($path), 0, 120),
-                null,
-                $folder,
-            );
+            \App\Models\UserActivityLog::record('file', 'download', $deskripsi, null, $folder);
         } catch (\Throwable $e) {
             Log::warning('Gagal mencatat unduhan lampiran', ['message' => $e->getMessage()]);
         }

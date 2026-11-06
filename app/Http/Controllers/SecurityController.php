@@ -23,7 +23,7 @@ use Illuminate\Support\Str;
  */
 class SecurityController extends Controller
 {
-    private const TABS = ['audit', 'login', 'sessions'];
+    private const TABS = ['audit', 'login', 'sessions', 'shadow'];
 
     public function index(Request $request)
     {
@@ -34,6 +34,7 @@ class SecurityController extends Controller
         $filters  = $request->only(['user_id', 'module', 'action', 'date_from', 'date_to', 'q', 'ip']);
         $logs     = null;
         $sessions = collect();
+        $shadow   = null;
 
         if ($tab === 'login') {
             $filters['module'] = 'auth';
@@ -41,6 +42,8 @@ class SecurityController extends Controller
 
         if ($tab === 'sessions') {
             $sessions = $this->activeSessions();
+        } elseif ($tab === 'shadow') {
+            $shadow = $this->shadowReport();
         } else {
             $logs = UserActivityLog::feedAll($filters)->appends($filters + ['tab' => $tab]);
         }
@@ -52,6 +55,7 @@ class SecurityController extends Controller
             'filters'         => $filters,
             'logs'            => $logs,
             'sessions'        => $sessions,
+            'shadow'          => $shadow,
             'sessionsEnabled' => $this->usesDatabaseSessions(),
             'currentHash'     => hash('sha256', $request->session()->getId()),
             'hasDeviceColumn' => UserActivityLog::supportsSecurityColumns(),
@@ -203,6 +207,44 @@ class SecurityController extends Controller
             // Zona waktu eksplisit: createFromTimestamp() default UTC.
             'last_activity' => \Carbon\Carbon::createFromTimestamp($r->last_activity, config('app.timezone')),
         ]);
+    }
+
+    /**
+     * Ringkasan mode shadow mesin permission (Fase 2): selisih 14 hari
+     * terakhir dikelompokkan per permission + role + arah selisih.
+     * Tabelnya bisa belum ada (migrasi belum dijalankan) — ditampilkan apa adanya.
+     */
+    private function shadowReport(): array
+    {
+        $siap = \Illuminate\Support\Facades\Schema::hasTable('permission_shadow_logs')
+            && \Illuminate\Support\Facades\Schema::hasTable('role_permissions');
+
+        $hasil = [
+            'mode'        => (string) config('security.permission_mode', 'off'),
+            'ready'       => $siap,
+            'registered'  => count(\App\Support\Authorizer::registry()),
+            'grant_rows'  => 0,
+            'rows'        => collect(),
+            'total_14d'   => 0,
+        ];
+
+        if (! $siap) {
+            return $hasil;
+        }
+
+        $sejak = now()->subDays(14);
+
+        $hasil['grant_rows'] = DB::table('role_permissions')->count();
+        $hasil['total_14d']  = DB::table('permission_shadow_logs')->where('created_at', '>=', $sejak)->count();
+        $hasil['rows']       = DB::table('permission_shadow_logs')
+            ->where('created_at', '>=', $sejak)
+            ->selectRaw('permission_key, role_name, legacy_allowed, engine_allowed, COUNT(*) as jumlah, COUNT(DISTINCT user_id) as user_unik, MAX(created_at) as terakhir')
+            ->groupBy('permission_key', 'role_name', 'legacy_allowed', 'engine_allowed')
+            ->orderByDesc('terakhir')
+            ->limit(200)
+            ->get();
+
+        return $hasil;
     }
 
     /** Angka ringkas di atas konsol. */
