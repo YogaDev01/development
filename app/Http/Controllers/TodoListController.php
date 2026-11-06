@@ -187,6 +187,7 @@ class TodoListController extends Controller
             ['key' => 'reg-batch',       'label' => 'Cost Register — Masukkan ke Batch', 'icon' => 'fas fa-layer-group', 'tone' => 'progress', 'items' => $data['costRegisterBatch']],
             ['key' => 'collection',      'label' => 'Menunggu Invoice Ditagih',  'icon' => 'fas fa-file-invoice',     'tone' => 'attention', 'items' => $data['collectionWaitingInvoice']],
             ['key' => 'tt-request',      'label' => 'Trouble Ticket — Review Pengajuan', 'icon' => 'fas fa-file-invoice-dollar', 'tone' => 'attention', 'items' => $data['ticketRequestReview']],
+            ['key' => 'tt-action',       'label' => 'Trouble Ticket — Tindakan', 'icon' => 'fas fa-tools', 'tone' => 'attention', 'items' => $data['ticketActions']],
             ['key' => 'invoice-verify',  'label' => 'Invoice — Verifikasi',      'icon' => 'fas fa-file-invoice',     'tone' => 'attention', 'items' => $data['invoiceVerify']],
             ['key' => 'invoice-approve', 'label' => 'Invoice — Approval',        'icon' => 'fas fa-file-invoice',     'tone' => 'attention', 'items' => $data['invoiceApprove']],
         ];
@@ -243,7 +244,7 @@ class TodoListController extends Controller
             'treasuryProcess' => collect(), 'treasuryReadyToPay' => collect(),
             'poSubmitted' => collect(), 'poVerified' => collect(),
             'invoiceVerify' => collect(), 'invoiceApprove' => collect(),
-            'collectionWaitingInvoice' => collect(), 'ticketRequestReview' => collect(),
+            'collectionWaitingInvoice' => collect(), 'ticketRequestReview' => collect(), 'ticketActions' => collect(),
             'comingSoonRoles' => [], 'totalPending' => 0, 'maxAging' => '0 hari', 'completedToday' => 0,
             'hasAnyTask' => false, 'hasAnySection' => false,
             // Bentuknya WAJIB sama dengan keluaran buildSummaryTable() —
@@ -801,6 +802,15 @@ class TodoListController extends Controller
                 ->sortBy('aging_since')->values();
         }
 
+        // Trouble Ticket — tindakan lain, satu daftar untuk semua antrean tiket.
+        $ticketActions = collect();
+        foreach (TodoService::TICKET_ACTION_QUEUES as $key => $label) {
+            if (TodoService::allows($user, $key)) {
+                $ticketActions = $ticketActions->concat($this->ticketActionRows($key, $label));
+            }
+        }
+        $ticketActions = $ticketActions->sortBy('aging_since')->values();
+
         // Accounting kini pemilik tahap Verifikasi Invoice (keputusan pemilik K2),
         // jadi tidak ada lagi role "Coming Soon".
         $comingSoonRoles = [];
@@ -830,7 +840,8 @@ class TodoListController extends Controller
             ->concat($poSubmitted)->concat($poVerified)->concat($poClosingVerify)
             ->concat($invoiceVerify)->concat($invoiceApprove)
             ->concat($collectionWaitingInvoice)
-            ->concat($ticketRequestReview);
+            ->concat($ticketRequestReview)
+            ->concat($ticketActions);
 
         $totalPending = $allTasks->count();
 
@@ -861,7 +872,7 @@ class TodoListController extends Controller
             || $poSubmitted->isNotEmpty() || $poVerified->isNotEmpty() || $poClosingVerify->isNotEmpty()
             || $invoiceVerify->isNotEmpty() || $invoiceApprove->isNotEmpty()
             || $collectionWaitingInvoice->isNotEmpty()
-            || $ticketRequestReview->isNotEmpty();
+            || $ticketRequestReview->isNotEmpty() || $ticketActions->isNotEmpty();
 
         return compact(
             'sections', 'managerRejected', 'managerPaid',
@@ -871,7 +882,7 @@ class TodoListController extends Controller
             'budgetingClosingDue', 'budgetingClosingVerify',
             'treasuryDraftSubmit', 'costRegisterApprove', 'costRegisterBatch', 'poClosingVerify',
             'treasuryBatchCreate', 'treasuryBatchGroups', 'treasuryBatchSecond', 'batchSourceFunds', 'treasuryProcess', 'treasuryReadyToPay', 'poSubmitted', 'poVerified',
-            'invoiceVerify', 'invoiceApprove', 'collectionWaitingInvoice', 'ticketRequestReview',
+            'invoiceVerify', 'invoiceApprove', 'collectionWaitingInvoice', 'ticketRequestReview', 'ticketActions',
             'comingSoonRoles', 'totalPending', 'maxAging', 'completedToday', 'hasAnyTask', 'hasAnySection',
             'allTasks'
         );
@@ -1474,10 +1485,19 @@ class TodoListController extends Controller
 
         switch ($key) {
             case 'head': case 'cost_control_checked': case 'ceo':
-            case 'managerRejected': case 'managerPaid':
+            case 'managerRejected':
             case 'headSettlementCheck': case 'financeSettlementVerify':
             case 'ceoSettlementClose': case 'approverSecondApprove':
                 return tap(BudgetRequest::query()->whereIn('status', $status), fn ($q) => $this->scopeCrTodo($q));
+
+            case 'managerPaid':
+                $q = tap(BudgetRequest::query()->whereIn('status', $status), fn ($q) => $this->scopeCrTodo($q));
+
+                // Settlement CR dari pengajuan dana baru diisi pemohon di halaman tiket.
+                return \App\Models\TroubleTicketRequest::supportsNumber()
+                    ? $q->whereNotIn('id', \App\Models\TroubleTicketRequest::query()
+                        ->whereNotNull('request_number')->whereNotNull('budget_request_id')->select('budget_request_id'))
+                    : $q;
 
             case 'secondPaymentPending':
                 return BudgetRequest::query()
@@ -1568,22 +1588,100 @@ class TodoListController extends Controller
                 });
 
             case 'ticketRequestReview':
-                // Pengajuan biaya Trouble Ticket menunggu review: bukan buatan user ini; supervisor
-                // hanya untuk teknisi di team yang sama (cermin TroubleTicketWorkflow::canReviewRequest()),
+                // Pengajuan biaya Trouble Ticket menunggu review: bukan buatan user ini; leader
+                // hanya untuk bawahannya (cermin TroubleTicketWorkflow::canReviewRequest()),
                 // superadmin semuanya.
                 $q = \App\Models\TroubleTicketRequest::query()
                     ->whereIn('status', $status)
                     ->where('requested_by', '!=', $user->id);
 
                 if (! $user->hasRole(\App\Support\AccessRoles::TROUBLE_TICKET_FULL_SCOPE)) {
-                    $rekan = app(\App\Services\TroubleTicketWorkflow::class)->teamMemberIdsFor((int) $user->id);
-                    $q->whereHas('ticket', fn ($t) => $t->whereIn('assigned_to', $rekan->all() ?: [0]));
+                    $bawahan = app(\App\Services\OrgHierarchy::class)->subordinateIds((int) $user->id);
+                    $q->whereHas('ticket', fn ($t) => $t->whereIn('assigned_to', $bawahan->all() ?: [0]));
                 }
 
                 return $q;
+
+            case 'ticketAssigned':
+                return \App\Models\TroubleTicket::query()->whereIn('status', $status)->where('assigned_to', $user->id);
+
+            case 'ticketCloseApprove':
+                // Cermin TroubleTicketWorkflow::canApproveClose().
+                $q = \App\Models\TroubleTicket::query()->whereIn('status', $status)->where('assigned_to', '!=', $user->id);
+
+                return $user->hasRole(\App\Support\AccessRoles::TROUBLE_TICKET_SUPERVISE)
+                    ? $q
+                    : $q->whereIn('assigned_to', app(\App\Services\OrgHierarchy::class)->subordinateIds((int) $user->id)->all() ?: [0]);
+
+            case 'ticketFundingRevise':
+                return \App\Models\TroubleTicketRequest::query()->whereIn('status', $status)->where('requested_by', $user->id)
+                    ->whereHas('ticket', fn ($t) => $t->where('assigned_to', $user->id));
+
+            case 'ticketSettlementDue':
+                // Dana sudah cair dan belum dikirim; yang sedang direview bukan tugas pemohon.
+                $q = \App\Models\TroubleTicketRequest::query()
+                    ->where('requested_by', $user->id)
+                    ->whereHas('budgetRequest', fn ($c) => $c->whereNull('deleted_at')->whereIn('status', $status)
+                        ->whereIn('type_id', BudgetRequest::cashAdvanceTypeIds() ?: [0]));
+
+                return \App\Models\TroubleTicketRequest::supportsSettlementReview()
+                    ? $q->where(fn ($w) => $w->whereNull('settlement_review_status')
+                        ->orWhere('settlement_review_status', '!=', \App\Models\TroubleTicketRequest::REVIEW_PENDING))
+                    : $q;
+
+            case 'ticketSettlementReview':
+                // Cermin canReviewRequest(): bukan pemohon, dan atasan teknisi tiketnya.
+                if (! \App\Models\TroubleTicketRequest::supportsSettlementReview()) {
+                    return \App\Models\TroubleTicketRequest::query()->whereRaw('1 = 0');
+                }
+
+                $q = \App\Models\TroubleTicketRequest::query()
+                    ->where('settlement_review_status', \App\Models\TroubleTicketRequest::REVIEW_PENDING)
+                    ->where('requested_by', '!=', $user->id);
+
+                if (! $user->hasRole(\App\Support\AccessRoles::TROUBLE_TICKET_FULL_SCOPE)) {
+                    $bawahan = app(\App\Services\OrgHierarchy::class)->subordinateIds((int) $user->id);
+                    $q->whereHas('ticket', fn ($t) => $t->whereIn('assigned_to', $bawahan->all() ?: [0]));
+                }
+
+                return $q;
+
+            case 'ticketCrDraft':
+                return tap(
+                    BudgetRequest::query()->whereIn('status', $status)
+                        ->whereIn('id', \App\Models\TroubleTicketRequest::query()->whereNotNull('budget_request_id')->select('budget_request_id')),
+                    fn ($q) => $this->scopeCrTodo($q)
+                );
         }
 
         throw new \InvalidArgumentException("Antrean Todo List tidak dikenal: {$key}");
+    }
+
+    /** Baris Todo seragam untuk satu antrean tiket: nomor, keterangan, dan tautan aksinya. */
+    private function ticketActionRows(string $key, string $label)
+    {
+        $rows = $this->queueQuery($key)->get();
+        $model = $rows->first();
+
+        if ($model instanceof \App\Models\TroubleTicket) {
+            $rows->load('site:id,tid,sitename');
+        } elseif ($model instanceof \App\Models\TroubleTicketRequest) {
+            $rows->load(['ticket.site:id,tid,sitename']);
+        }
+
+        return $rows->map(function ($r) use ($key, $label) {
+            $tiket = $r instanceof \App\Models\TroubleTicket ? $r : ($r instanceof \App\Models\TroubleTicketRequest ? $r->ticket : null);
+
+            $r->todo_label = $label;
+            $r->todo_ref   = $r instanceof BudgetRequest ? $r->code : $tiket?->ticket_number;
+            $r->todo_desc  = $r instanceof BudgetRequest ? $r->description : trim(($tiket?->site?->sitename ?? '') . ' ' . ($r->display_number ?? ''));
+            $r->todo_url   = $r instanceof BudgetRequest
+                ? route('budget-request.index')
+                : ($tiket ? route('trouble-ticket.show', $tiket) . ($r instanceof \App\Models\TroubleTicketRequest ? '?tab=pengajuan' : '') : null);
+            $r->todo_key   = $key;
+
+            return $this->withAging($r, $r->updated_at);
+        });
     }
 
     /**
@@ -1969,6 +2067,13 @@ class TodoListController extends Controller
             $rows->push($baris(
                 'Trouble Ticket', 'Trouble Ticket — Review Pengajuan', 'ttreq:' . $r->id, $r->ticket?->ticket_number,
                 $r->budgetPlan?->code, $r->description, $r->requester?->name, $r->total, $r->status, $r->aging_label
+            ));
+        }
+
+        foreach (\Illuminate\Support\Collection::make($d['ticketActions']) as $r) {
+            $rows->push($baris(
+                'Trouble Ticket', 'Trouble Ticket — ' . $r->todo_label, $r->todo_key . ':' . $r->id, $r->todo_ref,
+                null, $r->todo_desc, null, $r->total ?? $r->amount ?? 0, $r->status, $r->aging_label
             ));
         }
 

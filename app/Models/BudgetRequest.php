@@ -242,6 +242,20 @@ class BudgetRequest extends Model
     /** @var array<int>|null cache per-request: id RequestType Cash Advance */
     private static ?array $cashAdvanceTypeIdsCache = null;
 
+    /** id tiket asal CR ini (0 = bukan dari tiket), di-cache per instance. */
+    private ?int $tiketAsalId = null;
+
+    /**
+     * Tiket asal CR ini, atau null. Dipanggil cermin log setiap addLog(), jadi
+     * dicari sekali per instance (blueprint §3.6).
+     */
+    public function ticketOriginId(): ?int
+    {
+        $this->tiketAsalId ??= TroubleTicket::idForCostRequest((int) $this->id) ?? 0;
+
+        return $this->tiketAsalId ?: null;
+    }
+
     /**
      * ID RequestType Cash Advance (tabel kecil, di-cache per request). Dipakai
      * scope di bawah supaya pemisahan Cash Advance vs Cost Payment cukup
@@ -708,6 +722,8 @@ class BudgetRequest extends Model
                     'budget_detail_id' => $d->budget_detail_id ? (int) $d->budget_detail_id : null,
                     'notes'            => null,
                     'change_note'      => null,
+                    'transaction_date' => null,
+                    'vendor_name'      => null,
                     'qty'              => (int) $d->qty,
                     'amount'           => $saved->isEmpty() ? (int) $d->total : 0,
                     'price'            => $saved->isEmpty() ? (int) $d->amount : 0,
@@ -725,6 +741,8 @@ class BudgetRequest extends Model
                     'budget_detail_id' => $r->effectiveBudgetDetailId($d),
                     'notes'            => $r->notes,
                     'change_note'      => $r->change_note,
+                    'transaction_date' => $r->transaction_date?->format('Y-m-d'),
+                    'vendor_name'      => $r->vendor_name,
                     'qty'              => max(1, (int) $r->qty),
                     'amount'           => (int) $r->total,
                     'price'            => (int) $r->amount,
@@ -760,6 +778,8 @@ class BudgetRequest extends Model
                 'budget_detail_id' => $r->effectiveBudgetDetailId($origin),
                 'notes'            => $r->notes,
                 'change_note'      => $r->change_note,
+                'transaction_date' => $r->transaction_date?->format('Y-m-d'),
+                'vendor_name'      => $r->vendor_name,
                 'qty'              => max(1, (int) $r->qty),
                 'amount'           => (int) $r->total,
                 'price'            => (int) $r->amount,
@@ -1149,6 +1169,41 @@ class BudgetRequest extends Model
             ->exists();
     }
 
+    /**
+     * Alasan CR ini belum boleh diajukan, null bila boleh. Satu sumber untuk
+     * tombol Submit dan Manager direct approval dari Trouble Ticket.
+     */
+    public function submissionError(): ?string
+    {
+        // Aturan lampiran — Cash Advance wajib Lampiran Tambahan (global),
+        // tipe lain wajib Lampiran Item di tiap baris rincian.
+        if ($this->isCashAdvance()) {
+            if ($this->attachments()->count() === 0) {
+                return 'Tidak bisa submit: pengajuan Cash Advance wajib punya minimal 1 file di "Lampiran Tambahan / Pendukung".';
+            }
+
+            // Limit Cash Advance per PIC — dicek ulang di sini karena limit bisa
+            // terpakai CR lain sejak draft ini dibuat.
+            return \App\Support\CashAdvanceQuota::error($this->beneficiary_id, (int) $this->amount, $this->id);
+        }
+
+        $withoutAtt = $this->details()
+            ->where('status', '!=', 'TAKEOUT')
+            ->whereDoesntHave('attachments')
+            ->count();
+
+        return $withoutAtt > 0
+            ? 'Tidak bisa submit: masih ada ' . $withoutAtt . ' baris Rincian Pengajuan tanpa "Lampiran Item".'
+            : null;
+    }
+
+    /** DRAFT -> SUBMITTED beserta log-nya. Pemanggil memeriksa submissionError() lebih dulu. */
+    public function markSubmitted(): void
+    {
+        $this->update(['status' => 'SUBMITTED', 'submitted_at' => now()]);
+        $this->addLog('DRAFT', 'SUBMITTED', 'submitted');
+    }
+
     public function addLog(
         string $statusFrom,
         string $statusTo,
@@ -1158,7 +1213,7 @@ class BudgetRequest extends Model
     ): void {
         $user = Auth::user();
 
-        $this->statusLogs()->create([
+        $log = $this->statusLogs()->create([
             'status_from'      => $statusFrom,
             'status_to'        => $statusTo,
             'action_type'      => $actionType,
@@ -1170,6 +1225,19 @@ class BudgetRequest extends Model
         // Konteks organisasi pelaku SAAT AKSI (team/department/posisi) —
         // dibekukan di baris log, tidak ikut berubah bila struktur berubah.
         ] + User::orgContextAttribute($user, 'request_status_logs'));
+
+        /*
+        | Cermin ke timeline Trouble Ticket bila CR ini lahir dari tiket. Berjalan
+        | SESUDAH transaksi selesai dan tidak pernah melempar: gangguan di sisi
+        | tiket tidak boleh membatalkan transisi uang.
+        */
+        \Illuminate\Support\Facades\DB::afterCommit(function () use ($log) {
+            try {
+                app(\App\Services\TroubleTicketWorkflow::class)->mirrorCostRequestLog($this, $log);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        });
 
         /*
         | Audit trail terpusat (UserActivityLog).

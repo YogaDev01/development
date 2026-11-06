@@ -36,11 +36,17 @@ class TroubleTicketRequest extends Model
     /** Status yang masih boleh dibatalkan. */
     public const CANCELLABLE = [self::DRAFT, self::SUBMITTED, self::REJECTED];
 
+    /** Review settlement oleh atasan teknisi, sebelum CR menjadi REALIZED. */
+    public const REVIEW_PENDING  = 'PENDING';
+    public const REVIEW_APPROVED = 'APPROVED';
+    public const REVIEW_REJECTED = 'REJECTED';
+
     protected $fillable = [
         'trouble_ticket_id', 'budget_plan_id', 'cluster_id', 'request_type_id', 'beneficiary_id',
         'description', 'total', 'status', 'revision', 'requested_by', 'submitted_at',
         'reviewed_by', 'reviewed_at', 'review_notes', 'cancelled_by', 'cancelled_at', 'cancel_reason',
-        'budget_request_id',
+        'budget_request_id', 'request_number', 'settlement_review_status', 'settlement_reviewed_by',
+        'settlement_reviewed_at', 'settlement_review_notes',
     ];
 
     protected $casts = [
@@ -49,7 +55,64 @@ class TroubleTicketRequest extends Model
         'submitted_at' => 'datetime',
         'reviewed_at'  => 'datetime',
         'cancelled_at' => 'datetime',
+        'settlement_reviewed_at' => 'datetime',
     ];
+
+    /** Kolom nomor belum tentu ada (migrasi menyusul di host). */
+    public static function supportsNumber(): bool
+    {
+        static $ada = null;
+
+        return $ada ??= \Illuminate\Support\Facades\Schema::hasColumn('trouble_ticket_requests', 'request_number');
+    }
+
+    /** Kolom review settlement belum tentu ada (migrasi menyusul di host). */
+    public static function supportsSettlementReview(): bool
+    {
+        static $ada = null;
+
+        return $ada ??= \Illuminate\Support\Facades\Schema::hasColumn('trouble_ticket_requests', 'settlement_review_status');
+    }
+
+    /** CR ini sedang direview atasan, jadi settlement-nya terkunci? */
+    public static function settlementInReview(int $costRequestId): bool
+    {
+        return self::supportsSettlementReview()
+            && self::where('budget_request_id', $costRequestId)
+                ->where('settlement_review_status', self::REVIEW_PENDING)->exists();
+    }
+
+    /**
+     * Settlement CR ini wajib dikirim dari halaman tiket? Berlaku untuk pengajuan
+     * bernomor, yaitu yang lahir sesudah rilis review atasan. CR lama tetap
+     * memakai jalur Cost Request supaya yang sedang berjalan tidak tersangkut.
+     */
+    public static function settlementViaTicket(int $costRequestId): bool
+    {
+        return self::supportsNumber() && self::supportsSettlementReview()
+            && self::where('budget_request_id', $costRequestId)->whereNotNull('request_number')->exists();
+    }
+
+    /** Nomor untuk layar: pengajuan lama belum punya nomor. */
+    public function getDisplayNumberAttribute(): string
+    {
+        return $this->request_number ?: '#' . $this->id;
+    }
+
+    /**
+     * CR hasil pengajuan ini sudah gugur (dibatalkan atau dihapus)? Pengajuannya
+     * tetap tercatat APPROVED; kebutuhan dananya diajukan ulang sebagai pengajuan baru.
+     */
+    public function costRequestGone(): bool
+    {
+        if ($this->budget_request_id === null) {
+            return false;
+        }
+
+        $cr = $this->budgetRequest;
+
+        return $cr === null || $cr->trashed() || $cr->status === 'CANCELLED';
+    }
 
     public function ticket(): BelongsTo
     {
@@ -89,7 +152,8 @@ class TroubleTicketRequest extends Model
     /** Cost Request hasil approve (null sebelum disetujui). */
     public function budgetRequest(): BelongsTo
     {
-        return $this->belongsTo(BudgetRequest::class);
+        // withTrashed: CR draft boleh dihapus, dan pengajuan tetap perlu tahu itu.
+        return $this->belongsTo(BudgetRequest::class)->withTrashed();
     }
 
     /** SEMUA baris dari semua revisi (riwayat). */

@@ -1,8 +1,10 @@
 {{--
     Tab TEAM — Organization Chart.
-    Menampilkan Organization Chart dari setiap Team tempat user ini jadi
-    member aktif, disusun per level (Team::orgChart()). Kalau user belum
-    tergabung di team manapun, tampilkan empty state.
+    Menampilkan setiap Team tempat user ini jadi member aktif: leader di atas,
+    anggota per level di bawahnya, dengan gaya yang sama seperti Detail Member di
+    tab Organisasi (team._org_styles). Bila ada, team induk (1 tingkat di atas)
+    tampil di atasnya dan sub-team langsung (1 tingkat di bawah) di bawahnya. Kalau user belum tergabung di team
+    manapun, tampilkan empty state.
 --}}
 
 @if($myTeams->isEmpty())
@@ -12,52 +14,41 @@
     <div class="ed">Anda belum menjadi member aktif di team manapun. Hubungi Superadmin atau Team Leader untuk ditambahkan.</div>
 </div>
 @else
+@include('team._org_styles')
+@push('styles')
+<style>
+    /* Rangkaian bagan: team induk (atas) → team user → sub-team (bawah). */
+    .ot-chain { display: flex; flex-direction: column; }
+    .ot-chain + .ot-chain { margin-top: var(--sp-6); padding-top: var(--sp-4); border-top: 1px dashed var(--border); }
+    .ot-link { align-self: center; height: 22px; border-left: 2px dashed var(--accent); }
+    .ot-rel { font-size: var(--fs-caption); font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: .03em; margin-bottom: 2px; }
+    .ot-view.is-related { background: var(--surface-2); }
+    .ot-view.is-mine { border-color: var(--accent-tint-2); }
+    .ot-subs { display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+    .ot-subs > .ot-view { flex: 1 1 320px; min-width: 0; }
+</style>
+@endpush
 @foreach($myTeams as $t)
-<div class="org-team mb-4">
-    {{-- HEADER TEAM --}}
-    <div class="d-flex align-items-center flex-wrap mb-3" style="gap:10px;">
-        <div class="org-team-ic"><i class="fas fa-sitemap"></i></div>
-        <div style="flex:1;min-width:0;">
-            <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
-                <span class="font-weight-bold" style="font-size:14px;">{{ $t->name }}</span>
-                <span class="badge badge-light border">{{ $t->code }}</span>
-                <span class="badge badge-{{ $t->status_color }}">{{ $t->status }}</span>
-            </div>
-            <div class="text-muted" style="font-size:11.5px;">
-                Dept: {{ $t->department->name ?? '-' }}
-                &nbsp;·&nbsp; Leader: {{ strtoupper($t->leader->username ?? '-') }}
-                &nbsp;·&nbsp; {{ $t->activeMembers->count() }} member aktif
-            </div>
-        </div>
-    </div>
+@php
+    $induk = $t->relationLoaded('parent') ? $t->parent : null;
+    $subTeams = $t->relationLoaded('children') ? $t->children : collect();
+@endphp
+<div class="ot-chain">
+    @if($induk)
+        @include('profile._team_chart', ['t' => $induk, 'peran' => 'induk'])
+        <div class="ot-link"></div>
+    @endif
 
-    {{-- ORG CHART per LEVEL --}}
-    @php($orgChart = $t->orgChart())
-    @forelse($orgChart as $tier)
-    <div class="org-tier">
-        <div class="org-tier-label">Level {{ $tier['level'] }}</div>
-        <div class="org-tier-cards">
-            @foreach($tier['members'] as $m)
-            <div class="org-card {{ (int)($m->user->id ?? 0) === (int)$user->id ? 'is-me' : '' }}">
-                <div class="org-card-avatar">
-                    @if($m->user && $m->user->avatar_url)
-                        <img src="{{ $m->user->avatar_url }}" alt="">
-                    @else
-                        {{ strtoupper(Str::substr($m->user->name ?? ($m->user->username ?? '?'), 0, 2)) }}
-                    @endif
-                </div>
-                <div class="org-card-name">{{ $m->user->name ?? strtoupper($m->user->username ?? '-') }}</div>
-                <div class="org-card-pos">{{ $m->position ?? '-' }}</div>
-                @if((int)($m->user->id ?? 0) === (int)$user->id)
-                <span class="badge badge-warning mt-1" style="font-size:9px;">Anda</span>
-                @endif
-            </div>
+    @include('profile._team_chart', ['t' => $t, 'peran' => null])
+
+    @if($subTeams->isNotEmpty())
+        <div class="ot-link"></div>
+        <div class="ot-subs">
+            @foreach($subTeams as $sub)
+                @include('profile._team_chart', ['t' => $sub, 'peran' => 'sub'])
             @endforeach
         </div>
-    </div>
-    @empty
-    <p class="text-muted text-center py-3" style="font-size:12px;">Belum ada member aktif pada team ini.</p>
-    @endforelse
+    @endif
 </div>
 @endforeach
 @endif

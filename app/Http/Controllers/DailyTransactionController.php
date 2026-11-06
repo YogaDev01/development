@@ -1602,8 +1602,18 @@ class DailyTransactionController extends Controller
                    dicatat juga di timeline tiketnya (20 Okt 2026), supaya orang
                    lapangan tidak perlu membuka modul Finance. Hanya menulis
                    kejadian — status tiket tidak disentuh. */
-                app(TroubleTicketWorkflow::class)
-                    ->recordCostRequestPaid($cr->refresh(), Auth::user(), $request->payment_notes);
+                $crDibayar = $cr->refresh();
+                $kodeBatch = $batch->code;
+                $catatan   = $request->payment_notes;
+                DB::afterCommit(function () use ($crDibayar, $kodeBatch, $catatan) {
+                    try {
+                        app(TroubleTicketWorkflow::class)
+                            ->recordCostRequestPaid($crDibayar, Auth::user(), $catatan, $kodeBatch);
+                    } catch (\Throwable $e) {
+                        // Pembayaran sudah sah; jejak di tiket disusulkan saat tiket dibuka.
+                        report($e);
+                    }
+                });
             }
 
             // Batch → PAID

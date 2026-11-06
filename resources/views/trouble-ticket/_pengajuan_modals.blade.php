@@ -31,7 +31,7 @@
     ];
 @endphp
 
-@if($canRequest || $flagPengajuan->contains(fn ($f) => $f['review']))
+@if($canRequest || $flagPengajuan->contains(fn ($f) => $f['review'] || $f['edit'] || $f['submit'] || $f['cancel'] || $f['settle_review']))
     <div class="modal fade tt-modal-full" id="mdlTtRequest" tabindex="-1" role="dialog">
         <div class="modal-dialog modal-xl" role="document">
             {{-- Tanpa tt-submit-once: validasi lampiran per baris di bawah bisa membatalkan kirim,
@@ -41,7 +41,7 @@
                 <input type="hidden" name="request_id" id="fldRqId" value="">
                 <input type="hidden" name="submit" id="fldRqSubmit" value="0">
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-file-invoice-dollar mr-1"></i> <span id="ttRqTitle">Ajukan Biaya</span></h5>
+                    <h5 class="modal-title"><i class="fas fa-file-invoice-dollar mr-1"></i> <span id="ttRqTitle">Ajukan Dana</span></h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body" style="font-size:13px;">
@@ -263,7 +263,7 @@
 
             // Tujuan form: simpan oleh pemohon, atau ubah oleh reviewer.
             $form.attr('action', mode === 'review' ? D.editUrl.replace('__ID__', id) : D.saveUrl);
-            $('#ttRqTitle').text(mode === 'review' ? 'Ubah Pengajuan (Supervisor)' : (r ? 'Ubah Pengajuan' : 'Ajukan Biaya'));
+            $('#ttRqTitle').text(mode === 'review' ? 'Ubah Pengajuan (Supervisor)' : (r ? 'Ubah Pengajuan' : 'Ajukan Dana'));
             $('#btnTtRqDraft').toggle(mode !== 'review');
             $('#btnTtRqSubmit').html(mode === 'review' ? '<i class="fas fa-save mr-1"></i> Simpan Perubahan' : '<i class="fas fa-paper-plane mr-1"></i> Submit')
                 .data('submit', mode === 'review' ? 0 : 1);
@@ -326,6 +326,20 @@
 
         // Reject / Batal: alasan wajib.
         $(document).on('click', '.btn-tt-req-decide', function () {
+            $('#fldRqDecDecision').remove();
+
+            // Mengembalikan settlement memakai modal yang sama, alasan juga wajib.
+            if (this.dataset.kind === 'settle-return') {
+                $('#frmTtReqDecision').attr('action', this.dataset.url)
+                    .append('<input type="hidden" id="fldRqDecDecision" name="decision" value="return">');
+                $('#fldRqDecText').attr('name', 'notes').val('');
+                $('#ttRqDecTitle').text('Kembalikan settlement');
+                $('#ttRqDecLabel').html('Alasan pengembalian <span class="text-danger">*</span>');
+                $('#btnTtRqDec').text('Kembalikan');
+                $('#mdlTtReqDecision').modal('show');
+                return;
+            }
+
             var reject = this.dataset.kind === 'reject';
             $('#frmTtReqDecision').attr('action', (reject ? D.rejectUrl : D.cancelUrl).replace('__ID__', this.dataset.id));
             $('#fldRqDecText').attr('name', reject ? 'notes' : 'reason').val('');

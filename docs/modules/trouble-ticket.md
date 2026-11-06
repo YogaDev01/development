@@ -315,15 +315,76 @@ notifikasi tidak terkirim dua kali. Error keadaan = `ValidationException`
   Trip dicabut; `POST {ticket}/plan` tetap menerima `TRIP` untuk integrasi.
 - **Customer mengikuti team pembuat tiket** (19 Okt 2026): form Buat Trouble
   Ticket tidak lagi menanyakan customer bila pembuatnya anggota ACTIVE (atau
-  leader) sebuah team ACTIVE yang kolom `teams.customer_id`-nya terisi
-  (migrasi `2026_10_19_000300`, diisi di Master Data > Team). Satu customer →
-  kotaknya baca-saja dan daftar site langsung menyempit ke customer itu;
-  beberapa team dengan customer berbeda → tetap memilih, hanya daftarnya yang
-  menyempit; tanpa team (mis. superadmin) → perilaku lama. Penegakannya ada di
-  `store()`: site di luar customer team pembuat ditolak (`site_id`), jadi
-  kiriman browser tidak bisa menembusnya.
+  leader) sebuah team ACTIVE yang customer-nya terisi (diisi di Master Data >
+  Team). Sejak 6 Nov 2026 satu team boleh punya beberapa customer: daftarnya di
+  tabel `team_customers` (migrasi `2026_11_06_000500`), sedangkan
+  `teams.customer_id` hanya menyimpan customer pertama dan dibaca selama migrasi
+  itu belum dijalankan. Satu customer → kotaknya baca-saja dan daftar site
+  langsung menyempit ke customer itu; lebih dari satu customer (dari satu team
+  atau beberapa team) → tetap memilih, hanya daftarnya yang menyempit; tanpa
+  team (mis. superadmin) → perilaku lama. Penegakannya ada di `store()`: site di
+  luar customer team pembuat ditolak (`site_id`), jadi kiriman browser tidak
+  bisa menembusnya. Batas Budget Plan teknisi memakai daftar yang sama, jadi
+  teknisi team multi-customer dapat memilih Budget Plan semua customer team-nya.
 - **Notifikasi tiket baru**: teknisi yang ditugaskan **dan seluruh PIC internal
   site** (`sitePicUsers()`).
+
+## Integrasi Finance (v3.3.1, 6 Nov 2026)
+
+Blueprint & keputusan: `docs/plans/2026-11-06-trouble-ticket-finance-integration.md`. Bagian ini
+mengganti aturan lama di dokumen ini bila bertentangan.
+
+- **Otoritas mengikuti hierarki Team** (`App\Services\OrgHierarchy`), bukan role global: atasan =
+  leader team teknisi, atau leader team di atasnya (penyambungan bagan). `canSupervise()` memakai
+  ini; approve penutupan, reassign, dan ubah plan ikut terbatas ke bawahan, termasuk lewat URL.
+- **Form close:** teknisi + pengawas tiket (`canClose()`). Pembuat tiket dan Finance tidak otomatis
+  berhak.
+- **Chat** (`canMessage()`, OD-7, 6 Nov 2026): teknisi, pengawas, dan **pembuat tiket** (bukti dari
+  NOC masuk lewat chat karena form Create tanpa lampiran; karena itu `scopeVisibleTo()` kembali
+  memuat tiket buatan sendiri untuk user biasa). Finance, Treasury, dan lainnya baca-saja;
+  `postMessage()` menolak (403) pengirim di luar `canMessage()`, juga lewat URL langsung.
+- **Dokumen uang** (`canViewFinance()`: kwitansi, lampiran CR tiket; 6 Nov 2026): pemohon dana,
+  atasan peninjau settlement (leader team teknisi yang sedang ditugaskan atau di atasnya), Finance
+  read, superadmin. Teknisi yang bukan pemohon dan pembuat tiket tidak berhak. `FileAccess` tetap
+  membuka lampiran CR bagi yang lolos `scopeByRole` atau pernah menindak CR.
+- **Reassign membatalkan pengajuan yang belum jadi CR** (6 Nov 2026): DRAFT, SUBMITTED, REJECTED
+  milik selain teknisi baru menjadi `CANCELLED` dalam transaksi `reassign()` (kejadian
+  `request_cancelled`, alasan "Otomatis: tiket dialihkan ke …", pemohon dinotifikasi). Pengajuan yang
+  sudah jadi CR tidak disentuh (OD-20).
+- **Keterlihatan tambahan:** bawahan menurut hierarki; pemohon dana tetap melihat tiketnya setelah
+  dialihkan; `AccessRoles::TROUBLE_TICKET_FINANCE_READ` baca-saja untuk tiket ber-CR.
+- **Review pengajuan:** leader team; leader atas boleh mengambil alih kapan saja (metadata `takeover`
+  + notifikasi leader team). Sesama anggota tidak lagi bisa me-review.
+- **Approve & Submit** (`approveRequest(..., langsung)`): role `manager` yang menjadi atasan. Memakai
+  `BudgetRequest::submissionError()` + `markSubmitted()` yang sama dengan tombol Submit; gagal = seluruh
+  transaksi batal. Harus punya akses proyek Budget Plan.
+- **CR gugur** (`costRequestGone()`): tombol Ajukan Ulang membuat pengajuan baru; yang lama utuh.
+- **Nomor pengajuan** `FR-mmyy-0001` lewat `DocumentSequence`; data lama tampil `#id`.
+- **Cermin status CR:** `BudgetRequest::addLog()` -> `mirrorCostRequestLog()` sesudah commit, gagal-aman,
+  idempoten lewat `client_token`. Kejadian: `cost_request_status`, `settlement_*`, `financial_closed`.
+- **Settlement dari tiket** (Cash Advance saja): draft -> Kirim Settlement -> atasan Teruskan ke Finance
+  (CR -> `REALIZED`) atau Kembalikan. Terkunci selama review. Pemilik = pemohon dana
+  (`isSettlementOwner()`). CR dari pengajuan bernomor tidak bisa disubmit dari modul Cost Request.
+  Syarat kirim: `settlementBlockers()` (tiap item punya baris, baris bernilai punya nota/kwitansi,
+  kelebihan beralasan).
+- **Kwitansi digital** (`SettlementReceiptService`, tabel `settlement_receipts`): penerima uang tanda tangan
+  di HP teknisi; PDF dompdf disimpan sebagai arsip dan salinan lampiran baris. Nilai berubah = `SUPERSEDED`.
+  Ini kwitansi biasa, bukan tanda tangan elektronik tersertifikasi. Nomor `KW-…` diambil dari
+  `DocumentSequence` di dalam transaksi simpan, jadi tetap urut tanpa celah (ikut batal bila gagal);
+  konsekuensinya penerbitan kwitansi lain menunggu selama PDF dirender (keputusan 6 Nov 2026,
+  diterima karena kwitansi jarang terbit bersamaan).
+- **Status keuangan terpisah dari status tiket:** tiket boleh `CLOSED` walau dana belum settle.
+  `financialState()` / `financialBlockers()` / `scopeFinanceOpen()` dihitung dari pengajuan & CR, tidak
+  disimpan. Pengajuan yang ada tetap bisa diselesaikan setelah `CLOSED`; pengajuan baru tidak.
+- **Import Excel** (`Concerns\ImportsTroubleTickets`): template, pratinjau, konfirmasi; maks. 500 baris,
+  parsial, token sekali pakai. Duplikat site+RCA+tanggal hanya peringatan. Hanya sheet Data,
+  kolom A–H, dan 2.000 baris pertama yang dimuat (data saja); sheet lebih panjang ditolak sebelum
+  dimuat supaya berkas besar tidak menghabiskan memori hosting.
+- **Cermin log CR ke tiket:** setiap `addLog()` CR mencari tiket asalnya lewat
+  `TroubleTicket::idForCostRequest()` (dua pencarian ber-index, di-cache per instance CR).
+- **Direct approval** wajib lolos jalur `scopeByRole()` Manager: proyek per Access Group, Budget
+  Plan non-proyek hanya bila cost center overhead-like-nya ada di Access Group Manager.
+- **Todo List:** `TodoService::TICKET_ACTION_QUEUES` tampil sebagai satu bagian "Trouble Ticket — Tindakan".
 
 ## SLA
 
@@ -437,6 +498,11 @@ SLA di tab **SLA**.
   detail dan modal **Info** dari daftar sama-sama merender
   `trouble-ticket/_log.blade.php` (`$statusLog`, `$tautChat` hanya true di
   halaman detail), jadi keduanya tidak pernah bercerita berbeda.
+- **Tinggi halaman detail** (6 Nov 2026): `fitDetail()` mengukur wadah gulir `.main > .content`
+  dan membagi posisi dengan skala `--ts-zoom`; sebelumnya panel tergambar 80% dari tinggi yang
+  dihitung dan menyisakan ruang kosong di bawah. Saat `tt-detail-open`, padding bawah wadah 12px.
+- **Form buat tiket tanpa lampiran** (6 Nov 2026): lampiran ditambahkan lewat chat saat tiket
+  ditangani. Server tetap menerima `tickets.*.attachments` untuk integrasi.
 - **Scrollbar disembunyikan** di halaman detail (19 Okt 2026): `.tt-chat-list`,
   `.tt-tab-body`, dan `.tt-info-log` memakai `scrollbar-width:none` +
   `::-webkit-scrollbar{display:none}` — gulirannya tetap berjalan. Di desktop
@@ -507,7 +573,7 @@ Satu halaman bertab, dulu hanya SLA:
 | Aksi | Siapa |
 |---|---|
 | Buka menu / buat tiket | pemegang menu `trouble-ticket` (route) |
-| Melihat tiket, pesan, lampiran | superadmin (`TROUBLE_TICKET_FULL_SCOPE`): semua tiket. **User biasa: hanya tiket yang ditugaskan ke dirinya** — tiket teknisi lain tidak muncul, termasuk tiket yang ia buat sendiri lalu di-change ke teknisi lain (keputusan 15 Okt 2026). Pengawas (leader team ACTIVE, `TROUBLE_TICKET_SUPERVISE`, `TROUBLE_TICKET_APPROVE` — `TroubleTicket::supervises()`): pembuat, tiket yang ditugaskan, dan siapa pun yang **satu team** (anggota ACTIVE atau leader team ACTIVE) dengan PIC site: `site → site_pics → master_pics(ACTIVE) → user → team_members` |
+| Melihat tiket, pesan, lampiran | superadmin (`TROUBLE_TICKET_FULL_SCOPE`): semua tiket. **User biasa: tiket yang ditugaskan ke dirinya dan tiket yang ia buat sendiri** — tiket teknisi lain yang bukan buatannya tidak muncul (keputusan 15 Okt 2026; sejak 6 Nov 2026 pembuat kembali melihat tiket buatannya untuk mengirim bukti lewat chat, OD-7, tanpa akses dokumen uang). Pengawas (leader team ACTIVE, `TROUBLE_TICKET_SUPERVISE`, `TROUBLE_TICKET_APPROVE` — `TroubleTicket::supervises()`): pembuat, tiket yang ditugaskan, dan siapa pun yang **satu team** (anggota ACTIVE atau leader team ACTIVE) dengan PIC site: `site → site_pics → master_pics(ACTIVE) → user → team_members` |
 | Teknisi yang bisa ditugaskan | akun ACTIVE milik PIC **internal** ACTIVE yang terdaftar di `site_pics` site itu, **kecuali leader team ACTIVE** (ia yang menyetujui plan). Berlaku untuk dropdown buat tiket maupun reassign — `TroubleTicketWorkflow::eligibleTechnicians()` |
 | Respons, ajukan plan, Start Progress, tutup tiket | hanya teknisi yang sedang ditugaskan |
 | Approve/reject plan | leader team ACTIVE tempat teknisi menjadi anggota ACTIVE, atau superadmin — **bukan** teknisi pengaju |

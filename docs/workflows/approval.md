@@ -39,7 +39,7 @@ jejak kode lama ada di `project_logs` dan `user_activity_logs`.
 PO VERIFIED muncul di Todo List Approver (antrean `poVerified`, "PO — Approval Approver").
 
 Rejections: CR → REJECTED then applicant Revise (→ DRAFT) or Cancel. Budget
-Plan → REJECTED then manager revise. Settlement rejects return to PAID.
+Plan → REJECTED then manager revise. Settlement rejects stop at SETTLE_REJECTED.
 
 Todo List (`TodoListController`, `BuildsCrWorklist`) aggregates the pending
 items per role and supports bulk actions (`todo-list/bulk/{section}/{mode}`).

@@ -1,0 +1,113 @@
+<?php
+
+namespace App\Support;
+
+use App\Models\Beneficiary;
+use App\Models\BudgetRequest;
+
+/**
+ * Limit Cash Advance per PIC: satu sumber perhitungan, dipakai form Cost Request
+ * dan Manager direct approval di Trouble Ticket. Aturannya: lihat komentar
+ * "LIMIT CASH ADVANCE PER PIC" di BudgetRequest.
+ */
+class CashAdvanceQuota
+{
+    /**
+     * Pemakaian limit CA milik PIC pemilik $beneficiaryId. Null kalau
+     * beneficiary tidak ada, belum punya PIC, atau PIC-nya tidak mengisi
+     * token maupun nominal (berarti tidak ada batas yang berlaku).
+     */
+    public static function usage(?int $beneficiaryId, ?int $excludeCrId = null): ?array
+    {
+        $ben = $beneficiaryId ? Beneficiary::with('pic')->find($beneficiaryId) : null;
+        if (! $ben || ! $ben->pic_id) return null;
+
+        // Batas dari Master PIC. Token bebas huruf/angka, jadi hanya dipakai
+        // kalau isinya memang angka; kosong/0 = aspek itu tanpa batas.
+        $pic         = $ben->pic;
+        $limitCount  = is_numeric($pic?->token) ? (int) $pic->token : null;
+        $limitAmount = $pic?->nominal !== null ? (int) $pic->nominal : null;
+        if (! $limitCount)  $limitCount  = null;
+        if (! $limitAmount) $limitAmount = null;
+        if ($limitCount === null && $limitAmount === null) return null;
+
+        $names = BudgetRequest::CASH_ADVANCE_TYPE_NAMES;
+
+        $base = fn () => BudgetRequest::query()
+            ->join('beneficiaries', 'beneficiaries.id', '=', 'budget_request.beneficiary_id')
+            ->join('request_type', 'request_type.id', '=', 'budget_request.type_id')
+            ->where('beneficiaries.pic_id', $ben->pic_id)
+            ->whereRaw(
+                'LOWER(TRIM(request_type.name)) IN (' . implode(',', array_fill(0, count($names), '?')) . ')',
+                $names
+            )
+            ->when($excludeCrId, fn ($q) => $q->where('budget_request.id', '!=', $excludeCrId));
+
+        // Jumlah pengajuan: hanya yang sudah cair (PAID ke atas) dan belum tutup.
+        $usedCount = (int) $base()
+            ->whereIn('budget_request.status', BudgetRequest::CA_COUNTED_STATUSES)
+            ->count();
+
+        /*
+        | Nominal: seluruh CR yang belum lepas — termasuk yang masih diproses
+        | (Draft/Submitted/dst) supaya pipeline-nya tetap memesan pagu.
+        |
+        | Lepasnya SAMA dengan slot jumlah pengajuan: begitu approval settlement
+        | tuntas di Second Approve. CR yang sudah lewat tahap itu lalu masuk
+        | batch Treasury (statusnya kembali QUEUED untuk membayar Expense Claim)
+        | juga tidak dihitung lagi — makanya dicek lewat jejak lognya, bukan
+        | status saat ini.
+        */
+        $usedAmount = (int) $base()
+            ->whereNotIn('budget_request.status', BudgetRequest::CA_QUOTA_RELEASED_STATUSES)
+            ->where(function ($q) {
+                // Lepas di Second Approve, dan tetap lepas saat klaimnya
+                // menunggu dibayar Treasury (status kembali QUEUED).
+                $q->where('budget_request.status', '!=', 'SECOND_APPROVED')
+                  ->where(function ($w) {
+                      $w->where('budget_request.status', '!=', 'QUEUED')
+                        ->orWhereNotExists(function ($sq) {
+                            $sq->selectRaw(1)
+                               ->from('request_status_logs')
+                               ->whereColumn('request_status_logs.budget_request_id', 'budget_request.id')
+                               ->where('request_status_logs.status_to', 'SECOND_APPROVED');
+                        });
+                  });
+            })
+            ->sum('budget_request.amount');
+
+        return [
+            'pic_id'           => (int) $ben->pic_id,
+            'pic_name'         => $pic?->pic ?? '-',
+            'used_count'       => $usedCount,
+            'used_amount'      => $usedAmount,
+            'limit_count'      => $limitCount,
+            'limit_amount'     => $limitAmount,
+            'remaining_count'  => $limitCount  === null ? null : max(0, $limitCount - $usedCount),
+            'remaining_amount' => $limitAmount === null ? null : max(0, $limitAmount - $usedAmount),
+        ];
+    }
+
+    /** Limit CA terlampaui? Mengembalikan pesan error, atau null kalau lolos. */
+    public static function error(?int $beneficiaryId, int $amount, ?int $excludeCrId = null): ?string
+    {
+        $q = self::usage($beneficiaryId, $excludeCrId);
+        if (! $q) return null;
+
+        $rp = fn ($n) => 'Rp ' . number_format($n, 0, ',', '.');
+
+        if ($q['remaining_count'] !== null && $q['remaining_count'] < 1) {
+            return 'Limit Cash Advance PIC "' . $q['pic_name'] . '" sudah habis: '
+                . $q['used_count'] . ' dari ' . $q['limit_count'] . ' pengajuan masih berjalan. '
+                . 'Selesaikan (Close) pengajuan yang berjalan dulu.';
+        }
+
+        if ($q['remaining_amount'] !== null && $amount > $q['remaining_amount']) {
+            return 'Limit nominal Cash Advance PIC "' . $q['pic_name'] . '" tidak mencukupi. '
+                . 'Terpakai ' . $rp($q['used_amount']) . ' dari ' . $rp($q['limit_amount'])
+                . ', sisa ' . $rp($q['remaining_amount']) . ', sedangkan pengajuan ini ' . $rp($amount) . '.';
+        }
+
+        return null;
+    }
+}

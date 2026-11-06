@@ -17,7 +17,8 @@ use Tests\TestCase;
 /**
  * Settlement Custom COA (25 Okt 2026): baris settlement Cash Advance boleh
  * memilih Sub COA (sub-item Budget Plan CR yang sama) — dipecah dari item
- * pengajuan, pindah Sub COA, atau baris tambahan tanpa item asal.
+ * pengajuan atau baris tambahan tanpa item asal. Sejak 4 Nov 2026 Sub COA
+ * baris item pengajuan dikunci ke item asal (pindah Sub COA ditolak).
  *
  * Lihat BudgetRequestController::validateRealizationInput()/syncRealizations(),
  * BudgetRequest::costUnits(), BudgetPlanDetail::usedAmount()/costLines(),
@@ -147,7 +148,11 @@ class SettlementCustomCoaTest extends TestCase
         }
     }
 
-    /* AC2 — dipecah / ditambah jadi 8 baris Sub COA berbeda. */
+    /*
+     | AC2 — dipecah / ditambah jadi 8 baris. Sejak 4 Nov 2026 Sub COA baris
+     | item pengajuan (termasuk pecahannya) dikunci ke item asal; Sub COA lain
+     | hanya lewat baris tambahan.
+     */
     public function test_pecah_dan_tambah_jadi_delapan_baris(): void
     {
         $cr = $this->crPaid();
@@ -155,11 +160,11 @@ class SettlementCustomCoaTest extends TestCase
 
         $this->submit($cr, [
             $this->baris($i1, 's1', 40_000),
-            $this->baris($i1, 's4', 30_000, 'Sebagian untuk material'),   // pindah
-            $this->baris($i1, 's5', 30_000, 'Pakai pos additional'),      // pindah
+            $this->baris($i1, 's1', 30_000),                              // pecahan
+            $this->baris(null, 's5', 30_000, 'Pakai pos additional'),    // tambahan
             $this->baris($i2, 's2', 90_000),
             $this->baris($i3, 's3', 50_000),
-            $this->baris($i3, 's2', 20_000, 'Geser ke Sub S2'),           // pindah
+            $this->baris($i3, 's3', 20_000),                              // pecahan
             $this->baris(null, 's4', 25_000, 'Biaya tak terduga'),       // tambahan
             $this->baris(null, 's1', 15_000, 'Parkir'),                   // tambahan
         ])->assertRedirect(route('budget-request.index'));
@@ -169,8 +174,12 @@ class SettlementCustomCoaTest extends TestCase
         $this->assertSame(8, $cr->realizations()->count());
         $this->assertSame(300_000, $cr->total_realization);
 
+        // Pecahan tetap di Sub COA item asal.
+        $this->assertSame(2, $cr->realizations()->where('request_detail_id', $i1->id)->where('budget_detail_id', $this->sub['s1']->id)->count());
+        $this->assertSame(2, $cr->realizations()->where('request_detail_id', $i3->id)->where('budget_detail_id', $this->sub['s3']->id)->count());
+
         // account_id diturunkan dari sub-item terpilih.
-        $this->assertSame(3, $cr->realizations()->where('account_id', $this->akunB->id)->count());
+        $this->assertSame(2, $cr->realizations()->where('account_id', $this->akunB->id)->count());
         $this->assertDatabaseHas('budget_request_realizations', [
             'budget_request_id' => $cr->id, 'request_detail_id' => null,
             'budget_detail_id'  => $this->sub['s4']->id, 'account_id' => $this->akunB->id, 'total' => 25_000,
@@ -209,6 +218,7 @@ class SettlementCustomCoaTest extends TestCase
         $lain = $this->makeCostRequest(['budget_plan' => $this->plan, 'status' => 'PAID']);
         $itemLain = RequestDetail::create([
             'budget_request_id' => $lain->id, 'budget_detail_id' => $this->sub['s1']->id,
+            'description' => 'Item CR lain',
             'amount' => 10, 'qty' => 1, 'total' => 10, 'status' => 'INCLUDED',
         ]);
 
@@ -218,7 +228,7 @@ class SettlementCustomCoaTest extends TestCase
         $this->assertSame('PAID', $cr->fresh()->status);
     }
 
-    public function test_baris_tambahan_wajib_sub_coa_dan_note(): void
+    public function test_baris_tambahan_wajib_sub_coa(): void
     {
         $cr = $this->crPaid();
 
@@ -229,14 +239,49 @@ class SettlementCustomCoaTest extends TestCase
             ])->assertRedirect()->assertSessionHas('error');
         $this->assertSame(0, $cr->realizations()->count());
 
-        // Sub COA ada, Note kosong — ditolak saat submit.
+        // Tanpa Sub COA — ditolak juga saat submit.
+        $this->submit($cr, [
+            $this->baris($this->item($cr, 's1'), 's1', 100_000),
+            $this->baris($this->item($cr, 's2'), 's2', 100_000),
+            $this->baris($this->item($cr, 's3'), 's3', 100_000),
+            ['amount' => 5_000, 'notes' => 'Tanpa Sub', 'attachments' => [UploadedFile::fake()->image('x.jpg')]],
+        ])->assertRedirect()->assertSessionHas('error');
+        $this->assertSame('PAID', $cr->fresh()->status);
+        $this->assertSame(0, $cr->realizations()->count());
+
+        // Sub COA ada, Note kosong — diterima: Note per baris opsional (4 Nov 2026).
         $this->submit($cr, [
             $this->baris($this->item($cr, 's1'), 's1', 100_000),
             $this->baris($this->item($cr, 's2'), 's2', 100_000),
             $this->baris($this->item($cr, 's3'), 's3', 100_000),
             $this->baris(null, 's4', 5_000),
-        ])->assertRedirect()->assertSessionHas('error');
+        ])->assertRedirect(route('budget-request.index'));
+        $this->assertSame('REALIZED', $cr->fresh()->status);
+        $this->assertDatabaseHas('budget_request_realizations', [
+            'budget_request_id' => $cr->id, 'request_detail_id' => null,
+            'budget_detail_id'  => $this->sub['s4']->id, 'change_note' => null, 'total' => 5_000,
+        ]);
+    }
+
+    /* Sub COA baris item pengajuan dikunci ke item asal (4 Nov 2026), juga saat simpan draft. */
+    public function test_baris_item_pengajuan_tidak_bisa_pindah_sub_coa(): void
+    {
+        $cr = $this->crPaid();
+        $rows = [
+            $this->baris($this->item($cr, 's1'), 's1', 60_000),
+            $this->baris($this->item($cr, 's1'), 's4', 40_000, 'Material'),   // pindah — ditolak
+            $this->baris($this->item($cr, 's2'), 's2', 100_000),
+            $this->baris($this->item($cr, 's3'), 's3', 100_000),
+        ];
+
+        $this->submit($cr, $rows)->assertRedirect()
+            ->assertSessionHas('error', fn ($m) => str_contains((string) $m, 'tidak dapat diganti'));
         $this->assertSame('PAID', $cr->fresh()->status);
+        $this->assertSame(0, $cr->realizations()->count());
+
+        $this->draft($cr, $rows)->assertRedirect()
+            ->assertSessionHas('error', fn ($m) => str_contains((string) $m, 'tidak dapat diganti'));
+        $this->assertSame(0, $cr->realizations()->count());
     }
 
     /* AC4 — Refund / Expense Claim / Second Payment memakai rumus lama atas total baru. */
@@ -298,13 +343,13 @@ class SettlementCustomCoaTest extends TestCase
 
         $this->submit($cr, [
             $this->baris($i1, 's1', 60_000),
-            $this->baris($i1, 's4', 40_000, 'Material'),
+            $this->baris(null, 's4', 40_000, 'Material'),   // tambahan
             $this->baris($i2, 's2', 100_000),
             $this->baris($i3, 's3', 100_000),
         ])->assertRedirect(route('budget-request.index'));
 
-        $pecahan = $cr->realizations()->where('budget_detail_id', $this->sub['s4']->id)->firstOrFail();
-        $lampiranId = $pecahan->attachments()->value('id');
+        $tambahan = $cr->realizations()->where('budget_detail_id', $this->sub['s4']->id)->firstOrFail();
+        $lampiranId = $tambahan->attachments()->value('id');
         $this->assertNotNull($lampiranId);
 
         $cr->update(['status' => 'SETTLE_REJECTED']);
@@ -322,7 +367,7 @@ class SettlementCustomCoaTest extends TestCase
         $this->submit($cr, $rows)->assertRedirect(route('budget-request.index'));
 
         $this->assertSame('REALIZED', $cr->fresh()->status);
-        $this->assertSame($pecahan->id, \App\Models\RealizationDetailAttachment::find($lampiranId)?->realization_id);
+        $this->assertSame($tambahan->id, \App\Models\RealizationDetailAttachment::find($lampiranId)?->realization_id);
         $this->assertSame(4, $cr->realizations()->count());
     }
 
@@ -335,7 +380,7 @@ class SettlementCustomCoaTest extends TestCase
         $this->submit($cr, [
             $this->baris($i1, 's1', 50_000),
             $this->baris($i1, 's1', 30_000),
-            $this->baris($i1, 's4', 20_000, 'Material'),
+            $this->baris(null, 's4', 20_000, 'Material'),   // tambahan
             $this->baris($this->item($cr, 's2'), 's2', 100_000),
             $this->baris($this->item($cr, 's3'), 's3', 90_000),
         ])->assertRedirect(route('budget-request.index'));
@@ -349,9 +394,10 @@ class SettlementCustomCoaTest extends TestCase
         $this->assertSame(290_000, $cmp['settlement']);
         $this->assertSame($json['total_realization'], $cmp['settlement']);
 
-        $pindah = collect($json['realizations'])->firstWhere('budget_detail_id', $this->sub['s4']->id);
-        $this->assertTrue($pindah['is_moved']);
-        $this->assertSame('Sub S1', $pindah['origin_label']);
+        $tambahan = collect($json['realizations'])->firstWhere('budget_detail_id', $this->sub['s4']->id);
+        $this->assertTrue($tambahan['is_added']);
+        $this->assertFalse($tambahan['is_moved']);
+        $this->assertNull($tambahan['origin_label']);
     }
 
     /* AC8 — Used sub-item tujuan naik, asal turun; Used header Budget Plan tetap. */
@@ -364,7 +410,7 @@ class SettlementCustomCoaTest extends TestCase
 
         $this->submit($cr, [
             $this->baris($this->item($cr, 's1'), 's1', 40_000),
-            $this->baris($this->item($cr, 's1'), 's4', 60_000, 'Material'),
+            $this->baris(null, 's4', 60_000, 'Material'),   // tambahan
             $this->baris($this->item($cr, 's2'), 's2', 100_000),
             $this->baris($this->item($cr, 's3'), 's3', 100_000),
         ])->assertRedirect(route('budget-request.index'));
@@ -388,20 +434,20 @@ class SettlementCustomCoaTest extends TestCase
             ->post('/budget-request/' . $cr->id . '/save-realization-draft', [
                 'realizations' => [
                     'a' => $this->baris($i1, 's1', 60_000),
-                    'b' => $this->baris($i1, 's4', 40_000, 'Material'),
+                    'b' => $this->baris(null, 's4', 40_000, 'Material'),
                     'c' => $this->baris($this->item($cr, 's2'), 's2', 100_000),
                     'd' => $this->baris($this->item($cr, 's3'), 's3', 100_000),
                 ],
-                // Tanda tangan untuk baris "b" (pecahan) saja.
+                // Tanda tangan untuk baris "b" (tambahan) saja.
                 'signatures' => ['b' => $png],
             ])->assertRedirect(route('budget-request.index'));
 
         $this->assertSame('PAID', $cr->fresh()->status);
-        $pecahan = $cr->realizations()->where('budget_detail_id', $this->sub['s4']->id)->firstOrFail();
+        $tambahan = $cr->realizations()->where('budget_detail_id', $this->sub['s4']->id)->firstOrFail();
 
         $this->assertDatabaseHas('budget_request_realization_attachments', [
             'budget_request_id' => $cr->id,
-            'original_name'     => 'ttd-r' . $pecahan->id . '-' . $cr->code . '.png',
+            'original_name'     => 'ttd-r' . $tambahan->id . '-' . $cr->code . '.png',
         ]);
     }
 
@@ -428,7 +474,7 @@ class SettlementCustomCoaTest extends TestCase
 
         $this->draft($cr, [
             'a' => $this->baris($i1, 's1', 60_000),
-            'b' => $this->baris($i1, 's4', 40_000, 'Material'),
+            'b' => $this->baris(null, 's4', 40_000, 'Material'),   // tambahan
             'c' => $this->baris($this->item($cr, 's2'), 's2', 100_000),
             'd' => $this->baris($this->item($cr, 's3'), 's3', 100_000),
         ], ['b' => $png])->assertRedirect(route('budget-request.index'));
@@ -441,10 +487,10 @@ class SettlementCustomCoaTest extends TestCase
 
         $id = fn (string $sub) => $lama->firstWhere('budget_detail_id', $this->sub[$sub]->id)->id;
 
-        // Baris s4 dihapus user; baris baru (id kosong) untuk item yang SAMA.
+        // Baris tambahan s4 dihapus user; baris tambahan baru (id kosong) menggantikannya.
         $this->draft($cr, [
             'a'  => ['id' => $id('s1')] + $this->baris($i1, 's1', 60_000, null, false),
-            'n9' => ['id' => null] + $this->baris($i1, 's5', 40_000, 'Pos additional'),
+            'n9' => ['id' => null] + $this->baris(null, 's5', 40_000, 'Pos additional'),
             'c'  => ['id' => $id('s2')] + $this->baris($this->item($cr, 's2'), 's2', 100_000, null, false),
             'd'  => ['id' => $id('s3')] + $this->baris($this->item($cr, 's3'), 's3', 100_000, null, false),
         ])->assertRedirect(route('budget-request.index'));
@@ -487,16 +533,25 @@ class SettlementCustomCoaTest extends TestCase
         }
     }
 
-    /* Item ikut yang barisnya dihapus semua = Settle 0: aturan bukti tetap berlaku. */
+    /*
+     | Item ikut yang barisnya dihapus semua = Settle 0: aturan bukti tetap
+     | berlaku. Aturan bukti per baris hanya untuk draft dari modal tiket
+     | (from_ticket), lihat validateSettlementEvidence().
+     */
     public function test_item_tanpa_baris_dihitung_settle_nol_dalam_cek_bukti(): void
     {
         \Illuminate\Support\Facades\Storage::fake('secure');
         $cr = $this->crPaid();
 
-        $this->draft($cr, [
-            $this->baris($this->item($cr, 's1'), 's1', 100_000),
-            $this->baris($this->item($cr, 's2'), 's2', 100_000),
-        ])->assertRedirect()->assertSessionHas('error');
+        $this->actingAs($this->manager())
+            ->post('/budget-request/' . $cr->id . '/save-realization-draft', [
+                'from_ticket'  => 1,
+                'realizations' => [
+                    $this->baris($this->item($cr, 's1'), 's1', 100_000),
+                    $this->baris($this->item($cr, 's2'), 's2', 100_000),
+                ],
+            ])->assertRedirect()
+            ->assertSessionHas('error', fn ($m) => str_contains((string) $m, 'tidak punya baris settlement'));
 
         $this->assertSame(0, $cr->realizations()->count());
     }

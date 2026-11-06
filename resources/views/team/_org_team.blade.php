@@ -1,7 +1,7 @@
 {{--
     Isi mode Detail Member untuk satu team. Dibungkus <template> supaya hanya
-    team terpilih yang masuk ke halaman (JS menyalinnya ke #ocTeamView).
-    Variabel: $team (TeamController::buildTeamViews).
+    team terpilih dan satu team di atasnya yang masuk ke halaman (JS menyalinnya
+    ke #ocTeamView). Variabel: $team (TeamController::buildTeamViews).
 --}}
 <template id="ocTeamTpl-{{ $team['id'] }}">
     <div class="ot-head">
@@ -28,6 +28,16 @@
             @endforeach
         </span>
         @endif
+    </div>
+    @endif
+
+    @if($team['up'])
+    {{-- Isinya disalin bukaTeam() dari template team di atasnya. --}}
+    <div class="ot-body" data-above="{{ $team['up']['id'] }}" data-link="{{ $team['leader']['user_id'] ?? '' }}">
+        <div class="ot-tier-label">Team di atas · {{ $team['up']['name'] }}</div>
+    </div>
+    <div class="ot-tier">
+        <div class="ot-tier-label">{{ $team['name'] }} · {{ $team['count'] }} orang</div>
     </div>
     @endif
 

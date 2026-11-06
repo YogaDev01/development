@@ -97,6 +97,18 @@ class TroubleTicket extends Model
      */
     public const CLOSABLE = ['OPEN', 'REMOTE', 'PLAN', 'TRIP', 'IN_PROGRESS'];
 
+    /*
+    | Status keuangan terpisah dari status tiket (keputusan 6 Nov 2026): tiket
+    | boleh CLOSED saat masalah di site selesai, walau dananya belum settle.
+    | Dihitung dari pengajuan & CR, tidak disimpan, jadi tidak bisa basi.
+    */
+    public const FINANCE_NONE    = 'NONE';
+    public const FINANCE_OPEN    = 'OPEN';
+    public const FINANCE_SETTLED = 'SETTLED';
+
+    /** Status CR yang tidak lagi menyisakan urusan keuangan. */
+    public const FINANCE_DONE_CR = ['CLOSED', 'CANCELLED'];
+
     /* Status approval plan & biaya oleh supervisor (20 Okt 2026). null =
        plan lama tanpa biaya; perilakunya seperti sebelum aturan ini ada. */
     public const PLAN_BUDGET_PENDING  = 'PENDING';
@@ -236,6 +248,83 @@ class TroubleTicket extends Model
     }
 
     /**
+     * Urusan keuangan yang masih terbuka, sebagai kalimat tindakan. Hanya untuk
+     * penanda; tidak menahan penutupan tiket.
+     *
+     * @return array<int, string>
+     */
+    public function financialBlockers(): array
+    {
+        $sisa = [];
+
+        foreach ($this->requests as $r) {
+            $no = $r->display_number;
+
+            match (true) {
+                $r->status === TroubleTicketRequest::DRAFT     => $sisa[] = "Pengajuan {$no} masih Draft: ajukan atau batalkan.",
+                $r->status === TroubleTicketRequest::SUBMITTED => $sisa[] = "Pengajuan {$no} menunggu review atasan.",
+                $r->status === TroubleTicketRequest::REJECTED  => $sisa[] = "Pengajuan {$no} ditolak: revisi atau batalkan.",
+                $r->status === TroubleTicketRequest::APPROVED && ! $r->costRequestGone()
+                    && ! in_array($r->budgetRequest?->status, self::FINANCE_DONE_CR, true)
+                    => $sisa[] = 'Cost Request ' . $r->budgetRequest?->code . ' berstatus '
+                        . \App\Support\WorkflowStatus::label($r->budgetRequest?->status, 'budget-request') . '.',
+                default => null,
+            };
+        }
+
+        // CR data lama (sebelum Pengajuan Biaya), bila tidak tertaut pengajuan.
+        if ($this->budget_request_id && ! $this->requests->contains('budget_request_id', $this->budget_request_id)
+            && $this->budgetRequest && ! in_array($this->budgetRequest->status, self::FINANCE_DONE_CR, true)) {
+            $sisa[] = 'Cost Request ' . $this->budgetRequest->code . ' berstatus '
+                . \App\Support\WorkflowStatus::label($this->budgetRequest->status, 'budget-request') . '.';
+        }
+
+        return $sisa;
+    }
+
+    public function financialState(): string
+    {
+        $adaDana = $this->budget_request_id
+            || $this->requests->contains(fn ($r) => $r->status !== TroubleTicketRequest::CANCELLED);
+
+        if (! $adaDana) {
+            return self::FINANCE_NONE;
+        }
+
+        return $this->financialBlockers() ? self::FINANCE_OPEN : self::FINANCE_SETTLED;
+    }
+
+    /** Tiket yang urusan keuangannya masih terbuka (cermin financialBlockers()). */
+    public function scopeFinanceOpen(Builder $query): Builder
+    {
+        return $query->where(function (Builder $w) {
+            $w->whereHas('requests', fn ($r) => $r->whereIn('status', [
+                TroubleTicketRequest::DRAFT, TroubleTicketRequest::SUBMITTED, TroubleTicketRequest::REJECTED,
+            ]))
+            ->orWhereHas('requests', fn ($r) => $r->where('status', TroubleTicketRequest::APPROVED)
+                ->whereHas('budgetRequest', fn ($c) => $c->whereNull('deleted_at')->whereNotIn('status', self::FINANCE_DONE_CR)))
+            ->orWhereHas('budgetRequest', fn ($c) => $c->whereNotIn('status', self::FINANCE_DONE_CR));
+        });
+    }
+
+    /**
+     * id tiket asal sebuah Cost Request, atau null. Versi murah forCostRequest()
+     * untuk jalur panas (cermin setiap addLog() CR): dua pencarian titik pada
+     * kolom ber-index, tanpa subquery whereHas.
+     */
+    public static function idForCostRequest(int $costRequestId): ?int
+    {
+        static $adaPengajuan = null;
+        $adaPengajuan ??= \Illuminate\Support\Facades\Schema::hasTable('trouble_ticket_requests');
+
+        $id = $adaPengajuan
+            ? TroubleTicketRequest::where('budget_request_id', $costRequestId)->value('trouble_ticket_id')
+            : null;
+
+        return (int) ($id ?? static::where('budget_request_id', $costRequestId)->value('id')) ?: null;
+    }
+
+    /**
      * Tiket yang melahirkan Cost Request tertentu: lewat pengajuan (baru) atau
      * kolom budget_request_id di tiket (data lama sebelum Pengajuan Biaya).
      */
@@ -340,9 +429,9 @@ class TroubleTicket extends Model
      * teknisi yang ditugaskan, dan AccessRoles::TROUBLE_TICKET_FULL_SCOPE.
      *
      * KECUALI user biasa (bukan pengawas, keputusan 15 Okt 2026): hanya tiket
-     * yang DITUGASKAN ke dirinya. Tiket milik teknisi lain tidak pernah muncul,
-     * termasuk tiket yang ia buat sendiri lalu di-change ke teknisi lain —
-     * begitu di-change, tiket pindah ke daftar teknisi baru.
+     * yang DITUGASKAN ke dirinya, ditambah tiket yang ia BUAT sendiri
+     * (keputusan 6 Nov 2026, OD-7: pembuat mengirim bukti lewat chat). Tiket
+     * teknisi lain yang bukan buatannya tidak pernah muncul.
      *
      * Pengawas (leader team ACTIVE, AccessRoles::TROUBLE_TICKET_SUPERVISE, atau
      * TROUBLE_TICKET_APPROVE) tetap memakai rantai site → PIC → team supaya
@@ -357,15 +446,49 @@ class TroubleTicket extends Model
             return $query;
         }
 
+        // Baca-saja Finance & Treasury: hanya tiket yang punya Cost Request
+        // (keputusan 6 Nov 2026). Hak aksi tetap diperiksa terpisah di workflow.
+        $bacaFinance = $user->hasRole(AccessRoles::TROUBLE_TICKET_FINANCE_READ);
+
+        // Pemohon dana tetap melihat tiketnya setelah dialihkan: ia masih
+        // memegang uang yang harus dipertanggungjawabkan.
+        // Pembuat tiket (NOC) melihat tiket buatannya lagi (keputusan 6 Nov
+        // 2026, membatalkan sebagian keputusan 15 Okt 2026): bukti darinya
+        // masuk lewat chat karena form Create tanpa lampiran. Dokumen uang
+        // tetap tertutup baginya (TroubleTicketWorkflow::canViewFinance()).
+        $tambahan = function (Builder $w) use ($user, $bacaFinance) {
+            $w->orWhere('trouble_tickets.created_by', $user->id);
+
+            $w->orWhereHas('requests', fn ($r) => $r
+                ->where('requested_by', $user->id)
+                ->whereNotNull('budget_request_id'));
+
+            if ($bacaFinance) {
+                $w->orWhereNotNull('trouble_tickets.budget_request_id')
+                  ->orWhereHas('requests', fn ($r) => $r->whereNotNull('budget_request_id'));
+            }
+        };
+
         if (! self::supervises($user)) {
-            return $query->where('trouble_tickets.assigned_to', $user->id);
+            return $query->where(function (Builder $w) use ($user, $tambahan) {
+                $w->where('trouble_tickets.assigned_to', $user->id);
+                $tambahan($w);
+            });
         }
 
         $teamIds = self::teamIdsOf($user);
+        $bawahan = app(\App\Services\OrgHierarchy::class)->subordinateIds((int) $user->id);
 
-        return $query->where(function (Builder $w) use ($user, $teamIds) {
+        return $query->where(function (Builder $w) use ($user, $teamIds, $bawahan, $tambahan) {
             $w->where('trouble_tickets.created_by', $user->id)
               ->orWhere('trouble_tickets.assigned_to', $user->id);
+
+            // Tiket bawahan, termasuk team di bawah team yang ia pimpin.
+            if ($bawahan->isNotEmpty()) {
+                $w->orWhereIn('trouble_tickets.assigned_to', $bawahan->all());
+            }
+
+            $tambahan($w);
 
             if ($teamIds->isNotEmpty()) {
                 $w->orWhereIn('trouble_tickets.site_id', function ($s) use ($teamIds) {

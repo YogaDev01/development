@@ -68,12 +68,22 @@ class ProfileController extends Controller
 
         /*
         | TEAM — Organization Chart. Diambil dari Team tempat user ini jadi
-        | member AKTIF (lintas access group), disusun per level lewat
-        | Team::orgChart(). Satu user bisa ada di beberapa team.
+        | member AKTIF (lintas access group), disusun per level di
+        | profile._team. Satu user bisa ada di beberapa team.
         */
         $teamIds = $user->teamMemberships()->where('status', 'ACTIVE')->pluck('team_id');
+        // Bagan juga menampilkan team induk (1 tingkat di atas) dan sub-team
+        // langsung (1 tingkat di bawah) bila kolom struktur sudah dimigrasi.
+        $bagan = ['department', 'leader', 'activeMembers.user'];
+        $relasi = $bagan;
+        if (Team::supportsStructure()) {
+            foreach ($bagan as $r) {
+                $relasi[] = 'parent.'.$r;
+                $relasi[] = 'children.'.$r;
+            }
+        }
         $myTeams = Team::whereIn('id', $teamIds)
-            ->with(['department', 'leader', 'activeMembers.user'])
+            ->with($relasi)
             ->orderBy('name')
             ->get();
 

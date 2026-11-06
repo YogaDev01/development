@@ -24,6 +24,7 @@ use App\Support\WorkflowStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
@@ -43,6 +44,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 class TroubleTicketController extends Controller
 {
     use Concerns\CapsLargeLists;
+    use Concerns\ImportsTroubleTickets;
 
     /** Jumlah item timeline per muat. */
     private const MESSAGE_PAGE = 30;
@@ -76,7 +78,12 @@ class TroubleTicketController extends Controller
                 'issueRef:id,name',
                 'deviceRef:id,name',
                 'technician:id,name',
-            ]);
+                // Penanda keuangan per baris, tanpa query per tiket.
+                'requests',
+                'requests.budgetRequest:id,code,status,deleted_at',
+                'budgetRequest:id,code,status',
+            ])
+            ->when($request->query('keuangan') === 'open', fn ($q) => $q->financeOpen());
 
         [$tickets, $terpotong, $total] = $this->cappedRows($query, 'trouble_tickets.created_at');
 
@@ -109,9 +116,11 @@ class TroubleTicketController extends Controller
             ],
             // Tiket yang baru saja dibuat — disorot sebentar di daftar.
             'baruIds' => array_map('intval', (array) session('tt_baru', [])),
-            // Tombol Close di kolom Action baris Progress Done. Kelayakan per
-            // baris tetap diperiksa ulang server lewat canApproveClose().
-            'canApprove' => $user->hasRole(AccessRoles::TROUBLE_TICKET_APPROVE),
+            // Tombol Close di kolom Action baris Progress Done: hanya tiket bawahan
+            // (cermin canApproveClose(), yang tetap memeriksa ulang di server).
+            'canApprove' => $user->hasRole(AccessRoles::TROUBLE_TICKET_SUPERVISE),
+            'bawahanIds' => app(\App\Services\OrgHierarchy::class)->subordinateIds((int) $user->id)->all(),
+            'filterKeuangan' => $request->query('keuangan') === 'open',
             // Tombol "Buat Tiket" — teknisi hanya mengerjakan tiket, tidak membuatnya.
             'canCreate' => ! $user->hasRole(AccessRoles::TROUBLE_TICKET_CREATE_DENIED),
             'userId' => (int) $user->id,
@@ -135,6 +144,9 @@ class TroubleTicketController extends Controller
                 'site:id,tid,sitename', 'customer:id,name',
                 'deviceRef:id,name', 'rcaRef:id,name', 'subRcaRef:id,name',
                 'technician:id,name',
+                'requests',
+                'requests.budgetRequest:id,code,status,deleted_at',
+                'budgetRequest:id,code,status',
             ])
             ->when($ids->isNotEmpty(), fn ($q) => $q->whereIn('trouble_tickets.id', $ids))
             ->orderByDesc('trouble_tickets.updated_at')
@@ -148,7 +160,7 @@ class TroubleTicketController extends Controller
             'No. TT', 'Customer', 'Site ID', 'Nama Site', 'RCA', 'Sub-RCA', 'Aging (hari)', 'Severity',
             'Device', 'Keterangan', 'Teknisi', 'Status', 'Plan', 'Target Online',
             'Response (menit)', 'Travel (menit)', 'Resolution (menit)', 'Date Open', 'Dibuat', 'Date Update',
-            'Closed', 'RCA Penyelesaian', 'Sub-RCA Penyelesaian', 'Action',
+            'Closed', 'RCA Penyelesaian', 'Sub-RCA Penyelesaian', 'Action', 'Status Keuangan',
         ];
         $menit = fn (array $m) => $m['seconds'] === null ? null : round($m['seconds'] / 60, 1);
         $tgl = fn ($d) => $d?->format('Y-m-d H:i');
@@ -173,6 +185,7 @@ class TroubleTicketController extends Controller
                 $menit($t->slaMetric('response')), $menit($t->slaMetric('travel')), $menit($t->slaMetric('resolution')),
                 $tgl($t->reported_at), $tgl($t->created_at), $tgl($t->updated_at), $tgl($t->closed_at),
                 $t->rca, $t->sub_rca, $t->action,
+                ['NONE' => '-', 'OPEN' => 'Belum selesai', 'SETTLED' => 'Selesai'][$t->financialState()],
             ], null, 'A'.$baris);
             $baris++;
         }
@@ -253,8 +266,8 @@ class TroubleTicketController extends Controller
             // pilihan yang menghasilkan site kosong.
             'customers' => $customers,
             /* Satu customer saja: kotak pilihan diganti teks baca-saja.
-               Lebih dari satu team dengan customer berbeda tetap memilih,
-               hanya daftarnya yang menyempit. */
+               Lebih dari satu customer (dari satu team atau beberapa team)
+               tetap memilih, hanya daftarnya yang menyempit. */
             'customerTerkunci' => $customerIds->isNotEmpty() && $customers->count() === 1
                 ? $customers->first()
                 : null,
@@ -285,13 +298,17 @@ class TroubleTicketController extends Controller
             return collect();
         }
 
-        return Team::query()
+        $teams = Team::query()
             ->where('teams.status', 'ACTIVE')
-            ->whereNotNull('customer_id')
             ->where(fn ($q) => $q
                 ->where('leader_id', $user->id)
-                ->orWhereHas('members', fn ($m) => $m->where('user_id', $user->id)->where('status', 'ACTIVE')))
-            ->pluck('customer_id')
+                ->orWhereHas('members', fn ($m) => $m->where('user_id', $user->id)->where('status', 'ACTIVE')));
+
+        $customerIds = Team::supportsCustomerList()
+            ? DB::table('team_customers')->whereIn('team_id', $teams->select('teams.id'))->pluck('customer_id')
+            : $teams->whereNotNull('customer_id')->pluck('customer_id');
+
+        return $customerIds
             ->map(fn ($id) => (int) $id)
             ->unique()
             ->values();
@@ -494,11 +511,12 @@ class TroubleTicketController extends Controller
            BudgetRequestController::submitRealization(). Modal settlement merender
            satu CR sekaligus: ?settle=<id CR> memilihnya, default CR pertama yang berhak. */
         $crTiket = $this->workflow->costRequestsOf($ticket);
-        $bolehSettleUser = $this->workflow->isTechnician($user, $ticket)
-            || $user->hasRole(['superadmin', 'manager', 'supervisor']);
-        $settleList = $bolehSettleUser
-            ? $crTiket->filter(fn ($cr) => in_array($cr->status, ['PAID', 'SETTLE_REJECTED'], true))->values()
-            : collect();
+        // Hanya pemilik dana yang mengisi settlement; yang sedang direview terkunci.
+        $settleList = $crTiket
+            ->filter(fn ($cr) => in_array($cr->status, ['PAID', 'SETTLE_REJECTED'], true)
+                && ($this->workflow->isSettlementOwner($user, $cr) || $user->hasRole(AccessRoles::TROUBLE_TICKET_FULL_SCOPE))
+                && ! TroubleTicketRequest::settlementInReview((int) $cr->id))
+            ->values();
         $settleCr = $settleList->firstWhere('id', (int) request()->query('settle')) ?? $settleList->first();
         $bolehSettle = $settleCr !== null;
 
@@ -560,9 +578,16 @@ class TroubleTicketController extends Controller
            teknisi hanya mengajukan dana. Hak tiap tombol dihitung di workflow. */
         $pengajuan = $ticket->requests()
             ->with(['requestType:id,name', 'budgetPlan:id,code,description', 'cluster:id,name', 'beneficiary:id,nickname,complete_name',
-                'requester:id,name', 'reviewer:id,name', 'budgetRequest:id,code,status', 'items.attachments', 'attachments'])
+                'requester:id,name', 'reviewer:id,name', 'budgetRequest', 'items.attachments', 'attachments'])
             ->get();
-        $flagPengajuan = $pengajuan->mapWithKeys(function ($r) use ($user, $ticket) {
+        $kwitansi = \App\Models\SettlementReceipt::available()
+            ? \App\Models\SettlementReceipt::where('trouble_ticket_id', $ticket->id)->orderByDesc('id')->get()
+                ->filter(fn ($k) => $pengajuan->pluck('budgetRequest')->filter()->contains(fn ($cr) => (int) $cr->id === (int) $k->budget_request_id
+                    && $this->workflow->canViewFinance($user, $ticket, $cr)))
+                ->groupBy('budget_request_id')
+            : collect();
+        $sudahDiulang = $this->workflow->resubmittedIds($ticket);
+        $flagPengajuan = $pengajuan->mapWithKeys(function ($r) use ($user, $ticket, $sudahDiulang) {
             $kelola = $this->workflow->canManageRequest($user, $ticket, $r);
             $review = $this->workflow->canReviewRequest($user, $ticket, $r);
 
@@ -571,6 +596,18 @@ class TroubleTicketController extends Controller
                 'submit' => $kelola && $r->status === TroubleTicketRequest::DRAFT,
                 'review' => $review && $r->status === TroubleTicketRequest::SUBMITTED,
                 'cancel' => ($kelola || $review) && in_array($r->status, TroubleTicketRequest::CANCELLABLE, true),
+                // Manager: approve yang langsung mengajukan CR ke Head.
+                'direct' => $review && $r->status === TroubleTicketRequest::SUBMITTED
+                    && $this->workflow->canDirectApprove($user, $ticket, $r),
+                // CR gugur: kebutuhan dana diajukan ulang sebagai pengajuan baru.
+                'resubmit' => $kelola && $r->status === TroubleTicketRequest::APPROVED && $r->costRequestGone()
+                    && $this->workflow->canRequest($user, $ticket) && ! $sudahDiulang->contains((int) $r->id),
+                'settle_send' => TroubleTicketRequest::supportsSettlementReview()
+                    && in_array($r->budgetRequest?->status, ['PAID', 'SETTLE_REJECTED'], true)
+                    && $r->budgetRequest?->isCashAdvance()
+                    && $this->workflow->isSettlementOwner($user, $r->budgetRequest)
+                    && $r->settlement_review_status !== TroubleTicketRequest::REVIEW_PENDING,
+                'settle_review' => $review && $r->settlement_review_status === TroubleTicketRequest::REVIEW_PENDING,
             ]];
         });
         $jenisCr = RequestType::whereNotNull('name')->where('name', '!=', '')->orderBy('name')->get()
@@ -665,6 +702,9 @@ class TroubleTicketController extends Controller
                yang memang sudah boleh menyettle di modul Cost Request.
                Gerbang sebenarnya tetap di BudgetRequestController. */
             'canSettle' => $bolehSettle,
+            'kwitansi' => $kwitansi,
+            'financeBlockers' => $ticket->financialBlockers(),
+            'financeState' => $ticket->financialState(),
             'settleList' => $settleList,
             'settleCr' => $settleCr,
             'settleRows' => $settleRows,
@@ -926,9 +966,60 @@ class TroubleTicketController extends Controller
     {
         $data = $request->validate(['notes' => 'nullable|string|max:500']);
 
-        $req = $this->workflow->approveRequest($ticket, Auth::user(), $requestId, $data['notes'] ?? null);
+        $langsung = $request->boolean('direct');
+        $req = $this->workflow->approveRequest($ticket, Auth::user(), $requestId, $data['notes'] ?? null, $langsung);
 
-        return back()->with('success', 'Pengajuan biaya disetujui. Cost Request draft: ' . ($req->budgetRequest?->code ?? '-') . '.');
+        return back()->with('success', 'Pengajuan dana disetujui. Cost Request ' . ($langsung ? 'diajukan ke Head' : 'draft') . ': ' . ($req->budgetRequest?->code ?? '-') . '.');
+    }
+
+    /** CR pengajuan ini gugur: kebutuhan dananya menjadi pengajuan baru berstatus Draft. */
+    public function resubmitRequest(TroubleTicket $ticket, int $requestId)
+    {
+        $baru = $this->workflow->resubmitRequest($ticket, Auth::user(), $requestId);
+
+        return redirect()->route('trouble-ticket.show', [$ticket, 'tab' => 'pengajuan'])
+            ->with('success', 'Pengajuan baru ' . $baru->display_number . ' dibuat sebagai Draft.');
+    }
+
+    /** Teknisi mengirim settlement ke atasannya. */
+    public function settlementSubmit(TroubleTicket $ticket, int $crId)
+    {
+        $this->workflow->submitSettlement($ticket, Auth::user(), $crId);
+
+        return redirect()->route('trouble-ticket.show', [$ticket, 'tab' => 'pengajuan'])
+            ->with('success', 'Settlement dikirim ke atasan untuk direview.');
+    }
+
+    /** Atasan meneruskan settlement ke Finance, atau mengembalikannya ke teknisi. */
+    public function settlementReview(Request $request, TroubleTicket $ticket, int $crId)
+    {
+        $data = $request->validate([
+            'decision' => 'required|in:approve,return',
+            'notes'    => 'nullable|string|max:500',
+        ]);
+
+        if ($data['decision'] === 'approve') {
+            $this->workflow->approveSettlement($ticket, Auth::user(), $crId, $data['notes'] ?? null);
+
+            return back()->with('success', 'Settlement diteruskan ke Finance.');
+        }
+
+        $this->workflow->returnSettlement($ticket, Auth::user(), $crId, (string) ($data['notes'] ?? ''));
+
+        return back()->with('success', 'Settlement dikembalikan ke teknisi.');
+    }
+
+    /** PDF kwitansi, termasuk versi lama. Mengikuti keterlihatan tiket. */
+    public function receipt(TroubleTicket $ticket, int $receipt)
+    {
+        $k = \App\Models\SettlementReceipt::where('trouble_ticket_id', $ticket->id)->findOrFail($receipt);
+
+        abort_unless($this->workflow->canViewFinance(Auth::user(), $ticket, $k->budgetRequest), 403);
+
+        return Storage::disk('secure')->response($k->pdf_path, $k->receipt_number . '.pdf', [
+            'Content-Type' => 'application/pdf',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     public function rejectRequest(Request $request, TroubleTicket $ticket, int $requestId)

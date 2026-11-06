@@ -59,6 +59,14 @@ class TroubleTicketMessage extends Model
         'request_approved'  => 'Cost request approved',
         'request_rejected'  => 'Cost request rejected',
         'request_cancelled' => 'Cost request cancelled',
+        'request_resubmitted' => 'Cost request re-created',
+        // Cermin status Cost Request tiket ini (BudgetRequest::addLog()).
+        'cost_request_status' => 'Cost Request update',
+        // Settlement: dikirim teknisi, direview atasan, lalu masuk alur Finance.
+        'settlement_submitted' => 'Settlement submitted',
+        'settlement_approved'  => 'Settlement approved',
+        'settlement_returned'  => 'Settlement returned',
+        'financial_closed'     => 'Finance closed',
         // Dipakai riwayat lama: sejak 20 Okt 2026 tahap Trip dimulai bersama
         // keberangkatan ('travel_started'), tidak ada kejadian tersendiri.
         'trip_due'          => 'Moved to Trip',

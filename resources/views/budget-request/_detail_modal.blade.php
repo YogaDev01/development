@@ -158,6 +158,12 @@ $(function () {
 
             $('#infoCode').html('<span class="badge badge-dark px-2 py-1">' + d.code + '</span>');
             $('#infoDesc').html(d.is_nob ? '<span class="badge badge-danger mr-1" style="font-size:9px;">NOB</span>' + d.description : d.description);
+            if (d.ticket) {
+                var tiketTeks = 'Tiket ' + d.ticket.number + (d.ticket.request ? ' · ' + d.ticket.request : '');
+                $('#infoDesc').append(' ', d.ticket.url
+                    ? $('<a class="badge badge-light border ml-1">').attr('href', d.ticket.url).text(tiketTeks)
+                    : $('<span class="badge badge-light border ml-1">').text(tiketTeks));
+            }
             $('#infoType').html('<span class="badge badge-info px-2 py-1">' + d.type + '</span>');
             $('#infoProject').text(d.project);
             $('#infoCluster').text(d.cluster);

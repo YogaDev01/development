@@ -1682,7 +1682,53 @@
             </div>
             @endif
 
-            {{-- TROUBLE TICKET — REVIEW PENGAJUAN BIAYA (supervisor team teknisi; flat list, tautan ke tab Pengajuan) --}}
+            {{-- TROUBLE TICKET — TINDAKAN LAIN (penugasan, revisi, settlement, penutupan, CR draft) --}}
+            @if($ticketActions->isNotEmpty())
+            <div id="tl-tt-action" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-tools mr-1"></i> Trouble Ticket — Tindakan
+                        <span class="badge badge-secondary ml-1">{{ $ticketActions->count() }}</span>
+                    </h3>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th scope="col" class="text-nowrap" style="width:170px;">Tindakan</th>
+                                    <th scope="col" class="text-nowrap" style="width:150px;">Referensi</th>
+                                    <th scope="col">Keterangan</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:100px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($ticketActions as $aksi)
+                                <tr class="todo-row" data-export-key="{{ $aksi->todo_key }}:{{ $aksi->id }}" data-search="{{ strtolower($aksi->todo_label . ' ' . $aksi->todo_ref . ' ' . $aksi->todo_desc) }}">
+                                    <td class="text-nowrap">{{ $aksi->todo_label }}</td>
+                                    <td class="text-nowrap">{{ $aksi->todo_ref ?? '-' }}</td>
+                                    <td>{{ \Illuminate\Support\Str::limit($aksi->todo_desc, 90) }}</td>
+                                    <td class="text-center text-nowrap text-muted">{{ $aksi->aging_label }}</td>
+                                    <td class="text-center text-nowrap">
+                                        <div class="action-buttons ts-actions">
+                                            @if($aksi->todo_url)
+                                            <a href="{{ $aksi->todo_url }}" class="ts-action-primary" title="Buka">
+                                                <i class="fas fa-arrow-right" aria-hidden="true"></i><span class="ts-al">Buka</span>
+                                            </a>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            {{-- TROUBLE TICKET — REVIEW PENGAJUAN BIAYA (atasan teknisi; flat list, tautan ke tab Pengajuan) --}}
             @if($ticketRequestReview->isNotEmpty())
             <div id="tl-tt-request" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
                 <div class="card-header">

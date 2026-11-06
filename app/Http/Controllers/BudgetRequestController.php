@@ -177,73 +177,7 @@ class BudgetRequestController extends Controller
      */
     private function cashAdvanceQuota(?int $beneficiaryId, ?int $excludeCrId = null): ?array
     {
-        $ben = $beneficiaryId ? Beneficiary::with('pic')->find($beneficiaryId) : null;
-        if (! $ben || ! $ben->pic_id) return null;
-
-        // Batas dari Master PIC. Token bebas huruf/angka, jadi hanya dipakai
-        // kalau isinya memang angka; kosong/0 = aspek itu tanpa batas.
-        $pic         = $ben->pic;
-        $limitCount  = is_numeric($pic?->token) ? (int) $pic->token : null;
-        $limitAmount = $pic?->nominal !== null ? (int) $pic->nominal : null;
-        if (! $limitCount)  $limitCount  = null;
-        if (! $limitAmount) $limitAmount = null;
-        if ($limitCount === null && $limitAmount === null) return null;
-
-        $names = self::CASH_ADVANCE_TYPE_NAMES;
-
-        $base = fn () => BudgetRequest::query()
-            ->join('beneficiaries', 'beneficiaries.id', '=', 'budget_request.beneficiary_id')
-            ->join('request_type', 'request_type.id', '=', 'budget_request.type_id')
-            ->where('beneficiaries.pic_id', $ben->pic_id)
-            ->whereRaw(
-                'LOWER(TRIM(request_type.name)) IN (' . implode(',', array_fill(0, count($names), '?')) . ')',
-                $names
-            )
-            ->when($excludeCrId, fn ($q) => $q->where('budget_request.id', '!=', $excludeCrId));
-
-        // Jumlah pengajuan: hanya yang sudah cair (PAID ke atas) dan belum tutup.
-        $usedCount = (int) $base()
-            ->whereIn('budget_request.status', BudgetRequest::CA_COUNTED_STATUSES)
-            ->count();
-
-        /*
-        | Nominal: seluruh CR yang belum lepas — termasuk yang masih diproses
-        | (Draft/Submitted/dst) supaya pipeline-nya tetap memesan pagu.
-        |
-        | Lepasnya SAMA dengan slot jumlah pengajuan: begitu approval settlement
-        | tuntas di Second Approve. CR yang sudah lewat tahap itu lalu masuk
-        | batch Treasury (statusnya kembali QUEUED untuk membayar Expense Claim)
-        | juga tidak dihitung lagi — makanya dicek lewat jejak lognya, bukan
-        | status saat ini.
-        */
-        $usedAmount = (int) $base()
-            ->whereNotIn('budget_request.status', BudgetRequest::CA_QUOTA_RELEASED_STATUSES)
-            ->where(function ($q) {
-                // Lepas di Second Approve, dan tetap lepas saat klaimnya
-                // menunggu dibayar Treasury (status kembali QUEUED).
-                $q->where('budget_request.status', '!=', 'SECOND_APPROVED')
-                  ->where(function ($w) {
-                      $w->where('budget_request.status', '!=', 'QUEUED')
-                        ->orWhereNotExists(function ($sq) {
-                            $sq->selectRaw(1)
-                               ->from('request_status_logs')
-                               ->whereColumn('request_status_logs.budget_request_id', 'budget_request.id')
-                               ->where('request_status_logs.status_to', 'SECOND_APPROVED');
-                        });
-                  });
-            })
-            ->sum('budget_request.amount');
-
-        return [
-            'pic_id'           => (int) $ben->pic_id,
-            'pic_name'         => $pic?->pic ?? '-',
-            'used_count'       => $usedCount,
-            'used_amount'      => $usedAmount,
-            'limit_count'      => $limitCount,
-            'limit_amount'     => $limitAmount,
-            'remaining_count'  => $limitCount  === null ? null : max(0, $limitCount - $usedCount),
-            'remaining_amount' => $limitAmount === null ? null : max(0, $limitAmount - $usedAmount),
-        ];
+        return \App\Support\CashAdvanceQuota::usage($beneficiaryId, $excludeCrId);
     }
 
     /** Total nominal rincian yang sedang diajukan (amount x qty). */
@@ -261,24 +195,7 @@ class BudgetRequestController extends Controller
      */
     private function cashAdvanceQuotaError(?int $beneficiaryId, int $amount, ?int $excludeCrId = null): ?string
     {
-        $q = $this->cashAdvanceQuota($beneficiaryId, $excludeCrId);
-        if (! $q) return null;
-
-        $rp = fn ($n) => 'Rp ' . number_format($n, 0, ',', '.');
-
-        if ($q['remaining_count'] !== null && $q['remaining_count'] < 1) {
-            return 'Limit Cash Advance PIC "' . $q['pic_name'] . '" sudah habis: '
-                . $q['used_count'] . ' dari ' . $q['limit_count'] . ' pengajuan masih berjalan. '
-                . 'Selesaikan (Close) pengajuan yang berjalan dulu.';
-        }
-
-        if ($q['remaining_amount'] !== null && $amount > $q['remaining_amount']) {
-            return 'Limit nominal Cash Advance PIC "' . $q['pic_name'] . '" tidak mencukupi. '
-                . 'Terpakai ' . $rp($q['used_amount']) . ' dari ' . $rp($q['limit_amount'])
-                . ', sisa ' . $rp($q['remaining_amount']) . ', sedangkan pengajuan ini ' . $rp($amount) . '.';
-        }
-
-        return null;
+        return \App\Support\CashAdvanceQuota::error($beneficiaryId, $amount, $excludeCrId);
     }
 
     /**
@@ -790,6 +707,12 @@ class BudgetRequestController extends Controller
 
             if ($hasBdCol) {
                 $payload['budget_detail_id'] = $bd->id ?? null;
+            }
+
+            // Hanya dikirim form tiket; form Cost Request tidak menimpanya.
+            if (BudgetRequestRealization::hasTransactionColumns() && array_key_exists('transaction_date', $row)) {
+                $payload['transaction_date'] = ($row['transaction_date'] ?? null) ?: null;
+                $payload['vendor_name']      = trim((string) ($row['vendor_name'] ?? '')) ?: null;
             }
 
             $realization = $match[$i] ?? null;
@@ -1553,6 +1476,8 @@ class BudgetRequestController extends Controller
             'status_label'     => $cr->status_label,
             'status_color'     => $cr->status_color,
             'is_cash_advance'  => $cr->isCashAdvance(),
+            // Tiket asal CR ini, bila ada; tautannya hanya untuk yang boleh membuka tiket.
+            'ticket'           => $this->ticketOfCr($cr),
             // Apakah user yang login boleh takeout/restore item pada tahap CR ini.
             'can_moderate_items' => ! $hanyaBaca && $cr->canModerateItems(Auth::user()),
             // true = dibuka lewat jalur "pernah ditindak" (tanpa aksi apa pun).
@@ -2237,32 +2162,12 @@ class BudgetRequestController extends Controller
             return back()->with('error', 'Hanya CR berstatus DRAFT yang dapat disubmit.');
         }
 
-        // Aturan lampiran — Cash Advance wajib Lampiran Tambahan (global),
-        // tipe lain wajib Lampiran Item di tiap baris rincian.
-        if ($cr->isCashAdvance()) {
-            if ($cr->attachments()->count() === 0) {
-                return back()->with('error', 'Tidak bisa submit: pengajuan Cash Advance wajib punya minimal 1 file di "Lampiran Tambahan / Pendukung".');
-            }
-        } else {
-            $withoutAtt = $cr->details()
-                ->where('status', '!=', 'TAKEOUT')
-                ->whereDoesntHave('attachments')
-                ->count();
-
-            if ($withoutAtt > 0) {
-                return back()->with('error', 'Tidak bisa submit: masih ada ' . $withoutAtt . ' baris Rincian Pengajuan tanpa "Lampiran Item".');
-            }
+        // Lampiran & limit Cash Advance: satu sumber dengan Manager direct approval.
+        if ($msg = $cr->submissionError()) {
+            return back()->with('error', $msg);
         }
 
-        // Limit Cash Advance per PIC — dicek ulang di sini karena limit bisa
-        // terpakai CR lain sejak draft ini dibuat.
-        if ($cr->isCashAdvance()) {
-            $msg = $this->cashAdvanceQuotaError($cr->beneficiary_id, (int) $cr->amount, $cr->id);
-            if ($msg) return back()->with('error', $msg);
-        }
-
-        $cr->update(['status' => 'SUBMITTED', 'submitted_at' => now()]);
-        $cr->addLog('DRAFT', 'SUBMITTED', 'submitted');
+        $cr->markSubmitted();
 
         NotifyService::send(
             $this->headUsers(),
@@ -3191,6 +3096,8 @@ class BudgetRequestController extends Controller
     /**
      * Bukti wajib per baris settlement (keputusan 20 Okt 2026):
      *
+     * Sejak 6 Nov 2026 bukti baris cukup salah satu: nota atau kwitansi digital.
+     * Aturan lama di bawah ini dicatat untuk riwayat:
      *   a. Baris bernilai > 0 yang SUDAH ditandatangani penerima dana wajib
      *      punya lampiran — tanda tangan tanpa bukti belanja tidak bisa
      *      dipertanggungjawabkan.
@@ -3225,7 +3132,6 @@ class BudgetRequestController extends Controller
         $ttdTersimpan   = $cr->realizationAttachments()->where('original_name', 'like', 'ttd-%')->pluck('original_name')->all();
         $nomorLama      = $this->legacySignatureNumbers($cr);
         $kurangLampiran = [];
-        $kurangTtd      = [];
 
         $settlePerItem = [];
         // Baris pertama (urutan form) tiap item asal — satu-satunya baris yang
@@ -3276,10 +3182,6 @@ class BudgetRequestController extends Controller
                 continue;
             }
 
-            if ($adaSelisih && ! $ttd) {
-                $kurangTtd[] = $no;
-            }
-
             $adaBerkas = collect((array) $request->file("realizations.$i.attachments", []))
                 ->contains(fn ($f) => $f && $f->isValid());
 
@@ -3288,7 +3190,9 @@ class BudgetRequestController extends Controller
                     ->contains(fn ($a) => ! in_array((string) $a->id, $hapusIds, true));
             }
 
-            if (! $adaBerkas) {
+            // Bukti baris cukup salah satu: nota atau kwitansi digital. Tidak semua
+            // transaksi punya penerima yang bisa menandatangani (tol, minimarket).
+            if (! $adaBerkas && ! $ttd) {
                 $kurangLampiran[] = $no;
             }
         }
@@ -3296,15 +3200,11 @@ class BudgetRequestController extends Controller
         $pesan = [];
 
         if ($kurangLampiran) {
-            $pesan[] = '"Lampiran Item" belum diisi pada baris no. ' . implode(', ', $kurangLampiran) . '.';
-        }
-
-        if ($kurangTtd) {
-            $pesan[] = '"E-sign" belum diisi pada baris no. ' . implode(', ', $kurangTtd) . '.';
+            $pesan[] = 'Nota atau E-sign belum diisi pada baris no. ' . implode(', ', $kurangLampiran) . '.';
         }
 
         if ($tanpaBaris) {
-            $pesan[] = 'Item berikut tidak punya baris settlement dan dihitung Settle 0, sehingga wajib Lampiran & E-sign: '
+            $pesan[] = 'Item berikut tidak punya baris settlement dan dihitung Settle 0, sehingga wajib Nota atau E-sign: '
                 . implode('; ', $tanpaBaris) . '. Baris item tersebut ditampilkan lagi di form — isi Settle-nya atau lengkapi buktinya.';
         }
 
@@ -3388,12 +3288,38 @@ class BudgetRequestController extends Controller
             return back()->with('error', 'Hanya CR berstatus PAID atau Settle Rejected yang dapat diajukan realisasi.');
         }
 
+        // Pengajuan dana baru menempuh review atasan di halaman tiket dulu.
+        if (\App\Models\TroubleTicketRequest::settlementViaTicket($cr->id)) {
+            return back()->with('error', 'Settlement CR ini dikirim dari halaman Trouble Ticket, lewat review atasan teknisi.');
+        }
+
         if ($error = $this->validateRealizationInput($request, $cr)) {
             return $error;
         }
 
+        if (\App\Models\TroubleTicketRequest::settlementInReview($cr->id)) {
+            return back()->with('error', 'Settlement sedang direview atasan dan tidak dapat diajukan dari sini.');
+        }
+
         DB::transaction(function () use ($request, $cr) {
-            $this->syncRealizationData($request, $cr);
+            $map = $this->syncRealizationData($request, $cr);
+            app(\App\Services\SettlementReceiptService::class)->sync($request, $cr->refresh(), $map);
+
+            /*
+            | Periksa ulang SETELAH sync: validasi di atas menghitung salinan PDF
+            | kwitansi sebagai Lampiran Item, padahal sync() menggugurkan dan
+            | melepas salinan itu bila nilai barisnya diubah. Tanpa cek ini CR
+            | bisa REALIZED dengan baris Settle > 0 tanpa lampiran. Exception
+            | membatalkan seluruh transaksi.
+            */
+            $tanpaLampiran = $cr->realizations()->where('total', '>', 0)->whereDoesntHave('attachments')
+                ->pluck('description')->map(fn ($d) => '"' . $d . '"')->implode(', ');
+            if ($tanpaLampiran !== '') {
+                throw new \Illuminate\Http\Exceptions\HttpResponseException(back()->withInput()->with(
+                    'error',
+                    '"Lampiran Item" wajib untuk baris bernilai Settle > 0. Kwitansi digital gugur karena nilai baris diubah; lampirkan nota untuk baris: ' . $tanpaLampiran . '.'
+                ));
+            }
 
             $dariStatus = $cr->status;
             $cr->update([
@@ -3430,21 +3356,35 @@ class BudgetRequestController extends Controller
     }
 
     /**
-     * User ini teknisi yang ditugaskan pada tiket yang melahirkan CR ini?
+     * User ini pemilik settlement CR yang lahir dari tiket?
      *
-     * Dipakai sebagai PELEBARAN SEMPIT gerbang settlement (20 Okt 2026):
-     * teknisi hanya boleh pada CR tiketnya sendiri. Kalau kolom penghubungnya
-     * belum ada (migrasi belum dijalankan), jawabannya false — perilaku lama.
+     * Dipakai sebagai PELEBARAN SEMPIT gerbang settlement: pemilik adalah pemohon
+     * pengajuan dana, karena dialah yang memegang uangnya, walau tiketnya sudah
+     * dialihkan. CR data lama tanpa pengajuan mengikuti teknisi tiket.
      */
     private function isTicketTechnicianOfCr(User $user, BudgetRequest $cr): bool
     {
-        if (! Schema::hasColumn('trouble_tickets', 'budget_request_id')) {
-            return false;
+        return app(\App\Services\TroubleTicketWorkflow::class)->isSettlementOwner($user, $cr);
+    }
+
+    /** Ringkasan tiket asal CR untuk drawer; null bila CR bukan dari tiket. */
+    private function ticketOfCr(BudgetRequest $cr): ?array
+    {
+        $ticket = TroubleTicket::forCostRequest($cr->id)->first(['id', 'ticket_number']);
+
+        if (! $ticket) {
+            return null;
         }
 
-        return TroubleTicket::forCostRequest($cr->id)
-            ->where('assigned_to', $user->id)
-            ->exists();
+        $fr = \App\Models\TroubleTicketRequest::where('budget_request_id', $cr->id)->first();
+
+        return [
+            'number'  => $ticket->ticket_number,
+            'request' => $fr?->display_number,
+            'url'     => TroubleTicket::visibleTo(Auth::user())->whereKey($ticket->id)->exists()
+                ? route('trouble-ticket.show', $ticket) . '?tab=pengajuan'
+                : null,
+        ];
     }
 
     /**
@@ -3566,6 +3506,24 @@ class BudgetRequestController extends Controller
             return back()->with('error', 'Hanya CR berstatus PAID atau Settle Rejected yang dapat disimpan.');
         }
 
+        if (\App\Models\TroubleTicketRequest::settlementInReview($cr->id)) {
+            return back()->with('error', 'Settlement sedang direview atasan dan tidak dapat diubah.');
+        }
+
+        // CR dari pengajuan dana baru: hanya pemilik dana yang mengisi settlement,
+        // supaya nilai baris tidak berubah tanpa sepengetahuan pemegang uang.
+        if (\App\Models\TroubleTicketRequest::settlementViaTicket($cr->id)
+            && ! $user->hasRole('superadmin') && ! $this->isTicketTechnicianOfCr($user, $cr)) {
+            return back()->with('error', 'Settlement CR ini diisi pemohon dana dari halaman Trouble Ticket.');
+        }
+
+        $request->validate([
+            'realizations.*.transaction_date' => 'nullable|date',
+            'realizations.*.vendor_name'      => 'nullable|string|max:150',
+            'recipient_names.*'               => 'nullable|string|max:150',
+        ]);
+        app(\App\Services\SettlementReceiptService::class)->assertReady($request);
+
         if ($error = $this->validateRealizationInput($request, $cr, false)) {
             return $error;
         }
@@ -3578,8 +3536,15 @@ class BudgetRequestController extends Controller
         }
 
         DB::transaction(function () use ($request, $cr) {
+            // Dikunci: Kirim Settlement yang bersamaan menunggu, lalu dicek ulang di sini.
+            \App\Models\TroubleTicketRequest::where('budget_request_id', $cr->id)->lockForUpdate()->first();
+            if (\App\Models\TroubleTicketRequest::settlementInReview($cr->id)) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['realizations' => 'Settlement sedang direview atasan dan tidak dapat diubah.']);
+            }
+
             $map = $this->syncRealizationData($request, $cr);
             $this->storeSettlementSignatures($request, $cr, $map);
+            app(\App\Services\SettlementReceiptService::class)->sync($request, $cr->refresh(), $map);
         });
 
         // Permintaan dari modal tiket cukup kembali ke halaman asalnya.

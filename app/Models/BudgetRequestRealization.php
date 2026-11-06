@@ -19,13 +19,24 @@ class BudgetRequestRealization extends Model
         'total',
         'notes',
         'change_note',
+        'transaction_date',
+        'vendor_name',
     ];
 
     protected $casts = [
         'amount' => 'integer',
         'qty'    => 'integer',
         'total'  => 'integer',
+        'transaction_date' => 'date',
     ];
+
+    /** Kolom tanggal transaksi & vendor belum tentu ada (migrasi menyusul di host). */
+    public static function hasTransactionColumns(): bool
+    {
+        static $ada = null;
+
+        return $ada ??= \Illuminate\Support\Facades\Schema::hasColumn('budget_request_realizations', 'transaction_date');
+    }
 
     public function budgetRequest()
     {

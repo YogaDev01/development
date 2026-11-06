@@ -94,9 +94,10 @@ class TeamController extends Controller
         $parentOptions = $this->parentOptions();
         $accessGroups = $this->accessGroupOptions();
         $selectedAccessGroupIds = [];
+        $selectedCustomerIds = [];
         $canEditAccess = $this->canEditAccess();
 
-        return view('team.create', compact('departments', 'users', 'customers', 'parentOptions', 'accessGroups', 'selectedAccessGroupIds', 'canEditAccess'));
+        return view('team.create', compact('departments', 'users', 'customers', 'selectedCustomerIds', 'parentOptions', 'accessGroups', 'selectedAccessGroupIds', 'canEditAccess'));
     }
 
     /*
@@ -122,13 +123,14 @@ class TeamController extends Controller
             $team->save();
 
             $memberEvents = $this->syncMembers($team, $validated['members']);
+            $customerBerubah = $this->syncCustomers($team, $validated);
 
             $team->addLog('created', [
                 'name'      => $team->name,
                 'leader'    => $this->usernameOf($team->leader_id),
                 'parent'    => $this->teamNameOf($team->parent_team_id),
                 'members'   => collect($memberEvents)->pluck('user')->implode(', '),
-            ]);
+            ] + ($customerBerubah ? ['customer_id' => $customerBerubah[1]] : []));
 
             if ($this->canEditAccess() && ! empty($validated['access_group_sync'])) {
                 $this->syncAccessGroups($team, $validated['access_group_ids'] ?? []);
@@ -298,67 +300,10 @@ class TeamController extends Controller
         return ($anak[0] ?? collect())->map(fn ($t) => $simpul($t))->values()->all();
     }
 
-    /**
-     * Tempat tiap team di bagan: [team_id => ['type' => member|parent|root, 'team' => id]].
-     *
-     * Aturan penyambungan team (hanya tampilan — tidak memberi akses, K3):
-     *  1. Leader team T yang juga ANGGOTA (bukan leader) team B → team T
-     *     digantung di bawah kartu orang itu di team B. Contoh: Ketut
-     *     memimpin B, Yoga anggota B & leader A → Ketut → Yoga → anggota A.
-     *     Bila ia anggota beberapa team, dipilih membership primary, lalu
-     *     level terkecil, lalu nama team.
-     *  2. Bila tidak ada (1), Induk Team (parent_team_id) → team T beserta
-     *     kartu leader-nya digantung di bawah leader team induk.
-     *  3. Selain itu team menjadi akar.
-     * Penyambungan yang membentuk lingkaran diputus (team menjadi akar).
-     */
+    /** Tempat tiap team di bagan — aturannya di App\Services\OrgHierarchy::attachments(). */
     private function orgAttachments(\Illuminate\Support\Collection $teams): array
     {
-        $byId = $teams->keyBy('id');
-
-        // Membership non-leader per user: [user_id => [[team, member], ...]]
-        $memberOf = [];
-        foreach ($teams as $t) {
-            foreach ($t->activeMembers as $m) {
-                if ($m->user && (int) $m->user_id !== (int) $t->leader_id) {
-                    $memberOf[(int) $m->user_id][] = ['team' => $t, 'member' => $m];
-                }
-            }
-        }
-
-        // 1) Tentukan tempat tiap team: member / parent / root.
-        $attach = [];
-        foreach ($teams as $t) {
-            $leaderId = (int) $t->leader_id;
-            $kandidat = collect($memberOf[$leaderId] ?? [])->sortBy(fn ($x) => [
-                ($x['member']->is_primary ?? false) ? 0 : 1, (int) $x['member']->level, $x['team']->name,
-            ])->first();
-
-            if ($leaderId && $kandidat) {
-                $attach[$t->id] = ['type' => 'member', 'team' => (int) $kandidat['team']->id];
-            } elseif ($t->parent_team_id && $byId->has($t->parent_team_id)) {
-                $attach[$t->id] = ['type' => 'parent', 'team' => (int) $t->parent_team_id];
-            } else {
-                $attach[$t->id] = ['type' => 'root'];
-            }
-        }
-
-        // Putus lingkaran: telusuri rantai penyambungan; bila kembali ke
-        // dirinya, team itu dijadikan akar.
-        foreach ($teams as $t) {
-            $lihat = [];
-            $cur = $t->id;
-            while (($attach[$cur]['type'] ?? 'root') !== 'root') {
-                if (isset($lihat[$cur])) {
-                    $attach[$t->id] = ['type' => 'root'];
-                    break;
-                }
-                $lihat[$cur] = true;
-                $cur = $attach[$cur]['team'];
-            }
-        }
-
-        return $attach;
+        return app(\App\Services\OrgHierarchy::class)->attachments($teams);
     }
 
     /** Satu kartu orang di bagan (Leader View maupun Detail Member). */
@@ -396,8 +341,11 @@ class TeamController extends Controller
         $dipakai   = []; // team yang sudah dirender (penjaga data ganda)
         $kunci     = 0;
 
-        $card = fn ($user, Team $team, string $role, ?string $position, int $level, array $children) =>
-            $this->orgCard($user, $team, $role, $position, $level, $children, $meId, 'oc' . (++$kunci));
+        // Bukan fn(): arrow function menyalin $kunci, sehingga semua kartu mendapat
+        // kunci sama dan garis bagan menganggap semuanya bawahan kartu pertama.
+        $card = function ($user, Team $team, string $role, ?string $position, int $level, array $children) use (&$kunci, $meId) {
+            return $this->orgCard($user, $team, $role, $position, $level, $children, $meId, 'oc' . (++$kunci));
+        };
 
         // Blok "anggota team T" (tanpa kartu leader) + team yang diinduk ke T.
         $blocksOf = null;
@@ -581,6 +529,9 @@ class TeamController extends Controller
         $departments = Department::where('status', 'ACTIVE')->orderBy('name')->get();
         $users = User::where('status', 'ACTIVE')->orderBy('name')->get(['id', 'name', 'username']);
         $customers = Customer::orderBy('name')->get(['id', 'name']);
+        $selectedCustomerIds = Team::supportsCustomerList()
+            ? $team->customers()->pluck('customers.id')->map(fn ($i) => (int) $i)->all()
+            : array_filter([(int) $team->customer_id]);
         $parentOptions = $this->parentOptions($team->id, Team::supportsStructure() ? $team->parent_team_id : null);
         $canEditParent = $this->canEditStructure();
         $accessGroups = $this->accessGroupOptions();
@@ -590,7 +541,7 @@ class TeamController extends Controller
         // Keanggotaan team ber-Akses PO hanya diubah superadmin (review HIGH-2).
         $membersLocked = ! $isSuperadmin && ! empty($selectedAccessGroupIds);
 
-        return view('team.edit', compact('team', 'departments', 'users', 'customers', 'parentOptions', 'canEditParent', 'accessGroups', 'selectedAccessGroupIds', 'canEditAccess', 'isSuperadmin', 'membersLocked'));
+        return view('team.edit', compact('team', 'departments', 'users', 'customers', 'selectedCustomerIds', 'parentOptions', 'canEditParent', 'accessGroups', 'selectedAccessGroupIds', 'canEditAccess', 'isSuperadmin', 'membersLocked'));
     }
 
     /*
@@ -612,6 +563,10 @@ class TeamController extends Controller
             $team = Team::whereKey($team->id)->lockForUpdate()->firstOrFail();
 
             $before = $team->only(['name', 'department_id', 'customer_id', 'parent_team_id', 'leader_id', 'status']);
+            // Perubahan customer dicatat syncCustomers() dengan namanya.
+            if (Team::supportsCustomerList()) {
+                unset($before['customer_id']);
+            }
 
             // Induk team hanya boleh diubah superadmin; pengubah lain (Leader)
             // tidak mengirim/mengubah nilainya.
@@ -656,6 +611,10 @@ class TeamController extends Controller
             $team->save();
 
             $this->logTeamChanges($team, $before);
+
+            if ($customerBerubah = $this->syncCustomers($team, $validated)) {
+                $team->addLog('updated', ['customer_id' => $customerBerubah]);
+            }
 
             foreach ($this->syncMembers($team, $validated['members']) as $event) {
                 $team->addLog($event['action'], ['user' => $event['user']] + ($event['fields'] ? ['fields' => $event['fields']] : []));
@@ -835,15 +794,42 @@ class TeamController extends Controller
     }
 
     /**
-     * ['customer_id' => …] hanya bila kolomnya sudah ada (migrasi
+     * ['customer_id' => customer pertama] hanya bila kolomnya sudah ada (migrasi
      * 2026_10_19_000300). Basis data yang belum dimigrasi menyimpan team
      * seperti sebelumnya, tanpa galat "Unknown column".
      */
     private function customerAttribute(array $validated): array
     {
-        return Team::supportsCustomer()
-            ? ['customer_id' => $validated['customer_id'] ?? null]
+        return Team::supportsCustomer() && ! empty($validated['customer_sync'])
+            ? ['customer_id' => $this->selectedCustomerIds($validated)[0] ?? null]
             : [];
+    }
+
+    /** @return array<int, int> */
+    private function selectedCustomerIds(array $validated): array
+    {
+        return collect($validated['customer_ids'] ?? [])->filter()->map(fn ($i) => (int) $i)->unique()->values()->all();
+    }
+
+    /**
+     * Sinkron customer team ke team_customers.
+     *
+     * @return array{0: string, 1: string}|null nama customer [sebelum, sesudah]; null bila tidak berubah
+     */
+    private function syncCustomers(Team $team, array $validated): ?array
+    {
+        if (! Team::supportsCustomerList() || empty($validated['customer_sync'])) {
+            return null;
+        }
+
+        $sebelum = $team->customers()->orderBy('name')->pluck('name')->implode(', ');
+        $hasil = $team->customers()->sync($this->selectedCustomerIds($validated));
+
+        if (! $hasil['attached'] && ! $hasil['detached']) {
+            return null;
+        }
+
+        return [$sebelum, $team->customers()->orderBy('name')->pluck('name')->implode(', ')];
     }
 
     /** ['parent_team_id' => …] hanya bila migrasi struktur sudah jalan. */
@@ -885,7 +871,11 @@ class TeamController extends Controller
             'name'                  => 'required|string|max:255',
             'department_id'         => 'nullable|exists:departments,id',
             // Customer yang dilayani team — dipakai Trouble Ticket (opsional).
-            'customer_id'           => 'nullable|exists:customers,id',
+            // Penanda seperti access_group_sync: multi-select kosong tidak
+            // terkirim, jadi tanpa penanda ia tak terbedakan dari "tidak diubah".
+            'customer_sync'         => 'nullable|boolean',
+            'customer_ids'          => 'nullable|array',
+            'customer_ids.*'        => 'nullable|integer|distinct|exists:customers,id',
             'parent_team_id'        => 'nullable|integer|exists:teams,id',
             // Akses PO (Access Group) team — hanya dipakai bila superadmin.
             // Penanda bahwa form memang memuat bagian Akses PO: tanpa ini,

@@ -10,8 +10,8 @@ class Team extends Model
         'code',
         'name',
         'department_id',
-        // Customer (project) yang dilayani team ini — dipakai form Buat
-        // Trouble Ticket untuk mengisi customer & menyaring site otomatis.
+        // Customer pertama team ini. Daftar lengkapnya ada di customers();
+        // kolom ini hanya dibaca selama tabel team_customers belum dimigrasi.
         'customer_id',
         // Induk team — HANYA untuk tampilan struktur organisasi. Relasi ini
         // tidak pernah memberi/menurunkan akses data (blueprint 2026-11-06 K3).
@@ -36,6 +36,28 @@ class Team extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    /**
+     * Customer yang dilayani team ini — dipakai form Buat Trouble Ticket untuk
+     * mengisi customer & menyaring site otomatis.
+     */
+    public function customers()
+    {
+        return $this->belongsToMany(Customer::class, 'team_customers');
+    }
+
+    /**
+     * Tabel team_customers sudah ada (migrasi 2026_11_06_000500 dijalankan)?
+     *
+     * Kode di-upload SEBELUM migrate; selama jeda itu team tetap memakai satu
+     * customer di teams.customer_id. Dihitung sekali per permintaan.
+     */
+    public static function supportsCustomerList(): bool
+    {
+        static $ada = null;
+
+        return $ada ??= \Illuminate\Support\Facades\Schema::hasTable('team_customers');
     }
 
     /**

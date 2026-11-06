@@ -4,9 +4,6 @@
 
 @php
     use App\Models\TroubleTicket;
-    use App\Models\TroubleTicketAttachment;
-
-    $accept = collect(TroubleTicketAttachment::EXTENSIONS)->map(fn ($e) => '.' . $e)->implode(',');
 
     /* Satu form bisa menyimpan beberapa tiket sekaligus untuk site & teknisi
        yang sama. Blok gangguan dibangun ulang dari old() supaya isian tidak
@@ -20,7 +17,9 @@
 <div class="content tt-page">
     <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <h1 class="tt-title">Buat Trouble Ticket</h1>
+            <h1 class="tt-title">Buat Trouble Ticket
+                <a href="{{ route('trouble-ticket.index', ['import' => 1]) }}" class="btn btn-outline-success btn-xs ml-2 align-middle"><i class="fas fa-file-import mr-1"></i> Import Excel</a>
+            </h1>
             <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
                 <li class="breadcrumb-item"><a href="#">Workflow</a></li>
                 <li class="breadcrumb-item"><a href="{{ route('trouble-ticket.index') }}">Trouble Ticket</a></li>
@@ -28,7 +27,7 @@
             </ol>
         </div>
 
-        <form action="{{ route('trouble-ticket.store') }}" method="POST" enctype="multipart/form-data" id="frmTtCreate" novalidate>
+        <form action="{{ route('trouble-ticket.store') }}" method="POST" id="frmTtCreate" novalidate>
             @csrf
 
             @if($errors->any())
@@ -89,15 +88,6 @@
                                             <textarea name="tickets[{{ $i }}][description]" rows="6" maxlength="10000"
                                                       class="form-control @error("tickets.$i.description") is-invalid @enderror" required>{{ $b['description'] ?? '' }}</textarea>
                                             @error("tickets.$i.description")<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                        </div>
-                                        <div class="form-group col-12 mb-0">
-                                            <label class="font-weight-bold">Lampiran</label>
-                                            <input type="file" name="tickets[{{ $i }}][attachments][]" multiple class="form-control-file tt-lampiran" accept="{{ $accept }}">
-                                            <small class="form-text text-muted">Maks. {{ TroubleTicketAttachment::MAX_FILES }} berkas, 10 MB per berkas. {{ implode(', ', TroubleTicketAttachment::EXTENSIONS) }}.</small>
-                                            <div class="tt-file-list"></div>
-                                            @foreach($errors->get("tickets.$i.attachments.*") as $pesan)
-                                                <div class="invalid-feedback d-block">{{ $pesan[0] }}</div>
-                                            @endforeach
                                         </div>
                                     </div>
                                 </div>
@@ -170,7 +160,6 @@
 @push('scripts')
 <script>
 $(function () {
-    var MAX_BYTES = {{ TroubleTicketAttachment::MAX_KB * 1024 }}, MAX_FILES = {{ TroubleTicketAttachment::MAX_FILES }};
     var techUrl = @json(url('trouble-ticket/site/__ID__/technicians'));
     var oldTech = @json((string) old('assigned_to'));
     var $site = $('#fldSite'), $tech = $('#fldTech'), $techName = $('#fldTechName');
@@ -271,18 +260,6 @@ $(function () {
 
     $site.on('change', function () { loadTechs(null); });
     if ($site.val()) loadTechs(oldTech);
-
-    // Batas ukuran dicek juga di browser; server tetap menolak bila dilewati.
-    $(document).on('change', '.tt-lampiran', function () {
-        var pesan = [];
-        if (this.files.length > MAX_FILES) pesan.push('Paling banyak ' + MAX_FILES + ' berkas.');
-        Array.prototype.forEach.call(this.files, function (f) {
-            if (f.size > MAX_BYTES) pesan.push(f.name + ' melebihi 10 MB.');
-        });
-        $(this).closest('.form-group').find('.tt-file-list')
-            .html(pesan.length ? '<span class="text-danger">' + pesan.map(function (p) { return $('<i>').text(p).html(); }).join('<br>') + '</span>' : '');
-        if (pesan.length) this.value = '';
-    });
 
     $('#frmTtCreate').on('submit', function () {
         $('#btnTtSave').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Menyimpan...');

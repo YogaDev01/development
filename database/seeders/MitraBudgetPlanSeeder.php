@@ -201,12 +201,24 @@ class MitraBudgetPlanSeeder extends Seeder
             return;
         }
 
-        $jumlah = Team::where('status', 'ACTIVE')->whereNull('customer_id')
-            ->update(['customer_id' => $customerId]);
+        $kosong = Team::where('status', 'ACTIVE')->whereNull('customer_id')->pluck('id');
+        Team::whereIn('id', $kosong)->update(['customer_id' => $customerId]);
 
-        $sudah = Team::where('status', 'ACTIVE')->where('customer_id', $customerId)->count();
+        if (Team::supportsCustomerList()) {
+            DB::table('team_customers')->insertOrIgnore(
+                $kosong->map(fn ($id) => ['team_id' => $id, 'customer_id' => $customerId])->all()
+            );
+        }
 
-        $this->command?->info("Team ACTIVE dengan customer ini: {$sudah} ({$jumlah} baru diisi).");
+        $sudah = Team::where('status', 'ACTIVE')
+            ->when(
+                Team::supportsCustomerList(),
+                fn ($q) => $q->whereHas('customers', fn ($c) => $c->where('customers.id', $customerId)),
+                fn ($q) => $q->where('customer_id', $customerId),
+            )
+            ->count();
+
+        $this->command?->info("Team ACTIVE dengan customer ini: {$sudah} ({$kosong->count()} baru diisi).");
     }
 
     /**

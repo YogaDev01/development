@@ -283,20 +283,6 @@
 .cl-list { margin:4px 0 0; padding-left:18px; }
 .cl-list li { font-size:11.5px; color:var(--text-dim); line-height:1.5; margin-bottom:2px; }
 
-/* ---- Organization chart ---- */
-.org-team-ic { width:38px; height:38px; border-radius:var(--radius-md); background:var(--accent-tint); color:var(--accent-text); display:flex; align-items:center; justify-content:center; font-size:16px; flex:none; }
-.org-tier { text-align:center; margin-bottom:22px; position:relative; }
-.org-tier + .org-tier::before { content:""; display:block; width:2px; height:16px; background:var(--border); margin:-18px auto 6px; }
-.org-tier-label { display:inline-block; font-size:10px; text-transform:uppercase; font-weight:700; letter-spacing:.05em; color:var(--text-faint); background:var(--surface-2); padding:2px 10px; border-radius:var(--radius-pill); margin-bottom:12px; }
-.org-tier-cards { display:flex; flex-wrap:wrap; justify-content:center; gap:12px; }
-.org-card { width:150px; background:var(--surface); border:1px solid var(--border); border-top:3px solid var(--accent); border-radius:var(--radius-md); padding:12px 10px; transition:border-color .2s ease, transform .15s ease; }
-.org-card:hover { border-color:var(--accent-soft); transform:translateY(-2px); }
-.org-card.is-me { border-color:var(--accent); box-shadow:var(--shadow-accent); background:var(--accent-tint); }
-.org-card-avatar { width:44px; height:44px; border-radius:50%; margin:0 auto 7px; background:var(--charcoal); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; overflow:hidden; }
-.org-card-avatar img { width:100%; height:100%; object-fit:cover; }
-.org-card-name { font-weight:700; font-size:12px; line-height:1.25; }
-.org-card-pos { font-size:10.5px; color:var(--text-faint); }
-
 /* ---- Settings ---- */
 .set-wrap { display:flex; gap:20px; align-items:flex-start; }
 .set-nav { width:210px; flex:none; display:flex; flex-direction:column; gap:3px; }

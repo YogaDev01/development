@@ -768,9 +768,10 @@ Route::middleware('auth')->group(function () {
        yang lahir dari plan visit tiket yang ditugaskan kepadanya. Penyempitan
        itu ada di BudgetRequestController::submitRealization(); gerbang route
        ini sekadar menyaring peran yang sama sekali tidak berkepentingan.
+       `staff` ikut karena PIC teknisi tidak harus ber-role teknisi.
        Form realisasi penuh (realize-form) TETAP tanpa teknisi: ia menyettle
        lewat modal di halaman tiketnya sendiri. */
-    Route::middleware('role:superadmin,manager,supervisor,teknisi')->group(function () {
+    Route::middleware('role:superadmin,manager,supervisor,teknisi,staff')->group(function () {
         Route::post('budget-request/{id}/submit-realization', [BudgetRequestController::class, 'submitRealization'])->name('budget-request.submit-realization');
         // Draft settlement: jalur yang dipakai modal di halaman tiket.
         Route::post('budget-request/{id}/save-realization-draft', [BudgetRequestController::class, 'saveRealizationDraft'])->name('budget-request.save-realization-draft');
@@ -1217,6 +1218,10 @@ Route::middleware('auth')->group(function () {
             Route::get('/', 'index')->name('index');
             Route::get('create', 'create')->name('create');
             Route::post('/', 'store')->name('store');
+            // Buat tiket massal dari Excel; hak buat diperiksa controller.
+            Route::get('import/template', 'importTemplate')->name('import.template');
+            Route::post('import/preview', 'importPreview')->middleware('throttle:30,1')->name('import.preview');
+            Route::post('import/commit', 'importCommit')->middleware('throttle:10,1')->name('import.commit');
             Route::get('site/{site}/technicians', 'technicians')->whereNumber('site')->name('technicians');
             Route::get('attachment/{attachment}', 'download')->whereNumber('attachment')->name('attachment');
             // Modal info dari daftar — tidak mencatat respons teknisi.
@@ -1258,6 +1263,11 @@ Route::middleware('auth')->group(function () {
                 Route::post('requests/{requestId}/approve', 'approveRequest')->whereNumber('requestId')->name('requests.approve');
                 Route::post('requests/{requestId}/reject', 'rejectRequest')->whereNumber('requestId')->name('requests.reject');
                 Route::post('requests/{requestId}/cancel', 'cancelRequest')->whereNumber('requestId')->name('requests.cancel');
+                Route::post('requests/{requestId}/resubmit', 'resubmitRequest')->whereNumber('requestId')->name('requests.resubmit');
+                // Settlement dari tiket: teknisi kirim, atasan teruskan ke Finance atau kembalikan.
+                Route::post('settlement/{crId}/submit', 'settlementSubmit')->whereNumber('crId')->name('settlement.submit');
+                Route::post('settlement/{crId}/review', 'settlementReview')->whereNumber('crId')->name('settlement.review');
+                Route::get('receipt/{receipt}', 'receipt')->whereNumber('receipt')->name('receipt');
                 // Plan → Trip: digeser teknisi lewat "Swipe for travel", satu
                 // aksi dengan mulai perjalanan (20 Okt 2026).
                 Route::post('travel', 'startTravel')->name('travel.start');

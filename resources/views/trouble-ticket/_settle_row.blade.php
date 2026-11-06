@@ -40,7 +40,13 @@
         {{-- Wajib bila baris tambahan, pindah Sub COA, atau total Settle item melebihi Request; diisi lewat kolom Description Settle. --}}
         <input type="hidden" name="realizations[{{ $k }}][change_note]" class="tt-settle-change" value="{{ $row['change_note'] ?? '' }}">
     </td>
-    <td><input type="text" name="realizations[{{ $k }}][notes]" class="form-control form-control-sm" maxlength="255" placeholder="Catatan settle..." value="{{ $row['notes'] ?? '' }}"></td>
+    <td>
+        <input type="text" name="realizations[{{ $k }}][notes]" class="form-control form-control-sm" maxlength="255" placeholder="Catatan settle..." value="{{ $row['notes'] ?? '' }}">
+        <div class="d-flex mt-1" style="gap:4px;">
+            <input type="date" name="realizations[{{ $k }}][transaction_date]" class="form-control form-control-sm" aria-label="Tanggal transaksi" title="Tanggal transaksi" value="{{ $row['transaction_date'] ?? '' }}">
+            <input type="text" name="realizations[{{ $k }}][vendor_name]" class="form-control form-control-sm" maxlength="150" placeholder="Vendor" aria-label="Vendor" value="{{ $row['vendor_name'] ?? '' }}">
+        </div>
+    </td>
     <td class="text-right align-middle tt-settle-qty"></td>
     <td class="text-right align-middle tt-settle-req"></td>
     <td><input type="text" inputmode="numeric" name="realizations[{{ $k }}][amount]" class="form-control form-control-sm text-right tt-settle-amount" value="{{ number_format((int) ($row['amount'] ?? 0), 0, ',', '.') }}"></td>
@@ -61,6 +67,7 @@
         {{-- Indeks sama dengan realizations[k]: server menyimpan tanda tangan ke
              ID baris realisasi hasil simpanan baris ini, bukan ke nomor urut. --}}
         <input type="hidden" name="signatures[{{ $k }}]" class="tt-esign-value">
+        <input type="hidden" name="recipient_names[{{ $k }}]" class="tt-esign-name">
         <div class="tt-esign-state text-muted" style="font-size:10px;">{{ ($sudahTtd ?? false) ? 'tertanda' : '' }}</div>
     </td>
     <td class="text-center text-nowrap">
