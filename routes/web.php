@@ -31,6 +31,7 @@ use App\Http\Controllers\TodoListController;
 use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\StageController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\DailyTransactionController;
 use App\Http\Controllers\FinanceSummaryController;
@@ -1316,6 +1317,12 @@ Route::middleware('auth')->group(function () {
         Route::get('role/{id}/edit-data',[RoleController::class, 'getEditData'])->name('role.edit-data');
         Route::get('role/{id}/edit',    [RoleController::class, 'edit'])->name('role.edit');
         Route::put('role/{id}',         [RoleController::class, 'update'])->name('role.update');
+
+        // KONSOL KEAMANAN (Fase 1 Security & Access Control) — audit trail,
+        // riwayat login, sesi aktif. Hanya mencabut sesi; data bisnis tidak disentuh.
+        Route::get('security',                         [SecurityController::class, 'index'])->name('security.index');
+        Route::post('security/sessions/revoke',        [SecurityController::class, 'revokeSession'])->name('security.sessions.revoke');
+        Route::post('security/users/{id}/logout-all',  [SecurityController::class, 'logoutAllDevices'])->name('security.users.logout-all');
     });
 
     /*

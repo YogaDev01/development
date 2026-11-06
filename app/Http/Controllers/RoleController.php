@@ -103,6 +103,7 @@ class RoleController extends Controller
         */
         $ditambah = $sesudah->diff($sebelum);
         $dicabut  = $sebelum->diff($sesudah);
+        $changes  = [];
 
         if ($ditambah->isNotEmpty() || $dicabut->isNotEmpty()) {
             $namaMenu = MenuItem::whereIn('id', $ditambah->merge($dicabut))
@@ -116,9 +117,18 @@ class RoleController extends Controller
                 'oleh_id'    => Auth::id(),
                 'oleh'       => Auth::user()?->username,
             ]);
+
+            // Selisih yang sama juga masuk jejak audit aplikasi (konsol Keamanan),
+            // bukan hanya laravel.log yang tidak terbaca dari aplikasi.
+            if ($ditambah->isNotEmpty()) {
+                $changes[] = ['label' => 'Menu ditambah', 'from' => '-', 'to' => $ditambah->map(fn ($id) => $namaMenu[$id] ?? $id)->implode(', ')];
+            }
+            if ($dicabut->isNotEmpty()) {
+                $changes[] = ['label' => 'Menu dicabut', 'from' => $dicabut->map(fn ($id) => $namaMenu[$id] ?? $id)->implode(', '), 'to' => '-'];
+            }
         }
 
-        UserActivityLog::record('user_access', 'update', 'Mengubah akses menu role ' . $role->name, $role);
+        UserActivityLog::record('user_access', 'update', 'Mengubah akses menu role ' . $role->name, $role, null, null, $changes);
 
         return redirect()->route('role.index')
             ->with('success', 'Menu access untuk role ' . $role->name . ' berhasil diupdate.');

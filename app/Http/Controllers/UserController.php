@@ -185,7 +185,10 @@ class UserController extends Controller
 
         ]);
 
-        UserActivityLog::record('user_access', 'create', 'Menambah user ' . $newUser->name . ' (@' . $newUser->username . ')', $newUser);
+        UserActivityLog::record(
+            'user_access', 'create', 'Menambah user ' . $newUser->name . ' (@' . $newUser->username . ')', $newUser,
+            null, null, $this->accessChanges([], $newUser)
+        );
 
         /*
         |--------------------------------------------------------------------------
@@ -259,6 +262,56 @@ class UserController extends Controller
         $canSeeChanges = $actor->isRealSuperadmin() || (int) $actor->id === (int) $user->id;
 
         return view('user.activity-log', compact('user', 'activityLogs', 'activityFilters', 'canSeeChanges'));
+    }
+
+    /**
+     * Rincian perubahan akun untuk jejak audit (Fase 1 Security): data diri,
+     * role, Access Group, status. Role & Access Group ditulis dengan NAMA,
+     * bukan id, supaya bisa dibaca tanpa membuka tabel lain. Password tidak
+     * pernah dicatat nilainya — hanya bahwa ia diganti.
+     *
+     * @param  array  $before  nilai lama (kosong saat user baru dibuat)
+     */
+    private function accessChanges(array $before, User $after, bool $passwordChanged = false): array
+    {
+        // Gagal-aman seperti UserActivityLog::record(): rincian audit tidak
+        // boleh membuat simpan data (yang sudah terjadi) berujung error 500.
+        try {
+            $changes = UserActivityLog::changeSet($before, $after, [
+                'name'     => 'Nama',
+                'username' => 'Username',
+                'email'    => 'Email',
+                'phone'    => 'Telepon',
+                'status'   => 'Status',
+            ]);
+
+            $nama = function (string $kelas, $id) {
+                return $id ? ($kelas::whereKey($id)->value('name') ?? '#' . $id) : null;
+            };
+
+            foreach (['role_id' => ['Role', Role::class], 'access_group_id' => ['Access Group', AccessGroup::class]] as $kolom => [$label, $kelas]) {
+                $lama = $before[$kolom] ?? null;
+                $baru = $after->getAttribute($kolom);
+
+                if ((string) $lama !== (string) $baru) {
+                    $changes[] = [
+                        'label' => $label,
+                        'from'  => $nama($kelas, $lama) ?? '-',
+                        'to'    => $nama($kelas, $baru) ?? '-',
+                    ];
+                }
+            }
+
+            if ($passwordChanged) {
+                $changes[] = ['label' => 'Password', 'from' => '-', 'to' => 'diganti'];
+            }
+
+            return $changes;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Gagal menyusun rincian audit', ['message' => $e->getMessage()]);
+
+            return [];
+        }
     }
 
     /**
@@ -402,9 +455,14 @@ class UserController extends Controller
         |--------------------------------------------------------------------------
         */
 
+        $sebelum = $user->only(['name', 'username', 'email', 'phone', 'role_id', 'access_group_id', 'status']);
+
         $user->update($data);
 
-        UserActivityLog::record('user_access', 'update', 'Mengubah user ' . $user->name . ' (@' . $user->username . ')', $user);
+        UserActivityLog::record(
+            'user_access', 'update', 'Mengubah user ' . $user->name . ' (@' . $user->username . ')', $user,
+            null, null, $this->accessChanges($sebelum, $user, isset($data['password']))
+        );
 
         /*
         |--------------------------------------------------------------------------

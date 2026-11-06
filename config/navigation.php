@@ -362,7 +362,7 @@ return [
             'label'  => 'User & Access',
             'icon'   => 'fas fa-users-cog',
             'url'    => '/user',
-            'active' => ['user', 'user/*', 'accessgroup*', 'role*'],
+            'active' => ['user', 'user/*', 'accessgroup*', 'role*', 'security*'],
             'menu'   => 'user-access',
         ],
 

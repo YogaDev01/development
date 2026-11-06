@@ -199,6 +199,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'last_login_ip',
     ];
 
     protected function casts(): array
@@ -207,6 +208,7 @@ class User extends Authenticatable
             'email_verified_at'  => 'datetime',
             'password'           => 'hashed',
             'notification_prefs' => 'array',
+            'last_login_at'      => 'datetime',
         ];
     }
 

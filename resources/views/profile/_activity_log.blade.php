@@ -39,7 +39,7 @@
         <label class="font-weight-600" style="font-size:11px;">Aksi</label>
         <select name="action" class="form-control form-control-sm">
             <option value="">Semua Aksi</option>
-            @foreach(UserActivityLog::ACTIONS as $key => $label)
+            @foreach(\Illuminate\Support\Arr::except(UserActivityLog::ACTIONS, UserActivityLog::SECURITY_ONLY_ACTIONS) as $key => $label)
                 <option value="{{ $key }}" @selected(($activityFilters['action'] ?? '') === $key)>{{ $label }}</option>
             @endforeach
         </select>

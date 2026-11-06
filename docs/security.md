@@ -10,6 +10,15 @@ Verified 2026-10-02 from `bootstrap/app.php`, `routes/web.php`,
 - `EnsureUserActive` ends sessions of deactivated users.
 - "View As": superadmin can preview another role (`profile/view-as`);
   `CheckRole` redirects back instead of 403 while previewing.
+- **Jejak & sesi (2026-11-07, Fase 1 Security & Access Control):** login gagal (`login_failed`) dan
+  pemblokiran (`lockout`) kini juga masuk `user_activity_logs` (sebelumnya hanya `laravel.log`);
+  `users.last_login_at/ip` diisi saat login. Alur, pesan, dan batas login **tidak berubah**.
+- **Konsol Keamanan** `/security` (`role:superadmin`): Audit Trail seluruh user, Riwayat Login, Sesi
+  Aktif (tabel `sessions`, hanya bila `SESSION_DRIVER=database`). Aksi: cabut satu sesi (dikenali lewat
+  sha256 id sesi) dan putus semua sesi user lain; keduanya merotasi `remember_token` agar "Ingat saya"
+  tidak langsung memulihkan sesi. Sesi sendiri tidak bisa dicabut dari konsol. Tercatat sebagai
+  `revoke_session`. Lihat `docs/security/access-matrix.md` dan
+  `docs/plans/2026-11-06-security-access-control.md`.
 
 ## Roles (as used in route gates)
 

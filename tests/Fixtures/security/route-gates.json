@@ -1,0 +1,2129 @@
+{
+    "DELETE /accessgroup/{accessgroup}": [
+        "auth",
+        "role:superadmin"
+    ],
+    "DELETE /accessories/{id}": [
+        "auth",
+        "menu:accessories"
+    ],
+    "DELETE /account/{id}": [
+        "auth",
+        "menu:account"
+    ],
+    "DELETE /bank/{id}": [
+        "auth",
+        "role:superadmin,admin"
+    ],
+    "DELETE /beneficiaries/pic/{picId}": [
+        "auth",
+        "menu:beneficiaries",
+        "role:superadmin"
+    ],
+    "DELETE /beneficiaries/{id}": [
+        "auth",
+        "menu:beneficiaries",
+        "role:superadmin"
+    ],
+    "DELETE /budget-plan/{id}": [
+        "auth",
+        "role:superadmin,manager"
+    ],
+    "DELETE /budget-request/{id}": [
+        "auth",
+        "role:superadmin,manager,supervisor"
+    ],
+    "DELETE /cash-management/{id}": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury,approver"
+    ],
+    "DELETE /cash-receipt/{id}": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury,approver,collection"
+    ],
+    "DELETE /cash-receipt/{id}/allocation/{detailId}": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury,approver,collection"
+    ],
+    "DELETE /category-item/{id}": [
+        "auth",
+        "menu:category-item"
+    ],
+    "DELETE /cluster/{id}": [
+        "auth",
+        "menu:project"
+    ],
+    "DELETE /cost-center/{id}": [
+        "auth",
+        "role:superadmin,admin,finance,finance_manager"
+    ],
+    "DELETE /cost-register/{id}": [
+        "auth",
+        "role:superadmin,finance,finance_manager"
+    ],
+    "DELETE /customer/{id}": [
+        "auth",
+        "menu:customer"
+    ],
+    "DELETE /daily-transaction/{id}": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury"
+    ],
+    "DELETE /department/{id}": [
+        "auth",
+        "role:superadmin"
+    ],
+    "DELETE /employee/{id}": [
+        "auth",
+        "role:superadmin,admin,hr"
+    ],
+    "DELETE /forecast/{id}": [
+        "auth",
+        "menu:forecast"
+    ],
+    "DELETE /forecast/{id}/actual/{entry}": [
+        "auth",
+        "menu:forecast"
+    ],
+    "DELETE /groups/{id}": [
+        "auth",
+        "role:superadmin,admin"
+    ],
+    "DELETE /homebase/{id}": [
+        "auth",
+        "menu:homebase"
+    ],
+    "DELETE /homebase/{id}/pic/{detailId}": [
+        "auth",
+        "menu:homebase"
+    ],
+    "DELETE /invoice-cash-receipt/{id}": [
+        "auth",
+        "role:superadmin,admin,finance,finance_manager,collection"
+    ],
+    "DELETE /invoice-cash-receipt/{id}/cash-receipt/{crId}": [
+        "auth",
+        "role:superadmin,admin,finance,finance_manager,collection"
+    ],
+    "DELETE /master-material/{id}": [
+        "auth",
+        "menu:master-material"
+    ],
+    "DELETE /master-pic/{id}": [
+        "auth",
+        "menu:master-pic"
+    ],
+    "DELETE /network/{id}": [
+        "auth",
+        "menu:network"
+    ],
+    "DELETE /payroll-run/{id}": [
+        "auth",
+        "menu:payroll-run"
+    ],
+    "DELETE /profile/avatar": [
+        "auth"
+    ],
+    "DELETE /profile/cover": [
+        "auth"
+    ],
+    "DELETE /project/po-bast/{bastId}": [
+        "auth",
+        "role:superadmin"
+    ],
+    "DELETE /project/po-number/{poNumberId}": [
+        "auth",
+        "role:superadmin,finance,finance_manager,head"
+    ],
+    "DELETE /project/{id}": [
+        "auth",
+        "role:superadmin,head"
+    ],
+    "DELETE /region/{id}": [
+        "auth",
+        "menu:region"
+    ],
+    "DELETE /site/{id}": [
+        "auth",
+        "menu:site"
+    ],
+    "DELETE /site/{id}/accessories/{linkId}": [
+        "auth",
+        "menu:site"
+    ],
+    "DELETE /site/{id}/document/{docId}": [
+        "auth",
+        "menu:site"
+    ],
+    "DELETE /site/{id}/material/{linkId}": [
+        "auth",
+        "menu:site"
+    ],
+    "DELETE /site/{id}/pic/{linkId}": [
+        "auth",
+        "menu:site"
+    ],
+    "DELETE /source-fund/{id}": [
+        "auth",
+        "role:superadmin,finance,finance_manager"
+    ],
+    "DELETE /stage/{id}": [
+        "auth",
+        "menu:milestone"
+    ],
+    "DELETE /user/{user}": [
+        "auth",
+        "role:superadmin"
+    ],
+    "DELETE /wilayah/desa/{id}": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "DELETE /wilayah/kecamatan/{id}": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "DELETE /wilayah/kota/{id}": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "DELETE /wilayah/provinsi/{id}": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "DELETE /wilayah/pulau/{id}": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "GET /": [
+        "auth"
+    ],
+    "GET /accessgroup": [
+        "auth",
+        "menu:user-access"
+    ],
+    "GET /accessgroup/create": [
+        "auth",
+        "role:superadmin"
+    ],
+    "GET /accessgroup/{accessgroup}/edit": [
+        "auth",
+        "role:superadmin"
+    ],
+    "GET /accessgroup/{id}": [
+        "auth",
+        "menu:user-access"
+    ],
+    "GET /accessgroup/{id}/detail-json": [
+        "auth",
+        "menu:user-access"
+    ],
+    "GET /accessories": [
+        "auth",
+        "menu:accessories"
+    ],
+    "GET /accessories/{id}/edit-data": [
+        "auth",
+        "menu:accessories"
+    ],
+    "GET /account": [
+        "auth",
+        "menu:account"
+    ],
+    "GET /account/{id}/edit-data": [
+        "auth",
+        "menu:account"
+    ],
+    "GET /api/budget-plan/{budgetPlanId}/details": [
+        "auth"
+    ],
+    "GET /api/clusters/{budgetPlanId}": [
+        "auth"
+    ],
+    "GET /api/public/budget-request": [
+        "throttle:30,1"
+    ],
+    "GET /api/public/budget-request/detail": [
+        "throttle:30,1"
+    ],
+    "GET /api/public/budget-request/realisasi": [
+        "throttle:30,1"
+    ],
+    "GET /app/{app}": [
+        "auth"
+    ],
+    "GET /assignment": [
+        "auth"
+    ],
+    "GET /assignment/{assignment}/logs": [
+        "auth"
+    ],
+    "GET /bank": [
+        "auth",
+        "role:superadmin,admin,guest"
+    ],
+    "GET /bank/create": [
+        "auth",
+        "role:superadmin,admin"
+    ],
+    "GET /bank/{id}": [
+        "auth",
+        "role:superadmin,admin,guest"
+    ],
+    "GET /bank/{id}/edit": [
+        "auth",
+        "role:superadmin,admin"
+    ],
+    "GET /beneficiaries": [
+        "auth",
+        "menu:beneficiaries"
+    ],
+    "GET /beneficiaries/pic-groups": [
+        "auth",
+        "menu:beneficiaries"
+    ],
+    "GET /beneficiaries/picker": [
+        "auth",
+        "menu:beneficiaries",
+        "role:superadmin"
+    ],
+    "GET /beneficiaries/rows/{part}": [
+        "auth",
+        "menu:beneficiaries"
+    ],
+    "GET /beneficiaries/{id}/edit-data": [
+        "auth",
+        "menu:beneficiaries",
+        "role:superadmin"
+    ],
+    "GET /budget-plan": [
+        "auth",
+        "menu:finance-budgeting,project-budgeting"
+    ],
+    "GET /budget-plan/accounts-json": [
+        "auth",
+        "menu:finance-budgeting,project-budgeting"
+    ],
+    "GET /budget-plan/create": [
+        "auth",
+        "role:superadmin,manager"
+    ],
+    "GET /budget-plan/import-template": [
+        "auth",
+        "role:superadmin,manager"
+    ],
+    "GET /budget-plan/{id}/detail-json": [
+        "auth"
+    ],
+    "GET /budget-plan/{id}/edit": [
+        "auth",
+        "role:superadmin,manager"
+    ],
+    "GET /budget-plan/{id}/export-budget": [
+        "auth"
+    ],
+    "GET /budget-plan/{id}/export-cost": [
+        "auth"
+    ],
+    "GET /budget-plan/{id}/export-report": [
+        "auth"
+    ],
+    "GET /budget-request": [
+        "auth",
+        "menu:finance-cost-request,project-cost-request"
+    ],
+    "GET /budget-request/ca-quota": [
+        "auth"
+    ],
+    "GET /budget-request/create": [
+        "auth",
+        "role:superadmin,manager,supervisor"
+    ],
+    "GET /budget-request/import-template": [
+        "auth",
+        "role:superadmin,manager,supervisor"
+    ],
+    "GET /budget-request/tab/{tab}": [
+        "auth",
+        "menu:finance-cost-request,project-cost-request"
+    ],
+    "GET /budget-request/{id}/detail-json": [
+        "auth"
+    ],
+    "GET /budget-request/{id}/edit": [
+        "auth",
+        "role:superadmin,manager,supervisor"
+    ],
+    "GET /budget-request/{id}/realize-form": [
+        "auth",
+        "role:superadmin,manager,supervisor"
+    ],
+    "GET /budget-request/{id}/settlement-template": [
+        "auth",
+        "role:superadmin,manager,supervisor"
+    ],
+    "GET /budget-request/{id}/submit-realization": [
+        "auth",
+        "role:superadmin,manager,supervisor"
+    ],
+    "GET /cash-management": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury,approver"
+    ],
+    "GET /cash-management/create": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury,approver"
+    ],
+    "GET /cash-management/{id}": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury,approver"
+    ],
+    "GET /cash-management/{id}/edit": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury,approver"
+    ],
+    "GET /cash-receipt": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury,approver,collection"
+    ],
+    "GET /cash-receipt/create": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury,approver,collection"
+    ],
+    "GET /cash-receipt/open-invoices": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury,approver,collection"
+    ],
+    "GET /cash-receipt/{id}": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury,approver,collection"
+    ],
+    "GET /category-item": [
+        "auth",
+        "menu:category-item"
+    ],
+    "GET /category-item/{id}/edit-data": [
+        "auth",
+        "menu:category-item"
+    ],
+    "GET /closing": [
+        "auth",
+        "menu:closing"
+    ],
+    "GET /cluster": [
+        "auth",
+        "menu:project"
+    ],
+    "GET /cluster/create": [
+        "auth",
+        "menu:project"
+    ],
+    "GET /cluster/next-code": [
+        "auth",
+        "menu:project"
+    ],
+    "GET /cluster/options-json": [
+        "auth",
+        "menu:project,list-po"
+    ],
+    "GET /cluster/{id}": [
+        "auth",
+        "menu:project"
+    ],
+    "GET /cluster/{id}/edit": [
+        "auth",
+        "menu:project"
+    ],
+    "GET /cluster/{id}/edit-data": [
+        "auth",
+        "menu:project"
+    ],
+    "GET /cost-center": [
+        "auth",
+        "menu:cost-center"
+    ],
+    "GET /cost-center/{id}/detail-json": [
+        "auth",
+        "menu:cost-center"
+    ],
+    "GET /cost-register": [
+        "auth",
+        "role:superadmin,finance,finance_manager,approver"
+    ],
+    "GET /cost-register/create": [
+        "auth",
+        "role:superadmin,finance,finance_manager"
+    ],
+    "GET /cost-register/{id}/detail-json": [
+        "auth",
+        "role:superadmin,finance,finance_manager,approver"
+    ],
+    "GET /customer": [
+        "auth",
+        "menu:customer"
+    ],
+    "GET /customer/create": [
+        "auth",
+        "menu:customer"
+    ],
+    "GET /customer/suggest-initial": [
+        "auth",
+        "menu:customer"
+    ],
+    "GET /customer/{id}": [
+        "auth",
+        "menu:customer"
+    ],
+    "GET /customer/{id}/detail-json": [
+        "auth",
+        "menu:customer"
+    ],
+    "GET /customer/{id}/edit": [
+        "auth",
+        "menu:customer"
+    ],
+    "GET /daily-transaction": [
+        "auth",
+        "menu:finance-daily-transaction"
+    ],
+    "GET /daily-transaction/create": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury"
+    ],
+    "GET /daily-transaction/{id}": [
+        "auth",
+        "menu:finance-daily-transaction"
+    ],
+    "GET /daily-transaction/{id}/detail-json": [
+        "auth",
+        "menu:finance-daily-transaction"
+    ],
+    "GET /daily-transaction/{id}/export": [
+        "auth",
+        "menu:finance-daily-transaction"
+    ],
+    "GET /daily-transaction/{id}/export-data": [
+        "auth",
+        "menu:finance-daily-transaction"
+    ],
+    "GET /daily-transaction/{id}/items-html": [
+        "auth",
+        "menu:finance-daily-transaction"
+    ],
+    "GET /delivery-note": [
+        "auth",
+        "menu:delivery-note"
+    ],
+    "GET /delivery-note/create": [
+        "auth",
+        "menu:delivery-note"
+    ],
+    "GET /delivery-note/{id}": [
+        "auth",
+        "menu:delivery-note"
+    ],
+    "GET /delivery-note/{id}/print": [
+        "auth",
+        "menu:delivery-note"
+    ],
+    "GET /department": [
+        "auth",
+        "role:superadmin"
+    ],
+    "GET /employee": [
+        "auth",
+        "menu:employee"
+    ],
+    "GET /employee/create": [
+        "auth",
+        "role:superadmin,admin,hr"
+    ],
+    "GET /employee/{id}/detail-json": [
+        "auth",
+        "menu:employee"
+    ],
+    "GET /employee/{id}/edit": [
+        "auth",
+        "role:superadmin,admin,hr"
+    ],
+    "GET /feedback": [
+        "auth"
+    ],
+    "GET /feedback-inbox": [
+        "auth",
+        "menu:feedback-inbox"
+    ],
+    "GET /feedback/create": [
+        "auth"
+    ],
+    "GET /feedback/{id}": [
+        "auth"
+    ],
+    "GET /finance-summary": [
+        "auth",
+        "menu:finance-summary"
+    ],
+    "GET /finance-summary-executive": [
+        "auth",
+        "menu:finance-summary",
+        "role:superadmin,finance,finance_manager,approver"
+    ],
+    "GET /forecast": [
+        "auth",
+        "menu:forecast"
+    ],
+    "GET /forecast/create": [
+        "auth",
+        "menu:forecast"
+    ],
+    "GET /forecast/{id}": [
+        "auth",
+        "menu:forecast"
+    ],
+    "GET /forecast/{id}/detail-json": [
+        "auth",
+        "menu:forecast"
+    ],
+    "GET /forecast/{id}/edit": [
+        "auth",
+        "menu:forecast"
+    ],
+    "GET /global-search": [
+        "auth",
+        "throttle:60,1"
+    ],
+    "GET /groups": [
+        "auth",
+        "role:superadmin,admin,guest"
+    ],
+    "GET /groups/create": [
+        "auth",
+        "role:superadmin,admin"
+    ],
+    "GET /groups/{id}": [
+        "auth",
+        "role:superadmin,admin,guest"
+    ],
+    "GET /groups/{id}/edit": [
+        "auth",
+        "role:superadmin,admin"
+    ],
+    "GET /groups/{id}/edit-data": [
+        "auth",
+        "role:superadmin,admin"
+    ],
+    "GET /homebase": [
+        "auth",
+        "menu:homebase"
+    ],
+    "GET /homebase/{id}": [
+        "auth",
+        "menu:homebase"
+    ],
+    "GET /homebase/{id}/edit-data": [
+        "auth",
+        "menu:homebase"
+    ],
+    "GET /invoice-cash-receipt": [
+        "auth",
+        "menu:invoice-cash-receipt"
+    ],
+    "GET /invoice-cash-receipt/create": [
+        "auth",
+        "role:superadmin,admin,finance,finance_manager,collection"
+    ],
+    "GET /invoice-cash-receipt/import-template": [
+        "auth",
+        "role:superadmin,admin,finance,finance_manager,collection"
+    ],
+    "GET /invoice-cash-receipt/{id}": [
+        "auth",
+        "menu:invoice-cash-receipt"
+    ],
+    "GET /invoice-cash-receipt/{id}/delivery-note/{dnId}": [
+        "auth",
+        "menu:invoice-cash-receipt"
+    ],
+    "GET /invoice-cash-receipt/{id}/drawer-json": [
+        "auth",
+        "menu:invoice-cash-receipt"
+    ],
+    "GET /invoice-cash-receipt/{id}/edit": [
+        "auth",
+        "role:superadmin,admin,finance,finance_manager,collection"
+    ],
+    "GET /invoice-cash-receipt/{id}/print": [
+        "auth",
+        "menu:invoice-cash-receipt"
+    ],
+    "GET /login": [
+        "guest"
+    ],
+    "GET /master-material": [
+        "auth",
+        "menu:master-material"
+    ],
+    "GET /master-material/import-template": [
+        "auth",
+        "menu:master-material"
+    ],
+    "GET /master-material/{id}/edit-data": [
+        "auth",
+        "menu:master-material"
+    ],
+    "GET /master-pic": [
+        "auth",
+        "menu:master-pic"
+    ],
+    "GET /master-pic/options-json": [
+        "auth",
+        "menu:master-pic"
+    ],
+    "GET /master-pic/{id}/edit-data": [
+        "auth",
+        "menu:master-pic"
+    ],
+    "GET /network": [
+        "auth",
+        "menu:network"
+    ],
+    "GET /network/{id}/edit-data": [
+        "auth",
+        "menu:network"
+    ],
+    "GET /notifications": [
+        "auth"
+    ],
+    "GET /panduan": [
+        "auth"
+    ],
+    "GET /panduan/{slug}": [
+        "auth"
+    ],
+    "GET /payroll-run": [
+        "auth",
+        "menu:payroll-run"
+    ],
+    "GET /payroll-run/create": [
+        "auth",
+        "menu:payroll-run"
+    ],
+    "GET /payroll-run/{id}": [
+        "auth",
+        "menu:payroll-run"
+    ],
+    "GET /payroll-run/{id}/edit": [
+        "auth",
+        "menu:payroll-run"
+    ],
+    "GET /payroll-run/{id}/export": [
+        "auth",
+        "menu:payroll-run"
+    ],
+    "GET /profile": [
+        "auth"
+    ],
+    "GET /profile/todo-matrix": [
+        "auth"
+    ],
+    "GET /profile/todo-summary": [
+        "auth"
+    ],
+    "GET /project": [
+        "auth",
+        "menu:list-po"
+    ],
+    "GET /project-monitoring": [
+        "auth"
+    ],
+    "GET /project-monitoring/{id}": [
+        "auth"
+    ],
+    "GET /project-monitoring/{id}/messages": [
+        "auth"
+    ],
+    "GET /project/budget-import-template": [
+        "auth",
+        "role:superadmin,head"
+    ],
+    "GET /project/create": [
+        "auth",
+        "role:superadmin,head"
+    ],
+    "GET /project/import-template": [
+        "auth",
+        "role:superadmin,head"
+    ],
+    "GET /project/po-number/import-template": [
+        "auth",
+        "role:superadmin,approver,finance,finance_manager,head"
+    ],
+    "GET /project/{id}/activate": [
+        "auth",
+        "role:superadmin,finance,finance_manager,head"
+    ],
+    "GET /project/{id}/detail-json": [
+        "auth"
+    ],
+    "GET /project/{id}/edit": [
+        "auth",
+        "role:superadmin,approver,finance,finance_manager,head"
+    ],
+    "GET /project/{id}/edit-po-numbers": [
+        "auth",
+        "role:superadmin,approver,finance,finance_manager,head"
+    ],
+    "GET /project/{id}/submit-bast": [
+        "auth",
+        "role:superadmin,head"
+    ],
+    "GET /region": [
+        "auth",
+        "menu:region"
+    ],
+    "GET /region/{id}/edit-data": [
+        "auth",
+        "menu:region"
+    ],
+    "GET /reports": [
+        "auth",
+        "menu:reports"
+    ],
+    "GET /role": [
+        "auth",
+        "role:superadmin"
+    ],
+    "GET /role/{id}/edit": [
+        "auth",
+        "role:superadmin"
+    ],
+    "GET /role/{id}/edit-data": [
+        "auth",
+        "role:superadmin"
+    ],
+    "GET /security": [
+        "auth",
+        "role:superadmin"
+    ],
+    "GET /site": [
+        "auth",
+        "menu:site"
+    ],
+    "GET /site/create": [
+        "auth",
+        "menu:site"
+    ],
+    "GET /site/import-template": [
+        "auth",
+        "menu:site"
+    ],
+    "GET /site/{id}": [
+        "auth",
+        "menu:site"
+    ],
+    "GET /site/{id}/drawer": [
+        "auth",
+        "menu:site"
+    ],
+    "GET /site/{id}/edit": [
+        "auth",
+        "menu:site"
+    ],
+    "GET /site/{id}/edit-data": [
+        "auth",
+        "menu:site"
+    ],
+    "GET /source-fund": [
+        "auth",
+        "menu:source-fund"
+    ],
+    "GET /source-fund/options-json": [
+        "auth",
+        "menu:source-fund"
+    ],
+    "GET /source-fund/{id}/edit-data": [
+        "auth",
+        "role:superadmin,finance,finance_manager"
+    ],
+    "GET /stage": [
+        "auth",
+        "menu:milestone"
+    ],
+    "GET /stage/create": [
+        "auth",
+        "menu:milestone"
+    ],
+    "GET /stage/next-code": [
+        "auth",
+        "menu:milestone"
+    ],
+    "GET /stage/options-json": [
+        "auth",
+        "menu:milestone,list-po"
+    ],
+    "GET /stage/{id}": [
+        "auth",
+        "menu:milestone"
+    ],
+    "GET /stage/{id}/edit": [
+        "auth",
+        "menu:milestone"
+    ],
+    "GET /stage/{id}/edit-data": [
+        "auth",
+        "menu:milestone"
+    ],
+    "GET /storage/{path}": [
+        "auth"
+    ],
+    "GET /team": [
+        "auth",
+        "menu:team"
+    ],
+    "GET /team/create": [
+        "auth",
+        "role:superadmin"
+    ],
+    "GET /team/structure": [
+        "auth",
+        "menu:team"
+    ],
+    "GET /team/{id}": [
+        "auth",
+        "menu:team"
+    ],
+    "GET /team/{id}/edit": [
+        "auth",
+        "menu:team"
+    ],
+    "GET /todo-list": [
+        "auth",
+        "menu:todo-list"
+    ],
+    "GET /todo-list/has-pending": [
+        "auth",
+        "menu:todo-list"
+    ],
+    "GET /trouble-ticket": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "GET /trouble-ticket/attachment/{attachment}": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "GET /trouble-ticket/create": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "GET /trouble-ticket/import/template": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "GET /trouble-ticket/settings": [
+        "auth",
+        "menu:trouble-ticket",
+        "role:superadmin"
+    ],
+    "GET /trouble-ticket/site/{site}/technicians": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "GET /trouble-ticket/{ticket}": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "GET /trouble-ticket/{ticket}/info": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "GET /trouble-ticket/{ticket}/messages": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "GET /trouble-ticket/{ticket}/receipt/{receipt}": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "GET /trouble-ticket/{ticket}/requests/attachment/{attachment}": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "GET /up": [],
+    "GET /user": [
+        "auth",
+        "menu:user-access"
+    ],
+    "GET /user/create": [
+        "auth",
+        "role:superadmin"
+    ],
+    "GET /user/{id}": [
+        "auth",
+        "menu:user-access"
+    ],
+    "GET /user/{id}/activity-log": [
+        "auth",
+        "menu:user-access"
+    ],
+    "GET /user/{id}/detail-json": [
+        "auth",
+        "menu:user-access"
+    ],
+    "GET /user/{user}/edit": [
+        "auth",
+        "role:superadmin"
+    ],
+    "GET /wilayah/desa": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "GET /wilayah/desa/options": [
+        "auth",
+        "menu:wilayah,site"
+    ],
+    "GET /wilayah/desa/{id}/edit-data": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "GET /wilayah/kecamatan": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "GET /wilayah/kecamatan/options": [
+        "auth",
+        "menu:wilayah,site"
+    ],
+    "GET /wilayah/kecamatan/{id}/edit-data": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "GET /wilayah/kota": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "GET /wilayah/kota/options": [
+        "auth",
+        "menu:wilayah,site"
+    ],
+    "GET /wilayah/kota/{id}/edit-data": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "GET /wilayah/provinsi": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "GET /wilayah/provinsi/options": [
+        "auth",
+        "menu:wilayah,site"
+    ],
+    "GET /wilayah/provinsi/{id}/edit-data": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "GET /wilayah/pulau": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "GET /wilayah/pulau/options": [
+        "auth",
+        "menu:wilayah,site"
+    ],
+    "GET /wilayah/pulau/{id}/edit-data": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "GET|POST /budget-plan/export": [
+        "auth",
+        "menu:finance-budgeting,project-budgeting"
+    ],
+    "GET|POST /budget-request/export": [
+        "auth",
+        "menu:finance-cost-request,project-cost-request"
+    ],
+    "GET|POST /cost-register/export": [
+        "auth",
+        "role:superadmin,finance,finance_manager,approver"
+    ],
+    "GET|POST /daily-transaction/export": [
+        "auth",
+        "menu:finance-daily-transaction"
+    ],
+    "GET|POST /delivery-note/export": [
+        "auth",
+        "menu:delivery-note"
+    ],
+    "GET|POST /invoice-cash-receipt/export": [
+        "auth",
+        "menu:invoice-cash-receipt"
+    ],
+    "GET|POST /project/export-excel": [
+        "auth",
+        "role:superadmin,approver"
+    ],
+    "GET|POST /todo-list/export": [
+        "auth",
+        "menu:todo-list"
+    ],
+    "GET|POST /trouble-ticket/export": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "GET|POST|PUT|PATCH|DELETE|OPTIONS /wilayah": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "PATCH /team/{id}/status": [
+        "auth",
+        "role:superadmin"
+    ],
+    "POST /accessgroup": [
+        "auth",
+        "role:superadmin"
+    ],
+    "POST /accessories": [
+        "auth",
+        "menu:accessories"
+    ],
+    "POST /account": [
+        "auth",
+        "menu:account"
+    ],
+    "POST /assignment": [
+        "auth"
+    ],
+    "POST /assignment/{assignment}/cancel": [
+        "auth"
+    ],
+    "POST /assignment/{assignment}/comment": [
+        "auth"
+    ],
+    "POST /assignment/{assignment}/done": [
+        "auth"
+    ],
+    "POST /assignment/{assignment}/reopen": [
+        "auth"
+    ],
+    "POST /assignment/{assignment}/start": [
+        "auth"
+    ],
+    "POST /bank": [
+        "auth",
+        "role:superadmin,admin"
+    ],
+    "POST /beneficiaries": [
+        "auth",
+        "menu:beneficiaries"
+    ],
+    "POST /beneficiaries/pic/{picId}/attach": [
+        "auth",
+        "menu:beneficiaries",
+        "role:superadmin"
+    ],
+    "POST /budget-plan": [
+        "auth",
+        "role:superadmin,manager"
+    ],
+    "POST /budget-plan/bulk-approve": [
+        "auth",
+        "role:superadmin,head,finance,finance_manager,approver"
+    ],
+    "POST /budget-plan/bulk-reject": [
+        "auth",
+        "role:superadmin,head,finance,finance_manager,approver"
+    ],
+    "POST /budget-plan/import-preview": [
+        "auth",
+        "role:superadmin,manager"
+    ],
+    "POST /budget-plan/{id}/add-coa": [
+        "auth",
+        "role:superadmin,manager"
+    ],
+    "POST /budget-plan/{id}/ceo-approve": [
+        "auth",
+        "role:superadmin,approver"
+    ],
+    "POST /budget-plan/{id}/ceo-reject": [
+        "auth",
+        "role:superadmin,approver"
+    ],
+    "POST /budget-plan/{id}/finance-close": [
+        "auth",
+        "role:superadmin,finance,finance_manager"
+    ],
+    "POST /budget-plan/{id}/finance-reject": [
+        "auth",
+        "role:superadmin,finance,finance_manager"
+    ],
+    "POST /budget-plan/{id}/finance-verify": [
+        "auth",
+        "role:superadmin,finance,finance_manager"
+    ],
+    "POST /budget-plan/{id}/head-approve": [
+        "auth",
+        "role:superadmin,head"
+    ],
+    "POST /budget-plan/{id}/head-reject": [
+        "auth",
+        "role:superadmin,head"
+    ],
+    "POST /budget-plan/{id}/log-note": [
+        "auth",
+        "throttle:30,1"
+    ],
+    "POST /budget-plan/{id}/manager-revise": [
+        "auth",
+        "role:superadmin,manager"
+    ],
+    "POST /budget-plan/{id}/reject-closing": [
+        "auth",
+        "role:superadmin,finance,finance_manager"
+    ],
+    "POST /budget-plan/{id}/submit": [
+        "auth",
+        "role:superadmin,manager"
+    ],
+    "POST /budget-plan/{id}/submit-closing": [
+        "auth",
+        "role:superadmin,manager"
+    ],
+    "POST /budget-plan/{id}/verify-closing": [
+        "auth",
+        "role:superadmin,finance,finance_manager"
+    ],
+    "POST /budget-request": [
+        "auth",
+        "role:superadmin,manager,supervisor"
+    ],
+    "POST /budget-request/check-nob": [
+        "auth"
+    ],
+    "POST /budget-request/import-preview": [
+        "auth",
+        "role:superadmin,manager,supervisor"
+    ],
+    "POST /budget-request/review-bulk-approve": [
+        "auth",
+        "role:superadmin,head,finance,finance_manager,cost_control,approver"
+    ],
+    "POST /budget-request/review-bulk-reject": [
+        "auth",
+        "role:superadmin,head,finance,finance_manager,cost_control,approver"
+    ],
+    "POST /budget-request/settlement-bulk-approve": [
+        "auth",
+        "role:superadmin,head,finance,finance_manager,cost_control,approver"
+    ],
+    "POST /budget-request/settlement-bulk-close": [
+        "auth",
+        "role:superadmin,finance_manager"
+    ],
+    "POST /budget-request/settlement-bulk-reject": [
+        "auth",
+        "role:superadmin,finance_manager"
+    ],
+    "POST /budget-request/{id}/ceo-approve": [
+        "auth",
+        "role:superadmin,approver"
+    ],
+    "POST /budget-request/{id}/ceo-close-settlement": [
+        "auth",
+        "role:superadmin,finance_manager"
+    ],
+    "POST /budget-request/{id}/ceo-reject": [
+        "auth",
+        "role:superadmin,approver"
+    ],
+    "POST /budget-request/{id}/detail/{detailId}/restore": [
+        "auth",
+        "role:superadmin,head,finance,finance_manager,cost_control,approver"
+    ],
+    "POST /budget-request/{id}/detail/{detailId}/takeout": [
+        "auth",
+        "role:superadmin,head,finance,finance_manager,cost_control,approver"
+    ],
+    "POST /budget-request/{id}/finance-reject": [
+        "auth",
+        "role:superadmin,finance,finance_manager,cost_control"
+    ],
+    "POST /budget-request/{id}/finance-reject-settlement": [
+        "auth",
+        "role:superadmin,finance,finance_manager,cost_control"
+    ],
+    "POST /budget-request/{id}/finance-verify": [
+        "auth",
+        "role:superadmin,finance,finance_manager,cost_control"
+    ],
+    "POST /budget-request/{id}/finance-verify-settlement": [
+        "auth",
+        "role:superadmin,finance,finance_manager,cost_control"
+    ],
+    "POST /budget-request/{id}/head-approve": [
+        "auth",
+        "role:superadmin,head"
+    ],
+    "POST /budget-request/{id}/head-check-settlement": [
+        "auth",
+        "role:superadmin,head"
+    ],
+    "POST /budget-request/{id}/head-reject": [
+        "auth",
+        "role:superadmin,head"
+    ],
+    "POST /budget-request/{id}/head-reject-settlement": [
+        "auth",
+        "role:superadmin,head"
+    ],
+    "POST /budget-request/{id}/log-note": [
+        "auth",
+        "throttle:30,1"
+    ],
+    "POST /budget-request/{id}/manager-cancel": [
+        "auth",
+        "role:superadmin,manager"
+    ],
+    "POST /budget-request/{id}/manager-reject-settlement": [
+        "auth",
+        "role:superadmin,finance_manager"
+    ],
+    "POST /budget-request/{id}/manager-revise": [
+        "auth",
+        "role:superadmin,manager,supervisor"
+    ],
+    "POST /budget-request/{id}/save-realization-draft": [
+        "auth",
+        "role:superadmin,manager,supervisor,teknisi,staff"
+    ],
+    "POST /budget-request/{id}/second-approve": [
+        "auth",
+        "role:superadmin,approver"
+    ],
+    "POST /budget-request/{id}/second-reject": [
+        "auth",
+        "role:superadmin,approver"
+    ],
+    "POST /budget-request/{id}/settle-approve": [
+        "auth",
+        "role:superadmin,finance_manager"
+    ],
+    "POST /budget-request/{id}/settle-reject": [
+        "auth",
+        "role:superadmin,finance_manager"
+    ],
+    "POST /budget-request/{id}/settlement-import-preview": [
+        "auth",
+        "role:superadmin,manager,supervisor"
+    ],
+    "POST /budget-request/{id}/submit": [
+        "auth",
+        "role:superadmin,manager"
+    ],
+    "POST /budget-request/{id}/submit-realization": [
+        "auth",
+        "role:superadmin,manager,supervisor,teknisi,staff"
+    ],
+    "POST /cash-management": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury,approver"
+    ],
+    "POST /cash-management/{id}/cancel": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury,approver"
+    ],
+    "POST /cash-management/{id}/post": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury,approver"
+    ],
+    "POST /cash-receipt": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury,approver,collection"
+    ],
+    "POST /cash-receipt/{id}/allocate": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury,approver,collection"
+    ],
+    "POST /cash-receipt/{id}/cancel": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury,approver,collection"
+    ],
+    "POST /category-item": [
+        "auth",
+        "menu:category-item"
+    ],
+    "POST /changelog/dismiss": [
+        "auth"
+    ],
+    "POST /closing/build": [
+        "auth",
+        "menu:closing"
+    ],
+    "POST /closing/{id}/close": [
+        "auth",
+        "menu:closing"
+    ],
+    "POST /closing/{id}/reopen": [
+        "auth",
+        "menu:closing"
+    ],
+    "POST /cluster": [
+        "auth",
+        "menu:project"
+    ],
+    "POST /cost-center": [
+        "auth",
+        "role:superadmin,admin,finance,finance_manager"
+    ],
+    "POST /cost-register": [
+        "auth",
+        "role:superadmin,finance,finance_manager"
+    ],
+    "POST /cost-register/{id}/approve": [
+        "auth",
+        "role:superadmin,finance,finance_manager,approver"
+    ],
+    "POST /cost-register/{id}/cancel": [
+        "auth",
+        "role:superadmin,finance,finance_manager"
+    ],
+    "POST /cost-register/{id}/log-note": [
+        "auth",
+        "role:superadmin,finance,finance_manager,approver",
+        "throttle:30,1"
+    ],
+    "POST /cost-register/{id}/revise": [
+        "auth",
+        "role:superadmin,finance,finance_manager,approver"
+    ],
+    "POST /cost-register/{id}/submit": [
+        "auth",
+        "role:superadmin,finance,finance_manager"
+    ],
+    "POST /customer": [
+        "auth",
+        "menu:customer"
+    ],
+    "POST /daily-transaction": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury"
+    ],
+    "POST /daily-transaction/bulk-approve": [
+        "auth",
+        "role:superadmin,approver"
+    ],
+    "POST /daily-transaction/bulk-reject": [
+        "auth",
+        "role:superadmin,approver"
+    ],
+    "POST /daily-transaction/{batchId}/draft-remove-item/{itemId}": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury"
+    ],
+    "POST /daily-transaction/{batchId}/reject-cr-item/{itemId}": [
+        "auth",
+        "role:superadmin,approver"
+    ],
+    "POST /daily-transaction/{batchId}/reject-item/{itemId}": [
+        "auth",
+        "role:superadmin,approver"
+    ],
+    "POST /daily-transaction/{id}/add-item": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury"
+    ],
+    "POST /daily-transaction/{id}/approve": [
+        "auth",
+        "role:superadmin,approver"
+    ],
+    "POST /daily-transaction/{id}/log-note": [
+        "auth",
+        "menu:finance-daily-transaction",
+        "throttle:30,1"
+    ],
+    "POST /daily-transaction/{id}/mark-paid": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury"
+    ],
+    "POST /daily-transaction/{id}/reject-batch": [
+        "auth",
+        "role:superadmin,approver"
+    ],
+    "POST /daily-transaction/{id}/submit": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury"
+    ],
+    "POST /delivery-note": [
+        "auth",
+        "menu:delivery-note"
+    ],
+    "POST /delivery-note/{id}/receive": [
+        "auth",
+        "menu:delivery-note"
+    ],
+    "POST /department": [
+        "auth",
+        "role:superadmin"
+    ],
+    "POST /employee": [
+        "auth",
+        "role:superadmin,admin,hr"
+    ],
+    "POST /feedback": [
+        "auth"
+    ],
+    "POST /feedback/{id}/close": [
+        "auth",
+        "menu:feedback-inbox"
+    ],
+    "POST /feedback/{id}/respond": [
+        "auth",
+        "menu:feedback-inbox"
+    ],
+    "POST /forecast": [
+        "auth",
+        "menu:forecast"
+    ],
+    "POST /forecast/{id}/activate": [
+        "auth",
+        "menu:forecast"
+    ],
+    "POST /forecast/{id}/close": [
+        "auth",
+        "menu:forecast"
+    ],
+    "POST /forecast/{id}/detail/{detail}/actual": [
+        "auth",
+        "menu:forecast"
+    ],
+    "POST /forgot/reset": [
+        "guest",
+        "throttle:15,1"
+    ],
+    "POST /forgot/send": [
+        "guest",
+        "throttle:10,1"
+    ],
+    "POST /forgot/verify": [
+        "guest",
+        "throttle:15,1"
+    ],
+    "POST /groups": [
+        "auth",
+        "role:superadmin,admin"
+    ],
+    "POST /homebase": [
+        "auth",
+        "menu:homebase"
+    ],
+    "POST /homebase/{id}/pic": [
+        "auth",
+        "menu:homebase"
+    ],
+    "POST /invoice-cash-receipt": [
+        "auth",
+        "role:superadmin,admin,finance,finance_manager,collection"
+    ],
+    "POST /invoice-cash-receipt/import-preview": [
+        "auth",
+        "role:superadmin,admin,finance,finance_manager,collection"
+    ],
+    "POST /invoice-cash-receipt/{id}/approve": [
+        "auth",
+        "role:superadmin,finance_manager"
+    ],
+    "POST /invoice-cash-receipt/{id}/cancel": [
+        "auth",
+        "role:superadmin,finance_manager,approver"
+    ],
+    "POST /invoice-cash-receipt/{id}/cash-receipt": [
+        "auth",
+        "role:superadmin,admin,finance,finance_manager,collection"
+    ],
+    "POST /invoice-cash-receipt/{id}/cash-receipt/{crId}/settle": [
+        "auth",
+        "role:superadmin,admin,finance,finance_manager,collection"
+    ],
+    "POST /invoice-cash-receipt/{id}/comment": [
+        "auth",
+        "menu:invoice-cash-receipt"
+    ],
+    "POST /invoice-cash-receipt/{id}/mark-received": [
+        "auth",
+        "role:superadmin,admin,finance,finance_manager,collection"
+    ],
+    "POST /invoice-cash-receipt/{id}/revise": [
+        "auth",
+        "role:superadmin,finance_manager,approver,accounting"
+    ],
+    "POST /invoice-cash-receipt/{id}/submit": [
+        "auth",
+        "role:superadmin,admin,finance,finance_manager,collection"
+    ],
+    "POST /invoice-cash-receipt/{id}/verify": [
+        "auth",
+        "role:superadmin,finance_manager,accounting"
+    ],
+    "POST /login": [
+        "guest",
+        "throttle:20,1"
+    ],
+    "POST /logout": [
+        "auth"
+    ],
+    "POST /master-material": [
+        "auth",
+        "menu:master-material"
+    ],
+    "POST /master-material/import": [
+        "auth",
+        "menu:master-material"
+    ],
+    "POST /master-pic": [
+        "auth",
+        "menu:master-pic"
+    ],
+    "POST /network": [
+        "auth",
+        "menu:network"
+    ],
+    "POST /notifications/read-all": [
+        "auth"
+    ],
+    "POST /notifications/{id}/read": [
+        "auth"
+    ],
+    "POST /payroll-run": [
+        "auth",
+        "menu:payroll-run"
+    ],
+    "POST /payroll-run/{id}/approve": [
+        "auth",
+        "menu:payroll-run"
+    ],
+    "POST /payroll-run/{id}/close": [
+        "auth",
+        "menu:payroll-run"
+    ],
+    "POST /payroll-run/{id}/paid": [
+        "auth",
+        "menu:payroll-run"
+    ],
+    "POST /payroll-run/{id}/reject": [
+        "auth",
+        "menu:payroll-run"
+    ],
+    "POST /payroll-run/{id}/reopen": [
+        "auth",
+        "menu:payroll-run"
+    ],
+    "POST /payroll-run/{id}/submit": [
+        "auth",
+        "menu:payroll-run"
+    ],
+    "POST /payroll-run/{id}/verify": [
+        "auth",
+        "menu:payroll-run"
+    ],
+    "POST /profile/avatar": [
+        "auth"
+    ],
+    "POST /profile/cover": [
+        "auth"
+    ],
+    "POST /profile/notifications": [
+        "auth"
+    ],
+    "POST /profile/password": [
+        "auth"
+    ],
+    "POST /profile/password/token": [
+        "auth"
+    ],
+    "POST /project": [
+        "auth",
+        "role:superadmin,head"
+    ],
+    "POST /project-monitoring/detail/{detailId}/set-finish": [
+        "auth"
+    ],
+    "POST /project-monitoring/detail/{detailId}/set-status": [
+        "auth"
+    ],
+    "POST /project-monitoring/{id}/message": [
+        "auth"
+    ],
+    "POST /project-monitoring/{id}/weights": [
+        "auth"
+    ],
+    "POST /project/budget-import-preview": [
+        "auth",
+        "role:superadmin,head"
+    ],
+    "POST /project/bulk-approve": [
+        "auth",
+        "role:superadmin,finance,finance_manager,approver"
+    ],
+    "POST /project/bulk-revise": [
+        "auth",
+        "role:superadmin,finance,finance_manager,approver"
+    ],
+    "POST /project/import-preview": [
+        "auth",
+        "role:superadmin,head"
+    ],
+    "POST /project/po-number/import-preview": [
+        "auth",
+        "role:superadmin,approver,finance,finance_manager,head"
+    ],
+    "POST /project/po-number/{poNumberId}/complete-bast": [
+        "auth",
+        "role:superadmin,finance,finance_manager,head"
+    ],
+    "POST /project/po-number/{poNumberId}/status": [
+        "auth",
+        "role:superadmin,finance,finance_manager,head"
+    ],
+    "POST /project/{id}/activate-from-waiting": [
+        "auth",
+        "role:superadmin,finance,finance_manager,head"
+    ],
+    "POST /project/{id}/approve": [
+        "auth",
+        "role:superadmin,approver"
+    ],
+    "POST /project/{id}/finance-close": [
+        "auth",
+        "role:superadmin,finance,finance_manager"
+    ],
+    "POST /project/{id}/finance-revise": [
+        "auth",
+        "role:superadmin,finance,finance_manager,approver"
+    ],
+    "POST /project/{id}/log-note": [
+        "auth",
+        "throttle:30,1"
+    ],
+    "POST /project/{id}/reject-closing": [
+        "auth",
+        "role:superadmin,finance,finance_manager"
+    ],
+    "POST /project/{id}/submit": [
+        "auth",
+        "role:superadmin,head"
+    ],
+    "POST /project/{id}/submit-bast": [
+        "auth",
+        "role:superadmin,head"
+    ],
+    "POST /project/{id}/submit-closing": [
+        "auth",
+        "role:superadmin,head"
+    ],
+    "POST /project/{id}/verify": [
+        "auth",
+        "role:superadmin,finance,finance_manager"
+    ],
+    "POST /project/{id}/verify-closing": [
+        "auth",
+        "role:superadmin,finance,finance_manager"
+    ],
+    "POST /region": [
+        "auth",
+        "menu:region"
+    ],
+    "POST /security/sessions/revoke": [
+        "auth",
+        "role:superadmin"
+    ],
+    "POST /security/users/{id}/logout-all": [
+        "auth",
+        "role:superadmin"
+    ],
+    "POST /site": [
+        "auth",
+        "menu:site"
+    ],
+    "POST /site/import": [
+        "auth",
+        "menu:site"
+    ],
+    "POST /site/{id}/accessories": [
+        "auth",
+        "menu:site"
+    ],
+    "POST /site/{id}/document": [
+        "auth",
+        "menu:site"
+    ],
+    "POST /site/{id}/maintenance": [
+        "auth",
+        "menu:site"
+    ],
+    "POST /site/{id}/material": [
+        "auth",
+        "menu:site"
+    ],
+    "POST /site/{id}/pic": [
+        "auth",
+        "menu:site"
+    ],
+    "POST /source-fund": [
+        "auth",
+        "role:superadmin,finance,finance_manager"
+    ],
+    "POST /stage": [
+        "auth",
+        "menu:milestone"
+    ],
+    "POST /team": [
+        "auth",
+        "role:superadmin"
+    ],
+    "POST /todo-list/bulk/{section}/{mode}": [
+        "auth",
+        "menu:todo-list"
+    ],
+    "POST /trouble-ticket": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /trouble-ticket/import/commit": [
+        "auth",
+        "menu:trouble-ticket",
+        "throttle:10,1"
+    ],
+    "POST /trouble-ticket/import/preview": [
+        "auth",
+        "menu:trouble-ticket",
+        "throttle:30,1"
+    ],
+    "POST /trouble-ticket/settings/rca": [
+        "auth",
+        "menu:trouble-ticket",
+        "role:superadmin"
+    ],
+    "POST /trouble-ticket/settings/rca/{rca}": [
+        "auth",
+        "menu:trouble-ticket",
+        "role:superadmin"
+    ],
+    "POST /trouble-ticket/settings/rca/{rca}/toggle": [
+        "auth",
+        "menu:trouble-ticket",
+        "role:superadmin"
+    ],
+    "POST /trouble-ticket/settings/severity": [
+        "auth",
+        "menu:trouble-ticket",
+        "role:superadmin"
+    ],
+    "POST /trouble-ticket/settings/severity/{severity}": [
+        "auth",
+        "menu:trouble-ticket",
+        "role:superadmin"
+    ],
+    "POST /trouble-ticket/settings/severity/{severity}/toggle": [
+        "auth",
+        "menu:trouble-ticket",
+        "role:superadmin"
+    ],
+    "POST /trouble-ticket/settings/sla": [
+        "auth",
+        "menu:trouble-ticket",
+        "role:superadmin"
+    ],
+    "POST /trouble-ticket/settings/sub-rca": [
+        "auth",
+        "menu:trouble-ticket",
+        "role:superadmin"
+    ],
+    "POST /trouble-ticket/settings/sub-rca/{subRca}": [
+        "auth",
+        "menu:trouble-ticket",
+        "role:superadmin"
+    ],
+    "POST /trouble-ticket/settings/sub-rca/{subRca}/toggle": [
+        "auth",
+        "menu:trouble-ticket",
+        "role:superadmin"
+    ],
+    "POST /trouble-ticket/{ticket}/arrive": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /trouble-ticket/{ticket}/close": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /trouble-ticket/{ticket}/close/approve": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /trouble-ticket/{ticket}/close/reject": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /trouble-ticket/{ticket}/messages": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /trouble-ticket/{ticket}/plan": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /trouble-ticket/{ticket}/plan/approve": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /trouble-ticket/{ticket}/plan/reject": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /trouble-ticket/{ticket}/reassign": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /trouble-ticket/{ticket}/requests": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /trouble-ticket/{ticket}/requests/{requestId}/approve": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /trouble-ticket/{ticket}/requests/{requestId}/cancel": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /trouble-ticket/{ticket}/requests/{requestId}/edit": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /trouble-ticket/{ticket}/requests/{requestId}/reject": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /trouble-ticket/{ticket}/requests/{requestId}/resubmit": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /trouble-ticket/{ticket}/requests/{requestId}/submit": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /trouble-ticket/{ticket}/settlement/{crId}/review": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /trouble-ticket/{ticket}/settlement/{crId}/submit": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /trouble-ticket/{ticket}/start": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /trouble-ticket/{ticket}/travel": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /trouble-ticket/{ticket}/travel/cancel": [
+        "auth",
+        "menu:trouble-ticket"
+    ],
+    "POST /user": [
+        "auth",
+        "role:superadmin"
+    ],
+    "POST /view-as": [
+        "auth"
+    ],
+    "POST /view-as/reset": [
+        "auth"
+    ],
+    "POST /wilayah/desa": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "POST /wilayah/kecamatan": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "POST /wilayah/kota": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "POST /wilayah/provinsi": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "POST /wilayah/pulau": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "PUT /accessories/{id}": [
+        "auth",
+        "menu:accessories"
+    ],
+    "PUT /account/{id}": [
+        "auth",
+        "menu:account"
+    ],
+    "PUT /assignment/{assignment}": [
+        "auth"
+    ],
+    "PUT /bank/{id}": [
+        "auth",
+        "role:superadmin,admin"
+    ],
+    "PUT /beneficiaries/{id}": [
+        "auth",
+        "menu:beneficiaries",
+        "role:superadmin"
+    ],
+    "PUT /beneficiaries/{id}/move-pic": [
+        "auth",
+        "menu:beneficiaries",
+        "role:superadmin"
+    ],
+    "PUT /budget-plan/{id}": [
+        "auth",
+        "role:superadmin,manager"
+    ],
+    "PUT /budget-request/{id}": [
+        "auth",
+        "role:superadmin,manager,supervisor"
+    ],
+    "PUT /cash-management/{id}": [
+        "auth",
+        "role:superadmin,finance,finance_manager,treasury,approver"
+    ],
+    "PUT /category-item/{id}": [
+        "auth",
+        "menu:category-item"
+    ],
+    "PUT /cluster/{id}": [
+        "auth",
+        "menu:project"
+    ],
+    "PUT /cost-center/{id}": [
+        "auth",
+        "role:superadmin,admin,finance,finance_manager"
+    ],
+    "PUT /customer/{id}": [
+        "auth",
+        "menu:customer"
+    ],
+    "PUT /department/{id}": [
+        "auth",
+        "role:superadmin"
+    ],
+    "PUT /employee/{id}": [
+        "auth",
+        "role:superadmin,admin,hr"
+    ],
+    "PUT /forecast/{id}": [
+        "auth",
+        "menu:forecast"
+    ],
+    "PUT /groups/{id}": [
+        "auth",
+        "role:superadmin,admin"
+    ],
+    "PUT /homebase/{id}": [
+        "auth",
+        "menu:homebase"
+    ],
+    "PUT /invoice-cash-receipt/{id}": [
+        "auth",
+        "role:superadmin,admin,finance,finance_manager,collection"
+    ],
+    "PUT /master-material/{id}": [
+        "auth",
+        "menu:master-material"
+    ],
+    "PUT /master-pic/{id}": [
+        "auth",
+        "menu:master-pic"
+    ],
+    "PUT /network/{id}": [
+        "auth",
+        "menu:network"
+    ],
+    "PUT /payroll-run/{id}": [
+        "auth",
+        "menu:payroll-run"
+    ],
+    "PUT /profile": [
+        "auth"
+    ],
+    "PUT /project/{id}": [
+        "auth",
+        "role:superadmin,approver,finance,finance_manager,head"
+    ],
+    "PUT /project/{id}/activate": [
+        "auth",
+        "role:superadmin,finance,finance_manager,head"
+    ],
+    "PUT /project/{id}/edit-po-numbers": [
+        "auth",
+        "role:superadmin,approver,finance,finance_manager,head"
+    ],
+    "PUT /region/{id}": [
+        "auth",
+        "menu:region"
+    ],
+    "PUT /role/{id}": [
+        "auth",
+        "role:superadmin"
+    ],
+    "PUT /site/{id}": [
+        "auth",
+        "menu:site"
+    ],
+    "PUT /site/{id}/accessories/{linkId}": [
+        "auth",
+        "menu:site"
+    ],
+    "PUT /source-fund/{id}": [
+        "auth",
+        "role:superadmin,finance,finance_manager"
+    ],
+    "PUT /stage/{id}": [
+        "auth",
+        "menu:milestone"
+    ],
+    "PUT /team/{id}": [
+        "auth",
+        "menu:team"
+    ],
+    "PUT /wilayah/desa/{id}": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "PUT /wilayah/kecamatan/{id}": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "PUT /wilayah/kota/{id}": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "PUT /wilayah/provinsi/{id}": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "PUT /wilayah/pulau/{id}": [
+        "auth",
+        "menu:wilayah"
+    ],
+    "PUT|PATCH /accessgroup/{accessgroup}": [
+        "auth",
+        "role:superadmin"
+    ],
+    "PUT|PATCH /user/{user}": [
+        "auth",
+        "role:superadmin"
+    ]
+}
