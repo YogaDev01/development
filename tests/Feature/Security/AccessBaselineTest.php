@@ -11,6 +11,8 @@ use Tests\TestCase;
  * (docs/plans/2026-11-06-security-access-control.md, docs/security/access-matrix.md).
  *
  * Uji KARAKTERISASI: merekam perilaku akses SAAT INI, bukan perilaku ideal.
+ * Temuan F-1…F-4 diperbaiki 2026-11-07 atas keputusan pemilik (D19); ujinya
+ * kini menjaga perilaku sesudah perbaikan.
  * Mesin permission/data scope yang dibangun di fase berikutnya wajib
  * menghasilkan respons yang sama persis (parity). Uji bertanda TEMUAN
  * merekam celah yang sudah dilaporkan ke pemilik dan BELUM diputuskan;
@@ -103,33 +105,89 @@ class AccessBaselineTest extends TestCase
             ->assertOk();
     }
 
-    /* ---------------------------------------------- TEMUAN (belum diputuskan) */
+    /* ---------------------------------------------- TEMUAN F-1…F-4 (diperbaiki 2026-11-07) */
 
-    /**
-     * TEMUAN F-3: /api/budget-plan/{id}/details hanya digerbang `auth`; tidak
-     * memeriksa visibilitas Budget Plan. User di luar Access Group mendapat
-     * daftar sub-item beserta nilai, terpakai dan sisa.
-     */
-    public function test_temuan_rincian_budget_plan_tidak_tersaring(): void
+    /** F-3: rincian Budget Plan kini mengikuti canViewBudgetPlan(). */
+    public function test_rincian_budget_plan_di_luar_akses_ditolak(): void
     {
         $bp = $this->makeBudgetPlan();
 
         $this->actingAs($this->userWithRole('manager'))
             ->get('/api/budget-plan/' . $bp->id . '/details')
+            ->assertForbidden();
+    }
+
+    public function test_rincian_budget_plan_dengan_akses_tetap_terbuka(): void
+    {
+        $project = $this->makeProject();
+        $bp      = $this->makeBudgetPlan($project);
+        $anggota = $this->giveProjectAccess($this->userWithRole('manager'), $project);
+
+        $this->actingAs($anggota)
+            ->get('/api/budget-plan/' . $bp->id . '/details')
             ->assertOk();
     }
 
-    /**
-     * TEMUAN F-4: /budget-request/check-nob mengembalikan sisa & nilai budget
-     * Budget Plan mana pun berdasarkan id, tanpa pemeriksaan visibilitas.
-     */
-    public function test_temuan_check_nob_membuka_nilai_budget_plan_lain(): void
+    /** F-4: Budget Plan yang tidak terlihat dijawab seperti tidak ada. */
+    public function test_check_nob_tidak_membuka_nilai_budget_plan_lain(): void
     {
         $bp = $this->makeBudgetPlan();
 
         $this->actingAs($this->userWithRole('manager'))
             ->post('/budget-request/check-nob', ['budget_plan_id' => $bp->id, 'amount' => 1])
             ->assertOk()
+            ->assertExactJson(['is_nob' => false, 'remaining' => 0]);
+    }
+
+    public function test_check_nob_dengan_akses_tetap_menjawab(): void
+    {
+        $project = $this->makeProject();
+        $bp      = $this->makeBudgetPlan($project);
+        $anggota = $this->giveProjectAccess($this->userWithRole('manager'), $project);
+
+        $this->actingAs($anggota)
+            ->post('/budget-request/check-nob', ['budget_plan_id' => $bp->id, 'amount' => 1])
+            ->assertOk()
             ->assertJsonStructure(['is_nob', 'remaining', 'budget_amount']);
+    }
+
+    /** F-1: Global Search PO mengikuti Access Group seperti daftar PO. */
+    public function test_global_search_po_mengikuti_access_group(): void
+    {
+        $milik = $this->makeProject(['name' => 'Menara Cari Milik']);
+        $lain  = $this->makeProject(['name' => 'Menara Cari Lain']);
+
+        $role = $this->role('manager');
+        $this->giveMenuAccess($role, 'list-po');
+        $user = $this->giveProjectAccess($this->userWithRole('manager'), $milik);
+
+        $json = $this->actingAs($user)->getJson('/global-search?q=' . urlencode('Menara Cari'))->assertOk()->json();
+
+        $judul = collect($json['groups'])->firstWhere('key', 'purchase-order')['items'] ?? [];
+        $teks  = collect($judul)->pluck('subtitle')->all();
+
+        $this->assertContains('Menara Cari Milik', $teks);
+        $this->assertNotContains('Menara Cari Lain', $teks);
+    }
+
+    public function test_global_search_po_role_full_scope_melihat_semua(): void
+    {
+        $this->makeProject(['name' => 'Menara Cari Lain']);
+        $role = $this->role('cost_control');
+        $this->giveMenuAccess($role, 'list-po');
+
+        $json = $this->actingAs($this->userWithRole('cost_control'))
+            ->getJson('/global-search?q=' . urlencode('Menara Cari'))->assertOk()->json();
+
+        $items = collect($json['groups'])->firstWhere('key', 'purchase-order')['items'] ?? [];
+        $this->assertContains('Menara Cari Lain', collect($items)->pluck('subtitle')->all());
+    }
+
+    /** F-2: route mati /api/clusters/{id} sudah dihapus. */
+    public function test_route_clusters_mati_sudah_dihapus(): void
+    {
+        $this->actingAs($this->userWithRole('manager'))
+            ->get('/api/clusters/1')
+            ->assertNotFound();
     }
 }

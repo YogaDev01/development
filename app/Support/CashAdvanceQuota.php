@@ -88,9 +88,47 @@ class CashAdvanceQuota
         ];
     }
 
+    /**
+     * Syarat beneficiary Cash Advance (keputusan pemilik 2026-11-07, temuan F-5):
+     * CA hanya untuk beneficiary kategori INTERNAL yang punya PIC, dan PIC itu
+     * WAJIB punya Token (limit jumlah CA) berupa angka > 0. Token kosong/0 =
+     * CA diblokir — sebelumnya berarti tanpa batas. Nominal tetap opsional
+     * (kosong/0 = tanpa batas nominal, seperti sebelumnya).
+     *
+     * Berlaku di simpan/ubah draft dan submit (termasuk Manager direct approval
+     * Trouble Ticket) karena semuanya lewat error(). CA yang sudah lewat submit
+     * tidak disentuh. usage() TIDAK berubah, jadi peringatan & tampilan kuota
+     * di form tetap sama.
+     */
+    public static function eligibilityError(?int $beneficiaryId): ?string
+    {
+        $ben = $beneficiaryId ? Beneficiary::with('pic')->find($beneficiaryId) : null;
+
+        if (! $ben || $ben->category !== 'INTERNAL') {
+            return 'Cash Advance hanya untuk beneficiary kategori Internal.';
+        }
+
+        if (! $ben->pic_id || ! $ben->pic) {
+            return 'Cash Advance hanya untuk beneficiary yang memiliki PIC. Lengkapi PIC beneficiary "'
+                . ($ben->nickname ?: $ben->complete_name) . '" di Master Beneficiary.';
+        }
+
+        $token = $ben->pic->token;
+        if (! is_numeric($token) || (int) $token < 1) {
+            return 'Token (limit jumlah Cash Advance) PIC "' . ($ben->pic->pic ?? '-') . '" belum diisi. '
+                . 'Isi Token di Master PIC sebelum mengajukan Cash Advance.';
+        }
+
+        return null;
+    }
+
     /** Limit CA terlampaui? Mengembalikan pesan error, atau null kalau lolos. */
     public static function error(?int $beneficiaryId, int $amount, ?int $excludeCrId = null): ?string
     {
+        if ($msg = self::eligibilityError($beneficiaryId)) {
+            return $msg;
+        }
+
         $q = self::usage($beneficiaryId, $excludeCrId);
         if (! $q) return null;
 

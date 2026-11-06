@@ -1457,7 +1457,9 @@ Route::middleware('auth')->group(function () {
     | API ROUTES
     |--------------------------------------------------------------------------
     */
-    Route::get('/api/clusters/{budgetPlanId}', [BudgetRequestController::class, 'getClusters']);
+    // '/api/clusters/{budgetPlanId}' dihapus 2026-11-07 (temuan F-2): menunjuk
+    // BudgetRequestController::getClusters yang tidak ada (selalu 500) dan
+    // tidak punya pemanggil di view/JS.
     Route::get('/api/budget-plan/{budgetPlanId}/details', [BudgetPlanController::class, 'getDetails']);
 
 });

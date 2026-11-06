@@ -237,9 +237,6 @@
     "GET /api/budget-plan/{budgetPlanId}/details": [
         "auth"
     ],
-    "GET /api/clusters/{budgetPlanId}": [
-        "auth"
-    ],
     "GET /api/public/budget-request": [
         "throttle:30,1"
     ],

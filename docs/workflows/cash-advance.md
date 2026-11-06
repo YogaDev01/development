@@ -34,6 +34,13 @@ PAID → REALIZED → SETTLE_CHECKED → SETTLE_VERIFIED ─┬─(no expense cl
 ```
 
 ## Rules
-- CA quota per PIC (`master_pics.token`/`nominal`), checked at create and submit.
+- CA quota per PIC (`master_pics.token`/`nominal`), checked at create, edit and submit
+  (`App\Support\CashAdvanceQuota::error()`).
+- **Syarat beneficiary CA (sejak 2026-11-07, keputusan pemilik):** beneficiary wajib kategori
+  INTERNAL, punya PIC, dan Token PIC berupa angka > 0 (`CashAdvanceQuota::eligibilityError()`).
+  Token kosong/0/bukan angka = CA **diblokir** (sebelumnya: tanpa batas). Nominal tetap opsional.
+  Berlaku saat simpan/ubah draft dan submit (termasuk Manager direct approval Trouble Ticket);
+  CA yang sudah lewat submit tidak terpengaruh. Draft CA lama dengan PIC tanpa Token tidak bisa
+  disimpan/disubmit sampai Token diisi di Master PIC.
 - Refund only after settlement; see `docs/business-rules.md`.
 - Bulk approve/reject from Todo List: `review-bulk-*`, `settlement-bulk-*`.

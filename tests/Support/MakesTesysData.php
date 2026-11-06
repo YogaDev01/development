@@ -201,9 +201,25 @@ trait MakesTesysData
         static $n = 0;
         $n++;
 
+        /*
+         | Sejak 2026-11-07 (temuan F-5) Cash Advance hanya untuk beneficiary
+         | INTERNAL ber-PIC dengan Token > 0 (CashAdvanceQuota::eligibilityError).
+         | makeCostRequest() default-nya Cash Advance, jadi penerima uji dibuat
+         | memenuhi syarat itu. Token besar = limit jumlah tidak pernah tercapai
+         | di uji yang tidak sedang menguji limit.
+         */
+        $pic = \App\Models\MasterPic::create([
+            'type'   => 'internal',
+            'pic'    => 'PIC Penerima ' . $n,
+            'token'  => '999',
+            'status' => 'ACTIVE',
+        ]);
+
         return Beneficiary::create([
             'nickname'      => 'Penerima ' . $n,
             'complete_name' => 'Penerima Uji ' . $n,
+            'category'      => 'INTERNAL',
+            'pic_id'        => $pic->id,
             'status'        => 'ACTIVE',
         ]);
     }

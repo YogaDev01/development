@@ -187,10 +187,19 @@ class GlobalSearchController extends Controller
 
     private function purchaseOrder(string $q): array
     {
-        // ProjectController::index() tidak menyaring baris per role; di sini
-        // pun tidak, supaya hasilnya sama dengan isi halaman Purchase Order.
-        $items = $this->cocok(Project::with('customer'), 'code', 'name', $q)
-            ->latest()->limit(self::PER_MODUL)->get()
+        // Sama dengan daftar Purchase Order (ProjectController::accessiblePoIds(),
+        // berlaku sejak 26 Sep 2026): peran PO_FULL_SCOPE melihat semua, peran
+        // lain hanya PO di Access Group-nya (individu ∪ team). Temuan F-1
+        // (docs/security/access-matrix.md), diperbaiki 2026-11-07.
+        $user  = Auth::user();
+        $query = $this->cocok(Project::with('customer'), 'code', 'name', $q);
+
+        if (! $user->hasRole(\App\Support\AccessRoles::PO_FULL_SCOPE)) {
+            $ids = $user->accessibleProjectIds()->all();
+            $query->whereIn('id', $ids ?: [0]);
+        }
+
+        $items = $query->latest()->limit(self::PER_MODUL)->get()
             ->map(fn ($p) => $this->baris(
                 $p->code,
                 $p->name,

@@ -399,7 +399,7 @@ Test dijalankan **hanya atas permintaan pengguna** setelah prosedur CLAUDE.md §
 | **D16** | Mempersempit Cash Receipt delete | Role yang kini bisa menghapus tidak bisa lagi | HIGH | Putuskan pemilik |
 | **D17** | Notifikasi Head hanya ke Head terkait | Head lain berhenti menerima notifikasi | HIGH | Proyek terpisah |
 | **D18** | Pencatatan `export`/`download` di audit | Tidak terlihat; +1 insert per ekspor/unduh | MEDIUM | Setujui |
-| **D19** | Menutup temuan Fase 0 F-1/F-3/F-4/F-5 (`docs/security/access-matrix.md` §7) dan menghapus route mati F-2 | User di luar Access Group tidak lagi melihat PO di Global Search, rincian/sisa Budget Plan, dan kuota CA beneficiary lain; form CR milik user yang berhak tidak berubah | HIGH | Setujui (memakai fungsi visibilitas yang sudah ada) |
+| **D19** ✅ 2026-11-07 (F-1…F-4 ditutup; F-5 diganti aturan CA baru) | Menutup temuan Fase 0 F-1/F-3/F-4/F-5 (`docs/security/access-matrix.md` §7) dan menghapus route mati F-2 | User di luar Access Group tidak lagi melihat PO di Global Search, rincian/sisa Budget Plan, dan kuota CA beneficiary lain; form CR milik user yang berhak tidak berubah | HIGH | Setujui (memakai fungsi visibilitas yang sudah ada) |
 
 Butir di luar tabel ini (Fase 0, 1, 2 shadow, 4 parity, 6 tampilan, 8, 9) **tidak** mengubah workflow/UX user biasa;
 yang baru hanyalah konsol keamanan khusus superadmin.

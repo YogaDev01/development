@@ -173,7 +173,19 @@ Own Team/Department belum dapat diterapkan (keputusan D4 di blueprint).
 `finance` dan `admin` melihat semua Budget Plan proyek tetapi tidak semua PO. Sengaja atau
 tidak: **Needs confirmation** (tidak diubah).
 
-## 7. Temuan Fase 0 (dilaporkan, TIDAK diperbaiki — perubahan otorisasi = HIGH)
+## 7. Temuan Fase 0
+
+**Status 2026-11-07 (keputusan pemilik D19):**
+- F-1 **diperbaiki**: Global Search PO memakai `PO_FULL_SCOPE` / `accessibleProjectIds()`.
+- F-2 **diperbaiki**: route `/api/clusters/{budgetPlanId}` dihapus (fixture kini 540 route).
+- F-3 **diperbaiki**: `getDetails` memakai `canViewBudgetPlan()` → 403 di luar akses.
+- F-4 **diperbaiki**: `checkNob` memakai `scopeVisibleTo()`; Budget Plan tak terlihat dijawab
+  seperti tidak ada (`{"is_nob":false,"remaining":0}`).
+- F-5: pemilik memilih **aturan bisnis baru**, bukan menutup endpoint — CA hanya untuk beneficiary
+  INTERNAL ber-PIC dengan Token > 0 (`docs/workflows/cash-advance.md`). Endpoint `ca-quota`
+  tetap terbuka bagi user login (kebocoran pemakaian kuota per beneficiary masih ada, LOW–MEDIUM).
+
+Tabel di bawah adalah temuan asli saat audit.
 
 | # | Temuan | Dampak | Level | Bukti |
 |---|---|---|---|---|
