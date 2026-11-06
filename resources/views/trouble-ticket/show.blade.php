@@ -58,6 +58,9 @@
             <a href="{{ route('trouble-ticket.index') }}" class="btn btn-outline-secondary btn-xs" title="Kembali ke daftar"><i class="fas fa-arrow-left"></i></a>
             <div class="tt-title tt-head-site" title="{{ $site?->tid }} — {{ $site?->sitename }}">{{ $site?->tid }} — {{ $site?->sitename }}</div>
             <x-status :status="$t->status" context="trouble-ticket" size="md" />
+            @if($financeState === \App\Models\TroubleTicket::FINANCE_OPEN)
+                <span class="tt-fin-badge" title="{{ implode(' ', $financeBlockers) }}"><i class="fas fa-coins" aria-hidden="true"></i> Keuangan belum selesai</span>
+            @endif
         </div>
         @php $actionVars = compact('t', 'canActAsTech', 'isTechnician', 'canCreatePlan', 'bisaPlan', 'bisaBerangkat', 'dalamJalan', 'bisaMulai', 'bisaTutup', 'canApproveClose', 'bisaAlihkan', 'canSettle', 'settleList', 'settleCr'); @endphp
 
@@ -151,7 +154,7 @@
                             @unless($isTechnician)
                                 <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#ttTabSla" role="tab"><i class="fas fa-stopwatch"></i><span>SLA</span></a></li>
                             @endunless
-                            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#ttTabPengajuan" role="tab"><i class="fas fa-file-invoice-dollar"></i><span>Pengajuan</span>@if($pengajuan->isNotEmpty())<span class="tt-tab-count">{{ $pengajuan->count() }}</span>@endif</a></li>
+                            <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#ttTabPengajuan" role="tab"><i class="fas fa-file-invoice-dollar"></i><span>Pengajuan<span class="d-none d-lg-inline"> Dana</span></span>@if($pengajuan->isNotEmpty())<span class="tt-tab-count">{{ $pengajuan->count() }}</span>@endif</a></li>
                             <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#ttTabLog" role="tab"><i class="fas fa-history"></i><span>Log</span><span class="tt-tab-count">{{ $statusLog->count() }}</span></a></li>
                         </ul>
                     </div>
@@ -384,7 +387,7 @@
                          (keputusan Okt 2026), jadi tidak ada isian biaya di sini. --}}
                     <div class="tt-stage-note mt-2">
                         Plan visit hanya menjadwalkan kunjungan. Biaya (Cash Advance atau jenis lain)
-                        diajukan terpisah lewat tab <strong>Pengajuan</strong>.
+                        diajukan terpisah lewat tab <strong>Pengajuan Dana</strong>.
                         Tahap <strong>Trip</strong> dimulai saat teknisi menggeser
                         “Swipe for travel” pada tanggal plan visit.
                     </div>
@@ -677,8 +680,11 @@
                 </div>
                 <div class="modal-body" style="font-size:13px;">
                     <div class="text-muted mb-1" id="ttEsignRowLabel"></div>
+                    <div class="font-weight-bold mb-2" style="font-size:18px;" id="ttEsignAmount"></div>
+                    <label class="mb-1" for="ttEsignName">Nama penerima uang <span class="text-danger">*</span></label>
+                    <input type="text" id="ttEsignName" class="form-control form-control-sm mb-2" maxlength="150" placeholder="Mis. nama tukang ojek atau toko">
                     <canvas id="ttSignPad" class="tt-signpad"></canvas>
-                    <small class="text-muted d-block mt-1">Tanda tangani di kotak di atas.</small>
+                    <small class="text-muted d-block mt-1">Penerima uang menandatangani di kotak di atas. Kwitansi PDF dibuat saat settlement disimpan.</small>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary btn-sm mr-auto" data-dismiss="modal">Batal</button>
@@ -1432,12 +1438,9 @@ $(function () {
 
         /* ---------- Bukti wajib per baris ---------- */
         /* Dua aturan (20 Okt 2026):
-             a. Baris bernilai > 0 yang SUDAH di-e-sign wajib berlampiran —
-                tanda tangan penerima dana tanpa bukti belanja tidak bisa
-                dipertanggungjawabkan.
-             b. Baris yang VARIANCE-nya tidak nol (Settle beda dari Request)
-                wajib berlampiran DAN di-e-sign — selisih uang harus berbukti
-                dan diakui penerimanya.
+             Baris yang VARIANCE-nya tidak nol (Settle beda dari Request) wajib
+             punya bukti: nota ATAU kwitansi digital (e-sign penerima). Tidak semua
+             transaksi punya penerima yang bisa menandatangani (tol, minimarket).
            Penegakannya lewat setCustomValidity pada input berkas baris itu:
            tt-submit-once memeriksa checkValidity() lebih dulu, sehingga form
            tidak terkirim dan tombolnya pun tidak terkunci berputar. Input
@@ -1460,7 +1463,7 @@ $(function () {
         }
 
         function periksaLampiran() {
-            var kurangLampiran = [], kurangTtd = [];
+            var kurangLampiran = [];
 
             var grup = perItem(), kurangSub = [];
 
@@ -1475,30 +1478,22 @@ $(function () {
                 // Baris tambahan wajib memilih Sub COA (server menolak tanpa itu).
                 if (!String($r.data('origin') || '') && !$r.find('.tt-settle-sub').val()) kurangSub.push(i + 1);
 
-                var lampiranKurang = (adaSelisih || (amt > 0 && ttd)) && !punyaLampiran($r);
-                var ttdKurang      = adaSelisih && !ttd;
+                var lampiranKurang = adaSelisih && !ttd && !punyaLampiran($r);
                 var inp            = $r.find('.tt-settle-file')[0];
 
                 if (inp && inp.setCustomValidity) {
-                    inp.setCustomValidity(lampiranKurang || ttdKurang ? 'Bukti baris ini belum lengkap.' : '');
+                    inp.setCustomValidity(lampiranKurang ? 'Bukti baris ini belum lengkap.' : '');
                 }
 
                 $r.find('.tt-att-btn')
                     .toggleClass('btn-outline-danger', lampiranKurang)
                     .toggleClass('btn-outline-secondary', !lampiranKurang);
 
-                // Tombol e-sign yang sudah hijau (tertanda) tidak diwarnai ulang.
-                $r.find('.tt-esign-btn').not('.btn-success')
-                    .toggleClass('btn-outline-danger', ttdKurang)
-                    .toggleClass('btn-outline-secondary', !ttdKurang);
-
                 if (lampiranKurang) kurangLampiran.push(i + 1);
-                if (ttdKurang) kurangTtd.push(i + 1);
             });
 
             var pesan = [];
-            if (kurangLampiran.length) pesan.push('Lampiran belum diisi pada baris no. ' + kurangLampiran.join(', ') + '.');
-            if (kurangTtd.length) pesan.push('E-sign belum diisi pada baris no. ' + kurangTtd.join(', ') + '.');
+            if (kurangLampiran.length) pesan.push('Nota atau E-sign belum diisi pada baris no. ' + kurangLampiran.join(', ') + '.');
             if (kurangSub.length) pesan.push('Sub COA belum dipilih pada baris tambahan no. ' + kurangSub.join(', ') + '.');
 
             $('#ttSettleErr').toggleClass('d-none', !pesan.length).text(pesan.join(' '));
@@ -1580,6 +1575,8 @@ $(function () {
                 ? $barisEsign.find('.tt-settle-sub option:selected').text().trim() + ' — '
                 : '';
             $('#ttEsignRowLabel').text(labelSub + $barisEsign.find('.tt-settle-origin-label').text().trim());
+            $('#ttEsignAmount').text('Rp ' + $barisEsign.find('.tt-settle-amount').val());
+            $('#ttEsignName').val($barisEsign.find('.tt-esign-name').val());
             kosongkanPad();
             kembaliKeSettle = true;
             $('#mdlTtSettle')
@@ -1603,6 +1600,10 @@ $(function () {
         $('#ttSignSave').on('click', function () {
             if (!adaCoretan || !$barisEsign) return;
 
+            var penerima = $('#ttEsignName').val().trim();
+            if (!penerima) { $('#ttEsignName').focus(); return; }
+
+            $barisEsign.find('.tt-esign-name').val(penerima);
             $barisEsign.find('.tt-esign-value').val(pad.toDataURL('image/png'));
             $barisEsign.find('.tt-esign-state').text('tertanda');
             $barisEsign.find('.tt-esign-btn').removeClass('btn-outline-secondary').addClass('btn-success');
@@ -1631,21 +1632,21 @@ $(function () {
         var desktop = window.matchMedia('(min-width: 992px)').matches;
         if (desktop) {
             /*
-             * Tinggi pas sampai dasar layar: ukur dulu ruang yang ada DI BAWAH
-             * area detail (padding .content, footer layout, dll.) dengan cara
-             * membuat halaman sengaja meluap, lalu sisakan tepat ruang itu.
-             * Tanpa margin tebakan, jadi tidak ada celah kosong maupun scrollbar.
+             * Tinggi pas sampai dasar layar, diukur pada wadah yang benar-benar
+             * menggulir (.content di dalam .main), bukan dokumen. Layout memakai
+             * `zoom` (--ts-zoom): getBoundingClientRect() memberi piksel layar,
+             * sedangkan style.height dan clientHeight memakai piksel CSS, jadi
+             * selisih posisi dibagi skala dulu. Tanpa itu panelnya tergambar
+             * lebih pendek dan menyisakan ruang kosong di bawah.
              */
-            // Kunci gulir dilepas dulu supaya pengukuran di bawah tetap
-            // melihat luapan halaman yang sengaja dibuat.
-            kunciGulir(false);
-            el.style.height = (window.innerHeight * 2) + 'px';
-            var atas  = el.getBoundingClientRect().top + window.scrollY;
-            var bawah = document.documentElement.scrollHeight - (atas + el.offsetHeight);
-            el.style.height = Math.max(360, Math.floor(window.innerHeight - atas - Math.max(0, bawah))) + 'px';
-            // Halaman sudah pas setinggi layar: batang gulir halaman dimatikan
-            // supaya sisa pembulatan tidak memunculkan scrollbar kosong.
+            // Dikunci dulu: kelas ini juga memangkas padding bawah wadah.
             kunciGulir(true);
+            var wadah = el.closest('.main > .content') || document.documentElement;
+            var kotak = wadah.getBoundingClientRect();
+            var skala = (kotak.height / wadah.offsetHeight) || 1;
+            var atas  = (el.getBoundingClientRect().top - kotak.top) / skala + wadah.scrollTop;
+            var bawah = parseFloat(getComputedStyle(wadah).paddingBottom) || 0;
+            el.style.height = Math.max(360, Math.floor(wadah.clientHeight - atas - bawah)) + 'px';
         } else {
             el.style.height = '';
             // Di HP halaman tetap menggulir seperti biasa.

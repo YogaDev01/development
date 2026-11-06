@@ -65,6 +65,7 @@ class FileAccess
             'cost_request_attachments',
             'cost_request_detail_attachments',
             'cost_request_realizations',
+            'settlement_signatures',
             'cost_request_realization_details' => $this->allowsCostRequest($folder, $path),
 
             // ---- Invoice & bukti pembayaran: aturan Access Group invoice
@@ -186,7 +187,7 @@ class FileAccess
             'cost_request_detail_attachments' => RequestDetailAttachment::where('path', $path)
                 ->first()?->requestDetail?->budget_request_id,
 
-            'cost_request_realizations' => BudgetRequestRealizationAttachment::where('path', $path)
+            'cost_request_realizations', 'settlement_signatures' => BudgetRequestRealizationAttachment::where('path', $path)
                 ->value('budget_request_id'),
 
             'cost_request_realization_details' => RealizationDetailAttachment::where('path', $path)
@@ -205,6 +206,15 @@ class FileAccess
         $this->scopeByRole($query);
 
         if ($query->exists()) {
+            return true;
+        }
+
+        // Teknisi tidak punya Access Group: lampiran CR tiketnya sendiri tetap
+        // terbuka untuk teknisi, pemilik dana, dan pengawas, bukan semua yang
+        // sekadar bisa melihat tiket (pembuat tiket tidak termasuk).
+        $tiket = \App\Models\TroubleTicket::forCostRequest((int) $crId)->first();
+        if ($tiket && app(\App\Services\TroubleTicketWorkflow::class)
+            ->canViewFinance(Auth::user(), $tiket, (new BudgetRequest)->forceFill(['id' => $crId]))) {
             return true;
         }
 

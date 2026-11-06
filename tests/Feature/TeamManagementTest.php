@@ -73,6 +73,51 @@ class TeamManagementTest extends TestCase
 
     /* -------------------------------------------------------------- tests */
 
+    public function test_kartu_bagan_punya_kunci_unik_supaya_garis_mengikuti_atasan_langsung(): void
+    {
+        // leader → memberA (memimpin team bawah) → memberB, plus satu akar lain.
+        $this->makeTeam('TEAM-ATAS', $this->leader, [$this->memberA]);
+        $this->makeTeam('TEAM-BAWAH', $this->memberA, [$this->memberB]);
+        $this->makeTeam('TEAM-TEPI', $this->memberB);
+        $this->makeTeam('TEAM-AKAR-LAIN', $this->admin);
+
+        $this->actingAs($this->admin)->get('/team')
+            ->assertOk()
+            ->assertViewHas('orgChart', function (array $akar) {
+                $kunci = [];
+                $telusuri = function (array $kartu) use (&$telusuri, &$kunci) {
+                    foreach ($kartu as $k) {
+                        $kunci[] = $k['key'];
+                        $telusuri($k['children'] ?? []);
+                    }
+                };
+                $telusuri($akar);
+
+                return count($kunci) === 4 && count(array_unique($kunci)) === 4;
+            });
+    }
+
+    public function test_detail_member_menyiapkan_satu_team_di_atasnya(): void
+    {
+        $atas = $this->makeTeam('TEAM-ATAS', $this->leader, [$this->memberA]);
+        $bawah = $this->makeTeam('TEAM-BAWAH', $this->memberA, [$this->memberB]);
+
+        $this->actingAs($this->admin)->get('/team')
+            ->assertOk()
+            ->assertSee('data-above="'.$atas->id.'" data-link="'.$this->memberA->id.'"', false)
+            ->assertDontSee('data-above="'.$bawah->id.'"', false);
+    }
+
+    public function test_tab_team_profil_memakai_kartu_bagan_organisasi(): void
+    {
+        $this->makeTeam('TEAM-ATAS', $this->leader, [$this->memberA]);
+
+        $this->actingAs($this->memberA)->get('/profile')
+            ->assertOk()
+            ->assertSee('oc-card is-me', false)
+            ->assertSee('Level 2 · 1 orang');
+    }
+
     public function test_edit_team_keeps_membership_rows_and_ids(): void
     {
         $team = $this->makeTeam('TEAM-A', $this->leader, [$this->memberA]);

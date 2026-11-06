@@ -2,7 +2,7 @@
     Tab "Organisasi" pada daftar Team (team.index): ringkasan organisasi,
     chart orang per department, dan BAGAN ORGANISASI dengan dua mode:
       - Leader View: pohon atas → bawah, hanya orang yang memimpin team.
-      - Detail Member: satu team terpilih (leader + anggota per level).
+      - Detail Member: team terpilih dan satu team di atasnya (leader + anggota per level).
 
     Variabel (TeamController::organizationData): $orgChart, $orgTeams, $people,
     $meId, $myTeams, $orgSummary.
@@ -14,6 +14,7 @@
     jadi markup tetap berupa daftar bersarang biasa. Drawer profil (#osPerson)
     dirender di team.index, di luar .tab-pane.
 --}}
+@include('team._org_styles')
 @push('styles')
 <style>
     /* Ringkasan organisasi */
@@ -59,26 +60,7 @@
     .oc-node { display: flex; flex-direction: column; align-items: center; position: relative; }
     .oc-children { display: flex; gap: 32px; align-items: flex-start; justify-content: center; margin-top: 40px; }
     .oc-children[hidden] { display: none; }
-    .oc-empty { font-size: var(--fs-caption); color: var(--text-faint); padding: var(--sp-2); }
 
-    .oc-card { width: 150px; display: flex; flex-direction: column; align-items: center; background: transparent; border: 0; padding: 0; color: var(--text); position: relative; z-index: 1; }
-    .oc-photo { width: 64px; height: 64px; border-radius: 50%; border: 3px solid var(--accent); background: var(--surface-2); color: var(--text-dim); display: flex; align-items: center; justify-content: center; overflow: hidden; font-size: 16px; font-weight: 700; box-shadow: 0 0 0 3px var(--surface); }
-    .oc-photo img { width: 100%; height: 100%; object-fit: cover; }
-    /* Label pill di bawah foto: jabatan tebal + nama. Putih di atas aksen = pola yang sama dengan tombol primer TESYS. */
-    .oc-label { margin-top: -10px; width: 100%; background: var(--accent); color: #fff; border-radius: 12px; padding: 5px 8px 6px; line-height: 1.2; display: flex; flex-direction: column; box-shadow: 0 0 0 2px var(--surface); }
-    .oc-label strong { font-size: 11.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .oc-label span { font-size: 11px; opacity: .92; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .oc-card.is-leader .oc-photo { width: 76px; height: 76px; }
-    .oc-card:not(.is-leader) .oc-label { background: var(--surface); color: var(--text); border: 1.5px solid var(--accent); }
-    .oc-card:not(.is-leader) .oc-label span { color: var(--text-dim); opacity: 1; }
-    .oc-card:hover .oc-photo, .oc-card:focus-visible .oc-photo { box-shadow: 0 0 0 3px var(--accent-tint-2); }
-    .oc-card.is-me .oc-photo { box-shadow: 0 0 0 3px var(--accent-tint-2), 0 0 0 6px var(--accent-soft); }
-    .oc-card.is-hit .oc-label, .oc-card.is-twin .oc-label { outline: 2px solid var(--warning); outline-offset: 2px; }
-    .oc-tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; margin-top: 4px; max-width: 150px; }
-    .oc-tag { display: inline-block; padding: 0 6px; border-radius: var(--radius-pill); background: var(--surface-2); border: 1px solid var(--border); color: var(--text-dim); font-size: 9.5px; font-weight: 600; line-height: 15px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .oc-tag.is-me { background: var(--accent-tint); border-color: var(--accent-tint-2); color: var(--accent-text); }
-    .oc-tag.is-lead { background: var(--info-bg); border-color: var(--info-bg); color: var(--info); }
-    .oc-tag.is-dup { background: var(--warning-bg); border-color: var(--warning-bg); color: var(--warning); }
     .oc-toggle { position: relative; z-index: 2; margin-top: 6px; width: 20px; height: 20px; padding: 0; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-dim); font-size: 9px; display: inline-flex; align-items: center; justify-content: center; }
     .oc-toggle:hover { color: var(--accent-text); border-color: var(--accent-soft); }
     .oc-toggle + .oc-children { margin-top: 26px; }
@@ -90,21 +72,6 @@
     .oc-teamlink span { color: var(--text-dim); font-weight: 500; }
     .oc-teamlink:hover, .oc-teamlink:focus-visible { border-color: var(--accent-soft); background: var(--accent-tint); color: var(--accent-text); }
 
-    /* ---------- Detail Member: satu team, anggota membungkus ke bawah (tanpa scroll mendatar). ---------- */
-    .ot-view { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); padding: var(--sp-4); }
-    .ot-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--sp-2); }
-    .ot-title { font-size: var(--fs-body); font-weight: 700; color: var(--text); }
-    .ot-sub { font-size: var(--fs-caption); color: var(--text-dim); }
-    .ot-nav { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); margin-top: var(--sp-2); }
-    .ot-nav-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-    .ot-nav-label { font-size: var(--fs-caption); color: var(--text-faint); }
-    .ot-body { display: flex; flex-direction: column; align-items: center; margin-top: var(--sp-4); }
-    .ot-tier { position: relative; width: 100%; display: flex; flex-direction: column; align-items: center; padding-top: 28px; margin-top: 6px; }
-    .ot-tier::before { content: ''; position: absolute; top: 0; left: 50%; height: 28px; border-left: 2px solid var(--accent); }
-    .ot-tier-label { padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface-2); color: var(--text-dim); font-size: var(--fs-caption); font-weight: 600; line-height: 20px; }
-    .ot-cards { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-4) 20px; margin-top: var(--sp-3); }
-    .ot-view .oc-card { width: 170px; }
-    .ot-view .oc-tags, .ot-view .oc-tag { max-width: 170px; }
 
     /* Drawer profil */
     .os-dr-head { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-4); }
@@ -117,7 +84,6 @@
     .os-dr-team a:hover { color: var(--accent-text); }
     .os-badge { display: inline-block; margin: 2px 4px 0 0; padding: 0 6px; border-radius: var(--radius-pill); background: var(--surface-2); border: 1px solid var(--border); color: var(--text-dim); font-size: 10px; font-weight: 600; line-height: 16px; }
     .os-badge.is-me { background: var(--accent-tint); border-color: var(--accent-tint-2); color: var(--accent-text); }
-    .os-code { display: inline-block; margin-left: 6px; padding: 0 8px; border-radius: var(--radius-pill); border: 1px solid var(--border); color: var(--text-dim); font-size: var(--fs-caption); font-weight: 600; }
 
     @media (max-width: 900px) {
         .os-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -216,7 +182,7 @@
     Hanya team ACTIVE &middot; bagan <strong>tidak</strong> memberi akses data.
 </p>
 <p class="os-note" data-org-only="member" hidden>
-    Menampilkan satu team: leader dan anggotanya per level. Hanya team ACTIVE &middot; bagan <strong>tidak</strong> memberi akses data.
+    Menampilkan team terpilih dan satu team di atasnya: leader dan anggotanya per level. Hanya team ACTIVE &middot; bagan <strong>tidak</strong> memberi akses data.
 </p>
 
 <div class="os-hits" id="osHits" hidden></div>
@@ -417,13 +383,21 @@ $(function () {
         if (m === 'leader') { gambar(); pasKan(); }
     }
 
-    // Detail Member: salin isi team terpilih dari <template>-nya.
+    // Detail Member: salin isi team terpilih dari <template>-nya, lalu isi team
+    // di atasnya (satu tingkat saja) dari <template> team itu.
     function bukaTeam(id) {
         var tpl = document.getElementById('ocTeamTpl-' + id);
         if (!tpl) return;
         $team.val(String(id)).trigger('tss:sync');
         view.innerHTML = '';
         view.appendChild(tpl.content.cloneNode(true));
+        var atas = view.querySelector('[data-above]');
+        var tplAtas = atas && document.getElementById('ocTeamTpl-' + atas.dataset.above);
+        if (tplAtas) {
+            atas.append.apply(atas, Array.from(tplAtas.content.querySelector('.ot-body:not([data-above])').cloneNode(true).childNodes));
+            var penghubung = atas.querySelector('.oc-card[data-user="' + atas.dataset.link + '"]');
+            if (penghubung) penghubung.classList.add('is-link');
+        }
         view.querySelectorAll('.oc-card').forEach(function (el) {
             var p = people[el.dataset.user], t = el.querySelector('.oc-tag.is-dup');
             if (p && p.teams.length > 1) {

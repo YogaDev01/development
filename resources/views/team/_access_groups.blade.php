@@ -28,20 +28,11 @@
             @if($accessGroups->isEmpty())
                 <x-empty icon="fas fa-key" title="Belum ada Access Group" message="Buat Access Group lebih dulu di menu User & Access." />
             @else
-            <input type="search" class="form-control form-control-sm mb-2" id="agFilter" placeholder="Cari Access Group" aria-label="Cari Access Group" style="max-width:280px;">
-            <div class="row" id="agList" style="max-height:240px;overflow-y:auto;">
+            <select name="access_group_ids[]" id="selAccessGroups" multiple>
                 @foreach($accessGroups as $ag)
-                <div class="col-md-4 col-sm-6 ag-item" data-name="{{ strtolower($ag->name) }}">
-                    <div class="custom-control custom-checkbox mb-1">
-                        <input type="checkbox" class="custom-control-input" id="ag{{ $ag->id }}"
-                               name="access_group_ids[]" value="{{ $ag->id }}" {{ in_array((int) $ag->id, $terpilih, true) ? 'checked' : '' }}>
-                        <label class="custom-control-label" for="ag{{ $ag->id }}">
-                            {{ $ag->name }} <span class="text-muted" style="font-size:11px;">· {{ $ag->po_count }} PO</span>
-                        </label>
-                    </div>
-                </div>
+                    <option value="{{ $ag->id }}" {{ in_array((int) $ag->id, $terpilih, true) ? 'selected' : '' }}>{{ $ag->name }} · {{ $ag->po_count }} PO</option>
                 @endforeach
-            </div>
+            </select>
             @endif
         @else
             @php $milik = $accessGroups->whereIn('id', $terpilih); @endphp
@@ -59,12 +50,7 @@
 @push('scripts')
 <script>
 $(function () {
-    $('#agFilter').on('input', function () {
-        var q = this.value.trim().toLowerCase();
-        $('#agList .ag-item').each(function () {
-            $(this).toggle(!q || String($(this).data('name')).indexOf(q) !== -1);
-        });
-    });
+    TesysSearchableSelect.init('#selAccessGroups', { placeholder: 'Pilih Access Group...', searchPlaceholder: 'Cari Access Group...' });
 });
 </script>
 @endpush

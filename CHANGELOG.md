@@ -4,6 +4,35 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [3.3.1] - 2026-11-06 — Integrasi Trouble Ticket × Finance: Pengajuan Dana, Settlement & Kwitansi Digital
+
+Pengajuan dana dari Trouble Ticket kini terhubung penuh ke Cost Request: nomor pengajuan, persetujuan langsung Manager, status CR tercermin di tiket, settlement dikirim dari tiket lewat review atasan, dan kwitansi digital bertanda tangan penerima. Hak akses tiket mengikuti hierarki Team, tiket bisa diimport dari Excel, dan Profil menampilkan bagan team.
+
+### Baru
+- Trouble Ticket: Import Excel (template, pratinjau, konfirmasi; maks. 500 baris, parsial, token sekali pakai; duplikat hanya peringatan).
+- Pengajuan Dana: nomor pengajuan otomatis, tautan balik ke tiket dari Cost Request, dan ajukan ulang sekali untuk CR yang batal.
+- Manager yang menjadi atasan teknisi bisa Approve & Submit: pengajuan langsung menjadi Cost Request SUBMITTED lewat aturan submit yang sama (kuota CA, lampiran).
+- Status Cost Request (diajukan, dibayar, settle, ditolak, closed) tercermin sekali di timeline tiket, dengan notifikasi pembayaran ke pemohon.
+- Settlement dari halaman tiket: teknisi mengisi per baris lalu mengirim ke atasan; atasan meneruskan ke Finance atau mengembalikan dengan catatan.
+- Kwitansi digital: nama + tanda tangan penerima dana menghasilkan PDF bernomor KW-…; nilai baris berubah membuat kwitansi lama SUPERSEDED tetapi arsipnya tetap bisa dibuka.
+- Penanda keuangan di daftar tiket dan filter "Keuangan terbuka"; tiket CLOSED tetap bisa menyelesaikan urusan dananya.
+- Todo List: antrean Trouble Ticket — CR draft dari tiket, revisi pengajuan, settlement jatuh tempo, review settlement, dan approve close.
+- Profil: bagan team menampilkan team induk dan sub-team langsung.
+
+### Berubah
+- Hak akses Trouble Ticket mengikuti hierarki Team (leader team teknisi dan team di atasnya), bukan role global; supervisor team lain tidak bisa approve close, reassign, atau review lewat URL.
+- Chat tiket: teknisi, atasan, dan pembuat tiket boleh mengirim pesan & lampiran; Finance, Treasury, dan lainnya baca-saja (juga ditolak di server). Pembuat tiket kembali melihat tiket buatannya.
+- Form Buat Tiket tanpa field lampiran; bukti dikirim lewat chat. Tinggi panel detail & chat menyesuaikan layar.
+- Dokumen uang tiket (kwitansi, lampiran CR) hanya untuk pemohon dana, atasan peninjau settlement, dan Finance.
+- Saat tiket dialihkan, pengajuan dana yang belum menjadi CR dibatalkan otomatis dan pemohon diberi tahu; dana yang sudah cair tetap milik pemohon.
+- Persetujuan langsung Manager untuk Budget Plan non-proyek mensyaratkan cost center di Access Group-nya.
+- Import Excel hanya memuat sheet Data, kolom template, dan 2.000 baris pertama agar berkas besar tidak menghabiskan memori server.
+
+### Perbaikan
+- Settlement dari form Cost Request tidak bisa lagi menjadi REALIZED bila kwitansi digital gugur dan baris Settle > 0 tertinggal tanpa lampiran.
+- Tandai PAID Treasury: sinkron ke tiket berjalan sesudah transaksi selesai, sehingga gangguan di sisi tiket tidak membatalkan pembayaran.
+- Cermin log Cost Request ke tiket lebih ringan untuk CR yang bukan dari tiket (pencarian ber-index, di-cache per CR).
+
 ## [3.2.2] - 2026-11-05 — Carousel Evidence Lebih Nyaman, Filter Last Update Time & Perbaikan Modal View Budget
 
 Carousel lampiran bisa di-zoom dan digeser seperti WhatsApp dengan judul berisi deskripsi data, Collection dan Delivery Note punya filter Last Update Time, serta beberapa perbaikan modal View Budget dan form Settlement.

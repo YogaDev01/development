@@ -17,6 +17,9 @@
         'cost_request_paid' => 'fa-money-bill-wave',
         'request_submitted' => 'fa-paper-plane', 'request_edited' => 'fa-pen', 'request_approved' => 'fa-check-circle',
         'request_rejected' => 'fa-times-circle', 'request_cancelled' => 'fa-ban',
+        'request_resubmitted' => 'fa-redo', 'cost_request_status' => 'fa-file-invoice-dollar',
+        'settlement_submitted' => 'fa-paper-plane', 'settlement_approved' => 'fa-check-circle',
+        'settlement_returned' => 'fa-undo', 'financial_closed' => 'fa-coins',
         'travel_started' => 'fa-car', 'travel_cancelled' => 'fa-ban',
         'chat_stopped' => 'fa-comment-slash', 'chat_reopened' => 'fa-comments',
         'arrived_on_site' => 'fa-map-marker-alt', 'progress_started' => 'fa-tools',
@@ -35,7 +38,7 @@
     @endphp
     @if($msg->is_event)
         {{-- Sisi kejadian mengikuti peran pemicunya: teknisi di kanan. --}}
-        <div class="tt-event {{ $peran === 'Teknisi' ? 'is-tech' : '' }}" data-id="{{ $msg->id }}">
+        <div class="tt-event {{ $peran === 'Teknisi' ? 'is-tech' : '' }} {{ \Illuminate\Support\Str::startsWith((string) $msg->event, ['request_', 'cost_request', 'settlement_', 'financial_']) ? 'is-finance' : '' }}" data-id="{{ $msg->id }}">
             <span class="tt-event-av">@if(isset($avatars[$msg->user_id]))<img src="{{ $avatars[$msg->user_id] }}" alt="">@else{{ mb_strtoupper(mb_substr($msg->actor_name ?? 'S', 0, 1)) }}{{ mb_strtoupper(mb_substr(\Illuminate\Support\Str::after($msg->actor_name ?? '', ' '), 0, 1)) }}@endif</span>
             <div class="tt-event-box">
                 <div class="tt-event-head">
@@ -57,6 +60,14 @@
                 <i class="fas {{ $ikonEvent[$msg->event] ?? 'fa-info-circle' }} mr-1" aria-hidden="true"></i>
                 {{ $msg->event_label }}
                 @switch($msg->event)
+                    @case('cost_request_status')
+                        : {{ $meta['cost_request'] ?? '-' }} → {{ $meta['status_label'] ?? '-' }}
+                        @break
+                    @case('settlement_submitted')
+                    @case('settlement_approved')
+                    @case('settlement_returned')
+                        : {{ $meta['number'] ?? '' }} {{ $meta['cost_request'] ?? '' }}
+                        @break
                     @case('assigned')
                         → {{ $meta['to_name'] ?? '-' }}
                         @break

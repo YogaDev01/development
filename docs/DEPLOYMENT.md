@@ -233,3 +233,10 @@ tabel `failed_jobs`, lalu `FONNTE_TOKEN`.
 (`document_sequences`) yang tidak pernah mundur, termasuk ketika dokumen
 dihapus. Nomor yang melompat jauh lebih aman daripada nomor yang dipakai dua
 kali.
+
+## Catatan rilis v3.3.1 (Trouble Ticket × Finance)
+
+- Dependensi baru: `dompdf/dompdf` (PDF kwitansi). Pastikan `composer install` berjalan di host, lalu uji satu kwitansi.
+- Migrasi: `2026_11_07_000100` sampai `2026_11_07_000400`, semuanya aditif.
+- Sebelum rilis, audit data Team (leader, Induk, anggota): hak approve kini mengikuti hierarki Team.
+- Beri menu `trouble-ticket` ke role Finance/Treasury yang perlu membuka tiket dari Cost Request, dan menu `todo-list` ke teknisi.

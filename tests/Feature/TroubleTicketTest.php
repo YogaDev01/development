@@ -108,6 +108,12 @@ class TroubleTicketTest extends TestCase
         ], $extra);
     }
 
+    /** Isian "Swipe for travel": evidence perjalanan wajib (keputusan 15 Okt 2026). */
+    private function travelPayload(): array
+    {
+        return ['attachments' => [UploadedFile::fake()->image('perjalanan.jpg')]];
+    }
+
     private function makeSite(): Site
     {
         static $n = 0;
@@ -140,14 +146,19 @@ class TroubleTicketTest extends TestCase
     /**
      * Bawa tiket ke tahap tertentu lewat jalur resmi (alur 7 tahap).
      *
+     * Teknisi membuka tiket = tiket otomatis masuk tahap Remote (19 Okt 2026);
+     * tidak ada lagi tombol Remote.
+     *
      * @param  string  $jalur  VISIT (Create Plan → Trip) atau NON_VISIT (Remote)
+     * @param  string  $until  untuk VISIT: PLAN (plan besok), PLAN_DUE (plan hari
+     *                         ini, masih PLAN), TRIP (perjalanan sudah berjalan),
+     *                         ON_SITE, IN_PROGRESS, PROGRESS_DONE, CLOSED
      */
     private function advance(TroubleTicket $t, string $jalur = 'VISIT', string $until = 'IN_PROGRESS'): TroubleTicket
     {
         $this->actingAs($this->tech)->get("/trouble-ticket/{$t->id}")->assertOk();
 
         if ($jalur === 'NON_VISIT') {
-            $this->post("/trouble-ticket/{$t->id}/remote");
             if ($until === 'REMOTE') {
                 return $t->fresh();
             }
@@ -163,15 +174,20 @@ class TroubleTicketTest extends TestCase
             return $t->fresh();
         }
 
-        // Plan hari ini langsung naik ke Trip; plan besok berhenti di PLAN.
+        // Plan besok berhenti di PLAN. Plan hari ini juga tetap PLAN (19 Okt
+        // 2026) — Trip baru dimulai saat teknisi menggeser "Swipe for travel".
         $this->post("/trouble-ticket/{$t->id}/plan", [
             'visit_site' => $until === 'PLAN' ? now()->addDay()->toDateString() : now()->toDateString(),
         ]);
-        if ($until === 'PLAN' || $until === 'TRIP') {
+        if ($until === 'PLAN' || $until === 'PLAN_DUE') {
             return $t->fresh();
         }
 
-        $this->post("/trouble-ticket/{$t->id}/travel");
+        $this->post("/trouble-ticket/{$t->id}/travel", $this->travelPayload());
+        if ($until === 'TRIP') {
+            return $t->fresh();
+        }
+
         $this->post("/trouble-ticket/{$t->id}/arrive");
         if ($until === 'ON_SITE') {
             return $t->fresh();
@@ -240,7 +256,8 @@ class TroubleTicketTest extends TestCase
             [$awalan.'001', $awalan.'002', $awalan.'003', $awalan.'004', $awalan.'005'],
             TroubleTicket::orderBy('id')->pluck('ticket_number')->all(),
         );
-        $this->assertSame(5, (int) \DB::table('document_sequences')->where('key', 'trouble-ticket:'.now()->year)->value('counter'));
+        // Satu rangkaian tanpa reset tahunan (TroubleTicket::generateNumber()).
+        $this->assertSame(5, (int) \DB::table('document_sequences')->where('key', 'trouble-ticket')->value('counter'));
     }
 
     public function test_user_di_luar_rantai_team_tidak_bisa_melihat_tiket(): void
@@ -250,8 +267,11 @@ class TroubleTicketTest extends TestCase
         $this->actingAs($this->outsider)->get("/trouble-ticket/{$t->id}")->assertForbidden();
         $this->actingAs($this->outsider)->get('/trouble-ticket')->assertOk()->assertDontSee($t->ticket_number);
 
-        // Rekan satu team dengan PIC site & leader team melihatnya.
-        $this->actingAs($this->tech2)->get("/trouble-ticket/{$t->id}")->assertOk();
+        // Rekan satu team yang tidak ditugaskan tidak lagi melihatnya (15 Okt
+        // 2026); leader team tetap melihat.
+        $this->actingAs($this->tech2)->get("/trouble-ticket/{$t->id}")->assertForbidden();
+        $this->actingAs($this->tech2)->get('/trouble-ticket')->assertOk()->assertDontSee($t->ticket_number);
+        $this->actingAs($this->leader)->get("/trouble-ticket/{$t->id}")->assertOk();
         $this->actingAs($this->leader)->get('/trouble-ticket')->assertOk()->assertSee($t->ticket_number);
     }
 
@@ -268,27 +288,30 @@ class TroubleTicketTest extends TestCase
         $t->refresh();
         $pertama = $t->acknowledged_at;
         $this->assertNotNull($pertama);
-        $this->assertSame('OPEN', $t->status);
+        // Dibuka teknisinya = langsung masuk tahap Remote (19 Okt 2026).
+        $this->assertSame('REMOTE', $t->status);
         $this->assertEqualsWithDelta(420, $t->response_seconds, 2);
 
         Carbon::setTestNow(now()->addMinutes(30));
         $this->actingAs($this->tech)->get("/trouble-ticket/{$t->id}")->assertOk();
         $this->assertTrue($pertama->equalTo($t->fresh()->acknowledged_at));
-        $this->assertSame(1, TroubleTicketMessage::where('trouble_ticket_id', $t->id)->where('event', 'responded')->count());
+        $this->assertSame(1, TroubleTicketMessage::where('trouble_ticket_id', $t->id)->where('event', 'responded_remote')->count());
+        $this->assertSame(0, TroubleTicketMessage::where('trouble_ticket_id', $t->id)->where('event', 'responded')->count());
         Carbon::setTestNow();
     }
 
-    public function test_jalur_penanganan_wajib_dipilih_sebelum_aksi_lain(): void
+    public function test_aksi_kunjungan_butuh_plan_visit_lebih_dulu(): void
     {
         $t = $this->createTicket();
 
         $this->actingAs($this->tech)->get("/trouble-ticket/{$t->id}")->assertOk();
+        $this->assertSame('REMOTE', $t->fresh()->status);
 
-        // Aksi tahap berikutnya ditolak backend selama masih OPEN.
-        $this->post("/trouble-ticket/{$t->id}/travel")->assertSessionHasErrors('workflow');
+        // Aksi kunjungan ditolak backend selama masih Remote (belum ada plan),
+        // walau evidence perjalanan dilampirkan.
+        $this->post("/trouble-ticket/{$t->id}/travel", $this->travelPayload())->assertSessionHasErrors('workflow');
         $this->post("/trouble-ticket/{$t->id}/start")->assertSessionHasErrors('workflow');
-        $this->post("/trouble-ticket/{$t->id}/close", $this->closePayload())->assertSessionHasErrors('workflow');
-        $this->postJson("/trouble-ticket/{$t->id}/messages", ['body' => 'halo'])->assertStatus(422);
+        $this->assertSame('REMOTE', $t->fresh()->status);
 
         // Plan tanpa tanggal ditolak.
         $this->post("/trouble-ticket/{$t->id}/plan", [])->assertSessionHasErrors('visit_site');
@@ -299,52 +322,64 @@ class TroubleTicketTest extends TestCase
         $this->assertSame('VISIT', $t->visit_decision);
         $this->assertNull($t->approval, 'tidak ada approval plan');
 
-        // Tidak bisa mengulang pemilihan jalur, dan Trip belum boleh dimulai.
-        $this->post("/trouble-ticket/{$t->id}/remote")->assertSessionHasErrors('workflow');
-        $this->post("/trouble-ticket/{$t->id}/travel")->assertSessionHasErrors('workflow');
+        // Trip belum boleh dimulai sebelum tanggal plan tiba.
+        $this->post("/trouble-ticket/{$t->id}/travel", $this->travelPayload())->assertSessionHasErrors('workflow');
+        $this->assertSame('PLAN', $t->fresh()->status);
     }
 
-    public function test_plan_naik_ke_trip_saat_tanggal_plan_visit_tiba(): void
+    public function test_plan_naik_ke_trip_hanya_lewat_swipe_travel(): void
     {
         $t = $this->advance($this->createTicket(), 'VISIT', 'PLAN');
         $this->assertSame('PLAN', $t->status);
 
-        // Hari-H: daftar/detail dibuka → tiket naik sendiri ke Trip.
+        // Hari-H: daftar/detail dibuka → tiket TIDAK naik sendiri (19 Okt 2026).
         Carbon::setTestNow(now()->addDay());
         $this->actingAs($this->tech)->get('/trouble-ticket')->assertOk();
-        $this->assertSame('TRIP', $t->fresh()->status);
+        $this->get("/trouble-ticket/{$t->id}")->assertOk();
+        $this->assertSame('PLAN', $t->fresh()->status);
+
+        // Swipe for travel tanpa evidence ditolak; dengan evidence → Trip.
+        $this->post("/trouble-ticket/{$t->id}/travel", [])->assertSessionHasErrors('attachments');
+        $this->assertSame('PLAN', $t->fresh()->status);
+
+        $this->post("/trouble-ticket/{$t->id}/travel", $this->travelPayload())->assertSessionHasNoErrors();
+        $t->refresh();
+        $this->assertSame('TRIP', $t->status);
+        $this->assertNotNull($t->travel_started_at);
         Carbon::setTestNow();
     }
 
     public function test_perjalanan_on_site_dan_pembatalan_visit(): void
     {
-        $t = $this->advance($this->createTicket(), 'VISIT', 'TRIP');
-        $this->assertSame('TRIP', $t->status);
+        $t = $this->advance($this->createTicket(), 'VISIT', 'PLAN_DUE');
+        $this->assertSame('PLAN', $t->status);
 
         // On Site sebelum berangkat ditolak.
         $this->actingAs($this->tech)->post("/trouble-ticket/{$t->id}/arrive")->assertSessionHasErrors('workflow');
 
-        $this->post("/trouble-ticket/{$t->id}/travel")->assertSessionHasNoErrors();
+        $this->post("/trouble-ticket/{$t->id}/travel", $this->travelPayload())->assertSessionHasNoErrors();
+        $this->assertSame('TRIP', $t->fresh()->status);
         $this->assertNotNull($t->fresh()->travel_started_at);
         $this->assertSame('running', $t->fresh()->slaMetric('travel')['state']);
 
         // Batal di tengah jalan: SLA Travel dibuang, log tetap ada. Alasan DAN
-        // tanggal plan berikutnya wajib (15 Okt 2026); tanggal hari ini =
-        // tiket tetap di Trip.
+        // tanggal plan berikutnya wajib (15 Okt 2026); tiket selalu kembali ke
+        // Plan, walau tanggalnya hari ini (19 Okt 2026).
         $this->post("/trouble-ticket/{$t->id}/travel/cancel", ['reason' => ''])->assertSessionHasErrors('reason');
         $this->post("/trouble-ticket/{$t->id}/travel/cancel", ['reason' => 'Jalan longsor'])->assertSessionHasErrors('visit_site');
         $this->post("/trouble-ticket/{$t->id}/travel/cancel", [
             'reason' => 'Jalan longsor', 'visit_site' => now()->toDateString(),
         ])->assertSessionHasNoErrors();
         $t->refresh();
-        $this->assertSame('TRIP', $t->status);
+        $this->assertSame('PLAN', $t->status);
         $this->assertNull($t->travel_started_at);
         $this->assertNotNull($t->travel_cancelled_at);
         $this->assertSame('na', $t->slaMetric('travel')['state']);
         $this->assertSame(1, TroubleTicketMessage::where('trouble_ticket_id', $t->id)->where('event', 'travel_cancelled')->count());
 
         // Berangkat lagi, lalu konfirmasi On Site: SLA Travel berhenti.
-        $this->post("/trouble-ticket/{$t->id}/travel")->assertSessionHasNoErrors();
+        $this->post("/trouble-ticket/{$t->id}/travel", $this->travelPayload())->assertSessionHasNoErrors();
+        $this->assertSame('TRIP', $t->fresh()->status);
         Carbon::setTestNow(now()->addMinutes(40));
         $this->post("/trouble-ticket/{$t->id}/arrive")->assertSessionHasNoErrors();
         $t->refresh();
@@ -367,10 +402,10 @@ class TroubleTicketTest extends TestCase
 
     public function test_progres_hanya_setelah_on_site(): void
     {
-        $t = $this->advance($this->createTicket(), 'VISIT', 'TRIP');
+        $t = $this->advance($this->createTicket(), 'VISIT', 'PLAN_DUE');
 
         $this->actingAs($this->tech)->post("/trouble-ticket/{$t->id}/start")->assertSessionHasErrors('workflow');
-        $this->post("/trouble-ticket/{$t->id}/travel");
+        $this->post("/trouble-ticket/{$t->id}/travel", $this->travelPayload())->assertSessionHasNoErrors();
         $this->post("/trouble-ticket/{$t->id}/start")->assertSessionHasErrors('workflow');
         $this->assertSame('TRIP', $t->fresh()->status);
     }
@@ -409,14 +444,15 @@ class TroubleTicketTest extends TestCase
         $this->assertSame('CLOSED', $t->status);
         $this->assertSame('APPROVED', $t->approval);
         $this->assertSame($this->leader->id, $t->approved_by);
-        $this->assertSame($this->leader->id, $t->closed_by);
+        // "Close by" = pengirim form close, bukan penyetuju (16 Okt 2026).
+        $this->assertSame($this->tech->id, $t->closed_by);
     }
 
     public function test_teknisi_lain_tidak_bisa_menjalankan_aksi_operasional(): void
     {
         $t = $this->advance($this->createTicket(), 'VISIT', 'ON_SITE');
 
-        // tech2 bisa melihat (satu team) tapi bukan teknisi yang ditugaskan.
+        // tech2 (satu team) bukan teknisi yang ditugaskan; leader bukan teknisi.
         $this->actingAs($this->tech2)->post("/trouble-ticket/{$t->id}/start")->assertForbidden();
         $this->actingAs($this->leader)->post("/trouble-ticket/{$t->id}/start")->assertForbidden();
         $this->assertSame('TRIP', $t->fresh()->status);
@@ -449,8 +485,10 @@ class TroubleTicketTest extends TestCase
 
         $this->assertSame('REMOTE', $t->status);
         $this->assertSame('NON_VISIT', $t->visit_decision);
+        // Titik mulai resolusi tetap dicatat, tetapi SLA Resolution tidak
+        // diukur untuk jalur Non-Visit (keputusan 16 Okt 2026).
         $this->assertNotNull($t->progress_started_at);
-        $this->assertSame('running', $t->slaMetric('resolution')['state']);
+        $this->assertSame('na', $t->slaMetric('resolution')['state']);
         // Tanpa kunjungan: SLA Travel tidak pernah berjalan.
         $this->assertSame('na', $t->slaMetric('travel')['state']);
     }
@@ -487,7 +525,8 @@ class TroubleTicketTest extends TestCase
         $t->refresh();
         $this->assertSame('CLOSED', $t->status);
         $this->assertNotNull($t->closed_at);
-        $this->assertSame($this->leader->id, $t->closed_by);
+        $this->assertSame($this->tech->id, $t->closed_by);
+        $this->assertSame($this->leader->id, $t->approved_by);
     }
 
     public function test_field_referensi_telko_tersimpan_dan_tervalidasi(): void
@@ -551,8 +590,10 @@ class TroubleTicketTest extends TestCase
 
     public function test_resolusi_difinalkan_saat_supervisor_approve(): void
     {
-        $t = $this->advance($this->createTicket(), 'NON_VISIT', 'REMOTE');
+        // Jalur Visit: SLA Resolution hanya diukur untuk kunjungan (16 Okt 2026).
+        $t = $this->advance($this->createTicket(), 'VISIT', 'IN_PROGRESS');
 
+        $this->assertSame('IN_PROGRESS', $t->status);
         $this->assertSame('running', $t->slaMetric('resolution')['state']);
         $this->assertNull($t->resolution_seconds);
 
@@ -567,12 +608,13 @@ class TroubleTicketTest extends TestCase
 
         $t->refresh();
         $this->assertSame('CLOSED', $t->status);
-        $this->assertSame($this->leader->id, $t->closed_by);
+        $this->assertSame($this->tech->id, $t->closed_by);
+        $this->assertSame($this->leader->id, $t->approved_by);
         // Resolusi = closed_at (approve) − progress_started_at.
         $this->assertEqualsWithDelta(3 * 3600, $t->resolution_seconds, 2);
         $this->assertSame('done', $t->slaMetric('resolution')['state']);
-        // Tanpa kunjungan: SLA Travel tidak berlaku.
-        $this->assertSame('na', $t->slaMetric('travel')['state']);
+        // Perjalanan sudah berakhir di site: SLA Travel final.
+        $this->assertSame('done', $t->slaMetric('travel')['state']);
         Carbon::setTestNow();
     }
 
@@ -628,10 +670,12 @@ class TroubleTicketTest extends TestCase
 
         $this->actingAs($this->outsider)->get(route('trouble-ticket.attachment', $att))->assertForbidden();
         $this->actingAs($this->outsider)->get('/storage/'.$att->storage_path)->assertForbidden();
-        $this->actingAs($this->tech2)->get(route('trouble-ticket.attachment', $att))->assertOk();
+        // Rekan team yang tidak ditugaskan tidak melihat tiket → tidak bisa unduh.
+        $this->actingAs($this->tech2)->get(route('trouble-ticket.attachment', $att))->assertForbidden();
+        $this->actingAs($this->leader)->get(route('trouble-ticket.attachment', $att))->assertOk();
     }
 
-    public function test_tiket_closed_tetap_bisa_chat_sampai_superadmin_stop_chat(): void
+    public function test_tiket_closed_tetap_bisa_chat(): void
     {
         $t = $this->advance($this->createTicket(), 'NON_VISIT', 'REMOTE');
         $this->actingAs($this->tech)->post("/trouble-ticket/{$t->id}/close", $this->closePayload())->assertSessionHasNoErrors();
@@ -640,23 +684,10 @@ class TroubleTicketTest extends TestCase
 
         // Tiket sudah CLOSED: diskusi TETAP terbuka (keputusan 19 Okt 2026).
         $this->actingAs($this->tech)->postJson("/trouble-ticket/{$t->id}/messages", ['body' => 'masih diskusi'])->assertOk();
+        $this->assertSame(1, TroubleTicketMessage::where('trouble_ticket_id', $t->id)->where('type', 'MESSAGE')->count());
 
-        // Stop Chat hanya superadmin.
-        $this->post("/trouble-ticket/{$t->id}/chat-lock", ['lock' => 1])->assertForbidden();
-        $this->actingAs($this->leader)->post("/trouble-ticket/{$t->id}/chat-lock", ['lock' => 1])->assertForbidden();
-
-        $admin = $this->userWithRole('superadmin');
-        $this->actingAs($admin)->post("/trouble-ticket/{$t->id}/chat-lock", ['lock' => 1])->assertSessionHasNoErrors();
-        $t->refresh();
-        $this->assertNotNull($t->chat_locked_at);
-        $this->assertSame($admin->id, $t->chat_locked_by);
-        $this->assertSame(1, TroubleTicketMessage::where('trouble_ticket_id', $t->id)->where('event', 'chat_stopped')->count());
-
-        // Diskusi dihentikan: pesan baru ditolak, lalu dibuka kembali.
-        $this->actingAs($this->tech)->postJson("/trouble-ticket/{$t->id}/messages", ['body' => 'masih?'])->assertStatus(422);
-        $this->actingAs($admin)->post("/trouble-ticket/{$t->id}/chat-lock", ['lock' => 0])->assertSessionHasNoErrors();
-        $this->assertNull($t->fresh()->chat_locked_at);
-        $this->actingAs($this->tech)->postJson("/trouble-ticket/{$t->id}/messages", ['body' => 'lanjut'])->assertOk();
+        // Fitur Stop Chat sudah dihapus: rutenya tidak ada lagi, juga bagi superadmin.
+        $this->actingAs($this->userWithRole('superadmin'))->post("/trouble-ticket/{$t->id}/chat-lock", ['lock' => 1])->assertNotFound();
     }
 
     public function test_pesan_idempoten_per_token(): void
@@ -765,7 +796,9 @@ class TroubleTicketTest extends TestCase
             ->assertDontSee('name="problem_id"', false)
             ->assertDontSee('name="issue_id"', false)
             ->assertDontSee('name="flag_alarm"', false)
-            ->assertDontSee('Status TT');
+            ->assertDontSee('Status TT')
+            // Lampiran ditambahkan lewat chat saat tiket ditangani, bukan saat dibuat.
+            ->assertDontSee('[attachments]', false);
 
         $this->actingAs($this->leader)->get('/trouble-ticket/settings')->assertForbidden();
         $this->actingAs($this->userWithRole('superadmin'))->get('/trouble-ticket/settings')->assertOk();
@@ -816,15 +849,18 @@ class TroubleTicketTest extends TestCase
         $this->actingAs($this->leader)->get("/trouble-ticket/{$t->id}")->assertOk();
         $this->assertNull($t->fresh()->acknowledged_at);
         $this->assertDatabaseMissing('trouble_ticket_messages', ['trouble_ticket_id' => $t->id, 'event' => 'responded']);
+        $this->assertDatabaseMissing('trouble_ticket_messages', ['trouble_ticket_id' => $t->id, 'event' => 'responded_remote']);
 
-        // Teknisi membuka detail: masuk log sebagai Ticket read, Response berhenti.
+        // Teknisi membuka detail: satu baris log "Ticket read — Remote"
+        // (19 Okt 2026), Response berhenti.
         $this->actingAs($this->tech)->get("/trouble-ticket/{$t->id}")->assertOk();
         $t = $t->fresh();
         $this->assertNotNull($t->acknowledged_at);
         $this->assertSame($this->tech->id, $t->acknowledged_by);
-        $this->assertSame(1, TroubleTicketMessage::where('trouble_ticket_id', $t->id)->where('event', 'responded')->count());
-        $this->assertSame('Ticket read', TroubleTicketMessage::where('trouble_ticket_id', $t->id)
-            ->where('event', 'responded')->first()->event_label);
+        $this->assertSame(1, TroubleTicketMessage::where('trouble_ticket_id', $t->id)->where('event', 'responded_remote')->count());
+        $this->assertSame(0, TroubleTicketMessage::where('trouble_ticket_id', $t->id)->where('event', 'responded')->count());
+        $this->assertSame('Ticket read — Remote', TroubleTicketMessage::where('trouble_ticket_id', $t->id)
+            ->where('event', 'responded_remote')->first()->event_label);
 
         // Response = tiket dibuat → tiket dibaca.
         $this->assertSame('done', $t->slaMetric('response')['state']);

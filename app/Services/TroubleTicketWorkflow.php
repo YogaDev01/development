@@ -27,6 +27,7 @@ use App\Models\TroubleTicketSubRca;
 use App\Models\User;
 use App\Services\TicketDetailImage;
 use App\Support\AccessRoles;
+use App\Support\DocumentSequence;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
@@ -87,25 +88,31 @@ class TroubleTicketWorkflow
             || $user->hasRole(AccessRoles::TROUBLE_TICKET_FULL_SCOPE);
     }
 
+    /** Hierarki Team: atasan langsung & atasan di atasnya. */
+    private function org(): OrgHierarchy
+    {
+        return app(OrgHierarchy::class);
+    }
+
     /**
-     * Pengawas tiket: leader team ACTIVE tempat teknisi menjadi anggota ACTIVE
-     * (keputusan 9 Okt 2026), ditambah AccessRoles::TROUBLE_TICKET_SUPERVISE.
+     * Pengawas tiket: leader team teknisi atau leader team di atasnya
+     * (OrgHierarchy), ditambah AccessRoles::TROUBLE_TICKET_SUPERVISE. Dihitung
+     * dari hierarki, bukan role global: supervisor team lain bukan pengawas.
      */
     public function canSupervise(User $user, TroubleTicket $ticket): bool
     {
         return $user->hasRole(AccessRoles::TROUBLE_TICKET_SUPERVISE)
-            || $this->supervisorIdsFor((int) $ticket->assigned_to)->contains($user->id);
+            || $this->org()->isLeaderOf((int) $user->id, (int) $ticket->assigned_to);
     }
 
     /**
-     * Boleh mengirim FORM CLOSE (keputusan 20 Okt 2026): SEMUA peran yang
-     * boleh melihat tiket — bukan lagi hanya teknisi yang ditugaskan — di
-     * tahap Open, Remote, Plan, dan In Progress. Dua kekecualian tetap:
+     * Boleh mengirim FORM CLOSE: teknisi tiket dan pengawasnya (keputusan 6 Nov
+     * 2026, menggantikan "semua yang melihat tiket" dari 20 Okt 2026). Pembuat
+     * tiket tidak otomatis berhak, dan akses baca Finance tidak memberi hak ini.
+     * Satu kekecualian tetap:
      *
-     *   - tahap TRIP tertutup bagi TEKNISI tiket itu (superadmin & peran lain
-     *     tetap bisa), lanjutan aturan 15 Okt 2026 soal perjalanan;
-     *   - sesudah On Site TEKNISI tetap harus memulai progres dulu (19 Okt
-     *     2026); peran lain boleh menutup dari tahap itu (20 Okt 2026).
+     *   - tahap TRIP tertutup bagi TEKNISI tiket itu (superadmin & pengawas
+     *     tetap bisa), lanjutan aturan 15 Okt 2026 soal perjalanan.
      */
     public function canClose(User $user, TroubleTicket $ticket): bool
     {
@@ -119,42 +126,34 @@ class TroubleTicketWorkflow
             return false;
         }
 
-        return $this->canView($user, $ticket);
+        return $this->actsAsTechnician($user, $ticket) || $this->canSupervise($user, $ticket);
     }
 
-    /**
-     * Boleh mengalihkan teknisi: pengawas tiket ini, ditambah peran penyetuju
-     * penutupan — supervisor (keputusan 20 Okt 2026).
-     */
+    /** Boleh mengalihkan teknisi: pengawas tiket ini. */
     public function canReassignBy(User $user, TroubleTicket $ticket): bool
     {
-        return $this->canSupervise($user, $ticket)
-            || $user->hasRole(AccessRoles::TROUBLE_TICKET_APPROVE);
+        return $this->canSupervise($user, $ticket);
     }
 
     /**
      * Membuat Plan Visit PERTAMA (dari tahap Remote): teknisi yang ditugaskan
-     * (atau superadmin lewat TROUBLE_TICKET_FULL_SCOPE) dan supervisor tiket
-     * ini — leader team-nya, cadangan pengawas, atau role penyetuju penutupan
-     * (keputusan 15 Okt 2026). Peran lain tidak boleh membuat plan.
+     * (atau superadmin lewat TROUBLE_TICKET_FULL_SCOPE) dan pengawas tiket ini.
+     * Peran lain tidak boleh membuat plan.
      */
     public function canCreatePlan(User $user, TroubleTicket $ticket): bool
     {
         return $this->actsAsTechnician($user, $ticket)
-            || $this->canSupervise($user, $ticket)
-            || $user->hasRole(AccessRoles::TROUBLE_TICKET_APPROVE);
+            || $this->canSupervise($user, $ticket);
     }
 
     /**
-     * MENGUBAH tanggal plan yang sudah ada (tahap Plan / Trip): hanya
-     * supervisor (keputusan 19 Okt 2026) — leader team teknisinya, cadangan
-     * pengawas, atau role penyetuju penutupan. Teknisi tidak lagi menggeser
-     * sendiri jadwal kunjungannya.
+     * MENGUBAH tanggal plan yang sudah ada (tahap Plan / Trip): hanya pengawas
+     * tiket ini (keputusan 19 Okt 2026). Teknisi tidak lagi menggeser sendiri
+     * jadwal kunjungannya.
      */
     public function canReschedulePlan(User $user, TroubleTicket $ticket): bool
     {
-        return $this->canSupervise($user, $ticket)
-            || $user->hasRole(AccessRoles::TROUBLE_TICKET_APPROVE);
+        return $this->canSupervise($user, $ticket);
     }
 
     /** Hak membuat/mengubah plan sesuai tahap tiket sekarang — dipakai tombol & server. */
@@ -166,25 +165,27 @@ class TroubleTicketWorkflow
     }
 
     /**
-     * Approve/tolak PENUTUPAN tiket: hanya role supervisor (keputusan 12 Okt
-     * 2026) dan BUKAN teknisi yang mengerjakan tiket itu sendiri. Hanya saat
-     * tiket berstatus PROGRESS_DONE.
+     * Approve/tolak PENUTUPAN tiket: pengawas tiket ini, BUKAN teknisi yang
+     * mengerjakannya. Hanya saat tiket berstatus PROGRESS_DONE. Dibatasi
+     * hierarki: supervisor team lain ditolak, juga lewat URL langsung.
      */
     public function canApproveClose(User $user, TroubleTicket $ticket): bool
     {
         return $ticket->status === 'PROGRESS_DONE'
             && (int) $ticket->assigned_to !== (int) $user->id
-            && $user->hasRole(AccessRoles::TROUBLE_TICKET_APPROVE);
+            && $this->canSupervise($user, $ticket);
     }
 
     /**
-     * Boleh mengirim pesan: siapa pun yang bisa melihat tiket. Tiket CLOSED
-     * tidak menutup diskusi (keputusan 19 Okt 2026), dan fitur Stop Chat
-     * dihapus (keputusan 19 Okt 2026) — tidak ada lagi yang menutup chat.
+     * Boleh mengirim pesan: teknisi tiket, pengawasnya, dan pembuat tiket —
+     * form Create tidak lagi punya lampiran, jadi bukti dari NOC masuk lewat
+     * chat (OD-7, keputusan 6 Nov 2026). Finance, Treasury, dan lainnya
+     * baca-saja. Tiket CLOSED tidak menutup diskusi (keputusan 19 Okt 2026).
      */
     public function canMessage(User $user, TroubleTicket $ticket): bool
     {
-        return $this->canView($user, $ticket);
+        return $this->actsAsTechnician($user, $ticket) || $this->canSupervise($user, $ticket)
+            || (int) $ticket->created_by === (int) $user->id;
     }
 
     /** Leader team ACTIVE dari teknisi (user ACTIVE). */
@@ -632,7 +633,7 @@ class TroubleTicketWorkflow
     | (urutan tetap) + pemeriksaan status asal pada baris yang terkunci.
     */
 
-    /** Boleh MEMBUAT atau mengelola pengajuan sendiri: teknisi tiket ini (atau superadmin), tiket belum CLOSED. */
+    /** Boleh MEMBUAT pengajuan baru: teknisi tiket ini (atau superadmin), tiket belum CLOSED. */
     public function canRequest(User $user, TroubleTicket $ticket): bool
     {
         return $ticket->status !== 'CLOSED' && $this->actsAsTechnician($user, $ticket);
@@ -640,19 +641,56 @@ class TroubleTicketWorkflow
 
     /**
      * Mengubah / mengajukan / membatalkan pengajuan yang SUDAH ADA sebagai
-     * pemohon: pembuatnya sendiri (atau superadmin), tiket belum CLOSED.
+     * pemohon: pembuatnya yang masih menjadi teknisi tiket (atau superadmin).
+     * Tetap bisa setelah tiket CLOSED: urusan keuangan boleh menyusul penutupan
+     * tiket (keputusan 6 Nov 2026). Setelah tiket dialihkan, pengajuan yang
+     * belum jadi CR diputuskan atasan; dana yang sudah cair tetap milik pemohon
+     * lewat isSettlementOwner().
      */
     public function canManageRequest(User $user, TroubleTicket $ticket, TroubleTicketRequest $req): bool
     {
-        return $this->canRequest($user, $ticket)
-            && ((int) $req->requested_by === (int) $user->id || $user->hasRole(AccessRoles::TROUBLE_TICKET_FULL_SCOPE));
+        return ((int) $req->requested_by === (int) $user->id && $this->isTechnician($user, $ticket))
+            || $user->hasRole(AccessRoles::TROUBLE_TICKET_FULL_SCOPE);
     }
 
     /**
-     * Reviewer pengajuan (Q4): user ber-role supervisor yang berada dalam TEAM
-     * YANG SAMA dengan teknisi tiket (leader atau anggota ACTIVE team ACTIVE
-     * itu), BUKAN pembuat pengajuan. Superadmin tetap boleh, tetapi tidak untuk
-     * pengajuan buatannya sendiri.
+     * Boleh melihat dokumen uang tiket (kwitansi, lampiran CR): pemilik dana,
+     * atasan yang berwenang mereview settlement (hierarki yang sama dengan
+     * canReviewRequest()), dan Finance (keputusan 6 Nov 2026). Teknisi tiket
+     * yang bukan pemohon dan pembuat tiket tidak otomatis berhak. Akses lewat
+     * scopeByRole CR tetap dinilai terpisah di FileAccess.
+     */
+    public function canViewFinance(User $user, TroubleTicket $ticket, BudgetRequest $cr): bool
+    {
+        return $user->hasRole(AccessRoles::TROUBLE_TICKET_FULL_SCOPE)
+            || $user->hasRole(AccessRoles::TROUBLE_TICKET_FINANCE_READ)
+            || $this->isSettlementOwner($user, $cr)
+            || $this->org()->isLeaderOf((int) $user->id, (int) $ticket->assigned_to);
+    }
+
+    /** id pengajuan tiket ini yang sudah pernah diajukan ulang. */
+    public function resubmittedIds(TroubleTicket $ticket): Collection
+    {
+        return TroubleTicketMessage::where('trouble_ticket_id', $ticket->id)->where('event', 'request_resubmitted')
+            ->get(['metadata'])->map(fn ($m) => (int) ($m->metadata['from_request_id'] ?? 0))->filter()->values();
+    }
+
+    /**
+     * Approve yang langsung membuat CR SUBMITTED: reviewer ber-role manager
+     * (keputusan 6 Nov 2026). Role lain menghasilkan CR DRAFT. Sejalan dengan
+     * route budget-request.submit (superadmin, manager).
+     */
+    public function canDirectApprove(User $user, TroubleTicket $ticket, TroubleTicketRequest $req): bool
+    {
+        return $this->canReviewRequest($user, $ticket, $req) && $user->hasRole(['superadmin', 'manager']);
+    }
+
+    /**
+     * Reviewer pengajuan: leader team teknisi tiket, atau leader team di atasnya
+     * yang boleh mengambil alih kapan saja (keputusan 6 Nov 2026). Dihitung dari
+     * hierarki, jadi role leader tidak menentukan dan sesama anggota team tidak
+     * lagi bisa saling menyetujui. BUKAN pembuat pengajuan. Superadmin tetap
+     * boleh, tetapi tidak untuk pengajuan buatannya sendiri.
      */
     public function canReviewRequest(User $user, TroubleTicket $ticket, TroubleTicketRequest $req): bool
     {
@@ -660,63 +698,28 @@ class TroubleTicketWorkflow
             return false;
         }
 
-        if (! $user->hasRole(AccessRoles::TROUBLE_TICKET_APPROVE)) {
-            return false;
-        }
-
         return $user->hasRole(AccessRoles::TROUBLE_TICKET_FULL_SCOPE)
-            || $this->sameActiveTeam((int) $user->id, (int) $ticket->assigned_to);
-    }
-
-    /** User dan teknisi sama-sama ada di satu team ACTIVE (sebagai leader atau anggota ACTIVE). */
-    private function sameActiveTeam(int $userId, int $technicianId): bool
-    {
-        return Team::query()
-            ->where('status', 'ACTIVE')
-            ->whereHas('members', fn ($m) => $m->where('user_id', $technicianId)->where('status', 'ACTIVE'))
-            ->where(fn ($q) => $q
-                ->where('leader_id', $userId)
-                ->orWhereHas('members', fn ($m) => $m->where('user_id', $userId)->where('status', 'ACTIVE')))
-            ->exists();
+            || $this->org()->isLeaderOf((int) $user->id, (int) $ticket->assigned_to);
     }
 
     /**
-     * id semua anggota ACTIVE team ACTIVE tempat user menjadi leader atau anggota ACTIVE
-     * (termasuk dirinya bila anggota). Dasar scope antrean Todo List "Review Pengajuan":
-     * teknisi tiket harus ada di himpunan ini (cermin sameActiveTeam()).
-     *
-     * @return Collection<int, int>
+     * Penerima notifikasi review: atasan langsung teknisi; bila team-nya tanpa
+     * leader, atasan di atasnya.
      */
-    public function teamMemberIdsFor(int $userId): Collection
-    {
-        return Team::query()
-            ->where('status', 'ACTIVE')
-            ->where(fn ($q) => $q
-                ->where('leader_id', $userId)
-                ->orWhereHas('members', fn ($m) => $m->where('user_id', $userId)->where('status', 'ACTIVE')))
-            ->with(['members' => fn ($m) => $m->where('status', 'ACTIVE')])
-            ->get()
-            ->flatMap(fn ($t) => $t->members->pluck('user_id'))
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values();
-    }
-
-    /** Akun yang boleh me-review pengajuan tiket ini: supervisor ACTIVE di team teknisi (penerima notifikasi). */
     public function requestReviewers(TroubleTicket $ticket): Collection
     {
-        $teams = Team::query()
-            ->where('status', 'ACTIVE')
-            ->whereHas('members', fn ($m) => $m->where('user_id', $ticket->assigned_to)->where('status', 'ACTIVE'))
-            ->with(['members' => fn ($m) => $m->where('status', 'ACTIVE')])
-            ->get();
+        $ids = $this->org()->directLeaderIds((int) $ticket->assigned_to);
 
-        $ids = $teams->flatMap(fn ($t) => $t->members->pluck('user_id')->push($t->leader_id))
-            ->filter()->map(fn ($id) => (int) $id)->unique();
+        if ($ids->isEmpty()) {
+            $ids = $this->org()->upperLeaderIds((int) $ticket->assigned_to);
+        }
 
-        return app(RoleDirectory::class)->usersWithRoles(['supervisor'])
-            ->filter(fn ($u) => $ids->contains((int) $u->id))
-            ->values();
+        // Teknisi tanpa atasan di Team: superadmin yang mengambil keputusan.
+        if ($ids->isEmpty()) {
+            return app(RoleDirectory::class)->usersWithRoles(AccessRoles::TROUBLE_TICKET_FULL_SCOPE);
+        }
+
+        return User::query()->where('status', 'ACTIVE')->whereIn('id', $ids)->orderBy('name')->get();
     }
 
     /**
@@ -865,11 +868,15 @@ class TroubleTicketWorkflow
         try {
             DB::transaction(function () use ($ticket, $user, $header, $items, $stored, $storedGeneral, $keepGeneral, $requestId, $submit, &$req) {
                 $t = $this->lock($ticket);
-                $this->authorizeIf($this->canRequest($user, $t), 'Hanya teknisi tiket ini atau superadmin yang dapat mengajukan biaya, dan tiket belum Closed.');
 
                 $req = $requestId
                     ? TroubleTicketRequest::where('trouble_ticket_id', $t->id)->whereKey($requestId)->lockForUpdate()->firstOrFail()
                     : null;
+
+                // Pengajuan BARU tidak boleh pada tiket Closed; yang sudah ada boleh diselesaikan.
+                if (! $req) {
+                    $this->authorizeIf($this->canRequest($user, $t), 'Hanya teknisi tiket ini atau superadmin yang dapat mengajukan biaya, dan tiket belum Closed.');
+                }
 
                 if ($req) {
                     $this->authorizeIf($this->canManageRequest($user, $t, $req), 'Hanya pembuat pengajuan yang dapat mengubahnya.');
@@ -907,7 +914,6 @@ class TroubleTicketWorkflow
 
         DB::transaction(function () use ($ticket, $user, $requestId, &$req) {
             $t = $this->lock($ticket);
-            $this->authorizeIf($this->canRequest($user, $t), 'Hanya teknisi tiket ini atau superadmin yang dapat mengajukan biaya, dan tiket belum Closed.');
 
             $req = TroubleTicketRequest::where('trouble_ticket_id', $t->id)->whereKey($requestId)->lockForUpdate()->firstOrFail();
             $this->authorizeIf($this->canManageRequest($user, $t, $req), 'Hanya pembuat pengajuan yang dapat mengajukannya.');
@@ -952,6 +958,7 @@ class TroubleTicketWorkflow
 
         return array_merge([
             'request_id'  => $req->id,
+            'number'      => $req->display_number,
             'revision'    => $req->revision,
             'type'        => $req->requestType?->name,
             'budget_plan' => $req->budgetPlan?->code,
@@ -980,7 +987,7 @@ class TroubleTicketWorkflow
                 $t = $this->lock($ticket);
                 $req = TroubleTicketRequest::where('trouble_ticket_id', $t->id)->whereKey($requestId)->lockForUpdate()->firstOrFail();
 
-                $this->authorizeIf($this->canReviewRequest($user, $t, $req), 'Hanya supervisor team teknisi (bukan pembuat pengajuan) yang dapat mengubah pengajuan.');
+                $this->authorizeIf($this->canReviewRequest($user, $t, $req), 'Hanya atasan teknisi (bukan pembuat pengajuan) yang dapat mengubah pengajuan.');
                 if ($req->status !== TroubleTicketRequest::SUBMITTED) {
                     $this->fail('Hanya pengajuan yang menunggu review yang dapat diubah supervisor.');
                 }
@@ -1050,7 +1057,7 @@ class TroubleTicketWorkflow
         if ($req) {
             $req->update($atribut);
         } else {
-            $req = TroubleTicketRequest::create($atribut + [
+            $req = TroubleTicketRequest::create($atribut + $this->nomorPengajuan() + [
                 'trouble_ticket_id' => $t->id, 'requested_by' => $user->id,
             ]);
         }
@@ -1221,21 +1228,27 @@ class TroubleTicketWorkflow
      * bersamaan tidak membuat CR ganda: baris pengajuan terkunci, dan
      * budget_request_id UNIQUE.
      */
-    public function approveRequest(TroubleTicket $ticket, User $user, int $requestId, ?string $notes = null): TroubleTicketRequest
+    public function approveRequest(TroubleTicket $ticket, User $user, int $requestId, ?string $notes = null, bool $langsung = false): TroubleTicketRequest
     {
         $req = null;
         $cr = null;
+        $ambilAlih = false;
 
-        DB::transaction(function () use ($ticket, $user, $requestId, $notes, &$req, &$cr) {
+        DB::transaction(function () use ($ticket, $user, $requestId, $notes, $langsung, &$req, &$cr, &$ambilAlih) {
             $t = $this->lock($ticket);
             $req = TroubleTicketRequest::where('trouble_ticket_id', $t->id)->whereKey($requestId)->lockForUpdate()->firstOrFail();
 
-            $this->authorizeIf($this->canReviewRequest($user, $t, $req), 'Hanya supervisor team teknisi (bukan pembuat pengajuan) yang dapat menyetujui.');
+            $this->authorizeIf($this->canReviewRequest($user, $t, $req), 'Hanya atasan teknisi (bukan pembuat pengajuan) yang dapat menyetujui.');
             if ($req->status !== TroubleTicketRequest::SUBMITTED) {
                 $this->fail('Hanya pengajuan yang menunggu review yang dapat disetujui.');
             }
             if ($req->budget_request_id !== null) {
                 $this->fail('Pengajuan ini sudah punya Cost Request.');
+            }
+
+            if ($langsung) {
+                $this->authorizeIf($this->canDirectApprove($user, $t, $req), 'Hanya Manager berwenang yang dapat langsung mengajukan Cost Request.');
+                $this->pastikanAksesBudgetPlan($user, $req);
             }
 
             $cr = $this->buatDraftCostRequest($t, $req, $user);
@@ -1245,18 +1258,157 @@ class TroubleTicketWorkflow
                 'reviewed_at' => now(), 'review_notes' => $notes, 'budget_request_id' => $cr->id,
             ]);
 
-            $this->event($t, $user, 'request_approved', $notes, $this->metaPengajuan($req, ['cost_request' => $cr->code]));
+            // Direct approval menempuh aturan yang sama dengan tombol Submit.
+            // Bila ditolak, seluruh transaksi batal: tidak ada CR setengah jadi.
+            if ($langsung) {
+                if ($alasan = $cr->submissionError()) {
+                    $this->fail($alasan);
+                }
+                $cr->markSubmitted();
+            }
+
+            $ambilAlih = ! $this->org()->directLeaderIds((int) $t->assigned_to)->contains((int) $user->id)
+                && ! $user->hasRole(AccessRoles::TROUBLE_TICKET_FULL_SCOPE);
+
+            $this->event($t, $user, 'request_approved', $notes, $this->metaPengajuan($req, [
+                'cost_request' => $cr->code, 'direct' => $langsung, 'takeover' => $ambilAlih,
+            ]));
         });
 
         $ticket->refresh();
         $this->notify(
             collect([$req->requester])->filter()->reject(fn ($u) => (int) $u->id === (int) $user->id),
             $ticket,
-            'Pengajuan biaya disetujui',
-            "{$ticket->ticket_number}: pengajuan biaya Anda disetujui {$user->name}. Cost Request {$cr->code} dibuat sebagai draft.",
+            'Pengajuan dana disetujui',
+            "{$ticket->ticket_number}: pengajuan {$req->display_number} disetujui {$user->name}. Cost Request {$cr->code} "
+                . ($langsung ? 'langsung diajukan ke Head.' : 'dibuat sebagai draft.'),
         );
 
+        if ($langsung) {
+            NotifyService::send(
+                app(RoleDirectory::class)->heads(),
+                'Cost Request menunggu approval',
+                "{$user->name} mengajukan Cost Request \"{$cr->description}\" ({$cr->code}) untuk disetujui.",
+                route('budget-request.index'),
+                'workflow'
+            );
+        }
+
+        // Leader team tetap tahu bila atasannya mengambil alih review.
+        if ($ambilAlih) {
+            $this->notify(
+                $this->supervisorsFor((int) $ticket->assigned_to)->reject(fn ($u) => (int) $u->id === (int) $user->id),
+                $ticket,
+                'Pengajuan dana diambil alih',
+                "{$ticket->ticket_number}: pengajuan {$req->display_number} disetujui langsung oleh {$user->name}.",
+            );
+        }
+
         return $req;
+    }
+
+    /**
+     * CR hasil direct approval berjalan atas nama Manager, jadi ia harus bisa
+     * melihat CR itu lewat scopeByRole() — kalau tidak, ia tidak bisa Revise
+     * atau Cancel saat CR ditolak. Cermin jalur scopeByRole() untuk role
+     * Manager: proyek per Access Group (atau CR sendiri bila tanpa group),
+     * overhead per Access Group cost center, payroll tidak.
+     */
+    private function pastikanAksesBudgetPlan(User $user, TroubleTicketRequest $req): void
+    {
+        if ($user->hasRole(AccessRoles::TROUBLE_TICKET_FULL_SCOPE)) {
+            return;
+        }
+
+        $plan = BudgetPlan::with('costCenter:id,type')->find($req->budget_plan_id, ['id', 'project_id', 'cost_center_id']);
+
+        if ($plan?->project_id) {
+            $akses = $user->accessibleProjectIds();
+            if ($akses->isNotEmpty() && ! $akses->contains((int) $plan->project_id)) {
+                $this->fail('Budget Plan pengajuan ini di luar Access Group Anda. Setujui sebagai draft agar diproses Manager proyek.');
+            }
+
+            return;
+        }
+
+        $cc = $plan?->costCenter;
+        $bolehOverhead = $cc
+            && in_array($cc->type, \App\Models\CostCenter::OVERHEAD_LIKE_TYPES, true)
+            && $user->accessibleCostCenterIds()->contains((int) $cc->id);
+
+        if (! $bolehOverhead) {
+            $this->fail('Budget Plan non-proyek pengajuan ini di luar Access Group cost center Anda. Setujui sebagai draft agar diproses pemegang cost center.');
+        }
+    }
+
+    /**
+     * CR hasil pengajuan gugur: kebutuhan dananya diajukan ulang sebagai pengajuan
+     * BARU berstatus Draft. Pengajuan lama utuh sebagai riwayat, jadi satu
+     * pengajuan tetap hanya punya satu CR.
+     */
+    public function resubmitRequest(TroubleTicket $ticket, User $user, int $requestId): TroubleTicketRequest
+    {
+        $baru = null;
+
+        DB::transaction(function () use ($ticket, $user, $requestId, &$baru) {
+            $t = $this->lock($ticket);
+            $req = TroubleTicketRequest::where('trouble_ticket_id', $t->id)->whereKey($requestId)->lockForUpdate()->firstOrFail();
+
+            $this->authorizeIf($this->canRequest($user, $t) && $this->canManageRequest($user, $t, $req), 'Hanya pemohon yang dapat mengajukan ulang, dan tiket belum Closed.');
+            if ($req->status !== TroubleTicketRequest::APPROVED || ! $req->costRequestGone()) {
+                $this->fail('Pengajuan ini tidak perlu diajukan ulang.');
+            }
+            if ($this->resubmittedIds($t)->contains((int) $req->id)) {
+                $this->fail('Pengajuan ini sudah diajukan ulang.');
+            }
+
+            $baru = TroubleTicketRequest::create([
+                'trouble_ticket_id' => $t->id, 'budget_plan_id' => $req->budget_plan_id, 'cluster_id' => $req->cluster_id,
+                'request_type_id' => $req->request_type_id, 'beneficiary_id' => $req->beneficiary_id,
+                'description' => $req->description, 'total' => $req->total,
+                'status' => TroubleTicketRequest::DRAFT, 'revision' => 1, 'requested_by' => $user->id,
+            ] + $this->nomorPengajuan());
+
+            foreach ($req->currentItems()->with('attachments')->get() as $lama) {
+                $item = TroubleTicketRequestItem::create([
+                    'trouble_ticket_request_id' => $baru->id, 'revision' => 1,
+                    'budget_detail_id' => $lama->budget_detail_id, 'account_id' => $lama->account_id,
+                    'account_name' => $lama->account_name, 'sub_item_name' => $lama->sub_item_name,
+                    'description' => $lama->description, 'amount' => $lama->amount, 'qty' => $lama->qty,
+                    'total' => $lama->total, 'created_by' => $user->id,
+                ]);
+
+                foreach ($lama->attachments as $a) {
+                    TroubleTicketRequestAttachment::create([
+                        'trouble_ticket_request_id' => $baru->id, 'item_id' => $item->id, 'path' => $a->path,
+                        'original_name' => $a->original_name, 'mime' => $a->mime, 'size' => $a->size, 'uploaded_by' => $a->uploaded_by,
+                    ]);
+                }
+            }
+
+            foreach ($req->attachments()->whereNull('item_id')->get() as $a) {
+                TroubleTicketRequestAttachment::create([
+                    'trouble_ticket_request_id' => $baru->id, 'item_id' => null, 'path' => $a->path,
+                    'original_name' => $a->original_name, 'mime' => $a->mime, 'size' => $a->size, 'uploaded_by' => $a->uploaded_by,
+                ]);
+            }
+
+            $this->event($t, $user, 'request_resubmitted', null, $this->metaPengajuan($baru, ['from_request' => $req->display_number, 'from_request_id' => $req->id]));
+        });
+
+        return $baru;
+    }
+
+    /** Nomor dokumen pengajuan baru; kosong selama kolomnya belum dimigrasi. */
+    private function nomorPengajuan(): array
+    {
+        if (! TroubleTicketRequest::supportsNumber()) {
+            return [];
+        }
+
+        $urut = DocumentSequence::next('trouble-ticket-request', fn () => TroubleTicketRequest::withTrashed()->count());
+
+        return ['request_number' => 'FR-' . now()->format('my') . '-' . str_pad((string) $urut, 4, '0', STR_PAD_LEFT)];
     }
 
     /** Supervisor menolak pengajuan (alasan wajib); teknisi merevisi lalu mengajukan lagi. */
@@ -1272,7 +1424,7 @@ class TroubleTicketWorkflow
             $t = $this->lock($ticket);
             $req = TroubleTicketRequest::where('trouble_ticket_id', $t->id)->whereKey($requestId)->lockForUpdate()->firstOrFail();
 
-            $this->authorizeIf($this->canReviewRequest($user, $t, $req), 'Hanya supervisor team teknisi (bukan pembuat pengajuan) yang dapat menolak.');
+            $this->authorizeIf($this->canReviewRequest($user, $t, $req), 'Hanya atasan teknisi (bukan pembuat pengajuan) yang dapat menolak.');
             if ($req->status !== TroubleTicketRequest::SUBMITTED) {
                 $this->fail('Hanya pengajuan yang menunggu review yang dapat ditolak.');
             }
@@ -1457,7 +1609,7 @@ class TroubleTicketWorkflow
      * Aman dipanggil berulang: tiket yang kejadiannya sudah ada dilewati,
      * sehingga pembayaran yang diproses dua kali tidak menggandakan baris.
      */
-    public function recordCostRequestPaid(BudgetRequest $cr, User $user, ?string $notes = null): void
+    public function recordCostRequestPaid(BudgetRequest $cr, User $user, ?string $notes = null, ?string $reference = null): void
     {
         // Lewat pengajuan (baru) atau kolom budget_request_id tiket (data lama); satu kejadian PER CR.
         $ticket = TroubleTicket::forCostRequest($cr->id)->first();
@@ -1466,16 +1618,109 @@ class TroubleTicketWorkflow
             return;
         }
 
-        if (! $this->tulisKejadianDibayar($ticket, $cr, $user, $notes)) {
+        if (! $this->tulisKejadianDibayar($ticket, $cr, $user, $notes, $reference)) {
             return;
         }
 
+        $fr = TroubleTicketRequest::where('budget_request_id', $cr->id)->first();
+        $penerima = collect([$fr?->requester ?? $ticket->technician])->filter()->reject(fn ($u) => (int) $u->id === (int) $user->id);
+        $nilai = 'Rp ' . number_format((int) $cr->amount, 0, ',', '.');
+
         $this->notify(
-            collect([$ticket->technician])->filter()->reject(fn ($u) => (int) $u->id === (int) $user->id),
+            $penerima,
             $ticket,
-            'Biaya visit sudah dibayar',
-            "{$ticket->ticket_number}: Cost Request {$cr->code} sudah dibayar.",
+            'Dana sudah dibayar',
+            "{$ticket->ticket_number}" . ($fr ? " · {$fr->display_number}" : '') . " · {$cr->code}: {$nilai} dibayar "
+                . ($cr->paid_at?->format('d/m/Y') ?? now()->format('d/m/Y'))
+                . ($reference ? " (ref {$reference})" : '') . '. Status Treasury: Paid.',
         );
+    }
+
+    /**
+     * Mencerminkan log status CR ke timeline tiketnya. Tiap log paling banyak
+     * satu kejadian: client_token dibentuk dari id log dan dijaga UNIQUE.
+     * Pembayaran pertama punya kejadiannya sendiri (cost_request_paid).
+     */
+    public function mirrorCostRequestLog(BudgetRequest $cr, \App\Models\RequestStatusLog $log): void
+    {
+        if ($log->status_from === $log->status_to && $log->action_type !== 'second_payment_paid') {
+            return;
+        }
+
+        // Jalur panas: setiap log CR (termasuk CR non-tiket) lewat sini.
+        $tiketId = $cr->ticketOriginId();
+        $ticket = $tiketId ? TroubleTicket::find($tiketId) : null;
+
+        if ($ticket === null) {
+            return;
+        }
+
+        $pelaku = $log->acted_by ? User::find($log->acted_by) : null;
+        $pelaku ??= $cr->applicant ?? $ticket->technician;
+
+        // Pembayaran punya kejadiannya sendiri; CR non-Cash Advance sekaligus selesai di sini.
+        if ($log->action_type === 'paid') {
+            $this->catatKeuanganSelesai($ticket, $pelaku, $log->status_to);
+
+            return;
+        }
+
+        $baru = $this->eventSekali($ticket, $pelaku, 'cost_request_status', 'cr-log:' . $log->id, $log->notes, [
+            'cost_request' => $cr->code,
+            'status'       => $log->status_to,
+            'status_label' => \App\Support\WorkflowStatus::label($log->status_to, 'budget-request'),
+            'action'       => $log->action_type,
+        ]);
+
+        if ($baru && in_array($log->status_to, ['REJECTED', 'SETTLE_REJECTED', 'CLOSED'], true)) {
+            $fr = TroubleTicketRequest::where('budget_request_id', $cr->id)->first();
+
+            $this->notify(
+                collect([$fr?->requester ?? $ticket->technician])->filter(),
+                $ticket,
+                'Status Cost Request berubah',
+                "{$ticket->ticket_number}: Cost Request {$cr->code} kini " . \App\Support\WorkflowStatus::label($log->status_to, 'budget-request') . '.',
+            );
+        }
+
+        $this->catatKeuanganSelesai($ticket, $pelaku, $log->status_to);
+    }
+
+    /** Sekali saja per tiket: seluruh urusan keuangannya selesai. */
+    private function catatKeuanganSelesai(TroubleTicket $ticket, User $pelaku, string $statusCr): void
+    {
+        if (in_array($statusCr, TroubleTicket::FINANCE_DONE_CR, true)
+            && $ticket->financialState() === TroubleTicket::FINANCE_SETTLED) {
+            $this->eventSekali($ticket, $pelaku, 'financial_closed', 'financial-closed:' . $ticket->id);
+        }
+    }
+
+    /** Menulis kejadian sekali saja menurut kunci; true bila baris benar-benar dibuat. */
+    private function eventSekali(TroubleTicket $ticket, User $user, string $code, string $kunci, ?string $body = null, array $meta = []): bool
+    {
+        $token = vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(md5($kunci), 4));
+
+        try {
+            TroubleTicketMessage::create([
+                'trouble_ticket_id' => $ticket->id,
+                'user_id' => $user->id,
+                'actor_name' => $user->name,
+                'actor_role' => $user->role?->name,
+                'type' => TroubleTicketMessage::TYPE_EVENT,
+                'event' => $code,
+                'body' => $body,
+                'metadata' => $meta ?: null,
+                'client_token' => $token,
+            ]);
+        } catch (QueryException $e) {
+            // Duplikat = kejadian ini sudah tercatat oleh permintaan lain.
+            if ((int) ($e->errorInfo[1] ?? 0) === 1062) {
+                return false;
+            }
+            throw $e;
+        }
+
+        return true;
     }
 
     /**
@@ -1495,7 +1740,7 @@ class TroubleTicketWorkflow
         // Semua CR tiket ini: satu dari kolom lama + satu per pengajuan yang disetujui.
         foreach ($this->costRequestsOf($ticket) as $cr) {
             // CLOSED ikut dihitung: CR non-Cash Advance langsung ditutup saat dibayar.
-            if (! in_array($cr->status, ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'CLOSED'], true)) {
+            if (! in_array($cr->status, ['PAID', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'SETTLE_APPROVED', 'SECOND_APPROVED', 'SETTLE_REJECTED', 'CLOSED'], true)) {
                 continue;
             }
 
@@ -1527,7 +1772,7 @@ class TroubleTicketWorkflow
     }
 
     /** Menulis kejadian sekali saja; true bila baris benar-benar dibuat. */
-    private function tulisKejadianDibayar(TroubleTicket $ticket, BudgetRequest $cr, User $pelaku, ?string $notes): bool
+    private function tulisKejadianDibayar(TroubleTicket $ticket, BudgetRequest $cr, User $pelaku, ?string $notes, ?string $reference = null): bool
     {
         // Unik PER CR (bukan per tiket): satu tiket bisa punya banyak CR yang dibayar sendiri-sendiri.
         $sudah = TroubleTicketMessage::where('trouble_ticket_id', $ticket->id)
@@ -1539,13 +1784,218 @@ class TroubleTicketWorkflow
             return false;
         }
 
-        $this->event($ticket, $pelaku, 'cost_request_paid', $notes, [
+        // Kunci unik menutup balapan antara Mark Paid dan pembukaan halaman tiket.
+        return $this->eventSekali($ticket, $pelaku, 'cost_request_paid', 'cr-paid:' . $cr->id, $notes, [
             'cost_request' => $cr->code,
             'cost_total'   => (int) $cr->amount,
             'paid_at'      => $cr->paid_at?->toDateTimeString(),
+            'reference'    => $reference,
         ]);
+    }
 
-        return true;
+    /*
+    |--------------------------------------------------------------------------
+    | SETTLEMENT DARI TIKET
+    |--------------------------------------------------------------------------
+    | Teknisi mengisi baris lewat draft yang sudah ada, lalu mengirim ke atasan.
+    | Atasan meneruskan ke alur Finance (CR -> REALIZED) atau mengembalikan.
+    | Tidak ada status CR baru dan tidak ada rumus uang baru.
+    */
+
+    /** Pemilik settlement: pemohon pengajuan; CR data lama mengikuti teknisi tiket. */
+    public function isSettlementOwner(User $user, BudgetRequest $cr): bool
+    {
+        $pemohon = TroubleTicketRequest::where('budget_request_id', $cr->id)->value('requested_by');
+
+        if ($pemohon !== null) {
+            return (int) $pemohon === (int) $user->id;
+        }
+
+        return TroubleTicket::forCostRequest($cr->id)->where('assigned_to', $user->id)->exists();
+    }
+
+    /**
+     * Yang masih kurang sebelum settlement boleh dikirim. Hanya Cash Advance yang
+     * punya settlement. Baris bernilai wajib berbukti (nota atau kwitansi digital,
+     * keduanya lampiran baris), dan kelebihan dari pengajuan wajib beralasan.
+     *
+     * @return array<int, string>
+     */
+    public function settlementBlockers(BudgetRequest $cr): array
+    {
+        $cr->load(['details', 'realizations.attachments']);
+        $kurang = [];
+
+        if ($cr->realizations->isEmpty()) {
+            return ['Isi dan simpan baris settlement lebih dulu.'];
+        }
+
+        $perItem = $cr->realizations->groupBy('request_detail_id');
+
+        foreach ($cr->details as $d) {
+            if ($d->isTakenOut()) {
+                continue;
+            }
+
+            $baris = $perItem->get($d->id, collect());
+
+            if ($baris->isEmpty()) {
+                $kurang[] = "Item \"{$d->description}\" belum punya baris settlement.";
+            } elseif ((int) $baris->sum('total') > (int) $d->total && $baris->every(fn ($r) => blank($r->notes))) {
+                $kurang[] = "Item \"{$d->description}\" melebihi pengajuan dan wajib diberi alasan di Description Settle.";
+            }
+        }
+
+        foreach ($cr->realizations as $r) {
+            if ((int) $r->total > 0 && $r->attachments->isEmpty()) {
+                $kurang[] = "Baris \"{$r->description}\" wajib punya nota atau kwitansi digital.";
+            }
+            if ($r->request_detail_id === null && (int) $r->total > 0 && blank($r->notes)) {
+                $kurang[] = "Baris tambahan \"{$r->description}\" wajib diberi alasan di Description Settle.";
+            }
+        }
+
+        return $kurang;
+    }
+
+    /** Pengajuan + CR milik tiket ini, keduanya terkunci. */
+    private function kunciSettlement(TroubleTicket $t, int $crId): array
+    {
+        $req = TroubleTicketRequest::where('trouble_ticket_id', $t->id)->where('budget_request_id', $crId)->lockForUpdate()->firstOrFail();
+        $cr = BudgetRequest::with('type')->whereKey($crId)->lockForUpdate()->firstOrFail();
+
+        return [$req, $cr];
+    }
+
+    /** Teknisi mengirim settlement ke atasannya. Status CR belum berubah. */
+    public function submitSettlement(TroubleTicket $ticket, User $user, int $crId): void
+    {
+        if (! TroubleTicketRequest::supportsSettlementReview()) {
+            $this->fail('Fitur ini menunggu migrasi basis data.');
+        }
+
+        $req = null;
+
+        DB::transaction(function () use ($ticket, $user, $crId, &$req) {
+            $t = $this->lock($ticket);
+            [$req, $cr] = $this->kunciSettlement($t, $crId);
+
+            $this->authorizeIf($this->isSettlementOwner($user, $cr), 'Hanya pemohon dana yang dapat mengirim settlement.');
+            if (! $cr->isCashAdvance() || ! in_array($cr->status, ['PAID', 'SETTLE_REJECTED'], true)) {
+                $this->fail('Settlement hanya bisa dikirim saat Cost Request berstatus Paid atau Settle Rejected.');
+            }
+            if ($req->settlement_review_status === TroubleTicketRequest::REVIEW_PENDING) {
+                $this->fail('Settlement ini sudah menunggu review.');
+            }
+            if ($kurang = $this->settlementBlockers($cr)) {
+                $this->fail(implode(' ', $kurang));
+            }
+
+            $req->update([
+                'settlement_review_status' => TroubleTicketRequest::REVIEW_PENDING, 'settlement_reviewed_by' => null,
+                'settlement_reviewed_at' => null, 'settlement_review_notes' => null,
+            ]);
+
+            $this->event($t, $user, 'settlement_submitted', null, [
+                'cost_request' => $cr->code, 'number' => $req->display_number, 'cost_total' => (int) $cr->total_realization,
+            ]);
+        });
+
+        $ticket->refresh();
+        $this->notify(
+            $this->requestReviewers($ticket)->reject(fn ($u) => (int) $u->id === (int) $user->id),
+            $ticket,
+            'Settlement menunggu review',
+            "{$ticket->ticket_number}: settlement {$req->display_number} dikirim {$user->name}.",
+        );
+    }
+
+    /** Atasan meneruskan settlement ke alur Finance: CR menjadi REALIZED. */
+    public function approveSettlement(TroubleTicket $ticket, User $user, int $crId, ?string $notes = null): void
+    {
+        $cr = null;
+        $req = null;
+
+        DB::transaction(function () use ($ticket, $user, $crId, $notes, &$cr, &$req) {
+            $t = $this->lock($ticket);
+            [$req, $cr] = $this->kunciSettlement($t, $crId);
+
+            $this->authorizeIf($this->canReviewRequest($user, $t, $req), 'Hanya atasan teknisi (bukan pemohon) yang dapat mereview settlement.');
+            if ($req->settlement_review_status !== TroubleTicketRequest::REVIEW_PENDING) {
+                $this->fail('Settlement ini tidak sedang menunggu review.');
+            }
+            if (! in_array($cr->status, ['PAID', 'SETTLE_REJECTED'], true)) {
+                $this->fail('Status Cost Request sudah berubah; muat ulang halaman.');
+            }
+            if ($kurang = $this->settlementBlockers($cr)) {
+                $this->fail(implode(' ', $kurang));
+            }
+
+            $dari = $cr->status;
+            $cr->update(['status' => 'REALIZED', 'realized_at' => now()]);
+            $cr->addLog($dari, 'REALIZED', 'realization_submitted',
+                'Total realisasi: ' . number_format((int) $cr->fresh()->total_realization, 0, ',', '.') . ($notes ? ' — Keterangan: ' . $notes : ''));
+
+            $req->update([
+                'settlement_review_status' => TroubleTicketRequest::REVIEW_APPROVED, 'settlement_reviewed_by' => $user->id,
+                'settlement_reviewed_at' => now(), 'settlement_review_notes' => $notes,
+            ]);
+
+            $this->event($t, $user, 'settlement_approved', $notes, ['cost_request' => $cr->code, 'number' => $req->display_number]);
+        });
+
+        $ticket->refresh();
+        $this->notify(
+            collect([$req->requester])->filter()->reject(fn ($u) => (int) $u->id === (int) $user->id),
+            $ticket,
+            'Settlement diteruskan ke Finance',
+            "{$ticket->ticket_number}: settlement {$req->display_number} disetujui {$user->name}.",
+        );
+        NotifyService::send(
+            app(RoleDirectory::class)->heads(),
+            'Settlement menunggu check',
+            "{$user->name} meneruskan settlement Cost Request {$cr->code}.",
+            route('budget-request.index'),
+            'workflow'
+        );
+    }
+
+    /** Atasan mengembalikan settlement ke teknisi (alasan wajib). Status CR tidak berubah. */
+    public function returnSettlement(TroubleTicket $ticket, User $user, int $crId, string $notes): void
+    {
+        if (blank($notes)) {
+            $this->fail('Alasan pengembalian wajib diisi.', 'notes');
+        }
+
+        $req = null;
+
+        DB::transaction(function () use ($ticket, $user, $crId, $notes, &$req) {
+            $t = $this->lock($ticket);
+            [$req, $cr] = $this->kunciSettlement($t, $crId);
+
+            $this->authorizeIf($this->canReviewRequest($user, $t, $req), 'Hanya atasan teknisi (bukan pemohon) yang dapat mereview settlement.');
+            if ($req->settlement_review_status !== TroubleTicketRequest::REVIEW_PENDING) {
+                $this->fail('Settlement ini tidak sedang menunggu review.');
+            }
+            if (! in_array($cr->status, ['PAID', 'SETTLE_REJECTED'], true)) {
+                $this->fail('Status Cost Request sudah berubah; muat ulang halaman.');
+            }
+
+            $req->update([
+                'settlement_review_status' => TroubleTicketRequest::REVIEW_REJECTED, 'settlement_reviewed_by' => $user->id,
+                'settlement_reviewed_at' => now(), 'settlement_review_notes' => $notes,
+            ]);
+
+            $this->event($t, $user, 'settlement_returned', $notes, ['cost_request' => $cr->code, 'number' => $req->display_number]);
+        });
+
+        $ticket->refresh();
+        $this->notify(
+            collect([$req->requester])->filter()->reject(fn ($u) => (int) $u->id === (int) $user->id),
+            $ticket,
+            'Settlement dikembalikan',
+            "{$ticket->ticket_number}: settlement {$req->display_number} dikembalikan {$user->name}: {$notes}",
+        );
     }
 
     /**
@@ -1938,10 +2388,10 @@ class TroubleTicketWorkflow
             "{$ticket->ticket_number} dikembalikan oleh {$user->name}: {$notes}");
     }
 
-    /** Akun yang berhak approve penutupan tiket (role supervisor & superadmin). */
+    /** Akun yang berhak approve penutupan tiket ini: atasan teknisinya. */
     public function approvers(TroubleTicket $ticket): Collection
     {
-        return app(RoleDirectory::class)->usersWithRoles(AccessRoles::TROUBLE_TICKET_APPROVE);
+        return $this->requestReviewers($ticket);
     }
 
     /*
@@ -1969,8 +2419,9 @@ class TroubleTicketWorkflow
     public function reassign(TroubleTicket $ticket, User $user, int $newTechnicianId, string $reason, ?string $visitSite = null): void
     {
         $lama = null;
+        $batal = [];
 
-        DB::transaction(function () use ($ticket, $user, $newTechnicianId, $reason, $visitSite, &$lama) {
+        DB::transaction(function () use ($ticket, $user, $newTechnicianId, $reason, $visitSite, &$lama, &$batal) {
             $t = $this->lock($ticket);
             $this->authorizeIf($this->canReassignBy($user, $t), 'Hanya leader team teknisi atau supervisor yang dapat mengalihkan tiket.');
             $this->expect($t, self::REASSIGNABLE, 'Tiket pada status ini tidak bisa dialihkan.');
@@ -2041,9 +2492,36 @@ class TroubleTicketWorkflow
                 'visit_site' => $jadwalUlang ? $t->visit_site?->toDateString() : null,
                 'target_online' => $jadwalUlang ? $t->target_online?->toDateString() : null,
             ], fn ($v) => $v !== null));
+
+            /*
+            | Pengajuan yang belum menjadi CR ikut batal (keputusan 6 Nov 2026):
+            | pemohonnya bukan lagi teknisi tiket, jadi tidak ada yang bisa
+            | mengelolanya, dan yang masih SUBMITTED tidak boleh cair ke teknisi
+            | lama. Uang belum keluar. Pengajuan yang sudah jadi CR tidak disentuh
+            | (OD-20: dana tetap milik pemohon).
+            */
+            $namaBaru = User::whereKey($newTechnicianId)->value('name');
+            TroubleTicketRequest::where('trouble_ticket_id', $t->id)
+                ->whereIn('status', TroubleTicketRequest::CANCELLABLE)
+                ->whereNull('budget_request_id')
+                ->where('requested_by', '!=', $newTechnicianId)
+                ->lockForUpdate()->get()
+                ->each(function (TroubleTicketRequest $req) use ($t, $user, $namaBaru, &$batal) {
+                    $alasan = 'Otomatis: tiket dialihkan ke ' . $namaBaru . '.';
+                    $req->update([
+                        'status' => TroubleTicketRequest::CANCELLED, 'cancelled_by' => $user->id,
+                        'cancelled_at' => now(), 'cancel_reason' => $alasan,
+                    ]);
+                    $this->event($t, $user, 'request_cancelled', $alasan, $this->metaPengajuan($req));
+                    $batal[] = $req;
+                });
         });
 
         $ticket->refresh();
+        foreach ($batal as $req) {
+            $this->notify([$req->requester], $ticket, 'Pengajuan biaya dibatalkan',
+                "{$ticket->ticket_number}: pengajuan biaya dibatalkan otomatis karena tiket dialihkan.");
+        }
         $this->notify([$ticket->technician], $ticket, 'Trouble Ticket dialihkan kepada Anda',
             "{$ticket->ticket_number}: {$ticket->issue_label}");
         $this->notify([User::find($lama)], $ticket, 'Trouble Ticket dialihkan',
@@ -2065,6 +2543,9 @@ class TroubleTicketWorkflow
     public function postMessage(TroubleTicket $ticket, User $user, ?string $body, array $files, ?string $clientToken): TroubleTicketMessage
     {
         $this->authorizeIf($this->canView($user, $ticket), 'Anda tidak memiliki akses ke tiket ini.');
+        // Server sejalan dengan tombol kirim ($canMessage): pembaca saja
+        // (Finance, Treasury, dll.) tidak bisa mengirim lewat URL langsung.
+        $this->authorizeIf($this->canMessage($user, $ticket), 'Anda hanya dapat membaca chat tiket ini.');
 
         if ($clientToken && ($ada = $this->messageByToken($ticket, $clientToken))) {
             return $ada;

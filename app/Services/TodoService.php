@@ -87,9 +87,28 @@ class TodoService
         'invoiceApprove'          => ['roles' => ['superadmin', 'finance_manager'], 'status' => ['VERIFIED']],
         'collectionWaitingInvoice' => ['roles' => ['superadmin', 'collection']],
         // Trouble Ticket — pengajuan biaya (pra-Cost Request) menunggu review. 'status' di sini
-        // = status PENGAJUAN (trouble_ticket_requests), bukan status tiket. Scope: supervisor
-        // team yang sama dengan teknisi tiket, bukan pembuatnya (queueQuery()).
-        'ticketRequestReview'     => ['roles' => ['superadmin', 'supervisor'], 'status' => ['SUBMITTED']],
+        // = status PENGAJUAN (trouble_ticket_requests), bukan status tiket. Scope: atasan
+        // teknisi tiket menurut hierarki Team, bukan pembuatnya (queueQuery()).
+        'ticketRequestReview'     => ['roles' => ['superadmin', 'supervisor', 'manager', 'head'], 'leader' => true, 'status' => ['SUBMITTED']],
+        // Trouble Ticket — tindakan lain. Role hanya gerbang kasar; pemilik tugasnya
+        // ditentukan penugasan & hierarki di queueQuery().
+        'ticketAssigned'          => ['roles' => ['teknisi', 'staff', 'supervisor', 'manager'], 'status' => ['OPEN']],
+        'ticketFundingRevise'     => ['roles' => ['teknisi', 'staff', 'supervisor', 'manager', 'superadmin'], 'status' => ['REJECTED']],
+        'ticketSettlementDue'     => ['roles' => ['teknisi', 'staff', 'supervisor', 'manager', 'superadmin'], 'status' => ['PAID', 'SETTLE_REJECTED']],
+        'ticketSettlementReview'  => ['roles' => ['superadmin', 'supervisor', 'manager', 'head'], 'leader' => true],
+        'ticketCloseApprove'      => ['roles' => ['superadmin', 'supervisor', 'manager', 'head'], 'leader' => true, 'status' => ['PROGRESS_DONE']],
+        // CR draft hasil approve supervisor: hanya Manager yang berhak submit (route budget-request.submit).
+        'ticketCrDraft'           => ['roles' => ['superadmin', 'manager'], 'status' => ['DRAFT']],
+    ];
+
+    /** Antrean Trouble Ticket yang tampil bersama di satu bagian Todo List. */
+    public const TICKET_ACTION_QUEUES = [
+        'ticketAssigned'         => 'Tiket baru',
+        'ticketFundingRevise'    => 'Revisi pengajuan dana',
+        'ticketSettlementDue'    => 'Isi settlement',
+        'ticketSettlementReview' => 'Review settlement',
+        'ticketCloseApprove'     => 'Approve penutupan tiket',
+        'ticketCrDraft'          => 'Submit Cost Request',
     ];
 
     /** Role penangan sebuah antrean. */
@@ -107,7 +126,13 @@ class TodoService
     /** Apakah user (role efektif, ikut "View As") menangani antrean ini? */
     public static function allows(User $user, string $key): bool
     {
-        return $user->hasRole(self::roles($key));
+        if ($user->hasRole(self::roles($key))) {
+            return true;
+        }
+
+        // Otoritas tiket mengikuti hierarki: leader team apa pun role-nya.
+        return (self::QUEUES[$key]['leader'] ?? false)
+            && \App\Models\Team::where('status', 'ACTIVE')->where('leader_id', $user->id)->exists();
     }
 
     /** Role user (efektif) dibatasi Access Group? Lawan dari AKSES_PENUH_ROLES. */

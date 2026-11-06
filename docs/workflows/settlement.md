@@ -5,7 +5,7 @@ Source: `HandlesCrSettlement`, `BudgetRequest::getAllowedNextStatuses()`,
 
 | From → To | Action | Roles |
 |-----------|--------|-------|
-| PAID / SETTLE_REJECTED → REALIZED | `submit-realization` (realization rows; may be 0 without attachment since v2.4.2) | manager, supervisor, superadmin (+ teknisi tiket untuk CR tiketnya) |
+| PAID / SETTLE_REJECTED → REALIZED | `submit-realization` (realization rows; may be 0 without attachment since v2.4.2) | manager, supervisor, superadmin. CR dari pengajuan tiket bernomor: lewat `TroubleTicketWorkflow::approveSettlement()` (atasan teknisi), bukan route ini |
 | REALIZED → SETTLE_CHECKED / SETTLE_REJECTED | `head-check-settlement` / `head-reject-settlement` | head, superadmin |
 | SETTLE_CHECKED → SETTLE_VERIFIED / SETTLE_REJECTED | `finance-verify-settlement` / `finance-reject-settlement` | finance, finance_manager, cost_control, superadmin |
 | SETTLE_VERIFIED → CLOSED (no expense claim) | `ceo-close-settlement` | **finance_manager**, superadmin |

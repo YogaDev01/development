@@ -298,67 +298,10 @@ class TeamController extends Controller
         return ($anak[0] ?? collect())->map(fn ($t) => $simpul($t))->values()->all();
     }
 
-    /**
-     * Tempat tiap team di bagan: [team_id => ['type' => member|parent|root, 'team' => id]].
-     *
-     * Aturan penyambungan team (hanya tampilan — tidak memberi akses, K3):
-     *  1. Leader team T yang juga ANGGOTA (bukan leader) team B → team T
-     *     digantung di bawah kartu orang itu di team B. Contoh: Ketut
-     *     memimpin B, Yoga anggota B & leader A → Ketut → Yoga → anggota A.
-     *     Bila ia anggota beberapa team, dipilih membership primary, lalu
-     *     level terkecil, lalu nama team.
-     *  2. Bila tidak ada (1), Induk Team (parent_team_id) → team T beserta
-     *     kartu leader-nya digantung di bawah leader team induk.
-     *  3. Selain itu team menjadi akar.
-     * Penyambungan yang membentuk lingkaran diputus (team menjadi akar).
-     */
+    /** Tempat tiap team di bagan — aturannya di App\Services\OrgHierarchy::attachments(). */
     private function orgAttachments(\Illuminate\Support\Collection $teams): array
     {
-        $byId = $teams->keyBy('id');
-
-        // Membership non-leader per user: [user_id => [[team, member], ...]]
-        $memberOf = [];
-        foreach ($teams as $t) {
-            foreach ($t->activeMembers as $m) {
-                if ($m->user && (int) $m->user_id !== (int) $t->leader_id) {
-                    $memberOf[(int) $m->user_id][] = ['team' => $t, 'member' => $m];
-                }
-            }
-        }
-
-        // 1) Tentukan tempat tiap team: member / parent / root.
-        $attach = [];
-        foreach ($teams as $t) {
-            $leaderId = (int) $t->leader_id;
-            $kandidat = collect($memberOf[$leaderId] ?? [])->sortBy(fn ($x) => [
-                ($x['member']->is_primary ?? false) ? 0 : 1, (int) $x['member']->level, $x['team']->name,
-            ])->first();
-
-            if ($leaderId && $kandidat) {
-                $attach[$t->id] = ['type' => 'member', 'team' => (int) $kandidat['team']->id];
-            } elseif ($t->parent_team_id && $byId->has($t->parent_team_id)) {
-                $attach[$t->id] = ['type' => 'parent', 'team' => (int) $t->parent_team_id];
-            } else {
-                $attach[$t->id] = ['type' => 'root'];
-            }
-        }
-
-        // Putus lingkaran: telusuri rantai penyambungan; bila kembali ke
-        // dirinya, team itu dijadikan akar.
-        foreach ($teams as $t) {
-            $lihat = [];
-            $cur = $t->id;
-            while (($attach[$cur]['type'] ?? 'root') !== 'root') {
-                if (isset($lihat[$cur])) {
-                    $attach[$t->id] = ['type' => 'root'];
-                    break;
-                }
-                $lihat[$cur] = true;
-                $cur = $attach[$cur]['team'];
-            }
-        }
-
-        return $attach;
+        return app(\App\Services\OrgHierarchy::class)->attachments($teams);
     }
 
     /** Satu kartu orang di bagan (Leader View maupun Detail Member). */
@@ -396,8 +339,11 @@ class TeamController extends Controller
         $dipakai   = []; // team yang sudah dirender (penjaga data ganda)
         $kunci     = 0;
 
-        $card = fn ($user, Team $team, string $role, ?string $position, int $level, array $children) =>
-            $this->orgCard($user, $team, $role, $position, $level, $children, $meId, 'oc' . (++$kunci));
+        // Bukan fn(): arrow function menyalin $kunci, sehingga semua kartu mendapat
+        // kunci sama dan garis bagan menganggap semuanya bawahan kartu pertama.
+        $card = function ($user, Team $team, string $role, ?string $position, int $level, array $children) use (&$kunci, $meId) {
+            return $this->orgCard($user, $team, $role, $position, $level, $children, $meId, 'oc' . (++$kunci));
+        };
 
         // Blok "anggota team T" (tanpa kartu leader) + team yang diinduk ke T.
         $blocksOf = null;

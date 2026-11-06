@@ -58,6 +58,10 @@
        memunculkan batang gulir kosong di tepi kanan (20 Okt 2026). Kelasnya
        dipasang JS, jadi halaman lain dan tampilan HP tidak ikut terkunci. */
     html.tt-detail-open, body.tt-detail-open { overflow-y:hidden; }
+    /* Padding bawah bawaan .content (64px, !important di tesys-ui-refine.css)
+       hanya berguna untuk halaman yang menggulir; di sini ia cuma menyisakan
+       ruang kosong di bawah panel. */
+    body.tesys-ui.tt-detail-open .main > .content { padding-bottom:12px !important; }
 }
 .tt-detail .tt-pane { min-height:0; }
 .tt-fill { height:100%; display:flex; flex-direction:column; min-height:0; overflow:hidden; }
@@ -140,6 +144,10 @@ body.tesys-ui a.tt-cell-link:focus { background:var(--charcoal); color:#fff; out
 .tt-event-chip { display:inline-block; padding:2px 10px; border-radius:999px; background:var(--surface-2);
     border:1px solid var(--border); font-size:11.5px; font-weight:600; color:var(--text-dim); }
 /* Keterangan kejadian: teks polos di samping chip (seperti log Cost Request). */
+/* Status keuangan berjalan terpisah dari status tiket. */
+.tt-fin-badge { display:inline-flex; align-items:center; gap:4px; padding:1px 8px; border-radius:var(--radius-pill); background:var(--warning-bg); color:var(--warning); font-size:11px; font-weight:600; white-space:nowrap; }
+/* Kejadian uang (pengajuan dana, pembayaran) dibedakan dari kejadian teknis. */
+.tt-event.is-finance .tt-event-chip { background:var(--accent-tint); color:var(--accent-text); }
 .tt-event-note { margin:4px 2px 0; color:var(--text); font-size:11.5px;
     white-space:pre-wrap; overflow-wrap:anywhere; }
 /* Kejadian yang dipicu teknisi duduk di kanan, seirama gelembung pesannya. */
@@ -291,7 +299,8 @@ body.tesys-ui a.tt-cell-link:focus { background:var(--charcoal); color:#fff; out
     .tt-panes[data-pane="info"] .tt-pane-info,
     .tt-panes[data-pane="action"] .tt-pane-action { display:block; }
     .tt-page .container-fluid { padding-bottom:64px; }
-    .tt-pane-chat .tt-fill { height:calc(100vh - 190px); min-height:320px; }
+    /* vh tidak ikut terskala `zoom` (901-991px masih memakai --ts-zoom). */
+    .tt-pane-chat .tt-fill { height:calc(100vh / var(--ts-zoom, 1) - 190px); min-height:320px; }
     .tt-pane-info .tt-fill { height:auto; }
     .tt-tab-body { overflow:visible; }
     .tt-tabs .nav-link span:not(.tt-tab-count) { font-size:11.5px; }

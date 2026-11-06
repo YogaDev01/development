@@ -70,6 +70,9 @@
                         <div class="tt-mcard-top">
                             <span class="tt-mcard-no">{{ $t->ticket_number }}</span>
                             <x-status :status="$t->status" context="trouble-ticket" />
+                            @if($t->financialState() === \App\Models\TroubleTicket::FINANCE_OPEN)
+                                <span class="tt-fin-badge" title="{{ implode(' ', $t->financialBlockers()) }}"><i class="fas fa-coins" aria-hidden="true"></i> Keuangan belum selesai</span>
+                            @endif
                         </div>
                         <div class="tt-mcard-site">{{ $siteM }}</div>
                         <div class="tt-mcard-tid">{{ $t->site?->tid ?? '-' }}@if($t->customer?->name) · {{ $t->customer->name }}@endif</div>
@@ -180,10 +183,12 @@
                             <input type="checkbox" class="custom-control-input" id="ttOnlyOverdue">
                             <label class="custom-control-label" for="ttOnlyOverdue" style="font-size:12.5px;">Lewat SLA</label>
                         </div>
+                        <a href="{{ route('trouble-ticket.index', $filterKeuangan ? [] : ['keuangan' => 'open']) }}" class="btn btn-sm {{ $filterKeuangan ? 'btn-primary' : 'btn-outline-secondary' }}" style="font-size:12.5px;"><i class="fas fa-coins mr-1"></i> Keuangan terbuka</a>
                     </div>
                     <div class="tt-toolbar-right">
                         <a href="{{ route('trouble-ticket.export') }}" class="btn btn-outline-success btn-sm" id="btnTtExport"><i class="fas fa-file-excel mr-1"></i> Export</a>
                         @if($canCreate)
+                            <button type="button" class="btn btn-outline-success btn-sm" data-toggle="modal" data-target="#mdlTtImport"><i class="fas fa-file-import mr-1"></i> Import Excel</button>
                             <a href="{{ route('trouble-ticket.create') }}" class="btn btn-success btn-sm"><i class="fas fa-plus mr-1"></i> Buat Tiket</a>
                         @endif
                     </div>
@@ -244,6 +249,9 @@
                                     </td>
                                     <td class="col-fit" data-order="{{ array_search($t->status, TroubleTicket::STATUSES, true) }}">
                                         <x-status :status="$t->status" context="trouble-ticket" />
+                                        @if($t->financialState() === \App\Models\TroubleTicket::FINANCE_OPEN)
+                                            <span class="tt-fin-badge" title="{{ implode(' ', $t->financialBlockers()) }}"><i class="fas fa-coins" aria-hidden="true"></i> Keuangan belum selesai</span>
+                                        @endif
                                         @if(isset($overdueIds[$t->id]))<i class="fas fa-exclamation-circle text-danger ml-1" title="Lewat SLA"></i>@endif
                                     </td>
                                     {{-- Plan = tanggal kunjungan saja; tiket tanpa plan (termasuk Non-Visit) kosong. --}}
@@ -264,7 +272,7 @@
                                             {{-- Close langsung dari daftar, hanya untuk tiket Progress Done
                                                  dan pemegang hak approve yang bukan teknisinya sendiri.
                                                  Evidence-nya dibaca di halaman detail. --}}
-                                            @if($canApprove && $t->status === 'PROGRESS_DONE' && (int) $t->assigned_to !== $userId)
+                                            @if(($canApprove || in_array((int) $t->assigned_to, $bawahanIds, true)) && $t->status === 'PROGRESS_DONE' && (int) $t->assigned_to !== $userId)
                                                 <form method="POST" action="{{ route('trouble-ticket.close.approve', $t) }}" class="d-inline"
                                                       data-confirm="Close tiket {{ $t->ticket_number }}? Pastikan evidence sudah diperiksa di halaman detail.">
                                                     @csrf
@@ -303,6 +311,9 @@
         </div>
     </div>
 </div>
+@if($canCreate)
+    @include('trouble-ticket._import')
+@endif
 @endsection
 
 @push('styles')

@@ -146,9 +146,9 @@ final class AccessRoles
     public const TROUBLE_TICKET_SUPERVISE = ['superadmin'];
 
     /**
-     * Trouble Ticket — approve/tolak penutupan tiket di tahap Progress Done
-     * (keputusan 12 Okt 2026: hanya atasan). Pelaku tidak boleh menyetujui
-     * penutupan yang ia kirim sendiri — diperiksa di TroubleTicketWorkflow.
+     * Trouble Ticket — role pengawas tiket: dasar TroubleTicket::supervises()
+     * (melihat tiket di luar tugasnya). Hak approve tidak lagi diberikan role
+     * ini; diperiksa lewat hierarki di TroubleTicketWorkflow::canSupervise().
      */
     public const TROUBLE_TICKET_APPROVE = ['superadmin', 'supervisor'];
 
@@ -157,6 +157,13 @@ final class AccessRoles
      * gerbang role: pada route trouble-ticket/settings.
      */
     public const TROUBLE_TICKET_SETTINGS = ['superadmin'];
+
+    /**
+     * Trouble Ticket — baca-saja tiket yang punya Cost Request, supaya tautan
+     * dari CR bisa dibuka (keputusan 6 Nov 2026). Tidak memberi aksi apa pun;
+     * menu trouble-ticket tetap diberikan lewat User & Access.
+     */
+    public const TROUBLE_TICKET_FINANCE_READ = ['finance', 'finance_manager', 'cost_control', 'treasury'];
 
     /**
      * Trouble Ticket — role yang TIDAK boleh membuat tiket. Teknisi hanya

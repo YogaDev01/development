@@ -70,6 +70,7 @@ class UserActivityLog extends Model
         'todo_list' => 'Todo List',
         'user_access' => 'User & Access',
         'master_data' => 'Master Data',
+        'trouble_ticket' => 'Trouble Ticket',
     ];
 
     public const ACTIONS = [
