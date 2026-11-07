@@ -41,9 +41,8 @@
             ['Perubahan Akses 7 Hari', $summary['access_changes'], 'info', 'fas fa-user-shield'],
         ]" />
 
-        <x-tw.card padding="sm">
-
-            <ul class="nav nav-pills mb-3" role="tablist" style="gap:6px;">
+        {{-- Tab memakai gaya tab utama Cost Request (cr-main-tabs, tesys-ui-refine.css). --}}
+        <ul class="nav nav-tabs cr-main-tabs" role="tablist">
                 <li class="nav-item">
                     <a class="nav-link {{ $tab === 'audit' ? 'active' : '' }}" href="{{ route('security.index', ['tab' => 'audit']) }}">
                         <i class="fas fa-stream mr-1" aria-hidden="true"></i> Audit Trail
@@ -64,14 +63,16 @@
                         <i class="fas fa-user-secret mr-1" aria-hidden="true"></i> Shadow Permission
                     </a>
                 </li>
-            </ul>
+        </ul>
+
+        <x-tw.card padding="sm">
 
             @if(in_array($tab, ['audit', 'login'], true))
                 {{-- FILTER (GET, server-side) --}}
-                <form method="GET" action="{{ route('security.index') }}" class="form-row align-items-end mb-3">
+                <form method="GET" action="{{ route('security.index') }}" class="form-row align-items-end sec-filter mb-2">
                     <input type="hidden" name="tab" value="{{ $tab }}">
-                    <div class="col-md-3 col-6 mb-2">
-                        <label class="font-weight-600 mb-1" style="font-size:11px;" for="secUser">User</label>
+                    <div class="col-md-2 col-6 mb-2">
+                        <label class="sec-label" for="secUser">User</label>
                         <select name="user_id" id="secUser" class="form-control form-control-sm">
                             <option value="">Semua User</option>
                             @foreach($users as $u)
@@ -81,7 +82,7 @@
                     </div>
                     @if($tab === 'audit')
                     <div class="col-md-2 col-6 mb-2">
-                        <label class="font-weight-600 mb-1" style="font-size:11px;" for="secModule">Module</label>
+                        <label class="sec-label" for="secModule">Module</label>
                         <select name="module" id="secModule" class="form-control form-control-sm">
                             <option value="">Semua Module</option>
                             @foreach(UserActivityLog::MODULES as $key => $label)
@@ -91,7 +92,7 @@
                     </div>
                     @endif
                     <div class="col-md-2 col-6 mb-2">
-                        <label class="font-weight-600 mb-1" style="font-size:11px;" for="secAction">Aksi</label>
+                        <label class="sec-label" for="secAction">Aksi</label>
                         <select name="action" id="secAction" class="form-control form-control-sm">
                             <option value="">Semua Aksi</option>
                             @foreach(UserActivityLog::ACTIONS as $key => $label)
@@ -101,27 +102,25 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-1 col-6 mb-2">
-                        <label class="font-weight-600 mb-1" style="font-size:11px;" for="secFrom">Dari</label>
+                    <div class="col-md-2 col-6 mb-2 sec-col-date">
+                        <label class="sec-label" for="secFrom">Dari</label>
                         <input type="date" name="date_from" id="secFrom" class="form-control form-control-sm" value="{{ $filters['date_from'] ?? '' }}">
                     </div>
-                    <div class="col-md-1 col-6 mb-2">
-                        <label class="font-weight-600 mb-1" style="font-size:11px;" for="secTo">Sampai</label>
+                    <div class="col-md-2 col-6 mb-2 sec-col-date">
+                        <label class="sec-label" for="secTo">Sampai</label>
                         <input type="date" name="date_to" id="secTo" class="form-control form-control-sm" value="{{ $filters['date_to'] ?? '' }}">
                     </div>
-                    <div class="col-md-1 col-6 mb-2">
-                        <label class="font-weight-600 mb-1" style="font-size:11px;" for="secIp">IP</label>
+                    <div class="col-md-1 col-6 mb-2" style="min-width:110px;">
+                        <label class="sec-label" for="secIp">IP</label>
                         <input type="text" name="ip" id="secIp" class="form-control form-control-sm" value="{{ $filters['ip'] ?? '' }}" maxlength="45">
                     </div>
-                    <div class="col-md-2 col-12 mb-2">
-                        <label class="font-weight-600 mb-1" style="font-size:11px;" for="secQ">Kata Kunci</label>
-                        <div class="input-group input-group-sm">
-                            <input type="text" name="q" id="secQ" class="form-control" placeholder="Deskripsi / referensi" value="{{ $filters['q'] ?? '' }}">
-                            <div class="input-group-append">
-                                <button type="submit" class="btn btn-primary" aria-label="Cari"><i class="fas fa-search" aria-hidden="true"></i></button>
-                                <a href="{{ route('security.index', ['tab' => $tab]) }}" class="btn btn-outline-secondary" title="Reset filter" aria-label="Reset filter"><i class="fas fa-times" aria-hidden="true"></i></a>
-                            </div>
-                        </div>
+                    <div class="col mb-2" style="min-width:160px;">
+                        <label class="sec-label" for="secQ">Kata Kunci</label>
+                        <input type="text" name="q" id="secQ" class="form-control form-control-sm" placeholder="Deskripsi / referensi" value="{{ $filters['q'] ?? '' }}">
+                    </div>
+                    <div class="col-auto mb-2 d-flex" style="gap:6px;">
+                        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search mr-1" aria-hidden="true"></i> Cari</button>
+                        <a href="{{ route('security.index', ['tab' => $tab]) }}" class="btn btn-outline-secondary btn-sm" title="Reset filter" aria-label="Reset filter"><i class="fas fa-eraser" aria-hidden="true"></i></a>
                     </div>
                 </form>
 
@@ -129,7 +128,7 @@
                     <x-empty title="Belum ada catatan" message="Tidak ada aktivitas yang cocok dengan filter saat ini." icon="fas fa-stream" />
                 @else
                     <div class="table-responsive">
-                        <table class="table table-bordered table-sm mb-0" style="font-size:12.5px;">
+                        <table class="table table-bordered table-hover mb-0 ts-idx-tbl sec-tbl">
                             <thead class="bg-light">
                                 <tr>
                                     <th scope="col" style="width:130px;">Waktu</th>
@@ -204,7 +203,7 @@
                         Sesi yang sedang Anda pakai tidak bisa dicabut dari sini.
                     </p>
                     <div class="table-responsive">
-                        <table class="table table-bordered table-sm mb-0" style="font-size:12.5px;">
+                        <table class="table table-bordered table-hover mb-0 ts-idx-tbl sec-tbl">
                             <thead class="bg-light">
                                 <tr>
                                     <th scope="col">User</th>
@@ -284,7 +283,7 @@
                     <x-empty title="Tidak ada selisih" message="Belum ada jawaban mesin baru yang berbeda dari aturan lama dalam 14 hari terakhir." icon="fas fa-check-circle" />
                 @else
                     <div class="table-responsive">
-                        <table class="table table-bordered table-sm mb-0" style="font-size:12.5px;">
+                        <table class="table table-bordered table-hover mb-0 ts-idx-tbl sec-tbl">
                             <thead class="bg-light">
                                 <tr>
                                     <th scope="col">Permission (route)</th>
@@ -319,3 +318,15 @@
     </div>
 </div>
 @endsection
+
+@push('styles')
+{{-- Sama dengan halaman User & Role: komponen x-tw butuh tesys-tw.css. --}}
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
+<style>
+.sec-label      { display:block; font-size:11px; font-weight:600; color:var(--text-dim); margin-bottom:4px; }
+.sec-filter     { row-gap:0; }
+.sec-tbl td     { vertical-align:top; font-size:12.5px; }
+.sec-tbl th     { white-space:nowrap; }
+@media (min-width: 768px) { .sec-col-date { max-width:150px; } }
+</style>
+@endpush
