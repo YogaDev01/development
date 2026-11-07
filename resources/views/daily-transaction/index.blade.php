@@ -470,9 +470,11 @@
 }
 
 /* Drawer membawa aksi lengkap: modal (Mark PAID, View Budget, Takeout, Approve) dan
-   konfirmasi Swal tampil DI ATAS drawer (z-index 1070), bukan di belakangnya. */
-body.ts-drawer-lock .modal { z-index: 1085; }
-body.ts-drawer-lock .modal-backdrop { z-index: 1080; }
+   konfirmasi Swal tampil DI ATAS drawer (z-index 1070), bukan di belakangnya.
+   Selektor memuat .tesys-ui supaya mengalahkan `body.tesys-ui .modal` (1060) di
+   tesys-ui-shell.css, yang dimuat SESUDAH @stack('styles'). */
+body.tesys-ui.ts-drawer-lock .modal { z-index: 1085; }
+body.tesys-ui.ts-drawer-lock .modal-backdrop { z-index: 1080; }
 body.ts-drawer-lock .swal2-container { z-index: 1095; }
 #dtItemHost .table { font-size: 12px; }
 
