@@ -31,6 +31,9 @@ Verified 2026-10-02 from `bootstrap/app.php`, `routes/web.php`,
   bergerbang `role:`), hak di `role_permissions`. `ShadowPermission` hanya membandingkan dengan gerbang lama dan
   mencatat selisih ke `permission_shadow_logs` bila `SECURITY_PERMISSION_MODE=shadow`; gerbang `role:` lama tetap
   yang memutuskan. Route baru bergerbang `role:` wajib didaftarkan lewat generator (dijaga `PermissionRegistryTest`).
+- **Tab Kewenangan Aksi (2026-11-07, Fase 3):** modal Role & Menu Access menampilkan 47 kelompok aksi
+  (`config/permission_groups.php`) dengan status per role dari `role_permissions`. Baca-saja; belum berlaku
+  sampai cutover per modul.
   Lihat `docs/security/access-matrix.md` dan
   `docs/plans/2026-11-06-security-access-control.md`.
 

@@ -225,6 +225,9 @@ class RoleController extends Controller
             ],
             'selected_ids' => $selectedIds,
             'tree'         => Navigation::accessTree(),
+            // Fase 3 — kewenangan aksi per kelompok, BACA-SAJA selama mode uji
+            // (gerbang role: lama masih yang berlaku; tidak ada jalur simpan).
+            'permissions'  => \App\Support\Authorizer::groupStatusForRole((int) $role->id),
         ]);
     }
 }

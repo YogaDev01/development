@@ -215,6 +215,24 @@
                     <!-- Content -->
                     <div id="configContent" style="display:none;">
 
+                        {{-- Fase 3: tab Kewenangan (baca-saja). Tab Menu Access = isi lama, tidak berubah. --}}
+                        <ul class="nav nav-pills px-4 pt-3" role="tablist" style="gap:6px;">
+                            <li class="nav-item">
+                                <a class="nav-link active" data-toggle="pill" href="#paneMenu" role="tab">
+                                    <i class="fas fa-bars mr-1" aria-hidden="true"></i> Menu Access
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-toggle="pill" href="#panePermission" role="tab">
+                                    <i class="fas fa-user-shield mr-1" aria-hidden="true"></i> Kewenangan Aksi
+                                    <span class="badge badge-warning ml-1" style="font-size:10px;">Uji</span>
+                                </a>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content">
+                        <div class="tab-pane fade show active" id="paneMenu" role="tabpanel">
+
                         <!-- Select All bar -->
                         <div class="d-flex align-items-center justify-content-between px-4 py-3"
                              style="background:var(--surface-2); border-bottom:1px solid var(--border);">
@@ -229,6 +247,23 @@
 
                         <!-- Menu sections -->
                         <div class="px-4 py-3" id="menuSections"></div>
+
+                        </div>{{-- /paneMenu --}}
+
+                        <div class="tab-pane fade" id="panePermission" role="tabpanel">
+                            <div class="alert alert-warning mx-4 mt-3 mb-2" style="font-size:12px;">
+                                <i class="fas fa-info-circle mr-1" aria-hidden="true"></i>
+                                <strong>Belum berlaku — masa uji.</strong> Daftar ini adalah salinan aturan yang sekarang
+                                (baca-saja). Hak akses tetap ditentukan aturan lama sampai modulnya resmi dialihkan.
+                                <span id="permMode"></span>
+                            </div>
+                            <div class="px-4 pb-2">
+                                <input type="search" id="permSearch" class="form-control form-control-sm"
+                                       placeholder="Cari aksi atau modul..." aria-label="Cari kewenangan">
+                            </div>
+                            <div class="px-4 pb-3" id="permSections"></div>
+                        </div>
+                        </div>{{-- /tab-content --}}
 
                     </div>
 
@@ -593,6 +628,63 @@ $(function () {
         });
     }
 
+    /*
+     | Tab "Kewenangan Aksi" (Fase 3) — BACA-SAJA. Tidak ada input yang ikut
+     | terkirim bersama form Menu Access; jalur simpan kewenangan baru dibuka
+     | per modul setelah cutover (Fase 5).
+     */
+    const PERM_STATUS = {
+        all:     ['success', 'Ya'],
+        partial: ['warning', 'Sebagian'],
+        none:    ['light border', 'Tidak'],
+    };
+
+    function renderPermissions(p) {
+        let modeTxt = p.mode === 'shadow' ? 'Mode uji aktif: selisih dicatat di Konsol Keamanan.' : 'Mode uji belum dinyalakan.';
+        $('#permMode').text(modeTxt);
+        $('#permSearch').val('');
+
+        if (!p.ready) {
+            $('#permSections').html('<p class="text-muted text-center py-4 mb-0">Tabel kewenangan belum tersedia (migrasi belum dijalankan).</p>');
+            return;
+        }
+
+        let html = '';
+        (p.modules || []).forEach(function (mod) {
+            html += '<div class="menu-group perm-module" data-search="' + esc(mod.label.toLowerCase()) + '">' +
+                '<div class="menu-group-head"><span><i class="fas fa-cube mr-2" style="color:var(--accent);"></i>' + esc(mod.label) + '</span></div>' +
+                '<div class="menu-group-body">';
+            mod.groups.forEach(function (g) {
+                let st = PERM_STATUS[g.status] || PERM_STATUS.none;
+                let rinci = g.items.map(function (it) {
+                    return '<li><i class="fas ' + (it.granted ? 'fa-check text-success' : 'fa-times text-muted') + ' mr-1" aria-hidden="true"></i>' +
+                        '<code style="font-size:11px;">' + esc(it.key) + '</code></li>';
+                }).join('');
+                html += '<div class="perm-group py-1" data-search="' + esc((mod.label + ' ' + g.label).toLowerCase()) + '" style="border-bottom:1px solid var(--border);">' +
+                    '<div class="d-flex align-items-center justify-content-between" style="gap:8px;">' +
+                        '<span style="font-size:12.5px;">' + esc(g.label) + '</span>' +
+                        '<span class="badge badge-' + st[0] + '" title="' + g.granted + ' dari ' + g.total + ' aksi">' + st[1] + '</span>' +
+                    '</div>' +
+                    '<details style="font-size:11.5px;"><summary class="text-muted">' + g.total + ' route</summary>' +
+                        '<ul class="list-unstyled mb-1 mt-1">' + rinci + '</ul></details>' +
+                '</div>';
+            });
+            html += '</div></div>';
+        });
+
+        $('#permSections').html(html || '<p class="text-muted text-center py-4 mb-0">Tidak ada data kewenangan.</p>');
+    }
+
+    $('#permSearch').on('input', function () {
+        let q = this.value.toLowerCase().trim();
+        $('#permSections .perm-group').each(function () {
+            $(this).toggle(!q || this.getAttribute('data-search').indexOf(q) !== -1);
+        });
+        $('#permSections .perm-module').each(function () {
+            $(this).toggle($(this).find('.perm-group').filter(function () { return $(this).css('display') !== 'none'; }).length > 0);
+        });
+    });
+
     $(document).on('click', '.btn-configure', function () {
         let id = $(this).data('id');
 
@@ -622,6 +714,9 @@ $(function () {
             }
 
             $('#menuSections').html(html);
+            renderPermissions(d.permissions || {});
+            // Selalu buka di tab Menu Access, seperti sebelum ada tab Kewenangan.
+            $('a[href="#paneMenu"]').tab('show');
             updateCount();
             $('#configLoading').hide();
             $('#configContent').show();

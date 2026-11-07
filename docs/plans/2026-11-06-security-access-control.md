@@ -306,7 +306,17 @@ untuk fase berikutnya. Setiap fase berakhir dengan laporan Executor + Reviewer.
 - Acceptance: golden test identik; shadow log kosong pada skenario test; tidak ada perubahan respons.
 - Rollback: hapus alias middleware → tanpa efek.
 
-### Fase 3 — UI Role & Permission (HIGH, butuh D2/D3)
+### Fase 3 — UI Role & Permission (HIGH, butuh D2/D3) — **VERSI REVISI DIIMPLEMENTASI 2026-11-07**
+- Revisi (disetujui "lanjut fase 3" atas usulan revisi): 223 permission dikelompokkan menjadi **47 kelompok aksi**
+  berlabel Indonesia (`config/permission_groups.php`, dibangkitkan `scripts/security/permission-groups.php`). Satu
+  kelompok = satu modul dengan kombinasi role identik, jadi hak per kelompok tidak memecah parity
+  (`PermissionGroupsTest`).
+- Modal Role & Menu Access: tab baru **Kewenangan Aksi** (label "Uji"), **baca-saja** — status per kelompok
+  Ya/Sebagian/Tidak, rincian route, pencarian. Tab Menu Access dan tombol Simpan Menu Access tidak berubah; tab
+  kewenangan tidak punya input yang ikut terkirim.
+- **Tidak** dikerjakan: tombol simpan kewenangan (3c) — dibuka per modul saat cutover (Fase 5); tab Data Scope —
+  dipindah ke Fase 4 (mesinnya belum ada).
+- Rencana awal di bawah ini dipertahankan sebagai referensi.
 - Tab baru **Permission** di modal Role & Menu Access yang sudah ada (progressive disclosure per modul,
   pencarian, pilih-semua per modul, dialog konfirmasi + ringkasan dampak "N user terdampak").
 - Tab **Data Scope** per modul × ability, pilihan hanya scope yang didukung (§3.3).

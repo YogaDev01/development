@@ -84,6 +84,59 @@ final class Authorizer
         return null;
     }
 
+    /**
+     * Ringkasan kewenangan satu role per kelompok aksi (config/permission_groups.php)
+     * untuk tab "Kewenangan" di modal Role & Menu Access (Fase 3, baca-saja).
+     *
+     * status kelompok: 'all' (semua permission di kelompok dipegang), 'partial', 'none'.
+     * Tidak di-memo: dipanggil sekali per buka modal dan harus mencerminkan isi tabel saat itu.
+     *
+     * @return array{ready:bool, mode:string, modules:list<array>}
+     */
+    public static function groupStatusForRole(int $roleId): array
+    {
+        $mode = (string) config('security.permission_mode', 'off');
+
+        if (! \Illuminate\Support\Facades\Schema::hasTable('role_permissions')) {
+            return ['ready' => false, 'mode' => $mode, 'modules' => []];
+        }
+
+        $dipegang = DB::table('role_permissions')->where('role_id', $roleId)->whereNull('revoked_at')
+            ->pluck('permission_key')->flip();
+
+        $registry = self::registry();
+        $labelMod = config('permissions.modules', []);
+        $perModul = [];
+
+        foreach (config('permission_groups', []) as $gkey => $g) {
+            $items = [];
+            $ada   = 0;
+            foreach ($g['permissions'] as $key) {
+                $punya = $dipegang->has($key);
+                $ada  += $punya ? 1 : 0;
+                $items[] = ['key' => $key, 'label' => $registry[$key]['label'] ?? $key, 'granted' => $punya];
+            }
+
+            $total = count($items);
+            $perModul[$g['module']][] = [
+                'key'     => $gkey,
+                'label'   => $g['label'],
+                'status'  => $ada === 0 ? 'none' : ($ada === $total ? 'all' : 'partial'),
+                'granted' => $ada,
+                'total'   => $total,
+                'items'   => $items,
+            ];
+        }
+
+        $modules = [];
+        foreach ($perModul as $mod => $groups) {
+            $modules[] = ['key' => $mod, 'label' => $labelMod[$mod] ?? $mod, 'groups' => $groups];
+        }
+        usort($modules, fn ($a, $b) => strcmp($a['label'], $b['label']));
+
+        return ['ready' => true, 'mode' => $mode, 'modules' => $modules];
+    }
+
     /** Kunci permission milik satu role, dimuat sekali per request. */
     public static function keysForRole(int $roleId): array
     {
