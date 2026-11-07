@@ -323,7 +323,30 @@ untuk fase berikutnya. Setiap fase berakhir dengan laporan Executor + Reviewer.
 - Opsional (D3): tambah role baru. Role baru **tanpa hak apa pun** (default deny).
 - Tidak mengubah tampilan tab Menu yang ada.
 
-### Fase 4 — Data scope engine (HIGH)
+### Fase 4 — Data scope engine (HIGH) — **DIIMPLEMENTASI 2026-11-07 (belum dipasang ke controller)**
+- Registry `config/data_scopes.php`: modul × dimensi dengan pilihan yang didukung data — Cost Request & Budget Plan
+  (proyek: Semua/Access Group; overhead: Semua/Access Group; payroll: Lihat/Tidak), Purchase Order & Invoice
+  (PO: Semua/Access Group). Trouble Ticket, Site, Assignment, dan modul tanpa batas baris ditampilkan sebagai
+  "aturan khusus, tidak bisa diatur".
+- Tabel `role_data_scopes` (migrasi `2026_11_07_000800`), isi awal parity `000900`; `security:sync-permissions`
+  ikut menambah baris role × modul × dimensi yang belum ada (tidak pernah menimpa).
+- `App\Support\DataScope::apply()` — **belum dipasang**; fungsi lama tetap menyaring daftar/detail/export/lampiran.
+- `DataScopeParityTest`: untuk setiap role (dengan & tanpa Access Group, termasuk View As) ID baris yang dihasilkan
+  mesin = fungsi lama di keempat modul; ditambah penjaga agar uji tidak lulus secara kosong.
+- Tab **Batas Data** (Uji, baca-saja) di modal Role & Menu Access.
+- Temuan yang **dipertahankan demi parity** (butuh keputusan pemilik bila ingin diubah):
+  1. Budget Plan menyaring dengan role **asli**, bukan role View As (CR/PO/Invoice ikut View As).
+  2. Invoice hanya membatasi `manager` & `head`; role lain — termasuk role baru dari D3 — melihat semua invoice
+     (selama punya menu `invoice-cash-receipt`). Default registry invoice = `all` karena itu.
+- **Prasyarat sebelum cutover data scope (Fase 5), dari review 2026-11-07:**
+  - Baris `role_data_scopes` "membeku" sejak migrasi; perubahan konstanta/role di kode setelahnya tidak ikut. Sebelum
+    cutover: laporan selisih baris tersimpan vs seed (dry-run), atau aturan "ubah konstanta = migrasi data".
+  - Kode lama CR/BP menormalkan nama role dengan `strtolower` saja (tanpa `trim`); cek nama role produksi yang
+    berspasi/berhuruf besar.
+  - `down()` migrasi `000900` mengosongkan tabel — jangan rollback setelah ada jalur simpan.
+  - Parity baru untuk **daftar**; detail/lampiran punya syarat tambahan (mis. `PO_FULL_SCOPE_MENU_GATED` butuh menu
+    `list-po` di `User::canSeeProject()`), jadi DataScope tidak boleh langsung dipakai untuk detail/lampiran.
+  - Memo per request di `DataScope` perlu ditinjau untuk proses panjang (`queue:work`).
 - `DataScope::apply()` membungkus: `BuildsCrWorklist::scopeByRole`, `ScopesBudgetPlanVisibility`,
   `ScopesInvoiceVisibility`, scope PO (`ProjectController`), `TroubleTicket::scopeVisibleTo`.
   Seed = perilaku sekarang. Tidak mengubah `findVisibleCr`/`canViewCr` di Fase ini.

@@ -228,6 +228,12 @@
                                     <span class="badge badge-warning ml-1" style="font-size:10px;">Uji</span>
                                 </a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-toggle="pill" href="#paneScope" role="tab">
+                                    <i class="fas fa-filter mr-1" aria-hidden="true"></i> Batas Data
+                                    <span class="badge badge-warning ml-1" style="font-size:10px;">Uji</span>
+                                </a>
+                            </li>
                         </ul>
 
                         <div class="tab-content">
@@ -262,6 +268,16 @@
                                        placeholder="Cari aksi atau modul..." aria-label="Cari kewenangan">
                             </div>
                             <div class="px-4 pb-3" id="permSections"></div>
+                        </div>
+
+                        {{-- Fase 4: batas data per modul, baca-saja. --}}
+                        <div class="tab-pane fade" id="paneScope" role="tabpanel">
+                            <div class="alert alert-warning mx-4 mt-3 mb-2" style="font-size:12px;">
+                                <i class="fas fa-info-circle mr-1" aria-hidden="true"></i>
+                                <strong>Belum berlaku — masa uji.</strong> Salinan batas data yang berlaku sekarang
+                                (baca-saja). Daftar data user tetap disaring aturan lama sampai modulnya resmi dialihkan.
+                            </div>
+                            <div class="px-4 pb-3" id="scopeSections"></div>
                         </div>
                         </div>{{-- /tab-content --}}
 
@@ -558,7 +574,8 @@ $(function () {
     const CB = '#menuSections input[name="menu_item_ids[]"]';
 
     function esc(s) {
-        return $('<div>').text(s == null ? '' : s).html();
+        // .text().html() tidak meng-escape tanda kutip — ditambah agar aman di atribut (data-search).
+        return $('<div>').text(s == null ? '' : s).html().replace(/"/g, '&quot;');
     }
 
     function renderItems(items, selected) {
@@ -675,6 +692,44 @@ $(function () {
         $('#permSections').html(html || '<p class="text-muted text-center py-4 mb-0">Tidak ada data kewenangan.</p>');
     }
 
+    /* Tab "Batas Data" (Fase 4) — BACA-SAJA, tanpa input yang ikut terkirim. */
+    function renderScopes(s) {
+        if (!s.ready) {
+            $('#scopeSections').html('<p class="text-muted text-center py-4 mb-0">Tabel batas data belum tersedia (migrasi belum dijalankan).</p>');
+            return;
+        }
+
+        let html = '';
+        (s.modules || []).forEach(function (mod) {
+            html += '<div class="menu-group"><div class="menu-group-head"><span><i class="fas fa-cube mr-2" style="color:var(--accent);"></i>' +
+                esc(mod.label) + '</span></div><div class="menu-group-body">';
+            mod.dimensions.forEach(function (d) {
+                html += '<div class="d-flex align-items-center justify-content-between py-1" style="gap:8px; border-bottom:1px solid var(--border); font-size:12.5px;">' +
+                    '<span>' + esc(d.label) + '</span>' +
+                    '<span class="badge badge-' + (d.is_open ? 'info' : 'light border') + '">' + esc(d.text) + '</span>' +
+                '</div>';
+            });
+            html += '</div></div>';
+        });
+
+        if ((s.fixed || []).length) {
+            html += '<div class="menu-group"><div class="menu-group-head"><span><i class="fas fa-lock mr-2 text-muted"></i>Aturan khusus (tidak bisa diatur)</span></div><div class="menu-group-body">';
+            s.fixed.forEach(function (f) {
+                html += '<div class="py-1" style="border-bottom:1px solid var(--border); font-size:12.5px;"><strong>' + esc(f.label) + '</strong>' +
+                    '<div class="text-muted" style="font-size:11.5px;">' + esc(f.note) + '</div></div>';
+            });
+            html += '</div></div>';
+        }
+
+        $('#scopeSections').html(html);
+    }
+
+    // Kotak cari ada DI DALAM form Menu Access: Enter tidak boleh memicu submit
+    // (implicit submission) yang menyimpan menu tanpa sengaja.
+    $('#permSearch').on('keydown', function (e) {
+        if (e.key === 'Enter') e.preventDefault();
+    });
+
     $('#permSearch').on('input', function () {
         let q = this.value.toLowerCase().trim();
         $('#permSections .perm-group').each(function () {
@@ -715,6 +770,7 @@ $(function () {
 
             $('#menuSections').html(html);
             renderPermissions(d.permissions || {});
+            renderScopes(d.data_scopes || {});
             // Selalu buka di tab Menu Access, seperti sebelum ada tab Kewenangan.
             $('a[href="#paneMenu"]').tab('show');
             updateCount();

@@ -34,6 +34,9 @@ Verified 2026-10-02 from `bootstrap/app.php`, `routes/web.php`,
 - **Tab Kewenangan Aksi (2026-11-07, Fase 3):** modal Role & Menu Access menampilkan 47 kelompok aksi
   (`config/permission_groups.php`) dengan status per role dari `role_permissions`. Baca-saja; belum berlaku
   sampai cutover per modul.
+- **Batas data (2026-11-07, Fase 4):** `config/data_scopes.php` + `role_data_scopes` + `App\Support\DataScope`
+  (parity dengan scopeByRole / ScopesBudgetPlanVisibility / accessiblePoIds / ScopesInvoiceVisibility). Belum
+  dipasang; tab Batas Data baca-saja di modal Role.
   Lihat `docs/security/access-matrix.md` dan
   `docs/plans/2026-11-06-security-access-control.md`.
 

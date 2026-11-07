@@ -228,6 +228,8 @@ class RoleController extends Controller
             // Fase 3 — kewenangan aksi per kelompok, BACA-SAJA selama mode uji
             // (gerbang role: lama masih yang berlaku; tidak ada jalur simpan).
             'permissions'  => \App\Support\Authorizer::groupStatusForRole((int) $role->id),
+            // Fase 4 — batas data per modul, BACA-SAJA (mesin belum dipasang ke daftar).
+            'data_scopes'  => \App\Support\DataScope::statusForRole((int) $role->id),
         ]);
     }
 }
