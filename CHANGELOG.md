@@ -4,6 +4,25 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [3.3.2] - 2026-11-07 — Fondasi Keamanan & Hak Akses Terpusat, Konsol Keamanan, dan Syarat Cash Advance
+
+Jejak audit kini mencatat login gagal, perubahan hak akses, export, buka lampiran, dan akses yang ditolak; superadmin punya Konsol Keamanan untuk memantau dan mencabut sesi. Kewenangan dan batas data mulai dipusatkan dalam mode uji tanpa mengubah alur kerja. Cash Advance kini mensyaratkan PIC dengan Token terisi.
+
+### Baru
+- Konsol Keamanan (superadmin, tombol "Keamanan" di User & Access): Audit Trail seluruh user, Riwayat Login, Sesi Aktif dengan cabut sesi / putus semua perangkat, dan pemantauan mode uji kewenangan.
+- Jejak audit: login gagal & login diblokir, rincian perubahan User, Role (menu ditambah/dicabut), dan Access Group (PO/Cost Center/Team ditambah/dicabut), export & cetak dokumen, buka lampiran, serta akses yang ditolak.
+- Role & Menu Access: tombol Tambah Role — role baru tanpa menu; nama yang dipakai aturan bawaan aplikasi ditolak.
+- Role & Menu Access: tab Kewenangan Aksi dan Batas Data (baca-saja, masa uji) — salinan aturan yang berlaku sekarang.
+- Mesin kewenangan & batas data terpusat dalam mode uji: aturan lama tetap yang menentukan akses (migrasi 2026_11_07_000500–000900).
+
+### Berubah
+- Cash Advance hanya untuk beneficiary Internal yang punya PIC dengan Token (limit jumlah CA) berisi angka lebih dari 0; dicek saat simpan, ubah, dan submit, termasuk persetujuan langsung Manager dari Trouble Ticket.
+- Pencarian global (Ctrl+K) untuk Purchase Order mengikuti Access Group, sama dengan halaman Daftar PO.
+
+### Perbaikan
+- Rincian, terpakai, dan sisa Budget Plan (form Cost Request & cek NOB) tidak lagi bisa dibaca untuk Budget Plan di luar akses user.
+- Route tidak terpakai /api/clusters yang selalu error dihapus.
+
 ## [3.3.1] - 2026-11-06 — Integrasi Trouble Ticket × Finance: Pengajuan Dana, Settlement & Kwitansi Digital
 
 Pengajuan dana dari Trouble Ticket kini terhubung penuh ke Cost Request: nomor pengajuan, persetujuan langsung Manager, status CR tercermin di tiket, settlement dikirim dari tiket lewat review atasan, dan kwitansi digital bertanda tangan penerima. Hak akses tiket mengikuti hierarki Team, tiket bisa diimport dari Excel, dan Profil menampilkan bagan team.

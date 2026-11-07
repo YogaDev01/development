@@ -2112,6 +2112,12 @@ class BudgetPlanController extends Controller
             return response()->json([]);
         }
 
+        // Temuan F-3 (2026-11-07): sebelumnya siapa pun yang login bisa membaca
+        // sub-item, terpakai & sisa Budget Plan mana pun lewat id. Kini sama
+        // dengan detail Budget Plan (canViewBudgetPlan) — form CR hanya
+        // menawarkan Budget Plan yang memang terlihat, jadi alur normal tetap.
+        abort_unless($this->canViewBudgetPlan($bp), 403);
+
         // "Used" seluruh sub-item dimuat sekaligus (bukan per baris).
         BudgetPlanDetail::primeCostLines($bp->details);
 

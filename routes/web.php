@@ -31,6 +31,7 @@ use App\Http\Controllers\TodoListController;
 use App\Http\Controllers\AssignmentController;
 use App\Http\Controllers\StageController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\DailyTransactionController;
 use App\Http\Controllers\FinanceSummaryController;
@@ -1313,9 +1314,16 @@ Route::middleware('auth')->group(function () {
     */
     Route::middleware('role:superadmin')->group(function () {
         Route::get('role',              [RoleController::class, 'index'])->name('role.index');
+        Route::post('role',             [RoleController::class, 'store'])->name('role.store');
         Route::get('role/{id}/edit-data',[RoleController::class, 'getEditData'])->name('role.edit-data');
         Route::get('role/{id}/edit',    [RoleController::class, 'edit'])->name('role.edit');
         Route::put('role/{id}',         [RoleController::class, 'update'])->name('role.update');
+
+        // KONSOL KEAMANAN (Fase 1 Security & Access Control) — audit trail,
+        // riwayat login, sesi aktif. Hanya mencabut sesi; data bisnis tidak disentuh.
+        Route::get('security',                         [SecurityController::class, 'index'])->name('security.index');
+        Route::post('security/sessions/revoke',        [SecurityController::class, 'revokeSession'])->name('security.sessions.revoke');
+        Route::post('security/users/{id}/logout-all',  [SecurityController::class, 'logoutAllDevices'])->name('security.users.logout-all');
     });
 
     /*
@@ -1450,7 +1458,9 @@ Route::middleware('auth')->group(function () {
     | API ROUTES
     |--------------------------------------------------------------------------
     */
-    Route::get('/api/clusters/{budgetPlanId}', [BudgetRequestController::class, 'getClusters']);
+    // '/api/clusters/{budgetPlanId}' dihapus 2026-11-07 (temuan F-2): menunjuk
+    // BudgetRequestController::getClusters yang tidak ada (selalu 500) dan
+    // tidak punya pemanggil di view/JS.
     Route::get('/api/budget-plan/{budgetPlanId}/details', [BudgetPlanController::class, 'getDetails']);
 
 });

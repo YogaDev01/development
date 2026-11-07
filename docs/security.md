@@ -10,6 +10,35 @@ Verified 2026-10-02 from `bootstrap/app.php`, `routes/web.php`,
 - `EnsureUserActive` ends sessions of deactivated users.
 - "View As": superadmin can preview another role (`profile/view-as`);
   `CheckRole` redirects back instead of 403 while previewing.
+- **Jejak & sesi (2026-11-07, Fase 1 Security & Access Control):** login gagal (`login_failed`) dan
+  pemblokiran (`lockout`) kini juga masuk `user_activity_logs` (sebelumnya hanya `laravel.log`);
+  `users.last_login_at/ip` diisi saat login. Alur, pesan, dan batas login **tidak berubah**.
+- **Konsol Keamanan** `/security` (`role:superadmin`): Audit Trail seluruh user, Riwayat Login, Sesi
+  Aktif (tabel `sessions`, hanya bila `SESSION_DRIVER=database`). Aksi: cabut satu sesi (dikenali lewat
+  sha256 id sesi) dan putus semua sesi user lain; keduanya merotasi `remember_token` agar "Ingat saya"
+  tidak langsung memulihkan sesi. Sesi sendiri tidak bisa dicabut dari konsol. Tercatat sebagai
+  `revoke_session`.
+- **Jejak export/unduh & akses ditolak (2026-11-07, D18/D11):** middleware global
+  `RecordSecurityEvents` (grup web, setelah `EnsureUserActive`) hanya mengamati respons:
+  route bernama `*.export*` / `*.print` yang sukses → `export`/`print`; respons 403 untuk user
+  login → `access_denied` (module `security`, maks. 1 baris per user+URL per menit). Unduhan
+  lampiran dicatat di `SecureFileController` (module `file`, `download`, maks. 1 per user+berkas
+  per 10 menit; `avatars/`, `covers/` dilewati). Tidak ada respons yang diubah.
+- **Tambah role (2026-11-07, D3):** `POST /role` (`role:superadmin`). Role baru tanpa menu
+  (default deny); nama yang dipakai kode (`RoleController::RESERVED_NAMES` ∪ semua nama di
+  gerbang `role:`) ditolak agar tidak mewarisi kewenangan hardcoded; nama tidak bisa diubah.
+- **Mesin permission — mode shadow (2026-11-07, Fase 2):** registry `config/permissions.php` (1 entri per route
+  bergerbang `role:`), hak di `role_permissions`. `ShadowPermission` hanya membandingkan dengan gerbang lama dan
+  mencatat selisih ke `permission_shadow_logs` bila `SECURITY_PERMISSION_MODE=shadow`; gerbang `role:` lama tetap
+  yang memutuskan. Route baru bergerbang `role:` wajib didaftarkan lewat generator (dijaga `PermissionRegistryTest`).
+- **Tab Kewenangan Aksi (2026-11-07, Fase 3):** modal Role & Menu Access menampilkan 47 kelompok aksi
+  (`config/permission_groups.php`) dengan status per role dari `role_permissions`. Baca-saja; belum berlaku
+  sampai cutover per modul.
+- **Batas data (2026-11-07, Fase 4):** `config/data_scopes.php` + `role_data_scopes` + `App\Support\DataScope`
+  (parity dengan scopeByRole / ScopesBudgetPlanVisibility / accessiblePoIds / ScopesInvoiceVisibility). Belum
+  dipasang; tab Batas Data baca-saja di modal Role.
+  Lihat `docs/security/access-matrix.md` dan
+  `docs/plans/2026-11-06-security-access-control.md`.
 
 ## Roles (as used in route gates)
 

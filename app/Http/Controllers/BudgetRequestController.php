@@ -37,6 +37,8 @@ class BudgetRequestController extends Controller
 {
     use \App\Http\Controllers\Concerns\BuildsCrWorklist;
     use \App\Http\Controllers\Concerns\TransitionsStatus;
+    // Visibilitas Budget Plan (scopeVisibleTo) — dipakai checkNob (temuan F-4).
+    use \App\Http\Controllers\Concerns\ScopesBudgetPlanVisibility;
     // Alur Settlement Cash Advance — dipisah untuk memperkecil kelas ini.
     use \App\Http\Controllers\Concerns\HandlesCrSettlement;
 
@@ -3595,7 +3597,12 @@ class BudgetRequestController extends Controller
 
     public function checkNob(Request $request)
     {
-        $bp     = BudgetPlan::find($request->budget_plan_id);
+        // Temuan F-4 (2026-11-07): hanya Budget Plan yang terlihat oleh user
+        // (aturan sama dengan daftar & detail Budget Plan). Yang tidak terlihat
+        // dijawab seperti Budget Plan tidak ada — nilai & sisanya tidak dibuka.
+        $bpQuery = BudgetPlan::whereKey((int) $request->budget_plan_id);
+        $this->scopeVisibleTo($bpQuery);
+        $bp     = $bpQuery->first();
         $amount = (int) $request->amount;
         $crId   = $request->cr_id ? (int) $request->cr_id : null;
 

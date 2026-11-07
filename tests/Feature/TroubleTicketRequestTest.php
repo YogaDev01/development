@@ -80,7 +80,8 @@ class TroubleTicketRequestTest extends TestCase
             'tid' => 'TID-RQ', 'sitename' => 'Site Pengajuan', 'type' => 'TOWER', 'source_power' => 'PLN',
             'program' => 'AKSES_INTERNET', 'status' => 'ACTIVE', 'customer_id' => $customer->id,
         ]);
-        $pic = MasterPic::create(['type' => 'internal', 'user_id' => $this->tech->id, 'pic' => $this->tech->name, 'status' => 'ACTIVE']);
+        // Token wajib > 0 sejak 2026-11-07 (syarat beneficiary Cash Advance, temuan F-5).
+        $pic = MasterPic::create(['type' => 'internal', 'user_id' => $this->tech->id, 'pic' => $this->tech->name, 'token' => '5', 'status' => 'ACTIVE']);
         SitePic::create(['site_id' => $this->site->id, 'pic_id' => $pic->id]);
 
         $team = Team::create(['code' => 'TEAM-RQ1', 'name' => 'Field', 'leader_id' => $this->leader->id, 'status' => 'ACTIVE']);

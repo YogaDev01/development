@@ -13,6 +13,31 @@ authenticated user/session — tidak pernah dari input request.
 | Tampilan (partial) | `resources/views/profile/_activity_log.blade.php` |
 | Tab Profil | `resources/views/profile/show.blade.php` (tab "Activity Log") |
 | Halaman superadmin | `resources/views/user/activity-log.blade.php` + `UserController@activityLog` |
+| Konsol Keamanan (seluruh user) | `/security` → `SecurityController` + `resources/views/security/index.blade.php` (sejak 2026-11-07) |
+
+### Kolom perangkat & sesi (2026-11-07, migrasi `2026_11_07_000500`)
+
+- `user_agent` (255) dan `session_hash` (sha256 id sesi — id mentah tidak disimpan) diisi otomatis
+  oleh `record()` lewat `securityContext()`, **hanya bila kolomnya sudah ada**
+  (`supportsSecurityColumns()`), jadi kode aman diunggah sebelum `migrate`. Baris lama tetap NULL.
+- Aksi baru module `auth`: `login_failed`, `lockout` (dari `AuthController`), `revoke_session`
+  (dari konsol Keamanan). Login gagal tidak punya actor (`user_id` NULL); akun yang dituju dicatat
+  sebagai subject + reference `@username` **hanya bila akun itu ada** — isian username yang tidak
+  cocok tidak pernah disimpan di `user_activity_logs` (bisa saja password yang salah ketik). Password tidak pernah
+  dicatat. Catatan: perilaku lama tetap ada — `Log::info/warning` di `AuthController` dan kunci RateLimiter
+  (cache driver database) masih memuat username mentah.
+- Guard `supportsSecurityColumns()` / `hasColumn('users','last_login_at')` menambah satu query
+  `information_schema` per request yang mencatat aktivitas (dua per login). **Sementara**: hapus guard
+  setelah migrasi `2026_11_07_000500` dipastikan berjalan di host.
+- 2026-11-07 (D18/D11): module baru `file` (Lampiran) dan `security` (Keamanan); aksi baru
+  `access_denied` dan `print`. `export`/`print` dicatat otomatis oleh middleware
+  `RecordSecurityEvents` untuk route `*.export*`/`*.print`; controller yang mencatat export-nya
+  sendiri (Cost Register) menandai request lewat `record()` sehingga tidak dicatat ganda.
+  `SECURITY_ONLY_ACTIONS` (login_failed, lockout, revoke_session, access_denied) disembunyikan dari
+  `feedFor()` dan filter Profil — feed pribadi tetap seperti sebelumnya; export/unduh milik user
+  sendiri memang tampil di feed-nya.
+- `users.last_login_at` / `last_login_ip` diisi saat login berhasil (query builder, tanpa
+  mengubah `updated_at`).
 
 ## Cara mencatat
 
@@ -120,10 +145,15 @@ menyusul dengan pola `changeSet()` yang sama.
 - Setiap user melihat log-nya sendiri di halaman Profil.
 - **Hanya superadmin** yang dapat melihat log user lain, via tombol
   "Activity Log" di modal detail User & Access → `/user/{id}/activity-log`
-  (dijaga `isRealSuperadmin()` di controller).
+  (dijaga `isRealSuperadmin()` di controller), atau lewat konsol Keamanan
+  `/security` (route `role:superadmin`; tombol "Keamanan" di halaman User & Access).
+- Rincian perubahan akses (2026-11-07): `UserController` store/update (data diri, Role, Access Group,
+  status, "Password: diganti" tanpa nilai), `RoleController::update` (menu ditambah/dicabut),
+  `AccessGroupController::update` (nama, PO/Cost Center/Team ditambah/dicabut, ditulis dengan kode).
 
 ## Performa
 
 Index pada `user_id+created_at`, `module`, `action`, `subject_type+subject_id`,
-`created_at`. Query selalu paginasi server-side (`feedFor()`, 25/halaman),
+`created_at`, `session_hash`. Query selalu paginasi server-side (`feedFor()` 25/halaman,
+`feedAll()` 50/halaman untuk konsol Keamanan),
 tidak pernah memuat seluruh log lalu memfilter di PHP.

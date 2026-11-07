@@ -34,6 +34,8 @@ class UserActivityLog extends Model
         'subject_id',
         'reference',
         'ip_address',
+        'user_agent',
+        'session_hash',
         'created_at',
     ];
 
@@ -71,11 +73,18 @@ class UserActivityLog extends Model
         'user_access' => 'User & Access',
         'master_data' => 'Master Data',
         'trouble_ticket' => 'Trouble Ticket',
+        'file' => 'Lampiran',
+        'security' => 'Keamanan',
     ];
 
     public const ACTIONS = [
         'login' => 'Login',
         'logout' => 'Logout',
+        'login_failed' => 'Login Gagal',
+        'lockout' => 'Login Diblokir',
+        'revoke_session' => 'Cabut Sesi',
+        'access_denied' => 'Akses Ditolak',
+        'print' => 'Cetak',
         'view' => 'Lihat',
         'create' => 'Buat',
         'update' => 'Ubah',
@@ -98,6 +107,13 @@ class UserActivityLog extends Model
         'upload' => 'Upload',
         'import' => 'Import',
     ];
+
+    /**
+     * Aksi yang hanya relevan di konsol Keamanan: tidak pernah ber-actor user
+     * itu sendiri (login gagal tanpa sesi, pencabutan sesi oleh superadmin),
+     * jadi tidak ditawarkan di filter Activity Log Profil.
+     */
+    public const SECURITY_ONLY_ACTIONS = ['login_failed', 'lockout', 'revoke_session', 'access_denied'];
 
     /*
     |--------------------------------------------------------------------------
@@ -130,6 +146,12 @@ class UserActivityLog extends Model
         try {
             $user = Auth::user();
 
+            // Penanda untuk RecordSecurityEvents: controller yang mencatat
+            // export-nya sendiri tidak dicatat dua kali oleh middleware.
+            if ($action === 'export') {
+                request()?->attributes->set('activity.export_logged', true);
+            }
+
             $subjectType = $subject ? get_class($subject) : null;
             $subjectId = $subject?->getKey();
 
@@ -151,7 +173,7 @@ class UserActivityLog extends Model
                 'reference' => $reference !== null ? mb_substr($reference, 0, 100) : null,
                 'ip_address' => request()?->ip(),
                 'created_at' => now(),
-            ]);
+            ] + self::securityContext());
         } catch (\Throwable $e) {
             Log::warning('Gagal mencatat UserActivityLog', [
                 'module' => $module,
@@ -161,6 +183,37 @@ class UserActivityLog extends Model
 
             return null;
         }
+    }
+
+    /**
+     * Kolom perangkat & sesi (Fase 1 Security). Hanya diisi bila migrasi
+     * 2026_11_07_000500 sudah dijalankan, supaya urutan upload kode -> migrate
+     * tidak memunculkan "Unknown column" di jalur bisnis mana pun.
+     *
+     * Id sesi TIDAK disimpan mentah — hanya sha256-nya, cukup untuk
+     * menghubungkan jejak audit dengan baris di konsol Sesi Aktif.
+     */
+    protected static function securityContext(): array
+    {
+        if (! self::supportsSecurityColumns()) {
+            return [];
+        }
+
+        $request = request();
+        $session = $request?->hasSession() ? $request->session() : null;
+        $agent   = $request?->userAgent();
+
+        return [
+            'user_agent'   => $agent !== null && $agent !== '' ? mb_substr($agent, 0, 255) : null,
+            'session_hash' => $session ? hash('sha256', $session->getId()) : null,
+        ];
+    }
+
+    public static function supportsSecurityColumns(): bool
+    {
+        static $ada = null;
+
+        return $ada ??= \Illuminate\Support\Facades\Schema::hasColumn('user_activity_logs', 'user_agent');
     }
 
     /**
@@ -247,8 +300,57 @@ class UserActivityLog extends Model
      */
     public static function feedFor(int $userId, array $filters = [], int $perPage = 25)
     {
-        $query = self::where('user_id', $userId);
+        // Aksi khusus konsol Keamanan (mis. akses ditolak) tidak ditampilkan
+        // di feed pribadi — tampilan Activity Log Profil tetap seperti dulu.
+        $query = self::where('user_id', $userId)
+            ->whereNotIn('action', self::SECURITY_ONLY_ACTIONS);
 
+        self::applyFilters($query, $filters);
+
+        return $query->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->paginate($perPage, ['*'], 'alog');
+    }
+
+    /**
+     * Feed audit SELURUH user untuk konsol keamanan (superadmin). Filter sama
+     * dengan feedFor() ditambah user_id dan ip. Paginasi server-side.
+     */
+    public static function feedAll(array $filters = [], int $perPage = 50)
+    {
+        $query = self::query();
+
+        if (! empty($filters['user_id'])) {
+            $userId = (int) $filters['user_id'];
+
+            // Login gagal/diblokir tidak punya actor (user_id NULL) dan
+            // pencabutan sesi tercatat atas nama superadmin; akun yang dituju
+            // ada di subject. Untuk jejak autentikasi, filter User mencakup
+            // keduanya agar "siapa yang mencoba masuk ke akun X" terjawab.
+            if (($filters['module'] ?? null) === 'auth') {
+                $query->where(function ($q) use ($userId) {
+                    $q->where('user_id', $userId)
+                        ->orWhere(fn ($s) => $s->where('subject_type', User::class)->where('subject_id', $userId));
+                });
+            } else {
+                $query->where('user_id', $userId);
+            }
+        }
+
+        if (! empty($filters['ip'])) {
+            $query->where('ip_address', trim($filters['ip']));
+        }
+
+        self::applyFilters($query, $filters);
+
+        return $query->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->paginate($perPage, ['*'], 'alog');
+    }
+
+    /** Filter bersama: module, action, date_from, date_to, q. */
+    protected static function applyFilters($query, array $filters): void
+    {
         if (! empty($filters['module'])) {
             $query->where('module', $filters['module']);
         }
@@ -273,10 +375,6 @@ class UserActivityLog extends Model
                     ->orWhere('notes', 'like', "%{$keyword}%");
             });
         }
-
-        return $query->orderByDesc('created_at')
-            ->orderByDesc('id')
-            ->paginate($perPage, ['*'], 'alog');
     }
 
     /*
@@ -312,7 +410,9 @@ class UserActivityLog extends Model
             'create', 'submit', 'upload', 'import' => 'info',
             'approve', 'verify', 'pay', 'settle', 'close',
             'process', 'restore' => 'success',
-            'reject', 'cancel', 'delete', 'takeout' => 'danger',
+            'reject', 'cancel', 'delete', 'takeout',
+            'login_failed', 'lockout', 'access_denied' => 'danger',
+            'revoke_session' => 'warning',
             'revise', 'check' => 'warning',
             'login' => 'primary',
             'logout' => 'secondary',

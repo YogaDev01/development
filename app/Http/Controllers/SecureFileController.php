@@ -69,6 +69,8 @@ class SecureFileController extends Controller
 
         $mime = $disk->mimeType($path) ?: 'application/octet-stream';
 
+        $this->recordDownload($request, $path);
+
         /*
         | Berkas yang tidak dikenali dipaksa unduh, bukan ditampilkan. HTML atau
         | SVG yang tampil inline berjalan pada origin aplikasi — artinya berkas
@@ -88,5 +90,50 @@ class SecureFileController extends Controller
             // gambar lewat PHP+MySQL — pemicu lonjakan CPU 100% di Hostinger.
             'Cache-Control'          => 'private, max-age=604800',
         ], $disposition);
+    }
+
+    /** Folder yang dimuat otomatis di banyak halaman (bukan dokumen bisnis). */
+    private const UNLOGGED_FOLDERS = ['avatars', 'covers'];
+
+    /** Satu catatan per user + berkas per jendela ini (detik). */
+    private const DOWNLOAD_WINDOW = 600;
+
+    /**
+     * Jejak audit buka/unduh lampiran (D18, disetujui pemilik 2026-11-07).
+     *
+     * Foto profil & sampul dilewati: tampil di daftar, notifikasi, dan bagan
+     * organisasi, jadi mencatatnya berarti puluhan baris per halaman. Berkas
+     * yang sama oleh user yang sama dicatat paling banyak sekali per 10 menit.
+     * Gagal-aman: pencatatan tidak pernah menggagalkan pengiriman berkas.
+     */
+    private function recordDownload(Request $request, string $path): void
+    {
+        try {
+            $user   = $request->user();
+            $folder = explode('/', $path)[0] ?? '';
+
+            if (! $user || in_array($folder, self::UNLOGGED_FOLDERS, true)) {
+                return;
+            }
+
+            $deskripsi = 'Membuka lampiran ' . mb_substr(basename($path), 0, 120);
+
+            // Dedupe lewat log itu sendiri (indeks user_id+created_at), bukan
+            // Cache::add — cache memakai driver database, dan kunci sekali
+            // pakai akan menumpuk di tabel cache tanpa pernah dibersihkan.
+            $sudah = \App\Models\UserActivityLog::where('user_id', $user->getKey())
+                ->where('created_at', '>=', now()->subSeconds(self::DOWNLOAD_WINDOW))
+                ->where('action', 'download')
+                ->where('description', $deskripsi)
+                ->exists();
+
+            if ($sudah) {
+                return;
+            }
+
+            \App\Models\UserActivityLog::record('file', 'download', $deskripsi, null, $folder);
+        } catch (\Throwable $e) {
+            Log::warning('Gagal mencatat unduhan lampiran', ['message' => $e->getMessage()]);
+        }
     }
 }

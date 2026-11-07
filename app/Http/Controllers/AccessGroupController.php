@@ -397,6 +397,9 @@ class AccessGroupController extends Controller
 
         $accessGroup = AccessGroup::findOrFail($id);
 
+        // Potret sumber akses SEBELUM diubah, untuk rincian jejak audit.
+        $sebelum = $this->accessSnapshot($accessGroup);
+
         /*
         |--------------------------------------------------------------------------
         | VALIDATION
@@ -558,7 +561,10 @@ class AccessGroupController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        UserActivityLog::record('user_access', 'update', 'Mengubah Access Group ' . $accessGroup->name, $accessGroup);
+        UserActivityLog::record(
+            'user_access', 'update', 'Mengubah Access Group ' . $accessGroup->name, $accessGroup,
+            null, null, $this->accessChanges($sebelum, $this->accessSnapshot($accessGroup->load('details')))
+        );
 
         return redirect('/accessgroup')
             ->with(
@@ -664,5 +670,69 @@ class AccessGroupController extends Controller
                 'role'  => $u->role->name ?? '-',
             ])->values(),
         ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | JEJAK AUDIT (Fase 1 Security & Access Control)
+    |--------------------------------------------------------------------------
+    | update() menghapus & membuat ulang seluruh detail, jadi selisihnya
+    | dihitung dari potret sebelum vs sesudah, bukan dari baris yang berubah.
+    */
+
+    /** @return array{name:string, project:array, cost_center:array, team:array} */
+    private function accessSnapshot(AccessGroup $accessGroup): array
+    {
+        return [
+            'name'        => (string) $accessGroup->name,
+            'project'     => $accessGroup->projectIds()->sort()->values()->all(),
+            'cost_center' => $accessGroup->costCenterIds()->sort()->values()->all(),
+            'team'        => $accessGroup->teamIds()->sort()->values()->all(),
+        ];
+    }
+
+    /** Rincian "ditambah / dicabut" per sumber akses, memakai kode yang dilihat user. */
+    private function accessChanges(array $before, array $after): array
+    {
+        // Gagal-aman seperti UserActivityLog::record(): rincian audit tidak
+        // boleh membuat simpan data (yang sudah terjadi) berujung error 500.
+        try {
+            $changes = [];
+
+            if ($before['name'] !== $after['name']) {
+                $changes[] = ['label' => 'Nama', 'from' => $before['name'], 'to' => $after['name']];
+            }
+
+            $sumber = [
+                'project'     => ['PO', Project::class],
+                'cost_center' => ['Cost Center', CostCenter::class],
+                'team'        => ['Team', Team::class],
+            ];
+
+            foreach ($sumber as $kunci => [$label, $kelas]) {
+                $ditambah = array_diff($after[$kunci], $before[$kunci]);
+                $dicabut  = array_diff($before[$kunci], $after[$kunci]);
+
+                if (! $ditambah && ! $dicabut) {
+                    continue;
+                }
+
+                $kode = $kelas::whereIn('id', array_merge($ditambah, $dicabut))->pluck('code', 'id');
+                $tulis = fn (array $ids) => implode(', ', array_map(fn ($id) => $kode[$id] ?? '#' . $id, $ids));
+
+                if ($ditambah) {
+                    $changes[] = ['label' => $label . ' ditambah', 'from' => '-', 'to' => $tulis($ditambah)];
+                }
+                if ($dicabut) {
+                    $changes[] = ['label' => $label . ' dicabut', 'from' => $tulis($dicabut), 'to' => '-'];
+                }
+            }
+
+            return $changes;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Gagal menyusun rincian audit', ['message' => $e->getMessage()]);
+
+            return [];
+        }
     }
 }

@@ -26,10 +26,46 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '3.3.1',
+    'current' => '3.3.2',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '3.3.2',
+            'date'    => '2026-11-07',
+            'title'   => 'Fondasi Keamanan & Hak Akses Terpusat, Konsol Keamanan, dan Syarat Cash Advance',
+            'summary' => 'Jejak audit kini mencatat login gagal, perubahan hak akses, export, buka lampiran, dan akses yang ditolak; superadmin punya Konsol Keamanan untuk memantau dan mencabut sesi. Kewenangan dan batas data mulai dipusatkan dalam mode uji tanpa mengubah alur kerja. Cash Advance kini mensyaratkan PIC dengan Token terisi.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'Konsol Keamanan (superadmin, tombol "Keamanan" di User & Access): Audit Trail seluruh user, Riwayat Login, Sesi Aktif dengan cabut sesi / putus semua perangkat, dan pemantauan mode uji kewenangan.',
+                        'Jejak audit: login gagal & login diblokir, rincian perubahan User, Role (menu ditambah/dicabut), dan Access Group (PO/Cost Center/Team ditambah/dicabut), export & cetak dokumen, buka lampiran, serta akses yang ditolak.',
+                        'Role & Menu Access: tombol Tambah Role — role baru tanpa menu; nama yang dipakai aturan bawaan aplikasi ditolak.',
+                        'Role & Menu Access: tab Kewenangan Aksi dan Batas Data (baca-saja, masa uji) — salinan aturan yang berlaku sekarang.',
+                        'Mesin kewenangan & batas data terpusat dalam mode uji: aturan lama tetap yang menentukan akses (migrasi 2026_11_07_000500–000900).',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Cash Advance hanya untuk beneficiary Internal yang punya PIC dengan Token (limit jumlah CA) berisi angka lebih dari 0; dicek saat simpan, ubah, dan submit, termasuk persetujuan langsung Manager dari Trouble Ticket.',
+                        'Pencarian global (Ctrl+K) untuk Purchase Order mengikuti Access Group, sama dengan halaman Daftar PO.',
+                    ],
+                ],
+                [
+                    'type'  => 'fixed',
+                    'label' => 'Perbaikan',
+                    'items' => [
+                        'Rincian, terpakai, dan sisa Budget Plan (form Cost Request & cek NOB) tidak lagi bisa dibaca untuk Budget Plan di luar akses user.',
+                        'Route tidak terpakai /api/clusters yang selalu error dihapus.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '3.3.1',

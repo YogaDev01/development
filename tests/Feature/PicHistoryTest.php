@@ -160,7 +160,8 @@ class PicHistoryTest extends TestCase
         $plan  = $this->makeBudgetPlan();
 
         // Beneficiary ini SENGAJA tidak ditautkan ke MasterPic manapun.
-        $ben = $this->makeBeneficiary();
+        // (makeBeneficiary() kini selalu memberi PIC — syarat CA F-5 — jadi dilepas di sini.)
+        $ben = tap($this->makeBeneficiary())->update(['pic_id' => null]);
         $cr  = $this->makeCostRequest(['budget_plan' => $plan, 'beneficiary_id' => $ben->id]);
 
         $ph = $this->actingAs($admin)

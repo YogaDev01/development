@@ -91,6 +91,8 @@ class AuthController extends Controller
                 'retry_in' => $seconds,
             ]);
 
+            $this->recordFailedLogin('lockout', $request->input('username'), 'percobaan berlebihan, coba lagi dalam ' . $seconds . ' detik');
+
             return redirect()
                 ->back()
                 ->withErrors(['login' => 'Terlalu banyak percobaan login. Coba lagi dalam ' . $seconds . ' detik.'])
@@ -124,6 +126,7 @@ class AuthController extends Controller
 
             // Audit trail: catat login (actor dari session yang baru terbentuk).
             UserActivityLog::record('auth', 'login', 'Login ke aplikasi');
+            $this->recordLastLogin($request);
 
             // Aplikasi aktif mengikuti App Default pilihan user sejak awal,
             // bukan selalu Finance.
@@ -148,6 +151,8 @@ class AuthController extends Controller
             'ip'       => $request->ip(),
             'attempts' => RateLimiter::attempts($throttleKey),
         ]);
+
+        $this->recordFailedLogin('login_failed', $request->input('username'), 'percobaan ke-' . RateLimiter::attempts($throttleKey));
 
         /*
         | Akun nonaktif dibedakan dari password salah.
@@ -310,6 +315,67 @@ class AuthController extends Controller
             : mb_substr($name, 0, 2) . str_repeat('*', max(1, mb_strlen($name) - 2));
 
         return $maskedName . '@' . $domain;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | JEJAK AUDIT LOGIN (Fase 1 Security & Access Control)
+    |--------------------------------------------------------------------------
+    | Sebelumnya login gagal & pemblokiran hanya tertulis di laravel.log, tidak
+    | terbaca dari aplikasi. Kini juga masuk user_activity_logs (module auth)
+    | dan tampil di konsol Keamanan. Tidak mengubah alur login sama sekali:
+    | pesan, batas percobaan, dan redirect tetap seperti sebelumnya.
+    */
+
+    /**
+     * Catat login gagal / diblokir. Username ketikan HANYA dicatat bila
+     * memang akun yang ada: isian yang tidak cocok bisa saja password yang
+     * salah diketik di kolom username, jadi tidak pernah disimpan. Password
+     * tidak pernah disentuh.
+     */
+    private function recordFailedLogin(string $action, ?string $username, string $notes): void
+    {
+        $target = $username !== null && $username !== ''
+            ? User::where('username', $username)->first()
+            : null;
+
+        $label = $action === 'lockout' ? 'Login diblokir' : 'Login gagal';
+
+        UserActivityLog::record(
+            'auth',
+            $action,
+            $target
+                ? $label . ' untuk akun @' . $target->username
+                : $label . ' (username tidak terdaftar)',
+            $target,
+            $notes,
+            $target ? '@' . $target->username : null
+        );
+    }
+
+    /**
+     * Simpan waktu & IP login terakhir. Lewat query builder supaya
+     * users.updated_at tidak ikut berubah (kolom itu menandai perubahan data
+     * akun, bukan login). Dilewati bila migrasi kolomnya belum dijalankan.
+     */
+    private function recordLastLogin(Request $request): void
+    {
+        static $adaKolom = null;
+        $adaKolom ??= \Illuminate\Support\Facades\Schema::hasColumn('users', 'last_login_at');
+
+        if (! $adaKolom) {
+            return;
+        }
+
+        try {
+            \Illuminate\Support\Facades\DB::table('users')->where('id', Auth::id())->update([
+                'last_login_at' => now(),
+                'last_login_ip' => $request->ip(),
+            ]);
+        } catch (\Throwable $e) {
+            // Gagal-aman seperti UserActivityLog: login tidak boleh gagal karena ini.
+            Log::warning('Gagal menyimpan last_login', ['user_id' => Auth::id(), 'message' => $e->getMessage()]);
+        }
     }
 
     /*

@@ -24,6 +24,8 @@
             description="Role pengguna dan pengaturan akses menu per role.">
             <x-slot:actions>
                 <x-tw.button href="{{ url('/user') }}" variant="secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Kembali</x-tw.button>
+                {{-- Tambah role (D3, 2026-11-07): route role.store, role:superadmin — sama dengan halaman ini. --}}
+                <x-tw.button size="sm" data-toggle="modal" data-target="#modalTambahRole"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Role</x-tw.button>
                 <x-tw.button id="refreshTable" variant="secondary" size="sm"><i class="fas fa-sync-alt" aria-hidden="true"></i> Refresh</x-tw.button>
             </x-slot:actions>
         </x-tw.page-header>
@@ -213,6 +215,30 @@
                     <!-- Content -->
                     <div id="configContent" style="display:none;">
 
+                        {{-- Fase 3: tab Kewenangan (baca-saja). Tab Menu Access = isi lama, tidak berubah. --}}
+                        <ul class="nav nav-pills px-4 pt-3" role="tablist" style="gap:6px;">
+                            <li class="nav-item">
+                                <a class="nav-link active" data-toggle="pill" href="#paneMenu" role="tab">
+                                    <i class="fas fa-bars mr-1" aria-hidden="true"></i> Menu Access
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-toggle="pill" href="#panePermission" role="tab">
+                                    <i class="fas fa-user-shield mr-1" aria-hidden="true"></i> Kewenangan Aksi
+                                    <span class="badge badge-warning ml-1" style="font-size:10px;">Uji</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-toggle="pill" href="#paneScope" role="tab">
+                                    <i class="fas fa-filter mr-1" aria-hidden="true"></i> Batas Data
+                                    <span class="badge badge-warning ml-1" style="font-size:10px;">Uji</span>
+                                </a>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content">
+                        <div class="tab-pane fade show active" id="paneMenu" role="tabpanel">
+
                         <!-- Select All bar -->
                         <div class="d-flex align-items-center justify-content-between px-4 py-3"
                              style="background:var(--surface-2); border-bottom:1px solid var(--border);">
@@ -227,6 +253,33 @@
 
                         <!-- Menu sections -->
                         <div class="px-4 py-3" id="menuSections"></div>
+
+                        </div>{{-- /paneMenu --}}
+
+                        <div class="tab-pane fade" id="panePermission" role="tabpanel">
+                            <div class="alert alert-warning mx-4 mt-3 mb-2" style="font-size:12px;">
+                                <i class="fas fa-info-circle mr-1" aria-hidden="true"></i>
+                                <strong>Belum berlaku — masa uji.</strong> Daftar ini adalah salinan aturan yang sekarang
+                                (baca-saja). Hak akses tetap ditentukan aturan lama sampai modulnya resmi dialihkan.
+                                <span id="permMode"></span>
+                            </div>
+                            <div class="px-4 pb-2">
+                                <input type="search" id="permSearch" class="form-control form-control-sm"
+                                       placeholder="Cari aksi atau modul..." aria-label="Cari kewenangan">
+                            </div>
+                            <div class="px-4 pb-3" id="permSections"></div>
+                        </div>
+
+                        {{-- Fase 4: batas data per modul, baca-saja. --}}
+                        <div class="tab-pane fade" id="paneScope" role="tabpanel">
+                            <div class="alert alert-warning mx-4 mt-3 mb-2" style="font-size:12px;">
+                                <i class="fas fa-info-circle mr-1" aria-hidden="true"></i>
+                                <strong>Belum berlaku — masa uji.</strong> Salinan batas data yang berlaku sekarang
+                                (baca-saja). Daftar data user tetap disaring aturan lama sampai modulnya resmi dialihkan.
+                            </div>
+                            <div class="px-4 pb-3" id="scopeSections"></div>
+                        </div>
+                        </div>{{-- /tab-content --}}
 
                     </div>
 
@@ -246,6 +299,51 @@
         </div>
     </div>
 </div>
+
+{{-- MODAL TAMBAH ROLE — role baru tidak punya akses menu apa pun (default deny). --}}
+<div class="modal fade" id="modalTambahRole" tabindex="-1" role="dialog" aria-labelledby="modalTambahRoleTitle" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content" style="border-radius:var(--radius-lg); overflow:hidden;">
+            <form method="POST" action="{{ route('role.store') }}">
+                @csrf
+                <div class="modal-header" style="background:var(--charcoal); border-bottom:3px solid var(--accent);">
+                    <h5 class="modal-title text-white" id="modalTambahRoleTitle">
+                        <i class="fas fa-user-tag mr-2" aria-hidden="true"></i> Tambah Role
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal" aria-label="Tutup">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group mb-2">
+                        <label for="newRoleName" class="font-weight-600">Nama Role</label>
+                        <input type="text" name="name" id="newRoleName" class="form-control form-control-sm @error('name') is-invalid @enderror"
+                               value="{{ old('name') }}" required maxlength="40" pattern="[a-z][a-z0-9_]{2,39}" autocomplete="off"
+                               placeholder="mis. auditor_internal">
+                        @error('name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                        <small class="form-text text-muted">Huruf kecil, angka, dan garis bawah; 3–40 karakter, diawali huruf.</small>
+                    </div>
+                    <div class="alert alert-warning mb-0" style="font-size:12px;">
+                        <i class="fas fa-info-circle mr-1" aria-hidden="true"></i>
+                        Role baru dibuat <strong>tanpa akses menu apa pun</strong> dan tidak mendapat kewenangan bawaan role lain.
+                        Setelah dibuat, atur menunya lewat tombol <strong>Atur Menu Access</strong> di tabel.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save mr-1" aria-hidden="true"></i> Simpan Role</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@if($errors->has('name'))
+    @push('scripts')
+    <script>$(function () { $('#modalTambahRole').modal('show'); });</script>
+    @endpush
+@endif
 
 @endsection
 
@@ -476,7 +574,8 @@ $(function () {
     const CB = '#menuSections input[name="menu_item_ids[]"]';
 
     function esc(s) {
-        return $('<div>').text(s == null ? '' : s).html();
+        // .text().html() tidak meng-escape tanda kutip — ditambah agar aman di atribut (data-search).
+        return $('<div>').text(s == null ? '' : s).html().replace(/"/g, '&quot;');
     }
 
     function renderItems(items, selected) {
@@ -546,6 +645,101 @@ $(function () {
         });
     }
 
+    /*
+     | Tab "Kewenangan Aksi" (Fase 3) — BACA-SAJA. Tidak ada input yang ikut
+     | terkirim bersama form Menu Access; jalur simpan kewenangan baru dibuka
+     | per modul setelah cutover (Fase 5).
+     */
+    const PERM_STATUS = {
+        all:     ['success', 'Ya'],
+        partial: ['warning', 'Sebagian'],
+        none:    ['light border', 'Tidak'],
+    };
+
+    function renderPermissions(p) {
+        let modeTxt = p.mode === 'shadow' ? 'Mode uji aktif: selisih dicatat di Konsol Keamanan.' : 'Mode uji belum dinyalakan.';
+        $('#permMode').text(modeTxt);
+        $('#permSearch').val('');
+
+        if (!p.ready) {
+            $('#permSections').html('<p class="text-muted text-center py-4 mb-0">Tabel kewenangan belum tersedia (migrasi belum dijalankan).</p>');
+            return;
+        }
+
+        let html = '';
+        (p.modules || []).forEach(function (mod) {
+            html += '<div class="menu-group perm-module" data-search="' + esc(mod.label.toLowerCase()) + '">' +
+                '<div class="menu-group-head"><span><i class="fas fa-cube mr-2" style="color:var(--accent);"></i>' + esc(mod.label) + '</span></div>' +
+                '<div class="menu-group-body">';
+            mod.groups.forEach(function (g) {
+                let st = PERM_STATUS[g.status] || PERM_STATUS.none;
+                let rinci = g.items.map(function (it) {
+                    return '<li><i class="fas ' + (it.granted ? 'fa-check text-success' : 'fa-times text-muted') + ' mr-1" aria-hidden="true"></i>' +
+                        '<code style="font-size:11px;">' + esc(it.key) + '</code></li>';
+                }).join('');
+                html += '<div class="perm-group py-1" data-search="' + esc((mod.label + ' ' + g.label).toLowerCase()) + '" style="border-bottom:1px solid var(--border);">' +
+                    '<div class="d-flex align-items-center justify-content-between" style="gap:8px;">' +
+                        '<span style="font-size:12.5px;">' + esc(g.label) + '</span>' +
+                        '<span class="badge badge-' + st[0] + '" title="' + g.granted + ' dari ' + g.total + ' aksi">' + st[1] + '</span>' +
+                    '</div>' +
+                    '<details style="font-size:11.5px;"><summary class="text-muted">' + g.total + ' route</summary>' +
+                        '<ul class="list-unstyled mb-1 mt-1">' + rinci + '</ul></details>' +
+                '</div>';
+            });
+            html += '</div></div>';
+        });
+
+        $('#permSections').html(html || '<p class="text-muted text-center py-4 mb-0">Tidak ada data kewenangan.</p>');
+    }
+
+    /* Tab "Batas Data" (Fase 4) — BACA-SAJA, tanpa input yang ikut terkirim. */
+    function renderScopes(s) {
+        if (!s.ready) {
+            $('#scopeSections').html('<p class="text-muted text-center py-4 mb-0">Tabel batas data belum tersedia (migrasi belum dijalankan).</p>');
+            return;
+        }
+
+        let html = '';
+        (s.modules || []).forEach(function (mod) {
+            html += '<div class="menu-group"><div class="menu-group-head"><span><i class="fas fa-cube mr-2" style="color:var(--accent);"></i>' +
+                esc(mod.label) + '</span></div><div class="menu-group-body">';
+            mod.dimensions.forEach(function (d) {
+                html += '<div class="d-flex align-items-center justify-content-between py-1" style="gap:8px; border-bottom:1px solid var(--border); font-size:12.5px;">' +
+                    '<span>' + esc(d.label) + '</span>' +
+                    '<span class="badge badge-' + (d.is_open ? 'info' : 'light border') + '">' + esc(d.text) + '</span>' +
+                '</div>';
+            });
+            html += '</div></div>';
+        });
+
+        if ((s.fixed || []).length) {
+            html += '<div class="menu-group"><div class="menu-group-head"><span><i class="fas fa-lock mr-2 text-muted"></i>Aturan khusus (tidak bisa diatur)</span></div><div class="menu-group-body">';
+            s.fixed.forEach(function (f) {
+                html += '<div class="py-1" style="border-bottom:1px solid var(--border); font-size:12.5px;"><strong>' + esc(f.label) + '</strong>' +
+                    '<div class="text-muted" style="font-size:11.5px;">' + esc(f.note) + '</div></div>';
+            });
+            html += '</div></div>';
+        }
+
+        $('#scopeSections').html(html);
+    }
+
+    // Kotak cari ada DI DALAM form Menu Access: Enter tidak boleh memicu submit
+    // (implicit submission) yang menyimpan menu tanpa sengaja.
+    $('#permSearch').on('keydown', function (e) {
+        if (e.key === 'Enter') e.preventDefault();
+    });
+
+    $('#permSearch').on('input', function () {
+        let q = this.value.toLowerCase().trim();
+        $('#permSections .perm-group').each(function () {
+            $(this).toggle(!q || this.getAttribute('data-search').indexOf(q) !== -1);
+        });
+        $('#permSections .perm-module').each(function () {
+            $(this).toggle($(this).find('.perm-group').filter(function () { return $(this).css('display') !== 'none'; }).length > 0);
+        });
+    });
+
     $(document).on('click', '.btn-configure', function () {
         let id = $(this).data('id');
 
@@ -575,6 +769,10 @@ $(function () {
             }
 
             $('#menuSections').html(html);
+            renderPermissions(d.permissions || {});
+            renderScopes(d.data_scopes || {});
+            // Selalu buka di tab Menu Access, seperti sebelum ada tab Kewenangan.
+            $('a[href="#paneMenu"]').tab('show');
             updateCount();
             $('#configLoading').hide();
             $('#configContent').show();

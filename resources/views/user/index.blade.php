@@ -60,6 +60,12 @@
                         <a href="{{ url('/accessgroup') }}" class="btn btn-info btn-sm">
                             <i class="fas fa-layer-group mr-1"></i> Access Master
                         </a>
+                        {{-- Konsol Keamanan: sama dengan gerbang route security.* (role:superadmin). --}}
+                        @if(auth()->user()->hasRole('superadmin'))
+                        <a href="{{ route('security.index') }}" class="btn btn-info btn-sm">
+                            <i class="fas fa-user-shield mr-1"></i> Keamanan
+                        </a>
+                        @endif
                         <x-tw.button id="refreshTable" variant="secondary" size="sm"><i class="fas fa-sync-alt" aria-hidden="true"></i> Refresh</x-tw.button>
                     </div>
                 </div>
