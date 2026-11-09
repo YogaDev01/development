@@ -112,8 +112,10 @@ trait MakesTesysData
 
         return Customer::create([
             'name' => 'PT Uji ' . $n,
-            // Kolom initial unik di basis data; dibuat berbeda tiap pemanggilan.
-            'initial' => 'U' . str_pad((string) $n, 2, '0', STR_PAD_LEFT),
+            // Kolom initial unik di basis data (maks. 3 karakter); dibuat berbeda
+            // tiap pemanggilan. Basis 36 supaya tidak melebihi 3 karakter setelah
+            // 99 pemanggilan dalam satu proses test (U + 2 digit = 1.296 nilai).
+            'initial' => 'U' . str_pad(strtoupper(base_convert((string) $n, 10, 36)), 2, '0', STR_PAD_LEFT),
             'status' => 'ACTIVE',
         ]);
     }

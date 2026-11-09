@@ -110,22 +110,32 @@ Homebase (+ PIC), dan Wilayah berjenjang.
   Network (Gateway, Outroute ID, Hub, Spotbeam, Polarisasi), ditambah kartu
   Site Keeper berisi baris nama + no HP yang bisa ditambah/dihapus. *Status
   hanya saat Edit. `POST /site` menyimpan site + `site_pics` dalam satu transaksi.
-- Supervisor & Teknisi adalah field virtual (`spv_id`, `pic_id`), bukan kolom
-  `sites`: dibaca lewat `Site::getSpvIdAttribute/getPicIdAttribute` (PIC internal
-  yang jabatannya mengandung "supervisor"/"teknisi") dan disimpan sebagai baris
-  `site_pics` oleh `SiteController::syncSitePics()`. Field yang tidak dikirim
-  tidak melepas PIC yang sudah terpasang.
-- Pilihan Teknisi & Teknisi Backup (9 Nov 2026): hanya user ACTIVE ber-role
-  `technician` (`Site::TECHNICIAN_ROLE`) yang menjadi anggota ACTIVE team ACTIVE
-  yang melayani customer site (`team_customers`, atau `teams.customer_id` bila
-  tabel itu belum dimigrasi) — `SiteController::technicianTeamCustomers()`.
-  Di form kedua dropdown terkunci sampai Customer dipilih, lalu disaring ke
-  customer itu; validasi server menolak pilihan di luar daftar. Teknisi utama
-  tetap disimpan sebagai id `master_pics` (dipakai Trouble Ticket), jadi akun
-  technician tanpa Master PIC internal berjabatan Teknisi (`user_id` terisi)
-  **tidak** muncul (`technicianOptions()`). Teknisi/Teknisi Backup yang sudah
-  tersimpan tetap boleh dipertahankan selama customer site tidak diganti
-  (ditandai "di luar team customer" di form). Tidak disaring Homebase.
+- Teknisi = **akun user** (9 Nov 2026, migrasi `2026_11_09_000300`): kolom
+  `sites.technician_user_id` (nullable, FK `users` RESTRICT, relasi
+  `Site::technician()`), satu teknisi per site. Tidak perlu Master PIC.
+  Migrasi mengisi kolom ini dari teknisi lama (PIC internal berjabatan
+  "teknisi" di `site_pics`) yang Master PIC-nya sudah terhubung ke akun user;
+  site yang PIC-nya belum terhubung tetap kosong (jumlah + id dicatat di log).
+  `site_pics` tidak dihapus migrasi.
+- Teknisi lama (`site_pics` → `master_pics`, `Site::technicianPic()`) tetap
+  dibaca: tampilan (`Site::technicianName()`), cluster turunan homebase, dan
+  Trouble Ticket. Saat field Teknisi disimpan dengan akun lain (atau
+  dikosongkan), baris teknisi lama di `site_pics` dilepas
+  (`SiteController::releaseLegacyTechnicianPic()`); teknisi lama tanpa akun
+  dibiarkan bila field dikirim kosong. Form edit menampilkan catatan "Teknisi
+  lama: …" untuk site seperti itu. Supervisor (`spv_id`) tetap field virtual
+  `site_pics` (`syncSitePics()`).
+- Pilihan Teknisi & Teknisi Backup: user ACTIVE ber-role `technician`
+  (`Site::TECHNICIAN_ROLE`) yang menjadi anggota ACTIVE team ACTIVE yang
+  melayani customer site (`team_customers`, atau `teams.customer_id` bila tabel
+  itu belum dimigrasi), bukan leader team — `SiteController::technicianOptions()`
+  / `technicianTeamCustomers()`. Di form kedua dropdown terkunci sampai Customer
+  dipilih, lalu disaring ke customer itu; validasi server menolak pilihan di
+  luar daftar. Teknisi/Teknisi Backup yang sudah tersimpan tetap boleh
+  dipertahankan selama customer site tidak diganti (ditandai "di luar team
+  customer" di form). Tidak disaring Homebase.
+- Sebelum migrasi `2026_11_09_000300` dijalankan (`Site::supportsTechnicianUser()`
+  false) field Teknisi tidak tampil dan teknisi hanya dibaca dari `site_pics`.
 - Site Keeper (migrasi `2026_10_10_000300`, tabel `site_keepers`, model
   `SiteKeeper`): nama + no HP diisi bebas di form, boleh lebih dari satu baris.
   Baris tanpa nama diabaikan; no HP wajib bila nama diisi. Daftar yang dikirim

@@ -39,8 +39,6 @@ class SiteMasterDataTest extends TestCase
 
     private User $admin;
 
-    private ?Homebase $homebase = null;
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -69,26 +67,17 @@ class SiteMasterDataTest extends TestCase
 
     /**
      * Teknisi yang sah untuk site customer $customer: akun ber-role
-     * technician, anggota ACTIVE team yang melayani customer itu, dan punya
-     * Master PIC internal berjabatan Teknisi (nilai yang disimpan site_pics).
+     * technician yang menjadi anggota ACTIVE team yang melayani customer itu.
+     * Tidak perlu Master PIC (sites.technician_user_id, 9 Nov 2026).
      */
-    private function technicianFor(Customer $customer, string $name): MasterPic
+    private function technicianFor(Customer $customer, string $name): User
     {
         $user = $this->userWithRole('technician', ['name' => $name]);
         $team = Team::create(['code' => 'TEAM-'.$user->id, 'name' => 'Team '.$name, 'customer_id' => $customer->id, 'status' => 'ACTIVE']);
         $team->customers()->attach($customer->id);
         TeamMember::create(['team_id' => $team->id, 'user_id' => $user->id, 'level' => 1, 'status' => 'ACTIVE']);
 
-        return MasterPic::create(['type' => 'internal', 'pic' => $name, 'position' => 'Teknisi', 'status' => 'ACTIVE', 'user_id' => $user->id]);
-    }
-
-    /** Homebase dipakai untuk menurunkan Cluster site lewat teknisinya. */
-    private function homebase(): Homebase
-    {
-        return $this->homebase ??= Homebase::create([
-            'region_id' => Region::create(['region_name' => 'Cluster Uji', 'pulau_id' => Pulau::create(['name' => 'Pulau Uji'])->id])->id,
-            'address' => 'HB Uji',
-        ]);
+        return $user;
     }
 
     private function site(Customer $customer, array $attr = []): Site
@@ -499,20 +488,25 @@ class SiteMasterDataTest extends TestCase
         ])->assertSessionHasErrors('status');
     }
 
-    public function test_create_page_saves_site_pic_and_keepers(): void
+    public function test_create_page_saves_site_technician_and_keepers(): void
     {
         $customer = $this->customerBts();
-        $hb = $this->homebase();
+        // Teknisi = akun user; tidak perlu Master PIC.
         $tech = $this->technicianFor($customer, 'Budi Teknisi');
-        HomebaseDetail::create(['hb_id' => $hb->id, 'pic_id' => $tech->id]);
 
-        // Site Keeper dipilih dari user aktif.
+        // Pilihan Site Keeper = PIC ACTIVE berjenis site_keeper (sejak 19 Okt
+        // 2026, SiteController::keeperOptions()); validasi simpan masih
+        // mewajibkan nama akun user (keeperRules()), jadi keduanya dibuat.
         $jaga = $this->userWithRole('staff', ['name' => 'Pak Jaga']);
         $jaga2 = $this->userWithRole('staff', ['name' => 'Bu Jaga']);
+        MasterPic::create(['type' => Site::KEEPER_PIC_TYPE, 'pic' => 'Pak Jaga', 'status' => 'ACTIVE']);
+        $this->userWithRole('staff', ['name' => 'Akun Bukan Keeper']);
 
         // Homebase, Cluster & Supervisor sudah tidak ada di form.
         $this->actingAs($this->admin)->get('/site/create')->assertOk()
             ->assertSee('Budi Teknisi')->assertSee('Gateway')->assertSee('Pak Jaga')
+            // Akun user biasa tidak lagi muncul sebagai pilihan Site Keeper.
+            ->assertDontSee('Akun Bukan Keeper')
             ->assertDontSee('Pilih Supervisor')->assertDontSee('Pilih Homebase');
 
         $payload = [
@@ -521,24 +515,23 @@ class SiteMasterDataTest extends TestCase
             'gateway' => 'GW-1', 'polarization' => 'R',
         ];
 
-        // PIC non-internal ditolak; teknisi sendiri tidak terikat Homebase.
-        $outsider = MasterPic::create(['type' => 'site_keeper', 'pic' => 'Penjaga', 'position' => 'Teknisi', 'status' => 'ACTIVE']);
+        // Akun tanpa role technician ditolak.
+        $bukan = $this->userWithRole('staff', ['name' => 'Bukan Teknisi']);
         $this->actingAs($this->admin)->from('/site/create')
-            ->post('/site', $payload + ['pic_id' => $outsider->id])
-            ->assertRedirect('/site/create')->assertSessionHasErrors('pic_id');
-        $this->assertDatabaseCount('sites', 0);
+            ->post('/site', $payload + ['technician_user_id' => $bukan->id])
+            ->assertRedirect('/site/create')->assertSessionHasErrors('technician_user_id');
 
-        // PIC internal Teknisi tanpa akun role technician di team customer ditolak.
-        $tanpaTeam = MasterPic::create(['type' => 'internal', 'pic' => 'Tanpa Team', 'position' => 'Teknisi', 'status' => 'ACTIVE']);
+        // Role technician tanpa team customer ini ditolak.
+        $tanpaTeam = $this->userWithRole('technician', ['name' => 'Tanpa Team']);
         $this->actingAs($this->admin)->from('/site/create')
-            ->post('/site', $payload + ['pic_id' => $tanpaTeam->id])
-            ->assertSessionHasErrors('pic_id');
+            ->post('/site', $payload + ['technician_user_id' => $tanpaTeam->id])
+            ->assertSessionHasErrors('technician_user_id');
 
         // Teknisi team customer lain ditolak.
         $lain = $this->technicianFor($this->customerBts2(), 'Teknisi Lain');
         $this->actingAs($this->admin)->from('/site/create')
-            ->post('/site', $payload + ['pic_id' => $lain->id])
-            ->assertSessionHasErrors('pic_id');
+            ->post('/site', $payload + ['technician_user_id' => $lain->id])
+            ->assertSessionHasErrors('technician_user_id');
         $this->assertDatabaseCount('sites', 0);
 
         // Nama di luar daftar user ditolak.
@@ -548,7 +541,7 @@ class SiteMasterDataTest extends TestCase
 
         $this->actingAs($this->admin)
             ->post('/site', $payload + [
-                'pic_id' => $tech->id,
+                'technician_user_id' => $tech->id,
                 'keepers' => [
                     ['name' => $jaga->name],
                     ['name' => ''],              // baris kosong diabaikan
@@ -564,8 +557,9 @@ class SiteMasterDataTest extends TestCase
         // Homebase & Cluster tidak lagi diisi dari form.
         $this->assertNull($site->hb_id);
         $this->assertNull($site->region_id);
-        $site->load('picLinks.pic');
-        $this->assertSame($tech->id, $site->pic_id);
+        $this->assertSame($tech->id, (int) $site->technician_user_id);
+        // Tidak ada baris site_pics yang dibuat untuk teknisi.
+        $this->assertSame(0, $site->picLinks()->count());
 
         $this->assertSame('Budi Teknisi', SiteController::technicians($site));
 
@@ -575,43 +569,47 @@ class SiteMasterDataTest extends TestCase
         );
     }
 
-    public function test_edit_page_replaces_site_pic_and_keepers(): void
+    public function test_edit_page_replaces_legacy_technician_with_user(): void
     {
         $customer = $this->customerBts();
         $site = $this->site($customer);
-        $hb = $this->homebase();
-        // A = teknisi lama yang kini di luar syarat (tanpa akun/team); B = sah.
+        // A = teknisi lama dari Master PIC tanpa akun (site_pics); B = akun teknisi sah.
         $a = MasterPic::create(['type' => 'internal', 'pic' => 'Teknisi A', 'position' => 'Teknisi', 'status' => 'ACTIVE']);
         $b = $this->technicianFor($customer, 'Teknisi B');
-        HomebaseDetail::create(['hb_id' => $hb->id, 'pic_id' => $a->id]);
-        HomebaseDetail::create(['hb_id' => $hb->id, 'pic_id' => $b->id]);
         SitePic::create(['site_id' => $site->id, 'pic_id' => $a->id]);
 
         $this->actingAs($this->admin)->get('/site/'.$site->id.'/edit')
-            ->assertOk()->assertSee('Edit Site '.$site->tid)->assertSee('value="'.$site->tid.'"', false);
+            ->assertOk()->assertSee('Edit Site '.$site->tid)->assertSee('value="'.$site->tid.'"', false)
+            ->assertSee('Teknisi lama: <strong>Teknisi A</strong>', false);
+        $this->assertSame('Teknisi A', SiteController::technicians($site->load('picLinks.pic')));
 
         $payload = [
             'tid' => $site->tid, 'sitename' => 'Nama Baru', 'customer_id' => $site->customer_id,
             'type' => 'TOWER', 'source_power' => 'PLN', 'program' => 'AKSES_INTERNET', 'status' => 'ACTIVE',
         ];
 
-        // Field PIC tidak dikirim: PIC terpasang tidak disentuh.
+        // Field Teknisi tidak dikirim / dikirim kosong: teknisi lama tanpa akun tidak disentuh.
         $this->actingAs($this->admin)->put('/site/'.$site->id, $payload)->assertRedirect('/site');
-        $this->assertSame([$a->id], $site->picLinks()->pluck('pic_id')->all());
-
-        // Teknisi lama dikirim ulang tanpa diubah tetap diterima.
-        $this->actingAs($this->admin)->put('/site/'.$site->id, $payload + ['pic_id' => $a->id])
+        $this->actingAs($this->admin)->put('/site/'.$site->id, $payload + ['technician_user_id' => ''])
             ->assertRedirect('/site')->assertSessionHasNoErrors();
         $this->assertSame([$a->id], $site->picLinks()->pluck('pic_id')->all());
 
-        $this->actingAs($this->admin)->put('/site/'.$site->id, $payload + ['pic_id' => $b->id])
-            ->assertRedirect('/site');
-        $this->assertSame('Nama Baru', $site->fresh()->sitename);
-        $this->assertSame([$b->id], $site->picLinks()->pluck('pic_id')->all());
-
-        // Dikirim kosong = lepas PIC Site.
-        $this->actingAs($this->admin)->put('/site/'.$site->id, $payload + ['pic_id' => '']);
+        // Teknisi baru dipilih: kolom terisi, teknisi lama di site_pics dilepas.
+        $this->actingAs($this->admin)->put('/site/'.$site->id, $payload + ['technician_user_id' => $b->id])
+            ->assertRedirect('/site')->assertSessionHasNoErrors();
+        $site->refresh();
+        $this->assertSame('Nama Baru', $site->sitename);
+        $this->assertSame($b->id, (int) $site->technician_user_id);
         $this->assertSame(0, $site->picLinks()->count());
+
+        // Teknisi tersimpan dikirim ulang walau kini di luar team: tetap diterima.
+        TeamMember::where('user_id', $b->id)->update(['status' => 'INACTIVE']);
+        $this->actingAs($this->admin)->put('/site/'.$site->id, $payload + ['technician_user_id' => $b->id])
+            ->assertRedirect('/site')->assertSessionHasNoErrors();
+
+        // Dikirim kosong = lepas Teknisi.
+        $this->actingAs($this->admin)->put('/site/'.$site->id, $payload + ['technician_user_id' => '']);
+        $this->assertNull($site->fresh()->technician_user_id);
 
         // Site Keeper: daftar yang dikirim menggantikan isi lama.
         $baru = $this->userWithRole('staff', ['name' => 'Jaga Baru']);
@@ -642,7 +640,7 @@ class SiteMasterDataTest extends TestCase
 
         // Teknisi Backup: user team customer lain & role non-technician ditolak.
         $this->actingAs($this->admin)->from('/site/create')
-            ->post('/site', $payload + ['backup_technicians' => [$lain->user_id]])
+            ->post('/site', $payload + ['backup_technicians' => [$lain->id]])
             ->assertSessionHasErrors('backup_technicians.0');
         $this->actingAs($this->admin)->from('/site/create')
             ->post('/site', $payload + ['backup_technicians' => [$staf->id]])
@@ -650,10 +648,30 @@ class SiteMasterDataTest extends TestCase
         $this->assertDatabaseCount('sites', 0);
 
         $this->actingAs($this->admin)
-            ->post('/site', $payload + ['pic_id' => $sah->id, 'backup_technicians' => [$sah->user_id, '']])
+            ->post('/site', $payload + ['technician_user_id' => $sah->id, 'backup_technicians' => [$sah->id, '']])
             ->assertRedirect('/site')->assertSessionHasNoErrors();
         $site = Site::where('tid', 'TID-BKP')->firstOrFail();
-        $this->assertSame([$sah->user_id], $site->backupTechnicians()->pluck('user_id')->map(fn ($id) => (int) $id)->all());
+        $this->assertSame([$sah->id], $site->backupTechnicians()->pluck('user_id')->map(fn ($id) => (int) $id)->all());
+    }
+
+    public function test_migration_backfills_technician_user_from_linked_master_pic(): void
+    {
+        $customer = $this->customerBts();
+        $linkedSite = $this->site($customer);
+        $unlinkedSite = $this->site($customer);
+        $akun = $this->userWithRole('technician', ['name' => 'Akun Teknisi']);
+        $linked = MasterPic::create(['type' => 'internal', 'pic' => 'Akun Teknisi', 'position' => 'Teknisi', 'status' => 'ACTIVE', 'user_id' => $akun->id]);
+        $unlinked = MasterPic::create(['type' => 'internal', 'pic' => 'Tanpa Akun', 'position' => 'Teknisi', 'status' => 'ACTIVE']);
+        SitePic::create(['site_id' => $linkedSite->id, 'pic_id' => $linked->id]);
+        SitePic::create(['site_id' => $unlinkedSite->id, 'pic_id' => $unlinked->id]);
+
+        // Kolom sudah ada dari RefreshDatabase; up() hanya mengulang backfill (tanpa DDL).
+        (require base_path('database/migrations/2026_11_09_000300_add_technician_user_to_sites.php'))->up();
+
+        $this->assertSame($akun->id, (int) $linkedSite->fresh()->technician_user_id);
+        $this->assertNull($unlinkedSite->fresh()->technician_user_id);
+        // Data asal tidak diubah.
+        $this->assertSame(2, SitePic::count());
     }
 
     public function test_index_region_technician_card_and_inactive_marker(): void
@@ -661,10 +679,12 @@ class SiteMasterDataTest extends TestCase
         $customer = $this->customerBts();
         $site = $this->site($customer, ['sitename' => 'Kantor Desa Sukamaju']);
         $this->site($customer, ['status' => 'INACTIVE']);
-        // Kartu Total Technician menghitung teknisi yang dimiliki (master PIC
-        // internal ACTIVE berjabatan "teknisi"), bukan yang terpasang di site.
+        // Cluster site lama tetap diturunkan dari homebase teknisi lama (site_pics).
         $tech = MasterPic::create(['type' => 'internal', 'pic' => 'Hadi Teknisi', 'position' => 'Teknisi', 'status' => 'ACTIVE']);
         SitePic::create(['site_id' => $site->id, 'pic_id' => $tech->id]);
+        // Kartu Total Technician = seluruh pilihan dropdown Teknisi (akun role
+        // technician di team bercustomer), bukan yang terpasang di site.
+        $this->technicianFor($customer, 'Teknisi Kartu');
 
         $region = Region::create(['region_name' => 'Region Jabar', 'pulau_id' => Pulau::create(['name' => 'Jawa'])->id]);
         $hb = Homebase::create(['region_id' => $region->id, 'address' => 'HB Bandung']);

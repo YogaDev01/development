@@ -46,6 +46,7 @@ class SiteController extends Controller
     use ManagesMasterRecords {
         destroy as destroyRecord;
         editData as editDataRecord;
+        formFields as masterFormFields;
     }
 
     public function destroy($id)
@@ -240,8 +241,8 @@ class SiteController extends Controller
 
     /**
      * Customer yang "dimiliki" user lihat-saja: customer dari site tempat ia
-     * terdaftar sebagai Teknisi (site_pics → master_pics.user_id) atau Teknisi
-     * Backup. null = tanpa batas (role biasa); array kosong = tidak punya site,
+     * terdaftar sebagai Teknisi (sites.technician_user_id, atau teknisi lama
+     * site_pics → master_pics.user_id) atau Teknisi Backup. null = tanpa batas (role biasa); array kosong = tidak punya site,
      * sehingga daftarnya kosong. Dihitung sekali per request.
      */
     private function visibleCustomerIds(): ?array
@@ -259,6 +260,7 @@ class SiteController extends Controller
                 ->where('master_pics.status', 'ACTIVE')
                 ->pluck('site_pics.site_id')
                 ->merge(SiteBackupTechnician::where('user_id', $user->id)->pluck('site_id'))
+                ->merge(Site::supportsTechnicianUser() ? Site::where('technician_user_id', $user->id)->pluck('id') : [])
                 ->unique();
 
             $attrs->set('site_visible_customers', Site::whereIn('id', $siteIds)
@@ -308,7 +310,7 @@ class SiteController extends Controller
             'singular' => 'Site',
             'icon' => 'fas fa-broadcast-tower',
             'with' => ['customer:id,name', 'pulau:id,name', 'provinsi:id,name', 'kota:id,name', 'kecamatan:id,name', 'desa:id,name',
-                'picLinks.pic:id,pic,type,position', 'homebase.region:id,region_name', 'region:id,region_name'],
+                'picLinks.pic:id,pic,type,position', 'homebase.region:id,region_name', 'region:id,region_name', 'technician:id,name'],
             'create_url' => '/site/create',
             'edit_url' => '/site/{id}/edit',
             'drawer' => true,
@@ -349,8 +351,9 @@ class SiteController extends Controller
                 // Homebase, Cluster & Supervisor tidak lagi diisi di form: ketiganya
                 // diturunkan dari Teknisi yang dipilih - lihat self::regions()
                 // yang membaca homebase/region si teknisi.
+                // Teknisi = akun user (sites.technician_user_id, 9 Nov 2026).
                 // Opsinya disaring lagi per customer di browser (site/create.blade.php).
-                'pic_id' => ['label' => 'Teknisi', 'type' => 'select', 'options' => fn () => collect(self::technicianOptions())->pluck('name', 'id')->all(), 'searchable' => true, 'col' => 6, 'virtual' => true],
+                'technician_user_id' => ['label' => 'Teknisi', 'type' => 'select', 'options' => fn () => collect(self::technicianOptions())->pluck('name', 'id')->all(), 'searchable' => true, 'col' => 6],
                 'pulau_id' => ['label' => 'Island', 'type' => 'select', 'options' => fn () => Pulau::orderBy('name')->pluck('name', 'id')->all(), 'searchable' => true, 'col' => 6, 'cascade_child' => 'provinsi_id', 'section' => 'Location'],
                 'provinsi_id' => ['label' => 'Provinsi', 'type' => 'cascade', 'level' => 'provinsi', 'parent' => 'pulau_id', 'col' => 6, 'cascade_child' => 'kota_id'],
                 'kota_id' => ['label' => 'Kota / Kabupaten', 'type' => 'cascade', 'level' => 'kota', 'parent' => 'provinsi_id', 'col' => 6, 'cascade_child' => 'kecamatan_id'],
@@ -443,16 +446,15 @@ class SiteController extends Controller
             'hub' => ['nullable', 'string', 'max:150'],
             'spotbeam' => ['nullable', 'string', 'max:150'],
             'polarization' => ['nullable', Rule::in(array_keys(Site::POLARIZATIONS))],
-            // Field virtual: disimpan sebagai baris site_pics, bukan kolom sites.
             // Teknisi lama yang tidak diubah (customer pun sama) tetap boleh
             // disimpan walau kini di luar syarat, agar edit field lain tidak
             // tertolak; pilihan BARU wajib dari technicianOptions().
-            'pic_id' => ['nullable', 'integer', function ($attribute, $value, $fail) use ($request, $record) {
-                if ($record && (int) $value === (int) $record->pic_id
+            'technician_user_id' => ['nullable', 'integer', function ($attribute, $value, $fail) use ($request, $record) {
+                if ($record && (int) $value === (int) $record->technician_user_id
                     && (int) $request->input('customer_id') === (int) $record->customer_id) {
                     return;
                 }
-                if (! self::technicianAllowedFor('pic', (int) $value, (int) $request->input('customer_id'))) {
+                if (! self::technicianAllowedFor((int) $value, (int) $request->input('customer_id'))) {
                     $fail('Teknisi harus user ber-role technician dari team yang melayani customer site ini.');
                 }
             }],
@@ -462,6 +464,14 @@ class SiteController extends Controller
     protected function beforeCreate(Model $record, array $data): void
     {
         $record->status = 'ACTIVE';
+    }
+
+    /** Field Teknisi baru tampil setelah kolom sites.technician_user_id dimigrasi. */
+    protected function formFields(?Model $record): array
+    {
+        $fields = $this->masterFormFields($record);
+
+        return Site::supportsTechnicianUser() ? $fields : array_diff_key($fields, ['technician_user_id' => true]);
     }
 
     /** Field form yang bukan kolom `sites` (lihat master()['fields']). */
@@ -518,50 +528,47 @@ class SiteController extends Controller
     }
 
     /**
-     * Pilihan field Teknisi: user ber-role `technician` dari team yang
-     * melayani customer site (technicianTeamCustomers()). Nilai yang disimpan
-     * tetap id PIC internal ACTIVE berjabatan Teknisi milik akun itu, karena
-     * site_pics → master_pics dipakai Trouble Ticket (eligibleTechnicians,
-     * picIdFor). Akun tanpa Master PIC internal berjabatan Teknisi tidak ikut.
+     * Pilihan Teknisi & Teknisi Backup: user ber-role `technician` dari team
+     * yang melayani customer site (technicianTeamCustomers()), lengkap dengan
+     * daftar customer-nya — form hanya menampilkan teknisi customer yang
+     * dipilih. Tidak perlu Master PIC (9 Nov 2026). Leader team tidak ikut: ia
+     * menyetujui plan, bukan ditugaskan ke tiket.
      *
      * @return array<int, array{id:int, name:string, customers:array<int,int>}>
      */
     public static function technicianOptions(): array
     {
-        $map = self::technicianTeamCustomers();
-        if (! $map) {
-            return [];
+        $attrs = request()->attributes;
+        if ($attrs->has('site_tech_options')) {
+            return $attrs->get('site_tech_options');
         }
 
-        return MasterPic::with('user:id,name')
-            ->where('type', 'internal')
-            ->where('status', 'ACTIVE')
-            ->where('position', 'like', '%'.Site::TECHNICIAN_POSITION.'%')
-            ->whereIn('user_id', array_keys($map))
-            ->get(['id', 'pic', 'user_id'])
-            ->map(fn ($p) => [
-                'id' => (int) $p->id,
-                'name' => $p->user?->name ?? $p->pic,
-                'customers' => $map[(int) $p->user_id] ?? [],
+        $map = self::technicianTeamCustomers();
+        $options = ! $map ? [] : User::query()
+            ->whereIn('id', array_keys($map))
+            ->whereNotIn('id', Team::query()
+                ->where('status', 'ACTIVE')
+                ->whereNotNull('leader_id')
+                ->select('leader_id'))
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn ($u) => [
+                'id' => (int) $u->id,
+                'name' => $u->name,
+                'customers' => $map[(int) $u->id] ?? [],
             ])
-            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
             ->values()
             ->all();
+
+        $attrs->set('site_tech_options', $options);
+
+        return $options;
     }
 
-    /**
-     * Apakah $id termasuk pilihan Teknisi ($kind = 'pic', id master_pics) atau
-     * Teknisi Backup ($kind = 'backup', id users) untuk customer $customerId?
-     */
-    protected static function technicianAllowedFor(string $kind, int $id, int $customerId): bool
+    /** Apakah user $id termasuk pilihan Teknisi / Teknisi Backup untuk customer $customerId? */
+    protected static function technicianAllowedFor(int $id, int $customerId): bool
     {
-        // Dimuat sekali per request: validasi Teknisi Backup memanggil ini per baris.
-        $attrs = request()->attributes;
-        $key = 'site_tech_options_'.$kind;
-        if (! $attrs->has($key)) {
-            $attrs->set($key, $kind === 'pic' ? self::technicianOptions() : self::backupTechnicianOptions());
-        }
-        $opt = collect($attrs->get($key))->firstWhere('id', $id);
+        $opt = collect(self::technicianOptions())->firstWhere('id', $id);
 
         return $opt !== null && in_array($customerId, $opt['customers'], true);
     }
@@ -585,41 +592,9 @@ class SiteController extends Controller
     }
 
     /**
-     * Pilihan Teknisi Backup: user ber-role `technician` dari team yang
-     * melayani customer site (technicianTeamCustomers()), lengkap dengan daftar
-     * customer-nya — form hanya menampilkan teknisi customer yang dipilih.
-     * Leader team tetap tidak ikut: ia menyetujui plan, bukan ditugaskan ke tiket.
-     *
-     * @return array<int, array{id:int, name:string, customers:array<int,int>}>
-     */
-    public static function backupTechnicianOptions(): array
-    {
-        $map = self::technicianTeamCustomers();
-        if (! $map) {
-            return [];
-        }
-
-        return User::query()
-            ->whereIn('id', array_keys($map))
-            ->whereNotIn('id', Team::query()
-                ->where('status', 'ACTIVE')
-                ->whereNotNull('leader_id')
-                ->select('leader_id'))
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn ($u) => [
-                'id' => (int) $u->id,
-                'name' => $u->name,
-                'customers' => $map[(int) $u->id] ?? [],
-            ])
-            ->values()
-            ->all();
-    }
-
-    /**
      * Validasi baris Teknisi Backup (id user), boleh lebih dari satu. Teknisi
      * Backup yang sudah tersimpan di site ini (customer tidak berubah) tetap
-     * boleh dipertahankan; tambahan baru wajib dari backupTechnicianOptions().
+     * boleh dipertahankan; tambahan baru wajib dari technicianOptions().
      */
     protected function backupTechnicianRules(Request $request, ?Site $site = null): array
     {
@@ -634,7 +609,7 @@ class SiteController extends Controller
                 if (in_array((int) $value, $kept, true)) {
                     return;
                 }
-                if (! self::technicianAllowedFor('backup', (int) $value, $customerId)) {
+                if (! self::technicianAllowedFor((int) $value, $customerId)) {
                     $fail('Teknisi Backup harus user ber-role technician dari team yang melayani customer site ini.');
                 }
             }],
@@ -727,6 +702,30 @@ class SiteController extends Controller
         $site->load('picLinks.pic');
     }
 
+    /**
+     * Field Teknisi kini akun user (sites.technician_user_id). Teknisi lama di
+     * site_pics (PIC internal berjabatan teknisi) dilepas bila akunnya BUKAN
+     * teknisi yang baru disimpan, supaya Trouble Ticket tidak lagi menawarkan
+     * teknisi lama. Teknisi lama yang akunnya sama tidak disentuh, begitu juga
+     * bila field Teknisi tidak dikirim.
+     */
+    protected function releaseLegacyTechnicianPic(Site $site, array $data): void
+    {
+        if (! array_key_exists('technician_user_id', $data)) {
+            return;
+        }
+
+        $site->load('picLinks.pic');
+        $legacy = $site->technicianPic();
+        $baru = $data['technician_user_id'] ? (int) $data['technician_user_id'] : null;
+
+        // Teknisi lama tanpa akun + field dikosongkan = tidak ada perubahan.
+        if ($legacy && (int) $legacy->user_id !== (int) $baru) {
+            SitePic::where('site_id', $site->id)->where('pic_id', $legacy->id)->delete();
+            $site->load('picLinks.pic');
+        }
+    }
+
     /** Tooltip kolom Location: seluruh isian bagian Location di form site. */
     public static function locationDetail(Site $site): string
     {
@@ -779,13 +778,14 @@ class SiteController extends Controller
     }
 
     /**
-     * Kolom Teknisi: HANYA teknisi site, yaitu PIC internal berjabatan
-     * "teknisi" (field Teknisi di form). Supervisor & PIC internal lain yang
-     * terpasang di site_pics sengaja tidak ikut - lihat tab PIC di detail site.
+     * Kolom Teknisi: HANYA teknisi site — akun user di field Teknisi, atau
+     * (site yang belum dipindah) PIC internal berjabatan "teknisi" di
+     * site_pics. Supervisor & PIC internal lain sengaja tidak ikut - lihat tab
+     * PIC di detail site.
      */
     public static function technicians(Site $site): string
     {
-        return $site->technicianPic()?->pic ?? '';
+        return $site->technicianName();
     }
 
     /**
@@ -809,21 +809,15 @@ class SiteController extends Controller
         return $attrs->get('site_open_tt_map');
     }
 
-    /** Jumlah PIC Internal unik yang terhubung ke site mana pun. */
     /**
      * Jumlah teknisi yang DIMILIKI perusahaan, bukan yang sudah terpasang di
-     * site: sumbernya master PIC internal aktif berjabatan "teknisi" — sama
-     * persis dengan daftar pada dropdown Teknisi di form Site
-     * (lihat picOptions()). Sebelum 14 Okt 2026 kartu ini menghitung PIC
-     * internal yang sudah tertaut ke site, sehingga angkanya lebih kecil dari
-     * isi dropdown dan kedua layar tampak bertentangan.
+     * site: seluruh pilihan dropdown Teknisi di form Site (technicianOptions(),
+     * gabungan semua customer). Sampai 9 Nov 2026 kartu ini menghitung master
+     * PIC internal berjabatan "teknisi", sumber dropdown yang lama.
      */
     public static function technicianCount(): int
     {
-        return (int) MasterPic::where('type', 'internal')
-            ->where('status', 'ACTIVE')
-            ->where('position', 'like', '%'.Site::TECHNICIAN_POSITION.'%')
-            ->count();
+        return count(self::technicianOptions());
     }
 
     /**
@@ -856,7 +850,7 @@ class SiteController extends Controller
     {
         $this->guardWrite();
 
-        $site = Site::with(['picLinks.pic', 'keepers', 'backupTechnicians.user:id,name'])->findOrFail($id);
+        $site = Site::with(['picLinks.pic', 'keepers', 'backupTechnicians.user:id,name', 'technician:id,name'])->findOrFail($id);
         $fields = $this->resolvedFields($this->formFields($site));
 
         return view('site.create', compact('fields', 'site'));
@@ -876,6 +870,7 @@ class SiteController extends Controller
         DB::transaction(function () use ($site, $data, $virtual, $request) {
             $site->update($data);
             $this->syncSitePics($site, $virtual);
+            $this->releaseLegacyTechnicianPic($site, $data);
             $this->syncSiteKeepers($site, $request);
             $this->syncBackupTechnicians($site, $request);
         });
@@ -921,6 +916,7 @@ class SiteController extends Controller
             $site->save();
             $site->setRelation('picLinks', collect());
             $this->syncSitePics($site, $virtual);
+            $this->releaseLegacyTechnicianPic($site, $data);
             $this->syncSiteKeepers($site, $request);
             $this->syncBackupTechnicians($site, $request);
 

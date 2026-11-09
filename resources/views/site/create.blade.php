@@ -44,6 +44,13 @@
                             @include('master-data._field', ['name' => $name, 'f' => $f, 'first' => $loop->first, 'values' => $values])
                         @endforeach
                     </div>
+                    {{-- Site lama yang teknisinya masih dari Master PIC tanpa akun user. --}}
+                    @if($isEdit && isset($fields['technician_user_id']) && ! $site->technician_user_id && $site->technicianPic())
+                        <p class="text-muted mb-0" style="font-size:12px;">
+                            <i class="fas fa-info-circle mr-1"></i>Teknisi lama: <strong>{{ $site->technicianPic()->pic }}</strong>
+                            (dari Master PIC, belum terhubung ke akun user). Pilih Teknisi untuk menggantinya.
+                        </p>
+                    @endif
                 </div>
             </div>
 
@@ -105,7 +112,7 @@
                 </div>
                 <div class="col-md-6 d-flex">
                 @php
-                    $backupTechOptions = \App\Http\Controllers\SiteController::backupTechnicianOptions();
+                    $techOptions = \App\Http\Controllers\SiteController::technicianOptions();
                     $backupTechRows = old('backup_technicians', $isEdit ? $site->backupTechnicians->pluck('user_id')->all() : []);
                     $backupTechRows = $backupTechRows ?: [''];
                     // Teknisi Backup tersimpan yang kini di luar syarat: tetap ditawarkan
@@ -113,11 +120,10 @@
                     $backupTechKept = $isEdit
                         ? $site->backupTechnicians->map(fn ($b) => ['id' => (int) $b->user_id, 'name' => $b->user?->name ?? ('#' . $b->user_id)])->values()->all()
                         : [];
-                    $techOptions = \App\Http\Controllers\SiteController::technicianOptions();
-                    $techCurrent = $isEdit && $site->technicianPic()
-                        ? [['id' => (int) $site->technicianPic()->id, 'name' => $site->technicianPic()->pic]]
+                    $techCurrent = $isEdit && $site->technician
+                        ? [['id' => (int) $site->technician->id, 'name' => $site->technician->name]]
                         : [];
-                    $techInitial = (string) old('pic_id', $isEdit ? $site->pic_id : '');
+                    $techInitial = (string) old('technician_user_id', $isEdit ? $site->technician_user_id : '');
                 @endphp
                 <div class="card card-primary card-outline shadow-sm flex-fill">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -134,7 +140,7 @@
                                             <select name="backup_technicians[]" data-searchable data-initial="{{ $uid }}"
                                                     class="form-control js-backup-tech @error('backup_technicians.' . $i) is-invalid @enderror">
                                                 <option value="">&mdash; Pilih Teknisi Backup &mdash;</option>
-                                                @foreach($backupTechOptions as $opt)
+                                                @foreach($techOptions as $opt)
                                                     <option value="{{ $opt['id'] }}" @selected((string) $uid === (string) $opt['id'])>{{ $opt['name'] }}</option>
                                                 @endforeach
                                             </select>
@@ -269,11 +275,10 @@ $(function () {
     */
     var techs = @json($techOptions);
     var techCurrent = @json($techCurrent);
-    var backupTechs = @json($backupTechOptions);
     var backupTechKept = @json($backupTechKept);
     var originalCustomer = @json($isEdit ? (int) $site->customer_id : null);
     var $customer = $('#fld_customer_id');
-    var $tech = $('#fld_pic_id').attr('data-initial', @json($techInitial));
+    var $tech = $('#fld_technician_user_id').attr('data-initial', @json($techInitial));
 
     function techRowsFor(list, kept) {
         var c = parseInt($customer.val(), 10);
@@ -307,7 +312,7 @@ $(function () {
     }
 
     function fillBackupTechSelect($sel) {
-        fillTechSelect($sel, techRowsFor(backupTechs, backupTechKept), '— Pilih Teknisi Backup —');
+        fillTechSelect($sel, techRowsFor(techs, backupTechKept), '— Pilih Teknisi Backup —');
     }
 
     function refreshTechnicians() {

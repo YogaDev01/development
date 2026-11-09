@@ -115,18 +115,26 @@ trait ImportsTroubleTickets
         ]);
     }
 
-    /** Username teknisi yang eligible di site mana pun yang boleh dipakai user. */
+    /**
+     * Username teknisi yang eligible di site mana pun yang boleh dipakai user:
+     * Teknisi site (sites.technician_user_id) atau akun PIC internal di site_pics.
+     */
     private function importTechnicianOptions(Collection $sites): Collection
     {
         return User::query()
             ->where('status', 'ACTIVE')
-            ->whereIn('id', \App\Models\SitePic::query()
-                ->join('master_pics', 'master_pics.id', '=', 'site_pics.pic_id')
-                ->whereIn('site_pics.site_id', $sites->pluck('id'))
-                ->where('master_pics.type', 'internal')
-                ->where('master_pics.status', 'ACTIVE')
-                ->whereNotNull('master_pics.user_id')
-                ->select('master_pics.user_id'))
+            ->where(fn ($q) => $q
+                ->whereIn('id', \App\Models\SitePic::query()
+                    ->join('master_pics', 'master_pics.id', '=', 'site_pics.pic_id')
+                    ->whereIn('site_pics.site_id', $sites->pluck('id'))
+                    ->where('master_pics.type', 'internal')
+                    ->where('master_pics.status', 'ACTIVE')
+                    ->whereNotNull('master_pics.user_id')
+                    ->select('master_pics.user_id'))
+                ->when(\App\Models\Site::supportsTechnicianUser(), fn ($q) => $q->orWhereIn('id', \App\Models\Site::query()
+                    ->whereIn('id', $sites->pluck('id'))
+                    ->whereNotNull('technician_user_id')
+                    ->select('technician_user_id'))))
             ->orderBy('username')
             ->pluck('username');
     }

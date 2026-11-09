@@ -196,7 +196,11 @@ notifikasi tidak terkirim dua kali. Error keadaan = `ValidationException`
   - **Isian** (mengikuti form CR): Jenis (semua `request_type`) → Budget Plan ACTIVE
     (teknisi disaring ke customer team-nya: `abortIfBudgetPlanLuarCustomer()`) →
     Project (= `cluster_id` di Cost Request; wajib untuk budget proyek, otomatis bila satu; ditampilkan `[kode] nama`; daftar = cluster pada milestone project (`project_details.cluster_id`) milik Budget Plan, `BudgetPlan::projectClusters()`, sama dengan form CR) → Beneficiary (Cash
-    Advance: beneficiary INTERNAL ACTIVE milik PIC teknisi, otomatis; jenis lain:
+    Advance: beneficiary INTERNAL ACTIVE milik PIC teknisi, otomatis —
+    `TroubleTicketWorkflow::caBeneficiary()`: PIC = `trouble_tickets.pic_id`,
+    bila kosong PIC internal ACTIVE yang terhubung ke akun teknisi; teknisi
+    tanpa Master PIC atau tanpa Beneficiary Internal = jenis Cash Advance
+    dinonaktifkan di form dan ditolak server (9 Nov 2026); jenis lain:
     dropdown beneficiary ACTIVE) → Deskripsi → baris (sub-item budget plan,
     deskripsi, harga, qty bulat) → lampiran. **Lampiran:** Cash Advance tidak wajib;
     jenis lain **wajib per baris**.
@@ -573,8 +577,8 @@ Satu halaman bertab, dulu hanya SLA:
 | Aksi | Siapa |
 |---|---|
 | Buka menu / buat tiket | pemegang menu `trouble-ticket` (route) |
-| Melihat tiket, pesan, lampiran | superadmin (`TROUBLE_TICKET_FULL_SCOPE`): semua tiket. **User biasa: tiket yang ditugaskan ke dirinya dan tiket yang ia buat sendiri** — tiket teknisi lain yang bukan buatannya tidak muncul (keputusan 15 Okt 2026; sejak 6 Nov 2026 pembuat kembali melihat tiket buatannya untuk mengirim bukti lewat chat, OD-7, tanpa akses dokumen uang). Pengawas (leader team ACTIVE, `TROUBLE_TICKET_SUPERVISE`, `TROUBLE_TICKET_APPROVE` — `TroubleTicket::supervises()`): pembuat, tiket yang ditugaskan, dan siapa pun yang **satu team** (anggota ACTIVE atau leader team ACTIVE) dengan PIC site: `site → site_pics → master_pics(ACTIVE) → user → team_members` |
-| Teknisi yang bisa ditugaskan | akun ACTIVE milik PIC **internal** ACTIVE yang terdaftar di `site_pics` site itu, **kecuali leader team ACTIVE** (ia yang menyetujui plan). Berlaku untuk dropdown buat tiket maupun reassign — `TroubleTicketWorkflow::eligibleTechnicians()` |
+| Melihat tiket, pesan, lampiran | superadmin (`TROUBLE_TICKET_FULL_SCOPE`): semua tiket. **User biasa: tiket yang ditugaskan ke dirinya dan tiket yang ia buat sendiri** — tiket teknisi lain yang bukan buatannya tidak muncul (keputusan 15 Okt 2026; sejak 6 Nov 2026 pembuat kembali melihat tiket buatannya untuk mengirim bukti lewat chat, OD-7, tanpa akses dokumen uang). Pengawas (leader team ACTIVE, `TROUBLE_TICKET_SUPERVISE`, `TROUBLE_TICKET_APPROVE` — `TroubleTicket::supervises()`): pembuat, tiket yang ditugaskan, dan siapa pun yang **satu team** (anggota ACTIVE atau leader team ACTIVE) dengan PIC site: `site → site_pics → master_pics(ACTIVE) → user → team_members`, atau dengan Teknisi site: `site → sites.technician_user_id → team_members` (9 Nov 2026) |
+| Teknisi yang bisa ditugaskan | akun ACTIVE yang menjadi **Teknisi site** (`sites.technician_user_id`, 9 Nov 2026 — tidak perlu Master PIC; `trouble_tickets.pic_id` lalu diisi PIC milik akun itu bila ada, selain itu kosong) atau milik PIC **internal** ACTIVE yang terdaftar di `site_pics` site itu, **kecuali leader team ACTIVE** (ia yang menyetujui plan). Berlaku untuk dropdown buat tiket maupun reassign — `TroubleTicketWorkflow::eligibleTechnicians()` |
 | Respons, ajukan plan, Start Progress, tutup tiket | hanya teknisi yang sedang ditugaskan |
 | Approve/reject plan | leader team ACTIVE tempat teknisi menjadi anggota ACTIVE, atau superadmin — **bukan** teknisi pengaju |
 | Reassign, koreksi plan | leader team teknisi atau superadmin |

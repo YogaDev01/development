@@ -423,6 +423,7 @@ class TroubleTicket extends Model
      * Tiket yang boleh dilihat seorang user (keputusan bisnis 9 Okt 2026):
      *
      *   site → site_pics → master_pics → user → team
+     *   site → sites.technician_user_id → user → team   (9 Nov 2026)
      *
      * Siapa pun yang SATU TEAM (anggota ACTIVE, atau leader team ACTIVE) dengan
      * salah satu PIC site melihat tiket site tersebut. Ditambah pembuat tiket,
@@ -500,6 +501,17 @@ class TroubleTicket extends Model
                       ->where('team_members.status', 'ACTIVE')
                       ->whereIn('team_members.team_id', $teamIds);
                 });
+
+                // Teknisi site berupa akun user (tanpa Master PIC).
+                if (Site::supportsTechnicianUser()) {
+                    $w->orWhereIn('trouble_tickets.site_id', function ($s) use ($teamIds) {
+                        $s->select('sites.id')
+                          ->from('sites')
+                          ->join('team_members', 'team_members.user_id', '=', 'sites.technician_user_id')
+                          ->where('team_members.status', 'ACTIVE')
+                          ->whereIn('team_members.team_id', $teamIds);
+                    });
+                }
             }
         });
     }

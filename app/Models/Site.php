@@ -58,6 +58,9 @@ class Site extends Model
         // Data jaringan per site (migrasi 2026_10_10_000100) — menggantikan
         // dropdown Network di form; `network_id` tinggal untuk site lama.
         'gateway', 'outroute_id', 'hub', 'spotbeam', 'polarization',
+        // Teknisi site = akun user (migrasi 2026_11_09_000300); site_pics
+        // tetap dibaca sebagai teknisi lama (technicianPic()).
+        'technician_user_id',
     ];
 
     protected $casts = [
@@ -68,6 +71,26 @@ class Site extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class, 'customer_id');
+    }
+
+    /** Teknisi site: akun user ber-role technician (field Teknisi di form). */
+    public function technician()
+    {
+        return $this->belongsTo(User::class, 'technician_user_id');
+    }
+
+    /**
+     * Kolom sites.technician_user_id sudah ada (migrasi 2026_11_09_000300)?
+     *
+     * Kode di-upload SEBELUM migrate; selama jeda itu teknisi tetap dibaca
+     * dari site_pics saja dan field Teknisi tidak ditampilkan. Dihitung sekali
+     * per permintaan.
+     */
+    public static function supportsTechnicianUser(): bool
+    {
+        static $ada = null;
+
+        return $ada ??= \Illuminate\Support\Facades\Schema::hasColumn('sites', 'technician_user_id');
     }
 
     public function homebase()
@@ -185,7 +208,11 @@ class Site extends Model
         return $this->picByPosition(self::SUPERVISOR_POSITION);
     }
 
-    /** PIC Site: PIC internal terpasang yang jabatannya "Teknisi". */
+    /**
+     * Teknisi LAMA: PIC internal terpasang yang jabatannya "Teknisi". Sejak
+     * 9 Nov 2026 teknisi utama ada di technician(); ini tinggal dibaca untuk
+     * site yang teknisinya belum dipindah ke akun user.
+     */
     public function technicianPic(): ?MasterPic
     {
         return $this->picByPosition(self::TECHNICIAN_POSITION);
@@ -208,5 +235,11 @@ class Site extends Model
     public function getPicIdAttribute(): ?int
     {
         return $this->technicianPic()?->id;
+    }
+
+    /** Nama teknisi untuk tampilan: akun user, atau teknisi lama dari site_pics. */
+    public function technicianName(): string
+    {
+        return $this->technician?->name ?? $this->technicianPic()?->pic ?? '';
     }
 }

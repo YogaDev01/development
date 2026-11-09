@@ -696,6 +696,9 @@ class TroubleTicketController extends Controller
             'canRequest' => $this->workflow->canRequest($user, $ticket),
             'jenisCr' => $jenisCr,
             'beneficiaries' => $beneficiaries,
+            // Penerima Cash Advance: Beneficiary Internal PIC teknisi. null =
+            // jenis Cash Advance dinonaktifkan di form (9 Nov 2026).
+            'caBeneficiary' => $this->workflow->caBeneficiary($ticket),
             'clustersByProject' => $clustersByProject,
             /* Settlement dari halaman tiket (20 Okt 2026): hanya saat CR-nya
                sudah cair dan pelakunya berhak — teknisi tiket ini, atau peran

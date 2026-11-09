@@ -213,6 +213,71 @@ class TroubleTicketRequestTest extends TestCase
         $this->assertSame(1, $cr->details()->first()->attachments()->count());
     }
 
+    /* ------------------------------------------------ teknisi site = akun user (9 Nov 2026) */
+
+    /** Site baru dengan Teknisi berupa akun user (tanpa site_pics), plus tiketnya. */
+    private function tiketTeknisiSite(User $teknisi, string $tid): TroubleTicket
+    {
+        $site = Site::create([
+            'tid' => $tid, 'sitename' => 'Site '.$tid, 'type' => 'TOWER', 'source_power' => 'PLN',
+            'program' => 'AKSES_INTERNET', 'status' => 'ACTIVE', 'customer_id' => $this->site->customer_id,
+            'technician_user_id' => $teknisi->id,
+        ]);
+
+        $this->actingAs($this->manager)->post('/trouble-ticket', [
+            'site_id' => $site->id, 'assigned_to' => $teknisi->id,
+            'problem_id' => TroubleTicketProblem::value('id'), 'issue_id' => TroubleTicketIssue::value('id'),
+            'description' => 'Modem mati',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        return TroubleTicket::latest('id')->firstOrFail();
+    }
+
+    public function test_teknisi_site_tanpa_master_pic_boleh_ditugaskan_tetapi_cash_advance_dikunci(): void
+    {
+        $teknisi = $this->userWithRole('staff');
+        TeamMember::create(['team_id' => Team::where('code', 'TEAM-RQ1')->value('id'), 'user_id' => $teknisi->id, 'status' => 'ACTIVE']);
+
+        $ticket = $this->tiketTeknisiSite($teknisi, 'TID-NOPIC');
+        $this->assertSame($teknisi->id, (int) $ticket->assigned_to);
+        $this->assertNull($ticket->pic_id);
+        $this->assertNull(app(TroubleTicketWorkflow::class)->caBeneficiary($ticket));
+
+        // Form: jenis Cash Advance tampil tetapi dinonaktifkan.
+        $this->actingAs($teknisi)->get(route('trouble-ticket.show', $ticket))->assertOk()
+            ->assertSee('Cash Advance tidak tersedia');
+
+        // Server menolak pengajuan Cash Advance; tidak ada beneficiary IS NULL yang ikut terpilih.
+        Beneficiary::create(['nickname' => 'Tanpa PIC', 'complete_name' => 'Tanpa PIC', 'category' => 'INTERNAL', 'status' => 'ACTIVE']);
+        $this->actingAs($teknisi)
+            ->post(route('trouble-ticket.requests.save', $ticket), array_merge($this->payload(), ['submit' => 1]))
+            ->assertSessionHasErrors('beneficiary_id');
+        $this->assertSame(0, $ticket->requests()->count());
+
+        // Leader team teknisi melihat tiket lewat Teknisi site (bukan site_pics).
+        $this->assertTrue(TroubleTicket::visibleTo($this->leader)->whereKey($ticket->id)->exists());
+        $this->assertFalse(TroubleTicket::visibleTo($this->leader2)->whereKey($ticket->id)->exists());
+    }
+
+    public function test_teknisi_site_dengan_master_pic_terhubung_memakai_beneficiary_pic_itu(): void
+    {
+        $teknisi = $this->userWithRole('staff');
+        TeamMember::create(['team_id' => Team::where('code', 'TEAM-RQ1')->value('id'), 'user_id' => $teknisi->id, 'status' => 'ACTIVE']);
+        // PIC terhubung ke akun, tetapi TIDAK terdaftar di site_pics site ini.
+        $pic = MasterPic::create(['type' => 'internal', 'user_id' => $teknisi->id, 'pic' => $teknisi->name, 'token' => '5', 'status' => 'ACTIVE']);
+        $ben = Beneficiary::create([
+            'nickname' => 'Rek Teknisi', 'complete_name' => 'Rek Teknisi', 'category' => 'INTERNAL',
+            'pic_id' => $pic->id, 'status' => 'ACTIVE',
+        ]);
+
+        $ticket = $this->tiketTeknisiSite($teknisi, 'TID-PIC2');
+        $this->assertSame($pic->id, (int) $ticket->pic_id);
+
+        $r = $this->ajukan($teknisi, [], true, $ticket);
+        $this->assertSame('SUBMITTED', $r->status);
+        $this->assertSame($ben->id, (int) $r->beneficiary_id);
+    }
+
     public function test_cash_advance_tanpa_lampiran_diterima(): void
     {
         $r = $this->ajukan();

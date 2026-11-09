@@ -6,6 +6,7 @@ use App\Models\Beneficiary;
 use App\Models\BudgetPlan;
 use App\Models\BudgetPlanDetail;
 use App\Models\BudgetRequest;
+use App\Models\MasterPic;
 use App\Models\RequestType;
 use App\Models\Site;
 use App\Models\SiteBackupTechnician;
@@ -213,8 +214,10 @@ class TroubleTicketWorkflow
     }
 
     /**
-     * Teknisi yang boleh ditugaskan di sebuah site (keputusan 9 Okt 2026):
-     * akun ACTIVE milik PIC internal ACTIVE yang terdaftar di site_pics site itu.
+     * Teknisi yang boleh ditugaskan di sebuah site: akun ACTIVE yang menjadi
+     * Teknisi site (sites.technician_user_id, 9 Nov 2026), ditambah akun milik
+     * PIC internal ACTIVE yang terdaftar di site_pics site itu (aturan
+     * 9 Okt 2026, tetap berlaku untuk teknisi lama).
      */
     public function eligibleTechnicians(int $siteId): Collection
     {
@@ -226,6 +229,18 @@ class TroubleTicketWorkflow
                 ->where('status', 'ACTIVE')
                 ->whereNotNull('leader_id')
                 ->select('leader_id'))
+            ->where(fn ($q) => $this->siteTechnicianUsers($q, $siteId))
+            ->orderBy('name')
+            ->get(['id', 'name']);
+    }
+
+    /**
+     * Batasi query users ke akun yang terkait site: Teknisi site
+     * (sites.technician_user_id) ATAU akun PIC internal ACTIVE di site_pics.
+     */
+    private function siteTechnicianUsers($q, int $siteId)
+    {
+        return $q
             ->whereIn('id', SitePic::query()
                 ->join('master_pics', 'master_pics.id', '=', 'site_pics.pic_id')
                 ->where('site_pics.site_id', $siteId)
@@ -233,8 +248,10 @@ class TroubleTicketWorkflow
                 ->where('master_pics.status', 'ACTIVE')
                 ->whereNotNull('master_pics.user_id')
                 ->select('master_pics.user_id'))
-            ->orderBy('name')
-            ->get(['id', 'name']);
+            ->when(Site::supportsTechnicianUser(), fn ($q) => $q->orWhereIn('id', Site::query()
+                ->whereKey($siteId)
+                ->whereNotNull('technician_user_id')
+                ->select('technician_user_id')));
     }
 
     /**
@@ -274,7 +291,15 @@ class TroubleTicketWorkflow
         return $this->eligibleTechnicians($siteId)->contains('id', $userId);
     }
 
-    /** Baris master_pics (PIC internal ACTIVE site itu) milik akun teknisi — untuk kolom pic_id. */
+    /**
+     * Master PIC internal ACTIVE milik akun teknisi — untuk kolom
+     * trouble_tickets.pic_id (dipakai mencari Beneficiary Cash Advance).
+     *
+     * PIC yang terdaftar di site_pics site itu didahulukan (aturan lama). Sejak
+     * 9 Nov 2026 teknisi site boleh tanpa site_pics, jadi bila tidak ada,
+     * dipakai PIC internal ACTIVE akun itu sendiri (dicari lewat user_id).
+     * null = akun tidak terhubung ke Master PIC mana pun.
+     */
     public function picIdFor(int $siteId, int $userId): ?int
     {
         $id = SitePic::query()
@@ -286,21 +311,43 @@ class TroubleTicketWorkflow
             ->orderBy('master_pics.id')
             ->value('master_pics.id');
 
+        $id ??= MasterPic::query()
+            ->where('type', 'internal')
+            ->where('status', 'ACTIVE')
+            ->where('user_id', $userId)
+            ->orderBy('id')
+            ->value('id');
+
         return $id ? (int) $id : null;
     }
 
-    /** Akun PIC internal ACTIVE sebuah site — penerima notifikasi tiket baru. */
+    /**
+     * Beneficiary penerima Cash Advance tiket: Beneficiary INTERNAL ACTIVE
+     * milik Master PIC teknisi tiket (trouble_tickets.pic_id; bila kosong,
+     * PIC yang terhubung ke akun teknisinya). null = teknisi tidak terhubung
+     * ke Master PIC atau PIC-nya belum punya Beneficiary Internal, sehingga
+     * Cash Advance tidak boleh diajukan (keputusan 9 Nov 2026).
+     */
+    public function caBeneficiary(TroubleTicket $t): ?Beneficiary
+    {
+        $picId = $t->pic_id ?: ($t->assigned_to ? $this->picIdFor((int) $t->site_id, (int) $t->assigned_to) : null);
+        if (! $picId) {
+            return null;
+        }
+
+        return Beneficiary::where('category', 'INTERNAL')
+            ->where('status', 'ACTIVE')
+            ->where('pic_id', $picId)
+            ->orderBy('id')
+            ->first();
+    }
+
+    /** Akun PIC internal ACTIVE + Teknisi sebuah site — penerima notifikasi tiket baru. */
     public function sitePicUsers(int $siteId): Collection
     {
         return User::query()
             ->where('status', 'ACTIVE')
-            ->whereIn('id', SitePic::query()
-                ->join('master_pics', 'master_pics.id', '=', 'site_pics.pic_id')
-                ->where('site_pics.site_id', $siteId)
-                ->where('master_pics.type', 'internal')
-                ->where('master_pics.status', 'ACTIVE')
-                ->whereNotNull('master_pics.user_id')
-                ->select('master_pics.user_id'))
+            ->where(fn ($q) => $this->siteTechnicianUsers($q, $siteId))
             ->get();
     }
 
@@ -370,10 +417,12 @@ class TroubleTicketWorkflow
             $this->fail('No. tiket itu sudah dipakai tiket lain.', 'ticket_number');
         }
 
-        $picId = $this->picIdFor($site->id, (int) $data['assigned_to']);
-        if (! $picId || ! $this->isEligibleTechnician($site->id, (int) $data['assigned_to'])) {
-            $this->fail('Teknisi harus PIC internal aktif yang terdaftar di site ini.', 'assigned_to');
+        // Teknisi tanpa Master PIC boleh ditugaskan (9 Nov 2026); pic_id lalu
+        // kosong dan Cash Advance tiket tidak tersedia (caBeneficiary()).
+        if (! $this->isEligibleTechnician($site->id, (int) $data['assigned_to'])) {
+            $this->fail('Teknisi harus Teknisi site ini (Master Data > Site) atau PIC internal aktif yang terdaftar di site ini.', 'assigned_to');
         }
+        $picId = $this->picIdFor($site->id, (int) $data['assigned_to']);
 
         // Severity tidak lagi jadi masukan: kebijakan SLA dipilih per Problem.
         $policy = TroubleTicketSlaPolicy::applicableForProblem($problemId ? (int) $problemId : null);
@@ -772,9 +821,10 @@ class TroubleTicketWorkflow
 
         if ($isCa) {
             // Penerima dana = beneficiary INTERNAL milik PIC teknisi tiket ini (otomatis).
-            $beneficiary = Beneficiary::where('category', 'INTERNAL')->where('status', 'ACTIVE')->where('pic_id', $t->pic_id)->first();
+            // Teknisi tanpa Master PIC / tanpa Beneficiary Internal: CA ditolak.
+            $beneficiary = $this->caBeneficiary($t);
             if ($beneficiary === null) {
-                $this->fail('Beneficiary Internal untuk PIC teknisi tiket ini belum ada (Master Data > Beneficiary).', 'beneficiary_id');
+                $this->fail('Cash Advance tidak bisa diajukan: teknisi tiket ini belum terhubung ke Master PIC atau PIC-nya belum punya Beneficiary Internal (Master Data > Beneficiary).', 'beneficiary_id');
             }
         } else {
             $beneficiary = ! empty($header['beneficiary_id'])

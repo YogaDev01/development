@@ -10,7 +10,9 @@
         'plans' => $budgetPlans->map(fn ($p) => ['id' => $p->id, 'label' => $p->code . ($p->description ? ' — ' . \Illuminate\Support\Str::limit($p->description, 40) : ''), 'project' => $p->project_id])->values(),
         'details' => $budgetDetails->map(fn ($d) => ['id' => $d->id, 'plan' => $d->budget_plan_id, 'label' => ($d->account?->name ?? '-') . ($d->deskripsi ? ' — ' . \Illuminate\Support\Str::limit($d->deskripsi, 40) : '')])->values(),
         'clusters' => $clustersByProject->map(fn ($c) => $c->map(fn ($x) => ['id' => $x->id, 'label' => '[' . $x->code . '] ' . $x->name])->values()),
-        'types' => $jenisCr->map(fn ($x) => ['id' => $x->id, 'name' => $x->name, 'ca' => (bool) $x->is_ca])->values(),
+        // Cash Advance dikunci bila teknisi tiket tanpa Master PIC / Beneficiary Internal.
+        'types' => $jenisCr->map(fn ($x) => ['id' => $x->id, 'ca' => (bool) $x->is_ca, 'off' => $x->is_ca && ! $caBeneficiary,
+            'name' => $x->name . ($x->is_ca && ! $caBeneficiary ? ' (tidak tersedia)' : '')])->values(),
         'benef' => $beneficiaries->map(fn ($b) => ['id' => $b->id, 'label' => ($b->nickname ?: $b->complete_name) . ' (' . $b->category . ')'])->values(),
         'req' => $pengajuan->filter(fn ($r) => ($flagPengajuan[$r->id]['edit'] ?? false) || ($flagPengajuan[$r->id]['review'] ?? false))
             ->mapWithKeys(fn ($r) => [$r->id => [
@@ -68,8 +70,13 @@
                         </div>
                         <div class="form-group col-md-4 mb-2" id="rqBenefCa" style="display:none;">
                             <label class="font-weight-bold">Penerima dana</label>
-                            <input type="text" class="form-control" value="Beneficiary Internal PIC teknisi (otomatis)" readonly>
+                            <input type="text" class="form-control" value="{{ $caBeneficiary ? ($caBeneficiary->nickname ?: $caBeneficiary->complete_name) . ' (Beneficiary Internal PIC teknisi)' : 'Beneficiary Internal PIC teknisi (otomatis)' }}" readonly>
                         </div>
+                        @unless($caBeneficiary)
+                            <div class="col-12 mb-2">
+                                <small class="text-muted"><i class="fas fa-info-circle mr-1"></i>Cash Advance tidak tersedia: teknisi tiket ini belum terhubung ke Master PIC atau PIC-nya belum punya Beneficiary Internal.</small>
+                            </div>
+                        @endunless
                         <div class="form-group col-12 mb-2">
                             <label class="font-weight-bold" for="fldRqDesc">Deskripsi <span class="text-danger">*</span></label>
                             <input type="text" name="description" id="fldRqDesc" class="form-control" maxlength="500" required placeholder="Untuk keperluan apa dana ini">
@@ -172,7 +179,7 @@
         function esc(t) { return $('<div>').text(t == null ? '' : t).html(); }
         function opts(list, sel, ph) {
             return '<option value="">' + esc(ph) + '</option>' + list.map(function (o) {
-                return '<option value="' + o.id + '"' + (String(o.id) === String(sel) ? ' selected' : '') + '>' + esc(o.label || o.name) + '</option>';
+                return '<option value="' + o.id + '"' + (String(o.id) === String(sel) ? ' selected' : '') + (o.off ? ' disabled' : '') + '>' + esc(o.label || o.name) + '</option>';
             }).join('');
         }
         // Dropdown panjang diberi pencarian (sama seperti dropdown panjang lain di app).
