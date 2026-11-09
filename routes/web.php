@@ -479,6 +479,10 @@ Route::middleware('auth')->group(function () {
         'network'         => \App\Http\Controllers\NetworkController::class,
         'homebase'        => \App\Http\Controllers\HomebaseController::class,
         'region'          => \App\Http\Controllers\RegionController::class,
+        // Pilihan dropdown form Site (migrasi 2026_11_09_000200).
+        'site-type'         => \App\Http\Controllers\SiteTypeController::class,
+        'site-source-power' => \App\Http\Controllers\SiteSourcePowerController::class,
+        'site-program'      => \App\Http\Controllers\SiteProgramController::class,
     ];
 
     foreach ($masterModules as $key => $controller) {

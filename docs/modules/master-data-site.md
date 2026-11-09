@@ -15,6 +15,9 @@ Homebase (+ PIC), dan Wilayah berjenjang.
 | `network`         | `/network`         | `NetworkController`        | `network` |
 | `homebase`        | `/homebase`, `/homebase/{id}` | `HomebaseController` | `homebase`, `homebase_detail` |
 | `region`          | `/region`          | `RegionController`         | `region` |
+| `site-type`       | `/site-type`       | `SiteTypeController`       | `site_types` |
+| `site-source-power` | `/site-source-power` | `SiteSourcePowerController` | `site_source_powers` |
+| `site-program`    | `/site-program`    | `SiteProgramController`    | `site_programs` |
 | `wilayah`         | `/wilayah/{pulau\|provinsi\|kota\|kecamatan\|desa}` | `WilayahController` | `pulau`, `provinsi`, `kota`, `kecamatan`, `desa` |
 
 - Otorisasi hanya `auth` + `menu:<key>` (sama seperti Customer/PIC). Menu baru
@@ -27,8 +30,17 @@ Homebase (+ PIC), dan Wilayah berjenjang.
 ## Aturan data
 
 - `type`/`status` disimpan varchar; nilai sah = konstanta model
-  (`CategoryItem::TYPES`, `MasterMaterial::STATUSES`, `Site::TYPES`,
-  `SOURCE_POWERS`, `PROGRAMS`, `STATUSES`). Menambah nilai = ubah konstanta.
+  (`CategoryItem::TYPES`, `MasterMaterial::STATUSES`, `Site::STATUSES`).
+  Menambah nilai = ubah konstanta.
+- Tipe / Source Power / Program site diambil dari master `site_types`,
+  `site_source_powers`, `site_programs` (migrasi `2026_11_09_000200`; isi
+  awal = konstanta lama dengan kode yang sama). Kolom `sites.*` menyimpan
+  `code` (bukan FK id). `code` dibuat otomatis dari nama saat tambah dan tidak
+  berubah saat nama diedit. Opsi yang masih dipakai site tidak bisa dihapus.
+  Pilihan dibaca lewat `Site::typeOptions()` / `sourcePowerOptions()` /
+  `programOptions()`.
+- Tipe & Source Power opsional (kolom nullable); Program tetap wajib.
+  Tiga menu master didaftarkan tanpa akses ke role mana pun.
 - Kategori Material hanya tipe `MATERIAL`/`TOOLS`; kategori Accessories hanya `ACCESSORIES`.
 - Kode otomatis (`App\Support\MasterItemCode`, via `DocumentSequence`):
   `P{inisial customer}-{MMYY}{5 digit}` (material), `A…` (accessories).
@@ -92,7 +104,7 @@ Homebase (+ PIC), dan Wilayah berjenjang.
 ## Halaman Site
 
 - Tambah: halaman penuh `GET /site/create`, tiga bagian seperti SLAmeet —
-  Detail Site (Site ID, Site name, Tipe, Source Power, Program, Status*,
+  Detail Site (Site ID, Site name, Tipe (opsional), Source Power (opsional), Program, Status*,
   Customer, Teknisi), Location (Island,
   Provinsi, Kota/Kabupaten, Kecamatan, Desa, Latitude, Longitude, Address) dan
   Network (Gateway, Outroute ID, Hub, Spotbeam, Polarisasi), ditambah kartu

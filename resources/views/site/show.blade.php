@@ -35,9 +35,9 @@
                             <tr><th>Site ID</th><td>{{ $site->tid }}</td></tr>
                             <tr><th>Nama Site</th><td>{{ $site->sitename }}</td></tr>
                             <tr><th>Customer</th><td>{{ $site->customer?->name ?? '-' }}</td></tr>
-                            <tr><th>Tipe Bangunan</th><td>{{ Site::TYPES[$site->type] ?? $site->type }}</td></tr>
-                            <tr><th>Source Power</th><td>{{ Site::SOURCE_POWERS[$site->source_power] ?? $site->source_power }}</td></tr>
-                            <tr><th>Program</th><td>{{ Site::PROGRAMS[$site->program] ?? $site->program }}</td></tr>
+                            <tr><th>Tipe Bangunan</th><td>{{ Site::typeOptions()[$site->type] ?? $site->type }}</td></tr>
+                            <tr><th>Source Power</th><td>{{ Site::sourcePowerOptions()[$site->source_power] ?? $site->source_power }}</td></tr>
+                            <tr><th>Program</th><td>{{ Site::programOptions()[$site->program] ?? $site->program }}</td></tr>
                             <tr><th>Teknisi</th><td>{{ \App\Http\Controllers\SiteController::technicians($site) ?: '-' }}</td></tr>
                             <tr><th>Cluster</th><td>{{ \App\Http\Controllers\SiteController::regions($site) ?: '-' }}</td></tr>
                             <tr><th>Site Keeper</th><td>{{ $site->keepers->pluck('name')->implode(', ') ?: '-' }}</td></tr>
