@@ -108,6 +108,16 @@
                     $backupTechOptions = \App\Http\Controllers\SiteController::backupTechnicianOptions();
                     $backupTechRows = old('backup_technicians', $isEdit ? $site->backupTechnicians->pluck('user_id')->all() : []);
                     $backupTechRows = $backupTechRows ?: [''];
+                    // Teknisi Backup tersimpan yang kini di luar syarat: tetap ditawarkan
+                    // selama customer site tidak diganti (sesuai backupTechnicianRules()).
+                    $backupTechKept = $isEdit
+                        ? $site->backupTechnicians->map(fn ($b) => ['id' => (int) $b->user_id, 'name' => $b->user?->name ?? ('#' . $b->user_id)])->values()->all()
+                        : [];
+                    $techOptions = \App\Http\Controllers\SiteController::technicianOptions();
+                    $techCurrent = $isEdit && $site->technicianPic()
+                        ? [['id' => (int) $site->technicianPic()->id, 'name' => $site->technicianPic()->pic]]
+                        : [];
+                    $techInitial = (string) old('pic_id', $isEdit ? $site->pic_id : '');
                 @endphp
                 <div class="card card-primary card-outline shadow-sm flex-fill">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -115,13 +125,13 @@
                         <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddBackupTech"><i class="fas fa-plus mr-1"></i> Tambah Teknisi Backup</button>
                     </div>
                     <div class="card-body">
-                        <p class="text-muted mb-2" style="font-size:12px;">Teknisi cadangan yang ikut ditawarkan pada Change Teknisi. Boleh lebih dari satu; baris kosong diabaikan.</p>
+                        <p class="text-muted mb-2" style="font-size:12px;">Teknisi cadangan yang ikut ditawarkan pada Change Teknisi, dipilih dari user ber-role technician di team customer site. Boleh lebih dari satu; baris kosong diabaikan.</p>
                         <div id="backupTechRows">
                             @foreach($backupTechRows as $i => $uid)
                                 <div class="form-row align-items-start js-backup-tech-row">
                                     <div class="col-md-11">
                                         <div class="form-group">
-                                            <select name="backup_technicians[]" data-searchable
+                                            <select name="backup_technicians[]" data-searchable data-initial="{{ $uid }}"
                                                     class="form-control js-backup-tech @error('backup_technicians.' . $i) is-invalid @enderror">
                                                 <option value="">&mdash; Pilih Teknisi Backup &mdash;</option>
                                                 @foreach($backupTechOptions as $opt)
@@ -250,30 +260,70 @@ $(function () {
     });
 
     /*
-    | Baris Teknisi Backup: seluruh PIC internal berjabatan teknisi ditawarkan,
-    | tidak dibatasi customer site — sebelum 19 Okt 2026 daftarnya disaring per
-    | customer, sehingga teknisi yang belum terpasang di site mana pun tidak
-    | pernah bisa dipilih. <option> tetap dibangun di sini supaya baris baru
-    | hasil tombol Tambah ikut terisi.
+    | Teknisi & Teknisi Backup: hanya user ber-role technician yang menjadi
+    | anggota team yang melayani customer terpilih (Master Data > Team).
+    | Sebelum customer dipilih kedua dropdown dikunci. Teknisi yang sudah
+    | tersimpan tetap ditawarkan selama customer site tidak diganti, supaya
+    | edit field lain tidak melepasnya diam-diam (lihat validasi di
+    | SiteController::rules() / backupTechnicianRules()).
     */
+    var techs = @json($techOptions);
+    var techCurrent = @json($techCurrent);
     var backupTechs = @json($backupTechOptions);
+    var backupTechKept = @json($backupTechKept);
+    var originalCustomer = @json($isEdit ? (int) $site->customer_id : null);
+    var $customer = $('#fld_customer_id');
+    var $tech = $('#fld_pic_id').attr('data-initial', @json($techInitial));
 
-    function fillBackupTechSelect($sel) {
-        var keep = $sel.val();
-        $sel.empty().append('<option value="">— Pilih Teknisi Backup —</option>');
-        backupTechs.forEach(function (t) {
+    function techRowsFor(list, kept) {
+        var c = parseInt($customer.val(), 10);
+        var rows = list.filter(function (t) { return t.customers.indexOf(c) !== -1; });
+        if (c === originalCustomer) {
+            kept.forEach(function (k) {
+                if (!rows.some(function (t) { return t.id === k.id; })) {
+                    rows.push({ id: k.id, name: k.name + ' (di luar team customer)' });
+                }
+            });
+        }
+
+        return rows;
+    }
+
+    function fillTechSelect($sel, rows, placeholder) {
+        var hasCustomer = !!$customer.val();
+        // Nilai awal (old()/tersimpan) dibaca dari data-initial sekali saja:
+        // <option> render server belum tentu memuat teknisi lama.
+        var keep = $sel.val() || $sel.attr('data-initial') || '';
+        $sel.removeAttr('data-initial');
+        $sel.empty().append($('<option value=""></option>').text(hasCustomer ? placeholder : '— Pilih Customer dahulu —'));
+        rows.forEach(function (t) {
             $sel.append($('<option></option>').attr('value', t.id).text(t.name));
         });
         $sel.val(keep);
         if (!$sel.val()) $sel.val('');
+        $sel.prop('disabled', !hasCustomer);
+        $sel.prev('.tss-btn').prop('disabled', !hasCustomer);
         $sel.trigger('tss:sync');
     }
+
+    function fillBackupTechSelect($sel) {
+        fillTechSelect($sel, techRowsFor(backupTechs, backupTechKept), '— Pilih Teknisi Backup —');
+    }
+
+    function refreshTechnicians() {
+        fillTechSelect($tech, techRowsFor(techs, techCurrent), '— Pilih Teknisi —');
+        $('#backupTechRows .js-backup-tech').each(function () { fillBackupTechSelect($(this)); });
+        $('#btnAddBackupTech').prop('disabled', !$customer.val());
+    }
+
+    $customer.on('change', refreshTechnicians);
+    refreshTechnicians();
 
     $('#btnAddBackupTech').on('click', function () {
         var $row = $($('#backupTechRowTemplate').html()).filter('.js-backup-tech-row');
         $('#backupTechRows').append($row);
-        fillBackupTechSelect($row.find('.js-backup-tech'));
         TesysSearchableSelect.init($row.find('select[data-searchable]'), {});
+        fillBackupTechSelect($row.find('.js-backup-tech'));
     });
 
     $('#backupTechRows').on('click', '.js-backup-tech-remove', function () {
