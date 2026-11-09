@@ -44,6 +44,9 @@ class Site extends Model
 
     public const TECHNICIAN_POSITION = 'teknisi';
 
+    /** Role akun (roles.name) yang boleh dipilih sebagai Teknisi / Teknisi Backup site. */
+    public const TECHNICIAN_ROLE = 'technician';
+
     /** Jenis PIC (MasterPic::TYPES) yang mengisi pilihan Site Keeper. */
     public const KEEPER_PIC_TYPE = 'site_keeper';
 

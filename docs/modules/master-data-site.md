@@ -113,10 +113,19 @@ Homebase (+ PIC), dan Wilayah berjenjang.
 - Supervisor & Teknisi adalah field virtual (`spv_id`, `pic_id`), bukan kolom
   `sites`: dibaca lewat `Site::getSpvIdAttribute/getPicIdAttribute` (PIC internal
   yang jabatannya mengandung "supervisor"/"teknisi") dan disimpan sebagai baris
-  `site_pics` oleh `SiteController::syncSitePics()`. Pilihan Teknisi = semua
-  teknisi internal, **tidak** disaring Homebase (keterikatan teknisi ke
-  supervisornya diatur di master PIC). Field yang tidak dikirim tidak melepas
-  PIC yang sudah terpasang.
+  `site_pics` oleh `SiteController::syncSitePics()`. Field yang tidak dikirim
+  tidak melepas PIC yang sudah terpasang.
+- Pilihan Teknisi & Teknisi Backup (9 Nov 2026): hanya user ACTIVE ber-role
+  `technician` (`Site::TECHNICIAN_ROLE`) yang menjadi anggota ACTIVE team ACTIVE
+  yang melayani customer site (`team_customers`, atau `teams.customer_id` bila
+  tabel itu belum dimigrasi) — `SiteController::technicianTeamCustomers()`.
+  Di form kedua dropdown terkunci sampai Customer dipilih, lalu disaring ke
+  customer itu; validasi server menolak pilihan di luar daftar. Teknisi utama
+  tetap disimpan sebagai id `master_pics` (dipakai Trouble Ticket), jadi akun
+  technician tanpa Master PIC internal berjabatan Teknisi (`user_id` terisi)
+  **tidak** muncul (`technicianOptions()`). Teknisi/Teknisi Backup yang sudah
+  tersimpan tetap boleh dipertahankan selama customer site tidak diganti
+  (ditandai "di luar team customer" di form). Tidak disaring Homebase.
 - Site Keeper (migrasi `2026_10_10_000300`, tabel `site_keepers`, model
   `SiteKeeper`): nama + no HP diisi bebas di form, boleh lebih dari satu baris.
   Baris tanpa nama diabaikan; no HP wajib bila nama diisi. Daftar yang dikirim
@@ -124,12 +133,10 @@ Homebase (+ PIC), dan Wilayah berjenjang.
   `keepers` tidak menyentuh data lama. FK `site_id` CASCADE — ikut terhapus
   bersama site.
 - Teknisi Backup (migrasi `2026_10_16_000100`, tabel `site_backup_technicians`,
-  model `SiteBackupTechnician`): daftar teknisi cadangan site, dipilih dari akun
-  ACTIVE milik PIC internal ACTIVE berjabatan Teknisi (`position like %teknisi%`,
-  jadi Supervisor/CSO tidak ikut) yang bukan leader team
-  (`SiteController::backupTechnicianOptions()`), dibatasi teknisi yang menjadi
-  PIC di site milik **customer yang sama** dengan site ini — penyaringan di form
-  mengikuti pilihan Customer; sebelum Customer dipilih daftarnya kosong. Boleh lebih dari satu; baris kosong diabaikan.
+  model `SiteBackupTechnician`): daftar teknisi cadangan site, dipilih dari user
+  ber-role technician di team customer site (lihat butir di atas) yang bukan
+  leader team (`SiteController::backupTechnicianOptions()`). Boleh lebih dari
+  satu; baris kosong diabaikan.
   Daftar yang dikirim menggantikan isi lama (`syncBackupTechnicians()`); form
   yang tidak mengirim `backup_technicians` tidak menyentuh data lama. FK
   `site_id` CASCADE, `user_id` RESTRICT. **Tidak** ditampilkan sebagai kolom di
