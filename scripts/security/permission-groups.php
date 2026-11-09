@@ -21,6 +21,7 @@ const LABEL = [
     'bank|admin,superadmin'                                               => ['kelola', 'Kelola master Bank'],
     'bank|admin,guest,superadmin'                                         => ['lihat', 'Lihat master Bank'],
     'beneficiaries|superadmin'                                            => ['kelola', 'Ubah/hapus Beneficiary & PIC-nya'],
+    'master-pic|superadmin'                                               => ['kelola', 'Ubah/hapus PIC'],
     'budget-plan|manager,superadmin'                                      => ['pengaju', 'Buat, ubah, ajukan & revisi Budget Plan'],
     'budget-plan|approver,finance,finance_manager,head,superadmin'        => ['bulk', 'Setujui/tolak Budget Plan secara massal'],
     'budget-plan|approver,superadmin'                                     => ['ceo', 'Approval CEO Budget Plan'],

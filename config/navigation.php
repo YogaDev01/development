@@ -242,12 +242,15 @@ return [
             'active' => ['customer*'],
             'menu'   => 'customer',
         ],
-        'beneficiary' => [
-            'label'  => 'Beneficiary',
-            'icon'   => 'fas fa-hand-holding-usd',
-            'url'    => '/beneficiaries',
-            'active' => ['beneficiaries*'],
-            'menu'   => 'beneficiaries',
+        // Gabungan Beneficiary & PIC (2026-11-09): PIC sebagai induk,
+        // beneficiary sebagai detailnya. URL lama /beneficiaries & /master-pic
+        // dialihkan ke sini.
+        'pic-beneficiary' => [
+            'label'  => 'PIC & Beneficiary',
+            'icon'   => 'fas fa-user-tag',
+            'url'    => '/pic-beneficiary',
+            'active' => ['pic-beneficiary*', 'beneficiaries*', 'master-pic*'],
+            'menu'   => 'pic-beneficiary',
         ],
         'source-fund' => [
             'label'  => 'Source Funds',
@@ -354,13 +357,6 @@ return [
             'active' => ['wilayah*'],
             'menu'   => 'wilayah',
         ],
-        'pic' => [
-            'label'  => 'PIC',
-            'icon'   => 'fas fa-user-tag',
-            'url'    => '/master-pic',
-            'active' => ['master-pic*'],
-            'menu'   => 'master-pic',
-        ],
         'team' => [
             'label'  => 'Team',
             'icon'   => 'fas fa-user-friends',
@@ -444,7 +440,7 @@ return [
         ],
         'Personal Master' => [
             'icon'  => 'fas fa-user-friends',
-            'items' => ['beneficiary', 'employee', 'pic', 'team', 'user-access'],
+            'items' => ['pic-beneficiary', 'employee', 'team', 'user-access'],
         ],
         'Operation Master' => [
             'icon'  => 'fas fa-cogs',

@@ -42,6 +42,7 @@ const MODUL = [
     'finance-summary-executive' => 'Finance Summary',
     'groups'                    => 'Cluster Group',
     'invoice-cash-receipt'      => 'Invoice & Cash Receipt',
+    'master-pic'                => 'PIC',
     'project'                   => 'Purchase Order',
     'role'                      => 'Role & Menu Access',
     'security'                  => 'Konsol Keamanan',

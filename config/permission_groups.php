@@ -53,9 +53,8 @@ return [
       1 => 'beneficiaries.edit-data',
       2 => 'beneficiaries.move-pic',
       3 => 'beneficiaries.pic-attach',
-      4 => 'beneficiaries.pic-destroy',
-      5 => 'beneficiaries.picker',
-      6 => 'beneficiaries.update',
+      4 => 'beneficiaries.picker',
+      5 => 'beneficiaries.update',
     ],
   ],
   'budget-plan.bulk' => 
@@ -398,6 +397,17 @@ return [
     'permissions' => 
     [
       0 => 'invoice-cash-receipt.verify',
+    ],
+  ],
+  'master-pic.kelola' => 
+  [
+    'module' => 'master-pic',
+    'label' => 'Ubah/hapus PIC',
+    'permissions' => 
+    [
+      0 => 'master-pic.destroy',
+      1 => 'master-pic.edit-data',
+      2 => 'master-pic.update',
     ],
   ],
   'project.aktivasi' => 

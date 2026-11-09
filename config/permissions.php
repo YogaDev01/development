@@ -23,6 +23,7 @@ return [
   'finance-summary-executive' => 'Finance Summary',
   'groups' => 'Cluster Group',
   'invoice-cash-receipt' => 'Invoice & Cash Receipt',
+  'master-pic' => 'PIC',
   'project' => 'Purchase Order',
   'role' => 'Role & Menu Access',
   'security' => 'Konsol Keamanan',
@@ -192,15 +193,6 @@ return [
   [
     'module' => 'beneficiaries',
     'label' => 'beneficiaries.pic-attach',
-    'seed_roles' => 
-    [
-      0 => 'superadmin',
-    ],
-  ],
-  'beneficiaries.pic-destroy' => 
-  [
-    'module' => 'beneficiaries',
-    'label' => 'beneficiaries.pic-destroy',
     'seed_roles' => 
     [
       0 => 'superadmin',
@@ -1522,6 +1514,33 @@ return [
       0 => 'accounting',
       1 => 'finance_manager',
       2 => 'superadmin',
+    ],
+  ],
+  'master-pic.destroy' => 
+  [
+    'module' => 'master-pic',
+    'label' => 'master-pic.destroy',
+    'seed_roles' => 
+    [
+      0 => 'superadmin',
+    ],
+  ],
+  'master-pic.edit-data' => 
+  [
+    'module' => 'master-pic',
+    'label' => 'master-pic.edit-data',
+    'seed_roles' => 
+    [
+      0 => 'superadmin',
+    ],
+  ],
+  'master-pic.update' => 
+  [
+    'module' => 'master-pic',
+    'label' => 'master-pic.update',
+    'seed_roles' => 
+    [
+      0 => 'superadmin',
     ],
   ],
   'project.activate' => 

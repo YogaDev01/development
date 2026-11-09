@@ -21,7 +21,7 @@
         <x-tw.page-header title="Daftar Bank"
             description="Daftar bank beserta kode dan default method pembayarannya.">
             <x-slot:actions>
-                <x-tw.button href="{{ url('/beneficiaries') }}" variant="secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Kembali</x-tw.button>
+                <x-tw.button href="{{ url('/pic-beneficiary') }}" variant="secondary"><i class="fas fa-arrow-left" aria-hidden="true"></i> Kembali</x-tw.button>
                 <x-tw.button id="btnTambah" class="ts-add-btn tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Bank</x-tw.button>
             </x-slot:actions>
         </x-tw.page-header>

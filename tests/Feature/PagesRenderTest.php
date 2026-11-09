@@ -37,7 +37,7 @@ class PagesRenderTest extends TestCase
             'todo list'          => ['/todo-list'],
             'finance summary'    => ['/finance-summary'],
             'customer'           => ['/customer'],
-            'beneficiary'        => ['/beneficiaries'],
+            'pic & beneficiary'  => ['/pic-beneficiary'],
             'bank'               => ['/bank'],
             'cluster'            => ['/cluster'],
             'cost center'        => ['/cost-center'],

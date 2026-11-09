@@ -55,10 +55,12 @@ class MenuItemSeeder extends Seeder
                 'sort_order' => 12,
             ],
             [
-                'key'        => 'beneficiaries',
-                'label'      => 'Beneficiaries',
-                'icon'       => 'fas fa-user-friends',
-                'route'      => '/beneficiaries',
+                // Gabungan menu lama 'beneficiaries' & 'master-pic' (2026-11-09,
+                // migrasi 2026_11_09_000400).
+                'key'        => 'pic-beneficiary',
+                'label'      => 'PIC & Beneficiary',
+                'icon'       => 'fas fa-user-tag',
+                'route'      => '/pic-beneficiary',
                 'section'    => 'master',
                 'sort_order' => 13,
             ],
@@ -69,14 +71,6 @@ class MenuItemSeeder extends Seeder
                 'route'      => '/account',
                 'section'    => 'master',
                 'sort_order' => 15,  // setelah user-access (14)
-            ],
-            [
-                'key'        => 'master-pic',
-                'label'      => 'PIC',
-                'icon'       => 'fas fa-id-badge',
-                'route'      => '/master-pic',
-                'section'    => 'master',
-                'sort_order' => 16,
             ],
             [
                 'key'        => 'source-fund',

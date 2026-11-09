@@ -130,7 +130,7 @@
                         </select>
                         <small class="text-muted d-block mt-1">
                             PIC diambil dari Master PIC. Belum ada di daftar?
-                            <a href="{{ url('/master-pic') }}" target="_blank">Tambah di Master PIC</a>.
+                            <a href="{{ url('/pic-beneficiary') }}" target="_blank">Tambah di PIC &amp; Beneficiary</a>.
                         </small>
                     </div>
                 </div>

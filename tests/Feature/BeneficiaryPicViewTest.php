@@ -2,25 +2,20 @@
 
 namespace Tests\Feature;
 
-use App\Models\Bank;
 use App\Models\Beneficiary;
 use App\Models\MasterPic;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Tests\Support\MakesTesysData;
 use Tests\TestCase;
 
 /**
- * Beneficiary Master — hasil pencarian yang diciutkan per PIC.
+ * Kaitan Beneficiary <-> PIC: Pindah PIC (satu beneficiary) dan Kaitkan
+ * (beberapa beneficiary yang sudah ada ke satu PIC).
  *
- * Mencari nama PIC dulu memuntahkan seluruh beneficiary yang menunjuknya
- * (18 baris untuk satu orang), padahal yang dicari orangnya. Halaman kini
- * membawa ringkasan per PIC dan menampilkannya sebagai satu baris, dengan
- * anggotanya dibuka lewat View.
- *
- * Tombol Hapus pada baris PIC MELEPAS KAITAN, bukan menghapus PIC-nya: baris
- * Master PIC masih dipakai Customer dan Project, jadi layar Beneficiary tidak
- * boleh membuang data acuan milik modul lain.
+ * Sejak halaman PIC & Beneficiary digabung (2026-11-09) ringkasan per PIC
+ * (pic-groups), tab, dan endpoint hapus PIC milik layar Beneficiary sudah
+ * tidak ada — halaman gabungan diuji di PicBeneficiaryPageTest, hapus PIC
+ * lewat master-pic.destroy.
  */
 class BeneficiaryPicViewTest extends TestCase
 {
@@ -48,146 +43,6 @@ class BeneficiaryPicViewTest extends TestCase
         ]);
     }
 
-    /* ------------------------------------------------ RINGKASAN PER PIC */
-
-    public function test_pencarian_pic_mengembalikan_ringkasan_per_pic(): void
-    {
-        $pic = $this->pic('RANI FEBRIANDINI', 'Vendor Management Senior Manager');
-        $this->beneficiary($pic, 'ZULBAIDHA');
-        $this->beneficiary($pic, 'JUNAIDI');
-
-        // Tanpa PIC — tidak boleh ikut masuk ke ringkasan.
-        $this->beneficiary(null, 'TANPA PIC');
-
-        $groups = $this->actingAs($this->userWithRole('superadmin'))
-            ->getJson('/beneficiaries/pic-groups?q=RANI')->assertOk()->json();
-
-        $this->assertCount(1, $groups);
-        $this->assertSame('RANI FEBRIANDINI', $groups[0]['pic']);
-        $this->assertSame('Vendor Management Senior Manager', $groups[0]['position']);
-        $this->assertSame(2, $groups[0]['total']);
-    }
-
-    public function test_pencarian_pic_kosong_jika_tidak_ada_yang_cocok_atau_terlalu_pendek(): void
-    {
-        $this->beneficiary($this->pic('RANI FEBRIANDINI'), 'ZULBAIDHA');
-        $this->beneficiary(null, 'SENDIRIAN');
-
-        $admin = $this->userWithRole('superadmin');
-
-        $this->actingAs($admin)->getJson('/beneficiaries/pic-groups?q=ZZZ')->assertOk()->assertExactJson([]);
-        // Satu huruf tidak dicari (cocok ke hampir semua nama).
-        $this->actingAs($admin)->getJson('/beneficiaries/pic-groups?q=R')->assertOk()->assertExactJson([]);
-    }
-
-    public function test_halaman_tidak_lagi_menanam_ringkasan_pic(): void
-    {
-        $this->beneficiary($this->pic('RANI FEBRIANDINI'), 'ZULBAIDHA');
-
-        $html = $this->actingAs($this->userWithRole('superadmin'))
-            ->get('/beneficiaries')->assertOk()->getContent();
-
-        // Ringkasan diambil lazy lewat /beneficiaries/pic-groups.
-        $this->assertStringContainsString('var PIC_GROUPS = [];', $html);
-    }
-
-    /* ------------------------------------------------- REKENING PIC SENDIRI */
-
-    public function test_rekening_hanya_milik_beneficiary_bukan_pic(): void
-    {
-        /*
-         | Sejak v2.5.0 Master PIC tidak lagi menyimpan bank & nomor rekening
-         | (migrasi 2026_10_01_000020 menghapus master_pics.bank_id dan
-         | account_number): rekening cukup dipegang Beneficiary supaya tidak
-         | ada dua sumber yang bisa berbeda. Uji ini menggantikan uji lama yang
-         | masih mengharapkan rekening PIC ikut tampil.
-         */
-        $bank = Bank::create(['name' => 'BRI', 'code' => '002']);
-
-        $pic = $this->pic('RANI FEBRIANDINI', 'Vendor Management Senior Manager');
-        $this->beneficiary($pic, 'ZULBAIDHA')
-            ->update(['bank_id' => $bank->id, 'account_number' => '0817604612345']);
-
-        $groups = $this->actingAs($this->userWithRole('superadmin'))
-            ->getJson('/beneficiaries/pic-groups?q=RANI')->assertOk()->json();
-
-        $group = collect($groups)->firstWhere('pic', 'RANI FEBRIANDINI');
-
-        $this->assertNotNull($group);
-        $this->assertArrayNotHasKey('bank', $group);
-        $this->assertArrayNotHasKey('account_number', $group);
-
-        // Rekening tetap terlihat - sebagai milik beneficiary-nya.
-        $this->assertSame('0817604612345', $group['items'][0]['account_number']);
-        $this->assertSame('BRI', $group['items'][0]['bank']);
-    }
-
-    /* -------------------------------------------------------- HAPUS PIC */
-
-    public function test_superadmin_bisa_menghapus_seluruh_data_pic(): void
-    {
-        $rani = $this->pic('RANI FEBRIANDINI');
-        $lain = $this->pic('INTAN PUSPITA');
-
-        $a = $this->beneficiary($rani, 'ZULBAIDHA');
-        $b = $this->beneficiary($rani, 'JUNAIDI');
-        $c = $this->beneficiary($lain, 'MILIK PIC LAIN');
-
-        $this->actingAs($this->userWithRole('superadmin'))
-            ->delete('/beneficiaries/pic/' . $rani->id)
-            ->assertRedirect('/beneficiaries');
-
-        // Baris PIC-nya benar-benar hilang.
-        $this->assertNull(MasterPic::find($rani->id));
-
-        // Beneficiary-nya TIDAK ikut terhapus, hanya kehilangan PIC
-        // (pic_id ber-nullOnDelete).
-        $this->assertNotNull(Beneficiary::find($a->id));
-        $this->assertNull($a->refresh()->pic_id);
-        $this->assertNull($b->refresh()->pic_id);
-
-        // PIC lain tidak tersentuh.
-        $this->assertNotNull(MasterPic::find($lain->id));
-        $this->assertSame($lain->id, $c->refresh()->pic_id);
-    }
-
-    public function test_pic_yang_dipakai_project_tidak_bisa_dihapus(): void
-    {
-        $rani = $this->pic('RANI FEBRIANDINI');
-        $this->beneficiary($rani, 'ZULBAIDHA');
-
-        // Penjagaan yang sama dengan MasterPicController::destroy() — dua pintu
-        // ke penghapusan yang sama harus menolak hal yang sama.
-        DB::table('project_pic_links')->insert([
-            'project_id'    => $this->makeProject()->id,
-            'master_pic_id' => $rani->id,
-        ]);
-
-        $this->actingAs($this->userWithRole('superadmin'))
-            ->delete('/beneficiaries/pic/' . $rani->id)
-            ->assertRedirect();
-
-        $this->assertNotNull(MasterPic::find($rani->id));
-    }
-
-    public function test_manager_tidak_boleh_menghapus_pic(): void
-    {
-        $rani = $this->pic('RANI FEBRIANDINI');
-        $a    = $this->beneficiary($rani, 'ZULBAIDHA');
-
-        // Manager boleh melihat & menambah beneficiary, tapi tidak mengubah
-        // baris lama — aturan yang sama dengan Edit/Hapus (MANAGE_ROLES).
-        $manager = $this->userWithRole('manager');
-        $this->giveMenuAccess($manager->role, 'beneficiaries');
-
-        $this->actingAs($manager)
-            ->delete('/beneficiaries/pic/' . $rani->id)
-            ->assertForbidden();
-
-        $this->assertNotNull(MasterPic::find($rani->id));
-        $this->assertSame($rani->id, $a->refresh()->pic_id);
-    }
-
     /* ------------------------------------------------------- PINDAH PIC */
 
     public function test_beneficiary_bisa_dipindahkan_ke_pic_lain(): void
@@ -199,7 +54,7 @@ class BeneficiaryPicViewTest extends TestCase
 
         $this->actingAs($this->userWithRole('superadmin'))
             ->put('/beneficiaries/' . $b->id . '/move-pic', ['pic_id' => $tujuan->id])
-            ->assertRedirect('/beneficiaries');
+            ->assertRedirect('/pic-beneficiary');
 
         $this->assertSame($tujuan->id, $b->refresh()->pic_id);
     }
@@ -244,36 +99,13 @@ class BeneficiaryPicViewTest extends TestCase
         $b      = $this->beneficiary($asal, 'ZULBAIDHA');
 
         $manager = $this->userWithRole('manager');
-        $this->giveMenuAccess($manager->role, 'beneficiaries');
+        $this->giveMenuAccess($manager->role, 'pic-beneficiary');
 
         $this->actingAs($manager)
             ->put('/beneficiaries/' . $b->id . '/move-pic', ['pic_id' => $tujuan->id])
             ->assertForbidden();
 
         $this->assertSame($asal->id, $b->refresh()->pic_id);
-    }
-
-    /* ----------------------------------------------------- TOMBOL CLEAR */
-
-    public function test_tombol_clear_mengosongkan_pencarian_tabel(): void
-    {
-        /*
-        | Penjaga di tingkat sumber, bukan perilaku.
-        |
-        | Tombol Clear dulu hanya mengosongkan isi kotak pencarian tanpa
-        | menyuruh DataTables menggambar ulang, sehingga namanya hilang tapi
-        | tabel tetap memperlihatkan hasil pencarian sebelumnya. Perilakunya
-        | hanya bisa diuji sungguhan lewat peramban; yang bisa dijaga di sini
-        | adalah barisnya tidak hilang lagi tanpa sengaja.
-        */
-        $html = $this->actingAs($this->userWithRole('superadmin'))
-            ->get('/beneficiaries')->assertOk()->getContent();
-
-        $posisiTombol = strpos($html, "\$('#btnClearFilterBen').on('click'");
-        $this->assertNotFalse($posisiTombol, 'Penangan tombol Clear tidak ditemukan.');
-
-        $blok = substr($html, $posisiTombol, 600);
-        $this->assertStringContainsString("terapkanPencarian('')", $blok);
     }
 
     /* ---------------------------------------------- TAMBAHKAN KE PIC (attach) */
@@ -297,7 +129,7 @@ class BeneficiaryPicViewTest extends TestCase
             ->post('/beneficiaries/pic/' . $tujuan->id . '/attach', [
                 'beneficiary_ids' => [$a->id, $b->id],
             ])
-            ->assertRedirect('/beneficiaries');
+            ->assertRedirect('/pic-beneficiary');
 
         $this->assertSame($tujuan->id, $a->refresh()->pic_id);
         $this->assertSame($tujuan->id, $b->refresh()->pic_id);
@@ -351,7 +183,7 @@ class BeneficiaryPicViewTest extends TestCase
         $a      = $this->beneficiary(null, 'ZULBAIDHA');
 
         $manager = $this->userWithRole('manager');
-        $this->giveMenuAccess($manager->role, 'beneficiaries');
+        $this->giveMenuAccess($manager->role, 'pic-beneficiary');
 
         $this->actingAs($manager)
             ->post('/beneficiaries/pic/' . $tujuan->id . '/attach', [
@@ -382,7 +214,7 @@ class BeneficiaryPicViewTest extends TestCase
     public function test_manager_tidak_boleh_mengambil_daftar_pemilih(): void
     {
         $manager = $this->userWithRole('manager');
-        $this->giveMenuAccess($manager->role, 'beneficiaries');
+        $this->giveMenuAccess($manager->role, 'pic-beneficiary');
 
         $this->actingAs($manager)->getJson('/beneficiaries/picker')->assertForbidden();
     }
@@ -392,11 +224,11 @@ class BeneficiaryPicViewTest extends TestCase
         $this->pic('RANI FEBRIANDINI');
 
         $html = $this->actingAs($this->userWithRole('superadmin'))
-            ->get('/beneficiaries')->assertOk()->getContent();
+            ->get('/pic-beneficiary')->assertOk()->getContent();
 
         $this->assertStringContainsString('id="modalPicAttach"', $html);
         $this->assertStringContainsString('id="picAttachList"', $html);
-        // Bukan lagi membuka form Tambah Beneficiary biasa.
-        $this->assertStringNotContainsString("\$('#tambahPic').val(picId", $html);
+        // "Kaitkan" memakai endpoint attach, bukan form Tambah Beneficiary.
+        $this->assertStringContainsString("'/pic/' + picId + '/attach'", $html);
     }
 }

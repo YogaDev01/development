@@ -561,7 +561,7 @@ class TroubleTicketController extends Controller
         $budgetDetails = BudgetPlanDetail::with('account:id,name')
             ->whereIn('budget_plan_id', $budgetPlans->pluck('id'))
             ->orderBy('id')
-            ->get(['id', 'budget_plan_id', 'account_id', 'deskripsi']);
+            ->get(['id', 'budget_plan_id', 'account_id', 'deskripsi', 'unit']);
 
         /* Cluster hanya ditanyakan saat budget plan-nya budget PROYEK dan
            project itu punya lebih dari satu cluster aktif — persis aturan

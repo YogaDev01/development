@@ -15,14 +15,9 @@
         "auth",
         "role:superadmin,admin"
     ],
-    "DELETE /beneficiaries/pic/{picId}": [
-        "auth",
-        "menu:beneficiaries",
-        "role:superadmin"
-    ],
     "DELETE /beneficiaries/{id}": [
         "auth",
-        "menu:beneficiaries",
+        "menu:pic-beneficiary",
         "role:superadmin"
     ],
     "DELETE /budget-plan/{id}": [
@@ -111,7 +106,8 @@
     ],
     "DELETE /master-pic/{id}": [
         "auth",
-        "menu:master-pic"
+        "menu:pic-beneficiary",
+        "role:superadmin"
     ],
     "DELETE /network/{id}": [
         "auth",
@@ -273,24 +269,16 @@
     ],
     "GET /beneficiaries": [
         "auth",
-        "menu:beneficiaries"
-    ],
-    "GET /beneficiaries/pic-groups": [
-        "auth",
-        "menu:beneficiaries"
+        "menu:pic-beneficiary"
     ],
     "GET /beneficiaries/picker": [
         "auth",
-        "menu:beneficiaries",
+        "menu:pic-beneficiary",
         "role:superadmin"
-    ],
-    "GET /beneficiaries/rows/{part}": [
-        "auth",
-        "menu:beneficiaries"
     ],
     "GET /beneficiaries/{id}/edit-data": [
         "auth",
-        "menu:beneficiaries",
+        "menu:pic-beneficiary",
         "role:superadmin"
     ],
     "GET /budget-plan": [
@@ -670,15 +658,16 @@
     ],
     "GET /master-pic": [
         "auth",
-        "menu:master-pic"
+        "menu:pic-beneficiary"
     ],
     "GET /master-pic/options-json": [
         "auth",
-        "menu:master-pic"
+        "menu:pic-beneficiary"
     ],
     "GET /master-pic/{id}/edit-data": [
         "auth",
-        "menu:master-pic"
+        "menu:pic-beneficiary",
+        "role:superadmin"
     ],
     "GET /network": [
         "auth",
@@ -716,6 +705,10 @@
     "GET /payroll-run/{id}/export": [
         "auth",
         "menu:payroll-run"
+    ],
+    "GET /pic-beneficiary": [
+        "auth",
+        "menu:pic-beneficiary"
     ],
     "GET /profile": [
         "auth"
@@ -1111,11 +1104,11 @@
     ],
     "POST /beneficiaries": [
         "auth",
-        "menu:beneficiaries"
+        "menu:pic-beneficiary"
     ],
     "POST /beneficiaries/pic/{picId}/attach": [
         "auth",
-        "menu:beneficiaries",
+        "menu:pic-beneficiary",
         "role:superadmin"
     ],
     "POST /budget-plan": [
@@ -1578,7 +1571,7 @@
     ],
     "POST /master-pic": [
         "auth",
-        "menu:master-pic"
+        "menu:pic-beneficiary"
     ],
     "POST /network": [
         "auth",
@@ -1980,12 +1973,12 @@
     ],
     "PUT /beneficiaries/{id}": [
         "auth",
-        "menu:beneficiaries",
+        "menu:pic-beneficiary",
         "role:superadmin"
     ],
     "PUT /beneficiaries/{id}/move-pic": [
         "auth",
-        "menu:beneficiaries",
+        "menu:pic-beneficiary",
         "role:superadmin"
     ],
     "PUT /budget-plan/{id}": [
@@ -2046,7 +2039,8 @@
     ],
     "PUT /master-pic/{id}": [
         "auth",
-        "menu:master-pic"
+        "menu:pic-beneficiary",
+        "role:superadmin"
     ],
     "PUT /network/{id}": [
         "auth",

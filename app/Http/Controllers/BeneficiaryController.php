@@ -4,9 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
-use App\Models\Bank;
 use App\Models\Beneficiary;
 use App\Models\MasterPic;
 use App\Models\UserActivityLog;
@@ -16,7 +14,7 @@ class BeneficiaryController extends Controller
     /**
      * Role yang boleh MENGUBAH & MENGHAPUS penerima dana.
      *
-     * Melihat & menambah ditentukan gerbang 'menu:beneficiaries' di
+     * Melihat & menambah ditentukan gerbang 'menu:pic-beneficiary' di
      * routes/web.php; konstanta ini khusus untuk lapis kedua di atasnya.
      * Manager sengaja TIDAK di sini: ia boleh mendaftarkan penerima dana baru,
      * tapi baris lama sudah menempel pada Cost Request yang berjalan.
@@ -49,202 +47,15 @@ class BeneficiaryController extends Controller
         abort_unless($this->canManage(), 403, 'Unauthorized - Insufficient permissions');
     }
 
-    /**
-     * Query dasar daftar Beneficiary dengan filter dari URL (kategori, status,
-     * pencarian). Dipakai index() dan rows() supaya angka badge tab selalu
-     * sama dengan isi tabel.
+    /*
+     | Daftar (index) pindah ke PicBeneficiaryController sejak Beneficiary &
+     | PIC digabung (2026-11-09). Controller ini tinggal menangani tulis
+     | beneficiary + pemilih/pemindahan PIC-nya.
      */
-    private function filteredQuery(Request $request)
-    {
-        $category = $request->query('category');
-        $status   = $request->query('status');
-        $search   = trim((string) $request->query('q', ''));
-
-        return Beneficiary::query()
-            ->when(in_array($category, Beneficiary::CATEGORIES, true),
-                fn ($q) => $q->where('category', $category))
-            ->when(in_array($status, ['ACTIVE', 'INACTIVE'], true),
-                fn ($q) => $q->where('status', $status))
-            ->when($search !== '', function ($q) use ($search) {
-                $like = '%' . $search . '%';
-                $q->where(function ($w) use ($like) {
-                    $w->where('nickname', 'like', $like)
-                      ->orWhere('complete_name', 'like', $like)
-                      ->orWhere('account_number', 'like', $like)
-                      ->orWhere('contact', 'like', $like)
-                      // Cari juga lewat relasi PIC & Bank.
-                      ->orWhereHas('pic', fn ($r) => $r->where('pic', 'like', $like))
-                      ->orWhereHas('bank', fn ($r) => $r->where('name', 'like', $like));
-                });
-            });
-    }
-
-    /** Ambil baris satu "bagian": internal = kategori INTERNAL, outsider = sisanya. */
-    private function rowsFor($query, array $parts)
-    {
-        $hanya = count($parts) === 1 ? $parts[0] : null;
-
-        return $query->with(['bank', 'pic'])
-            ->when($hanya === 'internal',
-                fn ($q) => $q->where('category', 'INTERNAL'))
-            ->when($hanya === 'outsider',
-                fn ($q) => $q->where(fn ($w) => $w->where('category', '<>', 'INTERNAL')->orWhereNull('category')))
-            ->latest()
-            ->get();
-    }
 
     /**
-     * Display a listing of the resource.
-     *
-     * Hanya baris untuk tab yang sedang dibuka yang dimuat; tab lain diambil
-     * lewat rows() saat pertama kali dibuka (halaman lebih ringan — ribuan
-     * baris tidak lagi dirender sekaligus).
-     */
-    public function index(Request $request)
-    {
-        $category = $request->query('category');
-        $status   = $request->query('status');
-        $search   = trim((string) $request->query('q', ''));
-
-        /*
-        | TAB utama — mengikuti pola PIC Master.
-        |
-        | Internal = kategori INTERNAL; Outsider = semua yang BUKAN internal
-        | (EXTERNAL + BILLING, termasuk kategori baru apa pun nanti); Database
-        | memuat semuanya.
-        */
-        $tab = in_array($request->query('tab'), ['internal', 'outsider', 'db'], true)
-            ? $request->query('tab')
-            : 'internal';
-
-        $parts = $tab === 'db' ? ['internal', 'outsider'] : [$tab];
-
-        $beneficiaries = $this->rowsFor($this->filteredQuery($request), $parts);
-
-        $banks = Bank::orderBy('name')->get();
-        $pics  = MasterPic::where('status', 'ACTIVE')->orderBy('pic')->get();
-
-        // Ringkasan kartu: dari baris yang dimuat (JS menghitung ulang tiap
-        // tabel digambar, termasuk setelah tab lain dimuat).
-        $summary = [
-            'total'    => $beneficiaries->count(),
-            'active'   => $beneficiaries->where('status', 'ACTIVE')->count(),
-            'inactive' => $beneficiaries->where('status', 'INACTIVE')->count(),
-            'internal' => $beneficiaries->where('category', 'INTERNAL')->count(),
-            'external' => $beneficiaries->where('category', 'EXTERNAL')->count(),
-            'billing'  => $beneficiaries->where('category', 'BILLING')->count(),
-        ];
-
-        $filters = ['category' => $category, 'status' => $status, 'q' => $search];
-
-        // Angka badge tab: satu query agregat, bukan memuat semua baris.
-        $agg = $this->filteredQuery($request)->toBase()
-            ->selectRaw("COUNT(*) as total, COALESCE(SUM(category = 'INTERNAL'), 0) as internal")
-            ->first();
-
-        $tabCounts = [
-            'internal' => (int) $agg->internal,
-            'outsider' => (int) $agg->total - (int) $agg->internal,
-            'db'       => (int) $agg->total,
-        ];
-
-        /*
-         | Dikirim ke view supaya tombol Edit/Hapus (dan modal Edit) tidak
-         | dirender untuk role yang akan ditolak middleware. Ini KENYAMANAN,
-         | bukan pengamanan — penjaga sebenarnya ada di routes/web.php dan di
-         | update()/destroy() bawah.
-         */
-        $canManage = $this->canManage();
-
-        return view('beneficiaries.index', compact(
-            'beneficiaries', 'banks', 'pics', 'summary', 'filters', 'canManage', 'tab', 'tabCounts', 'parts'
-        ));
-    }
-
-    /**
-     * Baris tabel (HTML) untuk satu bagian — dipanggil JS saat tab External /
-     * Database pertama kali dibuka. Filter URL yang sama dengan halaman ikut
-     * diteruskan.
-     * GET /beneficiaries/rows/{part}   part = internal | outsider
-     */
-    public function rows(Request $request, string $part)
-    {
-        abort_unless(in_array($part, ['internal', 'outsider'], true), 404);
-
-        return view('beneficiaries._rows', [
-            'beneficiaries' => $this->rowsFor($this->filteredQuery($request), [$part]),
-            'canManage'     => $this->canManage(),
-        ]);
-    }
-
-    /**
-     * Ringkasan per PIC — dipakai saat kata pencarian cocok dengan nama PIC.
-     *
-     * Mencari "RANI FEBRIANDINI" dulu memuntahkan 18 baris beneficiary yang
-     * isinya berulang: yang dicari orangnya, bukan 18 penerima dana itu satu
-     * per satu. Hasil ini membuatnya bisa diciutkan jadi SATU baris per PIC,
-     * dengan anggotanya dibuka lewat tombol View.
-     *
-     * Dihitung di server hanya untuk PIC yang cocok dengan kata cari (bukan
-     * untuk seluruh beneficiary di setiap pembukaan halaman). Filter kategori
-     * & status dari URL tetap berlaku.
-     * GET /beneficiaries/pic-groups?q=
-     */
-    public function picGroups(Request $request)
-    {
-        $term = trim((string) $request->query('q', ''));
-
-        if (mb_strlen($term) < 2) {
-            return response()->json([]);
-        }
-
-        $category = $request->query('category');
-        $status   = $request->query('status');
-
-        $rows = Beneficiary::with(['bank', 'pic'])
-            ->whereHas('pic', fn ($r) => $r->where('pic', 'like', '%' . $term . '%'))
-            ->when(in_array($category, Beneficiary::CATEGORIES, true),
-                fn ($q) => $q->where('category', $category))
-            ->when(in_array($status, ['ACTIVE', 'INACTIVE'], true),
-                fn ($q) => $q->where('status', $status))
-            ->latest()
-            ->get();
-
-        $groups = $rows
-            ->filter(fn ($b) => $b->pic !== null)
-            ->groupBy('pic_id')
-            ->map(function ($items) {
-                $pic = $items->first()->pic;
-
-                return [
-                    'id'       => $pic->id,
-                    'pic'      => $pic->pic,
-                    'position' => $pic->position,
-                    'type'     => $pic->type,
-                    'phone'    => $pic->phone,
-                    'email'    => $pic->email,
-                    'total'    => $items->count(),
-                    'items'    => $items->map(fn ($b) => [
-                        'id'             => $b->id,
-                        'nickname'       => $b->nickname,
-                        'complete_name'  => $b->complete_name,
-                        'category'       => $b->category,
-                        'bank'           => $b->bank->name ?? '-',
-                        'account_number' => $b->account_number ?: '-',
-                        'contact'        => $b->contact ?: '-',
-                        'status'         => $b->status,
-                    ])->values(),
-                ];
-            })
-            ->sortBy('pic')
-            ->values();
-
-        return response()->json($groups);
-    }
-
-    /**
-     * Daftar ringkas SELURUH beneficiary untuk pemilih "Tambahkan Beneficiary"
-     * di modal Detail PIC — mengaitkan baris yang SUDAH ADA ke PIC yang sedang
+     * Daftar ringkas SELURUH beneficiary untuk pemilih "Kaitkan Beneficiary"
+     * di detail PIC (halaman PIC & Beneficiary) — mengaitkan baris yang SUDAH ADA ke PIC yang sedang
      * dibuka. Diambil saat modal itu dibuka (bukan di tiap muat halaman).
      *
      * Sengaja TIDAK mengikuti filter kategori/status/pencarian di layar:
@@ -267,45 +78,6 @@ class BeneficiaryController extends Controller
                     'pic_id'        => $b->pic_id,
                     'pic_name'      => $b->pic->pic ?? null,
                 ])
-        );
-    }
-
-    /**
-     * Hapus satu PIC beserta seluruh datanya di Master PIC.
-     *
-     * Beneficiary-nya TIDAK ikut terhapus. Kolom pic_id ber-nullOnDelete
-     * (migrasi 2026_09_20_000001), jadi baris yang menunjuk PIC ini otomatis
-     * kembali tanpa PIC — penerima dananya sendiri masih melekat pada Cost
-     * Request yang berjalan dan tidak boleh hilang hanya karena penanggung
-     * jawabnya dihapus.
-     *
-     * Penjagaan Customer & Project disalin dari MasterPicController::destroy()
-     * supaya satu PIC tidak bisa dihapus dari layar Beneficiary padahal modul
-     * lain masih memakainya — dua pintu ke penghapusan yang sama harus menolak
-     * hal yang sama.
-     */
-    public function destroyPic($picId)
-    {
-        $this->pastikanBolehMengelola();
-
-        $pic = MasterPic::findOrFail($picId);
-
-        if (DB::table('customer_pic_links')->where('master_pic_id', $pic->id)->exists()) {
-            return back()->with('error', 'PIC tidak bisa dihapus karena sudah dipakai pada Customer.');
-        }
-
-        if (DB::table('project_pic_links')->where('master_pic_id', $pic->id)->exists()) {
-            return back()->with('error', 'PIC tidak bisa dihapus karena sudah dipakai pada Project.');
-        }
-
-        $jumlah = Beneficiary::where('pic_id', $pic->id)->count();
-        $nama   = $pic->pic;
-
-        $pic->delete();
-
-        return redirect('/beneficiaries')->with(
-            'success',
-            'PIC ' . $nama . ' dihapus. ' . $jumlah . ' beneficiary kini tanpa PIC.'
         );
     }
 
@@ -341,7 +113,7 @@ class BeneficiaryController extends Controller
             ? 'PIC ' . MasterPic::whereKey($picId)->value('pic')
             : 'tanpa PIC';
 
-        return redirect('/beneficiaries')->with(
+        return redirect('/pic-beneficiary')->with(
             'success',
             $beneficiary->nickname . ' dipindahkan ke ' . $tujuan . '.'
         );
@@ -352,11 +124,10 @@ class BeneficiaryController extends Controller
      *
      * Kebalikan dari movePic(): di sana satu beneficiary dipindah dari sisi
      * baris beneficiary-nya sendiri; di sini beberapa baris sekaligus ditarik
-     * masuk dari sisi PIC-nya — dipakai tombol "Tambahkan Beneficiary" di
-     * dalam modal Detail PIC.
+     * masuk dari sisi PIC-nya — dipakai tombol "Kaitkan" di detail PIC.
      *
      * TIDAK membuat baris baru. Yang mengetik nickname baru tetap lewat
-     * tombol "Tambah Beneficiary" di toolbar (store()) — ini murni memindahkan
+     * tombol "Tambah Beneficiary" (store()) — ini murni memindahkan
      * kepemilikan PIC pada baris yang sudah terdaftar.
      */
     public function attachToPic(Request $request, $picId)
@@ -373,7 +144,7 @@ class BeneficiaryController extends Controller
         $jumlah = Beneficiary::whereIn('id', $request->beneficiary_ids)
             ->update(['pic_id' => $pic->id]);
 
-        return redirect('/beneficiaries')->with(
+        return redirect('/pic-beneficiary')->with(
             'success',
             $jumlah . ' beneficiary ditambahkan ke PIC ' . $pic->pic . '.'
         );
@@ -424,7 +195,7 @@ class BeneficiaryController extends Controller
 
         UserActivityLog::record('master_data', 'create', 'Menambah Beneficiary ' . $beneficiary->nickname, $beneficiary);
 
-        return redirect('/beneficiaries')
+        return redirect('/pic-beneficiary')
             ->with('success', 'Beneficiary berhasil ditambahkan');
     }
 
@@ -507,7 +278,7 @@ class BeneficiaryController extends Controller
             $changes
         );
 
-        return redirect('/beneficiaries')
+        return redirect('/pic-beneficiary')
             ->with('success', 'Beneficiary berhasil diupdate');
     }
 
@@ -534,7 +305,7 @@ class BeneficiaryController extends Controller
 
         UserActivityLog::record('master_data', 'delete', 'Menghapus Beneficiary ' . $nickname);
 
-        return redirect('/beneficiaries')
+        return redirect('/pic-beneficiary')
             ->with('success', 'Beneficiary berhasil dihapus');
     }
 }

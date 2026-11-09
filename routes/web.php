@@ -8,6 +8,7 @@ use App\Http\Controllers\ClusterController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\BeneficiaryController;
 use App\Http\Controllers\MasterPicController;
+use App\Http\Controllers\PicBeneficiaryController;
 use App\Http\Controllers\SourceFundController;
 use App\Http\Controllers\BankController;
 use App\Http\Controllers\CostCenterController;
@@ -378,90 +379,71 @@ Route::middleware('auth')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | MASTER DATA - Beneficiaries
+    | MASTER DATA - PIC & Beneficiary (gabungan, 2026-11-09)
     |--------------------------------------------------------------------------
+    | Satu halaman, satu kunci menu 'pic-beneficiary' (migrasi
+    | 2026_11_09_000400 menggantikan 'beneficiaries' & 'master-pic'). PIC
+    | menjadi induk, beneficiary menjadi detailnya.
+    |
     | DUA TINGKAT KEWENANGAN, sengaja dipisah:
     |
-    |   menu:beneficiaries   -> boleh MELIHAT daftar & MENAMBAH penerima dana
-    |   + role:superadmin    -> boleh MENGUBAH & MENGHAPUS
+    |   menu:pic-beneficiary -> boleh MELIHAT daftar & MENAMBAH PIC/beneficiary
+    |   + role:superadmin    -> boleh MENGUBAH, MENGHAPUS, MEMINDAH & MENGAITKAN
     |
-    | Gerbang 'menu' sendirian tidak cukup untuk aturan ini: ia bersifat
-    | semua-atau-tidak-sama-sekali. Manager perlu bisa mendaftarkan penerima
-    | dana baru saat membuat Cost Request, tapi tidak boleh menyentuh baris
-    | lama — Beneficiary dipakai Cost Request yang sudah disetujui, jadi
-    | menyunting nomor rekening sebuah baris diam-diam mengubah arti dokumen
-    | yang sudah berjalan.
+    | Gerbang 'menu' sendirian tidak cukup: ia semua-atau-tidak-sama-sekali.
+    | Manager perlu mendaftarkan penerima dana baru saat membuat Cost Request,
+    | tapi tidak boleh menyentuh baris lama — Beneficiary dipakai Cost Request
+    | yang sudah disetujui, dan PIC menentukan pagu Cash Advance serta dipakai
+    | Customer/Project/Site.
     |
-    | Daftar role di lapis kedua harus SAMA PERSIS dengan
-    | BeneficiaryController::MANAGE_ROLES — konstanta itu yang menentukan
-    | tombol Edit & Hapus dirender atau tidak. Kalau keduanya berbeda,
-    | gejalanya membingungkan: tombolnya terlihat lalu menabrak 403, atau
-    | sebaliknya hilang padahal role-nya berhak.
+    | Daftar role lapis kedua harus SAMA PERSIS dengan
+    | AccessRoles::BENEFICIARY_MANAGE (beneficiaries.*) dan
+    | AccessRoles::PIC_MANAGE (master-pic.*) — konstanta itu yang menentukan
+    | tombol dirender atau tidak.
     |
-    | Route 'beneficiaries.create', 'beneficiaries.edit' dan
-    | 'beneficiaries.show' DIHAPUS di sini: ketiganya sudah mati sejak lama —
-    | dua yang pertama me-return view('beneficiaries.create'/'edit') yang
-    | tidak pernah ada (formulirnya modal di dalam index), dan yang terakhir
-    | menunjuk BeneficiaryController@show yang juga tidak ada. Membiarkannya
-    | berarti Manager yang kini boleh masuk bisa menabrak error 500 lewat URL.
+    | URL lama /beneficiaries & /master-pic (GET) dialihkan ke halaman
+    | gabungan supaya bookmark & tautan lama tetap bekerja.
     */
-    Route::middleware('menu:beneficiaries')->group(function () {
-        Route::get('beneficiaries',  [BeneficiaryController::class, 'index'])->name('beneficiaries.index');
-        Route::post('beneficiaries', [BeneficiaryController::class, 'store'])->name('beneficiaries.store');
+    Route::middleware('menu:pic-beneficiary')->group(function () {
+        Route::get('pic-beneficiary', [PicBeneficiaryController::class, 'index'])->name('pic-beneficiary.index');
 
-        // Pemuatan lazy untuk halaman index: baris tab External/Database dan
-        // ringkasan per PIC diambil saat dibutuhkan, bukan di tiap muat halaman.
-        Route::get('beneficiaries/rows/{part}', [BeneficiaryController::class, 'rows'])->name('beneficiaries.rows');
-        Route::get('beneficiaries/pic-groups',  [BeneficiaryController::class, 'picGroups'])->name('beneficiaries.pic-groups');
+        // GET saja — Route::redirect() mendaftarkan semua method dan akan
+        // bertabrakan dengan POST beneficiaries / master-pic di bawah.
+        Route::get('beneficiaries', fn () => redirect('/pic-beneficiary'));
+        Route::get('master-pic',    fn () => redirect('/pic-beneficiary'));
+
+        // Menambah — terbuka untuk semua pemegang menu.
+        Route::post('beneficiaries', [BeneficiaryController::class, 'store'])->name('beneficiaries.store');
+        Route::post('master-pic',    [MasterPicController::class, 'store'])->name('master-pic.store');
+
+        // Lihat catatan gerbang options-json di atas.
+        Route::get('master-pic/options-json', [MasterPicController::class, 'optionsJson'])->name('master-pic.options-json');
 
         Route::middleware('role:superadmin')->group(function () {
-            // Daftar pemilih "Tambahkan Beneficiary" di modal Detail PIC.
+            // Daftar pemilih "Kaitkan Beneficiary" di detail PIC.
             Route::get('beneficiaries/picker', [BeneficiaryController::class, 'picker'])->name('beneficiaries.picker');
 
             // AJAX pengisi modal Edit — ikut dikunci. Tanpa ini, data lengkap
-            // (nomor rekening, kontak) masih bisa ditarik lewat URL oleh role
-            // yang tombol Edit-nya sudah disembunyikan.
+            // (nomor rekening, kontak, token) masih bisa ditarik lewat URL oleh
+            // role yang tombol Edit-nya sudah disembunyikan.
             Route::get('beneficiaries/{id}/edit-data', [BeneficiaryController::class, 'getEditData'])->name('beneficiaries.edit-data');
-
-            // Menghapus satu PIC beserta datanya di Master PIC. Beneficiary-nya
-            // tidak ikut terhapus, hanya kehilangan PIC (pic_id nullOnDelete).
-            Route::delete('beneficiaries/pic/{picId}', [BeneficiaryController::class, 'destroyPic'])->name('beneficiaries.pic-destroy');
 
             // Memindahkan satu beneficiary ke PIC lain tanpa membuka modal Edit.
             Route::put('beneficiaries/{id}/move-pic', [BeneficiaryController::class, 'movePic'])->name('beneficiaries.move-pic');
 
             // Kebalikan dari move-pic: dari sisi PIC, kaitkan beberapa
-            // beneficiary yang SUDAH ADA sekaligus — tombol "Tambahkan
-            // Beneficiary" di dalam modal Detail PIC. Tidak membuat baris baru.
+            // beneficiary yang SUDAH ADA sekaligus. Tidak membuat baris baru.
             Route::post('beneficiaries/pic/{picId}/attach', [BeneficiaryController::class, 'attachToPic'])->name('beneficiaries.pic-attach');
 
             Route::put('beneficiaries/{id}',    [BeneficiaryController::class, 'update'])->name('beneficiaries.update');
             Route::delete('beneficiaries/{id}', [BeneficiaryController::class, 'destroy'])->name('beneficiaries.destroy');
+
+            // PIC. Menghapus PIC tidak menghapus beneficiary-nya — pic_id
+            // nullOnDelete, baris itu kembali menjadi "Tanpa PIC".
+            Route::get('master-pic/{id}/edit-data', [MasterPicController::class, 'getEditData'])->name('master-pic.edit-data');
+            Route::put('master-pic/{id}',           [MasterPicController::class, 'update'])->name('master-pic.update');
+            Route::delete('master-pic/{id}',        [MasterPicController::class, 'destroy'])->name('master-pic.destroy');
         });
-    });
-
-    /*
-    |--------------------------------------------------------------------------
-    | MASTER DATA - PIC
-    |--------------------------------------------------------------------------
-    */
-    // Lihat catatan gerbang options-json di atas.
-    Route::middleware('menu:master-pic')
-        ->get('master-pic/options-json', [MasterPicController::class, 'optionsJson'])
-        ->name('master-pic.options-json');
-
-    Route::middleware('menu:master-pic')->group(function () {
-        Route::post('master-pic',               [MasterPicController::class, 'store'])->name('master-pic.store');
-
-        // AJAX — wajib sebelum {id}
-        Route::get('master-pic/{id}/edit-data', [MasterPicController::class, 'getEditData'])->name('master-pic.edit-data');
-
-        Route::put('master-pic/{id}',           [MasterPicController::class, 'update'])->name('master-pic.update');
-        Route::delete('master-pic/{id}',        [MasterPicController::class, 'destroy'])->name('master-pic.destroy');
-    });
-
-    Route::middleware('menu:master-pic')->group(function () {
-        Route::get('master-pic', [MasterPicController::class, 'index'])->name('master-pic.index');
     });
 
     /*

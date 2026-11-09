@@ -63,7 +63,7 @@ route ada di fixture.
 | `/app` | 1 | `(tanpa role/menu)` |
 | `/assignment` | 9 | `(tanpa role/menu)` |
 | `/bank` | 7 | `role:superadmin,admin`<br>`role:superadmin,admin,guest` |
-| `/beneficiaries` | 11 | `menu:beneficiaries`<br>`role:superadmin` |
+| `/beneficiaries` | 8 | `menu:pic-beneficiary`<br>`role:superadmin` (sejak 2026-11-09; GET dialihkan ke `/pic-beneficiary`) |
 | `/budget-plan` | 30 | `role:superadmin,manager`<br>`menu:finance-budgeting,project-budgeting`<br>`(tanpa role/menu)`<br>`role:superadmin,head,finance,finance_manager,approver`<br>`role:superadmin,approver`<br>`role:superadmin,finance,finance_manager`<br>`role:superadmin,head` |
 | `/budget-request` | 46 | `role:superadmin,manager,supervisor`<br>`menu:finance-cost-request,project-cost-request`<br>`(tanpa role/menu)`<br>`role:superadmin,head,finance,finance_manager,cost_control,approver`<br>`role:superadmin,finance_manager`<br>`role:superadmin,approver`<br>`role:superadmin,finance,finance_manager,cost_control`<br>`role:superadmin,head`<br>`role:superadmin,manager`<br>`role:superadmin,manager,supervisor,teknisi,staff` |
 | `/cash-management` | 9 | `menu:cash-management` (sejak 2026-11-09) |
@@ -92,11 +92,12 @@ route ada di fixture.
 | `/login` | 2 | `(tanpa role/menu)` |
 | `/logout` | 1 | `(tanpa role/menu)` |
 | `/master-material` | 7 | `menu:master-material` |
-| `/master-pic` | 6 | `menu:master-pic` |
+| `/master-pic` | 6 | `menu:pic-beneficiary`<br>`role:superadmin` (edit-data/update/destroy, sejak 2026-11-09; GET dialihkan ke `/pic-beneficiary`) |
 | `/network` | 5 | `menu:network` |
 | `/notifications` | 3 | `(tanpa role/menu)` |
 | `/panduan` | 2 | `(tanpa role/menu)` |
 | `/payroll-run` | 15 | `menu:payroll-run` |
+| `/pic-beneficiary` | 1 | `menu:pic-beneficiary` (halaman gabungan PIC & Beneficiary, 2026-11-09) |
 | `/profile` | 11 | `(tanpa role/menu)` |
 | `/project` | 36 | `role:superadmin`<br>`role:superadmin,finance,finance_manager,head`<br>`role:superadmin,head`<br>`menu:list-po`<br>`role:superadmin,approver,finance,finance_manager,head`<br>`(tanpa role/menu)`<br>`role:superadmin,approver`<br>`role:superadmin,finance,finance_manager,approver`<br>`role:superadmin,finance,finance_manager` |
 | `/project-monitoring` | 7 | `(tanpa role/menu)` |

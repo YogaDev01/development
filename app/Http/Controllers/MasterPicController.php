@@ -11,99 +11,21 @@ use App\Models\UserActivityLog;
 class MasterPicController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Role yang boleh MENGUBAH & MENGHAPUS PIC. Cermin lapis kedua
+     * 'role:superadmin' pada route master-pic.edit-data/update/destroy.
+     * Daftar (index) pindah ke PicBeneficiaryController sejak PIC &
+     * Beneficiary digabung (2026-11-09).
      */
-    public function index(Request $request)
+    public const MANAGE_ROLES = \App\Support\AccessRoles::PIC_MANAGE;
+
+    /**
+     * Penjaga kedua — middleware route sudah menghadang lebih dulu; diulang
+     * supaya aturan "hanya lihat & tambah" tidak bergantung pada satu baris
+     * berkas route (pola yang sama dengan BeneficiaryController).
+     */
+    private function pastikanBolehMengelola(): void
     {
-        // M-02 — filter & pencarian diproses di server supaya kartu ringkasan
-        // di atas tabel selalu menghitung himpunan yang sama dengan isi tabel.
-        $type   = $request->query('type');
-        $status = $request->query('status');
-        $search = trim((string) $request->query('q', ''));
-        // M-02 — saringan kerja: tampilkan hanya PIC internal yang belum punya
-        // akun User, supaya pemetaannya bisa dikerjakan sampai habis tanpa
-        // memilah-milah sendiri dari daftar penuh.
-        $unlinked = $request->boolean('unlinked');
-
-        /*
-         * Tab utama. Internal ditaruh paling kiri dan menjadi tab bawaan: itu
-         * daftar yang paling sering dikerjakan (pemetaan ke akun User ada di
-         * situ). 'db' = seluruh jenis, termasuk Customer dan Site Keeper yang
-         * tidak punya tab sendiri — di sana filter Type yang memisahkannya.
-         */
-        $tab = $request->query('tab', 'internal');
-        // CATATAN: tab 'external' = semua jenis yang BUKAN internal (Customer,
-        // External, Site Keeper), bukan hanya jenis 'external'. Namanya mengikuti
-        // yang tertulis di layar; pemisahan per jenis tetap lewat filter Type.
-        if (! in_array($tab, ['internal', 'external', 'db'], true)) {
-            $tab = 'internal';
-        }
-
-        $pics = MasterPic::with(['user:id,username,name', 'employee:id,name,employee_number'])
-            ->withCount('beneficiaries')
-            ->when(in_array($type, array_keys(MasterPic::TYPES), true), fn ($q) => $q->where('type', $type))
-            ->when(in_array($status, ['ACTIVE', 'INACTIVE'], true), fn ($q) => $q->where('status', $status))
-            ->when($unlinked, fn ($q) => $q->where('type', 'internal')->whereNull('user_id'))
-            ->when($search !== '', function ($q) use ($search) {
-                $like = '%' . $search . '%';
-                $q->where(fn ($w) => $w->where('pic', 'like', $like)
-                    ->orWhere('position', 'like', $like)
-                    ->orWhere('phone', 'like', $like)
-                    ->orWhere('email', 'like', $like)
-                    ->orWhere('token', 'like', $like)
-                    ->orWhereHas('user', fn ($r) => $r->where('username', 'like', $like)->orWhere('name', 'like', $like)));
-            })
-            ->latest()
-            ->get();
-
-        /*
-         * Seluruh baris dikirim sekali, lalu tab dipilah di browser — berpindah
-         * tab tidak memuat ulang halaman. Karena itu angka per tab ikut dihitung
-         * di sini untuk ketiganya sekaligus; kartu ringkasannya tinggal ditukar
-         * oleh JS saat tab berganti, tanpa permintaan baru ke server.
-         */
-        $isiTab = [
-            'internal' => $pics->where('type', 'internal'),
-            'external' => $pics->where('type', '!=', 'internal'),
-            'db'       => $pics,
-        ];
-
-        // Berapa PIC internal yang BELUM terhubung ke akun User. Sengaja dihitung
-        // dari SELURUH data, bukan dari hasil saringan: angka ini menandai sisa
-        // pekerjaan, jadi ia harus tetap turun saat dikerjakan dan tidak boleh
-        // ikut mengecil hanya karena daftarnya disaring.
-        $unlinked = MasterPic::where('type', 'internal')->whereNull('user_id')->count();
-
-        $summaries = [];
-        foreach ($isiTab as $key => $isi) {
-            $summaries[$key] = [
-                'total'    => $isi->count(),
-                'active'   => $isi->where('status', 'ACTIVE')->count(),
-                'inactive' => $isi->where('status', 'INACTIVE')->count(),
-                'unlinked' => $unlinked,
-            ];
-        }
-
-        // Badge tab dihitung dari seluruh data, bukan dari hasil saringan: ia
-        // menerangkan isi tab yang belum dibuka.
-        $semua = MasterPic::selectRaw('type, count(*) as n')->groupBy('type')->pluck('n', 'type');
-        $tabCounts = [
-            'internal' => (int) ($semua['internal'] ?? 0),
-            'external' => (int) ($semua->sum() - ($semua['internal'] ?? 0)),
-            'db'       => (int) $semua->sum(),
-        ];
-
-        $summary = $summaries[$tab];
-
-        $users = \App\Models\User::orderBy('username')->get(['id', 'username', 'name']);
-        $employees = \App\Models\Employee::where('status', 'ACTIVE')
-            ->orderBy('name')->get(['id', 'name', 'employee_number']);
-
-        $filters = ['type' => $type, 'status' => $status, 'q' => $search, 'unlinked' => $unlinked];
-
-        return view('master-pic.index', compact(
-            'pics', 'summary', 'summaries', 'users', 'employees', 'filters', 'tab', 'tabCounts'
-        ));
+        abort_unless(Auth::user()?->hasRole(self::MANAGE_ROLES) ?? false, 403, 'Unauthorized - Insufficient permissions');
     }
 
     /**
@@ -143,7 +65,7 @@ class MasterPicController extends Controller
 
         UserActivityLog::record('master_data', 'create', 'Menambah PIC ' . $pic->pic, $pic);
 
-        return redirect('/master-pic')
+        return redirect('/pic-beneficiary')
             ->with('success', 'PIC berhasil ditambahkan');
     }
 
@@ -155,6 +77,8 @@ class MasterPicController extends Controller
      */
     public function getEditData($id)
     {
+        $this->pastikanBolehMengelola();
+
         $pic = MasterPic::findOrFail($id);
 
         return response()->json([
@@ -177,6 +101,8 @@ class MasterPicController extends Controller
      */
     public function update(Request $request, $id)
     {
+        $this->pastikanBolehMengelola();
+
         $request->validate([
             'type'        => 'required|in:' . implode(',', array_keys(MasterPic::TYPES)),
             'pic'         => 'required|string|max:255',
@@ -210,7 +136,7 @@ class MasterPicController extends Controller
 
         UserActivityLog::record('master_data', 'update', 'Mengubah PIC ' . $pic->pic, $pic);
 
-        return redirect('/master-pic')
+        return redirect('/pic-beneficiary')
             ->with('success', 'PIC berhasil diupdate');
     }
 
@@ -219,6 +145,8 @@ class MasterPicController extends Controller
      */
     public function destroy($id)
     {
+        $this->pastikanBolehMengelola();
+
         $pic = MasterPic::findOrFail($id);
 
         if (\Illuminate\Support\Facades\DB::table('customer_pic_links')->where('master_pic_id', $pic->id)->exists()) {
@@ -235,12 +163,16 @@ class MasterPicController extends Controller
         }
 
         $picName = $pic->pic;
+        // Beneficiary-nya tidak ikut terhapus: pic_id ber-nullOnDelete
+        // (migrasi 2026_09_20_000001), baris itu kembali menjadi "Tanpa PIC".
+        $jumlahBen = \App\Models\Beneficiary::where('pic_id', $pic->id)->count();
         $pic->delete();
 
         UserActivityLog::record('master_data', 'delete', 'Menghapus PIC ' . $picName);
 
-        return redirect('/master-pic')
-            ->with('success', 'PIC berhasil dihapus');
+        return redirect('/pic-beneficiary')
+            ->with('success', 'PIC ' . $picName . ' dihapus.'
+                . ($jumlahBen > 0 ? ' ' . $jumlahBen . ' beneficiary kini tanpa PIC.' : ''));
     }
 
     /**

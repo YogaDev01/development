@@ -125,6 +125,21 @@ final class AccessRoles
     public const BENEFICIARY_MANAGE = ['superadmin'];
 
     /**
+     * Boleh MENGUBAH & MENGHAPUS baris PIC yang sudah ada (halaman gabungan
+     * "PIC & Beneficiary", menu 'pic-beneficiary').
+     *
+     * Sejak Beneficiary & PIC digabung (2026-11-09) keduanya berada di balik
+     * SATU kunci menu, jadi menu itu hanya membuka MELIHAT & MENAMBAH.
+     * Mengubah/menghapus PIC dikunci lapis kedua 'role:superadmin' pada route
+     * master-pic.edit-data/update/destroy — harus SAMA PERSIS dengan konstanta
+     * ini (tombol Edit/Hapus PIC dirender berdasarkan konstanta ini).
+     *
+     * PIC menentukan pagu Cash Advance (token/nominal) dan dipakai Customer,
+     * Project, Site & Homebase, jadi dibuat sesempit Beneficiary.
+     */
+    public const PIC_MANAGE = ['superadmin'];
+
+    /**
      * Berperan sebagai "Head" di Project Monitoring — bisa ACC/tolak pengajuan
      * penyelesaian milestone. Dipindahkan dari
      * ProjectMonitoringController::HEAD_ROLES.

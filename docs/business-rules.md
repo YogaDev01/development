@@ -21,7 +21,7 @@ Glossary of Indonesian/internal terms: `docs/GLOSSARY.md`.
 | Cash Receipt | Invoice payments (`cash_receipts`) + receipt headers with allocation (`cash_receipt_headers`) | `InvoiceCashReceiptController`, `CashReceiptController` |
 | Invoice | `invoices` + Delivery Note | `InvoiceCashReceiptController`, `DeliveryNoteController`, `InvoiceCalculationService` |
 | Approval | Per-module status chains + Todo List worklist | `TodoListController`, `BuildsCrWorklist` |
-| Beneficiary | Payee master (bank account), linked to Master PIC | `BeneficiaryController`, `MasterPic` |
+| Beneficiary | Payee master (bank account), linked to Master PIC. Dikelola di halaman gabungan **PIC & Beneficiary** (`/pic-beneficiary`, lihat `docs/modules/pic-beneficiary.md`) | `PicBeneficiaryController` (daftar), `BeneficiaryController`, `MasterPicController`, `MasterPic` |
 | Employee/User | `users` (login, role, access group), `employees` (HR), `master_pics` | |
 | Reporting | Finance Summary, Reports, exports | `FinanceSummaryController`, `ReportController` |
 | Closing | Period closing (monthly recap) | `ClosingController`, `ClosingService` |

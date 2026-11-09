@@ -31,8 +31,9 @@ class BeneficiaryAccessTest extends TestCase
     use MakesTesysData;
 
     /**
-     * Manager dengan akses menu 'beneficiaries' - keadaan setelah migrasi
-     * 2026_09_21_000040 berjalan.
+     * Manager dengan akses menu 'pic-beneficiary' - keadaan setelah migrasi
+     * 2026_09_21_000040 lalu 2026_11_09_000400 (menu gabungan PIC &
+     * Beneficiary) berjalan.
      *
      * Aksesnya diberikan di sini, bukan diandalkan dari migrasi itu: di basis
      * data uji tabel `roles` masih kosong saat migrasi berjalan, jadi migrasi
@@ -41,7 +42,7 @@ class BeneficiaryAccessTest extends TestCase
     private function managerUser(): User
     {
         $user = $this->userWithRole('manager');
-        $this->giveMenuAccess($user->role, 'beneficiaries');
+        $this->giveMenuAccess($user->role, 'pic-beneficiary');
 
         return $user;
     }
@@ -55,7 +56,7 @@ class BeneficiaryAccessTest extends TestCase
     public function test_manager_bisa_membuka_daftar_beneficiary(): void
     {
         $this->actingAs($this->managerUser())
-            ->get('/beneficiaries')
+            ->get('/pic-beneficiary')
             ->assertOk();
     }
 
@@ -68,7 +69,7 @@ class BeneficiaryAccessTest extends TestCase
                 'category'      => 'EXTERNAL',
                 'status'        => 'ACTIVE',
             ])
-            ->assertRedirect('/beneficiaries');
+            ->assertRedirect('/pic-beneficiary');
 
         // nickname & complete_name disimpan huruf besar oleh controller.
         $this->assertDatabaseHas('beneficiaries', [
@@ -143,7 +144,7 @@ class BeneficiaryAccessTest extends TestCase
                 'category'      => 'EXTERNAL',
                 'status'        => 'ACTIVE',
             ])
-            ->assertRedirect('/beneficiaries');
+            ->assertRedirect('/pic-beneficiary');
 
         $this->assertSame('DIPERBARUI', $ben->fresh()->nickname);
     }
@@ -154,7 +155,7 @@ class BeneficiaryAccessTest extends TestCase
 
         $this->actingAs($this->userWithRole('superadmin'))
             ->delete('/beneficiaries/' . $ben->id)
-            ->assertRedirect('/beneficiaries');
+            ->assertRedirect('/pic-beneficiary');
 
         $this->assertDatabaseMissing('beneficiaries', ['id' => $ben->id]);
     }
@@ -194,7 +195,7 @@ class BeneficiaryAccessTest extends TestCase
         ];
 
         $user = $this->managerUser();
-        $this->actingAs($user)->post('/beneficiaries', $payload)->assertRedirect('/beneficiaries');
+        $this->actingAs($user)->post('/beneficiaries', $payload)->assertRedirect('/pic-beneficiary');
 
         $this->actingAs($user)
             ->post('/beneficiaries', array_merge($payload, ['nickname' => 'Kedua']))
@@ -211,10 +212,12 @@ class BeneficiaryAccessTest extends TestCase
 
     public function test_role_tanpa_akses_menu_tetap_ditolak(): void
     {
-        // 'treasury' tidak diberi menu 'beneficiaries' oleh migrasi mana pun.
-        $this->actingAs($this->userWithRole('treasury'))
-            ->get('/beneficiaries')
-            ->assertForbidden();
+        // 'treasury' tidak diberi menu 'pic-beneficiary' di uji ini.
+        $treasury = $this->userWithRole('treasury');
+
+        $this->actingAs($treasury)->get('/pic-beneficiary')->assertForbidden();
+        // URL lama ikut dijaga menu yang sama (bukan pengalihan terbuka).
+        $this->actingAs($treasury)->get('/beneficiaries')->assertForbidden();
     }
 
     /**
@@ -229,15 +232,21 @@ class BeneficiaryAccessTest extends TestCase
         $this->makeBeneficiary();
 
         $this->actingAs($this->userWithRole('superadmin'))
-            ->get('/beneficiaries?tab=db')
-            ->assertSee('btn-edit')
+            ->get('/pic-beneficiary')
+            ->assertSee('id="modalEditBen"', false)
+            ->assertSee('btn-edit-pic')
             ->assertSee('Bank Master');
 
         $this->actingAs($this->managerUser())
-            ->get('/beneficiaries?tab=db')
-            ->assertDontSee('btn-edit')
+            ->get('/pic-beneficiary')
+            ->assertDontSee('id="modalEditBen"', false)
+            ->assertDontSee('id="modalEditPic"', false)
+            ->assertDontSee('btn-edit-ben')
+            ->assertDontSee('btn-edit-pic')
+            ->assertDontSee('/edit-data')
             ->assertDontSee('Bank Master')
             // Menambah tetap terbuka.
-            ->assertSee('Tambah Beneficiary');
+            ->assertSee('Tambah Beneficiary')
+            ->assertSee('Tambah PIC');
     }
 }

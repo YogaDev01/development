@@ -8,7 +8,9 @@
 @php
     $dataForm = [
         'plans' => $budgetPlans->map(fn ($p) => ['id' => $p->id, 'label' => $p->code . ($p->description ? ' — ' . \Illuminate\Support\Str::limit($p->description, 40) : ''), 'project' => $p->project_id])->values(),
-        'details' => $budgetDetails->map(fn ($d) => ['id' => $d->id, 'plan' => $d->budget_plan_id, 'label' => ($d->account?->name ?? '-') . ($d->deskripsi ? ' — ' . \Illuminate\Support\Str::limit($d->deskripsi, 40) : '')])->values(),
+        // Sub-item dikelompokkan per akun COA di dropdown (pola form Cost Request).
+        'details' => $budgetDetails->map(fn ($d) => ['id' => $d->id, 'plan' => $d->budget_plan_id,
+            'account' => $d->account?->name ?? '-', 'deskripsi' => $d->deskripsi ?: '-', 'unit' => $d->unit ?: '-'])->values(),
         'clusters' => $clustersByProject->map(fn ($c) => $c->map(fn ($x) => ['id' => $x->id, 'label' => '[' . $x->code . '] ' . $x->name])->values()),
         // Cash Advance dikunci bila teknisi tiket tanpa Master PIC / Beneficiary Internal.
         'types' => $jenisCr->map(fn ($x) => ['id' => $x->id, 'ca' => (bool) $x->is_ca, 'off' => $x->is_ca && ! $caBeneficiary,
@@ -87,12 +89,12 @@
                         <table class="table table-sm tt-cost-table tt-rq-table mb-1">
                             <thead>
                                 <tr>
-                                    <th style="width:26%">COA / Sub-item <span class="text-danger">*</span></th>
+                                    <th style="width:24%">COA / Sub-item <span class="text-danger">*</span></th>
                                     <th>Deskripsi <span class="text-danger">*</span></th>
-                                    <th style="width:15%">Harga <span class="text-danger">*</span></th>
-                                    <th style="width:8%">Qty <span class="text-danger">*</span></th>
-                                    <th style="width:14%" class="text-right">Total</th>
-                                    <th style="width:22%">Lampiran <span class="text-danger tt-rq-req-star">*</span></th>
+                                    <th style="width:120px">Harga <span class="text-danger">*</span></th>
+                                    <th style="width:64px">Qty <span class="text-danger">*</span></th>
+                                    <th style="width:110px" class="text-right">Total</th>
+                                    <th style="width:170px">Lampiran <span class="text-danger tt-rq-req-star">*</span></th>
                                     <th style="width:36px"></th>
                                 </tr>
                             </thead>
@@ -155,6 +157,19 @@
     .tt-rq-files { font-size:11px; color:var(--text-muted); overflow-wrap:anywhere; }
     .tt-rq-keep { display:block; font-size:11.5px; margin:0; font-weight:400; overflow-wrap:anywhere; }
     .tt-rq-table .form-control-sm { min-width:0; }
+    /* Picker searchable Sub Item di sel tabel — ramping seperti form Cost Request. */
+    .tt-rq-table td .tss-btn { padding:.25rem .5rem; font-size:13px; }
+    /* Kotak deskripsi + ikon "perluas" di ujung kanan (pola form Cost Request). */
+    .tt-rq-desc-wrap { position:relative; }
+    .tt-rq-desc-wrap .tt-rq-desc { padding-right:30px; }
+    .tt-rq-desc-wrap .tt-rq-desc-expand {
+        position:absolute; top:2px; right:2px; bottom:2px; width:26px;
+        display:flex; align-items:center; justify-content:center;
+        background:var(--surface); border:none; border-radius:0 var(--radius-sm) var(--radius-sm) 0;
+        line-height:1; color:var(--text-faint); cursor:pointer; font-size:11px; z-index:2;
+    }
+    .tt-rq-desc-wrap .tt-rq-desc-expand:hover { color:var(--accent); }
+    .swal2-close.tt-rq-close { color:var(--danger); background:transparent; box-shadow:none; }
     @media (max-width: 767.98px) {
         .tt-modal-full .modal-dialog { margin:0; max-width:none; min-height:100%; }
         .tt-modal-full .modal-content { min-height:100vh; border-radius:0; border:0; }
@@ -182,6 +197,36 @@
                 return '<option value="' + o.id + '"' + (String(o.id) === String(sel) ? ' selected' : '') + (o.off ? ' disabled' : '') + '>' + esc(o.label || o.name) + '</option>';
             }).join('');
         }
+        /* Opsi sub-item dikelompokkan per akun (sama dengan form Cost Request):
+           judul akun tebal tidak bisa diklik, item "Deskripsi (satuan)"; tombol
+           terpilih menampilkan "Akun - Deskripsi (satuan)", nama akun ikut dicari. */
+        function escAttr(t) { return esc(t).replace(/"/g, '&quot;'); }
+        function optsDetail(list, sel) {
+            var grup = {}, urutan = [];
+            list.forEach(function (d) {
+                if (!grup[d.account]) { grup[d.account] = []; urutan.push(d.account); }
+                grup[d.account].push(d);
+            });
+            var html = '<option value="">— Pilih Sub Item —</option>';
+            urutan.forEach(function (akun) {
+                html += '<optgroup label="' + escAttr(akun) + '">';
+                grup[akun].forEach(function (d) {
+                    var teks = d.deskripsi + ' (' + d.unit + ')';
+                    html += '<option value="' + d.id + '"' + (String(d.id) === String(sel) ? ' selected' : '')
+                        + ' data-label="' + escAttr(akun + ' - ' + teks) + '" data-item-label="' + escAttr(teks) + '"'
+                        + ' data-search="' + escAttr(akun) + '">' + esc(teks) + '</option>';
+                });
+                html += '</optgroup>';
+            });
+            return html;
+        }
+        function pasangPickerItem($scope) {
+            if (typeof TesysSearchableSelect === 'undefined') return;
+            $scope.find('select.tt-rq-item').each(function () {
+                TesysSearchableSelect.initOne($(this), { placeholder: '— Pilih Sub Item —', searchPlaceholder: 'Cari Sub Item...' });
+                $(this).trigger('tss:sync');
+            });
+        }
         // Dropdown panjang diberi pencarian (sama seperti dropdown panjang lain di app).
         if (typeof TesysSearchableSelect !== 'undefined') {
             TesysSearchableSelect.init($('#fldRqPlan, #fldRqBenef'), { searchPlaceholder: 'Ketik untuk mencari...' });
@@ -198,8 +243,13 @@
             }).join('');
             return '<tr class="tt-rq-row">'
                 + '<td data-label="COA / Sub-item"><input type="hidden" name="items[0][source_item_id]" value="' + (r.id || '') + '">'
-                + '<select name="items[0][budget_detail_id]" class="form-control form-control-sm tt-rq-item" required>' + opts(detailPlan(), r.detail, '— Sub-item —') + '</select></td>'
-                + '<td data-label="Deskripsi"><input type="text" name="items[0][description]" class="form-control form-control-sm" maxlength="255" required value="' + esc(r.desc) + '"></td>'
+                // Tanpa atribut required: select disembunyikan picker searchable (validasi
+                // native tak bisa fokus ke elemen tersembunyi) — dicek di handler submit.
+                + '<select name="items[0][budget_detail_id]" class="form-control form-control-sm tt-rq-item">' + optsDetail(detailPlan(), r.detail) + '</select></td>'
+                + '<td data-label="Deskripsi"><div class="tt-rq-desc-wrap">'
+                + '<input type="text" name="items[0][description]" class="form-control form-control-sm tt-rq-desc" maxlength="255" required value="' + escAttr(r.desc) + '">'
+                + '<button type="button" class="tt-rq-desc-expand" title="Perluas deskripsi" aria-label="Perluas deskripsi" tabindex="-1"><i class="fas fa-expand-alt"></i></button>'
+                + '</div></td>'
                 + '<td data-label="Harga"><input type="text" inputmode="numeric" name="items[0][amount]" class="form-control form-control-sm text-right tt-rq-amount" required value="' + (r.amount ? uang(r.amount) : '') + '"></td>'
                 + '<td data-label="Qty"><input type="number" name="items[0][qty]" class="form-control form-control-sm tt-rq-qty" min="1" step="1" required value="' + (r.qty || 1) + '"></td>'
                 + '<td data-label="Total" class="text-right align-middle tt-rq-total">0</td>'
@@ -224,7 +274,7 @@
             });
             $('#ttRqGrand').text(rupiah.format(total));
         }
-        function tambah(r) { $rows.append(rowHtml(r)); nomori(); hitung(); }
+        function tambah(r) { var $tr = $(rowHtml(r)); $rows.append($tr); pasangPickerItem($tr); nomori(); hitung(); }
 
         function sinkronJenis() {
             var t = jenis(), ca = !!(t && t.ca);
@@ -239,7 +289,7 @@
             $rows.find('.tt-rq-item').each(function () {
                 var cur = $(this).val();
                 var ada = daftar.some(function (d) { return String(d.id) === String(cur); });
-                $(this).html(opts(daftar, ada ? cur : '', '— Sub-item —'));
+                $(this).html(optsDetail(daftar, ada ? cur : '')).trigger('tss:sync');
             });
             // Project (= cluster_id pada Cost Request) hanya untuk budget PROYEK (aturan form Cost Request).
             var p = plan(), list = p && p.project ? (D.clusters[p.project] || []) : null;
@@ -284,7 +334,7 @@
             sinkronPlan();
             if (r) {
                 // Pilih ulang sub-item (sinkronPlan mengosongkan yang belum cocok saat baris baru ditambahkan).
-                $rows.children('tr').each(function (i) { $(this).find('.tt-rq-item').val(r.items[i].detail); });
+                $rows.children('tr').each(function (i) { $(this).find('.tt-rq-item').val(r.items[i].detail).trigger('tss:sync'); });
                 (r.general || []).forEach(function (f) {
                     $('#ttRqGeneralKeep').append('<label class="tt-rq-keep"><input type="checkbox" name="keep_general_ids[]" value="' + f.id + '" checked> ' + esc(f.name) + '</label>');
                 });
@@ -312,6 +362,44 @@
             try { this.setSelectionRange(k, k); } catch (e) { /* input lama */ }
         });
         $rows.on('input change', '.tt-rq-amount, .tt-rq-qty', hitung);
+
+        /* Perluas deskripsi: pop-up textarea, hasilnya ditulis balik ke kotak baris
+           saat ditutup (X, Esc, klik luar). Pop-up ditaruh DI DALAM modal (target)
+           supaya focus-trap modal Bootstrap tidak merebut fokus textarea, dan Esc
+           tidak ikut menutup modal pengajuan. */
+        $rows.on('click', '.tt-rq-desc-expand', function () {
+            if (typeof Swal === 'undefined') return;
+            var $inp = $(this).closest('.tt-rq-desc-wrap').find('.tt-rq-desc');
+            Swal.fire({
+                target: $m[0],
+                title: 'Deskripsi',
+                html: '<textarea id="ttRqDescPopup" class="form-control" rows="6" maxlength="255" style="font-size:13px;width:100%;resize:vertical;">'
+                    + esc($inp.val()) + '</textarea>'
+                    + '<small id="ttRqDescCount" class="d-block mt-1 text-muted" style="font-size:11px;text-align:left;"></small>',
+                width: '560px',
+                showConfirmButton: false,
+                showCloseButton: true,
+                keydownListenerCapture: true,
+                customClass: { closeButton: 'tt-rq-close' },
+                didOpen: function (popup) {
+                    var ta = popup.querySelector('#ttRqDescPopup'), inf = popup.querySelector('#ttRqDescCount');
+                    function sisa() {
+                        var n = 255 - ta.value.length;
+                        inf.textContent = n <= 0 ? 'Batas 255 karakter sudah habis.' : 'Sisa ' + n + ' karakter.';
+                        inf.className = 'd-block mt-1 ' + (n <= 0 ? 'text-danger' : 'text-muted');
+                    }
+                    ta.addEventListener('input', sisa);
+                    sisa();
+                    popup.addEventListener('keydown', function (e) { if (e.key === 'Escape') e.stopPropagation(); });
+                    ta.focus();
+                    ta.setSelectionRange(ta.value.length, ta.value.length);
+                },
+                willClose: function (popup) {
+                    var ta = popup.querySelector('#ttRqDescPopup');
+                    if (ta) $inp.val(ta.value).trigger('input');
+                }
+            });
+        });
         $rows.on('change', '.tt-rq-file', function () {
             $(this).closest('td').find('.tt-rq-files').text(Array.prototype.map.call(this.files, function (f) { return f.name; }).join(', '));
         });
@@ -320,7 +408,10 @@
         $form.on('click', '.tt-rq-send', function () { $('#fldRqSubmit').val($(this).data('submit') ? 1 : 0); });
         $form.on('submit', function (e) {
             var t = jenis(), pesan = '';
-            if (t && !t.ca) {
+            $rows.children('tr').each(function (i) {
+                if (!$(this).find('.tt-rq-item').val() && !pesan) pesan = 'Baris ' + (i + 1) + ': Sub Item wajib dipilih.';
+            });
+            if (t && !t.ca && !pesan) {
                 $rows.children('tr').each(function (i) {
                     var kept = $(this).find('.tt-rq-keepbox:checked').length;
                     var baru = $(this).find('.tt-rq-file')[0].files.length;
