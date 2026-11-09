@@ -66,14 +66,14 @@ route ada di fixture.
 | `/beneficiaries` | 11 | `menu:beneficiaries`<br>`role:superadmin` |
 | `/budget-plan` | 30 | `role:superadmin,manager`<br>`menu:finance-budgeting,project-budgeting`<br>`(tanpa role/menu)`<br>`role:superadmin,head,finance,finance_manager,approver`<br>`role:superadmin,approver`<br>`role:superadmin,finance,finance_manager`<br>`role:superadmin,head` |
 | `/budget-request` | 46 | `role:superadmin,manager,supervisor`<br>`menu:finance-cost-request,project-cost-request`<br>`(tanpa role/menu)`<br>`role:superadmin,head,finance,finance_manager,cost_control,approver`<br>`role:superadmin,finance_manager`<br>`role:superadmin,approver`<br>`role:superadmin,finance,finance_manager,cost_control`<br>`role:superadmin,head`<br>`role:superadmin,manager`<br>`role:superadmin,manager,supervisor,teknisi,staff` |
-| `/cash-management` | 9 | `role:superadmin,finance,finance_manager,treasury,approver` |
-| `/cash-receipt` | 9 | `role:superadmin,finance,finance_manager,treasury,approver,collection` |
+| `/cash-management` | 9 | `menu:cash-management` (sejak 2026-11-09) |
+| `/cash-receipt` | 9 | `menu:cash-receipt` (sejak 2026-11-09) |
 | `/category-item` | 5 | `menu:category-item` |
 | `/changelog` | 1 | `(tanpa role/menu)` |
 | `/closing` | 4 | `menu:closing` |
 | `/cluster` | 10 | `menu:project`<br>`menu:project,list-po` |
 | `/cost-center` | 5 | `role:superadmin,admin,finance,finance_manager`<br>`menu:cost-center` |
-| `/cost-register` | 11 | `role:superadmin,finance,finance_manager`<br>`role:superadmin,finance,finance_manager,approver` |
+| `/cost-register` | 11 | `menu:cost-register` (lihat/export/detail/log-note)<br>`menu:cost-register` + `role:superadmin,finance,finance_manager` (create/store/submit/cancel/hapus)<br>`role:superadmin,finance,finance_manager,approver` (approve/revise, juga dari Todo List) |
 | `/customer` | 9 | `menu:customer` |
 | `/daily-transaction` | 21 | `role:superadmin,finance,finance_manager,treasury`<br>`menu:finance-daily-transaction`<br>`role:superadmin,approver` |
 | `/delivery-note` | 7 | `menu:delivery-note` |

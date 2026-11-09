@@ -1022,18 +1022,20 @@
 
             {{-- BUDGETING — CLOSING SUDAH DIAJUKAN MANAGER, FINANCE VERIFIKASI CLOSING --}}
             @if($budgetingClosingVerify->isNotEmpty())
-            <div id="tl-bp-closing-verify" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
+            <div id="tl-bp-closing-verify" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section todo-worklist" data-section="bp-closing-verify">
                 <div class="card-header">
                     <h3 class="card-title mb-0">
                         <i class="fas fa-flag-checkered mr-1"></i> Budgeting — Menunggu Verifikasi Closing
                         <span class="badge badge-secondary ml-1">{{ $budgetingClosingVerify->count() }}</span>
                     </h3>
                 </div>
+                @include('todo-list._bulk_bar', ['key' => 'bp-closing-verify', 'approveLabel' => 'Verify Closing', 'rejectLabel' => 'Reject Closing', 'unit' => 'budget'])
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
+                                    <th scope="col" style="width:36px;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
                                     <th scope="col" class="text-nowrap" style="width:180px;">Code</th>
                                     <th scope="col" style="width:40%;">Description</th>
                                     <th scope="col" style="width:26%;">PO</th>
@@ -1046,6 +1048,7 @@
                                 @foreach($budgetingClosingVerify as $bp)
                                 @php $bpAgingClass = $bp->aging_days >= 3 ? 'text-danger' : ($bp->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
                                 <tr class="todo-row" data-export-key="bp:{{ $bp->id }}" data-search="{{ strtolower($bp->code . ' ' . $bp->description . ' ' . $bpPoLabel($bp)) }}">
+                                    <td><input type="checkbox" class="todo-check" value="{{ $bp->id }}" data-amount="{{ $bp->amount }}" aria-label="Pilih {{ $bp->code }}"></td>
                                     <td class="text-nowrap">
                                         <button type="button" class="cr-number-btn todo-bp-detail"
                                                 data-id="{{ $bp->id }}">{{ $bp->code }}</button>
@@ -1055,13 +1058,31 @@
                                     <td class="text-right text-nowrap"><strong>{{ $bp->amount_formatted }}</strong></td>
                                     <td class="text-center text-nowrap {{ $bpAgingClass }}">{{ $bp->aging_label }}</td>
                                     <td class="text-center text-nowrap">
-                                        {{-- Verifikasi closing perlu melihat berkas closing, jadi
-                                             barisnya membuka Budget Plan itu di halaman Budgeting. --}}
+                                        {{-- Verify/Reject Closing langsung dari sini (lewat todo-list.bulk,
+                                             aturan tetap di BudgetPlanController). Berkas closing tetap
+                                             bisa dicek lewat "Review Berkas Closing" di Aksi lain. --}}
                                         <div class="action-buttons ts-actions">
-                                            <a href="{{ url('/budget-plan') }}?open={{ $bp->id }}" class="ts-action-primary"
-                                               title="Review closing di halaman Budgeting">
-                                                <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Review</span>
-                                            </a>
+                                            <button type="button" class="ts-action-primary todo-row-act"
+                                                    data-section="bp-closing-verify" data-mode="approve" data-id="{{ $bp->id }}"
+                                                    data-code="{{ $bp->code }}" data-verb="Verify Closing" data-unit="budget" title="Verify Closing">
+                                                <i class="fas fa-check" aria-hidden="true"></i><span class="ts-al">Verify Closing</span>
+                                            </button>
+
+                                            <button type="button" class="ts-action-more"
+                                                    aria-haspopup="true" aria-expanded="false"
+                                                    title="Aksi lain" aria-label="Aksi lain untuk {{ $bp->code }}">
+                                                <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
+                                            </button>
+                                            <div class="ts-action-menu dropdown-menu" hidden>
+                                                <button type="button" class="dropdown-item is-danger todo-row-act"
+                                                        data-section="bp-closing-verify" data-mode="reject" data-id="{{ $bp->id }}"
+                                                        data-code="{{ $bp->code }}" data-verb="Reject Closing" data-unit="budget">
+                                                    <i class="fas fa-times"></i>Reject Closing
+                                                </button>
+                                                <a href="{{ url('/budget-plan') }}?open={{ $bp->id }}" class="dropdown-item">
+                                                    <i class="fas fa-eye"></i>Review Berkas Closing
+                                                </a>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
@@ -1370,18 +1391,20 @@
 
             {{-- TREASURY — DRAFT BELUM DIAJUKAN KE CEO (isinya sudah dipesan, tidak muncul lagi di Buat Batch) --}}
             @if($treasuryDraftSubmit->isNotEmpty())
-            <div id="tl-batch-draft" class="card card-info card-outline shadow-sm mt-3 todo-flat-section">
+            <div id="tl-batch-draft" class="card card-info card-outline shadow-sm mt-3 todo-flat-section todo-worklist" data-section="batch-draft">
                 <div class="card-header">
                     <h3 class="card-title mb-0">
                         <i class="fas fa-paper-plane mr-1"></i> Treasury — Draft Belum Diajukan
                         <span class="badge badge-secondary ml-1">{{ $treasuryDraftSubmit->count() }}</span>
                     </h3>
                 </div>
+                @include('todo-list._bulk_bar', ['key' => 'batch-draft', 'approveLabel' => 'Ajukan', 'canReject' => false, 'unit' => 'batch'])
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-bordered mb-0 todo-fit-table" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
+                                    <th scope="col" class="todo-col-fit"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
                                     <th scope="col" class="todo-col-fit">Batch Code</th>
                                     <th scope="col" class="todo-col-desc">Deskripsi</th>
                                     <th scope="col" class="todo-col-fit">Tanggal</th>
@@ -1396,6 +1419,7 @@
                                 @foreach($treasuryDraftSubmit as $batch)
                                 @php $dtAgingClass = $batch->aging_days >= 3 ? 'text-danger' : ($batch->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
                                 <tr class="todo-row" data-export-key="dt:{{ $batch->id }}" data-search="{{ strtolower($batch->code . ' ' . $batch->description) }}">
+                                    <td class="todo-col-fit"><input type="checkbox" class="todo-check" value="{{ $batch->id }}" data-amount="{{ $batch->captured_amount }}" aria-label="Pilih {{ $batch->code }}"></td>
                                     <td class="todo-col-fit"><a href="{{ route('daily-transaction.show', $batch->id) }}" class="cr-number-btn">{{ $batch->code }}</a></td>
                                     <td class="todo-col-desc">{{ $batch->description ?? '-' }}</td>
                                     <td class="todo-col-fit">{{ $batch->date?->format('d M Y') ?? '-' }}</td>
@@ -1410,16 +1434,34 @@
                                     <td class="todo-col-fit text-right col-raw-total" data-raw="{{ $batch->captured_amount }}"><strong>{{ $batch->captured_amount_formatted }}</strong></td>
                                     <td class="todo-col-fit text-center {{ $dtAgingClass }}">{{ $batch->aging_label }}</td>
                                     <td class="todo-col-fit text-center">
-                                        <a href="{{ route('daily-transaction.show', $batch->id) }}" class="btn btn-outline-primary btn-sm" title="Buka draft untuk diajukan ke CEO">
-                                            <i class="fas fa-paper-plane mr-1"></i>Ajukan
-                                        </a>
+                                        {{-- Ajukan langsung (DRAFT -> PENDING_APPROVER) lewat todo-list.bulk;
+                                             aturan & lock tetap di DailyTransactionController::submit().
+                                             Ubah isi / hapus draft tetap di halaman batch. --}}
+                                        <div class="action-buttons ts-actions">
+                                            <button type="button" class="ts-action-primary todo-row-act"
+                                                    data-section="batch-draft" data-mode="approve" data-id="{{ $batch->id }}"
+                                                    data-code="{{ $batch->code }}" data-verb="Ajukan" data-unit="batch" title="Ajukan ke Approver">
+                                                <i class="fas fa-paper-plane" aria-hidden="true"></i><span class="ts-al">Ajukan</span>
+                                            </button>
+
+                                            <button type="button" class="ts-action-more"
+                                                    aria-haspopup="true" aria-expanded="false"
+                                                    title="Aksi lain" aria-label="Aksi lain untuk {{ $batch->code }}">
+                                                <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
+                                            </button>
+                                            <div class="ts-action-menu dropdown-menu" hidden>
+                                                <a href="{{ route('daily-transaction.show', $batch->id) }}" class="dropdown-item">
+                                                    <i class="fas fa-eye"></i>Buka Draft
+                                                </a>
+                                            </div>
+                                        </div>
                                     </td>
                                 </tr>
                                 @endforeach
                             </tbody>
                             <tfoot>
                                 <tr style="background:var(--surface-2);">
-                                    <th colspan="5" class="text-right">Subtotal</th>
+                                    <th colspan="6" class="text-right">Subtotal</th>
                                     <th class="text-right">{{ number_format($treasuryDraftSubmit->sum('captured_amount'), 0, ',', '.') }}</th>
                                     <th colspan="2"></th>
                                 </tr>
@@ -1780,18 +1822,20 @@
             {{-- INVOICE — MENUNGGU VERIFIKASI --}}
             {{-- PURCHASE ORDER — MENUNGGU APPROVAL FINANCE --}}
             @if($poSubmitted->isNotEmpty())
-            <div id="tl-po-submitted" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
+            <div id="tl-po-submitted" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section todo-worklist" data-section="po-submitted">
                 <div class="card-header">
                     <h3 class="card-title mb-0">
                         <i class="fas fa-file-signature mr-1"></i> Purchase Order — Menunggu Approval Finance
                         <span class="badge badge-secondary ml-1">{{ $poSubmitted->count() }}</span>
                     </h3>
                 </div>
+                @include('todo-list._bulk_bar', ['key' => 'po-submitted', 'approveLabel' => 'Verify', 'rejectLabel' => 'Revise', 'unit' => 'PO'])
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
+                                    <th scope="col" style="width:36px;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
                                     <th scope="col" class="text-nowrap" style="width:150px;">PO</th>
                                     <th scope="col">Scope of Work / Customer</th>
                                     <th scope="col" class="text-nowrap">Manager</th>
@@ -1805,6 +1849,7 @@
                                 @foreach($poSubmitted as $po)
                                 @php $poAgingClass = $po->aging_days >= 3 ? 'text-danger' : ($po->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
                                 <tr class="todo-row" data-export-key="po:{{ $po->id }}" data-search="{{ strtolower($po->code . ' ' . $po->name . ' ' . ($po->customer?->name ?? '') . ' ' . ($po->manager?->name ?? '')) }}">
+                                    <td><input type="checkbox" class="todo-check" value="{{ $po->id }}" data-amount="{{ $po->value }}" aria-label="Pilih {{ $po->code }}"></td>
                                     <td class="text-nowrap">
                                         {{-- q= mengisi pencarian di halaman Purchase Order, open=
                                              membuka modal detailnya — PO yang dituju langsung
@@ -1830,10 +1875,27 @@
                                     <td class="text-center text-nowrap {{ $poAgingClass }}">{{ $po->aging_label }}</td>
                                     <td class="text-center text-nowrap">
                                         <div class="action-buttons ts-actions">
-                                            <a href="{{ route('project.index') }}?q={{ urlencode($po->code) }}&open={{ $po->id }}"
-                                               class="ts-action-primary" title="Review PO">
-                                                <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Review</span>
-                                            </a>
+                                            <button type="button" class="ts-action-primary todo-row-act"
+                                                    data-section="po-submitted" data-mode="approve" data-id="{{ $po->id }}"
+                                                    data-code="{{ $po->code }}" data-verb="Verify" data-unit="PO" title="Verify">
+                                                <i class="fas fa-check" aria-hidden="true"></i><span class="ts-al">Verify</span>
+                                            </button>
+
+                                            <button type="button" class="ts-action-more"
+                                                    aria-haspopup="true" aria-expanded="false"
+                                                    title="Aksi lain" aria-label="Aksi lain untuk {{ $po->code }}">
+                                                <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
+                                            </button>
+                                            <div class="ts-action-menu dropdown-menu" hidden>
+                                                <button type="button" class="dropdown-item is-danger todo-row-act"
+                                                        data-section="po-submitted" data-mode="reject" data-id="{{ $po->id }}"
+                                                        data-code="{{ $po->code }}" data-verb="Revise" data-unit="PO">
+                                                    <i class="fas fa-undo"></i>Revise
+                                                </button>
+                                                <a href="{{ route('project.index') }}?q={{ urlencode($po->code) }}&open={{ $po->id }}" class="dropdown-item">
+                                                    <i class="fas fa-eye"></i>Review PO
+                                                </a>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
@@ -1847,7 +1909,7 @@
 
             {{-- PURCHASE ORDER — MENUNGGU APPROVAL APPROVER (VERIFIED) --}}
             @if($poVerified->isNotEmpty())
-            <div id="tl-po-verified" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
+            <div id="tl-po-verified" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section todo-worklist" data-section="po-verified">
                 <div class="card-header">
                     <h3 class="card-title mb-0">
                         <i class="fas fa-file-signature mr-1"></i> Purchase Order — Menunggu Approval Approver
@@ -1855,11 +1917,13 @@
                     </h3>
                     <div class="text-muted small mt-1">Budget Plan yang dibuat dari form PO ikut disetujui bersama PO.</div>
                 </div>
+                @include('todo-list._bulk_bar', ['key' => 'po-verified', 'approveLabel' => 'Approve', 'rejectLabel' => 'Revise', 'unit' => 'PO'])
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
+                                    <th scope="col" style="width:36px;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
                                     <th scope="col" class="text-nowrap" style="width:150px;">PO</th>
                                     <th scope="col">Scope of Work / Customer</th>
                                     <th scope="col" class="text-nowrap">Manager</th>
@@ -1873,6 +1937,7 @@
                                 @foreach($poVerified as $po)
                                 @php $poAgingClass = $po->aging_days >= 3 ? 'text-danger' : ($po->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
                                 <tr class="todo-row" data-export-key="po:{{ $po->id }}" data-search="{{ strtolower($po->code . ' ' . $po->name . ' ' . ($po->customer?->name ?? '') . ' ' . ($po->manager?->name ?? '')) }}">
+                                    <td><input type="checkbox" class="todo-check" value="{{ $po->id }}" data-amount="{{ $po->value }}" aria-label="Pilih {{ $po->code }}"></td>
                                     <td class="text-nowrap">
                                         <a href="{{ route('project.index') }}?q={{ urlencode($po->code) }}&open={{ $po->id }}" class="cr-number-btn">{{ $po->code }}</a>
                                     </td>
@@ -1889,10 +1954,27 @@
                                     <td class="text-center text-nowrap {{ $poAgingClass }}">{{ $po->aging_label }}</td>
                                     <td class="text-center text-nowrap">
                                         <div class="action-buttons ts-actions">
-                                            <a href="{{ route('project.index') }}?q={{ urlencode($po->code) }}&open={{ $po->id }}"
-                                               class="ts-action-primary" title="Review PO">
-                                                <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Review</span>
-                                            </a>
+                                            <button type="button" class="ts-action-primary todo-row-act"
+                                                    data-section="po-verified" data-mode="approve" data-id="{{ $po->id }}"
+                                                    data-code="{{ $po->code }}" data-verb="Approve" data-unit="PO" title="Approve">
+                                                <i class="fas fa-check" aria-hidden="true"></i><span class="ts-al">Approve</span>
+                                            </button>
+
+                                            <button type="button" class="ts-action-more"
+                                                    aria-haspopup="true" aria-expanded="false"
+                                                    title="Aksi lain" aria-label="Aksi lain untuk {{ $po->code }}">
+                                                <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
+                                            </button>
+                                            <div class="ts-action-menu dropdown-menu" hidden>
+                                                <button type="button" class="dropdown-item is-danger todo-row-act"
+                                                        data-section="po-verified" data-mode="reject" data-id="{{ $po->id }}"
+                                                        data-code="{{ $po->code }}" data-verb="Revise" data-unit="PO">
+                                                    <i class="fas fa-undo"></i>Revise
+                                                </button>
+                                                <a href="{{ route('project.index') }}?q={{ urlencode($po->code) }}&open={{ $po->id }}" class="dropdown-item">
+                                                    <i class="fas fa-eye"></i>Review PO
+                                                </a>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
@@ -1906,18 +1988,20 @@
 
             {{-- PURCHASE ORDER — CLOSING MENUNGGU VERIFIKASI FINANCE (CLOSING) --}}
             @if($poClosingVerify->isNotEmpty())
-            <div id="tl-po-closing" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
+            <div id="tl-po-closing" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section todo-worklist" data-section="po-closing">
                 <div class="card-header">
                     <h3 class="card-title mb-0">
                         <i class="fas fa-flag-checkered mr-1"></i> Purchase Order — Menunggu Verifikasi Closing
                         <span class="badge badge-secondary ml-1">{{ $poClosingVerify->count() }}</span>
                     </h3>
                 </div>
+                @include('todo-list._bulk_bar', ['key' => 'po-closing', 'approveLabel' => 'Verify Closing', 'rejectLabel' => 'Reject Closing', 'unit' => 'PO'])
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
+                                    <th scope="col" style="width:36px;"><input type="checkbox" class="todo-check-all" aria-label="Pilih semua"></th>
                                     <th scope="col" class="text-nowrap" style="width:150px;">PO</th>
                                     <th scope="col">Scope of Work / Customer</th>
                                     <th scope="col" class="text-nowrap">Manager</th>
@@ -1930,6 +2014,7 @@
                                 @foreach($poClosingVerify as $po)
                                 @php $poAgingClass = $po->aging_days >= 3 ? 'text-danger' : ($po->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
                                 <tr class="todo-row" data-export-key="po:{{ $po->id }}" data-search="{{ strtolower($po->code . ' ' . $po->name . ' ' . ($po->customer?->name ?? '') . ' ' . ($po->manager?->name ?? '')) }}">
+                                    <td><input type="checkbox" class="todo-check" value="{{ $po->id }}" data-amount="{{ $po->value }}" aria-label="Pilih {{ $po->code }}"></td>
                                     <td class="text-nowrap">
                                         <a href="{{ route('project.index') }}?q={{ urlencode($po->code) }}&open={{ $po->id }}" class="cr-number-btn">{{ $po->code }}</a>
                                     </td>
@@ -1939,10 +2024,27 @@
                                     <td class="text-center text-nowrap {{ $poAgingClass }}">{{ $po->aging_label }}</td>
                                     <td class="text-center text-nowrap">
                                         <div class="action-buttons ts-actions">
-                                            <a href="{{ route('project.index') }}?q={{ urlencode($po->code) }}&open={{ $po->id }}"
-                                               class="ts-action-primary" title="Review Closing PO">
-                                                <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Review</span>
-                                            </a>
+                                            <button type="button" class="ts-action-primary todo-row-act"
+                                                    data-section="po-closing" data-mode="approve" data-id="{{ $po->id }}"
+                                                    data-code="{{ $po->code }}" data-verb="Verify Closing" data-unit="PO" title="Verify Closing">
+                                                <i class="fas fa-check" aria-hidden="true"></i><span class="ts-al">Verify Closing</span>
+                                            </button>
+
+                                            <button type="button" class="ts-action-more"
+                                                    aria-haspopup="true" aria-expanded="false"
+                                                    title="Aksi lain" aria-label="Aksi lain untuk {{ $po->code }}">
+                                                <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
+                                            </button>
+                                            <div class="ts-action-menu dropdown-menu" hidden>
+                                                <button type="button" class="dropdown-item is-danger todo-row-act"
+                                                        data-section="po-closing" data-mode="reject" data-id="{{ $po->id }}"
+                                                        data-code="{{ $po->code }}" data-verb="Reject Closing" data-unit="PO">
+                                                    <i class="fas fa-times"></i>Reject Closing
+                                                </button>
+                                                <a href="{{ route('project.index') }}?q={{ urlencode($po->code) }}&open={{ $po->id }}" class="dropdown-item">
+                                                    <i class="fas fa-eye"></i>Review Closing PO
+                                                </a>
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>
@@ -1962,7 +2064,7 @@
                         <span class="badge badge-secondary ml-1">{{ $invoiceVerify->count() }}</span>
                     </h3>
                 </div>
-                @include('todo-list._bulk_bar', ['key' => 'invoice-verify', 'approveLabel' => 'Verify', 'canReject' => false, 'unit' => 'invoice'])
+                @include('todo-list._bulk_bar', ['key' => 'invoice-verify', 'approveLabel' => 'Verify', 'rejectLabel' => 'Revise', 'unit' => 'invoice'])
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
@@ -2002,6 +2104,11 @@
                                                 <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
                                             </button>
                                             <div class="ts-action-menu dropdown-menu" hidden>
+                                                <button type="button" class="dropdown-item is-danger todo-row-act"
+                                                        data-section="invoice-verify" data-mode="reject" data-id="{{ $inv->id }}"
+                                                        data-code="{{ $inv->code }}" data-verb="Revise" data-unit="invoice">
+                                                    <i class="fas fa-undo"></i>Revise
+                                                </button>
                                                 <a href="{{ route('invoice-cash-receipt.show', $inv->id) }}" class="dropdown-item">
                                                     <i class="fas fa-eye"></i>Detail
                                                 </a>
@@ -2027,7 +2134,7 @@
                         <span class="badge badge-secondary ml-1">{{ $invoiceApprove->count() }}</span>
                     </h3>
                 </div>
-                @include('todo-list._bulk_bar', ['key' => 'invoice-approve', 'approveLabel' => 'Approve', 'canReject' => false, 'unit' => 'invoice'])
+                @include('todo-list._bulk_bar', ['key' => 'invoice-approve', 'approveLabel' => 'Approve', 'rejectLabel' => 'Revise', 'unit' => 'invoice'])
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table todo-po-group table-bordered mb-0" style="font-size:12.5px;">
@@ -2067,6 +2174,11 @@
                                                 <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
                                             </button>
                                             <div class="ts-action-menu dropdown-menu" hidden>
+                                                <button type="button" class="dropdown-item is-danger todo-row-act"
+                                                        data-section="invoice-approve" data-mode="reject" data-id="{{ $inv->id }}"
+                                                        data-code="{{ $inv->code }}" data-verb="Revise" data-unit="invoice">
+                                                    <i class="fas fa-undo"></i>Revise
+                                                </button>
                                                 <a href="{{ route('invoice-cash-receipt.show', $inv->id) }}" class="dropdown-item">
                                                     <i class="fas fa-eye"></i>Detail
                                                 </a>
@@ -3734,6 +3846,32 @@ $(function () {
         updateBulkBar($section);
     });
 
+    /* Kirim ids ke form bulk section (approve/reject). Dipakai tombol bulk
+       maupun tombol aksi per baris (.todo-row-act) — satu jalur, satu endpoint. */
+    function isiIdsBulk($form, ids) {
+        $form.find('input[name="ids[]"]').remove();
+        ids.forEach(function (id) { $form.append($('<input type="hidden" name="ids[]">').val(id)); });
+    }
+    function konfirmasiApproveBulk(key, ids, verb, judul) {
+        Swal.fire({
+            title: judul, icon: 'question', showCancelButton: true,
+            confirmButtonColor: 'var(--success)', cancelButtonColor: '#55595e',
+            confirmButtonText: 'Ya, ' + verb, cancelButtonText: 'Batal'
+        }).then(function (r) {
+            if (!r.isConfirmed) return;
+            var $form = $('#frmTodoBulkApprove-' + key);
+            isiIdsBulk($form, ids);
+            $form.submit();
+        });
+    }
+    function bukaRejectBulk(key, ids, verb, judul) {
+        $('#bulkRejectTitle').text(judul);
+        $('#bulkRejectLabel').text(verb === 'Reject' || verb === 'Reject Closing' ? 'Alasan Penolakan' : 'Catatan ' + verb);
+        $('#btnBulkRejectConfirm').text(verb);
+        $('#bulkRejectNotes').val('').removeClass('is-invalid');
+        $('#mdlBulkRejectCR').data('ids', ids).data('key', key).modal('show');
+    }
+
     $(document).on('click', '.todo-bulk-approve', function () {
         var $section = $(this).closest('.todo-worklist');
         var key = $section.data('section');
@@ -3742,17 +3880,7 @@ $(function () {
         // Label ikut tombolnya: section settlement menutup CR ("Close"),
         // section review meng-approve-nya.
         var verb = $(this).text().trim() || 'Approve';
-        Swal.fire({
-            title: verb + ' ' + ids.length + ' CR?', icon: 'question', showCancelButton: true,
-            confirmButtonColor: 'var(--success)', cancelButtonColor: '#55595e',
-            confirmButtonText: 'Ya, ' + verb, cancelButtonText: 'Batal'
-        }).then(function (r) {
-            if (!r.isConfirmed) return;
-            var $form = $('#frmTodoBulkApprove-' + key);
-            $form.find('input[name="ids[]"]').remove();
-            ids.forEach(function (id) { $form.append('<input type="hidden" name="ids[]" value="' + id + '">'); });
-            $form.submit();
-        });
+        konfirmasiApproveBulk(key, ids, verb, verb + ' ' + ids.length + ' ' + ($(this).data('unit') || 'CR') + '?');
     });
 
     $(document).on('click', '.todo-bulk-reject', function () {
@@ -3760,18 +3888,32 @@ $(function () {
         var key = $section.data('section');
         var ids = $section.find('.todo-check:checked').map(function () { return $(this).val(); }).get();
         if (!ids.length || bulkTerlaluBanyak(ids)) return;
-        $('#bulkRejectCount').text(ids.length);
-        $('#bulkRejectNotes').val('').removeClass('is-invalid');
-        $('#mdlBulkRejectCR').data('ids', ids).data('key', key).modal('show');
+        var verb = $(this).data('verb') || 'Reject';
+        bukaRejectBulk(key, ids, verb, verb + ' ' + ids.length + ' ' + ($(this).data('unit') || 'item'));
     });
+
+    /* Aksi per baris di section yang memakai todo-list.bulk (PO, Budgeting
+       Closing, Treasury Draft, Invoice Revise). Memakai data-section, bukan
+       closest(): menu "Aksi lain" dipindah ke <body> saat dibuka
+       (tesys-row-actions.js). */
+    $(document).on('click', '.todo-row-act', function () {
+        var key = $(this).data('section'), id = String($(this).data('id'));
+        var verb = $(this).data('verb'), unit = $(this).data('unit') || '';
+        var label = unit + ' ' + ($(this).data('code') || ('#' + id));
+        if ($(this).data('mode') === 'reject') {
+            bukaRejectBulk(key, [id], verb, verb + ' ' + label);
+        } else {
+            konfirmasiApproveBulk(key, [id], verb, verb + ' ' + label + '?');
+        }
+    });
+
     $('#btnBulkRejectConfirm').on('click', function () {
         var notes = $('#bulkRejectNotes').val().trim();
         if (!notes) { $('#bulkRejectNotes').addClass('is-invalid'); return; }
         var ids = $('#mdlBulkRejectCR').data('ids') || [];
         var key = $('#mdlBulkRejectCR').data('key');
         var $form = $('#frmTodoBulkReject-' + key);
-        $form.find('input[name="ids[]"]').remove();
-        ids.forEach(function (id) { $form.append('<input type="hidden" name="ids[]" value="' + id + '">'); });
+        isiIdsBulk($form, ids);
         $form.find('textarea[name="notes"]').val(notes);
         $form.submit();
     });

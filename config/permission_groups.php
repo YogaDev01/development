@@ -223,40 +223,6 @@ return [
       1 => 'budget-request.submit',
     ],
   ],
-  'cash-management.kelola' => 
-  [
-    'module' => 'cash-management',
-    'label' => 'Kelola Cash Management (lihat, buat, posting, batal)',
-    'permissions' => 
-    [
-      0 => 'cash-management.cancel',
-      1 => 'cash-management.create',
-      2 => 'cash-management.destroy',
-      3 => 'cash-management.edit',
-      4 => 'cash-management.index',
-      5 => 'cash-management.post',
-      6 => 'cash-management.show',
-      7 => 'cash-management.store',
-      8 => 'cash-management.update',
-    ],
-  ],
-  'cash-receipt.kelola' => 
-  [
-    'module' => 'cash-receipt',
-    'label' => 'Kelola Cash Receipt & alokasi',
-    'permissions' => 
-    [
-      0 => 'cash-receipt.allocate',
-      1 => 'cash-receipt.cancel',
-      2 => 'cash-receipt.create',
-      3 => 'cash-receipt.destroy',
-      4 => 'cash-receipt.index',
-      5 => 'cash-receipt.open-invoices',
-      6 => 'cash-receipt.remove-allocation',
-      7 => 'cash-receipt.show',
-      8 => 'cash-receipt.store',
-    ],
-  ],
   'cost-center.kelola' => 
   [
     'module' => 'cost-center',
@@ -284,15 +250,11 @@ return [
   'cost-register.lihat' => 
   [
     'module' => 'cost-register',
-    'label' => 'Lihat, export & setujui Cost Register',
+    'label' => 'Setujui & revisi Cost Register (lihat halaman lewat Menu Access)',
     'permissions' => 
     [
       0 => 'cost-register.approve',
-      1 => 'cost-register.export',
-      2 => 'cost-register.index',
-      3 => 'cost-register.log-note',
-      4 => 'cost-register.revise',
-      5 => 'cost-register.show-json',
+      1 => 'cost-register.revise',
     ],
   ],
   'daily-transaction.approval' => 

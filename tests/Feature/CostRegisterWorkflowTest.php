@@ -24,6 +24,8 @@ class CostRegisterWorkflowTest extends TestCase
     {
         parent::setUp();
         Storage::fake('secure');
+        // Halaman Cost Register dijaga menu:cost-register sejak 2026-11-09.
+        $this->giveMenuAccess($this->role('finance'), 'cost-register');
     }
 
     private function register(string $status = 'DRAFT'): CostRegister

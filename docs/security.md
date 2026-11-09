@@ -107,8 +107,11 @@ bypass — superadmin passes because it is listed in each route gate; only
 | Invoice verify | superadmin, finance_manager, accounting |
 | Invoice approve | superadmin, finance_manager |
 | Invoice revise / cancel | +approver (+accounting for revise) |
-| Cash Receipt (header) store/allocate/cancel/delete | superadmin, finance, finance_manager, treasury, approver, collection |
-| Cash Management post/cancel/delete | superadmin, finance, finance_manager, treasury, approver |
+| Cash Receipt (header) store/allocate/cancel/delete | `menu:cash-receipt` (sejak 2026-11-09; dulu role superadmin, finance, finance_manager, treasury, approver, collection) |
+| Cash Management post/cancel/delete | `menu:cash-management` (sejak 2026-11-09; dulu role superadmin, finance, finance_manager, treasury, approver) |
+| Cost Register lihat/export | `menu:cost-register` (sejak 2026-11-09) |
+| Cost Register create/submit/cancel/hapus | `menu:cost-register` + superadmin, finance, finance_manager |
+| Cost Register approve/revise | superadmin, approver (route: + finance, finance_manager; dicek `CostRegister::APPROVE_ROLES`) |
 | Closing close | `menu:closing` only |
 | Beneficiary edit/delete | superadmin only (`AccessRoles::BENEFICIARY_MANAGE`) |
 | Site tambah/ubah/hapus/import, PIC, material, accessories, dokumen, maintenance | semua role KECUALI `AccessRoles::SITE_READ_ONLY` (teknisi) |

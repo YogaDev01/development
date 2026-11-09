@@ -214,7 +214,10 @@ return [
             'icon'   => 'fas fa-book',
             'url'    => '/cost-register',
             'active' => ['cost-register*'],
-            'roles'  => ['superadmin', 'finance', 'finance_manager'],
+            // Dulu 'roles' tertulis (tidak tampil di modal Menu Access dan
+            // tanpa approver, padahal route mengizinkan). Sejak 2026-11-09
+            // diatur lewat Menu Access, sama dengan route menu:cost-register.
+            'menu'   => 'cost-register',
         ],
         'forecast' => [
             'label'  => 'Forecast',
