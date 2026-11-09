@@ -8,25 +8,25 @@ class Site extends Model
 {
     protected $table = 'sites';
 
-    public const TYPES = [
-        'SEKOLAH' => 'Sekolah',
-        'KANTOR' => 'Kantor',
-        'KEAMANAN' => 'Keamanan',
-        'LAYANAN_KESEHATAN' => 'Layanan Kesehatan',
-        'TEMPAT_IBADAH' => 'Tempat Ibadah',
-        'TOWER' => 'Tower',
-    ];
+    /*
+    | Pilihan Tipe / Source Power / Program diambil dari master (dulu konstanta
+    | TYPES / SOURCE_POWERS / PROGRAMS). Format [code => name]; `code` yang
+    | disimpan di kolom sites. Di-cache per request lewat once().
+    */
+    public static function typeOptions(): array
+    {
+        return once(fn () => SiteType::orderBy('name')->pluck('name', 'code')->all());
+    }
 
-    public const SOURCE_POWERS = [
-        'PLN' => 'PLN',
-        'SPS' => 'SPS',
-        'HYBRID' => 'Hybrid',
-    ];
+    public static function sourcePowerOptions(): array
+    {
+        return once(fn () => SiteSourcePower::orderBy('name')->pluck('name', 'code')->all());
+    }
 
-    public const PROGRAMS = [
-        'AKSES_INTERNET' => 'Akses Internet',
-        'TOWER_POWER' => 'Tower & Power',
-    ];
+    public static function programOptions(): array
+    {
+        return once(fn () => SiteProgram::orderBy('name')->pluck('name', 'code')->all());
+    }
 
     public const STATUSES = [
         'ACTIVE' => 'Active',

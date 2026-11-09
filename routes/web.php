@@ -479,6 +479,10 @@ Route::middleware('auth')->group(function () {
         'network'         => \App\Http\Controllers\NetworkController::class,
         'homebase'        => \App\Http\Controllers\HomebaseController::class,
         'region'          => \App\Http\Controllers\RegionController::class,
+        // Pilihan dropdown form Site (migrasi 2026_11_09_000200).
+        'site-type'         => \App\Http\Controllers\SiteTypeController::class,
+        'site-source-power' => \App\Http\Controllers\SiteSourcePowerController::class,
+        'site-program'      => \App\Http\Controllers\SiteProgramController::class,
     ];
 
     foreach ($masterModules as $key => $controller) {
@@ -1084,9 +1088,13 @@ Route::middleware('auth')->group(function () {
     | Untuk satu penerimaan yang menutup beberapa invoice sekaligus. Pembayaran
     | satu invoice tunggal tetap lewat halaman invoice; keduanya menulis ke
     | tabel cash_receipts yang sama.
+    |
+    | Akses lewat Menu Access 'cash-receipt' (sejak 2026-11-09; dulu role
+    | tertulis superadmin,finance,finance_manager,treasury,approver,collection
+    | — migrasi 2026_11_09_000100 menyamakan centangnya dengan daftar itu).
     */
 
-    Route::middleware('role:superadmin,finance,finance_manager,treasury,approver,collection')->group(function () {
+    Route::middleware('menu:cash-receipt')->group(function () {
         Route::get('cash-receipt', [\App\Http\Controllers\CashReceiptController::class, 'index'])->name('cash-receipt.index');
         Route::get('cash-receipt/create', [\App\Http\Controllers\CashReceiptController::class, 'create'])->name('cash-receipt.create');
         // Harus di ATAS 'cash-receipt/{id}', kalau tidak 'open-invoices' ditangkap
@@ -1109,10 +1117,12 @@ Route::middleware('auth')->group(function () {
     | sudah ada (Cash Receipt, Treasury) plus entri manual untuk pergerakan
     | kas yang tidak punya dokumen di modul lain — lihat CashFlowService.
     |
-    | Akses disamakan dengan Treasury: finance & treasury yang memegang kas.
+    | Akses lewat Menu Access 'cash-management' (sejak 2026-11-09; dulu role
+    | tertulis superadmin,finance,finance_manager,treasury,approver — migrasi
+    | 2026_11_09_000100 menyamakan centangnya dengan daftar itu).
     */
 
-    Route::middleware('role:superadmin,finance,finance_manager,treasury,approver')->group(function () {
+    Route::middleware('menu:cash-management')->group(function () {
         Route::get('cash-management', [\App\Http\Controllers\CashManagementController::class, 'index'])->name('cash-management.index');
         Route::get('cash-management/create', [\App\Http\Controllers\CashManagementController::class, 'create'])->name('cash-management.create');
         Route::post('cash-management', [\App\Http\Controllers\CashManagementController::class, 'store'])->name('cash-management.store');
@@ -1133,18 +1143,26 @@ Route::middleware('auth')->group(function () {
     */
 
     // Alur = Cost Payment (Non-CA): DRAFT -> VERIFIED ("Submitted") -> APPROVED -> QUEUED -> CLOSED.
-    // Melihat daftar/detail/export + menulis catatan log: finance group + approver.
-    // Role per aksi (submit/cancel: finance group; approve/revise: approver) dicek lagi di controller.
-    Route::middleware('role:superadmin,finance,finance_manager,approver')->group(function () {
+    // Melihat daftar/detail/export + menulis catatan log: Menu Access 'cost-register'
+    // (sejak 2026-11-09; dulu role tertulis superadmin,finance,finance_manager,approver).
+    Route::middleware('menu:cost-register')->group(function () {
         Route::get('cost-register', [CostRegisterController::class, 'index'])->name('cost-register.index');
         Route::match(['get', 'post'], 'cost-register/export', [CostRegisterController::class, 'export'])->name('cost-register.export');
         Route::get('cost-register/{id}/detail-json', [CostRegisterController::class, 'showJson'])->name('cost-register.show-json');
         Route::post('cost-register/{id}/log-note', [CostRegisterController::class, 'storeLogNote'])->middleware('throttle:30,1')->name('cost-register.log-note');
+    });
+
+    // Approve/revise TETAP dijaga role (bukan menu): aksi ini juga dipanggil dari
+    // Todo List, jadi mencabut centang menu tidak boleh memutus approval.
+    // CostRegister::APPROVE_ROLES dicek lagi di controller.
+    Route::middleware('role:superadmin,finance,finance_manager,approver')->group(function () {
         Route::post('cost-register/{id}/approve', [CostRegisterController::class, 'approve'])->name('cost-register.approve');
         Route::post('cost-register/{id}/revise', [CostRegisterController::class, 'revise'])->name('cost-register.revise');
     });
 
-    Route::middleware('role:superadmin,finance,finance_manager')->group(function () {
+    // Menulis: perlu menu 'cost-register' DAN role finance group (CostRegister::SUBMIT_ROLES
+    // dicek lagi di controller untuk submit/cancel).
+    Route::middleware(['menu:cost-register', 'role:superadmin,finance,finance_manager'])->group(function () {
         Route::get('cost-register/create', [CostRegisterController::class, 'create'])->name('cost-register.create');
         Route::post('cost-register', [CostRegisterController::class, 'store'])->name('cost-register.store');
         Route::delete('cost-register/{id}', [CostRegisterController::class, 'destroy'])->name('cost-register.destroy');

@@ -536,7 +536,7 @@ class TodoListController extends Controller
         }
 
         // Finance — Budgeting: Verifikasi Closing (CLOSING + berkas closing sudah diajukan
-        // manager -> verifyClosing()/rejectClosing()). Reminder + link-out ke Budget Plan.
+        // manager -> verifyClosing()/rejectClosing()). Verify/Reject inline lewat todo-list.bulk ('bp-closing-verify').
         $budgetingClosingVerify = collect();
         if (TodoService::allows($user, 'budgetingClosingVerify')) {
             $budgetingClosingVerify = $this->queueQuery('budgetingClosingVerify')
@@ -692,9 +692,11 @@ class TodoListController extends Controller
          | TodoService::QUEUES['poSubmitted'] (satu sumber untuk halaman,
          | badge sidebar, dan pengingat).
          |
-         | Ini reminder + link-out, bukan approve/reject inline seperti section
-         | Cost Request: keputusan verify/revise tidak bisa diambil tanpa melihat
-         | isi PO-nya, jadi tombolnya membuka PO itu sendiri.
+         | Verify/Revise kini bisa langsung dari Todo List (keputusan pemilik
+         | 2026-11-09, menggantikan pola reminder + link-out): aksi lewat
+         | todo-list.bulk (BULK_ROUTES 'po-submitted') yang memanggil
+         | ProjectController::verify()/financeRevise(). Detail PO tetap bisa
+         | dibuka dari menu "Aksi lain" sebelum memutuskan.
          */
         $poSubmitted = collect();
         if (TodoService::allows($user, 'poSubmitted')) {
@@ -707,8 +709,9 @@ class TodoListController extends Controller
                 ->sortBy('aging_since')->values();
         }
 
-        // Purchase Order — Menunggu Approval Approver (VERIFIED -> approve()). Reminder +
-        // link-out seperti $poSubmitted. BP bundled ikut disetujui bersama PO, jadi tidak
+        // Purchase Order — Menunggu Approval Approver (VERIFIED -> approve()). Approve/Revise
+        // inline lewat todo-list.bulk ('po-verified'; approve = decision APPROVE, Early Start
+        // tetap di halaman PO), seperti $poSubmitted. BP bundled ikut disetujui bersama PO, jadi tidak
         // muncul ganda di antrean Budgeting (lihat queueQuery budgetingCeoApprove).
         $poVerified = collect();
         if (TodoService::allows($user, 'poVerified')) {
@@ -1444,8 +1447,40 @@ class TodoListController extends Controller
         'bp-verify'      => ['budget-plan.finance-verify', 'budget-plan.finance-reject'],
         'bp-ceo'         => ['budget-plan.ceo-approve', 'budget-plan.ceo-reject'],
         'batch-process'  => ['daily-transaction.approve', 'daily-transaction.reject-batch'],
-        'invoice-verify' => ['invoice-cash-receipt.verify', null],
-        'invoice-approve'=> ['invoice-cash-receipt.approve', null],
+        // "Reject" invoice = Revise (SUBMITTED -> DRAFT, VERIFIED -> SUBMITTED); invoice tidak punya status REJECTED.
+        'invoice-verify' => ['invoice-cash-receipt.verify', 'invoice-cash-receipt.revise'],
+        'invoice-approve'=> ['invoice-cash-receipt.approve', 'invoice-cash-receipt.revise'],
+        // Purchase Order — "Reject" = Revise ke DRAFT (PO tidak punya status REJECTED).
+        'po-submitted'   => ['project.verify', 'project.finance-revise'],
+        'po-verified'    => ['project.approve', 'project.finance-revise'],
+        'po-closing'     => ['project.verify-closing', 'project.reject-closing'],
+        'bp-closing-verify' => ['budget-plan.verify-closing', 'budget-plan.reject-closing'],
+        // Batch Draft -> ajukan ke Approver (DRAFT -> PENDING_APPROVER). Hapus draft tetap di halaman batch.
+        'batch-draft'    => ['daily-transaction.submit', null],
+    ];
+
+    /**
+     * Status yang wajib dimiliki dokumen agar boleh diproses lewat section
+     * tersebut. Dicek di bulk() sebelum memanggil aksi satuan, sehingga aksi
+     * yang menerima lebih dari satu status (mis. project.finance-revise menerima
+     * SUBMITTED & VERIFIED) tidak bisa dipakai lintas tahap lewat section lain.
+     */
+    private const BULK_EXPECTED_STATUS = [
+        'po-submitted'      => [Project::class, 'SUBMITTED'],
+        'po-verified'       => [Project::class, 'VERIFIED'],
+        'po-closing'        => [Project::class, 'CLOSING'],
+        'invoice-verify'    => [Invoice::class, 'SUBMITTED'],
+        'invoice-approve'   => [Invoice::class, 'VERIFIED'],
+    ];
+
+    /**
+     * Input tambahan yang dibutuhkan aksi satuan saat dipanggil dari bulk.
+     * Approve PO dari Todo List selalu keputusan APPROVE (status akhir dipilih
+     * sistem: ACTIVE / WAITING_PO) — sama dengan ProjectController::bulkProses().
+     * Early Start tetap lewat halaman Purchase Order.
+     */
+    private const BULK_EXTRA_INPUT = [
+        'po-verified' => ['approve' => ['decision' => 'APPROVE']],
     ];
 
     /**
@@ -1803,10 +1838,24 @@ class TodoListController extends Controller
         [$controllerClass, $method] = explode('@', $route->getActionName());
         $controller = app($controllerClass);
 
+        if ($extra = self::BULK_EXTRA_INPUT[$section][$mode] ?? null) {
+            $request->merge($extra);
+        }
+        [$modelClass, $expectedStatus] = self::BULK_EXPECTED_STATUS[$section] ?? [null, null];
+
         $ok = 0;
         $errors = [];
         foreach (array_unique((array) $request->input('ids', [])) as $id) {
             session()->forget(['success', 'error', 'warning']);
+            if ($modelClass) {
+                $statusNow = $modelClass::whereKey($id)->value('status');
+                if ($statusNow !== $expectedStatus) {
+                    $errors[] = '#' . $id . ': ' . ($statusNow === null
+                        ? 'dokumen tidak ditemukan.'
+                        : 'status sudah ' . $statusNow . ', bukan ' . $expectedStatus . ' — muat ulang.');
+                    continue;
+                }
+            }
             try {
                 $hasil = app()->call([$controller, $method], ['id' => $id]);
                 if ($err = session('error') ?: session('warning')) {

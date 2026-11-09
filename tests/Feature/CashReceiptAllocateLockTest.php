@@ -32,6 +32,13 @@ class CashReceiptAllocateLockTest extends TestCase
 
     private int $customerId;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Route Cash Receipt dijaga menu:cash-receipt sejak 2026-11-09.
+        $this->giveMenuAccess($this->role('finance'), 'cash-receipt');
+    }
+
     private function invoice(int $total = 10_000_000): Invoice
     {
         $this->customerId ??= $this->makeCustomer()->id;

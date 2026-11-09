@@ -135,7 +135,7 @@ class SiteMasterImportTest extends TestCase
         Homebase::create(['region_id' => $region->id, 'address' => 'HB Bandung']);
 
         // Cluster sengaja dikosongkan: diambil dari Homebase.
-        $row = ['TID-1', 'SD 1', 'PT BTS', 'Pendidikan', 'PLN', 'Akses Internet', 'HB Bandung', '', '',
+        $row = ['TID-1', 'SD 1', 'PT BTS', 'Sekolah', 'PLN', 'Akses Internet', 'HB Bandung', '', '',
             'jawa barat', 'Kota Bandung', '', '', 'Jl. A', '-6.9', '107.6', 'GW-1', '', '', '', 'R'];
 
         $dup = $this->xlsx(self::SITE_HEADERS, [$row, $row]);
@@ -158,7 +158,7 @@ class SiteMasterImportTest extends TestCase
 
         $site = Site::where('tid', 'TID-1')->firstOrFail();
         $this->assertSame([$jawa->id, $jabar->id, $bandung->id], [$site->pulau_id, $site->provinsi_id, $site->kota_id]);
-        $this->assertSame('PENDIDIKAN', $site->type);
+        $this->assertSame('SEKOLAH', $site->type);
         $this->assertSame($region->id, $site->region_id);
         $this->assertSame('GW-1', $site->gateway);
         $this->assertSame('R', $site->polarization);

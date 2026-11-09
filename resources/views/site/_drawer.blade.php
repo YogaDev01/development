@@ -54,7 +54,7 @@
     <span class="badge badge-{{ $site->status === 'ACTIVE' ? 'success' : 'danger' }} px-2 py-1">{{ Site::STATUSES[$site->status] ?? $site->status }}</span>
     {{-- Program kosong: badge-nya tidak usah dicetak sama sekali. --}}
     @if($site->program)
-        <span class="badge badge-light border px-2 py-1">{{ Site::PROGRAMS[$site->program] ?? $site->program }}</span>
+        <span class="badge badge-light border px-2 py-1">{{ Site::programOptions()[$site->program] ?? $site->program }}</span>
     @endif
     <span class="badge badge-light border px-2 py-1">{{ $site->customer?->name ?? '-' }}</span>
 </div>
@@ -97,9 +97,9 @@
                     $kv('Site ID', $site->tid),
                     $kv('Nama Site', $site->sitename),
                     $kv('Customer', $site->customer?->name),
-                    $kv('Tipe Bangunan', Site::TYPES[$site->type] ?? $site->type),
-                    $kv('Source Power', Site::SOURCE_POWERS[$site->source_power] ?? $site->source_power),
-                    $kv('Program', Site::PROGRAMS[$site->program] ?? $site->program),
+                    $kv('Tipe Bangunan', Site::typeOptions()[$site->type] ?? $site->type),
+                    $kv('Source Power', Site::sourcePowerOptions()[$site->source_power] ?? $site->source_power),
+                    $kv('Program', Site::programOptions()[$site->program] ?? $site->program),
                     $kv('Status', Site::STATUSES[$site->status] ?? $site->status),
                     $kv('Teknisi', \App\Http\Controllers\SiteController::technicians($site)),
                     $kv('Cluster', \App\Http\Controllers\SiteController::regions($site)),

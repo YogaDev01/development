@@ -152,12 +152,12 @@
 <div class="modal fade" id="mdlBulkRejectCR" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog"><div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
         <div class="modal-header" style="background:var(--charcoal);border-bottom:3px solid var(--accent);">
-            <h5 class="modal-title text-white">Reject <span id="bulkRejectCount"></span> item</h5>
+            <h5 class="modal-title text-white" id="bulkRejectTitle">Reject item</h5>
             <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
         </div>
         <div class="modal-body" style="padding:24px;">
             <div class="form-group mb-0">
-                <label class="font-weight-600">Alasan Penolakan <span class="text-danger">*</span></label>
+                <label class="font-weight-600"><span id="bulkRejectLabel">Alasan Penolakan</span> <span class="text-danger">*</span></label>
                 <textarea id="bulkRejectNotes" class="form-control" rows="3" required placeholder="Tuliskan alasan..."></textarea>
             </div>
         </div>

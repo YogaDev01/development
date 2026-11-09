@@ -214,7 +214,10 @@ return [
             'icon'   => 'fas fa-book',
             'url'    => '/cost-register',
             'active' => ['cost-register*'],
-            'roles'  => ['superadmin', 'finance', 'finance_manager'],
+            // Dulu 'roles' tertulis (tidak tampil di modal Menu Access dan
+            // tanpa approver, padahal route mengizinkan). Sejak 2026-11-09
+            // diatur lewat Menu Access, sama dengan route menu:cost-register.
+            'menu'   => 'cost-register',
         ],
         'forecast' => [
             'label'  => 'Forecast',
@@ -301,6 +304,27 @@ return [
             'url'    => '/site',
             'active' => ['site', 'site/*'],
             'menu'   => 'site',
+        ],
+        'site-type' => [
+            'label'  => 'Tipe Site',
+            'icon'   => 'fas fa-building',
+            'url'    => '/site-type',
+            'active' => ['site-type*'],
+            'menu'   => 'site-type',
+        ],
+        'site-source-power' => [
+            'label'  => 'Source Power',
+            'icon'   => 'fas fa-bolt',
+            'url'    => '/site-source-power',
+            'active' => ['site-source-power*'],
+            'menu'   => 'site-source-power',
+        ],
+        'site-program' => [
+            'label'  => 'Program Site',
+            'icon'   => 'fas fa-clipboard-list',
+            'url'    => '/site-program',
+            'active' => ['site-program*'],
+            'menu'   => 'site-program',
         ],
         'network' => [
             'label'  => 'Network',
@@ -424,7 +448,7 @@ return [
         ],
         'Operation Master' => [
             'icon'  => 'fas fa-cogs',
-            'items' => ['homebase', 'network', 'region', 'site', 'wilayah', 'trouble-ticket-rules'],
+            'items' => ['homebase', 'network', 'region', 'site', 'site-type', 'site-source-power', 'site-program', 'wilayah', 'trouble-ticket-rules'],
         ],
         'Finance Master' => [
             'icon'  => 'fas fa-coins',

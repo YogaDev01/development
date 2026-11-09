@@ -277,7 +277,7 @@ class SiteMasterDataTest extends TestCase
 
         $base = [
             'tid' => 'TID-001', 'sitename' => 'SD Negeri 1', 'customer_id' => $customer->id,
-            'type' => 'PENDIDIKAN', 'source_power' => 'SPS', 'program' => 'AKSES_INTERNET', 'status' => 'ACTIVE',
+            'type' => 'SEKOLAH', 'source_power' => 'SPS', 'program' => 'AKSES_INTERNET', 'status' => 'ACTIVE',
         ];
 
         $this->actingAs($this->admin)->post('/site', $base + [
