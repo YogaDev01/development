@@ -1537,6 +1537,9 @@ $(function () {
                         '<div class="ts-deflist-head">Cost</div>' +
                         row('Total Request', c.total_request_formatted) +
                         row('Total Refund', c.total_refund_formatted) +
+                        // Expense berkategori Variable Cost yang dibebankan ke PO ini
+                        // (0 bila tidak ada), supaya Request - Refund + Expense = Variable Cost.
+                        row('Expense (Variable Cost)', c.expense_variable_formatted) +
                         row('Variable Cost', c.variable_cost_formatted, 'total') +
                         row('Overhead', c.overhead_formatted) +
                         row('Fixed Cost', c.fixed_cost_formatted) +

@@ -416,17 +416,52 @@
                 <!-- FIXED COST & OVERHEAD -->
                 <div class="report-section">
                     <div class="report-section-header collapse-toggle" data-target="#accCostRegister">
-                        <h3><i class="fas fa-book"></i> Fixed Cost &amp; Overhead</h3>
+                        <h3><i class="fas fa-book"></i> Expense &amp; Cost Register</h3>
                         <i class="fas fa-chevron-up chevron-icon"></i>
                     </div>
                     <div class="report-section-body p-0 collapse show" id="accCostRegister">
-                        @if($result['cost_registers']->isEmpty())
+                        @if($result['cost_registers']->isEmpty() && $result['expense_lines']->isEmpty())
                         <div class="text-center text-muted py-4">
                             <i class="fas fa-inbox d-block mb-2"></i>
-                            Belum ada Cost Register untuk PO ini.
-                            <div style="font-size:11px;margin-top:4px;">Nominal Fixed Cost &amp; Overhead dicatat manual lewat modul Cost Register (khusus Finance).</div>
+                            Belum ada Expense untuk PO ini.
+                            <div style="font-size:11px;margin-top:4px;">Biaya di luar Cost Request dicatat lewat modul Expense (Finance Manager &amp; CEO).</div>
                         </div>
                         @else
+                        @if($result['expense_lines']->isNotEmpty())
+                        {{-- Expense baru: porsi rincian yang dialokasikan ke PO ini; kategori dari akun. --}}
+                        <table class="table table-sm mb-0 data-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">No. Expense</th>
+                                    <th scope="col">Kategori</th>
+                                    <th scope="col">Akun</th>
+                                    <th scope="col">Deskripsi</th>
+                                    <th scope="col">Pembebanan</th>
+                                    <th scope="col" class="text-right">Nilai Rincian</th>
+                                    <th scope="col" class="text-right">Porsi PO Ini</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Tanggal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($result['expense_lines'] as $baris)
+                                @php $line = $baris['line']; @endphp
+                                <tr>
+                                    <td class="text-nowrap">{{ $line->costRegister->display_code ?? '-' }}</td>
+                                    <td>{{ $line->cost_category ?? '-' }}</td>
+                                    <td>{{ $line->account->name ?? '-' }}</td>
+                                    <td style="max-width:280px;">{{ $line->description }}</td>
+                                    <td style="max-width:220px;">{{ $line->allocation_label }}</td>
+                                    <td class="text-right">{{ number_format($line->total, 0, ',', '.') }}</td>
+                                    <td class="text-right">{{ number_format($baris['share'], 0, ',', '.') }}</td>
+                                    <td>{{ $line->costRegister->status_label ?? '-' }}</td>
+                                    <td>{{ $line->costRegister?->created_at?->format('d M Y') }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                        @endif
+                        @if($result['cost_registers']->isNotEmpty())
                         <table class="table table-sm mb-0 data-table">
                             <thead>
                                 <tr>
@@ -457,6 +492,7 @@
                                 @endforeach
                             </tbody>
                         </table>
+                        @endif
                         @endif
                     </div>
                 </div>

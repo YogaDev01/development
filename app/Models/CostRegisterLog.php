@@ -31,11 +31,18 @@ class CostRegisterLog extends Model
         'created'  => 'Dibuat',
         'verified' => 'Diajukan',
         'approved' => 'Disetujui',
-        'revised'  => 'Dikembalikan untuk Revisi',
+        'revised'  => 'Direvisi (kembali ke Draft)',
+        'rejected' => 'Ditolak',
+        'updated'  => 'Diubah',
         'cancelled' => 'Dibatalkan',
         'batched'  => 'Dimasukkan ke Batch',
         'unbatched' => 'Dikeluarkan dari Batch',
         'paid'     => 'Telah Dibayar',
+        // Expense Cash Advance (Fase 2).
+        'settle_submitted'    => 'Settlement Diajukan',
+        'settle_approved'     => 'Settlement Disetujui',
+        'settle_rejected'     => 'Settlement Ditolak',
+        'second_payment_paid' => 'Kekurangan Bayar Dibayar',
         'note'     => 'Catatan',
     ];
 
@@ -54,8 +61,11 @@ class CostRegisterLog extends Model
         return match ($this->action) {
             'created'              => 'secondary',
             'verified'             => 'info',
-            'approved', 'paid'     => 'success',
-            'revised', 'cancelled', 'unbatched' => 'danger',
+            'approved', 'paid', 'settle_approved', 'second_payment_paid' => 'success',
+            'settle_submitted'     => 'info',
+            'settle_rejected'      => 'danger',
+            'rejected', 'cancelled', 'unbatched' => 'danger',
+            'revised', 'updated'   => 'warning',
             'batched'              => 'dark',
             default                => 'secondary',
         };

@@ -1,13 +1,11 @@
-{{-- Isi tabel satu tab (fragment HTML, dimuat AJAX). Kerangka tab ada di index.blade.php. --}}
+{{-- Isi tabel gabungan semua tipe CR (fragment HTML, dimuat AJAX). Kerangka ada di index.blade.php. --}}
 @php
-    $tid    = 'tbl' . strtoupper($tab);      // tblCA / tblCP / tblDB
-    $isDb   = $tab === 'db';
-    $mode   = $tab;                           // 'ca' | 'cp' (dipakai _rows)
+    $tid    = 'tbl' . strtoupper($tab);      // tblALL
     $canAdd = Auth::user()->hasRole(['superadmin','manager','supervisor']);
     /* Kolom checkbox bulk Approve/Reject (tahap pengajuan & settlement) hanya untuk peran efektif
        (termasuk View As) yang berwenang di salah satu tahap — daftar peran dari
        BudgetRequest::STAGE_ROLES, sama dengan gerbang tombol per baris di _rows. */
-    $canBulk = ! $isDb && Auth::user()->hasRole(
+    $canBulk = Auth::user()->hasRole(
         array_merge(['superadmin'], ...array_values(\App\Models\BudgetRequest::bulkStageRoles()))
     );
 
@@ -76,10 +74,6 @@
     ]);
 @endphp
 
-{{-- Dibaca JS setelah tab dimuat ulang (ganti rentang tanggal tanpa reload halaman). --}}
-<div class="cr-tab-meta d-none" data-total="{{ (int) $total }}"
-     data-counts='@json($statusCounts ?? [])'></div>
-
 @if($truncated)
 <div role="status" class="tw:mb-3 tw:flex tw:items-start tw:gap-2 tw:rounded-md tw:border tw:border-border tw:bg-warning-bg tw:px-3 tw:py-2 tw:text-data tw:leading-data tw:text-warning">
     <i class="fas fa-exclamation-triangle tw:mt-1" aria-hidden="true"></i>
@@ -103,65 +97,42 @@
                 <th scope="col" width="4%" class="all">No</th>
                 <th scope="col" data-col="code" class="all text-nowrap cr-col-code" style="width:1%;">Code</th>
                 <th scope="col" data-col="desc" class="all cr-col-desc">Description</th>
-                @if($isDb)
-                <th scope="col" data-col="jenis" class="text-nowrap" style="width:1%;">Jenis</th>
-                @endif
+                <th scope="col" data-col="type" class="text-nowrap" style="width:1%;">Tipe</th>
                 <th scope="col" data-col="tanggal" class="text-nowrap" style="width:1%;">Tanggal</th>
                 <th scope="col" data-col="paid_at" class="text-nowrap" style="width:1%;">Tanggal Paid</th>
                 <th scope="col" data-col="pengaju" class="text-nowrap" style="width:1%;">Requestor</th>
                 {{-- PIC & Beneficiary dilebur jadi satu nilai: nama PIC bila ada,
                      bila kosong/"-" memakai beneficiary (diputuskan di _rows). --}}
                 <th scope="col" data-col="pic" class="text-nowrap" style="width:1%;">PIC</th>
-                @if($isDb)
-                <th scope="col" class="text-right text-nowrap" style="width:1%;" data-col="cost">Cost</th>
-                @else
                 <th scope="col" class="text-right text-nowrap" style="width:1%;" data-col="request">Request</th>
-                @endif
-                @if($tab === 'ca')
                 <th scope="col" class="text-right text-nowrap" style="width:1%;" data-col="realisasi">Settlement</th>
                 <th scope="col" class="text-right text-nowrap" style="width:1%;" data-col="refund">Refund</th>
                 {{-- Kebalikan Refund: settlement melebihi pengajuan, jadi masih ada
                      kekurangan bayar yang ditagihkan balik. --}}
                 <th scope="col" class="text-right text-nowrap" style="width:1%;" data-col="claim">Expense Claim</th>
-                @endif
+                {{-- Cost = biaya yang diakui (BudgetRequest::realizedCostValue()). --}}
+                <th scope="col" class="text-right text-nowrap" style="width:1%;" data-col="cost">Cost</th>
                 <th scope="col" data-col="status" class="text-nowrap" style="width:1%;">Status</th>
-                @if($isDb)
                 <th scope="col" data-col="close_date" class="text-nowrap" style="width:1%;">Close Date</th>
-                @endif
-                @unless($isDb)
                 {{-- Header kosong (hanya untuk pembaca layar), tidak bisa diurutkan, selebar tombolnya. --}}
                 <th scope="col" class="text-center all action-column" style="width:1%;"><span class="sr-only">Aksi</span></th>
-                @endunless
             </tr>
         </thead>
         <tbody>
-            @if($isDb)
-                @include('budget-request._rows_db', ['rows' => $rows])
-            @else
-                @include('budget-request._rows', ['rows' => $rows, 'mode' => $mode, 'canBulk' => $canBulk])
-            @endif
+            @include('budget-request._rows', ['rows' => $rows, 'canBulk' => $canBulk])
         </tbody>
         <tfoot>
             <tr class="cr-foot-row">
                 @if($canBulk)
                 <th class="cr-col-check"></th>
                 @endif
-                @if($tab === 'ca')
-                <th colspan="7" class="text-right cr-foot-label">Total (data tampil)</th>
+                <th colspan="8" class="text-right cr-foot-label">Total (data tampil)</th>
                 <th class="text-right text-nowrap cr-foot-amount" data-lbl="Request"></th>
                 <th class="text-right text-nowrap cr-foot-realisasi" data-lbl="Settlement"></th>
                 <th class="text-right text-nowrap cr-foot-var" data-lbl="Refund"></th>
                 <th class="text-right text-nowrap cr-foot-claim" data-lbl="Expense Claim"></th>
-                <th colspan="2"></th>
-                @elseif($tab === 'cp')
-                <th colspan="7" class="text-right cr-foot-label">Total (data tampil)</th>
-                <th class="text-right text-nowrap cr-foot-amount" data-lbl="Request"></th>
-                <th colspan="2"></th>
-                @else
-                <th colspan="8" class="text-right cr-foot-label">Total Cost (data tampil)</th>
                 <th class="text-right text-nowrap cr-foot-cost" data-lbl="Cost"></th>
-                <th colspan="2"></th>
-                @endif
+                <th colspan="3"></th>
             </tr>
         </tfoot>
     </table>
@@ -176,7 +147,7 @@
                 <div class="tw:text-sub tw:font-section tw:text-text">Belum ada Cost Request</div>
                 <div class="tw:mt-1 tw:text-body tw:text-text-dim">Belum ada pengajuan pada rentang tanggal dan filter yang sedang dipakai. Coba perlebar rentang tanggalnya, atau buat pengajuan baru.</div>
             </div>
-            @if($canAdd && ! $isDb)
+            @if($canAdd)
             <x-tw.button href="{{ url('/budget-request/create') }}" size="sm"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Request</x-tw.button>
             @endif
         </div>

@@ -183,8 +183,11 @@ class TodoListController extends Controller
             ['key' => 'po-submitted',    'label' => 'PO — Approval Finance',     'icon' => 'fas fa-file-signature',   'tone' => 'attention', 'items' => $data['poSubmitted']],
             ['key' => 'po-verified',     'label' => 'PO — Approval Approver',    'icon' => 'fas fa-file-signature',   'tone' => 'attention', 'items' => $data['poVerified']],
             ['key' => 'po-closing',      'label' => 'PO — Verifikasi Closing',   'icon' => 'fas fa-flag-checkered',   'tone' => 'attention', 'items' => $data['poClosingVerify']],
-            ['key' => 'reg-approve',     'label' => 'Cost Register — Approval',  'icon' => 'fas fa-file-invoice-dollar', 'tone' => 'attention', 'items' => $data['costRegisterApprove']],
-            ['key' => 'reg-batch',       'label' => 'Cost Register — Masukkan ke Batch', 'icon' => 'fas fa-layer-group', 'tone' => 'progress', 'items' => $data['costRegisterBatch']],
+            ['key' => 'reg-approve',     'label' => 'Expense — Approval',        'icon' => 'fas fa-file-invoice-dollar', 'tone' => 'attention', 'items' => $data['costRegisterApprove']],
+            ['key' => 'reg-batch',       'label' => 'Expense — Masukkan ke Batch', 'icon' => 'fas fa-layer-group', 'tone' => 'progress', 'items' => $data['costRegisterBatch']],
+            ['key' => 'reg-settle',      'label' => 'Expense CA — Input Settlement', 'icon' => 'fas fa-receipt', 'tone' => 'progress', 'items' => $data['expenseSettleInput']],
+            ['key' => 'reg-settle-approve', 'label' => 'Expense CA — Approval Settlement', 'icon' => 'fas fa-clipboard-check', 'tone' => 'attention', 'items' => $data['expenseSettleApprove']],
+            ['key' => 'reg-rejected',    'label' => 'Expense Ditolak — Revisi / Batalkan', 'icon' => 'fas fa-undo', 'tone' => 'danger', 'items' => $data['expenseRejected']],
             ['key' => 'collection',      'label' => 'Menunggu Invoice Ditagih',  'icon' => 'fas fa-file-invoice',     'tone' => 'attention', 'items' => $data['collectionWaitingInvoice']],
             ['key' => 'tt-request',      'label' => 'Trouble Ticket — Review Pengajuan', 'icon' => 'fas fa-file-invoice-dollar', 'tone' => 'attention', 'items' => $data['ticketRequestReview']],
             ['key' => 'tt-action',       'label' => 'Trouble Ticket — Tindakan', 'icon' => 'fas fa-tools', 'tone' => 'attention', 'items' => $data['ticketActions']],
@@ -239,6 +242,7 @@ class TodoListController extends Controller
             'budgetingClosingDue' => collect(), 'budgetingClosingVerify' => collect(),
             'treasuryDraftSubmit' => collect(), 'costRegisterApprove' => collect(),
             'costRegisterBatch' => collect(), 'poClosingVerify' => collect(),
+            'expenseSettleInput' => collect(), 'expenseSettleApprove' => collect(), 'expenseRejected' => collect(),
             'treasuryBatchCreate' => collect(), 'treasuryBatchGroups' => collect(),
             'treasuryBatchSecond' => collect(), 'batchSourceFunds' => collect(),
             'treasuryProcess' => collect(), 'treasuryReadyToPay' => collect(),
@@ -583,11 +587,11 @@ class TodoListController extends Controller
                 ->sortBy('aging_since')->values();
         }
 
-        // Cost Register — Submitted menunggu Approver, dan Approved menunggu dibatch Treasury.
+        // Expense (dulu Cost Register) — Submitted menunggu CEO, dan Approved menunggu dibatch Treasury.
         $costRegisterApprove = collect();
         if (TodoService::allows($user, 'costRegisterApprove')) {
             $costRegisterApprove = $this->queueQuery('costRegisterApprove')
-                ->with(['project.customer', 'inputBy', 'beneficiary'])
+                ->with(['project.customer', 'inputBy', 'beneficiary', 'details.project', 'details.costCenter', 'details.projects:projects.id,projects.code'])
                 ->latest()
                 ->get()
                 ->map(fn ($reg) => $this->withAging($reg, $reg->verified_at ?? $reg->submitted_at ?? $reg->updated_at))
@@ -597,10 +601,41 @@ class TodoListController extends Controller
         $costRegisterBatch = collect();
         if (TodoService::allows($user, 'costRegisterBatch')) {
             $costRegisterBatch = $this->queueQuery('costRegisterBatch')
-                ->with(['project.customer', 'inputBy', 'beneficiary'])
+                ->with(['project.customer', 'inputBy', 'beneficiary', 'details.project', 'details.costCenter', 'details.projects:projects.id,projects.code'])
                 ->latest()
                 ->get()
                 ->map(fn ($reg) => $this->withAging($reg, $reg->approved_at ?? $reg->updated_at))
+                ->sortBy('aging_since')->values();
+        }
+
+        // Expense Cash Advance — input realisasi (FM) dan approval settlement (CEO).
+        $expenseSettleInput = collect();
+        if (TodoService::allows($user, 'expenseSettleInput')) {
+            $expenseSettleInput = $this->queueQuery('expenseSettleInput')
+                ->with(['project.customer', 'inputBy', 'beneficiary', 'details.project', 'details.costCenter', 'details.projects:projects.id,projects.code'])
+                ->latest()
+                ->get()
+                ->map(fn ($reg) => $this->withAging($reg, $reg->paid_at ?? $reg->updated_at))
+                ->sortBy('aging_since')->values();
+        }
+
+        $expenseRejected = collect();
+        if (TodoService::allows($user, 'expenseRejected')) {
+            $expenseRejected = $this->queueQuery('expenseRejected')
+                ->with(['project.customer', 'inputBy', 'beneficiary', 'details.project', 'details.costCenter', 'details.projects:projects.id,projects.code'])
+                ->latest()
+                ->get()
+                ->map(fn ($reg) => $this->withAging($reg, $reg->updated_at))
+                ->sortBy('aging_since')->values();
+        }
+
+        $expenseSettleApprove = collect();
+        if (TodoService::allows($user, 'expenseSettleApprove')) {
+            $expenseSettleApprove = $this->queueQuery('expenseSettleApprove')
+                ->with(['project.customer', 'inputBy', 'beneficiary', 'details.project', 'details.costCenter', 'details.projects:projects.id,projects.code'])
+                ->latest()
+                ->get()
+                ->map(fn ($reg) => $this->withAging($reg, $reg->settle_submitted_at ?? $reg->updated_at))
                 ->sortBy('aging_since')->values();
         }
 
@@ -840,6 +875,7 @@ class TodoListController extends Controller
             ->concat($treasuryBatchCreate)->concat($treasuryDraftSubmit)
             ->concat($treasuryProcess)->concat($treasuryReadyToPay)
             ->concat($costRegisterApprove)->concat($costRegisterBatch)
+            ->concat($expenseSettleInput)->concat($expenseSettleApprove)->concat($expenseRejected)
             ->concat($poSubmitted)->concat($poVerified)->concat($poClosingVerify)
             ->concat($invoiceVerify)->concat($invoiceApprove)
             ->concat($collectionWaitingInvoice)
@@ -872,6 +908,7 @@ class TodoListController extends Controller
             || $treasuryBatchCreate->isNotEmpty() || $treasuryDraftSubmit->isNotEmpty()
             || $treasuryProcess->isNotEmpty() || $treasuryReadyToPay->isNotEmpty()
             || $costRegisterApprove->isNotEmpty() || $costRegisterBatch->isNotEmpty()
+            || $expenseSettleInput->isNotEmpty() || $expenseSettleApprove->isNotEmpty() || $expenseRejected->isNotEmpty()
             || $poSubmitted->isNotEmpty() || $poVerified->isNotEmpty() || $poClosingVerify->isNotEmpty()
             || $invoiceVerify->isNotEmpty() || $invoiceApprove->isNotEmpty()
             || $collectionWaitingInvoice->isNotEmpty()
@@ -884,6 +921,7 @@ class TodoListController extends Controller
             'budgetingHeadCheck', 'budgetingVerify', 'budgetingCeoApprove', 'budgetingRejected',
             'budgetingClosingDue', 'budgetingClosingVerify',
             'treasuryDraftSubmit', 'costRegisterApprove', 'costRegisterBatch', 'poClosingVerify',
+            'expenseSettleInput', 'expenseSettleApprove', 'expenseRejected',
             'treasuryBatchCreate', 'treasuryBatchGroups', 'treasuryBatchSecond', 'batchSourceFunds', 'treasuryProcess', 'treasuryReadyToPay', 'poSubmitted', 'poVerified',
             'invoiceVerify', 'invoiceApprove', 'collectionWaitingInvoice', 'ticketRequestReview', 'ticketActions',
             'comingSoonRoles', 'totalPending', 'maxAging', 'completedToday', 'hasAnyTask', 'hasAnySection',
@@ -1591,7 +1629,12 @@ class TodoListController extends Controller
                 return Project::query()->whereIn('status', $status);
 
             case 'costRegisterApprove':
+            case 'expenseSettleApprove':
+            case 'expenseRejected':
                 return \App\Models\CostRegister::query()->whereIn('status', $status);
+
+            case 'expenseSettleInput':
+                return \App\Models\CostRegister::query()->whereIn('status', $status)->where('is_cash_advance', true);
 
             case 'costRegisterBatch':
                 // Query sama dengan $availableRegisters di DailyTransactionController::create().
@@ -2081,11 +2124,12 @@ class TodoListController extends Controller
             ));
         }
 
-        // Cost Register
-        foreach ([['costRegisterApprove', 'Cost Register — Menunggu Approval'], ['costRegisterBatch', 'Cost Register — Menunggu Dibatch Treasury']] as [$k, $tahap]) {
-            foreach ($d[$k] as $reg) {
+        // Expense (dulu Cost Register)
+        foreach ([['costRegisterApprove', 'Expense — Menunggu Approval'], ['costRegisterBatch', 'Expense — Menunggu Dibatch Treasury'],
+                  ['expenseSettleInput', 'Expense CA — Menunggu Input Settlement'], ['expenseSettleApprove', 'Expense CA — Menunggu Approval Settlement'], ['expenseRejected', 'Expense — Ditolak CEO']] as [$k, $tahap]) {
+            foreach ($d[$k] ?? [] as $reg) {
                 $rows->push($baris(
-                    'Cost Register', $tahap, 'reg:' . $reg->id, $reg->project?->code, $reg->project?->customer?->name,
+                    'Expense', $tahap, 'reg:' . $reg->id, $reg->display_code, $reg->target_label,
                     $reg->type_label . ($reg->notes ? ' — ' . $reg->notes : ''), $reg->inputBy?->name, $reg->amount, $reg->status, $reg->aging_label
                 ));
             }

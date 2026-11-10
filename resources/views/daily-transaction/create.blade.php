@@ -120,16 +120,16 @@
                                 </div>
                             </div>
 
-                            @if($availableCRs->isEmpty() && $availableRegisters->isEmpty() && $availableSecondPayments->isEmpty())
+                            @if($availableCRs->isEmpty() && $availableRegisters->isEmpty() && $availableSecondPayments->isEmpty() && $availableExpenseSecondPayments->isEmpty())
                             <div class="alert alert-warning mb-0">
                                 <i class="fas fa-exclamation-triangle mr-1"></i>
-                                Tidak ada CR berstatus APPROVED, Cost Register berstatus APPROVED,
+                                Tidak ada CR berstatus APPROVED, Expense berstatus APPROVED,
                                 maupun Second Payment yang menunggu pembayaran.
                             </div>
                             @else
                             @if($availableCRs->isEmpty() && $availableSecondPayments->isEmpty())
                             <div class="alert alert-info py-2 mb-2" style="font-size:12px;">
-                                Tidak ada CR APPROVED — batch ini akan berisi Cost Register saja.
+                                Tidak ada CR APPROVED — batch ini akan berisi Expense saja.
                             </div>
                             @endif
                             @php
@@ -234,7 +234,7 @@
                                  terpisah yang bisa jadi berbeda. --}}
                             @if($availableRegisters->isNotEmpty())
                             <div class="cr-group-header mt-3">
-                                <i class="fas fa-book mr-1"></i> Cost Register (Non-CR)
+                                <i class="fas fa-book mr-1"></i> Expense (Non-CR)
                                 <span class="badge badge-secondary ml-1">{{ $availableRegisters->count() }}</span>
                             </div>
                             <div class="cr-check-list">
@@ -254,7 +254,40 @@
                                         </div>
                                         <div class="cr-item-beneficiary">
                                             <i class="fas fa-user mr-1"></i>{{ $reg->beneficiary->complete_name ?? '-' }}
-                                            <span class="ml-2"><i class="fas fa-file-contract mr-1"></i>{{ $reg->project->code ?? '-' }}</span>
+                                            <span class="ml-2"><i class="fas fa-file-contract mr-1"></i>{{ $reg->display_code }} · {{ $reg->target_label }}</span>
+                                        </div>
+                                    </div>
+                                </label>
+                                @endforeach
+                            </div>
+                            @endif
+
+                            {{-- Expense Fase 2 — kekurangan bayar settlement Expense Cash Advance
+                                 (CostRegisterSecondPayment PENDING). Kelas .cr-checkbox sama. --}}
+                            @if($availableExpenseSecondPayments->isNotEmpty())
+                            <div class="cr-group-header mt-3">
+                                <i class="fas fa-redo mr-1"></i> Expense — Second Payment
+                                <span class="badge badge-secondary ml-1">{{ $availableExpenseSecondPayments->count() }}</span>
+                            </div>
+                            <div class="cr-check-list">
+                                @foreach($availableExpenseSecondPayments as $esp)
+                                @php $induk = $esp->costRegister; @endphp
+                                <label class="cr-check-item d-flex align-items-start">
+                                    <input type="checkbox" name="expense_second_payment_ids[]" value="{{ $esp->id }}"
+                                           class="cr-checkbox mt-1"
+                                           data-amount="{{ $esp->amount }}"
+                                           style="width:16px;height:16px;flex-shrink:0;accent-color:var(--success);">
+                                    <div class="cr-item-body">
+                                        <div class="cr-item-row">
+                                            <span class="cr-item-desc">
+                                                <span class="badge badge-warning mr-1" style="font-size:9px;">2ND</span>
+                                                Kekurangan bayar settlement — {{ Str::limit($induk->notes ?? '-', 50) }}
+                                            </span>
+                                            <span class="cr-item-amount">{{ number_format($esp->amount, 0, ',', '.') }}</span>
+                                        </div>
+                                        <div class="cr-item-beneficiary">
+                                            <i class="fas fa-user mr-1"></i>{{ $induk->beneficiary->complete_name ?? '-' }}
+                                            <span class="ml-2"><i class="fas fa-file-contract mr-1"></i>{{ $induk?->display_code }} · {{ $induk?->target_label }}</span>
                                         </div>
                                     </div>
                                 </label>
@@ -330,7 +363,7 @@
                 </div>
 
                 <div class="card-footer">
-                    <div id="footerCashOut" @if($availableCRs->isEmpty() && $availableRegisters->isEmpty() && $availableSecondPayments->isEmpty()) style="display:none;" @endif>
+                    <div id="footerCashOut" @if($availableCRs->isEmpty() && $availableRegisters->isEmpty() && $availableSecondPayments->isEmpty() && $availableExpenseSecondPayments->isEmpty()) style="display:none;" @endif>
                         <button type="submit" class="btn btn-success" id="btnSubmitCashOut">
                             <i class="fas fa-plus-circle mr-1"></i> Buat Batch
                         </button>
@@ -627,7 +660,7 @@ $(function () {
 
         var count = $('.cr-checkbox:checked').length;
         if (count === 0) {
-            Swal.fire({ icon: 'warning', title: 'Pilih minimal 1 CR atau Cost Register', confirmButtonColor: '#92232b' });
+            Swal.fire({ icon: 'warning', title: 'Pilih minimal 1 CR atau Expense', confirmButtonColor: '#92232b' });
             return;
         }
         Swal.fire({

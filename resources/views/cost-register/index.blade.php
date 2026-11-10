@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Cost Register')
+@section('title', 'Expense')
 
 @section('content')
 
@@ -11,10 +11,10 @@
         {{-- Judul & breadcrumb topbar: shell memindahkan <h1> dan .breadcrumb pertama ke topbar
              (tesys-shell.js hoistPageTitle); disembunyikan secara visual. --}}
         <div class="tw:sr-only">
-            <h1>Cost Register</h1>
+            <h1>Expense</h1>
             <ol class="breadcrumb">
                 <li class="breadcrumb-item">Finance</li>
-                <li class="breadcrumb-item active">Cost Register</li>
+                <li class="breadcrumb-item active">Expense</li>
             </ol>
         </div>
 
@@ -22,19 +22,20 @@
             $pengguna  = Auth::user();
             $bolehAjukan  = $pengguna->hasRole(\App\Models\CostRegister::SUBMIT_ROLES);
             $bolehSetuju  = $pengguna->hasRole(\App\Models\CostRegister::APPROVE_ROLES);
+            $bolehSettle  = $pengguna->hasRole(\App\Models\CostRegister::SETTLE_ROLES);
         @endphp
-        <x-tw.page-header title="Daftar Cost Register"
-            description="Fixed Cost dan Overhead per No. PO beserta persetujuan dan pembayarannya lewat Treasury.">
+        <x-tw.page-header title="Daftar Expense"
+            description="Biaya di luar Cost Request (tanpa budgeting) ke PO, multi-PO, atau Cost Center — diajukan Finance Manager, disetujui CEO, dibayar lewat Treasury.">
             @if($bolehAjukan)
             <x-slot:actions>
-                <x-tw.button href="{{ route('cost-register.create') }}" class="ts-add-btn tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Cost Register</x-tw.button>
+                <x-tw.button href="{{ route('cost-register.create') }}" class="ts-add-btn tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Expense</x-tw.button>
             </x-slot:actions>
             @endif
         </x-tw.page-header>
 
         @if($bolehAjukan)
         {{-- Mobile: tombol di header disembunyikan dan diganti tombol melayang (tesys-ui-refine.css). --}}
-        <a href="{{ route('cost-register.create') }}" class="ts-fab" aria-label="Tambah Cost Register" title="Tambah Cost Register">
+        <a href="{{ route('cost-register.create') }}" class="ts-fab" aria-label="Tambah Expense" title="Tambah Expense">
             <i class="fas fa-plus" aria-hidden="true"></i>
         </a>
         @endif
@@ -54,13 +55,19 @@
             $regSteps = [
                 ['Draft',     $summary['draft'],    'secondary', 'DRAFT'],
                 ['Submitted', $summary['verified'], 'warning',   'VERIFIED'],
+                ['Rejected',  $summary['rejected'], 'danger',    'REJECTED'],
                 ['Approved',  $summary['approved'], 'primary',   'APPROVED'],
                 ['Process',   $summary['queued'],   'info',      'QUEUED'],
+                ['Paid',      $summary['paid'],     'info',      'PAID'],
+                ['Settle Submitted', $summary['settle_submitted'], 'warning', 'SETTLE_SUBMITTED'],
+                ['Settle Rejected',  $summary['settle_rejected'],  'danger',  'SETTLE_REJECTED'],
+                ['Settle Approved',  $summary['settle_approved'],  'primary', 'SETTLE_APPROVED'],
                 ['Closed',    $summary['closed'],   'success',   'CLOSED'],
             ];
         @endphp
+        {{-- Paid / Settle hanya dilalui Expense Cash Advance. --}}
         <x-workflow-stepper :steps="$regSteps" :compact="true" table="tblCostRegister" field="status"
-            :groups="[['Fase 1: Pengajuan', ['DRAFT','VERIFIED','APPROVED']], ['Fase 2: Pembayaran', ['QUEUED','CLOSED']]]" />
+            :groups="[['Fase 1: Pengajuan', ['DRAFT','VERIFIED','REJECTED','APPROVED']], ['Fase 2: Pembayaran', ['QUEUED']], ['Fase 3: Settlement (CA)', ['PAID','SETTLE_SUBMITTED','SETTLE_REJECTED','SETTLE_APPROVED']], ['Selesai', ['CLOSED']]]" />
 
         {{-- Kartu tunggal: toolbar + tabel + paginasi (pola Cost Request). --}}
         <x-tw.card padding="sm">
@@ -86,6 +93,22 @@
                         <i class="fas fa-eraser"></i>
                     </button>
                     <div id="regRowFilters" class="d-flex flex-wrap" style="gap:8px;"></div>
+                    {{-- Custom kolom: pilihan disimpan per pengguna di browser (localStorage). --}}
+                    <div class="cr-pop reg-col-dropdown">
+                        <button type="button" class="btn btn-outline-secondary btn-sm cr-pop-toggle" aria-haspopup="true">
+                            <i class="fas fa-columns mr-1" aria-hidden="true"></i> Kolom
+                        </button>
+                        <div class="cr-pop-menu p-2" style="min-width:200px;max-height:340px;overflow-y:auto;">
+                            @foreach(['desc' => 'Deskripsi', 'ben' => 'Beneficiary', 'periode' => 'Periode', 'nilai' => 'Nilai', 'tanggal' => 'Tanggal',
+                                      'tujuan' => 'Pembebanan', 'tipe' => 'Tipe', 'status' => 'Status', 'oleh' => 'Diinput Oleh'] as $key => $label)
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input reg-col-vis" id="regColVis_{{ $key }}" data-column="{{ $key }}">
+                                <label class="custom-control-label" for="regColVis_{{ $key }}" style="font-size:12px;">{{ $label }}</label>
+                            </div>
+                            @endforeach
+                            <button type="button" class="btn btn-link btn-sm p-0 mt-1" id="regColReset" style="font-size:12px;">Kembalikan bawaan</button>
+                        </div>
+                    </div>
                 </div>
                 <div class="custom-toolbar-right d-flex flex-wrap" style="gap:8px;">
                     <x-tw.button href="{{ route('cost-register.export') }}" id="btnExportReg" variant="secondary" size="sm">
@@ -98,14 +121,15 @@
                 <table id="tblCostRegister" class="table table-bordered table-hover mb-0 ts-idx-tbl">
                     <thead class="bg-light">
                         <tr>
-                            <th scope="col" class="text-nowrap" data-col="tanggal">Tanggal</th>
-                            <th scope="col" class="text-nowrap" data-col="po">No. PO</th>
+                            <th scope="col" class="text-nowrap" data-col="no">No. Expense</th>
                             <th scope="col" data-col="desc">Deskripsi</th>
-                            <th scope="col" class="text-nowrap" data-col="tipe">Tipe</th>
-                            <th scope="col" class="text-nowrap" data-col="status">Status</th>
                             <th scope="col" class="text-nowrap" data-col="ben">Beneficiary</th>
                             <th scope="col" class="text-nowrap" data-col="periode">Periode</th>
-                            <th scope="col" class="text-nowrap text-right" data-col="nominal">Nominal</th>
+                            <th scope="col" class="text-nowrap text-right" data-col="nilai">Nilai</th>
+                            <th scope="col" class="text-nowrap" data-col="tanggal">Tanggal</th>
+                            <th scope="col" class="text-nowrap" data-col="tujuan">Pembebanan</th>
+                            <th scope="col" class="text-nowrap" data-col="tipe">Tipe</th>
+                            <th scope="col" class="text-nowrap" data-col="status">Status</th>
                             <th scope="col" class="text-nowrap" data-col="oleh">Diinput Oleh</th>
                             <th scope="col" class="text-center action-column" style="width:1%;"><span class="sr-only">Aksi</span></th>
                         </tr>
@@ -117,13 +141,23 @@
                             // Aksi per baris (gerbang role sama dengan route + controller).
                             $bisaSubmit  = $cr->isDraft()    && $bolehAjukan;
                             $bisaHapus   = $cr->isEditable() && $bolehAjukan;
+                            $bisaEdit    = $cr->isEditable() && ! $cr->isLegacy() && $bolehAjukan;
                             $bisaSetuju  = $cr->isVerified() && $bolehSetuju;
-                            $bisaRevisi  = $cr->isVerified() && $bolehSetuju;
+                            $bisaTolak   = $cr->isVerified() && $bolehSetuju;
+                            $bisaRevisi  = $cr->isRejected() && $bolehAjukan;
                             $bisaBatal   = $cr->isCancellable() && $bolehAjukan;
+                            // Expense Cash Advance (Fase 2).
+                            $bisaSettle      = $cr->canInputSettlement() && $bolehSettle;
+                            $bisaSetujuSettle = $cr->isSettleSubmitted() && $bolehSetuju;
                             $aksi = array_values(array_filter([
                                 $bisaSubmit ? 'submit' : null,
+                                $bisaEdit ? 'edit' : null,
+                                $bisaRevisi ? 'reopen' : null,
                                 $bisaSetuju ? 'approve' : null,
-                                $bisaRevisi ? 'revise' : null,
+                                $bisaSettle ? 'settle' : null,
+                                $bisaSetujuSettle ? 'settle-approve' : null,
+                                $bisaTolak ? 'reject' : null,
+                                $bisaSetujuSettle ? 'settle-reject' : null,
                                 $bisaBatal  ? 'cancel' : null,
                                 $bisaHapus  ? 'delete' : null,
                             ]));
@@ -136,28 +170,38 @@
                                     'submit' => '<form action="' . route('cost-register.submit', $cr->id) . '" method="POST" class="frmSubmitCr d-inline">' . $csrf
                                         . '<button type="submit" class="' . $kls . '" title="Ajukan"><i class="fas fa-paper-plane"></i><span class="' . $lbl . '">Ajukan</span></button></form>',
                                     'approve' => '<button type="button" class="' . $kls . ' btn-approve-cr" data-id="' . $cr->id . '" title="Approve"><i class="fas fa-check"></i><span class="' . $lbl . '">Approve</span></button>',
-                                    'revise' => '<button type="button" class="' . $kls . ' is-danger btn-revise-cr" data-id="' . $cr->id . '" title="Kembalikan untuk revisi"><i class="fas fa-undo"></i><span class="' . $lbl . '">Minta Revisi</span></button>',
+                                    'settle' => '<a href="' . route('cost-register.settle', $cr->id) . '" class="' . $kls . '" title="Input realisasi"><i class="fas fa-receipt"></i><span class="' . $lbl . '">Settle</span></a>',
+                                    'settle-approve' => '<button type="button" class="' . $kls . ' btn-settle-approve-cr" data-id="' . $cr->id . '" data-paid="' . e($cr->amount_formatted) . '" data-settled="' . e(number_format((int) $cr->settled_amount, 0, ',', '.')) . '" title="Approve settlement"><i class="fas fa-check-double"></i><span class="' . $lbl . '">Approve Settle</span></button>',
+                                    'settle-reject' => '<button type="button" class="' . $kls . ' is-danger btn-settle-reject-cr" data-id="' . $cr->id . '" title="Tolak settlement"><i class="fas fa-times"></i><span class="' . $lbl . '">Tolak Settle</span></button>',
+                                    'edit' => '<a href="' . route('cost-register.edit', $cr->id) . '" class="' . $kls . '" title="Edit"><i class="fas fa-edit"></i><span class="' . $lbl . '">Edit</span></a>',
+                                    'reopen' => '<form action="' . route('cost-register.reopen', $cr->id) . '" method="POST" class="frmReopenCr d-inline">' . $csrf
+                                        . '<button type="submit" class="' . $kls . '" title="Revisi: kembali ke Draft untuk diedit"><i class="fas fa-undo"></i><span class="' . $lbl . '">Revisi</span></button></form>',
+                                    'reject' => '<button type="button" class="' . $kls . ' is-danger btn-reject-cr" data-id="' . $cr->id . '" title="Tolak"><i class="fas fa-times"></i><span class="' . $lbl . '">Reject</span></button>',
                                     'cancel' => '<button type="button" class="' . $kls . ' is-danger btn-cancel-cr" data-id="' . $cr->id . '" title="Batalkan"><i class="fas fa-ban"></i><span class="' . $lbl . '">Batalkan</span></button>',
                                     'delete' => '<form action="' . route('cost-register.destroy', $cr->id) . '" method="POST" class="frmDeleteCr d-inline">' . $csrf
                                         . '<input type="hidden" name="_method" value="DELETE"><button type="submit" class="' . $kls . ' is-danger"><i class="fas fa-trash"></i><span class="' . $lbl . '">Hapus</span></button></form>',
                                     default => '',
                                 };
                             };
-                            $kodePo = $cr->project->code ?? '-';
+                            $kodePo = $cr->display_code;
+                            $tujuan = $cr->target_label;
                         @endphp
-                        <tr data-id="{{ $cr->id }}" data-status="{{ $cr->status }}" data-code="{{ $kodePo }}"
+                        {{-- data-amount: total footer dihitung dari atribut baris, karena sel kolom
+                             yang disembunyikan (custom kolom) dilepas DataTables dari DOM. --}}
+                        <tr data-id="{{ $cr->id }}" data-status="{{ $cr->status }}" data-code="{{ $kodePo }}" data-amount="{{ (int) $cr->amount }}"
                             data-tipe="{{ $cr->type_label }}" data-ben="{{ $cr->beneficiary->nickname ?? '' }}">
-                            <td class="text-nowrap" data-order="{{ $cr->created_at->format('Y-m-d H:i:s') }}">{{ $cr->created_at->format('d/m/Y') }}</td>
                             <td class="text-nowrap">
                                 {{-- Klik kode = salin; detail dibuka lewat klik baris. --}}
                                 <button type="button" class="ts-copy-code" data-code="{{ $kodePo }}" title="Klik untuk menyalin kode">{{ $kodePo }}</button>
                             </td>
                             <td class="ts-col-desc" title="{{ $cr->notes }}">{{ Str::limit($cr->notes, 60) }}</td>
+                            <td class="text-nowrap ts-col-desc">{{ $cr->beneficiary->nickname ?? '-' }}</td>
+                            <td class="text-nowrap">{{ $cr->period_label }}</td>
+                            <td class="text-right text-nowrap ts-col-money" data-order="{{ $cr->amount }}">{{ $cr->amount == 0 ? '-' : number_format($cr->amount, 0, ',', '.') }}</td>
+                            <td class="text-nowrap" data-order="{{ $cr->created_at->format('Y-m-d H:i:s') }}">{{ $cr->created_at->format('d/m/Y') }}</td>
+                            <td class="text-nowrap ts-col-desc" title="{{ $tujuan }}">{{ $tujuan }}</td>
                             <td class="text-nowrap">{{ $cr->type_label }}</td>
                             <td class="text-nowrap"><x-status :status="$cr->status" context="cost-register" /></td>
-                            <td class="text-nowrap ts-col-desc">{{ $cr->beneficiary->nickname ?? '-' }}</td>
-                            <td class="text-nowrap">{{ $cr->period ? $cr->period->format('M Y') : '-' }}</td>
-                            <td class="text-right text-nowrap ts-col-money" data-order="{{ $cr->amount }}">{{ $cr->amount == 0 ? '-' : number_format($cr->amount, 0, ',', '.') }}</td>
                             <td class="text-nowrap ts-col-desc">{{ $cr->inputBy->name ?? '-' }}</td>
                             <td class="text-center action-column">
                                 {{-- 0 aksi = sel kosong (detail lewat klik baris); 1 aksi = tombolnya; >1 = satu tombol titik tiga. --}}
@@ -167,12 +211,12 @@
                                     @elseif(count($aksi) > 1)
                                     <button type="button" class="ts-action-more"
                                             aria-haspopup="true" aria-expanded="false"
-                                            title="Aksi" aria-label="Aksi untuk Cost Register {{ $kodePo }}">
+                                            title="Aksi" aria-label="Aksi untuk Expense {{ $kodePo }}">
                                         <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
                                     </button>
                                     <div class="ts-action-menu dropdown-menu" hidden>
                                         @foreach($aksi as $i => $k)
-                                            @if(in_array($k, ['revise', 'cancel', 'delete'], true) && $i > 0 && ! in_array($aksi[$i - 1], ['revise', 'cancel', 'delete'], true))
+                                            @if(in_array($k, ['reject', 'settle-reject', 'cancel', 'delete'], true) && $i > 0 && ! in_array($aksi[$i - 1], ['reject', 'settle-reject', 'cancel', 'delete'], true))
                                             <div class="dropdown-divider"></div>
                                             @endif
                                             {!! $htmlAksi($k) !!}
@@ -188,10 +232,12 @@
                         @endforelse
                     </tbody>
                     <tfoot>
+                        {{-- Satu sel per kolom (tanpa colspan) supaya ikut tersembunyi bersama kolomnya. --}}
                         <tr style="background:var(--surface-2);">
-                            <th colspan="7" class="text-right" style="font-size:12px;">Total (data tampil)</th>
+                            <th class="text-nowrap" style="font-size:12px;">Total (data tampil)</th>
+                            <th></th><th></th><th></th>
                             <th class="text-right text-nowrap" id="regFooterTotal" style="font-size:12px;"></th>
-                            <th colspan="2"></th>
+                            <th></th><th></th><th></th><th></th><th></th><th></th>
                         </tr>
                     </tfoot>
                 </table>
@@ -202,15 +248,40 @@
 </div>
 
 {{-- Drawer detail (klik baris): Info / Rincian / Log. Data dari cost-register.show-json. --}}
-<x-drawer id="regDrawer" label="Detail Cost Register" width="max(50vw, 560px)">
+<x-drawer id="regDrawer" label="Detail Expense" width="max(50vw, 560px)">
     <div id="regDrawerContent" hidden>
         <ul class="nav nav-tabs mb-3" id="regDetailTabs" style="border-bottom:2px solid var(--border);">
             <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#regPaneInfo"><i class="fas fa-info-circle mr-1"></i> Info</a></li>
             <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#regPaneDetails"><i class="fas fa-list-ul mr-1"></i> Rincian <span id="regDetailCount" class="badge badge-secondary ml-1"></span></a></li>
+            <li class="nav-item" id="regSettleTabItem" hidden><a class="nav-link" data-toggle="tab" href="#regPaneSettle"><i class="fas fa-receipt mr-1"></i> Settlement</a></li>
             <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#regPaneLog"><i class="fas fa-history mr-1"></i> Log</a></li>
         </ul>
         <div class="tab-content">
             <div class="tab-pane fade show active" id="regPaneInfo"></div>
+            <div class="tab-pane fade" id="regPaneSettle">
+                {{-- Expense Cash Advance: realisasi, selisih, Second Payment (diisi JS). --}}
+                <div id="regSettleSummary"></div>
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0">
+                        <thead style="background:var(--surface-2);">
+                            <tr>
+                                <th scope="col" style="width:1%;">No</th>
+                                <th scope="col">Akun</th>
+                                <th scope="col">Pembebanan</th>
+                                <th scope="col">Deskripsi</th>
+                                <th scope="col" class="text-right" style="width:1%;white-space:nowrap;">Harga</th>
+                                <th scope="col" class="text-right" style="width:1%;white-space:nowrap;">Qty</th>
+                                <th scope="col" class="text-right" style="width:1%;white-space:nowrap;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="regSettleBody"></tbody>
+                    </table>
+                </div>
+                <div class="mt-3">
+                    <h6 class="ts-dw-section-title"><i class="fas fa-paperclip mr-1"></i> Bukti Realisasi</h6>
+                    <div id="regSettleAttBody" class="ts-dw-files"></div>
+                </div>
+            </div>
             <div class="tab-pane fade" id="regPaneDetails">
                 <div class="table-responsive">
                     <table class="table table-bordered mb-0">
@@ -218,14 +289,15 @@
                             <tr>
                                 <th scope="col" style="width:1%;">No</th>
                                 <th scope="col">Akun</th>
+                                <th scope="col">Pembebanan</th>
                                 <th scope="col">Deskripsi</th>
-                                <th scope="col" class="text-right" style="width:1%;white-space:nowrap;">Qty</th>
                                 <th scope="col" class="text-right" style="width:1%;white-space:nowrap;">Harga</th>
+                                <th scope="col" class="text-right" style="width:1%;white-space:nowrap;">Qty</th>
                                 <th scope="col" class="text-right" style="width:1%;white-space:nowrap;">Total</th>
                             </tr>
                         </thead>
                         <tbody id="regDetailBody"></tbody>
-                        <tfoot><tr style="background:var(--surface-2);"><th colspan="5" class="text-right">Total</th><th class="text-right" id="regDetailTotal"></th></tr></tfoot>
+                        <tfoot><tr style="background:var(--surface-2);"><th colspan="6" class="text-right">Total</th><th class="text-right" id="regDetailTotal"></th></tr></tfoot>
                     </table>
                 </div>
                 <div class="mt-3">
@@ -241,7 +313,7 @@
                               placeholder="Tulis catatan atau update…" aria-label="Catatan log"></textarea>
                     <button type="submit" class="btn btn-sm btn-primary" id="regLogSend"><i class="fas fa-paper-plane mr-1"></i> Kirim</button>
                 </form>
-                <div id="regLogClosed" class="cr-log-closed" hidden><i class="fas fa-lock mr-1"></i> Cost Register sudah selesai — catatan baru tidak dapat ditambahkan.</div>
+                <div id="regLogClosed" class="cr-log-closed" hidden><i class="fas fa-lock mr-1"></i> Expense sudah selesai — catatan baru tidak dapat ditambahkan.</div>
             </div>
         </div>
     </div>
@@ -267,6 +339,11 @@
 <link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
 #regSearchBox input  { width:220px; border-radius:var(--radius-sm); }
+/* Popover tombol Kolom (salinan kecil blok .cr-pop Cash Receipt). */
+.cr-pop { position: relative; }
+.cr-pop-menu { display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 1080;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: 0 8px 24px rgba(0,0,0,.14); }
+.cr-pop.show .cr-pop-menu { display: block; }
 .dataTables_wrapper .row:last-child { margin-top:18px; align-items:center; }
 .dataTables_info { padding-top:0 !important; font-size:14px; color:var(--text-faint); }
 .dataTables_length { display:flex; align-items:center; margin-left:18px; }
@@ -337,21 +414,34 @@ $(function () {
     }
 
     /* ── DATATABLE ── */
+    /* Custom kolom. Indeks kolom tabel; No. Expense (0) & Aksi (10) selalu tampil.
+       Bawaan: No. Expense, Deskripsi, Beneficiary, Periode, Nilai, Tanggal. */
+    var MAP_VIS = { desc: 1, ben: 2, periode: 3, nilai: 4, tanggal: 5, tujuan: 6, tipe: 7, status: 8, oleh: 9 };
+    var VIS_BAWAAN = { desc: true, ben: true, periode: true, nilai: true, tanggal: true, tujuan: false, tipe: false, status: false, oleh: false };
+    function visKey(k) { return 'expenseColVis_' + k; }
+    function getVis(k) {
+        try { var v = localStorage.getItem(visKey(k)); return v === null ? VIS_BAWAAN[k] : v === '1'; }
+        catch (e) { return VIS_BAWAAN[k]; }
+    }
+    function setVis(k, tampil) { try { localStorage.setItem(visKey(k), tampil ? '1' : '0'); } catch (e) {} }
+    var colDefs = [{ targets: [-1], orderable: false, searchable: false }];
+    Object.keys(MAP_VIS).forEach(function (k) { colDefs.push({ targets: [MAP_VIS[k]], visible: getVis(k) }); });
+
     var table = $('#tblCostRegister').DataTable({
         autoWidth: false, pageLength: 10, lengthChange: true, searching: true,
         order: [], // urutan asli dari server (terbaru di atas)
-        columnDefs: [{ targets: [-1], orderable: false, searchable: false }],
+        columnDefs: colDefs,
         dom: 'rt<"row mt-3 align-items-center"<"col-md-6 col-12 mb-2 mb-md-0"i><"col-md-6 col-12 d-flex justify-content-end"lp>>',
         language: {
             lengthMenu: 'Page Size _MENU_',
             emptyTable: '<div class="ts-empty ts-empty-compact">'
                 + '<span class="ts-empty-ic" aria-hidden="true"><i class="fas fa-folder-open"></i></span>'
-                + '<p class="ts-empty-title">Belum ada Cost Register</p>'
-                + '<p class="ts-empty-msg">Belum ada Cost Register pada rentang tanggal yang dipilih.</p></div>',
+                + '<p class="ts-empty-title">Belum ada Expense</p>'
+                + '<p class="ts-empty-msg">Belum ada Expense pada rentang tanggal yang dipilih.</p></div>',
             zeroRecords: '<div class="ts-empty ts-empty-compact">'
                 + '<span class="ts-empty-ic" aria-hidden="true"><i class="fas fa-search"></i></span>'
                 + '<p class="ts-empty-title">Tidak ada yang cocok</p>'
-                + '<p class="ts-empty-msg">Tidak ada Cost Register yang cocok dengan pencarian atau filter yang sedang aktif.</p></div>',
+                + '<p class="ts-empty-msg">Tidak ada Expense yang cocok dengan pencarian atau filter yang sedang aktif.</p></div>',
             info: 'Menampilkan _START_ sampai _END_ dari _TOTAL_ data',
             infoEmpty: 'Tidak ada data', paginate: { previous: 'Previous', next: 'Next' }
         }
@@ -363,6 +453,34 @@ $(function () {
     $('#tblCostRegister_filter').hide();
     $('#regSearchBox').html('<input type="search" id="regSearchInput" class="form-control form-control-sm" placeholder="Cari data...">');
     $('#regSearchInput').on('keyup', function () { table.search(this.value).draw(); });
+
+    /* ── TOMBOL KOLOM ── */
+    function syncColChecks() {
+        $('.reg-col-vis').each(function () { $(this).prop('checked', table.column(MAP_VIS[$(this).data('column')]).visible()); });
+    }
+    syncColChecks();
+    $(document).on('change', '.reg-col-vis', function () {
+        var k = $(this).data('column'), tampil = $(this).is(':checked');
+        if (MAP_VIS[k] == null) return;
+        table.column(MAP_VIS[k]).visible(tampil);
+        setVis(k, tampil);
+        try { table.columns.adjust(); } catch (e) {}
+    });
+    $('#regColReset').on('click', function () {
+        Object.keys(MAP_VIS).forEach(function (k) {
+            try { localStorage.removeItem(visKey(k)); } catch (e) {}
+            table.column(MAP_VIS[k]).visible(VIS_BAWAAN[k]);
+        });
+        syncColChecks();
+        try { table.columns.adjust(); } catch (e) {}
+    });
+    $(document).on('click', '.reg-col-dropdown .cr-pop-toggle', function (e) {
+        e.stopPropagation();
+        $(this).closest('.cr-pop').toggleClass('show');
+    });
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('.reg-col-dropdown').length) $('.reg-col-dropdown').removeClass('show');
+    });
 
     TesysColumnFilter.initRowFilters('#tblCostRegister', '#regRowFilters', [
         { key: 'tipe', label: 'Tipe' },
@@ -378,7 +496,7 @@ $(function () {
     function recalcFooterReg() {
         var total = 0;
         table.rows({ search: 'applied' }).every(function () {
-            total += parseInt($(this.node()).find('td.ts-col-money').attr('data-order'), 10) || 0;
+            total += parseInt($(this.node()).attr('data-amount'), 10) || 0;
         });
         $('#regFooterTotal').text(total === 0 ? '-' : Math.round(total).toLocaleString('id-ID'));
     }
@@ -404,36 +522,61 @@ $(function () {
     }
     $(document).on('submit', '.frmSubmitCr', function (e) {
         e.preventDefault(); var form = this;
-        Swal.fire({ title: 'Ajukan Cost Register?', text: 'Cost Register berstatus Submitted dan menunggu approval CEO.', icon: 'question',
+        Swal.fire({ title: 'Ajukan Expense?', text: 'Expense berstatus Submitted dan menunggu approval CEO.', icon: 'question',
             showCancelButton: true, confirmButtonColor: WARNA_UTAMA, cancelButtonColor: WARNA_BATAL, confirmButtonText: 'Ya, Ajukan', cancelButtonText: 'Batal' })
         .then(function (r) { if (r.isConfirmed) form.submit(); });
     });
     $(document).on('submit', '.frmDeleteCr', function (e) {
         e.preventDefault(); var form = this;
-        Swal.fire({ title: 'Hapus Cost Register?', text: 'Data tidak dapat dikembalikan.', icon: 'warning', showCancelButton: true,
+        Swal.fire({ title: 'Hapus Expense?', text: 'Data tidak dapat dikembalikan.', icon: 'warning', showCancelButton: true,
             confirmButtonColor: WARNA_BAHAYA, cancelButtonColor: WARNA_BATAL, confirmButtonText: 'Ya, Hapus', cancelButtonText: 'Batal' })
         .then(function (r) { if (r.isConfirmed) form.submit(); });
     });
     $(document).on('click', '.btn-approve-cr', function () {
         var id = $(this).data('id');
-        Swal.fire({ title: 'Approve Cost Register?', text: 'Setelah disetujui, Treasury dapat memasukkannya ke batch pembayaran.', icon: 'question',
+        Swal.fire({ title: 'Approve Expense?', text: 'Setelah disetujui, Treasury dapat memasukkannya ke batch pembayaran.', icon: 'question',
             showCancelButton: true, confirmButtonColor: WARNA_UTAMA, cancelButtonColor: WARNA_BATAL, confirmButtonText: 'Ya, Approve', cancelButtonText: 'Batal' })
-        .then(function (r) { if (r.isConfirmed) kirimForm('{{ url('/cost-register') }}/' + id + '/approve'); });
+        .then(function (r) { if (r.isConfirmed) kirimForm('{{ url('/expense') }}/' + id + '/approve'); });
     });
-    $(document).on('click', '.btn-revise-cr', function () {
+    $(document).on('click', '.btn-reject-cr', function () {
         var id = $(this).data('id');
-        Swal.fire({ title: 'Kembalikan untuk revisi?', input: 'textarea', inputAttributes: { maxlength: 500, 'aria-label': 'Alasan revisi' },
-            inputLabel: 'Alasan revisi wajib diisi', inputValidator: function (v) { if (!v || !v.trim()) return 'Alasan revisi wajib diisi.'; },
+        Swal.fire({ title: 'Tolak Expense?', input: 'textarea', inputAttributes: { maxlength: 500, 'aria-label': 'Alasan penolakan' },
+            inputLabel: 'Alasan wajib diisi — Finance Manager bisa merevisi ke Draft atau membatalkan',
+            inputValidator: function (v) { if (!v || !v.trim()) return 'Alasan wajib diisi.'; },
             icon: 'warning', showCancelButton: true, confirmButtonColor: WARNA_BAHAYA, cancelButtonColor: WARNA_BATAL,
-            confirmButtonText: 'Ya, Kembalikan', cancelButtonText: 'Batal' })
-        .then(function (r) { if (r.isConfirmed) kirimForm('{{ url('/cost-register') }}/' + id + '/revise', { notes: r.value }); });
+            confirmButtonText: 'Ya, Tolak', cancelButtonText: 'Batal' })
+        .then(function (r) { if (r.isConfirmed) kirimForm('{{ url('/expense') }}/' + id + '/reject', { notes: r.value }); });
+    });
+    $(document).on('submit', '.frmReopenCr', function (e) {
+        e.preventDefault(); var form = this;
+        Swal.fire({ title: 'Revisi Expense?', text: 'Expense kembali ke Draft lalu dibuka di halaman edit untuk diperbaiki dan diajukan ulang.', icon: 'question',
+            showCancelButton: true, confirmButtonColor: WARNA_UTAMA, cancelButtonColor: WARNA_BATAL, confirmButtonText: 'Ya, Revisi', cancelButtonText: 'Batal' })
+        .then(function (r) { if (r.isConfirmed) form.submit(); });
+    });
+    $(document).on('click', '.btn-settle-approve-cr', function () {
+        var id = $(this).data('id');
+        Swal.fire({ title: 'Approve settlement?', html: 'Dibayar <strong>' + escReg($(this).data('paid')) + '</strong>, realisasi <strong>'
+                + escReg($(this).data('settled')) + '</strong>.<br>Kekurangan bayar akan masuk antrean Treasury; kelebihan dicatat sebagai refund.',
+            input: 'textarea', inputLabel: 'Catatan (opsional)', inputAttributes: { maxlength: 500, 'aria-label': 'Catatan' },
+            icon: 'question', showCancelButton: true, confirmButtonColor: WARNA_UTAMA, cancelButtonColor: WARNA_BATAL,
+            confirmButtonText: 'Ya, Approve', cancelButtonText: 'Batal' })
+        .then(function (r) { if (r.isConfirmed) kirimForm('{{ url('/expense') }}/' + id + '/settle-approve', { notes: r.value || '' }); });
+    });
+    $(document).on('click', '.btn-settle-reject-cr', function () {
+        var id = $(this).data('id');
+        Swal.fire({ title: 'Tolak settlement?', input: 'textarea', inputAttributes: { maxlength: 500, 'aria-label': 'Alasan penolakan' },
+            inputLabel: 'Alasan wajib diisi — Expense kembali ke Paid untuk diperbaiki Finance Manager',
+            inputValidator: function (v) { if (!v || !v.trim()) return 'Alasan wajib diisi.'; },
+            icon: 'warning', showCancelButton: true, confirmButtonColor: WARNA_BAHAYA, cancelButtonColor: WARNA_BATAL,
+            confirmButtonText: 'Ya, Tolak', cancelButtonText: 'Batal' })
+        .then(function (r) { if (r.isConfirmed) kirimForm('{{ url('/expense') }}/' + id + '/settle-reject', { notes: r.value }); });
     });
     $(document).on('click', '.btn-cancel-cr', function () {
         var id = $(this).data('id');
-        Swal.fire({ title: 'Batalkan Cost Register?', input: 'textarea', inputAttributes: { maxlength: 500, 'aria-label': 'Alasan pembatalan' },
+        Swal.fire({ title: 'Batalkan Expense?', input: 'textarea', inputAttributes: { maxlength: 500, 'aria-label': 'Alasan pembatalan' },
             inputLabel: 'Alasan pembatalan (opsional)', icon: 'warning', showCancelButton: true,
             confirmButtonColor: WARNA_BAHAYA, cancelButtonColor: WARNA_BATAL, confirmButtonText: 'Ya, Batalkan', cancelButtonText: 'Kembali' })
-        .then(function (r) { if (r.isConfirmed) kirimForm('{{ url('/cost-register') }}/' + id + '/cancel', { reason: r.value || '' }); });
+        .then(function (r) { if (r.isConfirmed) kirimForm('{{ url('/expense') }}/' + id + '/cancel', { reason: r.value || '' }); });
     });
 
     /* ── DRAWER DETAIL (klik baris) ── */
@@ -489,7 +632,7 @@ $(function () {
         $aksi.each(function () {
             var $b = $(this);
             // Form (Ajukan/Hapus) dibungkus tombol di dalamnya; butir lain adalah tombol itu sendiri.
-            $b.find('button').addBack('button').removeClass('dropdown-item').addClass('ts-action-primary');
+            $b.find('button, a').addBack('button, a').removeClass('dropdown-item').addClass('ts-action-primary');
         });
         $('#regDrawerActions').append($aksi);
 
@@ -497,16 +640,17 @@ $(function () {
             $('#regDrawerLoading').hide();
             $('#regDrawerError').html('<div class="ts-empty"><span class="ts-empty-ic"><i class="fas fa-exclamation-triangle"></i></span>'
                 + '<p class="ts-empty-title">Detail belum dapat dimuat</p><p class="ts-empty-msg">' + escReg(pesan) + '</p></div>').removeAttr('hidden');
-            $('#regDrawer-title').text($baris.data('code') || 'Detail Cost Register');
+            $('#regDrawer-title').text($baris.data('code') || 'Detail Expense');
         }
 
-        $.get('{{ url('/cost-register') }}/' + encodeURIComponent(id) + '/detail-json')
+        $.get('{{ url('/expense') }}/' + encodeURIComponent(id) + '/detail-json')
             .done(function (d) {
                 if (!d || typeof d !== 'object' || !d.id) { gagal('Sesi Anda mungkin sudah berakhir. Muat ulang halaman, lalu masuk kembali.'); return; }
 
-                $('#regDrawer-eyebrow').html('<button type="button" class="ts-copy-code" data-code="' + escAttrReg(d.project_code) + '" title="Klik untuk menyalin kode">'
-                    + escReg(d.project_code) + '</button> · ' + escReg(d.type_label));
-                $('#regDrawer-title').text(d.project_name || d.project_code);
+                $('#regDrawer-eyebrow').html('<button type="button" class="ts-copy-code" data-code="' + escAttrReg(d.code) + '" title="Klik untuk menyalin kode">'
+                    + escReg(d.code) + '</button> · ' + escReg(d.type_label));
+                // Cost Register lama: nama PO; Expense: ringkasan tujuan (PO / multi-PO / Cost Center).
+                $('#regDrawer-title').text(d.is_legacy ? (d.project_name || d.project_code) : d.target_label);
 
                 var siapa = function (nama, waktu) { return (nama && nama !== '-') ? nama + (waktu ? ' · ' + waktu : '') : '-'; };
                 var info = '<div class="mb-3" style="border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;">'
@@ -514,12 +658,15 @@ $(function () {
                     + '<div style="font-size:28px;line-height:1.15;font-weight:700;font-variant-numeric:tabular-nums;margin:2px 0 8px;">' + escReg(d.amount ? d.amount_formatted : '-') + '</div>'
                     + '<span class="ts-status ts-status-' + escAttrReg(d.status_tone || 'neutral') + ' ts-status-sm">' + escReg(d.status_label) + '</span></div>'
                     + '<dl class="ts-dw-kv">'
-                    + '<dt>Customer</dt><dd>' + escReg(isiReg(d.customer)) + '</dd>'
+                    + '<dt>Pembebanan</dt><dd>' + escReg(isiReg(d.target_label)) + '</dd>'
+                    + (d.is_legacy ? '<dt>Customer</dt><dd>' + escReg(isiReg(d.customer)) + '</dd>' : '')
                     + '<dt>Tipe</dt><dd>' + escReg(isiReg(d.type_label)) + '</dd>'
-                    + '<dt>Periode</dt><dd>' + escReg(isiReg(d.period)) + '</dd>'
+                    + '<dt>Periode</dt><dd>' + escReg(isiReg(d.period))
+                    + ((d.periods || []).length > 1 ? '<div class="text-muted" style="font-size:11.5px;">' + d.periods.map(function (p) {
+                        return escReg(p.period) + ': ' + escReg(p.amount); }).join('<br>') + '</div>' : '') + '</dd>'
                     + '<dt>Beneficiary</dt><dd>' + escReg(isiReg(d.beneficiary)) + '</dd>'
                     + '<dt>Rekening Beneficiary</dt><dd>' + escReg(isiReg(d.beneficiary_bank)) + '</dd>'
-                    + '<dt>Rekening Sumber</dt><dd>' + escReg(isiReg(d.source_fund)) + '</dd>'
+                    + (d.source_fund && d.source_fund !== '-' ? '<dt>Rekening Sumber</dt><dd>' + escReg(d.source_fund) + '</dd>' : '')
                     + (d.batch_code ? '<dt>Batch Alokasi</dt><dd>' + escReg(d.batch_code) + '</dd>' : '')
                     + '<dt>Catatan</dt><dd style="white-space:pre-line;">' + escReg(isiReg(d.notes)) + '</dd>'
                     + '<dt>Diinput</dt><dd>' + escReg(siapa(d.input_by, d.created_at)) + '</dd>'
@@ -532,11 +679,42 @@ $(function () {
                 var det = d.details || [];
                 $('#regDetailCount').text(det.length);
                 $('#regDetailBody').html(det.length ? det.map(function (x, i) {
-                    return '<tr><td>' + (i + 1) + '</td><td>' + escReg(isiReg(x.account)) + '</td><td>' + escReg(x.description) + '</td>'
-                        + '<td class="text-right">' + escReg(x.qty) + '</td><td class="text-right" style="font-variant-numeric:tabular-nums;">' + escReg(x.unit_price) + '</td>'
+                    return '<tr><td>' + (i + 1) + '</td><td>' + escReg(isiReg(x.account))
+                        + (x.category && x.category !== '-' ? '<div class="text-muted" style="font-size:11px;">' + escReg(x.category) + '</div>' : '') + '</td>'
+                        + '<td>' + escReg(isiReg(x.target)) + '</td><td>' + escReg(x.description) + '</td>'
+                        + '<td class="text-right" style="font-variant-numeric:tabular-nums;">' + escReg(x.unit_price) + '</td><td class="text-right">' + escReg(x.qty) + '</td>'
                         + '<td class="text-right" style="font-variant-numeric:tabular-nums;">' + escReg(x.total) + '</td></tr>';
-                }).join('') : '<tr><td colspan="6" class="text-center text-muted py-3">Tanpa rincian (data lama).</td></tr>');
+                }).join('') : '<tr><td colspan="7" class="text-center text-muted py-3">Tanpa rincian (data lama).</td></tr>');
                 $('#regDetailTotal').text(d.amount ? d.amount_formatted : '-');
+
+                // Expense Cash Advance: tab Settlement.
+                $('#regSettleTabItem').prop('hidden', !d.is_cash_advance);
+                if (d.is_cash_advance) {
+                    var sp = (d.second_payments || []).map(function (x) {
+                        return escReg(x.amount) + ' (' + escReg(x.status === 'PAID' ? 'dibayar ' + (x.paid_at || '') : 'menunggu Treasury') + ')';
+                    }).join(', ');
+                    $('#regSettleSummary').html('<dl class="ts-dw-kv mb-3">'
+                        + '<dt>Dibayar</dt><dd>' + escReg(d.amount_formatted) + '</dd>'
+                        + '<dt>Realisasi</dt><dd>' + escReg(isiReg(d.settled_amount)) + '</dd>'
+                        + '<dt>Kelebihan (refund)</dt><dd>' + escReg(isiReg(d.refund_amount)) + '</dd>'
+                        + '<dt>Kekurangan bayar</dt><dd>' + escReg(isiReg(d.shortfall_amount)) + '</dd>'
+                        + '<dt>Second Payment</dt><dd>' + (sp || '-') + '</dd>'
+                        + '<dt>Settle diajukan</dt><dd>' + escReg(siapa(d.settle_submitted_by, d.settle_submitted_at)) + '</dd>'
+                        + '<dt>Settle disetujui</dt><dd>' + escReg(siapa(d.settle_approved_by, d.settle_approved_at)) + '</dd>'
+                        + '</dl>');
+                    var sd = d.settlement_details || [];
+                    $('#regSettleBody').html(sd.length ? sd.map(function (x, i) {
+                        return '<tr><td>' + (i + 1) + '</td><td>' + escReg(isiReg(x.account))
+                            + (x.category && x.category !== '-' ? '<div class="text-muted" style="font-size:11px;">' + escReg(x.category) + '</div>' : '') + '</td>'
+                            + '<td>' + escReg(isiReg(x.target)) + '</td><td>' + escReg(x.description) + '</td>'
+                            + '<td class="text-right" style="font-variant-numeric:tabular-nums;">' + escReg(x.unit_price) + '</td><td class="text-right">' + escReg(x.qty) + '</td>'
+                            + '<td class="text-right" style="font-variant-numeric:tabular-nums;">' + escReg(x.total) + '</td></tr>';
+                    }).join('') : '<tr><td colspan="7" class="text-center text-muted py-3">Realisasi belum diisi.</td></tr>');
+                    var satts = d.settlement_attachments || [];
+                    $('#regSettleAttBody').html(satts.length ? satts.map(function (a) {
+                        return '<a class="ts-dw-file" href="/storage/' + escAttrReg(a.path) + '" target="_blank" rel="noopener"><i class="fas fa-file"></i><span>' + escReg(a.title) + '</span></a>';
+                    }).join('') : '<p class="text-muted mb-0" style="font-size:12px;">Belum ada bukti realisasi.</p>');
+                }
 
                 var atts = d.attachments || [];
                 $('#regAttCount').text(atts.length);
@@ -558,7 +736,7 @@ $(function () {
                 $('#regDrawerContent').removeAttr('hidden');
             })
             .fail(function (xhr) {
-                gagal(xhr && xhr.status === 404 ? 'Cost Register tidak ditemukan.' : 'Terjadi kesalahan saat memuat data. Coba lagi.');
+                gagal(xhr && xhr.status === 404 ? 'Expense tidak ditemukan.' : 'Terjadi kesalahan saat memuat data. Coba lagi.');
             });
     }
 
@@ -569,7 +747,7 @@ $(function () {
     });
 
     // Aksi dari kaki drawer: drawer ditutup dulu supaya konfirmasi tidak tertutup panel.
-    $(document).on('click', '#regDrawerActions .btn-approve-cr, #regDrawerActions .btn-revise-cr, #regDrawerActions .btn-cancel-cr, #regDrawerActions form button', function () {
+    $(document).on('click', '#regDrawerActions .btn-approve-cr, #regDrawerActions .btn-reject-cr, #regDrawerActions .btn-cancel-cr, #regDrawerActions .btn-settle-approve-cr, #regDrawerActions .btn-settle-reject-cr, #regDrawerActions form button', function () {
         TesysDrawer.close('regDrawer');
     });
 
@@ -579,7 +757,7 @@ $(function () {
         var teks = $.trim($in.val());
         if (!teks) { $in.focus(); return; }
         $btn.prop('disabled', true);
-        $.post('{{ url('/cost-register') }}/' + $f.data('id') + '/log-note', { _token: $('meta[name="csrf-token"]').attr('content'), notes: teks })
+        $.post('{{ url('/expense') }}/' + $f.data('id') + '/log-note', { _token: $('meta[name="csrf-token"]').attr('content'), notes: teks })
             .done(function (res) {
                 if (!res || !res.log) return;
                 $('#regLogBody .reg-log-empty').remove();

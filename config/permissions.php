@@ -16,7 +16,7 @@ return [
   'budget-plan' => 'Budget Plan',
   'budget-request' => 'Cost Request',
   'cost-center' => 'Cost Center',
-  'cost-register' => 'Cost Register',
+  'cost-register' => 'Expense',
   'daily-transaction' => 'Treasury',
   'department' => 'Department',
   'employee' => 'Employee',
@@ -915,9 +915,7 @@ return [
     'seed_roles' => 
     [
       0 => 'approver',
-      1 => 'finance',
-      2 => 'finance_manager',
-      3 => 'superadmin',
+      1 => 'superadmin',
     ],
   ],
   'cost-register.cancel' => 
@@ -926,9 +924,8 @@ return [
     'label' => 'cost-register.cancel',
     'seed_roles' => 
     [
-      0 => 'finance',
-      1 => 'finance_manager',
-      2 => 'superadmin',
+      0 => 'finance_manager',
+      1 => 'superadmin',
     ],
   ],
   'cost-register.create' => 
@@ -937,9 +934,8 @@ return [
     'label' => 'cost-register.create',
     'seed_roles' => 
     [
-      0 => 'finance',
-      1 => 'finance_manager',
-      2 => 'superadmin',
+      0 => 'finance_manager',
+      1 => 'superadmin',
     ],
   ],
   'cost-register.destroy' => 
@@ -948,21 +944,78 @@ return [
     'label' => 'cost-register.destroy',
     'seed_roles' => 
     [
-      0 => 'finance',
-      1 => 'finance_manager',
-      2 => 'superadmin',
+      0 => 'finance_manager',
+      1 => 'superadmin',
     ],
   ],
-  'cost-register.revise' => 
+  'cost-register.edit' => 
   [
     'module' => 'cost-register',
-    'label' => 'cost-register.revise',
+    'label' => 'cost-register.edit',
+    'seed_roles' => 
+    [
+      0 => 'finance_manager',
+      1 => 'superadmin',
+    ],
+  ],
+  'cost-register.reject' => 
+  [
+    'module' => 'cost-register',
+    'label' => 'cost-register.reject',
     'seed_roles' => 
     [
       0 => 'approver',
-      1 => 'finance',
-      2 => 'finance_manager',
-      3 => 'superadmin',
+      1 => 'superadmin',
+    ],
+  ],
+  'cost-register.reopen' => 
+  [
+    'module' => 'cost-register',
+    'label' => 'cost-register.reopen',
+    'seed_roles' => 
+    [
+      0 => 'finance_manager',
+      1 => 'superadmin',
+    ],
+  ],
+  'cost-register.settle' => 
+  [
+    'module' => 'cost-register',
+    'label' => 'cost-register.settle',
+    'seed_roles' => 
+    [
+      0 => 'finance_manager',
+      1 => 'superadmin',
+    ],
+  ],
+  'cost-register.settle-approve' => 
+  [
+    'module' => 'cost-register',
+    'label' => 'cost-register.settle-approve',
+    'seed_roles' => 
+    [
+      0 => 'approver',
+      1 => 'superadmin',
+    ],
+  ],
+  'cost-register.settle-reject' => 
+  [
+    'module' => 'cost-register',
+    'label' => 'cost-register.settle-reject',
+    'seed_roles' => 
+    [
+      0 => 'approver',
+      1 => 'superadmin',
+    ],
+  ],
+  'cost-register.settle.store' => 
+  [
+    'module' => 'cost-register',
+    'label' => 'cost-register.settle.store',
+    'seed_roles' => 
+    [
+      0 => 'finance_manager',
+      1 => 'superadmin',
     ],
   ],
   'cost-register.store' => 
@@ -971,9 +1024,8 @@ return [
     'label' => 'cost-register.store',
     'seed_roles' => 
     [
-      0 => 'finance',
-      1 => 'finance_manager',
-      2 => 'superadmin',
+      0 => 'finance_manager',
+      1 => 'superadmin',
     ],
   ],
   'cost-register.submit' => 
@@ -982,9 +1034,18 @@ return [
     'label' => 'cost-register.submit',
     'seed_roles' => 
     [
-      0 => 'finance',
-      1 => 'finance_manager',
-      2 => 'superadmin',
+      0 => 'finance_manager',
+      1 => 'superadmin',
+    ],
+  ],
+  'cost-register.update' => 
+  [
+    'module' => 'cost-register',
+    'label' => 'cost-register.update',
+    'seed_roles' => 
+    [
+      0 => 'finance_manager',
+      1 => 'superadmin',
     ],
   ],
   'daily-transaction.add-item' => 

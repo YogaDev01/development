@@ -128,6 +128,14 @@ Closing ← ClosingService reads Treasury, Invoice, Collection, Cash Receipt…
 
 ### Numbering
 - `DocumentSequence` counters never go backwards; gaps are expected.
+- Kode Cost Request = `{prefix}-{MM}{YY}{sumber 4}{urut 4}`; prefix dari nama
+  Tipe Request (`BudgetRequest::CODE_PREFIX_BY_TYPE`): Cash Advance `CA`,
+  Payment `PA`, Pettycash `PC`, Purchase `PR`, Reimbursement `RB`, tipe lain
+  `CR`. Nomor urut dipakai bersama semua tipe (kunci penghitung tetap
+  `cr:CR-…`). Kode lama `CR-` tidak diubah. Bila tipe diubah saat edit, prefix
+  ikut berganti hanya jika CR DRAFT dan belum pernah diajukan
+  (`codePrefixChangeable()`). Referensi bank di export batch Treasury membuang
+  prefix 2 huruf apa pun.
 
 ## Discrepancies (reported, not fixed)
 

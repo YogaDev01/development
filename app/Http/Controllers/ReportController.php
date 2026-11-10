@@ -108,10 +108,25 @@ class ReportController extends Controller
         // Fixed Cost & Overhead TIDAK diambil dari Cost Request (kategori Account) —
         // keduanya butuh perhitungan manual di luar sistem (prorate personel utk Fixed
         // Cost, alokasi pool utk Overhead) yang divalidasi lewat meeting & approval CEO,
-        // lalu dicatat lewat modul Cost Register. Lihat Project::fixedCostTotal()/overheadCostTotal().
-        $costRegisters = $project->costRegisters()->with('attachments')->latest()->get();
-        $fixedCost     = (int) $costRegisters->where('type', 'FIXED_COST')->sum('amount');
-        $overheadCost  = (int) $costRegisters->where('type', 'OVERHEAD')->sum('amount');
+        // lalu dicatat di kolom manual PO atau lewat modul Expense.
+        // Daftar di bawah hanya untuk TAMPILAN riwayat Cost Register lama; angkanya
+        // diambil dari Project::fixedCostTotal()/overheadCostTotal().
+        $costRegisters = $project->costRegisters()->whereNotNull('type')->with('attachments')->latest()->get();
+
+        // Expense (sejak 2026-11-10): rincian yang dialokasikan ke PO ini, kategori
+        // dari akun. Ditambahkan ke Variable/Fixed/Overhead sesuai kategorinya —
+        // angka sama dengan Project::expenseCostByCategory().
+        $expenseCost  = $project->expenseCostByCategory();
+        // Baris + porsi untuk PO ini (PO langsung, PO terpilih, pembagian tahunan; realisasi
+        // Cash Advance bila settlement disetujui) — satu sumber App\Support\ExpenseAllocation.
+        $expenseLines = \App\Support\ExpenseAllocation::linesForProject((int) $project->id);
+
+        $variableCost += $expenseCost['Variable Cost'];
+        // Fixed Cost & Overhead dari satu sumber (kolom manual PO + Cost Register lama +
+        // Expense) — dulu dihitung ulang di sini tanpa kolom manual, sehingga angkanya
+        // berbeda dengan daftar PO. Lihat Project::fixedCostTotal()/overheadCostTotal().
+        $fixedCost     = $project->fixedCostTotal();
+        $overheadCost  = $project->overheadCostTotal();
 
         $variableBreakdown = $variableDetails
             ->groupBy(fn ($d) => $d->account->name ?? 'Tanpa Account')
@@ -291,6 +306,7 @@ class ReportController extends Controller
             'duration_days'      => $durationDays,
             'variable_breakdown' => $variableBreakdown,
             'cost_registers'     => $costRegisters,
+            'expense_lines'      => $expenseLines,
             'invoices'           => $invoices,
             'milestones'         => $milestones,
             'budget_plans'       => $budgetPlans,

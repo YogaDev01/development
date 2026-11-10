@@ -82,7 +82,7 @@
                 $rowBen     = $item->sourceBeneficiaryName();
                 $rowAmount  = number_format($item->sourceAmount(), 0, ',', '.');
                 $rowUrl     = $isRegister
-                    ? url('/cost-register')
+                    ? url('/expense')
                     : ('/budget-request?open=' . ($cr->id ?? ''));
             @endphp
             <tr class="dt-grp-{{ $g }} {{ $isTakeout ? 'dt-takeout-row' : '' }}" style="display:none;">
@@ -91,7 +91,7 @@
                 </td>
                 <td class="{{ $isTakeout ? 'dt-takeout-desc' : '' }}">
                     @if($isRegister)
-                        <span class="badge badge-info mr-1" style="font-size:9px;">NON-CR</span>
+                        <span class="badge badge-info mr-1" style="font-size:9px;">EXPENSE</span>
                     @elseif($isSecondPay)
                         {{-- Baris ini membayar SELISIH Settlement, bukan nilai CR.
                              Ditandai jelas supaya tidak dibaca sebagai transfer ganda. --}}
@@ -118,7 +118,7 @@
 
                         <a href="{{ $rowUrl }}" target="_blank"
                            class="ts-action-primary is-neutral"
-                           title="{{ $isRegister ? 'Lihat Cost Register' : 'Lihat Cost Request' }}">
+                           title="{{ $isRegister ? 'Lihat Expense' : 'Lihat Cost Request' }}">
                             <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Lihat</span>
                         </a>
 

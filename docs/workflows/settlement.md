@@ -147,7 +147,8 @@ Hanya Cash Advance (hanya CA yang punya settlement).
 
 ## Bulk approve Fase 4 (daftar CR)
 
-Sejak 29 Okt 2026 checkbox bulk di tab Cash Advance juga berlaku untuk tahap settlement
+Sejak 29 Okt 2026 checkbox bulk di daftar CR (dulu tab Cash Advance; sejak 10 Nov 2026
+satu tabel gabungan) juga berlaku untuk tahap settlement
 (`BudgetRequest::SETTLE_BULK_ROLES`): `REALIZED` (Head → `headCheckSettlement`),
 `SETTLE_CHECKED` (Finance/Finance Manager/Cost Control → `financeVerifySettlement`),
 `SETTLE_VERIFIED` (Finance Manager → `settleApprove`, atau Close bila tanpa Expense Claim),

@@ -1,19 +1,22 @@
-{{-- Toolbar satu tab (search, filter, kolom, export, bulk). Diinisialisasi JS saat tabelnya dimuat.
+{{-- Toolbar tabel CR (search, filter, kolom, export, bulk). Diinisialisasi JS saat tabelnya dimuat.
      "Tambah Request" kini ada di kepala halaman (index.blade.php), bukan di toolbar. --}}
 @php
+    // Bawaan tampil/sembunyi tiap kolom ada di JS (crVisDefault, index.blade.php).
     $hideable = [
-        'tanggal'  => 'Tanggal',
-        'paid_at'  => 'Tanggal Paid',
-        'pengaju'  => 'Requestor',
-        'pic'      => 'PIC',
+        'type'       => 'Tipe',
+        'tanggal'    => 'Tanggal',
+        'paid_at'    => 'Tanggal Paid',
+        'pengaju'    => 'Requestor',
+        'pic'        => 'PIC',
+        'request'    => 'Request',
+        'realisasi'  => 'Settlement',
+        'refund'     => 'Refund',
+        'claim'      => 'Expense Claim',
+        'cost'       => 'Cost',
+        'close_date' => 'Close Date',
     ];
-    if ($tab === 'ca') {
-        $hideable['realisasi'] = 'Settlement';
-        $hideable['refund']    = 'Refund';
-        $hideable['claim']     = 'Expense Claim';
-    }
     // Sama dengan _table: bar bulk hanya untuk peran yang berwenang di tahap pengajuan.
-    $canBulk = $tab !== 'db' && Auth::user()->hasRole(
+    $canBulk = Auth::user()->hasRole(
         array_merge(['superadmin'], ...array_values(\App\Models\BudgetRequest::bulkStageRoles()))
     );
 @endphp

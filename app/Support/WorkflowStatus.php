@@ -305,7 +305,8 @@ class WorkflowStatus
         /*
           Cost Register: alur Cost Payment (Non-CA) tanpa tahap Checked — Draft langsung
           VERIFIED (label "Submitted"). Gerbang peran: CostRegisterController
-          (submit: finance group; approve/revise: approver) dan Treasury (batch).
+          (submit/settle: finance_manager; approve/revise/approve settle: approver) dan
+          Treasury (batch). PAID/SETTLE_* hanya untuk Expense Cash Advance.
         */
         'cost-register' => [
             'DRAFT' => [
@@ -325,6 +326,33 @@ class WorkflowStatus
             ],
             'QUEUED' => [
                 'description' => 'Masuk batch pembayaran',
+                'tone'        => 'progress',
+                'icon'        => 'fa-exchange-alt',
+            ],
+            // Expense Cash Advance (Fase 2, 2026-11-10).
+            'PAID' => [
+                'description' => 'Sudah dibayar — menunggu Finance Manager input realisasi',
+                'tone'        => 'attention',
+                'icon'        => 'fa-receipt',
+            ],
+            'SETTLE_SUBMITTED' => [
+                'description' => 'Realisasi menunggu persetujuan CEO',
+                'tone'        => 'attention',
+                'icon'        => 'fa-hourglass-half',
+            ],
+            // Fase 3: ditolak CEO (keluar alur; FM revisi ke Draft atau batalkan).
+            'REJECTED' => [
+                'description' => 'Ditolak CEO — revisi ke Draft atau batalkan',
+                'tone'        => 'danger',
+                'icon'        => 'fa-times-circle',
+            ],
+            'SETTLE_REJECTED' => [
+                'description' => 'Realisasi ditolak CEO — Finance Manager memperbaiki & mengajukan ulang',
+                'tone'        => 'danger',
+                'icon'        => 'fa-times-circle',
+            ],
+            'SETTLE_APPROVED' => [
+                'description' => 'Settlement disetujui — menunggu kekurangan bayar lewat Treasury',
                 'tone'        => 'progress',
                 'icon'        => 'fa-exchange-alt',
             ],
@@ -551,7 +579,7 @@ class WorkflowStatus
             'DRAFT', 'PENDING_APPROVER', 'DONE', 'PAID',
         ],
         'cost-register' => [
-            'DRAFT', 'VERIFIED', 'APPROVED', 'QUEUED', 'CLOSED',
+            'DRAFT', 'VERIFIED', 'APPROVED', 'QUEUED', 'PAID', 'SETTLE_SUBMITTED', 'SETTLE_APPROVED', 'CLOSED',
         ],
         'trouble-ticket' => [
             'OPEN', 'REMOTE', 'PLAN', 'TRIP', 'IN_PROGRESS', 'PROGRESS_DONE', 'CLOSED',

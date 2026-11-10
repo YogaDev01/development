@@ -2,10 +2,10 @@
 
 - **Daily Transaction** (`DailyTransactionController`, menu
   `finance-daily-transaction`): payment batches. Types CASH_OUT / TOP_UP.
-  Items (`daily_transaction_items`) reference a CR, a Cost Register row, or a
+  Items (`daily_transaction_items`) reference a CR, an Expense (`cost_registers`) row, or a
   Second Payment; item status INCLUDED / REJECTED. Flow in
   `docs/workflows/payment.md`.
-- **Cost Register** (`CostRegisterController`): non-CR costs paid through a
+- **Expense** (dulu Cost Register, `CostRegisterController`, URL `/expense`): non-CR costs paid through a
   batch.
 - **Source Funds** (`source_funds`): company bank accounts; `is_main_account`;
   TOP_UP moves money between them (`to_source_fund_id`).

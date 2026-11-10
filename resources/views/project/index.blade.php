@@ -199,7 +199,12 @@
                                 $costTotal  = $project->variableCostTotal();
                                 $paymentTotal = $project->paymentTotal();
                                 $grossProfitTotal = $paymentTotal - $costTotal;
-                                $netProfitTotal = $grossProfitTotal - ($project->overhead ?? 0) - ($project->fixed_cost ?? 0);
+                                // Overhead & Fixed Cost = kolom manual PO + Cost Register lama + Expense
+                                // (satu sumber: Project::overheadCostTotal()/fixedCostTotal(); angkanya
+                                // sudah di-preload massal lewat Project::preloadFinancials()).
+                                $overheadTotal = $project->overheadCostTotal();
+                                $fixedCostTotal = $project->fixedCostTotal();
+                                $netProfitTotal = $grossProfitTotal - $overheadTotal - $fixedCostTotal;
                                 $projMargin = $project->projectMargin();
                                 $planGm     = $project->grossMargin();
                                 $progress   = $project->implementationProgress();
@@ -399,12 +404,12 @@
                                     <button type="button" class="po-cell-link po-summary-link {{ $grossProfitTotal < 0 ? 'po-neg' : '' }}" data-id="{{ $project->id }}" title="Lihat Summary">{{ $poNilai(($grossProfitTotal < 0 ? '-' : '') . number_format(abs($grossProfitTotal), 0, ',', '.')) }}</button>
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-overhead" data-raw="{{ $poRaw($project->overhead ?? 0) }}">
-                                    <button type="button" class="po-cell-link po-cost-link" data-id="{{ $project->id }}" title="Lihat Cost">{{ $poNilai($project->overhead_formatted) }}</button>
+                                <td class="text-right text-nowrap col-raw-overhead" data-raw="{{ $poRaw($overheadTotal) }}">
+                                    <button type="button" class="po-cell-link po-cost-link" data-id="{{ $project->id }}" title="Lihat Cost">{{ $poNilai(number_format($overheadTotal, 0, ',', '.')) }}</button>
                                 </td>
 
-                                <td class="text-right text-nowrap col-raw-fixedcost" data-raw="{{ $poRaw($project->fixed_cost ?? 0) }}">
-                                    <button type="button" class="po-cell-link po-cost-link" data-id="{{ $project->id }}" title="Lihat Cost">{{ $poNilai($project->fixed_cost_formatted) }}</button>
+                                <td class="text-right text-nowrap col-raw-fixedcost" data-raw="{{ $poRaw($fixedCostTotal) }}">
+                                    <button type="button" class="po-cell-link po-cost-link" data-id="{{ $project->id }}" title="Lihat Cost">{{ $poNilai(number_format($fixedCostTotal, 0, ',', '.')) }}</button>
                                 </td>
 
                                 <td class="text-right text-nowrap col-raw-net" data-raw="{{ $poRaw($netProfitTotal) }}">

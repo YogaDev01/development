@@ -18,6 +18,10 @@ class DailyTransactionItem extends Model
         'budget_request_id',
         'cost_register_id',
         'second_payment_id',
+        //   cost_register_second_payment_id -> kekurangan bayar settlement Expense
+        //      Cash Advance; baris ini SEKALIGUS mengisi cost_register_id (Expense
+        //      induknya) — cek jenisnya lewat isExpenseSecondPayment().
+        'cost_register_second_payment_id',
         'status',
         'notes',
     ];
@@ -53,6 +57,11 @@ class DailyTransactionItem extends Model
         return $this->belongsTo(BudgetRequestSecondPayment::class, 'second_payment_id');
     }
 
+    public function expenseSecondPayment()
+    {
+        return $this->belongsTo(CostRegisterSecondPayment::class, 'cost_register_second_payment_id');
+    }
+
     /*
     |--------------------------------------------------------------------------
     | SUMBER BIAYA — antarmuka seragam
@@ -67,6 +76,16 @@ class DailyTransactionItem extends Model
         return $this->cost_register_id !== null;
     }
 
+    /**
+     * Baris kekurangan bayar settlement Expense Cash Advance. isCostRegister()
+     * tetap true (identitas, beneficiary, lampiran dari Expense induk); nilai &
+     * efek status-nya dibedakan lewat helper ini.
+     */
+    public function isExpenseSecondPayment(): bool
+    {
+        return $this->cost_register_second_payment_id !== null;
+    }
+
     /** Baris kekurangan bayar Settlement — nilainya dari Second Payment,
      *  identitas & penerimanya tetap dari CR induk. */
     public function isSecondPayment(): bool
@@ -78,6 +97,9 @@ class DailyTransactionItem extends Model
     {
         if ($this->isSecondPayment()) {
             return (int) ($this->secondPayment->amount ?? 0);
+        }
+        if ($this->isExpenseSecondPayment()) {
+            return (int) ($this->expenseSecondPayment->amount ?? 0);
         }
 
         return $this->isCostRegister()
@@ -92,9 +114,14 @@ class DailyTransactionItem extends Model
             // melainkan kekurangan bayar atas CR tersebut.
             return ($this->budgetRequest->code ?? '-') . ' (2nd)';
         }
+        if ($this->isExpenseSecondPayment()) {
+            return ($this->costRegister?->display_code ?? '-') . ' (2nd)';
+        }
 
         return $this->isCostRegister()
-            ? ('CREG-' . str_pad((string) $this->cost_register_id, 5, '0', STR_PAD_LEFT))
+            // Nomor Expense (EXP-YYMM-xxxx); data Cost Register lama tetap CREG-xxxxx.
+            ? ($this->costRegister?->display_code
+                ?? ('CREG-' . str_pad((string) $this->cost_register_id, 5, '0', STR_PAD_LEFT)))
             : ($this->budgetRequest->code ?? '-');
     }
 
@@ -102,6 +129,9 @@ class DailyTransactionItem extends Model
     {
         if ($this->isSecondPayment()) {
             return 'KEKURANGAN BAYAR SETTLEMENT — ' . (string) ($this->budgetRequest->description ?? '-');
+        }
+        if ($this->isExpenseSecondPayment()) {
+            return 'KEKURANGAN BAYAR SETTLEMENT — ' . (string) ($this->costRegister->notes ?? '-');
         }
 
         return $this->isCostRegister()

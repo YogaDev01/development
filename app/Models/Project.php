@@ -106,6 +106,16 @@ class Project extends Model
     public const OPERATIONAL_STATUSES = ['ACTIVE', 'PROGRESS_DONE', 'PARTIALLY_INVOICED', 'PARTIALLY_PAID'];
 
     /**
+     * PO yang sudah disetujui (EARLY_START s.d. CLOSED) — hanya PO ini yang menerima
+     * pembagian Fixed Cost / Overhead dari Expense (App\Support\ExpenseAllocation,
+     * keputusan 2026-11-10).
+     */
+    public const EXPENSE_ALLOCATION_STATUSES = [
+        'EARLY_START', 'WAITING_PO', 'ACTIVE', 'PROGRESS_DONE', 'PARTIALLY_INVOICED',
+        'PARTIALLY_PAID', 'PAID', 'CLOSING', 'CLOSED',
+    ];
+
+    /**
      * Status Active "lanjutan": PO masih berjalan (belum PAID) tetapi sebagian
      * No. PO sudah ditagih/dibayar. Diperlakukan seperti ACTIVE pada pengecekan
      * yang dulu hanya melihat ACTIVE (budget-able, kunci edit, badge menunggu).
@@ -638,6 +648,10 @@ class Project extends Model
     */
     private ?\Illuminate\Support\Collection $crCache = null;
     private ?\Illuminate\Support\Collection $receivedByInvoiceCache = null;
+    /** @var array<string,int>|null biaya Expense per kategori untuk PO ini (lihat expenseCostByCategory()). */
+    private ?array $expenseCostCache = null;
+    /** @var array<string,int>|null total Cost Register LAMA per `type` untuk PO ini (lihat legacyCostRegisterTotal()). */
+    private ?array $legacyCostCache = null;
 
     /**
      * Muat CR (+ realisasinya) dan total Cash Receipt per invoice untuk banyak
@@ -661,11 +675,43 @@ class Project extends Model
             ->groupBy('invoice_id')
             ->pluck('total', 'invoice_id');
 
+        self::preloadCostRegisterCosts($projects);
+
         foreach ($projects as $p) {
             $p->crCache = $p->budgetPlans->pluck('id')
                 ->flatMap(fn ($id) => $crByPlan->get($id, collect()))
                 ->values();
             $p->receivedByInvoiceCache = $received;
+        }
+    }
+
+    /**
+     * Isi cache biaya Expense (per kategori akun) dan Cost Register LAMA (per `type`)
+     * untuk banyak PO sekaligus — 4 query untuk seluruh daftar, berapa pun jumlah PO.
+     * Dipakai preloadFinancials() dan halaman yang hanya butuh angka Overhead /
+     * Fixed Cost tanpa agregat CR & invoice (mis. Finance Summary).
+     */
+    public static function preloadCostRegisterCosts(\Illuminate\Support\Collection $projects): void
+    {
+        if ($projects->isEmpty()) {
+            return;
+        }
+
+        $ids = $projects->pluck('id')->all();
+
+        $expenseByProject = \App\Support\ExpenseAllocation::forProjects($ids);
+
+        $legacyByProject = CostRegister::whereIn('project_id', $ids)
+            ->whereNotNull('type')
+            ->selectRaw('project_id, type, COALESCE(SUM(amount),0) as total')
+            ->groupBy('project_id', 'type')
+            ->get()
+            ->groupBy('project_id')
+            ->map(fn ($baris) => $baris->mapWithKeys(fn ($r) => [$r->type => (int) $r->total])->all());
+
+        foreach ($projects as $p) {
+            $p->expenseCostCache = $expenseByProject[$p->id] ?? array_fill_keys(\App\Support\ExpenseAllocation::CATEGORIES, 0);
+            $p->legacyCostCache  = $legacyByProject[$p->id] ?? [];
         }
     }
 
@@ -731,22 +777,71 @@ class Project extends Model
                 ->with(['type', 'realizations'])
                 ->get();
 
-        return (int) $crs->sum(fn ($c) => $c->realizedCostValue());
+        // + Expense berkategori Variable Cost yang dialokasikan ke PO ini (2026-11-10).
+        return (int) $crs->sum(fn ($c) => $c->realizedCostValue())
+            + $this->expenseCostByCategory()['Variable Cost'];
     }
 
     /**
-     * Fixed Cost & Overhead — nominal manual dari modul Cost Register (bukan
-     * dari Cost Request), karena keduanya butuh perhitungan prorate/alokasi
-     * di luar sistem (lihat App\Models\CostRegister).
+     * Biaya Expense (modul Expense, dulu Cost Register) yang dibebankan ke PO ini,
+     * per kategori akun: ['Variable Cost' => int, 'Fixed Cost' => int, 'Overhead' => int].
+     * Satu sumber: App\Support\ExpenseAllocation (PO langsung, PO terpilih, dan
+     * pembagian tahunan proporsional nilai PO — dihitung ulang setiap dibaca).
+     * Data Cost Register lama TIDAK termasuk di sini — tetap lewat type header.
+     */
+    public function expenseCostByCategory(): array
+    {
+        if ($this->expenseCostCache === null) {
+            $this->expenseCostCache = \App\Support\ExpenseAllocation::forProjects([$this->id])[$this->id];
+        }
+
+        return $this->expenseCostCache;
+    }
+
+    /**
+     * Total Cost Register LAMA (header `type` FIXED_COST / OVERHEAD) milik PO ini.
+     * Perilaku data lama sengaja TIDAK diubah: semua status dihitung (lihat
+     * CLAUDE.md §6 dan catatan di CostRegister::PO_COST_COUNTED_STATUSES).
+     */
+    public function legacyCostRegisterTotal(string $type): int
+    {
+        if ($this->legacyCostCache === null) {
+            $this->legacyCostCache = $this->costRegisters()
+                ->whereNotNull('type')
+                ->selectRaw('type, COALESCE(SUM(amount),0) as total')
+                ->groupBy('type')
+                ->pluck('total', 'type')
+                ->map(fn ($v) => (int) $v)
+                ->all();
+        }
+
+        return (int) ($this->legacyCostCache[$type] ?? 0);
+    }
+
+    /**
+     * Fixed Cost & Overhead PO — SATU SUMBER untuk daftar PO, modal Cost,
+     * Finance Summary dan Laporan PO (keputusan 2026-11-10, revisi hasil audit
+     * alur Expense). Ketiga komponennya dijumlahkan:
+     *   1. kolom manual `projects.fixed_cost` / `projects.overhead` (diisi di form PO,
+     *      hasil prorate/alokasi pool di luar sistem);
+     *   2. Cost Register LAMA (header `type`) milik PO ini;
+     *   3. Expense baru berkategori Fixed Cost / Overhead yang dibebankan ke PO ini
+     *      (App\Support\ExpenseAllocation — PO langsung, PO terpilih, pembagian tahunan).
+     * Karena dijumlahkan, biaya yang sudah dicatat lewat Expense TIDAK BOLEH diisi
+     * ulang di kolom manual PO (akan terhitung dua kali).
      */
     public function fixedCostTotal(): int
     {
-        return (int) $this->costRegisters()->where('type', 'FIXED_COST')->sum('amount');
+        return (int) ($this->fixed_cost ?? 0)
+            + $this->legacyCostRegisterTotal('FIXED_COST')
+            + $this->expenseCostByCategory()['Fixed Cost'];
     }
 
     public function overheadCostTotal(): int
     {
-        return (int) $this->costRegisters()->where('type', 'OVERHEAD')->sum('amount');
+        return (int) ($this->overhead ?? 0)
+            + $this->legacyCostRegisterTotal('OVERHEAD')
+            + $this->expenseCostByCategory()['Overhead'];
     }
 
     /**

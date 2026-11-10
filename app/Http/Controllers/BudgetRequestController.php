@@ -980,78 +980,48 @@ class BudgetRequestController extends Controller
     }
 
     /**
-     * Halaman index hanya memuat KERANGKA 3 tab (Cash Advance / Cost Payment /
-     * Database) + angka stepper. Baris tabel TIDAK dirender di sini — dimuat
-     * lewat tab() ketika tab dibuka, supaya halaman awal ringan.
+     * Halaman index hanya memuat KERANGKA satu tabel gabungan (semua tipe CR)
+     * + angka stepper awal. Baris tabel TIDAK dirender di sini — dimuat lewat
+     * tab('all') setelah halaman tampil, supaya halaman awal ringan. Angka
+     * stepper berikutnya dihitung ulang di browser mengikuti filter aktif.
      */
     public function index(Request $request)
     {
         [$dateFrom, $dateTo] = $this->crDateRange($request);
 
-        $base     = $this->crBaseQuery($dateFrom, $dateTo);
-        $caCounts = $this->crStatusCounts((clone $base)->cashAdvance());
-        $cpCounts = $this->crStatusCounts((clone $base)->costPayment());
-
-        $activeTab = in_array($request->query('tab'), ['ca', 'cp', 'db'], true) ? $request->query('tab') : 'ca';
+        $counts = $this->crStatusCounts($this->crBaseQuery($dateFrom, $dateTo));
 
         return view('budget-request.index', [
-            'dateFrom'  => $dateFrom,
-            'dateTo'    => $dateTo,
-            'caCounts'  => $caCounts,
-            'cpCounts'  => $cpCounts,
-            'caTotal'   => (int) $caCounts->sum(),
-            'cpTotal'   => (int) $cpCounts->sum(),
-            'activeTab' => $activeTab,
+            'dateFrom' => $dateFrom,
+            'dateTo'   => $dateTo,
+            'counts'   => $counts,
         ]);
     }
 
     /**
-     * Isi tabel satu tab (HTML fragment) — dipanggil AJAX saat tab dibuka.
-     *   ca : Cash Advance (alur penuh, ada Settlement/Refund)
-     *   cp : Cost Payment (selain Cash Advance; tanpa Settlement)
-     *   db : gabungan keduanya, kolom nilai "Cost" (Settlement utk CA, Request utk CP)
+     * Isi tabel gabungan (HTML fragment) — dipanggil AJAX. Dulu ada tiga tab
+     * (ca / cp / db); sekarang satu tabel 'all' dengan kolom & filter Tipe.
      */
     public function tab(Request $request, string $tab)
     {
-        abort_unless(in_array($tab, ['ca', 'cp', 'db'], true), 404);
+        abort_unless($tab === 'all', 404);
 
         [$dateFrom, $dateTo] = $this->crDateRange($request);
         $query = $this->crBaseQuery($dateFrom, $dateTo);
-
-        if ($tab === 'ca') {
-            $query->cashAdvance();
-        } elseif ($tab === 'cp') {
-            $query->costPayment();
-        }
 
         $total     = (clone $query)->count();
         $maxRows   = self::TAB_MAX_ROWS;
         $truncated = $total > $maxRows;
 
-        // Jumlah per status untuk tab ini — dipakai memperbarui stepper & badge
-        // tab saat rentang tanggal diganti tanpa memuat ulang halaman.
-        $statusCounts = (clone $query)->selectRaw('status, COUNT(*) as agg')
-            ->groupBy('status')
-            ->pluck('agg', 'status')
-            ->map(fn ($v) => (int) $v)
-            ->all();
-
-        if ($tab === 'ca') {
-            $query->with(['type', 'budgetPlan.project.manager', 'applicant', 'details', 'beneficiary.pic', 'realizations']);
-        } elseif ($tab === 'cp') {
-            // Tanpa 'realizations': Cost Payment tidak punya Settlement.
-            $query->with(['type', 'budgetPlan.project.manager', 'applicant', 'details', 'beneficiary.pic']);
-        } else {
-            // Database: read-only & ringan — nilai Settlement cukup withSum, tanpa memuat baris realisasi.
-            $query->with(['type', 'budgetPlan.project.manager', 'applicant', 'beneficiary.pic'])
-                ->withSum('realizations as realization_sum', 'total')
-                // Close Date = kapan Second Payment (pembayaran ke-2) dibayar.
-                ->withMax(['secondPayments as second_paid_at' => fn ($q) => $q->where('status', 'PAID')], 'paid_at');
-        }
+        // 'realizations' untuk Settlement/Refund/Expense Claim/Cost (CR non-CA
+        // tidak punya baris realisasi, jadi muatannya kosong).
+        $query->with(['type', 'budgetPlan.project.manager', 'applicant', 'details', 'beneficiary.pic', 'realizations'])
+            // Close Date = kapan Second Payment (pembayaran ke-2) dibayar.
+            ->withMax(['secondPayments as second_paid_at' => fn ($q) => $q->where('status', 'PAID')], 'paid_at');
 
         $rows = $query->latest()->limit($maxRows)->get();
 
-        return view('budget-request._table', compact('tab', 'rows', 'total', 'maxRows', 'truncated', 'statusCounts'));
+        return view('budget-request._table', compact('tab', 'rows', 'total', 'maxRows', 'truncated'));
     }
 
     /*
@@ -1194,7 +1164,8 @@ class BudgetRequestController extends Controller
         $description = strtoupper(trim($request->description));
 
         /*
-        | Kode CR: CR-{MM}{YY}{sumber(4)}{seq(4)}
+        | Kode CR: {prefix tipe}-{MM}{YY}{sumber(4)}{seq(4)}
+        |   - prefix: CA/PA/PC/PR/RB menurut Tipe Request, selain itu CR
         |   - Budget proyek      -> slot sumber = kode PO
         |   - Budget cost center -> slot sumber = angka kode CC
         | Slot cluster 4 digit sudah dihapus dari format (lihat
@@ -1209,7 +1180,7 @@ class BudgetRequestController extends Controller
             $sourceCode = $budgetPlan->project?->code ?? '0000';
         }
 
-        $code = BudgetRequest::generateCode($sourceCode);
+        $code = BudgetRequest::generateCode($sourceCode, (int) $request->type_id);
 
         DB::transaction(function () use ($request, $code, $description, $isNob, $nobAmount) {
             $cr = BudgetRequest::create([
@@ -2117,8 +2088,14 @@ class BudgetRequestController extends Controller
         $nobAmount = $budgetPlan->nobOverage($totalAmount, $cr->id);
         $description = strtoupper(trim($request->description));
 
-        DB::transaction(function () use ($request, $cr, $description, $isNob, $nobAmount) {
+        // Prefix kode mengikuti Tipe Request, hanya selama CR belum pernah diajukan.
+        $code = (int) $cr->type_id !== (int) $request->type_id && $cr->codePrefixChangeable()
+            ? BudgetRequest::codeWithTypePrefix((string) $cr->code, (int) $request->type_id)
+            : $cr->code;
+
+        DB::transaction(function () use ($request, $cr, $code, $description, $isNob, $nobAmount) {
             $cr->update([
+                'code'           => $code,
                 'description'    => $description,
                 'is_nob'         => $isNob,
                 'nob_amount'     => $nobAmount,

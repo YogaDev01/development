@@ -236,24 +236,31 @@ return [
   'cost-register.kelola' => 
   [
     'module' => 'cost-register',
-    'label' => 'Buat, ajukan & batalkan Cost Register',
+    'label' => 'Buat, edit, ajukan, revisi, batalkan & settlement Expense (Finance Manager)',
     'permissions' => 
     [
       0 => 'cost-register.cancel',
       1 => 'cost-register.create',
       2 => 'cost-register.destroy',
-      3 => 'cost-register.store',
-      4 => 'cost-register.submit',
+      3 => 'cost-register.edit',
+      4 => 'cost-register.reopen',
+      5 => 'cost-register.settle',
+      6 => 'cost-register.settle.store',
+      7 => 'cost-register.store',
+      8 => 'cost-register.submit',
+      9 => 'cost-register.update',
     ],
   ],
   'cost-register.lihat' => 
   [
     'module' => 'cost-register',
-    'label' => 'Setujui & revisi Cost Register (lihat halaman lewat Menu Access)',
+    'label' => 'Setujui, tolak & approve settlement Expense — CEO (lihat halaman lewat Menu Access)',
     'permissions' => 
     [
       0 => 'cost-register.approve',
-      1 => 'cost-register.revise',
+      1 => 'cost-register.reject',
+      2 => 'cost-register.settle-approve',
+      3 => 'cost-register.settle-reject',
     ],
   ],
   'daily-transaction.approval' => 

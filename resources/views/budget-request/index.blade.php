@@ -6,7 +6,7 @@
 
 <div class="content">
     <div class="container-fluid">
-      <div class="tw:flex tw:flex-col tw:gap-4 tw:py-4 tw:has-[#crTabs_.nav-link[data-crtab=db].active]:[&_.cr-add-request]:hidden">
+      <div class="tw:flex tw:flex-col tw:gap-4 tw:py-4">
 
         {{-- Judul & breadcrumb topbar: shell memindahkan <h1> dan .breadcrumb pertama ke topbar lalu
              menghapusnya dari konten (tesys-shell.js hoistPageTitle); disembunyikan secara visual. --}}
@@ -27,8 +27,6 @@
             description="Cash Advance dan Cost Payment beserta tahap persetujuan, pembayaran, dan settlement-nya.">
             @if($canAdd)
             <x-slot:actions>
-                {{-- Hanya relevan di tab Cash Advance / Cost Payment: kelas cr-add-request disembunyikan oleh varian has pada
-                     pembungkus halaman saat tab Database aktif (sama seperti sebelumnya, tombol ini tidak ada di tab itu). --}}
                 <x-tw.button href="{{ url('/budget-request/create') }}" class="cr-add-request tw:max-sm:min-h-12"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Request</x-tw.button>
             </x-slot:actions>
             @endif
@@ -36,87 +34,51 @@
 
         @if($canAdd)
         {{-- Mobile: tombol "Tambah Request" di header disembunyikan (CSS) dan diganti tombol melayang ini.
-             Hanya tampil di layar sempit dan tidak di tab Database (aturan di tesys-ui-refine.css). --}}
+             Hanya tampil di layar sempit (aturan di tesys-ui-refine.css). --}}
         <a href="{{ url('/budget-request/create') }}" class="cr-fab" aria-label="Tambah Request" title="Tambah Request">
             <i class="fas fa-plus" aria-hidden="true"></i>
         </a>
         @endif
 
         @php
-            $n = fn ($counts, $s) => (int) ($counts[$s] ?? 0);
+            $n = fn ($s) => (int) ($counts[$s] ?? 0);
 
-            // Cash Advance: alur penuh sampai Settlement.
-            $caSteps = [
-                ['Rejected',        $n($caCounts, 'REJECTED'),        'danger',    'REJECTED'],
-                ['Settle Rejected', $n($caCounts, 'SETTLE_REJECTED'), 'danger',    'SETTLE_REJECTED'],
-                ['Draft',           $n($caCounts, 'DRAFT'),           'secondary', 'DRAFT'],
-                ['Submitted',       $n($caCounts, 'SUBMITTED'),       'warning',   'SUBMITTED'],
-                ['Checked',         $n($caCounts, 'CHECKED'),         'info',      'CHECKED'],
-                ['Verified',        $n($caCounts, 'VERIFIED'),        'primary',   'VERIFIED'],
-                ['Approved',        $n($caCounts, 'APPROVED'),        'success',   'APPROVED'],
-                ['Process',         $n($caCounts, 'QUEUED'),          'warning',   'QUEUED'],
-                ['Paid',            $n($caCounts, 'PAID'),            'success',   'PAID'],
-                ['Settle',          $n($caCounts, 'REALIZED'),        'primary',   'REALIZED'],
-                ['Settle Checked',  $n($caCounts, 'SETTLE_CHECKED'),  'info',      'SETTLE_CHECKED'],
-                ['Settle Verified', $n($caCounts, 'SETTLE_VERIFIED'), 'primary',   'SETTLE_VERIFIED'],
-                ['Settle Approved', $n($caCounts, 'SETTLE_APPROVED'), 'success',   'SETTLE_APPROVED'],
-                ['Second Approved', $n($caCounts, 'SECOND_APPROVED'), 'success',   'SECOND_APPROVED'],
-                ['Closed',          $n($caCounts, 'CLOSED'),          'dark',      'CLOSED'],
+            /* Satu stepper untuk semua tipe CR: alur penuh Cash Advance (superset).
+               Angka awal = seluruh rentang tanggal; setelah tabel dimuat, angka dan
+               tahap yang tampil dihitung ulang di browser mengikuti filter aktif
+               (crSyncStepper): tanpa baris Cash Advance, tahap khusus settlement
+               disembunyikan dan Closed pindah ke Fase 3 seperti alur Cost Payment. */
+            $steps = [
+                ['Rejected',        $n('REJECTED'),        'danger',    'REJECTED'],
+                ['Settle Rejected', $n('SETTLE_REJECTED'), 'danger',    'SETTLE_REJECTED'],
+                ['Draft',           $n('DRAFT'),           'secondary', 'DRAFT'],
+                ['Submitted',       $n('SUBMITTED'),       'warning',   'SUBMITTED'],
+                ['Checked',         $n('CHECKED'),         'info',      'CHECKED'],
+                ['Verified',        $n('VERIFIED'),        'primary',   'VERIFIED'],
+                ['Approved',        $n('APPROVED'),        'success',   'APPROVED'],
+                ['Process',         $n('QUEUED'),          'warning',   'QUEUED'],
+                ['Paid',            $n('PAID'),            'success',   'PAID'],
+                ['Settle',          $n('REALIZED'),        'primary',   'REALIZED'],
+                ['Settle Checked',  $n('SETTLE_CHECKED'),  'info',      'SETTLE_CHECKED'],
+                ['Settle Verified', $n('SETTLE_VERIFIED'), 'primary',   'SETTLE_VERIFIED'],
+                ['Settle Approved', $n('SETTLE_APPROVED'), 'success',   'SETTLE_APPROVED'],
+                ['Second Approved', $n('SECOND_APPROVED'), 'success',   'SECOND_APPROVED'],
+                ['Closed',          $n('CLOSED'),          'dark',      'CLOSED'],
             ];
-
-            // Cost Payment: setelah Process langsung Closed (tanpa Settlement).
-            $cpSteps = [
-                ['Rejected',  $n($cpCounts, 'REJECTED'),  'danger',    'REJECTED'],
-                ['Draft',     $n($cpCounts, 'DRAFT'),     'secondary', 'DRAFT'],
-                ['Submitted', $n($cpCounts, 'SUBMITTED'), 'warning',   'SUBMITTED'],
-                ['Checked',   $n($cpCounts, 'CHECKED'),   'info',      'CHECKED'],
-                ['Verified',  $n($cpCounts, 'VERIFIED'),  'primary',   'VERIFIED'],
-                ['Approved',  $n($cpCounts, 'APPROVED'),  'success',   'APPROVED'],
-                ['Process',   $n($cpCounts, 'QUEUED'),    'warning',   'QUEUED'],
-            ];
-            // Data lama (sebelum pemisahan alur): non-CA yang masih tertahan di Paid — tampilkan hanya bila ada.
-            if ($n($cpCounts, 'PAID') > 0) {
-                $cpSteps[] = ['Paid', $n($cpCounts, 'PAID'), 'success', 'PAID'];
-            }
-            $cpSteps[] = ['Closed', $n($cpCounts, 'CLOSED'), 'dark', 'CLOSED'];
 
             // Pengelompokan tampilan per fase (presentasi saja; urutan & arti status tidak berubah).
             // Second Approved = pembayaran kedua setelah Settle Approved, jadi masuk fase Settlement.
-            $caGroups = [
+            $groups = [
                 ['Fase 1: Pengajuan',   ['REJECTED', 'SETTLE_REJECTED', 'DRAFT', 'SUBMITTED']],
                 ['Fase 2: Persetujuan', ['CHECKED', 'VERIFIED', 'APPROVED']],
                 ['Fase 3: Pembayaran',  ['QUEUED', 'PAID']],
                 ['Fase 4: Settlement',  ['REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'SETTLE_APPROVED', 'SECOND_APPROVED', 'CLOSED']],
             ];
-            $cpGroups = [
-                ['Fase 1: Pengajuan',   ['REJECTED', 'DRAFT', 'SUBMITTED']],
-                ['Fase 2: Persetujuan', ['CHECKED', 'VERIFIED', 'APPROVED']],
-                ['Fase 3: Pembayaran',  ['QUEUED', 'PAID', 'CLOSED']],
-            ];
         @endphp
 
-        {{-- Tab + rentang tanggal (filter tanggal berlaku untuk semua tab) --}}
-        <div class="cr-head tw:flex tw:flex-wrap tw:items-end tw:justify-between tw:gap-2">
-            <ul class="nav nav-tabs cr-main-tabs" id="crTabs" role="tablist">
-                <li class="nav-item">
-                    <a class="nav-link {{ $activeTab === 'ca' ? 'active' : '' }}" data-toggle="tab" data-crtab="ca" href="#crPaneCA" role="tab">
-                        <i class="fas fa-hand-holding-usd mr-1"></i> Cash Advance
-                        <span class="badge badge-secondary ml-1">{{ number_format($caTotal, 0, ',', '.') }}</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ $activeTab === 'cp' ? 'active' : '' }}" data-toggle="tab" data-crtab="cp" href="#crPaneCP" role="tab">
-                        <i class="fas fa-file-invoice-dollar mr-1"></i> Cost Payment
-                        <span class="badge badge-secondary ml-1">{{ number_format($cpTotal, 0, ',', '.') }}</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {{ $activeTab === 'db' ? 'active' : '' }}" data-toggle="tab" data-crtab="db" href="#crPaneDB" role="tab">
-                        <i class="fas fa-database mr-1"></i> Database
-                        <span class="badge badge-secondary ml-1">{{ number_format($caTotal + $cpTotal, 0, ',', '.') }}</span>
-                    </a>
-                </li>
-            </ul>
+        {{-- Rentang tanggal (dulu sebaris dengan tab Cash Advance / Cost Payment / Database;
+             tab-tab itu sudah digabung jadi satu tabel dengan kolom & filter Tipe). --}}
+        <div class="cr-head tw:flex tw:flex-wrap tw:items-end tw:justify-end tw:gap-2">
             <div class="tw:flex tw:flex-wrap tw:items-center tw:gap-2 tw:pb-1">
                 {{-- Filter tanggal: dropdown "Last Update Time" (12 jam s/d 1 tahun).
                      Pilihan "Custom…" memunculkan dua date-picker di sebelah KIRI
@@ -152,28 +114,25 @@
 
         {{-- Worklist approval per Budget Plan (dulu section "Review Cost Request") sudah
              dipindah ke halaman Todo List Request. --}}
-        <div class="tab-content">
-            @foreach([
-                'ca' => ['pane' => 'crPaneCA', 'steps' => $caSteps, 'groups' => $caGroups, 'table' => 'tblCA'],
-                'cp' => ['pane' => 'crPaneCP', 'steps' => $cpSteps, 'groups' => $cpGroups, 'table' => 'tblCP'],
-                'db' => ['pane' => 'crPaneDB', 'steps' => null,     'groups' => null,      'table' => 'tblDB'],
-            ] as $tabKey => $cfg)
-            <div class="tab-pane fade {{ $activeTab === $tabKey ? 'show active' : '' }} cr-pane" id="{{ $cfg['pane'] }}" data-tab="{{ $tabKey }}" role="tabpanel">
+        <div>
+            <div class="cr-pane" id="crPaneALL" data-tab="all">
 
-                @if($cfg['steps'])
-                {{-- Angka stepper dihitung di server (query agregat) — tampil segera walau tabel belum dimuat. --}}
-                <x-workflow-stepper :steps="$cfg['steps']" :compact="true" :groups="$cfg['groups']" :table="$cfg['table']" field="status" />
-                @endif
+                {{-- Angka awal dihitung di server (query agregat) — tampil segera walau tabel belum dimuat.
+                     Tanpa prop table: filter klik tahap ditangani halaman ini (crStepFilter), bukan
+                     komponennya, supaya angka tahap lain tetap terhitung saat satu tahap dipilih. --}}
+                <div id="crStepperHost">
+                    <x-workflow-stepper :steps="$steps" :compact="true" :groups="$groups" table="" field="status" />
+                </div>
 
                 {{-- Kartu tunggal toolbar + tabel. Div murni (tanpa kelas card/card-body): jarak, tepi, dan
                      latar dari token Tailwind; popover filter/kolom harus bisa keluar dari kartu (tanpa overflow). --}}
                 <x-tw.card padding="sm" class="tw:mt-3">
-                    @include('budget-request._toolbar', ['tab' => $tabKey])
+                    @include('budget-request._toolbar', ['tab' => 'all'])
 
-                    {{-- Diisi AJAX saat tab pertama kali dibuka (data baru dimuat hanya bila tab dibuka).
+                    {{-- Diisi AJAX setelah halaman tampil.
                          Isi awal = kerangka pemuatan statis (tanpa animasi) yang menyerupai baris tabel. --}}
-                    <div class="cr-tab-host" data-tab="{{ $tabKey }}"
-                         data-url="{{ url('/budget-request/tab/' . $tabKey) }}">
+                    <div class="cr-tab-host" data-tab="all"
+                         data-url="{{ url('/budget-request/tab/all') }}">
                         <div role="status" aria-live="polite" aria-label="Memuat data" class="tw:flex tw:flex-col tw:gap-3">
                             <div aria-hidden="true" class="tw:h-8 tw:rounded-sm tw:bg-surface-2"></div>
                             @for($i = 0; $i < 8; $i++)
@@ -190,7 +149,6 @@
                     </div>
                 </x-tw.card>
             </div>
-            @endforeach
         </div>
       </div>
     </div>
@@ -600,11 +558,6 @@
 .dataTables_length select { appearance:none !important; background-color:var(--surface) !important; color:var(--text-dim) !important; border:1px solid var(--border) !important; border-radius:var(--radius-sm) !important; padding:4px 30px 4px 10px !important; height:36px !important; min-width:72px !important; font-size:14px !important; font-weight:600 !important; cursor:pointer; box-shadow:none !important; }
 .dataTables_paginate .paginate_button { border-radius:var(--radius-sm) !important; margin:0 2px; }
 .dataTables_paginate .paginate_button.current { background:var(--accent) !important; background-image:none !important; border-color:var(--accent-dark) !important; color:#fff !important; font-weight:700 !important; }
-/* Tab utama: Cash Advance / Cost Payment / Database */
-.cr-main-tabs { border-bottom:2px solid var(--border); flex-wrap:wrap; }
-.cr-main-tabs .nav-link { color:var(--text-faint); border:none; border-bottom:2px solid transparent; border-radius:0; padding:9px 16px; font-weight:600; font-size:13px; margin-bottom:-2px; }
-.cr-main-tabs .nav-link:hover { color:var(--text); }
-.cr-main-tabs .nav-link.active { color:var(--accent) !important; border-bottom-color:var(--accent) !important; background:transparent !important; }
 .cr-tab-host { min-height:120px; }
 /* Tab drawer tetap di atas saat isinya digulir (.ts-drawer-body yang menggulir). */
 /* Offset -18px = padding-top .ts-drawer-body, supaya tab menempel tepat di tepi atas dan isi tidak terlihat di atasnya. */
@@ -767,41 +720,125 @@ $(function () {
 
     // (accounts holder lama sudah tidak diperlukan — realisasi sekarang pakai CR Detail Item)
 
-    /* ── TAB CASH ADVANCE / COST PAYMENT / DATABASE — data dimuat saat tab dibuka ──
-    | Halaman awal hanya membawa kerangka + angka stepper. Baris tabel diambil
-    | AJAX (BudgetRequestController::tab) HANYA ketika tab pertama kali dibuka,
-    | lalu DataTables dipasang pada tabel tab itu saja.
+    /* ── TABEL GABUNGAN SEMUA TIPE CR ──
+    | Dulu tiga tab (Cash Advance / Cost Payment / Database); sekarang satu
+    | tabel dengan kolom & filter Tipe. Kerangka JS per-"tab" dipertahankan
+    | dengan satu kunci 'all' supaya bulk, export, dan filter tetap memakai
+    | jalur yang sama. Halaman awal hanya membawa kerangka + angka stepper;
+    | baris tabel diambil AJAX (BudgetRequestController::tab).
     | Catatan: jangan menulis tag komponen atau direktif Blade di komentar. */
     var CR_DATE_FROM = '{{ $dateFrom }}';
     var CR_DATE_TO   = '{{ $dateTo }}';
+    // Beneficiary tidak lagi punya filter sendiri: digabung ke PIC, sama seperti kolomnya.
     var CR_ROW_FILTERS = [
         { key: 'po',          label: 'PO' },
         { key: 'type',        label: 'Tipe' },
-        { key: 'beneficiary', label: 'Beneficiary' },
         { key: 'pic',         label: 'PIC' },
         { key: 'requestor',   label: 'Requestor' },
         { key: 'pminternal',  label: 'Manager' },
         { key: 'status',      label: 'Status' },
     ];
     var CR_TABS = {
-        // Tab Cash Advance isinya sudah pasti satu tipe, jadi filter Tipe
-        // tidak menyaring apa pun di sini.
-        ca: { id: 'tblCA', mapVis: { tanggal: 3, paid_at: 4, pengaju: 5, pic: 6, realisasi: 8, refund: 9, claim: 10 },
-              filters: CR_ROW_FILTERS.filter(function (f) { return f.key !== 'type'; }) },
-        cp: { id: 'tblCP', mapVis: { tanggal: 3, paid_at: 4, pengaju: 5, pic: 6 },
-              filters: CR_ROW_FILTERS },
-        db: { id: 'tblDB', mapVis: { tanggal: 4, paid_at: 5, pengaju: 6, pic: 7 },
-              filters: CR_ROW_FILTERS },
+        all: { id: 'tblALL',
+               mapVis: { type: 3, tanggal: 4, paid_at: 5, pengaju: 6, pic: 7, request: 8, realisasi: 9,
+                         refund: 10, claim: 11, cost: 12, close_date: 14 },
+               filters: CR_ROW_FILTERS },
     };
-    var crVisDefault = { tanggal: true, paid_at: true, pengaju: true, pic: true, realisasi: false, refund: true, claim: true };
+    // Bawaan: hanya Tanggal, Requestor, PIC, dan Cost yang ditampilkan.
+    var crVisDefault = { type: false, tanggal: true, paid_at: false, pengaju: true, pic: true,
+                         request: false, realisasi: false, refund: false, claim: false, cost: true, close_date: false };
 
-    // Preferensi kolom per tab (kunci tab Cash Advance tetap sama seperti sebelumnya).
-    function crVisKey(tab, key) { return 'crColVis_' + (tab === 'ca' ? '' : tab + '_') + key; }
+    /* Preferensi kolom di localStorage. Awalan baru (crColVis2_) karena susunan
+       kolomnya berubah: preferensi tab lama tidak lagi berlaku dan akan
+       menimpa bawaan baru di atas. */
+    function crVisKey(tab, key) { return 'crColVis2_' + key; }
     function getCrColVis(tab, key) {
-        var stored = localStorage.getItem(crVisKey(tab, key));
+        var stored = null;
+        try { stored = localStorage.getItem(crVisKey(tab, key)); } catch (e) {}
         return stored === null ? !!crVisDefault[key] : stored === '1';
     }
-    function setCrColVis(tab, key, visible) { localStorage.setItem(crVisKey(tab, key), visible ? '1' : '0'); }
+    function setCrColVis(tab, key, visible) {
+        try { localStorage.setItem(crVisKey(tab, key), visible ? '1' : '0'); } catch (e) {}
+    }
+
+    /* ── STEPPER DINAMIS ──
+    | Angka tiap tahap = jumlah baris yang lolos pencarian + filter yang sedang
+    | aktif. Filter klik tahap ditangani di sini (bukan komponen stepper):
+    | penyaringnya dipasang PALING AKHIR di $.fn.dataTable.ext.search, sehingga
+    | ia melihat baris yang sudah lolos pencarian & filter lain, menghitungnya
+    | per status, lalu baru menyaring status tahap yang dipilih. Dengan begitu
+    | angka tahap lain tidak menjadi 0 ketika satu tahap dipilih. */
+    var CR_SETTLE_ONLY = ['SETTLE_REJECTED', 'REALIZED', 'SETTLE_CHECKED', 'SETTLE_VERIFIED', 'SETTLE_APPROVED', 'SECOND_APPROVED'];
+    var crStep = { status: null, counts: {}, ada: false, ca: 0, hooked: false };
+
+    function crStepHook() {
+        if (crStep.hooked) return;
+        crStep.hooked = true;
+        $.fn.dataTable.ext.search.push(function (settings, searchData, index, rowData, counter) {
+            if (settings.nTable.id !== CR_TABS.all.id) return true;
+            if (counter === 0) { crStep.counts = {}; crStep.ca = 0; crStep.ada = true; }
+            var tr = settings.aoData[index].nTr;
+            var st = tr ? (tr.getAttribute('data-status') || '') : '';
+            crStep.counts[st] = (crStep.counts[st] || 0) + 1;
+            if (tr && tr.getAttribute('data-ca') === '1') crStep.ca++;
+            return !crStep.status || st === crStep.status;
+        });
+    }
+
+    function crStepRender() {
+        var $host = $('#crStepperHost'), counts = crStep.counts, adaCa = crStep.ca > 0;
+        var $phases = $host.find('.wf-phase');
+        var $closed = $host.find('.wf-tl-step[data-status="CLOSED"]');
+
+        $host.find('.wf-tl-step').each(function () {
+            var st = $(this).data('status'), n = parseInt(counts[st], 10) || 0;
+            var warna = 'badge-' + ($(this).data('wf-color') || 'secondary');
+            // Tanpa Cash Advance di hasil filter: tahap settlement (dan Paid bila 0) tidak relevan.
+            var sembunyi = !adaCa && n === 0 && st !== crStep.status
+                && (CR_SETTLE_ONLY.indexOf(st) !== -1 || st === 'PAID');
+            $(this).toggleClass('d-none', sembunyi).attr('title', $.trim($(this).find('.wf-tl-label').text().replace(/\s+/g, ' ')) + ': ' + n);
+            $(this).find('.wf-tl-node').text(n).toggleClass('is-empty', n === 0).toggleClass(warna, n > 0);
+            $(this).find('.wf-tl-label').toggleClass('is-on', n > 0).toggleClass('is-off', n === 0);
+        });
+
+        // Closed: Fase 4 (alur Cash Advance) atau ujung Fase 3 (alur tanpa settlement).
+        if ($phases.length >= 4 && $closed.length) {
+            var tujuan = adaCa ? $phases.eq(3) : $phases.eq(2);
+            tujuan.find('.wf-phase-steps').append($closed);
+        }
+        // Fase tanpa tahap tampil ikut disembunyikan; lebar fase mengikuti jumlah tahapnya.
+        $phases.each(function () {
+            var tampil = $(this).find('.wf-tl-step:not(.d-none)').length;
+            $(this).toggleClass('d-none', tampil === 0).css('flex-grow', tampil);
+            $(this).prev('.wf-phase-sep').toggleClass('d-none', tampil === 0);
+        });
+    }
+
+    // Dipanggil setelah DataTables selesai menyaring (event search).
+    function crStepAfterSearch() {
+        if (!crStep.ada) { crStep.counts = {}; crStep.ca = 0; } // tak satu baris pun lolos
+        crStep.ada = false;
+        crStepRender();
+    }
+
+    function crStepSet(status) {
+        crStep.status = status || null;
+        $('#crStepperHost .wf-tl-step').each(function () {
+            $(this).toggleClass('wf-active', !!status && $(this).data('status') === status);
+        });
+        var url = new URL(window.location.href);
+        if (status) url.searchParams.set('status', status); else url.searchParams.delete('status');
+        window.history.replaceState({}, '', url.toString());
+        var t = CR_TABS.all.table;
+        if (t) t.draw();
+    }
+
+    $(document).on('click keydown', '#crStepperHost .wf-tl-step', function (e) {
+        if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+        if (e.type === 'keydown') e.preventDefault();
+        var st = $(this).data('status');
+        crStepSet(crStep.status === st ? null : st);
+    });
 
     function crMoney(v) {
         var sign = v < 0 ? '-' : '';
@@ -987,7 +1024,7 @@ $(function () {
         });
     }
 
-    function crCurrentTab() { return $('#crTabs .nav-link.active').data('crtab') || 'ca'; }
+    function crCurrentTab() { return 'all'; }
 
     function initCrTable(tab) {
         var cfg = CR_TABS[tab], $pane = crPane(tab), $host = $pane.find('.cr-tab-host');
@@ -999,7 +1036,7 @@ $(function () {
         var off = $tbl.find('thead th.cr-col-check').length ? 1 : 0;
         var defs = [{ targets: [off], visible: false, orderable: false }];
         if (off) defs.push({ targets: [0], orderable: false, searchable: false });
-        // Kolom Action (terakhir; tab Database tidak punya) tanpa sortir.
+        // Kolom Action (terakhir) tanpa sortir.
         if ($tbl.find('thead th.action-column').length) defs.push({ targets: [-1], orderable: false, searchable: false });
         Object.keys(cfg.mapVis).forEach(function (k) {
             defs.push({ targets: [cfg.mapVis[k] + off], visible: getCrColVis(tab, k) });
@@ -1081,58 +1118,53 @@ $(function () {
         recalcFooter();
 
         TesysColumnFilter.initRowFilters('#' + cfg.id, $pane.find('.cr-row-filters'), cfg.filters);
+        // Setelah initRowFilters: penyaring stepper harus terdaftar sesudah filter baris.
+        crStepHook();
+        table.on('search.dt', crStepAfterSearch);
         buildFilterPanel($pane, cfg);
         crBulkInit(tab);
 
         $pane.find('.cr-btn-clear').off('click').on('click', function () {
             TesysColumnFilter.clearAll('#' + cfg.id);
-            TesysWorkflowStepper.clear(cfg.id);
-            var url = new URL(window.location.href);
-            url.searchParams.delete('status');
-            window.history.replaceState({}, '', url.toString());
+            crStepSet(null);
         });
 
-        // Filter status dari URL (?status=) hanya untuk tab yang sedang aktif dibuka dari URL.
-        var urlStatus = new URLSearchParams(window.location.search).get('status');
-        if (urlStatus && crCurrentTab() === tab) {
-            var $step = $('[data-wf-table="' + cfg.id + '"] .wf-tl-step[data-status="' + urlStatus + '"]');
-            if ($step.length) $step.trigger('click');
-        }
+        // Filter status dari URL (?status=), mis. setelah aksi (POST lalu redirect back()).
+        // crStep.status dipertahankan saat tabel dimuat ulang karena rentang tanggal diganti.
+        var urlStatus = crStep.status || new URLSearchParams(window.location.search).get('status');
+        crStepSet(urlStatus && $('#crStepperHost .wf-tl-step[data-status="' + urlStatus + '"]').length ? urlStatus : null);
 
-        /* Filter dari tautan luar (kartu Active Cash Advance di Summary).
+        /* Filter dari tautan luar (kartu Active Cash Advance di Summary, Todo List).
            Dipasang lewat setRowFilter supaya hasilnya persis seperti user
-           mencentang sendiri: chip filternya muncul dan bisa dilepas.
-           Sama seperti ?status=, hanya berlaku untuk tab yang dibuka dari URL. */
-        if (crCurrentTab() === tab) {
-            (function applyRowFilterFromUrl() {
-                var q   = new URLSearchParams(window.location.search);
-                var sel = '#' + cfg.id;
-                var manager = q.get('manager');
-                var pic     = q.get('pic');
-                if (manager) TesysColumnFilter.setRowFilter(sel, 'pminternal', manager.toUpperCase());
-                if (pic)     TesysColumnFilter.setRowFilter(sel, 'pic', pic);
+           mencentang sendiri: chip filternya muncul dan bisa dilepas. */
+        (function applyRowFilterFromUrl() {
+            var q   = new URLSearchParams(window.location.search);
+            var sel = '#' + cfg.id;
+            var manager = q.get('manager');
+            var pic     = q.get('pic');
+            if (manager) TesysColumnFilter.setRowFilter(sel, 'pminternal', manager.toUpperCase());
+            if (pic)     TesysColumnFilter.setRowFilter(sel, 'pic', pic);
 
-                /* Tipe & daftar status ikut dibawa supaya daftar di sini memuat
-                   himpunan yang sama dengan kartu asalnya. setRowFilter menambah
-                   (bukan mengganti) nilai pada field yang sama, jadi beberapa
-                   status bisa dipasang berurutan. */
-                var type = q.get('type');
-                if (type) TesysColumnFilter.setRowFilter(sel, 'type', type);
+            /* Tipe & daftar status ikut dibawa supaya daftar di sini memuat
+               himpunan yang sama dengan kartu asalnya. setRowFilter menambah
+               (bukan mengganti) nilai pada field yang sama, jadi beberapa
+               status bisa dipasang berurutan. */
+            var type = q.get('type');
+            if (type) TesysColumnFilter.setRowFilter(sel, 'type', type);
 
-                /* Daftar PIC di bawah manager yang dipilih. Dipasang sebagai filter
-                   agar namanya terbaca di chip - bukan untuk mempersempit, karena
-                   filter Manager sudah melakukannya. */
-                (q.get('pics') || '').split(',').forEach(function (nm) {
-                    nm = nm.trim();
-                    if (nm) TesysColumnFilter.setRowFilter(sel, 'pic', nm);
-                });
+            /* Daftar PIC di bawah manager yang dipilih. Dipasang sebagai filter
+               agar namanya terbaca di chip - bukan untuk mempersempit, karena
+               filter Manager sudah melakukannya. */
+            (q.get('pics') || '').split(',').forEach(function (nm) {
+                nm = nm.trim();
+                if (nm) TesysColumnFilter.setRowFilter(sel, 'pic', nm);
+            });
 
-                (q.get('statuses') || '').split(',').forEach(function (st) {
-                    st = st.trim();
-                    if (st) TesysColumnFilter.setRowFilter(sel, 'status', st);
-                });
-            })();
-        }
+            (q.get('statuses') || '').split(',').forEach(function (st) {
+                st = st.trim();
+                if (st) TesysColumnFilter.setRowFilter(sel, 'status', st);
+            });
+        })();
     }
 
     function crLoadTab(tab) {
@@ -1148,7 +1180,6 @@ $(function () {
                 $host.html(html).addClass('cr-tab-in');
                 cfg.loaded = true;
                 initCrTable(tab);
-                crSyncCounts(tab);
             })
             .fail(function () {
                 $host.html('<div class="text-center text-muted py-4">'
@@ -1160,31 +1191,7 @@ $(function () {
 
     $(document).on('click', '.cr-tab-retry', function () { crLoadTab($(this).data('tab')); });
 
-    // Buka tab -> muat datanya (sekali), sinkronkan ?tab= di URL, buang ?status= milik tab sebelumnya.
-    $('#crTabs a[data-toggle="tab"]').on('shown.bs.tab', function () {
-        var tab = $(this).data('crtab');
-        var url = new URL(window.location.href);
-        url.searchParams.set('tab', tab);
-        url.searchParams.delete('status');
-        window.history.replaceState({}, '', url.toString());
-        Object.keys(CR_TABS).forEach(crBulkReset); // seleksi bulk tidak dibawa antar tab
-        crLoadTab(tab);
-    });
-
-    crLoadTab('{{ $activeTab }}');
-
-    // Sinkron filter stepper status <-> URL (?status=) supaya tidak hilang setelah aksi (POST lalu redirect back()).
-    $(document).on('click', '.wf-tl-step', function () {
-        var $step = $(this);
-        if (!$step.closest('[data-wf-table]').length) return;
-        var url = new URL(window.location.href);
-        if ($step.hasClass('wf-active')) {
-            url.searchParams.set('status', $step.data('status'));
-        } else {
-            url.searchParams.delete('status');
-        }
-        window.history.replaceState({}, '', url.toString());
-    });
+    crLoadTab('all');
 
     /* Refresh mengembalikan rentang tanggal ke bawaan (tanggal 1 s/d akhir bulan
        berjalan), jadi kalender ikut kembali ke bulan default. */
@@ -1201,13 +1208,12 @@ $(function () {
         $pane.find('.cr-btn-clear').trigger('click');
     });
 
-    /* ── FILTER TANGGAL — server-side (reload halaman dengan ?date_from=&date_to=) ──
-    | Berlaku untuk semua tab; ?tab= ikut terbawa di URL. Pakai "date_from"/"date_to"
-    | (bukan "from"/"to") karena "from" sudah dipakai link sidebar (?from=finance). */
+    /* ── FILTER TANGGAL — server-side (?date_from=&date_to=) ──
+    | Pakai "date_from"/"date_to" (bukan "from"/"to") karena "from" sudah dipakai
+    | link sidebar (?from=finance). */
     /* Ganti rentang tanggal tanpa memuat ulang halaman: URL disinkronkan,
-       semua tab ditandai belum dimuat, lalu tab yang sedang terbuka diambil
-       ulang lewat AJAX. Stepper & badge tab ikut diperbarui dari data meta
-       yang dikirim server bersama tabelnya. */
+       tabel ditandai belum dimuat, lalu diambil ulang lewat AJAX. Angka
+       stepper dihitung ulang dari baris tabel yang baru. */
     function applyDateRange(from, to, range) {
         if (!from || !to) { return; }
         CR_DATE_FROM = from;
@@ -1237,29 +1243,7 @@ $(function () {
         crLoadTab(crCurrentTab());
     }
 
-    /* Perbarui angka stepper & badge tab dari meta yang ikut terkirim di
-       fragment tabel (jumlah per status untuk rentang tanggal baru). */
-    function crSyncCounts(tab) {
-        var $meta = crPane(tab).find('.cr-tab-meta').first();
-        if (!$meta.length) return;
-
-        var total  = parseInt($meta.attr('data-total'), 10) || 0;
-        var counts = {};
-        try { counts = JSON.parse($meta.attr('data-counts') || '{}') || {}; } catch (e) { counts = {}; }
-
-        crPane(tab).find('.wf-tl-step').each(function () {
-            var n = parseInt(counts[$(this).data('status')], 10) || 0;
-            var $node = $(this).find('.wf-tl-node');
-            var warna = 'badge-' + ($(this).data('wf-color') || 'secondary');
-            $node.text(n)
-                 .toggleClass('is-empty', n === 0)
-                 .toggleClass(warna, n > 0);
-        });
-
-        $('#crTabs .nav-link[data-crtab="' + tab + '"] .badge').text(total.toLocaleString('id-ID'));
-    }
-
-    // Export mengikuti filter yang SEDANG AKTIF di tabel tab tsb (search, dropdown, stepper).
+    // Export mengikuti filter yang SEDANG AKTIF di tabel (search, dropdown, stepper).
     // Tanpa filter tambahan -> export penuh rentang tanggal (bukan hanya baris ter-render/ter-cap).
     $(document).on('click', '.cr-btn-export', function (e) {
         e.preventDefault();

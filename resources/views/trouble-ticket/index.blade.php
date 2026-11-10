@@ -102,6 +102,33 @@
         {{-- ============ TAMPILAN LAYAR LEBAR ============ --}}
         <div class="tt-desk">
 
+        {{-- Filter tanggal: di atas strip tahap, rata kanan — posisi sama dengan
+             Cost Request (dropdown rentang cepat; "Custom…" memunculkan kotak
+             rentang (dua kalender berdampingan) dan tombol Terapkan di kirinya).
+             Bawaannya tanggal 1 s/d akhir bulan berjalan. Penyaringan di sini
+             client-side (DataTables), jadi tidak ada muat ulang halaman. --}}
+        <div class="d-flex align-items-center flex-wrap justify-content-end tt-head">
+            <div id="ttCustomRange" class="d-none align-items-center flex-wrap" style="gap:6px;">
+                <span class="text-muted" style="font-size:12px;">Periode</span>
+                <div class="tt-date-range" title="Tanggal dilaporkan">
+                    <input type="text" id="ttDateRange" class="form-control form-control-sm tdr-input" readonly>
+                    <input type="hidden" id="ttDateFrom" value="{{ now()->startOfMonth()->toDateString() }}">
+                    <input type="hidden" id="ttDateTo" value="{{ now()->endOfMonth()->toDateString() }}">
+                </div>
+                <x-tw.button id="btnTtApplyRange" size="sm"><i class="fas fa-check" aria-hidden="true"></i> Terapkan</x-tw.button>
+            </div>
+            <select id="ttQuickRange" class="form-control form-control-sm" style="width:auto;" aria-label="Rentang tanggal">
+                <option value="">Last Update Time</option>
+                <option value="1d">1 hari terakhir</option>
+                <option value="3d">3 hari terakhir</option>
+                <option value="7d">7 hari terakhir</option>
+                <option value="30d">30 hari terakhir</option>
+                <option value="1y">1 tahun terakhir</option>
+                <option value="custom">Custom…</option>
+            </select>
+            <x-tw.button id="btnTtRefresh" variant="secondary" size="sm"><i class="fas fa-sync-alt" aria-hidden="true"></i> Refresh</x-tw.button>
+        </div>
+
         {{-- Strip tahap alur — pola sama dengan Cost Request (<x-workflow-stepper>):
              angka per tahap, dan klik tahap memfilter tabel di bawahnya.
              Closed dibatasi bulan berjalan supaya angkanya tetap berarti. --}}
@@ -115,59 +142,31 @@
             ['Closed',        $stats['CLOSED'],        'dark',      'CLOSED'],
         ]" :groups="[['Fase 1: Penanganan Awal', ['OPEN','REMOTE']], ['Fase 2: Kunjungan', ['PLAN','TRIP','IN_PROGRESS']], ['Fase 3: Penutupan', ['PROGRESS_DONE','CLOSED']]]" />
 
-        <div class="card shadow-sm">
-            <div class="card-body">
+        {{-- Kartu tunggal toolbar + tabel — sama dengan Cost Request (x-tw.card, div murni). --}}
+        <x-tw.card padding="sm" class="tw:mt-3">
                 @if($terpotong)
-                    <p class="text-muted mb-2" style="font-size:12px;"><i class="fas fa-info-circle mr-1"></i>Menampilkan 1.000 tiket terbaru dari {{ number_format($total, 0, ',', '.') }}. Filter &amp; urutan berlaku pada 1.000 tiket ini.</p>
+                    <div role="status" class="tt-trunc mb-3">
+                        <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+                        <span>Menampilkan <strong>1.000</strong> tiket terbaru dari total <strong>{{ number_format($total, 0, ',', '.') }}</strong>. Filter &amp; urutan berlaku pada 1.000 tiket ini.</span>
+                    </div>
                 @endif
 
-                {{-- Toolbar. Kiri: cari · clear · Filter (filter kolom) · Kolom · lewat SLA.
-                     Kanan: Export · Buat Tiket. (Pengaturan pindah ke Master Data > Operation Master > Custom Rules.) --}}
-                {{-- Rentang tanggal dilaporkan: di luar kotak toolbar, rata kanan (default bulan berjalan). --}}
-                {{-- Filter tanggal: pola yang sama dengan Cost Request — dropdown
-                     rentang cepat, dan pilihan "Custom…" memunculkan kotak rentang
-                     (dua kalender berdampingan) beserta tombol Terapkan di
-                     sebelah kirinya. Bawaannya tanggal 1 s/d akhir bulan berjalan.
-                     Penyaringan di sini client-side (DataTables), jadi tidak ada
-                     muat ulang halaman. --}}
-                <div class="d-flex align-items-center flex-wrap justify-content-end mb-2" style="gap:8px;">
-                    <div id="ttCustomRange" class="d-none align-items-center flex-wrap" style="gap:6px;">
-                        <span class="text-muted" style="font-size:12px;">Periode</span>
-                        <div class="tt-date-range" title="Tanggal dilaporkan">
-                            <input type="text" id="ttDateRange" class="form-control form-control-sm tdr-input" readonly>
-                            <input type="hidden" id="ttDateFrom" value="{{ now()->startOfMonth()->toDateString() }}">
-                            <input type="hidden" id="ttDateTo" value="{{ now()->endOfMonth()->toDateString() }}">
-                        </div>
-                        <button type="button" id="btnTtApplyRange" class="btn btn-primary btn-sm">
-                            <i class="fas fa-check mr-1"></i> Terapkan
-                        </button>
-                    </div>
-                    <select id="ttQuickRange" class="form-control form-control-sm" style="width:auto;">
-                        <option value="">Last Update Time</option>
-                        <option value="1d">1 hari terakhir</option>
-                        <option value="3d">3 hari terakhir</option>
-                        <option value="7d">7 hari terakhir</option>
-                        <option value="30d">30 hari terakhir</option>
-                        <option value="1y">1 tahun terakhir</option>
-                        <option value="custom">Custom…</option>
-                    </select>
-                    <button type="button" id="btnTtRefresh" class="btn btn-secondary btn-sm">
-                        <i class="fas fa-sync-alt mr-1"></i> Refresh
-                    </button>
-                </div>
+                {{-- Toolbar (pola Cost Request: tanpa kotak latar). Kiri: cari · clear · Filter
+                     (filter kolom) · Kolom · lewat SLA · keuangan terbuka. Kanan: Export · Import ·
+                     Buat Tiket. (Pengaturan pindah ke Master Data > Operation Master > Custom Rules.) --}}
                 <div class="tt-toolbar mb-3">
                     <div class="tt-toolbar-left">
                         <div class="tt-search">
                             <i class="fas fa-search" aria-hidden="true"></i>
                             <input type="search" id="ttSearch" class="form-control form-control-sm" placeholder="Cari No. TT, site, RCA, alarm..." aria-label="Cari">
                         </div>
-                        <button type="button" id="btnTtClear" class="btn btn-outline-secondary btn-sm" title="Clear Filter" aria-label="Clear Filter"><i class="fas fa-eraser"></i></button>
+                        <x-tw.button id="btnTtClear" variant="ghost" size="sm" title="Clear Filter" aria-label="Clear Filter"><i class="fas fa-eraser" aria-hidden="true"></i></x-tw.button>
                         {{-- TesysColumnFilter merender tombol "Filter" di sini; klik = daftar filter kolom. --}}
                         <div id="ttRowFilters" class="d-flex align-items-center"></div>
                         <div class="dropdown" id="ttColVis">
-                            <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-display="static">
-                                <i class="fas fa-columns mr-1"></i> Kolom
-                            </button>
+                            <x-tw.button variant="secondary" size="sm" data-toggle="dropdown" data-display="static" aria-haspopup="true" aria-expanded="false">
+                                <i class="fas fa-columns" aria-hidden="true"></i> Kolom
+                            </x-tw.button>
                             <div class="dropdown-menu p-2" style="min-width:200px;max-height:340px;overflow-y:auto;">
                                 @foreach($kolom as $key => [$label])
                                     <div class="custom-control custom-checkbox">
@@ -183,19 +182,19 @@
                             <input type="checkbox" class="custom-control-input" id="ttOnlyOverdue">
                             <label class="custom-control-label" for="ttOnlyOverdue" style="font-size:12.5px;">Lewat SLA</label>
                         </div>
-                        <a href="{{ route('trouble-ticket.index', $filterKeuangan ? [] : ['keuangan' => 'open']) }}" class="btn btn-sm {{ $filterKeuangan ? 'btn-primary' : 'btn-outline-secondary' }}" style="font-size:12.5px;"><i class="fas fa-coins mr-1"></i> Keuangan terbuka</a>
+                        <x-tw.button href="{{ route('trouble-ticket.index', $filterKeuangan ? [] : ['keuangan' => 'open']) }}" :variant="$filterKeuangan ? 'primary' : 'secondary'" size="sm"><i class="fas fa-coins" aria-hidden="true"></i> Keuangan terbuka</x-tw.button>
                     </div>
                     <div class="tt-toolbar-right">
-                        <a href="{{ route('trouble-ticket.export') }}" class="btn btn-outline-success btn-sm" id="btnTtExport"><i class="fas fa-file-excel mr-1"></i> Export</a>
+                        <x-tw.button href="{{ route('trouble-ticket.export') }}" variant="secondary" size="sm" id="btnTtExport"><i class="fas fa-file-excel" aria-hidden="true"></i> Export Excel</x-tw.button>
                         @if($canCreate)
-                            <button type="button" class="btn btn-outline-success btn-sm" data-toggle="modal" data-target="#mdlTtImport"><i class="fas fa-file-import mr-1"></i> Import Excel</button>
-                            <a href="{{ route('trouble-ticket.create') }}" class="btn btn-success btn-sm"><i class="fas fa-plus mr-1"></i> Buat Tiket</a>
+                            <x-tw.button variant="secondary" size="sm" data-toggle="modal" data-target="#mdlTtImport"><i class="fas fa-file-import" aria-hidden="true"></i> Import Excel</x-tw.button>
+                            <x-tw.button href="{{ route('trouble-ticket.create') }}" size="sm"><i class="fas fa-plus" aria-hidden="true"></i> Buat Tiket</x-tw.button>
                         @endif
                     </div>
                 </div>
 
                 <div class="table-responsive tt-dt-wrap">
-                    <table id="tblTt" data-ts-card="off" class="table table-bordered table-hover table-striped mb-0 tt-dt">
+                    <table id="tblTt" data-ts-card="off" class="table table-bordered mb-0 tt-dt">
                         <thead class="bg-light">
                             <tr>
                                 @foreach($kolom as $key => [$label])
@@ -224,6 +223,7 @@
                                     $budgetMenunggu = $t->plan_budget_status === TroubleTicket::PLAN_BUDGET_PENDING;
                                 @endphp
                                 <tr data-id="{{ $t->id }}" data-status="{{ $t->status }}"
+                                    data-href="{{ route('trouble-ticket.show', $t) }}"
                                     data-severity="{{ $t->severity_label }}"
                                     data-rca="{{ $t->rca_label ?: '-' }}"
                                     data-subrca="{{ $t->sub_rca_label ?: '-' }}"
@@ -233,7 +233,8 @@
                                     data-reported="{{ $tglLapor->format('Y-m-d') }}"
                                     data-overdue="{{ isset($overdueIds[$t->id]) ? 1 : 0 }}">
                                     <td class="col-fit" data-order="{{ $t->id }}">
-                                        <a href="{{ route('trouble-ticket.show', $t) }}" class="tt-no-link" title="Buka tiket">{{ $t->ticket_number }}</a>
+                                        {{-- Klik No. TT = salin ke clipboard (.ts-copy-code, tesys-ui.js); klik bagian lain baris = buka detail. --}}
+                                        <button type="button" class="ts-copy-code" data-code="{{ $t->ticket_number }}" title="Klik untuk menyalin No. TT">{{ $t->ticket_number }}</button>
                                     </td>
                                     <td class="col-site">
                                         <span class="cell-trunc" style="max-width:60ch;" title="{{ $siteLabel }}">{{ Str::limit($siteLabel, 60, '...') ?: '-' }}</span>
@@ -262,10 +263,8 @@
                                     <td class="col-fit" data-order="{{ $slaSort($mTrav) }}">@include('trouble-ticket._sla', ['m' => $mTrav, 'compact' => true])</td>
                                     <td class="col-fit" data-order="{{ $slaSort($mReso) }}">@include('trouble-ticket._sla', ['m' => $mReso, 'compact' => true])</td>
                                     <td class="text-center action-column tt-freeze">
+                                        {{-- Tanpa tombol Detail: membuka tiket cukup dengan klik baris. --}}
                                         <div class="action-buttons ts-actions">
-                                            <a href="{{ route('trouble-ticket.show', $t) }}" class="ts-action-primary is-neutral" title="Buka tiket" aria-label="Buka tiket">
-                                                <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Detail</span>
-                                            </a>
                                             <button type="button" class="ts-action-primary is-neutral btn-tt-info" data-url="{{ route('trouble-ticket.info', $t) }}" data-no="{{ $t->ticket_number }}" data-open="{{ route('trouble-ticket.show', $t) }}" title="Info" aria-label="Info">
                                                 <i class="fas fa-info" aria-hidden="true"></i><span class="ts-al">Info</span>
                                             </button>
@@ -288,8 +287,7 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
+        </x-tw.card>
 
         </div>{{-- /.tt-desk --}}
     </div>
@@ -317,36 +315,52 @@
 @endsection
 
 @push('styles')
+{{-- Komponen x-tw (kartu & tombol toolbar) butuh tesys-tw.css, sama dengan Cost Request. --}}
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
 .tt-page .ts-kpi-row { margin-top:16px; }
-/* Semua kolom selebar isinya, kecuali Site (sisa ruang, dipotong 60 karakter). */
-.tt-dt { width:100% !important; font-size:12.5px; }
+/* Baris filter tanggal di atas strip tahap (posisi sama dengan Cost Request). */
+.tt-head { gap:8px; padding-top:16px; margin-bottom:12px; }
+/* Semua kolom selebar isinya, kecuali Site (sisa ruang, dipotong 60 karakter).
+   Tipografi & jarak sel ikut token tabel bersama (refine.css §8), sama dengan Cost Request. */
+.tt-dt { width:100% !important; }
 .tt-dt th, .tt-dt td { vertical-align:middle; }
 .tt-dt .col-fit { white-space:nowrap; width:1%; }
 .tt-dt .col-site { white-space:nowrap; }
 .tt-dt .tt-rca-main { display:block; }
 .tt-dt .tt-rca-sub { display:block; font-size:11.5px; color:var(--text-muted); }
 .tt-dt .cell-trunc { display:inline-block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:bottom; }
-/* No. TT: hitam tebal; hover = pil gelap, sama dengan kode CR (.cr-number-btn). */
-.tt-no-link { display:inline-block; padding:2px 8px; margin-left:-8px; border-radius:var(--radius-sm); color:var(--text); font-weight:700;
-    line-height:1.4; transition:background-color .12s ease, color .12s ease; }
-.tt-dt a.tt-no-link, .tt-dt a.tt-no-link:visited { color:var(--text) !important; }
-.tt-dt a.tt-no-link:hover, .tt-dt a.tt-no-link:focus { background:var(--charcoal); color:#fff !important; text-decoration:none; outline:none; }
+/* Baris = tautan ke detail (pola Cash Receipt/Invoice). No. TT memakai .ts-copy-code global. */
+#tblTt tbody tr[data-href] { cursor:pointer; }
 /* Kolom Action dibekukan di kanan saat tabel digulir mendatar. */
 .tt-dt .tt-freeze { position:sticky; right:0; z-index:2; background:var(--card-bg); box-shadow:-1px 0 0 var(--border); width:1%; white-space:nowrap; }
 .tt-dt thead .tt-freeze { background:var(--surface-2); z-index:3; }
-.tt-dt.table-striped tbody tr:nth-of-type(odd) .tt-freeze { background:var(--surface); }
-.tt-dt.table-hover tbody tr:hover .tt-freeze { background:var(--surface-2); }
+.tt-dt tbody tr:hover .tt-freeze { background:var(--surface-2); }
 
-/* Toolbar: kiri pencarian & filter, kanan tanggal & tombol */
-.tt-toolbar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;
-    padding:10px 12px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-md); }
+/* Toolbar: pola Cost Request (.cr-toolbar, refine.css §14c) — tanpa kotak latar,
+   kiri pencarian & filter, kanan Export/Import/Buat Tiket. */
+.tt-toolbar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; }
 .tt-toolbar-left, .tt-toolbar-right { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
 .tt-toolbar-right { margin-left:auto; }
 .tt-search { position:relative; width:260px; max-width:100%; }
-.tt-search > i { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-faint); font-size:12px; pointer-events:none; }
-.tt-search input.form-control { padding-left:32px !important; }
-.tt-search > i { z-index:2; }
+.tt-search > i { position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--text-faint); font-size:11px; pointer-events:none; z-index:2; }
+/* Tinggi seragam 32px untuk input cari dan tombol bawaan TesysColumnFilter (.btn),
+   sama dengan toolbar Cost Request. */
+body.tesys-ui .tt-toolbar .form-control,
+body.tesys-ui .tt-toolbar .btn {
+    height:32px; min-height:32px; font-size:12.5px !important; font-weight:500 !important;
+    padding:0 12px !important; border-radius:var(--radius-sm); box-shadow:none;
+}
+body.tesys-ui .tt-toolbar .tt-search input.form-control { padding-left:32px !important; background:var(--surface); }
+body.tesys-ui .tt-toolbar .btn i { font-size:11.5px; }
+body.tesys-ui .tt-toolbar .btn-outline-secondary { background:var(--surface); border-color:var(--border-strong); color:var(--text-dim); }
+body.tesys-ui .tt-toolbar .btn-outline-secondary:hover,
+body.tesys-ui .tt-toolbar .btn-outline-secondary:focus { background:var(--surface-2); border-color:var(--text-faint); color:var(--text); }
+.tt-toolbar .custom-switch .custom-control-label { font-size:12.5px; }
+/* Pemberitahuan daftar terpotong: kotak peringatan ringan, sama dengan Cost Request. */
+.tt-trunc { display:flex; align-items:flex-start; gap:8px; padding:8px 12px; border:1px solid var(--border);
+    border-radius:var(--radius-md); background:var(--warning-bg); color:var(--warning); font-size:12.5px; }
+.tt-trunc i { margin-top:3px; }
 .tt-date-range { display:flex; align-items:center; gap:6px; }
 .tt-date-range .form-control { width:118px; }
 /* Kotak rentang bersama (.tdr-input) punya lebarnya sendiri. */
@@ -472,6 +486,17 @@ $(function () {
     });
 
     $('#ttSearch').on('keyup search', function () { table.search(this.value).draw(); });
+
+    /* Klik di mana saja pada baris membuka detail tiket (pola Cash Receipt/Invoice).
+       Kontrol di dalam baris (No. TT yang disalin, tombol Info/Close) bekerja sendiri;
+       teks yang sedang diblok tidak memicu navigasi. Ctrl/Cmd+klik = tab baru. */
+    $(document).on('click', '#tblTt tbody tr[data-href]', function (e) {
+        if ($(e.target).closest('a, button, input, select, textarea, label, form').length) return;
+        if (window.getSelection && String(window.getSelection()).length) return;
+        var href = $(this).attr('data-href');
+        if (e.ctrlKey || e.metaKey) { window.open(href, '_blank'); return; }
+        window.location.href = href;
+    });
 
     /* ---------- Tiket yang baru dibuat ----------
        Setelah simpan, daftar dibuka APA ADANYA (semua tahap, tanpa filter) dan

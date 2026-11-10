@@ -91,10 +91,10 @@ return [
                 ],
                 [
                     'slug'  => 'cost-register',
-                    'title' => 'Cost Register',
+                    'title' => 'Expense',
                     'icon'  => 'fa-book',
-                    'desc'  => 'Buku besar biaya: seluruh realisasi biaya yang sudah dibayar.',
-                    'gate'  => 'role:superadmin,finance',
+                    'desc'  => 'Biaya di luar Cost Request ke PO, multi-PO, atau Cost Center (Finance Manager & CEO).',
+                    'gate'  => 'menu:cost-register',
                 ],
                 [
                     'slug'  => 'reports',

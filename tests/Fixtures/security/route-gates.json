@@ -52,10 +52,6 @@
         "auth",
         "role:superadmin,admin,finance,finance_manager"
     ],
-    "DELETE /cost-register/{id}": [
-        "auth",
-        "role:superadmin,finance,finance_manager"
-    ],
     "DELETE /customer/{id}": [
         "auth",
         "menu:customer"
@@ -71,6 +67,11 @@
     "DELETE /employee/{id}": [
         "auth",
         "role:superadmin,admin,hr"
+    ],
+    "DELETE /expense/{id}": [
+        "auth",
+        "menu:cost-register",
+        "role:superadmin,finance_manager"
     ],
     "DELETE /forecast/{id}": [
         "auth",
@@ -432,16 +433,10 @@
         "menu:cost-center"
     ],
     "GET /cost-register": [
-        "auth",
-        "role:superadmin,finance,finance_manager,approver"
+        "auth"
     ],
     "GET /cost-register/create": [
-        "auth",
-        "role:superadmin,finance,finance_manager"
-    ],
-    "GET /cost-register/{id}/detail-json": [
-        "auth",
-        "role:superadmin,finance,finance_manager,approver"
+        "auth"
     ],
     "GET /customer": [
         "auth",
@@ -530,6 +525,29 @@
     "GET /employee/{id}/edit": [
         "auth",
         "role:superadmin,admin,hr"
+    ],
+    "GET /expense": [
+        "auth",
+        "menu:cost-register"
+    ],
+    "GET /expense/create": [
+        "auth",
+        "menu:cost-register",
+        "role:superadmin,finance_manager"
+    ],
+    "GET /expense/{id}/detail-json": [
+        "auth",
+        "menu:cost-register"
+    ],
+    "GET /expense/{id}/edit": [
+        "auth",
+        "menu:cost-register",
+        "role:superadmin,finance_manager"
+    ],
+    "GET /expense/{id}/settle": [
+        "auth",
+        "menu:cost-register",
+        "role:superadmin,finance_manager"
     ],
     "GET /feedback": [
         "auth"
@@ -1032,10 +1050,6 @@
         "auth",
         "menu:finance-cost-request,project-cost-request"
     ],
-    "GET|POST /cost-register/export": [
-        "auth",
-        "role:superadmin,finance,finance_manager,approver"
-    ],
     "GET|POST /daily-transaction/export": [
         "auth",
         "menu:finance-daily-transaction"
@@ -1043,6 +1057,10 @@
     "GET|POST /delivery-note/export": [
         "auth",
         "menu:delivery-note"
+    ],
+    "GET|POST /expense/export": [
+        "auth",
+        "menu:cost-register"
     ],
     "GET|POST /invoice-cash-receipt/export": [
         "auth",
@@ -1365,31 +1383,6 @@
         "auth",
         "role:superadmin,admin,finance,finance_manager"
     ],
-    "POST /cost-register": [
-        "auth",
-        "role:superadmin,finance,finance_manager"
-    ],
-    "POST /cost-register/{id}/approve": [
-        "auth",
-        "role:superadmin,finance,finance_manager,approver"
-    ],
-    "POST /cost-register/{id}/cancel": [
-        "auth",
-        "role:superadmin,finance,finance_manager"
-    ],
-    "POST /cost-register/{id}/log-note": [
-        "auth",
-        "role:superadmin,finance,finance_manager,approver",
-        "throttle:30,1"
-    ],
-    "POST /cost-register/{id}/revise": [
-        "auth",
-        "role:superadmin,finance,finance_manager,approver"
-    ],
-    "POST /cost-register/{id}/submit": [
-        "auth",
-        "role:superadmin,finance,finance_manager"
-    ],
     "POST /customer": [
         "auth",
         "menu:customer"
@@ -1458,6 +1451,52 @@
     "POST /employee": [
         "auth",
         "role:superadmin,admin,hr"
+    ],
+    "POST /expense": [
+        "auth",
+        "menu:cost-register",
+        "role:superadmin,finance_manager"
+    ],
+    "POST /expense/{id}/approve": [
+        "auth",
+        "role:superadmin,approver"
+    ],
+    "POST /expense/{id}/cancel": [
+        "auth",
+        "menu:cost-register",
+        "role:superadmin,finance_manager"
+    ],
+    "POST /expense/{id}/log-note": [
+        "auth",
+        "menu:cost-register",
+        "throttle:30,1"
+    ],
+    "POST /expense/{id}/reject": [
+        "auth",
+        "role:superadmin,approver"
+    ],
+    "POST /expense/{id}/reopen": [
+        "auth",
+        "menu:cost-register",
+        "role:superadmin,finance_manager"
+    ],
+    "POST /expense/{id}/settle": [
+        "auth",
+        "menu:cost-register",
+        "role:superadmin,finance_manager"
+    ],
+    "POST /expense/{id}/settle-approve": [
+        "auth",
+        "role:superadmin,approver"
+    ],
+    "POST /expense/{id}/settle-reject": [
+        "auth",
+        "role:superadmin,approver"
+    ],
+    "POST /expense/{id}/submit": [
+        "auth",
+        "menu:cost-register",
+        "role:superadmin,finance_manager"
     ],
     "POST /feedback": [
         "auth"
@@ -2016,6 +2055,11 @@
     "PUT /employee/{id}": [
         "auth",
         "role:superadmin,admin,hr"
+    ],
+    "PUT /expense/{id}": [
+        "auth",
+        "menu:cost-register",
+        "role:superadmin,finance_manager"
     ],
     "PUT /forecast/{id}": [
         "auth",

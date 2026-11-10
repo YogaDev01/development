@@ -897,44 +897,125 @@ class BudgetRequest extends Model
     */
 
     /**
-     * Generate code: CR-{MM}{YY}{kodePO}{urutan4digit}
+     * Prefix kode CR per Tipe Request (nama, lowercase). Tipe yang tidak
+     * terdaftar di sini tetap memakai 'CR'.
+     */
+    public const CODE_PREFIX_BY_TYPE = [
+        'cash advance'  => 'CA',
+        'cash-advance'  => 'CA',
+        'cashadvance'   => 'CA',
+        'payment'       => 'PA',
+        'pettycash'     => 'PC',
+        'petty cash'    => 'PC',
+        'purchase'      => 'PR',
+        'reimbursement' => 'RB',
+        'reimburse'     => 'RB',
+    ];
+
+    public const DEFAULT_CODE_PREFIX = 'CR';
+
+    /** Prefix kode untuk sebuah Tipe Request (lihat CODE_PREFIX_BY_TYPE). */
+    public static function codePrefixForType(?int $typeId): string
+    {
+        $name = $typeId ? RequestType::whereKey($typeId)->value('name') : null;
+        $name = strtolower(trim((string) $name));
+
+        return self::CODE_PREFIX_BY_TYPE[$name] ?? self::DEFAULT_CODE_PREFIX;
+    }
+
+    /**
+     * Ganti prefix 2 huruf pada kode ('CR-...', 'CA-...') sesuai tipe. Bagian
+     * angka tidak berubah, jadi kode tetap unik (nomor urut dipakai bersama
+     * semua tipe). Kode berformat lain dikembalikan apa adanya.
+     */
+    public static function codeWithTypePrefix(string $code, ?int $typeId): string
+    {
+        if (!preg_match('/^[A-Z]{2}-(\d+)$/', $code, $m)) {
+            return $code;
+        }
+
+        return self::codePrefixForType($typeId) . '-' . $m[1];
+    }
+
+    /**
+     * Generate code: {prefix tipe}-{MM}{YY}{kodePO}{urutan4digit}
+     *
+     * Prefix mengikuti Tipe Request (CA/PA/PC/PR/RB, selain itu CR). Nomor
+     * urut dipakai BERSAMA semua tipe: penghitungnya tetap kunci lama
+     * 'cr:CR-{MM}{YY}{PO}', sehingga nomor bersambung dari kode 'CR-' yang
+     * sudah terbit dan bagian angkanya tidak pernah kembar antar tipe.
      *
      * Slot cluster 4 digit yang dulu berada di antara kode PO dan nomor urut
      * dihapus, jadi kodenya 4 digit lebih pendek:
      *   lama : CR-0926 0085 0018 0039   (bulan-tahun, PO, cluster, urut)
-     *   baru : CR-0926 0085 0039        (bulan-tahun, PO, urut)
+     *   baru : CA-0926 0085 0039        (bulan-tahun, PO, urut)
      *
      * Kode lama DIBIARKAN apa adanya - tidak ada backfill. Keduanya tidak
      * mungkin bentrok karena panjangnya berbeda (18 vs 14 karakter).
      */
-    public static function generateCode(string $poCode): string
+    public static function generateCode(string $poCode, ?int $typeId = null): string
     {
         $month  = now()->format('m');
         $year   = now()->format('y');
         $po     = str_pad($poCode, 4, '0', STR_PAD_LEFT);
-        $prefix = 'CR-' . $month . $year . $po;
+        $body   = $month . $year . $po;
+        $prefix = 'CR-' . $body;
 
         /*
         | Nomor diambil dari penghitung terkunci, bukan COUNT(*) + 1 dengan
         | putaran coba-lagi. Putaran itu menutupi gejala (bentrok) tanpa
         | menghilangkan sebabnya: dua permintaan tetap membaca hitungan yang
         | sama, dan di bawah beban keduanya bisa berputar mengejar nomor yang
-        | sama berulang kali. Penghitung disemai dari data yang ada.
+        | sama berulang kali.
+        |
+        | Semaian WAJIB mengembalikan nomor TERAKHIR YANG SUDAH TERBIT — itu
+        | kontrak DocumentSequence::next(), yang mengembalikan semaian + 1.
+        | COUNT(*) hanya kebetulan benar bila kode yang ada membentuk deret
+        | rapat 1..N. Dengan satu kode lama bernomor 0007, COUNT(*) = 1
+        | sehingga nomor berikutnya 0002 — mengulang nomor yang mungkin sudah
+        | terbit (budget_request.code UNIK, jadi penyimpanan gagal). Karena itu
+        | semaian memakai MAX atas 4 digit terakhir kode.
+        |
+        | withTrashed(): CR yang di-soft-delete tetap memegang kodenya dan
+        | kolomnya unik, jadi nomor itu tidak boleh dipakai ulang.
         |
         | Prefix baru lebih pendek, sehingga LIKE-nya ikut mencakup kode format
         | lama pada PO & bulan yang sama (CR-09260085xxxx0039). Itu memang
-        | dikehendaki: penghitung jadi bersambung dari nomor terakhir yang
-        | sudah terbit, bukan mengulang dari 0001 di bulan berjalan.
+        | dikehendaki — pada KEDUA format, 4 digit terakhir adalah nomor
+        | urutnya. REGEXP menyaring kode berakhiran non-digit supaya CAST tidak
+        | diam-diam membacanya sebagai 0. Semaian mencakup semua prefix
+        | ('__-'), karena nomor urutnya dipakai bersama semua tipe.
+        |
+        | Balapan: semaian hanya dipakai SEKALI, saat baris penghitung belum
+        | ada (DocumentSequence memakai insertOrIgnore, jadi dua permintaan
+        | bersamaan tetap menghasilkan satu baris dengan semaian yang sama).
+        | Sesudah itu penghitung adalah satu-satunya sumber nomor dan barisnya
+        | dikunci (lockForUpdate) selama dinaikkan, jadi dua permintaan
+        | bersamaan mendapat nomor berbeda.
         */
         $no = DocumentSequence::next(
             'cr:' . $prefix,
-            fn () => static::whereYear('created_at', now()->year)
+            fn () => (int) static::withTrashed()
+                ->whereYear('created_at', now()->year)
                 ->whereMonth('created_at', now()->month)
-                ->where('code', 'like', $prefix . '%')
-                ->count(),
+                ->where('code', 'like', '__-' . $body . '%')
+                ->whereRaw("RIGHT(code, 4) REGEXP '^[0-9]{4}\$'")
+                ->max(\Illuminate\Support\Facades\DB::raw('CAST(RIGHT(code, 4) AS UNSIGNED)')),
         );
 
-        return $prefix . str_pad((string) $no, 4, '0', STR_PAD_LEFT);
+        return self::codePrefixForType($typeId) . '-' . $body . str_pad((string) $no, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Prefix kode boleh ikut berganti saat tipe diubah hanya selama CR masih
+     * DRAFT dan BELUM PERNAH diajukan. CR yang dikembalikan ke DRAFT lewat
+     * Revise sudah dilihat approver dengan kodenya, jadi kodenya dikunci.
+     */
+    public function codePrefixChangeable(): bool
+    {
+        return $this->status === 'DRAFT'
+            && $this->submitted_at === null
+            && !$this->statusLogs()->where('action_type', 'submitted')->exists();
     }
 
     public function getAmountFormattedAttribute(): string

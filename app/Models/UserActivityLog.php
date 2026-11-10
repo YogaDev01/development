@@ -67,7 +67,7 @@ class UserActivityLog extends Model
         'closing' => 'Closing',
         'payroll' => 'Payroll',
         'forecast' => 'Forecast',
-        'cost_register' => 'Cost Register',
+        'cost_register' => 'Expense',
         'delivery_note' => 'Delivery Note',
         'todo_list' => 'Todo List',
         'user_access' => 'User & Access',

@@ -416,6 +416,14 @@ class FinanceSummaryController extends Controller
         $paidDppMap  = $this->paidDppByProject();
         $costRealMap = $this->costRealizationByProject();
 
+        /*
+         | Overhead & Fixed Cost per baris memakai Project::overheadCostTotal()/
+         | fixedCostTotal() (kolom manual + Cost Register lama + Expense) supaya
+         | angkanya sama dengan daftar PO dan Laporan PO. Cache-nya diisi massal
+         | di sini — 4 query untuk seluruh daftar, bukan per PO.
+         */
+        Project::preloadCostRegisterCosts($projects);
+
         $rows = $projects
             ->sortBy(fn ($p) => $p->customer->name ?? '')
             ->values()
@@ -453,8 +461,8 @@ class FinanceSummaryController extends Controller
                     'budget_value'          => $budget,
                     'realization_value'     => $realisasi,
                     'payment_value'         => (int) ($paidDppMap[$p->id] ?? 0),
-                    'overhead'              => (int) ($p->overhead ?? 0),
-                    'fixed_cost'            => (int) ($p->fixed_cost ?? 0),
+                    'overhead'              => $p->overheadCostTotal(),
+                    'fixed_cost'            => $p->fixedCostTotal(),
                 ];
             })
             ->values();

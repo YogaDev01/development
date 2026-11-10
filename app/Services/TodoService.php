@@ -65,10 +65,16 @@ class TodoService
         // Batch DRAFT belum diajukan ke CEO (DailyTransactionController::submit()). Item di
         // dalamnya sudah tidak muncul di "Buat Batch", jadi tanpa antrean ini tugasnya hilang.
         'treasuryDraftSubmit'     => ['roles' => ['superadmin', 'treasury', 'finance', 'finance_manager'], 'status' => ['DRAFT']],
-        // Cost Register — VERIFIED ("Submitted") menunggu Approver (CostRegister::APPROVE_ROLES),
+        // Expense (dulu Cost Register) — VERIFIED ("Submitted") menunggu Approver (CostRegister::APPROVE_ROLES),
         // APPROVED yang belum masuk batch aktif menunggu Treasury (= DailyTransactionController::create()).
         'costRegisterApprove'     => ['roles' => ['superadmin', 'approver'], 'status' => ['VERIFIED']],
         'costRegisterBatch'       => ['roles' => ['superadmin', 'treasury', 'finance', 'finance_manager'], 'status' => ['APPROVED']],
+        // Expense Cash Advance (Fase 2): PAID menunggu Finance Manager input realisasi
+        // (CostRegister::SETTLE_ROLES); SETTLE_SUBMITTED menunggu CEO (APPROVE_ROLES).
+        'expenseSettleInput'      => ['roles' => ['superadmin', 'finance_manager'], 'status' => ['PAID', 'SETTLE_REJECTED']],
+        // Expense ditolak CEO (Fase 3): Finance Manager merevisi ke Draft atau membatalkan.
+        'expenseRejected'         => ['roles' => ['superadmin', 'finance_manager'], 'status' => ['REJECTED']],
+        'expenseSettleApprove'    => ['roles' => ['superadmin', 'approver'], 'status' => ['SETTLE_SUBMITTED']],
         // Budget Plan
         'budgetingHeadCheck'      => ['roles' => ['superadmin', 'head'], 'status' => ['SUBMITTED']],
         'budgetingVerify'         => ['roles' => ['superadmin', 'finance', 'finance_manager'], 'status' => ['CHECKED']],

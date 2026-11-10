@@ -268,7 +268,10 @@
                                            value="{{ old('fixed_cost', number_format($project->fixed_cost ?? 0, 0, ',', '.')) }}"
                                            placeholder="0" autocomplete="off">
                                 </div>
-                                <small class="text-muted">Nominal manual, terpisah dari modul Cost Register.</small>
+                                <small class="text-muted">Nominal manual. Kolom Overhead / Fixed Cost pada daftar PO
+                                    dan laporan = nominal ini <strong>ditambah</strong> biaya dari modul Expense yang
+                                    dibebankan ke PO ini — jangan isi ulang di sini biaya yang sudah dicatat lewat
+                                    Expense (akan terhitung dua kali).</small>
                             </div>
 
                         </div>

@@ -1539,17 +1539,17 @@
             <div id="tl-reg-approve" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
                 <div class="card-header">
                     <h3 class="card-title mb-0">
-                        <i class="fas fa-file-invoice-dollar mr-1"></i> Cost Register — Menunggu Approval
+                        <i class="fas fa-file-invoice-dollar mr-1"></i> Expense — Menunggu Approval
                         <span class="badge badge-secondary ml-1">{{ $costRegisterApprove->count() }}</span>
                     </h3>
-                    <div class="text-muted small mt-1">Diajukan Finance; Approver menyetujui atau mengembalikan ke Draft di halaman Cost Register.</div>
+                    <div class="text-muted small mt-1">Diajukan Finance Manager; CEO menyetujui atau mengembalikan ke Draft di halaman Expense.</div>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
-                                    <th scope="col" class="text-nowrap" style="width:150px;">PO</th>
+                                    <th scope="col" class="text-nowrap" style="width:150px;">No. / Tujuan</th>
                                     <th scope="col">Tipe / Catatan</th>
                                     <th scope="col" class="text-nowrap">Beneficiary</th>
                                     <th scope="col" class="text-nowrap">Input By</th>
@@ -1561,8 +1561,8 @@
                             <tbody>
                                 @foreach($costRegisterApprove as $reg)
                                 @php $regAgingClass = $reg->aging_days >= 3 ? 'text-danger' : ($reg->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
-                                <tr class="todo-row" data-export-key="reg:{{ $reg->id }}" data-search="{{ strtolower(($reg->project?->code ?? '') . ' ' . ($reg->project?->customer?->name ?? '') . ' ' . $reg->type_label . ' ' . ($reg->notes ?? '') . ' ' . ($reg->beneficiary?->nickname ?? '')) }}">
-                                    <td class="text-nowrap">{{ $reg->project?->code ?? '-' }}</td>
+                                <tr class="todo-row" data-export-key="reg:{{ $reg->id }}" data-search="{{ strtolower($reg->display_code . ' ' . $reg->target_label . ' ' . ($reg->project?->customer?->name ?? '') . ' ' . $reg->type_label . ' ' . ($reg->notes ?? '') . ' ' . ($reg->beneficiary?->nickname ?? '')) }}">
+                                    <td class="text-nowrap">{{ $reg->display_code }}<div class="text-muted small">{{ $reg->target_label }}</div></td>
                                     <td>
                                         <span class="badge badge-{{ $reg->type_color }} px-2 py-1" style="font-size:10px;">{{ $reg->type_label }}</span>
                                         @if($reg->notes) <span class="text-muted">{{ Str::limit($reg->notes, 80) }}</span> @endif
@@ -1573,25 +1573,25 @@
                                     <td class="text-center text-nowrap {{ $regAgingClass }}" title="Sejak diajukan">{{ $reg->aging_label }}</td>
                                     <td class="text-center text-nowrap">
                                         {{-- Approve / Revisi langsung dari sini memakai endpoint yang sama dengan
-                                             halaman Cost Register (CostRegisterController::approve()/revise()),
-                                             termasuk cek role & status di sana. Cost Register tidak punya status
+                                             halaman Expense (CostRegisterController::approve()/revise()),
+                                             termasuk cek role & status di sana. Expense tidak punya status
                                              REJECTED: "tolak" = kembalikan ke Draft dengan catatan wajib. --}}
                                         <div class="action-buttons ts-actions">
                                             <button type="button" class="ts-action-primary td-reg-approve"
-                                                    data-id="{{ $reg->id }}" data-label="{{ ($reg->project?->code ?? '-') . ' · ' . $reg->amount_formatted }}"
+                                                    data-id="{{ $reg->id }}" data-label="{{ $reg->display_code . ' · ' . $reg->amount_formatted }}"
                                                     title="Approve">
                                                 <i class="fas fa-check" aria-hidden="true"></i><span class="ts-al">Approve</span>
                                             </button>
 
                                             <button type="button" class="ts-action-more"
                                                     aria-haspopup="true" aria-expanded="false"
-                                                    title="Aksi lain" aria-label="Aksi lain untuk Cost Register {{ $reg->project?->code ?? $reg->id }}">
+                                                    title="Aksi lain" aria-label="Aksi lain untuk Expense {{ $reg->display_code }}">
                                                 <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
                                             </button>
                                             <div class="ts-action-menu dropdown-menu" hidden>
-                                                <button type="button" class="dropdown-item td-reg-revise"
-                                                        data-id="{{ $reg->id }}" data-label="{{ ($reg->project?->code ?? '-') . ' · ' . $reg->amount_formatted }}">
-                                                    <i class="fas fa-undo"></i>Kembalikan ke Draft
+                                                <button type="button" class="dropdown-item is-danger td-reg-reject"
+                                                        data-id="{{ $reg->id }}" data-label="{{ $reg->display_code . ' · ' . $reg->amount_formatted }}">
+                                                    <i class="fas fa-times"></i>Reject
                                                 </button>
                                                 <a href="{{ route('cost-register.index') }}?date_from={{ $reg->created_at?->format('Y-m-d') }}" class="dropdown-item">
                                                     <i class="fas fa-eye"></i>Detail
@@ -1608,22 +1608,22 @@
             </div>
             @endif
 
-            {{-- COST REGISTER — APPROVED, BELUM MASUK BATCH AKTIF --}}
+            {{-- EXPENSE — APPROVED, BELUM MASUK BATCH AKTIF --}}
             @if($costRegisterBatch->isNotEmpty())
             <div id="tl-reg-batch" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
                 <div class="card-header">
                     <h3 class="card-title mb-0">
-                        <i class="fas fa-layer-group mr-1"></i> Cost Register — Menunggu Dibatch Treasury
+                        <i class="fas fa-layer-group mr-1"></i> Expense — Menunggu Dibatch Treasury
                         <span class="badge badge-secondary ml-1">{{ $costRegisterBatch->count() }}</span>
                     </h3>
-                    <div class="text-muted small mt-1">Sudah disetujui Approver, belum masuk batch pembayaran aktif.</div>
+                    <div class="text-muted small mt-1">Sudah disetujui CEO, belum masuk batch pembayaran aktif.</div>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-bordered mb-0" style="font-size:12.5px;">
                             <thead class="bg-light">
                                 <tr>
-                                    <th scope="col" class="text-nowrap" style="width:150px;">PO</th>
+                                    <th scope="col" class="text-nowrap" style="width:150px;">No. / Tujuan</th>
                                     <th scope="col">Tipe / Catatan</th>
                                     <th scope="col" class="text-nowrap">Beneficiary</th>
                                     <th scope="col" class="text-nowrap">Input By</th>
@@ -1635,8 +1635,8 @@
                             <tbody>
                                 @foreach($costRegisterBatch as $reg)
                                 @php $regAgingClass = $reg->aging_days >= 3 ? 'text-danger' : ($reg->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
-                                <tr class="todo-row" data-export-key="reg:{{ $reg->id }}" data-search="{{ strtolower(($reg->project?->code ?? '') . ' ' . ($reg->project?->customer?->name ?? '') . ' ' . $reg->type_label . ' ' . ($reg->notes ?? '') . ' ' . ($reg->beneficiary?->nickname ?? '')) }}">
-                                    <td class="text-nowrap">{{ $reg->project?->code ?? '-' }}</td>
+                                <tr class="todo-row" data-export-key="reg:{{ $reg->id }}" data-search="{{ strtolower($reg->display_code . ' ' . $reg->target_label . ' ' . ($reg->project?->customer?->name ?? '') . ' ' . $reg->type_label . ' ' . ($reg->notes ?? '') . ' ' . ($reg->beneficiary?->nickname ?? '')) }}">
+                                    <td class="text-nowrap">{{ $reg->display_code }}<div class="text-muted small">{{ $reg->target_label }}</div></td>
                                     <td>
                                         <span class="badge badge-{{ $reg->type_color }} px-2 py-1" style="font-size:10px;">{{ $reg->type_label }}</span>
                                         @if($reg->notes) <span class="text-muted">{{ Str::limit($reg->notes, 80) }}</span> @endif
@@ -1660,6 +1660,77 @@
                 </div>
             </div>
             @endif
+
+            {{-- EXPENSE CASH ADVANCE — PAID (input realisasi, Finance Manager) & SETTLE_SUBMITTED (approval CEO).
+                 Aksinya di halaman Expense (CostRegisterController::settleForm()/settleApprove()/settleReject()),
+                 termasuk cek role & status di sana. --}}
+            @foreach([
+                ['tl-reg-settle', $expenseSettleInput, 'fas fa-receipt', 'Expense CA — Menunggu Input Settlement',
+                    'Sudah dibayar Treasury (atau settlement ditolak CEO); Finance Manager mengisi / memperbaiki realisasi beserta buktinya.', 'Sejak dibayar'],
+                ['tl-reg-rejected', $expenseRejected, 'fas fa-undo', 'Expense — Ditolak CEO',
+                    'Revisi ke Draft untuk diperbaiki & diajukan ulang, atau batalkan, di halaman Expense.', 'Sejak ditolak'],
+                ['tl-reg-settle-approve', $expenseSettleApprove, 'fas fa-clipboard-check', 'Expense CA — Menunggu Approval Settlement',
+                    'Realisasi diajukan Finance Manager; CEO menyetujui atau menolak di halaman Expense.', 'Sejak diajukan'],
+            ] as [$secId, $secItems, $secIcon, $secTitle, $secHint, $secAging])
+            @if($secItems->isNotEmpty())
+            <div id="{{ $secId }}" class="card card-warning card-outline shadow-sm mt-3 todo-flat-section">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="{{ $secIcon }} mr-1"></i> {{ $secTitle }}
+                        <span class="badge badge-secondary ml-1">{{ $secItems->count() }}</span>
+                    </h3>
+                    <div class="text-muted small mt-1">{{ $secHint }}</div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-bordered mb-0" style="font-size:12.5px;">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th scope="col" class="text-nowrap" style="width:150px;">No. / Tujuan</th>
+                                    <th scope="col">Catatan</th>
+                                    <th scope="col" class="text-nowrap">Beneficiary</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:135px;">Dibayar</th>
+                                    <th scope="col" class="text-right text-nowrap" style="width:135px;">Realisasi</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:95px;">Aging</th>
+                                    <th scope="col" class="text-center text-nowrap" style="width:110px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($secItems as $reg)
+                                @php $regAgingClass = $reg->aging_days >= 3 ? 'text-danger' : ($reg->aging_days >= 1 ? 'rv-nob-item' : 'text-muted'); @endphp
+                                <tr class="todo-row" data-export-key="reg:{{ $reg->id }}" data-search="{{ strtolower($reg->display_code . ' ' . $reg->target_label . ' ' . ($reg->notes ?? '') . ' ' . ($reg->beneficiary?->nickname ?? '')) }}">
+                                    <td class="text-nowrap">{{ $reg->display_code }}<div class="text-muted small">{{ $reg->target_label }}</div></td>
+                                    <td>@if($reg->notes)<span class="text-muted">{{ Str::limit($reg->notes, 80) }}</span>@else - @endif</td>
+                                    <td class="text-nowrap">{{ $reg->beneficiary?->nickname ?? '-' }}</td>
+                                    <td class="text-right text-nowrap"><strong>{{ $reg->amount_formatted }}</strong></td>
+                                    <td class="text-right text-nowrap">{{ $reg->settled_amount !== null ? number_format($reg->settled_amount, 0, ',', '.') : '-' }}</td>
+                                    <td class="text-center text-nowrap {{ $regAgingClass }}" title="{{ $secAging }}">{{ $reg->aging_label }}</td>
+                                    <td class="text-center text-nowrap">
+                                        <div class="action-buttons ts-actions">
+                                            @if($secId === 'tl-reg-rejected')
+                                            <a href="{{ route('cost-register.index') }}?date_from={{ $reg->created_at?->format('Y-m-d') }}" class="ts-action-primary" title="Buka di halaman Expense">
+                                                <i class="fas fa-undo" aria-hidden="true"></i><span class="ts-al">Tindak Lanjut</span>
+                                            </a>
+                                            @elseif($secId === 'tl-reg-settle')
+                                            <a href="{{ route('cost-register.settle', $reg->id) }}" class="ts-action-primary" title="Input Settlement">
+                                                <i class="fas fa-receipt" aria-hidden="true"></i><span class="ts-al">Settle</span>
+                                            </a>
+                                            @else
+                                            <a href="{{ route('cost-register.index') }}?date_from={{ $reg->created_at?->format('Y-m-d') }}" class="ts-action-primary" title="Buka di halaman Expense">
+                                                <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Review</span>
+                                            </a>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            @endif
+            @endforeach
 
             {{-- COLLECTION — WAITING INVOICE (No. PO sudah BAST, belum ditagih sama sekali/penuh; reminder, bukan approval) --}}
             @if($collectionWaitingInvoice->isNotEmpty())
@@ -4669,7 +4740,7 @@ $(function () {
             { re: /^tl-bp-/,                            nama: 'Budgeting',      fase: 'Budgeting & PO' },
             { re: /^tl-po-/,                            nama: 'Purchase Order', fase: 'Budgeting & PO' },
             { re: /^tl-batch-/,                         nama: 'Treasury',       fase: 'Pembayaran' },
-            { re: /^tl-reg-/,                           nama: 'Cost Register',  fase: 'Pembayaran' },
+            { re: /^tl-reg-/,                           nama: 'Expense',        fase: 'Pembayaran' },
             { re: /^tl-invoice-/,                       nama: 'Invoice',        fase: 'Penagihan' },
             { re: /^tl-collection/,                     nama: 'Collection',     fase: 'Penagihan' },
             { re: /^tl-tt-/,                            nama: 'Trouble Ticket', fase: 'Lainnya' }
@@ -5678,31 +5749,31 @@ $(function () {
         });
     });
 
-    /* ── COST REGISTER — APPROVE / KEMBALIKAN KE DRAFT (endpoint halaman Cost Register) ── */
+    /* ── EXPENSE — APPROVE / KEMBALIKAN KE DRAFT (endpoint halaman Expense) ── */
     $(document).on('click', '.td-reg-approve', function () {
         var id = $(this).data('id'), label = $(this).data('label') || '';
         Swal.fire({
-            title: 'Approve Cost Register?',
+            title: 'Approve Expense?',
             html: '<strong>' + esc(label) + '</strong><br>Setelah disetujui, Treasury bisa memasukkannya ke batch pembayaran.',
             input: 'textarea', inputLabel: 'Catatan (opsional)', inputAttributes: { maxlength: 500 },
             icon: 'question', showCancelButton: true, confirmButtonColor: 'var(--accent)', cancelButtonColor: 'var(--text-muted)',
             confirmButtonText: 'Ya, Approve', cancelButtonText: 'Batal'
         }).then(function (r) {
-            if (r.isConfirmed) todoSubmitPost('{{ url('/cost-register') }}/' + id + '/approve', [['notes', r.value || '']]);
+            if (r.isConfirmed) todoSubmitPost('{{ url('/expense') }}/' + id + '/approve', [['notes', r.value || '']]);
         });
     });
 
-    $(document).on('click', '.td-reg-revise', function () {
+    $(document).on('click', '.td-reg-reject', function () {
         var id = $(this).data('id'), label = $(this).data('label') || '';
         Swal.fire({
-            title: 'Kembalikan ke Draft?',
-            html: '<strong>' + esc(label) + '</strong><br>Finance merevisi lalu mengajukan ulang.',
+            title: 'Tolak Expense?',
+            html: '<strong>' + esc(label) + '</strong><br>Finance Manager bisa merevisi ke Draft atau membatalkannya.',
             input: 'textarea', inputLabel: 'Alasan (wajib)', inputPlaceholder: 'Tulis alasan...', inputAttributes: { maxlength: 500 },
             inputValidator: function (v) { return !(v || '').trim() && 'Alasan wajib diisi.'; },
             icon: 'warning', showCancelButton: true, confirmButtonColor: 'var(--danger)', cancelButtonColor: 'var(--text-muted)',
-            confirmButtonText: 'Kembalikan', cancelButtonText: 'Batal'
+            confirmButtonText: 'Tolak', cancelButtonText: 'Batal'
         }).then(function (r) {
-            if (r.isConfirmed) todoSubmitPost('{{ url('/cost-register') }}/' + id + '/revise', [['notes', r.value]]);
+            if (r.isConfirmed) todoSubmitPost('{{ url('/expense') }}/' + id + '/reject', [['notes', r.value]]);
         });
     });
 

@@ -92,9 +92,9 @@
                                     <th style="width:24%">COA / Sub-item <span class="text-danger">*</span></th>
                                     <th>Deskripsi <span class="text-danger">*</span></th>
                                     <th style="width:120px">Harga <span class="text-danger">*</span></th>
-                                    <th style="width:64px">Qty <span class="text-danger">*</span></th>
+                                    <th style="width:84px">Qty <span class="text-danger">*</span></th>
                                     <th style="width:110px" class="text-right">Total</th>
-                                    <th style="width:170px">Lampiran <span class="text-danger tt-rq-req-star">*</span></th>
+                                    <th style="width:180px">Lampiran <span class="text-danger tt-rq-req-star">*</span></th>
                                     <th style="width:36px"></th>
                                 </tr>
                             </thead>
@@ -110,15 +110,15 @@
                     </div>
                     <button type="button" class="btn btn-outline-primary btn-sm" id="ttRqAdd"><i class="fas fa-plus mr-1"></i> Tambah Baris</button>
 
-                    <div class="form-group mt-3 mb-1">
-                        <label class="font-weight-bold">Lampiran tambahan <span class="text-muted font-weight-normal">(opsional)</span></label>
-                        <div id="ttRqGeneralKeep"></div>
-                        <input type="file" name="general_files[]" class="form-control-file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
-                    </div>
-                    <div class="tt-stage-note">
+                    {{-- Lampiran cukup per baris (10 Nov 2026): input "Lampiran tambahan" dihapus.
+                         Lampiran umum lama pada pengajuan yang diubah tetap dipertahankan lewat
+                         keep_general_ids tersembunyi agar tidak terlepas diam-diam. --}}
+                    <div id="ttRqGeneralKeep" class="d-none"></div>
+                    <div class="tt-stage-note mt-3">
                         Pengajuan ini <strong>belum</strong> membentuk Cost Request. Setelah di-submit, supervisor team
                         Anda mereview dan, bila disetujui, sistem membuat <strong>Cost Request berstatus Draft</strong>.
-                        Cash Advance tidak wajib berlampiran; jenis lain <strong>wajib</strong> melampirkan berkas di setiap baris.
+                        Cash Advance tidak wajib berlampiran; jenis lain <strong>wajib</strong> melampirkan berkas di setiap baris
+                        (klik <em>Lampiran</em>, drag &amp; drop berkas, atau klik sel lalu paste gambar Ctrl+V).
                     </div>
                     <div class="text-danger mt-2 d-none" id="ttRqErr"></div>
                 </div>
@@ -157,6 +157,14 @@
     .tt-rq-files { font-size:11px; color:var(--text-muted); overflow-wrap:anywhere; }
     .tt-rq-keep { display:block; font-size:11.5px; margin:0; font-weight:400; overflow-wrap:anywhere; }
     .tt-rq-table .form-control-sm { min-width:0; }
+    /* Qty cukup lebar agar angka tidak tertutup tombol spinner. */
+    .tt-rq-table .tt-rq-qty { min-width:64px; padding-left:.4rem; padding-right:.25rem; }
+    /* Sel lampiran baris: sama dengan form Cost Request (fokus/drag = latar warning). */
+    .tt-rq-table .detail-att-cell { outline:none; transition:background .15s ease; }
+    .tt-rq-table .detail-att-cell:focus-within, .tt-rq-table .detail-att-cell.is-drag { background:var(--warning-bg); }
+    .tt-rq-table .detail-att-list { font-size:10px; line-height:1.5; overflow-wrap:anywhere; }
+    .tt-rq-table .detail-att-list .tt-rq-file-del { cursor:pointer; }
+    .tt-rq-table .tt-rq-keep { margin-bottom:4px; }
     /* Picker searchable Sub Item di sel tabel — ramping seperti form Cost Request. */
     .tt-rq-table td .tss-btn { padding:.25rem .5rem; font-size:13px; }
     /* Kotak deskripsi + ikon "perluas" di ujung kanan (pola form Cost Request). */
@@ -188,6 +196,9 @@
         var D = @json($dataForm);
         var $m = $('#mdlTtRequest'), $form = $('#frmTtRequest'), $rows = $('#ttRqRows');
         var rupiah = new Intl.NumberFormat('id-ID');
+        // Sama dengan aturan mimes server (TroubleTicketController, items.*.files.*).
+        var ATT_EXT = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx', 'xls', 'xlsx'];
+        var ATT_ACCEPT = ATT_EXT.map(function (x) { return '.' + x; }).join(',');
 
         function angka(t) { return parseInt(String(t || '').replace(/[^\d]/g, ''), 10) || 0; }
         function uang(t) { return String(t || '').replace(/[^\d]/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
@@ -253,9 +264,12 @@
                 + '<td data-label="Harga"><input type="text" inputmode="numeric" name="items[0][amount]" class="form-control form-control-sm text-right tt-rq-amount" required value="' + (r.amount ? uang(r.amount) : '') + '"></td>'
                 + '<td data-label="Qty"><input type="number" name="items[0][qty]" class="form-control form-control-sm tt-rq-qty" min="1" step="1" required value="' + (r.qty || 1) + '"></td>'
                 + '<td data-label="Total" class="text-right align-middle tt-rq-total">0</td>'
-                + '<td data-label="Lampiran">' + files
-                + '<label class="btn btn-outline-secondary btn-xs mb-0 mt-1"><i class="fas fa-paperclip mr-1"></i> Pilih<input type="file" name="items[0][files][]" class="tt-rq-file" multiple hidden accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"></label>'
-                + '<div class="tt-rq-files"></div></td>'
+                // Sel lampiran memakai markup & kelas form Cost Request (.detail-att-drop di tesys-ui-refine.css).
+                + '<td data-label="Lampiran" class="align-middle detail-att-cell tt-rq-att" tabindex="0">' + files
+                + '<input type="file" name="items[0][files][]" class="d-none tt-rq-file" multiple accept="' + ATT_ACCEPT + '">'
+                + '<button type="button" class="btn-detail-att detail-att-drop tt-rq-pick" title="Tambah lampiran (klik, drag & drop, atau paste)">'
+                + '<i class="fas fa-cloud-upload-alt" aria-hidden="true"></i><span class="detail-att-label">Lampiran</span></button>'
+                + '<div class="detail-att-list tt-rq-files mt-1"></div></td>'
                 + '<td class="align-middle text-center"><button type="button" class="btn btn-link btn-sm text-danger p-0 tt-rq-del" aria-label="Hapus baris"><i class="fas fa-times"></i></button></td>'
                 + '</tr>';
         }
@@ -336,7 +350,7 @@
                 // Pilih ulang sub-item (sinkronPlan mengosongkan yang belum cocok saat baris baru ditambahkan).
                 $rows.children('tr').each(function (i) { $(this).find('.tt-rq-item').val(r.items[i].detail).trigger('tss:sync'); });
                 (r.general || []).forEach(function (f) {
-                    $('#ttRqGeneralKeep').append('<label class="tt-rq-keep"><input type="checkbox" name="keep_general_ids[]" value="' + f.id + '" checked> ' + esc(f.name) + '</label>');
+                    $('#ttRqGeneralKeep').append('<input type="hidden" name="keep_general_ids[]" value="' + f.id + '">');
                 });
             }
             hitung();
@@ -400,11 +414,95 @@
                 }
             });
         });
-        $rows.on('change', '.tt-rq-file', function () {
-            $(this).closest('td').find('.tt-rq-files').text(Array.prototype.map.call(this.files, function (f) { return f.name; }).join(', '));
+        /* ---------- Lampiran per baris: klik / drag & drop / paste (opsional) ----------
+           Pola form Cost Request: berkas DITAMBAHKAN ke input file baris (DataTransfer),
+           tidak menimpa pilihan sebelumnya; tiap berkas bisa dihapus satu per satu.
+           Jenis berkas yang tidak diterima server dibuang di sini dengan pesan. */
+        function extOk(f) { return ATT_EXT.indexOf(String(f.name || '').split('.').pop().toLowerCase()) !== -1; }
+        function renderFiles(input) {
+            var files = input.files || [];
+            $(input).siblings('.tt-rq-pick').find('.detail-att-label').text(files.length ? files.length + ' file' : 'Lampiran');
+            $(input).siblings('.tt-rq-files').html(Array.prototype.map.call(files, function (f, i) {
+                return '<div class="text-muted"><i class="fas fa-file mr-1"></i>'
+                    + '<a href="#" class="tt-rq-file-open" data-i="' + i + '" title="Lihat lampiran">' + esc(f.name) + '</a>'
+                    + ' <i class="fas fa-times text-danger tt-rq-file-del" data-i="' + i + '" title="Hapus berkas" role="button"></i></div>';
+            }).join(''));
+        }
+        /* Pratinjau berkas yang belum terunggah — pop-up di dalam modal (pola form Cost Request). */
+        $rows.on('click', '.tt-rq-file-open', function (e) {
+            e.preventDefault();
+            var f = ($(this).closest('.tt-rq-att').find('.tt-rq-file')[0].files || [])[parseInt(this.dataset.i, 10)];
+            if (!f || typeof Swal === 'undefined') return;
+            var url = URL.createObjectURL(f), ext = String(f.name).split('.').pop().toLowerCase();
+            var isImg = /^image\//.test(f.type) || ['jpg', 'jpeg', 'png'].indexOf(ext) !== -1;
+            var isPdf = f.type === 'application/pdf' || ext === 'pdf';
+            var isi = isImg ? '<img src="' + url + '" alt="" style="max-width:100%;max-height:70vh;object-fit:contain;border-radius:6px;">'
+                : isPdf ? '<iframe src="' + url + '" style="width:100%;height:70vh;border:1px solid var(--border);border-radius:6px;"></iframe>'
+                : '<p class="mb-2">Pratinjau tidak tersedia untuk jenis file ini.</p>';
+            Swal.fire({
+                target: $m[0], title: esc(f.name), html: isi, width: isImg || isPdf ? '860px' : '520px',
+                showConfirmButton: false, showCloseButton: true, customClass: { closeButton: 'tt-rq-close' },
+                didClose: function () { URL.revokeObjectURL(url); }
+            });
         });
+        function tambahBerkas(input, list) {
+            var ok = [], tolak = [];
+            Array.prototype.forEach.call(list || [], function (f) { (extOk(f) ? ok : tolak).push(f); });
+            if (tolak.length) {
+                $('#ttRqErr').text('Berkas ditolak (hanya ' + ATT_EXT.join(', ') + '): '
+                    + tolak.map(function (f) { return f.name; }).join(', ')).removeClass('d-none');
+            }
+            if (!ok.length) return;
+            try {
+                var dt = new DataTransfer();
+                Array.prototype.forEach.call(input.files || [], function (f) { dt.items.add(f); });
+                ok.forEach(function (f) { dt.items.add(f); });
+                input.files = dt.files;
+            } catch (e) { /* peramban lama tanpa DataTransfer: berkas tidak bisa ditambahkan */ }
+            renderFiles(input);
+        }
+        $rows.on('click', '.tt-rq-pick', function () {
+            var real = $(this).closest('.tt-rq-att').find('.tt-rq-file')[0], tmp = document.createElement('input');
+            tmp.type = 'file'; tmp.multiple = true; tmp.accept = ATT_ACCEPT;
+            tmp.addEventListener('change', function () { tambahBerkas(real, tmp.files); });
+            tmp.click();
+        });
+        $rows.on('click', '.tt-rq-file-del', function () {
+            var input = $(this).closest('.tt-rq-att').find('.tt-rq-file')[0], idx = parseInt(this.dataset.i, 10);
+            try {
+                var dt = new DataTransfer();
+                Array.prototype.forEach.call(input.files, function (f, i) { if (i !== idx) dt.items.add(f); });
+                input.files = dt.files;
+            } catch (e) { input.value = ''; }
+            renderFiles(input);
+        });
+        $rows.on('dragenter dragover', '.tt-rq-att', function (e) { e.preventDefault(); $(this).addClass('is-drag'); });
+        $rows.on('dragleave', '.tt-rq-att', function (e) {
+            if (!this.contains(e.originalEvent.relatedTarget)) $(this).removeClass('is-drag');
+        });
+        $rows.on('drop', '.tt-rq-att', function (e) {
+            e.preventDefault();
+            $(this).removeClass('is-drag');
+            var dt = e.originalEvent.dataTransfer;
+            if (dt && dt.files && dt.files.length) tambahBerkas($(this).find('.tt-rq-file')[0], dt.files);
+        });
+        // Paste ke sel lampiran yang sedang fokus (klik sel/tombol Pilih dulu, lalu Ctrl+V).
+        document.addEventListener('paste', function (e) {
+            var cell = document.activeElement && document.activeElement.closest ? document.activeElement.closest('#ttRqRows .tt-rq-att') : null;
+            if (!cell) return;
+            var cd = e.clipboardData || window.clipboardData, picked = [];
+            if (!cd || !cd.items) return;
+            for (var i = 0; i < cd.items.length; i++) {
+                if (cd.items[i].kind !== 'file') continue;
+                var f = cd.items[i].getAsFile();
+                if (!f) continue;
+                var ext = (f.type.split('/')[1] || 'png').replace('jpeg', 'jpg');
+                picked.push(new File([f], 'pasted-' + Date.now() + '-' + i + '.' + ext, { type: f.type }));
+            }
+            if (picked.length) { e.preventDefault(); tambahBerkas(cell.querySelector('.tt-rq-file'), picked); }
+        }, true);
 
-        // Lampiran per baris wajib untuk jenis selain Cash Advance (diperiksa ulang di server).
+        // Lampiran per baris: Cash Advance tidak wajib; jenis lain wajib di setiap baris (diperiksa ulang di server).
         $form.on('click', '.tt-rq-send', function () { $('#fldRqSubmit').val($(this).data('submit') ? 1 : 0); });
         $form.on('submit', function (e) {
             var t = jenis(), pesan = '';

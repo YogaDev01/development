@@ -159,7 +159,7 @@ class DailyTransactionController extends Controller
                       $q2->whereIn('status', DailyTransaction::ACTIVE_STATUSES)
                   )
             )
-            ->with(['project.customer', 'beneficiary'])
+            ->with(['project.customer', 'beneficiary', 'details.project', 'details.costCenter', 'details.projects:projects.id,projects.code'])
             ->latest()->get();
 
         /*
@@ -173,8 +173,13 @@ class DailyTransactionController extends Controller
             ->with(['budgetRequest.beneficiary', 'budgetRequest.budgetPlan.project.customer', 'budgetRequest.budgetPlan.project.manager', 'budgetRequest.budgetPlan.project.poNumbers'])
             ->latest()->get();
 
+        // Expense Fase 2 — kekurangan bayar settlement Expense Cash Advance.
+        $availableExpenseSecondPayments = \App\Models\CostRegisterSecondPayment::availableForBatch()
+            ->with(['costRegister.beneficiary', 'costRegister.details.project', 'costRegister.details.costCenter', 'costRegister.details.projects:projects.id,projects.code'])
+            ->latest()->get();
+
         return view('daily-transaction.create', compact(
-            'availableCRs', 'availableRegisters', 'availableSecondPayments',
+            'availableCRs', 'availableRegisters', 'availableSecondPayments', 'availableExpenseSecondPayments',
             'operationalSourceFunds', 'mainSourceFunds'
         ));
     }
@@ -214,6 +219,8 @@ class DailyTransactionController extends Controller
             'cost_register_ids.*'   => 'exists:cost_registers,id',
             'second_payment_ids'    => 'nullable|array',
             'second_payment_ids.*'  => 'exists:budget_request_second_payments,id',
+            'expense_second_payment_ids'   => 'nullable|array',
+            'expense_second_payment_ids.*' => 'exists:cost_register_second_payments,id',
             'description'           => 'required|string|max:255',
             'source_fund_id'        => 'required|exists:source_funds,id',
             'notes'                 => 'nullable|string|max:500',
@@ -222,9 +229,21 @@ class DailyTransactionController extends Controller
         $crIds        = (array) $request->input('cr_ids', []);
         $registerIds  = (array) $request->input('cost_register_ids', []);
         $secondPayIds = (array) $request->input('second_payment_ids', []);
+        $expenseSpIds = array_map('intval', (array) $request->input('expense_second_payment_ids', []));
 
-        if (empty($crIds) && empty($registerIds) && empty($secondPayIds)) {
-            return back()->with('error', 'Pilih minimal satu Cost Request, Cost Register, atau Second Payment.');
+        if (empty($crIds) && empty($registerIds) && empty($secondPayIds) && empty($expenseSpIds)) {
+            return back()->with('error', 'Pilih minimal satu Cost Request, Expense, atau Second Payment.');
+        }
+
+        // Second Payment Expense: hanya PENDING, induk SETTLE_APPROVED, belum di batch aktif.
+        if ($expenseSpIds) {
+            $eligible = \App\Models\CostRegisterSecondPayment::availableForBatch()
+                ->whereIn('id', $expenseSpIds)->pluck('id')->map(fn ($v) => (int) $v)->all();
+            $invalid = array_diff($expenseSpIds, $eligible);
+            if ($invalid) {
+                return back()->with('error',
+                    'Second Payment Expense berikut sudah PAID atau sudah ada dalam batch aktif: #' . implode(', #', $invalid));
+            }
         }
 
         // Second Payment: hanya yang PENDING dan belum ada di batch aktif.
@@ -306,11 +325,11 @@ class DailyTransactionController extends Controller
             }
         }
 
-        $code = DailyTransaction::generateCode(count($crIds) + count($registerIds) + count($secondPayIds));
+        $code = DailyTransaction::generateCode(count($crIds) + count($registerIds) + count($secondPayIds) + count($expenseSpIds));
 
         try {
         $batchId = null;
-        DB::transaction(function () use ($request, $crIds, $registerIds, $secondPayIds, $code, &$batchId) {
+        DB::transaction(function () use ($request, $crIds, $registerIds, $secondPayIds, $expenseSpIds, $code, &$batchId) {
             /*
             | Kunci dulu, baru tulis. Pemeriksaan di atas berjalan tanpa kunci,
             | jadi dua Treasury yang membuat batch bersamaan dari antrean yang
@@ -351,6 +370,15 @@ class DailyTransactionController extends Controller
                 }
             }
 
+            // Second Payment Expense dikunci terakhir (id naik), status diperiksa ulang.
+            $expenseSps = \App\Models\CostRegisterSecondPayment::with('costRegister')
+                ->whereIn('id', $expenseSpIds)->orderBy('id')->lockForUpdate()->get();
+            foreach ($expenseSps as $esp) {
+                if ($esp->status !== 'PENDING' || $esp->costRegister?->status !== 'SETTLE_APPROVED') {
+                    $berubah->push('Second Payment Expense #' . $esp->id);
+                }
+            }
+
             /*
             | Batch Draft tidak mengubah status sumbernya, jadi pemeriksaan
             | status saja tidak lagi menahan batch ganda. Keanggotaan di batch
@@ -360,10 +388,11 @@ class DailyTransactionController extends Controller
             */
             $sudahAda = DailyTransactionItem::where('status', 'INCLUDED')
                 ->whereHas('dailyTransaction', fn ($q) => $q->whereIn('status', DailyTransaction::ACTIVE_STATUSES))
-                ->where(function ($q) use ($crIds, $secondPayIds, $registerIds) {
+                ->where(function ($q) use ($crIds, $secondPayIds, $registerIds, $expenseSpIds) {
                     $q->where(fn ($q2) => $q2->whereIn('budget_request_id', $crIds ?: [0])->whereNull('second_payment_id'))
                       ->orWhereIn('second_payment_id', $secondPayIds ?: [0])
-                      ->orWhereIn('cost_register_id', $registerIds ?: [0]);
+                      ->orWhere(fn ($q2) => $q2->whereIn('cost_register_id', $registerIds ?: [0])->whereNull('cost_register_second_payment_id'))
+                      ->orWhereIn('cost_register_second_payment_id', $expenseSpIds ?: [0]);
                 })
                 ->exists();
             if ($sudahAda) {
@@ -410,6 +439,15 @@ class DailyTransactionController extends Controller
                     'budget_request_id' => $sp->budget_request_id,
                     'second_payment_id' => $sp->id,
                     'status'            => 'INCLUDED',
+                ]);
+            }
+
+            // Baris Second Payment Expense SEKALIGUS mengisi cost_register_id (Expense induk).
+            foreach ($expenseSps as $esp) {
+                $batch->items()->create([
+                    'cost_register_id'                => $esp->cost_register_id,
+                    'cost_register_second_payment_id' => $esp->id,
+                    'status'                          => 'INCLUDED',
                 ]);
             }
 
@@ -757,13 +795,13 @@ class DailyTransactionController extends Controller
                 'is_second_payment' => $item->isSecondPayment(),
                 'cr_code'        => $item->sourceCode(),
                 'cr_description' => $item->sourceDescription(),
-                'cr_type'        => $item->isSecondPayment()
+                'cr_type'        => ($item->isSecondPayment() || $item->isExpenseSecondPayment())
                                         ? 'Second Payment'
                                         : ($item->isCostRegister()
-                                            ? ($item->costRegister?->type_label ?? 'Cost Register')
+                                            ? ($item->costRegister?->type_label ?? 'Expense')
                                             : ($item->budgetRequest?->type?->name ?? '-')),
                 'cr_cluster'     => $item->isCostRegister()
-                                        ? ($item->costRegister?->project?->code ?? '-')
+                                        ? ($item->costRegister?->target_label ?? '-')
                                         : ($item->budgetRequest?->cluster?->name ?? '-'),
                 'cr_amount'      => $item->sourceAmount(),
                 'cr_amount_fmt'  => number_format($item->sourceAmount(), 0, ',', '.'),
@@ -953,6 +991,15 @@ class DailyTransactionController extends Controller
             foreach ($batch->includedItems as $item) {
                 // CR sudah QUEUED sejak batch dibuat — batch ditolak berarti
                 // dikembalikan lagi ke APPROVED (belum pernah masuk batch).
+                // Second Payment Expense: tetap PENDING, Expense induk tetap SETTLE_APPROVED
+                // — bisa dimasukkan ke batch berikutnya.
+                if ($item->isExpenseSecondPayment()) {
+                    $item->costRegister?->addLog($item->costRegister->status, $item->costRegister->status, 'unbatched',
+                        'Kekurangan bayar: batch ' . $batch->code . ' ditolak: ' . $request->notes);
+                    $item->update(['status' => 'REJECTED', 'notes' => $request->notes]);
+                    continue;
+                }
+
                 if ($item->isCostRegister()) {
                     // Cost Register dikembalikan ke APPROVED supaya bisa
                     // dimasukkan ke batch lain (MN-09).
@@ -1081,6 +1128,10 @@ class DailyTransactionController extends Controller
                 }
                 $cr->addLog('QUEUED', 'SETTLE_REJECTED', 'second_payment_rejected',
                     'Second Payment ditolak dari batch ' . $batch->code . ': ' . $request->notes);
+            } elseif ($item->isExpenseSecondPayment()) {
+                // Second Payment Expense: hanya barisnya yang keluar; tetap PENDING.
+                $item->costRegister?->addLog($item->costRegister->status, $item->costRegister->status, 'unbatched',
+                    'Kekurangan bayar dikeluarkan dari batch ' . $batch->code . ': ' . $request->notes);
             } elseif ($item->isCostRegister()) {
                 // Cost Register yang di-takeout kembali ke APPROVED (MN-09),
                 // bukan REJECTED: biayanya tetap sah, hanya batch-nya berubah.
@@ -1168,7 +1219,8 @@ class DailyTransactionController extends Controller
 
                 $crIds       = $items->filter(fn ($i) => $i->budget_request_id && ! $i->second_payment_id)->pluck('budget_request_id')->map(fn ($v) => (int) $v)->all();
                 $spIds       = $items->filter(fn ($i) => $i->second_payment_id)->pluck('second_payment_id')->map(fn ($v) => (int) $v)->all();
-                $registerIds = $items->filter(fn ($i) => $i->cost_register_id)->pluck('cost_register_id')->map(fn ($v) => (int) $v)->all();
+                $registerIds = $items->filter(fn ($i) => $i->cost_register_id && ! $i->cost_register_second_payment_id)->pluck('cost_register_id')->map(fn ($v) => (int) $v)->all();
+                $expenseSpIds = $items->filter(fn ($i) => $i->cost_register_second_payment_id)->pluck('cost_register_second_payment_id')->map(fn ($v) => (int) $v)->all();
 
                 // Urutan kunci sama dengan storeCashOut (budget_request -> second payment -> cost register).
                 $spParentIds = \App\Models\BudgetRequestSecondPayment::whereIn('id', $spIds)->pluck('budget_request_id')->all();
@@ -1178,6 +1230,8 @@ class DailyTransactionController extends Controller
                     ->orderBy('id')->lockForUpdate()->get();
                 $registers = \App\Models\CostRegister::whereIn('id', $registerIds)
                     ->orderBy('id')->lockForUpdate()->get();
+                $expenseSps = \App\Models\CostRegisterSecondPayment::with('costRegister')
+                    ->whereIn('id', $expenseSpIds)->orderBy('id')->lockForUpdate()->get();
 
                 $berubah = collect($crIds)
                     ->reject(fn ($cid) => ($locked[$cid]->status ?? null) === 'APPROVED')
@@ -1191,6 +1245,13 @@ class DailyTransactionController extends Controller
                     if ($register->status !== \App\Models\CostRegister::TREASURY_READY_STATUS) {
                         $berubah->push('Cost Register #' . $register->id);
                     }
+                }
+                // Second Payment Expense: status induk TIDAK diubah saat submit (tetap SETTLE_APPROVED).
+                foreach ($expenseSps as $esp) {
+                    if ($esp->status !== 'PENDING' || $esp->costRegister?->status !== 'SETTLE_APPROVED') {
+                        $berubah->push('Second Payment Expense #' . $esp->id);
+                    }
+                    $jumlah['sp']++;
                 }
                 if ($berubah->isNotEmpty()) {
                     throw new \DomainException(
@@ -1532,11 +1593,30 @@ class DailyTransactionController extends Controller
             foreach ($batch->includedItems as $item) {
                 // MN-09 — baris Cost Register: tidak punya tahap realisasi (seperti Cost
                 // Payment Non-CA), jadi begitu batch dibayar ia langsung CLOSED.
+                //
+                // Expense Cash Advance (Fase 2): QUEUED -> PAID, lanjut input realisasi.
+                // Second Payment Expense: PAID, Expense induk SETTLE_APPROVED -> CLOSED.
+                if ($item->isExpenseSecondPayment()) {
+                    $esp = \App\Models\CostRegisterSecondPayment::whereKey($item->cost_register_second_payment_id)->lockForUpdate()->first();
+                    $register = $item->costRegister;
+                    if ($esp && $esp->status === 'PENDING') {
+                        $esp->update(['status' => 'PAID', 'paid_by' => Auth::id(), 'paid_at' => now(), 'notes' => $request->payment_notes]);
+                        if ($register && $register->status === 'SETTLE_APPROVED'
+                            && ! $register->secondPayments()->where('status', 'PENDING')->exists()) {
+                            $register->update(['status' => 'CLOSED']);
+                            $register->addLog('SETTLE_APPROVED', 'CLOSED', 'second_payment_paid',
+                                'Kekurangan bayar ' . $esp->amount_formatted . ' dibayar. ' . $request->payment_notes);
+                        }
+                    }
+                    continue;
+                }
+
                 if ($item->isCostRegister()) {
                     $register = $item->costRegister;
                     if ($register && $register->status === 'QUEUED') {
-                        $register->update(['status' => 'CLOSED', 'paid_at' => now()]);
-                        $register->addLog('QUEUED', 'CLOSED', 'paid', $request->payment_notes);
+                        $tujuan = $register->isCashAdvance() ? 'PAID' : 'CLOSED';
+                        $register->update(['status' => $tujuan, 'paid_at' => now()]);
+                        $register->addLog('QUEUED', $tujuan, 'paid', $request->payment_notes);
                     }
                     continue;
                 }
@@ -1852,7 +1932,7 @@ class DailyTransactionController extends Controller
         // dan selisih diam-diam di lembar ringkasan adalah hal terakhir yang
         // boleh terjadi di dokumen pembayaran.
         if ($registerItems->isNotEmpty()) {
-            $sheet1->setCellValue('A' . $row, 'Cost Register (Non-CR)');
+            $sheet1->setCellValue('A' . $row, 'Expense');
             $sheet1->setCellValue('B' . $row, (int) $registerItems->sum(fn ($i) => $i->sourceAmount()));
             $row++;
         }
@@ -1923,14 +2003,14 @@ class DailyTransactionController extends Controller
 
                 $sheet3->fromArray([
                     $item->sourceCode(),
-                    $reg->project->code ?? '-',
+                    $reg->target_label,
                     $reg->project->customer->name ?? '-',
                     $reg->type_label,
                     $reg->notes ?? '-',
                     $reg->beneficiary->complete_name ?? '-',
                     $reg->beneficiary->bank->name ?? '-',
                     $reg->beneficiary->account_number ?? '-',
-                    (int) $reg->amount,
+                    (int) $item->sourceAmount(),
                     $reg->period?->format('m-Y') ?? '-',
                 ], null, 'A' . $row);
                 $row++;
@@ -2062,7 +2142,7 @@ class DailyTransactionController extends Controller
 
             if ($key === 'cost-register') {
                 return [
-                    'label'      => 'Cost Register (Non-CR)',
+                    'label'      => 'Expense',
                     'pm'         => '-',
                     'po_code'    => null,
                     'items'      => $groupItems,
@@ -2216,7 +2296,7 @@ class DailyTransactionController extends Controller
 
                 $detail->setCellValueExplicit('A' . $detailRow, $trx->code, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
                 $detail->fromArray([
-                    $cr ? $this->budgetPlanLabel($cr->budgetPlan) : 'Cost Register (Non-CR)',
+                    $cr ? $this->budgetPlanLabel($cr->budgetPlan) : 'Expense',
                     $item->sourceCode(),
                     $item->sourceDescription(),
                     $cr ? ($cr->applicant->name ?? '-') : '-',
@@ -2340,10 +2420,10 @@ class DailyTransactionController extends Controller
                 $bank->name ?? '',                        // Bank
                 $bank->code ?? '',                        // Kode Bank
                 'OUR',                                     // Charge
-                // Reference: kode CR tanpa prefix "CR-". Baris Second Payment
-                // diberi akhiran -2 supaya bank tidak menolaknya sebagai
-                // referensi ganda dengan transfer pertama.
-                str_replace('CR-', '', $cr->code ?? '') . ($item->isSecondPayment() ? '-2' : ''),
+                // Reference: kode CR tanpa prefix tipe ("CR-", "CA-", "PA-", ...).
+                // Baris Second Payment diberi akhiran -2 supaya bank tidak
+                // menolaknya sebagai referensi ganda dengan transfer pertama.
+                preg_replace('/^[A-Z]{2}-/', '', $cr->code ?? '') . ($item->isSecondPayment() ? '-2' : ''),
                 \Illuminate\Support\Str::limit($item->sourceDescription(), 150, ''), // Remark
                 $cr->email ?? '',                         // Email notifikasi
             ], null, 'A' . $row);

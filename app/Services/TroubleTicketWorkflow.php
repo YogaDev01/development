@@ -1567,7 +1567,7 @@ class TroubleTicketWorkflow
             : ($plan->project?->code ?? '0000');
 
         $cr = BudgetRequest::create([
-            'code'           => BudgetRequest::generateCode($sourceCode),
+            'code'           => BudgetRequest::generateCode($sourceCode, (int) $req->request_type_id),
             'description'    => mb_substr(strtoupper('BIAYA ' . $t->ticket_number . ' - ' . ($t->site?->sitename ?? '') . ' - ' . $req->description), 0, 255),
             'is_nob'         => $plan->isNob($total),
             'nob_amount'     => $plan->nobOverage($total),

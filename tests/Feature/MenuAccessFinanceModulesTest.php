@@ -38,25 +38,28 @@ class MenuAccessFinanceModulesTest extends TestCase
     public function test_halaman_cost_register_mengikuti_centang_menu(): void
     {
         $approver = $this->userWithRole('approver');
-        $this->actingAs($approver)->get('/cost-register')->assertForbidden();
+        $this->actingAs($approver)->get('/expense')->assertForbidden();
 
         $this->giveMenuAccess($this->role('approver'), 'cost-register');
-        $this->actingAs($approver->fresh())->get('/cost-register')->assertOk();
+        $this->actingAs($approver->fresh())->get('/expense')->assertOk();
     }
 
     public function test_menu_cost_register_tidak_membuka_aksi_tulis_untuk_role_non_finance(): void
     {
         $this->giveMenuAccess($this->role('approver'), 'cost-register');
 
-        $this->actingAs($this->userWithRole('approver'))->get('/cost-register/create')->assertForbidden();
+        $this->actingAs($this->userWithRole('approver'))->get('/expense/create')->assertForbidden();
     }
 
-    public function test_finance_tanpa_centang_menu_tidak_bisa_membuat_cost_register(): void
+    // Expense (2026-11-10): pembuat hanya Finance Manager; role finance tetap ditolak walau menu dicentang.
+    // (finance_manager sudah diberi menu cost-register oleh migrasi 2026_11_09_000100.)
+    public function test_hanya_finance_manager_yang_bisa_membuat_expense(): void
     {
-        $this->actingAs($this->userWithRole('finance'))->get('/cost-register/create')->assertForbidden();
+        $this->giveMenuAccess($this->role('finance_manager'), 'cost-register');
+        $this->actingAs($this->userWithRole('finance_manager'))->get('/expense/create')->assertOk();
 
         $this->giveMenuAccess($this->role('finance'), 'cost-register');
-        $this->actingAs($this->userWithRole('finance'))->get('/cost-register/create')->assertOk();
+        $this->actingAs($this->userWithRole('finance'))->get('/expense/create')->assertForbidden();
     }
 
     public function test_cashflow_dan_cash_receipt_mengikuti_centang_menu(): void

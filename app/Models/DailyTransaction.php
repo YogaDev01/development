@@ -180,7 +180,7 @@ class DailyTransaction extends Model
         // Nilainya diambil lewat DailyTransactionItem::sourceAmount() supaya
         // tidak ada penjumlahan yang diam-diam melewatkan salah satu jenis.
         return $this->includedItems()
-            ->with(['budgetRequest', 'costRegister'])
+            ->with(['budgetRequest', 'costRegister', 'secondPayment', 'expenseSecondPayment'])
             ->get()
             ->sum(fn ($item) => $item->sourceAmount());
     }

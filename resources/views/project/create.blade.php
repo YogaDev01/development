@@ -225,7 +225,10 @@
                                            class="form-control text-right inp-money @error('fixed_cost') is-invalid @enderror"
                                            value="{{ old('fixed_cost') }}" placeholder="0" autocomplete="off">
                                 </div>
-                                <small class="text-muted">Nominal manual, terpisah dari modul Cost Register.</small>
+                                <small class="text-muted">Nominal manual. Kolom Overhead / Fixed Cost pada daftar PO
+                                    dan laporan = nominal ini <strong>ditambah</strong> biaya dari modul Expense yang
+                                    dibebankan ke PO ini — jangan isi ulang di sini biaya yang sudah dicatat lewat
+                                    Expense (akan terhitung dua kali).</small>
                                 @error('fixed_cost')<small class="text-danger d-block">{{ $message }}</small>@enderror
                             </div>
 

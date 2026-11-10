@@ -576,8 +576,10 @@ class ProjectController extends Controller
         foreach ($projects as $p) {
             $variable = $p->variableCostTotal();
             $payment  = $p->paymentTotal();
-            $overhead = (int) ($p->overhead ?? 0);
-            $fixed    = (int) ($p->fixed_cost ?? 0);
+            // Satu sumber (kolom manual + Cost Register lama + Expense) — lihat
+            // Project::overheadCostTotal()/fixedCostTotal().
+            $overhead = $p->overheadCostTotal();
+            $fixed    = $p->fixedCostTotal();
             $gross    = $payment - $variable;
             $net      = $gross - $overhead - $fixed;
 
@@ -971,10 +973,19 @@ class ProjectController extends Controller
 
         $totalRequest = (int) $costRequests->sum('amount');
         $totalRefund  = (int) $costRequests->sum('refund_calc');
-        $variableCost = $totalRequest - $totalRefund;
+        /*
+        | Variable Cost = Cost Request yang sudah cair (request - refund) DITAMBAH
+        | Expense berkategori Variable Cost yang dibebankan ke PO ini. Sebelumnya
+        | bagian Expense terlewat di sini, sehingga modal ini menampilkan angka
+        | yang lebih kecil daripada kolom "Variable Cost" di daftar PO
+        | (Project::variableCostTotal()) untuk PO yang sama.
+        */
+        $expenseVariable = $project->expenseCostByCategory()['Variable Cost'];
+        $variableCost = $totalRequest - $totalRefund + $expenseVariable;
         $paymentTotal = $project->paymentTotal();
-        $overhead     = (int) ($project->overhead ?? 0);
-        $fixedCost    = (int) ($project->fixed_cost ?? 0);
+        // Satu sumber: kolom manual + Cost Register lama + Expense.
+        $overhead     = $project->overheadCostTotal();
+        $fixedCost    = $project->fixedCostTotal();
         $totalCost    = $variableCost + $overhead + $fixedCost;
         $grossProfit  = $paymentTotal - $variableCost;
         $netProfit    = $grossProfit - $overhead - $fixedCost;
@@ -1248,6 +1259,10 @@ class ProjectController extends Controller
                 'total_request_formatted'=> $rp($totalRequest),
                 'total_refund'           => $totalRefund,
                 'total_refund_formatted' => $rp($totalRefund),
+                // Bagian Expense ditampilkan terpisah supaya Total Request - Refund
+                // + Expense = Variable Cost benar-benar cocok di layar.
+                'expense_variable'           => $expenseVariable,
+                'expense_variable_formatted' => $rp($expenseVariable),
                 'variable_cost'          => $variableCost,
                 'variable_cost_formatted'=> $rp($variableCost),
                 'overhead'               => $overhead,

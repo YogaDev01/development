@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\BudgetRequest;
+use App\Models\CostRegister;
 use App\Models\DeliveryNote;
 use App\Models\Invoice;
 use App\Support\DocumentSequence;
@@ -122,5 +123,104 @@ class DocumentNumberingTest extends TestCase
         $this->assertNotSame($sj1, $sj2);
         $this->assertStringStartsWith('SJ-0001/', $sj1);
         $this->assertStringStartsWith('SJ-0002/', $sj2);
+    }
+
+    public function test_prefix_kode_cost_request_mengikuti_tipe_request(): void
+    {
+        $body = now()->format('m') . now()->format('y') . '0001';
+
+        $harapan = [
+            'Cash Advance'  => 'CA',
+            'Payment'       => 'PA',
+            'Pettycash'     => 'PC',
+            'Purchase'      => 'PR',
+            'Reimbursement' => 'RB',
+            'Tipe Lain'     => 'CR',
+        ];
+
+        // Nomor urut dipakai bersama semua tipe: 0001, 0002, ... tanpa kembar.
+        $urut = 0;
+        foreach ($harapan as $nama => $prefix) {
+            $urut++;
+            $kode = BudgetRequest::generateCode('0001', $this->makeRequestType($nama)->id);
+            $this->assertSame($prefix . '-' . $body . str_pad((string) $urut, 4, '0', STR_PAD_LEFT), $kode);
+        }
+    }
+
+    public function test_nomor_urut_bersambung_dari_kode_cr_lama(): void
+    {
+        $body = now()->format('m') . now()->format('y') . '0001';
+        $this->makeCostRequest(['code' => 'CR-' . $body . '0007']);
+
+        $kode = BudgetRequest::generateCode('0001', $this->makeRequestType('Payment')->id);
+
+        $this->assertSame('PA-' . $body . '0008', $kode);
+    }
+
+    /**
+     * Semaian penghitung harus memakai nomor TERTINGGI yang sudah terbit, bukan
+     * jumlah baris. Dengan kode yang tidak rapat (ada lompatan), COUNT(*) memberi
+     * nomor yang sudah dipakai — dan budget_request.code UNIK, jadi penyimpanan
+     * berikutnya gagal. Sekaligus menjaga: nomor tidak kembar walau baris
+     * sebelumnya belum disimpan (penghitung terkunci, bukan hitungan baris).
+     */
+    public function test_nomor_cr_tidak_kembar_walau_kode_lama_tidak_rapat(): void
+    {
+        $body = now()->format('m') . now()->format('y') . '0001';
+        $this->makeCostRequest(['code' => 'CR-' . $body . '0003']);
+        $this->makeCostRequest(['code' => 'PA-' . $body . '0009']);
+
+        $pa = $this->makeRequestType('Payment')->id;
+
+        // COUNT(*) = 2 -> 0003 (sudah terbit). MAX = 9 -> 0010.
+        $this->assertSame('PA-' . $body . '0010', BudgetRequest::generateCode('0001', $pa));
+        // Tanpa menyimpan baris apa pun di antaranya, nomor tetap maju.
+        $this->assertSame('PA-' . $body . '0011', BudgetRequest::generateCode('0001', $pa));
+        $this->assertSame('PA-' . $body . '0012', BudgetRequest::generateCode('0001', $pa));
+    }
+
+    /** Cermin aturan yang sama untuk nomor Expense (expense_no UNIK). */
+    public function test_nomor_expense_menyambung_dari_nomor_tertinggi(): void
+    {
+        $prefix = 'EXP-' . now()->format('ym') . '-';
+
+        // Satu nomor sudah terbit tanpa baris penghitung (mis. data hasil restore,
+        // atau nomor di bawahnya sudah dihapus — Expense DRAFT boleh dihapus).
+        CostRegister::create([
+            'expense_no' => $prefix . '0007',
+            'amount'     => 1_000,
+            'notes'      => 'uji',
+            'status'     => 'DRAFT',
+            'input_by'   => $this->userWithRole('finance_manager')->id,
+        ]);
+
+        // COUNT(*) = 1 -> 0002 (bentrok kalau 0002 pernah terbit). MAX = 7 -> 0008.
+        $this->assertSame($prefix . '0008', CostRegister::nextExpenseNo());
+        $this->assertSame($prefix . '0009', CostRegister::nextExpenseNo());
+    }
+
+    public function test_ganti_prefix_hanya_bagian_huruf(): void
+    {
+        $pa = $this->makeRequestType('Payment')->id;
+
+        $this->assertSame('PA-112601130060', BudgetRequest::codeWithTypePrefix('CA-112601130060', $pa));
+        $this->assertSame('PA-112601130060', BudgetRequest::codeWithTypePrefix('CR-112601130060', $pa));
+        // Format asing dibiarkan apa adanya.
+        $this->assertSame('CR-UJI-0001', BudgetRequest::codeWithTypePrefix('CR-UJI-0001', $pa));
+    }
+
+    public function test_prefix_dikunci_setelah_cr_pernah_diajukan(): void
+    {
+        // markSubmitted() menulis RequestStatusLog, dan request_status_logs.acted_by
+        // NOT NULL (migrasi 2026_06_06_190814) — jadi harus ada pelaku yang login,
+        // sama seperti seluruh jalur transisi status di controller.
+        $this->actingAs($this->userWithRole('manager'));
+
+        $cr = $this->makeCostRequest(['status' => 'DRAFT']);
+        $this->assertTrue($cr->codePrefixChangeable());
+
+        $cr->markSubmitted();
+        $cr->update(['status' => 'DRAFT']); // mis. setelah Revise
+        $this->assertFalse($cr->fresh()->codePrefixChangeable());
     }
 }

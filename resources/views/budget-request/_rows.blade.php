@@ -1,4 +1,4 @@
-{{-- Baris tabel Cash Advance ($mode='ca') & Cost Payment ($mode='cp'). Dimuat lewat BudgetRequestController::tab(). --}}
+{{-- Baris tabel gabungan semua tipe CR. Dimuat lewat BudgetRequestController::tab('all'). --}}
 @foreach($rows as $cr)
                             @php
                                 // NOB global: total pengajuan CR melebihi sisa Budget Plan -> deskripsi berwarna merah.
@@ -6,19 +6,26 @@
                                 $isNob = (bool) $cr->is_nob;
                                 // NOB sub-item: hanya salah satu baris rincian yang melebihi sisa sub-item budgetnya -> kuning.
                                 $isNobItem = !$isNob && $cr->details->contains(fn ($d) => $d->is_nob);
-                                // Settlement/Refund hanya ada di tab Cash Advance (Cost Payment tanpa settlement,
-                                // dan relasi realizations tidak di-eager-load di sana — jangan dihitung).
-                                $realisasi = $mode === 'ca' ? $cr->total_realization : 0;
+                                $isCa = $cr->isCashAdvance();
+                                // Settlement hanya ada pada Cash Advance (tipe lain tanpa baris realisasi -> 0).
+                                $realisasi = $isCa ? $cr->total_realization : 0;
                                 /* Refund baru nyata SETELAH settle. Sebelumnya kolom ini
                                    memakai selisih mentah (amount - realisasi), jadi CR yang
                                    belum disettle tampil "refund" sebesar nilai pengajuannya
                                    sendiri — angka yang tidak pernah benar. refundAmount()
-                                   sudah menjaga aturan itu di satu tempat. */
-                                $refund    = $mode === 'ca' ? $cr->refundAmount() : 0;
+                                   sudah menjaga aturan itu di satu tempat (non-CA -> 0). */
+                                $refund    = $cr->refundAmount();
                                 /* Expense Claim = kebalikan Refund: settlement lebih besar dari
                                    pengajuan, jadi masih ada kekurangan bayar yang ditagihkan balik.
                                    Aturan settle-nya sama dengan refund. */
-                                $claim     = $mode === 'ca' ? $cr->expenseClaimAmount() : 0;
+                                $claim     = $isCa ? $cr->expenseClaimAmount() : 0;
+                                // Cost = biaya yang diakui; sumber tunggal BudgetRequest::realizedCostValue().
+                                $cost      = $cr->realizedCostValue();
+                                // PIC & Beneficiary dilebur: nama PIC bila ada, kalau kosong/"-" pakai beneficiary.
+                                $picNama = trim((string) ($cr->beneficiary?->pic?->pic ?? ''));
+                                $picNama = ($picNama === '' || $picNama === '-') ? trim((string) ($cr->beneficiary?->nickname ?? '')) : $picNama;
+                                $picNama = $picNama === '-' ? '' : $picNama;
+                                $closeAt = $cr->second_paid_at ? \Illuminate\Support\Carbon::parse($cr->second_paid_at) : null;
                                 /* Bulk Approve/Reject: baris boleh dicentang bila status di tahap
                                    approval DAN peran efektif berwenang di tahap itu (STAGE_ROLES —
                                    sumber sama dengan tombol per baris & applyReviewApprove). */
@@ -28,13 +35,15 @@
                             <tr data-id="{{ $cr->id }}"
                                 data-status="{{ $cr->status }}"
                                 data-type="{{ $cr->type?->name ?? '' }}"
+                                {{-- 1 = Cash Advance (alur sampai Settlement); dipakai stepper dinamis. --}}
+                                data-ca="{{ $isCa ? '1' : '0' }}"
                                 data-pminternal="{{ strtoupper($cr->pm_internal_name) }}"
                                 data-po="{{ $cr->budgetPlan?->project ? '[' . $cr->budgetPlan->project->code . '] ' . $cr->budgetPlan->project->name : '' }}"
                                 data-beneficiary="{{ $cr->beneficiary?->nickname ?? '' }}"
-                                {{-- PIC = pemegang beneficiary-nya. Dipakai filter "PIC" dan
-                                     tautan dari kartu Active Cash Advance di halaman Summary,
-                                     yang mengelompokkan CA per PIC, bukan per beneficiary. --}}
-                                data-pic="{{ $cr->beneficiary?->pic?->pic ?? '' }}"
+                                {{-- PIC = nilai kolom PIC (PIC beneficiary, atau nama beneficiary bila
+                                     PIC kosong). Dipakai filter "PIC" dan tautan dari kartu Active Cash
+                                     Advance di halaman Summary, yang mengelompokkan CA per PIC. --}}
+                                data-pic="{{ $picNama }}"
                                 data-requestor="{{ $cr->applicant?->username ? strtoupper($cr->applicant->username) : '' }}"
                                 data-nob="{{ ($isNob || $isNobItem) ? '1' : '0' }}"
                                 data-amount="{{ (int) $cr->amount }}"
@@ -68,6 +77,10 @@
                                     </div>
                                 </td>
 
+                                <td class="text-nowrap" data-lbl="Tipe">
+                                    <x-tw.badge dot :tone="$isCa ? 'progress' : 'neutral'">{{ $cr->type?->name ?? '-' }}</x-tw.badge>
+                                </td>
+
                                 <td class="text-nowrap" data-order="{{ $cr->created_at->format('Y-m-d') }}" data-lbl="Tanggal">
                                     <span class="tw:text-data tw:tabular-nums tw:text-text-dim">{{ $cr->created_at->format('d/m/Y') }}</span>
                                 </td>
@@ -82,12 +95,8 @@
 
                                 <td data-lbl="PIC">
                                     <div class="tw:max-sm:text-right">
-                                        {{-- Satu nilai: PIC bila ada, kalau kosong/"-" pakai beneficiary. --}}
-                                        @php
-                                            $picNama = trim((string) ($cr->beneficiary?->pic?->pic ?? ''));
-                                            $picNama = ($picNama === '' || $picNama === '-') ? trim((string) ($cr->beneficiary?->nickname ?? '')) : $picNama;
-                                        @endphp
-                                        <span class="tw:block tw:text-data tw:leading-tight tw:text-text">{{ ($picNama === '' || $picNama === '-') ? '-' : $picNama }}</span>
+                                        {{-- Satu nilai: PIC bila ada, kalau kosong/"-" pakai beneficiary ($picNama di atas). --}}
+                                        <span class="tw:block tw:text-data tw:leading-tight tw:text-text">{{ $picNama === '' ? '-' : $picNama }}</span>
                                     </div>
                                 </td>
 
@@ -95,7 +104,6 @@
                                     <button type="button" class="cr-cell-link btn-detail-cr tw:tabular-nums" data-id="{{ $cr->id }}" data-tab="#crPaneDetails" title="Detail Request">{{ $cr->amount > 0 ? $cr->amount_formatted : '-' }}</button>
                                 </td>
 
-                                @if($mode === 'ca')
                                 <td class="text-right text-nowrap col-raw-realisasi" data-lbl="Settlement" data-raw="{{ $realisasi }}" data-order="{{ $realisasi }}">
                                     <button type="button" class="cr-cell-link btn-detail-cr tw:tabular-nums" data-id="{{ $cr->id }}" data-tab="#crPaneRealization" title="Detail Settlement">{{ $realisasi != 0 ? number_format($realisasi, 0, ',', '.') : '-' }}</button>
                                 </td>
@@ -110,7 +118,12 @@
                                     <button type="button" class="cr-cell-link btn-detail-cr tw:tabular-nums"
                                             data-id="{{ $cr->id }}" data-tab="#crPaneRealization" title="Detail Settlement">{{ $claim != 0 ? number_format($claim, 0, ',', '.') : '-' }}</button>
                                 </td>
-                                @endif
+
+                                <td class="text-right text-nowrap col-raw-cost" data-lbl="Cost" data-raw="{{ $cost }}" data-order="{{ $cost }}">
+                                    <button type="button" class="cr-cell-link btn-detail-cr tw:tabular-nums" data-id="{{ $cr->id }}"
+                                            data-tab="{{ $isCa ? '#crPaneRealization' : '#crPaneDetails' }}"
+                                            title="{{ $isCa ? 'Detail Settlement' : 'Detail Request' }}">{{ $cost > 0 ? number_format($cost, 0, ',', '.') : '-' }}</button>
+                                </td>
 
                                 <td class="text-nowrap" data-card="status">
                                     {{-- Label, keterangan, dan warna berasal dari App\Support\WorkflowStatus.
@@ -123,6 +136,10 @@
                                               data-tab="#crPaneLogs"
                                               role="button"
                                               tabindex="0" />
+                                </td>
+
+                                <td class="text-nowrap" data-order="{{ $closeAt?->format('Y-m-d') ?? '' }}" data-lbl="Close Date">
+                                    <span class="tw:text-data tw:tabular-nums {{ $closeAt ? 'tw:text-text-dim' : 'tw:text-text-faint' }}">{{ $closeAt?->format('d/m/Y') ?? '-' }}</span>
                                 </td>
 
                                 <td class="text-center action-column">

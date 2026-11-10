@@ -17,7 +17,8 @@ chain in its controller, with history in a per-module log table.
 
 ## Bulk Approve/Reject dari index Cost Request (tahap pengajuan)
 
-- Tab Cash Advance dan Cost Payment (bukan Database) punya kolom checkbox untuk
+- Tabel index CR (satu tabel gabungan semua tipe sejak 10 Nov 2026; dulu tab
+  Cash Advance dan Cost Payment, bukan Database) punya kolom checkbox untuk
   peran efektif (termasuk View As) yang ada di `BudgetRequest::STAGE_ROLES` atau
   superadmin. Settlement **tidak** ikut bulk.
 - Endpoint yang dipakai sama dengan section Review Todo List:

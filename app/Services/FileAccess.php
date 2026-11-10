@@ -106,6 +106,9 @@ class FileAccess
             */
             'daily_transaction_attachments'    => $this->allowsMenu('finance-daily-transaction'),
             'cost_register_attachments'        => $this->allowsMenu('finance-daily-transaction'),
+            // Bukti realisasi Expense Cash Advance (Fase 2): dibuka dari halaman Expense
+            // (Finance Manager & CEO) maupun dari batch Treasury.
+            'cost_register_settlement_attachments' => $this->allowsMenu('finance-daily-transaction') || $this->allowsMenu('cost-register'),
             'customer_attachments'             => $this->allowsMenu('customer'),
             'site_documents'                   => $this->allowsMenu('site'),
             'delivery_note_evidence'           => $this->allowsMenu('delivery-note'),

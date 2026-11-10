@@ -35,6 +35,7 @@ class TodoListFinanceQueueTest extends TestCase
             'project_id'     => $this->makeProject()->id,
             'type'           => 'OVERHEAD',
             'amount'         => 500_000,
+            'notes'          => 'Dasar alokasi uji',
             'beneficiary_id' => $this->makeBeneficiary()->id,
             'status'         => $status,
             'input_by'       => $this->userWithRole('finance')->id,
@@ -103,7 +104,7 @@ class TodoListFinanceQueueTest extends TestCase
         $this->assertNotContains('po-closing', $this->keyAntrean($this->userWithRole('approver')));
     }
 
-    public function test_approver_bisa_approve_dan_kembalikan_cost_register_dari_todo_list(): void
+    public function test_approver_bisa_approve_dan_reject_expense_dari_todo_list(): void
     {
         $approver = $this->userWithRole('approver');
         $this->giveMenuAccess($approver->role, 'todo-list');
@@ -113,23 +114,23 @@ class TodoListFinanceQueueTest extends TestCase
         $this->actingAs($approver)->get(route('todo-list.index'))
             ->assertOk()
             ->assertSee('td-reg-approve', false)
-            ->assertSee('td-reg-revise', false);
+            ->assertSee('td-reg-reject', false);
 
         $this->actingAs($approver)->from(route('todo-list.index'))
             ->post(route('cost-register.approve', $setuju->id), ['notes' => ''])
             ->assertRedirect(route('todo-list.index'));
         $this->assertSame('APPROVED', $setuju->fresh()->status);
 
-        // Alasan wajib saat dikembalikan.
+        // Alasan wajib saat ditolak (Fase 3: CEO Reject menggantikan 'kembalikan ke Draft').
         $this->actingAs($approver)->from(route('todo-list.index'))
-            ->post(route('cost-register.revise', $kembali->id), ['notes' => ''])
+            ->post(route('cost-register.reject', $kembali->id), ['notes' => ''])
             ->assertSessionHasErrors('notes');
         $this->assertSame('VERIFIED', $kembali->fresh()->status);
 
         $this->actingAs($approver)->from(route('todo-list.index'))
-            ->post(route('cost-register.revise', $kembali->id), ['notes' => 'Nominal belum sesuai'])
+            ->post(route('cost-register.reject', $kembali->id), ['notes' => 'Nominal belum sesuai'])
             ->assertRedirect(route('todo-list.index'));
-        $this->assertSame('DRAFT', $kembali->fresh()->status);
+        $this->assertSame('REJECTED', $kembali->fresh()->status);
 
         $this->assertNotContains('reg-approve', $this->keyAntrean($approver));
     }

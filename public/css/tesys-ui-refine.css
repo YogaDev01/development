@@ -1106,7 +1106,7 @@ body.tesys-ui :is(.cr-pane .cr-tbl, .ts-index .ts-idx-tbl) tbody tr[data-id] { c
     body.tesys-ui .cr-pane .cr-tbl th.cr-col-check  { width: 40px !important; }
     body.tesys-ui .cr-pane .cr-tbl th.cr-col-code   { width: 175px !important; }
     body.tesys-ui .cr-pane .cr-tbl th.cr-col-desc   { width: 400px !important; }
-    body.tesys-ui .cr-pane .cr-tbl th[data-col="jenis"]     { width: 125px !important; }
+    body.tesys-ui .cr-pane .cr-tbl th[data-col="type"]      { width: 125px !important; }
     body.tesys-ui .cr-pane .cr-tbl th[data-col="tanggal"]   { width: 105px !important; }
     body.tesys-ui .cr-pane .cr-tbl th[data-col="paid_at"]   { width: 125px !important; }
     body.tesys-ui .cr-pane .cr-tbl th[data-col="pengaju"]   { width: 140px !important; }

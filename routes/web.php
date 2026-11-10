@@ -1118,39 +1118,56 @@ Route::middleware('auth')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | FINANCE MANAGEMENT - COST REGISTER (Fixed Cost & Overhead manual)
+    | FINANCE MANAGEMENT - EXPENSE (dulu Cost Register; sejak 2026-11-10)
     |--------------------------------------------------------------------------
-    | Khusus Finance & Superadmin — nominal divalidasi lewat meeting +
-    | approval CEO di luar sistem, sistem ini cuma tempat mencatatnya.
+    | Biaya di luar Cost Request, tanpa budgeting. Hanya Finance Manager (input,
+    | edit/ajukan/batal/hapus Draft, revisi setelah Rejected) dan CEO/approver (approve,
+    | reject). Rincian bisa ke satu PO, PO terpilih, PO setahun, atau Cost Center. URL /expense; nama route tetap
+    | cost-register.* (dipakai Treasury, Todo List, Navigation, tests).
     */
 
     // Alur = Cost Payment (Non-CA): DRAFT -> VERIFIED ("Submitted") -> APPROVED -> QUEUED -> CLOSED.
     // Melihat daftar/detail/export + menulis catatan log: Menu Access 'cost-register'
     // (sejak 2026-11-09; dulu role tertulis superadmin,finance,finance_manager,approver).
     Route::middleware('menu:cost-register')->group(function () {
-        Route::get('cost-register', [CostRegisterController::class, 'index'])->name('cost-register.index');
-        Route::match(['get', 'post'], 'cost-register/export', [CostRegisterController::class, 'export'])->name('cost-register.export');
-        Route::get('cost-register/{id}/detail-json', [CostRegisterController::class, 'showJson'])->name('cost-register.show-json');
-        Route::post('cost-register/{id}/log-note', [CostRegisterController::class, 'storeLogNote'])->middleware('throttle:30,1')->name('cost-register.log-note');
+        Route::get('expense', [CostRegisterController::class, 'index'])->name('cost-register.index');
+        Route::match(['get', 'post'], 'expense/export', [CostRegisterController::class, 'export'])->name('cost-register.export');
+        Route::get('expense/{id}/detail-json', [CostRegisterController::class, 'showJson'])->name('cost-register.show-json');
+        Route::post('expense/{id}/log-note', [CostRegisterController::class, 'storeLogNote'])->middleware('throttle:30,1')->name('cost-register.log-note');
     });
 
-    // Approve/revise TETAP dijaga role (bukan menu): aksi ini juga dipanggil dari
+    // Approve/reject TETAP dijaga role (bukan menu): aksi ini juga dipanggil dari
     // Todo List, jadi mencabut centang menu tidak boleh memutus approval.
-    // CostRegister::APPROVE_ROLES dicek lagi di controller.
-    Route::middleware('role:superadmin,finance,finance_manager,approver')->group(function () {
-        Route::post('cost-register/{id}/approve', [CostRegisterController::class, 'approve'])->name('cost-register.approve');
-        Route::post('cost-register/{id}/revise', [CostRegisterController::class, 'revise'])->name('cost-register.revise');
+    // = CostRegister::APPROVE_ROLES (dicek lagi di controller).
+    Route::middleware('role:superadmin,approver')->group(function () {
+        Route::post('expense/{id}/approve', [CostRegisterController::class, 'approve'])->name('cost-register.approve');
+        // Fase 3: CEO menolak (VERIFIED -> REJECTED); menggantikan 'kembalikan ke Draft'.
+        Route::post('expense/{id}/reject', [CostRegisterController::class, 'reject'])->name('cost-register.reject');
+        // Expense Cash Advance (Fase 2): CEO setujui / tolak realisasi.
+        Route::post('expense/{id}/settle-approve', [CostRegisterController::class, 'settleApprove'])->name('cost-register.settle-approve');
+        Route::post('expense/{id}/settle-reject', [CostRegisterController::class, 'settleReject'])->name('cost-register.settle-reject');
     });
 
-    // Menulis: perlu menu 'cost-register' DAN role finance group (CostRegister::SUBMIT_ROLES
-    // dicek lagi di controller untuk submit/cancel).
-    Route::middleware(['menu:cost-register', 'role:superadmin,finance,finance_manager'])->group(function () {
-        Route::get('cost-register/create', [CostRegisterController::class, 'create'])->name('cost-register.create');
-        Route::post('cost-register', [CostRegisterController::class, 'store'])->name('cost-register.store');
-        Route::delete('cost-register/{id}', [CostRegisterController::class, 'destroy'])->name('cost-register.destroy');
-        Route::post('cost-register/{id}/submit', [CostRegisterController::class, 'submit'])->name('cost-register.submit');
-        Route::post('cost-register/{id}/cancel', [CostRegisterController::class, 'cancel'])->name('cost-register.cancel');
+    // Menulis: perlu menu 'cost-register' DAN role = CostRegister::SUBMIT_ROLES
+    // (dicek lagi di controller). Role finance dicabut sejak 2026-11-10.
+    Route::middleware(['menu:cost-register', 'role:superadmin,finance_manager'])->group(function () {
+        Route::get('expense/create', [CostRegisterController::class, 'create'])->name('cost-register.create');
+        Route::post('expense', [CostRegisterController::class, 'store'])->name('cost-register.store');
+        // Fase 3: edit Draft, dan revisi Rejected -> Draft.
+        Route::get('expense/{id}/edit', [CostRegisterController::class, 'edit'])->name('cost-register.edit');
+        Route::put('expense/{id}', [CostRegisterController::class, 'update'])->name('cost-register.update');
+        Route::post('expense/{id}/reopen', [CostRegisterController::class, 'reopen'])->name('cost-register.reopen');
+        Route::delete('expense/{id}', [CostRegisterController::class, 'destroy'])->name('cost-register.destroy');
+        Route::post('expense/{id}/submit', [CostRegisterController::class, 'submit'])->name('cost-register.submit');
+        Route::post('expense/{id}/cancel', [CostRegisterController::class, 'cancel'])->name('cost-register.cancel');
+        // Expense Cash Advance (Fase 2): Finance Manager input realisasi (= CostRegister::SETTLE_ROLES).
+        Route::get('expense/{id}/settle', [CostRegisterController::class, 'settleForm'])->name('cost-register.settle');
+        Route::post('expense/{id}/settle', [CostRegisterController::class, 'settleStore'])->name('cost-register.settle.store');
     });
+
+    // URL lama (bookmark, notifikasi lama) -> halaman Expense.
+    Route::get('cost-register', fn () => redirect('/expense', 301));
+    Route::get('cost-register/create', fn () => redirect('/expense/create', 301));
 
     /*
     |--------------------------------------------------------------------------
