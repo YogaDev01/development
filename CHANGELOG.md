@@ -4,6 +4,48 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [3.3.4] - 2026-11-10 — Modul Expense: Cash Advance, Settlement, Pembebanan Multi-Periode & Alokasi Biaya ke PO
+
+Cost Register menjadi Expense: biaya di luar Cost Request kini punya Cash Advance dengan settlement, pembebanan ke beberapa bulan, dan pembagian Fixed Cost / Overhead ke satu PO, seluruh PO satu tahun, beberapa PO terpilih, atau Cost Center. Biaya Expense baru masuk hitungan PO setelah dananya benar-benar keluar lewat Treasury, dan Overhead / Fixed Cost PO kini memakai satu angka yang sama di seluruh halaman.
+
+### Baru
+- Modul Expense (dulu Cost Register) di Cost Management: Finance Manager menginput & mengajukan, CEO menyetujui atau menolak. Nomor dokumen EXP-YYMM-0001.
+- Tiap rincian Expense memilih Akun — kategori biaya (Variable Cost / Fixed Cost / Overhead) mengikuti akun tersebut — dan tujuan pembebanannya sendiri, jadi satu Expense bisa dibagi ke beberapa PO sekaligus.
+- Pembebanan Fixed Cost / Overhead: satu PO, seluruh PO yang dibuat pada satu tahun, beberapa PO terpilih (keduanya dibagi proporsional nilai PO), atau Cost Center. Variable Cost wajib ke satu PO.
+- Expense Cash Advance: setelah dibayar Treasury, Finance Manager mengisi realisasi beserta bukti; CEO menyetujui atau menolak. Kelebihan dicatat sebagai refund, kekurangan dibayar lewat Second Payment di batch Treasury.
+- Nilai Expense bisa dibebankan ke beberapa bulan — bagi rata atau bagi manual; saat settlement Cash Advance disetujui, pembagian per bulan ikut disesuaikan ke nilai realisasi.
+- Expense yang ditolak CEO berstatus Rejected: Finance Manager memilih Revisi (kembali ke Draft untuk diperbaiki dan diajukan ulang) atau Batalkan.
+- Todo List: antrean Expense — menunggu approval, masukkan ke batch, input settlement, approval settlement, dan Expense yang ditolak.
+- Halaman PIC & Beneficiary: menu Beneficiary dan Master PIC digabung menjadi satu halaman.
+- Teknisi site kini langsung menunjuk akun user ber-role technician dari team yang melayani customer site itu, tidak lagi wajib lewat Master PIC (migrasi 2026_11_09_000300, termasuk pemindahan data teknisi lama).
+
+### Berubah
+- Biaya Expense baru masuk hitungan biaya PO HANYA setelah dananya keluar lewat Treasury (Paid untuk Cash Advance, Closed untuk selainnya). Expense yang masih Draft, Submitted, Approved, Process, Rejected, atau Cancelled belum menambah biaya PO mana pun.
+- Overhead & Fixed Cost PO kini satu angka di semua halaman — Daftar PO, Export PO, modal tab Cost, Finance Summary, dan Laporan PO — yaitu nominal manual di form PO DITAMBAH biaya dari modul Expense. Karena dijumlahkan, biaya yang sudah dicatat lewat Expense jangan diisi ulang di form PO.
+- Modal tab Cost pada PO kini ikut menghitung Expense berkategori Variable Cost, sehingga angkanya sama dengan kolom Variable Cost di daftar PO.
+- Lampiran pengajuan Expense bisa dibuka pemegang menu Expense, tidak lagi hanya pemegang menu Treasury — sebelumnya tautan lampirannya terlihat tetapi ditolak saat dibuka.
+- Pengajuan biaya Trouble Ticket: pilihan Sub Item dikelompokkan per akun COA dan bisa dicari; kolom Harga / Qty / Total dirampingkan dan deskripsi panjang diisi lewat pop-up.
+- Cash Advance dari Trouble Ticket: beneficiary terisi otomatis dari Beneficiary Internal milik PIC yang terhubung ke akun teknisi. Bila teknisi belum punya PIC atau beneficiary, jenis Cash Advance dinonaktifkan.
+
+### Perbaikan
+- Penomoran dokumen Cost Request dan Expense melanjutkan dari nomor tertinggi yang sudah terbit, bukan dari jumlah baris. Sebelumnya, bila nomor yang ada tidak berurutan rapat, nomor berikutnya bisa mengulang nomor yang sudah dipakai dan penyimpanan gagal.
+
+### Migrasi
+- `2026_11_10_000100`, `2026_11_10_000200`, lalu `2026_11_10_000300` — jalankan **berurutan** sebelum kode diunggah.
+
+## [3.3.3] - 2026-11-09 — Akses Menu untuk Cost Register, Cashflow & Cash Receipt, Aksi Langsung dari Todo List, dan Master Site
+
+Halaman Cost Register, Cashflow, dan Cash Receipt kini diatur lewat Role > Menu Access seperti halaman lain. Sebagian persetujuan bisa dikerjakan langsung dari Todo List tanpa membuka halaman modulnya. Tipe Site, Source Power, dan Program Site menjadi master yang bisa diubah sendiri.
+
+### Baru
+- Master Tipe Site, Source Power, dan Program Site di Operation Master (migrasi 2026_11_09_000200). Isi awalnya sama persis dengan pilihan yang selama ini tertanam di aplikasi, dan menu barunya belum diberikan ke role mana pun.
+- Todo List: Verify / Revise / Approve Purchase Order, invoice, closing PO & Budget Plan, serta mengajukan batch Treasury yang masih Draft bisa dilakukan langsung dari Todo List.
+
+### Berubah
+- Halaman Cost Register, Cashflow, dan Cash Receipt diatur lewat Role > Menu Access (sebelumnya terkunci pada daftar role di dalam aplikasi). Approve dan Revise Cost Register tetap mengikuti role. Akses yang sedang berjalan tidak berubah saat pembaruan dipasang (migrasi 2026_11_09_000100).
+- Form Site: Tipe Site dan Source Power tidak lagi wajib diisi; Program Site tetap wajib.
+- Form Site: dropdown Teknisi dan Teknisi Backup baru aktif setelah Customer dipilih, dan hanya berisi user aktif ber-role technician yang menjadi anggota team aktif yang melayani customer tersebut.
+
 ## [3.3.2] - 2026-11-07 — Fondasi Keamanan & Hak Akses Terpusat, Konsol Keamanan, dan Syarat Cash Advance
 
 Jejak audit kini mencatat login gagal, perubahan hak akses, export, buka lampiran, dan akses yang ditolak; superadmin punya Konsol Keamanan untuk memantau dan mencabut sesi. Kewenangan dan batas data mulai dipusatkan dalam mode uji tanpa mengubah alur kerja. Cash Advance kini mensyaratkan PIC dengan Token terisi.
