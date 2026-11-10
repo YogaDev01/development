@@ -198,6 +198,7 @@ Migrasi baru (2–3), `app/Models/CostRegister*.php`, model baru settlement/seco
 - File bukti realisasi: folder `cost_register_settlement_attachments`, dibuka pemegang menu
   Treasury ATAU menu Expense (`FileAccess`). Lampiran pengajuan Expense (`cost_register_attachments`)
   tetap hanya menu Treasury — perilaku lama, potensi perbaikan terpisah.
+  **Sudah diperbaiki di §11 R3.**
 ## 10. Fase 3 — Rejected, multi-periode, alokasi Fixed Cost / Overhead (2026-11-10)
 
 Keputusan pengguna:
@@ -237,12 +238,22 @@ Batasan / perlu diketahui:
 
 ## 11. Revisi hasil audit alur Expense (2026-11-10)
 
-Audit alur Expense atas permintaan pengguna menemukan dua hal yang mengubah angka keuangan;
-keduanya disetujui pengguna dan dikerjakan di sini. Temuan lain dari audit yang sama
-(P3–P11: validasi status PO untuk target `po`, lampiran pengajuan tidak bisa dibuka pemegang
-menu Expense, periode multi-bulan belum dipakai, cancel saat masih di batch Draft, row lock
-submit/approve/cancel, file yatim saat hapus Draft, rentang tanggal default index, plafon
-nilai, refund CA) **belum dikerjakan** dan masih terbuka.
+Audit alur Expense atas permintaan pengguna menemukan dua hal yang mengubah angka keuangan
+(R1, R2); keduanya disetujui pengguna dan dikerjakan. Menyusul: R3 (akses lampiran pengajuan)
+dan perbaikan semaian penomoran dokumen.
+
+Temuan audit yang **belum dikerjakan** dan masih terbuka: P3 (rincian target `po` tidak
+memeriksa status PO), P5 (pembebanan multi-periode belum dipakai perhitungan apa pun),
+P6 (cancel saat Expense masih di batch Draft, dan `addItem` tidak mendukung Expense),
+P7 (`submit`/`approve`/`cancel` tanpa row lock), P8 (file lampiran yatim saat hapus Draft),
+P9 (rentang tanggal default index menyembunyikan Expense bulan lalu), P10 (tidak ada plafon
+nilai), P11 (refund kelebihan Cash Advance tanpa alur pengembalian kas).
+
+Di luar modul Expense, audit yang sama menemukan: semaian `COUNT(*)` pada 8 pemanggil
+`DocumentSequence::next()` lain (`CashFlow`, `CashReceiptHeader`, `DailyTransaction`,
+`DeliveryNote`, `Invoice` ×2, `TroubleTicket`, `SettlementReceiptService`,
+`TroubleTicketWorkflow`) dan ketidakcocokan `request_status_logs.acted_by` NOT NULL dengan
+`BudgetRequest::addLog()` yang menulis `$user?->id`. Keduanya **belum dikerjakan**.
 
 ### R1 — Biaya PO hanya setelah dananya keluar (menggantikan §10 baris "Status yang dihitung")
 
@@ -286,3 +297,30 @@ Finance Summary Executive, Laporan PO.
 dicatat lewat Expense **tidak boleh** diisi ulang di kolom manual Overhead / Fixed Cost pada
 form PO — akan terhitung dua kali. Net Profit di Laporan PO akan **turun** sebesar kolom
 manual yang sebelumnya tidak ikut dihitung di sana.
+### R3 — Lampiran pengajuan Expense bisa dibuka pemegang menu Expense
+
+Temuan P4. `App\Services\FileAccess` hanya mengizinkan folder
+`cost_register_attachments` untuk pemegang menu `finance-daily-transaction` (Treasury),
+padahal drawer Expense menampilkan daftar lampirannya kepada setiap pemegang menu
+`cost-register`. Akibatnya CEO/approver yang tidak dicentang menu Treasury melihat
+tautan lampiran yang menghasilkan 403 — "tombol terlihat tapi 403" yang dilarang
+CLAUDE.md §8 — dan menyetujui Expense tanpa bisa membuka buktinya.
+
+Aturannya kini sama dengan bukti realisasi di baris berikutnya:
+
+```php
+'cost_register_attachments' => $this->allowsMenu('finance-daily-transaction')
+    || $this->allowsMenu('cost-register'),
+```
+
+- Ini **bukan** aturan baru, melainkan penerapan prinsip yang sudah ditulis di blok
+  komentar `FileAccess`: keterlihatan berkas = keterlihatan halaman modulnya.
+- Yang melebar hanya pemegang menu `cost-register`; pengguna tanpa salah satu menu
+  tetap 403, dan bawaan `default => false` tidak disentuh.
+- Siapa yang punya menu `cost-register` tetap diatur lewat Role > Menu Access. Bila
+  role `finance` masih dicentang menu itu (lihat §8), ia kini juga bisa membuka
+  lampiran pengajuan — cabut centangnya bila tidak dikehendaki.
+
+Test: `tests/Feature/SecureFileAccessTest.php` — pemegang menu Expense bisa membuka
+lampiran pengajuan & bukti realisasi, pemegang menu Treasury tetap bisa, dan pengguna
+tanpa kedua menu ditolak.

@@ -105,7 +105,17 @@ class FileAccess
             | dengan "bisa membuka lampirannya".
             */
             'daily_transaction_attachments'    => $this->allowsMenu('finance-daily-transaction'),
-            'cost_register_attachments'        => $this->allowsMenu('finance-daily-transaction'),
+            /*
+            | Lampiran PENGAJUAN Expense. Menu 'cost-register' ikut diizinkan sejak
+            | audit alur Expense: drawer Expense menampilkan daftar lampirannya kepada
+            | setiap pemegang menu itu, tetapi berkasnya dulu hanya terbuka untuk menu
+            | Treasury - jadi CEO/approver yang tidak dicentang menu Treasury melihat
+            | tautan yang 403 dan menyetujui Expense tanpa bisa membuka buktinya.
+            | Itu persis "tombol terlihat tapi 403" yang dilarang CLAUDE.md Sec. 8, dan
+            | melanggar prinsip di blok atas: keterlihatan berkas = keterlihatan
+            | halamannya. Sama dengan bukti realisasi di baris berikutnya.
+            */
+            'cost_register_attachments'        => $this->allowsMenu('finance-daily-transaction') || $this->allowsMenu('cost-register'),
             // Bukti realisasi Expense Cash Advance (Fase 2): dibuka dari halaman Expense
             // (Finance Manager & CEO) maupun dari batch Treasury.
             'cost_register_settlement_attachments' => $this->allowsMenu('finance-daily-transaction') || $this->allowsMenu('cost-register'),

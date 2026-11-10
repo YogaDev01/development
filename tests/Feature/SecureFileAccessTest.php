@@ -201,6 +201,62 @@ class SecureFileAccessTest extends TestCase
             ->assertOk();
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Lampiran Expense (cost_register_attachments)
+    |--------------------------------------------------------------------------
+    | Keterlihatan berkas = keterlihatan halamannya. Drawer Expense menampilkan
+    | daftar lampiran ke setiap pemegang menu 'cost-register', jadi berkasnya
+    | harus bisa dibuka pemegang menu itu — bukan hanya menu Treasury. Dulu
+    | hanya menu Treasury, sehingga CEO/approver melihat tautan yang 403 dan
+    | menyetujui Expense tanpa bisa membuka buktinya.
+    */
+
+    public function test_pemegang_menu_expense_bisa_membuka_lampiran_pengajuan(): void
+    {
+        $this->putFile('cost_register_attachments/kuitansi.pdf');
+
+        // CEO/approver: hanya menu Expense, TANPA menu Treasury.
+        $this->giveMenuAccess($this->role('approver'), 'cost-register');
+
+        $this->actingAs($this->userWithRole('approver'))
+            ->get('/storage/cost_register_attachments/kuitansi.pdf')
+            ->assertOk();
+    }
+
+    public function test_pemegang_menu_treasury_tetap_bisa_membuka_lampiran_pengajuan(): void
+    {
+        $this->putFile('cost_register_attachments/kuitansi.pdf');
+
+        $this->giveMenuAccess($this->role('treasury'), 'finance-daily-transaction');
+
+        $this->actingAs($this->userWithRole('treasury'))
+            ->get('/storage/cost_register_attachments/kuitansi.pdf')
+            ->assertOk();
+    }
+
+    public function test_tanpa_menu_expense_maupun_treasury_lampiran_pengajuan_ditolak(): void
+    {
+        // Pengaman: perbaikan di atas melebarkan akses ke menu Expense saja,
+        // bukan ke semua pengguna yang login.
+        $this->putFile('cost_register_attachments/kuitansi.pdf');
+
+        $this->actingAs($this->userWithRole('guest'))
+            ->get('/storage/cost_register_attachments/kuitansi.pdf')
+            ->assertForbidden();
+    }
+
+    public function test_pemegang_menu_expense_bisa_membuka_bukti_realisasi(): void
+    {
+        $this->putFile('cost_register_settlement_attachments/nota-realisasi.jpg');
+
+        $this->giveMenuAccess($this->role('finance_manager'), 'cost-register');
+
+        $this->actingAs($this->userWithRole('finance_manager'))
+            ->get('/storage/cost_register_settlement_attachments/nota-realisasi.jpg')
+            ->assertOk();
+    }
+
     public function test_path_traversal_ditolak(): void
     {
         $this->actingAs($this->userWithRole('finance'))

@@ -77,7 +77,13 @@ Verified 2026-10-02 from `bootstrap/app.php`, `routes/web.php`,
    **cukup lewat menu** — tidak ada blokir data berbasis role; anggota team ber-Access Group
    tetap bisa membuka detail/lampiran PO lewat tautan langsung.
 5. Files: `SecureFileController` → `FileAccess` (reuses the same visibility
-   scopes; default = must be logged in).
+   scopes; **default = ditolak** — folder unggahan baru yang belum didaftarkan
+   di `FileAccess` langsung 403, bukan "cukup login"). Folder yang memakai
+   gerbang menu memakai menu modulnya sendiri, supaya "bisa membuka halamannya"
+   setara dengan "bisa membuka lampirannya" — termasuk lampiran pengajuan
+   Expense & bukti realisasinya (`cost_register_attachments`,
+   `cost_register_settlement_attachments`: menu `finance-daily-transaction`
+   ATAU `cost-register`, sejak audit alur Expense 2026-11-10).
 
 ## Who can do what (route gates)
 

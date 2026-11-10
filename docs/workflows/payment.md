@@ -41,6 +41,18 @@ Sejak 2026-11-10 (rencana `docs/plans/2026-11-10-expense-module.md`, Fase 1). Ta
 - Peran (`CostRegister::SUBMIT_ROLES` / `APPROVE_ROLES` = route `role:`):
   buat/ajukan/batal/hapus Draft = superadmin, finance_manager; approve/revisi =
   superadmin, approver. Role `finance` dicabut. Melihat halaman = Menu Access `cost-register`.
+- **Menu Access `cost-register` TIDAK menjaga aksi approval.** Centang "Expense" di modal
+  Menu Access menggerbang: halaman daftar, drawer detail, export, catatan log, lampiran
+  pengajuan & bukti realisasi (`FileAccess`), dan seluruh aksi Finance Manager. Aksi
+  **approve / reject / settle-approve / settle-reject** digerbang `role:superadmin,approver`
+  SAJA — disengaja, karena keempatnya juga dipanggil dari Todo List dan mencabut centang menu
+  tidak boleh memutus approval. Jadi approver yang centang Expense-nya dicabut tetap bisa
+  menyetujui/menolak lewat Todo List; mencabut kewenangan itu dilakukan dengan mencabut role
+  `approver` dari user-nya. Pola yang sama dengan Cost Request & Budget Plan. Dikonfirmasi
+  pemilik 2026-11-10: dibiarkan seperti ini. Centang per-aksi baru mungkin setelah cutover
+  `App\Support\Authorizer` (registry `config/permissions.php` sudah memuat
+  `cost-register.approve` / `.reject` / `.settle-approve` / `.settle-reject`; kini masih
+  mode shadow).
 - Tanpa budgeting. Rincian (`cost_register_details`): akun (semua kategori aktif), tujuan
   tepat satu dari `project_id` (PO) atau `cost_center_id`, `cost_category` = snapshot
   kategori akun. Nomor `EXP-YYMM-0001` dari `DocumentSequence` (`CostRegister::nextExpenseNo()`).
