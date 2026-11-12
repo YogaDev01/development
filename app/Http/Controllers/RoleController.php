@@ -134,6 +134,9 @@ class RoleController extends Controller
         $request->validate([
             'menu_item_ids'   => 'nullable|array',
             'menu_item_ids.*' => 'exists:menu_items,id',
+            // Matriks Kewenangan Aksi: hanya kelompok yang diubah, 1 = beri, 0 = cabut.
+            'perm_set'        => 'nullable|array',
+            'perm_set.*'      => 'in:0,1',
         ]);
 
         $sebelum = $role->menuItems()->pluck('menu_items.id')->map(fn ($id) => (int) $id)->sort()->values();
@@ -193,7 +196,16 @@ class RoleController extends Controller
             }
         }
 
-        UserActivityLog::record('user_access', 'update', 'Mengubah akses menu role ' . $role->name, $role, null, null, $changes);
+        // Kewenangan aksi (role_permissions) — tidak mengubah gerbang role: yang berlaku.
+        $set = collect($request->input('perm_set', []))
+            ->filter(fn ($v, $k) => array_key_exists($k, config('permission_groups', [])))
+            ->map(fn ($v) => $v === '1' || $v === 1)
+            ->all();
+        if ($set) {
+            $changes = array_merge($changes, \App\Support\Authorizer::applyGroupChanges((int) $role->id, $set));
+        }
+
+        UserActivityLog::record('user_access', 'update', 'Mengubah akses menu & kewenangan role ' . $role->name, $role, null, null, $changes);
 
         return redirect()->route('role.index')
             ->with('success', 'Menu access untuk role ' . $role->name . ' berhasil diupdate.');

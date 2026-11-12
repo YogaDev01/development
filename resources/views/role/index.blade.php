@@ -259,13 +259,28 @@
                         <div class="tab-pane fade" id="panePermission" role="tabpanel">
                             <div class="alert alert-warning mx-4 mt-3 mb-2" style="font-size:12px;">
                                 <i class="fas fa-info-circle mr-1" aria-hidden="true"></i>
-                                <strong>Belum berlaku — masa uji.</strong> Daftar ini adalah salinan aturan yang sekarang
-                                (baca-saja). Hak akses tetap ditentukan aturan lama sampai modulnya resmi dialihkan.
-                                <span id="permMode"></span>
+                                <strong>Belum berlaku — masa uji.</strong> Perubahan matriks disimpan ke daftar kewenangan
+                                dan tercatat di audit, tetapi hak akses sebenarnya tetap ditentukan aturan lama sampai
+                                modulnya resmi dialihkan. <span id="permMode"></span>
                             </div>
-                            <div class="px-4 pb-2">
-                                <input type="search" id="permSearch" class="form-control form-control-sm"
-                                       placeholder="Cari aksi atau modul..." aria-label="Cari kewenangan">
+                            <div class="px-4 pb-2 d-flex flex-wrap align-items-center" style="gap:6px;" id="permTools">
+                                <input type="search" id="permSearch" class="form-control form-control-sm" style="max-width:220px;"
+                                       placeholder="Cari modul..." aria-label="Cari modul">
+                                <select id="permCopyFrom" class="form-control form-control-sm" style="max-width:220px;" aria-label="Salin kewenangan dari role">
+                                    <option value="">Salin kewenangan dari…</option>
+                                    @foreach($roles as $r)
+                                        @if(strtolower($r->name) !== 'superadmin')
+                                            <option value="{{ $r->id }}">{{ $r->name }}</option>
+                                        @endif
+                                    @endforeach
+                                </select>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="permCopyApply">Terapkan</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm ml-auto" id="permAll"><i class="far fa-check-square mr-1"></i>Pilih Semua</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="permNone"><i class="far fa-square mr-1"></i>Kosongkan</button>
+                            </div>
+                            <div class="px-4 pb-2 text-muted" style="font-size:11.5px;">
+                                Klik judul kolom atau tanda ± untuk menyalakan sekaligus. Satu kelompok aksi (mis. “Kelola”) bisa tampil di
+                                beberapa kolom dan menyala bersamaan. Hak <strong>View</strong> halaman diatur lewat tab Menu Access.
                             </div>
                             <div class="px-4 pb-3" id="permSections"></div>
                         </div>
@@ -290,7 +305,7 @@
                         <i class="fas fa-times mr-1"></i> Batal
                     </button>
                     <button type="submit" class="btn btn-primary btn-sm" id="btnSimpan">
-                        <i class="fas fa-save mr-1"></i> Simpan Menu Access
+                        <i class="fas fa-save mr-1"></i> Simpan
                     </button>
                 </div>
 
@@ -351,6 +366,11 @@
 <link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
 
+.perm-mx th        { font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--text-dim); white-space:nowrap; }
+.perm-mx th a, .perm-mx td a { color:inherit; text-decoration:none; }
+.perm-mx td        { vertical-align:middle; }
+.perm-mx input[type=checkbox] { width:16px; height:16px; accent-color:var(--charcoal); cursor:pointer; }
+.perm-mx input[type=checkbox]:disabled { opacity:.35; cursor:not-allowed; }
 .card-header .btn  { border-radius:var(--radius-sm); font-weight:600; }
 .font-weight-600   { font-weight:600; }
 
@@ -646,50 +666,142 @@ $(function () {
     }
 
     /*
-     | Tab "Kewenangan Aksi" (Fase 3) — BACA-SAJA. Tidak ada input yang ikut
-     | terkirim bersama form Menu Access; jalur simpan kewenangan baru dibuka
-     | per modul setelah cutover (Fase 5).
+     | Tab "Kewenangan Aksi" — matriks modul × View/Create/Edit/Delete/Approve/Export.
+     | Sel dipetakan ke kelompok aksi lewat config/permission_matrix.php. Hanya kelompok yang
+     | DIUBAH yang dikirim (perm_set[kelompok]=1|0) bersama form; menyimpan tanpa menyentuh
+     | matriks tidak mengubah kewenangan apa pun.
      */
-    const PERM_STATUS = {
-        all:     ['success', 'Ya'],
-        partial: ['warning', 'Sebagian'],
-        none:    ['light border', 'Tidak'],
-    };
+    const PM_COLS = [['view', 'View'], ['create', 'Create'], ['edit', 'Edit'], ['delete', 'Delete'], ['approve', 'Approve'], ['export', 'Export']];
+    let pmGroups = {};   // kunci kelompok -> {label, orig, state}  (true | false | 'mixed')
+    let pmModules = [];
+    let pmLocked = false;
 
-    function renderPermissions(p) {
-        let modeTxt = p.mode === 'shadow' ? 'Mode uji aktif: selisih dicatat di Konsol Keamanan.' : 'Mode uji belum dinyalakan.';
-        $('#permMode').text(modeTxt);
+    function pmCellGroups(mod, col) {
+        return mod.groups.filter(function (g) { return (g.columns || []).indexOf(col) !== -1; });
+    }
+
+    function pmCellState(mod, col) {
+        let gs = pmCellGroups(mod, col);
+        if (!gs.length) return null;
+        let on = gs.filter(function (g) { return pmGroups[g.key].state === true; }).length;
+        let mixed = gs.some(function (g) { return pmGroups[g.key].state === 'mixed'; });
+        if (on === gs.length) return 'on';
+        return (on > 0 || mixed) ? 'mixed' : 'off';
+    }
+
+    function pmRefresh() {
+        $('#permSections .pm-cb').each(function () {
+            let mod = pmModules[+this.getAttribute('data-mod')];
+            let st = pmCellState(mod, this.getAttribute('data-col'));
+            this.checked = st === 'on';
+            this.indeterminate = st === 'mixed';
+        });
+    }
+
+    function pmSetCell(mi, col, on) {
+        pmCellGroups(pmModules[mi], col).forEach(function (g) { pmGroups[g.key].state = on; });
+    }
+
+    function renderPermissions(p, isSuper) {
+        $('#permMode').text(p.mode === 'shadow' ? 'Mode uji aktif: selisih dicatat di Konsol Keamanan.' : 'Mode uji belum dinyalakan.');
         $('#permSearch').val('');
+        pmLocked = !!isSuper;
+        pmGroups = {};
+        pmModules = [];
 
         if (!p.ready) {
             $('#permSections').html('<p class="text-muted text-center py-4 mb-0">Tabel kewenangan belum tersedia (migrasi belum dijalankan).</p>');
             return;
         }
+        if (pmLocked) {
+            $('#permSections').html('<p class="text-muted text-center py-4 mb-0">Superadmin selalu memiliki full access dan tidak dapat diubah.</p>');
+            return;
+        }
 
-        let html = '';
         (p.modules || []).forEach(function (mod) {
-            html += '<div class="menu-group perm-module" data-search="' + esc(mod.label.toLowerCase()) + '">' +
-                '<div class="menu-group-head"><span><i class="fas fa-cube mr-2" style="color:var(--accent);"></i>' + esc(mod.label) + '</span></div>' +
-                '<div class="menu-group-body">';
             mod.groups.forEach(function (g) {
-                let st = PERM_STATUS[g.status] || PERM_STATUS.none;
-                let rinci = g.items.map(function (it) {
-                    return '<li><i class="fas ' + (it.granted ? 'fa-check text-success' : 'fa-times text-muted') + ' mr-1" aria-hidden="true"></i>' +
-                        '<code style="font-size:11px;">' + esc(it.key) + '</code></li>';
-                }).join('');
-                html += '<div class="perm-group py-1" data-search="' + esc((mod.label + ' ' + g.label).toLowerCase()) + '" style="border-bottom:1px solid var(--border);">' +
-                    '<div class="d-flex align-items-center justify-content-between" style="gap:8px;">' +
-                        '<span style="font-size:12.5px;">' + esc(g.label) + '</span>' +
-                        '<span class="badge badge-' + st[0] + '" title="' + g.granted + ' dari ' + g.total + ' aksi">' + st[1] + '</span>' +
-                    '</div>' +
-                    '<details style="font-size:11.5px;"><summary class="text-muted">' + g.total + ' route</summary>' +
-                        '<ul class="list-unstyled mb-1 mt-1">' + rinci + '</ul></details>' +
-                '</div>';
+                let s = g.status === 'all' ? true : (g.status === 'partial' ? 'mixed' : false);
+                pmGroups[g.key] = { label: g.label, orig: s, state: s };
             });
-            html += '</div></div>';
+            if (mod.groups.some(function (g) { return (g.columns || []).length; })) pmModules.push(mod);
         });
 
-        $('#permSections').html(html || '<p class="text-muted text-center py-4 mb-0">Tidak ada data kewenangan.</p>');
+        let html = '<div class="table-responsive"><table class="table table-sm mb-0 perm-mx"><thead><tr><th>Modul</th>';
+        PM_COLS.forEach(function (c) {
+            html += '<th class="text-center"><a href="#" class="pm-col" data-col="' + c[0] + '">' + c[1] + '</a></th>';
+        });
+        html += '<th class="text-center">Baris</th></tr></thead><tbody>';
+        pmModules.forEach(function (mod, mi) {
+            html += '<tr class="pm-row" data-search="' + esc(mod.label.toLowerCase()) + '"><td class="font-weight-bold">' + esc(mod.label) + '</td>';
+            PM_COLS.forEach(function (c) {
+                let gs = pmCellGroups(mod, c[0]);
+                if (!gs.length) {
+                    html += '<td class="text-center"><input type="checkbox" disabled aria-label="Tidak tersedia"></td>';
+                } else {
+                    let tip = gs.map(function (g) { return g.label; }).join(' • ');
+                    html += '<td class="text-center"><input type="checkbox" class="pm-cb" data-mod="' + mi + '" data-col="' + c[0] +
+                        '" title="' + esc(tip) + '" aria-label="' + esc(mod.label + ' ' + c[1]) + '"></td>';
+                }
+            });
+            html += '<td class="text-center"><a href="#" class="pm-rowtg" data-mod="' + mi + '" title="Nyalakan/matikan seluruh baris">±</a></td></tr>';
+        });
+        html += '</tbody></table></div>';
+
+        $('#permSections').html(html);
+        pmRefresh();
+    }
+
+    // Sel, baris, dan kolom.
+    $(document).on('change', '#permSections .pm-cb', function () {
+        pmSetCell(+this.getAttribute('data-mod'), this.getAttribute('data-col'), this.checked);
+        pmRefresh();
+    });
+    $(document).on('click', '#permSections .pm-rowtg', function (e) {
+        e.preventDefault();
+        let mi = +this.getAttribute('data-mod'), mod = pmModules[mi];
+        let cols = PM_COLS.map(function (c) { return c[0]; }).filter(function (c) { return pmCellGroups(mod, c).length; });
+        let allOn = cols.every(function (c) { return pmCellState(mod, c) === 'on'; });
+        cols.forEach(function (c) { pmSetCell(mi, c, !allOn); });
+        pmRefresh();
+    });
+    $(document).on('click', '#permSections .pm-col', function (e) {
+        e.preventDefault();
+        let col = this.getAttribute('data-col');
+        let idx = pmModules.map(function (m, i) { return pmCellGroups(m, col).length ? i : -1; }).filter(function (i) { return i >= 0; });
+        let allOn = idx.every(function (i) { return pmCellState(pmModules[i], col) === 'on'; });
+        idx.forEach(function (i) { pmSetCell(i, col, !allOn); });
+        pmRefresh();
+    });
+    function pmAllGroups(on) {
+        pmModules.forEach(function (mod) {
+            mod.groups.forEach(function (g) { if ((g.columns || []).length) pmGroups[g.key].state = on; });
+        });
+        pmRefresh();
+    }
+    $('#permAll').on('click', function () { if (!pmLocked) pmAllGroups(true); });
+    $('#permNone').on('click', function () { if (!pmLocked) pmAllGroups(false); });
+    $('#permCopyApply').on('click', function () {
+        let src = $('#permCopyFrom').val();
+        if (!src || pmLocked) return;
+        $.get('{{ url("/role") }}/' + src + '/edit-data', function (d) {
+            ((d.permissions || {}).modules || []).forEach(function (mod) {
+                mod.groups.forEach(function (g) {
+                    if (pmGroups[g.key] && (g.columns || []).length) pmGroups[g.key].state = g.status === 'all';
+                });
+            });
+            pmRefresh();
+        });
+    });
+
+    // Sebelum kirim: hanya kelompok yang berubah.
+    function pmAppendChanges(form) {
+        $(form).find('.pm-hidden').remove();
+        Object.keys(pmGroups).forEach(function (k) {
+            let g = pmGroups[k];
+            if (g.state !== g.orig && g.state !== 'mixed') {
+                $(form).append('<input type="hidden" class="pm-hidden" name="perm_set[' + k + ']" value="' + (g.state ? 1 : 0) + '">');
+            }
+        });
     }
 
     /* Tab "Batas Data" (Fase 4) — BACA-SAJA, tanpa input yang ikut terkirim. */
@@ -732,11 +844,8 @@ $(function () {
 
     $('#permSearch').on('input', function () {
         let q = this.value.toLowerCase().trim();
-        $('#permSections .perm-group').each(function () {
+        $('#permSections .pm-row').each(function () {
             $(this).toggle(!q || this.getAttribute('data-search').indexOf(q) !== -1);
-        });
-        $('#permSections .perm-module').each(function () {
-            $(this).toggle($(this).find('.perm-group').filter(function () { return $(this).css('display') !== 'none'; }).length > 0);
         });
     });
 
@@ -769,7 +878,7 @@ $(function () {
             }
 
             $('#menuSections').html(html);
-            renderPermissions(d.permissions || {});
+            renderPermissions(d.permissions || {}, d.role.is_super);
             renderScopes(d.data_scopes || {});
             // Selalu buka di tab Menu Access, seperti sebelum ada tab Kewenangan.
             $('a[href="#paneMenu"]').tab('show');
@@ -805,6 +914,7 @@ $(function () {
         e.preventDefault();
         let btn = $('#btnSimpan');
         btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Menyimpan...');
+        pmAppendChanges(this);
 
         $.ajax({
             url: $(this).attr('action'),
@@ -820,7 +930,7 @@ $(function () {
                     text: xhr.responseJSON?.message ?? 'Terjadi kesalahan.', confirmButtonColor: '#9a3030' });
             },
             complete: function () {
-                btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Simpan Menu Access');
+                btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Simpan');
             }
         });
     });

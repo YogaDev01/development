@@ -121,6 +121,8 @@ final class Authorizer
             $perModul[$g['module']][] = [
                 'key'     => $gkey,
                 'label'   => $g['label'],
+                // Kunci kelompok mengandung titik: ambil dari array utuh, bukan notasi titik config().
+                'columns' => (config('permission_matrix', []))[$gkey] ?? [],
                 'status'  => $ada === 0 ? 'none' : ($ada === $total ? 'all' : 'partial'),
                 'granted' => $ada,
                 'total'   => $total,
@@ -135,6 +137,69 @@ final class Authorizer
         usort($modules, fn ($a, $b) => strcmp($a['label'], $b['label']));
 
         return ['ready' => true, 'mode' => $mode, 'modules' => $modules];
+    }
+
+    /**
+     * Simpan perubahan kewenangan per kelompok aksi dari matriks Role.
+     *
+     * $set = [kunci_kelompok => true|false]; hanya kelompok yang DIUBAH admin yang dikirim,
+     * jadi kelompok berstatus "sebagian" tidak tersentuh oleh simpan biasa. Hak yang dicabut
+     * ditandai revoked_at (baris dipertahankan, seperti syncSeed); memberi kembali hak yang
+     * pernah dicabut mengosongkan revoked_at. Hanya mengubah role_permissions — tidak
+     * menyentuh gerbang `role:` yang berlaku.
+     *
+     * @param  array<string,bool> $set
+     * @return list<array{label:string, from:string, to:string}> selisih untuk jejak audit
+     */
+    public static function applyGroupChanges(int $roleId, array $set): array
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('role_permissions')) {
+            return [];
+        }
+
+        $groups  = config('permission_groups', []);
+        $modules = config('permissions.modules', []);
+        $changes = [];
+
+        DB::transaction(function () use ($roleId, $set, $groups, $modules, &$changes) {
+            foreach ($set as $gkey => $on) {
+                if (! isset($groups[$gkey])) {
+                    continue;
+                }
+
+                $keys     = $groups[$gkey]['permissions'];
+                $existing = DB::table('role_permissions')->where('role_id', $roleId)
+                    ->whereIn('permission_key', $keys)->get()->keyBy('permission_key');
+                $diubah = 0;
+
+                foreach ($keys as $k) {
+                    $row    = $existing->get($k);
+                    $aktif  = $row && $row->revoked_at === null;
+
+                    if ($on && ! $aktif) {
+                        if ($row) {
+                            DB::table('role_permissions')->where('id', $row->id)->update(['revoked_at' => null]);
+                        } else {
+                            DB::table('role_permissions')->insert(['role_id' => $roleId, 'permission_key' => $k, 'created_at' => now()]);
+                        }
+                        $diubah++;
+                    } elseif (! $on && $aktif) {
+                        DB::table('role_permissions')->where('id', $row->id)->update(['revoked_at' => now()]);
+                        $diubah++;
+                    }
+                }
+
+                if ($diubah) {
+                    $changes[] = [
+                        'label' => ($on ? 'Kewenangan diberikan' : 'Kewenangan dicabut') . ': ' . ($modules[$groups[$gkey]['module']] ?? $groups[$gkey]['module']),
+                        'from'  => $on ? '-' : $groups[$gkey]['label'],
+                        'to'    => $on ? $groups[$gkey]['label'] : '-',
+                    ];
+                }
+            }
+        });
+
+        return $changes;
     }
 
     /** Kunci permission milik satu role, dimuat sekali per request. */

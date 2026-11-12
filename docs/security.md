@@ -184,3 +184,20 @@ bypass — superadmin passes because it is listed in each route gate; only
    a reversal of received money. Logged per `docs/DEPLOYMENT.md`, but scope
    Needs confirmation.
 8. Public export API bypasses Access Group scoping by design.
+
+## Konsol Keamanan — tab Preview Akses & Temuan (baca-saja)
+
+Ditambahkan di `/security` (superadmin, tanpa route baru): **Preview Akses** menelusuri satu user
+(status akun → role → registry → `role_permissions`) dengan pembanding gerbang `role:` lama, plus ringkasan
+akses per modul, batas data, dan menu role; **Temuan** menampilkan user aktif tanpa role, akun superadmin,
+dan akun tanpa login 90 hari. Tidak mengubah hak, workflow, atau gerbang apa pun. Tautan "Preview Akses"
+ada di menu aksi dan modal detail `/user`.
+
+## Matriks Kewenangan Aksi (modal Role)
+
+Tab "Kewenangan Aksi" kini berupa matriks modul × View/Create/Edit/Delete/Approve/Export dan **bisa disimpan**.
+Sel dipetakan ke kelompok aksi lewat `config/permission_matrix.php` (USULAN — perlu konfirmasi pemilik);
+kelompok yang tampil di beberapa kolom menyala bersamaan. Simpan mengirim hanya kelompok yang diubah
+(`perm_set[kelompok]=1|0`) ke `Authorizer::applyGroupChanges()` → `role_permissions` (cabut = `revoked_at`),
+tercatat di audit. **Belum menentukan akses nyata**: gerbang `role:` lama tetap berlaku sampai cutover per modul.
+Setelah upload, jalankan `config:clear` agar `permission_matrix.php` terbaca bila config di-cache.

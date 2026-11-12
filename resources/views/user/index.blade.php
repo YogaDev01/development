@@ -125,6 +125,13 @@
                                            title="Edit" aria-label="Edit {{ $user->name }}">
                                             <i class="fas fa-pen"></i>Edit
                                         </a>
+                                        @if(auth()->user()->isRealSuperadmin())
+                                        <a href="{{ route('security.index', ['tab' => 'preview', 'user_id' => $user->id]) }}"
+                                           class="dropdown-item"
+                                           title="Preview akses" aria-label="Preview akses {{ $user->name }}">
+                                            <i class="fas fa-search-plus"></i>Preview Akses
+                                        </a>
+                                        @endif
 
                                             <div class="dropdown-divider"></div>
 
@@ -314,6 +321,9 @@
                 @if(auth()->user()->isRealSuperadmin())
                 <a id="detailActivityLogBtn" href="#" class="btn btn-info btn-sm">
                     <i class="fas fa-stream mr-1"></i> Activity Log
+                </a>
+                <a id="detailAccessPreviewBtn" href="#" class="btn btn-outline-info btn-sm">
+                    <i class="fas fa-search-plus mr-1"></i> Preview Akses
                 </a>
                 @endif
                 <a id="detailEditBtnFooter" href="#" class="btn btn-warning btn-sm">
@@ -563,6 +573,7 @@ $(function () {
             $('#detailEditBtn').attr('href', editUrl);
             $('#detailEditBtnFooter').attr('href', editUrl);
             $('#detailActivityLogBtn').attr('href', '{{ url("/user") }}/' + id + '/activity-log');
+            $('#detailAccessPreviewBtn').attr('href', '{{ route("security.index", ["tab" => "preview"]) }}&user_id=' + id);
 
             /* TAB DETAIL */
             $('#infoName').text(d.name);

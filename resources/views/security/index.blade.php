@@ -63,6 +63,16 @@
                         <i class="fas fa-user-secret mr-1" aria-hidden="true"></i> Shadow Permission
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ $tab === 'preview' ? 'active' : '' }}" href="{{ route('security.index', ['tab' => 'preview']) }}">
+                        <i class="fas fa-search-plus mr-1" aria-hidden="true"></i> Preview Akses
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ $tab === 'findings' ? 'active' : '' }}" href="{{ route('security.index', ['tab' => 'findings']) }}">
+                        <i class="fas fa-exclamation-triangle mr-1" aria-hidden="true"></i> Temuan
+                    </a>
+                </li>
         </ul>
 
         <x-tw.card padding="sm">
@@ -250,6 +260,160 @@
                         </table>
                     </div>
                 @endif
+            @elseif($tab === 'preview')
+                {{-- PREVIEW AKSES (baca-saja) --}}
+                @php
+                    $registry = \App\Support\Authorizer::registry();
+                    $modLabel = config('permissions.modules', []);
+                    $byMod = [];
+                    foreach ($registry as $k => $def) { $byMod[$def['module']][$k] = $def['label']; }
+                    ksort($byMod);
+                    $selPerm = request('permission', '');
+                    $selUser = (int) request('user_id');
+                @endphp
+                <p class="text-muted" style="font-size:12px;">
+                    Telusuri hak akses seorang user lapis demi lapis, tanpa mengubah apa pun. Keputusan yang berlaku
+                    saat ini tetap gerbang <code>role:</code> lama; mesin permission ditampilkan sebagai pembanding.
+                </p>
+                <form method="GET" action="{{ route('security.index') }}" class="form-row align-items-end sec-filter mb-3">
+                    <input type="hidden" name="tab" value="preview">
+                    <div class="col-md-4 col-12 mb-2">
+                        <label class="sec-label" for="pvUser">User</label>
+                        <select name="user_id" id="pvUser" class="form-control form-control-sm" required>
+                            <option value="">Pilih user…</option>
+                            @foreach($users as $u)
+                                <option value="{{ $u->id }}" @selected($selUser === (int) $u->id)>{{ $u->name }} ({{ '@' . $u->username }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-5 col-12 mb-2">
+                        <label class="sec-label" for="pvPerm">Permission (opsional)</label>
+                        <select name="permission" id="pvPerm" class="form-control form-control-sm">
+                            <option value="">Ringkasan seluruh akses</option>
+                            @foreach($byMod as $mod => $items)
+                                <optgroup label="{{ $modLabel[$mod] ?? $mod }}">
+                                    @foreach($items as $k => $label)
+                                        <option value="{{ $k }}" @selected($selPerm === $k)>{{ $label }}</option>
+                                    @endforeach
+                                </optgroup>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-auto mb-2">
+                        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-play mr-1" aria-hidden="true"></i> Jalankan</button>
+                    </div>
+                </form>
+
+                @if(! $preview)
+                    <x-empty title="Pilih user" message="Pilih user untuk melihat akses efektifnya." icon="fas fa-search-plus" />
+                @else
+                    <div class="mb-3">
+                        <strong>{{ $preview['user']->name }}</strong>
+                        <span class="text-muted">{{ '@' . $preview['user']->username }}</span>
+                        <span class="badge badge-info ml-1">{{ $preview['role']?->name ?? 'Tanpa role' }}</span>
+                        <span class="badge badge-{{ $preview['user']->status === 'ACTIVE' ? 'success' : 'danger' }}">{{ $preview['user']->status }}</span>
+                    </div>
+
+                    @if($preview['perm'])
+                        @php $pp = $preview['perm']; @endphp
+                        <div class="alert alert-{{ $pp['engine'] ? 'success' : 'danger' }} py-2">
+                            <strong>Mesin permission: {{ $pp['engine'] ? 'DIIZINKAN' : 'DITOLAK' }}</strong> — {{ $pp['label'] }} <code>{{ $pp['key'] }}</code>
+                            @if($pp['legacy'] !== null)
+                                <div style="font-size:12px;">Gerbang lama untuk route ini: <strong>{{ $pp['legacy'] ? 'izinkan' : 'tolak' }}</strong> (inilah yang berlaku sekarang).</div>
+                            @else
+                                <div style="font-size:12px;">Route ini tidak ditemukan atau tidak punya gerbang <code>role:</code>.</div>
+                            @endif
+                            @if($pp['mismatch'])
+                                <div class="mt-1" style="font-size:12px;"><i class="fas fa-exclamation-triangle mr-1" aria-hidden="true"></i> Jawaban mesin baru berbeda dari gerbang lama — periksa parity sebelum cutover.</div>
+                            @endif
+                        </div>
+                        <ol class="list-unstyled mb-3">
+                            @foreach($pp['steps'] as $i => $st)
+                                <li class="d-flex mb-2" style="gap:10px;">
+                                    <span class="badge badge-{{ ['ok' => 'success', 'no' => 'danger', 'skip' => 'secondary'][$st['state']] }}" style="width:24px;height:24px;line-height:18px;border-radius:50%;">{{ $st['state'] === 'ok' ? '✓' : ($st['state'] === 'no' ? '✕' : $i + 1) }}</span>
+                                    <div>
+                                        <div class="font-weight-bold">{{ $st['title'] }}</div>
+                                        <small class="text-muted">{{ $st['state'] === 'skip' ? 'Tidak dievaluasi — lapis sebelumnya menolak.' : $st['detail'] }}</small>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ol>
+                    @endif
+
+                    @if($preview['role'])
+                        <h6 class="mt-3">Akses efektif per modul (mesin permission)</h6>
+                        @if(! $preview['ready'] || ! ($preview['groups']['ready'] ?? false))
+                            <x-empty title="Tabel permission belum ada" message="Migrasi role_permissions belum dijalankan di lingkungan ini." icon="fas fa-user-secret" />
+                        @else
+                            <div class="table-responsive">
+                                <table class="table table-bordered mb-3 ts-idx-tbl sec-tbl">
+                                    <thead class="bg-light"><tr><th>Modul</th><th>Kelompok aksi</th></tr></thead>
+                                    <tbody>
+                                    @foreach($preview['groups']['modules'] as $m)
+                                        <tr>
+                                            <td class="font-weight-bold" style="width:200px;">{{ $m['label'] }}</td>
+                                            <td>
+                                                @foreach($m['groups'] as $g)
+                                                    <span class="badge badge-{{ ['all' => 'success', 'partial' => 'warning', 'none' => 'light border'][$g['status']] }}" title="{{ $g['granted'] }}/{{ $g['total'] }}">{{ $g['label'] }}</span>
+                                                @endforeach
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endif
+
+                        <h6>Batas data (scope)</h6>
+                        @if(! ($preview['scopes']['ready'] ?? false))
+                            <p class="text-muted" style="font-size:12px;">Tabel role_data_scopes belum ada.</p>
+                        @else
+                            <div class="table-responsive">
+                                <table class="table table-bordered mb-3 ts-idx-tbl sec-tbl">
+                                    <thead class="bg-light"><tr><th>Modul</th><th>Dimensi</th><th>Batas</th></tr></thead>
+                                    <tbody>
+                                    @foreach($preview['scopes']['modules'] as $m)
+                                        @foreach($m['dimensions'] as $d)
+                                            <tr>
+                                                @if($loop->first)<td rowspan="{{ count($m['dimensions']) }}" class="font-weight-bold">{{ $m['label'] }}</td>@endif
+                                                <td>{{ $d['label'] }}</td>
+                                                <td><span class="badge badge-{{ $d['is_open'] ? 'warning' : 'primary' }}">{{ $d['text'] }}</span></td>
+                                            </tr>
+                                        @endforeach
+                                    @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endif
+
+                        <h6>Menu yang dipegang role ({{ count($preview['menus']) }})</h6>
+                        <div>
+                            @forelse($preview['menus'] as $mk)
+                                <span class="badge badge-light border">{{ $mk }}</span>
+                            @empty
+                                <span class="text-muted" style="font-size:12px;">Tidak ada menu (superadmin selalu punya semua).</span>
+                            @endforelse
+                        </div>
+                    @endif
+                @endif
+
+            @elseif($tab === 'findings')
+                {{-- TEMUAN (baca-saja) --}}
+                <p class="text-muted" style="font-size:12px;">Pemeriksaan postur akses. Tidak ada yang diubah otomatis; tiap temuan menuju user terkait.</p>
+                @forelse($findings as $f)
+                    <div class="alert alert-{{ $f['level'] === 'info' ? 'secondary' : $f['level'] }} py-2 d-flex justify-content-between align-items-center" style="gap:10px;">
+                        <div>
+                            <div class="font-weight-bold">{{ $f['title'] }}</div>
+                            <div style="font-size:12.5px;">{{ $f['detail'] }}</div>
+                        </div>
+                        @if($f['user_id'])
+                            <a class="btn btn-outline-secondary btn-sm text-nowrap" href="{{ route('security.index', ['tab' => 'preview', 'user_id' => $f['user_id']]) }}">Lihat akses</a>
+                        @endif
+                    </div>
+                @empty
+                    <x-empty title="Tidak ada temuan" message="Tidak ada masalah akses yang terdeteksi." icon="fas fa-check-circle" />
+                @endforelse
+
             @else
                 {{-- SHADOW PERMISSION (Fase 2) --}}
                 <p class="text-muted" style="font-size:12px;">

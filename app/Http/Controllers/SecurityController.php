@@ -6,7 +6,11 @@ use App\Models\User;
 use App\Models\UserActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Support\Authorizer;
+use App\Support\DataScope;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 /**
@@ -23,7 +27,7 @@ use Illuminate\Support\Str;
  */
 class SecurityController extends Controller
 {
-    private const TABS = ['audit', 'login', 'sessions', 'shadow'];
+    private const TABS = ['audit', 'login', 'sessions', 'shadow', 'preview', 'findings'];
 
     public function index(Request $request)
     {
@@ -35,6 +39,8 @@ class SecurityController extends Controller
         $logs     = null;
         $sessions = collect();
         $shadow   = null;
+        $preview  = null;
+        $findings = [];
 
         if ($tab === 'login') {
             $filters['module'] = 'auth';
@@ -44,6 +50,10 @@ class SecurityController extends Controller
             $sessions = $this->activeSessions();
         } elseif ($tab === 'shadow') {
             $shadow = $this->shadowReport();
+        } elseif ($tab === 'preview') {
+            $preview = $this->accessPreview((int) $request->query('user_id'), (string) $request->query('permission'));
+        } elseif ($tab === 'findings') {
+            $findings = $this->findings();
         } else {
             $logs = UserActivityLog::feedAll($filters)->appends($filters + ['tab' => $tab]);
         }
@@ -56,6 +66,8 @@ class SecurityController extends Controller
             'logs'            => $logs,
             'sessions'        => $sessions,
             'shadow'          => $shadow,
+            'preview'         => $preview,
+            'findings'        => $findings,
             'sessionsEnabled' => $this->usesDatabaseSessions(),
             'currentHash'     => hash('sha256', $request->session()->getId()),
             'hasDeviceColumn' => UserActivityLog::supportsSecurityColumns(),
@@ -245,6 +257,109 @@ class SecurityController extends Controller
             ->get();
 
         return $hasil;
+    }
+
+    /**
+     * Access Preview (baca-saja): menelusuri satu user (+ opsional satu permission)
+     * lapis demi lapis. Memakai role ASLI user (bukan View As) dan TIDAK mengubah apa pun.
+     *
+     * Keputusan yang berlaku saat ini tetap gerbang `role:` lama; mesin permission
+     * ditampilkan sebagai pembanding (mode shadow), bukan penentu.
+     */
+    private function accessPreview(int $userId, string $permission): ?array
+    {
+        $user = $userId ? User::with('role.menuItems')->find($userId) : null;
+        if (! $user) {
+            return null;
+        }
+
+        $role     = $user->role;
+        $roleName = $role ? strtolower(trim($role->name)) : null;
+        $siap     = Schema::hasTable('role_permissions');
+        $registry = Authorizer::registry();
+        $dipegang = ($role && $siap) ? array_flip(Authorizer::keysForRole((int) $role->getKey())) : [];
+
+        $out = [
+            'user'   => $user,
+            'role'   => $role,
+            'ready'  => $siap,
+            'menus'  => $role ? $role->menuItems->pluck('key')->all() : [],
+            'groups' => ($role && $siap) ? Authorizer::groupStatusForRole((int) $role->getKey()) : null,
+            'scopes' => $role ? DataScope::statusForRole((int) $role->getKey()) : null,
+            'perm'   => null,
+        ];
+
+        if ($permission === '') {
+            return $out;
+        }
+
+        $steps = [];
+        $ok    = true;
+        $add   = function (string $title, string $detail, bool $pass) use (&$steps, &$ok) {
+            $steps[] = ['title' => $title, 'detail' => $detail, 'state' => ! $ok ? 'skip' : ($pass ? 'ok' : 'no')];
+            if ($ok && ! $pass) {
+                $ok = false;
+            }
+        };
+
+        $add('Status akun', $user->status === 'ACTIVE' ? 'Akun aktif.' : 'Akun ' . $user->status . ' — semua akses ditolak.', $user->status === 'ACTIVE');
+        $add('Role', $role ? 'Role: ' . $role->name . '.' : 'User belum punya role — ditolak (default deny).', (bool) $role);
+        $add('Permission terdaftar', isset($registry[$permission]) ? 'Terdaftar: ' . $registry[$permission]['label'] . '.' : 'Permission tidak ada di registry — ditolak.', isset($registry[$permission]));
+
+        $engine = isset($dipegang[$permission]);
+        $add('Mesin permission (role_permissions)', $engine ? 'Role memegang permission ini.' : 'Role tidak memegang permission ini.', $engine);
+
+        // Gerbang lama untuk route yang sama (pembanding parity).
+        $legacy = null;
+        $route  = Route::getRoutes()->getByName($permission);
+        if ($route && $roleName) {
+            foreach ($route->gatherMiddleware() as $m) {
+                if (is_string($m) && str_starts_with($m, 'role:')) {
+                    $legacy = in_array($roleName, array_map(fn ($r) => strtolower(trim($r)), explode(',', substr($m, 5))), true);
+                    break;
+                }
+            }
+        }
+
+        $out['perm'] = [
+            'key'      => $permission,
+            'label'    => $registry[$permission]['label'] ?? $permission,
+            'steps'    => $steps,
+            'engine'   => $ok,
+            'legacy'   => $legacy,
+            'mismatch' => $legacy !== null && $user->status === 'ACTIVE' && $legacy !== $engine,
+        ];
+
+        return $out;
+    }
+
+    /** Temuan postur keamanan (baca-saja); tiap temuan menautkan ke user terkait. */
+    private function findings(): array
+    {
+        $out = [];
+
+        foreach (User::where('status', 'ACTIVE')->whereNull('role_id')->get(['id', 'name', 'username']) as $u) {
+            $out[] = ['level' => 'warning', 'title' => 'User aktif tanpa role', 'detail' => $u->name . ' (@' . $u->username . ') tidak punya role — tidak bisa mengakses modul apa pun.', 'user_id' => $u->id];
+        }
+
+        $sa = User::where('status', 'ACTIVE')
+            ->whereHas('role', fn ($q) => $q->whereRaw('LOWER(name) = ?', ['superadmin']))
+            ->get(['id', 'name', 'username']);
+        foreach ($sa as $u) {
+            $out[] = ['level' => 'info', 'title' => 'Akun superadmin aktif', 'detail' => $u->name . ' (@' . $u->username . ') memegang akses penuh. Tinjau berkala.', 'user_id' => $u->id];
+        }
+
+        $lama = User::where('status', 'ACTIVE')
+            ->where(fn ($q) => $q->whereNull('last_login_at')->orWhere('last_login_at', '<', now()->subDays(90)))
+            ->orderBy('name')->limit(50)->get(['id', 'name', 'username', 'last_login_at']);
+        foreach ($lama as $u) {
+            $out[] = ['level' => 'info', 'title' => 'Akun aktif tanpa login 90 hari', 'detail' => $u->name . ' (@' . $u->username . ') ' . ($u->last_login_at ? 'terakhir login ' . $u->last_login_at->format('d M Y') : 'belum tercatat login') . '.', 'user_id' => $u->id];
+        }
+
+        $urut = ['danger' => 0, 'warning' => 1, 'info' => 2];
+        usort($out, fn ($a, $b) => $urut[$a['level']] <=> $urut[$b['level']]);
+
+        return $out;
     }
 
     /** Angka ringkas di atas konsol. */
