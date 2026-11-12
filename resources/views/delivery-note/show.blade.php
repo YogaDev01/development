@@ -51,8 +51,51 @@
                     <i class="fas fa-check-double mr-1"></i> Tandai Diterima
                 </button>
                 @endif
+                @if(Auth::user()->hasRole(['superadmin']))
+                <button type="button" class="btn btn-outline-secondary btn-sm ml-auto" data-toggle="modal" data-target="#mdlSuperEditDn">
+                    <i class="fas fa-pen mr-1"></i> Edit (Superadmin)
+                </button>
+                @endif
             </div>
         </div>
+
+        @if(Auth::user()->hasRole(['superadmin']))
+        {{-- Edit Surat Jalan — Superadmin, status apa pun (DeliveryNoteController::superUpdate). --}}
+        <div class="modal fade" id="mdlSuperEditDn" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <form class="modal-content" method="POST" action="{{ route('delivery-note.super-update', $deliveryNote->id) }}">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="fas fa-pen mr-2"></i>Edit Surat Jalan {{ $deliveryNote->code }}</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-warning py-2" style="font-size:12px;">
+                            Daftar invoice dan tanggal pada invoice (kirim, terima, jatuh tempo aktual) tidak ikut berubah. Perubahan dicatat di log Surat Jalan.
+                        </div>
+                        <div class="form-group">
+                            <label class="small font-weight-bold">Tanggal kirim</label>
+                            <input type="datetime-local" name="sent_at" class="form-control form-control-sm" required value="{{ $deliveryNote->sent_at?->format('Y-m-d\TH:i') }}">
+                        </div>
+                        @if($deliveryNote->status === 'RECEIVED')
+                        <div class="form-group">
+                            <label class="small font-weight-bold">Tanggal terima</label>
+                            <input type="datetime-local" name="received_at" class="form-control form-control-sm" value="{{ $deliveryNote->received_at?->format('Y-m-d\TH:i') }}">
+                        </div>
+                        @endif
+                        <div class="form-group mb-0">
+                            <label class="small font-weight-bold">Catatan</label>
+                            <textarea name="notes" class="form-control form-control-sm" rows="3" maxlength="1000">{{ $deliveryNote->notes }}</textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save mr-1"></i> Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        @endif
 
         <div class="row">
 

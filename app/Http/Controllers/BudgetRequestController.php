@@ -1966,7 +1966,7 @@ class BudgetRequestController extends Controller
     {
         $cr = $this->findVisibleCr($id, ['details.account', 'details.attachments', 'attachments', 'budgetPlan.costCenter']);
 
-        if (!$cr->isEditable()) {
+        if (!$cr->isEditableBy(Auth::user())) {
             return redirect('/budget-request')
                 ->with('error', 'Cost Request hanya dapat diedit saat berstatus DRAFT.');
         }
@@ -2008,10 +2008,28 @@ class BudgetRequestController extends Controller
     {
         $cr = $this->findVisibleCr($id);
 
-        if (!$cr->isEditable()) {
+        if (!$cr->isEditableBy(Auth::user())) {
             return redirect('/budget-request')
                 ->with('error', 'Cost Request hanya dapat diedit saat berstatus DRAFT.');
         }
+        $editLanjut = ! $cr->isEditable();   // edit Superadmin di luar Draft
+
+        // Snapshot untuk rincian perubahan (nilai lama -> baru) di log CR.
+        $snapshot = function (BudgetRequest $x): array {
+            $x->loadMissing(['type:id,name', 'beneficiary:id,complete_name', 'cluster:id,name', 'budgetPlan:id,code']);
+            return [
+                'Tipe'        => (string) ($x->type->name ?? '-'),
+                'Budget Plan' => (string) ($x->budgetPlan->code ?? '-'),
+                'Cluster'     => (string) ($x->cluster->name ?? '-'),
+                'Beneficiary' => (string) ($x->beneficiary->complete_name ?? '-'),
+                'Deskripsi'   => (string) $x->description,
+                'Catatan'     => (string) ($x->notes ?? ''),
+                'Email'       => (string) ($x->email ?? ''),
+                'Jumlah item' => (string) $x->details()->count(),
+                'Total rincian' => number_format((int) $x->details()->sum('total'), 0, ',', '.'),
+            ];
+        };
+        $sebelum = $editLanjut ? $snapshot($cr) : [];
 
         // Cluster hanya wajib bila budget plan bersumber dari PROYEK
         $sourcePlan  = BudgetPlan::with('costCenter')->find($request->budget_plan_id);
@@ -2122,6 +2140,22 @@ class BudgetRequestController extends Controller
 
             $this->storeAttachments($cr, $request);
         });
+
+        if ($editLanjut) {
+            $sesudah = $snapshot($cr->fresh());
+            $ubah = [];
+            foreach ($sebelum as $label => $lama) {
+                if ($lama !== $sesudah[$label]) {
+                    $ubah[] = $label . ': ' . ($lama !== '' ? $lama : '-') . ' -> ' . ($sesudah[$label] !== '' ? $sesudah[$label] : '-');
+                }
+            }
+            // Status tidak berubah; log mencatat siapa, kapan, dan apa yang diubah.
+            // Catatan: batch Treasury & settlement membaca nominal CR secara langsung.
+            $cr->addLog($cr->status, $cr->status, 'superadmin_edited', mb_substr(
+                '[status ' . $cr->status . '] '
+                . ($ubah ? implode('; ', $ubah) : 'Disimpan tanpa perubahan field ringkas (rincian per baris/lampiran mungkin berubah).'),
+                0, 2000));
+        }
 
         return redirect('/budget-request')
             ->with('success', 'Cost Request berhasil diupdate.' . ($isNob ? ' [NOB]' : ''));

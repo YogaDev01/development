@@ -544,7 +544,7 @@ $(function () {
     }
 
     function recalcFooterPO() {
-        var totalValue = 0, totalContract = 0, totalRestitusi = 0, totalBp = 0, totalCr = 0, totalProfit = 0, totalNet = 0;
+        var totalValue = 0, totalContract = 0, totalRestitusi = 0, totalBp = 0, totalCr = 0, totalProfit = 0, totalNet = 0, totalOverhead = 0, totalFixedCost = 0;
         var totalInvoice = 0, totalTax = 0, totalWht = 0, totalInvTot = 0, totalCashRcpt = 0;
         table.rows({ search: 'applied' }).every(function () {
             var node = this.node();
@@ -560,6 +560,8 @@ $(function () {
             totalCashRcpt += parseFloat(node.querySelector('.col-raw-cashreceipt')?.dataset.raw) || 0;
             totalProfit   += parseFloat(node.querySelector('.col-raw-profit')?.dataset.raw)   || 0;
             totalNet      += parseFloat(node.querySelector('.col-raw-net')?.dataset.raw)      || 0;
+            totalOverhead += parseFloat(node.querySelector('.col-raw-overhead')?.dataset.raw) || 0;
+            totalFixedCost += parseFloat(node.querySelector('.col-raw-fixedcost')?.dataset.raw) || 0;
         });
         $('#poFooterValue').text(moneyFmtPO(totalValue));
         $('#poFooterContract').text(moneyFmtPO(totalContract));
@@ -572,6 +574,8 @@ $(function () {
         $('#poFooterInvTotal').text(moneyFmtPO(totalInvTot));
         $('#poFooterCashReceipt').text(moneyFmtPO(totalCashRcpt));
         $('#poFooterProfit').text(moneyFmtPO(totalProfit));
+        $('#poFooterOverhead').text(moneyFmtPO(totalOverhead));
+        $('#poFooterFixedCost').text(moneyFmtPO(totalFixedCost));
         $('#poFooterNet').text(moneyFmtPO(totalNet));
     }
 
@@ -1865,7 +1869,8 @@ $(function () {
             })();
 
             // Edit button
-            var canEdit = (d.status === 'DRAFT' || d.status === 'SUBMITTED' || d.status === 'WAITING_PO' || d.status === 'EARLY_START');
+            // Aturan dari server (detail-json 'can_edit') — sama dengan tombol Edit di daftar.
+            var canEdit = d.can_edit === true;
             if (canEdit) {
                 $('#prjEditBtn').attr('href', '/project/' + d.id + '/edit').show();
             } else {
@@ -1898,9 +1903,14 @@ $(function () {
             }
             var totalAtt = 0;
             var attHtml = '';
-            var attTypes = { general: 'General', closing: 'MoM Closing' };
-            var attBadge = { general: 'secondary', closing: 'dark' };
-            Object.keys(d.attachments).forEach(function(type) {
+            // Label grup lampiran — kunci = project_attachments.type
+            var attTypes = { kom: 'KOM', spk: 'SPK', general: 'Lainnya', closing: 'MoM Closing', po_number: 'Purchase Order', po_number_bast: 'BAST' };
+            var attBadge = { kom: 'info', spk: 'purple', general: 'secondary', closing: 'dark', po_number: 'primary', po_number_bast: 'success' };
+            var attOrder = ['kom', 'spk', 'general', 'po_number', 'po_number_bast', 'closing'];
+            Object.keys(d.attachments).sort(function (x, y) {
+                var ix = attOrder.indexOf(x), iy = attOrder.indexOf(y);
+                return (ix < 0 ? 99 : ix) - (iy < 0 ? 99 : iy);
+            }).forEach(function(type) {
                 var items = d.attachments[type];
                 if (!items || !items.length) return;
                 totalAtt += items.length;

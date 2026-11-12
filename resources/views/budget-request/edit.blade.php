@@ -47,6 +47,17 @@
             </div>
             @endif
 
+        @if(! $cr->isEditable())
+            {{-- Edit Superadmin di luar Draft (BudgetRequest::isEditableBy). --}}
+            <div class="alert alert-warning py-2 mb-0" style="font-size:12.5px;">
+                <i class="fas fa-exclamation-triangle mr-1"></i>
+                <strong>Edit Superadmin — Cost Request berstatus {{ $cr->status }}.</strong>
+                Perubahan dicatat di log CR ("Diedit (Superadmin)") beserta nilai lama &rarr; baru.
+                Batch Treasury, settlement, dan pemakaian budget membaca nominal CR secara langsung:
+                mengubah rincian setelah diproses/dibayar ikut mengubah angka-angka tersebut tanpa transaksi koreksi.
+            </div>
+        @endif
+
         <form action="{{ url('/budget-request/' . $cr->id) }}" method="POST"
               enctype="multipart/form-data" id="frmCR" class="tw:flex tw:min-w-0 tw:flex-col tw:gap-5">
             @csrf

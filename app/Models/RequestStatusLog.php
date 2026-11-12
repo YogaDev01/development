@@ -60,6 +60,7 @@ class RequestStatusLog extends Model
         'cancelled'                => 'Dibatalkan',
         'item_takeout'             => 'Item Di-takeout',
         'item_restore'             => 'Item Dikembalikan',
+        'superadmin_edited'        => 'Diedit (Superadmin)',
         'all_items_takeout'        => 'Semua Item Di-takeout → Rejected',
 
         // Second Payment — kekurangan bayar hasil Settlement. Dibayar lewat
@@ -119,7 +120,8 @@ class RequestStatusLog extends Model
             'second_payment_rejected'                       => 'danger',
             'head_revised', 'finance_revised', 'revised',
             'realization_submitted',
-            'item_takeout', 'item_restore', 'batch_takeout' => 'warning',
+            'item_takeout', 'item_restore', 'batch_takeout',
+            'superadmin_edited'                             => 'warning',
             'second_payment_paid'                           => 'success',
             'second_payment_takeout',
             'second_payment_batch_rejected'                 => 'danger',

@@ -147,6 +147,66 @@ class DeliveryNoteController extends Controller
         return view('delivery-note.create', compact('groupedByCustomer'));
     }
 
+    /**
+     * Edit Surat Jalan oleh Superadmin di status apa pun (keputusan 2026-11-12):
+     * Catatan, Tanggal kirim, Tanggal terima (bila sudah diterima). Daftar invoice
+     * TIDAK diubah, dan tanggal invoice (sent_at / received_at / jatuh tempo aktual)
+     * TIDAK ikut berubah. Rincian perubahan dicatat di log Surat Jalan.
+     */
+    public function superUpdate(Request $request, $id)
+    {
+        abort_unless(Auth::user()->hasRole(['superadmin']), 403);
+
+        $data = $request->validate([
+            'notes'       => 'nullable|string|max:1000',
+            'sent_at'     => 'required|date|before_or_equal:now',
+            'received_at' => 'nullable|date|before_or_equal:now|after_or_equal:sent_at',
+        ]);
+
+        $ubah = \Illuminate\Support\Facades\DB::transaction(function () use ($data, $id) {
+            $dn = DeliveryNote::whereKey($id)->lockForUpdate()->firstOrFail();
+            $fmt = fn ($v) => $v ? \Illuminate\Support\Carbon::parse($v)->format('d/m/Y H:i') : '-';
+
+            $baru = [
+                'notes'   => $data['notes'] ?? null,
+                'sent_at' => \Illuminate\Support\Carbon::parse($data['sent_at']),
+            ];
+            // Tanggal terima hanya relevan untuk Surat Jalan yang sudah diterima.
+            if ($dn->status === 'RECEIVED' && ! empty($data['received_at'])) {
+                $baru['received_at'] = \Illuminate\Support\Carbon::parse($data['received_at']);
+            }
+
+            $ubah = [];
+            if ((string) ($dn->notes ?? '') !== (string) ($baru['notes'] ?? '')) {
+                $ubah[] = 'Catatan: ' . ($dn->notes ?: '-') . ' -> ' . ($baru['notes'] ?: '-');
+            }
+            if ($fmt($dn->sent_at) !== $fmt($baru['sent_at'])) {
+                $ubah[] = 'Tanggal kirim: ' . $fmt($dn->sent_at) . ' -> ' . $fmt($baru['sent_at']);
+            }
+            if (isset($baru['received_at']) && $fmt($dn->received_at) !== $fmt($baru['received_at'])) {
+                $ubah[] = 'Tanggal terima: ' . $fmt($dn->received_at) . ' -> ' . $fmt($baru['received_at']);
+            }
+            if (! $ubah) {
+                return [];
+            }
+
+            $dn->update($baru);
+            $dn->addLog('SUPERADMIN_EDITED', mb_substr('[status ' . $dn->status . '] ' . implode('; ', $ubah), 0, 2000));
+
+            return $ubah;
+        });
+
+        if (! $ubah) {
+            return back()->with('success', 'Tidak ada perubahan pada Surat Jalan.');
+        }
+
+        \App\Models\UserActivityLog::record('delivery_note', 'update',
+            '[Superadmin] Mengedit Surat Jalan ' . DeliveryNote::whereKey($id)->value('code'),
+            DeliveryNote::find($id), implode('; ', $ubah));
+
+        return back()->with('success', 'Surat Jalan diperbarui (' . count($ubah) . ' perubahan, tercatat di log).');
+    }
+
     public function store(Request $request)
     {
         $request->validate([

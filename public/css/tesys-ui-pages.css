@@ -334,18 +334,9 @@ body.tesys-ui .inv-actionbar {
     body.tesys-ui .inv-actionbar { background: var(--surface); }
 }
 
-/* Halaman lihat invoice — fakta invoice sebagai kisi label/nilai, bukan
-   tabel dua kolom di dalam kolom sempit. */
-body.tesys-ui .inv-facts {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-    gap: var(--sp-3) var(--sp-4);
-}
-body.tesys-ui .inv-fact { min-width: 0; }
-body.tesys-ui .inv-fact-wide { grid-column: span 2; }
-@media (max-width: 640px) {
-    body.tesys-ui .inv-fact-wide { grid-column: span 1; }
-}
+/* Halaman lihat invoice — tata letak "lembar invoice": dokumen tagihan di
+   kiri (identitas, rincian, total), panel kerja di kanan (pembayaran,
+   lampiran, log). Hanya presentasi; angka dari model. */
 body.tesys-ui .inv-fact-label {
     display: block;
     font-size: 10px;
@@ -362,52 +353,94 @@ body.tesys-ui .inv-fact-value {
     word-break: break-word;
 }
 
-/* Ringkasan keuangan: komponen penyusun di kiri, hasil akhir dipisah ke
-   kanan — yang dibaca berulang kali hanya dua angka terakhir. */
-body.tesys-ui .inv-money {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--sp-4) var(--sp-6);
-    align-items: flex-start;
+body.tesys-ui .inv-paper { padding: 0; overflow: hidden; }
+body.tesys-ui .inv-paper-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: var(--sp-3); flex-wrap: wrap;
+    padding: var(--sp-5) var(--sp-6) var(--sp-4);
+    border-bottom: 1px solid var(--border);
 }
-body.tesys-ui .inv-money-parts {
-    flex: 1 1 380px;
-    min-width: 0;
+body.tesys-ui .inv-paper-kicker {
+    font-size: 11px; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--text-faint);
+}
+body.tesys-ui .inv-paper-code { font-size: 20px; font-weight: 700; color: var(--text); line-height: 1.25; }
+body.tesys-ui .inv-paper-po { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+body.tesys-ui .inv-paper-status { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+body.tesys-ui .inv-paper-meta {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: var(--sp-3) var(--sp-4);
-}
-body.tesys-ui .inv-money-num {
-    display: block;
-    font-size: 13.5px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-}
-body.tesys-ui .inv-money-totals {
-    flex: 0 1 260px;
-    min-width: 220px;
-    padding-left: var(--sp-4);
-    border-left: 1px solid var(--border);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--sp-4) var(--sp-6);
+    padding: var(--sp-4) var(--sp-6);
+    border-bottom: 1px solid var(--border);
 }
 @media (max-width: 767.98px) {
-    body.tesys-ui .inv-money-totals {
-        border-left: none;
-        border-top: 1px solid var(--border);
-        padding-left: 0;
-        padding-top: var(--sp-3);
-        flex-basis: 100%;
-    }
+    body.tesys-ui .inv-paper-meta { grid-template-columns: 1fr; padding: var(--sp-4); }
+    body.tesys-ui .inv-paper-head { padding: var(--sp-4); }
 }
-body.tesys-ui .inv-money-total { margin-bottom: var(--sp-3); }
-body.tesys-ui .inv-money-total strong {
-    display: block;
-    font-size: 17px;
-    font-variant-numeric: tabular-nums;
+body.tesys-ui .inv-meta-col { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+body.tesys-ui .inv-meta-strong { font-size: 15px; font-weight: 700; color: var(--text); word-break: break-word; }
+body.tesys-ui .inv-meta-pair { min-width: 0; }
+body.tesys-ui .inv-items thead th {
+    background: var(--surface-2);
+    font-size: 10.5px; font-weight: 700; letter-spacing: .05em;
+    text-transform: uppercase; color: var(--text-faint);
+    border-top: 0; padding: 10px 12px;
 }
-body.tesys-ui .inv-account {
-    padding-top: var(--sp-3);
+body.tesys-ui .inv-items td { font-size: 13px; padding: 12px; border-color: var(--border-soft); }
+body.tesys-ui .inv-items thead th:first-child,
+body.tesys-ui .inv-items td:first-child { padding-left: var(--sp-6); }
+body.tesys-ui .inv-items thead th:last-child,
+body.tesys-ui .inv-items td:last-child { padding-right: var(--sp-6); }
+body.tesys-ui .inv-totals-wrap {
+    display: flex; justify-content: flex-end;
+    padding: var(--sp-4) var(--sp-6) var(--sp-5);
     border-top: 1px solid var(--border);
 }
+body.tesys-ui .inv-totals { width: 100%; max-width: 380px; }
+body.tesys-ui .inv-total-row {
+    display: flex; justify-content: space-between; gap: var(--sp-4);
+    font-size: 13px; padding: 4px 0; color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+body.tesys-ui .inv-total-row > span:last-child { color: var(--text); font-weight: 600; text-align: right; }
+body.tesys-ui .inv-total-strong {
+    margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--border);
+    font-size: 14px; font-weight: 700; color: var(--text);
+}
+body.tesys-ui .inv-total-due { font-size: 16px; font-weight: 700; color: var(--text); }
+body.tesys-ui .inv-total-due > span:last-child { font-weight: 700; }
+body.tesys-ui .inv-totals-note { font-size: 11px; color: var(--text-faint); text-align: right; margin-top: 6px; font-style: italic; }
+body.tesys-ui .inv-paper-foot {
+    display: grid; gap: var(--sp-3);
+    padding: var(--sp-4) var(--sp-6) var(--sp-5);
+    border-top: 1px solid var(--border);
+    background: var(--surface-2);
+}
+
+/* Panel kanan */
+body.tesys-ui .inv-side-card { padding: var(--sp-4) var(--sp-5); }
+body.tesys-ui .inv-side-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: var(--sp-3); }
+body.tesys-ui .inv-side-subtitle {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text-faint); margin: var(--sp-4) 0 var(--sp-2);
+    padding-top: var(--sp-3); border-top: 1px solid var(--border);
+}
+body.tesys-ui .inv-side-due strong { display: block; font-size: 22px; font-variant-numeric: tabular-nums; line-height: 1.2; }
+body.tesys-ui .inv-side-due { margin-bottom: var(--sp-2); }
+body.tesys-ui .inv-pay-row,
+body.tesys-ui .inv-att-row {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+    padding: 8px 0; border-bottom: 1px solid var(--border-soft); font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+}
+body.tesys-ui .inv-pay-row:last-of-type,
+body.tesys-ui .inv-att-row:last-of-type { border-bottom: 0; }
+body.tesys-ui .inv-pay-date { font-weight: 600; color: var(--text); }
+body.tesys-ui .inv-att-ico { color: var(--text-faint); }
+body.tesys-ui .inv-att-body { flex: 1 1 auto; min-width: 0; }
+body.tesys-ui .inv-att-title { font-weight: 600; color: var(--text); word-break: break-word; }
+body.tesys-ui .inv-timeline-side { max-height: 560px; overflow-y: auto; padding-right: 4px; }
 
 /* =====================================================================
    ANGKA UANG — SEJAJAR PER DIGIT

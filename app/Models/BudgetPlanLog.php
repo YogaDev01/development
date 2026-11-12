@@ -35,6 +35,7 @@ class BudgetPlanLog extends Model
         'closing_rejected' => 'Closing Ditolak (kembali Active)',
         'auto_closed'      => 'Ditutup Otomatis',
         'coa_added'        => 'Tambah COA',
+        'superadmin_edited'=> 'Diedit (Superadmin)',
     ];
 
     /*
@@ -68,6 +69,7 @@ class BudgetPlanLog extends Model
             'auto_closed'                               => 'success',
             'finance_rejected', 'closing_rejected'      => 'danger',
             'finance_revised', 'coa_added'              => 'info',
+            'superadmin_edited'                         => 'warning',
             default                                     => 'secondary',
         };
     }

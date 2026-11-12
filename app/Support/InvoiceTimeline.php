@@ -153,6 +153,19 @@ final class InvoiceTimeline
             ));
         }
 
+        // Lampiran invoice — dicatat sebagai peristiwa supaya penambahan
+        // dokumen di status apa pun terlihat di Log. Hanya judul, tanpa
+        // tautan file: Log juga dibaca role yang tidak boleh membuka dokumen.
+        foreach ($invoice->attachments as $att) {
+            $peristiwa->push(self::baris(
+                'LAMPIRAN', 'info',
+                $att->inputBy->name ?? '-',
+                $att->created_at,
+                $att->created_at?->format('d/m/Y H:i'),
+                [['teks' => 'Menambahkan lampiran: ' . ($att->title ?: $att->file_name), 'ikon' => 'fas fa-paperclip']]
+            ));
+        }
+
         // Komentar bebas dari tombol aksi di daftar invoice.
         foreach ($invoice->comments as $km) {
             $peristiwa->push(self::baris(
@@ -194,6 +207,7 @@ final class InvoiceTimeline
             'receivedBy', 'cancelledBy',
             'deliveryNote', 'deliveryNote.logs.attachments',
             'cashReceipts.sourceFund', 'cashReceipts.inputBy', 'comments.user',
+            'attachments.inputBy',
         ];
     }
 

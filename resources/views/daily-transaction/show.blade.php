@@ -180,6 +180,76 @@
                     </div>
                     @endif
 
+                    {{-- EDIT HEADER — Superadmin, status apa pun (DailyTransactionController::superUpdate) --}}
+                    @if(Auth::user()->hasRole(['superadmin']))
+                    <div class="card-footer p-3" style="background:var(--surface-2);">
+                        <button type="button" class="btn btn-outline-secondary" data-toggle="modal" data-target="#mdlSuperEditBatch">
+                            <i class="fas fa-pen mr-1"></i> Edit Header Batch (Superadmin)
+                        </button>
+                    </div>
+                    @php $dtFunds = \App\Models\SourceFund::orderBy('name')->get(['id', 'name']); @endphp
+                    <div class="modal fade" id="mdlSuperEditBatch" tabindex="-1" role="dialog" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <form class="modal-content" method="POST" action="{{ route('daily-transaction.super-update', $batch->id) }}">
+                                @csrf
+                                <div class="modal-header">
+                                    <h5 class="modal-title"><i class="fas fa-pen mr-2"></i>Edit Header Batch {{ $batch->code }}</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="alert alert-warning py-2" style="font-size:12px;">
+                                        Batch berstatus <strong>{{ $batch->status }}</strong>. Isi batch tidak berubah; perubahan header dicatat di log batch.
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="small font-weight-bold">Tanggal</label>
+                                        <input type="date" name="date" class="form-control form-control-sm" required value="{{ optional($batch->date)->format('Y-m-d') }}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="small font-weight-bold">Deskripsi</label>
+                                        <input type="text" name="description" class="form-control form-control-sm" maxlength="255" style="text-transform:uppercase;" value="{{ $batch->description }}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="small font-weight-bold">Rekening sumber</label>
+                                        <select name="source_fund_id" class="form-control form-control-sm">
+                                            <option value="">—</option>
+                                            @foreach($dtFunds as $f)
+                                            <option value="{{ $f->id }}" @selected($batch->source_fund_id == $f->id)>{{ $f->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    @if($batch->to_source_fund_id || $batch->isTopUp())
+                                    <div class="form-group">
+                                        <label class="small font-weight-bold">Rekening tujuan</label>
+                                        <select name="to_source_fund_id" class="form-control form-control-sm">
+                                            <option value="">—</option>
+                                            @foreach($dtFunds as $f)
+                                            <option value="{{ $f->id }}" @selected($batch->to_source_fund_id == $f->id)>{{ $f->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    @endif
+                                    <div class="form-group">
+                                        <label class="small font-weight-bold">Charge (Rp)</label>
+                                        <input type="text" name="charge" class="form-control form-control-sm text-right" inputmode="numeric" value="{{ number_format((int) $batch->charge, 0, ',', '.') }}">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="small font-weight-bold">Catatan</label>
+                                        <textarea name="notes" class="form-control form-control-sm" rows="2" maxlength="1000">{{ $batch->notes }}</textarea>
+                                    </div>
+                                    <div class="form-group mb-0">
+                                        <label class="small font-weight-bold">Catatan pembayaran</label>
+                                        <textarea name="payment_notes" class="form-control form-control-sm" rows="2" maxlength="500">{{ $batch->payment_notes }}</textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
+                                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save mr-1"></i> Simpan</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    @endif
+
                     {{-- MARK PAID — finance/treasury, batch DONE --}}
                     @if($batch->isDone() && Auth::user()->hasRole(['superadmin','finance','finance_manager','treasury']))
                     <div class="card-footer p-3" style="background:var(--surface-2);">

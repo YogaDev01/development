@@ -24,6 +24,17 @@
             </ol>
         </div>
 
+        @if($invoice->status !== 'DRAFT')
+        {{-- Edit Superadmin di luar Draft (InvoiceCashReceiptController::bolehEditInvoice). --}}
+        <div class="alert alert-warning py-2" style="font-size:12.5px;">
+            <i class="fas fa-exclamation-triangle mr-1"></i>
+            <strong>Edit Superadmin — invoice berstatus {{ $invoice->status }}.</strong>
+            Setiap perubahan dicatat rinci (nilai lama &rarr; baru) di Log invoice dan User Activity Log.
+            Status pembayaran (Paid / Partially Paid) dihitung ulang dari Cash Receipt yang ada;
+            Captured Total baru tidak boleh lebih kecil dari pembayaran yang sudah diterima.
+        </div>
+        @endif
+
         <form action="{{ url('/invoice-cash-receipt/' . $invoice->id) }}" method="POST" enctype="multipart/form-data" id="frmInvoice">
             @csrf
             @method('PUT')

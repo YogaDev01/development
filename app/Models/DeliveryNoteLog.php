@@ -35,6 +35,7 @@ class DeliveryNoteLog extends Model
             'CREATED'  => 'Dibuat',
             'SENT'     => 'Dikirim',
             'RECEIVED' => 'Diterima',
+            'SUPERADMIN_EDITED' => 'Diedit (Superadmin)',
             default    => $this->action,
         };
     }
@@ -45,6 +46,7 @@ class DeliveryNoteLog extends Model
             'CREATED'  => 'secondary',
             'SENT'     => 'warning',
             'RECEIVED' => 'success',
+            'SUPERADMIN_EDITED' => 'warning',
             default    => 'secondary',
         };
     }

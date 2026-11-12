@@ -239,7 +239,7 @@ class InvoiceCashReceiptController extends Controller
                 'nominal'           => (int) $poNumber->nominal,
                 'nominal_formatted' => $poNumber->nominal_formatted,
                 // Lampiran terpisah: (a) PO header/project-level, (b) No. PO (non-BAST).
-                'po_attachments'    => $project?->attachments->where('type', 'general')->values()->map(fn ($a) => [
+                'po_attachments'    => $project?->attachments->whereIn('type', \App\Models\Project::ATTACHMENT_CATEGORIES)->values()->map(fn ($a) => [
                     'title' => $a->title ?? $a->file_name,
                     'path'  => $a->file_path,
                 ]) ?? [],
@@ -400,7 +400,7 @@ class InvoiceCashReceiptController extends Controller
     {
         $invoice = $this->findVisibleInvoice($id, ['details', 'attachments', 'po.customer']);
 
-        if ($invoice->status !== 'DRAFT') {
+        if (! $this->bolehEditInvoice($invoice)) {
             return redirect('/invoice-cash-receipt/' . $id)
                 ->with('error', 'Hanya invoice berstatus DRAFT yang dapat diedit.');
         }
@@ -422,9 +422,10 @@ class InvoiceCashReceiptController extends Controller
     {
         $invoice = $this->findVisibleInvoice($id);
 
-        if ($invoice->status !== 'DRAFT') {
+        if (! $this->bolehEditInvoice($invoice)) {
             return back()->with('error', 'Hanya invoice berstatus DRAFT yang dapat diedit.');
         }
+        $editLanjut = $invoice->status !== 'DRAFT';   // edit Superadmin di luar Draft
 
         $request->validate([
             'project_po_bast_id' => ['required', Rule::exists('project_po_basts', 'id')->whereNull('deleted_at')],
@@ -458,8 +459,35 @@ class InvoiceCashReceiptController extends Controller
             return back()->withInput()->with('error', 'BAST tidak ditemukan atau sudah dihapus.');
         }
 
+        // Snapshot untuk rincian perubahan (nilai lama -> baru) di Log & Activity Log.
+        $petaUbah = [
+            'faktur_number'      => 'No. Faktur Pajak',
+            'project_po_bast_id' => 'BAST (id)',
+            'source_fund_id'     => 'Rekening (id)',
+            'payment_term_type'  => 'Payment Term',
+            'termin_number'      => 'Termin ke',
+            'invoice_date'       => 'Tanggal Invoice',
+            'due_date'           => 'Jatuh Tempo',
+            'tax_rate'           => 'Tax Rate (%)',
+            'withholding_tax'    => ['label' => 'PPh', 'money' => true],
+            'billing_percentage' => 'Persentase Tagihan',
+            'remark'             => 'Remark',
+            'subtotal'           => ['label' => 'Subtotal', 'money' => true],
+            'billed_amount'      => ['label' => 'DPP', 'money' => true],
+            'tax_amount'         => ['label' => 'PPN', 'money' => true],
+            'captured_total'     => ['label' => 'Captured Total', 'money' => true],
+            'status'             => 'Status',
+        ];
+        $snapshot = function (Invoice $inv) use ($petaUbah): array {
+            return collect(array_keys($petaUbah))->mapWithKeys(function ($k) use ($inv) {
+                $v = $inv->getAttribute($k);
+                return [$k => $v instanceof \DateTimeInterface ? $v->format('Y-m-d') : $v];
+            })->all();
+        };
+        $sebelum = $snapshot($invoice);
+
         try {
-            DB::transaction(function () use ($request, $invoice, $poId) {
+            DB::transaction(function () use ($request, $invoice, $poId, $editLanjut) {
                 // Update lintas No. PO: kunci No. PO asal dan tujuan berurutan id naik (mencegah deadlock silang),
                 // baru BAST tujuan (kunciBastUntukTagihan mengunci ulang No. PO tujuan — aman dalam transaksi yang sama).
                 $this->kunciNoPo($invoice->project_po_number_id, $poId);
@@ -487,6 +515,17 @@ class InvoiceCashReceiptController extends Controller
                 $this->syncDetails($invoice, $request);
                 $invoice->recalculateTotals();
 
+                if ($editLanjut) {
+                    // Total baru tidak boleh lebih kecil dari uang yang sudah diterima —
+                    // Cash Receipt yang sudah tercatat tidak ikut diubah oleh edit ini.
+                    $invoice->refresh();
+                    if ($invoice->captured_total < $invoice->totalReceived()) {
+                        throw new \DomainException('Captured Total baru (' . number_format($invoice->captured_total, 0, ',', '.')
+                            . ') lebih kecil dari pembayaran yang sudah diterima ('
+                            . number_format($invoice->totalReceived(), 0, ',', '.') . '). Hapus/ubah Cash Receipt terlebih dahulu.');
+                    }
+                }
+
                 // Dicek sebelum berkas di disk disentuh, supaya penolakan membatalkan semuanya.
                 $this->pastikanSesuaiBast($invoice, $bast);
 
@@ -504,15 +543,54 @@ class InvoiceCashReceiptController extends Controller
                     \App\Models\ProjectPoNumber::find($oldPoNumberId)?->syncInvoiceStatus();
                 }
                 $newPoNumber->syncInvoiceStatus();
+
+                if ($editLanjut) {
+                    // Nominal bisa berubah setelah ada Cash Receipt: status Paid /
+                    // Partially Paid disinkron ulang dengan aturan yang sama seperti
+                    // saat Cash Receipt ditambah/dihapus.
+                    $invoice->refresh()->syncPaymentStatus();
+                }
             });
         } catch (\DomainException $e) {
             return back()->withInput()->with('error', $e->getMessage());
         }
 
-        UserActivityLog::record('invoice', 'update', 'Memperbarui Invoice #' . $invoice->code, $invoice);
+        // Rincian perubahan: bandingkan dua snapshot berformat sama (tanggal Y-m-d).
+        $sesudah   = $snapshot($invoice->refresh());
+        $perubahan = [];
+        foreach ($petaUbah as $k => $cfg) {
+            if ((string) $sebelum[$k] === (string) $sesudah[$k]) continue;
+            $uang = is_array($cfg) && ! empty($cfg['money']);
+            $fmt  = fn ($v) => $v === null || $v === '' ? '-' : ($uang ? number_format((int) $v, 0, ',', '.') : (string) $v);
+            $perubahan[] = ['label' => is_array($cfg) ? $cfg['label'] : $cfg, 'from' => $fmt($sebelum[$k]), 'to' => $fmt($sesudah[$k])];
+        }
+
+        UserActivityLog::record('invoice', 'update',
+            ($editLanjut ? '[Superadmin, status ' . $sebelum['status'] . '] ' : '') . 'Memperbarui Invoice #' . $invoice->code,
+            $invoice, null, null, $perubahan ?: null);
+
+        if ($editLanjut) {
+            // Jejak di tab Log invoice (timeline menampilkan komentar).
+            $ringkas = collect($perubahan)->map(fn ($c) => $c['label'] . ': ' . $c['from'] . ' -> ' . $c['to'])->implode('; ');
+            $invoice->comments()->create([
+                'user_id' => Auth::id(),
+                'comment' => '[EDIT SUPERADMIN - status ' . $sebelum['status'] . '] '
+                    . ($ringkas !== '' ? $ringkas : 'Disimpan tanpa perubahan field header (rincian/lampiran mungkin berubah).'),
+            ]);
+        }
 
         return redirect('/invoice-cash-receipt/' . $invoice->id)
             ->with('success', 'Invoice ' . $invoice->code . ' berhasil diperbarui.');
+    }
+
+    /**
+     * Edit invoice: DRAFT untuk peran pembuat (dijaga route), atau Superadmin di
+     * status APA PUN (keputusan 2026-11-12). Edit di luar Draft dicatat rinci di
+     * Log invoice + User Activity Log, dan status pembayaran disinkron ulang.
+     */
+    private function bolehEditInvoice(Invoice $invoice): bool
+    {
+        return $invoice->status === 'DRAFT' || Auth::user()->hasRole(['superadmin']);
     }
 
     private function syncDetails(Invoice $invoice, Request $request): void
@@ -789,6 +867,106 @@ class InvoiceCashReceiptController extends Controller
     |--------------------------------------------------------------------------
     */
 
+    /** Batas invoice per proses bulk (sama dengan bulk PO / Expense). */
+    private const BULK_MAX = 50;
+
+    /**
+     * Role per tahap bulk — HARUS sama dengan route satuan:
+     *   verify  (SUBMITTED) : superadmin, finance_manager, accounting
+     *   approve (VERIFIED)  : superadmin, finance_manager
+     *   revise  (keduanya)  : superadmin, finance_manager, approver, accounting
+     * Aksi satuan verify()/approve() tidak mengecek role sendiri (hanya route),
+     * jadi bulk wajib mengeceknya di sini.
+     */
+    private const BULK_ROLES = [
+        'approve' => [
+            'SUBMITTED' => ['superadmin', 'finance_manager', 'accounting'],
+            'VERIFIED'  => ['superadmin', 'finance_manager'],
+        ],
+        'revise' => [
+            'SUBMITTED' => ['superadmin', 'finance_manager', 'approver', 'accounting'],
+            'VERIFIED'  => ['superadmin', 'finance_manager', 'approver', 'accounting'],
+        ],
+    ];
+
+    /** Bulk Verify (SUBMITTED) / Approve (VERIFIED) dari halaman daftar Collection. */
+    public function bulkApprove(Request $request)
+    {
+        return $this->bulkProses($request, false);
+    }
+
+    /** Bulk Revise ("Reject" invoice): SUBMITTED -> DRAFT, VERIFIED -> SUBMITTED. */
+    public function bulkRevise(Request $request)
+    {
+        $request->validate(['notes' => 'required|string|max:1000']);
+
+        return $this->bulkProses($request, true);
+    }
+
+    private function bulkProses(Request $request, bool $revisi)
+    {
+        $request->validate([
+            'ids'    => 'required|array|min:1|max:' . self::BULK_MAX,
+            'ids.*'  => 'integer',
+            'status' => 'required|in:SUBMITTED,VERIFIED',
+        ]);
+
+        $status = $request->input('status');
+        abort_unless(Auth::user()->hasRole(self::BULK_ROLES[$revisi ? 'revise' : 'approve'][$status]), 403,
+            'Anda tidak memiliki wewenang untuk tahap ini.');
+
+        $ids      = array_values(array_unique(array_map('intval', (array) $request->input('ids', []))));
+        $invoices = Invoice::whereIn('id', $ids)->get(['id', 'code', 'status'])->keyBy('id');
+
+        $ok = 0;
+        $errors = [];
+        foreach ($ids as $id) {
+            $inv = $invoices->get($id);
+            if (! $inv) {
+                $errors[] = '#' . $id . ' (tidak ditemukan)';
+                continue;
+            }
+            if ($inv->status !== $status) {
+                $errors[] = $inv->code . ' (status sudah ' . $inv->status . ' — muat ulang)';
+                continue;
+            }
+
+            // Aksi satuan mengembalikan redirect + flash; hanya flash 'error'-nya yang dibaca.
+            session()->forget(['success', 'error']);
+            try {
+                if ($revisi) {
+                    $this->revise($request, $id);
+                } elseif ($status === 'SUBMITTED') {
+                    $this->verify($id);
+                } else {
+                    $this->approve($id);
+                }
+                $error = session('error');
+            } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+                $error = $e->getMessage() ?: 'akses ditolak.';
+            }
+            session()->forget(['success', 'error']);
+
+            if ($error) {
+                $errors[] = $inv->code . ' (' . $error . ')';
+            } else {
+                $ok++;
+            }
+        }
+
+        $aksi = $revisi ? 'dikembalikan untuk revisi.' : ($status === 'SUBMITTED' ? 'diverifikasi.' : 'di-approve.');
+        $redirect = back();
+        if ($ok) {
+            $redirect->with('success', $ok . ' invoice berhasil ' . $aksi);
+        }
+        if ($errors) {
+            $redirect->with('error', count($errors) . ' invoice dilewati: ' . implode(', ', array_slice($errors, 0, 5))
+                . (count($errors) > 5 ? ', …' : '') . '.');
+        }
+
+        return $redirect;
+    }
+
     public function verify($id)
     {
         $invoice = $this->findVisibleInvoice($id);
@@ -986,6 +1164,36 @@ class InvoiceCashReceiptController extends Controller
     }
 
     /**
+     * Tambah lampiran invoice dari halaman detail — boleh di status APA PUN
+     * (termasuk PAID/CANCELLED), karena dokumen pendukung sering datang
+     * belakangan. Hanya menambah, tidak mengubah/menghapus lampiran lama,
+     * dan tercatat di timeline Log (peristiwa LAMPIRAN) + User Activity Log.
+     */
+    public function storeAttachment(Request $request, $id)
+    {
+        $request->validate([
+            'attachments'         => 'required|array|min:1',
+            'attachments.*.title' => 'nullable|string|max:255',
+            'attachments.*.file'  => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
+        ], [
+            'attachments.required'        => 'Pilih minimal satu file.',
+            'attachments.*.file.required' => 'File lampiran wajib dipilih.',
+        ]);
+
+        $invoice = $this->findVisibleInvoice($id);
+        $sebelum = $invoice->attachments()->count();
+
+        $this->storeAttachments($invoice, $request);
+
+        $jumlah = $invoice->attachments()->count() - $sebelum;
+        if ($jumlah > 0) {
+            UserActivityLog::record('invoice', 'attachment', 'Menambahkan ' . $jumlah . ' lampiran ke Invoice #' . $invoice->code, $invoice);
+        }
+
+        return back()->with('success', $jumlah . ' lampiran ditambahkan ke invoice ' . $invoice->code . ' dan tercatat di Log.');
+    }
+
+    /**
      * Isi panel komentar di daftar invoice: informasi singkat + log bergaya chat.
      *
      * Panel ini terbuka untuk semua role yang boleh membuka menu Collection,
@@ -1016,7 +1224,7 @@ class InvoiceCashReceiptController extends Controller
             $noPo = $invoice->poNumber?->attachments ?? collect();
             $grupLampiran = [
                 ['label' => 'Dokumen Pendukung Invoice', 'items' => $lampiran($invoice->attachments)],
-                ['label' => 'Lampiran PO',                'items' => $lampiran($invoice->po?->attachments?->where('type', 'general') ?? [])],
+                ['label' => 'Lampiran PO',                'items' => $lampiran($invoice->po?->attachments?->whereIn('type', \App\Models\Project::ATTACHMENT_CATEGORIES) ?? [])],
                 ['label' => 'Lampiran No. PO',            'items' => $lampiran($noPo->where('type', '!=', 'po_number_bast'))],
                 ['label' => 'Lampiran BAST',              'items' => $lampiran($noPo->where('type', 'po_number_bast'))],
             ];
@@ -1201,6 +1409,117 @@ class InvoiceCashReceiptController extends Controller
     | CASH RECEIPT
     |--------------------------------------------------------------------------
     */
+
+    /**
+     * Edit Cash Receipt oleh Superadmin, status invoice apa pun (keputusan
+     * 2026-11-12): tanggal terima, nominal, rekening, catatan, file bukti.
+     * - PPh tidak diubah di sini (pakai Settle) karena ikut menghitung ulang invoice.
+     * - Nominal dibatasi sisa tagihan bruto TANPA receipt ini (tidak boleh lebih bayar).
+     * - Receipt bagian dari satu transfer multi-invoice (header) tidak boleh ganti nominal.
+     * Status invoice / No. PO / header disinkron oleh hook CashReceipt::saved.
+     * Rincian perubahan dicatat di Log invoice + User Activity Log.
+     */
+    public function superUpdateCashReceipt(Request $request, $id, $crId)
+    {
+        abort_unless(Auth::user()->hasRole(['superadmin']), 403);
+
+        $request->validate([
+            'received_date'  => 'required|date',
+            'amount'         => 'required|regex:/[0-9]/',
+            'source_fund_id' => 'nullable|exists:source_funds,id',
+            'proof_file'     => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png',
+            'notes'          => 'nullable|string|max:1000',
+        ]);
+
+        $invoice = $this->findVisibleInvoice($id);
+        $amount  = $this->normalizeMoney($request->amount);
+        if ($amount < 1) {
+            return back()->with('error', 'Nominal pembayaran harus lebih dari nol.');
+        }
+
+        $proofPath = null;
+        if ($request->hasFile('proof_file') && $request->file('proof_file')->isValid()) {
+            $proofPath = $request->file('proof_file')->store('cash_receipt_proofs', 'secure');
+        }
+
+        $buangLama = null;
+        try {
+            $ubah = DB::transaction(function () use ($invoice, $crId, $amount, $request, $proofPath, &$buangLama) {
+                $this->kunciNoPo($invoice->project_po_number_id);
+                $terkunci = Invoice::whereKey($invoice->id)->lockForUpdate()->first();
+                $cr = CashReceipt::where('invoice_id', $terkunci->id)->whereKey($crId)->lockForUpdate()->firstOrFail();
+
+                if ($amount !== (int) $cr->amount) {
+                    if ($cr->cash_receipt_header_id) {
+                        throw new \DomainException('Cash Receipt ini bagian dari satu transfer multi-invoice — nominalnya tidak bisa diubah dari sini.');
+                    }
+                    $sisa = $terkunci->sisaBruto($cr->id);
+                    if ($amount + (int) $cr->withholding_tax > $sisa) {
+                        throw new \DomainException('Nominal melebihi sisa tagihan (' . number_format($sisa, 0, ',', '.') . ', tanpa Cash Receipt ini).');
+                    }
+                }
+
+                $nama = fn ($fid) => $fid ? (\App\Models\SourceFund::whereKey($fid)->value('name') ?? '#' . $fid) : '-';
+                $lama = [
+                    'Tanggal terima' => optional($cr->received_date)->format('Y-m-d'),
+                    'Nominal'        => number_format((int) $cr->amount, 0, ',', '.'),
+                    'Rekening'       => $nama($cr->source_fund_id),
+                    'Catatan'        => (string) ($cr->notes ?? ''),
+                ];
+                $baru = [
+                    'Tanggal terima' => \Illuminate\Support\Carbon::parse($request->received_date)->format('Y-m-d'),
+                    'Nominal'        => number_format($amount, 0, ',', '.'),
+                    'Rekening'       => $nama($request->source_fund_id),
+                    'Catatan'        => (string) ($request->notes ?? ''),
+                ];
+                $ubah = [];
+                foreach ($lama as $k => $v) {
+                    if ((string) $v !== (string) $baru[$k]) {
+                        $ubah[] = $k . ': ' . ($v !== '' ? $v : '-') . ' -> ' . ($baru[$k] !== '' ? $baru[$k] : '-');
+                    }
+                }
+                if ($proofPath) {
+                    $ubah[] = 'File bukti diganti';
+                    $buangLama = $cr->proof_file;
+                }
+                if (! $ubah) {
+                    return [];
+                }
+
+                // save() memicu CashReceipt::saved -> sinkron status invoice, No. PO & header.
+                $cr->fill([
+                    'received_date'  => $request->received_date,
+                    'amount'         => $amount,
+                    'source_fund_id' => $request->source_fund_id,
+                    'notes'          => $request->notes,
+                ] + ($proofPath ? ['proof_file' => $proofPath] : []))->save();
+
+                $terkunci->comments()->create([
+                    'user_id' => Auth::id(),
+                    'comment' => mb_substr('[EDIT CASH RECEIPT - Superadmin] ' . implode('; ', $ubah), 0, 2000),
+                ]);
+
+                return $ubah;
+            });
+        } catch (\DomainException $e) {
+            if ($proofPath) {
+                Storage::disk('secure')->delete($proofPath);
+            }
+            return back()->with('error', $e->getMessage());
+        }
+
+        if ($buangLama) {
+            Storage::disk('secure')->delete($buangLama);
+        }
+        if (! $ubah) {
+            return back()->with('success', 'Tidak ada perubahan pada Cash Receipt.');
+        }
+
+        UserActivityLog::record('cash_receipt', 'update', '[Superadmin] Mengedit Cash Receipt Invoice #' . $invoice->code,
+            $invoice, implode('; ', $ubah));
+
+        return back()->with('success', 'Cash Receipt diperbarui (' . count($ubah) . ' perubahan, tercatat di Log).');
+    }
 
     public function storeCashReceipt(Request $request, $id)
     {
@@ -1481,7 +1800,7 @@ class InvoiceCashReceiptController extends Controller
 
         $columns = $restricted
             ? ['No Invoice', 'Purchase Order', 'Customer', 'Date', 'Due Date (Print)', 'Due Date Actual', 'Received Date', 'Aging', 'Payment Date', 'Status']
-            : ['No Invoice', 'Faktur', 'Purchase Order', 'Customer', 'Manager', 'Date', 'Due Date (Print)', 'Due Date Actual', 'Received Date', 'Invoice', 'Tax', 'Withholding Tax', 'Total', 'Payment', 'Payment Date', 'Status'];
+            : ['No Invoice', 'Faktur', 'Purchase Order', 'Customer', 'Manager', 'Date', 'Due Date (Print)', 'Due Date Actual', 'Received Date', 'Invoice', 'Tax', 'Withholding Tax', 'Deduction', 'Total', 'Payment', 'Payment Date', 'Status'];
         $lastCol = chr(ord('A') + count($columns) - 1);
 
         $spreadsheet = new Spreadsheet();
@@ -1544,10 +1863,13 @@ class InvoiceCashReceiptController extends Controller
                 $invoice->due_date ? $invoice->due_date->format('d/m/Y') : '-',
                 $invoice->actual_due_date ? $invoice->actual_due_date->format('d/m/Y') : '-',
                 $invoice->received_at ? $invoice->received_at->format('d/m/Y') : '-',
-                (int) $invoice->billed_amount,
+                // Invoice ditulis KOTOR (billed_amount + total_deduction), sama dengan
+                // index, supaya Invoice + Tax - Withholding Tax - Deduction = Total
+                // (captured_total). Hanya tampilan; angka tersimpan tidak berubah.
+                (int) $invoice->billed_amount + (int) $invoice->total_deduction,
                 (int) $invoice->tax_amount,
-                // Total = Invoice + Tax - Withholding Tax (captured_total).
                 (int) $invoice->withholding_tax,
+                (int) $invoice->total_deduction,
                 (int) $invoice->captured_total,
                 (int) $received,
                 $lastCr ? $lastCr->received_date->format('d/m/Y') : '-',
@@ -1558,7 +1880,7 @@ class InvoiceCashReceiptController extends Controller
 
         $widths = $restricted
             ? ['A'=>16,'B'=>40,'C'=>26,'D'=>12,'E'=>12,'F'=>12,'G'=>14,'H'=>14,'I'=>16,'J'=>16]
-            : ['A'=>16,'B'=>16,'C'=>40,'D'=>26,'E'=>20,'F'=>12,'G'=>12,'H'=>12,'I'=>14,'J'=>16,'K'=>14,'L'=>16,'M'=>16,'N'=>16,'O'=>16,'P'=>16];
+            : ['A'=>16,'B'=>16,'C'=>40,'D'=>26,'E'=>20,'F'=>12,'G'=>12,'H'=>12,'I'=>14,'J'=>16,'K'=>14,'L'=>16,'M'=>16,'N'=>16,'O'=>16,'P'=>16,'Q'=>16];
         foreach ($widths as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
         }

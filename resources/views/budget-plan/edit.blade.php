@@ -36,6 +36,17 @@
         </div>
         @endif
 
+        @if(! $budgetPlan->isEditable())
+        {{-- Edit Superadmin di luar Draft (BudgetPlan::isEditableBy). --}}
+        <div class="alert alert-warning py-2" style="font-size:12.5px;">
+            <i class="fas fa-exclamation-triangle mr-1"></i>
+            <strong>Edit Superadmin — Budget Plan berstatus {{ $budgetPlan->status }}.</strong>
+            Sub-item diperbarui di tempat sehingga Cost Request yang memakainya tetap tertaut; sub-item yang sudah dipakai
+            CR / Trouble Ticket tidak bisa dihapus (ubah nominalnya saja). Import Excel mengganti seluruh baris, jadi akan
+            ditolak bila ada sub-item terpakai. Perubahan dicatat di log ("Diedit (Superadmin)").
+        </div>
+        @endif
+
         <form action="{{ url('/budget-plan/' . $budgetPlan->id) }}" method="POST"
               enctype="multipart/form-data" id="frmBudgetPlan">
             @csrf
@@ -177,6 +188,8 @@
                                 <tr class="detail-row">
                                     <td class="text-center align-middle row-no">{{ $i + 1 }}</td>
                                     <td>
+                                        {{-- id sub-item: dipakai upsert saat edit Superadmin di luar Draft (tautan CR tetap utuh). --}}
+                                        <input type="hidden" name="details[{{ $i }}][id]" value="{{ $det->id }}">
                                         <select name="details[{{ $i }}][account_id]"
                                                 class="form-control form-control-sm select-account" required>
                                             <option value="">— Pilih Account —</option>

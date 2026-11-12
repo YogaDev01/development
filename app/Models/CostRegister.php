@@ -266,6 +266,24 @@ class CostRegister extends Model
         return $this->status === 'DRAFT';
     }
 
+    /**
+     * Boleh membuka form edit: Finance Manager (SUBMIT_ROLES) saat DRAFT, atau
+     * Superadmin di status APA PUN (keputusan 2026-11-12, termasuk nominal —
+     * batch Treasury membaca nominal Expense langsung, jadi perubahan nominal
+     * setelah masuk batch/dibayar ikut mengubah angka batch). Expense lama
+     * (legacy, tanpa rincian) tetap tidak bisa diedit lewat form.
+     */
+    public function isEditableBy($user = null): bool
+    {
+        $user ??= \Illuminate\Support\Facades\Auth::user();
+        if (! $user || $this->isLegacy()) {
+            return false;
+        }
+
+        return ($this->isEditable() && $user->hasRole(self::SUBMIT_ROLES))
+            || $user->hasRole(['superadmin']);
+    }
+
     /** Boleh dibatalkan selama belum masuk antrean pembayaran (termasuk setelah ditolak CEO). */
     public function isCancellable(): bool
     {

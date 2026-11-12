@@ -363,6 +363,106 @@ class TroubleTicketController extends Controller
      * (field datar, satu tiket) tetap diterima — dipakai integrasi dan tes —
      * dan di sini dibungkus jadi satu item supaya jalurnya cuma satu.
      */
+    /**
+     * Edit data tiket oleh Superadmin di status apa pun (keputusan 2026-11-12).
+     * Hanya data deskriptif: Ref. eksternal, Initial Problem (issue), Device,
+     * Flag alarm, Deskripsi, Pelapor, Date Open, RCA/Sub-RCA, Action, Ringkasan
+     * resolusi. Status, teknisi, timestamp/durasi SLA, dan pengajuan biaya TIDAK
+     * diubah. Rincian perubahan (lama -> baru) dicatat sebagai kejadian di
+     * riwayat tiket ('superadmin_edited') + User Activity Log.
+     */
+    public function superUpdate(Request $request, int $ticket)
+    {
+        abort_unless(Auth::user()->hasRole(['superadmin']), 403);
+
+        $data = $request->validate([
+            'external_ref'       => 'nullable|string|max:40|unique:trouble_tickets,external_ref,' . $ticket,
+            'issue_id'           => 'nullable|integer|exists:trouble_ticket_issues,id',
+            'device_id'          => 'nullable|integer|exists:trouble_ticket_devices,id',
+            'flag_alarm'         => 'nullable|string|max:40',
+            'description'        => 'required|string|max:10000',
+            'reporter_name'      => 'nullable|string|max:150',
+            'reported_at'        => 'nullable|date|before_or_equal:now',
+            'rca_id'             => 'nullable|integer|exists:trouble_ticket_rcas,id',
+            'sub_rca_id'         => 'nullable|integer|exists:trouble_ticket_sub_rcas,id',
+            'action'             => 'nullable|string|max:2000',
+            'resolution_summary' => 'nullable|string|max:5000',
+        ]);
+
+        $ubah = \Illuminate\Support\Facades\DB::transaction(function () use ($data, $ticket) {
+            $t = TroubleTicket::whereKey($ticket)->lockForUpdate()->firstOrFail();
+
+            // Teks salinan diambil dari master supaya id & nama selalu sejalan.
+            $subRca = ! empty($data['sub_rca_id']) ? \App\Models\TroubleTicketSubRca::find($data['sub_rca_id']) : null;
+            if ($subRca && ! empty($data['rca_id']) && (int) $subRca->rca_id !== (int) $data['rca_id']) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['sub_rca_id' => 'Sub-RCA tidak termasuk RCA yang dipilih.']);
+            }
+            $baru = [
+                'external_ref'       => $data['external_ref'] ?? null,
+                'issue_id'           => $data['issue_id'] ?? null,
+                'issue'              => ! empty($data['issue_id']) ? \App\Models\TroubleTicketIssue::whereKey($data['issue_id'])->value('name') : $t->issue,
+                'device_id'          => $data['device_id'] ?? null,
+                'device'             => ! empty($data['device_id']) ? \App\Models\TroubleTicketDevice::whereKey($data['device_id'])->value('name') : $t->device,
+                'flag_alarm'         => $data['flag_alarm'] ?? null,
+                'description'        => $data['description'],
+                'reporter_name'      => $data['reporter_name'] ?? null,
+                'reported_at'        => $data['reported_at'] ?? $t->reported_at,
+                'rca_id'             => $data['rca_id'] ?? null,
+                'rca'                => ! empty($data['rca_id']) ? \App\Models\TroubleTicketRca::whereKey($data['rca_id'])->value('name') : null,
+                'sub_rca_id'         => $subRca?->id,
+                'sub_rca'            => $subRca?->name,
+                'action'             => $data['action'] ?? null,
+                'resolution_summary' => $data['resolution_summary'] ?? null,
+            ];
+            $label = [
+                'external_ref' => 'Ref. eksternal', 'issue' => 'Initial Problem', 'device' => 'Device',
+                'flag_alarm' => 'Flag alarm', 'description' => 'Deskripsi', 'reporter_name' => 'Pelapor',
+                'reported_at' => 'Date Open', 'rca' => 'RCA', 'sub_rca' => 'Sub-RCA', 'action' => 'Action',
+                'resolution_summary' => 'Ringkasan resolusi',
+            ];
+            $fmt = function ($v) {
+                if ($v instanceof \DateTimeInterface) return $v->format('Y-m-d H:i');
+                if ($v === null || $v === '') return '-';
+                $v = (string) $v;
+                return mb_strlen($v) > 80 ? mb_substr($v, 0, 80) . '…' : $v;
+            };
+            $ubah = [];
+            foreach ($label as $k => $nama) {
+                $lama = $t->getAttribute($k);
+                $nilaiBaru = $k === 'reported_at' && $baru[$k] ? \Illuminate\Support\Carbon::parse($baru[$k]) : $baru[$k];
+                if ($fmt($lama) !== $fmt($nilaiBaru)) {
+                    $ubah[] = $nama . ': ' . $fmt($lama) . ' -> ' . $fmt($nilaiBaru);
+                }
+            }
+            if (! $ubah) {
+                return [];
+            }
+
+            $t->update($baru);
+            \App\Models\TroubleTicketMessage::create([
+                'trouble_ticket_id' => $t->id,
+                'user_id'    => Auth::id(),
+                'actor_name' => Auth::user()->name,
+                'actor_role' => Auth::user()->role?->name,
+                'type'       => \App\Models\TroubleTicketMessage::TYPE_EVENT,
+                'event'      => 'superadmin_edited',
+                'body'       => mb_substr('[status ' . $t->status . '] ' . implode('; ', $ubah), 0, 5000),
+            ]);
+
+            return $ubah;
+        });
+
+        if (! $ubah) {
+            return back()->with('success', 'Tidak ada perubahan pada data tiket.');
+        }
+
+        \App\Models\UserActivityLog::record('trouble_ticket', 'update',
+            '[Superadmin] Mengedit data tiket #' . TroubleTicket::whereKey($ticket)->value('ticket_number'),
+            TroubleTicket::find($ticket), implode('; ', $ubah));
+
+        return back()->with('success', 'Data tiket diperbarui (' . count($ubah) . ' perubahan, tercatat di riwayat).');
+    }
+
     public function store(Request $request)
     {
         $this->abortIfCannotCreate();

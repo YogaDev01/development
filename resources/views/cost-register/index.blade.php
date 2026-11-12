@@ -110,6 +110,15 @@
                         </div>
                     </div>
                 </div>
+                @if($bolehSetuju)
+                {{-- Bar bulk: muncul bila ada Expense Submitted yang dicentang (public/js/tesys-bulk-select.js). --}}
+                <div class="ts-bulk-bar d-none tw:flex-wrap tw:items-center tw:gap-2 tw:rounded-md tw:border tw:border-accent-soft tw:bg-accent-tint tw:py-1 tw:pl-3 tw:pr-1">
+                    <span class="ts-bulk-info tw:font-label tw:tabular-nums"></span>
+                    <x-tw.button size="sm" class="ts-bulk-approve"><i class="fas fa-check" aria-hidden="true"></i> <span class="ts-bulk-approve-label">Approve</span></x-tw.button>
+                    <x-tw.button variant="danger" size="sm" class="ts-bulk-reject"><i class="fas fa-times" aria-hidden="true"></i> <span class="ts-bulk-reject-label">Reject</span></x-tw.button>
+                    <x-tw.button variant="ghost" size="sm" class="ts-bulk-clear" title="Batalkan pilihan" aria-label="Batalkan pilihan"><i class="fas fa-times" aria-hidden="true"></i></x-tw.button>
+                </div>
+                @endif
                 <div class="custom-toolbar-right d-flex flex-wrap" style="gap:8px;">
                     <x-tw.button href="{{ route('cost-register.export') }}" id="btnExportReg" variant="secondary" size="sm">
                         <i class="fas fa-file-excel" aria-hidden="true"></i> Export Excel
@@ -121,7 +130,12 @@
                 <table id="tblCostRegister" class="table table-bordered table-hover mb-0 ts-idx-tbl">
                     <thead class="bg-light">
                         <tr>
-                            <th scope="col" class="text-nowrap" data-col="no">No. Expense</th>
+                            <th scope="col" class="text-nowrap" data-col="no">
+                                @if($bolehSetuju)
+                                <input type="checkbox" class="ts-bulk-all mr-1 align-middle" aria-label="Pilih semua Expense Submitted yang tampil" title="Pilih semua Expense Submitted yang tampil" onclick="event.stopPropagation()">
+                                @endif
+                                No. Expense
+                            </th>
                             <th scope="col" data-col="desc">Deskripsi</th>
                             <th scope="col" class="text-nowrap" data-col="ben">Beneficiary</th>
                             <th scope="col" class="text-nowrap" data-col="periode">Periode</th>
@@ -141,7 +155,8 @@
                             // Aksi per baris (gerbang role sama dengan route + controller).
                             $bisaSubmit  = $cr->isDraft()    && $bolehAjukan;
                             $bisaHapus   = $cr->isEditable() && $bolehAjukan;
-                            $bisaEdit    = $cr->isEditable() && ! $cr->isLegacy() && $bolehAjukan;
+                            // Superadmin: edit di status apa pun (CostRegister::isEditableBy, dicatat rinci di log).
+                            $bisaEdit    = $cr->isEditableBy($pengguna);
                             $bisaSetuju  = $cr->isVerified() && $bolehSetuju;
                             $bisaTolak   = $cr->isVerified() && $bolehSetuju;
                             $bisaRevisi  = $cr->isRejected() && $bolehAjukan;
@@ -191,6 +206,9 @@
                         <tr data-id="{{ $cr->id }}" data-status="{{ $cr->status }}" data-code="{{ $kodePo }}" data-amount="{{ (int) $cr->amount }}"
                             data-tipe="{{ $cr->type_label }}" data-ben="{{ $cr->beneficiary->nickname ?? '' }}">
                             <td class="text-nowrap">
+                                @if($bisaSetuju)
+                                <input type="checkbox" class="ts-bulk-check mr-1 align-middle" value="{{ $cr->id }}" data-stage="VERIFIED" aria-label="Pilih {{ $kodePo }}">
+                                @endif
                                 {{-- Klik kode = salin; detail dibuka lewat klik baris. --}}
                                 <button type="button" class="ts-copy-code" data-code="{{ $kodePo }}" title="Klik untuk menyalin kode">{{ $kodePo }}</button>
                             </td>
@@ -374,6 +392,7 @@
 @endpush
 
 @push('scripts')
+<script src="@aset('js/tesys-bulk-select.js')"></script>
 <script>
 $(function () {
 
@@ -532,6 +551,18 @@ $(function () {
             confirmButtonColor: WARNA_BAHAYA, cancelButtonColor: WARNA_BATAL, confirmButtonText: 'Ya, Hapus', cancelButtonText: 'Batal' })
         .then(function (r) { if (r.isConfirmed) form.submit(); });
     });
+    @if($bolehSetuju)
+    // Bulk Approve / Reject Expense Submitted (VERIFIED) — server memanggil aksi satuan per Expense.
+    if (window.TesysBulk) {
+        TesysBulk.wire({
+            table: table, max: 50, noun: 'Expense',
+            stages: { VERIFIED: { label: 'Submitted',
+                approve: { url: '{{ route('cost-register.bulk-approve') }}', text: 'Approve', ke: 'Approved' },
+                reject:  { url: '{{ route('cost-register.bulk-reject') }}',  text: 'Reject',  ke: 'Rejected' } } },
+        });
+    }
+    @endif
+
     $(document).on('click', '.btn-approve-cr', function () {
         var id = $(this).data('id');
         Swal.fire({ title: 'Approve Expense?', text: 'Setelah disetujui, Treasury dapat memasukkannya ke batch pembayaran.', icon: 'question',

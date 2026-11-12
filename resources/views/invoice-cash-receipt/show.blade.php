@@ -11,6 +11,8 @@
     $paidBarColor = $paidPct >= 100 ? 'var(--success)' : 'var(--warning)';
 
     $canEditDraft = $invoice->status === 'DRAFT'      && Auth::user()->hasRole(['superadmin','admin','finance','finance_manager']);
+    // Superadmin boleh edit di status apa pun (dicatat rinci di Log); Hapus tetap hanya Draft.
+    $canEditAny   = $canEditDraft || Auth::user()->hasRole(['superadmin']);
     $canSubmit    = $invoice->status === 'DRAFT'      && Auth::user()->hasRole(['superadmin','admin','finance','finance_manager']);
     $canVerify    = $invoice->status === 'SUBMITTED'  && Auth::user()->hasRole(['superadmin','finance_manager','accounting']);
     $canApprove   = $invoice->status === 'VERIFIED'   && Auth::user()->hasRole(['superadmin','finance_manager']);
@@ -96,7 +98,7 @@
                 </a>
                 @endif
 
-                @if($canEditDraft)
+                @if($canEditAny)
                 <a href="{{ route('invoice-cash-receipt.edit', $invoice->id) }}" class="btn btn-warning btn-sm">
                     <i class="fas fa-pen mr-1"></i> Edit
                 </a>
@@ -155,229 +157,208 @@
         </div>
 
         {{--
-            Tata letak menurun, sama seperti form tambah/ubah: identitas dulu,
-            lalu ringkasan uang, lalu rincian. Versi lama menaruh keduanya di
-            kolom sempit 4/12 — tabel dua kolom di lebar segitu memaksa nilai
-            panjang (Scope of Work, nama rekening) terpotong, sementara tab
-            rincian di kanan kehilangan lebar yang justru paling dibutuhkan.
+            Tata letak "lembar invoice": kiri = dokumen tagihan apa adanya
+            (identitas, rincian, total, sisa tagihan) supaya terbaca seperti
+            invoice yang dikirim ke pelanggan; kanan = panel kerja (pembayaran,
+            lampiran invoice, log). Semua angka tetap dari kolom/aksesor model
+            yang sama seperti sebelumnya — tidak ada perhitungan baru di view.
         --}}
+        @php
+            $poAttachments = $invoice->po
+                ? $invoice->po->attachments->whereIn('type', \App\Models\Project::ATTACHMENT_CATEGORIES)->values()
+                : collect();
+            $noPoAttachments = $invoice->poNumber ? $invoice->poNumber->attachments->where('type', '!=', 'po_number_bast')->values() : collect();
+            $bastAttachments = $invoice->poNumber ? $invoice->poNumber->attachments->where('type', 'po_number_bast')->values() : collect();
+            $lampiranPoCount = $poAttachments->count() + $noPoAttachments->count() + $bastAttachments->count();
+            $taxRateLabel    = rtrim(rtrim(number_format($invoice->tax_rate, 2, ',', '.'), '0'), ',');
+            $dnLink          = $invoice->deliveryNote;
+            // Lampiran invoice boleh ditambah di status apa pun (route: grup role yang sama dengan Tandai Diterima).
+            $canAddAttachment = !$invRestricted && Auth::user()->hasRole(['superadmin','admin','finance','finance_manager','collection']);
+            $rp = fn ($v) => number_format((int) $v, 0, ',', '.');
+        @endphp
 
-        <!-- 1. INFORMASI -->
-        <div class="card card-primary card-outline shadow-sm">
-            <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-info-circle mr-1"></i> Informasi Invoice</h3>
-            </div>
-            <div class="card-body">
-                <div class="inv-facts">
+        <div class="row inv-layout">
 
-                    <div class="inv-fact inv-fact-wide">
-                        <span class="inv-fact-label">Purchase Order</span>
-                        <span class="inv-fact-value">
-                            {{ $invoice->po ? '[' . $invoice->po->code . '] ' . $invoice->po->name : '-' }}
+            {{-- ============ KIRI: LEMBAR INVOICE ============ --}}
+            <div class="col-xl-8 col-lg-7">
+                <div class="card shadow-sm inv-paper">
+
+                    <div class="inv-paper-head">
+                        <div>
+                            <div class="inv-paper-kicker">Invoice</div>
+                            <div class="inv-paper-code">{{ $invoice->code }}</div>
                             @if($invoice->po)
-                            <button aria-label="Kontak PIC Internal &amp; Customer" type="button" class="btn btn-outline-secondary btn-sm ml-1" style="padding:1px 7px;" data-toggle="modal" data-target="#mdlPicContact" title="Kontak PIC Internal &amp; Customer">
-                                <i class="fas fa-address-book"></i>
-                            </button>
-                            @endif
-                        </span>
-                    </div>
-
-                    <div class="inv-fact">
-                        <span class="inv-fact-label">Customer</span>
-                        <span class="inv-fact-value">{{ $invoice->po->customer->name ?? '-' }}</span>
-                    </div>
-
-                    <div class="inv-fact">
-                        <span class="inv-fact-label">No. PO</span>
-                        <span class="inv-fact-value">{{ $invoice->poNumber->po_number ?? '-' }}</span>
-                    </div>
-
-                    <div class="inv-fact">
-                        <span class="inv-fact-label">No. BAST</span>
-                        <span class="inv-fact-value">{{ $invoice->bast->no_bast ?? $invoice->poNumber->no_bast ?? ('No. PO: ' . ($invoice->poNumber->po_number ?? '-') . ' · BAST: belum tertaut') }}
-                            @if($invoice->bast?->parent)
-                                <span class="badge badge-secondary" style="font-size:9px;" title="BAST sintetis hasil backfill dipecah per invoice">Pecahan dari {{ $invoice->bast->parent->no_bast }}</span>
-                            @endif</span>
-                    </div>
-
-                    <div class="inv-fact">
-                        <span class="inv-fact-label">No. Faktur Pajak</span>
-                        <span class="inv-fact-value">{{ $invoice->faktur_number ?: '-' }}</span>
-                    </div>
-
-                    @php $dnLink = $invoice->deliveryNote; @endphp
-                    @if($dnLink)
-                    <div class="inv-fact">
-                        <span class="inv-fact-label">Surat Jalan</span>
-                        <span class="inv-fact-value">
-                            <a href="{{ route('delivery-note.show', $dnLink->id) }}" target="_blank">{{ $dnLink->code }}</a>
-                            <span class="badge badge-{{ $dnLink->status_color }} ml-1" style="font-size:9px;">{{ $dnLink->status_label }}</span>
-                        </span>
-                    </div>
-                    @endif
-
-                    <div class="inv-fact">
-                        <span class="inv-fact-label">Payment Term</span>
-                        <span class="inv-fact-value">{{ $invoice->payment_term_label }}</span>
-                    </div>
-
-                    <div class="inv-fact">
-                        <span class="inv-fact-label">Tanggal Invoice</span>
-                        <span class="inv-fact-value">{{ $invoice->invoice_date ? $invoice->invoice_date->format('d/m/Y') : '-' }}</span>
-                    </div>
-
-                    <div class="inv-fact">
-                        <span class="inv-fact-label">Jatuh Tempo (Print)</span>
-                        <span class="inv-fact-value">{{ $invoice->due_date ? $invoice->due_date->format('d/m/Y') : '-' }}</span>
-                    </div>
-
-                    <div class="inv-fact">
-                        <span class="inv-fact-label">Tanggal Terima</span>
-                        <span class="inv-fact-value">
-                            {{ $invoice->received_at ? $invoice->received_at->format('d/m/Y') : '-' }}
-                            @if(!$invoice->received_at && in_array($invoice->status, ['SENT','RECEIVED','PARTIALLY_PAID']))
-                            <span class="badge badge-secondary ml-1" style="font-size:9px;">Belum ada</span>
-                            @endif
-                        </span>
-                    </div>
-
-                    <div class="inv-fact">
-                        <span class="inv-fact-label">Jatuh Tempo Aktual</span>
-                        <span class="inv-fact-value {{ $dStatus === 'OVERDUE' ? 'text-danger font-weight-600' : '' }}">
-                            {{ $invoice->actual_due_date ? $invoice->actual_due_date->format('d/m/Y') : '-' }}
-                            @if($dStatus === 'OVERDUE')<i class="fas fa-exclamation-circle ml-1"></i>@endif
-                        </span>
-                    </div>
-
-                    <div class="inv-fact">
-                        <span class="inv-fact-label">Tax Rate</span>
-                        <span class="inv-fact-value">{{ rtrim(rtrim(number_format($invoice->tax_rate, 2, ',', '.'), '0'), ',') }}%</span>
-                    </div>
-
-                    <div class="inv-fact inv-fact-wide">
-                        <span class="inv-fact-label">Remark</span>
-                        <span class="inv-fact-value" style="white-space:pre-line;">{{ $invoice->remark ?: '-' }}</span>
-                    </div>
-
-                    @if($invoice->status === 'CANCELLED')
-                    <div class="inv-fact inv-fact-wide">
-                        <span class="inv-fact-label">Alasan Batal</span>
-                        <span class="inv-fact-value text-danger" style="white-space:pre-line;">{{ $invoice->cancel_reason ?: '-' }}</span>
-                    </div>
-                    @endif
-
-                </div>
-            </div>
-        </div>
-
-        @unless($invRestricted)
-        <!-- 2. RINGKASAN KEUANGAN -->
-        <div class="card shadow-sm">
-            <div class="card-header d-flex align-items-center flex-wrap" style="gap:8px;">
-                <h3 class="card-title"><i class="fas fa-calculator mr-1"></i> Ringkasan Keuangan</h3>
-                <small class="text-muted ml-auto font-italic">Seluruh nominal dalam Rupiah (IDR)</small>
-            </div>
-            <div class="card-body">
-
-                {{-- Angka penyusun berjajar, hasil akhirnya dipisah ke kanan:
-                     yang dibaca berulang kali adalah Captured Total dan Sisa
-                     Tagihan, bukan komponennya. --}}
-                <div class="inv-money">
-
-                    <div class="inv-money-parts">
-                        <div class="inv-money-item">
-                            <span class="inv-fact-label">Subtotal</span>
-                            <span class="inv-money-num">{{ number_format($invoice->subtotal + $invoice->total_deduction, 0, ',', '.') }}</span>
-                        </div>
-                        @if($invoice->billing_percentage_label)
-                        <div class="inv-money-item">
-                            <span class="inv-fact-label">{{ $invoice->billing_percentage_label }}</span>
-                            <span class="inv-money-num">{{ number_format($invoice->billed_amount, 0, ',', '.') }}</span>
-                        </div>
-                        @endif
-                        <div class="inv-money-item">
-                            <span class="inv-fact-label">Total Deduction</span>
-                            <span class="inv-money-num text-danger">{{ $invoice->total_deduction > 0 ? '- ' . number_format($invoice->total_deduction, 0, ',', '.') : number_format(0, 0, ',', '.') }}</span>
-                        </div>
-                        <div class="inv-money-item">
-                            <span class="inv-fact-label">DPP</span>
-                            <span class="inv-money-num">{{ number_format($invoice->billed_amount, 0, ',', '.') }}</span>
-                        </div>
-                        <div class="inv-money-item">
-                            <span class="inv-fact-label">Tax</span>
-                            <span class="inv-money-num">{{ number_format($invoice->tax_amount, 0, ',', '.') }}</span>
-                        </div>
-                        {{-- MN-07 — PPh dipotong di muka. Hanya ditampilkan kalau
-                             ada nilainya, supaya invoice tanpa potongan tetap
-                             ringkas seperti sebelumnya. --}}
-                        @if($invoice->withholding_tax > 0)
-                        <div class="inv-money-item">
-                            <span class="inv-fact-label">Withholding Tax (PPh)</span>
-                            <span class="inv-money-num text-danger">- {{ number_format($invoice->withholding_tax, 0, ',', '.') }}</span>
-                        </div>
-                        @endif
-                        <div class="inv-money-item">
-                            <span class="inv-fact-label">Diterima (Cash Receipt)</span>
-                            <span class="inv-money-num text-success">{{ number_format($received, 0, ',', '.') }}</span>
-                        </div>
-                    </div>
-
-                    <div class="inv-money-totals">
-                        <div class="inv-money-total">
-                            <span class="inv-fact-label">Captured Total</span>
-                            <strong class="text-primary">{{ number_format($invoice->captured_total, 0, ',', '.') }}</strong>
-                        </div>
-                        <div class="inv-money-total">
-                            <span class="inv-fact-label">Sisa Tagihan</span>
-                            <strong class="{{ $balance > 0 ? 'text-danger' : 'text-success' }}">{{ number_format($balance, 0, ',', '.') }}</strong>
-                        </div>
-                        <div class="inv-progress">
-                            <div style="height:8px;background:var(--surface-3);border-radius:var(--radius-pill);overflow:hidden;">
-                                <div id="paidProgressBar" style="height:100%;border-radius:var(--radius-pill);transition:width .4s;"></div>
+                            <div class="inv-paper-po">
+                                [{{ $invoice->po->code }}] {{ $invoice->po->name }}
+                                <button aria-label="Kontak PIC Internal &amp; Customer" type="button" class="btn btn-outline-secondary btn-sm ml-1" style="padding:1px 7px;" data-toggle="modal" data-target="#mdlPicContact" title="Kontak PIC Internal &amp; Customer">
+                                    <i class="fas fa-address-book"></i>
+                                </button>
                             </div>
-                            <small class="text-muted d-block mt-1 text-right">{{ rtrim(rtrim(number_format($paidPct, 1, ',', '.'), '0'), ',') }}% terbayar</small>
+                            @endif
+                        </div>
+                        <div class="inv-paper-status">
+                            <x-status :status="$dStatus" context="invoice" size="md" />
+                            @if($invoice->is_additional)
+                                <span class="badge badge-warning" style="font-size:10px;" title="Melebihi sisa nilai kontrak PO">ADDITIONAL</span>
+                            @endif
                         </div>
                     </div>
 
+                    <div class="inv-paper-meta">
+                        <div class="inv-meta-col">
+                            <span class="inv-fact-label">Pelanggan</span>
+                            <span class="inv-meta-strong">{{ $invoice->po->customer->name ?? '-' }}</span>
+                        </div>
+                        <div class="inv-meta-col">
+                            <div class="inv-meta-pair">
+                                <span class="inv-fact-label">Tanggal Invoice</span>
+                                <span class="inv-fact-value">{{ $invoice->invoice_date ? $invoice->invoice_date->format('d/m/Y') : '-' }}</span>
+                            </div>
+                            <div class="inv-meta-pair">
+                                <span class="inv-fact-label">Jatuh Tempo (Print)</span>
+                                <span class="inv-fact-value">{{ $invoice->due_date ? $invoice->due_date->format('d/m/Y') : '-' }}</span>
+                            </div>
+                            <div class="inv-meta-pair">
+                                <span class="inv-fact-label">Tanggal Terima</span>
+                                <span class="inv-fact-value">
+                                    {{ $invoice->received_at ? $invoice->received_at->format('d/m/Y') : '-' }}
+                                    @if(!$invoice->received_at && in_array($invoice->status, ['SENT','RECEIVED','PARTIALLY_PAID']))
+                                    <span class="badge badge-secondary ml-1" style="font-size:9px;">Belum ada</span>
+                                    @endif
+                                </span>
+                            </div>
+                            <div class="inv-meta-pair">
+                                <span class="inv-fact-label">Jatuh Tempo Aktual</span>
+                                <span class="inv-fact-value {{ $dStatus === 'OVERDUE' ? 'text-danger font-weight-600' : '' }}">
+                                    {{ $invoice->actual_due_date ? $invoice->actual_due_date->format('d/m/Y') : '-' }}
+                                    @if($dStatus === 'OVERDUE')<i class="fas fa-exclamation-circle ml-1"></i>@endif
+                                </span>
+                            </div>
+                        </div>
+                        <div class="inv-meta-col">
+                            <div class="inv-meta-pair">
+                                <span class="inv-fact-label">Payment Term</span>
+                                <span class="inv-fact-value">{{ $invoice->payment_term_label }}</span>
+                            </div>
+                            <div class="inv-meta-pair">
+                                <span class="inv-fact-label">No. PO</span>
+                                <span class="inv-fact-value">{{ $invoice->poNumber->po_number ?? '-' }}</span>
+                            </div>
+                            <div class="inv-meta-pair">
+                                <span class="inv-fact-label">No. BAST</span>
+                                <span class="inv-fact-value">{{ $invoice->bast->no_bast ?? $invoice->poNumber->no_bast ?? ('No. PO: ' . ($invoice->poNumber->po_number ?? '-') . ' · BAST: belum tertaut') }}
+                                    @if($invoice->bast?->parent)
+                                        <span class="badge badge-secondary" style="font-size:9px;" title="BAST sintetis hasil backfill dipecah per invoice">Pecahan dari {{ $invoice->bast->parent->no_bast }}</span>
+                                    @endif</span>
+                            </div>
+                            <div class="inv-meta-pair">
+                                <span class="inv-fact-label">No. Faktur Pajak</span>
+                                <span class="inv-fact-value">{{ $invoice->faktur_number ?: '-' }}</span>
+                            </div>
+                            @if($dnLink)
+                            <div class="inv-meta-pair">
+                                <span class="inv-fact-label">Surat Jalan</span>
+                                <span class="inv-fact-value">
+                                    <a href="{{ route('delivery-note.show', $dnLink->id) }}" target="_blank">{{ $dnLink->code }}</a>
+                                    <span class="badge badge-{{ $dnLink->status_color }} ml-1" style="font-size:9px;">{{ $dnLink->status_label }}</span>
+                                </span>
+                            </div>
+                            @endif
+                        </div>
+                    </div>
+
+                    @unless($invRestricted)
+                    {{-- Rincian tagihan --}}
+                    <div class="table-responsive">
+                        <table class="table mb-0 inv-items">
+                            <thead>
+                                <tr>
+                                    <th scope="col" style="width:4%;" class="text-center">No</th>
+                                    <th scope="col">Deskripsi</th>
+                                    <th scope="col" class="text-right">Harga Satuan</th>
+                                    <th scope="col" class="text-center">Qty</th>
+                                    <th scope="col" class="text-right">Deduction</th>
+                                    <th scope="col" class="text-right">Jumlah</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($invoice->details as $d)
+                                <tr>
+                                    <td class="text-center text-muted">{{ $loop->iteration }}</td>
+                                    <td>{{ $d->description }}</td>
+                                    <td class="text-right text-nowrap">{{ $rp($d->unit_price) }}</td>
+                                    <td class="text-center text-nowrap">{{ $d->qty_unit_label }}</td>
+                                    <td class="text-right text-nowrap text-danger">{{ $d->deduction > 0 ? '- ' . $rp($d->deduction) : $rp(0) }}</td>
+                                    <td class="text-right text-nowrap"><strong>{{ $rp($d->total) }}</strong></td>
+                                </tr>
+                                @empty
+                                <tr><td colspan="6"><x-empty title="Belum ada rincian" /></td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {{-- Ringkasan total — rata kanan seperti kaki invoice --}}
+                    <div class="inv-totals-wrap">
+                        <div class="inv-totals">
+                            <div class="inv-total-row"><span>Subtotal</span><span>{{ $rp($invoice->subtotal + $invoice->total_deduction) }}</span></div>
+                            @if($invoice->billing_percentage_label)
+                            <div class="inv-total-row"><span>{{ $invoice->billing_percentage_label }}</span><span>{{ $rp($invoice->billed_amount) }}</span></div>
+                            @endif
+                            <div class="inv-total-row"><span>Total Deduction</span><span class="text-danger">{{ $invoice->total_deduction > 0 ? '- ' . $rp($invoice->total_deduction) : $rp(0) }}</span></div>
+                            <div class="inv-total-row"><span>DPP</span><span>{{ $rp($invoice->billed_amount) }}</span></div>
+                            <div class="inv-total-row"><span>PPN {{ $taxRateLabel }}%</span><span>{{ $rp($invoice->tax_amount) }}</span></div>
+                            {{-- MN-07 — PPh dipotong di muka, hanya jika ada nilainya. --}}
+                            @if($invoice->withholding_tax > 0)
+                            <div class="inv-total-row"><span>Withholding Tax (PPh)</span><span class="text-danger">- {{ $rp($invoice->withholding_tax) }}</span></div>
+                            @endif
+                            <div class="inv-total-row inv-total-strong"><span>Captured Total</span><span>{{ $rp($invoice->captured_total) }}</span></div>
+                            <div class="inv-total-row"><span class="text-success">Sudah Dibayar</span><span class="text-success">{{ $rp($received) }}</span></div>
+                            <div class="inv-total-row inv-total-due"><span>Sisa Tagihan</span><span class="{{ $balance > 0 ? 'text-danger' : 'text-success' }}">{{ $rp($balance) }}</span></div>
+                            <div class="inv-totals-note">Seluruh nominal dalam Rupiah (IDR)</div>
+                        </div>
+                    </div>
+
+                    @if($invoice->is_additional)
+                    <div class="alert alert-warning mx-3 mb-3 py-2" style="font-size:11px;">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                        <strong>ADDITIONAL</strong> — melebihi sisa kontrak PO sebesar {{ $rp($invoice->additional_amount) }}.
+                    </div>
+                    @endif
+                    @endunless
+
+                    <div class="inv-paper-foot">
+                        @if(!$invRestricted && $invoice->sourceFund)
+                        <div class="inv-meta-pair">
+                            <span class="inv-fact-label">Rekening Pembayaran</span>
+                            <span class="inv-fact-value">
+                                <strong>{{ $invoice->sourceFund->bank->name ?? '-' }}</strong> — {{ $invoice->sourceFund->no_account ?? '-' }}
+                                <span class="text-muted">· a.n. {{ $invoice->sourceFund->name }}</span>
+                            </span>
+                        </div>
+                        @endif
+                        <div class="inv-meta-pair">
+                            <span class="inv-fact-label">Remark</span>
+                            <span class="inv-fact-value" style="white-space:pre-line;">{{ $invoice->remark ?: '-' }}</span>
+                        </div>
+                        @if($invoice->status === 'CANCELLED')
+                        <div class="inv-meta-pair">
+                            <span class="inv-fact-label">Alasan Batal</span>
+                            <span class="inv-fact-value text-danger" style="white-space:pre-line;">{{ $invoice->cancel_reason ?: '-' }}</span>
+                        </div>
+                        @endif
+                    </div>
                 </div>
 
-                @if($invoice->is_additional)
-                <div class="alert alert-warning mt-3 mb-0 py-2" style="font-size:11px;">
-                    <i class="fas fa-exclamation-triangle mr-1"></i>
-                    <strong>ADDITIONAL</strong> — melebihi sisa kontrak PO sebesar
-                    {{ number_format($invoice->additional_amount, 0, ',', '.') }}.
-                </div>
-                @endif
-
-                @if($invoice->sourceFund)
-                <div class="inv-account mt-3">
-                    <span class="inv-fact-label">Rekening Pembayaran</span>
-                    <span class="inv-fact-value">
-                        <strong>{{ $invoice->sourceFund->bank->name ?? '-' }}</strong> — {{ $invoice->sourceFund->no_account ?? '-' }}
-                        <span class="text-muted">· a.n. {{ $invoice->sourceFund->name }}</span>
-                    </span>
-                </div>
-                @endif
-
-            </div>
-        </div>
-        @endunless
-
-        <!-- 3. RINCIAN, LAMPIRAN, CASH RECEIPT, LOG (tab) -->
-                @php
-                    $poAttachments = $invoice->po->attachments->where('type', 'general')->values() ?? collect();
-                    $noPoAttachments = $invoice->poNumber ? $invoice->poNumber->attachments->where('type', '!=', 'po_number_bast')->values() : collect();
-                    $bastAttachments = $invoice->poNumber ? $invoice->poNumber->attachments->where('type', 'po_number_bast')->values() : collect();
-                    $lampiranPoCount = $poAttachments->count() + $noPoAttachments->count() + $bastAttachments->count();
-                @endphp
-
-                <div class="card card-primary card-outline shadow-sm">
+                @unless($invRestricted)
+                {{-- Lampiran PO & tabel Cash Receipt lengkap --}}
+                <div class="card shadow-sm">
                     <div class="card-header">
                         <ul class="nav nav-tabs card-header-tabs" id="invDetailTabs">
-                            @unless($invRestricted)
                             <li class="nav-item">
-                                <a class="nav-link active" data-toggle="tab" href="#tabRincian">
-                                    <i class="fas fa-list-ul mr-1"></i> Rincian
+                                <a class="nav-link active" data-toggle="tab" href="#tabCashReceipt">
+                                    <i class="fas fa-money-check-alt mr-1"></i> Cash Receipt
+                                    <span class="badge badge-secondary ml-1">{{ $invoice->cashReceipts->count() }}</span>
                                 </a>
                             </li>
                             <li class="nav-item">
@@ -386,191 +367,13 @@
                                     <span class="badge badge-secondary ml-1">{{ $lampiranPoCount }}</span>
                                 </a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link" data-toggle="tab" href="#tabLampiranInvoice">
-                                    <i class="fas fa-paperclip mr-1"></i> Lampiran Invoice
-                                    <span class="badge badge-secondary ml-1">{{ $invoice->attachments->count() }}</span>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" data-toggle="tab" href="#tabCashReceipt">
-                                    <i class="fas fa-money-check-alt mr-1"></i> Cash Receipt
-                                </a>
-                            </li>
-                            @endunless
-                            <li class="nav-item">
-                                <a class="nav-link {{ $invRestricted ? 'active' : '' }}" data-toggle="tab" href="#tabLog">
-                                    <i class="fas fa-history mr-1"></i> Log &amp; Approval
-                                </a>
-                            </li>
                         </ul>
                     </div>
                     <div class="card-body p-0">
                         <div class="tab-content">
 
-                            @unless($invRestricted)
-                            <!-- RINCIAN -->
-                            <div class="tab-pane fade show active" id="tabRincian">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered mb-0">
-                                        <thead class="bg-light">
-                                            <tr>
-                                                <th scope="col" style="width:4%;" class="text-center">No</th>
-                                                <th scope="col" style="width:34%;">Deskripsi</th>
-                                                <th scope="col" style="width:16%;" class="text-right">Harga Satuan</th>
-                                                <th scope="col" style="width:8%;" class="text-center">Qty</th>
-                                                <th scope="col" style="width:16%;" class="text-right">Deduction</th>
-                                                <th scope="col" style="width:16%;" class="text-right">Total</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @forelse($invoice->details as $d)
-                                            <tr>
-                                                <td class="text-center">{{ $loop->iteration }}</td>
-                                                <td>{{ $d->description }}</td>
-                                                <td class="text-right">{{ number_format($d->unit_price, 0, ',', '.') }}</td>
-                                                <td class="text-center">{{ $d->qty_unit_label }}</td>
-                                                <td class="text-right text-danger">{{ $d->deduction > 0 ? '- ' . number_format($d->deduction, 0, ',', '.') : number_format(0, 0, ',', '.') }}</td>
-                                                <td class="text-right"><strong>{{ number_format($d->total, 0, ',', '.') }}</strong></td>
-                                            </tr>
-                                            @empty
-                                            <tr><td colspan="6" class="text-center text-muted py-3">Belum ada rincian.</td></tr>
-                                            @endforelse
-                                        </tbody>
-                                        <tfoot>
-                                            <tr style="background:var(--surface-2);">
-                                                <th colspan="5" class="text-right" style="font-size:12px;">Captured Total</th>
-                                                <th class="text-right" style="font-size:12px;color:var(--info);">{{ number_format($invoice->captured_total, 0, ',', '.') }}</th>
-                                            </tr>
-                                        </tfoot>
-                                    </table>
-                                </div>
-                            </div>
-
-                            <!-- LAMPIRAN PO (PO + No. PO + BAST) -->
-                            <div class="tab-pane fade" id="tabLampiranPO">
-                                <div class="att-group-section">
-                                    <div class="att-group-title">Purchase Order</div>
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered mb-0">
-                                            <thead class="bg-light">
-                                                <tr>
-                                                    <th scope="col" style="width:5%;" class="text-center">No</th>
-                                                    <th scope="col">Judul</th>
-                                                    <th scope="col" style="width:10%;" class="text-center">Aksi</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @forelse($poAttachments as $a)
-                                                <tr>
-                                                    <td class="text-center">{{ $loop->iteration }}</td>
-                                                    <td>{{ $a->title ?? $a->file_name }}</td>
-                                                    <td class="text-center">
-                                                        <a href="/storage/{{ $a->file_path }}" data-evidence="icr-1" data-evidence-name="{{ $a->title ?? $a->file_name }}" target="_blank" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a>
-                                                    </td>
-                                                </tr>
-                                                @empty
-                                                <tr><td colspan="3" class="text-center text-muted py-3">PO ini belum punya lampiran.</td></tr>
-                                                @endforelse
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                                <div class="att-group-section">
-                                    <div class="att-group-title">No. PO</div>
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered mb-0">
-                                            <thead class="bg-light">
-                                                <tr>
-                                                    <th scope="col" style="width:5%;" class="text-center">No</th>
-                                                    <th scope="col">Judul</th>
-                                                    <th scope="col" style="width:10%;" class="text-center">Aksi</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @forelse($noPoAttachments as $a)
-                                                <tr>
-                                                    <td class="text-center">{{ $loop->iteration }}</td>
-                                                    <td>{{ $a->title ?? $a->file_name }}</td>
-                                                    <td class="text-center">
-                                                        <a href="/storage/{{ $a->file_path }}" data-evidence="icr-2" data-evidence-name="{{ $a->title ?? $a->file_name }}" target="_blank" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a>
-                                                    </td>
-                                                </tr>
-                                                @empty
-                                                <tr><td colspan="3" class="text-center text-muted py-3">No. PO ini belum punya lampiran.</td></tr>
-                                                @endforelse
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                                <div class="att-group-section">
-                                    <div class="att-group-title">BAST</div>
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered mb-0">
-                                            <thead class="bg-light">
-                                                <tr>
-                                                    <th scope="col" style="width:5%;" class="text-center">No</th>
-                                                    <th scope="col">Judul</th>
-                                                    <th scope="col" style="width:10%;" class="text-center">Aksi</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @forelse($bastAttachments as $a)
-                                                <tr>
-                                                    <td class="text-center">{{ $loop->iteration }}</td>
-                                                    <td>{{ $a->title ?? $a->file_name }}</td>
-                                                    <td class="text-center">
-                                                        <a href="/storage/{{ $a->file_path }}" data-evidence="icr-3" data-evidence-name="{{ $a->title ?? $a->file_name }}" target="_blank" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a>
-                                                    </td>
-                                                </tr>
-                                                @empty
-                                                <tr><td colspan="3" class="text-center text-muted py-3">No. PO ini belum punya lampiran BAST.</td></tr>
-                                                @endforelse
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- LAMPIRAN INVOICE -->
-                            <div class="tab-pane fade" id="tabLampiranInvoice">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered mb-0">
-                                        <thead class="bg-light">
-                                            <tr>
-                                                <th scope="col" style="width:5%;" class="text-center">No</th>
-                                                <th scope="col">Judul</th>
-                                                <th scope="col" style="width:20%;">Diupload Oleh</th>
-                                                <th scope="col" style="width:10%;" class="text-center">Aksi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @forelse($invoice->attachments as $a)
-                                            <tr>
-                                                <td class="text-center">{{ $loop->iteration }}</td>
-                                                <td>{{ $a->title ?? $a->file_name }}</td>
-                                                <td><small class="text-muted">{{ $a->inputBy->name ?? '-' }}</small></td>
-                                                <td class="text-center">
-                                                    <a href="/storage/{{ $a->file_path }}" data-evidence="icr-4" data-evidence-name="{{ $a->title ?? $a->file_name }}" target="_blank" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a>
-                                                </td>
-                                            </tr>
-                                            @empty
-                                            <tr><td colspan="4" class="text-center text-muted py-3">Belum ada dokumen pendukung.</td></tr>
-                                            @endforelse
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-
                             <!-- CASH RECEIPT -->
-                            <div class="tab-pane fade" id="tabCashReceipt">
-                                @if($canAddCr)
-                                <div class="d-flex justify-content-end p-2 border-bottom">
-                                    <button type="button" class="btn btn-success btn-sm" id="btnAddCashReceipt">
-                                        <i class="fas fa-plus mr-1"></i> Tambah Cash Receipt
-                                    </button>
-                                </div>
-                                @endif
+                            <div class="tab-pane fade show active" id="tabCashReceipt">
                                 <div class="table-responsive">
                                     <table class="table table-bordered mb-0">
                                         <thead class="bg-light">
@@ -593,10 +396,10 @@
                                             <tr>
                                                 <td class="text-center">{{ $loop->iteration }}</td>
                                                 <td>{{ $cr->received_date ? $cr->received_date->format('d/m/Y') : '-' }}</td>
-                                                <td class="text-right"><strong class="text-success">{{ number_format($cr->amount, 0, ',', '.') }}</strong></td>
+                                                <td class="text-right"><strong class="text-success">{{ $rp($cr->amount) }}</strong></td>
                                                 <td class="text-right">
                                                     @if($cr->withholding_tax > 0)
-                                                        <span class="text-info">{{ number_format($cr->withholding_tax, 0, ',', '.') }}</span>
+                                                        <span class="text-info">{{ $rp($cr->withholding_tax) }}</span>
                                                     @else
                                                         <span class="text-muted">-</span>
                                                     @endif
@@ -621,7 +424,16 @@
                                                     @endif
                                                 </td>
                                                 @if($canDeleteCr)
-                                                <td class="text-center">
+                                                <td class="text-center text-nowrap">
+                                                    @if(Auth::user()->hasRole(['superadmin']))
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm btn-super-edit-cr" title="Edit (Superadmin)" aria-label="Edit Cash Receipt"
+                                                            data-action="{{ route('invoice-cash-receipt.cash-receipt.super-update', [$invoice->id, $cr->id]) }}"
+                                                            data-date="{{ optional($cr->received_date)->format('Y-m-d') }}"
+                                                            data-amount="{{ number_format((int) $cr->amount, 0, ',', '.') }}"
+                                                            data-fund="{{ $cr->source_fund_id }}"
+                                                            data-notes="{{ $cr->notes }}"
+                                                            data-header="{{ $cr->cash_receipt_header_id ? 1 : 0 }}"><i class="fas fa-pen"></i></button>
+                                                    @endif
                                                     <form action="{{ route('invoice-cash-receipt.cash-receipt.destroy', [$invoice->id, $cr->id]) }}"
                                                           method="POST" class="frmDeleteCr d-inline">
                                                         @csrf @method('DELETE')
@@ -638,101 +450,196 @@
                                         <tfoot>
                                             <tr style="background:var(--surface-2);">
                                                 <th colspan="2" class="text-right" style="font-size:12px;">Total Diterima</th>
-                                                <th class="text-right" style="font-size:12px;color:var(--success);">{{ number_format($received, 0, ',', '.') }}</th>
+                                                <th class="text-right" style="font-size:12px;color:var(--success);">{{ $rp($received) }}</th>
                                                 <th colspan="{{ $canDeleteCr ? 6 : 5 }}"></th>
                                             </tr>
                                         </tfoot>
                                         @endif
                                     </table>
                                 </div>
-                                @if(!$canAddCr && !in_array($invoice->status, ['PAID']))
-                                <div class="p-2 border-top">
-                                    <small class="text-muted">
-                                        <i class="fas fa-info-circle mr-1"></i>
-                                        Cash Receipt hanya bisa ditambahkan untuk invoice berstatus <strong>SENT</strong> atau <strong>PARTIALLY PAID</strong>.
-                                    </small>
-                                </div>
-                                @endif
                             </div>
-                            @endunless
 
-                            <!-- LOG & APPROVAL -->
-                            <div class="tab-pane fade {{ $invRestricted ? 'show active' : '' }}" id="tabLog">
-                @php
-                                    /*
-                                     | Penyusunan timeline dipindah ke
-                                     | App\Support\InvoiceTimeline.
-                                     |
-                                     | Sebelumnya ~95 baris PHP di sini membangun
-                                     | koleksi peristiwa, membaca relasi, memformat
-                                     | mata uang, dan MENYUSUN POTONGAN HTML sebagai
-                                     | string yang dikeluarkan dengan {!! !!}.
-                                     | Semuanya sudah ter-escape, jadi bukan lubang
-                                     | keamanan - tapi logika urutan peristiwa dan
-                                     | perhitungan PPh tidak bisa diuji tanpa
-                                     | merender halaman, dan relasi yang dibaca di
-                                     | dalam view membuat halaman ini diam-diam
-                                     | menjadi N+1 setiap kali eager load di
-                                     | controller berubah.
-                                     |
-                                     | Kelas itu mengembalikan DATA, bukan HTML,
-                                     | sehingga {!! !!} tidak diperlukan lagi di
-                                     | bawah.
-                                     */
-                                    $timelineEvents = \App\Support\InvoiceTimeline::untuk($invoice);
-                                                                @endphp
-                                {{-- Tiap peristiwa dirapikan jadi satu baris kepala
-                                     (lencana - pelaku - waktu) dengan keterangan di
-                                     bawahnya, bukan tumpukan teks lepas seperti
-                                     sebelumnya. Tautan Surat Jalan dibuka sebagai
-                                     modal (data-dn-url), sehingga pengguna tidak
-                                     kehilangan posisi di tab Log. --}}
-                                <div class="inv-timeline p-3">
-                                    @forelse($timelineEvents as $ev)
-                                    <div class="inv-timeline-item">
-                                        <span class="inv-timeline-dot badge-{{ $ev['color'] }}"></span>
-                                        <div class="inv-timeline-body">
-                                            <div class="inv-timeline-head">
-                                                <span class="badge badge-{{ $ev['color'] }} px-2 py-1" style="font-size:9px;">{{ $ev['badge'] }}</span>
-                                                <strong class="inv-timeline-actor">{{ $ev['actor'] }}</strong>
-                                                <span class="inv-timeline-date">{{ $ev['label'] }}</span>
-                                            </div>
-                                            @if(!empty($ev['lines']))
-                                                <div class="inv-timeline-lines">
-                                                    @foreach($ev['lines'] as $baris)
-                                                        <div class="inv-timeline-line">
-                                                            @if(!empty($baris['ikon']))
-                                                                <i class="{{ $baris['ikon'] }} inv-timeline-ico"></i>
-                                                            @endif
-                                                            <span>
-                                                                {{ $baris['teks'] }}
-                                                                @if(!empty($baris['tautan']))
-                                                                    @if(!empty($baris['tautan']['modal']))
-                                                                        <a href="#" class="inv-dn-link"
-                                                                           data-dn-url="{{ $baris['tautan']['url'] }}">{{ $baris['tautan']['label'] }}</a>
-                                                                    @else
-                                                                        <a href="{{ $baris['tautan']['url'] }}" target="_blank">{{ $baris['tautan']['label'] }}</a>
-                                                                    @endif
-                                                                @endif
-                                                                @if(!empty($baris['sesudah']))
-                                                                    {{ $baris['sesudah'] }}
-                                                                @endif
-                                                            </span>
-                                                        </div>
-                                                    @endforeach
-                                                </div>
-                                            @endif
-                                        </div>
+                            <!-- LAMPIRAN PO (PO + No. PO + BAST) -->
+                            <div class="tab-pane fade" id="tabLampiranPO">
+                                @foreach([
+                                    ['Purchase Order', $poAttachments,   'icr-1', 'PO ini belum punya lampiran.'],
+                                    ['No. PO',         $noPoAttachments, 'icr-2', 'No. PO ini belum punya lampiran.'],
+                                    ['BAST',           $bastAttachments, 'icr-3', 'No. PO ini belum punya lampiran BAST.'],
+                                ] as [$grpJudul, $grpItems, $grpEvidence, $grpKosong])
+                                <div class="att-group-section">
+                                    <div class="att-group-title">{{ $grpJudul }}</div>
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered mb-0">
+                                            <thead class="bg-light">
+                                                <tr>
+                                                    <th scope="col" style="width:5%;" class="text-center">No</th>
+                                                    <th scope="col">Judul</th>
+                                                    <th scope="col" style="width:10%;" class="text-center">Aksi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @forelse($grpItems as $a)
+                                                <tr>
+                                                    <td class="text-center">{{ $loop->iteration }}</td>
+                                                    <td>
+                                                        @if(in_array($a->type, ['kom', 'spk'], true))
+                                                            <span class="badge badge-{{ $a->type === 'kom' ? 'info' : 'purple' }} mr-1" style="font-size:9px;">{{ strtoupper($a->type) }}</span>
+                                                        @endif
+                                                        {{ $a->title ?? $a->file_name }}
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <a href="/storage/{{ $a->file_path }}" data-evidence="{{ $grpEvidence }}" data-evidence-name="{{ $a->title ?? $a->file_name }}" target="_blank" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></a>
+                                                    </td>
+                                                </tr>
+                                                @empty
+                                                <tr><td colspan="3" class="text-center text-muted py-3">{{ $grpKosong }}</td></tr>
+                                                @endforelse
+                                            </tbody>
+                                        </table>
                                     </div>
-                                    @empty
-                                    <div class="text-center text-muted py-3">Belum ada log.</div>
-                                    @endforelse
                                 </div>
+                                @endforeach
                             </div>
 
                         </div>
                     </div>
                 </div>
+                @endunless
+            </div>
+
+            {{-- ============ KANAN: PANEL KERJA ============ --}}
+            <div class="col-xl-4 col-lg-5">
+
+                @unless($invRestricted)
+                {{-- Pembayaran --}}
+                <div class="card shadow-sm inv-side-card">
+                    <div class="inv-side-title">Pembayaran</div>
+                    <div class="inv-side-due">
+                        <span class="inv-fact-label">Sisa Tagihan</span>
+                        <strong class="{{ $balance > 0 ? 'text-danger' : 'text-success' }}">{{ $rp($balance) }}</strong>
+                        <small class="text-muted">dari {{ $rp($invoice->captured_total) }}</small>
+                    </div>
+                    <div class="inv-progress">
+                        <div style="height:8px;background:var(--surface-3);border-radius:var(--radius-pill);overflow:hidden;">
+                            <div id="paidProgressBar" style="height:100%;border-radius:var(--radius-pill);transition:width .4s;"></div>
+                        </div>
+                        <small class="text-muted d-block mt-1 text-right">{{ rtrim(rtrim(number_format($paidPct, 1, ',', '.'), '0'), ',') }}% terbayar</small>
+                    </div>
+                    @if($canAddCr)
+                    <button type="button" class="btn btn-primary btn-block btn-sm mt-2" id="btnAddCashReceipt">
+                        <i class="fas fa-plus mr-1"></i> Terima Pembayaran (Cash Receipt)
+                    </button>
+                    @elseif(!in_array($invoice->status, ['PAID']))
+                    <small class="text-muted d-block mt-2">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Cash Receipt hanya bisa ditambahkan untuk invoice berstatus <strong>SENT</strong>, <strong>RECEIVED</strong>, atau <strong>PARTIALLY PAID</strong>.
+                    </small>
+                    @endif
+
+                    <div class="inv-side-subtitle">Riwayat Pembayaran</div>
+                    @forelse($invoice->cashReceipts as $cr)
+                    <div class="inv-pay-row">
+                        <div>
+                            <div class="inv-pay-date">{{ $cr->received_date ? $cr->received_date->format('d/m/Y') : '-' }}</div>
+                            <small class="text-muted">{{ $cr->sourceFund->name ?? '-' }}</small>
+                        </div>
+                        <strong class="text-success">{{ $rp($cr->amount) }}</strong>
+                    </div>
+                    @empty
+                    <div class="text-muted" style="font-size:12px;">Belum ada pembayaran.</div>
+                    @endforelse
+                </div>
+
+                {{-- Lampiran Invoice — bisa ditambah di status apa pun --}}
+                <div class="card shadow-sm inv-side-card">
+                    <div class="inv-side-title d-flex align-items-center">
+                        Lampiran Invoice
+                        <span class="badge badge-secondary ml-2">{{ $invoice->attachments->count() }}</span>
+                    </div>
+                    @forelse($invoice->attachments as $a)
+                    <div class="inv-att-row">
+                        <i class="fas fa-file-alt inv-att-ico"></i>
+                        <div class="inv-att-body">
+                            <div class="inv-att-title">{{ $a->title ?? $a->file_name }}</div>
+                            <small class="text-muted">{{ $a->inputBy->name ?? '-' }} · {{ $a->created_at?->format('d/m/Y H:i') }}</small>
+                        </div>
+                        <a href="/storage/{{ $a->file_path }}" data-evidence="icr-4" data-evidence-name="{{ $a->title ?? $a->file_name }}" target="_blank" class="btn btn-info btn-sm" aria-label="Lihat lampiran"><i class="fas fa-eye"></i></a>
+                    </div>
+                    @empty
+                    <div class="text-muted" style="font-size:12px;">Belum ada dokumen pendukung.</div>
+                    @endforelse
+
+                    @if($canAddAttachment)
+                    <form action="{{ route('invoice-cash-receipt.attachment.store', $invoice->id) }}" method="POST"
+                          enctype="multipart/form-data" class="inv-att-form" id="frmInvAttachment">
+                        @csrf
+                        <div class="inv-side-subtitle">Tambah Lampiran</div>
+                        <input type="text" name="attachments[0][title]" class="form-control form-control-sm mb-2"
+                               style="text-transform:uppercase;" maxlength="255" placeholder="Judul lampiran (opsional)">
+                        <input type="file" name="attachments[0][file]" class="form-control-file mb-2" required
+                               accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
+                        <button type="submit" class="btn btn-outline-primary btn-sm btn-block">
+                            <i class="fas fa-upload mr-1"></i> Unggah Lampiran
+                        </button>
+                        <small class="text-muted d-block mt-1">Format: pdf, jpg, png, doc(x), xls(x). Maks 10 MB. Tercatat di Log.</small>
+                    </form>
+                    @endif
+                </div>
+                @endunless
+
+                {{-- LOG & APPROVAL --}}
+                <div class="card shadow-sm inv-side-card" id="tabLog">
+                    <div class="inv-side-title">Log &amp; Approval</div>
+                    @php
+                        // Penyusunan timeline ada di App\Support\InvoiceTimeline (data, bukan HTML).
+                        $timelineEvents = \App\Support\InvoiceTimeline::untuk($invoice);
+                    @endphp
+                    {{-- Tautan Surat Jalan dibuka sebagai modal (data-dn-url). --}}
+                    <div class="inv-timeline inv-timeline-side">
+                        @forelse($timelineEvents as $ev)
+                        <div class="inv-timeline-item">
+                            <span class="inv-timeline-dot badge-{{ $ev['color'] }}"></span>
+                            <div class="inv-timeline-body">
+                                <div class="inv-timeline-head">
+                                    <span class="badge badge-{{ $ev['color'] }} px-2 py-1" style="font-size:9px;">{{ $ev['badge'] }}</span>
+                                    <strong class="inv-timeline-actor">{{ $ev['actor'] }}</strong>
+                                    <span class="inv-timeline-date">{{ $ev['label'] }}</span>
+                                </div>
+                                @if(!empty($ev['lines']))
+                                    <div class="inv-timeline-lines">
+                                        @foreach($ev['lines'] as $baris)
+                                            <div class="inv-timeline-line">
+                                                @if(!empty($baris['ikon']))
+                                                    <i class="{{ $baris['ikon'] }} inv-timeline-ico"></i>
+                                                @endif
+                                                <span>
+                                                    {{ $baris['teks'] }}
+                                                    @if(!empty($baris['tautan']))
+                                                        @if(!empty($baris['tautan']['modal']))
+                                                            <a href="#" class="inv-dn-link"
+                                                               data-dn-url="{{ $baris['tautan']['url'] }}">{{ $baris['tautan']['label'] }}</a>
+                                                        @else
+                                                            <a href="{{ $baris['tautan']['url'] }}" target="_blank">{{ $baris['tautan']['label'] }}</a>
+                                                        @endif
+                                                    @endif
+                                                    @if(!empty($baris['sesudah']))
+                                                        {{ $baris['sesudah'] }}
+                                                    @endif
+                                                </span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                        @empty
+                        <div class="text-center text-muted py-3">Belum ada log.</div>
+                        @endforelse
+                    </div>
+                </div>
+
+            </div>
+        </div>
 
     </div>
 </div>
@@ -866,6 +773,80 @@
         </div>
     </div>
 </div>
+
+{{-- MODAL EDIT CASH RECEIPT — Superadmin (InvoiceCashReceiptController::superUpdateCashReceipt) --}}
+@if(Auth::user()->hasRole(['superadmin']))
+<div class="modal fade" id="mdlSuperEditCr" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <form class="modal-content" method="POST" enctype="multipart/form-data" id="frmSuperEditCr">
+            @csrf
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-pen mr-2"></i>Edit Cash Receipt</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning py-2" style="font-size:12px;">
+                    Edit Superadmin. Status invoice dihitung ulang otomatis; nominal tidak boleh melebihi sisa tagihan.
+                    PPh diubah lewat tombol <strong>Settle</strong>. Perubahan dicatat di Log invoice.
+                </div>
+                <div class="alert alert-info py-2 d-none" id="superEditCrHeaderNote" style="font-size:12px;">
+                    Cash Receipt ini bagian dari satu transfer multi-invoice: nominal tidak bisa diubah di sini.
+                </div>
+                <div class="form-group">
+                    <label class="small font-weight-bold">Tanggal terima</label>
+                    <input type="date" name="received_date" class="form-control form-control-sm" required>
+                </div>
+                <div class="form-group">
+                    <label class="small font-weight-bold">Nominal (Rp)</label>
+                    <input type="text" name="amount" class="form-control form-control-sm text-right" inputmode="numeric" required>
+                </div>
+                <div class="form-group">
+                    <label class="small font-weight-bold">Sumber Dana</label>
+                    <select name="source_fund_id" class="form-control form-control-sm">
+                        <option value="">—</option>
+                        @foreach($sourceFunds as $sf)
+                        <option value="{{ $sf->id }}">{{ $sf->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="small font-weight-bold">Catatan</label>
+                    <textarea name="notes" class="form-control form-control-sm" rows="2" maxlength="1000"></textarea>
+                </div>
+                <div class="form-group mb-0">
+                    <label class="small font-weight-bold">Ganti file bukti (opsional)</label>
+                    <input type="file" name="proof_file" class="form-control-file" accept=".pdf,.jpg,.jpeg,.png">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
+                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save mr-1"></i> Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (!window.jQuery) return;
+    jQuery(document).on('click', '.btn-super-edit-cr', function () {
+        var b = this, f = document.getElementById('frmSuperEditCr');
+        f.action = b.getAttribute('data-action');
+        f.received_date.value = b.getAttribute('data-date') || '';
+        f.amount.value = b.getAttribute('data-amount') || '';
+        f.amount.readOnly = b.getAttribute('data-header') === '1';
+        f.source_fund_id.value = b.getAttribute('data-fund') || '';
+        f.notes.value = b.getAttribute('data-notes') || '';
+        f.proof_file.value = '';
+        document.getElementById('superEditCrHeaderNote').classList.toggle('d-none', b.getAttribute('data-header') !== '1');
+        jQuery('#mdlSuperEditCr').modal('show');
+    });
+    jQuery('#frmSuperEditCr input[name="amount"]').on('input', function () {
+        var v = this.value.replace(/[^\d]/g, '');
+        this.value = v.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    });
+});
+</script>
+@endif
 
 {{-- MODAL SETTLE PPH PASAL 4(2) --}}
 <div class="modal fade" id="mdlSettleCr" tabindex="-1" role="dialog" aria-hidden="true">

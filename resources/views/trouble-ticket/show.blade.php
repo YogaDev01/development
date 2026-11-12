@@ -61,7 +61,119 @@
             @if($financeState === \App\Models\TroubleTicket::FINANCE_OPEN)
                 <span class="tt-fin-badge" title="{{ implode(' ', $financeBlockers) }}"><i class="fas fa-coins" aria-hidden="true"></i> Keuangan belum selesai</span>
             @endif
+            @if(Auth::user()->hasRole(['superadmin']))
+                <button type="button" class="btn btn-outline-secondary btn-xs ml-auto" data-toggle="modal" data-target="#mdlTtSuperEdit" title="Edit data tiket (Superadmin)">
+                    <i class="fas fa-pen"></i><span class="d-none d-sm-inline ml-1">Edit</span>
+                </button>
+            @endif
         </div>
+
+        @if(Auth::user()->hasRole(['superadmin']))
+        {{-- Edit data tiket — Superadmin, status apa pun (TroubleTicketController::superUpdate). --}}
+        @php
+            $ttIssues  = \App\Models\TroubleTicketIssue::orderBy('name')->get(['id', 'name']);
+            $ttDevices = \App\Models\TroubleTicketDevice::orderBy('name')->get(['id', 'name']);
+            $ttRcas    = \App\Models\TroubleTicketRca::with('subRcas:id,rca_id,name')->orderBy('name')->get(['id', 'name']);
+        @endphp
+        <div class="modal fade" id="mdlTtSuperEdit" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <form class="modal-content" method="POST" action="{{ route('trouble-ticket.super-update', $t->id) }}">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="fas fa-pen mr-2"></i>Edit Data Tiket {{ $t->ticket_number }}</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Tutup"><span aria-hidden="true">&times;</span></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-warning py-2" style="font-size:12px;">
+                            Tiket berstatus <strong>{{ $t->status }}</strong>. Status, teknisi, waktu &amp; durasi SLA, dan pengajuan biaya tidak berubah.
+                            Setiap perubahan tercatat di riwayat tiket.
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label class="small font-weight-bold">Ref. eksternal</label>
+                                <input type="text" name="external_ref" class="form-control form-control-sm" maxlength="40" value="{{ $t->external_ref }}">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label class="small font-weight-bold">Date Open</label>
+                                <input type="datetime-local" name="reported_at" class="form-control form-control-sm" value="{{ $t->reported_at?->format('Y-m-d\TH:i') }}">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label class="small font-weight-bold">Initial Problem</label>
+                                <select name="issue_id" class="form-control form-control-sm">
+                                    <option value="">— {{ $t->issue && !$t->issue_id ? $t->issue : 'Tidak diisi' }} —</option>
+                                    @foreach($ttIssues as $o)<option value="{{ $o->id }}" @selected($t->issue_id == $o->id)>{{ $o->name }}</option>@endforeach
+                                </select>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label class="small font-weight-bold">Device</label>
+                                <select name="device_id" class="form-control form-control-sm">
+                                    <option value="">— {{ $t->device && !$t->device_id ? $t->device : 'Tidak diisi' }} —</option>
+                                    @foreach($ttDevices as $o)<option value="{{ $o->id }}" @selected($t->device_id == $o->id)>{{ $o->name }}</option>@endforeach
+                                </select>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label class="small font-weight-bold">Flag alarm</label>
+                                <input type="text" name="flag_alarm" class="form-control form-control-sm" maxlength="40" value="{{ $t->flag_alarm }}">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label class="small font-weight-bold">Pelapor</label>
+                                <input type="text" name="reporter_name" class="form-control form-control-sm" maxlength="150" value="{{ $t->reporter_name }}">
+                            </div>
+                            <div class="form-group col-12">
+                                <label class="small font-weight-bold">Deskripsi</label>
+                                <textarea name="description" class="form-control form-control-sm" rows="3" required maxlength="10000">{{ $t->description }}</textarea>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label class="small font-weight-bold">RCA</label>
+                                <select name="rca_id" class="form-control form-control-sm" id="ttSuperRca">
+                                    <option value="">—</option>
+                                    @foreach($ttRcas as $o)<option value="{{ $o->id }}" @selected($t->rca_id == $o->id)>{{ $o->name }}</option>@endforeach
+                                </select>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label class="small font-weight-bold">Sub-RCA</label>
+                                <select name="sub_rca_id" class="form-control form-control-sm" id="ttSuperSubRca">
+                                    <option value="">—</option>
+                                    @foreach($ttRcas as $r)
+                                        @foreach($r->subRcas as $o)<option value="{{ $o->id }}" data-rca="{{ $r->id }}" @selected($t->sub_rca_id == $o->id)>{{ $o->name }}</option>@endforeach
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group col-12">
+                                <label class="small font-weight-bold">Action</label>
+                                <textarea name="action" class="form-control form-control-sm" rows="2" maxlength="2000">{{ $t->action }}</textarea>
+                            </div>
+                            <div class="form-group col-12 mb-0">
+                                <label class="small font-weight-bold">Ringkasan resolusi</label>
+                                <textarea name="resolution_summary" class="form-control form-control-sm" rows="3" maxlength="5000">{{ $t->resolution_summary }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save mr-1"></i> Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <script>
+        // Sub-RCA hanya menampilkan pilihan milik RCA terpilih.
+        document.addEventListener('DOMContentLoaded', function () {
+            var rca = document.getElementById('ttSuperRca'), sub = document.getElementById('ttSuperSubRca');
+            if (!rca || !sub) return;
+            function saring() {
+                Array.prototype.forEach.call(sub.options, function (o) {
+                    if (!o.value) return;
+                    var cocok = !rca.value || o.getAttribute('data-rca') === rca.value;
+                    o.hidden = !cocok;
+                    if (!cocok && o.selected) sub.value = '';
+                });
+            }
+            rca.addEventListener('change', saring);
+            saring();
+        });
+        </script>
+        @endif
         @php $actionVars = compact('t', 'canActAsTech', 'isTechnician', 'canCreatePlan', 'bisaPlan', 'bisaBerangkat', 'dalamJalan', 'bisaMulai', 'bisaTutup', 'canApproveClose', 'bisaAlihkan', 'canSettle', 'settleList', 'settleCr'); @endphp
 
         {{-- Desktop: chat kiri + satu kartu informasi bertab di kanan.

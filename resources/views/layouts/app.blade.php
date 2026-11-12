@@ -81,6 +81,20 @@
             document.addEventListener('DOMContentLoaded', tampilkan);
             window.addEventListener('load', tampilkan);
             setTimeout(tampilkan, 1500);
+
+            /* Mode card tabel di HP/PWA (<= 640px, lihat tesys-table.js).
+               Kartu baru dipasang sesudah DataTables selesai init, jadi tabel
+               mentah sempat tergambar lalu "meloncat" jadi card. Di layar
+               sempit, tabel di area konten ditahan (tak terlihat, tata letak
+               tetap) sampai diproses (kelas ts-card-done) — paling lama
+               sampai halaman tenang, supaya tabel yang memang tidak diproses
+               (di form, bersarang) tidak tertahan. */
+            if (window.matchMedia('(max-width: 640px)').matches) {
+                document.documentElement.classList.add('ts-narrow');
+                var tenang = function () { document.documentElement.classList.add('ts-cards-settled'); };
+                document.addEventListener('DOMContentLoaded', function () { setTimeout(tenang, 800); });
+                setTimeout(tenang, 3000);
+            }
         })();
     </script>
 
@@ -93,6 +107,8 @@
            penantian itu warna aplikasi — bukan putih yang menyilaukan di tema
            gelap. */
         html.tesys-booting { background: var(--body-bg, #f4f5f3); }
+        /* Tahan tabel mentah di HP sampai mode card terpasang (lihat skrip di atas). */
+        html.ts-narrow:not(.ts-cards-settled) .main .content table:not(.ts-card-done) { visibility: hidden; }
     </style>
 
     <title>@yield('title', 'Dashboard') | TESYS</title>

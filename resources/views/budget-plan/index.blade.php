@@ -189,6 +189,8 @@
                                         $viaPo           = $bp->isBundled();
 
                                         $bolehDraft      = !$viaPo && $stBp === 'DRAFT' && $pengguna->hasRole(['superadmin','manager']);
+                                        // Superadmin: Edit di status apa pun (BudgetPlan::isEditableBy); Hapus/Submit tetap Draft.
+                                        $bolehEditSuper  = !$viaPo && $stBp !== 'DRAFT' && $pengguna->hasRole(['superadmin']);
                                         $bolehHead       = !$viaPo && $stBp === 'SUBMITTED' && $pengguna->hasRole(['superadmin','head']);
                                         $bolehFinance    = !$viaPo && $stBp === 'CHECKED' && $pengguna->hasRole(['superadmin','finance','finance_manager']);
                                         $bolehCeo        = !$viaPo && $stBp === 'VERIFIED' && $pengguna->hasRole(['superadmin','approver']);
@@ -212,7 +214,7 @@
                                         // Satu tombol saja per baris: tepat 1 aksi = tombol aksinya; lebih dari 1 =
                                         // satu tombol ⋮ berisi semua aksi (aksi utama di atas, penolakan/hapus
                                         // dipisah garis). Detail dibuka lewat klik baris, jadi tidak ada item "Detail".
-                                        $aksiTambahan = ($bolehDraft ? 2 : 0) + (($bolehHead || $bolehFinance || $bolehCeo) ? 1 : 0)
+                                        $aksiTambahan = ($bolehDraft ? 2 : 0) + ($bolehEditSuper ? 1 : 0) + (($bolehHead || $bolehFinance || $bolehCeo) ? 1 : 0)
                                             + ($bolehVerClosing ? 1 : 0) + (($bolehTutup && $bolehClosing) ? 1 : 0)
                                             + ($bolehCoa ? 1 : 0);
                                         $jumlahAksi = ($adaAksi ? 1 : 0) + $aksiTambahan;
@@ -294,7 +296,7 @@
                                             </button>
                                             @endif
 
-                                            @if($bolehDraft)
+                                            @if($bolehDraft || $bolehEditSuper)
                                             <a href="{{ url('/budget-plan/' . $bp->id . '/edit') }}" class="dropdown-item">
                                                 <i class="fas fa-pen"></i>Edit
                                             </a>
@@ -1950,7 +1952,8 @@ $(function () {
                 .text(marginPct + '%');
 
             // Budget dari form PO diubah lewat Edit PO, bukan form Budget Plan.
-            if (d.status === 'DRAFT' && !d.via_po_approval) {
+            // can_edit dari server: Draft (pembuat) atau Superadmin di status apa pun.
+            if (d.can_edit === true && !d.via_po_approval) {
                 $('#bpEditBtn, #bpEditBtnFooter').attr('href', '/budget-plan/' + id + '/edit').show();
             } else {
                 $('#bpEditBtn, #bpEditBtnFooter').hide();

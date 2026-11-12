@@ -113,7 +113,7 @@ class CostRegisterController extends Controller
 
         $cr = CostRegister::with(['details.projects:projects.id', 'periods', 'attachments'])->findOrFail($id);
 
-        if (! $cr->isEditable() || $cr->isLegacy()) {
+        if (! $cr->isEditableBy(Auth::user())) {
             return redirect(route('cost-register.index'))
                 ->with('error', 'Hanya Expense berstatus Draft yang bisa diedit.');
         }
@@ -289,12 +289,24 @@ class CostRegisterController extends Controller
         }
 
         $hapusFile = [];
+        $perubahan = [];
         try {
-            $cr = DB::transaction(function () use ($request, $id, $amount, $rows, $periode, &$hapusFile) {
-                $cr = CostRegister::whereKey($id)->lockForUpdate()->firstOrFail();
-                if (! $cr->isEditable() || $cr->isLegacy()) {
+            $cr = DB::transaction(function () use ($request, $id, $amount, $rows, $periode, &$hapusFile, &$perubahan) {
+                $cr = CostRegister::with(['periods', 'beneficiary:id,nickname'])->whereKey($id)->lockForUpdate()->firstOrFail();
+                if (! $cr->isEditableBy(Auth::user())) {
                     throw new \DomainException('Status Expense sudah berubah — hanya Draft yang bisa diedit.');
                 }
+
+                // Snapshot sebelum diubah, untuk rincian perubahan (nilai lama -> baru).
+                $ringkasPeriode = fn ($ps) => collect($ps)->map(fn ($p) => \Carbon\Carbon::parse($p['period'] ?? $p->period)->format('m/Y')
+                    . '=' . number_format((int) ($p['amount'] ?? $p->amount), 0, ',', '.'))->implode(', ');
+                $sebelum = [
+                    'Nilai'        => number_format((int) $cr->amount, 0, ',', '.'),
+                    'Cash Advance' => $cr->is_cash_advance ? 'Ya' : 'Tidak',
+                    'Catatan'      => (string) $cr->notes,
+                    'Beneficiary'  => (string) ($cr->beneficiary->nickname ?? '-'),
+                    'Periode'      => $ringkasPeriode($cr->periods),
+                ];
 
                 $cr->update([
                     'is_cash_advance' => $request->boolean('is_cash_advance'),
@@ -317,7 +329,34 @@ class CostRegisterController extends Controller
                 }
                 $this->storeAttachments($cr, $request);
 
-                $cr->addLog('DRAFT', 'DRAFT', 'updated', null);
+                $sesudah = [
+                    'Nilai'        => number_format($amount, 0, ',', '.'),
+                    'Cash Advance' => $request->boolean('is_cash_advance') ? 'Ya' : 'Tidak',
+                    'Catatan'      => (string) $request->notes,
+                    'Beneficiary'  => (string) (\App\Models\Beneficiary::whereKey($request->beneficiary_id)->value('nickname') ?? '-'),
+                    'Periode'      => $ringkasPeriode($periode['rows']),
+                ];
+                foreach ($sebelum as $label => $lama) {
+                    if ($lama !== $sesudah[$label]) {
+                        $perubahan[] = ['label' => $label, 'from' => $lama !== '' ? $lama : '-', 'to' => $sesudah[$label] !== '' ? $sesudah[$label] : '-'];
+                    }
+                }
+
+                // Catatan log: di luar Draft (edit Superadmin) rincian perubahan ditulis
+                // eksplisit, termasuk peringatan bila nominal berubah setelah masuk
+                // batch/dibayar (batch Treasury membaca nominal ini langsung).
+                $catatan = null;
+                if ($cr->status !== 'DRAFT') {
+                    $catatan = '[EDIT SUPERADMIN - status ' . $cr->status . '] '
+                        . ($perubahan
+                            ? collect($perubahan)->map(fn ($c) => $c['label'] . ': ' . $c['from'] . ' -> ' . $c['to'])->implode('; ')
+                            : 'Disimpan tanpa perubahan nilai/catatan/beneficiary/periode (rincian/lampiran mungkin berubah).');
+                    if ($sebelum['Nilai'] !== $sesudah['Nilai']
+                        && in_array($cr->status, ['QUEUED', 'PAID', 'SETTLE_SUBMITTED', 'SETTLE_REJECTED', 'SETTLE_APPROVED', 'CLOSED'], true)) {
+                        $catatan .= ' | PERHATIAN: nominal berubah setelah masuk batch/dibayar.';
+                    }
+                }
+                $cr->addLog($cr->status, $cr->status, 'updated', $catatan ? mb_substr($catatan, 0, 2000) : null);
 
                 return $cr;
             });
@@ -330,7 +369,9 @@ class CostRegisterController extends Controller
             \Illuminate\Support\Facades\Storage::disk('secure')->delete($path);
         }
 
-        UserActivityLog::record('cost_register', 'update', 'Mengubah Expense ' . $cr->display_code, $cr);
+        UserActivityLog::record('cost_register', 'update',
+            ($cr->status !== 'DRAFT' ? '[Superadmin, status ' . $cr->status . '] ' : '') . 'Mengubah Expense ' . $cr->display_code,
+            $cr, null, null, $perubahan ?: null);
 
         return redirect(route('cost-register.index'))
             ->with('success', 'Expense ' . $cr->display_code . ' berhasil diperbarui.');
@@ -616,6 +657,80 @@ class CostRegisterController extends Controller
         UserActivityLog::record('cost_register', 'submit', 'Mengajukan Expense ' . $cr->display_code, $cr);
 
         return back()->with('success', 'Expense diajukan (menunggu approval).');
+    }
+
+    /** Batas jumlah Expense per proses bulk (sama dengan bulk PO). */
+    private const BULK_MAX = 50;
+
+    /**
+     * Bulk Approve / Reject dari halaman daftar (status VERIFIED / "Submitted").
+     * Memanggil aksi satuan approve()/reject() per Expense — validasi status,
+     * log, notifikasi & activity log tetap di satu tempat. Status dicek ulang
+     * per baris; yang sudah berubah dilewati dan dilaporkan.
+     */
+    public function bulkApprove(Request $request)
+    {
+        return $this->bulkProses($request, false);
+    }
+
+    public function bulkReject(Request $request)
+    {
+        $request->validate(['notes' => 'required|string|max:500']);
+
+        return $this->bulkProses($request, true);
+    }
+
+    private function bulkProses(Request $request, bool $tolak)
+    {
+        abort_unless(Auth::user()->hasRole(CostRegister::APPROVE_ROLES), 403);
+        $request->validate([
+            'ids'   => 'required|array|min:1|max:' . self::BULK_MAX,
+            'ids.*' => 'integer',
+        ]);
+
+        $ids  = array_values(array_unique(array_map('intval', (array) $request->input('ids', []))));
+        $rows = CostRegister::whereIn('id', $ids)->get(['id', 'status'])->keyBy('id');
+
+        $ok = 0;
+        $errors = [];
+        foreach ($ids as $id) {
+            $row = $rows->get($id);
+            if (! $row) {
+                $errors[] = '#' . $id . ' (tidak ditemukan)';
+                continue;
+            }
+            if ($row->status !== 'VERIFIED') {
+                $errors[] = '#' . $id . ' (status sudah ' . $row->status . ' — muat ulang)';
+                continue;
+            }
+
+            // Aksi satuan mengembalikan redirect + flash; hanya flash 'error'-nya yang dibaca.
+            session()->forget(['success', 'error']);
+            try {
+                $tolak ? $this->reject($request, $id) : $this->approve($request, $id);
+                $error = session('error');
+            } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+                $error = $e->getMessage() ?: 'akses ditolak.';
+            }
+            session()->forget(['success', 'error']);
+
+            if ($error) {
+                $errors[] = '#' . $id . ' (' . $error . ')';
+            } else {
+                $ok++;
+            }
+        }
+
+        $redirect = back();
+        if ($ok) {
+            $redirect->with('success', $ok . ' Expense berhasil ' . ($tolak ? 'ditolak.' : 'disetujui.'));
+        }
+        if ($errors) {
+            $redirect->with('error', count($errors) . ' Expense dilewati: ' . implode(', ', array_slice($errors, 0, 5))
+                . (count($errors) > 5 ? ', …' : '') . '.');
+        }
+
+        return $redirect;
     }
 
     /** VERIFIED -> APPROVED (Approver/CEO). Setelah ini Treasury bisa memasukkannya ke batch. */
@@ -1075,7 +1190,7 @@ class CostRegisterController extends Controller
             'can_cancel'  => $cr->isCancellable() && $user->hasRole(CostRegister::SUBMIT_ROLES),
             'can_reject'  => $cr->isVerified() && $user->hasRole(CostRegister::APPROVE_ROLES),
             'can_reopen'  => $cr->isRejected() && $user->hasRole(CostRegister::SUBMIT_ROLES),
-            'can_edit'    => $cr->isEditable() && ! $cr->isLegacy() && $user->hasRole(CostRegister::SUBMIT_ROLES),
+            'can_edit'    => $cr->isEditableBy($user),
             'can_settle'  => $cr->canInputSettlement() && $user->hasRole(CostRegister::SETTLE_ROLES),
             'can_approve_settle' => $cr->isSettleSubmitted() && $user->hasRole(CostRegister::APPROVE_ROLES),
         ]);

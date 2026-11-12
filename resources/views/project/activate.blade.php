@@ -207,7 +207,7 @@
             </div>
 
             <!-- LAMPIRAN (read-only) -->
-            @php $generalAtts = $project->attachments->where('type', 'general'); @endphp
+            @php $generalAtts = $project->attachments->whereIn('type', \App\Models\Project::ATTACHMENT_CATEGORIES); @endphp
             @if($generalAtts->count() > 0)
             <div class="card card-secondary card-outline shadow-sm">
                 <div class="card-header">

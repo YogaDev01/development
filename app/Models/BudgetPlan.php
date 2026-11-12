@@ -206,6 +206,19 @@ class BudgetPlan extends Model
     public function isClosed(): bool     { return $this->status === 'CLOSED'; }
     public function isRejected(): bool   { return $this->status === 'REJECTED'; }
     public function isEditable(): bool   { return $this->status === 'DRAFT'; }
+
+    /**
+     * Boleh membuka form edit: pembuat (route: superadmin/manager) saat DRAFT,
+     * atau Superadmin di status APA PUN (keputusan 2026-11-12). Di luar Draft
+     * sub-item di-upsert per id (BudgetPlanController::syncDetailsKeepIds) supaya
+     * tautan CR / realisasi / Trouble Ticket ke sub-item tidak putus.
+     */
+    public function isEditableBy($user = null): bool
+    {
+        $user ??= Auth::user();
+
+        return $this->isEditable() || (bool) $user?->hasRole(['superadmin']);
+    }
     public function isSubmittable(): bool { return $this->status === 'DRAFT' && $this->details()->count() > 0; }
 
     /*
@@ -370,6 +383,7 @@ class BudgetPlan extends Model
             'closing_rejected'  => 'Menolak closing',
             'finance_closed'    => 'Menutup',
             'coa_added'         => 'Menambah COA pada',
+            'superadmin_edited' => 'Mengedit (Superadmin)',
         ];
         $actionKey = match ($action) {
             'created'                          => 'create',

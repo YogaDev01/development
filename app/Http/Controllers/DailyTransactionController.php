@@ -1083,6 +1083,118 @@ class DailyTransactionController extends Controller
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Takeout Superadmin dari batch PAID: membalik efek markPaid() pada sumbernya,
+     * HANYA bila sumber belum melangkah lebih jauh (belum ada realisasi/settlement).
+     * Second Payment yang sudah dibayar tidak dibalik otomatis (ditolak).
+     * Catatan: transfer bank yang sudah terjadi TIDAK ikut dibatalkan.
+     */
+    private function superTakeoutPaid(DailyTransaction $batch, DailyTransactionItem $item, string $notes): void
+    {
+        $catatan = 'Dikeluarkan Superadmin dari batch PAID ' . $batch->code . ': ' . $notes;
+
+        if ($item->isSecondPayment() || $item->isExpenseSecondPayment()) {
+            throw new \DomainException('Second Payment yang sudah dibayar tidak bisa dikeluarkan otomatis — status CR/Expense induknya sudah ditutup. Lakukan koreksi manual.');
+        }
+
+        if ($item->isCostRegister()) {
+            $reg = \App\Models\CostRegister::whereKey($item->cost_register_id)->lockForUpdate()->first();
+            $boleh = $reg && (($reg->isCashAdvance() && $reg->status === 'PAID') || (! $reg->isCashAdvance() && $reg->status === 'CLOSED'));
+            if (! $boleh) {
+                throw new \DomainException('Expense ' . ($reg->display_code ?? '#' . $item->cost_register_id) . ' sudah berstatus '
+                    . ($reg->status ?? '-') . ' (realisasi/settlement sudah berjalan) — tidak bisa dikeluarkan otomatis.');
+            }
+            $dari = $reg->status;
+            $reg->update(['status' => \App\Models\CostRegister::TREASURY_READY_STATUS, 'paid_at' => null]);
+            $reg->addLog($dari, \App\Models\CostRegister::TREASURY_READY_STATUS, 'unbatched', $catatan);
+        } else {
+            $cr = BudgetRequest::whereKey($item->budget_request_id)->lockForUpdate()->first();
+            $boleh = $cr && (($cr->isCashAdvance() && $cr->status === 'PAID') || (! $cr->isCashAdvance() && $cr->status === 'CLOSED'));
+            if (! $boleh) {
+                throw new \DomainException('Cost Request ' . ($cr->code ?? '#' . $item->budget_request_id) . ' sudah berstatus '
+                    . ($cr->status ?? '-') . ' (realisasi/settlement sudah berjalan) — tidak bisa dikeluarkan otomatis.');
+            }
+            $dari = $cr->status;
+            $cr->update(['status' => 'APPROVED', 'paid_at' => null, 'closed_at' => null]);
+            $cr->addLog($dari, 'APPROVED', 'batch_takeout', $catatan);
+        }
+
+        $item->update(['status' => 'REJECTED', 'notes' => $notes]);
+    }
+
+    /**
+     * Edit header batch oleh Superadmin di status apa pun (keputusan 2026-11-12):
+     * tanggal, deskripsi, rekening, charge, catatan, catatan pembayaran. Isi batch
+     * tidak disentuh. Rincian perubahan (lama -> baru) dicatat di log batch.
+     */
+    public function superUpdate(Request $request, $id)
+    {
+        abort_unless(Auth::user()->hasRole(['superadmin']), 403);
+
+        $data = $request->validate([
+            'date'              => 'required|date',
+            'description'       => 'nullable|string|max:255',
+            'source_fund_id'    => 'nullable|exists:source_funds,id',
+            'to_source_fund_id' => 'nullable|different:source_fund_id|exists:source_funds,id',
+            'charge'            => 'nullable',
+            'notes'             => 'nullable|string|max:1000',
+            'payment_notes'     => 'nullable|string|max:500',
+        ]);
+
+        $perubahan = DB::transaction(function () use ($data, $id) {
+            $batch = DailyTransaction::whereKey($id)->lockForUpdate()->firstOrFail();
+            $nama  = fn ($fid) => $fid ? (\App\Models\SourceFund::whereKey($fid)->value('name') ?? ('#' . $fid)) : '-';
+            $baru  = [
+                'date'              => $data['date'],
+                'description'       => isset($data['description']) ? strtoupper(trim($data['description'])) : null,
+                'source_fund_id'    => $data['source_fund_id'] ?? null,
+                'to_source_fund_id' => $data['to_source_fund_id'] ?? null,
+                'charge'            => $this->normalizeMoney($data['charge'] ?? null),
+                'notes'             => $data['notes'] ?? null,
+                'payment_notes'     => $data['payment_notes'] ?? null,
+            ];
+            $label = [
+                'date' => 'Tanggal', 'description' => 'Deskripsi', 'source_fund_id' => 'Rekening sumber',
+                'to_source_fund_id' => 'Rekening tujuan', 'charge' => 'Charge', 'notes' => 'Catatan', 'payment_notes' => 'Catatan pembayaran',
+            ];
+            $ubah = [];
+            foreach ($baru as $k => $v) {
+                $lama = $batch->getAttribute($k);
+                $lama = $lama instanceof \DateTimeInterface ? $lama->format('Y-m-d') : $lama;
+                if ((string) $lama === (string) $v) continue;
+                $fmt = match ($k) {
+                    'source_fund_id', 'to_source_fund_id' => $nama,
+                    'charge' => fn ($x) => number_format((int) $x, 0, ',', '.'),
+                    default  => fn ($x) => ($x === null || $x === '') ? '-' : (string) $x,
+                };
+                $ubah[] = $label[$k] . ': ' . $fmt($lama) . ' -> ' . $fmt($v);
+            }
+            if (! $ubah) {
+                return [];
+            }
+
+            $batch->update($baru);
+            \App\Models\DailyTransactionLogNote::create([
+                'daily_transaction_id' => $batch->id,
+                'acted_by'             => Auth::id(),
+                'actor_name'           => Auth::user()?->name ?? 'System',
+                'actor_role'           => Auth::user()?->role?->name,
+                'notes'                => mb_substr('[EDIT SUPERADMIN - status ' . $batch->status . '] ' . implode('; ', $ubah), 0, 1000),
+            ]);
+
+            return $ubah;
+        });
+
+        if (! $perubahan) {
+            return back()->with('success', 'Tidak ada perubahan pada header batch.');
+        }
+
+        UserActivityLog::record('treasury', 'update', '[Superadmin] Mengedit header batch #' . DailyTransaction::whereKey($id)->value('code'),
+            DailyTransaction::find($id), implode('; ', $perubahan));
+
+        return back()->with('success', 'Header batch diperbarui (' . count($perubahan) . ' perubahan, tercatat di log).');
+    }
+
     public function rejectItem(Request $request, $batchId, $itemId)
     {
         return $this->removeItemFromBatch($request, $batchId, $itemId, false);
@@ -1107,7 +1219,10 @@ class DailyTransactionController extends Controller
         $batch = DailyTransaction::findOrFail($batchId);
         $item  = DailyTransactionItem::where('daily_transaction_id', $batchId)->findOrFail($itemId);
 
-        if (!$batch->isPendingApprover()) {
+        // Superadmin boleh Takeout (bukan Reject) juga dari batch DONE / PAID
+        // (keputusan 2026-11-12). PAID membalik status sumber -> lihat superTakeoutPaid().
+        $superLanjut = ! $reject && ($batch->isDone() || $batch->isPaid()) && Auth::user()->hasRole(['superadmin']);
+        if (!$batch->isPendingApprover() && ! $superLanjut) {
             return back()->with('error', 'Batch tidak dalam status PENDING_APPROVER.');
         }
         if ($item->status !== 'INCLUDED') {
@@ -1117,7 +1232,12 @@ class DailyTransactionController extends Controller
             return back()->with('error', 'Cost Register tidak bisa di-reject, gunakan Takeout.');
         }
 
+        try {
         DB::transaction(function () use ($request, $batch, $item, $reject) {
+            if ($batch->isPaid()) {
+                // Batch sudah dibayar: status sumber sudah lewat QUEUED -> dibalik khusus.
+                $this->superTakeoutPaid($batch, $item, $request->notes);
+            } else {
             $item->update(['status' => 'REJECTED', 'notes' => $request->notes]);
 
             if ($reject && $item->isSecondPayment()) {
@@ -1156,9 +1276,29 @@ class DailyTransactionController extends Controller
                 $item->budgetRequest->addLog('QUEUED', 'APPROVED', 'batch_takeout', $request->notes);
                 $item->budgetRequest->update(['status' => 'APPROVED']);
             }
-            $batch->refreshCode();
+            }
+            // Kode batch PAID sudah dipakai sebagai referensi transfer — jangan diganti.
+            if (! $batch->isPaid()) {
+                $batch->refreshCode();
+            }
             $batch->recalculateCapturedAmount();
+
+            if (! $batch->isPendingApprover()) {
+                // Jejak di log batch: takeout Superadmin di luar tahap approval.
+                \App\Models\DailyTransactionLogNote::create([
+                    'daily_transaction_id' => $batch->id,
+                    'acted_by'             => Auth::id(),
+                    'actor_name'           => Auth::user()?->name ?? 'System',
+                    'actor_role'           => Auth::user()?->role?->name,
+                    'notes'                => '[TAKEOUT SUPERADMIN - batch ' . $batch->status . '] Item #' . $item->id
+                        . ' (' . ($item->costRegister?->display_code ?? $item->budgetRequest?->code ?? '-') . ') dikeluarkan. '
+                        . 'Captured amount sekarang ' . number_format((int) $batch->captured_amount, 0, ',', '.') . '. Alasan: ' . $request->notes,
+                ]);
+            }
         });
+        } catch (\DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         $cr = $item->budgetRequest;
         $kode = $cr?->code ?? '-';

@@ -107,6 +107,8 @@
 
     function pasang(tbl) {
         var $t = $(tbl);
+        // Penanda "sudah diproses" — melepas penahan tabel mentah di HP (layouts/app).
+        tbl.classList.add('ts-card-done');
         if (!layak(tbl)) { bersihkan($t); return; }
 
         var $ths = $t.children('thead').children('tr').children('th');

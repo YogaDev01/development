@@ -1493,3 +1493,34 @@ body.tesys-ui .ts-index .tdr-quick { min-width: 170px; }
 .ts-log-at { margin-left: auto; color: var(--text-faint); font-variant-numeric: tabular-nums; }
 .ts-log-desc { margin-top: 4px; font-size: 12.5px; color: var(--text-dim); }
 .ts-log-notes { margin-top: 6px; padding: 6px 8px; border-radius: var(--radius-sm); background: var(--surface-2); font-size: 12px; color: var(--text); white-space: pre-wrap; }
+
+
+/* ==========================================================================
+   HEADER MODAL TETAP DI TEMPAT SAAT DIGULIR (semua modal)
+   --------------------------------------------------------------------------
+   1. Modal biasa: yang menggulir adalah .modal (seluruh layar), jadi
+      .modal-header dibuat sticky. Banyak modal-content diberi inline
+      overflow:hidden (untuk sudut bulat) — itu membuatnya jadi kontainer
+      gulir sendiri sehingga sticky tak berfungsi. overflow:clip memotong
+      sudut yang sama tanpa membuat kontainer gulir.
+   2. Drawer detail (PO, Budget Plan) & modal detail yang ditumpuk di HP:
+      yang menggulir adalah .dm-body, dan kepala dokumen ada di panel atas
+      (.prj-sidebar / .bp-sidebar) — panel itu yang dibuat sticky.
+      Modal dua kolom di layar lebar tidak berubah: panel kirinya memang
+      sudah diam karena hanya panel kanan yang menggulir.
+   ========================================================================== */
+/* Hanya modal yang memang sudah memotong isinya (inline overflow:hidden):
+   modal lain dibiarkan overflow visible supaya dropdown tidak ikut terpotong. */
+body.tesys-ui .modal-content[style*="overflow:hidden"],
+body.tesys-ui .modal-content[style*="overflow: hidden"] { overflow: clip !important; }
+body.tesys-ui .modal-content > .modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 6;
+}
+body.tesys-ui #mdlDetailProject .prj-sidebar,
+body.tesys-ui #mdlDetailBP .bp-sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 6;
+}

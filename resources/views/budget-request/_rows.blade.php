@@ -159,6 +159,8 @@
 
                                         $bolehSubmit    = $st === 'DRAFT' && $u->hasRole(['superadmin','manager']);
                                         $bolehUbahDraft = $st === 'DRAFT' && $u->hasRole(['superadmin','manager','supervisor']);
+                                        // Superadmin: Edit di status apa pun (BudgetRequest::isEditableBy); Hapus tetap Draft.
+                                        $bolehEditSuper = $st !== 'DRAFT' && $u->hasRole(['superadmin']);
                                         /* Peran tiap tahap approval diambil dari BudgetRequest::STAGE_ROLES —
                                            sumber yang sama dengan controller & middleware route, supaya
                                            tombol tidak hilang untuk peran yang sebenarnya berhak
@@ -196,7 +198,7 @@
                                             $aksi[] = ['jenis' => 'form', 'url' => url('/budget-request/'.$cr->id.'/submit'), 'metode' => 'POST',
                                                 'form' => 'frmSubmitCR', 'ikon' => 'fa-paper-plane', 'label' => 'Submit', 'judul' => 'Submit ke Head', 'nada' => ''];
                                         }
-                                        if ($bolehUbahDraft) {
+                                        if ($bolehUbahDraft || $bolehEditSuper) {
                                             $aksi[] = ['jenis' => 'link', 'url' => url('/budget-request/'.$cr->id.'/edit'),
                                                 'ikon' => 'fa-pen', 'label' => 'Edit', 'judul' => 'Edit', 'nada' => 'is-neutral'];
                                         }

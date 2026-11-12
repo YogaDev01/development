@@ -105,6 +105,8 @@
                 <td class="text-center text-nowrap">
                     @php
                         $bolehTakeout = !$isTakeout && $batch->isPendingApprover() && Auth::user()->hasRole(['superadmin','approver']);
+                        // Superadmin: Takeout juga dari batch DONE / PAID (tanpa Reject).
+                        $bolehTakeoutSuper = !$isTakeout && ($batch->isDone() || $batch->isPaid()) && Auth::user()->hasRole(['superadmin']);
                         $bolehKeluarDraft = !$isTakeout && $batch->isDraft() && Auth::user()->hasRole(['superadmin','finance','finance_manager','treasury']);
                     @endphp
                     <div class="action-buttons ts-actions">
@@ -121,6 +123,14 @@
                            title="{{ $isRegister ? 'Lihat Expense' : 'Lihat Cost Request' }}">
                             <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Lihat</span>
                         </a>
+
+                        @if($bolehTakeoutSuper)
+                        <button type="button" class="ts-action-primary is-danger btn-takeout-cr-item"
+                                data-item-id="{{ $item->id }}" data-code="{{ $rowCode }}"
+                                title="Takeout (Superadmin)" aria-label="Takeout {{ $rowCode }}">
+                            <i class="fas fa-times" aria-hidden="true"></i><span class="ts-al">Takeout</span>
+                        </button>
+                        @endif
 
                         @if($bolehTakeout)
                         <button type="button" class="ts-action-more"
@@ -280,6 +290,7 @@
                                             <td class="text-center text-nowrap">
                                                 @php
                                                     $bolehTakeoutItem = $cri['item_status'] === 'INCLUDED' && $batch->isPendingApprover() && Auth::user()->hasRole(['superadmin','approver']);
+                                                    $bolehTakeoutSuperItem = $cri['item_status'] === 'INCLUDED' && ($batch->isDone() || $batch->isPaid()) && Auth::user()->hasRole(['superadmin']);
                                                     $bolehKeluarDraftItem = $cri['item_status'] === 'INCLUDED' && $batch->isDraft() && Auth::user()->hasRole(['superadmin','finance','finance_manager','treasury']);
                                                 @endphp
                                                 <div class="action-buttons ts-actions">
@@ -295,6 +306,14 @@
                                                        class="ts-action-primary is-neutral" title="Lihat Cost Request">
                                                         <i class="fas fa-eye" aria-hidden="true"></i><span class="ts-al">Lihat</span>
                                                     </a>
+
+                                                    @if($bolehTakeoutSuperItem)
+                                                    <button type="button" class="ts-action-primary is-danger btn-takeout-cr-item"
+                                                            data-item-id="{{ $cri['item_id'] }}" data-code="{{ $cri['cr_code'] }}"
+                                                            title="Takeout (Superadmin)" aria-label="Takeout {{ $cri['cr_code'] }}">
+                                                        <i class="fas fa-times" aria-hidden="true"></i><span class="ts-al">Takeout</span>
+                                                    </button>
+                                                    @endif
 
                                                     @if($bolehTakeoutItem)
                                                     <button type="button" class="ts-action-more"

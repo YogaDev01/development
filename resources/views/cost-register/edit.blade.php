@@ -35,6 +35,17 @@
         </div>
         @endif
 
+        @if($cr->status !== 'DRAFT')
+        {{-- Edit Superadmin di luar Draft (CostRegister::isEditableBy). --}}
+        <div class="alert alert-warning py-2" style="font-size:12.5px;">
+            <i class="fas fa-exclamation-triangle mr-1"></i>
+            <strong>Edit Superadmin — Expense berstatus {{ $cr->status }}.</strong>
+            Perubahan dicatat rinci (nilai lama &rarr; baru) di Log Expense dan User Activity Log.
+            Batch Treasury membaca nominal Expense secara langsung: mengubah rincian/nominal setelah masuk batch
+            atau dibayar ikut mengubah angka batch &amp; riwayat pembayaran, tanpa transaksi koreksi.
+        </div>
+        @endif
+
         <div class="card card-primary card-outline shadow-sm">
             <div class="card-body">
                 <form action="{{ route('cost-register.update', $cr->id) }}" method="POST" enctype="multipart/form-data" id="frmExpense" novalidate>

@@ -374,9 +374,17 @@ class ProjectController extends Controller
 
             $title = $inputRows[$i]['title'] ?? $file->getClientOriginalName();
 
+            // Lampiran umum PO dikelompokkan: KOM / SPK / Lainnya (general).
+            // Nilai di luar daftar jatuh ke 'general' supaya tipe lain tidak bisa diselipkan.
+            $rowType = $type;
+            if ($type === 'general') {
+                $cat     = $inputRows[$i]['category'] ?? 'general';
+                $rowType = in_array($cat, Project::ATTACHMENT_CATEGORIES, true) ? $cat : 'general';
+            }
+
             $path = $file->store('project_attachments', 'secure');
             $project->attachments()->create([
-                'type'      => $type,
+                'type'      => $rowType,
                 'title'     => strtoupper($title),
                 'file_path' => $path,
                 'file_name' => basename($path),
@@ -592,7 +600,7 @@ class ProjectController extends Controller
             $sheet->setCellValue('G' . $row, $p->implementationProgress());
             $sheet->setCellValue('H' . $row, (int) ($p->value ?? 0));
             $sheet->setCellValue('I' . $row, (int) ($p->contract ?? 0));
-            $sheet->setCellValue('J' . $row, $p->budgetPlanTotal());
+            $sheet->setCellValue('J' . $row, $p->budgetPlanDisplayTotal()); // = kolom Budget di daftar
             $sheet->setCellValue('K' . $row, $variable);
             $sheet->setCellValue('L' . $row, $payment);
             $sheet->setCellValue('M' . $row, $gross);
@@ -1040,6 +1048,16 @@ class ProjectController extends Controller
             'manager'            => $project->manager?->username ?? '-',
             'term_of_payment' => $project->term_of_payment,
             'status'          => $project->status,
+            // Tombol Edit di modal detail — aturan SAMA dengan tombol Edit di daftar
+            // (project/index: $bolehEditPenuh) dan gerbang edit()/update():
+            // PO_FULL_EDIT (superadmin, approver, finance_manager) di status apa pun;
+            // finance DRAFT/SUBMITTED; head DRAFT/EARLY_START. Perubahan field tetap
+            // tercatat di Log PO (nilai lama -> baru) oleh update().
+            'can_edit'        => $project->isFullyEditableBy()
+                || (Auth::user()->hasRole(['finance']) && in_array($project->status, ['DRAFT', 'SUBMITTED'], true))
+                || (Auth::user()->hasRole(['head']) && in_array($project->status, ['DRAFT', 'EARLY_START'], true))
+                // WAITING_PO: edit() mengalihkan ke halaman tambah No. PO (perilaku lama tombol modal).
+                || ($project->status === 'WAITING_PO' && Auth::user()->hasRole(['superadmin', 'finance', 'finance_manager', 'head'])),
             'status_label'    => $project->status_label,
             'status_color'    => $project->status_color,
             'notes'           => $project->notes,

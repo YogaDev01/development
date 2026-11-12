@@ -195,7 +195,7 @@
                         <tbody>
                             @forelse($projects as $project)
                             @php
-                                $bpTotal    = $project->budgetPlanTotal();
+                                $bpTotal    = $project->budgetPlanDisplayTotal(); // kolom Budget: semua status kecuali Rejected
                                 $costTotal  = $project->variableCostTotal();
                                 $paymentTotal = $project->paymentTotal();
                                 $grossProfitTotal = $paymentTotal - $costTotal;
@@ -652,8 +652,8 @@
                                 <th class="text-right text-nowrap" id="poFooterInvTotal" style="font-size:12px;color:var(--success);"></th>
                                 <th class="text-right text-nowrap" id="poFooterCashReceipt" style="font-size:12px;color:var(--success);"></th>
                                 <th class="text-right text-nowrap" id="poFooterProfit" style="font-size:12px;color:var(--success);"></th>
-                                <th></th>
-                                <th></th>
+                                <th class="text-right text-nowrap" id="poFooterOverhead" style="font-size:12px;color:var(--warning);"></th>
+                                <th class="text-right text-nowrap" id="poFooterFixedCost" style="font-size:12px;color:var(--warning);"></th>
                                 <th class="text-right text-nowrap" id="poFooterNet" style="font-size:12px;color:var(--success);"></th>
                                 <th class="action-column"></th>
                             </tr>

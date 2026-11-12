@@ -216,6 +216,19 @@ class BudgetRequest extends Model
     public function isCancelled(): bool { return $this->status === 'CANCELLED'; }
     public function isEditable(): bool  { return $this->status === 'DRAFT'; }
 
+    /**
+     * Boleh membuka form edit: pembuat (route: superadmin/manager/supervisor)
+     * saat DRAFT, atau Superadmin di status APA PUN (keputusan 2026-11-12,
+     * termasuk nominal). Edit di luar Draft dicatat rinci di log CR
+     * (action_type 'superadmin_edited').
+     */
+    public function isEditableBy($user = null): bool
+    {
+        $user ??= Auth::user();
+
+        return $this->isEditable() || (bool) $user?->hasRole(['superadmin']);
+    }
+
     /** Finance bisa kembalikan REALIZED → PAID */
     public function isRealizationRevisable(): bool
     {

@@ -964,6 +964,9 @@ Route::middleware('auth')->group(function () {
         Route::post('invoice-cash-receipt/{id}/submit', [InvoiceCashReceiptController::class, 'submit'])->name('invoice-cash-receipt.submit');
         Route::delete('invoice-cash-receipt/{id}/cash-receipt/{crId}', [InvoiceCashReceiptController::class, 'destroyCashReceipt'])->name('invoice-cash-receipt.cash-receipt.destroy');
         Route::post('invoice-cash-receipt/{id}/cash-receipt/{crId}/settle', [InvoiceCashReceiptController::class, 'settleCashReceipt'])->name('invoice-cash-receipt.cash-receipt.settle');
+        // Edit Cash Receipt — Superadmin, status invoice apa pun (dicek ulang di controller).
+        Route::post('invoice-cash-receipt/{id}/cash-receipt/{crId}/super-update', [InvoiceCashReceiptController::class, 'superUpdateCashReceipt'])
+            ->middleware('role:superadmin')->name('invoice-cash-receipt.cash-receipt.super-update');
     });
 
     // Collection ikut bisa menambahkan Cash Receipt (input pembayaran yang
@@ -988,12 +991,21 @@ Route::middleware('auth')->group(function () {
         Route::post('invoice-cash-receipt/{id}/revise', [InvoiceCashReceiptController::class, 'revise'])->name('invoice-cash-receipt.revise');
     });
 
+    // Bulk dari daftar Collection; role per tahap dicek ulang di
+    // InvoiceCashReceiptController::BULK_ROLES (sama dengan route satuan di atas).
+    Route::middleware('role:superadmin,finance_manager,approver,accounting')->group(function () {
+        Route::post('invoice-cash-receipt/bulk-approve', [InvoiceCashReceiptController::class, 'bulkApprove'])->name('invoice-cash-receipt.bulk-approve');
+        Route::post('invoice-cash-receipt/bulk-revise',  [InvoiceCashReceiptController::class, 'bulkRevise'])->name('invoice-cash-receipt.bulk-revise');
+    });
+
     Route::middleware('role:superadmin,finance_manager,approver')->group(function () {
         Route::post('invoice-cash-receipt/{id}/cancel', [InvoiceCashReceiptController::class, 'cancel'])->name('invoice-cash-receipt.cancel');
     });
 
     Route::middleware('role:superadmin,admin,finance,finance_manager,collection')->group(function () {
         Route::post('invoice-cash-receipt/{id}/mark-received', [InvoiceCashReceiptController::class, 'markReceived'])->name('invoice-cash-receipt.mark-received');
+        // Lampiran invoice bisa ditambah di status apa pun (hanya menambah, tercatat di Log).
+        Route::post('invoice-cash-receipt/{id}/attachment', [InvoiceCashReceiptController::class, 'storeAttachment'])->whereNumber('id')->name('invoice-cash-receipt.attachment.store');
     });
 
     Route::middleware('menu:invoice-cash-receipt')->group(function () {
@@ -1061,6 +1073,9 @@ Route::middleware('auth')->group(function () {
         Route::get('delivery-note/{id}', [DeliveryNoteController::class, 'show'])->name('delivery-note.show');
         Route::get('delivery-note/{id}/print', [DeliveryNoteController::class, 'printView'])->name('delivery-note.print');
         Route::post('delivery-note/{id}/receive', [DeliveryNoteController::class, 'receive'])->name('delivery-note.receive');
+        // Edit Surat Jalan — Superadmin, status apa pun (dicek ulang di controller).
+        Route::post('delivery-note/{id}/super-update', [DeliveryNoteController::class, 'superUpdate'])
+            ->middleware('role:superadmin')->name('delivery-note.super-update');
     });
 
     /*
@@ -1141,6 +1156,9 @@ Route::middleware('auth')->group(function () {
     // = CostRegister::APPROVE_ROLES (dicek lagi di controller).
     Route::middleware('role:superadmin,approver')->group(function () {
         Route::post('expense/{id}/approve', [CostRegisterController::class, 'approve'])->name('cost-register.approve');
+        // Bulk dari halaman daftar (VERIFIED saja; aksi satuan dipanggil per Expense).
+        Route::post('expense/bulk-approve', [CostRegisterController::class, 'bulkApprove'])->name('cost-register.bulk-approve');
+        Route::post('expense/bulk-reject', [CostRegisterController::class, 'bulkReject'])->name('cost-register.bulk-reject');
         // Fase 3: CEO menolak (VERIFIED -> REJECTED); menggantikan 'kembalikan ke Draft'.
         Route::post('expense/{id}/reject', [CostRegisterController::class, 'reject'])->name('cost-register.reject');
         // Expense Cash Advance (Fase 2): CEO setujui / tolak realisasi.
@@ -1265,6 +1283,8 @@ Route::middleware('auth')->group(function () {
 
             Route::prefix('{ticket}')->whereNumber('ticket')->group(function () {
                 Route::get('/', 'show')->name('show');
+                // Edit data tiket — Superadmin, status apa pun (dicek ulang di controller).
+                Route::post('super-update', 'superUpdate')->middleware('role:superadmin')->name('super-update');
                 Route::get('messages', 'messages')->name('messages');
                 Route::post('messages', 'postMessage')->name('messages.store');
                 Route::post('plan', 'createPlan')->name('plan.create');
@@ -1437,6 +1457,8 @@ Route::middleware('auth')->group(function () {
         Route::post('daily-transaction/{id}/reject-batch',              [DailyTransactionController::class, 'rejectBatch'])->name('daily-transaction.reject-batch');
         Route::post('daily-transaction/{batchId}/reject-item/{itemId}', [DailyTransactionController::class, 'rejectItem'])->name('daily-transaction.reject-item');
         Route::post('daily-transaction/{batchId}/reject-cr-item/{itemId}', [DailyTransactionController::class, 'rejectCrItem'])->name('daily-transaction.reject-cr-item');
+        // Edit header batch oleh Superadmin di status apa pun (dicek ulang di controller).
+        Route::post('daily-transaction/{id}/super-update', [DailyTransactionController::class, 'superUpdate'])->name('daily-transaction.super-update');
     });
 
     // Kelola isi batch & tandai paid — Treasury/Finance.

@@ -1255,6 +1255,9 @@ class BudgetPlanController extends Controller
             'status'           => $bp->status,
             'status_color'     => $bp->status_color,
             'via_po_approval'  => $bp->isBundled(),
+            'can_edit'         => ! $bp->isBundled() && (
+                ($bp->isEditable() && Auth::user()->hasRole(['superadmin', 'manager']))
+                || Auth::user()->hasRole(['superadmin'])),
             'notes'            => $bp->notes,
             'approver_notes'   => $bp->approver_notes,
             'amount'           => (int) ($bp->amount ?? 0),
@@ -1429,7 +1432,7 @@ class BudgetPlanController extends Controller
         $budgetPlan = $this->findVisibleBudgetPlan($id, ['details', 'attachments', 'project', 'costCenter']);
         if ($r = $this->rejectIfBundled($budgetPlan)) return $r;
 
-        if (!$budgetPlan->isEditable()) {
+        if (!$budgetPlan->isEditableBy(Auth::user())) {
             return redirect('/budget-plan')
                 ->with('error', 'Budget Plan hanya dapat diedit saat berstatus DRAFT.');
         }
@@ -1462,10 +1465,19 @@ class BudgetPlanController extends Controller
         $budgetPlan = $this->findVisibleBudgetPlan($id);
         if ($r = $this->rejectIfBundled($budgetPlan)) return $r;
 
-        if (!$budgetPlan->isEditable()) {
+        if (!$budgetPlan->isEditableBy(Auth::user())) {
             return redirect('/budget-plan')
                 ->with('error', 'Budget Plan hanya dapat diedit saat berstatus DRAFT.');
         }
+        $editLanjut = ! $budgetPlan->isEditable();   // edit Superadmin di luar Draft
+        $budgetPlan->loadMissing('project:id,code');
+        $sebelum = [
+            'PO'         => (string) ($budgetPlan->project->code ?? '-'),
+            'Deskripsi'  => (string) $budgetPlan->description,
+            'Catatan'    => (string) ($budgetPlan->notes ?? ''),
+            'Jumlah sub-item' => (string) $budgetPlan->details()->count(),
+            'Total'      => number_format((int) $budgetPlan->amount, 0, ',', '.'),
+        ];
 
         $request->validate([
             // Sumber dana TIDAK bisa dipindah antar jenis (kode sudah menyandi sumbernya).
@@ -1479,9 +1491,11 @@ class BudgetPlanController extends Controller
             'details.*.amount'     => 'required',
             'details.*.qty'        => 'nullable|numeric|min:0.01',
             'details.*.unit'       => 'nullable|in:' . implode(',', \App\Models\BudgetPlanDetail::UNITS),
+            'details.*.id'         => 'nullable|integer',
         ]);
 
-        DB::transaction(function () use ($request, $budgetPlan) {
+        try {
+        DB::transaction(function () use ($request, $budgetPlan, $editLanjut) {
 
             $payload = [
                 'description' => strtoupper(trim($request->description)),
@@ -1497,7 +1511,11 @@ class BudgetPlanController extends Controller
 
             $budgetPlan->update($payload);
 
-            $this->syncDetails($budgetPlan, $request);
+            // Draft: ganti seluruh sub-item (perilaku lama). Di luar Draft: upsert per id
+            // supaya CR/realisasi/Trouble Ticket yang menunjuk sub-item tidak kehilangan tautan.
+            $editLanjut
+                ? $this->syncDetailsKeepIds($budgetPlan, (array) $request->input('details', []))
+                : $this->syncDetails($budgetPlan, $request);
 
             $deleteIds = (array) $request->input('delete_attachments', []);
             if (!empty($deleteIds)) {
@@ -1522,9 +1540,88 @@ class BudgetPlanController extends Controller
                 ]);
             }
         });
+        } catch (\DomainException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+
+        if ($editLanjut) {
+            $budgetPlan->refresh()->load('project:id,code');
+            $sesudah = [
+                'PO'         => (string) ($budgetPlan->project->code ?? '-'),
+                'Deskripsi'  => (string) $budgetPlan->description,
+                'Catatan'    => (string) ($budgetPlan->notes ?? ''),
+                'Jumlah sub-item' => (string) $budgetPlan->details()->count(),
+                'Total'      => number_format((int) $budgetPlan->amount, 0, ',', '.'),
+            ];
+            $ubah = [];
+            foreach ($sebelum as $label => $lama) {
+                if ($lama !== $sesudah[$label]) {
+                    $ubah[] = $label . ': ' . ($lama !== '' ? $lama : '-') . ' -> ' . ($sesudah[$label] !== '' ? $sesudah[$label] : '-');
+                }
+            }
+            $budgetPlan->addLog($budgetPlan->status, $budgetPlan->status, 'superadmin_edited', mb_substr(
+                '[EDIT SUPERADMIN - status ' . $budgetPlan->status . '] '
+                . ($ubah ? implode('; ', $ubah) : 'Disimpan tanpa perubahan field ringkas (sub-item/lampiran mungkin berubah).'),
+                0, 2000));
+        }
 
         return redirect('/budget-plan')
             ->with('success', 'Budget Plan berhasil diupdate.');
+    }
+
+    /**
+     * Upsert sub-item Budget Plan per id (edit Superadmin di luar Draft).
+     * - Baris ber-id milik BP ini diperbarui di tempat (id tetap -> tautan CR utuh).
+     * - Baris tanpa id ditambahkan.
+     * - Baris lama yang tidak dikirim lagi dihapus HANYA bila belum dipakai
+     *   CR / realisasi / Trouble Ticket; bila dipakai -> DomainException (batal semua).
+     */
+    private function syncDetailsKeepIds(BudgetPlan $bp, array $rows): void
+    {
+        $existing = $bp->details()->get()->keyBy('id');
+        $dikirim  = [];
+
+        foreach ($rows as $row) {
+            $amount = $this->normalizeMoney($row['amount'] ?? null);
+            $qty    = (float) ($row['qty'] ?? 1);
+            if ($qty <= 0) $qty = 1;
+            if (!$amount) continue;
+
+            $data = [
+                'account_id' => $row['account_id'] ?? null,
+                'deskripsi'  => $row['deskripsi'] ?? null,
+                'amount'     => $amount,
+                'qty'        => $qty,
+                'unit'       => $row['unit'] ?? null,
+                'total'      => (int) round($amount * $qty),
+                'notes'      => $row['notes'] ?? null,
+            ];
+
+            $id = (int) ($row['id'] ?? 0);
+            if ($id && $existing->has($id)) {
+                $existing[$id]->update($data);
+                $dikirim[] = $id;
+            } else {
+                $bp->details()->create($data + ['category' => 'Variable Cost', 'type' => 'main']);
+            }
+        }
+
+        $hapus = $existing->keys()->diff($dikirim)->values();
+        if ($hapus->isNotEmpty()) {
+            $dipakai = \App\Models\RequestDetail::whereIn('budget_detail_id', $hapus)->pluck('budget_detail_id')
+                ->merge(\App\Models\BudgetRequestRealization::whereIn('budget_detail_id', $hapus)->pluck('budget_detail_id'))
+                ->merge(\App\Models\TroubleTicketPlanCost::whereIn('budget_detail_id', $hapus)->pluck('budget_detail_id'))
+                ->merge(\App\Models\TroubleTicketRequestItem::whereIn('budget_detail_id', $hapus)->pluck('budget_detail_id'))
+                ->unique();
+            if ($dipakai->isNotEmpty()) {
+                $nama = $existing->only($dipakai->all())->map(fn ($d) => $d->deskripsi ?: ('#' . $d->id))->implode(', ');
+                throw new \DomainException('Sub-item berikut sudah dipakai Cost Request / Trouble Ticket sehingga tidak bisa dihapus: '
+                    . $nama . '. Ubah nominalnya saja, jangan hapus barisnya.');
+            }
+            $bp->details()->whereIn('id', $hapus)->delete();
+        }
+
+        $bp->recalculateAmount();
     }
 
     /*

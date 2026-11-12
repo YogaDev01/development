@@ -323,6 +323,12 @@
                     </button>
                 </div>
                 <div class="card-body">
+                    <div class="att-cat-picker mb-2" role="radiogroup" aria-label="Kategori lampiran">
+                        <span class="att-cat-label">Kategori file baru:</span>
+                        <label class="att-cat-opt att-cat-kom"><input type="radio" name="_att_cat" value="kom"> KOM</label>
+                        <label class="att-cat-opt att-cat-spk"><input type="radio" name="_att_cat" value="spk"> SPK</label>
+                        <label class="att-cat-opt att-cat-general"><input type="radio" name="_att_cat" value="general" checked> Lainnya</label>
+                    </div>
                     <div id="dropZonePO" class="att-dropzone mb-3">
                         <i class="fas fa-cloud-upload-alt fa-2x mb-2 d-block"></i>
                         <p class="mb-0">
@@ -338,8 +344,9 @@
                             <thead class="bg-light">
                                 <tr>
                                     <th scope="col" style="width:5%;" class="text-center">No</th>
+                                    <th scope="col" style="width:15%;">Kategori</th>
                                     <th scope="col" style="width:30%;">Judul</th>
-                                    <th scope="col" style="width:55%;">File</th>
+                                    <th scope="col" style="width:40%;">File</th>
                                     <th scope="col" style="width:10%;" class="text-center">Aksi</th>
                                 </tr>
                             </thead>
@@ -623,11 +630,31 @@ document.addEventListener('DOMContentLoaded', function () {
     // Attachment rows (+ drag & drop multi-file)
     var attIdx = 0;
 
+    // Kategori lampiran PO: KOM / SPK / Lainnya — file baru ikut pilihan aktif di atas drop zone.
+    var ATT_CAT_LABEL = { kom: 'KOM', spk: 'SPK', general: 'Lainnya' };
+    function activeAttCat() {
+        var r = document.querySelector('input[name="_att_cat"]:checked');
+        return r ? r.value : 'general';
+    }
+
+    // Ganti kategori di baris -> garis warna baris ikut berubah.
+    document.addEventListener('change', function (e) {
+        if (!e.target.classList || !e.target.classList.contains('att-cat-select')) return;
+        var tr = e.target.closest('tr');
+        if (tr) tr.className = 'att-row-' + e.target.value;
+    });
+
     function addAttRowPO(file) {
         var i = attIdx++;
+        var cat = activeAttCat();
         var html =
-            '<tr>' +
+            '<tr class="att-row-' + cat + '">' +
                 '<td class="text-center align-middle row-no"></td>' +
+                '<td><select name="attachments[' + i + '][category]" class="form-control form-control-sm att-cat-select">' +
+                    ['kom', 'spk', 'general'].map(function (c) {
+                        return '<option value="' + c + '"' + (c === cat ? ' selected' : '') + '>' + ATT_CAT_LABEL[c] + '</option>';
+                    }).join('') +
+                '</select></td>' +
                 '<td><input type="text" name="attachments[' + i + '][title]" class="form-control form-control-sm att-title" style="text-transform:uppercase;" placeholder="Judul lampiran..." required></td>' +
                 '<td><input type="file" name="attachments[' + i + '][file]" class="form-control-file"></td>' +
                 '<td class="text-center align-middle"><button type="button" class="btn btn-danger btn-sm btn-remove-att"><i class="fas fa-trash"></i></button></td>' +
@@ -718,6 +745,16 @@ table td { vertical-align:middle !important; }
 .ts-wrapper { min-width:0; }
 .ts-control { border-radius:var(--radius-sm) !important; border:1px solid var(--border) !important; min-height:38px !important; padding:6px 10px !important; box-shadow:none !important; }
 
+.att-cat-picker { display:flex; flex-wrap:wrap; align-items:center; gap:6px; font-size:12px; }
+.att-cat-picker .att-cat-label { color:var(--text-muted); font-weight:600; margin-right:2px; }
+.att-cat-opt { margin:0; padding:3px 10px; border:1px solid var(--border); border-radius:var(--radius-pill); cursor:pointer; font-weight:600; background:var(--surface); }
+.att-cat-opt input { margin-right:4px; vertical-align:-1px; }
+.att-cat-opt.att-cat-kom:has(input:checked) { background:var(--info-bg); border-color:var(--info); color:var(--info); }
+.att-cat-opt.att-cat-spk:has(input:checked) { background:var(--purple-bg); border-color:var(--purple); color:var(--purple); }
+.att-cat-opt.att-cat-general:has(input:checked) { background:var(--surface-2); border-color:var(--border-strong); color:var(--text); }
+#attBody tr.att-row-kom > td:first-child { box-shadow: inset 3px 0 0 var(--info); }
+#attBody tr.att-row-spk > td:first-child { box-shadow: inset 3px 0 0 var(--purple); }
+#attBody tr.att-row-general > td:first-child { box-shadow: inset 3px 0 0 var(--border-strong); }
 .att-dropzone {
     border: 2px dashed var(--border);
     border-radius: var(--radius-md);

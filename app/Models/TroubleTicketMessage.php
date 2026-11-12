@@ -67,6 +67,7 @@ class TroubleTicketMessage extends Model
         'settlement_approved'  => 'Settlement approved',
         'settlement_returned'  => 'Settlement returned',
         'financial_closed'     => 'Finance closed',
+        'superadmin_edited'    => 'Ticket data edited (Superadmin)',
         // Dipakai riwayat lama: sejak 20 Okt 2026 tahap Trip dimulai bersama
         // keberangkatan ('travel_started'), tidak ada kejadian tersendiri.
         'trip_due'          => 'Moved to Trip',

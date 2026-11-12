@@ -21,6 +21,9 @@ class Project extends Model
      * migration ALTER baru, bukan cuma menambah baris di sini: validasi akan
      * meloloskan nilainya, lalu MySQL menolaknya saat disimpan.
      */
+    /** Kategori lampiran umum PO (kolom project_attachments.type). */
+    public const ATTACHMENT_CATEGORIES = ['kom', 'spk', 'general'];
+
     public const TYPES = [
         'ROLLOUT'     => 'Rollout',
         'MAINTENANCE' => 'Maintenance',
@@ -620,6 +623,20 @@ class Project extends Model
      * Hanya budget berstatus ACTIVE atau CLOSED yang dihitung
      * (budget yang masih DRAFT/SUBMITTED/REJECTED belum dianggap final).
      */
+    /**
+     * Total Budget Plan untuk TAMPILAN kolom "Budget" di daftar/export PO:
+     * semua status kecuali REJECTED (termasuk yang masih Draft/proses), supaya
+     * budget yang sedang diajukan sudah terlihat. Sengaja TERPISAH dari
+     * budgetPlanTotal() — grossProfit()/grossMargin() (plan margin di Report &
+     * Finance Summary) dan isWaitingBudget() tetap memakai budget final.
+     */
+    public function budgetPlanDisplayTotal(): int
+    {
+        return (int) $this->budgetPlans
+            ->where('status', '!=', 'REJECTED')
+            ->sum('amount');
+    }
+
     public function budgetPlanTotal(): int
     {
         return (int) $this->budgetPlans

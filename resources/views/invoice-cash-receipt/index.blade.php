@@ -18,7 +18,17 @@
             </ol>
         </div>
 
-        @php $bolehBuatInv = Auth::user()->hasRole(['superadmin','admin','finance','finance_manager','collection']); @endphp
+        @php
+            $bolehBuatInv = Auth::user()->hasRole(['superadmin','admin','finance','finance_manager','collection']);
+            // Bulk dari daftar — role sama dengan route satuan & InvoiceCashReceiptController::BULK_ROLES.
+            $bulkInv = [
+                'SUBMITTED' => ['approve' => Auth::user()->hasRole(['superadmin','finance_manager','accounting']),
+                                'revise'  => Auth::user()->hasRole(['superadmin','finance_manager','approver','accounting'])],
+                'VERIFIED'  => ['approve' => Auth::user()->hasRole(['superadmin','finance_manager']),
+                                'revise'  => Auth::user()->hasRole(['superadmin','finance_manager','approver','accounting'])],
+            ];
+            $bolehBulkInv = collect($bulkInv)->flatten()->contains(true);
+        @endphp
         <x-tw.page-header title="Daftar Invoice"
             description="Invoice per No. PO beserta persetujuan, pengiriman, dan penerimaan pembayarannya.">
             @if($bolehBuatInv)
@@ -81,6 +91,15 @@
                         </button>
                         <div id="invRowFilters" class="d-flex flex-wrap" style="gap:8px;"></div>
                     </div>
+                    @if($bolehBulkInv)
+                    {{-- Bar bulk: muncul bila ada invoice yang dicentang (public/js/tesys-bulk-select.js). --}}
+                    <div class="ts-bulk-bar d-none tw:flex-wrap tw:items-center tw:gap-2 tw:rounded-md tw:border tw:border-accent-soft tw:bg-accent-tint tw:py-1 tw:pl-3 tw:pr-1">
+                        <span class="ts-bulk-info tw:font-label tw:tabular-nums"></span>
+                        <x-tw.button size="sm" class="ts-bulk-approve"><i class="fas fa-check" aria-hidden="true"></i> <span class="ts-bulk-approve-label">Approve</span></x-tw.button>
+                        <x-tw.button variant="danger" size="sm" class="ts-bulk-reject"><i class="fas fa-undo" aria-hidden="true"></i> <span class="ts-bulk-reject-label">Revisi</span></x-tw.button>
+                        <x-tw.button variant="ghost" size="sm" class="ts-bulk-clear" title="Batalkan pilihan" aria-label="Batalkan pilihan"><i class="fas fa-times" aria-hidden="true"></i></x-tw.button>
+                    </div>
+                    @endif
                     <div class="custom-toolbar-right d-flex flex-wrap align-items-center" style="gap:8px;">
                         @php
                             // Manager & Head cuma butuh lihat ringkasan non-finansial
@@ -108,6 +127,7 @@
                                         'invoice'       => 'Invoice',
                                         'tax'           => 'PPN',
                                         'wht'           => 'PPH',
+                                        'deduction'     => 'Deduction',
                                         'total'         => 'Total',
                                         'received'      => 'Payment',
                                         'lastcr'        => 'Payment Date',
@@ -145,7 +165,12 @@
                     <table id="tblInvoice" class="table table-bordered table-hover mb-0 ts-idx-tbl">
                         <thead class="bg-light">
                             <tr>
-                                <th scope="col" class="text-nowrap inv-col-code" style="width:1%;">No Invoice</th>
+                                <th scope="col" class="text-nowrap inv-col-code" style="width:1%;">
+                                    @if($bolehBulkInv)
+                                    <input type="checkbox" class="ts-bulk-all mr-1 align-middle" aria-label="Pilih semua invoice setahap yang tampil" title="Pilih semua invoice setahap yang tampil" onclick="event.stopPropagation()">
+                                    @endif
+                                    No Invoice
+                                </th>
                                 <th scope="col">Purchase Order</th>
                                 <th scope="col" class="text-nowrap" style="width:1%;">Manager</th>
                                 <th scope="col" class="text-nowrap" style="width:1%;">Date</th>
@@ -153,10 +178,11 @@
                                 <th scope="col" class="text-nowrap" style="width:1%;">Due Date Actual</th>
                                 <th scope="col" class="text-nowrap" style="width:1%;">Received Date</th>
                                 <th scope="col" class="text-center text-nowrap" style="width:1%;">Aging</th>
-                                <th scope="col" class="text-right text-nowrap" style="width:1%;">Invoice</th>
+                                <th scope="col" class="text-right text-nowrap" style="width:1%;" title="Nilai tagihan sebelum Deduction">Invoice</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">PPN</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;" title="PPh yang dipotong di muka — mengurangi Total">PPH</th>
-                                <th scope="col" class="text-right text-nowrap" style="width:1%;" title="Invoice + PPN &minus; PPH">Total</th>
+                                <th scope="col" class="text-right text-nowrap" style="width:1%;" title="Total potongan dari baris rincian invoice">Deduction</th>
+                                <th scope="col" class="text-right text-nowrap" style="width:1%;" title="Invoice + PPN &minus; PPH &minus; Deduction">Total</th>
                                 <th scope="col" class="text-right text-nowrap" style="width:1%;">Payment</th>
                                 <th scope="col" class="text-nowrap" style="width:1%;">Payment Date</th>
                                 <th scope="col" class="text-center text-nowrap" style="width:1%;">Status</th>
@@ -200,6 +226,9 @@
                                 data-pm="{{ $pmUpper !== '-' ? $pmUpper : '' }}">
 
                                 <td class="text-nowrap inv-col-code">
+                                    @if(in_array($invoice->status, ['SUBMITTED','VERIFIED'], true) && in_array(true, $bulkInv[$invoice->status], true))
+                                    <input type="checkbox" class="ts-bulk-check mr-1 align-middle" value="{{ $invoice->id }}" data-stage="{{ $invoice->status }}" aria-label="Pilih {{ $invoice->code }}">
+                                    @endif
                                     {{-- Klik kode = salin; detail dibuka lewat klik baris. --}}
                                     <button type="button" class="ts-copy-code" data-code="{{ $invoice->code }}" title="Klik untuk menyalin kode">{{ $invoice->code }}</button>
                                     @if($invoice->is_additional)
@@ -262,8 +291,12 @@
                                 </td>
 
                                 {{-- Nilai nol di kolom uang ditulis "-". --}}
-                                <td class="text-right text-nowrap ts-col-money col-raw-invoice" data-raw="{{ $invoice->billed_amount ?? 0 }}">
-                                    {{ (int) $invoice->billed_amount === 0 ? '-' : number_format($invoice->billed_amount, 0, ',', '.') }}
+                                {{-- Invoice ditampilkan KOTOR (billed_amount + total_deduction) supaya
+                                     tabel terbaca Invoice + PPN − PPH − Deduction = Total. Hanya
+                                     tampilan; billed_amount & captured_total tidak berubah. --}}
+                                @php $invoiceGross = (int) ($invoice->billed_amount ?? 0) + (int) ($invoice->total_deduction ?? 0); @endphp
+                                <td class="text-right text-nowrap ts-col-money col-raw-invoice" data-raw="{{ $invoiceGross }}">
+                                    {{ $invoiceGross === 0 ? '-' : number_format($invoiceGross, 0, ',', '.') }}
                                 </td>
 
                                 <td class="text-right text-nowrap ts-col-money col-raw-tax" data-raw="{{ $invoice->tax_amount ?? 0 }}">
@@ -277,6 +310,16 @@
                                 <td class="text-right text-nowrap ts-col-money col-raw-wht" data-raw="{{ $invoice->withholding_tax ?? 0 }}">
                                     @if(($invoice->withholding_tax ?? 0) > 0)
                                         <span style="color:var(--danger);">&minus;{{ number_format($invoice->withholding_tax, 0, ',', '.') }}</span>
+                                    @else
+                                        <span class="text-muted">-</span>
+                                    @endif
+                                </td>
+
+                                {{-- Deduction = total potongan baris rincian (total_deduction),
+                                     hanya ditampilkan; rumus Total tidak berubah. --}}
+                                <td class="text-right text-nowrap ts-col-money col-raw-deduction" data-raw="{{ $invoice->total_deduction ?? 0 }}">
+                                    @if(($invoice->total_deduction ?? 0) > 0)
+                                        <span style="color:var(--danger);">&minus;{{ number_format($invoice->total_deduction, 0, ',', '.') }}</span>
                                     @else
                                         <span class="text-muted">-</span>
                                     @endif
@@ -324,6 +367,8 @@
                                         $bolehRevisi  = in_array($st, ['SUBMITTED','VERIFIED']) && $pengguna->hasRole(['superadmin','finance_manager','approver','accounting']);
                                         $bolehPulihkan = $st === 'CANCELLED' && $pengguna->hasRole(['superadmin','finance_manager']);
                                         $bolehBatal   = !in_array($st, ['PAID','CANCELLED']) && $pengguna->hasRole(['superadmin','finance_manager','approver']);
+                                        // Superadmin: Edit di status apa pun (dicatat rinci di Log invoice).
+                                        $bolehEditSuper = $st !== 'DRAFT' && $pengguna->hasRole(['superadmin']);
 
                                         $adaAksi = $bolehDraft || $bolehVerify || $bolehApprove
                                             || $bolehRevisi || $bolehPulihkan || $bolehBatal;
@@ -338,7 +383,7 @@
                                         // garis). Detail dibuka lewat klik baris, jadi tidak ada item "Detail".
                                         $adaUtama = $bolehDraft || $bolehVerify || $bolehApprove || $bolehPulihkan;
                                         $jumlahAksi = ($adaUtama ? 1 : 0) + 1 /* Komentar selalu ada */
-                                            + ($bolehDraft ? 2 : 0) + ($bolehRevisi ? 1 : 0) + ($bolehBatal ? 1 : 0);
+                                            + ($bolehDraft ? 2 : 0) + ($bolehEditSuper ? 1 : 0) + ($bolehRevisi ? 1 : 0) + ($bolehBatal ? 1 : 0);
                                         $satuAksi = $jumlahAksi === 1;
                                         $kls    = $satuAksi ? 'ts-action-primary' : 'dropdown-item';
                                         $lbl    = $satuAksi ? 'ts-al' : '';
@@ -402,7 +447,7 @@
                                                 <i class="fas fa-comment"></i>Komentar
                                             </button>
 
-                                            @if($bolehDraft)
+                                            @if($bolehDraft || $bolehEditSuper)
                                             <a href="{{ route('invoice-cash-receipt.edit', $invoice->id) }}" class="dropdown-item">
                                                 <i class="fas fa-pen"></i>Edit
                                             </a>
@@ -453,6 +498,7 @@
                                 <th class="text-right" id="invFooterInvoice" style="font-size:12px;color:var(--info);"></th>
                                 <th class="text-right" id="invFooterTax" style="font-size:12px;color:var(--info);"></th>
                                 <th class="text-right" id="invFooterWht" style="font-size:12px;color:var(--danger);"></th>
+                                <th class="text-right" id="invFooterDeduction" style="font-size:12px;color:var(--danger);"></th>
                                 <th class="text-right" id="invFooterTotal" style="font-size:12px;color:var(--info);"></th>
                                 <th class="text-right" id="invFooterReceived" style="font-size:12px;color:var(--info);"></th>
                                 <th colspan="3"></th>
@@ -705,6 +751,7 @@
 @endpush
 
 @push('scripts')
+<script src="@aset('js/tesys-bulk-select.js')"></script>
 <script>
 $(function () {
 
@@ -723,11 +770,11 @@ $(function () {
     var invColRestrictedVisible = ['date', 'duedate', 'duedateactual', 'receiveddate', 'aging', 'lastcr'];
 
     var invColVisMap = {
-        manager: 2, date: 3, duedate: 4, duedateactual: 5, receiveddate: 6, aging: 7, invoice: 8, tax: 9, wht: 10, total: 11, received: 12, lastcr: 13
+        manager: 2, date: 3, duedate: 4, duedateactual: 5, receiveddate: 6, aging: 7, invoice: 8, tax: 9, wht: 10, deduction: 11, total: 12, received: 13, lastcr: 14
     };
     var invColVisDefault = {
         manager: true, date: true, duedate: true, duedateactual: true, receiveddate: true, aging: true,
-        invoice: true, tax: false, wht: false, total: true, received: true, lastcr: true
+        invoice: true, tax: false, wht: false, deduction: true, total: true, received: true, lastcr: true
     };
     function getInvColVis(key) {
         if (invColRestricted) return invColRestrictedVisible.indexOf(key) !== -1;
@@ -753,9 +800,10 @@ $(function () {
             { targets: [8],  visible: getInvColVis('invoice') },
             { targets: [9],  visible: getInvColVis('tax') },
             { targets: [10], visible: getInvColVis('wht') },
-            { targets: [11], visible: getInvColVis('total') },
-            { targets: [12], visible: getInvColVis('received') },
-            { targets: [13], visible: getInvColVis('lastcr') },
+            { targets: [11], visible: getInvColVis('deduction') },
+            { targets: [12], visible: getInvColVis('total') },
+            { targets: [13], visible: getInvColVis('received') },
+            { targets: [14], visible: getInvColVis('lastcr') },
         ],
         dom: 'rt<"row mt-3 align-items-center"<"col-md-6 col-12 mb-2 mb-md-0"i><"col-md-6 col-12 d-flex justify-content-end"lp>>',
         language: {
@@ -857,18 +905,20 @@ $(function () {
     | filter/search saat ini (bukan cuma baris di halaman aktif).
     */
     function recalcFooter() {
-        var totalInvoice = 0, totalTax = 0, totalWht = 0, totalAmount = 0, totalReceived = 0;
+        var totalInvoice = 0, totalTax = 0, totalWht = 0, totalDeduction = 0, totalAmount = 0, totalReceived = 0;
         table.rows({ search: 'applied' }).every(function () {
             var node = this.node();
             totalInvoice  += parseFloat(node.querySelector('.col-raw-invoice')?.dataset.raw) || 0;
             totalTax      += parseFloat(node.querySelector('.col-raw-tax')?.dataset.raw) || 0;
             totalWht      += parseFloat(node.querySelector('.col-raw-wht')?.dataset.raw) || 0;
+            totalDeduction += parseFloat(node.querySelector('.col-raw-deduction')?.dataset.raw) || 0;
             totalAmount   += parseFloat(node.querySelector('.col-raw-total')?.dataset.raw) || 0;
             totalReceived += parseFloat(node.querySelector('.col-raw-received')?.dataset.raw) || 0;
         });
         $('#invFooterInvoice').text(Math.round(totalInvoice) === 0 ? '-' : Math.round(totalInvoice).toLocaleString('id-ID'));
         $('#invFooterTax').text(Math.round(totalTax) === 0 ? '-' : Math.round(totalTax).toLocaleString('id-ID'));
         $('#invFooterWht').text(totalWht > 0 ? '-' + Math.round(totalWht).toLocaleString('id-ID') : '-');
+        $('#invFooterDeduction').text(totalDeduction > 0 ? '-' + Math.round(totalDeduction).toLocaleString('id-ID') : '-');
         $('#invFooterTotal').text(Math.round(totalAmount) === 0 ? '-' : Math.round(totalAmount).toLocaleString('id-ID'));
         $('#invFooterReceived').text(Math.round(totalReceived) === 0 ? '-' : Math.round(totalReceived).toLocaleString('id-ID'));
     }
@@ -1173,6 +1223,24 @@ $(function () {
         $('#frmCancelInv textarea[name="cancel_reason"]').val('');
         $('#mdlCancelInv').modal('show');
     });
+
+    @if($bolehBulkInv)
+    /* ── BULK Verify / Approve / Revisi — server memanggil aksi satuan per invoice ── */
+    if (window.TesysBulk) {
+        var bulkStages = {};
+        @foreach(['SUBMITTED' => ['Submitted', 'Verifikasi', 'Verified', 'Draft'], 'VERIFIED' => ['Verified', 'Approve', 'Approved', 'Submitted']] as $stBulk => [$lblBulk, $aksiBulk, $keBulk, $balikBulk])
+        bulkStages['{{ $stBulk }}'] = { label: '{{ $lblBulk }}',
+            @if($bulkInv[$stBulk]['approve'])
+            approve: { url: '{{ route('invoice-cash-receipt.bulk-approve') }}', text: '{{ $aksiBulk }}', ke: '{{ $keBulk }}', extra: { status: '{{ $stBulk }}' } },
+            @endif
+            @if($bulkInv[$stBulk]['revise'])
+            reject: { url: '{{ route('invoice-cash-receipt.bulk-revise') }}', text: 'Revisi', ke: '{{ $balikBulk }}', extra: { status: '{{ $stBulk }}' } },
+            @endif
+        };
+        @endforeach
+        TesysBulk.wire({ table: table, max: 50, noun: 'invoice', stages: bulkStages });
+    }
+    @endif
 
 });
 </script>
