@@ -1221,6 +1221,71 @@ Route::middleware('auth')->group(function () {
     // Dipakai badge titik kuning di sidebar (polling ringan, lihat tesys-shell.js).
     Route::middleware('menu:todo-list')->get('todo-list/has-pending', [TodoListController::class, 'hasPending'])->name('todo-list.has-pending');
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | ASSET MANAGEMENT (Tesys Finance, 2026-11-12)
+    |
+    | Gerbang menu:asset-management untuk seluruh halaman & pengajuan.
+    | Aksi kelola (approve/reject, hapus aset, selesaikan opname, ubah
+    | kategori/lokasi) lapis kedua role:superadmin,asset_admin — HARUS sama
+    | persis dengan AccessRoles::ASSET_MANAGE, yang juga dicek controller
+    | dan menentukan tombol dirender atau tidak.
+    |--------------------------------------------------------------------------
+    */
+    Route::middleware('menu:asset-management')->prefix('asset')->name('asset.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\AssetController::class, 'dashboard'])->name('dashboard');
+        Route::get('list', [\App\Http\Controllers\AssetController::class, 'index'])->name('index');
+        Route::get('list/export', [\App\Http\Controllers\AssetController::class, 'export'])->name('export');
+        Route::get('create', [\App\Http\Controllers\AssetController::class, 'create'])->name('create');
+        Route::post('list', [\App\Http\Controllers\AssetController::class, 'store'])->name('store');
+        Route::get('reports', [\App\Http\Controllers\AssetController::class, 'reports'])->name('reports');
+        Route::get('reports/export', [\App\Http\Controllers\AssetController::class, 'reportExport'])->name('reports.export');
+        Route::get('list/{asset}', [\App\Http\Controllers\AssetController::class, 'show'])->whereNumber('asset')->name('show');
+        Route::get('list/{asset}/edit', [\App\Http\Controllers\AssetController::class, 'edit'])->whereNumber('asset')->name('edit');
+        Route::put('list/{asset}', [\App\Http\Controllers\AssetController::class, 'update'])->whereNumber('asset')->name('update');
+        Route::post('list/{asset}/attachments', [\App\Http\Controllers\AssetController::class, 'attachmentStore'])->whereNumber('asset')->name('attachments.store');
+
+        Route::get('movements', [\App\Http\Controllers\AssetMovementController::class, 'index'])->name('movements.index');
+        Route::post('movements/{kind}', [\App\Http\Controllers\AssetMovementController::class, 'store'])
+            ->whereIn('kind', ['handover', 'return', 'transfer', 'checkout', 'disposal'])->name('movements.store');
+        Route::post('movements/{movement}/checkin', [\App\Http\Controllers\AssetMovementController::class, 'checkin'])->whereNumber('movement')->name('movements.checkin');
+        Route::get('movements/{movement}/document', [\App\Http\Controllers\AssetMovementController::class, 'document'])->whereNumber('movement')->name('movements.document');
+
+        Route::get('maintenance', [\App\Http\Controllers\AssetOperationController::class, 'maintenance'])->name('maintenance.index');
+        Route::post('maintenance', [\App\Http\Controllers\AssetOperationController::class, 'maintenanceStore'])->name('maintenance.store');
+        Route::put('maintenance/{maintenance}', [\App\Http\Controllers\AssetOperationController::class, 'maintenanceUpdate'])->whereNumber('maintenance')->name('maintenance.update');
+        Route::post('maintenance/schedule', [\App\Http\Controllers\AssetOperationController::class, 'scheduleStore'])->name('schedule.store');
+        Route::put('maintenance/schedule/{schedule}', [\App\Http\Controllers\AssetOperationController::class, 'scheduleUpdate'])->whereNumber('schedule')->name('schedule.update');
+        Route::get('inspection', [\App\Http\Controllers\AssetOperationController::class, 'inspection'])->name('inspection.index');
+        Route::post('inspection', [\App\Http\Controllers\AssetOperationController::class, 'inspectionStore'])->name('inspection.store');
+
+        Route::get('opname', [\App\Http\Controllers\AssetOpnameController::class, 'index'])->name('opname.index');
+        Route::post('opname', [\App\Http\Controllers\AssetOpnameController::class, 'store'])->name('opname.store');
+        Route::get('opname/{opname}', [\App\Http\Controllers\AssetOpnameController::class, 'show'])->whereNumber('opname')->name('opname.show');
+        Route::put('opname/{opname}', [\App\Http\Controllers\AssetOpnameController::class, 'update'])->whereNumber('opname')->name('opname.update');
+
+        Route::get('procurement', [\App\Http\Controllers\AssetProcurementController::class, 'index'])->name('procurement.index');
+        Route::post('procurement/pr', [\App\Http\Controllers\AssetProcurementController::class, 'prStore'])->name('procurement.pr.store');
+        Route::post('procurement/receiving', [\App\Http\Controllers\AssetProcurementController::class, 'receivingStore'])->name('procurement.receiving.store');
+
+        Route::get('settings', [\App\Http\Controllers\AssetSettingController::class, 'index'])->name('settings.index');
+
+        // ---- Lapis kelola: sama persis dengan AccessRoles::ASSET_MANAGE
+        Route::middleware('role:superadmin,asset_admin')->group(function () {
+            Route::delete('list/{asset}', [\App\Http\Controllers\AssetController::class, 'destroy'])->whereNumber('asset')->name('destroy');
+            Route::delete('list/{asset}/attachments/{attachment}', [\App\Http\Controllers\AssetController::class, 'attachmentDestroy'])->whereNumber(['asset', 'attachment'])->name('attachments.destroy');
+            Route::post('movements/{movement}/approve', [\App\Http\Controllers\AssetMovementController::class, 'approve'])->whereNumber('movement')->name('movements.approve');
+            Route::post('movements/{movement}/reject', [\App\Http\Controllers\AssetMovementController::class, 'reject'])->whereNumber('movement')->name('movements.reject');
+            Route::post('opname/{opname}/complete', [\App\Http\Controllers\AssetOpnameController::class, 'complete'])->whereNumber('opname')->name('opname.complete');
+            Route::post('procurement/pr/{purchaseRequest}/approve', [\App\Http\Controllers\AssetProcurementController::class, 'prApprove'])->whereNumber('purchaseRequest')->name('procurement.pr.approve');
+            Route::post('procurement/pr/{purchaseRequest}/reject', [\App\Http\Controllers\AssetProcurementController::class, 'prReject'])->whereNumber('purchaseRequest')->name('procurement.pr.reject');
+            Route::post('settings/category', [\App\Http\Controllers\AssetSettingController::class, 'categoryStore'])->name('settings.category.store');
+            Route::put('settings/category/{category}', [\App\Http\Controllers\AssetSettingController::class, 'categoryUpdate'])->whereNumber('category')->name('settings.category.update');
+            Route::post('settings/location', [\App\Http\Controllers\AssetSettingController::class, 'locationStore'])->name('settings.location.store');
+            Route::put('settings/location/{location}', [\App\Http\Controllers\AssetSettingController::class, 'locationUpdate'])->whereNumber('location')->name('settings.location.update');
+        });
+    });
     /*
     |--------------------------------------------------------------------------
     | ASSIGNMENT — penugasan bebas antar-user

@@ -197,4 +197,14 @@ final class AccessRoles
      * terdaftar sebagai Teknisi atau Teknisi Backup.
      */
     public const SITE_READ_ONLY = ['teknisi'];
+
+    /**
+     * Asset Management (2026-11-12) — pemegang menu 'asset-management' boleh
+     * melihat dan mengajukan (registrasi, serah terima, transfer, check-out,
+     * maintenance, inspeksi, opname, PR, penerimaan). Daftar ini mengelola:
+     * menyetujui/menolak transfer, disposal & PR, menghapus aset, menyelesaikan
+     * stock opname, serta mengubah kategori & lokasi aset.
+     * Dipakai di route (role:), AssetController & kawan-kawan, dan Blade.
+     */
+    public const ASSET_MANAGE = ['superadmin', 'asset_admin'];
 }

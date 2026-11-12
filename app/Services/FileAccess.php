@@ -85,6 +85,9 @@ class FileAccess
             // ---- Trouble Ticket: mengikuti keterlihatan tiketnya
             'trouble_ticket_attachments'       => $this->allowsTroubleTicket($path),
 
+            // ---- Asset Management: sama dengan "boleh membuka modul Asset"
+            'asset_attachments'                => $this->allowsMenu('asset-management'),
+
             /*
             | ---- Treasury, Cost Register, Customer, Surat Jalan, Monitoring
             |

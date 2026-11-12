@@ -550,6 +550,43 @@ class WorkflowStatus
                 'icon'        => 'fa-check-circle',
             ],
         ],
+
+        /*
+          Asset Management — status aset & dokumennya. Transisinya milik
+          AssetMovementController / AssetOperationController /
+          AssetOpnameController / AssetProcurementController. Semua status
+          modul ini ditulis lengkap supaya tidak jatuh ke keterangan Cost
+          Request di MAP.
+        */
+        'asset' => [
+            'AVAILABLE'     => ['description' => 'Tersedia, belum dipegang siapa pun', 'tone' => 'neutral', 'icon' => 'fa-box'],
+            'ASSIGNED'      => ['description' => 'Diserahterimakan ke karyawan', 'tone' => 'progress', 'icon' => 'fa-user-check'],
+            'IN_USE'        => ['description' => 'Terpasang/dipakai operasional', 'tone' => 'positive', 'icon' => 'fa-plug'],
+            'CHECKED_OUT'   => ['description' => 'Dipinjam sementara', 'tone' => 'progress', 'icon' => 'fa-sign-out-alt'],
+            'MAINTENANCE'   => ['description' => 'Sedang maintenance', 'tone' => 'attention', 'icon' => 'fa-tools'],
+            'DISPOSED'      => ['description' => 'Sudah dihapus dari aset aktif', 'tone' => 'danger', 'icon' => 'fa-trash-alt'],
+            'PENDING'       => ['description' => 'Menunggu persetujuan Asset Admin', 'tone' => 'attention', 'icon' => 'fa-hourglass-half'],
+            'APPROVED'      => ['description' => 'Disetujui Asset Admin', 'tone' => 'positive', 'icon' => 'fa-check'],
+            'REJECTED'      => ['description' => 'Ditolak Asset Admin', 'tone' => 'danger', 'icon' => 'fa-times-circle'],
+            'COMPLETED'     => ['description' => 'Selesai', 'tone' => 'done', 'icon' => 'fa-check-circle'],
+            'RETURNED'      => ['description' => 'Sudah dikembalikan', 'tone' => 'done', 'icon' => 'fa-undo'],
+            'OVERDUE'       => ['description' => 'Melewati tanggal kembali / jatuh tempo', 'tone' => 'danger', 'icon' => 'fa-exclamation-triangle'],
+            'IN_PROGRESS'   => ['description' => 'Pekerjaan berjalan', 'tone' => 'progress', 'icon' => 'fa-tools'],
+            'WAITING_PARTS' => ['description' => 'Menunggu suku cadang', 'tone' => 'attention', 'icon' => 'fa-hourglass-half'],
+            'CANCELLED'     => ['description' => 'Dibatalkan', 'tone' => 'neutral', 'icon' => 'fa-ban'],
+            'COUNTING'      => ['description' => 'Penghitungan berjalan', 'tone' => 'progress', 'icon' => 'fa-tasks'],
+            'RECEIVED'      => ['description' => 'Seluruh unit sudah diterima', 'tone' => 'done', 'icon' => 'fa-check-circle'],
+            'ACTIVE'        => ['description' => null, 'tone' => 'positive', 'icon' => null],
+            'INACTIVE'      => ['description' => null, 'tone' => 'neutral', 'icon' => null],
+            'DUE_SOON'      => ['description' => 'Jatuh tempo dalam 14 hari', 'tone' => 'attention', 'icon' => 'fa-clock'],
+            'SCHEDULED'     => ['description' => 'Terjadwal', 'tone' => 'neutral', 'icon' => 'fa-calendar'],
+            'PASSED'        => ['description' => null, 'tone' => 'positive', 'icon' => null],
+            'MINOR_FINDING' => ['description' => null, 'tone' => 'attention', 'icon' => null],
+            'MAJOR_FINDING' => ['description' => null, 'tone' => 'danger', 'icon' => null],
+            'MATCHED'       => ['description' => null, 'tone' => 'positive', 'icon' => null],
+            'MISSING'       => ['description' => null, 'tone' => 'danger', 'icon' => null],
+            'DISCREPANCY'   => ['description' => null, 'tone' => 'attention', 'icon' => null],
+        ],
     ];
 
     /**

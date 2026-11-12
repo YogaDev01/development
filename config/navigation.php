@@ -234,6 +234,73 @@ return [
             'menu'   => 'reports',
         ],
 
+        /* -------------------------------------------- ASSET MANAGEMENT */
+        // Semua halaman Asset memakai satu kunci menu 'asset-management'
+        // (route menu:asset-management); modal Menu Access cukup satu centang.
+        'asset-dashboard' => [
+            'label'  => 'Asset Dashboard',
+            'icon'   => 'fas fa-tachometer-alt',
+            'url'    => 'route:asset.dashboard',
+            'active' => ['asset'],
+            'menu'   => 'asset-management',
+        ],
+        'asset-list' => [
+            'label'  => 'All Assets',
+            'icon'   => 'fas fa-boxes',
+            'url'    => 'route:asset.index',
+            'active' => ['asset/list*', 'asset/create'],
+            'menu'   => 'asset-management',
+        ],
+        'asset-movement' => [
+            'label'  => 'Serah Terima & Transfer',
+            'icon'   => 'fas fa-exchange-alt',
+            'url'    => 'route:asset.movements.index',
+            'active' => ['asset/movements*'],
+            'menu'   => 'asset-management',
+        ],
+        'asset-maintenance' => [
+            'label'  => 'Maintenance',
+            'icon'   => 'fas fa-tools',
+            'url'    => 'route:asset.maintenance.index',
+            'active' => ['asset/maintenance*'],
+            'menu'   => 'asset-management',
+        ],
+        'asset-inspection' => [
+            'label'  => 'Inspeksi',
+            'icon'   => 'fas fa-clipboard-check',
+            'url'    => 'route:asset.inspection.index',
+            'active' => ['asset/inspection*'],
+            'menu'   => 'asset-management',
+        ],
+        'asset-opname' => [
+            'label'  => 'Stock Opname',
+            'icon'   => 'fas fa-tasks',
+            'url'    => 'route:asset.opname.index',
+            'active' => ['asset/opname*'],
+            'menu'   => 'asset-management',
+        ],
+        'asset-procurement' => [
+            'label'  => 'Pengadaan',
+            'icon'   => 'fas fa-shopping-cart',
+            'url'    => 'route:asset.procurement.index',
+            'active' => ['asset/procurement*'],
+            'menu'   => 'asset-management',
+        ],
+        'asset-report' => [
+            'label'  => 'Laporan Aset',
+            'icon'   => 'fas fa-file-alt',
+            'url'    => 'route:asset.reports',
+            'active' => ['asset/reports*'],
+            'menu'   => 'asset-management',
+        ],
+        'asset-settings' => [
+            'label'  => 'Pengaturan Aset',
+            'icon'   => 'fas fa-sliders-h',
+            'url'    => 'route:asset.settings.index',
+            'active' => ['asset/settings*'],
+            'menu'   => 'asset-management',
+        ],
+
         /* ------------------------------------------------- MASTER DATA */
         'customer' => [
             'label'  => 'Customer',
@@ -494,6 +561,13 @@ return [
                 'Reports' => [
                     'icon'  => 'fas fa-chart-pie',
                     'items' => ['closing', 'reports'],
+                ],
+                'Asset Management' => [
+                    'icon'  => 'fas fa-boxes',
+                    'items' => [
+                        'asset-dashboard', 'asset-list', 'asset-movement', 'asset-maintenance',
+                        'asset-inspection', 'asset-opname', 'asset-procurement', 'asset-report', 'asset-settings',
+                    ],
                 ],
             ],
         ],
