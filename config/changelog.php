@@ -26,10 +26,45 @@
 return [
 
     // Versi yang sedang berjalan.
-    'current' => '3.3.4',
+    'current' => '3.4.0',
 
     // Riwayat rilis, terbaru di atas.
     'releases' => [
+
+        [
+            'version' => '3.4.0',
+            'date'    => '2026-11-13',
+            'title'   => 'SLA Site, Accounting, Cash Management, Asset Management, HRIS & Penyeragaman Tampilan',
+            'summary' => 'Rilis besar yang menggabungkan update 3.3.5: modul SLA Site dengan rekap tahunan di Summary Operations, fondasi Accounting (COA, jurnal, buku besar, laporan keuangan), Cash Management, Asset Management, dan HRIS (surat, manpower, rekrutmen). Tampilan banyak halaman kini seragam mengikuti pola Cost Request.',
+            'sections' => [
+                [
+                    'type'  => 'added',
+                    'label' => 'Baru',
+                    'items' => [
+                        'SLA Site (Operations): input SLA per customer per periode bulanan, rincian per site dengan Qty Site & Average SLA, template & import Excel (hasil import diisikan ke tabel lalu disimpan manual).',
+                        'Summary Operations: rekap SLA Site per tahun (site × Jan–Des + Average), dengan filter tahun & customer.',
+                        'Asset Management: register aset, serah terima, transfer, check-out, maintenance, inspeksi, opname, pengadaan, laporan & penyusutan.',
+                        'Accounting: Chart of Accounts, Account Mapping, Accounting Period, Journal Entries (termasuk jurnal manual) & Journal Audit Trail, General Ledger, Trial Balance, serta laporan Income Statement, Balance Sheet, Cash Flow Statement, dan Changes in Equity.',
+                        'Cash Management: Bank Accounts dengan saldo awal, Cash Overview, Cash Transactions, Cash Transfer, Cash Adjustment, Reconciliation, dan Cash Reports.',
+                        'HRIS: Letter Management, Manpower Request, Recruitment & bank kandidat.',
+                        'Halaman ringkasan Todo List / Dashboard / Summary untuk app Operations, Projects, dan HRIS.',
+                        'Bulk approve/reject Expense dan bulk verify/approve/revisi Collection.',
+                        'Edit penuh Superadmin di status apa pun (tercatat di log): PO, Invoice, Cash Receipt, Surat Jalan, Expense, Cost Request, Budget Plan, Treasury, Trouble Ticket.',
+                        'Keamanan: matriks Kewenangan Aksi di modal Role (disimpan, belum menentukan akses nyata), tab Preview Akses & Temuan di Konsol Keamanan.',
+                    ],
+                ],
+                [
+                    'type'  => 'changed',
+                    'label' => 'Berubah',
+                    'items' => [
+                        'Tampilan halaman diseragamkan mengikuti pola Cost Request (kepala halaman, kartu, toolbar, tabel): Department, Team, Forecast, Reports, Todo List, Finance Summary, Asset Management, Assignment, Panduan, Trouble Ticket.',
+                        'Purchase Order: kolom Budget memakai semua Budget Plan kecuali Rejected; footer subtotal Overhead & Fixed Cost; lampiran dibagi KOM / SPK / Lainnya.',
+                        'Collection: halaman detail invoice bergaya lembar invoice dengan panel pembayaran, lampiran, dan log; lampiran invoice bisa ditambah di status apa pun.',
+                        'PWA: tabel ditahan sampai mode kartu siap.',
+                    ],
+                ],
+            ],
+        ],
 
         [
             'version' => '3.3.4',

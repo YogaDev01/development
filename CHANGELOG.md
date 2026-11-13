@@ -4,6 +4,31 @@ Sumber kebenarannya ada di `config/changelog.php` (ditampilkan sebagai panel
 "What's New" di Dashboard). Berkas ini cerminannya untuk dibaca lewat repo /
 git tanpa perlu membuka aplikasi.
 
+## [3.4.0] - 2026-11-13 — SLA Site, Accounting, Cash Management, Asset Management, HRIS & Penyeragaman Tampilan
+
+Rilis besar yang menggabungkan update 3.3.5: modul SLA Site dengan rekap tahunan di Summary Operations, fondasi Accounting (COA, jurnal, buku besar, laporan keuangan), Cash Management, Asset Management, dan HRIS (surat, manpower, rekrutmen). Tampilan banyak halaman kini seragam mengikuti pola Cost Request.
+
+### Baru
+- SLA Site (Operations): input SLA per customer per periode bulanan, rincian per site dengan Qty Site & Average SLA, template & import Excel (hasil import diisikan ke tabel lalu disimpan manual).
+- Summary Operations: rekap SLA Site per tahun (site × Jan–Des + Average), dengan filter tahun & customer.
+- Asset Management: register aset, serah terima, transfer, check-out, maintenance, inspeksi, opname, pengadaan, laporan & penyusutan.
+- Accounting: Chart of Accounts, Account Mapping, Accounting Period, Journal Entries (termasuk jurnal manual) & Journal Audit Trail, General Ledger, Trial Balance, serta laporan Income Statement, Balance Sheet, Cash Flow Statement, dan Changes in Equity.
+- Cash Management: Bank Accounts dengan saldo awal, Cash Overview, Cash Transactions, Cash Transfer, Cash Adjustment, Reconciliation, dan Cash Reports.
+- HRIS: Letter Management, Manpower Request, Recruitment & bank kandidat.
+- Halaman ringkasan Todo List / Dashboard / Summary untuk app Operations, Projects, dan HRIS.
+- Bulk approve/reject Expense dan bulk verify/approve/revisi Collection.
+- Edit penuh Superadmin di status apa pun (tercatat di log): PO, Invoice, Cash Receipt, Surat Jalan, Expense, Cost Request, Budget Plan, Treasury, Trouble Ticket.
+- Keamanan: matriks Kewenangan Aksi di modal Role (disimpan, belum menentukan akses nyata), tab Preview Akses & Temuan di Konsol Keamanan.
+
+### Berubah
+- Tampilan halaman diseragamkan mengikuti pola Cost Request (kepala halaman, kartu, toolbar, tabel): Department, Team, Forecast, Reports, Todo List, Finance Summary, Asset Management, Assignment, Panduan, Trouble Ticket.
+- Purchase Order: kolom Budget memakai semua Budget Plan kecuali Rejected; footer subtotal Overhead & Fixed Cost; lampiran dibagi KOM / SPK / Lainnya.
+- Collection: halaman detail invoice bergaya lembar invoice dengan panel pembayaran, lampiran, dan log; lampiran invoice bisa ditambah di status apa pun.
+- PWA: tabel ditahan sampai mode kartu siap.
+
+### Migrasi
+- `2026_11_12_000100` s/d `2026_11_12_000200`, `2026_11_13_000100` s/d `2026_11_13_001400`, lalu `2026_11_14_000100` s/d `2026_11_14_001000` — jalankan berurutan sebelum kode diunggah. Menu baru diberikan ke role lewat Role > Menu Access.
+
 ## [3.3.4] - 2026-11-10 — Modul Expense: Cash Advance, Settlement, Pembebanan Multi-Periode & Alokasi Biaya ke PO
 
 Cost Register menjadi Expense: biaya di luar Cost Request kini punya Cash Advance dengan settlement, pembebanan ke beberapa bulan, dan pembagian Fixed Cost / Overhead ke satu PO, seluruh PO satu tahun, beberapa PO terpilih, atau Cost Center. Biaya Expense baru masuk hitungan PO setelah dananya benar-benar keluar lewat Treasury, dan Overhead / Fixed Cost PO kini memakai satu angka yang sama di seluruh halaman.
