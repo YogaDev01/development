@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\CashAdjustment;
 use App\Models\CashFlow;
 use App\Models\CashReceipt;
+use App\Models\CashTransfer;
 use App\Models\DailyTransaction;
 use Illuminate\Support\Collection;
 
@@ -38,6 +40,8 @@ class CashFlowService
     public const MODULE_CASH_RECEIPT = 'CASH_RECEIPT';
     public const MODULE_TREASURY     = 'TREASURY';
     public const MODULE_MANUAL       = 'CASH_FLOW';
+    public const MODULE_TRANSFER     = 'CASH_TRANSFER';   // hanya biaya transfer di ledger konsolidasi
+    public const MODULE_ADJUSTMENT   = 'CASH_ADJUSTMENT';
 
     /**
      * Buku besar kas untuk sebuah rentang tanggal.
@@ -52,7 +56,9 @@ class CashFlowService
         $rows = collect()
             ->merge($this->cashReceiptRows($from, $to))
             ->merge($this->treasuryRows($from, $to))
-            ->merge($this->manualRows($from, $to));
+            ->merge($this->manualRows($from, $to))
+            ->merge($this->transferFeeRows($from, $to))
+            ->merge($this->adjustmentRows($from, $to));
 
         // Filter sisa diterapkan SETELAH penggabungan supaya satu definisi
         // filter berlaku sama untuk semua sumber (tidak ada sumber yang diam-
@@ -84,6 +90,21 @@ class CashFlowService
 
         return $rows
             ->sortByDesc(fn ($r) => $r['date']->format('Y-m-d') . str_pad((string) $r['source_id'], 10, '0', STR_PAD_LEFT))
+            ->values();
+    }
+
+    /**
+     * Buku besar PER REKENING: ledger() + dua sisi Top Up (OUT dari rekening
+     * asal, IN ke rekening tujuan). Top Up tidak mengubah kas konsolidasi,
+     * tetapi mengubah saldo tiap rekening — karena itu hanya dipakai untuk
+     * saldo rekening (CashBalanceService), bukan untuk total Cash In/Out.
+     * Baris Top Up ditandai 'is_transfer' => true.
+     */
+    public function accountLedger(array $filters = []): Collection
+    {
+        return $this->ledger($filters)
+            ->merge($this->transferRows($filters['from'] ?? null, $filters['to'] ?? null))
+            ->merge($this->internalTransferRows($filters['from'] ?? null, $filters['to'] ?? null))
             ->values();
     }
 
@@ -203,6 +224,119 @@ class CashFlowService
             ]);
     }
 
+    /** Dua sisi Top Up yang sudah PAID (lihat accountLedger). */
+    private function transferRows(?string $from, ?string $to): Collection
+    {
+        return DailyTransaction::with(['sourceFund:id,name', 'toSourceFund:id,name'])
+            ->where('status', 'PAID')
+            ->where('type', 'TOP_UP')
+            ->when($from, fn ($q) => $q->whereDate('date', '>=', $from))
+            ->when($to, fn ($q) => $q->whereDate('date', '<=', $to))
+            ->get()
+            ->flatMap(function ($dt) {
+                $base = [
+                    'date'             => $dt->date,
+                    'category'         => 'Top Up (transfer internal)',
+                    'amount'           => (int) $dt->captured_amount,
+                    'description'      => $dt->description ?: ('Top Up ' . $dt->code),
+                    'source_module'    => self::MODULE_TREASURY,
+                    'source_id'        => $dt->id,
+                    'reference_number' => $dt->code,
+                    'url'              => url('/daily-transaction/' . $dt->id),
+                    'status'           => 'POSTED',
+                    'is_transfer'      => true,
+                ];
+
+                return [
+                    $base + ['direction' => 'OUT', 'source_fund_id' => $dt->source_fund_id,
+                             'source_fund' => $dt->sourceFund->name ?? '-'],
+                    $base + ['direction' => 'IN', 'source_fund_id' => $dt->to_source_fund_id,
+                             'source_fund' => $dt->toSourceFund->name ?? '-'],
+                ];
+            });
+    }
+
+    /**
+     * Biaya Internal Transfer (APPROVED): pengeluaran NYATA dari rekening asal,
+     * dicatat terpisah dari nominal transfer (yang netral di konsolidasi).
+     */
+    private function transferFeeRows(?string $from, ?string $to): Collection
+    {
+        return CashTransfer::with('fromFund:id,name')
+            ->where('status', CashTransfer::APPROVED)
+            ->where('fee', '>', 0)
+            ->when($from, fn ($q) => $q->whereDate('transfer_date', '>=', $from))
+            ->when($to, fn ($q) => $q->whereDate('transfer_date', '<=', $to))
+            ->get()
+            ->map(fn ($t) => [
+                'date'             => $t->transfer_date,
+                'direction'        => 'OUT',
+                'category'         => 'Biaya Transfer',
+                'amount'           => (int) $t->fee,
+                'description'      => 'Biaya transfer ' . $t->transfer_number,
+                'source_module'    => self::MODULE_TRANSFER,
+                'source_id'        => $t->id,
+                'reference_number' => $t->transfer_number . '-FEE',
+                'source_fund_id'   => $t->from_fund_id,
+                'source_fund'      => $t->fromFund->name ?? '-',
+                'url'              => url('/cash-transfers/' . $t->id),
+                'status'           => 'POSTED',
+            ]);
+    }
+
+    /** Dua sisi Internal Transfer APPROVED (hanya untuk saldo per rekening). */
+    private function internalTransferRows(?string $from, ?string $to): Collection
+    {
+        return CashTransfer::with(['fromFund:id,name', 'toFund:id,name'])
+            ->where('status', CashTransfer::APPROVED)
+            ->when($from, fn ($q) => $q->whereDate('transfer_date', '>=', $from))
+            ->when($to, fn ($q) => $q->whereDate('transfer_date', '<=', $to))
+            ->get()
+            ->flatMap(function ($t) {
+                $base = [
+                    'date'             => $t->transfer_date,
+                    'category'         => 'Internal Transfer',
+                    'amount'           => (int) $t->amount,
+                    'description'      => $t->description ?: ('Internal transfer ' . $t->transfer_number),
+                    'source_module'    => self::MODULE_TRANSFER,
+                    'source_id'        => $t->id,
+                    'reference_number' => $t->transfer_number,
+                    'url'              => url('/cash-transfers/' . $t->id),
+                    'status'           => 'POSTED',
+                    'is_transfer'      => true,
+                ];
+
+                return [
+                    $base + ['direction' => 'OUT', 'source_fund_id' => $t->from_fund_id, 'source_fund' => $t->fromFund->name ?? '-'],
+                    $base + ['direction' => 'IN', 'source_fund_id' => $t->to_fund_id, 'source_fund' => $t->toFund->name ?? '-'],
+                ];
+            });
+    }
+
+    /** Cash Adjustment APPROVED. */
+    private function adjustmentRows(?string $from, ?string $to): Collection
+    {
+        return CashAdjustment::with('sourceFund:id,name')
+            ->where('status', CashAdjustment::APPROVED)
+            ->when($from, fn ($q) => $q->whereDate('effective_date', '>=', $from))
+            ->when($to, fn ($q) => $q->whereDate('effective_date', '<=', $to))
+            ->get()
+            ->map(fn ($a) => [
+                'date'             => $a->effective_date,
+                'direction'        => $a->direction,
+                'category'         => 'Adjustment: ' . $a->type_label,
+                'amount'           => (int) $a->amount,
+                'description'      => $a->reason,
+                'source_module'    => self::MODULE_ADJUSTMENT,
+                'source_id'        => $a->id,
+                'reference_number' => $a->adjustment_number,
+                'source_fund_id'   => $a->source_fund_id,
+                'source_fund'      => $a->sourceFund->name ?? '-',
+                'url'              => url('/cash-adjustments/' . $a->id),
+                'status'           => 'POSTED',
+            ]);
+    }
+
     /** Entri manual yang sudah POSTED — satu baris per detail. */
     private function manualRows(?string $from, ?string $to): Collection
     {
@@ -214,6 +348,7 @@ class CashFlowService
             ->flatMap(fn ($cf) => $cf->details->map(fn ($d) => [
                 'date'             => $cf->date,
                 'direction'        => $d->direction,
+                'detail_id'        => $d->id, // pembeda baris pada dokumen yang sama (kunci rekonsiliasi)
                 'category'         => $d->category_label,
                 'amount'           => (int) $d->amount,
                 'description'      => $d->description ?: $cf->description,

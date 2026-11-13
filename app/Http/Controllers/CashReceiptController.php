@@ -8,6 +8,8 @@ use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\SourceFund;
 use App\Models\UserActivityLog;
+use App\Support\PeriodLock;
+use App\Exceptions\PeriodLockedException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -333,6 +335,9 @@ class CashReceiptController extends Controller
                     return ['error' => 'Ada invoice yang dibayar tidak penuh. Tulis komentar alasannya.'];
                 }
 
+                // Kunci periode: tanggal terima tidak boleh jatuh di periode Closing CLOSED.
+                PeriodLock::assertOpen($request->received_date, 'Penerimaan', $request, null, null, true);
+
                 $header = CashReceiptHeader::create([
                     'code'             => CashReceiptHeader::generateCode(\Carbon\Carbon::parse($request->received_date)),
                     'received_date'    => $request->received_date,
@@ -383,8 +388,8 @@ class CashReceiptController extends Controller
 
                 return ['header' => $header];
             });
-        } catch (\DomainException $e) {
-            // Sinkron PPh ditolak (mis. invoice tidak konsisten): seluruh transaksi sudah dibatalkan.
+        } catch (\DomainException|PeriodLockedException $e) {
+            // Sinkron PPh ditolak / periode terkunci (mis. invoice tidak konsisten): seluruh transaksi sudah dibatalkan.
             $hasil = ['error' => $e->getMessage()];
         }
 
@@ -510,6 +515,9 @@ class CashReceiptController extends Controller
                     return 'Penerimaan yang sudah dibatalkan tidak bisa dialokasikan.';
                 }
 
+                // Kunci periode: alokasi membuat baris Cash Receipt bertanggal header.
+                PeriodLock::assertOpen($fresh->received_date, 'Penerimaan', $request, $header, null, true);
+
                 if ($invoice->po?->customer_id !== $header->customer_id) {
                     return 'Invoice ini bukan milik customer pada bukti penerimaan.';
                 }
@@ -566,7 +574,7 @@ class CashReceiptController extends Controller
         return back()->with('success', 'Alokasi pembayaran berhasil dicatat.');
     }
 
-    public function removeAllocation($id, $detailId)
+    public function removeAllocation(Request $request, $id, $detailId)
     {
         $header = CashReceiptHeader::findOrFail($id);
 
@@ -578,7 +586,7 @@ class CashReceiptController extends Controller
         // Soft delete: status invoice ikut disinkronkan otomatis lewat CashReceipt::booted(),
         // dan jejak pembatalannya tetap ada.
         try {
-            DB::transaction(function () use ($header, $detail, $poIds) {
+            DB::transaction(function () use ($header, $detail, $poIds, $request) {
                 $this->kunciNoPo($poIds);
                 $invoice = Invoice::whereKey($detail->invoice_id)->lockForUpdate()->first();
 
@@ -586,6 +594,9 @@ class CashReceiptController extends Controller
                 if (! $terkunci) {
                     return; // sudah dihapus request lain
                 }
+
+                // Tanpa bypass (UI tidak menyediakan alasan): Superadmin membuka periode lebih dulu.
+                PeriodLock::assertOpen($terkunci->received_date, 'Penerimaan', null, $header, null, true);
 
                 // PPh alokasi ini dibalik dari PPh invoice SEBELUM barisnya dihapus (selisih -PPh dilewatkan
                 // sebagai PPh tertunda), supaya hook CashReceipt::deleted membaca invoice yang sudah konsisten.
@@ -658,6 +669,12 @@ class CashReceiptController extends Controller
 
                 $header->setRelation('details',
                     CashReceipt::where('cash_receipt_header_id', $header->id)->lockForUpdate()->get());
+
+                // Kunci periode: tanggal header DAN tanggal tiap alokasi (bisa berbeda setelah super-update Cash Receipt).
+                foreach ($header->details->pluck('received_date')->push($header->received_date)->filter()
+                    ->map(fn ($d) => $d->toDateString())->unique() as $tgl) {
+                    PeriodLock::assertOpen($tgl, 'Penerimaan', $request, $header, null, true);
+                }
 
                 // Seluruh alokasinya ikut dibatalkan — kalau tidak, invoice akan
                 // tetap terlihat terbayar dari uang yang pembuktiannya dianulir.

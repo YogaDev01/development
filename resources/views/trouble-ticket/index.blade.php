@@ -102,6 +102,17 @@
         {{-- ============ TAMPILAN LAYAR LEBAR ============ --}}
         <div class="tt-desk">
 
+        <div class="tw:sr-only">
+            <h1>Trouble Ticket</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="#">Operations</a></li>
+                <li class="breadcrumb-item active">Trouble Ticket</li>
+            </ol>
+        </div>
+        <x-tw.page-header class="tw:py-4 tw:mb-4" title="Gangguan & Penanganan Site"
+            description="Tiket gangguan site dari laporan hingga penutupan, lengkap dengan tahap kunjungan dan kepatuhan SLA.">
+        </x-tw.page-header>
+
         {{-- Filter tanggal: di atas strip tahap, rata kanan — posisi sama dengan
              Cost Request (dropdown rentang cepat; "Custom…" memunculkan kotak
              rentang (dua kalender berdampingan) dan tombol Terapkan di kirinya).

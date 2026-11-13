@@ -89,7 +89,7 @@ button{font-family:inherit; cursor:pointer;}
 
 /* ---------- SIDEBAR ---------- */
 .sidebar{
-  width:240px; flex:none; background:var(--sidebar); color:var(--sidebar-text);
+  width:268px; flex:none; background:var(--sidebar); color:var(--sidebar-text);
   display:flex; flex-direction:column; border-right:1px solid var(--sidebar-border);
   position:sticky; top:0; height:100vh; overflow:hidden;
   /* .shell adalah flex row: tanpa ini sidebar diregangkan setinggi seluruh

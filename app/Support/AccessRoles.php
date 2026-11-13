@@ -207,4 +207,18 @@ final class AccessRoles
      * Dipakai di route (role:), AssetController & kawan-kawan, dan Blade.
      */
     public const ASSET_MANAGE = ['superadmin', 'asset_admin'];
+
+    /**
+     * Accounting (2026-11-14) — sumber tunggal daftar role modul Accounting.
+     * Dipakai di route (role:), controller Accounting*, dan Blade. Melihat halaman
+     * tetap digerbang menu accounting-*; daftar ini hanya untuk aksi tulis/ekspor.
+     *   ACCOUNTING_MANAGE : COA, mapping, periode, membuat/mengedit/submit jurnal, jurnal pembalik.
+     *   ACCOUNTING_POST   : memposting / mengembalikan jurnal ke Draft.
+     *   ACCOUNTING_REOPEN : membuka kembali periode yang sudah ditutup.
+     *   ACCOUNTING_EXPORT : CSV dan cetak laporan.
+     */
+    public const ACCOUNTING_MANAGE = ['superadmin', 'finance_manager', 'accounting'];
+    public const ACCOUNTING_POST   = ['superadmin', 'finance_manager'];
+    public const ACCOUNTING_REOPEN = ['superadmin', 'finance_manager'];
+    public const ACCOUNTING_EXPORT = ['superadmin', 'finance_manager', 'accounting'];
 }

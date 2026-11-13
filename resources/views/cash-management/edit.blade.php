@@ -22,6 +22,7 @@
         </div>
 
         <form action="{{ route('cash-management.update', $cashFlow->id) }}" method="POST" id="formCashFlow">
+            @include('partials.period-lock-field', ['class' => 'mb-3'])
             @csrf
             @method('PUT')
 

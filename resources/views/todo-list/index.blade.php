@@ -38,16 +38,17 @@
 <div class="content" id="todoApp" data-ts-card-scope>
     <div class="container-fluid">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <div>
-                <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Todo List Request</h1>
-                <div style="color:var(--text-faint);font-size:13px;margin-top:2px;">Task Cost Request, Budgeting, Treasury, Purchase Order, Invoice, dan Collection yang menunggu tindakan Anda</div>
-            </div>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+        {{-- Judul & breadcrumb dipindah shell ke topbar (pola Cost Request). --}}
+        <div class="tw:sr-only">
+            <h1>Todo List Request</h1>
+            <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="#">Finance</a></li>
                 <li class="breadcrumb-item active">Todo List Request</li>
             </ol>
         </div>
+        <x-tw.page-header class="tw:py-4 tw:mb-4" title="Pekerjaan Menunggu Tindakan"
+            description="Task Cost Request, Budgeting, Treasury, Purchase Order, Invoice, dan Collection yang menunggu tindakan Anda.">
+        </x-tw.page-header>
 
         @if($loadError ?? false)
         <div class="alert alert-danger" style="border-radius:var(--radius-lg);">
@@ -2541,6 +2542,31 @@
 
 @push('styles')
 <style>
+/* Kartu & tabel Todo List diselaraskan dengan pola Cost Request (x-tw.card + tabel CR):
+   tanpa garis atas berwarna (card-outline), radius-md, bayangan tipis; header kartu
+   putih bergaris bawah; header tabel surface-2 huruf biasa. Hanya tampilan — kelas
+   .card/.card-header tetap dipakai JS worklist, jadi markup tidak diubah. */
+body.tesys-ui #todoApp .card {
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-xs) !important;
+}
+body.tesys-ui #todoApp .card > .card-header {
+    background: var(--surface) !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding: 12px 16px;
+}
+body.tesys-ui #todoApp .card > .card-header .card-title {
+    font-size: var(--fs-section); font-weight: var(--fw-section); color: var(--text);
+}
+body.tesys-ui #todoApp .card table thead th {
+    background: var(--surface-2) !important;
+    color: var(--text-dim) !important;
+    font-size: 12px; font-weight: 600;
+    text-transform: none !important; letter-spacing: 0 !important;
+    border-bottom: 1px solid var(--border-strong) !important;
+}
+
 /* Tujuan tautan "Perlu Tindakan" di Dashboard (#tl-<key>). Offset dipakai
    supaya judul kartu tidak tertutup header saat browser melompat ke sana. */
 [id^="tl-"] { scroll-margin-top: 90px; }
@@ -5861,4 +5887,9 @@ $(function () {
 
 });
 </script>
+@endpush
+
+@push('styles')
+{{-- Utilitas tw: (x-tw.*) dimuat per halaman, sama seperti Cost Request. --}}
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 @endpush

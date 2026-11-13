@@ -2012,12 +2012,20 @@ class BudgetRequestController extends Controller
             return redirect('/budget-request')
                 ->with('error', 'Cost Request hanya dapat diedit saat berstatus DRAFT.');
         }
-        $editLanjut = ! $cr->isEditable();   // edit Superadmin di luar Draft
 
-        // Snapshot untuk rincian perubahan (nilai lama -> baru) di log CR.
+        /*
+        | Setiap simpan oleh Superadmin (status apa pun, termasuk di luar Draft)
+        | dicatat di log CR 'superadmin_edited' dengan nilai lama -> baru per
+        | field header dan per baris rincian (ditambah/diubah/dihapus).
+        */
+        $catatSuper = (bool) Auth::user()?->hasRole(['superadmin']);
+
+        // Snapshot header untuk rincian perubahan (nilai lama -> baru) di log CR.
         $snapshot = function (BudgetRequest $x): array {
-            $x->loadMissing(['type:id,name', 'beneficiary:id,complete_name', 'cluster:id,name', 'budgetPlan:id,code']);
+            $x->unsetRelation('type')->unsetRelation('beneficiary')->unsetRelation('cluster')->unsetRelation('budgetPlan');
+            $x->load(['type:id,name', 'beneficiary:id,complete_name', 'cluster:id,name', 'budgetPlan:id,code']);
             return [
+                'Kode'        => (string) $x->code,
                 'Tipe'        => (string) ($x->type->name ?? '-'),
                 'Budget Plan' => (string) ($x->budgetPlan->code ?? '-'),
                 'Cluster'     => (string) ($x->cluster->name ?? '-'),
@@ -2025,11 +2033,22 @@ class BudgetRequestController extends Controller
                 'Deskripsi'   => (string) $x->description,
                 'Catatan'     => (string) ($x->notes ?? ''),
                 'Email'       => (string) ($x->email ?? ''),
+                'Nominal CR'  => number_format((int) $x->amount, 0, ',', '.'),
+                'NOB'         => $x->is_nob ? 'Ya (' . number_format((int) $x->nob_amount, 0, ',', '.') . ')' : 'Tidak',
                 'Jumlah item' => (string) $x->details()->count(),
                 'Total rincian' => number_format((int) $x->details()->sum('total'), 0, ',', '.'),
             ];
         };
-        $sebelum = $editLanjut ? $snapshot($cr) : [];
+        // Snapshot rincian per baris (id => field), dasar log ditambah/diubah/dihapus.
+        $snapshotRincian = fn (BudgetRequest $x): array => $x->details()->orderBy('id')->get()
+            ->mapWithKeys(fn ($d) => [(int) $d->id => [
+                'Item'    => (string) ($d->description ?? ''),
+                'Harga'   => number_format((int) $d->amount, 0, ',', '.'),
+                'Qty'     => (string) $d->qty,
+                'Total'   => number_format((int) $d->total, 0, ',', '.'),
+                'Catatan' => (string) ($d->notes ?? ''),
+                'Status'  => (string) ($d->status ?? ''),
+            ]])->all();
 
         // Cluster hanya wajib bila budget plan bersumber dari PROYEK
         $sourcePlan  = BudgetPlan::with('costCenter')->find($request->budget_plan_id);
@@ -2111,7 +2130,31 @@ class BudgetRequestController extends Controller
             ? BudgetRequest::codeWithTypePrefix((string) $cr->code, (int) $request->type_id)
             : $cr->code;
 
-        DB::transaction(function () use ($request, $cr, $code, $description, $isNob, $nobAmount) {
+        try {
+        DB::transaction(function () use ($request, $cr, $code, $description, $isNob, $nobAmount, $catatSuper, $snapshot, $snapshotRincian) {
+            /*
+            | Kunci baris CR selama penyimpanan, lalu periksa ulang hak edit pada
+            | data terkunci: status bisa berubah (mis. disubmit/di-approve) di
+            | antara form dibaca dan disimpan. Snapshot "sebelum" diambil dari
+            | baris terkunci supaya log nilai lama akurat.
+            */
+            $locked = BudgetRequest::whereKey($cr->id)->lockForUpdate()->first();
+            if (! $locked || ! $locked->isEditableBy(Auth::user())) {
+                throw new \DomainException('Status CR sudah berubah — muat ulang halaman.');
+            }
+            $cr->setRawAttributes($locked->getAttributes(), true);
+
+            // Kunci periode: CR yang sudah dibayar direkap Closing menurut paid_at, jadi edit Superadmin
+            // (yang bisa mengubah nominal) ditolak bila periode itu CLOSED, kecuali dengan alasan_periode.
+            // Di dalam transaksi + baris terkunci: log penembusan ikut rollback bila penyimpanan gagal.
+            if ($cr->paid_at) {
+                \App\Support\PeriodLock::assertOpen($cr->paid_at, 'Cost Request', $request, $cr, null, true);
+            }
+
+            $statusSaatEdit = $cr->status;
+            $sebelum        = $catatSuper ? $snapshot($cr) : [];
+            $rincianSebelum = $catatSuper ? $snapshotRincian($cr) : [];
+
             $cr->update([
                 'code'           => $code,
                 'description'    => $description,
@@ -2139,22 +2182,66 @@ class BudgetRequestController extends Controller
             }
 
             $this->storeAttachments($cr, $request);
-        });
 
-        if ($editLanjut) {
-            $sesudah = $snapshot($cr->fresh());
+            if (! $catatSuper) {
+                return;
+            }
+
+            $cr->refresh();
+            $sesudah        = $snapshot($cr);
+            $rincianSesudah = $snapshotRincian($cr);
+            $tampil = fn (string $v) => $v !== '' ? $v : '-';
+
+            // Header: field yang berubah, nilai lama -> baru.
             $ubah = [];
+            $headerDiff = [];
             foreach ($sebelum as $label => $lama) {
                 if ($lama !== $sesudah[$label]) {
-                    $ubah[] = $label . ': ' . ($lama !== '' ? $lama : '-') . ' -> ' . ($sesudah[$label] !== '' ? $sesudah[$label] : '-');
+                    $ubah[] = $label . ': ' . $tampil($lama) . ' -> ' . $tampil($sesudah[$label]);
+                    $headerDiff[$label] = ['old' => $lama, 'new' => $sesudah[$label]];
                 }
             }
-            // Status tidak berubah; log mencatat siapa, kapan, dan apa yang diubah.
+
+            // Rincian per baris: ditambah / diubah / dihapus.
+            $rincianDiff = ['ditambah' => [], 'diubah' => [], 'dihapus' => []];
+            foreach ($rincianSesudah as $did => $baru) {
+                if (! isset($rincianSebelum[$did])) {
+                    $rincianDiff['ditambah'][$did] = $baru;
+                    $ubah[] = 'Rincian ditambah #' . $did . ' (' . $tampil($baru['Item']) . ', ' . $baru['Harga'] . ' x ' . $baru['Qty'] . ' = ' . $baru['Total'] . ')';
+                    continue;
+                }
+                $field = [];
+                foreach ($baru as $k => $v) {
+                    $lama = $rincianSebelum[$did][$k] ?? '';
+                    if ($lama !== $v) {
+                        $field[$k] = ['old' => $lama, 'new' => $v];
+                    }
+                }
+                if ($field) {
+                    $rincianDiff['diubah'][$did] = $field;
+                    $ubah[] = 'Rincian #' . $did . ' diubah: ' . implode(', ', array_map(
+                        fn ($k, $p) => $k . ' ' . $tampil($p['old']) . ' -> ' . $tampil($p['new']),
+                        array_keys($field), $field));
+                }
+            }
+            foreach (array_diff_key($rincianSebelum, $rincianSesudah) as $did => $lama) {
+                $rincianDiff['dihapus'][$did] = $lama;
+                $ubah[] = 'Rincian dihapus #' . $did . ' (' . $tampil($lama['Item']) . ', ' . $lama['Harga'] . ' x ' . $lama['Qty'] . ' = ' . $lama['Total'] . ')';
+            }
+
+            // Status tidak berubah; log mencatat siapa, kapan, dan apa yang diubah
+            // (ringkasan di notes, struktur lengkap old/new di request_snapshot).
             // Catatan: batch Treasury & settlement membaca nominal CR secara langsung.
-            $cr->addLog($cr->status, $cr->status, 'superadmin_edited', mb_substr(
-                '[status ' . $cr->status . '] '
-                . ($ubah ? implode('; ', $ubah) : 'Disimpan tanpa perubahan field ringkas (rincian per baris/lampiran mungkin berubah).'),
-                0, 2000));
+            $cr->addLog($statusSaatEdit, $statusSaatEdit, 'superadmin_edited', mb_substr(
+                '[status ' . $statusSaatEdit . '] '
+                . ($ubah ? implode('; ', $ubah) : 'Disimpan tanpa perubahan field (lampiran mungkin berubah).'),
+                0, 4000), [
+                'header'  => $headerDiff,
+                'rincian' => $rincianDiff,
+            ]);
+        });
+        } catch (\DomainException $e) {
+            return back()->withInput()->with('error', $e->getMessage());
         }
 
         return redirect('/budget-request')
@@ -2231,7 +2318,9 @@ class BudgetRequestController extends Controller
             abort(403, 'Anda tidak memiliki wewenang untuk approval tahap ini.');
         }
 
-        $this->findVisibleCr($id);
+        if ($msg = $this->findVisibleCr($id)->selfApprovalError($user)) {
+            return back()->with('error', $msg);
+        }
 
         // Transisi terkunci: lihat Concerns\TransitionsStatus.
         $cr = $this->transitionStatus(BudgetRequest::class, $id, 'SUBMITTED', ['status' => 'CHECKED'], function ($cr) use ($request) {
@@ -2277,7 +2366,9 @@ class BudgetRequestController extends Controller
         }
 
         $request->validate(['notes' => 'required|string|max:500']);
-        $this->findVisibleCr($id);
+        if ($msg = $this->findVisibleCr($id)->selfApprovalError($user)) {
+            return back()->with('error', $msg);
+        }
 
         // Transisi terkunci: lihat Concerns\TransitionsStatus.
         $cr = $this->transitionStatus(BudgetRequest::class, $id, 'SUBMITTED', ['status' => 'REJECTED'], function ($cr) use ($request) {
@@ -2313,7 +2404,9 @@ class BudgetRequestController extends Controller
             abort(403, 'Anda tidak memiliki wewenang untuk approval tahap ini.');
         }
 
-        $this->findVisibleCr($id);
+        if ($msg = $this->findVisibleCr($id)->selfApprovalError($user)) {
+            return back()->with('error', $msg);
+        }
 
         // Transisi terkunci: lihat Concerns\TransitionsStatus.
         $cr = $this->transitionStatus(BudgetRequest::class, $id, 'CHECKED', ['status' => 'VERIFIED', 'approved_at' => now()], function ($cr) use ($request) {
@@ -2351,7 +2444,9 @@ class BudgetRequestController extends Controller
         }
 
         $request->validate(['notes' => 'required|string|max:500']);
-        $this->findVisibleCr($id);
+        if ($msg = $this->findVisibleCr($id)->selfApprovalError($user)) {
+            return back()->with('error', $msg);
+        }
 
         // Transisi terkunci: lihat Concerns\TransitionsStatus.
         $cr = $this->transitionStatus(BudgetRequest::class, $id, 'CHECKED', ['status' => 'REJECTED'], function ($cr) use ($request) {
@@ -2387,7 +2482,9 @@ class BudgetRequestController extends Controller
             abort(403, 'Anda tidak memiliki wewenang untuk approval tahap ini.');
         }
 
-        $this->findVisibleCr($id);
+        if ($msg = $this->findVisibleCr($id)->selfApprovalError($user)) {
+            return back()->with('error', $msg);
+        }
 
         // Transisi terkunci: lihat Concerns\TransitionsStatus.
         $cr = $this->transitionStatus(BudgetRequest::class, $id, 'VERIFIED', ['status' => 'APPROVED'], function ($cr) use ($request) {
@@ -2418,7 +2515,9 @@ class BudgetRequestController extends Controller
         }
 
         $request->validate(['notes' => 'required|string|max:500']);
-        $this->findVisibleCr($id);
+        if ($msg = $this->findVisibleCr($id)->selfApprovalError($user)) {
+            return back()->with('error', $msg);
+        }
 
         // Transisi terkunci: lihat Concerns\TransitionsStatus.
         $cr = $this->transitionStatus(BudgetRequest::class, $id, 'VERIFIED', ['status' => 'REJECTED'], function ($cr) use ($request) {
@@ -2625,6 +2724,10 @@ class BudgetRequestController extends Controller
                 $skipped[] = $cr->code . ' (peran Anda tidak berhak pada tahap ' . $cr->status . ')';
                 continue;
             }
+            if ($cr->isSelfApprovalBlockedFor($user)) {
+                $skipped[] = $cr->code . ' (pengajuan Anda sendiri — tidak dapat Anda proses)';
+                continue;
+            }
 
             if ($apply($cr)) {
                 $count++;
@@ -2689,6 +2792,9 @@ class BudgetRequestController extends Controller
         /** @var User $user */
         $user = Auth::user();
         $cr   = $this->findVisibleCr($id, ['details', 'applicant']);
+        if ($msg = $cr->selfApprovalError($user)) {
+            return back()->with('error', $msg);
+        }
 
         if (!$cr->canModerateItems($user)) {
             abort(403, 'Anda tidak berwenang men-takeout item pada tahap approval ini.');
@@ -2773,6 +2879,9 @@ class BudgetRequestController extends Controller
         /** @var User $user */
         $user = Auth::user();
         $cr   = $this->findVisibleCr($id, ['details']);
+        if ($msg = $cr->selfApprovalError($user)) {
+            return back()->with('error', $msg);
+        }
 
         if (!$cr->canModerateItems($user)) {
             abort(403, 'Anda tidak berwenang mengembalikan item pada tahap approval ini.');

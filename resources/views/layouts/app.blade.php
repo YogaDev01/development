@@ -354,18 +354,9 @@
              garis putih lambangnya yang tersisa. --}}
         <div class="brand">
 
-            <button type="button" class="brand-mark" id="appSwitchBtn"
-                    aria-haspopup="true" aria-expanded="false" aria-controls="appSwitch"
-                    title="Pindah aplikasi">
-                {{-- ts_icon.png, berkas yang SAMA dengan lambang di sudut kiri
-                     atas halaman login. Sebelumnya di sini dipakai
-                     ts_logo_dark.png (277px) yang dikecilkan ke 24px lalu
-                     dilebur ke latar merah dengan mix-blend-mode — dua hal
-                     yang sama-sama melunakkan tepinya. Berkas ini 702px dan
-                     sudah membawa kotak merahnya sendiri, jadi ia dipasang
-                     apa adanya, persis seperti di login. --}}
+            <a href="{{ route('profile.show') }}" class="brand-mark" title="Beranda">
                 <img src="{{ asset('dist/img/ts_icon.png') }}" alt="Tesys">
-            </button>
+            </a>
 
             {{-- Wordmark yang SAMA dengan halaman login (dist/img/tesys.png):
                  satu berkas, satu bentuk huruf, satu swoosh. Sebelumnya di sini
@@ -374,22 +365,9 @@
 
                  Nama aplikasi yang sedang dibuka turun ke baris bawah, bersama
                  tombol perkecil/perbesar menu. --}}
-            <a href="{{ $currentAppConfig['home'] }}" class="brand-text" aria-label="Terex System">
+            <a href="{{ route('profile.show') }}" class="brand-text" aria-label="Terex System — Beranda">
                 <img class="brand-wordmark" src="{{ asset('dist/img/tesys.png') }}" alt="Terex System">
             </a>
-
-            {{-- Enam tombol aplikasi. Muncul turun bertahap; jeda tiap tombol
-                 diatur lewat --i pada masing-masing elemen. --}}
-            <div class="app-switch" id="appSwitch" role="menu" aria-label="Pilih aplikasi">
-                @foreach($apps as $key => $item)
-                <a href="{{ $item['home'] }}" role="menuitem" @style(['--i:' . $loop->index])
-                   class="app-switch-item {{ $currentApp === $key ? 'active' : '' }}"
-                   @if($currentApp === $key) aria-current="true" @endif>
-                    <span class="asi-ic"><i class="{{ $item['icon'] }}"></i></span>
-                    <span class="asi-label">{{ $item['label'] }}</span>
-                </a>
-                @endforeach
-            </div>
 
         </div>
 
@@ -401,7 +379,7 @@
              bagian juga yang paling sering berganti, jadi ia duduk lebih
              dekat ke daftar menu yang ikut berganti bersamanya. --}}
         <div class="brand-app">
-            <span class="brand-sub">{{ $currentAppConfig['sub'] ?? $currentAppConfig['label'] }}</span>
+            <span class="brand-sub" id="navTitle">{{ $currentAppConfig['sub'] ?? $currentAppConfig['label'] }}</span>
             <button type="button" class="brand-toggle" data-sidebar-toggle
                     title="Perkecil / perbesar menu" aria-label="Perkecil atau perbesar menu">
                 <i class="fas fa-angle-double-left" aria-hidden="true"></i>

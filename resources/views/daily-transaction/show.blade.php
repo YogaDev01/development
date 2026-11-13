@@ -32,6 +32,18 @@
             </ol>
         </div>
 
+        @php
+            // Kunci periode: tanggal batch (direkap sebagai Treasury) dan hari ini (paid_at saat Tandai PAID).
+            $lockBatch = \App\Support\PeriodLock::forModel($batch, 'Batch Treasury');
+            $lockBayar = \App\Support\PeriodLock::blocker(now(), 'Pembayaran');
+            $bayarTerkunci = ($lockBatch['locked'] || $lockBayar) && ! \App\Support\PeriodLock::canOverride();
+        @endphp
+        @if($lockBatch['locked'])
+        <div class="alert alert-warning rounded-0 shadow-sm" style="font-size:12px;"><i class="fas fa-lock mr-1"></i> {{ $lockBatch['message'] }}</div>
+        @elseif($lockBayar && $batch->isDone())
+        <div class="alert alert-warning rounded-0 shadow-sm" style="font-size:12px;"><i class="fas fa-lock mr-1"></i> {{ $lockBayar }}</div>
+        @endif
+
         <div class="row">
 
             <!-- ============================================================ -->
@@ -204,6 +216,7 @@
                                         <label class="small font-weight-bold">Tanggal</label>
                                         <input type="date" name="date" class="form-control form-control-sm" required value="{{ optional($batch->date)->format('Y-m-d') }}">
                                     </div>
+@include('partials.period-lock-field')
                                     <div class="form-group">
                                         <label class="small font-weight-bold">Deskripsi</label>
                                         <input type="text" name="description" class="form-control form-control-sm" maxlength="255" style="text-transform:uppercase;" value="{{ $batch->description }}">
@@ -254,6 +267,7 @@
                     @if($batch->isDone() && Auth::user()->hasRole(['superadmin','finance','finance_manager','treasury']))
                     <div class="card-footer p-3" style="background:var(--surface-2);">
                         <button type="button" class="btn btn-success btn-mark-paid"
+                                @if($bayarTerkunci) disabled title="{{ $lockBatch['message'] ?: $lockBayar }}" @endif
                                 data-action="{{ url('/daily-transaction/' . $batch->id . '/mark-paid') }}"
                                 data-info="{{ $batch->isTopUp() ? 'Top Up ini akan ditandai PAID (transfer selesai).' : $batch->includedItems()->count() . ' CR dalam batch ini akan berstatus PAID.' }}">
                             <i class="fas fa-money-bill-wave mr-1"></i>

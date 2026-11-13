@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CashFlow;
+use App\Support\PeriodLock;
 use App\Models\SourceFund;
 use App\Models\UserActivityLog;
 use App\Services\CashFlowService;
@@ -72,7 +73,22 @@ class CashManagementController extends Controller
             ->limit(200)
             ->get();
 
+        /*
+        | Saldo awal & akhir periode — dari CashBalanceService, SUMBER YANG SAMA
+        | dengan Cash Overview (bukan perhitungan kedua). Mengikuti filter rekening.
+        */
+        $balSvc  = app(\App\Services\CashBalanceService::class);
+        $fundIds = array_map('intval', $filters['source_fund_id']);
+        $sumFor  = fn (?string $asOf) => (int) $balSvc->snapshot($asOf)['accounts']
+            ->when($fundIds, fn ($c) => $c->filter(fn ($a) => in_array($a['fund']->id, $fundIds, true)))
+            ->sum('balance');
+        $balances = [
+            'opening' => $sumFor(\Carbon\Carbon::parse($from)->subDay()->format('Y-m-d')),
+            'closing' => $sumFor($to),
+        ];
+
         return view('cash-management.index', [
+            'balances'    => $balances,
             'ledger'      => $ledger,
             'summary'     => $summary,
             'monthly'     => $monthly,
@@ -83,6 +99,8 @@ class CashManagementController extends Controller
                 CashFlowService::MODULE_CASH_RECEIPT => 'Cash Receipt',
                 CashFlowService::MODULE_TREASURY     => 'Treasury',
                 CashFlowService::MODULE_MANUAL       => 'Entri Manual',
+                CashFlowService::MODULE_TRANSFER     => 'Biaya Transfer',
+                CashFlowService::MODULE_ADJUSTMENT   => 'Cash Adjustment',
             ],
         ]);
     }
@@ -115,6 +133,9 @@ class CashManagementController extends Controller
         $data = $this->validateDocument($request);
 
         $cashFlow = DB::transaction(function () use ($request, $data) {
+            // Kunci periode: tanggal dokumen tidak boleh jatuh di periode Closing CLOSED (draft-nya tak akan bisa di-post).
+            PeriodLock::assertOpen($data['date'], 'Cash Flow', $request, null, null, true);
+
             $cashFlow = CashFlow::create([
                 'code'             => CashFlow::generateCode(\Carbon\Carbon::parse($data['date'])),
                 'date'             => $data['date'],
@@ -184,6 +205,8 @@ class CashManagementController extends Controller
         $data = $this->validateDocument($request);
 
         DB::transaction(function () use ($request, $data, $cashFlow) {
+            PeriodLock::assertOpen($data['date'], 'Cash Flow', $request, $cashFlow, null, true);
+
             $cashFlow->update([
                 'date'             => $data['date'],
                 'description'      => $data['description'],
@@ -215,7 +238,7 @@ class CashManagementController extends Controller
     | menghapusnya: baris tetap ada untuk ditelusuri, hanya berhenti dihitung.
     */
 
-    public function post($id)
+    public function post(Request $request, $id)
     {
         $cashFlow = CashFlow::with('details')->findOrFail($id);
 
@@ -227,11 +250,16 @@ class CashManagementController extends Controller
             return back()->with('error', 'Cash Flow tanpa baris rincian tidak bisa di-post.');
         }
 
-        $cashFlow->update([
-            'status'    => 'POSTED',
-            'posted_by' => Auth::id(),
-            'posted_at' => now(),
-        ]);
+        DB::transaction(function () use ($request, $cashFlow) {
+            // Kunci periode: posting memasukkan dokumen ke buku kas pada tanggalnya.
+            PeriodLock::assertOpen($cashFlow->date, 'Cash Flow', $request, $cashFlow, null, true);
+
+            $cashFlow->update([
+                'status'    => 'POSTED',
+                'posted_by' => Auth::id(),
+                'posted_at' => now(),
+            ]);
+        });
 
         UserActivityLog::record('cash_management', 'process', 'Posting Cash Flow #' . $cashFlow->code . ' ke buku kas', $cashFlow);
 
@@ -248,12 +276,19 @@ class CashManagementController extends Controller
             return back()->with('error', 'Cash Flow ini sudah dibatalkan.');
         }
 
-        $cashFlow->update([
-            'status'        => 'CANCELLED',
-            'cancelled_by'  => Auth::id(),
-            'cancelled_at'  => now(),
-            'cancel_reason' => $request->cancel_reason,
-        ]);
+        DB::transaction(function () use ($request, $cashFlow) {
+            // Kunci periode: membatalkan dokumen POSTED mencabutnya dari buku kas pada tanggalnya.
+            if ($cashFlow->isPosted()) {
+                PeriodLock::assertOpen($cashFlow->date, 'Cash Flow', $request, $cashFlow, null, true);
+            }
+
+            $cashFlow->update([
+                'status'        => 'CANCELLED',
+                'cancelled_by'  => Auth::id(),
+                'cancelled_at'  => now(),
+                'cancel_reason' => $request->cancel_reason,
+            ]);
+        });
 
         UserActivityLog::record('cash_management', 'cancel', 'Membatalkan Cash Flow #' . $cashFlow->code, $cashFlow, $request->cancel_reason);
 

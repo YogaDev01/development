@@ -1,13 +1,9 @@
 {{--
     Bar navigasi bawah — hanya tampil di layar sempit (<=767.98px, lihat
-    tesys-ui-mobile.css bagian 19). Bukan pengganti sidebar. Lima item tetap:
+    tesys-ui-mobile.css bagian 19). Bukan pengganti sidebar. Empat item tetap:
 
-      [Logo Terex] [Home] [Todo List] [Tabs] [Menu]
+      [Home] [Todo List] [Tabs] [Menu]
 
-    - Logo Terex : lambang yang sama dengan sidebar (dist/img/ts_icon.png);
-                   membuka dropdown (dropup Bootstrap) pilihan aplikasi — daftar
-                   $apps & tujuan 'home' sama persis dengan pemindah aplikasi di
-                   sidebar (app.blade.php, #appSwitch).
     - Home       : beranda aplikasi aktif ($currentAppConfig['home']); tanpa
                    gerbang menu, seperti item Dashboard di sidebar.
     - Todo List  : hanya dirender bila $can('todo-list') — gerbang yang sama
@@ -29,25 +25,6 @@
 @endphp
 
 <nav class="ts-bnav" aria-label="Navigasi utama">
-
-    <div class="dropup ts-bnav-drop">
-        <button type="button" class="ts-bnav-item" data-toggle="dropdown" data-display="static"
-                aria-haspopup="true" aria-expanded="false"
-                aria-label="Pindah aplikasi, saat ini {{ $currentAppConfig['label'] }}">
-            <span class="ts-bnav-ic"><img class="ts-bnav-logo" width="22" height="22" src="{{ asset('dist/img/ts_icon.png') }}" alt=""></span>
-            <span class="ts-bnav-label">{{ $currentAppConfig['label'] }}</span>
-        </button>
-        <div class="dropdown-menu ts-bnav-menu" role="menu" aria-label="Pilih aplikasi">
-            @foreach ($apps as $key => $item)
-                <a href="{{ $item['home'] }}" role="menuitem"
-                   class="dropdown-item {{ $currentApp === $key ? 'is-current' : '' }}"
-                   @if ($currentApp === $key) aria-current="true" @endif>
-                    <i class="{{ $item['icon'] }}" aria-hidden="true"></i>
-                    <span class="ts-bnav-opt-label">{{ $item['label'] }}</span>
-                </a>
-            @endforeach
-        </div>
-    </div>
 
     <a href="{{ $homeUrl }}" class="ts-bnav-item {{ $homeAktif ? 'active' : '' }}"
        @if ($homeAktif) aria-current="page" @endif>

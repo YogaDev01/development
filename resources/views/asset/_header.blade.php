@@ -5,18 +5,21 @@
 --}}
 @once
 @push('styles')
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 <style>
-    .ast-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 16px; }
+    /* Panel & tabel mengikuti kartu x-tw.card / tabel Cost Request (token radius-md, shadow-xs, surface-2). */
+    .ast-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-xs); margin-bottom: 16px; overflow: hidden; }
     .ast-panel-h { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); font-weight: 600; color: var(--text); font-size: 13px; }
     .ast-panel-h .ast-r { margin-left: auto; display: flex; gap: 6px; }
     .ast-panel-b { padding: 14px; }
     .ast-table { width: 100%; font-size: 12.5px; margin: 0; }
-    .ast-table th { font-size: 11px; text-transform: uppercase; letter-spacing: .3px; color: var(--text-dim); background: var(--bg); white-space: nowrap; padding: 8px 10px; border-bottom: 1px solid var(--border); }
-    .ast-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .ast-table th { font-size: 12px; font-weight: 600; color: var(--text-dim); background: var(--surface-2); white-space: nowrap; padding: 9px 12px; border-bottom: 1px solid var(--border-strong); }
+    .ast-table td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .ast-table tbody tr:hover td { background: var(--surface-2); }
     .ast-table .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
     .ast-sub { font-size: 11px; color: var(--text-faint); }
     .ast-code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; }
-    .ast-toolbar { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+    .ast-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 14px; }
     .ast-toolbar .form-control { width: auto; min-width: 140px; }
     .ast-bars > div { display: grid; grid-template-columns: 130px 1fr 44px; gap: 8px; align-items: center; font-size: 12px; margin-bottom: 8px; }
     .ast-bar { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
@@ -29,17 +32,21 @@
 @endpush
 @endonce
 
-<div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap" style="gap:10px;">
-    <div>
-        <h1 class="m-0" style="font-size:20px;font-weight:700;color:var(--text);">{{ $title }}</h1>
-        @if(!empty($desc))
-            <div style="color:var(--text-faint);font-size:13px;margin-top:2px;">{{ $desc }}</div>
-        @endif
-    </div>
-    <div class="d-flex flex-wrap" style="gap:6px;">
-        {!! $actions ?? '' !!}
-    </div>
+{{-- Judul dipindah shell ke topbar; kepala halaman mengikuti pola Cost Request. --}}
+<div class="tw:sr-only">
+    <h1>{{ $title }}</h1>
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="#">Asset Management</a></li>
+        <li class="breadcrumb-item active">{{ $title }}</li>
+    </ol>
 </div>
+<x-tw.page-header class="tw:py-4 tw:mb-4" eyebrow="Asset Management" :title="$title" :description="$desc ?? null">
+    @if(!empty($actions))
+        <x-slot:actions>
+            <div class="d-flex flex-wrap" style="gap:6px;">{!! $actions !!}</div>
+        </x-slot:actions>
+    @endif
+</x-tw.page-header>
 
 @if($errors->any())
     <div class="alert alert-danger py-2" style="font-size:13px;">

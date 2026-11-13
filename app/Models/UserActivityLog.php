@@ -64,6 +64,7 @@ class UserActivityLog extends Model
         'invoice' => 'Invoice',
         'cash_receipt' => 'Cash Receipt',
         'cash_management' => 'Cash Management',
+        'cash_bank' => 'Cash & Bank',
         'closing' => 'Closing',
         'payroll' => 'Payroll',
         'forecast' => 'Forecast',

@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Models\UserActivityLog;
 use App\Services\NotifyService;
 use App\Services\RoleDirectory;
+use App\Support\PeriodLock;
 
 class DailyTransactionController extends Controller
 {
@@ -406,6 +407,9 @@ class DailyTransactionController extends Controller
                 );
             }
 
+            // Kunci periode: batch baru bertanggal hari ini; ditolak bila periode berjalan sudah CLOSED.
+            PeriodLock::assertOpen(now(), 'Batch Treasury', null, null, null, true);
+
             $batch = DailyTransaction::create([
                 'code'            => $code,
                 'date'            => now()->toDateString(),
@@ -498,6 +502,11 @@ class DailyTransactionController extends Controller
         $amount = $this->normalizeMoney($request->amount);
         if ($amount <= 0) {
             return back()->with('error', 'Jumlah Top Up harus lebih dari 0.');
+        }
+
+        // Kunci periode: batch baru bertanggal hari ini; ditolak bila periode berjalan sudah CLOSED.
+        if ($msg = PeriodLock::blocker(now(), 'Top Up')) {
+            return back()->with('error', $msg);
         }
 
         $code = DailyTransaction::generateCode(0);
@@ -1104,6 +1113,8 @@ class DailyTransactionController extends Controller
                 throw new \DomainException('Expense ' . ($reg->display_code ?? '#' . $item->cost_register_id) . ' sudah berstatus '
                     . ($reg->status ?? '-') . ' (realisasi/settlement sudah berjalan) — tidak bisa dikeluarkan otomatis.');
             }
+            // Kunci periode: mengosongkan paid_at mencabut baris dari periode tempat ia direkap.
+            PeriodLock::assertOpen($reg->paid_at, 'Expense', request(), $reg, null, true);
             $dari = $reg->status;
             $reg->update(['status' => \App\Models\CostRegister::TREASURY_READY_STATUS, 'paid_at' => null]);
             $reg->addLog($dari, \App\Models\CostRegister::TREASURY_READY_STATUS, 'unbatched', $catatan);
@@ -1114,6 +1125,8 @@ class DailyTransactionController extends Controller
                 throw new \DomainException('Cost Request ' . ($cr->code ?? '#' . $item->budget_request_id) . ' sudah berstatus '
                     . ($cr->status ?? '-') . ' (realisasi/settlement sudah berjalan) — tidak bisa dikeluarkan otomatis.');
             }
+            // Kunci periode: mengosongkan paid_at mencabut CR dari periode tempat ia direkap.
+            PeriodLock::assertOpen($cr->paid_at, 'Cost Request', request(), $cr, null, true);
             $dari = $cr->status;
             $cr->update(['status' => 'APPROVED', 'paid_at' => null, 'closed_at' => null]);
             $cr->addLog($dari, 'APPROVED', 'batch_takeout', $catatan);
@@ -1141,8 +1154,18 @@ class DailyTransactionController extends Controller
             'payment_notes'     => 'nullable|string|max:500',
         ]);
 
-        $perubahan = DB::transaction(function () use ($data, $id) {
+        $perubahan = DB::transaction(function () use ($data, $id, $request) {
             $batch = DailyTransaction::whereKey($id)->lockForUpdate()->firstOrFail();
+
+            // Kunci periode: tanggal lama DAN baru (memindah tanggal keluar dari periode CLOSED juga mengubah rekapnya),
+            // serta charge yang membentuk nominal rekap.
+            foreach (collect([$batch->date?->toDateString(), \Carbon\Carbon::parse($data['date'])->toDateString()])->filter()->unique() as $tgl) {
+                PeriodLock::assertOpen($tgl, 'Batch Treasury', $request, $batch, [[
+                    'label' => 'Tanggal',
+                    'from'  => $batch->date?->format('Y-m-d') ?? '-',
+                    'to'    => \Carbon\Carbon::parse($data['date'])->format('Y-m-d'),
+                ]], true);
+            }
             $nama  = fn ($fid) => $fid ? (\App\Models\SourceFund::whereKey($fid)->value('name') ?? ('#' . $fid)) : '-';
             $baru  = [
                 'date'              => $data['date'],
@@ -1234,6 +1257,9 @@ class DailyTransactionController extends Controller
 
         try {
         DB::transaction(function () use ($request, $batch, $item, $reject) {
+            // Kunci periode: mengeluarkan item mengubah captured_amount batch yang direkap Closing.
+            PeriodLock::assertOpen($batch->date, 'Batch Treasury', $request, $batch, null, true);
+
             if ($batch->isPaid()) {
                 // Batch sudah dibayar: status sumber sudah lewat QUEUED -> dibalik khusus.
                 $this->superTakeoutPaid($batch, $item, $request->notes);
@@ -1475,6 +1501,9 @@ class DailyTransactionController extends Controller
             if (! $terkunci || ! $terkunci->isDraft()) {
                 return;
             }
+            // Kunci periode: draft ikut direkap Closing (semua status), menghapusnya mengubah rekap.
+            PeriodLock::assertOpen($terkunci->date, 'Batch Treasury', null, $terkunci, null, true);
+
             foreach ($terkunci->attachments as $att) {
                 Storage::disk('secure')->delete($att->path);
                 $att->delete();
@@ -1504,6 +1533,8 @@ class DailyTransactionController extends Controller
         }
 
         DB::transaction(function () use ($batch, $item) {
+            PeriodLock::assertOpen($batch->date, 'Batch Treasury', null, $batch, null, true);
+
             $item->delete();
             $batch->refreshCode();
             $batch->recalculateCapturedAmount();
@@ -1555,6 +1586,9 @@ class DailyTransactionController extends Controller
                 $ditolak = true;
                 return;
             }
+            // Kunci periode: menambah item mengubah captured_amount batch yang direkap Closing.
+            PeriodLock::assertOpen($terkunci->date, 'Batch Treasury', null, $terkunci, null, true);
+
             // Draft: item dipesan saja; status sumber baru berubah saat Submit.
             $draft = $terkunci->isDraft();
 
@@ -1710,6 +1744,11 @@ class DailyTransactionController extends Controller
             if (! $batch || ! $batch->isDone()) {
                 throw new \DomainException('Batch ini baru saja ditandai PAID oleh pengguna lain — muat ulang halaman.');
             }
+
+            // Kunci periode, SEBELUM lampiran disimpan: tanggal batch (direkap sebagai Treasury; charge
+            // mengubah nominalnya) dan hari ini (paid_at CR/Expense yang direkap sebagai pembayaran).
+            PeriodLock::assertOpen($batch->date, 'Batch Treasury', $request, $batch, null, true);
+            PeriodLock::assertOpen(now(), 'Pembayaran', $request, $batch, null, true);
 
             $batch->load(['includedItems.budgetRequest', 'includedItems.costRegister']);
 

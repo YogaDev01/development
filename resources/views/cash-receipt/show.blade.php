@@ -73,9 +73,14 @@
                             <dd class="col-7">{{ $header->notes ?: '-' }}</dd>
                         </dl>
                     </div>
+                    @php $lockHdr = \App\Support\PeriodLock::forModel($header, 'Penerimaan'); @endphp
+                    @if($lockHdr['locked'] && !$header->isCancelled())
+                        <div class="alert alert-warning rounded-0 mb-0" style="font-size:12px;"><i class="fas fa-lock mr-1"></i> {{ $lockHdr['message'] }}</div>
+                    @endif
                     @if(!$header->isCancelled())
                     <div class="card-footer d-flex flex-wrap" style="gap:6px;">
-                        <button type="button" class="btn btn-sm btn-outline-danger" data-toggle="modal" data-target="#modalCancel">
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-toggle="modal" data-target="#modalCancel"
+                                @if($lockHdr['locked'] && ! $lockHdr['can_override']) disabled title="{{ $lockHdr['message'] }}" @endif>
                             <i class="fas fa-ban mr-1"></i> Batalkan Penerimaan
                         </button>
                         @if($header->details->isEmpty())
@@ -124,10 +129,12 @@
                                         <td>{{ $d->notes ?: '-' }}</td>
                                         <td class="text-center">
                                             @if(!$header->isCancelled())
+                                            @php $lockAlok = \App\Support\PeriodLock::forModel($d, 'Penerimaan'); @endphp
                                             <form action="{{ route('cash-receipt.remove-allocation', [$header->id, $d->id]) }}" method="POST" class="js-confirm d-inline"
                                                   data-title="Batalkan alokasi?" data-text="Status invoice akan disesuaikan kembali.">
                                                 @csrf @method('DELETE')
-                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Batalkan alokasi">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                        @if($lockAlok['locked']) disabled title="{{ $lockAlok['message'] }}" @else title="Batalkan alokasi" @endif>
                                                     <i class="fas fa-unlink"></i>
                                                 </button>
                                             </form>
@@ -205,6 +212,7 @@
                                         </td>
                                         <td class="text-center">
                                             <button type="button" class="btn btn-sm btn-success js-allocate"
+                                                    @if(($lockHdr['locked'] ?? false) && ! ($lockHdr['can_override'] ?? false)) disabled title="{{ $lockHdr['message'] }}" @endif
                                                     data-id="{{ $inv->id }}"
                                                     data-code="{{ $inv->code }}"
                                                     data-balance="{{ $inv->computed_balance }}"
@@ -244,6 +252,7 @@
                 @csrf
                 <input type="hidden" name="invoice_id" id="allocInvoiceId">
                 <div class="modal-body" style="padding:24px 28px;">
+                    @include('partials.period-lock-field', ['class' => 'mb-3'])
                     <p class="mb-3" style="font-size:12px;">
                         Invoice <strong id="allocInvoiceCode"></strong> &middot;
                         sisa tagihan <strong id="allocBalanceText"></strong>
@@ -290,6 +299,7 @@
                         <label class="font-weight-600">Alasan Pembatalan <span class="text-danger">*</span></label>
                         <input type="text" name="cancel_reason" class="form-control" maxlength="255" required>
                     </div>
+@include('partials.period-lock-field', ['class' => 'mt-3 mb-0'])
                 </div>
                 <div class="modal-footer" style="background:var(--surface-2);border-top:1px solid var(--border);">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>

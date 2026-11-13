@@ -394,7 +394,8 @@
                                     <form action="{{ route('invoice-cash-receipt.submit', $invoice->id) }}"
                                           method="POST" class="frmSubmitInv {{ $satuAksi ? 'd-inline' : '' }}">
                                         @csrf
-                                        <button type="submit" class="{{ $kls }}" title="Submit">
+                                        @php $periodeTutup = \App\Support\PeriodLock::blocker($invoice->invoice_date, 'Invoice'); @endphp
+                                        <button type="submit" class="{{ $kls }}" @if($periodeTutup) disabled title="{{ $periodeTutup }}" @else title="Submit" @endif>
                                             <i class="fas fa-paper-plane"></i><span class="{{ $lbl }}">Submit</span>
                                         </button>
                                     </form>
@@ -1061,8 +1062,23 @@ $(function () {
     /* DELETE CONFIRM */
     $(document).on('submit', '.frmDeleteInv', function (e) {
         e.preventDefault(); var form = this;
-        Swal.fire({ title:'Hapus Invoice?', text:'Data tidak dapat dikembalikan.', icon:'warning', showCancelButton:true, confirmButtonColor:WARNA_BAHAYA, cancelButtonColor:WARNA_BATAL, confirmButtonText:'Ya, Hapus', cancelButtonText:'Batal' })
-        .then(function(r){ if(r.isConfirmed) { sibukkan(form); form.submit(); } });
+        Swal.fire({
+            title: 'Hapus Invoice?',
+            html: 'Invoice DRAFT ini dihapus dari daftar. Catatannya tetap tersimpan untuk audit, beserta alasan di bawah.',
+            icon: 'warning',
+            input: 'textarea',
+            inputLabel: 'Alasan penghapusan (wajib)',
+            inputAttributes: { 'aria-label': 'Alasan penghapusan' },
+            inputValidator: function (value) {
+                if (!value || value.trim().length < 5) return 'Tuliskan alasan minimal 5 karakter.';
+            },
+            showCancelButton: true, confirmButtonColor: WARNA_BAHAYA, cancelButtonColor: WARNA_BATAL,
+            confirmButtonText: 'Ya, Hapus', cancelButtonText: 'Batal'
+        }).then(function (r) {
+            if (!r.isConfirmed) return;
+            $('<input>').attr({ type: 'hidden', name: 'reason' }).val(r.value).appendTo(form);
+            sibukkan(form); form.submit();
+        });
     });
 
     /* ── KOMENTAR: drawer info singkat (tanpa nominal) + log chat ── */

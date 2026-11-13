@@ -9,14 +9,23 @@
     Hak akses TIDAK diputuskan di sini: 'menu' dan 'roles' memanggil
     Role::hasMenu() dan User::hasRole() yang sama dengan middleware route.
 
-    Variabel dari layout: $can, $currentApp, $currentAppConfig,
+    Satu sidebar, banyak panel: panel "root" (Todo List, daftar aplikasi,
+    Master Data) dan satu panel per aplikasi. Semuanya dirender sekali dan
+    berpindah dengan geser (CSS transform) tanpa memuat ulang halaman —
+    lihat initNavPanels() di tesys-shell.js.
+
+    Variabel dari layout: $can, $apps, $currentApp, $currentAppConfig,
     $fmActive, $financeProjectActive.
 --}}
 @php
     $navItems    = config('navigation.items', []);
-    // Seksi aplikasi + Master Data bersama (sama di semua aplikasi).
-    $navSections = \App\Support\Navigation::sections($currentApp);
+    // Panel utama + satu panel per aplikasi.
+    $navPanels = ['root' => \App\Support\Navigation::rootSections()];
+    foreach ($apps as $kunciApp => $_cfg) {
+        $navPanels[$kunciApp] = \App\Support\Navigation::appSections($kunciApp);
+    }
 
+    // Beranda panel yang sedang dirender (dipakai url/aktif 'app-home').
     $homeUrl = $currentAppConfig['home'];
 
     /*
@@ -25,7 +34,7 @@
      |   fm : /budget-plan & /budget-request bisa dibuka dari Surat Jalan juga
      |   po : /project (Purchase Order) vs /project-monitoring
      */
-    $navAktif = function (array $item) use ($fmActive, $financeProjectActive, $homeUrl): bool {
+    $navAktif = function (array $item) use ($fmActive, $financeProjectActive, &$homeUrl): bool {
         $scope = $item['scope'] ?? null;
 
         if ($scope === 'po') {
@@ -42,10 +51,17 @@
 
         $cocok = request()->is(...$pola);
 
+        // 'tab': beberapa menu memakai satu halaman bertab (Finance Summary);
+        // aktif hanya bila ?tab= cocok ('tab_default' = juga saat ?tab kosong).
+        if (isset($item['tab'])) {
+            $tab   = request()->query('tab');
+            $cocok = $cocok && ($tab ? $tab === $item['tab'] : !empty($item['tab_default']));
+        }
+
         return $scope === 'fm' ? ($cocok && $fmActive) : $cocok;
     };
 
-    $navUrl = function (array $item) use ($homeUrl): ?string {
+    $navUrl = function (array $item) use (&$homeUrl): ?string {
         $url = $item['url'] ?? null;
         if ($url === 'app-home') {
             return $homeUrl;
@@ -59,13 +75,41 @@
 
     // Satu item navigasi: lolos hak akses (menu/roles) DAN punya tujuan.
     $bisaTampil = function (array $item) use ($can, $navUrl): bool {
+        // 'only_roles' menambah syarat role DI ATAS hak menu/roles di bawah.
+        if (!empty($item['only_roles']) && !Auth::user()->hasRole($item['only_roles'])) return false;
         if (!empty($item['menu']))  return $can($item['menu']) && $navUrl($item) !== null;
         if (!empty($item['roles'])) return Auth::user()->hasRole($item['roles']) && $navUrl($item) !== null;
         return $navUrl($item) !== null;
     };
 @endphp
 
+<div class="nav-viewport" id="navViewport" data-view="{{ $currentApp }}">
+@foreach ($navPanels as $panelKey => $navSections)
+@php
+    $homeUrl = $panelKey === 'root' ? $currentAppConfig['home'] : $apps[$panelKey]['home'];
+@endphp
+<div class="nav-panel" data-nav-panel="{{ $panelKey }}"
+     aria-hidden="{{ $panelKey === $currentApp ? 'false' : 'true' }}"
+     @if ($panelKey !== 'root') data-app-label="{{ $apps[$panelKey]['label'] }}" @endif>
+
+@if ($panelKey !== 'root')
+    <button type="button" class="nav-back" data-nav-go="root" title="Kembali ke Menu">
+        <i class="fas fa-chevron-left" aria-hidden="true"></i>Kembali ke Menu
+    </button>
+@endif
+
 @foreach ($navSections as $labelSeksi => $kunciMenu)
+    @if ($kunciMenu === \App\Support\Navigation::APP_LIST)
+        <div class="nav-label">{{ $labelSeksi }}</div>
+        @foreach ($apps as $kunciApp => $appItem)
+            <button type="button" class="nav-app" data-nav-go="{{ $kunciApp }}" title="{{ $appItem['label'] }}">
+                <i class="{{ $appItem['icon'] }} nav-app-ic" aria-hidden="true"></i>
+                <span class="nav-app-label">{{ $appItem['label'] }}</span>
+                <i class="fas fa-chevron-right nav-app-caret" aria-hidden="true"></i>
+            </button>
+        @endforeach
+        @continue
+    @endif
     @php
         /*
          | Satu seksi (mis. Workflow) boleh campur: entri berindeks angka =
@@ -142,11 +186,15 @@
 
 {{-- Bagian yang masih disiapkan untuk aplikasi yang belum lengkap. Daftarnya
      dari config/apps.php ('modules') — hanya penanda rencana, bukan route. --}}
-@if (!($currentAppConfig['ready'] ?? false) && !empty($currentAppConfig['modules']))
+@if ($panelKey !== 'root' && !($apps[$panelKey]['ready'] ?? false) && !empty($apps[$panelKey]['modules']))
     <div class="nav-label">Segera Hadir</div>
-    @foreach ($currentAppConfig['modules'] as $modul)
+    @foreach ($apps[$panelKey]['modules'] as $modul)
         <span class="nav-item is-disabled" aria-disabled="true" title="Belum tersedia">
             <i class="fas fa-lock ic"></i>{{ $modul }}
         </span>
     @endforeach
 @endif
+
+</div>
+@endforeach
+</div>

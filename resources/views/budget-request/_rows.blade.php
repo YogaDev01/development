@@ -31,6 +31,9 @@
                                    sumber sama dengan tombol per baris & applyReviewApprove). */
                                 $bulkOk = ! empty($canBulk) && $cr->isInBulkStage()
                                     && Auth::user()->hasRole(array_merge(['superadmin'], \App\Models\BudgetRequest::bulkStageRoles()[$cr->status]));
+                                // CR milik sendiri tidak bisa dicentang (kecuali Superadmin) — isSelfApprovalBlockedFor.
+                                $bulkSendiri = $bulkOk && $cr->isSelfApprovalBlockedFor(Auth::user());
+                                $bulkOk = $bulkOk && ! $bulkSendiri;
                             @endphp
                             <tr data-id="{{ $cr->id }}"
                                 data-status="{{ $cr->status }}"
@@ -56,7 +59,7 @@
                                            data-elig="{{ $bulkOk ? '1' : '0' }}"
                                            aria-label="Pilih {{ $cr->code }}"
                                            @if(! $bulkOk)
-                                           disabled title="{{ $cr->isInBulkStage() ? 'Peran Anda tidak berwenang pada tahap ' . $cr->status : 'Status ' . $cr->status . ' bukan tahap approval (Submitted/Checked/Verified atau Settle/Settle Checked/Settle Verified/Settle Approved)' }}"
+                                           disabled title="{{ $bulkSendiri ? \App\Models\BudgetRequest::SELF_APPROVAL_MESSAGE : ($cr->isInBulkStage() ? 'Peran Anda tidak berwenang pada tahap ' . $cr->status : 'Status ' . $cr->status . ' bukan tahap approval (Submitted/Checked/Verified atau Settle/Settle Checked/Settle Verified/Settle Approved)') }}"
                                            @endif>
                                 </td>
                                 @endif
@@ -166,24 +169,26 @@
                                            tombol tidak hilang untuk peran yang sebenarnya berhak
                                            (mis. cost_control di tahap Checked -> Verified). */
                                         $stageRoles     = fn ($s) => array_merge(['superadmin'], \App\Models\BudgetRequest::STAGE_ROLES[$s] ?? []);
-                                        $bolehHead      = $st === 'SUBMITTED' && $u->hasRole($stageRoles('SUBMITTED'));
-                                        $bolehFinance   = $st === 'CHECKED' && $u->hasRole($stageRoles('CHECKED'));
-                                        $bolehCeo       = $st === 'VERIFIED' && $u->hasRole($stageRoles('VERIFIED'));
+                                        // Pengaju tidak memproses pengajuannya sendiri (kecuali Superadmin) — BudgetRequest::isSelfApprovalBlockedFor.
+                                        $bukanSendiri   = ! $cr->isSelfApprovalBlockedFor($u);
+                                        $bolehHead      = $st === 'SUBMITTED' && $bukanSendiri && $u->hasRole($stageRoles('SUBMITTED'));
+                                        $bolehFinance   = $st === 'CHECKED' && $bukanSendiri && $u->hasRole($stageRoles('CHECKED'));
+                                        $bolehCeo       = $st === 'VERIFIED' && $bukanSendiri && $u->hasRole($stageRoles('VERIFIED'));
                                         $bolehRevisi    = $st === 'REJECTED' && $u->hasRole(['superadmin','manager','supervisor']);
                                         $bolehBatal     = $st === 'REJECTED' && $u->hasRole(['superadmin','manager']);
                                         // SETTLE_REJECTED ikut tombol "Settle" yang sama dengan
                                         // PAID — form realize.blade.php menangani keduanya.
                                         $bolehSettle    = in_array($st, ['PAID', 'SETTLE_REJECTED'], true) && $u->hasRole(['superadmin','manager','supervisor']);
-                                        $bolehHeadSet   = $st === 'REALIZED' && $u->hasRole(['superadmin','head']);
-                                        $bolehFinSet    = $st === 'SETTLE_CHECKED' && $u->hasRole(['superadmin','finance','finance_manager','cost_control']);
+                                        $bolehHeadSet   = $st === 'REALIZED' && $bukanSendiri && $u->hasRole(['superadmin','head']);
+                                        $bolehFinSet    = $st === 'SETTLE_CHECKED' && $bukanSendiri && $u->hasRole(['superadmin','finance','finance_manager','cost_control']);
                                         /* Cabang Expense Claim (settlement > pengajuan): CR wajib lewat
                                            Settle Approve (Finance Manager) lalu Second Approve (Approver)
                                            sebelum boleh di-Close. Tanpa klaim, Close tetap langsung dari
                                            SETTLE_VERIFIED seperti sebelumnya. */
                                         $adaClaim       = $claim > 0;
-                                        $bolehSetApp    = $st === 'SETTLE_VERIFIED' && $adaClaim && $u->hasRole(['superadmin','finance_manager']);
-                                        $boleh2ndApp    = $st === 'SETTLE_APPROVED' && $u->hasRole(['superadmin','approver']);
-                                        $bolehTutup     = $st === 'SETTLE_VERIFIED' && !$adaClaim
+                                        $bolehSetApp    = $st === 'SETTLE_VERIFIED' && $adaClaim && $bukanSendiri && $u->hasRole(['superadmin','finance_manager']);
+                                        $boleh2ndApp    = $st === 'SETTLE_APPROVED' && $bukanSendiri && $u->hasRole(['superadmin','approver']);
+                                        $bolehTutup     = $st === 'SETTLE_VERIFIED' && !$adaClaim && $bukanSendiri
                                                             && $u->hasRole(['superadmin','finance_manager']);
 
                                         // kelas = kelas pemicu JS (dipertahankan persis); kode = ikut data-code.

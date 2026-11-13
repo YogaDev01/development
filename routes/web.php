@@ -157,6 +157,9 @@ Route::middleware('auth')->group(function () {
         return app(ProfileController::class)->show($request);
     });
 
+    // Dashboard: halaman tersendiri (Beranda = Profil Saya).
+    Route::get('dashboard', fn () => view('dashboard.index'))->name('dashboard');
+
     // Muka aplikasi selain Finance (HR, Logistic, Operation, Project).
     // Daftarnya di config/apps.php; semuanya masih "Coming Soon".
     Route::get('app/{app}', [\App\Http\Controllers\AppShellController::class, 'show'])->name('app.home');
@@ -481,6 +484,17 @@ Route::middleware('auth')->group(function () {
             }
         });
     }
+
+    // SLA Site: entri per customer + periode (bulan); rekap tahunan di Summary Operations.
+    Route::middleware('menu:site-sla')->group(function () {
+        Route::get('site-sla', [\App\Http\Controllers\SiteSlaController::class, 'index'])->name('site-sla.index');
+        Route::post('site-sla', [\App\Http\Controllers\SiteSlaController::class, 'store'])->name('site-sla.store');
+        Route::get('site-sla/{period}', [\App\Http\Controllers\SiteSlaController::class, 'show'])->whereNumber('period')->name('site-sla.show');
+        Route::put('site-sla/{period}', [\App\Http\Controllers\SiteSlaController::class, 'update'])->whereNumber('period')->name('site-sla.update');
+        Route::delete('site-sla/{period}', [\App\Http\Controllers\SiteSlaController::class, 'destroy'])->whereNumber('period')->name('site-sla.destroy');
+        Route::get('site-sla/{period}/template', [\App\Http\Controllers\SiteSlaController::class, 'template'])->whereNumber('period')->name('site-sla.template');
+        Route::post('site-sla/{period}/import', [\App\Http\Controllers\SiteSlaController::class, 'importPreview'])->whereNumber('period')->name('site-sla.import');
+    });
 
     Route::middleware('menu:site')->group(function () {
         Route::get('site/create', [\App\Http\Controllers\SiteController::class, 'create'])->name('site.create');
@@ -970,8 +984,9 @@ Route::middleware('auth')->group(function () {
     });
 
     // Collection ikut bisa menambahkan Cash Receipt (input pembayaran yang
-    // diterima) — sengaja dipisah dari grup role di atas supaya role ini
-    // tidak ikut kebagian akses edit/delete/import invoice yang lain.
+    // diterima). Daftar role sama dengan grup di atas — collection memang
+    // juga berhak edit/hapus/submit/import invoice serta hapus/settle Cash
+    // Receipt (keputusan pemilik 2026-11-13); grup ini dipisah hanya karena riwayat.
     Route::middleware('role:superadmin,admin,finance,finance_manager,collection')->group(function () {
         Route::post('invoice-cash-receipt/{id}/cash-receipt', [InvoiceCashReceiptController::class, 'storeCashReceipt'])->name('invoice-cash-receipt.cash-receipt.store');
     });
@@ -1129,6 +1144,186 @@ Route::middleware('auth')->group(function () {
         Route::post('cash-management/{id}/post', [\App\Http\Controllers\CashManagementController::class, 'post'])->name('cash-management.post');
         Route::post('cash-management/{id}/cancel', [\App\Http\Controllers\CashManagementController::class, 'cancel'])->name('cash-management.cancel');
         Route::delete('cash-management/{id}', [\App\Http\Controllers\CashManagementController::class, 'destroy'])->name('cash-management.destroy');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | CASH & BANK — Cash Overview & Bank Accounts (Fase 1, 2026-11-13)
+    |--------------------------------------------------------------------------
+    | Menu key sendiri ('cash-overview', 'bank-accounts'): akses Treasury/Cash
+    | Receipt TIDAK otomatis membuka halaman ini. Aksi tulis dijaga role
+    | BankAccountController::WRITE_ROLES (superadmin, finance_manager).
+    */
+    Route::middleware('menu:cash-overview')
+        ->get('cash-overview', [\App\Http\Controllers\CashOverviewController::class, 'index'])
+        ->name('cash-overview.index');
+
+    Route::middleware('menu:bank-accounts')->group(function () {
+        Route::middleware('role:superadmin,finance_manager')->group(function () {
+            Route::get('bank-accounts/create', [\App\Http\Controllers\BankAccountController::class, 'create'])->name('bank-accounts.create');
+            Route::post('bank-accounts', [\App\Http\Controllers\BankAccountController::class, 'store'])->name('bank-accounts.store');
+            Route::get('bank-accounts/{id}/edit', [\App\Http\Controllers\BankAccountController::class, 'edit'])->name('bank-accounts.edit');
+            Route::put('bank-accounts/{id}', [\App\Http\Controllers\BankAccountController::class, 'update'])->name('bank-accounts.update');
+            Route::post('bank-accounts/{id}/toggle', [\App\Http\Controllers\BankAccountController::class, 'toggle'])->name('bank-accounts.toggle');
+            Route::post('bank-accounts/{id}/opening', [\App\Http\Controllers\BankAccountController::class, 'storeOpening'])->name('bank-accounts.opening.store');
+            Route::post('bank-accounts/opening/{id}/verify', [\App\Http\Controllers\BankAccountController::class, 'verifyOpening'])->name('bank-accounts.opening.verify');
+            Route::post('bank-accounts/opening/{id}/reject', [\App\Http\Controllers\BankAccountController::class, 'rejectOpening'])->name('bank-accounts.opening.reject');
+        });
+        Route::get('bank-accounts', [\App\Http\Controllers\BankAccountController::class, 'index'])->name('bank-accounts.index');
+        Route::get('bank-accounts/{id}', [\App\Http\Controllers\BankAccountController::class, 'show'])->name('bank-accounts.show');
+    });
+
+    /*
+    | CASH & BANK Fase 2 — Transaction Viewer, Internal Transfer, Cash Adjustment.
+    | Buat/batal = CashTransferController|CashAdjustmentController::CREATE_ROLES;
+    | setujui/tolak = APPROVE_ROLES (pembuat tidak boleh menyetujui sendiri).
+    */
+    Route::middleware('menu:cash-transactions')
+        ->get('cash-transactions', [\App\Http\Controllers\CashTransactionController::class, 'index'])
+        ->name('cash-transactions.index');
+
+    Route::middleware('menu:cash-transfers')->group(function () {
+        $c = \App\Http\Controllers\CashTransferController::class;
+        Route::middleware('role:superadmin,finance_manager,finance')->group(function () use ($c) {
+            Route::get('cash-transfers/create', [$c, 'create'])->name('cash-transfers.create');
+            Route::post('cash-transfers', [$c, 'store'])->name('cash-transfers.store');
+            Route::post('cash-transfers/{id}/cancel', [$c, 'cancel'])->name('cash-transfers.cancel');
+        });
+        Route::middleware('role:superadmin,finance_manager')->group(function () use ($c) {
+            Route::post('cash-transfers/{id}/approve', [$c, 'approve'])->name('cash-transfers.approve');
+            Route::post('cash-transfers/{id}/reject', [$c, 'reject'])->name('cash-transfers.reject');
+        });
+        Route::get('cash-transfers', [$c, 'index'])->name('cash-transfers.index');
+        Route::get('cash-transfers/{id}', [$c, 'show'])->name('cash-transfers.show');
+    });
+
+    Route::middleware('menu:cash-adjustments')->group(function () {
+        $c = \App\Http\Controllers\CashAdjustmentController::class;
+        Route::middleware('role:superadmin,finance_manager,finance')->group(function () use ($c) {
+            Route::get('cash-adjustments/create', [$c, 'create'])->name('cash-adjustments.create');
+            Route::post('cash-adjustments', [$c, 'store'])->name('cash-adjustments.store');
+            Route::post('cash-adjustments/{id}/cancel', [$c, 'cancel'])->name('cash-adjustments.cancel');
+        });
+        Route::middleware('role:superadmin,finance_manager')->group(function () use ($c) {
+            Route::post('cash-adjustments/{id}/approve', [$c, 'approve'])->name('cash-adjustments.approve');
+            Route::post('cash-adjustments/{id}/reject', [$c, 'reject'])->name('cash-adjustments.reject');
+        });
+        Route::get('cash-adjustments', [$c, 'index'])->name('cash-adjustments.index');
+        Route::get('cash-adjustments/{id}', [$c, 'show'])->name('cash-adjustments.show');
+    });
+
+    /*
+    | CASH & BANK Fase 4 — Cash Reports. Lihat = menu 'cash-reports';
+    | CSV/cetak dijaga di controller (CashReportController::EXPORT_ROLES).
+    */
+    Route::middleware('menu:cash-reports')->group(function () {
+        Route::get('cash-reports', [\App\Http\Controllers\CashReportController::class, 'index'])->name('cash-reports.index');
+        Route::get('cash-reports/{report}', [\App\Http\Controllers\CashReportController::class, 'show'])->name('cash-reports.show');
+    });
+
+    /*
+    | ACCOUNTING Fase 1 — COA, Account Mapping, Periode. Lihat = menu;
+    | ubah = role (tiga tempat berpasangan: menu, route, controller::MANAGE_ROLES).
+    */
+    Route::prefix('accounting')->name('accounting.')->group(function () {
+        // Fase 2 — Jurnal. Buat/edit/submit = CREATE_ROLES; posting/kembalikan = POST_ROLES.
+        Route::middleware('menu:accounting-journal')->group(function () {
+            $c = \App\Http\Controllers\JournalController::class;
+            Route::middleware('role:' . implode(',', \App\Support\AccessRoles::ACCOUNTING_MANAGE))->group(function () use ($c) {
+                Route::get('journal/create', [$c, 'create'])->name('journal.create');
+                Route::post('journal/manual', [$c, 'storeManual'])->name('journal.manual');
+                Route::post('journal/{id}/reverse', [$c, 'reverse'])->name('journal.reverse');
+                Route::post('journal/generate', [$c, 'generate'])->name('journal.generate');
+                Route::put('journal/{id}', [$c, 'update'])->name('journal.update');
+                Route::post('journal/{id}/submit', [$c, 'submit'])->name('journal.submit');
+                Route::delete('journal/{id}', [$c, 'destroy'])->name('journal.destroy');
+            });
+            Route::middleware('role:' . implode(',', \App\Support\AccessRoles::ACCOUNTING_POST))->group(function () use ($c) {
+                Route::post('journal/{id}/post', [$c, 'post'])->name('journal.post');
+                Route::post('journal/{id}/return', [$c, 'returnToDraft'])->name('journal.return');
+            });
+            Route::get('journal', [$c, 'index'])->name('journal.index');
+            Route::get('journal/{id}', [$c, 'show'])->name('journal.show');
+        });
+
+        // Fase 5 — Journal Audit Trail (hanya baca).
+        Route::get('audit', [\App\Http\Controllers\AccountingAuditController::class, 'index'])
+            ->middleware('menu:accounting-audit')->name('audit.index');
+
+        // Fase 3 — hanya baca; CSV/cetak dijaga di controller (EXPORT_ROLES).
+        Route::get('ledger', [\App\Http\Controllers\GeneralLedgerController::class, 'index'])
+            ->middleware('menu:accounting-ledger')->name('ledger.index');
+        Route::get('trial-balance', [\App\Http\Controllers\TrialBalanceController::class, 'index'])
+            ->middleware('menu:accounting-trial-balance')->name('trial-balance.index');
+
+        // Fase 4 — laporan keuangan (hanya baca; CSV dijaga di controller).
+        Route::prefix('statements')->name('statement.')->group(function () {
+            $c = \App\Http\Controllers\FinancialStatementController::class;
+            Route::get('income', [$c, 'income'])->middleware('menu:accounting-income-statement')->name('income');
+            Route::get('balance', [$c, 'balance'])->middleware('menu:accounting-balance-sheet')->name('balance');
+            Route::get('cash', [$c, 'cash'])->middleware('menu:accounting-cash-flow')->name('cash');
+            Route::get('equity', [$c, 'equity'])->middleware('menu:accounting-equity')->name('equity');
+        });
+
+        Route::middleware('menu:accounting-coa')->group(function () {
+            $c = \App\Http\Controllers\CoaController::class;
+            Route::middleware('role:' . implode(',', \App\Support\AccessRoles::ACCOUNTING_MANAGE))->group(function () use ($c) {
+                Route::post('coa', [$c, 'store'])->name('coa.store');
+                Route::put('coa/{id}', [$c, 'update'])->name('coa.update');
+                Route::delete('coa/{id}', [$c, 'destroy'])->name('coa.destroy');
+            });
+            Route::get('coa', [$c, 'index'])->name('coa.index');
+        });
+
+        Route::middleware('menu:accounting-mapping')->group(function () {
+            $c = \App\Http\Controllers\AccountMappingController::class;
+            Route::middleware('role:' . implode(',', \App\Support\AccessRoles::ACCOUNTING_MANAGE))->group(function () use ($c) {
+                Route::post('mapping', [$c, 'store'])->name('mapping.store');
+                Route::put('mapping/{id}', [$c, 'update'])->name('mapping.update');
+                Route::delete('mapping/{id}', [$c, 'destroy'])->name('mapping.destroy');
+            });
+            Route::get('mapping', [$c, 'index'])->name('mapping.index');
+        });
+
+        Route::middleware('menu:accounting-period')->group(function () {
+            $c = \App\Http\Controllers\AccountingPeriodController::class;
+            Route::middleware('role:' . implode(',', \App\Support\AccessRoles::ACCOUNTING_MANAGE))->group(function () use ($c) {
+                Route::post('period', [$c, 'store'])->name('period.store');
+                Route::post('period/{id}/close', [$c, 'close'])->name('period.close');
+            });
+            Route::post('period/{id}/reopen', [$c, 'reopen'])->middleware('role:' . implode(',', \App\Support\AccessRoles::ACCOUNTING_REOPEN))->name('period.reopen');
+            Route::get('period', [$c, 'index'])->name('period.index');
+        });
+    });
+
+    /*
+    | CASH & BANK Fase 3 — Reconciliation. Menu 'cash-reconciliation'.
+    | Kerja (buat/impor/cocokkan/submit) = CashReconciliationController::WORK_ROLES;
+    | setujui/kembalikan = APPROVE_ROLES; buka ulang = REOPEN_ROLES (superadmin).
+    */
+    Route::middleware('menu:cash-reconciliation')->group(function () {
+        $c = \App\Http\Controllers\CashReconciliationController::class;
+        Route::middleware('role:superadmin,finance_manager,finance')->group(function () use ($c) {
+            Route::get('cash-reconciliation/create', [$c, 'create'])->name('cash-reconciliation.create');
+            Route::post('cash-reconciliation', [$c, 'store'])->name('cash-reconciliation.store');
+            Route::get('cash-reconciliation/template', [$c, 'template'])->name('cash-reconciliation.template');
+            Route::post('cash-reconciliation/{id}/import-preview', [$c, 'importPreview'])->name('cash-reconciliation.import-preview');
+            Route::post('cash-reconciliation/{id}/import-confirm', [$c, 'importConfirm'])->name('cash-reconciliation.import-confirm');
+            Route::post('cash-reconciliation/{id}/import-cancel', [$c, 'importCancel'])->name('cash-reconciliation.import-cancel');
+            Route::post('cash-reconciliation/{id}/import/{importId}/destroy', [$c, 'importDestroy'])->name('cash-reconciliation.import-destroy');
+            Route::post('cash-reconciliation/{id}/auto-match', [$c, 'autoMatch'])->name('cash-reconciliation.auto-match');
+            Route::post('cash-reconciliation/{id}/match', [$c, 'matchLine'])->name('cash-reconciliation.match');
+            Route::post('cash-reconciliation/{id}/line/{lineId}/unmatch', [$c, 'unmatch'])->name('cash-reconciliation.unmatch');
+            Route::post('cash-reconciliation/{id}/line/{lineId}/investigate', [$c, 'investigate'])->name('cash-reconciliation.investigate');
+            Route::post('cash-reconciliation/{id}/submit', [$c, 'submit'])->name('cash-reconciliation.submit');
+        });
+        Route::middleware('role:superadmin,finance_manager')->group(function () use ($c) {
+            Route::post('cash-reconciliation/{id}/approve', [$c, 'approve'])->name('cash-reconciliation.approve');
+            Route::post('cash-reconciliation/{id}/return', [$c, 'returnToDraft'])->name('cash-reconciliation.return');
+        });
+        Route::post('cash-reconciliation/{id}/reopen', [$c, 'reopen'])->middleware('role:superadmin')->name('cash-reconciliation.reopen');
+        Route::get('cash-reconciliation', [$c, 'index'])->name('cash-reconciliation.index');
+        Route::get('cash-reconciliation/{id}', [$c, 'show'])->name('cash-reconciliation.show');
     });
 
     /*
@@ -1476,6 +1671,117 @@ Route::middleware('auth')->group(function () {
     Route::middleware('menu:employee')->group(function () {
         Route::get('employee',                     [EmployeeController::class, 'index'])->name('employee.index');
         Route::get('employee/{id}/detail-json',    [EmployeeController::class, 'showJson'])->name('employee.show-json');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | PROJECTS: Todo List, Dashboard, Summary (hanya baca)
+    |--------------------------------------------------------------------------
+    | Gerbang menu:projects-overview; proyek disaring accessibleProjectIds()
+    | yang sama dengan Project Monitoring.
+    */
+    Route::middleware('menu:projects-overview')->prefix('projects')->name('projects.')->group(function () {
+        $c = \App\Http\Controllers\ProjectsController::class;
+        Route::get('todo', [$c, 'todo'])->name('todo');
+        Route::get('dashboard', [$c, 'dashboard'])->name('dashboard');
+        Route::get('summary', [$c, 'summary'])->name('summary');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | OPERATIONS: Todo List, Dashboard, Summary (hanya baca)
+    |--------------------------------------------------------------------------
+    | Gerbang menu:operations-overview; data tiket disaring TroubleTicket::visibleTo().
+    */
+    Route::middleware('menu:operations-overview')->prefix('operations')->name('operations.')->group(function () {
+        $c = \App\Http\Controllers\OperationsController::class;
+        Route::get('todo', [$c, 'todo'])->name('todo');
+        Route::get('dashboard', [$c, 'dashboard'])->name('dashboard');
+        Route::get('summary', [$c, 'summary'])->name('summary');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | HRIS: Todo List, Dashboard, Summary (hanya baca)
+    |--------------------------------------------------------------------------
+    | Gerbang menu:hris-overview; isi tiap bagian disaring per menu modul di controller.
+    */
+    Route::middleware('menu:hris-overview')->prefix('hris')->name('hris.')->group(function () {
+        $c = \App\Http\Controllers\HrisController::class;
+        Route::get('todo', [$c, 'todo'])->name('todo');
+        Route::get('dashboard', [$c, 'dashboard'])->name('dashboard');
+        Route::get('summary', [$c, 'summary'])->name('summary');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | RECRUITMENT & KANDIDAT (HRIS) - tahap 2b
+    |--------------------------------------------------------------------------
+    | Gerbang menu + pemeriksaan HR_ROLES (superadmin/hr) di controller.
+    */
+    Route::middleware('menu:recruitment')->prefix('recruitment')->name('recruitment.')->group(function () {
+        $c = \App\Http\Controllers\RecruitmentController::class;
+        Route::get('/', [$c, 'index'])->name('index');
+        Route::post('/', [$c, 'store'])->name('store');
+        Route::post('{recruitment}/{act}', [$c, 'move'])->whereNumber('recruitment')->where('act', 'next|reject|cancel')->name('move');
+    });
+
+    Route::middleware('menu:candidate-pool')->prefix('candidates')->name('candidates.')->group(function () {
+        $c = \App\Http\Controllers\CandidateController::class;
+        Route::get('/', [$c, 'index'])->name('index');
+        Route::post('/', [$c, 'store'])->name('store');
+        Route::get('template', [$c, 'template'])->name('template');
+        Route::post('import', [$c, 'import'])->middleware('throttle:10,1')->name('import');
+        Route::get('{candidate}', [$c, 'show'])->whereNumber('candidate')->name('show');
+        Route::post('{candidate}/documents', [$c, 'documentStore'])->whereNumber('candidate')->name('documents.store');
+        Route::get('{candidate}/documents/{document}', [$c, 'documentDownload'])->whereNumber(['candidate', 'document'])->name('documents.download');
+        Route::delete('{candidate}/documents/{document}', [$c, 'documentDestroy'])->whereNumber(['candidate', 'document'])->name('documents.destroy');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | MANPOWER REQUEST (HRIS) - tahap 2a
+    |--------------------------------------------------------------------------
+    | Gerbang menu:manpower-request. HR (superadmin/hr) melihat semua dan
+    | menyetujui; user lain hanya pengajuannya sendiri (lihat controller).
+    */
+    Route::middleware('menu:manpower-request')->prefix('manpower')->name('manpower.')->group(function () {
+        $c = \App\Http\Controllers\ManpowerRequestController::class;
+        Route::get('/', [$c, 'index'])->name('index');
+        Route::get('create', [$c, 'create'])->name('create');
+        Route::post('/', [$c, 'store'])->name('store');
+        Route::get('{manpower}', [$c, 'show'])->whereNumber('manpower')->name('show');
+        Route::get('{manpower}/edit', [$c, 'edit'])->whereNumber('manpower')->name('edit');
+        Route::put('{manpower}', [$c, 'update'])->whereNumber('manpower')->name('update');
+        Route::post('{manpower}/action/{action}', [$c, 'action'])->whereNumber('manpower')->name('action');
+        Route::post('{manpower}/chat', [$c, 'chat'])->whereNumber('manpower')->middleware('throttle:30,1')->name('chat');
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | LETTER MANAGEMENT (HRIS)
+    |--------------------------------------------------------------------------
+    | Gerbang menu:letter-management. Approve/reject ditentukan dinamis dari
+    | struktur Team (LetterController::canApprove); kategori hanya HR/superadmin.
+    */
+    Route::middleware('menu:letter-management')->prefix('letter')->name('letter.')->group(function () {
+        $c = \App\Http\Controllers\LetterController::class;
+        Route::get('/', [$c, 'index'])->name('index');
+        Route::post('/', [$c, 'store'])->name('store');
+        Route::post('categories', [$c, 'categoryStore'])->name('categories.store');
+        Route::delete('categories/{category}', [$c, 'categoryDestroy'])->name('categories.destroy');
+        Route::get('{letter}', [$c, 'show'])->whereNumber('letter')->name('show');
+        Route::get('{letter}/print', [$c, 'print'])->whereNumber('letter')->name('print');
+        Route::put('{letter}/info', [$c, 'updateInfo'])->whereNumber('letter')->name('info.update');
+        Route::put('{letter}/detail', [$c, 'saveDetail'])->whereNumber('letter')->name('detail.save');
+        Route::post('{letter}/action/{action}', [$c, 'action'])->whereNumber('letter')->name('action');
+        Route::post('{letter}/attachments', [$c, 'attachmentStore'])->whereNumber('letter')->name('attachments.store');
+        Route::get('{letter}/attachments/{attachment}', [$c, 'attachmentDownload'])->whereNumber(['letter', 'attachment'])->name('attachments.download');
+        Route::delete('{letter}/attachments/{attachment}', [$c, 'attachmentDestroy'])->whereNumber(['letter', 'attachment'])->name('attachments.destroy');
+        Route::post('{letter}/signatures', [$c, 'signatureStore'])->whereNumber('letter')->name('signatures.store');
+        Route::post('{letter}/signatures/{signature}/sign', [$c, 'signatureSign'])->whereNumber(['letter', 'signature'])->name('signatures.sign');
+        Route::post('{letter}/signatures/{signature}/unsign', [$c, 'signatureUnsign'])->whereNumber(['letter', 'signature'])->name('signatures.unsign');
+        Route::delete('{letter}/signatures/{signature}', [$c, 'signatureDestroy'])->whereNumber(['letter', 'signature'])->name('signatures.destroy');
     });
 
     /*

@@ -572,7 +572,6 @@ body.tesys-ui .info-box { box-shadow: none !important; }
    memindahkan posisi elemen (melompat, membesar) dilepas seluruhnya. */
 body.tesys-ui .sidebar .brand .brand-mark:hover { transform: none; }
 body.tesys-ui .stage-item:hover .stage-num { transform: none; }
-body.tesys-ui .app-switch-item:hover { transform: none; }
 
 @media (prefers-reduced-motion: reduce) {
     body.tesys-ui * { animation-duration: .001s !important; transition-duration: .001s !important; }
@@ -717,8 +716,6 @@ body.tesys-ui .text-muted { color: var(--text-faint) !important; }
    tidak ada satu pun sudut 10-12px tersisa di antara elemen 6-8px. */
 body.tesys-ui .stat-ic,
 body.tesys-ui .toast-ic,
-body.tesys-ui .app-switch-item,
-body.tesys-ui .app-switch-item .asi-ic,
 body.tesys-ui .dataTables_wrapper .pagination .page-link,
 body.tesys-ui .user-pop-item,
 body.tesys-ui .sidebar .nav-item { border-radius: var(--radius-sm) !important; }
@@ -2072,7 +2069,7 @@ body.tesys-ui.sidebar-rail .sidebar .sidebar-cmd .ts-cmd-kbd { display: none !im
    tertutup) cukup mengubah satu angka.
    =================================================================== */
 body.tesys-ui .shell {
-    padding-left: 240px;
+    padding-left: 268px;
     transition: padding-left var(--dur-slow, .36s) var(--ease, cubic-bezier(.4, 0, .2, 1));
 }
 body.tesys-ui .sidebar {

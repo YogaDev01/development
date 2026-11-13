@@ -38,6 +38,7 @@
         <form action="{{ url('/invoice-cash-receipt/' . $invoice->id) }}" method="POST" enctype="multipart/form-data" id="frmInvoice">
             @csrf
             @method('PUT')
+            @include('partials.period-lock-field', ['class' => 'mb-3'])
 
             @if($errors->any())
             <div class="alert alert-danger rounded-0 shadow-sm">

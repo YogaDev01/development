@@ -61,7 +61,9 @@ trait HandlesCrSettlement
             abort(403, 'Anda tidak memiliki wewenang untuk approval tahap ini.');
         }
 
-        $this->findVisibleCr($id);
+        if ($msg = $this->findVisibleCr($id)->selfApprovalError($user)) {
+            return back()->with('error', $msg);
+        }
 
         // Transisi terkunci: lihat Concerns\TransitionsStatus.
         $cr = $this->transitionStatus(BudgetRequest::class, $id, 'REALIZED', ['status' => 'SETTLE_CHECKED'], function ($cr) use ($request) {
@@ -92,7 +94,9 @@ trait HandlesCrSettlement
         }
 
         $request->validate(['notes' => 'required|string|max:500']);
-        $this->findVisibleCr($id);
+        if ($msg = $this->findVisibleCr($id)->selfApprovalError($user)) {
+            return back()->with('error', $msg);
+        }
 
         // Transisi terkunci: lihat Concerns\TransitionsStatus.
         $cr = $this->transitionStatus(BudgetRequest::class, $id, 'REALIZED', ['status' => 'SETTLE_REJECTED'], function ($cr) use ($request) {
@@ -125,6 +129,9 @@ trait HandlesCrSettlement
         }
 
         $cr = $this->findVisibleCr($id);
+        if ($msg = $cr->selfApprovalError($user)) {
+            return back()->with('error', $msg);
+        }
         if ($cr->status !== 'SETTLE_CHECKED') {
             return back()->with('error', 'Status tidak valid.');
         }
@@ -186,7 +193,9 @@ trait HandlesCrSettlement
         }
 
         $request->validate(['notes' => 'required|string|max:500']);
-        $this->findVisibleCr($id);
+        if ($msg = $this->findVisibleCr($id)->selfApprovalError($user)) {
+            return back()->with('error', $msg);
+        }
 
         // Transisi terkunci: lihat Concerns\TransitionsStatus.
         $cr = $this->transitionStatus(BudgetRequest::class, $id, 'SETTLE_CHECKED', ['status' => 'SETTLE_REJECTED'], function ($cr) use ($request) {
@@ -230,6 +239,9 @@ trait HandlesCrSettlement
         }
 
         $cr = $this->findVisibleCr($id);
+        if ($msg = $cr->selfApprovalError($user)) {
+            return back()->with('error', $msg);
+        }
 
         if (! $cr->hasExpenseClaim()) {
             return back()->with('error', 'CR ini tidak punya Expense Claim — langsung Close, tanpa tahap Settle Approve.');
@@ -265,7 +277,9 @@ trait HandlesCrSettlement
             abort(403, 'Anda tidak memiliki wewenang untuk approval tahap ini.');
         }
 
-        $this->findVisibleCr($id);
+        if ($msg = $this->findVisibleCr($id)->selfApprovalError($user)) {
+            return back()->with('error', $msg);
+        }
 
         /*
         | Approver setuju -> CR masuk SECOND_APPROVED sambil menunggu Treasury
@@ -378,6 +392,9 @@ trait HandlesCrSettlement
      */
     private function applySettlementClose(BudgetRequest $cr, ?string $notes): ?string
     {
+        if ($cr->isSelfApprovalBlockedFor(Auth::user())) {
+            return 'CR ' . $cr->code . ': ' . BudgetRequest::SELF_APPROVAL_MESSAGE;
+        }
         if ($cr->status !== 'SETTLE_VERIFIED') {
             return 'CR ' . $cr->code . ': status tidak valid.';
         }
@@ -425,6 +442,9 @@ trait HandlesCrSettlement
      */
     private function applySettlementRejectClose(BudgetRequest $cr, string $notes, array $dariStatus = ['SETTLE_VERIFIED']): ?string
     {
+        if ($cr->isSelfApprovalBlockedFor(Auth::user())) {
+            return 'CR ' . $cr->code . ': ' . BudgetRequest::SELF_APPROVAL_MESSAGE;
+        }
         if (! in_array($cr->status, $dariStatus, true)) {
             return 'CR ' . $cr->code . ': status tidak valid.';
         }

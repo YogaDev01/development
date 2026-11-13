@@ -62,6 +62,10 @@
               enctype="multipart/form-data" id="frmCR" class="tw:flex tw:min-w-0 tw:flex-col tw:gap-5">
             @csrf
             @method('PUT')
+            @if($cr->paid_at)
+                {{-- Kunci periode: CR yang sudah dibayar direkap Closing menurut paid_at. --}}
+                @include('partials.period-lock-field')
+            @endif
 
             <!-- ============================================================ -->
             <!-- SECTION 1: INFORMASI UTAMA                                    -->

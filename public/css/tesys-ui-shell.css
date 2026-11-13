@@ -351,7 +351,7 @@ body.tesys-ui .sidebar {
     transition: margin-left var(--dur-slow, .36s) var(--ease, cubic-bezier(.4, 0, .2, 1));
     z-index: 1030;
 }
-body.tesys-ui.sidebar-off .sidebar { margin-left: -240px; }
+body.tesys-ui.sidebar-off .sidebar { margin-left: -268px; }
 
 /* Di layar sempit sidebar menjadi panel melayang di atas konten. */
 @media (max-width: 900px) {
@@ -513,7 +513,7 @@ body.tesys-ui .sidebar {
     transition: margin-left var(--dur-slow, .36s) var(--ease, cubic-bezier(.4, 0, .2, 1)), visibility 0s;
 }
 body.tesys-ui.sidebar-off .sidebar {
-    margin-left: -240px;
+    margin-left: -268px;
     pointer-events: none;
     /* Disembunyikan tepat setelah animasi selesai — jaminan kedua supaya tidak
        ada sisa yang mengintip di tepi. */
@@ -791,21 +791,6 @@ body.tesys-ui .sidebar .brand .brand-mark:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px var(--accent-ring);
 }
-/* Penanda kecil bahwa lambang ini bisa ditekan. */
-body.tesys-ui .sidebar .brand .brand-mark::after {
-    content: "";
-    position: absolute;
-    right: 3px;
-    bottom: 3px;
-    width: 0;
-    height: 0;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-top: 4px solid rgba(255, 255, 255, .75);
-    transition: transform var(--dur, .22s) var(--ease, cubic-bezier(.4, 0, .2, 1));
-}
-body.tesys-ui .sidebar .brand .brand-mark[aria-expanded="true"]::after { transform: rotate(180deg); }
-
 body.tesys-ui .sidebar .brand .brand-name {
     font-size: 15.5px;
     font-weight: 700;
@@ -818,104 +803,6 @@ body.tesys-ui .sidebar .brand .brand-name {
     white-space: nowrap;
 }
 body.tesys-ui .sidebar .brand .brand-name:hover { color: var(--accent-text); }
-
-/* ------------------------------------------------ DAFTAR APLIKASI */
-body.tesys-ui .app-switch {
-    position: absolute;
-    top: calc(100% - 4px);
-    left: 14px;
-    width: 212px;
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-    padding: 4px 0 8px;
-    z-index: 1046;
-    visibility: hidden;
-    pointer-events: none;
-    /* Visibility ditunda sampai tombol terakhir selesai naik kembali —
-       tanpa penundaan ini panelnya hilang seketika dan animasi menutupnya
-       (kebalikan animasi membuka) tidak pernah sempat terlihat. */
-    transition: visibility 0s linear .44s;
-}
-body.tesys-ui .app-switch.open {
-    visibility: visible;
-    pointer-events: auto;
-    transition: visibility 0s linear 0s;
-}
-
-/* Tanpa selubung: tombol-tombolnya mengambang langsung di atas halaman.
-   Latar menu di belakangnya sudah diredam & diburamkan saat panel terbuka,
-   jadi sela antar tombol tidak lagi ramai — selubung putihnya hanya akan
-   membuat panel terbaca sebagai satu kotak masif. */
-body.tesys-ui .app-switch::before { content: none; }
-
-/* Tiap tombol mengambang sendiri — punya latar dan bayangan masing-masing. */
-body.tesys-ui .app-switch-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 11px;
-    border-radius: 12px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow-md);
-    color: var(--text-dim);
-    text-decoration: none;
-    font-size: 12.5px;
-    font-weight: 500;
-
-    /* Keadaan tertutup: sedikit di atas dan mengecil. */
-    opacity: 0;
-    transform: translateY(-10px) scale(.96);
-    transition:
-        opacity .22s var(--ease-out, cubic-bezier(.16, 1, .3, 1)),
-        transform .28s var(--ease-out, cubic-bezier(.16, 1, .3, 1)),
-        background .15s ease,
-        border-color .15s ease,
-        color .15s ease;
-    /* Saat menutup, urutannya dibalik agar terasa "naik" kembali. */
-    transition-delay: calc((5 - var(--i)) * 28ms);
-}
-body.tesys-ui .app-switch.open .app-switch-item {
-    opacity: 1;
-    transform: none;
-    transition-delay: calc(var(--i) * 45ms);
-}
-body.tesys-ui .app-switch-item:hover {
-    background: var(--surface);
-    border-color: var(--accent-soft);
-    color: var(--text);
-    text-decoration: none;
-}
-body.tesys-ui .app-switch-item.active {
-    border-color: var(--accent-soft);
-    background: var(--accent-tint);
-    color: var(--accent-text);
-    font-weight: 600;
-}
-
-body.tesys-ui .app-switch-item .asi-ic {
-    width: 28px;
-    height: 28px;
-    flex: none;
-    border-radius: 9px;
-    background: var(--surface-2);
-    color: var(--text-dim);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12.5px;
-    transition: background .15s ease, color .15s ease;
-}
-body.tesys-ui .app-switch-item:hover .asi-ic { background: var(--accent-tint); color: var(--accent); }
-body.tesys-ui .app-switch-item.active .asi-ic { background: var(--accent); color: #fff; }
-
-body.tesys-ui .app-switch-item .asi-label { flex: 1; min-width: 0; }
-
-@media (prefers-reduced-motion: reduce) {
-    body.tesys-ui .app-switch-item,
-    body.tesys-ui .app-switch.open .app-switch-item { transition-delay: 0s !important; }
-}
 
 /* =====================================================================
    PERBAIKAN LANJUTAN
@@ -1147,6 +1034,24 @@ body.tesys-ui .sidebar .nav-group-items {
 }
 body.tesys-ui .sidebar .nav-group.open > .nav-group-items { display: flex; }
 
+/* Sub menu tanpa ikon di sidebar penuh; teksnya sejajar dengan judul grup
+   (ikon 16px + jarak 10px + padding 10px = 36px dari kiri). Di mode rail
+   grup dilebur jadi daftar ikon, jadi ikonnya tetap dipakai di sana. */
+body.tesys-ui:not(.sidebar-rail) .sidebar .nav-group-items .nav-item .ic { display: none; }
+body.tesys-ui:not(.sidebar-rail) .sidebar .nav-panel .nav-group-items .nav-item { padding-left: 24px; }
+
+/* Ruang napas sidebar penuh (268px): padding kiri-kanan lebih lega, baris
+   lebih tinggi, jarak antar grup jelas. Judul grup rata kiri dan tidak
+   dibungkus (button bawaan memusatkan teks). */
+body.tesys-ui:not(.sidebar-rail) .sidebar .nav-panel { padding: 0 14px 28px; gap: 3px; }
+body.tesys-ui:not(.sidebar-rail) .sidebar .nav-panel .nav-item,
+body.tesys-ui:not(.sidebar-rail) .sidebar .nav-panel .nav-group-toggle { padding-top: 9px; padding-bottom: 9px; padding-left: 12px; }
+body.tesys-ui:not(.sidebar-rail) .sidebar .nav-panel .nav-group-items { gap: 3px; padding: 2px 0 8px 14px; }
+body.tesys-ui .sidebar .nav-group-toggle { text-align: left; }
+body.tesys-ui .sidebar .nav-group-toggle-main { white-space: nowrap; flex: 1; justify-content: flex-start; text-align: left; }
+body.tesys-ui .sidebar .nav-group-toggle-main .ic { flex: none; }
+body.tesys-ui:not(.sidebar-rail) .sidebar .nav-panel .nav-label { padding-top: 22px; padding-bottom: 8px; }
+
 /* Mode rail: dropdown dilebur jadi daftar ikon rata, sama seperti sebelum
    ada grup — toggle & labelnya disembunyikan, bukan ikut mengecil. */
 body.tesys-ui.sidebar-rail .sidebar .nav-group { display: contents; }
@@ -1362,7 +1267,7 @@ body.tesys-ui .ts-cmd-item.is-aksi .ts-cmd-ic { color: var(--accent); }
     body.tesys-ui .ts-cmd-trigger > span { display: none; }
 
     /* Di layar sempit sidebar sudah berupa laci; mode rail tidak dipakai. */
-    body.tesys-ui.sidebar-rail .sidebar { width: 240px; }
+    body.tesys-ui.sidebar-rail .sidebar { width: 268px; }
     body.tesys-ui.sidebar-rail .sidebar .brand .brand-name { display: block; }
     body.tesys-ui.sidebar-rail .sidebar .nav-item { justify-content: flex-start; font-size: 12.5px; gap: 10px; padding: 7px var(--sp-2) 7px 10px; }
     body.tesys-ui.sidebar-rail .sidebar .nav-item::after { display: none; }
@@ -1613,89 +1518,103 @@ body.tesys-ui .custom-toolbar:not(:has(> .custom-toolbar-left)) {
     row-gap: var(--sp-2);
 }
 /* =====================================================================
-   PEMINDAH APLIKASI — LATAR DIREDAM
-   Saat panel aplikasi terbuka, halaman di belakangnya diburamkan tipis.
-   Fungsinya bukan hiasan: panel ini memindahkan seluruh konteks kerja,
-   jadi perhatian memang harus berpindah sepenuhnya ke sana.
+   PANEL MENU GESER
+   .nav adalah bingkai; tiap .nav-panel mengisi penuh dan meluncur lewat
+   transform. Panel utama keluar ke kiri, panel aplikasi masuk dari kanan
+   (dan sebaliknya saat "Kembali ke Menu"). Hanya transform, tanpa reflow.
+   Panel yang aktif ditandai aria-hidden="false" oleh initNavPanels().
    ===================================================================== */
-/* Yang diburamkan adalah area kerjanya sendiri (.main) dan daftar menu
-   sidebar — bukan lapisan yang dibentangkan di atas seluruh halaman.
-   Lapisan seperti itu harus dikalahkan sidebar lewat adu z-index, dan
-   begitu satu lapis saja kalah, panel aplikasinya ikut buram. Dengan
-   meredam elemennya langsung, panel + brand pasti tetap tajam. */
-body.tesys-ui .main {
-    transition: filter var(--dur, .22s) var(--ease, ease), opacity var(--dur, .22s) var(--ease, ease);
-}
-body.tesys-ui.app-switch-open .main {
-    /* Buram saja, tanpa opacity. Menurunkan opacity di atas latar TERANG
-       justru memutihkan halaman — itu sebabnya panel aplikasi terasa
-       "buram putih" sementara command palette terasa "buram gelap".
-       Peredupannya sekarang dikerjakan oleh selubung di bawah, dengan
-       nilai yang sama persis seperti palet. */
-    filter: blur(3px) saturate(.96);
-    pointer-events: none;
-    user-select: none;
-}
-
-/* Selubung gelap, disamakan dengan .ts-cmd-scrim milik command palette:
-   rgba(16,16,22,.42). Dua lapisan yang sama-sama "menunda halaman" harus
-   terasa sama; sebelumnya yang satu menggelapkan dan yang satu memutihkan,
-   jadi aplikasinya seperti punya dua bahasa untuk satu maksud.
-
-   z-index 1035 menaruhnya DI BAWAH sidebar (1040) — sidebar dan panel
-   aplikasinya tetap tajam, persis seperti sebelumnya. */
-body.tesys-ui.app-switch-open::after {
-    content: "";
-    position: fixed;
+body.tesys-ui .sidebar .nav { overflow: hidden; padding: 0; gap: 0; }
+body.tesys-ui .nav-viewport { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+body.tesys-ui .nav-panel {
+    position: absolute;
     inset: 0;
-    z-index: 1035;
-    background: rgba(16, 16, 22, .42);
-    pointer-events: none;
-    animation: ts-scrim-in var(--dur, .22s) var(--ease, ease);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0 var(--sp-2) var(--sp-4);
+    overflow-y: auto;
+    overflow-x: hidden;
+    transform: translateX(100%);
+    visibility: hidden;
+    transition: transform .3s var(--ease-out, cubic-bezier(.16, 1, .3, 1)), visibility 0s linear .3s;
 }
-@keyframes ts-scrim-in { from { opacity: 0; } to { opacity: 1; } }
+body.tesys-ui .nav-panel[data-nav-panel="root"] { transform: translateX(-100%); }
+/* visibility: inherit (BUKAN visible): selama <html> bertanda tesys-booting,
+   body disembunyikan lewat visibility. "visible" eksplisit di sini menembus
+   penyembunyian itu sehingga isi menu tergambar sendirian di atas latar putih
+   (teks abu muda di atas putih) sebelum sidebar lainnya muncul. */
+/* Batang gulir disembunyikan; menu tetap bisa digulir (roda tetikus, sentuh,
+   keyboard). Sidebar gelap + batang gulir bawaan terlihat kasar. */
+body.tesys-ui .nav-panel { scrollbar-width: none; -ms-overflow-style: none; }
+body.tesys-ui .nav-panel::-webkit-scrollbar { width: 0; height: 0; display: none; }
+body.tesys-ui .nav-panel[aria-hidden="false"] { transform: none; visibility: inherit; transition-delay: 0s; }
+/* Sebelum JS jalan: tampilkan panel yang dipilih server. */
+/* Selama memuat: matikan semua transisi di dalam menu supaya warna item,
+   kartu aplikasi, dan grup tidak "berubah warna" dari keadaan awal ke akhir. */
+body.tesys-ui .nav-viewport:not([data-ready]),
+body.tesys-ui .nav-viewport:not([data-ready]) * { transition: none !important; animation: none !important; }
 
-/* Panel aplikasi berada DI DALAM sidebar; sidebar dinaikkan sedikit dan
-   brand-nya diberi lapis sendiri supaya panel mengambang di atas menu. */
-body.tesys-ui.app-switch-open .sidebar { z-index: 1040; }
-body.tesys-ui.app-switch-open .sidebar .brand { position: relative; z-index: 1045; }
+body.tesys-ui .nav-back {
+    display: flex; align-items: center; gap: 8px;
+    margin: var(--sp-2) 0 0;
+    padding: 7px 10px;
+    border: 0; background: none; cursor: pointer;
+    font-size: 12px; font-weight: 600;
+    color: var(--chrome-dim);
+    border-radius: var(--radius-sm);
+    transition: background .15s ease, color .15s ease;
+}
+body.tesys-ui .nav-back:hover { background: var(--chrome-2); color: #fff; }
 
-/* Di lebar laci (≤900px) sidebar TIDAK boleh turun ke 1040: selubung laci
-   (.shell::after) juga 1040 dan, karena digambar belakangan, ia menutupi
-   tombol aplikasi — tombolnya terlihat tapi sentuhan jatuh ke selubung,
-   sehingga laci malah tertutup dan aplikasinya tidak pernah terbuka.
-   Harus berada SESUDAH aturan di atas: media query tidak menambah
-   kekhususan, jadi yang menang adalah yang ditulis belakangan. */
-@media (max-width: 900px) {
-    body.tesys-ui.app-switch-open .sidebar { z-index: 1042; }
+/* Baris aplikasi di panel utama: sama dengan baris grup (Master Data) —
+   rata, tanpa kotak/border, ikon redup, hover chrome-2. */
+body.tesys-ui .sidebar .nav-app {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 12px;
+    padding: 11px var(--sp-2) 11px 10px;
+    border: none;
+    background: none;
+    border-radius: var(--radius-sm);
+    font-size: 12.5px;
+    font-weight: var(--fw-label, 500);
+    line-height: 1.35;
+    text-align: left;
+    color: var(--chrome-text);
+    cursor: pointer;
+    flex: none;
+    transition: background .15s ease, color .15s ease;
 }
-body.tesys-ui .sidebar .nav {
-    transition: filter var(--dur, .22s) var(--ease, ease), opacity var(--dur, .22s) var(--ease, ease);
+body.tesys-ui .sidebar .nav-app:hover { background: var(--chrome-2); color: #fff; }
+body.tesys-ui .sidebar .nav-app:active { background: var(--chrome-3); }
+body.tesys-ui .sidebar .nav-app:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent-ring); }
+body.tesys-ui .sidebar .nav-app-ic {
+    width: 18px; flex: none; text-align: center;
+    font-size: 14px; color: var(--chrome-dim);
+    transition: color .15s ease;
 }
-body.tesys-ui.app-switch-open .sidebar .nav {
-    filter: blur(2px);
-    opacity: .5;
-    pointer-events: none;
-}
+body.tesys-ui .sidebar .nav-app:hover .nav-app-ic { color: #fff; }
+body.tesys-ui .sidebar .nav-app-label { flex: 1; min-width: 0; }
+body.tesys-ui .sidebar .nav-app-caret { font-size: 10px; color: var(--chrome-dim); }
 
 @media (prefers-reduced-motion: reduce) {
-    body.tesys-ui.app-switch-open .main,
-    body.tesys-ui.app-switch-open .sidebar .nav { transition: none; }
+    body.tesys-ui .nav-panel { transition: none; }
 }
 
-/* =====================================================================
-   SIDEBAR RAIL — TANPA BATANG GULIR
-   Di lebar 68px, batang gulir memakan ruang ikon dan membuat jalur terasa
-   sempit. Gulirnya tetap ada (roda tetikus & keyboard), hanya batangnya
-   yang disembunyikan; sebagai gantinya tepi bawah diberi gradasi tipis
-   sebagai tanda daftarnya masih berlanjut.
-   ===================================================================== */
-body.tesys-ui.sidebar-rail .sidebar .nav {
+/* Mode rail: semua serba ikon, tanpa batang gulir. */
+body.tesys-ui.sidebar-rail .nav-panel {
+    padding: 4px 8px var(--sp-4);
     scrollbar-width: none;
     -ms-overflow-style: none;
-    padding-left: 8px;
-    padding-right: 8px;
 }
+body.tesys-ui.sidebar-rail .nav-panel::-webkit-scrollbar { width: 0; height: 0; }
+body.tesys-ui.sidebar-rail .sidebar .nav-app { justify-content: center; padding: 8px 0; gap: 0; }
+body.tesys-ui.sidebar-rail .sidebar .nav-app-label,
+body.tesys-ui.sidebar-rail .sidebar .nav-app-caret { display: none; }
+body.tesys-ui.sidebar-rail .nav-back { justify-content: center; padding: 8px 0; font-size: 0; gap: 0; }
+body.tesys-ui.sidebar-rail .nav-back i { font-size: 12px; }
 body.tesys-ui.sidebar-rail .sidebar .nav::-webkit-scrollbar { width: 0; height: 0; }
 
 body.tesys-ui.sidebar-rail .sidebar::after {

@@ -24,6 +24,7 @@
                         <span id="markPaidInfo"></span>
                         Upload minimal 1 file bukti pembayaran.
                     </div>
+@include('partials.period-lock-field')
                     <div class="form-group">
                         <label class="font-weight-600">Charge (Biaya Admin Transfer)</label>
                         <input type="text" name="charge" id="inpMarkPaidCharge" class="form-control text-right"
@@ -75,6 +76,7 @@
                 @csrf
                 <div class="modal-body" style="padding:24px 28px;">
                     <small id="rejectItemHint" class="text-muted d-block mb-2"></small>
+@include('partials.period-lock-field')
                     <div class="form-group mb-0">
                         <label class="font-weight-600">Alasan <span class="text-danger">*</span></label>
                         <textarea name="notes" class="form-control" rows="3" placeholder="Alasan takeout..." required></textarea>

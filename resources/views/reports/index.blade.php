@@ -6,21 +6,22 @@
 <div class="content reports-page">
     <div class="container-fluid">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <h1 class="page-title">Reports</h1>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+        {{-- Judul & breadcrumb dipindah shell ke topbar (pola Cost Request). --}}
+        <div class="tw:sr-only">
+            <h1>Reports</h1>
+            <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="#">Finance</a></li>
                 <li class="breadcrumb-item active">Reports</li>
             </ol>
         </div>
+        <x-tw.page-header class="tw:py-4 tw:mb-4" title="Laporan Keuangan"
+            description="Pilih jenis laporan dan filternya, lalu tampilkan atau unduh hasilnya.">
+        </x-tw.page-header>
 
         <!-- FILTER -->
-        <div class="section-heading">Filter</div>
-        <div class="card card-primary card-outline shadow-sm">
-            <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-sliders-h mr-2"></i>Report filter</h3>
-            </div>
-            <div class="card-body">
+        {{-- Kartu filter (pola Cost Request: x-tw.card). --}}
+        <x-tw.card class="tw:mb-4">
+            <x-slot:header><i class="fas fa-sliders-h mr-1" aria-hidden="true"></i> Filter Laporan</x-slot:header>
                 <form method="GET" action="{{ route('reports.index') }}" id="reportFilterForm">
 
                     <div class="filter-top-row">
@@ -85,25 +86,19 @@
                     </div>
 
                     <div class="filter-actions">
-                        <button type="submit" id="btnGenerate" class="btn btn-generate">
-                            <i class="fas fa-bolt mr-2"></i> Generate
-                        </button>
+                        <x-tw.button type="submit" id="btnGenerate"><i class="fas fa-bolt" aria-hidden="true"></i> Generate</x-tw.button>
                         @if($result)
-                        <a href="{{ route('reports.index') }}" class="btn btn-outline-secondary ml-2">
-                            <i class="fas fa-eraser mr-1"></i> Reset Filter
-                        </a>
+                        <x-tw.button variant="secondary" href="{{ route('reports.index') }}"><i class="fas fa-eraser" aria-hidden="true"></i> Reset Filter</x-tw.button>
                         @endif
                     </div>
                 </form>
-            </div>
-        </div>
+        </x-tw.card>
 
         <!-- EMPTY STATE -->
         @if(!$result)
-        <div class="empty-state">
-            <i class="fas fa-file-alt"></i>
-            <p>Pilih report type dan filter di atas, lalu klik Generate untuk melihat hasil.</p>
-        </div>
+        <x-tw.card>
+            <x-empty title="Belum ada laporan ditampilkan" message="Pilih report type dan filter di atas, lalu klik Generate untuk melihat hasil." icon="fas fa-file-alt" />
+        </x-tw.card>
         @endif
 
         <!-- ================= PO STATEMENT ================= -->
@@ -777,8 +772,6 @@
 
 .reports-page .field-label { font-size:12px; font-weight:600; color:var(--text-dim); margin-bottom:4px; }
 
-.reports-page .card-body { padding:20px 22px; }
-
 .reports-page .filter-top-row {
     display:flex; flex-wrap:wrap; align-items:flex-start; gap:28px; margin-bottom:18px;
 }
@@ -797,21 +790,13 @@
 
 .reports-page #poFieldWrap, .reports-page #accountFieldWrap { max-width:640px; margin-bottom:0; }
 
-.reports-page .filter-actions { margin-top:20px; }
+.reports-page .filter-actions { margin-top:20px; display:flex; flex-wrap:wrap; gap:8px; }
 
-.reports-page .btn-generate {
-    background:var(--accent); border-color:var(--accent); color:var(--text); font-weight:700;
-    font-size:14px; padding:10px 22px;
-}
-.reports-page .btn-generate:hover { background:var(--warning); border-color:var(--warning); color:var(--text); }
 
-.reports-page .empty-state { text-align:center; color:var(--text-faint); padding:56px 0; }
-.reports-page .empty-state i { font-size:36px; margin-bottom:10px; opacity:.5; }
-.reports-page .empty-state p { font-size:13px; color:var(--text-faint); }
 
 .reports-page .result-header {
     display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;
-    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); padding:14px 18px; margin-bottom:14px;
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:var(--shadow-xs); padding:14px 18px; margin-bottom:14px;
 }
 .reports-page .result-title { font-size:16px; font-weight:700; color:var(--text); margin:0; }
 .reports-page .result-period { font-size:12px; color:var(--text-faint); }
@@ -844,7 +829,8 @@
 .reports-page .coa-row { cursor:pointer; background:var(--surface-2); font-weight:600; }
 .reports-page .coa-row:hover { background:var(--info-bg); }
 .reports-page .coa-detail-row td { color:var(--text-faint); }
-.reports-page .data-table thead th { background:var(--surface-3); color:var(--text-dim); }
+/* Header tabel = pola Cost Request: surface-2, huruf biasa, garis border-strong. */
+.reports-page .data-table thead th { background:var(--surface-2); color:var(--text-dim); text-transform:none; letter-spacing:0; font-size:12px; font-weight:600; border-bottom:1px solid var(--border-strong); }
 
 .reports-page .section-heading {
     font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em;
@@ -853,7 +839,7 @@
 .reports-page .section-heading:first-of-type { margin-top:0; }
 
 .reports-page .summary-table-wrap {
-    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); overflow-x:auto;
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:var(--shadow-xs); overflow-x:auto;
 }
 .reports-page .summary-table-wrap .data-table tfoot td {
     font-weight:700; border-top:2px solid var(--border); color:var(--text);
@@ -874,8 +860,7 @@
 
 .reports-page .summary-row-customer { cursor:pointer; background:var(--surface-2); font-weight:600; }
 .reports-page .summary-row-customer:hover { background:var(--info-bg); }
-.reports-page #summaryTable thead th { background:var(--border-strong); color:var(--text); }
-.reports-page #summaryTable tfoot td { background:var(--border-strong); }
+.reports-page #summaryTable tfoot td { background:var(--surface-2); }
 .reports-page .summary-row-customer td { border-top:1px solid var(--border); }
 .reports-page .summary-row-customer .batch-subtotal { display:none; font-variant-numeric:tabular-nums; }
 .reports-page .summary-row-customer.collapsed .batch-subtotal { display:inline; }
@@ -1079,4 +1064,9 @@ $(function () {
     }
 });
 </script>
+@endpush
+
+@push('styles')
+{{-- Utilitas tw: (x-tw.*) dimuat per halaman, sama seperti Cost Request. --}}
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 @endpush

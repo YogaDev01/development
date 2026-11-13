@@ -54,11 +54,21 @@ return [
     'items' => [
 
         /* ---------------------------------------------------- OVERVIEW */
+        // Beranda = pintu ke Profil Saya (alamat '/' juga menampilkan profil).
+        // Tanpa 'menu': terlihat untuk semua user login.
+        'beranda' => [
+            'label'  => 'Beranda',
+            'icon'   => 'fas fa-home',
+            'url'    => 'route:profile.show',
+            'active' => ['/', 'profile*'],
+        ],
+
+        // Dashboard = halaman tersendiri (dashboard.index), bukan beranda.
         'dashboard' => [
-            'label' => 'Dashboard',
-            'icon'  => 'fas fa-tachometer-alt',
-            'url'   => 'app-home',      // mengikuti aplikasi yang sedang dibuka
-            'active' => ['app-home'],
+            'label'  => 'Dashboard',
+            'icon'   => 'fas fa-tachometer-alt',
+            'url'    => '/dashboard',
+            'active' => ['dashboard'],
         ],
 
         'project-summary' => [
@@ -137,6 +147,56 @@ return [
             'active' => ['cash-management*'],
             'menu'   => 'cash-management',
         ],
+        // Cash & Bank (Fase 1): pintu masuk baru, kunci menu sendiri.
+        'cash-overview' => [
+            'label'  => 'Cash Overview',
+            'icon'   => 'fas fa-university',
+            'url'    => '/cash-overview',
+            'active' => ['cash-overview*'],
+            'menu'   => 'cash-overview',
+        ],
+        'cash-transactions' => [
+            'label'  => 'Cash Transactions',
+            'icon'   => 'fas fa-list-alt',
+            'url'    => '/cash-transactions',
+            'active' => ['cash-transactions*'],
+            'menu'   => 'cash-transactions',
+        ],
+        'cash-transfers' => [
+            'label'  => 'Internal Transfer',
+            'icon'   => 'fas fa-random',
+            'url'    => '/cash-transfers',
+            'active' => ['cash-transfers*'],
+            'menu'   => 'cash-transfers',
+        ],
+        'cash-adjustments' => [
+            'label'  => 'Cash Adjustment',
+            'icon'   => 'fas fa-sliders-h',
+            'url'    => '/cash-adjustments',
+            'active' => ['cash-adjustments*'],
+            'menu'   => 'cash-adjustments',
+        ],
+        'cash-reports' => [
+            'label'  => 'Cash Reports',
+            'icon'   => 'fas fa-file-alt',
+            'url'    => '/cash-reports',
+            'active' => ['cash-reports*'],
+            'menu'   => 'cash-reports',
+        ],
+        'cash-reconciliation' => [
+            'label'  => 'Reconciliation',
+            'icon'   => 'fas fa-balance-scale-left',
+            'url'    => '/cash-reconciliation',
+            'active' => ['cash-reconciliation*'],
+            'menu'   => 'cash-reconciliation',
+        ],
+        'bank-accounts' => [
+            'label'  => 'Bank Accounts',
+            'icon'   => 'fas fa-landmark',
+            'url'    => '/bank-accounts',
+            'active' => ['bank-accounts*'],
+            'menu'   => 'bank-accounts',
+        ],
         'cash-receipt' => [
             'label'  => 'Cash Receipt',
             'icon'   => 'fas fa-hand-holding-usd',
@@ -180,6 +240,13 @@ return [
             'active' => ['trouble-ticket*'],
             'menu'   => 'trouble-ticket',
         ],
+        'site-sla' => [
+            'label'  => 'SLA Site',
+            'icon'   => 'fas fa-signal',
+            'url'    => '/site-sla',
+            'active' => ['site-sla*'],
+            'menu'   => 'site-sla',
+        ],
         // Kebijakan SLA & master RCA/Sub-RCA/Severity Trouble Ticket. Halamannya
         // tetap di route trouble-ticket.settings (gerbang menu:trouble-ticket +
         // role:superadmin); di sidebar ia berdiri sebagai Master Data.
@@ -199,6 +266,38 @@ return [
             'icon'   => 'fas fa-chart-pie',
             'url'    => 'route:finance-summary.index',
             'active' => ['finance-summary*'],
+            'menu'   => 'finance-summary',
+        ],
+        // Finance Summary dibagi jadi tiga pintu menu. Halamannya tetap satu
+        // (finance-summary.index); 'tab' memilih tab yang terbuka & penanda
+        // aktif di sidebar. 'only_roles' = role yang melihat tab itu (sama
+        // dengan EXECUTIVE_ROLES / COLLECTION_ROLES di FinanceSummaryController)
+        // DI ATAS hak menu 'finance-summary'.
+        'summary-executive' => [
+            'label'       => 'Summary Executive',
+            'icon'        => 'fas fa-chart-pie',
+            'url'         => '/finance-summary?tab=executive',
+            'active'      => ['finance-summary*'],
+            'tab'         => 'executive',
+            'tab_default' => true,
+            'menu'        => 'finance-summary',
+            'only_roles'  => ['superadmin', 'finance', 'finance_manager', 'approver', 'guest'],
+        ],
+        'summary-collection' => [
+            'label'      => 'Summary Collection',
+            'icon'       => 'fas fa-file-invoice-dollar',
+            'url'        => '/finance-summary?tab=collection',
+            'active'     => ['finance-summary*'],
+            'tab'        => 'collection',
+            'menu'       => 'finance-summary',
+            'only_roles' => ['superadmin', 'finance', 'finance_manager', 'approver', 'collection', 'guest'],
+        ],
+        'summary-budget' => [
+            'label'  => 'Summary Budget',
+            'icon'   => 'fas fa-wallet',
+            'url'    => '/finance-summary?tab=budget',
+            'active' => ['finance-summary*'],
+            'tab'    => 'budget',
             'menu'   => 'finance-summary',
         ],
         'budgeting' => [
@@ -237,8 +336,182 @@ return [
         /* -------------------------------------------- ASSET MANAGEMENT */
         // Semua halaman Asset memakai satu kunci menu 'asset-management'
         // (route menu:asset-management); modal Menu Access cukup satu centang.
+        // Halaman ringkasan app Projects (satu hak menu: projects-overview).
+        'projects-todo' => [
+            'label'  => 'Todo List',
+            'icon'   => 'fas fa-tasks',
+            'url'    => 'route:projects.todo',
+            'active' => ['projects/todo'],
+            'menu'   => 'projects-overview',
+        ],
+        'projects-dashboard' => [
+            'label'  => 'Dashboard',
+            'icon'   => 'fas fa-tachometer-alt',
+            'url'    => 'route:projects.dashboard',
+            'active' => ['projects/dashboard'],
+            'menu'   => 'projects-overview',
+        ],
+        'projects-summary' => [
+            'label'  => 'Summary',
+            'icon'   => 'fas fa-chart-pie',
+            'url'    => 'route:projects.summary',
+            'active' => ['projects/summary'],
+            'menu'   => 'projects-overview',
+        ],
+        // Halaman ringkasan app Operations (satu hak menu: operations-overview).
+        'operations-todo' => [
+            'label'  => 'Todo List',
+            'icon'   => 'fas fa-tasks',
+            'url'    => 'route:operations.todo',
+            'active' => ['operations/todo'],
+            'menu'   => 'operations-overview',
+        ],
+        'operations-dashboard' => [
+            'label'  => 'Dashboard',
+            'icon'   => 'fas fa-tachometer-alt',
+            'url'    => 'route:operations.dashboard',
+            'active' => ['operations/dashboard'],
+            'menu'   => 'operations-overview',
+        ],
+        'operations-summary' => [
+            'label'  => 'Summary',
+            'icon'   => 'fas fa-chart-pie',
+            'url'    => 'route:operations.summary',
+            'active' => ['operations/summary'],
+            'menu'   => 'operations-overview',
+        ],
+        // Halaman ringkasan app HRIS (satu hak menu: hris-overview).
+        'hris-todo' => [
+            'label'  => 'Todo List',
+            'icon'   => 'fas fa-tasks',
+            'url'    => 'route:hris.todo',
+            'active' => ['hris/todo'],
+            'menu'   => 'hris-overview',
+        ],
+        'hris-dashboard' => [
+            'label'  => 'Dashboard',
+            'icon'   => 'fas fa-tachometer-alt',
+            'url'    => 'route:hris.dashboard',
+            'active' => ['hris/dashboard'],
+            'menu'   => 'hris-overview',
+        ],
+        'hris-summary' => [
+            'label'  => 'Summary',
+            'icon'   => 'fas fa-chart-pie',
+            'url'    => 'route:hris.summary',
+            'active' => ['hris/summary'],
+            'menu'   => 'hris-overview',
+        ],
+        'recruitment' => [
+            'label'  => 'Recruitment',
+            'icon'   => 'fas fa-people-arrows',
+            'url'    => '/recruitment',
+            'active' => ['recruitment*'],
+            'menu'   => 'recruitment',
+        ],
+        'candidate-pool' => [
+            'label'  => 'Talentpool',
+            'icon'   => 'fas fa-address-book',
+            'url'    => '/candidates',
+            'active' => ['candidates*'],
+            'menu'   => 'candidate-pool',
+        ],
+        'manpower-request' => [
+            'label'  => 'Manpower Request',
+            'icon'   => 'fas fa-user-plus',
+            'url'    => '/manpower',
+            'active' => ['manpower*'],
+            'menu'   => 'manpower-request',
+        ],
+        'letter-management' => [
+            'label'  => 'Letter Management',
+            'icon'   => 'fas fa-envelope-open-text',
+            'url'    => '/letter',
+            'active' => ['letter*'],
+            'menu'   => 'letter-management',
+        ],
+        /* ----------------------------------------------------- ACCOUNTING */
+        // Fase 1. Tiap menu punya kunci hak sendiri (menu:accounting-*), sama
+        // dengan route di routes/web.php dan migrasi 2026_11_14_000200.
+        'accounting-journal' => [
+            'label'  => 'Journal Entries',
+            'icon'   => 'fas fa-book-open',
+            'url'    => 'route:accounting.journal.index',
+            'active' => ['accounting/journal*'],
+            'menu'   => 'accounting-journal',
+        ],
+        'accounting-ledger' => [
+            'label'  => 'General Ledger',
+            'icon'   => 'fas fa-book',
+            'url'    => 'route:accounting.ledger.index',
+            'active' => ['accounting/ledger*'],
+            'menu'   => 'accounting-ledger',
+        ],
+        'accounting-trial-balance' => [
+            'label'  => 'Trial Balance',
+            'icon'   => 'fas fa-balance-scale',
+            'url'    => 'route:accounting.trial-balance.index',
+            'active' => ['accounting/trial-balance*'],
+            'menu'   => 'accounting-trial-balance',
+        ],
+        'accounting-income-statement' => [
+            'label'  => 'Income Statement',
+            'icon'   => 'fas fa-chart-line',
+            'url'    => 'route:accounting.statement.income',
+            'active' => ['accounting/statements/income*'],
+            'menu'   => 'accounting-income-statement',
+        ],
+        'accounting-balance-sheet' => [
+            'label'  => 'Balance Sheet',
+            'icon'   => 'fas fa-balance-scale-right',
+            'url'    => 'route:accounting.statement.balance',
+            'active' => ['accounting/statements/balance*'],
+            'menu'   => 'accounting-balance-sheet',
+        ],
+        'accounting-cash-flow' => [
+            'label'  => 'Cash Flow Statement',
+            'icon'   => 'fas fa-water',
+            'url'    => 'route:accounting.statement.cash',
+            'active' => ['accounting/statements/cash*'],
+            'menu'   => 'accounting-cash-flow',
+        ],
+        'accounting-equity' => [
+            'label'  => 'Changes in Equity',
+            'icon'   => 'fas fa-layer-group',
+            'url'    => 'route:accounting.statement.equity',
+            'active' => ['accounting/statements/equity*'],
+            'menu'   => 'accounting-equity',
+        ],
+        'accounting-audit' => [
+            'label'  => 'Journal Audit Trail',
+            'icon'   => 'fas fa-history',
+            'url'    => 'route:accounting.audit.index',
+            'active' => ['accounting/audit*'],
+            'menu'   => 'accounting-audit',
+        ],
+        'accounting-coa' => [
+            'label'  => 'Chart of Accounts',
+            'icon'   => 'fas fa-sitemap',
+            'url'    => 'route:accounting.coa.index',
+            'active' => ['accounting/coa*'],
+            'menu'   => 'accounting-coa',
+        ],
+        'accounting-mapping' => [
+            'label'  => 'Account Mapping',
+            'icon'   => 'fas fa-link',
+            'url'    => 'route:accounting.mapping.index',
+            'active' => ['accounting/mapping*'],
+            'menu'   => 'accounting-mapping',
+        ],
+        'accounting-period' => [
+            'label'  => 'Accounting Period',
+            'icon'   => 'fas fa-calendar-alt',
+            'url'    => 'route:accounting.period.index',
+            'active' => ['accounting/period*'],
+            'menu'   => 'accounting-period',
+        ],
         'asset-dashboard' => [
-            'label'  => 'Asset Dashboard',
+            'label'  => 'Summary Asset',
             'icon'   => 'fas fa-tachometer-alt',
             'url'    => 'route:asset.dashboard',
             'active' => ['asset'],
@@ -337,7 +610,7 @@ return [
             'label'  => 'Account',
             'icon'   => 'fas fa-landmark',
             'url'    => '/account',
-            'active' => ['account*'],
+            'active' => ['account', 'account/*'],
             'menu'   => 'account',
         ],
         'project-master' => [
@@ -543,38 +816,48 @@ return [
          | nav.blade.php — bukan kunci hak akses.
          */
         'finance' => [
-            'Overview'    => ['dashboard', 'finance-summary'],
-            'Workflow'    => [
-                'purchase-order', 'budgeting',
-                'Cost Management' => [
-                    'icon'  => 'fas fa-coins',
-                    'items' => ['cost-request', 'cost-register', 'treasury'],
-                ],
-                'Billing Management' => [
-                    'icon'  => 'fas fa-file-invoice',
-                    'items' => ['delivery-note', 'invoice', 'cash-receipt'],
-                ],
-                'Cash Management' => [
-                    'icon'  => 'fas fa-money-bill-wave',
-                    'items' => ['cash-management', 'forecast'],
-                ],
-                'Reports' => [
+            // Satu daftar datar tanpa label seksi. Satu-satunya grup: Summary.
+            '' => [
+                'todo-list', 'dashboard',
+                'Summary' => [
                     'icon'  => 'fas fa-chart-pie',
-                    'items' => ['closing', 'reports'],
+                    'items' => ['summary-executive', 'summary-collection', 'summary-budget', 'asset-dashboard'],
+                ],
+                'purchase-order', 'budgeting',
+                'Transaction Management' => [
+                    'icon'  => 'fas fa-exchange-alt',
+                    'items' => ['cost-request', 'cost-register', 'delivery-note', 'invoice'],
+                ],
+                'Cash & Bank' => [
+                    'icon'  => 'fas fa-money-bill-wave',
+                    'items' => ['cash-overview', 'treasury', 'cash-receipt', 'cash-management', 'forecast', 'cash-transactions', 'cash-transfers', 'cash-adjustments', 'bank-accounts', 'cash-reconciliation', 'cash-reports'],
+                ],
+                'Accounting' => [
+                    'icon'  => 'fas fa-balance-scale',
+                    'items' => ['accounting-journal', 'accounting-ledger', 'accounting-trial-balance', 'accounting-income-statement', 'accounting-balance-sheet', 'accounting-cash-flow', 'accounting-equity', 'accounting-audit', 'accounting-coa', 'accounting-mapping', 'accounting-period'],
                 ],
                 'Asset Management' => [
                     'icon'  => 'fas fa-boxes',
                     'items' => [
-                        'asset-dashboard', 'asset-list', 'asset-movement', 'asset-maintenance',
-                        'asset-inspection', 'asset-opname', 'asset-procurement', 'asset-report', 'asset-settings',
+                        'asset-list', 'asset-movement', 'asset-maintenance', 'asset-inspection',
+                        'asset-opname', 'asset-procurement', 'asset-report', 'asset-settings',
                     ],
+                ],
+                'Reports & Closing' => [
+                    'icon'  => 'fas fa-chart-bar',
+                    'items' => ['closing', 'reports'],
                 ],
             ],
         ],
 
         'hr' => [
-            'Overview'    => ['dashboard'],
-            'Workflow'    => ['payroll-run'],
+            '' => ['hris-todo', 'hris-dashboard', 'hris-summary', 'payroll-run',
+                'Recruitment Management' => [
+                    'icon'  => 'fas fa-user-plus',
+                    'items' => ['manpower-request', 'recruitment', 'candidate-pool'],
+                ],
+                'letter-management',
+            ],
         ],
 
         'rnd' => [
@@ -597,12 +880,11 @@ return [
         // (config/apps.php 'landing'), jadi tidak ada halaman Dashboard
         // terpisah yang bisa ditunjuk.
         'operation' => [
-            'Workflow'    => ['project-monitoring', 'trouble-ticket'],
+            '' => ['operations-todo', 'operations-dashboard', 'operations-summary', 'project-monitoring', 'trouble-ticket', 'site-sla'],
         ],
 
         'project' => [
-            'Overview'    => ['dashboard', 'project-summary'],
-            'Workflow'    => ['project-monitoring'],
+            '' => ['projects-todo', 'projects-dashboard', 'projects-summary', 'project-summary', 'project-monitoring'],
         ],
     ],
 ];

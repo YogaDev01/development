@@ -89,7 +89,7 @@ class ProjectMonitoringController extends Controller
     /**
      * ID PO yang boleh diakses user saat ini (null = semua/tidak dibatasi).
      */
-    private function accessibleProjectIds(): ?array
+    public function accessibleProjectIds(): ?array
     {
         if ($this->isPrivileged()) {
             return null;

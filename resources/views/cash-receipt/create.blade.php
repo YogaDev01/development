@@ -71,6 +71,7 @@
             <input type="hidden" name="customer_id" id="crCustomerId" value="{{ $customerId }}">
             {{-- Diisi lewat dialog konfirmasi saat ada invoice yang dibayar tidak penuh. --}}
             <input type="hidden" name="partial_note" id="crPartialNote" value="">
+            @include('partials.period-lock-field', ['class' => 'mb-3'])
 
             {{-- LANGKAH 2 — pilih invoice yang ditutup penerimaan ini. --}}
             <div class="card card-primary card-outline shadow-sm">

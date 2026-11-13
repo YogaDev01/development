@@ -430,49 +430,90 @@
     }
 
     /* ---------------------------------------------------------------
-       5. Pemindah aplikasi — lambang perusahaan di puncak sidebar.
+       5. Panel menu geser — daftar aplikasi <-> menu satu aplikasi.
 
-       Enam tombol aplikasi muncul turun bertahap; jeda antar tombolnya
-       diatur di CSS lewat --i, jadi di sini cukup membuka/menutup saja.
+       Semua panel sudah dirender server (nav.blade.php); di sini hanya
+       mengganti data-view pada #navViewport dan aria-hidden tiap panel,
+       CSS yang menggesernya. Tidak ada pemuatan halaman. Aplikasi terakhir
+       dibuka diingat di localStorage: bila halaman yang sedang dibuka adalah
+       modul bersama (mis. Customer) yang menunya ada di panel aplikasi itu,
+       panel itulah yang ditampilkan saat halaman dimuat.
        --------------------------------------------------------------- */
-    function initAppSwitcher() {
-        var btn = document.getElementById('appSwitchBtn');
-        var panel = document.getElementById('appSwitch');
-        if (!btn || !panel) return;
+    function initNavPanels() {
+        var vp = document.getElementById('navViewport');
+        if (!vp) return;
 
-        function setOpen(open) {
-            panel.classList.toggle('open', open);
-            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        var title = document.getElementById('navTitle');
+        var appTitle = {};
+        vp.querySelectorAll('.nav-panel[data-app-label]').forEach(function (p) {
+            appTitle[p.getAttribute('data-nav-panel')] = p.getAttribute('data-app-label');
+        });
 
-            // Latar belakang diredam & diburamkan selama panel terbuka —
-            // lapisannya digambar CSS lewat kelas ini (lihat tesys-ui-shell.css).
-            document.body.classList.toggle('app-switch-open', open);
+        function panel(key) { return vp.querySelector('.nav-panel[data-nav-panel="' + key + '"]'); }
+
+        function setView(key, remember) {
+            if (!panel(key)) key = 'root';
+            vp.setAttribute('data-view', key);
+            vp.querySelectorAll('.nav-panel').forEach(function (p) {
+                var on = p.getAttribute('data-nav-panel') === key;
+                p.setAttribute('aria-hidden', on ? 'false' : 'true');
+                if ('inert' in p) p.inert = !on;
+            });
+            if (title) title.textContent = key === 'root' ? 'Menu' : (appTitle[key] || '');
+            if (remember && key !== 'root') {
+                try { localStorage.setItem('tesys.navApp', key); } catch (e) {}
+            }
+            var p = panel(key);
+            if (p) p.scrollTop = 0;
         }
 
-        btn.addEventListener('click', function (e) {
-            e.stopPropagation();
-            setOpen(!panel.classList.contains('open'));
+        vp.addEventListener('click', function (e) {
+            var btn = e.target.closest('[data-nav-go]');
+            if (btn) setView(btn.getAttribute('data-nav-go'), true);
         });
 
-        panel.addEventListener('click', function (e) { e.stopPropagation(); });
+        // Tampilan awal = panel tempat menu halaman ini berada:
+        //  1. menu aktif ada di panel utama (Beranda, Todo List, Master Data)
+        //     -> panel utama;
+        //  2. menu aktif ada di aplikasi yang terakhir dipilih -> aplikasi itu;
+        //  3. menu aktif ada di aplikasi bawaan server -> aplikasi itu;
+        //  4. menu aktif hanya ada di aplikasi lain -> aplikasi pertama itu;
+        //  5. tidak ada menu aktif -> aplikasi terakhir dipilih / bawaan server.
+        function punyaAktif(key) {
+            var p = panel(key);
+            return !!(p && p.querySelector('.nav-item.active'));
+        }
+        var start = vp.getAttribute('data-view');
+        var saved = null;
+        try { saved = localStorage.getItem('tesys.navApp'); } catch (e) {}
 
-        document.addEventListener('click', function () { setOpen(false); });
-
-        document.addEventListener('keydown', function (e) {
-            if (e.key !== 'Escape' || !panel.classList.contains('open')) return;
-            setOpen(false);
-            btn.focus();
-        });
+        if (punyaAktif('root')) {
+            start = 'root';
+        } else if (saved && punyaAktif(saved)) {
+            start = saved;
+        } else if (!punyaAktif(start)) {
+            var lain = Array.prototype.find.call(vp.querySelectorAll('.nav-panel'), function (p) {
+                return p.querySelector('.nav-item.active');
+            });
+            if (lain) start = lain.getAttribute('data-nav-panel');
+            else if (saved && panel(saved)) start = saved;
+        }
+        setView(start, false);
+        // Transisi baru dinyalakan setelah dua frame DAN seluruh sumber daya
+        // (CSS/font) selesai dimuat, supaya tidak ada perubahan warna saat muat.
+        function ready() { requestAnimationFrame(function () { requestAnimationFrame(function () { vp.setAttribute('data-ready', ''); }); }); }
+        if (document.readyState === 'complete') ready(); else window.addEventListener('load', ready);
     }
 
     /* ---------------------------------------------------------------
        6. Menu aktif selalu terlihat setelah halaman dimuat ulang.
        --------------------------------------------------------------- */
     function revealActiveNav() {
-        var nav = document.querySelector('.sidebar .nav');
+        var vp = document.getElementById('navViewport');
+        var nav = vp && vp.querySelector('.nav-panel[data-nav-panel="' + vp.getAttribute('data-view') + '"]');
         if (!nav) return;
 
-        var active = document.querySelector('.sidebar .nav-item.active');
+        var active = nav.querySelector('.nav-item.active');
         if (!active) { nav.scrollTop = 0; return; }
 
         /*
@@ -697,7 +738,7 @@
         initPageTabs();
         initBottomNav();
         initQuickSearch();
-        initAppSwitcher();
+        initNavPanels();
         revealActiveNav();
     });
 })();

@@ -366,6 +366,11 @@ persetujuan manusia.
   403s, or hidden button for an entitled role).
 - `superadmin` bypasses `menu:` checks. "View As" (`isViewingAs()`) lets
   superadmin preview other roles.
+- Period lock (Closing `CLOSED` blocks writes by document date) is a **data-state
+  guard**, not authorization: it is not a middleware, the controller decides via
+  `App\Support\PeriodLock`, and Blade mirrors it (disabled button + tooltip).
+  Superadmin (real, not View As) may override with `alasan_periode`; the override is
+  logged. See `docs/period-lock.md` before touching any financial write path.
 - Any authorization change is HIGH risk; authentication changes are CRITICAL.
 
 ## 9. UI/UX rules

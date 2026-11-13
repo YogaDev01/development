@@ -7,9 +7,17 @@
 <div class="content">
     <div class="container-fluid">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);"><i class="fas fa-question-circle mr-2"></i>Panduan Penggunaan Tesys</h1>
+        {{-- Judul & breadcrumb dipindah shell ke topbar (pola Cost Request). --}}
+        <div class="tw:sr-only">
+            <h1>Panduan Penggunaan</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="#">Help</a></li>
+                <li class="breadcrumb-item active">Panduan</li>
+            </ol>
         </div>
+        <x-tw.page-header class="tw:py-4 tw:mb-4" title="Panduan Penggunaan TESYS"
+            description="Cara memakai setiap modul; pilih topik di daftar samping atau kartu di bawah.">
+        </x-tw.page-header>
 
         <div class="pnd-layout">
 
@@ -50,4 +58,9 @@
 
 @push('styles')
     @include('panduan._styles')
+@endpush
+
+@push('styles')
+{{-- Utilitas tw: (x-tw.*) dimuat per halaman, sama seperti Cost Request. --}}
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 @endpush

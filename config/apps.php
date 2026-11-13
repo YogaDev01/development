@@ -4,8 +4,9 @@
 |--------------------------------------------------------------------------
 | Daftar aplikasi Tesys
 |--------------------------------------------------------------------------
-| Satu sistem, enam aplikasi. Rail sempit di kiri layar memakai daftar ini,
-| dan sidebar kedua (menu modul) mengikuti aplikasi yang sedang aktif.
+| Satu sistem, enam aplikasi. Sidebar tunggal menampilkan daftar ini sebagai
+| menu utama; memilih satu aplikasi menggeser panel menu modulnya masuk
+| (tanpa memuat ulang halaman). Urutan di sini = urutan tampil.
 |
 | Hanya 'finance' yang sudah berisi modul. Empat lainnya menampilkan halaman
 | "Coming Soon" sampai modulnya dibangun — cukup ubah 'ready' => true dan
@@ -38,33 +39,13 @@ return [
         ],
 
         'hr' => [
-            'label' => 'HR',
-            'sub'   => 'Human Resource',
+            'label' => 'HRIS',
+            'sub'   => 'HRIS',
             'icon'  => 'fas fa-user-tie',
             'home'  => '/app/hr',
             'ready' => false,
             'desc'  => 'Karyawan, absensi, cuti, dan penggajian dalam satu alur.',
             'modules' => ['Absensi', 'Cuti'],
-        ],
-
-        'rnd' => [
-            'label' => 'R&D',
-            'sub'   => 'Research & Development',
-            'icon'  => 'fas fa-flask',
-            'home'  => '/app/rnd',
-            'ready' => false,
-            'desc'  => 'Riset produk, pengujian, dan dokumentasi teknis.',
-            'modules' => ['Riset Produk', 'Pengujian', 'Dokumentasi Teknis'],
-        ],
-
-        'logistic' => [
-            'label' => 'Logistics',
-            'sub'   => 'Logistics',
-            'icon'  => 'fas fa-truck',
-            'home'  => '/app/logistic',
-            'ready' => false,
-            'desc'  => 'Gudang, stok, pengiriman, dan penerimaan barang.',
-            'modules' => ['Gudang', 'Stok', 'Pengiriman', 'Penerimaan Barang'],
         ],
 
         /*
@@ -88,13 +69,33 @@ return [
         ],
 
         'project' => [
-            'label' => 'Project',
-            'sub'   => 'Project',
+            'label' => 'Projects',
+            'sub'   => 'Projects',
             'icon'  => 'fas fa-project-diagram',
             'home'  => '/app/project',
             'ready' => false,
             'desc'  => 'Perencanaan, progres, dan serah terima pekerjaan proyek.',
             'modules' => ['Perencanaan', 'Progres', 'Serah Terima'],
+        ],
+
+        'logistic' => [
+            'label' => 'Logistics',
+            'sub'   => 'Logistics',
+            'icon'  => 'fas fa-truck',
+            'home'  => '/app/logistic',
+            'ready' => false,
+            'desc'  => 'Gudang, stok, pengiriman, dan penerimaan barang.',
+            'modules' => ['Gudang', 'Stok', 'Pengiriman', 'Penerimaan Barang'],
+        ],
+
+        'rnd' => [
+            'label' => 'Development',
+            'sub'   => 'Development',
+            'icon'  => 'fas fa-flask',
+            'home'  => '/app/rnd',
+            'ready' => false,
+            'desc'  => 'Riset produk, pengujian, dan dokumentasi teknis.',
+            'modules' => ['Riset Produk', 'Pengujian', 'Dokumentasi Teknis'],
         ],
 
     ],

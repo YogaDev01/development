@@ -50,6 +50,20 @@
         ]" />
         </div>
 
+        {{-- Saldo awal/akhir periode: sumber sama dengan Cash Overview (CashBalanceService).
+             Di luar #cmSummary supaya tidak ikut ditimpa saat filter baris dijalankan. Selisih terhadap
+             Opening + Net bisa muncul bila ada transaksi tanpa rekening atau sebelum saldo awal. --}}
+        @php $selisihSaldo = $balances['closing'] - ($balances['opening'] + $summary['net']); @endphp
+        <div class="text-muted" style="font-size:12px;">
+            Saldo awal periode <strong>Rp {{ number_format($balances['opening'], 0, ',', '.') }}</strong> ·
+            Saldo akhir periode <strong>Rp {{ number_format($balances['closing'], 0, ',', '.') }}</strong>
+            <span title="Sama dengan Cash Overview">(saldo rekening, bukan hasil penjumlahan filter di bawah)</span>
+            @if($selisihSaldo !== 0)
+                · selisih terhadap saldo awal + net: Rp {{ number_format($selisihSaldo, 0, ',', '.') }}
+                (transaksi tanpa rekening, sebelum saldo awal, atau sisi transfer antar rekening)
+            @endif
+        </div>
+
         {{-- FILTER
 
              Tata letaknya tetap seperti semula: satu kotak per field. Yang

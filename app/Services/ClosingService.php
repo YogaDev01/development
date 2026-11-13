@@ -96,10 +96,25 @@ class ClosingService
         $missing = $current->filter(fn ($r) => !in_array($r['source_module'] . '#' . $r['source_id'], $recorded, true));
         $stale   = $closing->details->filter(fn ($d) => !in_array($d->source_module . '#' . $d->source_id, $currentKeys, true));
 
+        // Dokumen yang masih ada di kedua sisi tetapi nominalnya berbeda, mis. Cash Receipt
+        // di periode terbuka melunasi/mengubah PPh invoice bertanggal di periode yang sudah
+        // ditutup. Hanya DITAMPILKAN sebagai selisih; penulisannya sendiri tidak diblokir.
+        $recordedByKey = $closing->details->keyBy(fn ($d) => $d->source_module . '#' . $d->source_id);
+        $changed = $current
+            ->filter(function ($r) use ($recordedByKey) {
+                $d = $recordedByKey->get($r['source_module'] . '#' . $r['source_id']);
+
+                return $d && (int) $d->amount !== (int) $r['amount'];
+            })
+            ->map(fn ($r) => $r + [
+                'recorded_amount' => (int) $recordedByKey->get($r['source_module'] . '#' . $r['source_id'])->amount,
+            ]);
+
         return [
             'missing'        => $missing->values(),   // ada di data, belum direkap
             'stale'          => $stale->values(),     // direkap, tapi dokumennya hilang/berubah tanggal
-            'has_difference' => $missing->isNotEmpty() || $stale->isNotEmpty(),
+            'changed'        => $changed->values(),   // direkap dan masih ada, tapi nominalnya berubah
+            'has_difference' => $missing->isNotEmpty() || $stale->isNotEmpty() || $changed->isNotEmpty(),
         ];
     }
 

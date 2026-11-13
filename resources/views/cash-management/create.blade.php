@@ -21,6 +21,7 @@
         </div>
 
         <form action="{{ route('cash-management.store') }}" method="POST" id="formCashFlow">
+            @include('partials.period-lock-field', ['class' => 'mb-3'])
             @csrf
 
             @include('cash-management._form')

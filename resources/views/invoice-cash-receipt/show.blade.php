@@ -10,10 +10,11 @@
     $paidPctWidth = min($paidPct, 100);
     $paidBarColor = $paidPct >= 100 ? 'var(--success)' : 'var(--warning)';
 
-    $canEditDraft = $invoice->status === 'DRAFT'      && Auth::user()->hasRole(['superadmin','admin','finance','finance_manager']);
+    // Daftar role = grup route invoice-cash-receipt (routes/web.php), termasuk collection.
+    $canEditDraft = $invoice->status === 'DRAFT'      && Auth::user()->hasRole(['superadmin','admin','finance','finance_manager','collection']);
     // Superadmin boleh edit di status apa pun (dicatat rinci di Log); Hapus tetap hanya Draft.
     $canEditAny   = $canEditDraft || Auth::user()->hasRole(['superadmin']);
-    $canSubmit    = $invoice->status === 'DRAFT'      && Auth::user()->hasRole(['superadmin','admin','finance','finance_manager']);
+    $canSubmit    = $invoice->status === 'DRAFT'      && Auth::user()->hasRole(['superadmin','admin','finance','finance_manager','collection']);
     $canVerify    = $invoice->status === 'SUBMITTED'  && Auth::user()->hasRole(['superadmin','finance_manager','accounting']);
     $canApprove   = $invoice->status === 'VERIFIED'   && Auth::user()->hasRole(['superadmin','finance_manager']);
     $canRevise    = in_array($invoice->status, ['SUBMITTED','VERIFIED']) && Auth::user()->hasRole(['superadmin','finance_manager','approver','accounting']);
@@ -21,7 +22,11 @@
     $canReviseCancel = $invoice->status === 'SENT' && Auth::user()->hasRole(['superadmin','finance_manager']);
     $canMarkReceived = in_array($invoice->status, ['SENT','RECEIVED']) && !$invoice->received_at && Auth::user()->hasRole(['superadmin','admin','finance','finance_manager','collection']);
     $canAddCr     = in_array($invoice->status, ['SENT','RECEIVED','PARTIALLY_PAID']) && Auth::user()->hasRole(['superadmin','admin','finance','finance_manager','collection']);
-    $canDeleteCr  = Auth::user()->hasRole(['superadmin','admin','finance','finance_manager']);
+    $canDeleteCr  = Auth::user()->hasRole(['superadmin','admin','finance','finance_manager','collection']);
+
+    // Kunci periode (Closing CLOSED): tombol yang pasti ditolak controller dinonaktifkan.
+    // Controller tetap penentu; Superadmin asli menembus lewat field alasan_periode.
+    $lockInv = \App\Support\PeriodLock::forModel($invoice, 'Invoice');
 
     // Manager & Head: fokus ke Log & Approval saja — ringkasan keuangan &
     // tab Rincian/Lampiran/Cash Receipt disembunyikan (lihat juga index
@@ -82,6 +87,10 @@
         <div class="alert alert-danger rounded-0 shadow-sm">{{ session('error') }}</div>
         @endif
 
+        @if($lockInv['locked'])
+        <div class="alert alert-warning rounded-0 shadow-sm" style="font-size:12px;"><i class="fas fa-lock mr-1"></i> {{ $lockInv['message'] }}</div>
+        @endif
+
         {{-- TOOLBAR AKSI --}}
         <div class="card shadow-sm">
             <div class="card-body d-flex flex-wrap" style="gap:8px;">
@@ -104,7 +113,11 @@
                 </a>
                 @endif
 
-                @if($canSubmit)
+                @if($canSubmit && $lockInv['locked'])
+                <span class="d-inline-block" title="{{ $lockInv['message'] }}">
+                    <button type="button" class="btn btn-primary btn-sm" disabled style="pointer-events:none;"><i class="fas fa-paper-plane mr-1"></i> Submit</button>
+                </span>
+                @elseif($canSubmit)
                 <form action="{{ route('invoice-cash-receipt.submit', $invoice->id) }}" method="POST" class="frmSubmitInv d-inline">
                     @csrf
                     <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-paper-plane mr-1"></i> Submit</button>
@@ -126,13 +139,15 @@
                 @endif
 
                 @if($canRevise)
-                <button type="button" class="btn btn-secondary btn-sm" id="btnReviseInv">
+                <button type="button" class="btn btn-secondary btn-sm" id="btnReviseInv"
+                        @if($lockInv['locked'] && $invoice->status === 'SUBMITTED' && ! $lockInv['can_override']) disabled title="{{ $lockInv['message'] }}" @endif>
                     <i class="fas fa-undo mr-1"></i> Kembalikan / Revisi
                 </button>
                 @endif
 
                 @if($canCancel)
-                <button type="button" class="btn btn-danger btn-sm" id="btnCancelInv">
+                <button type="button" class="btn btn-danger btn-sm" id="btnCancelInv"
+                        @if($lockInv['locked'] && ! $lockInv['can_override']) disabled title="{{ $lockInv['message'] }}" @endif>
                     <i class="fas fa-ban mr-1"></i> Batalkan
                 </button>
                 @endif
@@ -404,7 +419,9 @@
                                                         <span class="text-muted">-</span>
                                                     @endif
                                                     @if($canAddCr && $invoice->status === 'PARTIALLY_PAID')
+                                                    @php $lockCr = \App\Support\PeriodLock::forModel($cr, 'Cash Receipt'); @endphp
                                                     <button type="button" class="btn btn-outline-info btn-sm btn-settle-cr d-block ml-auto mt-1"
+                                                            @if($lockCr['locked'] && ! $lockCr['can_override']) disabled title="{{ $lockCr['message'] }}" @endif
                                                             style="font-size:10px;padding:1px 6px;"
                                                             data-invoice-id="{{ $invoice->id }}" data-cr-id="{{ $cr->id }}"
                                                             data-current-tax="{{ $cr->withholding_tax }}"
@@ -434,10 +451,12 @@
                                                             data-notes="{{ $cr->notes }}"
                                                             data-header="{{ $cr->cash_receipt_header_id ? 1 : 0 }}"><i class="fas fa-pen"></i></button>
                                                     @endif
+                                                    @php $lockCrDel = \App\Support\PeriodLock::forModel($cr, 'Cash Receipt'); @endphp
                                                     <form action="{{ route('invoice-cash-receipt.cash-receipt.destroy', [$invoice->id, $cr->id]) }}"
-                                                          method="POST" class="frmDeleteCr d-inline">
+                                                          method="POST" class="frmDeleteCr d-inline" data-period-override="{{ $lockCrDel['locked'] && $lockCrDel['can_override'] ? 1 : 0 }}">
                                                         @csrf @method('DELETE')
-                                                        <button aria-label="Hapus" type="submit" class="btn btn-danger btn-sm" title="Hapus"><i class="fas fa-trash"></i></button>
+                                                        <button aria-label="Hapus" type="submit" class="btn btn-danger btn-sm"
+                                                                @if($lockCrDel['locked'] && ! $lockCrDel['can_override']) disabled title="{{ $lockCrDel['message'] }}" @else title="Hapus" @endif><i class="fas fa-trash"></i></button>
                                                     </form>
                                                 </td>
                                                 @endif
@@ -725,6 +744,7 @@
                         <input type="date" name="received_date" class="form-control form-control-sm"
                                value="{{ now()->format('Y-m-d') }}" required>
                     </div>
+@include('partials.period-lock-field')
 
                     <div class="form-group">
                         <label class="font-weight-600">Jumlah <span class="text-danger">*</span></label>
@@ -796,6 +816,7 @@
                     <label class="small font-weight-bold">Tanggal terima</label>
                     <input type="date" name="received_date" class="form-control form-control-sm" required>
                 </div>
+@include('partials.period-lock-field')
                 <div class="form-group">
                     <label class="small font-weight-bold">Nominal (Rp)</label>
                     <input type="text" name="amount" class="form-control form-control-sm text-right" inputmode="numeric" required>
@@ -863,6 +884,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         Cash Receipt terkadang memiliki selisih kecil dari nilai tagihan karena dipotong PPh Pasal 4(2) (2%)
                         oleh customer. Isi nominal PPh di sini supaya Cash In + PPh = Full Payment, tanpa perlu uang tambahan masuk.
                     </div>
+@include('partials.period-lock-field')
                     <div class="form-group mb-0">
                         <label class="font-weight-600">Nominal PPh Pasal 4(2) <span class="text-danger">*</span></label>
                         <input type="text" name="withholding_tax" id="inpSettleTax" class="form-control form-control-sm text-right"
@@ -891,6 +913,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 @csrf
                 <div class="modal-body" style="padding:24px 28px;">
                     <p class="text-muted mb-3">Kembalikan invoice {{ $invoice->code }} ke tahap sebelumnya untuk direvisi.</p>
+@include('partials.period-lock-field')
                     <div class="form-group mb-0">
                         <label class="font-weight-600">Catatan Revisi <span class="text-danger">*</span></label>
                         <textarea name="notes" class="form-control" rows="4"
@@ -934,6 +957,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         </div>
                     </div>
                     @endif
+@include('partials.period-lock-field')
                     <div class="form-group mb-0">
                         <label class="font-weight-600">Alasan Pembatalan <span class="text-danger">*</span></label>
                         <textarea name="cancel_reason" class="form-control" rows="3"
@@ -1135,10 +1159,30 @@ $(function () {
         .then(function(r){ if(r.isConfirmed) form.submit(); });
     });
 
+    /* Hapus invoice = soft delete; alasan wajib (divalidasi juga di server)
+       dan tersimpan di barisnya, pola yang sama dengan hapus Cash Receipt. */
     $(document).on('submit', '.frmDeleteInv', function (e) {
         e.preventDefault(); var form = this;
-        Swal.fire({ title:'Hapus Invoice?', text:'Data tidak dapat dikembalikan.', icon:'warning', showCancelButton:true, confirmButtonColor:'#9a3030', cancelButtonColor:'#55595e', confirmButtonText:'Ya, Hapus', cancelButtonText:'Batal' })
-        .then(function(r){ if(r.isConfirmed) form.submit(); });
+        Swal.fire({
+            title: 'Hapus Invoice?',
+            html: 'Invoice DRAFT ini dihapus dari daftar. Catatannya tetap tersimpan untuk audit, beserta alasan di bawah.',
+            icon: 'warning',
+            input: 'textarea',
+            inputLabel: 'Alasan penghapusan (wajib)',
+            inputAttributes: { 'aria-label': 'Alasan penghapusan' },
+            inputValidator: function (value) {
+                if (!value || value.trim().length < 5) return 'Tuliskan alasan minimal 5 karakter.';
+            },
+            showCancelButton: true,
+            confirmButtonColor: '#9a3030',
+            cancelButtonColor: '#55595e',
+            confirmButtonText: 'Ya, Hapus',
+            cancelButtonText: 'Batal'
+        }).then(function (r) {
+            if (!r.isConfirmed) return;
+            $('<input>').attr({ type: 'hidden', name: 'reason' }).val(r.value).appendTo(form);
+            form.submit();
+        });
     });
 
     /* Menghapus Cash Receipt = membalikkan catatan uang masuk. Alasannya wajib
@@ -1166,6 +1210,10 @@ $(function () {
         }).then(function (r) {
             if (!r.isConfirmed) return;
             $('<input>').attr({ type: 'hidden', name: 'reason' }).val(r.value).appendTo(form);
+            // Periode tertutup + Superadmin: alasan penghapusan dipakai juga sebagai alasan menembus periode.
+            if ($(form).data('period-override') == 1) {
+                $('<input>').attr({ type: 'hidden', name: 'alasan_periode' }).val(r.value).appendTo(form);
+            }
             form.submit();
         });
     });

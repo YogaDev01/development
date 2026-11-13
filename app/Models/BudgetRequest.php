@@ -229,6 +229,52 @@ class BudgetRequest extends Model
         return $this->isEditable() || (bool) $user?->hasRole(['superadmin']);
     }
 
+    /**
+     * Pengaju (applicant_id = pembuat CR) tidak boleh menyetujui, memverifikasi,
+     * memeriksa, menolak, atau men-takeout item atas pengajuannya sendiri di
+     * tahap approval CR maupun Settlement — kecuali Superadmin (keputusan
+     * pemilik 2026-11-13). Satu sumber untuk controller, bulk, dan Blade.
+     */
+    public function isSelfApprovalBlockedFor($user = null): bool
+    {
+        $user ??= Auth::user();
+        if (self::isExemptFromSelfApprovalBlock($user)) {
+            return false;
+        }
+
+        return $this->applicant_id !== null && (int) $this->applicant_id === (int) $user->id;
+    }
+
+    /** Pengecualian aturan pengaju-sendiri (tanpa user / Superadmin) — dipakai helper & scope di bawah. */
+    private static function isExemptFromSelfApprovalBlock($user): bool
+    {
+        return ! $user || $user->hasRole(['superadmin']);
+    }
+
+    /**
+     * Versi query dari isSelfApprovalBlockedFor(): buang CR yang pengajunya
+     * $user (kecuali Superadmin). Dipakai antrean aksi Todo List supaya isi
+     * halaman, badge, dan pengingat hanya menghitung CR yang bisa diaksi.
+     */
+    public function scopeExcludeSelfApprovalFor($query, $user = null)
+    {
+        $user ??= Auth::user();
+        if (self::isExemptFromSelfApprovalBlock($user)) {
+            return $query;
+        }
+
+        return $query->where(fn ($q) => $q->whereNull('applicant_id')
+            ->orWhere('applicant_id', '!=', $user->id));
+    }
+
+    public const SELF_APPROVAL_MESSAGE = 'Anda tidak dapat menyetujui, memverifikasi, atau menolak pengajuan Anda sendiri.';
+
+    /** Pesan error bila $user adalah pengaju CR ini (lihat isSelfApprovalBlockedFor), atau null. */
+    public function selfApprovalError($user = null): ?string
+    {
+        return $this->isSelfApprovalBlockedFor($user) ? self::SELF_APPROVAL_MESSAGE : null;
+    }
+
     /** Finance bisa kembalikan REALIZED → PAID */
     public function isRealizationRevisable(): bool
     {
@@ -1242,6 +1288,7 @@ class BudgetRequest extends Model
 
         $role = strtolower($user->role->name ?? '');
         if ($role === 'superadmin') return true;
+        if ($this->isSelfApprovalBlockedFor($user)) return false;
 
         return in_array($role, self::STAGE_ROLES[$this->status] ?? [], true);
     }
@@ -1303,7 +1350,7 @@ class BudgetRequest extends Model
         string $statusTo,
         string $actionType,
         ?string $notes = null,
-        ?string $snapshot = null
+        array|string|null $snapshot = null
     ): void {
         $user = Auth::user();
 

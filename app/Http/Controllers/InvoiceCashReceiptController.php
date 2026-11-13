@@ -20,6 +20,8 @@ use App\Models\SourceFund;
 use App\Models\User;
 use App\Models\UserActivityLog;
 use App\Services\NotifyService;
+use App\Support\PeriodLock;
+use App\Exceptions\PeriodLockedException;
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -347,6 +349,10 @@ class InvoiceCashReceiptController extends Controller
                 $bast     = $this->kunciBastUntukTagihan($poId, (int) $request->project_po_bast_id);
                 $poNumber = $bast->poNumber;
 
+                // Kunci periode (setelah kunci No. PO/BAST, urutan sama dengan jalur lain): tanggal invoice
+                // tidak boleh jatuh di periode Closing CLOSED.
+                PeriodLock::assertOpen($request->invoice_date, 'Invoice', $request, null, null, true);
+
                 $code = Invoice::generateCode((int) $poNumber->project_id, \Carbon\Carbon::parse($request->invoice_date));
 
                 $invoice = Invoice::create([
@@ -484,14 +490,54 @@ class InvoiceCashReceiptController extends Controller
                 return [$k => $v instanceof \DateTimeInterface ? $v->format('Y-m-d') : $v];
             })->all();
         };
-        $sebelum = $snapshot($invoice);
+        // Rincian (detail) satu baris per item, untuk rincian perubahan lama -> baru.
+        $snapshotRincian = fn (Invoice $inv): array => $inv->details()->orderBy('id')->get()
+            ->map(fn ($d) => trim((string) $d->description) . ' | ' . (int) $d->qty . ' ' . trim((string) $d->unit)
+                . ' x ' . number_format((int) $d->unit_price, 0, ',', '.')
+                . ((int) $d->deduction ? ' - ' . number_format((int) $d->deduction, 0, ',', '.') : '')
+                . ' = ' . number_format((int) $d->total, 0, ',', '.'))
+            ->all();
+        $sebelum         = [];
+        $rincianLama     = [];
+        $lampiranDihapus = 0;
 
         try {
-            DB::transaction(function () use ($request, $invoice, $poId, $editLanjut) {
+            DB::transaction(function () use ($request, $invoice, $poId, $editLanjut, $snapshot, $snapshotRincian, &$sebelum, &$rincianLama, &$lampiranDihapus) {
                 // Update lintas No. PO: kunci No. PO asal dan tujuan berurutan id naik (mencegah deadlock silang),
                 // baru BAST tujuan (kunciBastUntukTagihan mengunci ulang No. PO tujuan — aman dalam transaksi yang sama).
                 $this->kunciNoPo($invoice->project_po_number_id, $poId);
                 $bast          = $this->kunciBastUntukTagihan($poId, (int) $request->project_po_bast_id, $invoice->id);
+
+                // Baris invoice dikunci (urutan: No. PO -> BAST -> invoice) dan dibaca ulang, supaya nilai
+                // "lama" di log adalah nilai saat kunci dipegang dan edit tidak berpapasan dengan perubahan
+                // status / Cash Receipt lain. Status berubah sejak form dibuka = ditolak.
+                $terkunci = Invoice::whereKey($invoice->id)->lockForUpdate()->first();
+                if (! $terkunci || $terkunci->status !== $invoice->status) {
+                    throw new \DomainException('Status sudah berubah — muat ulang halaman.');
+                }
+                // No. PO asal yang dikunci di atas diambil dari baris SEBELUM lock; bila sudah
+                // berubah, kunci tadi menunjuk No. PO yang salah — tolak, jangan lanjut.
+                if ((int) $terkunci->project_po_number_id !== (int) $invoice->project_po_number_id) {
+                    throw new \DomainException('Data invoice sudah berubah — muat ulang halaman.');
+                }
+                $invoice->setRawAttributes($terkunci->getAttributes(), true);
+                // Kunci periode: tanggal baru selalu diperiksa; tanggal lama hanya bila bukan
+                // Draft (Draft belum direkap Closing, jadi boleh dipindah keluar dari periode CLOSED).
+                $tglPeriode = collect([
+                    $invoice->status !== 'DRAFT' ? $invoice->invoice_date?->toDateString() : null,
+                    \Carbon\Carbon::parse($request->invoice_date)->toDateString(),
+                ])->filter()->unique();
+                foreach ($tglPeriode as $tgl) {
+                    PeriodLock::assertOpen($tgl, 'Invoice', $request, $invoice, [[
+                        'label' => 'Tanggal Invoice',
+                        'from'  => $invoice->invoice_date?->format('Y-m-d') ?? '-',
+                        'to'    => \Carbon\Carbon::parse($request->invoice_date)->format('Y-m-d'),
+                    ]], true);
+                }
+
+                $sebelum     = $snapshot($invoice);
+                $rincianLama = $snapshotRincian($invoice);
+
                 $newPoNumber   = $bast->poNumber;
                 $oldPoNumberId = $invoice->project_po_number_id;
 
@@ -534,6 +580,7 @@ class InvoiceCashReceiptController extends Controller
                     if ($att) {
                         Storage::disk('secure')->delete($att->file_path);
                         $att->delete();
+                        $lampiranDihapus++;
                     }
                 }
                 $this->storeAttachments($invoice, $request);
@@ -565,6 +612,21 @@ class InvoiceCashReceiptController extends Controller
             $perubahan[] = ['label' => is_array($cfg) ? $cfg['label'] : $cfg, 'from' => $fmt($sebelum[$k]), 'to' => $fmt($sesudah[$k])];
         }
 
+        // Rincian per baris (urutan input): baris berubah / ditambah / dihapus dicatat lama -> baru.
+        $rincianBaru = $snapshotRincian($invoice);
+        for ($i = 0, $n = max(count($rincianLama), count($rincianBaru)); $i < $n; $i++) {
+            $lama = $rincianLama[$i] ?? null;
+            $baru = $rincianBaru[$i] ?? null;
+            if ($lama === $baru) continue;
+            $perubahan[] = ['label' => 'Rincian #' . ($i + 1), 'from' => $lama ?? '-', 'to' => $baru ?? '-'];
+        }
+
+        $lampiranBaru = collect((array) $request->file('attachments', []))
+            ->filter(fn ($r) => is_array($r) && isset($r['file']) && $r['file']->isValid())->count();
+        if ($lampiranDihapus || $lampiranBaru) {
+            $perubahan[] = ['label' => 'Lampiran', 'from' => $lampiranDihapus . ' dihapus', 'to' => $lampiranBaru . ' ditambah'];
+        }
+
         UserActivityLog::record('invoice', 'update',
             ($editLanjut ? '[Superadmin, status ' . $sebelum['status'] . '] ' : '') . 'Memperbarui Invoice #' . $invoice->code,
             $invoice, null, null, $perubahan ?: null);
@@ -574,8 +636,8 @@ class InvoiceCashReceiptController extends Controller
             $ringkas = collect($perubahan)->map(fn ($c) => $c['label'] . ': ' . $c['from'] . ' -> ' . $c['to'])->implode('; ');
             $invoice->comments()->create([
                 'user_id' => Auth::id(),
-                'comment' => '[EDIT SUPERADMIN - status ' . $sebelum['status'] . '] '
-                    . ($ringkas !== '' ? $ringkas : 'Disimpan tanpa perubahan field header (rincian/lampiran mungkin berubah).'),
+                'comment' => mb_substr('[EDIT SUPERADMIN - status ' . $sebelum['status'] . '] '
+                    . ($ringkas !== '' ? $ringkas : 'Disimpan tanpa perubahan.'), 0, 2000),
             ]);
         }
 
@@ -780,7 +842,7 @@ class InvoiceCashReceiptController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $invoice = $this->findVisibleInvoice($id, ['attachments']);
 
@@ -788,16 +850,34 @@ class InvoiceCashReceiptController extends Controller
             return back()->with('error', 'Hanya invoice berstatus DRAFT yang dapat dihapus.');
         }
 
+        // Invoice di-soft delete; alasan wajib dan tersimpan di barisnya (pola destroyCashReceipt).
+        $request->validate([
+            'reason' => 'required|string|min:5|max:500',
+        ], [
+            'reason.required' => 'Alasan penghapusan wajib diisi.',
+            'reason.min'      => 'Alasan penghapusan terlalu singkat.',
+        ]);
+
         $invoiceCode = $invoice->code;
 
-        DB::transaction(function () use ($invoice) {
-            $this->kunciNoPo($invoice->project_po_number_id);
+        try {
+        DB::transaction(function () use ($invoice, $request) {
+            $this->kunciNoPo($invoice->project_po_number_id); // No. PO dulu, baru invoice (urutan global)
+            $terkunci = Invoice::whereKey($invoice->id)->lockForUpdate()->first();
+            if (! $terkunci || $terkunci->status !== 'DRAFT') {
+                throw new \DomainException('Status sudah berubah — muat ulang halaman.');
+            }
 
             foreach ($invoice->attachments as $att) {
                 Storage::disk('secure')->delete($att->file_path);
             }
 
             $poNumberId = $invoice->project_po_number_id;
+            // Penanda hapus disimpan tanpa event, lalu soft delete.
+            $invoice->fill([
+                'deleted_by'    => Auth::id(),
+                'delete_reason' => $request->input('reason'),
+            ])->saveQuietly();
             $invoice->delete();
 
             // Hitung ulang SETELAH invoice ini terhapus, supaya sisa nominal No. PO
@@ -806,8 +886,11 @@ class InvoiceCashReceiptController extends Controller
                 \App\Models\ProjectPoNumber::find($poNumberId)?->syncInvoiceStatus();
             }
         });
+        } catch (\DomainException $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
-        UserActivityLog::record('invoice', 'delete', 'Menghapus Invoice #' . $invoiceCode);
+        UserActivityLog::record('invoice', 'delete', 'Menghapus Invoice #' . $invoiceCode, $invoice, $request->input('reason'));
 
         return redirect('/invoice-cash-receipt')->with('success', 'Invoice berhasil dihapus.');
     }
@@ -834,6 +917,9 @@ class InvoiceCashReceiptController extends Controller
                 if ($invoice->project_po_bast_id) {
                     $this->kunciBastUntukTagihan((int) $invoice->project_po_number_id, (int) $invoice->project_po_bast_id, $invoice->id);
                 }
+
+                // Submit memasukkan invoice ke rekap Closing, jadi tanggalnya harus di periode terbuka.
+                PeriodLock::assertOpen($invoice->invoice_date, 'Invoice', null, $invoice, null, true);
 
                 return $this->transitionStatus(Invoice::class, $invoice->id, 'DRAFT', [
                     'status'       => 'SUBMITTED',
@@ -944,6 +1030,9 @@ class InvoiceCashReceiptController extends Controller
                 $error = session('error');
             } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
                 $error = $e->getMessage() ?: 'akses ditolak.';
+            } catch (PeriodLockedException $e) {
+                // Satu invoice di periode CLOSED tidak boleh menggagalkan sisa batch.
+                $error = $e->getMessage();
             }
             session()->forget(['success', 'error']);
 
@@ -1070,6 +1159,11 @@ class InvoiceCashReceiptController extends Controller
 
         try {
             $berhasil = DB::transaction(function () use ($invoice, $map, $oldStatus, $request) {
+                // Kembali ke DRAFT mengeluarkan/memasukkan invoice dari rekap Closing.
+                if ($map[$oldStatus] === 'DRAFT') {
+                    PeriodLock::assertOpen($invoice->invoice_date, 'Invoice', $request, $invoice, null, true);
+                }
+
                 if ($oldStatus === 'CANCELLED' && $invoice->project_po_bast_id) {
                     // CANCELLED -> DRAFT mengambil kembali BAST-nya: pastikan belum dipakai invoice aktif lain.
                     $this->kunciBastUntukTagihan((int) $invoice->project_po_number_id, (int) $invoice->project_po_bast_id, $invoice->id);
@@ -1367,6 +1461,8 @@ class InvoiceCashReceiptController extends Controller
                 throw new \DomainException('Status sudah berubah — muat ulang halaman.');
             }
 
+            PeriodLock::assertOpen($terkunci->invoice_date, 'Invoice', $request, $invoice, null, true);
+
             $invoice->update([
                 'status'        => 'CANCELLED',
                 'cancelled_by'  => Auth::id(),
@@ -1399,7 +1495,7 @@ class InvoiceCashReceiptController extends Controller
             ? 'Invoice ' . $invoice->code . ' dibatalkan dan dikembalikan ke DRAFT untuk direvisi.'
             : 'Invoice ' . $invoice->code . ' dibatalkan.';
 
-        UserActivityLog::record('invoice', 'cancel', 'Membatalkan Invoice #' . $invoice->code, $invoice, $request->notes);
+        UserActivityLog::record('invoice', 'cancel', 'Membatalkan Invoice #' . $invoice->code, $invoice, $request->cancel_reason);
 
         return back()->with('success', $message);
     }
@@ -1443,11 +1539,21 @@ class InvoiceCashReceiptController extends Controller
         }
 
         $buangLama = null;
+        $rinciUbah = [];
         try {
-            $ubah = DB::transaction(function () use ($invoice, $crId, $amount, $request, $proofPath, &$buangLama) {
+            $ubah = DB::transaction(function () use ($invoice, $crId, $amount, $request, $proofPath, &$buangLama, &$rinciUbah) {
                 $this->kunciNoPo($invoice->project_po_number_id);
                 $terkunci = Invoice::whereKey($invoice->id)->lockForUpdate()->first();
                 $cr = CashReceipt::where('invoice_id', $terkunci->id)->whereKey($crId)->lockForUpdate()->firstOrFail();
+
+                // Kunci periode: tanggal terima lama DAN baru (memindah tanggal keluar dari periode CLOSED juga mengubah rekapnya).
+                foreach (collect([$cr->received_date?->toDateString(), \Carbon\Carbon::parse($request->received_date)->toDateString()])->filter()->unique() as $tgl) {
+                    PeriodLock::assertOpen($tgl, 'Cash Receipt', $request, $terkunci, [[
+                        'label' => 'Tanggal terima',
+                        'from'  => $cr->received_date?->format('Y-m-d') ?? '-',
+                        'to'    => \Carbon\Carbon::parse($request->received_date)->format('Y-m-d'),
+                    ]], true);
+                }
 
                 if ($amount !== (int) $cr->amount) {
                     if ($cr->cash_receipt_header_id) {
@@ -1476,10 +1582,12 @@ class InvoiceCashReceiptController extends Controller
                 foreach ($lama as $k => $v) {
                     if ((string) $v !== (string) $baru[$k]) {
                         $ubah[] = $k . ': ' . ($v !== '' ? $v : '-') . ' -> ' . ($baru[$k] !== '' ? $baru[$k] : '-');
+                        $rinciUbah[] = ['label' => $k, 'from' => $v !== '' ? $v : '-', 'to' => $baru[$k] !== '' ? $baru[$k] : '-'];
                     }
                 }
                 if ($proofPath) {
                     $ubah[] = 'File bukti diganti';
+                    $rinciUbah[] = ['label' => 'File bukti', 'from' => $cr->proof_file ? basename($cr->proof_file) : '-', 'to' => basename($proofPath)];
                     $buangLama = $cr->proof_file;
                 }
                 if (! $ubah) {
@@ -1501,7 +1609,7 @@ class InvoiceCashReceiptController extends Controller
 
                 return $ubah;
             });
-        } catch (\DomainException $e) {
+        } catch (\DomainException|PeriodLockedException $e) {
             if ($proofPath) {
                 Storage::disk('secure')->delete($proofPath);
             }
@@ -1516,7 +1624,7 @@ class InvoiceCashReceiptController extends Controller
         }
 
         UserActivityLog::record('cash_receipt', 'update', '[Superadmin] Mengedit Cash Receipt Invoice #' . $invoice->code,
-            $invoice, implode('; ', $ubah));
+            $invoice, mb_substr(implode('; ', $ubah), 0, 2000), null, $rinciUbah ?: null);
 
         return back()->with('success', 'Cash Receipt diperbarui (' . count($ubah) . ' perubahan, tercatat di Log).');
     }
@@ -1576,6 +1684,9 @@ class InvoiceCashReceiptController extends Controller
                 return 'Cash Receipt hanya bisa ditambahkan untuk invoice berstatus SENT, RECEIVED, atau PARTIALLY PAID.';
             }
 
+            // Kunci periode: tanggal terima tidak boleh jatuh di periode Closing CLOSED.
+            PeriodLock::assertOpen($request->received_date, 'Cash Receipt', $request, $terkunci, null, true);
+
             // Batas = sisa tagihan BRUTO (Invoice + PPN - diterima - PPh receipt), sama dengan form
             // multi-invoice; tidak bergantung pada captured_total yang bisa basi.
             $sisa = $terkunci->sisaBruto();
@@ -1606,7 +1717,7 @@ class InvoiceCashReceiptController extends Controller
 
             return null;
         });
-        } catch (\DomainException $e) {
+        } catch (\DomainException|PeriodLockedException $e) {
             $gagal = $e->getMessage();
         }
 
@@ -1651,7 +1762,7 @@ class InvoiceCashReceiptController extends Controller
         | bisa melampaui tagihan. Rumus dan pesan tidak berubah.
         */
         try {
-            $error = DB::transaction(function () use ($invoice, $cr, $tax) {
+            $error = DB::transaction(function () use ($invoice, $cr, $tax, $request) {
                 $this->kunciNoPo($invoice->project_po_number_id); // No. PO dulu, baru invoice (urutan global)
                 $terkunci = Invoice::whereKey($invoice->id)->lockForUpdate()->first();
 
@@ -1660,6 +1771,9 @@ class InvoiceCashReceiptController extends Controller
                 }
 
                 $cr->refresh();
+
+                // PPh ikut membentuk nominal rekap Closing (amount + PPh), jadi tanggal terima harus di periode terbuka.
+                PeriodLock::assertOpen($cr->received_date, 'Cash Receipt', $request, $invoice, null, true);
 
                 // Batas PPh = sisa tagihan BRUTO (Invoice + PPN) di luar receipt ini, dikurangi nominal diterima receipt ini.
                 $maxTax = max(0, $terkunci->sisaBruto($cr->id) - $cr->amount);
@@ -1728,6 +1842,10 @@ class InvoiceCashReceiptController extends Controller
                 // (selisih -PPh dilewatkan sebagai PPh tertunda), supaya hook model membaca invoice yang sudah segar.
                 // Dibaca ulang di dalam kunci: kalau sudah dihapus request lain, tidak ada yang dibalik dua kali.
                 $segar = CashReceipt::whereKey($cr->id)->lockForUpdate()->first();
+
+                // Kunci periode: tanggal dibaca dari baris yang sudah terkunci (bisa berubah oleh super-update).
+                PeriodLock::assertOpen(($segar ?? $cr)->received_date, 'Cash Receipt', $request, $invoice, null, true);
+
                 if ($segar && (int) $segar->withholding_tax > 0) {
                     $terkunci->sinkronPphDariCashReceipt(
                         'pembatalan Cash Receipt invoice ini',

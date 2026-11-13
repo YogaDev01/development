@@ -112,6 +112,9 @@
             @if($drift['stale']->isNotEmpty())
                 {{ $drift['stale']->count() }} baris rekap sudah tidak ada di data.
             @endif
+            @if($drift['changed']->isNotEmpty())
+                {{ $drift['changed']->count() }} baris rekap nominalnya berubah sejak direkap.
+            @endif
             @if($closing->isDraft())
                 Susun ulang rekap sebelum menutup periode.
             @else
@@ -124,7 +127,7 @@
             ['Total Transaksi', number_format($liveSummary['total_transaction']), 'primary', 'fas fa-list-ol'],
             ['Total Nilai', 'Rp ' . number_format($liveSummary['total_value'], 0, ',', '.'), 'info', 'fas fa-coins'],
             ['Sudah Direkap', $closing ? number_format($closing->total_transaction) : '0', 'success', 'fas fa-clipboard-check'],
-            ['Selisih', $closing ? number_format($drift['missing']->count() + $drift['stale']->count()) : '—', $drift['has_difference'] ? 'danger' : 'secondary', 'fas fa-not-equal'],
+            ['Selisih', $closing ? number_format($drift['missing']->count() + $drift['stale']->count() + $drift['changed']->count()) : '—', $drift['has_difference'] ? 'danger' : 'secondary', 'fas fa-not-equal'],
         ]" />
 
         {{-- RINGKASAN PER MODUL --}}

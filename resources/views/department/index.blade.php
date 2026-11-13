@@ -7,31 +7,30 @@
 <div class="content">
     <div class="container-fluid">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Department</h1>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+        {{-- Judul & breadcrumb dipindah shell ke topbar (pola Cost Request). --}}
+        <div class="tw:sr-only">
+            <h1>Department</h1>
+            <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="#">Master</a></li>
                 <li class="breadcrumb-item active">Department</li>
             </ol>
         </div>
+        <x-tw.page-header class="tw:py-4 tw:mb-4" title="Daftar Department"
+            description="Master department perusahaan beserta status aktifnya.">
+            <x-slot:actions>
+                <x-tw.button id="btnTambah"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Department</x-tw.button>
+            </x-slot:actions>
+        </x-tw.page-header>
 
         <x-stat-cards :cards="[
             ['Total Department', $summary['total'], 'primary', 'fas fa-building'],
             ['Active', $summary['active'], 'success', 'fas fa-check-circle'],
         ]" />
 
-        <div class="card card-primary card-outline shadow-sm">
-            <div class="card-header d-flex align-items-center">
-                <h3 class="card-title"><i class="fas fa-building mr-1"></i> Daftar Department</h3>
-                <div class="ml-auto">
-                    <button type="button" class="btn btn-success btn-sm" id="btnTambah">
-                        <i class="fas fa-plus mr-1"></i> Tambah Department
-                    </button>
-                </div>
-            </div>
-            <div class="card-body">
+        {{-- Kartu tunggal toolbar + tabel (pola Cost Request). --}}
+        <x-tw.card padding="sm" class="tw:mt-3">
                 <div class="table-responsive">
-                    <table class="table table-bordered table-hover mb-0">
+                    <table class="table table-bordered table-hover mb-0 ts-idx-tbl">
                         <thead class="bg-light">
                             <tr>
                                 <th scope="col" class="text-nowrap" style="width:1%;">No</th>
@@ -81,13 +80,12 @@
 
                             </tr>
                             @empty
-                            <tr><td colspan="6" class="text-center text-muted py-4">Belum ada department.</td></tr>
+                            <tr><td colspan="6"><x-empty title="Belum ada department" message="Klik Tambah Department untuk membuat yang pertama." compact /></td></tr>
                             @endforelse
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
+        </x-tw.card>
 
     </div>
 </div>
@@ -189,4 +187,9 @@ $(function () {
     });
 });
 </script>
+@endpush
+
+@push('styles')
+{{-- Utilitas tw: (x-tw.*) dimuat per halaman, sama seperti Cost Request. --}}
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 @endpush

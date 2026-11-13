@@ -209,7 +209,7 @@
 @push('styles')
 <style>
 /* ---- Cover / sampul ---- */
-.prof-cover { position:relative; height:203px; background:var(--charcoal); background-size:cover; background-position:center; }
+.prof-cover { position:relative; height:305px; background:var(--charcoal); background-size:cover; background-position:center; }
 .prof-photo-btn { position:absolute; top:12px; right:12px; z-index:3; border:none; border-radius:var(--radius-sm); padding:5px 11px; font-size:11.5px; font-weight:600; color:#fff; background:rgba(0,0,0,.42); cursor:pointer; transition:background .15s ease; }
 .prof-photo-btn:hover { background:rgba(0,0,0,.6); }
 .prof-photo-menu { position:absolute; top:46px; right:12px; z-index:20; min-width:160px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:var(--shadow-lg); padding:5px; display:none; }

@@ -56,7 +56,16 @@ class ForecastController extends Controller
         [$forecasts, $truncated, $total] = $this->cappedRows($query, 'id');
         $maxRows = $this->maxRows;
 
-        return view('forecast.index', compact('forecasts', 'summary', 'truncated', 'total', 'maxRows'));
+        /*
+        | Cash & Bank: ringkasan "aktual vs terkonfirmasi vs forecast" hanya untuk pemegang
+        | menu Cash Overview — akses Forecast TIDAK otomatis membuka saldo kas.
+        */
+        $user    = auth()->user();
+        $outlook = $user && ($user->hasRole('superadmin') || $user->effectiveRole()?->hasMenu('cash-overview'))
+            ? app(\App\Services\CashReportService::class)->outlook(30)
+            : null;
+
+        return view('forecast.index', compact('forecasts', 'summary', 'truncated', 'total', 'maxRows', 'outlook'));
     }
 
     /*

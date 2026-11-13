@@ -1558,9 +1558,14 @@ class TodoListController extends Controller
 
         switch ($key) {
             case 'head': case 'cost_control_checked': case 'ceo':
-            case 'managerRejected':
             case 'headSettlementCheck': case 'financeSettlementVerify':
             case 'ceoSettlementClose': case 'approverSecondApprove':
+                // Antrean approval: CR milik sendiri tidak bisa diaksi (kecuali
+                // Superadmin), jadi tidak ikut dihitung — sama dengan buildStatusGroups().
+                return tap(BudgetRequest::query()->whereIn('status', $status), fn ($q) => $this->scopeCrTodo($q))
+                    ->excludeSelfApprovalFor($user);
+
+            case 'managerRejected':
                 return tap(BudgetRequest::query()->whereIn('status', $status), fn ($q) => $this->scopeCrTodo($q));
 
             case 'managerPaid':
@@ -2197,6 +2202,10 @@ class TodoListController extends Controller
             'budgetPlan.project.customer', 'budgetPlan.project.manager', 'budgetPlan.costCenter',
         ])->whereIn('status', (array) $status);
         $this->scopeCrTodo($query);
+        // Semua pemanggil adalah antrean approval: CR milik sendiri tidak bisa
+        // diaksi (BudgetRequest::isSelfApprovalBlockedFor), jadi tidak ditampilkan
+        // sebagai tugas — identik dengan queueQuery() untuk badge/pengingat.
+        $query->excludeSelfApprovalFor(Auth::user());
 
         $crs = $query->get();
 

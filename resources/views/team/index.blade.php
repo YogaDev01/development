@@ -9,13 +9,26 @@
 <div class="content">
     <div class="container-fluid">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Team</h1>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+        {{-- Judul & breadcrumb dipindah shell ke topbar (pola Cost Request). --}}
+        <div class="tw:sr-only">
+            <h1>Team</h1>
+            <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="#">Master</a></li>
                 <li class="breadcrumb-item active">Team</li>
             </ol>
         </div>
+        <x-tw.page-header class="tw:py-4 tw:mb-4" title="Team & Struktur Organisasi"
+            description="Daftar team, anggota aktif, dan struktur organisasi keseluruhan.">
+            @if(Auth::user()->hasRole('superadmin'))
+            {{-- Kelola Department & Tambah Team superadmin saja — gerbang yang sama
+                 ditegakkan di routes/web.php, jadi menyembunyikan tombol ini bukan
+                 satu-satunya penjaga. --}}
+            <x-slot:actions>
+                <x-tw.button variant="secondary" href="{{ url('/department') }}"><i class="fas fa-building" aria-hidden="true"></i> Kelola Department</x-tw.button>
+                <x-tw.button href="{{ url('/team/create') }}"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Team</x-tw.button>
+            </x-slot:actions>
+            @endif
+        </x-tw.page-header>
 
         <x-stat-cards :cards="[
             ['Total Team', $summary['total'], 'primary', 'fas fa-sitemap'],
@@ -40,63 +53,38 @@
 
         <div class="tab-content">
         <div class="tab-pane fade show active" id="paneDatabase" role="tabpanel" aria-labelledby="tabDatabase">
-        <div class="card card-primary card-outline shadow-sm">
-            <div class="card-header d-flex align-items-center flex-wrap">
-                <h3 class="card-title"><i class="fas fa-sitemap mr-1"></i> Daftar Team</h3>
-                <div class="ml-auto d-flex flex-wrap" style="gap:8px;">
-                    <form method="GET" class="d-flex" style="gap:6px;">
-                        <input type="search" name="q" class="form-control form-control-sm"
-                               value="{{ $filters['q'] }}" placeholder="Cari team / leader / anggota"
-                               style="width:220px;">
-                        <select name="department_id" class="form-control form-control-sm" onchange="this.form.submit()" style="width:auto;">
-                            <option value="">Semua Department</option>
-                            @foreach($departments as $dep)
-                            <option value="{{ $dep->id }}" {{ request('department_id') == $dep->id ? 'selected' : '' }}>{{ $dep->name }}</option>
-                            @endforeach
-                        </select>
-                        <select name="status" class="form-control form-control-sm" onchange="this.form.submit()" style="width:auto;">
-                            <option value="">Semua Status</option>
-                            <option value="ACTIVE" {{ request('status') === 'ACTIVE' ? 'selected' : '' }}>ACTIVE</option>
-                            <option value="INACTIVE" {{ request('status') === 'INACTIVE' ? 'selected' : '' }}>INACTIVE</option>
-                        </select>
-                        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-search"></i></button>
-                        @if($filters['q'] !== '' || $filters['department_id'] || $filters['status'])
-                        <a href="{{ url('/team') }}" class="btn btn-outline-secondary btn-sm" title="Reset filter">
-                            <i class="fas fa-eraser"></i>
-                        </a>
-                        @endif
-                    </form>
-                    {{-- Kelola Department superadmin saja — gerbang yang sama
-                         ditegakkan di routes/web.php, jadi menyembunyikan tombol
-                         ini bukan satu-satunya penjaga. --}}
-                    @if(Auth::user()->hasRole('superadmin'))
-                    <a href="{{ url('/department') }}" class="btn btn-outline-secondary btn-sm">
-                        <i class="fas fa-building mr-1"></i> Kelola Department
-                    </a>
-                    @endif
-                    @if(Auth::user()->hasRole('superadmin'))
-                    <a href="{{ url('/team/create') }}" class="btn btn-success btn-sm">
-                        <i class="fas fa-plus mr-1"></i> Tambah Team
-                    </a>
-                    @endif
+        {{-- Kartu tunggal toolbar + tabel (pola Cost Request). --}}
+        <x-tw.card padding="sm">
+            <form method="GET" class="tw:mb-3 tw:flex tw:flex-wrap tw:items-center tw:gap-2">
+                <div class="input-group input-group-sm" style="width:260px;">
+                    <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-search" aria-hidden="true"></i></span></div>
+                    <input type="search" name="q" class="form-control" value="{{ $filters['q'] }}" placeholder="Cari team / leader / anggota" aria-label="Cari team">
                 </div>
-            </div>
-            <div class="card-body">
-                @include('team._database')
-            </div>
-        </div>
+                <select name="department_id" class="form-control form-control-sm" onchange="this.form.submit()" style="width:auto;" aria-label="Department">
+                    <option value="">Semua Department</option>
+                    @foreach($departments as $dep)
+                    <option value="{{ $dep->id }}" {{ request('department_id') == $dep->id ? 'selected' : '' }}>{{ $dep->name }}</option>
+                    @endforeach
+                </select>
+                <select name="status" class="form-control form-control-sm" onchange="this.form.submit()" style="width:auto;" aria-label="Status">
+                    <option value="">Semua Status</option>
+                    <option value="ACTIVE" {{ request('status') === 'ACTIVE' ? 'selected' : '' }}>ACTIVE</option>
+                    <option value="INACTIVE" {{ request('status') === 'INACTIVE' ? 'selected' : '' }}>INACTIVE</option>
+                </select>
+                <x-tw.button type="submit" variant="secondary" size="sm"><i class="fas fa-filter" aria-hidden="true"></i> Filter</x-tw.button>
+                @if($filters['q'] !== '' || $filters['department_id'] || $filters['status'])
+                <x-tw.button variant="ghost" size="sm" href="{{ url('/team') }}" title="Clear Filter" aria-label="Clear Filter"><i class="fas fa-eraser" aria-hidden="true"></i></x-tw.button>
+                @endif
+            </form>
+            @include('team._database')
+        </x-tw.card>
         </div>{{-- /paneDatabase --}}
 
         <div class="tab-pane fade" id="paneOrganisasi" role="tabpanel" aria-labelledby="tabOrganisasi">
-            <div class="card card-primary card-outline shadow-sm">
-                <div class="card-header d-flex align-items-center flex-wrap">
-                    <h3 class="card-title"><i class="fas fa-sitemap mr-1"></i> Struktur Organisasi</h3>
-                    <span class="ml-auto text-muted" style="font-size:11.5px;">Ringkasan &amp; struktur keseluruhan team ACTIVE</span>
-                </div>
-                <div class="card-body">
-                    @include('team._organization')
-                </div>
-            </div>
+            <x-tw.card padding="sm">
+                <x-slot:header>Struktur Organisasi <span class="tw:text-text-dim" style="font-weight:400;">· ringkasan &amp; struktur keseluruhan team ACTIVE</span></x-slot:header>
+                @include('team._organization')
+            </x-tw.card>
         </div>{{-- /paneOrganisasi --}}
         </div>{{-- /tab-content --}}
 
@@ -146,4 +134,9 @@ $(function () {
     });
 });
 </script>
+@endpush
+
+@push('styles')
+{{-- Utilitas tw: (x-tw.*) dimuat per halaman, sama seperti Cost Request. --}}
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 @endpush

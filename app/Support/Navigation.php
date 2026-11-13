@@ -52,6 +52,36 @@ class Navigation
         return $hasil;
     }
 
+    /** Penanda seksi "daftar aplikasi" pada panel utama sidebar. */
+    public const APP_LIST = '__apps';
+
+    /**
+     * Panel utama sidebar (tampilan awal sebelum memilih aplikasi): Todo List,
+     * daftar aplikasi, lalu Master Data bersama.
+     *
+     * @return array<string, array|string>
+     */
+    public static function rootSections(): array
+    {
+        $hasil = ['' => ['beranda'], 'Aplikasi' => self::APP_LIST];
+
+        $master = config('navigation.master_data', []);
+        if (! empty($master)) {
+            $hasil[self::MASTER_DATA] = $master;
+        }
+
+        return $hasil;
+    }
+
+    /**
+     * Seksi menu milik satu aplikasi saja (panel yang meluncur masuk saat
+     * aplikasi dipilih). Todo List & Master Data ada di panel utama.
+     */
+    public static function appSections(string $app): array
+    {
+        return config('navigation.apps.' . $app, []);
+    }
+
     /**
      * Kunci hak akses (menu_items.key) sebuah item navigasi, atau null bila
      * item itu tidak diatur lewat menu access (mis. dijaga 'roles').
@@ -145,7 +175,7 @@ class Navigation
                 $navKeys = array_values(array_diff($ratakan($navKeys), ['dashboard', 'todo-list']));
                 $items   = $petakan($navKeys);
                 if ($items) {
-                    $seksi[] = ['label' => $label, 'items' => $items];
+                    $seksi[] = ['label' => $label === '' ? 'Menu' : $label, 'items' => $items];
                 }
             }
             if ($seksi) {

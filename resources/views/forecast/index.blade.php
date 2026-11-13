@@ -7,13 +7,20 @@
 <div class="content">
     <div class="container-fluid">
 
-        <div class="d-flex justify-content-between align-items-center mb-3 mt-3 flex-wrap">
-            <h1 class="m-0 font-weight-bold" style="font-size:20px;font-weight:700;color:var(--text);">Finance Forecast</h1>
-            <ol class="breadcrumb m-0 p-0 bg-transparent" style="font-size:12px;">
+        {{-- Judul & breadcrumb dipindah shell ke topbar (pola Cost Request). --}}
+        <div class="tw:sr-only">
+            <h1>Finance Forecast</h1>
+            <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="#">Finance</a></li>
                 <li class="breadcrumb-item active">Forecast</li>
             </ol>
         </div>
+        <x-tw.page-header class="tw:py-4 tw:mb-4" title="Proyeksi Kas"
+            description="Forecast pemasukan dan pengeluaran beserta posisi kas ke depan.">
+            <x-slot:actions>
+                <x-tw.button href="{{ url('/forecast/create') }}"><i class="fas fa-plus" aria-hidden="true"></i> Tambah Forecast</x-tw.button>
+            </x-slot:actions>
+        </x-tw.page-header>
 
         <x-stat-cards :cards="[
             ['Total', $summary['total'], 'primary', 'fas fa-binoculars'],
@@ -22,22 +29,37 @@
             ['Closed', $summary['closed'], 'dark', 'fas fa-lock'],
         ]" />
 
-        <div class="card card-primary card-outline shadow-sm">
-            <div class="card-header d-flex align-items-center flex-wrap">
-                <h3 class="card-title"><i class="fas fa-binoculars mr-1"></i> Daftar Forecast</h3>
-                <div class="ml-auto d-flex flex-wrap" style="gap:8px;">
-                    <select name="status" class="form-control form-control-sm" onchange="location.href='?status='+this.value" style="width:auto;">
+        @if($outlook)
+            @php $rpo = fn ($n) => ($n < 0 ? '-' : '') . 'Rp ' . number_format(abs((int) $n), 0, ',', '.'); @endphp
+            <div class="card shadow-sm mb-3">
+                <div class="card-body py-2" style="font-size:13px;">
+                    <div class="font-weight-bold mb-1">Posisi kas ({{ $outlook['days'] }} hari ke depan) — tiga lapis yang tidak dicampur</div>
+                    <div class="row">
+                        <div class="col-md-4"><span class="text-muted">A. Kas aktual</span><br><strong>{{ $rpo($outlook['actual']) }}</strong></div>
+                        <div class="col-md-4"><span class="text-muted">B. Proyeksi terkonfirmasi s/d {{ $outlook['until'] }}</span><br><strong>{{ $rpo($outlook['confirmedProj']) }}</strong>
+                            <span class="text-muted">(collections {{ $rpo($outlook['recv']['within']) }} − scheduled {{ $rpo($outlook['scheduled']) }} − CR approved {{ $rpo($outlook['approvedUnpaid']) }})</span></div>
+                        <div class="col-md-4"><span class="text-muted">C. Termasuk forecast aktif (asumsi)</span><br><strong>{{ $rpo($outlook['forecast_proj']) }}</strong></div>
+                    </div>
+                    @if(auth()->user()->effectiveRole()?->hasMenu('cash-reports') || auth()->user()->hasRole('superadmin'))
+                        <a href="{{ route('cash-reports.show', 'forecast') }}" style="font-size:12px;">Rincian laporan →</a>
+                    @endif
+                </div>
+            </div>
+        @endif
+
+        {{-- Kartu tunggal toolbar + tabel (pola Cost Request). --}}
+        <x-tw.card padding="sm">
+                <div class="tw:mb-3 tw:flex tw:flex-wrap tw:items-center tw:gap-2">
+                    <select name="status" class="form-control form-control-sm" onchange="location.href='?status='+this.value" style="width:auto;" aria-label="Status">
                         <option value="">Semua Status</option>
                         <option value="DRAFT" {{ request('status') === 'DRAFT' ? 'selected' : '' }}>DRAFT</option>
                         <option value="ACTIVE" {{ request('status') === 'ACTIVE' ? 'selected' : '' }}>ACTIVE</option>
                         <option value="CLOSED" {{ request('status') === 'CLOSED' ? 'selected' : '' }}>CLOSED</option>
                     </select>
-                    <a href="{{ url('/forecast/create') }}" class="btn btn-success btn-sm">
-                        <i class="fas fa-plus mr-1"></i> Tambah Forecast
-                    </a>
+                    @if(request('status'))
+                    <x-tw.button variant="ghost" size="sm" href="{{ url('/forecast') }}" title="Clear Filter" aria-label="Clear Filter"><i class="fas fa-eraser" aria-hidden="true"></i></x-tw.button>
+                    @endif
                 </div>
-            </div>
-            <div class="card-body">
                 {{-- Daftar dibatasi baris terbaru (Concerns\CapsLargeLists);
                      angka kartu ringkasan tetap dihitung dari SELURUH data
                      lewat query agregat, jadi tidak ikut terpotong. --}}
@@ -50,7 +72,7 @@
                 </div>
                 @endif
                 <div class="table-responsive">
-                    <table class="table table-bordered table-hover mb-0" style="font-size:12.5px;">
+                    <table class="table table-bordered table-hover mb-0 ts-idx-tbl">
                         <thead class="bg-light">
                             <tr>
                                 <th scope="col" style="width:1%;">No</th>
@@ -133,8 +155,7 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
-        </div>
+        </x-tw.card>
 
     </div>
 </div>
@@ -961,4 +982,9 @@ $(function () {
     }
 });
 </script>
+@endpush
+
+@push('styles')
+{{-- Utilitas tw: (x-tw.*) dimuat per halaman, sama seperti Cost Request. --}}
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 @endpush

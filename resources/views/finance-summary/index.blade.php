@@ -4,10 +4,21 @@
 
 @section('content')
 
-<div class="content">
+<div class="content fs-page">
     <div class="container-fluid">
 
-        <ul class="nav nav-tabs ts-pill-tabs ts-tabs-sticky mb-3" id="summaryTabs">
+        <div class="tw:sr-only">
+            <h1>Summary</h1>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="#">Finance</a></li>
+                <li class="breadcrumb-item active">Summary</li>
+            </ol>
+        </div>
+        <x-tw.page-header class="tw:py-4 tw:mb-4" title="Ringkasan Keuangan"
+            description="Analisa budget, collection, dan posisi eksekutif dalam satu halaman.">
+        </x-tw.page-header>
+
+        <ul class="nav nav-tabs ts-pill-tabs ts-tabs-sticky mb-3 d-none" id="summaryTabs">
             @if($canViewExecutive)
             <li class="nav-item">
                 <a class="nav-link {{ $initialTab === 'executive' ? 'active' : '' }}" id="summaryTabExecutiveLink" data-toggle="tab" href="#summaryPaneExecutive">
@@ -1733,6 +1744,31 @@
 
 @push('styles')
 <style>
+/* Kartu & tabel Summary diselaraskan dengan pola Cost Request (x-tw.card + tabel CR):
+   bingkai tipis radius-md, bayangan tipis, header kartu putih bergaris bawah, header
+   tabel biasa surface-2. Kartu KPI (warna aksen) dan tabel matriks .col-pic-table
+   (header pita) sengaja tidak disentuh. Markup tetap — hanya tampilan. */
+body.tesys-ui .fs-page .card:not(.col-kpi-card) {
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-xs) !important;
+}
+body.tesys-ui .fs-page .card:not(.col-kpi-card) > .card-header {
+    background: var(--surface) !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding: 12px 16px;
+}
+body.tesys-ui .fs-page .card:not(.col-kpi-card) > .card-header .card-title {
+    font-size: var(--fs-section); font-weight: var(--fw-section); color: var(--text);
+}
+body.tesys-ui .fs-page table.table:not(.col-pic-table) thead th {
+    background: var(--surface-2) !important;
+    color: var(--text-dim) !important;
+    font-size: 12px; font-weight: 600;
+    text-transform: none !important; letter-spacing: 0 !important;
+    border-bottom: 1px solid var(--border-strong) !important;
+}
+
 /* ── Active Cash Advance: tiga tingkat Manager > Beneficiary > Cost Request ── */
 .aca-caret { font-size:10px; transition:transform .15s; display:inline-block; }
 /* Tiga tingkat kini berbagi SATU kolom - kolom Manager tersendiri dicabut
@@ -4135,4 +4171,9 @@ $(function () {
 });
 </script>
 @endif
+@endpush
+
+@push('styles')
+{{-- Utilitas tw: (x-tw.*) dimuat per halaman, sama seperti Cost Request. --}}
+<link rel="stylesheet" href="@aset('css/tesys-tw.css')">
 @endpush

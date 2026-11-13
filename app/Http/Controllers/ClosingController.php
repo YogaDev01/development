@@ -40,15 +40,15 @@ class ClosingController extends Controller
             ->unique()
             ->sortDesc()
             ->mapWithKeys(fn ($p) => [
-                $p => \Carbon\Carbon::createFromFormat('Y-m', $p)->translatedFormat('F Y'),
+                $p => \Carbon\Carbon::createFromFormat('!Y-m', $p)->translatedFormat('F Y'),
             ]);
 
         $closing = Closing::with(['details', 'createdBy', 'closedBy', 'reopenedBy'])
             ->where('period', $period)
             ->first();
 
-        $start = \Carbon\Carbon::createFromFormat('Y-m', $period)->startOfMonth();
-        $end   = \Carbon\Carbon::createFromFormat('Y-m', $period)->endOfMonth();
+        $start = \Carbon\Carbon::createFromFormat('!Y-m', $period)->startOfMonth();
+        $end   = \Carbon\Carbon::createFromFormat('!Y-m', $period)->endOfMonth();
 
         // Keadaan data SEKARANG untuk periode ini — dihitung apa pun status
         // closing-nya, karena justru perbandingan inilah isi period control.
@@ -57,7 +57,7 @@ class ClosingController extends Controller
 
         $drift = $closing
             ? $this->closingService->drift($closing)
-            : ['missing' => collect(), 'stale' => collect(), 'has_difference' => false];
+            : ['missing' => collect(), 'stale' => collect(), 'changed' => collect(), 'has_difference' => false];
 
         return view('closing.index', [
             'period'      => $period,
@@ -83,8 +83,8 @@ class ClosingController extends Controller
         $request->validate(['period' => 'required|date_format:Y-m']);
 
         $period = $request->period;
-        $start  = \Carbon\Carbon::createFromFormat('Y-m', $period)->startOfMonth();
-        $end    = \Carbon\Carbon::createFromFormat('Y-m', $period)->endOfMonth();
+        $start  = \Carbon\Carbon::createFromFormat('!Y-m', $period)->startOfMonth();
+        $end    = \Carbon\Carbon::createFromFormat('!Y-m', $period)->endOfMonth();
 
         $closing = Closing::where('period', $period)->first();
 
@@ -127,28 +127,42 @@ class ClosingController extends Controller
 
     public function close(Request $request, $id)
     {
-        $closing = Closing::with('details')->findOrFail($id);
+        // Baris Closing dikunci sepanjang pemeriksaan drift + penulisan status,
+        // dan penulisan dokumen lain membaca Closing dengan shared lock
+        // (PeriodLock), jadi tidak ada penulisan yang menyelip di antaranya.
+        $error = DB::transaction(function () use ($id, $request, &$closing) {
+            $closing = Closing::whereKey($id)->lockForUpdate()->firstOrFail();
+            $closing->load('details');
 
-        if ($closing->isClosed()) {
-            return back()->with('error', 'Periode ini sudah ditutup.');
+            if ($closing->isClosed()) {
+                return 'Periode ini sudah ditutup.';
+            }
+
+            if ($closing->details->isEmpty()) {
+                return 'Rekap masih kosong — susun rekap dulu sebelum menutup periode.';
+            }
+
+            // Menutup periode yang rekapnya sudah tidak cocok dengan data akan
+            // menyimpan angka yang salah, jadi dihentikan di sini.
+            if ($this->closingService->drift($closing)['has_difference']) {
+                return 'Ada transaksi yang belum masuk rekap. Susun ulang rekap dulu, lalu tutup periodenya.';
+            }
+
+            $closing->update([
+                'status'    => 'CLOSED',
+                'closed_by' => Auth::id(),
+                'closed_at' => now(),
+                'notes'     => $request->input('notes', $closing->notes),
+            ]);
+
+            return null;
+        });
+
+        if ($error) {
+            return back()->with('error', $error);
         }
 
-        if ($closing->details->isEmpty()) {
-            return back()->with('error', 'Rekap masih kosong — susun rekap dulu sebelum menutup periode.');
-        }
-
-        // Menutup periode yang rekapnya sudah tidak cocok dengan data akan
-        // menyimpan angka yang salah, jadi dihentikan di sini.
-        if ($this->closingService->drift($closing)['has_difference']) {
-            return back()->with('error', 'Ada transaksi yang belum masuk rekap. Susun ulang rekap dulu, lalu tutup periodenya.');
-        }
-
-        $closing->update([
-            'status'    => 'CLOSED',
-            'closed_by' => Auth::id(),
-            'closed_at' => now(),
-            'notes'     => $request->input('notes', $closing->notes),
-        ]);
+        \App\Support\PeriodLock::flush();
 
         UserActivityLog::record('closing', 'close', 'Menutup periode ' . $closing->period, $closing, null, $closing->period);
 
@@ -165,12 +179,19 @@ class ClosingController extends Controller
             return back()->with('error', 'Periode ini belum ditutup.');
         }
 
+        // Membuka Closing sementara jurnalnya sudah ditutup membuat dokumen sumber bisa berubah tanpa jurnal bisa menyusul.
+        if ($msg = \App\Support\PeriodLock::accountingBlockerForRange($closing->start_date, $closing->end_date)) {
+            return back()->with('error', $msg);
+        }
+
         $closing->update([
             'status'        => 'REOPENED',
             'reopened_by'   => Auth::id(),
             'reopened_at'   => now(),
             'reopen_reason' => $request->reopen_reason,
         ]);
+
+        \App\Support\PeriodLock::flush();
 
         UserActivityLog::record('closing', 'process', 'Membuka kembali periode ' . $closing->period, $closing, $request->reopen_reason, $closing->period);
 

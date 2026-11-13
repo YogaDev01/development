@@ -78,6 +78,10 @@
                             <dd class="col-7">{{ $cashFlow->notes ?: '-' }}</dd>
                         </dl>
                     </div>
+                    @php $lockDok = \App\Support\PeriodLock::forModel($cashFlow, 'Cash Flow'); @endphp
+                    @if($lockDok['locked'] && ! $cashFlow->isCancelled())
+                        <div class="alert alert-warning rounded-0 mb-0" style="font-size:12px;"><i class="fas fa-lock mr-1"></i> {{ $lockDok['message'] }}</div>
+                    @endif
                     <div class="card-footer d-flex flex-wrap" style="gap:6px;">
                         @if($cashFlow->isDraft())
                             <a href="{{ route('cash-management.edit', $cashFlow->id) }}" class="btn btn-sm btn-warning">
@@ -87,7 +91,9 @@
                                   data-title="Post ke Buku Kas?"
                                   data-text="Setelah di-post, dokumen tidak bisa diubah lagi.">
                                 @csrf
-                                <button type="submit" class="btn btn-sm btn-success">
+                                @include('partials.period-lock-field', ['class' => 'mb-0 mr-2 d-inline-block'])
+                                <button type="submit" class="btn btn-sm btn-success"
+                                        @if($lockDok['locked'] && ! $lockDok['can_override']) disabled title="{{ $lockDok['message'] }}" @endif>
                                     <i class="fas fa-check mr-1"></i> Post ke Buku Kas
                                 </button>
                             </form>
@@ -103,7 +109,8 @@
                         @endif
 
                         @if($cashFlow->isPosted())
-                            <button type="button" class="btn btn-sm btn-outline-danger" data-toggle="modal" data-target="#modalCancel">
+                            <button type="button" class="btn btn-sm btn-outline-danger" data-toggle="modal" data-target="#modalCancel"
+                                    @if($cashFlow->isPosted() && $lockDok['locked'] && ! $lockDok['can_override']) disabled title="{{ $lockDok['message'] }}" @endif>
                                 <i class="fas fa-ban mr-1"></i> Batalkan
                             </button>
                         @endif
@@ -182,6 +189,7 @@
                         <label class="font-weight-600">Alasan Pembatalan <span class="text-danger">*</span></label>
                         <input type="text" name="cancel_reason" class="form-control" maxlength="255" required>
                     </div>
+                    @include('partials.period-lock-field', ['class' => 'mt-3 mb-0'])
                 </div>
                 <div class="modal-footer" style="background:var(--surface-2);border-top:1px solid var(--border);">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
